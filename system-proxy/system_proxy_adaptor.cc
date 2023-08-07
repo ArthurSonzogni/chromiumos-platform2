@@ -345,7 +345,7 @@ void SystemProxyAdaptor::ConnectNamespaceTask(SandboxedWorker* worker,
   std::pair<base::ScopedFD, patchpanel::Client::ConnectedNamespace> result =
       patchpanel_client->ConnectNamespace(
           worker->pid(), "" /* outbound_ifname */, user_traffic,
-          true /* route_on_vpn */, traffic_source);
+          true /* route_on_vpn */, traffic_source, /*static_ipv6=*/false);
 
   if (!result.first.is_valid()) {
     LOG(ERROR) << "Failed to setup network namespace on attempt "

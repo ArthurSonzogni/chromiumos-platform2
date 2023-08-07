@@ -66,7 +66,8 @@ FakeClient::ConnectNamespace(pid_t pid,
                              const std::string& outbound_ifname,
                              bool forward_user_traffic,
                              bool route_on_vpn,
-                             Client::TrafficSource traffic_source) {
+                             Client::TrafficSource traffic_source,
+                             bool static_ipv6) {
   return {};
 }
 

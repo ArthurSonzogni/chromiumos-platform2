@@ -115,7 +115,8 @@ class FakePatchpanelClient : public patchpanel::FakeClient {
                    const std::string& outbound_ifname,
                    bool forward_user_traffic,
                    bool route_on_vpn,
-                   patchpanel::Client::TrafficSource traffic_source) override {
+                   patchpanel::Client::TrafficSource traffic_source,
+                   bool static_ipv6) override {
     ns_ifname_ = outbound_ifname;
     ns_rvpn_ = route_on_vpn;
     ns_ts_ = traffic_source;
@@ -187,7 +188,8 @@ class MockPatchpanelClient : public patchpanel::Client {
        const std::string& outbound_ifname,
        bool forward_user_traffic,
        bool route_on_vpn,
-       patchpanel::Client::TrafficSource traffic_source),
+       patchpanel::Client::TrafficSource traffic_source,
+       bool static_ipv6),
       (override));
   MOCK_METHOD(void,
               GetTrafficCounters,
@@ -1164,10 +1166,11 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Expect ConnectNamespace call and set the namespace address.
-  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::Client::TrafficSource traffic_source) {
+                         patchpanel::Client::TrafficSource traffic_source,
+                         bool static_ipv6) {
         patchpanel::Client::ConnectedNamespace resp;
         resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
@@ -1223,10 +1226,11 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
-  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::Client::TrafficSource traffic_source) {
+                         patchpanel::Client::TrafficSource traffic_source,
+                         bool static_ipv6) {
         patchpanel::Client::ConnectedNamespace resp;
         resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
@@ -1294,10 +1298,11 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   proxy.ns_peer_ipv6_address_ = *net_base::IPv6Address::CreateFromString("::1");
 
   // Expect ConnectNamespace call and set the namespace address.
-  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::Client::TrafficSource traffic_source) {
+                         patchpanel::Client::TrafficSource traffic_source,
+                         bool static_ipv6) {
         patchpanel::Client::ConnectedNamespace resp;
         resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
@@ -1372,10 +1377,11 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
       .Times(0);
 
   // Expect ConnectNamespace call and set the namespace address.
-  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::Client::TrafficSource traffic_source) {
+                         patchpanel::Client::TrafficSource traffic_source,
+                         bool static_ipv6) {
         patchpanel::Client::ConnectedNamespace resp;
         resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
@@ -1466,10 +1472,11 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
-  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::Client::TrafficSource traffic_source) {
+                         patchpanel::Client::TrafficSource traffic_source,
+                         bool static_ipv6) {
         patchpanel::Client::ConnectedNamespace resp;
         resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
@@ -1650,10 +1657,11 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
-  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::Client::TrafficSource traffic_source) {
+                         patchpanel::Client::TrafficSource traffic_source,
+                         bool static_ipv6) {
         patchpanel::Client::ConnectedNamespace resp;
         resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
@@ -1688,10 +1696,11 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
-  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::Client::TrafficSource traffic_source) {
+                         patchpanel::Client::TrafficSource traffic_source,
+                         bool static_ipv6) {
         patchpanel::Client::ConnectedNamespace resp;
         resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
@@ -1731,10 +1740,11 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);
 
   // Expect ConnectNamespace call and set the namespace address.
-  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::Client::TrafficSource traffic_source) {
+                         patchpanel::Client::TrafficSource traffic_source,
+                         bool static_ipv6) {
         patchpanel::Client::ConnectedNamespace resp;
         resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);
@@ -1768,10 +1778,11 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);
 
   // Expect ConnectNamespace call and set the namespace address.
-  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
+  EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::Client::TrafficSource traffic_source) {
+                         patchpanel::Client::TrafficSource traffic_source,
+                         bool static_ipv6) {
         patchpanel::Client::ConnectedNamespace resp;
         resp.peer_ipv4_address = net_base::IPv4Address(10, 10, 10, 10);
         return std::make_pair(base::ScopedFD(make_fd()), resp);

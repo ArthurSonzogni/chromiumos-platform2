@@ -54,7 +54,8 @@ class BRILLO_EXPORT FakeClient : public Client {
       const std::string& outbound_ifname,
       bool forward_user_traffic,
       bool route_on_vpn,
-      Client::TrafficSource traffic_source) override;
+      Client::TrafficSource traffic_source,
+      bool static_ipv6) override;
 
   void GetTrafficCounters(const std::set<std::string>& devices,
                           Client::GetTrafficCountersCallback callback) override;

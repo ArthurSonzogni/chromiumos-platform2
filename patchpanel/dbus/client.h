@@ -308,7 +308,8 @@ class BRILLO_EXPORT Client {
       const std::string& outbound_ifname,
       bool forward_user_traffic,
       bool route_on_vpn,
-      TrafficSource traffic_source) = 0;
+      TrafficSource traffic_source,
+      bool static_ipv6 = false) = 0;
 
   // Gets the traffic counters kept by patchpanel asynchronously, |callback|
   // will be called with the counters once they are ready, or with an empty

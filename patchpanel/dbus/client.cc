@@ -627,7 +627,8 @@ class ClientImpl : public Client {
       const std::string& outbound_ifname,
       bool forward_user_traffic,
       bool route_on_vpn,
-      Client::TrafficSource traffic_source) override;
+      Client::TrafficSource traffic_source,
+      bool static_ipv6) override;
 
   void GetTrafficCounters(const std::set<std::string>& devices,
                           GetTrafficCountersCallback callback) override;
@@ -1003,7 +1004,8 @@ ClientImpl::ConnectNamespace(pid_t pid,
                              const std::string& outbound_ifname,
                              bool forward_user_traffic,
                              bool route_on_vpn,
-                             Client::TrafficSource traffic_source) {
+                             Client::TrafficSource traffic_source,
+                             bool static_ipv6) {
   // Prepare and serialize the request proto.
   ConnectNamespaceRequest request;
   request.set_pid(static_cast<int32_t>(pid));
@@ -1011,6 +1013,7 @@ ClientImpl::ConnectNamespace(pid_t pid,
   request.set_allow_user_traffic(forward_user_traffic);
   request.set_route_on_vpn(route_on_vpn);
   request.set_traffic_source(ConvertTrafficSource(traffic_source));
+  request.set_static_ipv6(static_ipv6);
 
   auto [fd_local, fd_remote] = CreateLifelineFd();
   if (!fd_local.is_valid()) {

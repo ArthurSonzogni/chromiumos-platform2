@@ -288,6 +288,10 @@ message ConnectNamespaceRequest {
   // This field is required. The default behavior will be to treat unspecified
   // and UNKNOWN sources as SYSTEM traffic for accounting purposes.
   TrafficCounter.Source traffic_source = 5;
+
+  // This field specifies whether IPv6 should be created statically behind NAT66
+  // or through SLAAC.
+  bool static_ipv6 = 6;
 }
 
 // Response to a ConnectNamespaceRequest. If the operation failed then all
