@@ -62,20 +62,16 @@ class PortraitModeEffect : public base::SupportsWeakPtr<PortraitModeEffect> {
   // Applies the portrait mode effect. Currently it is assumed that the effect
   // have the same output resolution and format as that of input.
   // Args:
-  //    |can_process_portrait|: can process portrait mode effect
   //    |input_buffer|: input buffer
   //    |orientation|: clockwise rotation angle in degrees to be viewed upright
   //    |segmentation_result|: portrait mode segmentation result
   //    |output_buffer|: output buffer
   // Returns:
   //    0 on success; corresponding error code on failure.
-  // TODO(julianachang): Rename the function after removing
-  // PortraitModeStreamManipulatorLegacy.
-  int32_t ReprocessRequest(bool can_process_portrait,
-                           buffer_handle_t input_buffer,
-                           uint32_t orientation,
-                           SegmentationResult* segmentation_result,
-                           buffer_handle_t output_buffer);
+  int32_t ProcessRequest(buffer_handle_t input_buffer,
+                         uint32_t orientation,
+                         SegmentationResult* segmentation_result,
+                         buffer_handle_t output_buffer);
 
  private:
   void UpdateSegmentationResult(SegmentationResult* segmentation_result,

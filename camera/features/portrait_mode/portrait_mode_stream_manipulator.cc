@@ -420,15 +420,10 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
                << result.frame_number();
       return false;
     }
-    // TODO(julianachang): Temporarily set can_process_portrait_mode to true.
-    // This is necessary for the current function, but will be removed in the
-    // follow-up CL.
-    bool can_process_portrait_mode = true;
     SegmentationResult seg_result = SegmentationResult::kUnknown;
-    if (portrait_mode_->ReprocessRequest(
-            can_process_portrait_mode, *still_yuv_buffer->buffer(),
-            ctx->orientation, &seg_result,
-            *ctx->still_yuv_buffer->handle()) != 0) {
+    if (portrait_mode_->ProcessRequest(*still_yuv_buffer->buffer(),
+                                       ctx->orientation, &seg_result,
+                                       *ctx->still_yuv_buffer->handle()) != 0) {
       LOGF(ERROR) << "Failed to apply Portrait Mode effect";
       return false;
     }
