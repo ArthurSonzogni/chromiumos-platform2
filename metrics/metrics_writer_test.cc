@@ -20,8 +20,10 @@ TEST(SynchronousMetricsWriterTest, WriteMetrics) {
   auto writer = base::MakeRefCounted<SynchronousMetricsWriter>(
       /*use_nonblocking_lock=*/false, file_path);
 
-  auto sample1 = metrics::MetricSample::LinearHistogramSample("Test1", 1, 2);
-  auto sample2 = metrics::MetricSample::LinearHistogramSample("Test2", 1, 2);
+  auto sample1 = metrics::MetricSample::LinearHistogramSample(
+      "Test1", 1, 2, /*num_samples=*/1);
+  auto sample2 = metrics::MetricSample::LinearHistogramSample(
+      "Test2", 1, 2, /*num_samples=*/2);
   EXPECT_TRUE(writer->WriteMetrics({sample1}));
   EXPECT_TRUE(writer->WriteMetrics({sample2}));
   std::vector<metrics::MetricSample> samples;
@@ -41,8 +43,10 @@ TEST(SynchronousMetricsWriterTest, SetOutputFile) {
   auto writer = base::MakeRefCounted<SynchronousMetricsWriter>(
       /*use_nonblocking_lock=*/false, file_path);
 
-  auto sample1 = metrics::MetricSample::LinearHistogramSample("Test1", 1, 2);
-  auto sample2 = metrics::MetricSample::LinearHistogramSample("Test2", 1, 2);
+  auto sample1 = metrics::MetricSample::LinearHistogramSample(
+      "Test1", 1, 2, /*num_samples=*/1);
+  auto sample2 = metrics::MetricSample::LinearHistogramSample(
+      "Test2", 1, 2, /*num_samples=*/2);
   EXPECT_TRUE(writer->WriteMetrics({sample1}));
   EXPECT_TRUE(writer->SetOutputFile(file_path2.value()));
   EXPECT_TRUE(writer->WriteMetrics({sample2}));
@@ -78,8 +82,10 @@ class AsynchronousMetricsWriterTest : public testing::Test {
 };
 
 TEST_F(AsynchronousMetricsWriterTest, WriteMetrics) {
-  auto sample1 = metrics::MetricSample::LinearHistogramSample("Test1", 1, 2);
-  auto sample2 = metrics::MetricSample::LinearHistogramSample("Test2", 1, 2);
+  auto sample1 = metrics::MetricSample::LinearHistogramSample(
+      "Test1", 1, 2, /*num_samples=*/1);
+  auto sample2 = metrics::MetricSample::LinearHistogramSample(
+      "Test2", 1, 2, /*num_samples=*/2);
 
   EXPECT_TRUE(writer_->WriteMetrics({sample1}));
   EXPECT_TRUE(writer_->WriteMetrics({sample2}));
@@ -95,8 +101,10 @@ TEST_F(AsynchronousMetricsWriterTest, WriteMetrics) {
 }
 
 TEST_F(AsynchronousMetricsWriterTest, WriteMetricsWithoutFlush) {
-  auto sample1 = metrics::MetricSample::LinearHistogramSample("Test1", 1, 2);
-  auto sample2 = metrics::MetricSample::LinearHistogramSample("Test2", 1, 2);
+  auto sample1 = metrics::MetricSample::LinearHistogramSample(
+      "Test1", 1, 2, /*num_samples=*/1);
+  auto sample2 = metrics::MetricSample::LinearHistogramSample(
+      "Test2", 1, 2, /*num_samples=*/2);
 
   EXPECT_TRUE(writer_->WriteMetrics({sample1}));
   EXPECT_TRUE(writer_->WriteMetrics({sample2}));
@@ -114,8 +122,10 @@ TEST_F(AsynchronousMetricsWriterTest, WriteMetricsWithoutFlush) {
 
 TEST_F(AsynchronousMetricsWriterTest, SetOutputFile) {
   auto file_path2 = temp_dir_.GetPath().Append("metrics2");
-  auto sample1 = metrics::MetricSample::LinearHistogramSample("Test1", 1, 2);
-  auto sample2 = metrics::MetricSample::LinearHistogramSample("Test2", 1, 2);
+  auto sample1 = metrics::MetricSample::LinearHistogramSample(
+      "Test1", 1, 2, /*num_samples=*/1);
+  auto sample2 = metrics::MetricSample::LinearHistogramSample(
+      "Test2", 1, 2, /*num_samples=*/2);
 
   EXPECT_TRUE(writer_->WriteMetrics({sample1}));
   EXPECT_TRUE(writer_->SetOutputFile(file_path2.value()));

@@ -6,8 +6,6 @@
 
 #include "base/time/time.h"
 
-const int kMaxNumberOfSamples = 512;
-
 void FakeMetricsLibrary::Init() {}
 
 bool FakeMetricsLibrary::AreMetricsEnabled() {
@@ -24,7 +22,16 @@ bool FakeMetricsLibrary::IsGuestMode() {
 
 bool FakeMetricsLibrary::SendToUMA(
     const std::string& name, int sample, int min, int max, int nbuckets) {
-  metrics_[name].push_back(sample);
+  return SendRepeatedToUMA(name, sample, min, max, nbuckets, 1);
+}
+
+bool FakeMetricsLibrary::SendRepeatedToUMA(const std::string& name,
+                                           int sample,
+                                           int min,
+                                           int max,
+                                           int nbuckets,
+                                           int num_samples) {
+  metrics_[name].insert(metrics_[name].end(), num_samples, sample);
   return true;
 }
 
@@ -38,36 +45,55 @@ bool FakeMetricsLibrary::SendRepeatedEnumToUMA(const std::string& name,
                                                int sample,
                                                int exclusive_max,
                                                int num_samples) {
-  if (num_samples >= kMaxNumberOfSamples) {
-    return false;
-  }
-
-  std::vector<int> samples = std::vector<int>(num_samples, sample);
-  auto arr = &metrics_[name];
-  arr->insert(std::end(*arr), std::begin(samples), std::end(samples));
+  metrics_[name].insert(metrics_[name].end(), num_samples, sample);
   return true;
 }
 
 bool FakeMetricsLibrary::SendLinearToUMA(const std::string& name,
                                          int sample,
                                          int max) {
-  metrics_[name].push_back(sample);
+  return SendRepeatedLinearToUMA(name, sample, max, 1);
+}
+
+bool FakeMetricsLibrary::SendRepeatedLinearToUMA(const std::string& name,
+                                                 int sample,
+                                                 int max,
+                                                 int num_samples) {
+  metrics_[name].insert(metrics_[name].end(), num_samples, sample);
   return true;
 }
 
 bool FakeMetricsLibrary::SendPercentageToUMA(const std::string& name,
                                              int sample) {
-  metrics_[name].push_back(sample);
+  return SendRepeatedPercentageToUMA(name, sample, /*num_samples=*/1);
+}
+
+bool FakeMetricsLibrary::SendRepeatedPercentageToUMA(const std::string& name,
+                                                     int sample,
+                                                     int num_samples) {
+  metrics_[name].insert(metrics_[name].end(), num_samples, sample);
   return true;
 }
 
 bool FakeMetricsLibrary::SendBoolToUMA(const std::string& name, bool sample) {
-  metrics_[name].push_back(sample ? 1 : 0);
+  return SendRepeatedBoolToUMA(name, sample, /*num_samples=*/1);
+}
+
+bool FakeMetricsLibrary::SendRepeatedBoolToUMA(const std::string& name,
+                                               bool sample,
+                                               int num_samples) {
+  metrics_[name].insert(metrics_[name].end(), num_samples, sample ? 1 : 0);
   return true;
 }
 
 bool FakeMetricsLibrary::SendSparseToUMA(const std::string& name, int sample) {
-  metrics_[name].push_back(sample);
+  return SendRepeatedSparseToUMA(name, sample, /*num_samples=*/1);
+}
+
+bool FakeMetricsLibrary::SendRepeatedSparseToUMA(const std::string& name,
+                                                 int sample,
+                                                 int num_samples) {
+  metrics_[name].insert(metrics_[name].end(), num_samples, sample);
   return true;
 }
 
@@ -75,7 +101,17 @@ bool FakeMetricsLibrary::SendUserActionToUMA(const std::string& action) {
   return false;
 }
 
+bool FakeMetricsLibrary::SendRepeatedUserActionToUMA(const std::string& action,
+                                                     int num_samples) {
+  return false;
+}
+
 bool FakeMetricsLibrary::SendCrashToUMA(const char* crash_kind) {
+  return false;
+}
+
+bool FakeMetricsLibrary::SendRepeatedCrashToUMA(const char* crash_kind,
+                                                int num_samples) {
   return false;
 }
 
@@ -83,25 +119,30 @@ bool FakeMetricsLibrary::SendCrosEventToUMA(const std::string& event) {
   return false;
 }
 
-bool FakeMetricsLibrary::SendTimeToUMA(base::StringPiece name,
+bool FakeMetricsLibrary::SendRepeatedCrosEventToUMA(const std::string& event,
+                                                    int num_samples) {
+  return false;
+}
+
+bool FakeMetricsLibrary::SendTimeToUMA(std::string_view name,
                                        base::TimeDelta sample,
                                        base::TimeDelta min,
                                        base::TimeDelta max,
                                        size_t num_buckets) {
-  return SendToUMA(std::string(name), sample.InMilliseconds(),
-                   min.InMilliseconds(), max.InMilliseconds(), num_buckets);
+  return SendRepeatedTimeToUMA(name, sample, min, max, num_buckets,
+                               /*num_samples=*/1);
 }
 
-#if USE_METRICS_UPLOADER
-bool FakeMetricsLibrary::SendRepeatedToUMA(const std::string& name,
-                                           int sample,
-                                           int min,
-                                           int max,
-                                           int nbuckets,
-                                           int num_samples) {
-  return false;
+bool FakeMetricsLibrary::SendRepeatedTimeToUMA(std::string_view name,
+                                               base::TimeDelta sample,
+                                               base::TimeDelta min,
+                                               base::TimeDelta max,
+                                               size_t num_buckets,
+                                               int num_samples) {
+  return SendRepeatedToUMA(std::string(name), sample.InMilliseconds(),
+                           min.InMilliseconds(), max.InMilliseconds(),
+                           num_buckets, num_samples);
 }
-#endif
 
 void FakeMetricsLibrary::SetOutputFile(const std::string& output_file) {}
 

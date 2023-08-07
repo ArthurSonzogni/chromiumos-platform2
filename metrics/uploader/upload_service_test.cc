@@ -51,7 +51,7 @@ class UploadServiceTest : public testing::Test {
   }
 
   metrics::MetricSample Crash(const std::string& name) {
-    return metrics::MetricSample::CrashSample(name);
+    return metrics::MetricSample::CrashSample(name, /*num_samples=*/1);
   }
 
   base::ScopedTempDir dir_;
@@ -161,12 +161,12 @@ TEST_F(UploadServiceTest, LogEmptyAfterUpload) {
 }
 
 TEST_F(UploadServiceTest, LogContainsAggregatedValues) {
-  metrics::MetricSample histogram =
-      metrics::MetricSample::HistogramSample("foo", 10, 0, 42, 10);
+  metrics::MetricSample histogram = metrics::MetricSample::HistogramSample(
+      "foo", 10, 0, 42, 10, /*num_samples=*/1);
   upload_service_.AddSample(histogram);
 
-  metrics::MetricSample histogram2 =
-      metrics::MetricSample::HistogramSample("foo", 11, 0, 42, 10);
+  metrics::MetricSample histogram2 = metrics::MetricSample::HistogramSample(
+      "foo", 11, 0, 42, 10, /*num_samples=*/1);
   upload_service_.AddSample(histogram2);
 
   upload_service_.GatherHistograms();
@@ -203,7 +203,8 @@ TEST_F(UploadServiceTest, ValuesInConfigFileAreSent) {
 
   base::test::ScopedChromeOSVersionInfo version(content, base::Time());
   metrics::MetricSample histogram =
-      metrics::MetricSample::SparseHistogramSample("myhistogram", 1);
+      metrics::MetricSample::SparseHistogramSample("myhistogram", 1,
+                                                   /*num_samples=*/1);
   SystemProfileCache* local_cache_ = new SystemProfileCache(true, "/");
   base::FilePath path = dir_.GetPath().Append("session_id");
   local_cache_->session_id_.reset(

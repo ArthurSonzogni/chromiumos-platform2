@@ -41,10 +41,11 @@ class MetricSample {
   // This function should be used to filter bad samples before serializing them.
   bool IsValid() const;
 
-  // Getters for type and name. All types of metrics have these so we do not
-  // need to check the type.
+  // Getters for type, name, and num_samples. All types of metrics have these so
+  // we do not need to check the type.
   SampleType type() const { return type_; }
   const std::string& name() const { return name_; }
+  int num_samples() const { return num_samples_; }
 
   // Getters for sample, min, max, bucket_count, num_samples.
   // Check the metric type to make sure the request make sense. (ex: a crash
@@ -54,7 +55,6 @@ class MetricSample {
   int min() const;
   int max() const;
   int bucket_count() const;
-  int num_samples() const;
 
   // Returns a serialized version of the sample.
   //
@@ -64,10 +64,16 @@ class MetricSample {
   // histogram: histogram\0|name_| |sample_| |min_| |max_| |bucket_count_|\0
   // sparsehistogram: sparsehistogram\0|name_| |sample_|\0
   // linearhistogram: linearhistogram\0|name_| |sample_| |max_|\0
+  //
+  // Additionally, if num_samples is not 1, each type may have:
+  // ` |num_samples_|` immediately before the final null terminator.
   std::string ToString() const;
 
   // Builds a crash sample.
-  static MetricSample CrashSample(const std::string& crash_name);
+  static MetricSample CrashSample(const std::string& crash_name,
+                                  int num_samples);
+  // Deserializes a crash sample.
+  static MetricSample ParseCrash(const std::string& serialized);
 
   // Builds a histogram sample.
   // Chrome doesn't support repeated samples yet, non-one counts
@@ -78,25 +84,30 @@ class MetricSample {
                                       int min,
                                       int max,
                                       int bucket_count,
-                                      int num_samples = 1);
+                                      int num_samples);
   // Deserializes a histogram sample.
   static MetricSample ParseHistogram(const std::string& serialized);
 
   // Builds a sparse histogram sample.
   static MetricSample SparseHistogramSample(const std::string& histogram_name,
-                                            int sample);
+                                            int sample,
+                                            int num_samples);
   // Deserializes a sparse histogram sample.
   static MetricSample ParseSparseHistogram(const std::string& serialized);
 
   // Builds a linear histogram sample.
   static MetricSample LinearHistogramSample(const std::string& histogram_name,
                                             int sample,
-                                            int max);
+                                            int max,
+                                            int num_samples);
   // Deserializes a linear histogram sample.
   static MetricSample ParseLinearHistogram(const std::string& serialized);
 
   // Builds a user action sample.
-  static MetricSample UserActionSample(const std::string& action_name);
+  static MetricSample UserActionSample(const std::string& action_name,
+                                       int num_samples);
+  // Deserializes a user action sample.
+  static MetricSample ParseUserAction(const std::string& serialized);
 
   // Returns true if sample and this object represent the same sample (type,
   // name, sample, min, max, bucket_count match).
@@ -109,7 +120,7 @@ class MetricSample {
                const int min,
                const int max,
                const int bucket_count,
-               const int num_samples = 1);
+               const int num_samples);
 
   const SampleType type_ = INVALID;
   const std::string name_;
@@ -119,6 +130,14 @@ class MetricSample {
   const int bucket_count_ = 0;
   const int num_samples_ = 0;
 };
+
+inline bool operator==(const MetricSample& lhs, const MetricSample& rhs) {
+  return lhs.IsEqual(rhs);
+}
+
+inline bool operator!=(const MetricSample& lhs, const MetricSample& rhs) {
+  return !(lhs == rhs);
+}
 
 }  // namespace metrics
 

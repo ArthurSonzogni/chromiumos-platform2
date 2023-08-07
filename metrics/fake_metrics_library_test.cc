@@ -84,10 +84,10 @@ TEST_F(FakeMetricsLibraryTest, SendRepeatedEnumToUMA) {
   EXPECT_EQ(lib().GetLast("metric"), kMetricsValue1);
   EXPECT_THAT(lib().GetCalls("metric"), ElementsAre(0, 1, 1, 0, 0, 0));
 
-  // Check max size.
-  EXPECT_FALSE(lib().SendRepeatedEnumToUMA("metric", kMetricsValue2,
-                                           kMetricsValueMax, 512));
-  EXPECT_EQ(lib().GetLast("metric"), kMetricsValue1);
+  // Even large values work.
+  EXPECT_TRUE(lib().SendRepeatedEnumToUMA("metric", kMetricsValue2,
+                                          kMetricsValueMax, 512));
+  EXPECT_EQ(lib().GetLast("metric"), kMetricsValue2);
 }
 
 TEST_F(FakeMetricsLibraryTest, SendLinearToUMA) {

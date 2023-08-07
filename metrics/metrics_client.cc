@@ -26,11 +26,13 @@ enum Mode {
 void ShowUsage() {
   fprintf(
       stderr,
-      "Usage:  metrics_client [-W <file>] [-t] name sample min max nbuckets\n"
-      "        metrics_client [-W <file>] -e   name sample max\n"
-      "        metrics_client [-W <file>] -s   name sample\n"
-      "        metrics_client [-W <file>] -v   event\n"
-      "        metrics_client [-W <file>] -u action\n"
+      "Usage:  metrics_client [-W <file>] [-n <num_samples>] [-t] name sample "
+      "min max nbuckets\n"
+      "        metrics_client [-W <file>] [-n <num_samples>] -e   name sample "
+      "max\n"
+      "        metrics_client [-W <file>] [-n <num_samples>] -s   name sample\n"
+      "        metrics_client [-W <file>] [-n <num_samples>] -v   event\n"
+      "        metrics_client [-W <file>] [-n <num_samples>] -u action\n"
       "        metrics_client [-W <file>] -R <file>\n"
       "        metrics_client [-cCDg]\n"
       "\n"
@@ -44,6 +46,7 @@ void ShowUsage() {
       "      in guest mode always return 1\n"
       "  -e: send linear/enumeration histogram data\n"
       "  -g: return exit status 0 if machine in guest mode, 1 otherwise\n"
+      "  -n <num_samples>: Sends |num_samples| identical samples\n"
       // The -i flag prints the client ID, if it exists and is valid.
       // It is not advertised here because it is deprecated and for internal
       // use only (at least by the log tool in debugd).
@@ -78,7 +81,8 @@ int SendStats(char* argv[],
               int name_index,
               enum Mode mode,
               bool secs_to_msecs,
-              const char* output_file) {
+              const char* output_file,
+              int num_samples) {
   const char* name = argv[name_index];
   int sample;
   if (secs_to_msecs) {
@@ -92,31 +96,32 @@ int SendStats(char* argv[],
     metrics_lib.SetOutputFile(output_file);
   }
   if (mode == kModeSendSparseSample) {
-    metrics_lib.SendSparseToUMA(name, sample);
+    metrics_lib.SendRepeatedSparseToUMA(name, sample, num_samples);
   } else if (mode == kModeSendEnumSample) {
     int exclusive_max = ParseInt(argv[name_index + 2]);
-    metrics_lib.SendEnumToUMA(name, sample, exclusive_max);
+    metrics_lib.SendRepeatedEnumToUMA(name, sample, exclusive_max, num_samples);
   } else {
     int min = ParseInt(argv[name_index + 2]);
     int max = ParseInt(argv[name_index + 3]);
     int nbuckets = ParseInt(argv[name_index + 4]);
-    metrics_lib.SendToUMA(name, sample, min, max, nbuckets);
+    metrics_lib.SendRepeatedToUMA(name, sample, min, max, nbuckets,
+                                  num_samples);
   }
   return 0;
 }
 
-int SendUserAction(char* argv[], int action_index) {
+int SendUserAction(char* argv[], int action_index, int num_samples) {
   const char* action = argv[action_index];
   MetricsLibrary metrics_lib;
-  metrics_lib.SendUserActionToUMA(action);
+  metrics_lib.SendRepeatedUserActionToUMA(action, num_samples);
   return 0;
 }
 
-int SendCrosEvent(char* argv[], int action_index) {
+int SendCrosEvent(char* argv[], int action_index, int num_samples) {
   const char* event = argv[action_index];
   bool result;
   MetricsLibrary metrics_lib;
-  result = metrics_lib.SendCrosEventToUMA(event);
+  result = metrics_lib.SendRepeatedCrosEventToUMA(event, num_samples);
   if (!result) {
     fprintf(stderr, "metrics_client: could not send event %s\n", event);
     return 1;
@@ -170,10 +175,11 @@ int main(int argc, char** argv) {
   bool secs_to_msecs = false;
   const char* output_file = nullptr;
   const char* input_file = nullptr;
+  const char* num_samples_cstr = nullptr;
 
   // Parse arguments
   int flag;
-  while ((flag = getopt(argc, argv, "CDR:W:cegistuv")) != -1) {
+  while ((flag = getopt(argc, argv, "CDR:W:cegin:stuv")) != -1) {
     switch (flag) {
       case 'C':
         mode = kModeCreateConsent;
@@ -202,6 +208,9 @@ int main(int argc, char** argv) {
         // See comment in ShowUsage().
         mode = kModeShowConsentId;
         break;
+      case 'n':
+        num_samples_cstr = optarg;
+        break;
       case 's':
         mode = kModeSendSparseSample;
         break;
@@ -220,6 +229,16 @@ int main(int argc, char** argv) {
     }
   }
   int arg_index = optind;
+
+  int num_samples = 1;
+  if (num_samples_cstr) {
+    num_samples = ParseInt(num_samples_cstr);
+    if (num_samples <= 0) {
+      fprintf(stderr, "metrics client: bad num_samples \"%s\"\n",
+              num_samples_cstr);
+      ShowUsage();
+    }
+  }
 
   int expected_args = 0;
   if (mode == kModeSendSample)
@@ -244,11 +263,12 @@ int main(int argc, char** argv) {
       if ((mode != kModeSendSample) && secs_to_msecs) {
         ShowUsage();
       }
-      return SendStats(argv, arg_index, mode, secs_to_msecs, output_file);
+      return SendStats(argv, arg_index, mode, secs_to_msecs, output_file,
+                       num_samples);
     case kModeSendUserAction:
-      return SendUserAction(argv, arg_index);
+      return SendUserAction(argv, arg_index, num_samples);
     case kModeSendCrosEvent:
-      return SendCrosEvent(argv, arg_index);
+      return SendCrosEvent(argv, arg_index, num_samples);
     case kModeCreateConsent:
       return CreateConsent();
     case kModeDeleteConsent:

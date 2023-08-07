@@ -51,7 +51,9 @@ constexpr char kDaemonStoreConsentFile[] = "consent-enabled";
 constexpr char kDaemonStoreOptinFile[] = "opted-in";
 constexpr char kCrosEventHistogramName[] = "Platform.CrOSEvent";
 const int kCrosEventHistogramMax = 100;
-const int kMaxNumberOfSamples = 512;
+// Arbitrary maximum for repeated user actions; above this, we emit a warning
+// for debugging in case it causes performance issues.
+const int kMaxRepeatedUserActions = 100'000;
 
 // Add new cros events here.
 //
@@ -347,11 +349,9 @@ bool MetricsLibrary::Replay(const std::string& input_file) {
 
 bool MetricsLibrary::SendToUMA(
     const std::string& name, int sample, int min, int max, int nbuckets) {
-  return metrics_writer_->WriteMetrics({metrics::MetricSample::HistogramSample(
-      name, sample, min, max, nbuckets)});
+  return SendRepeatedToUMA(name, sample, min, max, nbuckets, /*num_samples=*/1);
 }
 
-#if USE_METRICS_UPLOADER
 bool MetricsLibrary::SendRepeatedToUMA(const std::string& name,
                                        int sample,
                                        int min,
@@ -361,7 +361,6 @@ bool MetricsLibrary::SendRepeatedToUMA(const std::string& name,
   return metrics_writer_->WriteMetrics({metrics::MetricSample::HistogramSample(
       name, sample, min, max, nbuckets, num_samples)});
 }
-#endif
 
 void MetricsLibrary::SetConsentFileForTest(const base::FilePath& consent_file) {
   consent_file_ = consent_file;
@@ -370,63 +369,109 @@ void MetricsLibrary::SetConsentFileForTest(const base::FilePath& consent_file) {
 bool MetricsLibrary::SendEnumToUMA(const std::string& name,
                                    int sample,
                                    int max) {
-  return SendRepeatedEnumToUMA(name, sample, max, 1);
+  return SendRepeatedEnumToUMA(name, sample, max, /*num_samples=*/1);
 }
 
 bool MetricsLibrary::SendRepeatedEnumToUMA(const std::string& name,
                                            int sample,
                                            int max,
                                            int num_samples) {
-  if (num_samples >= kMaxNumberOfSamples) {
-    // Emit warning for now to monitor if usage is too great.
-    LOG(ERROR) << "num_samples must be less than" << kMaxNumberOfSamples
-               << ". num_samples=" << num_samples;
-    return false;
-  }
-
-  return metrics_writer_->WriteMetrics(std::vector<metrics::MetricSample>(
-      num_samples,
-      metrics::MetricSample::LinearHistogramSample(name, sample, max)));
+  return metrics_writer_->WriteMetrics(
+      {metrics::MetricSample::LinearHistogramSample(name, sample, max,
+                                                    num_samples)});
 }
 
 bool MetricsLibrary::SendLinearToUMA(const std::string& name,
                                      int sample,
                                      int max) {
+  return SendRepeatedLinearToUMA(name, sample, max, /*num_samples=*/1);
+}
+
+bool MetricsLibrary::SendRepeatedLinearToUMA(const std::string& name,
+                                             int sample,
+                                             int max,
+                                             int num_samples) {
   return metrics_writer_->WriteMetrics(
-      {metrics::MetricSample::LinearHistogramSample(name, sample, max)});
+      {metrics::MetricSample::LinearHistogramSample(name, sample, max,
+                                                    num_samples)});
 }
 
 bool MetricsLibrary::SendPercentageToUMA(const std::string& name, int sample) {
-  return SendLinearToUMA(name, sample, 101);
+  return SendRepeatedPercentageToUMA(name, sample, /*num_samples=*/1);
+}
+
+bool MetricsLibrary::SendRepeatedPercentageToUMA(const std::string& name,
+                                                 int sample,
+                                                 int num_samples) {
+  return SendRepeatedLinearToUMA(name, sample, 101, num_samples);
 }
 
 bool MetricsLibrary::SendBoolToUMA(const std::string& name, bool sample) {
+  return SendRepeatedBoolToUMA(name, sample, /*num_samples=*/1);
+}
+
+bool MetricsLibrary::SendRepeatedBoolToUMA(const std::string& name,
+                                           bool sample,
+                                           int num_samples) {
   return metrics_writer_->WriteMetrics(
-      {metrics::MetricSample::LinearHistogramSample(name, sample ? 1 : 0, 2)});
+      {metrics::MetricSample::LinearHistogramSample(name, sample ? 1 : 0, 2,
+                                                    num_samples)});
 }
 
 bool MetricsLibrary::SendSparseToUMA(const std::string& name, int sample) {
+  return SendRepeatedSparseToUMA(name, sample, /*num_samples=*/1);
+}
+
+bool MetricsLibrary::SendRepeatedSparseToUMA(const std::string& name,
+                                             int sample,
+                                             int num_samples) {
   return metrics_writer_->WriteMetrics(
-      {metrics::MetricSample::SparseHistogramSample(name, sample)});
+      {metrics::MetricSample::SparseHistogramSample(name, sample,
+                                                    num_samples)});
 }
 
 bool MetricsLibrary::SendUserActionToUMA(const std::string& action) {
+  return SendRepeatedUserActionToUMA(action, /*num_samples=*/1);
+}
+
+bool MetricsLibrary::SendRepeatedUserActionToUMA(const std::string& action,
+                                                 int num_samples) {
+  if (num_samples > kMaxRepeatedUserActions) {
+    LOG(WARNING) << "Sending a large number of repeated UMA events to chrome; "
+                 << "performance may suffer.";
+  }
   return metrics_writer_->WriteMetrics(
-      {metrics::MetricSample::UserActionSample(action)});
+      {metrics::MetricSample::UserActionSample(action, num_samples)});
 }
 
 bool MetricsLibrary::SendCrashToUMA(const char* crash_kind) {
-  return metrics_writer_->WriteMetrics(
-      {metrics::MetricSample::CrashSample(crash_kind)});
+  return SendRepeatedCrashToUMA(crash_kind, /*num_samples=*/1);
 }
 
-bool MetricsLibrary::SendTimeToUMA(base::StringPiece name,
+bool MetricsLibrary::SendRepeatedCrashToUMA(const char* crash_kind,
+                                            int num_samples) {
+  return metrics_writer_->WriteMetrics(
+      {metrics::MetricSample::CrashSample(crash_kind, num_samples)});
+}
+
+bool MetricsLibrary::SendTimeToUMA(std::string_view name,
                                    base::TimeDelta sample,
                                    base::TimeDelta min,
                                    base::TimeDelta max,
                                    size_t buckets) {
-  return SendToUMA(std::string(name), sample.InMilliseconds(),
-                   min.InMilliseconds(), max.InMilliseconds(), buckets);
+  return SendRepeatedTimeToUMA(name, sample, min, max, buckets,
+                               /*num_samples=*/1);
+}
+
+bool MetricsLibrary::SendRepeatedTimeToUMA(std::string_view name,
+                                           base::TimeDelta sample,
+                                           base::TimeDelta min,
+                                           base::TimeDelta max,
+                                           size_t buckets,
+                                           int num_samples) {
+  return SendRepeatedToUMA(std::string(name), sample.InMilliseconds(),
+                           min.InMilliseconds(), max.InMilliseconds(), buckets,
+                           num_samples);
 }
 
 void MetricsLibrary::SetPolicyProvider(policy::PolicyProvider* provider) {
@@ -434,9 +479,15 @@ void MetricsLibrary::SetPolicyProvider(policy::PolicyProvider* provider) {
 }
 
 bool MetricsLibrary::SendCrosEventToUMA(const std::string& event) {
+  return SendRepeatedCrosEventToUMA(event, /*num_samples=*/1);
+}
+
+bool MetricsLibrary::SendRepeatedCrosEventToUMA(const std::string& event,
+                                                int num_samples) {
   for (size_t i = 0; i < std::size(kCrosEventNames); i++) {
-    if (strcmp(event.c_str(), kCrosEventNames[i]) == 0) {
-      return SendEnumToUMA(kCrosEventHistogramName, i, kCrosEventHistogramMax);
+    if (event == kCrosEventNames[i]) {
+      return SendRepeatedEnumToUMA(kCrosEventHistogramName, i,
+                                   kCrosEventHistogramMax, num_samples);
     }
   }
   LOG(WARNING) << "Unknown CrosEvent '" << event << "'";

@@ -203,7 +203,22 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return false;
   }
 
+  bool SendRepeatedLinearToUMA(const std::string& name,
+                               int sample,
+                               int max,
+                               int num_samples) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
   bool SendPercentageToUMA(const std::string& name, int sample) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
+  bool SendRepeatedPercentageToUMA(const std::string& name,
+                                   int sample,
+                                   int num_samples) override {
     ADD_FAILURE() << "Should not be reached";
     return false;
   }
@@ -213,7 +228,21 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return false;
   }
 
+  bool SendRepeatedBoolToUMA(const std::string& name,
+                             bool sample,
+                             int num_samples) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
   bool SendSparseToUMA(const std::string& name, int sample) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
+  bool SendRepeatedSparseToUMA(const std::string& name,
+                               int sample,
+                               int num_samples) override {
     ADD_FAILURE() << "Should not be reached";
     return false;
   }
@@ -223,12 +252,30 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return false;
   }
 
+  bool SendRepeatedUserActionToUMA(const std::string& action,
+                                   int num_samples) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
   bool SendCrashToUMA(const char* crash_kind) override {
     ADD_FAILURE() << "Should not be reached";
     return false;
   }
 
+  bool SendRepeatedCrashToUMA(const char* crash_kind,
+                              int num_samples) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
   bool SendCrosEventToUMA(const std::string& event) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
+  bool SendRepeatedCrosEventToUMA(const std::string& event,
+                                  int num_samples) override {
     ADD_FAILURE() << "Should not be reached";
     return false;
   }
@@ -251,11 +298,31 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return true;
   }
 
-  bool SendTimeToUMA(base::StringPiece name,
+  bool SendRepeatedToUMA(const std::string& name,
+                         int sample,
+                         int min,
+                         int max,
+                         int nbuckets,
+                         int num_samples) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
+  bool SendTimeToUMA(std::string_view name,
                      base::TimeDelta sample,
                      base::TimeDelta min,
                      base::TimeDelta max,
                      size_t buckets) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
+  bool SendRepeatedTimeToUMA(std::string_view name,
+                             base::TimeDelta sample,
+                             base::TimeDelta min,
+                             base::TimeDelta max,
+                             size_t buckets,
+                             int num_samples) override {
     ADD_FAILURE() << "Should not be reached";
     return false;
   }

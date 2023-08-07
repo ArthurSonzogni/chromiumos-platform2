@@ -16,40 +16,79 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
  public:
   // TODO(chromium:940343): Remove this function.
   MOCK_METHOD(void, Init, (), (override));
+
   MOCK_METHOD(bool,
               SendToUMA,
               (const std::string&, int, int, int, int),
               (override));
+  MOCK_METHOD(bool,
+              SendRepeatedToUMA,
+              (const std::string&, int, int, int, int, int),
+              (override));
+
   MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
   MOCK_METHOD(bool,
               SendRepeatedEnumToUMA,
               (const std::string&, int, int, int),
               (override));
+
   MOCK_METHOD(bool,
               SendLinearToUMA,
               (const std::string&, int, int),
               (override));
+  MOCK_METHOD(bool,
+              SendRepeatedLinearToUMA,
+              (const std::string&, int, int, int),
+              (override));
+
   MOCK_METHOD(bool, SendPercentageToUMA, (const std::string&, int), (override));
+  MOCK_METHOD(bool,
+              SendRepeatedPercentageToUMA,
+              (const std::string&, int, int),
+              (override));
   MOCK_METHOD(bool, SendBoolToUMA, (const std::string&, bool), (override));
+  MOCK_METHOD(bool,
+              SendRepeatedBoolToUMA,
+              (const std::string&, bool, int),
+              (override));
   MOCK_METHOD(bool, SendSparseToUMA, (const std::string&, int), (override));
+  MOCK_METHOD(bool,
+              SendRepeatedSparseToUMA,
+              (const std::string&, int, int),
+              (override));
   MOCK_METHOD(bool, SendUserActionToUMA, (const std::string&), (override));
+  MOCK_METHOD(bool,
+              SendRepeatedUserActionToUMA,
+              (const std::string&, int),
+              (override));
   MOCK_METHOD(bool, SendCrashToUMA, (const char* crash_kind), (override));
+  MOCK_METHOD(bool,
+              SendRepeatedCrashToUMA,
+              (const char* crash_kind, int),
+              (override));
   MOCK_METHOD(bool, SendCrosEventToUMA, (const std::string& event), (override));
   MOCK_METHOD(bool,
+              SendRepeatedCrosEventToUMA,
+              (const std::string& event, int),
+              (override));
+  MOCK_METHOD(bool,
               SendTimeToUMA,
-              (base::StringPiece,
+              (std::string_view,
                base::TimeDelta,
                base::TimeDelta,
                base::TimeDelta,
                size_t),
               (override));
-  MOCK_METHOD(void, SetOutputFile, (const std::string&), (override));
-#if USE_METRICS_UPLOADER
   MOCK_METHOD(bool,
-              SendRepeatedToUMA,
-              (const std::string&, int, int, int, int, int),
+              SendRepeatedTimeToUMA,
+              (std::string_view,
+               base::TimeDelta,
+               base::TimeDelta,
+               base::TimeDelta,
+               size_t,
+               int),
               (override));
-#endif
+  MOCK_METHOD(void, SetOutputFile, (const std::string&), (override));
   bool AreMetricsEnabled() override { return metrics_enabled_; }
   bool IsAppSyncEnabled() override { return appsync_enabled_; }
   bool IsGuestMode() override { return guest_mode_; }

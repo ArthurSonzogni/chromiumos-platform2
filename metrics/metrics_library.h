@@ -27,8 +27,16 @@ class MetricsLibraryInterface {
   virtual bool AreMetricsEnabled() = 0;
   virtual bool IsAppSyncEnabled() = 0;
   virtual bool IsGuestMode() = 0;
+
   virtual bool SendToUMA(
       const std::string& name, int sample, int min, int max, int nbuckets) = 0;
+  virtual bool SendRepeatedToUMA(const std::string& name,
+                                 int sample,
+                                 int min,
+                                 int max,
+                                 int nbuckets,
+                                 int num_samples) = 0;
+
   template <typename T>
   bool SendEnumToUMA(const std::string& name, T sample) {
     static_assert(std::is_enum<T>::value, "T is not an enum.");
@@ -65,28 +73,54 @@ class MetricsLibraryInterface {
                                      int sample,
                                      int exclusive_max,
                                      int num_samples) = 0;
+
   virtual bool SendLinearToUMA(const std::string& name,
                                int sample,
                                int max) = 0;
+  virtual bool SendRepeatedLinearToUMA(const std::string& name,
+                                       int sample,
+                                       int max,
+                                       int num_samples) = 0;
+
   virtual bool SendPercentageToUMA(const std::string& name, int sample) = 0;
+  virtual bool SendRepeatedPercentageToUMA(const std::string& name,
+                                           int sample,
+                                           int num_samples) = 0;
+
   virtual bool SendBoolToUMA(const std::string& name, bool sample) = 0;
+  virtual bool SendRepeatedBoolToUMA(const std::string& name,
+                                     bool sample,
+                                     int num_samples) = 0;
+
   virtual bool SendSparseToUMA(const std::string& name, int sample) = 0;
+  virtual bool SendRepeatedSparseToUMA(const std::string& name,
+                                       int sample,
+                                       int num_samples) = 0;
+
   virtual bool SendUserActionToUMA(const std::string& action) = 0;
+  virtual bool SendRepeatedUserActionToUMA(const std::string& action,
+                                           int num_samples) = 0;
+
   virtual bool SendCrashToUMA(const char* crash_kind) = 0;
+  virtual bool SendRepeatedCrashToUMA(const char* crash_kind,
+                                      int num_samples) = 0;
+
   virtual bool SendCrosEventToUMA(const std::string& event) = 0;
-  virtual bool SendTimeToUMA(base::StringPiece name,
+  virtual bool SendRepeatedCrosEventToUMA(const std::string& event,
+                                          int num_samples) = 0;
+
+  virtual bool SendTimeToUMA(std::string_view name,
                              base::TimeDelta sample,
                              base::TimeDelta min,
                              base::TimeDelta max,
                              size_t buckets) = 0;
-#if USE_METRICS_UPLOADER
-  virtual bool SendRepeatedToUMA(const std::string& name,
-                                 int sample,
-                                 int min,
-                                 int max,
-                                 int nbuckets,
-                                 int num_samples) = 0;
-#endif
+  virtual bool SendRepeatedTimeToUMA(std::string_view name,
+                                     base::TimeDelta sample,
+                                     base::TimeDelta min,
+                                     base::TimeDelta max,
+                                     size_t buckets,
+                                     int num_samples) = 0;
+
   virtual void SetOutputFile(const std::string& output_file) = 0;
   virtual ~MetricsLibraryInterface() {}
 };
@@ -182,6 +216,14 @@ class MetricsLibrary : public MetricsLibraryInterface {
                  int min,
                  int max,
                  int nbuckets) override;
+  // Sends |num_samples| samples with the same value to chrome.
+  // Otherwise equivalent to SendToUMA().
+  bool SendRepeatedToUMA(const std::string& name,
+                         int sample,
+                         int min,
+                         int max,
+                         int nbuckets,
+                         int num_samples) override;
 
   // Sends enumerated histogram data to Chrome for transport to UMA and
   // returns true on success. These methods result in the equivalent of
@@ -225,8 +267,6 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Sends |num_samples| samples with the same value to chrome.
   // Otherwise equivalent to SendEnumToUMA().
-  // Warning: Use sparingly as too many samples being sent can cause
-  // messages to be dropped (Limit of 100k per 30 seconds).
   bool SendRepeatedEnumToUMA(const std::string& name,
                              int sample,
                              int exclusive_max,
@@ -249,6 +289,11 @@ class MetricsLibrary : public MetricsLibraryInterface {
   bool SendLinearToUMA(const std::string& name,
                        int sample,
                        int exclusive_max) override;
+  // Same, but sends |num_samples| samples with the same value to chrome.
+  bool SendRepeatedLinearToUMA(const std::string& name,
+                               int sample,
+                               int exclusive_max,
+                               int num_samples) override;
 
   // Sends percentage histogram data to Chrome for transport to UMA and
   // returns true on success.  This is a specialization of SendLinearToUMA with
@@ -256,15 +301,27 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // equivalent of an asynchronous non-blocking RPC to UMA_HISTOGRAM_PERCENTAGE
   // inside Chrome (see base/metrics/histogram_macros.h).
   bool SendPercentageToUMA(const std::string& name, int sample) override;
+  // Same, but sends |num_samples| samples with the same value to chrome.
+  bool SendRepeatedPercentageToUMA(const std::string& name,
+                                   int sample,
+                                   int num_samples) override;
 
   // Specialization of SendEnumToUMA for boolean values.
   bool SendBoolToUMA(const std::string& name, bool sample) override;
+  // Same, but sends |num_samples| samples with the same value to chrome.
+  bool SendRepeatedBoolToUMA(const std::string& name,
+                             bool sample,
+                             int num_samples) override;
 
   // Sends sparse histogram sample to Chrome for transport to UMA.  Returns
   // true on success.
   //
   // |sample| is the 32-bit integer value to be recorded.
   bool SendSparseToUMA(const std::string& name, int sample) override;
+  // Same, but sends |num_samples| samples with the same value to chrome.
+  bool SendRepeatedSparseToUMA(const std::string& name,
+                               int sample,
+                               int num_samples) override;
 
   // Sends a user action to Chrome for transport to UMA and returns true on
   // success. This method results in the equivalent of an asynchronous
@@ -276,35 +333,42 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // //tools/metrics/actions/extract_actions.py in the Chromium repository,
   // which should then be run to generate a hash for the new action.
   bool SendUserActionToUMA(const std::string& action) override;
+  // Same, but sends |num_samples| samples with the same value to chrome.
+  // NOTE that this operation will result in a loop within chrome to call
+  // RecordAction |num_samples| times, so num_samples should not be too large.
+  // (see kMaxRepeatedUserActions).
+  bool SendRepeatedUserActionToUMA(const std::string& action,
+                                   int num_samples) override;
 
   // Sends a signal to UMA that a crash of the given |crash_kind|
   // has occurred.  Used by UMA to generate stability statistics.
   bool SendCrashToUMA(const char* crash_kind) override;
+  // Same, but sends |num_samples| samples with the same value to chrome.
+  bool SendRepeatedCrashToUMA(const char* crash_kind, int num_samples) override;
 
   // Sends a "generic Chrome OS event" to UMA.  This is an event name
   // that is translated into an enumerated histogram entry.  Event names
   // must first be registered in metrics_library.cc.  See that file for
   // more details.
   bool SendCrosEventToUMA(const std::string& event) override;
+  // Same, but sends |num_samples| samples with the same value to chrome.
+  bool SendRepeatedCrosEventToUMA(const std::string& event,
+                                  int num_samples) override;
 
   // Sends timing data in milliseconds to UMA. Uses `SendToUMA()` under the hood
   // and converts the timedeltas to milliseconds before handing it off.
-  bool SendTimeToUMA(base::StringPiece name,
+  bool SendTimeToUMA(std::string_view name,
                      base::TimeDelta sample,
                      base::TimeDelta min,
                      base::TimeDelta max,
                      size_t buckets) override;
-
-#if USE_METRICS_UPLOADER
-  // Sends |num_samples| samples with the same value to chrome.
-  // Otherwise equivalent to SendToUMA().
-  bool SendRepeatedToUMA(const std::string& name,
-                         int sample,
-                         int min,
-                         int max,
-                         int nbuckets,
-                         int num_samples) override;
-#endif
+  // Same, but sends |num_samples| samples with the same value to chrome.
+  bool SendRepeatedTimeToUMA(std::string_view name,
+                             base::TimeDelta sample,
+                             base::TimeDelta min,
+                             base::TimeDelta max,
+                             size_t buckets,
+                             int num_samples) override;
 
   void SetConsentFileForTest(const base::FilePath& consent_file);
 

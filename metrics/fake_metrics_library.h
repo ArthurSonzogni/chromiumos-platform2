@@ -28,11 +28,19 @@ class FakeMetricsLibrary : public MetricsLibraryInterface {
   bool AreMetricsEnabled() override;
   bool IsAppSyncEnabled() override;
   bool IsGuestMode() override;
+
   bool SendToUMA(const std::string& name,
                  int sample,
                  int min,
                  int max,
                  int nbuckets) override;
+  bool SendRepeatedToUMA(const std::string& name,
+                         int sample,
+                         int min,
+                         int max,
+                         int nbuckets,
+                         int num_samples) override;
+
   bool SendEnumToUMA(const std::string& name,
                      int sample,
                      int exclusive_max) override;
@@ -40,28 +48,51 @@ class FakeMetricsLibrary : public MetricsLibraryInterface {
                              int sample,
                              int exclusive_max,
                              int num_samples) override;
+
   bool SendLinearToUMA(const std::string& name, int sample, int max) override;
+  bool SendRepeatedLinearToUMA(const std::string& name,
+                               int sample,
+                               int max,
+                               int num_samples) override;
+
   bool SendPercentageToUMA(const std::string& name, int sample) override;
+  bool SendRepeatedPercentageToUMA(const std::string& name,
+                                   int sample,
+                                   int num_samples) override;
+
   bool SendBoolToUMA(const std::string& name, bool sample) override;
+  bool SendRepeatedBoolToUMA(const std::string& name,
+                             bool sample,
+                             int num_samples) override;
+
   bool SendSparseToUMA(const std::string& name, int sample) override;
+  bool SendRepeatedSparseToUMA(const std::string& name,
+                               int sample,
+                               int num_samples) override;
 
   // The following MetricsLibraryInterface methods are not implemented:
   bool SendUserActionToUMA(const std::string& action) override;
+  bool SendRepeatedUserActionToUMA(const std::string& action,
+                                   int num_samples) override;
+
   bool SendCrashToUMA(const char* crash_kind) override;
+  bool SendRepeatedCrashToUMA(const char* crash_kind, int num_samples) override;
+
   bool SendCrosEventToUMA(const std::string& event) override;
-  bool SendTimeToUMA(base::StringPiece name,
+  bool SendRepeatedCrosEventToUMA(const std::string& event,
+                                  int num_samples) override;
+
+  bool SendTimeToUMA(std::string_view name,
                      base::TimeDelta sample,
                      base::TimeDelta min,
                      base::TimeDelta max,
                      size_t num_buckets) override;
-#if USE_METRICS_UPLOADER
-  bool SendRepeatedToUMA(const std::string& name,
-                         int sample,
-                         int min,
-                         int max,
-                         int nbuckets,
-                         int num_samples) override;
-#endif
+  bool SendRepeatedTimeToUMA(std::string_view name,
+                             base::TimeDelta sample,
+                             base::TimeDelta min,
+                             base::TimeDelta max,
+                             size_t num_buckets,
+                             int num_samples) override;
   void SetOutputFile(const std::string& output_file) override;
 
   // Test getters

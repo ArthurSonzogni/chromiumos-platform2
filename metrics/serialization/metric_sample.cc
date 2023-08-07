@@ -61,29 +61,30 @@ bool MetricSample::IsValid() const {
 }
 
 std::string MetricSample::ToString() const {
+  std::string samples =
+      (num_samples_ == 1) ? "" : base::StringPrintf(" %d", num_samples_);
   if (type_ == CRASH) {
-    return base::StringPrintf("crash%c%s%c", '\0', name().c_str(), '\0');
-  } else if (type_ == SPARSE_HISTOGRAM) {
-    return base::StringPrintf("sparsehistogram%c%s %d%c", '\0', name().c_str(),
-                              sample_, '\0');
-  } else if (type_ == LINEAR_HISTOGRAM) {
-    return base::StringPrintf("linearhistogram%c%s %d %d%c", '\0',
-                              name().c_str(), sample_, max_, '\0');
-  } else if (type_ == HISTOGRAM) {
-    if (num_samples_ > 1) {
-      return base::StringPrintf("histogram%c%s %d %d %d %d %d%c", '\0',
-                                name().c_str(), sample_, min_, max_,
-                                bucket_count_, num_samples_, '\0');
-    } else {
-      return base::StringPrintf("histogram%c%s %d %d %d %d%c", '\0',
-                                name().c_str(), sample_, min_, max_,
-                                bucket_count_, '\0');
-    }
-  } else if (type_ == USER_ACTION) {
-    CHECK_EQ(type_, USER_ACTION);
-    return base::StringPrintf("useraction%c%s%c", '\0', name().c_str(), '\0');
+    return base::StringPrintf("crash%c%s%s%c", '\0', name().c_str(),
+                              samples.c_str(), '\0');
   }
-
+  if (type_ == SPARSE_HISTOGRAM) {
+    return base::StringPrintf("sparsehistogram%c%s %d%s%c", '\0',
+                              name().c_str(), sample_, samples.c_str(), '\0');
+  }
+  if (type_ == LINEAR_HISTOGRAM) {
+    return base::StringPrintf("linearhistogram%c%s %d %d%s%c", '\0',
+                              name().c_str(), sample_, max_, samples.c_str(),
+                              '\0');
+  }
+  if (type_ == HISTOGRAM) {
+    return base::StringPrintf("histogram%c%s %d %d %d %d%s%c", '\0',
+                              name().c_str(), sample_, min_, max_,
+                              bucket_count_, samples.c_str(), '\0');
+  }
+  if (type_ == USER_ACTION) {
+    return base::StringPrintf("useraction%c%s%s%c", '\0', name().c_str(),
+                              samples.c_str(), '\0');
+  }
   NOTREACHED() << "Invalid sample type" << type_;
   return std::string();
 }
@@ -111,14 +112,31 @@ int MetricSample::bucket_count() const {
   return bucket_count_;
 }
 
-int MetricSample::num_samples() const {
-  CHECK_EQ(type_, HISTOGRAM);
-  return num_samples_;
+// static
+MetricSample MetricSample::CrashSample(const std::string& crash_name,
+                                       int num_samples) {
+  return MetricSample(CRASH, crash_name, 0, 0, 0, 0, num_samples);
 }
 
 // static
-MetricSample MetricSample::CrashSample(const std::string& crash_name) {
-  return MetricSample(CRASH, crash_name, 0, 0, 0, 0);
+MetricSample MetricSample::ParseCrash(const std::string& serialized) {
+  std::vector<std::string_view> parts = base::SplitStringPiece(
+      serialized, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  if (parts.size() != 1 && parts.size() != 2) {
+    return MetricSample();
+  }
+  if (parts[0].empty()) {
+    return MetricSample();
+  }
+  int num_samples = 1;
+  if (parts.size() == 2) {
+    if (!base::StringToInt(parts[1], &num_samples) || num_samples <= 0) {
+      return MetricSample();
+    }
+  }
+
+  return CrashSample(std::string(parts[0]), num_samples);
 }
 
 // static
@@ -138,8 +156,9 @@ MetricSample MetricSample::ParseHistogram(
   std::vector<std::string> parts = base::SplitString(
       serialized_histogram, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
-  if (parts.size() != 5 && parts.size() != 6)
+  if (parts.size() != 5 && parts.size() != 6) {
     return MetricSample();
+  }
   int sample, min, max, bucket_count;
   if (parts[0].empty() || !base::StringToInt(parts[1], &sample) ||
       !base::StringToInt(parts[2], &min) ||
@@ -150,7 +169,7 @@ MetricSample MetricSample::ParseHistogram(
 
   int num_samples = 1;
   if (parts.size() == 6) {
-    if (!base::StringToInt(parts[5], &num_samples)) {
+    if (!base::StringToInt(parts[5], &num_samples) || num_samples <= 0) {
       return MetricSample();
     }
   }
@@ -160,8 +179,9 @@ MetricSample MetricSample::ParseHistogram(
 
 // static
 MetricSample MetricSample::SparseHistogramSample(
-    const std::string& histogram_name, int sample) {
-  return MetricSample(SPARSE_HISTOGRAM, histogram_name, sample, 0, 0, 0);
+    const std::string& histogram_name, int sample, int num_samples) {
+  return MetricSample(SPARSE_HISTOGRAM, histogram_name, sample, 0, 0, 0,
+                      num_samples);
 }
 
 // static
@@ -169,19 +189,28 @@ MetricSample MetricSample::ParseSparseHistogram(
     const std::string& serialized_histogram) {
   std::vector<std::string> parts = base::SplitString(
       serialized_histogram, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  if (parts.size() != 2)
+  if (parts.size() != 2 && parts.size() != 3) {
     return MetricSample();
+  }
   int sample;
   if (parts[0].empty() || !base::StringToInt(parts[1], &sample))
     return MetricSample();
 
-  return SparseHistogramSample(parts[0], sample);
+  int num_samples = 1;
+  if (parts.size() == 3) {
+    if (!base::StringToInt(parts[2], &num_samples) || num_samples <= 0) {
+      return MetricSample();
+    }
+  }
+
+  return SparseHistogramSample(parts[0], sample, num_samples);
 }
 
 // static
 MetricSample MetricSample::LinearHistogramSample(
-    const std::string& histogram_name, int sample, int max) {
-  return MetricSample(LINEAR_HISTOGRAM, histogram_name, sample, 0, max, 0);
+    const std::string& histogram_name, int sample, int max, int num_samples) {
+  return MetricSample(LINEAR_HISTOGRAM, histogram_name, sample, 0, max, 0,
+                      num_samples);
 }
 
 // static
@@ -190,19 +219,49 @@ MetricSample MetricSample::ParseLinearHistogram(
   int sample, max;
   std::vector<std::string> parts = base::SplitString(
       serialized_histogram, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  if (parts.size() != 3)
+  if (parts.size() != 3 && parts.size() != 4) {
     return MetricSample();
+  }
   if (parts[0].empty() || !base::StringToInt(parts[1], &sample) ||
       !base::StringToInt(parts[2], &max)) {
     return MetricSample();
   }
 
-  return LinearHistogramSample(parts[0], sample, max);
+  int num_samples = 1;
+  if (parts.size() == 4) {
+    if (!base::StringToInt(parts[3], &num_samples) || num_samples <= 0) {
+      return MetricSample();
+    }
+  }
+
+  return LinearHistogramSample(parts[0], sample, max, num_samples);
 }
 
 // static
-MetricSample MetricSample::UserActionSample(const std::string& action_name) {
-  return MetricSample(USER_ACTION, action_name, 0, 0, 0, 0);
+MetricSample MetricSample::UserActionSample(const std::string& action_name,
+                                            int num_samples) {
+  return MetricSample(USER_ACTION, action_name, 0, 0, 0, 0, num_samples);
+}
+
+// static
+MetricSample MetricSample::ParseUserAction(const std::string& serialized) {
+  std::vector<std::string_view> parts = base::SplitStringPiece(
+      serialized, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  if (parts.size() != 1 && parts.size() != 2) {
+    return MetricSample();
+  }
+  if (parts[0].empty()) {
+    return MetricSample();
+  }
+  int num_samples = 1;
+  if (parts.size() == 2) {
+    if (!base::StringToInt(parts[1], &num_samples) || num_samples <= 0) {
+      return MetricSample();
+    }
+  }
+
+  return UserActionSample(std::string(parts[0]), num_samples);
 }
 
 bool MetricSample::IsEqual(const MetricSample& metric) const {

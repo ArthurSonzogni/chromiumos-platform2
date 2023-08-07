@@ -47,7 +47,7 @@ class SerializationUtilsTest : public testing::Test {
 
   void TestSerialization(const MetricSample& sample) {
     std::string serialized(sample.ToString());
-    ASSERT_EQ('\0', serialized[serialized.length() - 1]);
+    ASSERT_EQ('\0', serialized.back());
     MetricSample deserialized = SerializationUtils::ParseSample(serialized);
     EXPECT_TRUE(sample.IsEqual(deserialized));
   }
@@ -105,35 +105,155 @@ class SerializationUtilsTest : public testing::Test {
 };
 
 TEST_F(SerializationUtilsTest, CrashSerializeTest) {
-  TestSerialization(MetricSample::CrashSample("test"));
+  // Should work with both 1 and non-1 values
+  TestSerialization(MetricSample::CrashSample("test", /*num_samples=*/1));
+  TestSerialization(MetricSample::CrashSample("test", /*num_samples=*/10));
 }
 
 TEST_F(SerializationUtilsTest, HistogramSerializeTest) {
-  TestSerialization(MetricSample::HistogramSample("myhist", 13, 1, 100, 10));
-}
-
-TEST_F(SerializationUtilsTest, RepeatedSerializeTest) {
-  TestSerialization(
-      MetricSample::HistogramSample("myrepeatedhist", 26, 1, 100, 10, 1000));
+  TestSerialization(MetricSample::HistogramSample(
+      "myhist", /*sample=*/13, /*min=*/1, /*max=*/100,
+      /*bucket_count=*/10, /*num_samples=*/1));
+  TestSerialization(MetricSample::HistogramSample(
+      "myhist", /*sample=*/13, /*min=*/1, /*max=*/100,
+      /*bucket_count=*/10, /*num_samples=*/2));
 }
 
 TEST_F(SerializationUtilsTest, LinearSerializeTest) {
-  TestSerialization(MetricSample::LinearHistogramSample("linearhist", 12, 30));
+  TestSerialization(
+      MetricSample::LinearHistogramSample("linearhist", /*sample=*/12,
+                                          /*max=*/30, /*num_samples=*/1));
+  TestSerialization(
+      MetricSample::LinearHistogramSample("linearhist", /*sample=*/12,
+                                          /*max=*/30, /*num_samples=*/10));
 }
 
 TEST_F(SerializationUtilsTest, SparseSerializeTest) {
-  TestSerialization(MetricSample::SparseHistogramSample("mysparse", 30));
+  TestSerialization(MetricSample::SparseHistogramSample(
+      "mysparse", /*sample=*/30, /*num_samples=*/1));
+  TestSerialization(MetricSample::SparseHistogramSample(
+      "mysparse", /*sample=*/30, /*num_samples=*/10));
 }
 
 TEST_F(SerializationUtilsTest, UserActionSerializeTest) {
-  TestSerialization(MetricSample::UserActionSample("myaction"));
+  TestSerialization(
+      MetricSample::UserActionSample("myaction", /*num_samples=*/1));
+  TestSerialization(
+      MetricSample::UserActionSample("myaction", /*num_samples=*/10));
+}
+
+TEST_F(SerializationUtilsTest, InvalidCrashSerialize) {
+  // No name
+  EXPECT_EQ(MetricSample::INVALID, MetricSample::ParseCrash("").type());
+  // Empty name
+  EXPECT_EQ(MetricSample::INVALID, MetricSample::ParseCrash(" ").type());
+  // num_samples is not a number
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseCrash("kernel asdf").type());
+  // Too many numbers
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseCrash("kernel 1 2").type());
+  // Negative num_samples
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseCrash("kernel -1").type());
+}
+
+TEST_F(SerializationUtilsTest, InvalidHistogramSample) {
+  // Too few parts
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseHistogram("hist 1 2 3").type());
+  // Too many parts
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseHistogram("hist 1 2 3 4 5 6").type());
+  // Empty hist name
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseHistogram(" 1 2 3 4 5").type());
+  // sample is not a number
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseHistogram("hist a 2 3 4 5").type());
+  // min is not a number
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseHistogram("hist 1 a 3 4 5").type());
+  // max is not a number
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseHistogram("hist 1 2 a 4 5").type());
+  // buckets is not a number
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseHistogram("hist 1 2 3 a 5").type());
+  // num_samples is not a number
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseHistogram("hist 1 2 3 4 a").type());
+  // Negative num_samples
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseHistogram("hist 1 2 3 4 -1").type());
+}
+
+TEST_F(SerializationUtilsTest, InvalidSparseHistogramSample) {
+  // Too few fields
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseSparseHistogram("name").type());
+  // Too many fields
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseSparseHistogram("name 1 2 3").type());
+  // No name
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseSparseHistogram(" 1 2").type());
+  // Invalid sample
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseSparseHistogram("name a 2").type());
+  // Invalid num_samples
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseSparseHistogram("name 1 a").type());
+  // Negative num_samples
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseSparseHistogram("name 1 -1").type());
+}
+
+TEST_F(SerializationUtilsTest, InvalidLinearHistogramSample) {
+  // Too few fields
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseLinearHistogram("name 1").type());
+  // Too many fields
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseLinearHistogram("name 1 2 3 4").type());
+  // No name
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseLinearHistogram(" 1 2 3").type());
+  // Invalid sample
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseLinearHistogram("name a 2 3").type());
+  // Invalid max
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseLinearHistogram("name 1 a 3").type());
+  // Invalid num_samples
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseLinearHistogram("name 1 2 a").type());
+  // Negative num_samples
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseLinearHistogram("name 1 2 -1").type());
+}
+
+TEST_F(SerializationUtilsTest, InvalidUserAction) {
+  // Too few fields
+  EXPECT_EQ(MetricSample::INVALID, MetricSample::ParseUserAction("").type());
+  // Too many fields
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseUserAction("name 1 2").type());
+  // No name
+  EXPECT_EQ(MetricSample::INVALID, MetricSample::ParseUserAction(" 1").type());
+  // Invalid num_samples
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseUserAction("name a").type());
+  // Negative num_samples
+  EXPECT_EQ(MetricSample::INVALID,
+            MetricSample::ParseUserAction("name -1").type());
 }
 
 TEST_F(SerializationUtilsTest, IllegalNameAreFilteredTest) {
   EXPECT_FALSE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::SparseHistogramSample("no space", 10),
+      {MetricSample::SparseHistogramSample("no space", 10, /*num_samples=*/1),
        MetricSample::LinearHistogramSample(
-           base::StringPrintf("here%cbhe", '\0'), 1, 3)},
+           base::StringPrintf("here%cbhe", '\0'), 1, 3, /*num_samples=*/1)},
       filename_));
 
   int64_t size = 0;
@@ -143,9 +263,13 @@ TEST_F(SerializationUtilsTest, IllegalNameAreFilteredTest) {
 
 TEST_F(SerializationUtilsTest, BadHistogramsTest) {
   EXPECT_FALSE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::HistogramSample("myhist", 5, 1, 10, 100)}, filename_));
+      {MetricSample::HistogramSample("myhist", 5, 1, 10, 100,
+                                     /*num_samples=*/1)},
+      filename_));
   EXPECT_FALSE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::LinearHistogramSample("alsomyhist", 0, 1)}, filename_));
+      {MetricSample::LinearHistogramSample("alsomyhist", 0, 1,
+                                           /*num_samples=*/1)},
+      filename_));
 }
 
 TEST_F(SerializationUtilsTest, BadInputIsCaughtTest) {
@@ -156,15 +280,31 @@ TEST_F(SerializationUtilsTest, BadInputIsCaughtTest) {
 
 TEST_F(SerializationUtilsTest, MessageSeparatedByZero) {
   EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::CrashSample("mycrash")}, filename_));
+      {MetricSample::CrashSample("mycrash", /*num_samples=*/1)}, filename_));
   int64_t size = 0;
   ASSERT_TRUE(base::GetFileSize(filepath_, &size));
   // 4 bytes for the size
   // 5 bytes for crash
+  // 1 byte for \0
   // 7 bytes for mycrash
-  // 2 bytes for the \0
+  // 1 bytes for \0
   // -> total of 18
   EXPECT_EQ(size, 18);
+}
+
+TEST_F(SerializationUtilsTest, MessageSeparatedByZero_WithSamples) {
+  EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
+      {MetricSample::CrashSample("mycrash", /*num_samples=*/10)}, filename_));
+  int64_t size = 0;
+  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+  // 4 bytes for the size
+  // 5 bytes for crash
+  // 1 byte for \0
+  // 7 bytes for mycrash
+  // 3 bytes for " 10"
+  // 1 byte for \0
+  // -> total of 21
+  EXPECT_EQ(size, 21);
 }
 
 TEST_F(SerializationUtilsTest, MessagesTooLongAreDiscardedTest) {
@@ -174,7 +314,7 @@ TEST_F(SerializationUtilsTest, MessagesTooLongAreDiscardedTest) {
   std::string name(SerializationUtils::kMessageMaxLength, 'c');
 
   EXPECT_FALSE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::CrashSample(name)}, filename_));
+      {MetricSample::CrashSample(name, /*num_samples=*/1)}, filename_));
   EXPECT_FALSE(base::PathExists(filepath_));
 }
 
@@ -189,7 +329,7 @@ TEST_F(SerializationUtilsTest, ReadLongMessageTest) {
   test_file.WriteAtCurrentPos(message.c_str(), message.length());
   test_file.Close();
 
-  MetricSample crash = MetricSample::CrashSample("test");
+  MetricSample crash = MetricSample::CrashSample("test", /*num_samples=*/1);
   EXPECT_TRUE(SerializationUtils::WriteMetricsToFile({crash}, filename_));
 
   std::vector<MetricSample> samples;
@@ -246,12 +386,13 @@ TEST_F(SerializationUtilsTest, NegativeLengthTest) {
 
 TEST_F(SerializationUtilsTest, WriteReadTest) {
   std::vector<MetricSample> output_samples = {
-      MetricSample::HistogramSample("myhist", 3, 1, 10, 5),
-      MetricSample::CrashSample("mycrash"),
-      MetricSample::LinearHistogramSample("linear", 1, 10),
-      MetricSample::SparseHistogramSample("mysparse", 30),
-      MetricSample::UserActionSample("myaction"),
-      MetricSample::HistogramSample("myrepeatedhist", 3, 1, 10, 5, 10),
+      MetricSample::HistogramSample("myhist", 3, 1, 10, 5, /*num_samples=*/1),
+      MetricSample::CrashSample("mycrash", /*num_samples=*/2),
+      MetricSample::LinearHistogramSample("linear", 1, 10, /*num_samples=*/3),
+      MetricSample::SparseHistogramSample("mysparse", 30, /*num_samples=*/4),
+      MetricSample::UserActionSample("myaction", /*num_samples=*/5),
+      MetricSample::HistogramSample("myrepeatedhist", 3, 1, 10, 5,
+                                    /*num_samples=*/10),
   };
 
   EXPECT_TRUE(
@@ -273,8 +414,8 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
 // Test of batched upload.  Creates a metrics log with enough samples to
 // trigger two uploads.
 TEST_F(SerializationUtilsTest, BatchedUploadTest) {
-  MetricSample hist =
-      MetricSample::HistogramSample("Boring.Histogram", 3, 1, 10, 5);
+  MetricSample hist = MetricSample::HistogramSample("Boring.Histogram", 3, 1,
+                                                    10, 5, /*num_samples=*/1);
   // The serialized MetricSample does not contain the header size (4 bytes for
   // the total sample length).
   size_t serialized_sample_length = hist.ToString().length() + 4;
@@ -324,7 +465,7 @@ TEST_F(SerializationUtilsTest,
        WriteMetricsToFile_UseNonBlockingLock_GetLockOnFirstAttempt) {
   bool cb_run = false;
   EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::CrashSample("mycrash")}, filename_,
+      {MetricSample::CrashSample("mycrash", /*num_samples=*/1)}, filename_,
       /*use_nonblocking_lock=*/true,
       base::BindLambdaForTesting(
           [&cb_run](base::TimeDelta sleep_time) { cb_run = true; })));
@@ -349,7 +490,7 @@ TEST_F(SerializationUtilsTest,
   auto lock_process = LockFile(filepath_);
   bool cb_run = false;
   EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::CrashSample("mycrash")}, filename_,
+      {MetricSample::CrashSample("mycrash", /*num_samples=*/1)}, filename_,
       /*use_nonblocking_lock=*/true,
       base::BindLambdaForTesting(
           [&lock_process, &cb_run](base::TimeDelta sleep_time) {
@@ -377,7 +518,7 @@ TEST_F(SerializationUtilsTest,
   auto lock_file = LockFile(filepath_);
   bool cb_run = false;
   EXPECT_FALSE(SerializationUtils::WriteMetricsToFile(
-      {MetricSample::CrashSample("mycrash")}, filename_,
+      {MetricSample::CrashSample("mycrash", /*num_samples=*/1)}, filename_,
       /*use_nonblocking_lock=*/true,
       base::BindLambdaForTesting(
           [&cb_run](base::TimeDelta sleep_time) { cb_run = true; })));
@@ -386,6 +527,14 @@ TEST_F(SerializationUtilsTest,
   int64_t size = 0;
   ASSERT_TRUE(base::GetFileSize(filepath_, &size));
   EXPECT_EQ(size, 0);
+}
+
+TEST_F(SerializationUtilsTest, ParseInvalidType) {
+  // Verify that parsing of an invalid sample type fails.
+  EXPECT_EQ(MetricSample::INVALID,
+            SerializationUtils::ParseSample(
+                base::StringPrintf("not_a_type%cvalue%c", '\0', '\0'))
+                .type());
 }
 
 }  // namespace
