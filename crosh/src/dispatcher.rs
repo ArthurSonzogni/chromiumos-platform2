@@ -10,6 +10,7 @@ use std::fmt::{self, Display};
 use std::io::{stdout, Write};
 use std::process::Child;
 
+use metrics_rs::MetricsLibrary;
 use remain::sorted;
 
 const INDENT: &str = "  ";
@@ -140,6 +141,15 @@ impl Dispatcher {
         if command.command_callback.is_none() {
             return Err(Error::CommandNotImplemented(entry.get_command().join(" ")));
         }
+
+        let mut metrics = match MetricsLibrary::new() {
+            Ok(lib) => lib,
+            Err(e) => {
+                panic!("MetricsLibrary::new() failed: {}", e);
+            }
+        };
+        let metrics_name: &str = &("Crosh_Run_{}".to_owned() + command.get_name());
+        let _ = metrics.send_user_action_to_uma(metrics_name);
 
         for cb in flag_callbacks {
             (cb)(command, entry)?;

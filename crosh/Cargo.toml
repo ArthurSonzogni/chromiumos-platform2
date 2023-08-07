@@ -29,6 +29,7 @@ rand = "0.7"
 remain = "*"
 regex = "1.0.6"
 rustyline = "9.1.1"
+metrics_rs = { path = "../metrics/rust-client" } # provided by ebuild
 shell-words = "1.0.0"
 system_api = { path = "../system_api" } # provided by ebuild
 textwrap = "0.11.0"
