@@ -69,7 +69,8 @@ lstat64: 1
 prlimit64: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
-socket: arg0 == AF_UNIX && arg1 == SOCK_DGRAM|SOCK_CLOEXEC && arg2 == 0 || \
-        arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0
+socket: arg0 == AF_UNIX
 pselect6: 1
 getrandom: 1
+eventfd2: 1
+memfd_create: 1

@@ -9,14 +9,17 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "cros_healthd-client",
     "gbm",
     "libbrillo",
     "libchrome",
     "libcros_camera_device_config",
     "libdebugd-client",
     "libec",
+    "libmojo",
     "libpcrecpp",
     "libshill-client",
+    "mojo_service_manager",
   ]
 }
 
@@ -31,6 +34,7 @@ source_set("functions") {
     "ethernet_network.cc",
     "generic_battery.cc",
     "generic_camera.cc",
+    "generic_cpu.cc",
     "generic_network.cc",
     "generic_storage.cc",
     "gpu.cc",
@@ -61,6 +65,7 @@ if (use.test) {
       "ec_i2c_test.cc",
       "edid_test.cc",
       "generic_battery_test.cc",
+      "generic_cpu_test.cc",
       "gpu_test.cc",
       "input_device_test.cc",
       "memory_test.cc",

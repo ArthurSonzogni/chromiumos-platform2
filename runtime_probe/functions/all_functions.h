@@ -17,6 +17,7 @@
 #include "runtime_probe/functions/ethernet_network.h"
 #include "runtime_probe/functions/generic_battery.h"
 #include "runtime_probe/functions/generic_camera.h"
+#include "runtime_probe/functions/generic_cpu.h"
 #include "runtime_probe/functions/generic_network.h"
 #include "runtime_probe/functions/generic_storage.h"
 #include "runtime_probe/functions/gpu.h"
@@ -46,6 +47,7 @@ using AllFunctions = ProbeFunctions<ApI2cFunction,
                                     EthernetNetworkFunction,
                                     GenericBattery,
                                     GenericCameraFunction,
+                                    GenericCpuFunction,
                                     GenericNetworkFunction,
                                     GenericStorageFunction,
                                     GpuFunction,
@@ -72,6 +74,7 @@ using AvlAllowedProbeFunctions = ProbeFunctions<AtaStorageFunction,
                                                 EthernetNetworkFunction,
                                                 GenericBattery,
                                                 GenericCameraFunction,
+                                                GenericCpuFunction,
                                                 GenericNetworkFunction,
                                                 GenericStorageFunction,
                                                 GpuFunction,

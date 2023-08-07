@@ -50,6 +50,12 @@ class ContextHelperImpl : public Context {
   std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface>
   CreateShillDeviceProxy(const dbus::ObjectPath& path) override;
 
+  cros_healthd_mojom::CrosHealthdProbeService* GetCrosHealthdProbeServiceProxy()
+      override {
+    NOTREACHED() << "The helper should not call mojo.";
+    return nullptr;
+  }
+
  protected:
   // Setup the dbus connection.
   bool SetupDBusConnection();

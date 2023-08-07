@@ -26,6 +26,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "cros_healthd-client",
     "libbrillo",
     "libchrome",
     "libcros_config",

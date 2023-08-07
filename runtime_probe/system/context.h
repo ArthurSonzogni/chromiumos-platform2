@@ -12,6 +12,9 @@
 #include "runtime_probe/system/helper_invoker.h"
 #include "runtime_probe/system/syscaller.h"
 
+namespace ash::cros_healthd::mojom {
+class CrosHealthdProbeService;
+}
 namespace brillo {
 class CrosConfigInterface;
 }
@@ -36,6 +39,8 @@ class ObjectPath;
 }  // namespace dbus
 
 namespace runtime_probe {
+
+namespace cros_healthd_mojom = ::ash::cros_healthd::mojom;
 
 // A context class for holding the helper objects used in runtime probe, which
 // simplifies the passing of the helper objects to other objects. For instance,
@@ -78,6 +83,9 @@ class Context {
 
   // Returns the root directory. This can be overridden during test.
   virtual const base::FilePath& root_dir();
+
+  virtual cros_healthd_mojom::CrosHealthdProbeService*
+  GetCrosHealthdProbeServiceProxy() = 0;
 
  protected:
   Context();

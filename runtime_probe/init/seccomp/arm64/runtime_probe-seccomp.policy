@@ -54,3 +54,5 @@ rt_sigreturn: 1
 getpid: 1
 uname: 1
 getrandom: 1
+eventfd2: 1
+memfd_create: 1

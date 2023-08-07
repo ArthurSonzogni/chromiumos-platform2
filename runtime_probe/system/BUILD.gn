@@ -6,12 +6,15 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "cros_healthd-client",
     "libbrillo",
     "libchrome",
     "libcros_config",
     "libcrossystem",
     "libdebugd-client",
+    "libmojo",
     "libshill-client",
+    "mojo_service_manager",
   ]
 }
 

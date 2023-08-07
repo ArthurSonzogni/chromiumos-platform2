@@ -8,9 +8,11 @@
 #include <memory>
 
 #include <base/check.h>
-#include <chromeos-config/libcros_config/cros_config.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <chromeos-config/libcros_config/cros_config.h>
+#include <diagnostics/mojom/public/cros_healthd.mojom.h>
 #include <libcrossystem/crossystem.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <shill/dbus-proxies.h>
 
 #include "runtime_probe/system/context.h"
@@ -51,6 +53,9 @@ class ContextImpl : public Context {
                                                                   path);
   }
 
+  cros_healthd_mojom::CrosHealthdProbeService* GetCrosHealthdProbeServiceProxy()
+      override;
+
  protected:
   // This interface should be used through its derived classes.
   ContextImpl();
@@ -75,6 +80,9 @@ class ContextImpl : public Context {
   // The proxy object for shill manager.
   std::unique_ptr<org::chromium::flimflam::ManagerProxyInterface>
       shill_manager_proxy_;
+  // The mojo remote for cros_healthd probe service.
+  mojo::Remote<cros_healthd_mojom::CrosHealthdProbeService>
+      cros_healthd_service_;
 };
 
 }  // namespace runtime_probe

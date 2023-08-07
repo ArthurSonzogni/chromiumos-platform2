@@ -78,6 +78,16 @@ class ContextMockImpl : public Context {
   void SetShillProxies(
       const std::map<std::string, brillo::VariantDictionary>& shill_devices);
 
+  void SetCrosHealthdProbeService(
+      cros_healthd_mojom::CrosHealthdProbeService* service) {
+    mock_cros_healthd_service_ = service;
+  }
+
+  cros_healthd_mojom::CrosHealthdProbeService* GetCrosHealthdProbeServiceProxy()
+      override {
+    return mock_cros_healthd_service_;
+  }
+
  private:
   brillo::FakeCrosConfig fake_cros_config_;
   crossystem::Crossystem fake_crossystem_;
@@ -95,6 +105,8 @@ class ContextMockImpl : public Context {
   // properties.
   std::map<std::string, brillo::VariantDictionary>
       mock_shill_device_properties_;
+
+  cros_healthd_mojom::CrosHealthdProbeService* mock_cros_healthd_service_;
 };
 
 }  // namespace runtime_probe
