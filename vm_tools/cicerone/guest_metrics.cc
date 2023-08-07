@@ -48,6 +48,15 @@ constexpr char kBorealisAudioXrunAlsaOutput[] =
 constexpr char kBorealisAudioXrunAlsaOutputGuest[] =
     "borealis-audio-xrun-alsa-output";
 
+constexpr char kBorealisAudioPathUsageOutput[] =
+    "Borealis.Audio.UsedPath.Output";
+constexpr char kBorealisAudioPathUsageOutputGuest[] =
+    "borealis-audio-used-path-output";
+
+constexpr char kBorealisAudioPathUsageInput[] = "Borealis.Audio.UsedPath.Input";
+constexpr char kBorealisAudioPathUsageInputGuest[] =
+    "borealis-audio-used-path-input";
+
 constexpr char kBorealisDiskHighestDirtyPagesDaily[] =
     "Borealis.Disk.HighestDirtyPagesDaily";
 constexpr char kBorealisDiskHighestDirtyPagesDailyGuest[] =
@@ -276,6 +285,12 @@ bool GuestMetrics::HandleMetric(const std::string& owner_id,
     } else if (name == kBorealisAudioXrunAlsaOutputGuest) {
       metrics_lib_->SendToUMA(kBorealisAudioXrunAlsaOutput, value, 0, 300000,
                               100);
+    } else if (name == kBorealisAudioPathUsageOutputGuest) {
+      metrics_lib_->SendEnumToUMA(kBorealisAudioPathUsageOutput,
+                                  static_cast<BorealisAudioPath>(value));
+    } else if (name == kBorealisAudioPathUsageInputGuest) {
+      metrics_lib_->SendEnumToUMA(kBorealisAudioPathUsageInput,
+                                  static_cast<BorealisAudioPath>(value));
     } else {
       LOG(ERROR) << "Unknown Borealis metric " << name;
       return false;

@@ -38,6 +38,16 @@ enum class BorealisFsckResult {
   kMaxValue = kSharedLibraryError,
 };
 
+// These values describe the existing audio paths in Borealis VM. Entries should
+// be renumbered and numeric values should never be reused. These values are
+// used for both input and output.
+enum class BorealisAudioPath {
+  kProtonAlsa = 0,
+  kPulseAudio = 1,
+  kPipeWire = 2,
+  kMaxValue = kPipeWire,
+};
+
 // Handler for metrics emitted by VM guests.
 class GuestMetrics {
  public:
