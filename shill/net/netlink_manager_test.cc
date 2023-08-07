@@ -21,12 +21,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/net/byte_string.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_netlink_socket.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/net/mock_time.h"
-#include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 
@@ -169,8 +169,8 @@ class NetlinkManagerTest : public Test {
     if (!message) {
       return false;
     }
-    *message =
-        get_family_message.Encode(saved_sequence_number_ + kRandomOffset);
+    *message = ByteString(
+        get_family_message.Encode(saved_sequence_number_ + kRandomOffset));
     return true;
   }
 
@@ -339,7 +339,7 @@ TEST_F(NetlinkManagerTest, GetFamily) {
       CTRL_ATTR_FAMILY_NAME, kSampleMessageName);
 
   // The sequence number is immaterial since it'll be overwritten.
-  SaveReply(new_family_message.Encode(kRandomSequenceNumber));
+  SaveReply(ByteString(new_family_message.Encode(kRandomSequenceNumber)));
   EXPECT_CALL(*netlink_socket_, SendMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
@@ -368,7 +368,7 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
       CTRL_ATTR_FAMILY_NAME, kSampleMessageName);
 
   // The sequence number is immaterial since it'll be overwritten.
-  SaveReply(new_family_message.Encode(kRandomSequenceNumber));
+  SaveReply(ByteString(new_family_message.Encode(kRandomSequenceNumber)));
   EXPECT_CALL(*netlink_socket_, SendMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
@@ -705,14 +705,14 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   // we're going to send.
   NewWiphyMessage new_wiphy_message;
   const uint32_t kRandomSequenceNumber = 3;
-  ByteString new_wiphy_message_bytes =
+  const auto new_wiphy_message_bytes =
       new_wiphy_message.Encode(kRandomSequenceNumber);
-  MutableNetlinkPacket received_message(new_wiphy_message_bytes.GetData(),
-                                        new_wiphy_message_bytes.GetLength());
+  MutableNetlinkPacket received_message(new_wiphy_message_bytes.data(),
+                                        new_wiphy_message_bytes.size());
 
   // Setup a random received message to trigger wiping out old messages.
   NewScanResultsMessage new_scan_results;
-  ByteString new_scan_results_bytes =
+  const auto new_scan_results_bytes =
       new_scan_results.Encode(kRandomSequenceNumber);
 
   // Setup the timestamps of various messages
@@ -792,22 +792,21 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   const uint32_t kRandomSequenceNumber = 3;
   new_station_message_1_pt1.AddFlag(NLM_F_MULTI);
   new_station_message_1_pt2.AddFlag(NLM_F_MULTI);
-  ByteString new_station_message_1_pt1_bytes =
+  const auto new_station_message_1_pt1_bytes =
       new_station_message_1_pt1.Encode(kRandomSequenceNumber);
-  ByteString new_station_message_1_pt2_bytes =
+  const auto new_station_message_1_pt2_bytes =
       new_station_message_1_pt2.Encode(kRandomSequenceNumber);
-  ByteString new_station_message_2_bytes =
+  const auto new_station_message_2_bytes =
       new_station_message_2.Encode(kRandomSequenceNumber);
   MutableNetlinkPacket received_message_1_pt1(
-      new_station_message_1_pt1_bytes.GetData(),
-      new_station_message_1_pt1_bytes.GetLength());
+      new_station_message_1_pt1_bytes.data(),
+      new_station_message_1_pt1_bytes.size());
   MutableNetlinkPacket received_message_1_pt2(
-      new_station_message_1_pt2_bytes.GetData(),
-      new_station_message_1_pt2_bytes.GetLength());
+      new_station_message_1_pt2_bytes.data(),
+      new_station_message_1_pt2_bytes.size());
   received_message_1_pt2.SetMessageType(NLMSG_DONE);
-  MutableNetlinkPacket received_message_2(
-      new_station_message_2_bytes.GetData(),
-      new_station_message_2_bytes.GetLength());
+  MutableNetlinkPacket received_message_2(new_station_message_2_bytes.data(),
+                                          new_station_message_2_bytes.size());
 
   // The two get station messages (with the dump flag set) will be sent one
   // after another. The second message can only be sent once all replies to the

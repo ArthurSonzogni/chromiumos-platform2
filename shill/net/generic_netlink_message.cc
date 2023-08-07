@@ -5,20 +5,23 @@
 #include "shill/net/generic_netlink_message.h"
 
 #include <string>
+#include <vector>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <net-base/byte_utils.h>
 
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_packet.h"
 
 namespace shill {
 
-ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number) {
+std::vector<uint8_t> GenericNetlinkMessage::EncodeHeader(
+    uint32_t sequence_number) {
   // Build nlmsghdr.
-  ByteString result(NetlinkMessage::EncodeHeader(sequence_number));
-  if (result.GetLength() == 0) {
+  std::vector<uint8_t> result = NetlinkMessage::EncodeHeader(sequence_number);
+  if (result.size() == 0) {
     LOG(ERROR) << "Couldn't encode message header.";
     return result;
   }
@@ -29,32 +32,33 @@ ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   genl_header.version = 1;
   genl_header.reserved = 0;
 
-  ByteString genl_header_string(reinterpret_cast<unsigned char*>(&genl_header),
-                                sizeof(genl_header));
+  std::vector<uint8_t> genl_header_bytes =
+      net_base::byte_utils::ToBytes(genl_header);
   size_t genlmsghdr_with_pad = NLMSG_ALIGN(sizeof(genl_header));
-  genl_header_string.Resize(genlmsghdr_with_pad);  // Zero-fill.
+  genl_header_bytes.resize(genlmsghdr_with_pad, 0);  // Zero-fill.
 
-  nlmsghdr* pheader = reinterpret_cast<nlmsghdr*>(result.GetData());
+  nlmsghdr* pheader = reinterpret_cast<nlmsghdr*>(result.data());
   pheader->nlmsg_len += genlmsghdr_with_pad;
-  result.Append(genl_header_string);
+  result.insert(result.end(), genl_header_bytes.begin(),
+                genl_header_bytes.end());
   return result;
 }
 
-ByteString GenericNetlinkMessage::Encode(uint32_t sequence_number) {
-  ByteString result(EncodeHeader(sequence_number));
-  if (result.GetLength() == 0) {
+std::vector<uint8_t> GenericNetlinkMessage::Encode(uint32_t sequence_number) {
+  std::vector<uint8_t> result = EncodeHeader(sequence_number);
+  if (result.size() == 0) {
     LOG(ERROR) << "Couldn't encode message header.";
     return result;
   }
 
   // Build and append attributes (padding is included by
   // AttributeList::Encode).
-  ByteString attribute_string(attributes_->Encode());
+  const std::vector<uint8_t> attribute_bytes = attributes_->Encode();
 
   // Need to re-calculate |header| since |Append|, above, moves the data.
-  nlmsghdr* pheader = reinterpret_cast<nlmsghdr*>(result.GetData());
-  pheader->nlmsg_len += attribute_string.GetLength();
-  result.Append(attribute_string);
+  nlmsghdr* pheader = reinterpret_cast<nlmsghdr*>(result.data());
+  pheader->nlmsg_len += attribute_bytes.size();
+  result.insert(result.end(), attribute_bytes.begin(), attribute_bytes.end());
 
   return result;
 }

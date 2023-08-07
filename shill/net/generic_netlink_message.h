@@ -7,9 +7,9 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"
 
@@ -70,7 +70,7 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
 
   ~GenericNetlinkMessage() override = default;
 
-  ByteString Encode(uint32_t sequence_number) override;
+  std::vector<uint8_t> Encode(uint32_t sequence_number) override;
 
   uint8_t command() const { return command_; }
   const char* command_string() const { return command_string_; }
@@ -80,9 +80,9 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
   void Print(int header_log_level, int detail_log_level) const override;
 
  protected:
-  // Returns a string of bytes representing _both_ an |nlmsghdr| and a
+  // Returns a byte buffer representing _both_ an |nlmsghdr| and a
   // |genlmsghdr|, filled-in, and its padding.
-  ByteString EncodeHeader(uint32_t sequence_number) override;
+  std::vector<uint8_t> EncodeHeader(uint32_t sequence_number) override;
   // Reads the |nlmsghdr| and |genlmsghdr| headers and consumes the latter
   // from the payload of |packet|.
   bool InitAndStripHeader(NetlinkPacket* packet) override;

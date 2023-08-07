@@ -21,7 +21,6 @@
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
 
-#include "shill/net/mock_netlink_socket.h"
 #include "shill/net/netlink_packet.h"
 
 using testing::_;
@@ -662,15 +661,15 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
   // Encode the message to a ByteString and remove all the run-specific
   // values.
   static const uint32_t kArbitrarySequenceNumber = 42;
-  ByteString message_bytes = message.Encode(kArbitrarySequenceNumber);
-  nlmsghdr* header = reinterpret_cast<nlmsghdr*>(message_bytes.GetData());
+  std::vector<uint8_t> message_bytes = message.Encode(kArbitrarySequenceNumber);
+  nlmsghdr* header = reinterpret_cast<nlmsghdr*>(message_bytes.data());
   header->nlmsg_flags = 0;  // Overwrite with known values.
   header->nlmsg_seq = 0;
   header->nlmsg_pid = 0;
 
   // Verify that the messages are equal.
-  EXPECT_TRUE(message_bytes.Equals(
-      ByteString(kNL80211_CMD_CONNECT, std::size(kNL80211_CMD_CONNECT))));
+  EXPECT_EQ(message_bytes, std::vector(std::begin(kNL80211_CMD_CONNECT),
+                                       std::end(kNL80211_CMD_CONNECT)));
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {

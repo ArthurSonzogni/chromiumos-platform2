@@ -4,7 +4,6 @@
 
 #include "shill/net/netlink_message.h"
 
-#include <limits.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -13,7 +12,9 @@
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <net-base/byte_utils.h>
 
+#include "shill/net/byte_string.h"
 #include "shill/net/netlink_packet.h"
 
 namespace shill {
@@ -23,16 +24,15 @@ const uint16_t NetlinkMessage::kIllegalMessageType = UINT16_MAX;
 
 // NetlinkMessage
 
-ByteString NetlinkMessage::EncodeHeader(uint32_t sequence_number) {
-  ByteString result;
+std::vector<uint8_t> NetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   if (message_type_ == kIllegalMessageType) {
     LOG(ERROR) << "Message type not set";
-    return result;
+    return {};
   }
   sequence_number_ = sequence_number;
   if (sequence_number_ == kBroadcastSequenceNumber) {
     LOG(ERROR) << "Couldn't get a legal sequence number";
-    return result;
+    return {};
   }
 
   // Build netlink header.
@@ -45,9 +45,8 @@ ByteString NetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   header.nlmsg_pid = getpid();
 
   // Netlink header + pad.
-  result.Append(
-      ByteString(reinterpret_cast<unsigned char*>(&header), sizeof(header)));
-  result.Resize(nlmsghdr_with_pad);  // Zero-fill pad space (if any).
+  std::vector<uint8_t> result = net_base::byte_utils::ToBytes(header);
+  result.resize(nlmsghdr_with_pad, 0);  // Zero-fill pad space (if any).
   return result;
 }
 
@@ -170,9 +169,9 @@ bool ErrorAckMessage::InitFromPacket(NetlinkPacket* packet,
   return packet->ConsumeData(sizeof(error_), &error_);
 }
 
-ByteString ErrorAckMessage::Encode(uint32_t sequence_number) {
+std::vector<uint8_t> ErrorAckMessage::Encode(uint32_t sequence_number) {
   LOG(ERROR) << "We're not supposed to send errors or Acks to the kernel";
-  return ByteString();
+  return {};
 }
 
 std::string ErrorAckMessage::ToString() const {
@@ -190,9 +189,9 @@ std::string ErrorAckMessage::ToString() const {
 
 const uint16_t NoopMessage::kMessageType = NLMSG_NOOP;
 
-ByteString NoopMessage::Encode(uint32_t sequence_number) {
+std::vector<uint8_t> NoopMessage::Encode(uint32_t sequence_number) {
   LOG(ERROR) << "We're not supposed to send NOOP to the kernel";
-  return ByteString();
+  return {};
 }
 
 std::string NoopMessage::ToString() const {
@@ -203,7 +202,7 @@ std::string NoopMessage::ToString() const {
 
 const uint16_t DoneMessage::kMessageType = NLMSG_DONE;
 
-ByteString DoneMessage::Encode(uint32_t sequence_number) {
+std::vector<uint8_t> DoneMessage::Encode(uint32_t sequence_number) {
   return EncodeHeader(sequence_number);
 }
 
@@ -215,9 +214,9 @@ std::string DoneMessage::ToString() const {
 
 const uint16_t OverrunMessage::kMessageType = NLMSG_OVERRUN;
 
-ByteString OverrunMessage::Encode(uint32_t sequence_number) {
+std::vector<uint8_t> OverrunMessage::Encode(uint32_t sequence_number) {
   LOG(ERROR) << "We're not supposed to send Overruns to the kernel";
-  return ByteString();
+  return {};
 }
 
 std::string OverrunMessage::ToString() const {
@@ -226,18 +225,15 @@ std::string OverrunMessage::ToString() const {
 
 // UnknownMessage.
 
-ByteString UnknownMessage::Encode(uint32_t sequence_number) {
+std::vector<uint8_t> UnknownMessage::Encode(uint32_t sequence_number) {
   LOG(ERROR) << "We're not supposed to send UNKNOWN messages to the kernel";
-  return ByteString();
+  return {};
 }
 
 std::string UnknownMessage::ToString() const {
-  int total_bytes = message_body_.GetLength();
-  const uint8_t* const_data = message_body_.GetConstData();
-
-  std::string output = base::StringPrintf("%d bytes:", total_bytes);
-  for (int i = 0; i < total_bytes; ++i) {
-    base::StringAppendF(&output, " %02x", const_data[i]);
+  std::string output = base::StringPrintf("%zu bytes:", message_body_.size());
+  for (auto byte : message_body_) {
+    base::StringAppendF(&output, " %02x", byte);
   }
   return output;
 }
@@ -288,8 +284,10 @@ std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
   // failed, there'll be no message.  Handle either of those cases, by
   // creating an |UnknownMessage|.
   if (!message) {
-    message =
-        std::make_unique<UnknownMessage>(message_type, packet->GetPayload());
+    const ByteString& payload = packet->GetPayload();
+    message = std::make_unique<UnknownMessage>(
+        message_type,
+        base::span<const uint8_t>{payload.GetConstData(), payload.GetLength()});
   }
 
   if (!message->InitFromPacket(packet, context)) {

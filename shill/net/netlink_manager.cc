@@ -31,11 +31,11 @@ const char NetlinkManager::kEventTypeConfig[] = "config";
 const char NetlinkManager::kEventTypeScan[] = "scan";
 const char NetlinkManager::kEventTypeRegulatory[] = "regulatory";
 const char NetlinkManager::kEventTypeMlme[] = "mlme";
-const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;        // NOLINT
-const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;   // NOLINT
-const long NetlinkManager::kResponseTimeoutSeconds = 5;             // NOLINT
-const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;        // NOLINT
-const int NetlinkManager::kMaxNlMessageRetries = 1;                 // NOLINT
+const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;       // NOLINT
+const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;  // NOLINT
+const long NetlinkManager::kResponseTimeoutSeconds = 5;            // NOLINT
+const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;       // NOLINT
+const int NetlinkManager::kMaxNlMessageRetries = 1;                // NOLINT
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
     const NetlinkManager::NetlinkAckHandler& ack_handler,
@@ -467,7 +467,8 @@ bool NetlinkManager::SendOrPostMessage(
   const uint32_t sequence_number = this->GetSequenceNumber();
   const bool is_dump_msg = message->flags() & NLM_F_DUMP;
   NetlinkPendingMessage pending_message(
-      sequence_number, is_dump_msg, message->Encode(sequence_number),
+      sequence_number, is_dump_msg,
+      ByteString(message->Encode(sequence_number)),
       NetlinkResponseHandlerRefPtr(response_handler));
 
   // TODO(samueltan): print this debug message above the actual call to

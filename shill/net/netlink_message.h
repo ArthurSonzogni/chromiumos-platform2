@@ -10,12 +10,12 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
-
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST.
 
-#include "shill/net/byte_string.h"
 #include "shill/net/shill_export.h"
 
 struct nlmsghdr;
@@ -90,7 +90,7 @@ class SHILL_EXPORT NetlinkMessage {
   // Returns a string of bytes representing the message (with it headers) and
   // any necessary padding.  These bytes are appropriately formatted to be
   // written to a netlink socket.
-  virtual ByteString Encode(uint32_t sequence_number) = 0;
+  virtual std::vector<uint8_t> Encode(uint32_t sequence_number) = 0;
 
   // Initializes the |NetlinkMessage| from a complete and legal message
   // (potentially received from the kernel via a netlink socket).
@@ -120,7 +120,7 @@ class SHILL_EXPORT NetlinkMessage {
 
   // Returns a string of bytes representing an |nlmsghdr|, filled-in, and its
   // padding.
-  virtual ByteString EncodeHeader(uint32_t sequence_number);
+  virtual std::vector<uint8_t> EncodeHeader(uint32_t sequence_number);
   // Reads the |nlmsghdr|.  Subclasses may read additional data from the
   // payload.
   virtual bool InitAndStripHeader(NetlinkPacket* packet);
@@ -155,7 +155,7 @@ class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
   bool InitFromPacket(NetlinkPacket* packet, MessageContext context) override;
-  ByteString Encode(uint32_t sequence_number) override;
+  std::vector<uint8_t> Encode(uint32_t sequence_number) override;
   std::string ToString() const override;
   uint32_t error() const { return -error_; }
 
@@ -172,7 +172,7 @@ class SHILL_EXPORT NoopMessage : public NetlinkMessage {
   NoopMessage& operator=(const NoopMessage&) = delete;
 
   static uint16_t GetMessageType() { return kMessageType; }
-  ByteString Encode(uint32_t sequence_number) override;
+  std::vector<uint8_t> Encode(uint32_t sequence_number) override;
   std::string ToString() const override;
 };
 
@@ -185,7 +185,7 @@ class SHILL_EXPORT DoneMessage : public NetlinkMessage {
   DoneMessage& operator=(const DoneMessage&) = delete;
 
   static uint16_t GetMessageType() { return kMessageType; }
-  ByteString Encode(uint32_t sequence_number) override;
+  std::vector<uint8_t> Encode(uint32_t sequence_number) override;
   std::string ToString() const override;
 };
 
@@ -198,23 +198,24 @@ class SHILL_EXPORT OverrunMessage : public NetlinkMessage {
   OverrunMessage& operator=(const OverrunMessage&) = delete;
 
   static uint16_t GetMessageType() { return kMessageType; }
-  ByteString Encode(uint32_t sequence_number) override;
+  std::vector<uint8_t> Encode(uint32_t sequence_number) override;
   std::string ToString() const override;
 };
 
 class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
  public:
-  UnknownMessage(uint16_t message_type, ByteString message_body)
-      : NetlinkMessage(message_type), message_body_(message_body) {}
+  UnknownMessage(uint16_t message_type, base::span<const uint8_t> message_body)
+      : NetlinkMessage(message_type),
+        message_body_({message_body.begin(), message_body.end()}) {}
   UnknownMessage(const UnknownMessage&) = delete;
   UnknownMessage& operator=(const UnknownMessage&) = delete;
 
-  ByteString Encode(uint32_t sequence_number) override;
+  std::vector<uint8_t> Encode(uint32_t sequence_number) override;
   std::string ToString() const override;
   void Print(int header_log_level, int detail_log_level) const override;
 
  private:
-  ByteString message_body_;
+  std::vector<uint8_t> message_body_;
 };
 
 //

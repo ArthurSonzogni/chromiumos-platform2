@@ -59,7 +59,6 @@
 #include <map>
 #include <memory>
 #include <queue>
-#include <set>
 #include <string>
 
 #include <base/cancelable_callback.h>
@@ -68,6 +67,7 @@
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/net/byte_string.h"
 #include "shill/net/generic_netlink_message.h"
 #include "shill/net/io_handler_factory_container.h"
 #include "shill/net/netlink_message.h"
@@ -327,7 +327,7 @@ class SHILL_EXPORT NetlinkManager {
   static constexpr base::TimeDelta kPendingDumpTimeout = base::Seconds(1);
   static constexpr base::TimeDelta kNlMessageRetryDelay =
       base::Milliseconds(300);
-  static const int kMaxNlMessageRetries;                // NOLINT
+  static const int kMaxNlMessageRetries;
 
   // Returns the file descriptor of socket used to read wifi data.
   int file_descriptor() const;

@@ -8,10 +8,9 @@
 #include <linux/netlink.h>
 #include <sys/socket.h>
 
-#include <string>
-
 #include <base/logging.h>
 
+#include "shill/net/byte_string.h"
 #include "shill/net/netlink_fd.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/sockets.h"
