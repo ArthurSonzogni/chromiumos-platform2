@@ -931,21 +931,13 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   // Host namespace routing configuration
-  //  - ingress: add route to client subnet via |host_ifname|.
+  //  - ingress: route added automatically by kernel when adding the device's
+  //             address with prefix.
   //  - egress: - allow forwarding for traffic outgoing |host_ifname|.
   //            - add SNAT mark 0x1/0x1 for traffic outgoing |host_ifname|.
   //  Note that by default unsolicited ingress traffic is not forwarded to the
   //  client namespace unless the client specifically set port forwarding
   //  through permission_broker DBus APIs.
-  // TODO(hugobenichi) If allow_user_traffic is false, then prevent forwarding
-  // both ways between client namespace and other guest containers and VMs.
-
-  if (!AddIPv4Route(peer_cidr->address(), nsinfo.peer_subnet->base_cidr())) {
-    LOG(ERROR) << "Failed to set route to client namespace";
-    RemoveInterface(nsinfo.host_ifname);
-    NetnsDeleteName(nsinfo.netns_name);
-    return false;
-  }
 
   if (!nsinfo.outbound_ifname.empty()) {
     if (!nsinfo.current_outbound_device) {
@@ -967,14 +959,6 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
 void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
   StopRoutingDevice(nsinfo.host_ifname);
   RemoveInterface(nsinfo.host_ifname);
-
-  const auto peer_cidr = nsinfo.peer_subnet->CIDRAtOffset(1);
-  if (peer_cidr) {
-    DeleteIPv4Route(peer_cidr->address(), nsinfo.peer_subnet->base_cidr());
-  } else {
-    LOG(ERROR) << "Failed to create CIDR from subnet:"
-               << nsinfo.peer_subnet->base_cidr();
-  }
   NetnsDeleteName(nsinfo.netns_name);
 }
 
