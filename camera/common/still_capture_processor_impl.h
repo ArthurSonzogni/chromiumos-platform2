@@ -18,6 +18,7 @@
 
 #include <base/containers/span.h>
 #include <base/functional/callback_helpers.h>
+#include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 
 #include "cros-camera/camera_buffer_manager.h"
@@ -89,7 +90,9 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
   CaptureResultCallback result_callback_ = base::NullCallback();
 
   // Bookkeeping the RequestContext using the frame number as index.
-  std::map<int, RequestContext> request_contexts_;
+  base::Lock request_contexts_lock_;
+  std::map<int, RequestContext> request_contexts_
+      GUARDED_BY(request_contexts_lock_);
 };
 
 CROS_CAMERA_EXPORT bool ParseAppSectionsForTesting(

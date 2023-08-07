@@ -260,6 +260,7 @@ void StillCaptureProcessorImpl::Initialize(
 
   blob_stream_ = still_capture_stream;
   result_callback_ = std::move(result_callback);
+  base::AutoLock lock(request_contexts_lock_);
   request_contexts_.clear();
   CHECK(thread_.Start());
 }
@@ -270,6 +271,7 @@ void StillCaptureProcessorImpl::Reset() {
   thread_.Stop();
   blob_stream_ = nullptr;
   result_callback_ = base::NullCallback();
+  base::AutoLock lock(request_contexts_lock_);
   request_contexts_.clear();
 }
 
@@ -368,6 +370,7 @@ void StillCaptureProcessorImpl::QueuePendingYuvImage(
 }
 
 bool StillCaptureProcessorImpl::IsPendingOutputBufferQueued(int frame_number) {
+  base::AutoLock lock(request_contexts_lock_);
   if (request_contexts_.count(frame_number) == 0) {
     return false;
   }
@@ -379,6 +382,7 @@ void StillCaptureProcessorImpl::QueuePendingRequestOnThread(
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
   TRACE_COMMON("frame_number", frame_number);
 
+  base::AutoLock lock(request_contexts_lock_);
   request_contexts_.insert({frame_number, std::move(request_context)});
 }
 
@@ -389,16 +393,20 @@ void StillCaptureProcessorImpl::QueuePendingOutputBufferOnThread(
                client_requested_buffer.stream->width, "height",
                client_requested_buffer.stream->height);
 
-  if (request_contexts_.count(frame_number) == 0) {
-    LOGF(ERROR) << "No request queued";
-    return;
-  }
+  {
+    base::AutoLock lock(request_contexts_lock_);
 
-  RequestContext& context = request_contexts_[frame_number];
-  CHECK(!context.client_requested_buffer.has_value())
-      << "The pending output buffer has been already queued for frame number "
-      << frame_number;
-  context.client_requested_buffer = std::move(client_requested_buffer);
+    if (request_contexts_.count(frame_number) == 0) {
+      LOGF(ERROR) << "No request queued";
+      return;
+    }
+
+    RequestContext& context = request_contexts_[frame_number];
+    CHECK(!context.client_requested_buffer.has_value())
+        << "The pending output buffer has been already queued for frame number "
+        << frame_number;
+    context.client_requested_buffer = std::move(client_requested_buffer);
+  }
 
   MaybeProduceCaptureResultOnThread(frame_number);
 }
@@ -410,15 +418,19 @@ void StillCaptureProcessorImpl::QueuePendingAppsSegmentsOnThread(
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
   TRACE_COMMON("frame_number", frame_number);
 
-  if (request_contexts_.count(frame_number) == 0) {
-    LOGF(ERROR) << "No request queued";
-    return;
-  }
+  {
+    base::AutoLock lock(request_contexts_lock_);
 
-  RequestContext& context = request_contexts_[frame_number];
-  context.apps_segments_buffer = std::move(apps_segments_buffer);
-  context.apps_segments_index = std::move(apps_segments_index);
-  context.has_apps_segments = true;
+    if (request_contexts_.count(frame_number) == 0) {
+      LOGF(ERROR) << "No request queued";
+      return;
+    }
+
+    RequestContext& context = request_contexts_[frame_number];
+    context.apps_segments_buffer = std::move(apps_segments_buffer);
+    context.apps_segments_index = std::move(apps_segments_index);
+    context.has_apps_segments = true;
+  }
 
   MaybeProduceCaptureResultOnThread(frame_number);
 }
@@ -430,12 +442,15 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
   TRACE_COMMON("frame_number", frame_number);
 
-  if (request_contexts_.count(frame_number) == 0) {
-    LOGF(ERROR) << "No request queued";
-    return;
+  RequestContext* context = nullptr;
+  {
+    base::AutoLock lock(request_contexts_lock_);
+    if (request_contexts_.count(frame_number) == 0) {
+      LOGF(ERROR) << "No request queued";
+      return;
+    }
+    context = &request_contexts_[frame_number];
   }
-
-  RequestContext& context = request_contexts_[frame_number];
   {
     TRACE_COMMON_EVENT(
         "StillCaptureProcessorImpl::QueuePendingYuvImageOnThread::EncodeJPEG",
@@ -447,16 +462,16 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
       return;
     }
     if (!jpeg_compressor_->CompressImageFromHandle(
-            yuv_buffer, *context.jpeg_blob, blob_stream_->width,
-            blob_stream_->height, context.jpeg_quality, nullptr, 0,
-            &context.jpeg_blob_size, /*enable_hw_encode=*/false)) {
+            yuv_buffer, *context->jpeg_blob, blob_stream_->width,
+            blob_stream_->height, context->jpeg_quality, nullptr, 0,
+            &context->jpeg_blob_size, /*enable_hw_encode=*/false)) {
       LOGF(ERROR) << "Cannot encode YUV image to JPEG";
       // TODO(jcliang): Notify buffer error here.
       return;
     }
   }
-  context.has_jpeg = true;
-  if (context.thumbnail_size.area() > 0) {
+  context->has_jpeg = true;
+  if (context->thumbnail_size.area() > 0) {
     TRACE_COMMON_EVENT(
         "StillCaptureProcessorImpl::QueuePendingYuvImageOnThread::"
         "GenerateThumbnail",
@@ -464,27 +479,27 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
 
     // Scale down the YUV image and produce JPEG thumbnail.
     ScopedMapping mapping(yuv_buffer);
-    std::vector<uint8_t> scaled_nv12(context.thumbnail_size.area() * 3 / 2);
+    std::vector<uint8_t> scaled_nv12(context->thumbnail_size.area() * 3 / 2);
     // If the thumbnail image aspect ratio is different from the primary JPEG
     // image, we need to crop the main image first before scaling.
     int src_width, src_height, src_x_start, src_y_start;
     GetCropSizeAndXySkips(mapping.width(), mapping.height(),
-                          context.thumbnail_size.width,
-                          context.thumbnail_size.height, &src_width,
+                          context->thumbnail_size.width,
+                          context->thumbnail_size.height, &src_width,
                           &src_height, &src_x_start, &src_y_start);
     int y_plane_start = src_x_start + src_y_start * mapping.plane(0).stride;
     // UV plane has 2:1 subsampling with 2 bytes per pixel.
     int uv_plane_start =
         (src_x_start / 2) * 2 + (src_y_start / 2) * mapping.plane(1).stride;
     uint8_t* dst_y = scaled_nv12.data();
-    int dst_stride_y = context.thumbnail_size.width;
-    uint8_t* dst_uv = scaled_nv12.data() + context.thumbnail_size.area();
-    int dst_stride_uv = context.thumbnail_size.width / 2 * 2;
+    int dst_stride_y = context->thumbnail_size.width;
+    uint8_t* dst_uv = scaled_nv12.data() + context->thumbnail_size.area();
+    int dst_stride_uv = context->thumbnail_size.width / 2 * 2;
     if (libyuv::NV12Scale(
             mapping.plane(0).addr + y_plane_start, mapping.plane(0).stride,
             mapping.plane(1).addr + uv_plane_start, mapping.plane(1).stride,
             src_width, src_height, dst_y, dst_stride_y, dst_uv, dst_stride_uv,
-            context.thumbnail_size.width, context.thumbnail_size.height,
+            context->thumbnail_size.width, context->thumbnail_size.height,
             libyuv::kFilterBilinear)) {
       LOGF(ERROR) << "Cannot downscale YUV image to produce thumbnail";
     }
@@ -492,13 +507,13 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
     // This leaves 15533 bytes of space for other metadata in APP1 segment.
     constexpr int kThumbnailSizeLimit = 50000;
     uint32_t thumbnail_data_size = 0;
-    int thumbnail_quality = context.thumbnail_quality;
-    context.thumbnail_buffer.resize(context.thumbnail_size.area() * 2);
+    int thumbnail_quality = context->thumbnail_quality;
+    context->thumbnail_buffer.resize(context->thumbnail_size.area() * 2);
     do {
       auto ret = jpeg_compressor_->CompressImageFromMemory(
           scaled_nv12.data(), V4L2_PIX_FMT_NV12,
-          context.thumbnail_buffer.data(), context.thumbnail_buffer.size(),
-          context.thumbnail_size.width, context.thumbnail_size.height,
+          context->thumbnail_buffer.data(), context->thumbnail_buffer.size(),
+          context->thumbnail_size.width, context->thumbnail_size.height,
           thumbnail_quality, nullptr, 0, &thumbnail_data_size);
       if (!ret) {
         LOGF(ERROR) << "Cannot produce JPEG thumbnail image";
@@ -508,9 +523,9 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
       thumbnail_quality -= 10;
     } while (thumbnail_data_size > kThumbnailSizeLimit &&
              thumbnail_quality > 0);
-    context.thumbnail_buffer.resize(thumbnail_data_size);
+    context->thumbnail_buffer.resize(thumbnail_data_size);
     VLOGFID(1, frame_number)
-        << "Produced thumbnail with size=" << context.thumbnail_size.ToString()
+        << "Produced thumbnail with size=" << context->thumbnail_size.ToString()
         << " data_length=" << thumbnail_data_size;
   }
 
@@ -520,18 +535,22 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
 void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
     int frame_number) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  DCHECK_EQ(request_contexts_.count(frame_number), 1);
   TRACE_COMMON("frame_number", frame_number);
 
-  RequestContext& context = request_contexts_.at(frame_number);
-  if (!(context.has_apps_segments && context.has_jpeg &&
-        context.client_requested_buffer.has_value())) {
-    return;
+  RequestContext* context = nullptr;
+  {
+    base::AutoLock lock(request_contexts_lock_);
+    DCHECK_EQ(request_contexts_.count(frame_number), 1);
+    context = &request_contexts_.at(frame_number);
+    if (!(context->has_apps_segments && context->has_jpeg &&
+          context->client_requested_buffer.has_value())) {
+      return;
+    }
   }
 
   VLOGFID(1, frame_number) << "Producing JPEG";
   {
-    ScopedMapping result_mapping(*context.client_requested_buffer->buffer);
+    ScopedMapping result_mapping(*context->client_requested_buffer->buffer);
     uint8_t* dst_start = result_mapping.plane(0).addr;
     uint8_t* dst_addr = dst_start;
 
@@ -539,8 +558,8 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
     dst_addr = WriteTwoBytes(dst_addr, kJpegSOF);
 
     // Copy the APPn segments from vendor camera HAL.
-    for (auto it = context.apps_segments_index.begin();
-         it != context.apps_segments_index.end(); ++it) {
+    for (auto it = context->apps_segments_index.begin();
+         it != context->apps_segments_index.end(); ++it) {
       switch (it->first) {
         case kJpegAPP0:
           // Skip APP0 as we're going to use the one produced by the encoder
@@ -548,8 +567,8 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
           break;
 
         case kJpegAPP1: {
-          if (context.thumbnail_size.area() > 0 &&
-              context.thumbnail_buffer.size() > 0) {
+          if (context->thumbnail_size.area() > 0 &&
+              context->thumbnail_buffer.size() > 0) {
             VLOGFID(1, frame_number) << "Write JPEG segment 0x" << std::hex
                                      << it->first << " with thumbnail";
             // Thumbnail requested and available, so replace the thumbnail.
@@ -558,12 +577,12 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
               LOGF(ERROR) << "Cannot load APPs segments";
               break;
             }
-            if (!exif_utils.SetOrientation(context.orientation)) {
+            if (!exif_utils.SetOrientation(context->orientation)) {
               LOGF(ERROR) << "Cannot set orientation";
               break;
             }
-            if (!exif_utils.GenerateApp1(context.thumbnail_buffer.data(),
-                                         context.thumbnail_buffer.size())) {
+            if (!exif_utils.GenerateApp1(context->thumbnail_buffer.data(),
+                                         context->thumbnail_buffer.size())) {
               LOGF(ERROR) << "Cannot generate APP1 segment with thumbnail";
               break;
             }
@@ -594,12 +613,12 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
     }
 
     // Copy the JPEG image. Skip the SOI in the buffer.
-    ScopedMapping jpeg_mapping(*context.jpeg_blob);
+    ScopedMapping jpeg_mapping(*context->jpeg_blob);
     std::copy(jpeg_mapping.plane(0).addr + kJpegMarkerSize,
-              jpeg_mapping.plane(0).addr + context.jpeg_blob_size, dst_addr);
-    dst_addr += (context.jpeg_blob_size - kJpegMarkerSize);
+              jpeg_mapping.plane(0).addr + context->jpeg_blob_size, dst_addr);
+    dst_addr += (context->jpeg_blob_size - kJpegMarkerSize);
 
-    InsertJpegBlobDescriptor(*context.client_requested_buffer->buffer,
+    InsertJpegBlobDescriptor(*context->client_requested_buffer->buffer,
                              (dst_addr - dst_start));
   }
 
@@ -607,10 +626,12 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
   Camera3CaptureDescriptor blob_result(camera3_capture_result_t{
       .frame_number = static_cast<uint32_t>(frame_number),
       .num_output_buffers = 1,
-      .output_buffers = &*context.client_requested_buffer,
+      .output_buffers = &*context->client_requested_buffer,
       .partial_result = 0,
   });
   result_callback_.Run(std::move(blob_result));
+
+  base::AutoLock lock(request_contexts_lock_);
   request_contexts_.erase(frame_number);
 }
 
