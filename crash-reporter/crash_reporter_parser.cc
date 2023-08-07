@@ -59,9 +59,7 @@ CrashReporterParser::CrashReporterParser(
     bool testonly_send_all)
     : clock_(std::move(clock)),
       metrics_lib_(std::move(metrics_lib)),
-      always_capture_logs_for_test_(testonly_send_all) {
-  metrics_lib_->Init();
-}
+      always_capture_logs_for_test_(testonly_send_all) {}
 
 CrashReport CrashReporterParser::MakeCrashReport(const UnmatchedCrash& crash) {
   // Note that we don't have a good signature -- we don't have any way to

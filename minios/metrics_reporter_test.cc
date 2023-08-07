@@ -30,7 +30,6 @@ class MetricsReporterTest : public ::testing::Test {
   std::unique_ptr<MetricsReporter> reporter_;
 
   void SetUp() override {
-    EXPECT_CALL(*metrics_library_mock_ptr_, Init);
     reporter_ = std::make_unique<MetricsReporter>(
         mock_process_manager_ptr_, std::move(metrics_library_mock_));
   }

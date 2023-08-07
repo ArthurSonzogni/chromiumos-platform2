@@ -100,7 +100,7 @@ const char kSystemNetLogFileSizePerDay[] = "Logging.SystemNetLogFileSizePerDay";
 
 class MetricsCollector {
  public:
-  MetricsCollector() { metrics_library_.Init(); }
+  MetricsCollector() {}
 
   void Run() {
     // [Entire system log directory] Total file size.

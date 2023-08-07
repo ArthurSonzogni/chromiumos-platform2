@@ -40,11 +40,6 @@ class MetricsTest : public testing::Test {
   MetricsTest& operator=(const MetricsTest&) = delete;
 };
 
-TEST_F(MetricsTest, Init) {
-  EXPECT_CALL(*metrics_library_, Init());
-  metrics_->Init();
-}
-
 TEST_F(MetricsTest, SendCheckForWedgedModemResult) {
   EXPECT_CALL(*metrics_library_,
               SendEnumToUMA(

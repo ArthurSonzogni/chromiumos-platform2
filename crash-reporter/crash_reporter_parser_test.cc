@@ -157,7 +157,6 @@ class CrashReporterParserTest : public ::testing::Test {
     // want to get 3 matches without going past the timeout.
     const base::TimeDelta kClockAdvanceAmount = base::Seconds(1);
 
-    EXPECT_CALL(*metrics, Init()).Times(1);
     auto parser = std::make_unique<CrashReporterParser>(
         std::make_unique<AdvancingClock>(kClockAdvanceAmount),
         std::move(metrics), true /* testonly_send_all */);

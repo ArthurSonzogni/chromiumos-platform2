@@ -119,8 +119,6 @@ Metrics::FwInstallResultMap Metrics::fw_install_result_ = {
 };
 
 void Metrics::Init() {
-  metrics_library_->Init();
-
   flash_timer_.reset(new chromeos_metrics::TimerReporter(
       metrics::kMetricFwInstallTime,
       metrics::kMetricFwInstallTimeMin.InSeconds(),

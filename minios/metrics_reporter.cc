@@ -34,8 +34,6 @@ MetricsReporter::MetricsReporter(
     metrics_lib_ = std::move(metrics_lib);
   else
     metrics_lib_ = std::make_unique<MetricsLibrary>();
-
-  metrics_lib_->Init();
 }
 
 void MetricsReporter::RecordNBRStart() {

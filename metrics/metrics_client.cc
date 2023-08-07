@@ -88,7 +88,6 @@ int SendStats(char* argv[],
   }
 
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   if (output_file) {
     metrics_lib.SetOutputFile(output_file);
   }
@@ -109,7 +108,6 @@ int SendStats(char* argv[],
 int SendUserAction(char* argv[], int action_index) {
   const char* action = argv[action_index];
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   metrics_lib.SendUserActionToUMA(action);
   return 0;
 }
@@ -118,7 +116,6 @@ int SendCrosEvent(char* argv[], int action_index) {
   const char* event = argv[action_index];
   bool result;
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   result = metrics_lib.SendCrosEventToUMA(event);
   if (!result) {
     fprintf(stderr, "metrics_client: could not send event %s\n", event);
@@ -129,31 +126,26 @@ int SendCrosEvent(char* argv[], int action_index) {
 
 int CreateConsent() {
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   return metrics_lib.EnableMetrics() ? 0 : 1;
 }
 
 int DeleteConsent() {
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   return metrics_lib.DisableMetrics() ? 0 : 1;
 }
 
 int HasConsent() {
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   return metrics_lib.AreMetricsEnabled() ? 0 : 1;
 }
 
 int IsGuestMode() {
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   return metrics_lib.IsGuestMode() ? 0 : 1;
 }
 
 int ShowConsentId() {
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   std::string id;
   if (metrics_lib.ConsentId(&id) == false) {
     fprintf(stderr, "error: consent not given\n");
@@ -165,7 +157,6 @@ int ShowConsentId() {
 
 int ReplayFile(const char* input_file, const char* output_file) {
   MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   if (output_file) {
     metrics_lib.SetOutputFile(output_file);
   }

@@ -42,9 +42,7 @@ Metrics::UninstallResultMap Metrics::uninstall_result_ = {
     {kErrorBusy, UninstallResult::kFailedUpdateEngineBusy},  // dbus error
 };
 
-void Metrics::Init() {
-  metrics_library_->Init();
-}
+void Metrics::Init() {}
 
 void Metrics::SendInstallResultSuccess(const bool& installed_by_ue) {
   if (installed_by_ue) {
