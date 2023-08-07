@@ -2327,8 +2327,7 @@ TEST_F(WiFiProviderTest, RegisterAndDeregisterWiFiDevice) {
 
 TEST_F(WiFiProviderTest, OnNewWiphy_WrongMessage) {
   TriggerScanMessage msg;
-  NetlinkPacket packet(kActiveScanTriggerNlMsg,
-                       sizeof(kActiveScanTriggerNlMsg));
+  NetlinkPacket packet(kActiveScanTriggerNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   MockWiFiPhy* phy = AddMockPhy(kScanTriggerMsgWiphyIndex);
 
@@ -2348,7 +2347,7 @@ TEST_F(WiFiProviderTest, OnNewWiphy_NoIndex) {
 TEST_F(WiFiProviderTest, OnNewWiphy_WithPhy) {
   NewWiphyMessage msg;
   MockWiFiPhy* phy = AddMockPhy(kNewWiphyNlMsg_WiphyIndex);
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   // OnNewWiphy message should be forwarded to the existing phy.
   EXPECT_CALL(*phy, OnNewWiphy(_));
@@ -2357,7 +2356,7 @@ TEST_F(WiFiProviderTest, OnNewWiphy_WithPhy) {
 
 TEST_F(WiFiProviderTest, OnNewWiphy_WithoutPhy) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_EQ(nullptr, GetPhyAtIndex(kNewWiphyNlMsg_WiphyIndex));
   // We should create a new WiFiPhy object when we get a NewWiphy message for a
@@ -2368,7 +2367,7 @@ TEST_F(WiFiProviderTest, OnNewWiphy_WithoutPhy) {
 
 TEST_F(WiFiProviderTest, NetLinkBroadcast_NewPhy) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_EQ(nullptr, GetPhyAtIndex(kNewWiphyNlMsg_WiphyIndex));
   // We should create a new WiFiPhy object when we get a NewWiphy broadcast for
@@ -2380,7 +2379,7 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_NewPhy) {
 TEST_F(WiFiProviderTest, NetLinkBroadcast_DeletePresentPhy) {
   DelWiphyMessage msg;
   AddMockPhy(kDelWiphyNlMsg_WiphyIndex);
-  NetlinkPacket packet(kDelWiphyNlMsg, sizeof(kDelWiphyNlMsg));
+  NetlinkPacket packet(kDelWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_NE(nullptr, GetPhyAtIndex(kDelWiphyNlMsg_WiphyIndex));
   // The phy should be deleted.
@@ -2390,7 +2389,7 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_DeletePresentPhy) {
 
 TEST_F(WiFiProviderTest, NetLinkBroadcast_DeleteAbsentPhy) {
   DelWiphyMessage msg;
-  NetlinkPacket packet(kDelWiphyNlMsg, sizeof(kDelWiphyNlMsg));
+  NetlinkPacket packet(kDelWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_EQ(nullptr, GetPhyAtIndex(kDelWiphyNlMsg_WiphyIndex));
   HandleNetlinkBroadcast(msg);
@@ -2399,8 +2398,7 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_DeleteAbsentPhy) {
 
 TEST_F(WiFiProviderTest, NetLinkBroadcast_IncludesPresentPhy) {
   TriggerScanMessage msg;
-  NetlinkPacket packet(kActiveScanTriggerNlMsg,
-                       sizeof(kActiveScanTriggerNlMsg));
+  NetlinkPacket packet(kActiveScanTriggerNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   AddMockPhy(kScanTriggerMsgWiphyIndex);
 
@@ -2416,8 +2414,7 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_IncludesPresentPhy) {
 
 TEST_F(WiFiProviderTest, NetLinkBroadcast_IncludesAbsentPhy) {
   TriggerScanMessage msg;
-  NetlinkPacket packet(kActiveScanTriggerNlMsg,
-                       sizeof(kActiveScanTriggerNlMsg));
+  NetlinkPacket packet(kActiveScanTriggerNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
 
   // We do not have a WiFiPhy object at the phy index in msg, so we expect an

@@ -150,7 +150,7 @@ TEST_F(WiFiCQMTest, OnCQMNotificationBeaconLoss) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
 
-  NetlinkPacket packet(kCQMBeaconLossNLMsg, sizeof(kCQMBeaconLossNLMsg));
+  NetlinkPacket packet(kCQMBeaconLossNLMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   const Nl80211Message& nl80211_msg =
       *reinterpret_cast<const Nl80211Message*>(&msg);
@@ -181,7 +181,7 @@ TEST_F(WiFiCQMTest, OnCQMNotificationLowRssiLevelBreach) {
   ScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
-  NetlinkPacket packet(kCQMRssiLowNLMsg, sizeof(kCQMRssiLowNLMsg));
+  NetlinkPacket packet(kCQMRssiLowNLMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   const Nl80211Message& nl80211_msg =
       *reinterpret_cast<const Nl80211Message*>(&msg);
@@ -198,7 +198,7 @@ TEST_F(WiFiCQMTest, OnCQMNotificationHighRssiLevelBreach) {
   ScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
-  NetlinkPacket packet(kCQMRssiHighNLMsg, sizeof(kCQMRssiHighNLMsg));
+  NetlinkPacket packet(kCQMRssiHighNLMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   const Nl80211Message& nl80211_msg =
       *reinterpret_cast<const Nl80211Message*>(&msg);
@@ -217,7 +217,7 @@ TEST_F(WiFiCQMTest, OnCQMNotificationPacketLoss) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
 
-  NetlinkPacket packet(kCQMPacketLossNLMsg, sizeof(kCQMPacketLossNLMsg));
+  NetlinkPacket packet(kCQMPacketLossNLMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   const Nl80211Message& nl80211_msg =
       *reinterpret_cast<const Nl80211Message*>(&msg);

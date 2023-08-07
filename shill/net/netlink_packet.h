@@ -9,17 +9,18 @@
 #include <linux/netlink.h>
 
 #include <memory>
+#include <vector>
+
+#include <base/containers/span.h>
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
 
-class ByteString;
-
 class SHILL_EXPORT NetlinkPacket {
  public:
-  NetlinkPacket(const unsigned char* buf, size_t len);
+  explicit NetlinkPacket(base::span<const uint8_t> buf);
   NetlinkPacket(const NetlinkPacket&) = delete;
   NetlinkPacket& operator=(const NetlinkPacket&) = delete;
 
@@ -45,7 +46,7 @@ class SHILL_EXPORT NetlinkPacket {
 
   // Returns the payload data.  It is a fatal error to call this method
   // on an invalid packet.
-  const ByteString& GetPayload() const;
+  base::span<const uint8_t> GetPayload() const;
 
   // Consume netlink attributes from the remaining payload.
   bool ConsumeAttributes(const AttributeList::NewFromIdMethod& factory,
@@ -70,7 +71,7 @@ class SHILL_EXPORT NetlinkPacket {
   // These getters are protected so that derived classes may allow
   // the packet contents to be modified.
   nlmsghdr* mutable_header() { return &header_; }
-  ByteString* mutable_payload() { return payload_.get(); }
+  std::vector<uint8_t>* mutable_payload() { return payload_.get(); }
   void set_consumed_bytes(size_t consumed_bytes) {
     consumed_bytes_ = consumed_bytes;
   }
@@ -79,7 +80,7 @@ class SHILL_EXPORT NetlinkPacket {
   friend class NetlinkPacketTest;
 
   nlmsghdr header_;
-  std::unique_ptr<ByteString> payload_;
+  std::unique_ptr<std::vector<uint8_t>> payload_;
   size_t consumed_bytes_;
 };
 
@@ -88,7 +89,7 @@ class SHILL_EXPORT NetlinkPacket {
 // NetlinkMessage subclasses or NetlinkManager.
 class SHILL_EXPORT MutableNetlinkPacket : public NetlinkPacket {
  public:
-  MutableNetlinkPacket(const unsigned char* buf, size_t len);
+  explicit MutableNetlinkPacket(base::span<const uint8_t> buf);
   MutableNetlinkPacket(const MutableNetlinkPacket&) = delete;
   MutableNetlinkPacket& operator=(const MutableNetlinkPacket&) = delete;
 
@@ -101,7 +102,7 @@ class SHILL_EXPORT MutableNetlinkPacket : public NetlinkPacket {
 
   // Returns mutable references to the header and payload.
   nlmsghdr* GetMutableHeader();
-  ByteString* GetMutablePayload();
+  std::vector<uint8_t>* GetMutablePayload();
 
   // Set the message type in the header.
   void SetMessageType(uint16_t type);

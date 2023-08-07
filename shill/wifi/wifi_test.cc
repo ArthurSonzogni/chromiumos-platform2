@@ -5094,7 +5094,7 @@ TEST_F(WiFiMainTest, BackgroundScan) {
 TEST_F(WiFiMainTest, OnNewWiphy) {
   SetPhyIndex(kNewWiphyNlMsg_PhyIndex);
   NewWiphyMessage new_wiphy_message;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   new_wiphy_message.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, ParseWakeOnWiFiCapabilities(_));
   EXPECT_CALL(*wake_on_wifi_, OnWiphyIndexReceived(kNewWiphyNlMsg_PhyIndex));
@@ -5106,7 +5106,7 @@ TEST_F(WiFiMainTest, OnNewWiphy) {
 TEST_F(WiFiMainTest, OnNewWiphy_IndexChanged) {
   SetPhyIndex(kNewWiphyNlMsg_PhyIndex);
   NewWiphyMessage new_wiphy_message;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   new_wiphy_message.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*wifi_provider(),
               RegisterDeviceToPhy(wifi(), kNewWiphyNlMsg_PhyIndex));
@@ -5337,10 +5337,10 @@ TEST_F(WiFiMainTest, OnNewWiphy_ExcludesIndex) {
   // U32 attribute, so that this message no longer contains a phy_index to be
   // parsed.
   NewWiphyMessage msg;
-  MutableNetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
-  struct nlattr* nl80211_attr_wiphy = reinterpret_cast<struct nlattr*>(
-      &packet.GetMutablePayload()
-           ->GetData()[kNewWiphyNlMsg_Nl80211AttrWiphyOffset]);
+  MutableNetlinkPacket packet(kNewWiphyNlMsg);
+  struct nlattr* nl80211_attr_wiphy =
+      reinterpret_cast<struct nlattr*>(packet.GetMutablePayload()->data() +
+                                       kNewWiphyNlMsg_Nl80211AttrWiphyOffset);
   nl80211_attr_wiphy->nla_type = NL80211_ATTR_WIPHY_FREQ;
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -5353,7 +5353,7 @@ TEST_F(WiFiMainTest, OnNewWiphy_ExcludesIndex) {
 
 TEST_F(WiFiMainTest, ParseFeatureFlags_RandomMacSupport) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   // Make sure the feature is marked unsupported
   uint32_t flags;
@@ -5377,7 +5377,7 @@ TEST_F(WiFiMainTest, ParseFeatureFlags_RandomMacSupport) {
 
 TEST_F(WiFiMainTest, ParseCipherSuites) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
 
   constexpr uint8_t ciphers[] = {0x01, 0xac, 0x0f, 0x00, 0x05, 0xac, 0x0f,
@@ -5401,7 +5401,7 @@ TEST_F(WiFiMainTest, ParseCipherSuites) {
 
 TEST_F(WiFiMainTest, WEPInCipherSuites_Unsupported) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_FALSE(GetWEPSupport());
   // This bytes indicates support for WEP40 (0x01, 0xac, 0x0f, 0x00), but
@@ -5439,7 +5439,7 @@ TEST_F(WiFiMainTest, WEPInCipherSuites_Unsupported) {
 
 TEST_F(WiFiMainTest, WEPInCipherSuites_Supported) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
 
   // This bytes indicates support for WEP40 (0x01, 0xac, 0x0f, 0x00), and
@@ -5509,8 +5509,7 @@ TEST_F(WiFiMainTest, OnScanStarted_ActiveScan) {
   SetPhyIndex(kScanTriggerMsgPhyIndex);
   SetWiFiPhy(new NiceMock<WiFiPhy>(kScanTriggerMsgPhyIndex));
   TriggerScanMessage msg;
-  NetlinkPacket packet(kActiveScanTriggerNlMsg,
-                       sizeof(kActiveScanTriggerNlMsg));
+  NetlinkPacket packet(kActiveScanTriggerNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, OnScanStarted(true));
   HandleNetlinkBroadcast(msg);
@@ -5520,8 +5519,7 @@ TEST_F(WiFiMainTest, OnScanStarted_PassiveScan) {
   SetPhyIndex(kScanTriggerMsgPhyIndex);
   SetWiFiPhy(new NiceMock<WiFiPhy>(kScanTriggerMsgPhyIndex));
   TriggerScanMessage msg;
-  NetlinkPacket packet(kPassiveScanTriggerNlMsg,
-                       sizeof(kPassiveScanTriggerNlMsg));
+  NetlinkPacket packet(kPassiveScanTriggerNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, OnScanStarted(false));
   HandleNetlinkBroadcast(msg);

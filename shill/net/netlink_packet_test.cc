@@ -6,6 +6,7 @@
 
 #include <linux/netlink.h>
 
+#include <base/containers/span.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -13,24 +14,23 @@ using testing::Test;
 
 namespace shill {
 
-class NetlinkPacketTest : public Test {};
-
-TEST_F(NetlinkPacketTest, Constructor) {
-  // A null pointer should not crash the constructor, but should yield
+TEST(NetlinkPacketTest, Constructor) {
+  // An empty buffer should not crash the constructor, but should yield
   // an invalid packet.
-  NetlinkPacket null_packet(nullptr, 100);
+  NetlinkPacket null_packet({});
   EXPECT_FALSE(null_packet.IsValid());
 
-  unsigned char data[sizeof(nlmsghdr) + 1];
+  uint8_t data[sizeof(nlmsghdr) + 1];
+  base::span<uint8_t> data_span(data);
   memset(&data, 0, sizeof(data));
 
   // A packet that is too short to contain an nlmsghdr should be invalid.
-  NetlinkPacket short_packet(data, sizeof(nlmsghdr) - 1);
+  NetlinkPacket short_packet(data_span.subspan(0, sizeof(nlmsghdr) - 1));
   EXPECT_FALSE(short_packet.IsValid());
 
   // A packet that contains an invalid nlmsg_len (should be at least
   // as large as sizeof(nlmgsghdr)) should be invalid.
-  NetlinkPacket invalid_packet(data, sizeof(nlmsghdr));
+  NetlinkPacket invalid_packet(data_span.subspan(0, sizeof(nlmsghdr)));
   EXPECT_FALSE(invalid_packet.IsValid());
 
   // Successfully parse a well-formed packet that has no payload.
@@ -39,7 +39,7 @@ TEST_F(NetlinkPacketTest, Constructor) {
   hdr.nlmsg_len = sizeof(hdr);
   hdr.nlmsg_type = 1;
   memcpy(&data, &hdr, sizeof(hdr));
-  NetlinkPacket empty_packet(data, sizeof(nlmsghdr));
+  NetlinkPacket empty_packet(data_span.subspan(0, sizeof(nlmsghdr)));
   EXPECT_TRUE(empty_packet.IsValid());
   EXPECT_EQ(sizeof(nlmsghdr), empty_packet.GetLength());
   EXPECT_EQ(1, empty_packet.GetMessageType());
@@ -51,13 +51,13 @@ TEST_F(NetlinkPacketTest, Constructor) {
   hdr.nlmsg_len = sizeof(hdr) + 1;
   hdr.nlmsg_type = 2;
   memcpy(&data, &hdr, sizeof(hdr));
-  NetlinkPacket incomplete_packet(data, sizeof(nlmsghdr));
+  NetlinkPacket incomplete_packet(data_span.subspan(0, sizeof(nlmsghdr)));
   EXPECT_FALSE(incomplete_packet.IsValid());
 
   // Retrieve a byte from a well-formed packet.  After that byte is
   // retrieved, no more data can be consumed.
   data[sizeof(nlmsghdr)] = 10;
-  NetlinkPacket complete_packet(data, sizeof(nlmsghdr) + 1);
+  NetlinkPacket complete_packet(data_span);
   EXPECT_TRUE(complete_packet.IsValid());
   EXPECT_EQ(sizeof(nlmsghdr) + 1, complete_packet.GetLength());
   EXPECT_EQ(2, complete_packet.GetMessageType());
@@ -67,7 +67,7 @@ TEST_F(NetlinkPacketTest, Constructor) {
   EXPECT_FALSE(complete_packet.ConsumeData(1, &payload_byte));
 }
 
-TEST_F(NetlinkPacketTest, ConsumeData) {
+TEST(NetlinkPacketTest, ConsumeData) {
   // This code assumes that the value of NLMSG_ALIGNTO is 4, and that nlmsghdr
   // is aligned to a 4-byte boundary.
   static_assert(NLMSG_ALIGNTO == 4, "NLMSG_ALIGNTO sized has changed");
@@ -96,7 +96,7 @@ TEST_F(NetlinkPacketTest, ConsumeData) {
   memcpy(data + sizeof(nlmsghdr) + 12, kString3, sizeof(kString3));
   memcpy(data + sizeof(nlmsghdr) + 16, kString4, sizeof(kString4));
 
-  NetlinkPacket packet(data, sizeof(data));
+  NetlinkPacket packet(data);
   EXPECT_EQ(22, packet.GetRemainingLength());
 
   // Consuming 2 bytes of data also consumed 2 bytes of padding.

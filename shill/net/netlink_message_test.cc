@@ -346,8 +346,7 @@ class NetlinkMessageTest : public Test {
 };
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
-  NetlinkPacket trigger_scan_packet(kNL80211_CMD_TRIGGER_SCAN,
-                                    sizeof(kNL80211_CMD_TRIGGER_SCAN));
+  NetlinkPacket trigger_scan_packet(kNL80211_CMD_TRIGGER_SCAN);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&trigger_scan_packet,
                                      NetlinkMessage::MessageContext()));
@@ -400,8 +399,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
-  NetlinkPacket new_scan_results_packet(kNL80211_CMD_NEW_SCAN_RESULTS,
-                                        sizeof(kNL80211_CMD_NEW_SCAN_RESULTS));
+  NetlinkPacket new_scan_results_packet(kNL80211_CMD_NEW_SCAN_RESULTS);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&new_scan_results_packet,
                                      NetlinkMessage::MessageContext()));
@@ -454,8 +452,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_NEW_STATION,
-                               sizeof(kNL80211_CMD_NEW_STATION));
+  NetlinkPacket netlink_packet(kNL80211_CMD_NEW_STATION);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet,
                                      NetlinkMessage::MessageContext()));
@@ -496,8 +493,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_AUTHENTICATE,
-                               sizeof(kNL80211_CMD_AUTHENTICATE));
+  NetlinkPacket netlink_packet(kNL80211_CMD_AUTHENTICATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet,
                                      NetlinkMessage::MessageContext()));
@@ -536,8 +532,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_ASSOCIATE,
-                               sizeof(kNL80211_CMD_ASSOCIATE));
+  NetlinkPacket netlink_packet(kNL80211_CMD_ASSOCIATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet,
                                      NetlinkMessage::MessageContext()));
@@ -576,8 +571,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_CONNECT,
-                               sizeof(kNL80211_CMD_CONNECT));
+  NetlinkPacket netlink_packet(kNL80211_CMD_CONNECT);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet,
                                      NetlinkMessage::MessageContext()));
@@ -673,8 +667,7 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_DEAUTHENTICATE,
-                               sizeof(kNL80211_CMD_DEAUTHENTICATE));
+  NetlinkPacket netlink_packet(kNL80211_CMD_DEAUTHENTICATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet,
                                      NetlinkMessage::MessageContext()));
@@ -713,8 +706,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISCONNECT) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_DISCONNECT,
-                               sizeof(kNL80211_CMD_DISCONNECT));
+  NetlinkPacket netlink_packet(kNL80211_CMD_DISCONNECT);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet,
                                      NetlinkMessage::MessageContext()));
@@ -752,8 +744,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISCONNECT) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_NOTIFY_CQM,
-                               sizeof(kNL80211_CMD_NOTIFY_CQM));
+  NetlinkPacket netlink_packet(kNL80211_CMD_NOTIFY_CQM);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet,
                                      NetlinkMessage::MessageContext()));
@@ -813,8 +804,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_DISASSOCIATE,
-                               sizeof(kNL80211_CMD_DISASSOCIATE));
+  NetlinkPacket netlink_packet(kNL80211_CMD_DISASSOCIATE);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet,
                                      NetlinkMessage::MessageContext()));
@@ -855,8 +845,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
 // This test is to ensure that an unknown nl80211 message generates an
 // Nl80211UnknownMessage with all Nl80211 parts.
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_UNKNOWN) {
-  NetlinkPacket netlink_packet(kNL80211_CMD_UNKNOWN,
-                               sizeof(kNL80211_CMD_UNKNOWN));
+  NetlinkPacket netlink_packet(kNL80211_CMD_UNKNOWN);
   std::unique_ptr<NetlinkMessage> netlink_message(
       message_factory_.CreateMessage(&netlink_packet,
                                      NetlinkMessage::MessageContext()));

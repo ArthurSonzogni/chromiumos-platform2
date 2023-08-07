@@ -649,7 +649,7 @@ void NetlinkManager::OnRawNlMessageReceived(InputData* data) {
   const unsigned char* buf = data->buf;
   const unsigned char* end = buf + data->len;
   while (buf < end) {
-    NetlinkPacket packet(buf, end - buf);
+    NetlinkPacket packet({buf, end});
     if (!packet.IsValid()) {
       break;
     }

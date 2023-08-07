@@ -934,18 +934,16 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch_Disconnect) {
 
   // Initialize test messages.
   GetWakeOnWiFiMessage msgNoWake;
-  NetlinkPacket packetNoWake(kResponseNoWake, sizeof(kResponseNoWake));
+  NetlinkPacket packetNoWake(kResponseNoWake);
   msgNoWake.InitFromPacket(&packetNoWake, NetlinkMessage::MessageContext());
 
   GetWakeOnWiFiMessage msgWakeOnDisconnect;
-  NetlinkPacket packetWakeOnDisconnect(kResponseWakeOnDisconnect,
-                                       sizeof(kResponseWakeOnDisconnect));
+  NetlinkPacket packetWakeOnDisconnect(kResponseWakeOnDisconnect);
   msgWakeOnDisconnect.InitFromPacket(&packetWakeOnDisconnect,
                                      NetlinkMessage::MessageContext());
 
   GetWakeOnWiFiMessage msgWakeOnSSID;
-  NetlinkPacket packetWakeOnSSID(kResponseWakeOnSSID,
-                                 sizeof(kResponseWakeOnSSID));
+  NetlinkPacket packetWakeOnSSID(kResponseWakeOnSSID);
   msgWakeOnSSID.InitFromPacket(&packetWakeOnSSID,
                                NetlinkMessage::MessageContext());
 
@@ -1016,8 +1014,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Create a non-trivial Nl80211 response to a NL80211_CMD_GET_WOWLAN request
   // indicating that the NIC wakes on disconnects.
   GetWakeOnWiFiMessage msg;
-  NetlinkPacket packet(kResponseWakeOnDisconnect,
-                       sizeof(kResponseWakeOnDisconnect));
+  NetlinkPacket packet(kResponseWakeOnDisconnect);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   // Successful verification and consequent invocation of callback.
   SetSuspendActionsDoneCallback();
@@ -1054,7 +1051,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // and kSSIDBytes2 and scans for them at interval
   // kNetDetectScanIntervalSeconds.
   GetWakeOnWiFiMessage msg;
-  NetlinkPacket packet(kResponseWakeOnSSID, sizeof(kResponseWakeOnSSID));
+  NetlinkPacket packet(kResponseWakeOnSSID);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   // Successful verification and consequent invocation of callback.
   SetSuspendActionsDoneCallback();
@@ -1082,7 +1079,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Create an Nl80211 response to a NL80211_CMD_GET_WOWLAN request
   // indicating that there are no wake-on-WiFi rules programmed into the NIC.
   GetWakeOnWiFiMessage msg;
-  NetlinkPacket packet(kResponseNoWake, sizeof(kResponseNoWake));
+  NetlinkPacket packet(kResponseNoWake);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   // Successful verification, but since there is no suspend action callback
   // set, no callback is invoked.
@@ -1157,7 +1154,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
        ParseWakeOnWiFiCapabilities_DisconnectSSIDSupported) {
   ClearWakeOnWiFiTriggersSupported();
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   ParseWakeOnWiFiCapabilities(msg);
   EXPECT_TRUE(GetWakeOnWiFiTriggersSupported()->find(
@@ -1176,10 +1173,10 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Change the NL80211_WOWLAN_TRIG_DISCONNECT flag attribute into the
   // NL80211_WOWLAN_TRIG_MAGIC_PKT flag attribute, so that this message
   // no longer reports wake on disconnect as a supported capability.
-  MutableNetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  MutableNetlinkPacket packet(kNewWiphyNlMsg);
   struct nlattr* wowlan_trig_disconnect_attr = reinterpret_cast<struct nlattr*>(
-      &packet.GetMutablePayload()
-           ->GetData()[kNewWiphyNlMsg_WowlanTrigDisconnectAttributeOffset]);
+      packet.GetMutablePayload()->data() +
+      kNewWiphyNlMsg_WowlanTrigDisconnectAttributeOffset);
   wowlan_trig_disconnect_attr->nla_type = NL80211_WOWLAN_TRIG_MAGIC_PKT;
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   ParseWakeOnWiFiCapabilities(msg);
@@ -1200,10 +1197,10 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Change the NL80211_WOWLAN_TRIG_NET_DETECT flag attribute type to an invalid
   // attribute type (0), so that this message no longer reports wake on SSID
   // as a supported capability.
-  MutableNetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  MutableNetlinkPacket packet(kNewWiphyNlMsg);
   struct nlattr* wowlan_trig_net_detect_attr = reinterpret_cast<struct nlattr*>(
-      &packet.GetMutablePayload()
-           ->GetData()[kNewWiphyNlMsg_WowlanTrigNetDetectAttributeOffset]);
+      packet.GetMutablePayload()->data() +
+      kNewWiphyNlMsg_WowlanTrigNetDetectAttributeOffset);
   wowlan_trig_net_detect_attr->nla_type = 0;
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   ParseWakeOnWiFiCapabilities(msg);
@@ -1475,7 +1472,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, DisableWakeOnWiFi_ClearsTriggers) {
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, ParseWakeOnSSIDResults) {
   SetWakeOnWiFiMessage msg;
-  NetlinkPacket packet(kWakeReasonSSIDNlMsg, sizeof(kWakeReasonSSIDNlMsg));
+  NetlinkPacket packet(kWakeReasonSSIDNlMsg);
   msg.InitFromPacket(&packet, GetWakeupReportMsgContext());
   AttributeListConstRefPtr triggers;
   ASSERT_TRUE(msg.const_attributes()->ConstGetNestedAttributeList(
@@ -2209,8 +2206,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Unsupported) {
   SetWiphyIndex(kWakeReasonNlMsg_WiphyIndex);
 
   SetWakeOnWiFiMessage msg;
-  NetlinkPacket packet(kWakeReasonUnsupportedNlMsg,
-                       sizeof(kWakeReasonUnsupportedNlMsg));
+  NetlinkPacket packet(kWakeReasonUnsupportedNlMsg);
   msg.InitFromPacket(&packet, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log,
@@ -2230,8 +2226,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Disconnect) {
   SetWiphyIndex(kWakeReasonNlMsg_WiphyIndex);
 
   SetWakeOnWiFiMessage msg;
-  NetlinkPacket packet(kWakeReasonDisconnectNlMsg,
-                       sizeof(kWakeReasonDisconnectNlMsg));
+  NetlinkPacket packet(kWakeReasonDisconnectNlMsg);
   msg.InitFromPacket(&packet, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Wakeup reason: Disconnect")));
@@ -2251,7 +2246,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_SSID) {
   SetWiphyIndex(kWakeReasonNlMsg_WiphyIndex);
 
   SetWakeOnWiFiMessage msg;
-  NetlinkPacket packet(kWakeReasonSSIDNlMsg, sizeof(kWakeReasonSSIDNlMsg));
+  NetlinkPacket packet(kWakeReasonSSIDNlMsg);
   msg.InitFromPacket(&packet, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Wakeup reason: SSID")));
@@ -2277,7 +2272,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
   // kWrongMessageTypeNlMsg has an nlmsg_type of 0x16, which is different from
   // the 0x13 (i.e. kNl80211FamilyId) that we expect in these unittests.
   GetWakeOnWiFiMessage msg0;
-  NetlinkPacket packet0(kWrongMessageTypeNlMsg, sizeof(kWrongMessageTypeNlMsg));
+  NetlinkPacket packet0(kWrongMessageTypeNlMsg);
   msg0.InitFromPacket(&packet0, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Not a NL80211 Message")));
@@ -2288,7 +2283,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
   // This message has command NL80211_CMD_GET_WOWLAN, not a
   // NL80211_CMD_SET_WOWLAN.
   GetWakeOnWiFiMessage msg1;
-  NetlinkPacket packet1(kResponseNoWake, sizeof(kResponseNoWake));
+  NetlinkPacket packet1(kResponseNoWake);
   msg1.InitFromPacket(&packet1, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log,
@@ -2300,8 +2295,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
   // Valid message, but wrong wiphy index.
   SetWiphyIndex(kWakeReasonNlMsg_WiphyIndex + 1);
   SetWakeOnWiFiMessage msg2;
-  NetlinkPacket packet(kWakeReasonDisconnectNlMsg,
-                       sizeof(kWakeReasonDisconnectNlMsg));
+  NetlinkPacket packet(kWakeReasonDisconnectNlMsg);
   msg2.InitFromPacket(&packet, GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(

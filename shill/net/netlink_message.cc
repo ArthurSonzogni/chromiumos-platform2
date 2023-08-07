@@ -14,7 +14,6 @@
 #include <base/strings/stringprintf.h>
 #include <net-base/byte_utils.h>
 
-#include "shill/net/byte_string.h"
 #include "shill/net/netlink_packet.h"
 
 namespace shill {
@@ -108,8 +107,8 @@ void NetlinkMessage::PrintPacket(int log_level, const NetlinkPacket& packet) {
   }
 
   PrintHeader(log_level, &packet.GetNlMsgHeader());
-  const ByteString& payload = packet.GetPayload();
-  PrintPayload(log_level, payload.GetConstData(), payload.GetLength());
+  base::span<const uint8_t> payload = packet.GetPayload();
+  PrintPayload(log_level, payload.data(), payload.size());
 }
 
 // static
@@ -284,10 +283,8 @@ std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
   // failed, there'll be no message.  Handle either of those cases, by
   // creating an |UnknownMessage|.
   if (!message) {
-    const ByteString& payload = packet->GetPayload();
-    message = std::make_unique<UnknownMessage>(
-        message_type,
-        base::span<const uint8_t>{payload.GetConstData(), payload.GetLength()});
+    message =
+        std::make_unique<UnknownMessage>(message_type, packet->GetPayload());
   }
 
   if (!message->InitFromPacket(packet, context)) {

@@ -689,7 +689,7 @@ TEST_F(WiFiPhyTest, DeleteDeviceTwice) {
 
 TEST_F(WiFiPhyTest, OnNewWiphy_CheckFreqs) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   OnNewWiphy(msg);
   PhyDumpComplete();
@@ -698,7 +698,7 @@ TEST_F(WiFiPhyTest, OnNewWiphy_CheckFreqs) {
 
 TEST_F(WiFiPhyTest, OnNewWiphy_KeepLastFreqs) {
   NewWiphyMessage msg1;
-  NetlinkPacket packet1(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet1(kNewWiphyNlMsg);
   msg1.InitFromPacket(&packet1, NetlinkMessage::MessageContext());
 
   // Modify flags and attributes for the frequencies reported in the message.
@@ -744,7 +744,7 @@ TEST_F(WiFiPhyTest, OnNewWiphy_KeepLastFreqs) {
   // overwritten with proper values, each frequency is visible only once and the
   // frequencies get "public" visibility.
   NewWiphyMessage msg2;
-  NetlinkPacket packet2(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  NetlinkPacket packet2(kNewWiphyNlMsg);
   msg2.InitFromPacket(&packet2, NetlinkMessage::MessageContext());
   OnNewWiphy(msg2);
   PhyDumpComplete();
@@ -759,7 +759,7 @@ TEST_F(WiFiPhyTest, SupportsIftype) {
 
 TEST_F(WiFiPhyTest, ParseInterfaceTypes) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewWiphyNlMsg_IfTypes, sizeof(kNewWiphyNlMsg_IfTypes));
+  NetlinkPacket packet(kNewWiphyNlMsg_IfTypes);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   ParseInterfaceTypes(msg);
   EXPECT_TRUE(SupportsIftype(NL80211_IFTYPE_ADHOC));
@@ -778,8 +778,7 @@ TEST_F(WiFiPhyTest, ParseInterfaceTypes) {
 
 TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewSingleChannelNoAPSTAConcurrencyNlMsg,
-                       sizeof(kNewSingleChannelNoAPSTAConcurrencyNlMsg));
+  NetlinkPacket packet(kNewSingleChannelNoAPSTAConcurrencyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   ParseConcurrency(msg);
 
@@ -807,8 +806,7 @@ TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
 
 TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewSingleChannelConcurrencyNlMsg,
-                       sizeof(kNewSingleChannelConcurrencyNlMsg));
+  NetlinkPacket packet(kNewSingleChannelConcurrencyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   ParseConcurrency(msg);
 
@@ -834,8 +832,7 @@ TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
 
 TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
   NewWiphyMessage msg;
-  NetlinkPacket packet(kNewMultiChannelConcurrencyNlMsg,
-                       sizeof(kNewMultiChannelConcurrencyNlMsg));
+  NetlinkPacket packet(kNewMultiChannelConcurrencyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   ParseConcurrency(msg);
 
