@@ -98,7 +98,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
     AttributeList* attribute_list,
     size_t id,
     const std::string& attribute_name,
-    ByteString data) {
+    base::span<const uint8_t> data) {
   if (!attribute_list) {
     LOG(ERROR) << "NULL |attribute_list| parameter";
     return false;
@@ -113,17 +113,21 @@ bool Nl80211AttributeBss::ParseInformationElements(
                << " which we just created.";
     return false;
   }
-  const uint8_t* sub_attribute = data.GetConstData();
-  const uint8_t* end = sub_attribute + data.GetLength();
+
+  base::span<const uint8_t> remain_data = data;
   const int kHeaderBytes = 2;
-  while (end - sub_attribute > kHeaderBytes) {
-    uint8_t type = sub_attribute[0];
-    uint8_t payload_bytes = sub_attribute[1];
-    const uint8_t* payload = &sub_attribute[kHeaderBytes];
-    if (payload + payload_bytes > end) {
+  while (remain_data.size() > kHeaderBytes) {
+    const uint8_t type = remain_data[0];
+    const uint8_t payload_bytes = remain_data[1];
+    remain_data = remain_data.subspan(kHeaderBytes);
+
+    if (remain_data.size() < payload_bytes) {
       LOG(ERROR) << "Found malformed IE data.";
       return false;
     }
+    const auto payload = remain_data.subspan(0, payload_bytes);
+    remain_data = remain_data.subspan(payload_bytes);
+
     // See http://dox.ipxe.org/ieee80211_8h_source.html for more info on types
     // and data inside information elements.
     switch (type) {
@@ -133,8 +137,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
           ie_attribute->SetStringAttributeValue(type, "");
         } else {
           ie_attribute->SetStringAttributeValue(
-              type, std::string(reinterpret_cast<const char*>(payload),
-                                payload_bytes));
+              type, net_base::byte_utils::ByteStringFromBytes(payload));
         }
         break;
       }
@@ -159,22 +162,22 @@ bool Nl80211AttributeBss::ParseInformationElements(
       }
       case kHtCapAttributeId: {
         ie_attribute->CreateRawAttribute(type, kHtCapString);
-        ie_attribute->SetRawAttributeValue(type, {payload, payload_bytes});
+        ie_attribute->SetRawAttributeValue(type, payload);
         break;
       }
       case kHtInfoAttributeId: {
         ie_attribute->CreateRawAttribute(type, kHtOperString);
-        ie_attribute->SetRawAttributeValue(type, {payload, payload_bytes});
+        ie_attribute->SetRawAttributeValue(type, payload);
         break;
       }
       case kVhtCapAttributeId: {
         ie_attribute->CreateRawAttribute(type, kVhtCapString);
-        ie_attribute->SetRawAttributeValue(type, {payload, payload_bytes});
+        ie_attribute->SetRawAttributeValue(type, payload);
         break;
       }
       case kVhtInfoAttributeId: {
         ie_attribute->CreateRawAttribute(type, kVhtOperString);
-        ie_attribute->SetRawAttributeValue(type, {payload, payload_bytes});
+        ie_attribute->SetRawAttributeValue(type, payload);
         break;
       }
       case kMeshIdAttributeId: {
@@ -183,8 +186,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
           ie_attribute->SetStringAttributeValue(type, "");
         } else {
           ie_attribute->SetStringAttributeValue(
-              type, std::string(reinterpret_cast<const char*>(payload),
-                                payload_bytes));
+              type, net_base::byte_utils::ByteStringFromBytes(payload));
         }
         break;
       }
@@ -202,7 +204,6 @@ bool Nl80211AttributeBss::ParseInformationElements(
       default:
         break;
     }
-    sub_attribute += kHeaderBytes + payload_bytes;
   }
   attribute_list->SetNestedAttributeHasAValue(id);
   return true;
@@ -928,7 +929,7 @@ bool Nl80211AttributeSupportedIftypes::ParseIfaceTypes(
     AttributeList* attribute_list,
     size_t id,
     const std::string& attribute_name,
-    ByteString data) {
+    base::span<const uint8_t> data) {
   if (!attribute_list) {
     LOG(ERROR) << "NULL |attribute_list| parameter";
     return false;

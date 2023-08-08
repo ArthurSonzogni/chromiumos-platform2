@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/containers/span.h>
+
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_message.h"
 
@@ -577,7 +579,7 @@ class Nl80211AttributeBss : public NetlinkNestedAttribute {
   static bool ParseInformationElements(AttributeList* attribute_list,
                                        size_t id,
                                        const std::string& attribute_name,
-                                       ByteString data);
+                                       base::span<const uint8_t> data);
 };
 
 class Nl80211AttributeCqm : public NetlinkNestedAttribute {
@@ -652,7 +654,7 @@ class Nl80211AttributeSupportedIftypes : public NetlinkNestedAttribute {
   static bool ParseIfaceTypes(AttributeList* attribute_list,
                               size_t id,
                               const std::string& attribute_name,
-                              ByteString data);
+                              base::span<const uint8_t> data);
 };
 
 class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {

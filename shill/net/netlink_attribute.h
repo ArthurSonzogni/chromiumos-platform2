@@ -295,7 +295,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
         base::RepeatingCallback<bool(AttributeList* list,
                                      size_t id,
                                      const std::string& attribute_name,
-                                     ByteString data)>;
+                                     base::span<const uint8_t> data)>;
     using NestedDataMap = std::map<size_t, NestedData>;
 
     NestedData();
@@ -341,7 +341,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // mark that as an array.
   static bool InitNestedFromValue(const AttributeListRefPtr& list,
                                   const NestedData::NestedDataMap& templates,
-                                  const ByteString& value);
+                                  base::span<const uint8_t> value);
 
   AttributeListRefPtr value_;
   NestedData::NestedDataMap nested_template_;
@@ -364,7 +364,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
       const std::string& attribute_name,
       const AttributeListRefPtr& list,
       int id,
-      const ByteString& value);
+      base::span<const uint8_t> value);
 };
 
 class NetlinkRawAttribute : public NetlinkAttribute {

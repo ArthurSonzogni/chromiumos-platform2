@@ -733,8 +733,7 @@ bool NetlinkNestedAttribute::ToString(std::string* output) const {
 }
 
 bool NetlinkNestedAttribute::InitFromValue(base::span<const uint8_t> input) {
-  if (!InitNestedFromValue(value_, nested_template_,
-                           {input.data(), input.size()})) {
+  if (!InitNestedFromValue(value_, nested_template_, input)) {
     LOG(ERROR) << "InitNestedFromValue() failed";
     return false;
   }
@@ -773,19 +772,19 @@ bool NetlinkNestedAttribute::SetNestedHasAValue() {
 bool NetlinkNestedAttribute::InitNestedFromValue(
     const AttributeListRefPtr& list,
     const NetlinkNestedAttribute::NestedData::NestedDataMap& templates,
-    const ByteString& value) {
+    base::span<const uint8_t> value) {
   if (templates.empty()) {
     LOG(ERROR) << "|templates| size is zero";
     return false;
   }
   if (templates.size() == 1 && templates.cbegin()->second.is_array) {
     return AttributeList::IterateAttributes(
-        {value.GetConstData(), value.GetLength()}, 0,
+        value, 0,
         base::BindRepeating(&NetlinkNestedAttribute::AddAttributeToNestedArray,
                             templates.cbegin()->second, list));
   } else {
     return AttributeList::IterateAttributes(
-        {value.GetConstData(), value.GetLength()}, 0,
+        value, 0,
         base::BindRepeating(&NetlinkNestedAttribute::AddAttributeToNestedMap,
                             templates, list));
   }
@@ -800,7 +799,7 @@ bool NetlinkNestedAttribute::AddAttributeToNestedArray(
   auto attribute_name =
       base::StringPrintf("%s_%d", array_template.attribute_name.c_str(), id);
   return AddAttributeToNestedInner(array_template, attribute_name, list, id,
-                                   value);
+                                   {value.GetConstData(), value.GetLength()});
 }
 
 // static
@@ -815,8 +814,9 @@ bool NetlinkNestedAttribute::AddAttributeToNestedMap(
     return true;
   }
   const NestedData& nested_template = template_it->second;
-  return AddAttributeToNestedInner(
-      nested_template, nested_template.attribute_name, list, id, value);
+  return AddAttributeToNestedInner(nested_template,
+                                   nested_template.attribute_name, list, id,
+                                   {value.GetConstData(), value.GetLength()});
 }
 
 // static
@@ -825,7 +825,7 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
     const std::string& attribute_name,
     const AttributeListRefPtr& list,
     int id,
-    const ByteString& value) {
+    base::span<const uint8_t> value) {
   CHECK(list);
   if (!nested_template.parse_attribute.is_null()) {
     if (!nested_template.parse_attribute.Run(list.get(), id, attribute_name,
@@ -839,32 +839,26 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
   switch (nested_template.type) {
     case kTypeRaw:
       list->CreateRawAttribute(id, attribute_name.c_str());
-      return list->SetRawAttributeValue(
-          id, {value.GetConstData(), value.GetLength()});
+      return list->SetRawAttributeValue(id, value);
     case kTypeU8:
       list->CreateU8Attribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(
-          id, {value.GetConstData(), value.GetLength()});
+      return list->InitAttributeFromValue(id, value);
     case kTypeU16:
       list->CreateU16Attribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(
-          id, {value.GetConstData(), value.GetLength()});
+      return list->InitAttributeFromValue(id, value);
     case kTypeU32:
       list->CreateU32Attribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(
-          id, {value.GetConstData(), value.GetLength()});
+      return list->InitAttributeFromValue(id, value);
       break;
     case kTypeU64:
       list->CreateU64Attribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(
-          id, {value.GetConstData(), value.GetLength()});
+      return list->InitAttributeFromValue(id, value);
     case kTypeFlag:
       list->CreateFlagAttribute(id, attribute_name.c_str());
       return list->SetFlagAttributeValue(id, true);
     case kTypeString:
       list->CreateStringAttribute(id, attribute_name.c_str());
-      return list->InitAttributeFromValue(
-          id, {value.GetConstData(), value.GetLength()});
+      return list->InitAttributeFromValue(id, value);
     case kTypeNested: {
       if (nested_template.deeper_nesting.empty()) {
         LOG(ERROR) << "No rules for nesting " << attribute_name
