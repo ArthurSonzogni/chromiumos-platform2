@@ -456,10 +456,6 @@ int BPF_PROG(cros_handle_ip_protocol_deliver_rcu_enter,
              struct net* net,
              struct sk_buff* skb,
              int protocol) {
-  struct net_device* dev = cros_get_net_dev(skb);
-  if (!cros_is_ifindex_external(skb)) {
-    return -1;
-  }
   return cros_handle_tx_rx(/* skb */ skb,
                            /* is_ipv6 */ false,
                            /* is_tx */ false, "ip_protocol_deliver_rcu");
@@ -473,9 +469,6 @@ int BPF_PROG(cros_handle__ip_local_out_exit,
              struct sock* sk,
              struct sk_buff* skb,
              int rv) {
-  if (rv != CROS_NF_HOOK_OK || cros_socket_is_monitored(sk) == false) {
-    return 0;
-  }
   return cros_handle_tx_rx(/* skb */ skb,
                            /* is_ipv6 */ false,
                            /* is_tx */ true, "ip6_finish_output2");
@@ -500,10 +493,6 @@ int BPF_PROG(cros_handle_ip6_input_exit,
              struct net* net,
              struct sock* sk,
              struct sk_buff* skb) {
-  struct net_device* dev = cros_get_net_dev(skb);
-  if (!cros_is_ifindex_external(skb)) {
-    return -1;
-  }
   return cros_handle_tx_rx(/* skb */ skb,
                            /* is_ipv6 */ true,
                            /* is_tx */ false, "ip6_input_exit");
