@@ -4,10 +4,7 @@
 
 #include "shill/wifi/wifi_provider.h"
 
-#include <stdlib.h>
-
 #include <algorithm>
-#include <limits>
 #include <memory>
 #include <set>
 #include <string>
@@ -29,7 +26,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/ieee80211.h"
 #include "shill/profile.h"
 #include "shill/store/key_value_store.h"
@@ -719,13 +715,13 @@ void WiFiProvider::ResetServicesAutoConnectCooldownTime() {
   }
 }
 
-std::vector<ByteString> WiFiProvider::GetSsidsConfiguredForAutoConnect() {
-  std::vector<ByteString> results;
+std::vector<std::vector<uint8_t>>
+WiFiProvider::GetSsidsConfiguredForAutoConnect() {
+  std::vector<std::vector<uint8_t>> results;
   for (const auto& service : services_) {
     if (service->auto_connect()) {
       // Service configured for auto-connect.
-      ByteString ssid_bytes(service->ssid());
-      results.push_back(ssid_bytes);
+      results.push_back(service->ssid());
     }
   }
   return results;
@@ -1193,7 +1189,7 @@ Metrics* WiFiProvider::metrics() const {
   return manager_->metrics();
 }
 
-WiFiProvider::PasspointMatch::PasspointMatch() {}
+WiFiProvider::PasspointMatch::PasspointMatch() = default;
 
 WiFiProvider::PasspointMatch::PasspointMatch(
     const PasspointCredentialsRefPtr& cred_in,

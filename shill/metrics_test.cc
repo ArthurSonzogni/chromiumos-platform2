@@ -22,7 +22,6 @@
 #include <metrics/structured_events.h>
 #include <metrics/timer_mock.h>
 
-#include "shill/cellular/apn_list.h"
 #include "shill/mock_control.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
@@ -30,9 +29,7 @@
 #include "shill/net/ieee80211.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/vpn_types.h"
-#include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
-#include "shill/wifi/mock_wifi_service.h"
 
 using testing::_;
 using testing::AnyNumber;

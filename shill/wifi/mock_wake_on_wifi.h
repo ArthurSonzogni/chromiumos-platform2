@@ -6,13 +6,11 @@
 #define SHILL_WIFI_MOCK_WAKE_ON_WIFI_H_
 
 #include <optional>
-#include <string>
 #include <vector>
 
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 
-#include "shill/error.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/store/property_store.h"
 #include "shill/wifi/wake_on_wifi_interface.h"
@@ -36,7 +34,7 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
   MOCK_METHOD(void,
               OnBeforeSuspend,
               (bool,
-               const std::vector<ByteString>&,
+               const std::vector<std::vector<uint8_t>>&,
                ResultCallback,
                base::OnceClosure,
                base::OnceClosure,
@@ -46,7 +44,7 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
   MOCK_METHOD(void,
               OnDarkResume,
               (bool,
-               const std::vector<ByteString>&,
+               const std::vector<std::vector<uint8_t>>&,
                ResultCallback,
                base::OnceClosure,
                InitiateScanCallback,
@@ -59,7 +57,7 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
   MOCK_METHOD(void, ReportConnectedToServiceAfterWake, (bool, int), (override));
   MOCK_METHOD(void,
               OnNoAutoConnectableServicesAfterScan,
-              (const std::vector<ByteString>&,
+              (const std::vector<std::vector<uint8_t>>&,
                base::OnceClosure,
                InitiateScanCallback),
               (override));

@@ -28,7 +28,6 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/netlink_message_matchers.h"
@@ -51,8 +50,8 @@ namespace {
 
 const uint16_t kNl80211FamilyId = 0x13;
 
-const uint8_t kSSIDBytes1[] = {0x47, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
-                               0x47, 0x75, 0x65, 0x73, 0x74};
+const std::vector<uint8_t> kSSIDBytes1 = {0x47, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
+                                          0x47, 0x75, 0x65, 0x73, 0x74};
 // Bytes representing a NL80211_CMD_SET_WOWLAN reporting that the system woke
 // up because of an SSID match. The net detect results report a single SSID
 // match represented by kSSIDBytes1, occurring in the frequencies in
@@ -119,8 +118,9 @@ const uint8_t kResponseWakeOnSSID[] = {
     0x65, 0x73, 0x74, 0x00, 0x18, 0x00, 0x01, 0x00, 0x12, 0x00, 0x01, 0x00,
     0x54, 0x50, 0x2d, 0x4c, 0x49, 0x4e, 0x4b, 0x5f, 0x38, 0x37, 0x36, 0x44,
     0x33, 0x35, 0x00, 0x00};
-const uint8_t kSSIDBytes2[] = {0x54, 0x50, 0x2d, 0x4c, 0x49, 0x4e, 0x4b,
-                               0x5f, 0x38, 0x37, 0x36, 0x44, 0x33, 0x35};
+const std::vector<uint8_t> kSSIDBytes2 = {0x54, 0x50, 0x2d, 0x4c, 0x49,
+                                          0x4e, 0x4b, 0x5f, 0x38, 0x37,
+                                          0x36, 0x44, 0x33, 0x35};
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message reporting the WiFi
 // capabilities of a NIC.
@@ -515,7 +515,7 @@ class WakeOnWiFiTest : public ::testing::Test {
       const Nl80211Message& msg,
       const std::set<WakeOnWiFi::WakeOnWiFiTrigger>& trigs,
       uint32_t net_detect_scan_period_seconds,
-      const std::vector<ByteString>& allowed_ssids) {
+      const std::vector<std::vector<uint8_t>>& allowed_ssids) {
     return WakeOnWiFi::WakeOnWiFiSettingsMatch(
         msg, trigs, net_detect_scan_period_seconds, allowed_ssids);
   }
@@ -525,7 +525,7 @@ class WakeOnWiFiTest : public ::testing::Test {
       const std::set<WakeOnWiFi::WakeOnWiFiTrigger>& trigs,
       uint32_t wiphy_index,
       uint32_t net_detect_scan_period_seconds,
-      const std::vector<ByteString>& allowed_ssids,
+      const std::vector<std::vector<uint8_t>>& allowed_ssids,
       Error* error) {
     return WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
         msg, trigs, wiphy_index, net_detect_scan_period_seconds, allowed_ssids,
@@ -595,7 +595,7 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void OnBeforeSuspend(
       bool is_connected,
-      const std::vector<ByteString>& allowed_ssids,
+      const std::vector<std::vector<uint8_t>>& allowed_ssids,
       std::optional<base::TimeDelta> time_to_next_lease_renewal) {
     ResultCallback done_callback(
         base::BindOnce(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
@@ -612,7 +612,7 @@ class WakeOnWiFiTest : public ::testing::Test {
   }
 
   void OnDarkResume(bool is_connected,
-                    const std::vector<ByteString>& allowed_ssids) {
+                    const std::vector<std::vector<uint8_t>>& allowed_ssids) {
     ResultCallback done_callback(
         base::BindOnce(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
     base::OnceClosure renew_dhcp_lease_callback(base::BindOnce(
@@ -767,7 +767,7 @@ class WakeOnWiFiTest : public ::testing::Test {
   }
 
   void OnNoAutoConnectableServicesAfterScan(
-      const std::vector<ByteString>& allowed_ssids) {
+      const std::vector<std::vector<uint8_t>>& allowed_ssids) {
     base::OnceClosure remove_supplicant_networks_callback(
         base::BindOnce(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
                        base::Unretained(this)));
@@ -786,14 +786,7 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->net_detect_scan_period_seconds_ = period;
   }
 
-  void AllowSSID(const uint8_t* ssid,
-                 int num_bytes,
-                 std::vector<ByteString>* allowed) {
-    std::vector<uint8_t> ssid_vector(ssid, ssid + num_bytes);
-    allowed->push_back(ByteString(ssid_vector));
-  }
-
-  std::vector<ByteString>* GetWakeOnAllowedSSIDs() {
+  std::vector<std::vector<uint8_t>>* GetWakeOnAllowedSSIDs() {
     return &wake_on_wifi_->wake_on_allowed_ssids_;
   }
 
@@ -870,13 +863,13 @@ class WakeOnWiFiTest : public ::testing::Test {
 
 class WakeOnWiFiTestWithDispatcher : public WakeOnWiFiTest {
  public:
-  WakeOnWiFiTestWithDispatcher() : WakeOnWiFiTest() {
-    wake_on_wifi_.reset(new WakeOnWiFi(
+  WakeOnWiFiTestWithDispatcher() {
+    wake_on_wifi_ = std::make_unique<WakeOnWiFi>(
         &netlink_manager_, &dispatcher_, &metrics_,
         base::BindRepeating(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
-                            base::Unretained(this))));
+                            base::Unretained(this)));
   }
-  virtual ~WakeOnWiFiTestWithDispatcher() = default;
+  ~WakeOnWiFiTestWithDispatcher() override = default;
 
  protected:
   EventDispatcherForTest dispatcher_;
@@ -884,13 +877,13 @@ class WakeOnWiFiTestWithDispatcher : public WakeOnWiFiTest {
 
 class WakeOnWiFiTestWithMockDispatcher : public WakeOnWiFiTest {
  public:
-  WakeOnWiFiTestWithMockDispatcher() : WakeOnWiFiTest() {
-    wake_on_wifi_.reset(new WakeOnWiFi(
+  WakeOnWiFiTestWithMockDispatcher() {
+    wake_on_wifi_ = std::make_unique<WakeOnWiFi>(
         &netlink_manager_, &mock_dispatcher_, &metrics_,
         base::BindRepeating(&WakeOnWiFiTest::RecordDarkResumeWakeReasonCallback,
-                            base::Unretained(this))));
+                            base::Unretained(this)));
   }
-  virtual ~WakeOnWiFiTestWithMockDispatcher() = default;
+  ~WakeOnWiFiTestWithMockDispatcher() override = default;
 
  protected:
   // TODO(zqiu): TaskRunner is needed by AlarmTimer, temporarily provide with
@@ -929,7 +922,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, ConfigureDisableWakeOnWiFiMessage) {
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch_Disconnect) {
   std::set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
-  std::vector<ByteString> allowed;
+  std::vector<std::vector<uint8_t>> allowed;
   const uint32_t interval = kNetDetectScanIntervalSeconds;
 
   // Initialize test messages.
@@ -965,8 +958,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, WakeOnWiFiSettingsMatch_Disconnect) {
   // Wake on SSID.
   trigs.clear();
   trigs.insert(WakeOnWiFi::kWakeTriggerSSID);
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
-  AllowSSID(kSSIDBytes2, sizeof(kSSIDBytes2), &allowed);
+  allowed.push_back(kSSIDBytes1);
+  allowed.push_back(kSSIDBytes2);
   EXPECT_TRUE(WakeOnWiFiSettingsMatch(msgWakeOnSSID, trigs, interval, allowed));
   EXPECT_FALSE(WakeOnWiFiSettingsMatch(msgNoWake, trigs, interval, allowed));
   EXPECT_FALSE(
@@ -977,7 +970,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
        ConfigureSetWakeOnWiFiSettingsMessage) {
   std::set<WakeOnWiFi::WakeOnWiFiTrigger> trigs;
   const int index = 1;  // wiphy device number
-  std::vector<ByteString> allowed;
+  std::vector<std::vector<uint8_t>> allowed;
   const uint32_t interval = kNetDetectScanIntervalSeconds;
   Error e;
 
@@ -991,8 +984,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   SetWakeOnWiFiMessage msgWakeOnSSID;
   trigs.clear();
   trigs.insert(WakeOnWiFi::kWakeTriggerSSID);
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
-  AllowSSID(kSSIDBytes2, sizeof(kSSIDBytes2), &allowed);
+  allowed.push_back(kSSIDBytes1);
+  allowed.push_back(kSSIDBytes2);
   EXPECT_TRUE(ConfigureSetWakeOnWiFiSettingsMessage(
       &msgWakeOnSSID, trigs, index, interval, allowed, &e));
   EXPECT_TRUE(WakeOnWiFiSettingsMatch(msgWakeOnSSID, trigs, interval, allowed));
@@ -1057,8 +1050,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   SetSuspendActionsDoneCallback();
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
   GetWakeOnWiFiTriggers()->insert(WakeOnWiFi::kWakeTriggerSSID);
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), GetWakeOnAllowedSSIDs());
-  AllowSSID(kSSIDBytes2, sizeof(kSSIDBytes2), GetWakeOnAllowedSSIDs());
+  GetWakeOnAllowedSSIDs()->push_back(kSSIDBytes1);
+  GetWakeOnAllowedSSIDs()->push_back(kSSIDBytes2);
   SetNetDetectScanPeriodSeconds(kNetDetectScanIntervalSeconds);
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(2);
@@ -1261,7 +1254,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
        BeforeSuspendActions_ReportDoneImmediately) {
   ScopedMockLog log;
   const bool is_connected = true;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), GetWakeOnAllowedSSIDs());
+  GetWakeOnAllowedSSIDs()->push_back(kSSIDBytes1);
   // If no triggers are supported, no triggers will be programmed into the NIC.
   ClearWakeOnWiFiTriggersSupported();
   SetSuspendActionsDoneCallback();
@@ -1302,7 +1295,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        BeforeSuspendActions_FeaturesDisabledOrTriggersUnsupported) {
   const bool is_connected = true;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), GetWakeOnAllowedSSIDs());
+  GetWakeOnAllowedSSIDs()->push_back(kSSIDBytes1);
   SetInDarkResume(false);
   SetSuspendActionsDoneCallback();
   // No features enabled, so no triggers programmed.
@@ -1353,7 +1346,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        BeforeSuspendActions_ConnectedBeforeSuspend) {
   const bool is_connected = true;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), GetWakeOnAllowedSSIDs());
+  GetWakeOnAllowedSSIDs()->push_back(kSSIDBytes1);
   SetSuspendActionsDoneCallback();
   EnableWakeOnWiFiFeaturesDarkConnect();
 
@@ -1383,8 +1376,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        BeforeSuspendActions_DisconnectedBeforeSuspend) {
   const bool is_connected = false;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), GetWakeOnAllowedSSIDs());
-  AllowSSID(kSSIDBytes2, sizeof(kSSIDBytes2), GetWakeOnAllowedSSIDs());
+  GetWakeOnAllowedSSIDs()->push_back(kSSIDBytes1);
+  GetWakeOnAllowedSSIDs()->push_back(kSSIDBytes2);
   SetSuspendActionsDoneCallback();
   EnableWakeOnWiFiFeaturesDarkConnect();
 
@@ -1508,8 +1501,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, InitiateScanInDarkResume) {
 }
 
 TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_SetsWakeOnAllowedSSIDs) {
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(GetWakeOnAllowedSSIDs()->empty());
   OnBeforeSuspend(true, allowed, std::make_optional(base::TimeDelta()));
@@ -1518,7 +1510,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_SetsWakeOnAllowedSSIDs) {
 }
 
 TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_SetsDoneCallback) {
-  std::vector<ByteString> allowed;
+  const std::vector<std::vector<uint8_t>> allowed;
   EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(SuspendActionsCallbackIsNull());
   OnBeforeSuspend(true, allowed, std::make_optional(base::TimeDelta()));
@@ -1527,8 +1519,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_SetsDoneCallback) {
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   bool is_connected;
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
 
   // Disable all features.
   DisableWakeOnWiFiFeatures();
@@ -1580,7 +1571,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
 
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_ResetsDarkResumeScanRetries) {
   const bool is_connected = true;
-  std::vector<ByteString> allowed;
+  const std::vector<std::vector<uint8_t>> allowed;
   EnableWakeOnWiFiFeaturesDarkConnect();
   SetDarkResumeScanRetriesLeft(3);
   EXPECT_EQ(3, GetDarkResumeScanRetriesLeft());
@@ -1590,8 +1581,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_ResetsDarkResumeScanRetries) {
 
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_SetsWakeOnAllowedSSIDs) {
   const bool is_connected = true;
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(GetWakeOnAllowedSSIDs()->empty());
   OnDarkResume(is_connected, allowed);
@@ -1606,8 +1596,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // before suspending again.
   const bool is_connected = true;
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerUnsupported);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Renew DHCP lease if we are connected in dark resume.
@@ -1630,8 +1619,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // we could not find any services available for autoconnect.
   const bool is_connected = true;
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerUnsupported);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Renew DHCP lease if we are connected in dark resume.
@@ -1654,8 +1642,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   const bool is_connected = true;
   constexpr base::TimeDelta time_to_next_lease_renewal = base::Seconds(10);
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerUnsupported);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Renew DHCP lease if we are connected in dark resume.
@@ -1680,8 +1667,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // actions before suspending again.
   const bool is_connected = false;
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerUnsupported);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Initiate scan if we are not connected in dark resume.
@@ -1706,8 +1692,7 @@ TEST_F(
   // because we could not find any services available for autoconnect.
   const bool is_connected = false;
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerUnsupported);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Initiate scan if we are not connected in dark resume.
@@ -1731,8 +1716,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   const bool is_connected = false;
   constexpr base::TimeDelta time_to_next_lease_renewal = base::Seconds(10);
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerUnsupported);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   // Initiate scan if we are not connected in dark resume.
@@ -1758,8 +1742,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // find any networks available for autoconnect.
   const bool is_connected = false;
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerDisconnect);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
 
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
@@ -1783,8 +1766,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // suspending again.
   const bool is_connected = false;
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerDisconnect);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
 
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
@@ -1809,8 +1791,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   const bool is_connected = false;
   constexpr base::TimeDelta time_to_next_lease_renewal = base::Seconds(10);
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerDisconnect);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
 
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
@@ -1836,8 +1817,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // networks available for autoconnect.
   const bool is_connected = false;
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerSSID);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
 
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
@@ -1860,8 +1840,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_WakeReasonSSID_Timeout) {
   // again.
   const bool is_connected = false;
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerSSID);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
 
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
@@ -1886,8 +1865,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   const bool is_connected = false;
   constexpr base::TimeDelta time_to_next_lease_renewal = base::Seconds(10);
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerSSID);
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
 
   InitStateForDarkResume();
   EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
@@ -1908,7 +1886,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
 
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_Connected_DoNotRecordEvent) {
   const bool is_connected = true;
-  std::vector<ByteString> allowed;
+  const std::vector<std::vector<uint8_t>> allowed;
   EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(GetDarkResumeHistory()->Empty());
   OnDarkResume(is_connected, allowed);
@@ -1917,7 +1895,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_Connected_DoNotRecordEvent) {
 
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_RecordEvent) {
   const bool is_connected = false;
-  std::vector<ByteString> allowed;
+  const std::vector<std::vector<uint8_t>> allowed;
   EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(GetDarkResumeHistory()->Empty());
   OnDarkResume(is_connected, allowed);
@@ -1932,7 +1910,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   CHECK_EQ(static_cast<const unsigned int>(
                WakeOnWiFi::kMaxDarkResumesPerPeriodShort),
            std::size(kTimeSeconds));
-  std::vector<ByteString> allowed;
+  const std::vector<std::vector<uint8_t>> allowed;
   EnableWakeOnWiFiFeaturesDarkConnect();
 
   // This test assumes that throttling takes place when 3 dark resumes have
@@ -1985,7 +1963,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   CHECK_EQ(
       static_cast<const unsigned int>(WakeOnWiFi::kMaxDarkResumesPerPeriodLong),
       std::size(kTimeSeconds));
-  std::vector<ByteString> allowed;
+  const std::vector<std::vector<uint8_t>> allowed;
   EnableWakeOnWiFiFeaturesDarkConnect();
 
   // This test assumes that throttling takes place when 3 dark resumes have been
@@ -2138,8 +2116,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, SetWakeOnWiFiFeaturesEnabled) {
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        OnNoAutoConnectableServicesAfterScan_InDarkResume) {
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   EnableWakeOnWiFiFeaturesDarkConnect();
   SetInDarkResume(true);
 
@@ -2157,8 +2134,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        OnNoAutoConnectableServicesAfterScan_NotInDarkResume) {
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   EnableWakeOnWiFiFeaturesDarkConnect();
   SetInDarkResume(false);
 
@@ -2173,8 +2149,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        OnNoAutoConnectableServicesAfterScan_Retry) {
-  std::vector<ByteString> allowed;
-  AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
+  const std::vector<std::vector<uint8_t>> allowed = {kSSIDBytes1};
   EnableWakeOnWiFiFeaturesDarkConnect();
   SetInDarkResume(true);
   SetDarkResumeScanRetriesLeft(1);

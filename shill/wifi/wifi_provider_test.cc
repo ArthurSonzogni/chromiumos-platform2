@@ -28,7 +28,6 @@
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/netlink_message_matchers.h"
 #include "shill/net/netlink_packet.h"
-#include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/store/fake_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
@@ -1969,8 +1968,6 @@ TEST_F(WiFiProviderTest, ResetAutoConnectCooldownTime) {
 TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
   std::vector<uint8_t> ssid0(3, '0');
   std::vector<uint8_t> ssid1(5, '1');
-  ByteString ssid0_bytes(ssid0);
-  ByteString ssid1_bytes(ssid1);
   MockWiFiServiceRefPtr service0 =
       AddMockService(ssid0, kModeManaged, kSecurityClassNone, false);
   MockWiFiServiceRefPtr service1 =
@@ -1978,19 +1975,19 @@ TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
   // 2 services configured for auto-connect.
   service0->SetAutoConnect(true);
   service1->SetAutoConnect(true);
-  std::vector<ByteString> service_list_0 =
+  std::vector<std::vector<uint8_t>> service_list_0 =
       provider_.GetSsidsConfiguredForAutoConnect();
   EXPECT_EQ(2, service_list_0.size());
-  EXPECT_TRUE(ssid0_bytes.Equals(service_list_0[0]));
-  EXPECT_TRUE(ssid1_bytes.Equals(service_list_0[1]));
+  EXPECT_EQ(ssid0, service_list_0[0]);
+  EXPECT_EQ(ssid1, service_list_0[1]);
 
   // 1 service configured for auto-connect.
   service0->SetAutoConnect(false);
   service1->SetAutoConnect(true);
-  std::vector<ByteString> service_list_1 =
+  std::vector<std::vector<uint8_t>> service_list_1 =
       provider_.GetSsidsConfiguredForAutoConnect();
   EXPECT_EQ(1, service_list_1.size());
-  EXPECT_TRUE(ssid1_bytes.Equals(service_list_1[0]));
+  EXPECT_EQ(ssid1, service_list_1[0]);
 }
 
 TEST_F(WiFiProviderTest, LoadCredentialsFromProfileAndCheckContent) {

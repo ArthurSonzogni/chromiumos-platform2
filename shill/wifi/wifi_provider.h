@@ -17,7 +17,6 @@
 #include "shill/data_types.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_message.h"
@@ -150,7 +149,7 @@ class WiFiProvider : public ProviderInterface {
 
   // Returns a list of ByteStrings representing the SSIDs of WiFi services
   // configured for auto-connect.
-  std::vector<ByteString> GetSsidsConfiguredForAutoConnect();
+  std::vector<std::vector<uint8_t>> GetSsidsConfiguredForAutoConnect();
 
   // Load to the provider all the Passpoint credentials available in |Profile|
   // and push the credentials to the WiFi device.

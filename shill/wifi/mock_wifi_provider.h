@@ -14,7 +14,6 @@
 #include "shill/wifi/hotspot_device.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/passpoint_credentials.h"
-#include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"

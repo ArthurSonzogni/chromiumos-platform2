@@ -10,7 +10,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/netlink_attribute.h"

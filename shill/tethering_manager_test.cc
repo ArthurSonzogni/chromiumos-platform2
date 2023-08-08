@@ -6,7 +6,6 @@
 
 #include <sys/socket.h>
 
-#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -48,7 +47,6 @@
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/local_service.h"
 #include "shill/wifi/mock_hotspot_device.h"
-#include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 #include "shill/wifi/mock_wifi_phy.h"
 #include "shill/wifi/mock_wifi_provider.h"
@@ -132,7 +130,7 @@ base::ScopedTempDir MakeTempDir() {
 class MockPatchpanelClient : public patchpanel::FakeClient {
  public:
   MockPatchpanelClient() = default;
-  ~MockPatchpanelClient() = default;
+  ~MockPatchpanelClient() override = default;
 
   MOCK_METHOD(bool,
               CreateTetheredNetwork,

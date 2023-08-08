@@ -12,7 +12,6 @@
 #include <base/time/time.h>
 
 #include "shill/callbacks.h"
-#include "shill/net/byte_string.h"
 #include "shill/wifi/wifi.h"
 
 namespace shill {
@@ -51,7 +50,7 @@ class WakeOnWiFiInterface {
       const Nl80211Message& nl80211_message) = 0;
   virtual void OnBeforeSuspend(
       bool is_connected,
-      const std::vector<ByteString>& allowed_ssids,
+      const std::vector<std::vector<uint8_t>>& allowed_ssids,
       ResultCallback done_callback,
       base::OnceClosure renew_dhcp_lease_callback,
       base::OnceClosure remove_supplicant_networks_callback,
@@ -59,7 +58,7 @@ class WakeOnWiFiInterface {
   virtual void OnAfterResume() = 0;
   virtual void OnDarkResume(
       bool is_connected,
-      const std::vector<ByteString>& allowed_ssids,
+      const std::vector<std::vector<uint8_t>>& allowed_ssids,
       ResultCallback done_callback,
       base::OnceClosure renew_dhcp_lease_callback,
       InitiateScanCallback initiate_scan_callback,
@@ -69,7 +68,7 @@ class WakeOnWiFiInterface {
   virtual void ReportConnectedToServiceAfterWake(bool is_connected,
                                                  int seconds_in_suspend) = 0;
   virtual void OnNoAutoConnectableServicesAfterScan(
-      const std::vector<ByteString>& allowed_ssids,
+      const std::vector<std::vector<uint8_t>>& allowed_ssids,
       base::OnceClosure remove_supplicant_networks_callback,
       InitiateScanCallback initiate_scan_callback) = 0;
   virtual void OnScanStarted(bool is_active_scan) = 0;

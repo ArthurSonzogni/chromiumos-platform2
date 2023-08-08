@@ -30,7 +30,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/event_history.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
@@ -210,7 +209,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
     const std::set<WakeOnWiFiTrigger>& trigs,
     uint32_t wiphy_index,
     uint32_t net_detect_scan_period_seconds,
-    const std::vector<ByteString>& allowed_ssids,
+    const std::vector<std::vector<uint8_t>>& allowed_ssids,
     Error* error) {
   if (trigs.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -328,7 +327,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
           return false;
         }
         int ssid_num = 0;
-        for (const ByteString& ssid_bytes : allowed_ssids) {
+        for (const auto& ssid_bytes : allowed_ssids) {
           if (!ssids->CreateNestedAttribute(
                   ssid_num, "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE")) {
             Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -359,8 +358,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
             return false;
           }
           if (!single_ssid->SetRawAttributeValue(
-                  NL80211_SCHED_SCAN_MATCH_ATTR_SSID,
-                  {ssid_bytes.GetConstData(), ssid_bytes.GetLength()})) {
+                  NL80211_SCHED_SCAN_MATCH_ATTR_SSID, ssid_bytes)) {
             Error::PopulateAndLog(
                 FROM_HERE, error, Error::kOperationFailed,
                 "Could not set NL80211_SCHED_SCAN_MATCH_ATTR_SSID");
@@ -395,7 +393,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
     const Nl80211Message& msg,
     const std::set<WakeOnWiFiTrigger>& trigs,
     uint32_t net_detect_scan_period_seconds,
-    const std::vector<ByteString>& allowed_ssids) {
+    const std::vector<std::vector<uint8_t>>& allowed_ssids) {
   if (msg.command() != NL80211_CMD_GET_WOWLAN &&
       msg.command() != NL80211_CMD_SET_WOWLAN) {
     LOG(ERROR) << __func__ << ": "
@@ -445,8 +443,8 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
         break;
       }
       case kWakeTriggerSSID: {
-        std::set<ByteString, decltype(&ByteString::IsLessThan)> expected_ssids(
-            allowed_ssids.begin(), allowed_ssids.end(), ByteString::IsLessThan);
+        std::set<std::vector<uint8_t>> expected_ssids(allowed_ssids.begin(),
+                                                      allowed_ssids.end());
         AttributeListConstRefPtr scan_attributes;
         if (!triggers->ConstGetNestedAttributeList(
                 NL80211_WOWLAN_TRIG_NET_DETECT, &scan_attributes)) {
@@ -497,7 +495,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
                           "NL80211_SCHED_SCAN_MATCH_ATTR_SSID";
             return false;
           }
-          if (!base::Contains(expected_ssids, ByteString(ssid))) {
+          if (!base::Contains(expected_ssids, ssid)) {
             ssid_mismatch_found = true;
             break;
           } else {
@@ -801,7 +799,7 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
 
 void WakeOnWiFi::OnBeforeSuspend(
     bool is_connected,
-    const std::vector<ByteString>& allowed_ssids,
+    const std::vector<std::vector<uint8_t>>& allowed_ssids,
     ResultCallback done_callback,
     base::OnceClosure renew_dhcp_lease_callback,
     base::OnceClosure remove_supplicant_networks_callback,
@@ -850,7 +848,7 @@ void WakeOnWiFi::OnAfterResume() {
 
 void WakeOnWiFi::OnDarkResume(
     bool is_connected,
-    const std::vector<ByteString>& allowed_ssids,
+    const std::vector<std::vector<uint8_t>>& allowed_ssids,
     ResultCallback done_callback,
     base::OnceClosure renew_dhcp_lease_callback,
     InitiateScanCallback initiate_scan_callback,
@@ -1110,7 +1108,7 @@ void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected,
 }
 
 void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
-    const std::vector<ByteString>& allowed_ssids,
+    const std::vector<std::vector<uint8_t>>& allowed_ssids,
     base::OnceClosure remove_supplicant_networks_callback,
     InitiateScanCallback initiate_scan_callback) {
   SLOG(2) << __func__ << ": "

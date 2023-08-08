@@ -14,7 +14,6 @@
 #include <optional>
 #include <set>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -34,7 +33,6 @@
 
 namespace shill {
 
-class ByteString;
 class Error;
 class EventDispatcher;
 class GetWakeOnWiFiMessage;
@@ -198,7 +196,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   //    due, if there is a DHCP lease to renew; std::nullopt otherwise.
   void OnBeforeSuspend(
       bool is_connected,
-      const std::vector<ByteString>& allowed_ssids,
+      const std::vector<std::vector<uint8_t>>& allowed_ssids,
       ResultCallback done_callback,
       base::OnceClosure renew_dhcp_lease_callback,
       base::OnceClosure remove_supplicant_networks_callback,
@@ -219,7 +217,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   //  - |remove_supplicant_networks_callback|: callback to invoke
   //    to remove all networks from WPA supplicant.
   void OnDarkResume(bool is_connected,
-                    const std::vector<ByteString>& allowed_ssids,
+                    const std::vector<std::vector<uint8_t>>& allowed_ssids,
                     ResultCallback done_callback,
                     base::OnceClosure renew_dhcp_lease_callback,
                     InitiateScanCallback initiate_scan_callback,
@@ -238,7 +236,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // for auto-connect after a scan. |initiate_scan_callback| is used for dark
   // resume scan retries.
   void OnNoAutoConnectableServicesAfterScan(
-      const std::vector<ByteString>& allowed_ssids,
+      const std::vector<std::vector<uint8_t>>& allowed_ssids,
       base::OnceClosure remove_supplicant_networks_callback,
       InitiateScanCallback initiate_scan_callback) override;
   // Called by WiFi when it is notified by the kernel that a scan has started.
@@ -333,7 +331,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
       const std::set<WakeOnWiFiTrigger>& trigs,
       uint32_t wiphy_index,
       uint32_t net_detect_scan_period_seconds,
-      const std::vector<ByteString>& allowed_ssids,
+      const std::vector<std::vector<uint8_t>>& allowed_ssids,
       Error* error);
   // Creates and sets attributes in an GetWakeOnWiFiMessage msg| so that
   // the message will request for wake-on-packet settings information from the
@@ -356,7 +354,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
       const Nl80211Message& msg,
       const std::set<WakeOnWiFiTrigger>& trigs,
       uint32_t net_detect_scan_period_seconds,
-      const std::vector<ByteString>& allowed_ssids);
+      const std::vector<std::vector<uint8_t>>& allowed_ssids);
   // Handler for NL80211 message error responses from NIC wake on WiFi setting
   // programming attempts.
   void OnWakeOnWiFiSettingsErrorResponse(
@@ -445,7 +443,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // Keeps track of SSIDs that this device will wake on the appearance of while
   // the device is suspended. Only used if the NIC is programmed to wake on
   // SSIDs.
-  std::vector<ByteString> wake_on_allowed_ssids_;
+  std::vector<std::vector<uint8_t>> wake_on_allowed_ssids_;
   uint32_t wiphy_index_;
   bool wiphy_index_received_;
   // Describes if wake on WiFi is allowed to be enabled.
