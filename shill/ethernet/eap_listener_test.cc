@@ -12,13 +12,14 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <gtest/gtest.h>
 
 #include "shill/ethernet/eap_protocol.h"
 #include "shill/mock_log.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_sockets.h"
 
@@ -94,7 +95,7 @@ class EapListenerTest : public testing::Test {
 
   // Tests can assign this in order to set the data isreturned in our
   // mock implementation of Sockets::RecvFrom().
-  ByteString recvfrom_reply_data_;
+  std::vector<uint8_t> recvfrom_reply_data_;
 };
 
 ssize_t EapListenerTest::SimulateRecvFrom(int sockfd,
@@ -104,8 +105,8 @@ ssize_t EapListenerTest::SimulateRecvFrom(int sockfd,
                                           struct sockaddr* src_addr,
                                           socklen_t* addrlen) {
   // Mimic behavior of the real recvfrom -- copy no more than requested.
-  int copy_length = std::min(recvfrom_reply_data_.GetLength(), len);
-  memcpy(buf, recvfrom_reply_data_.GetConstData(), copy_length);
+  int copy_length = std::min(recvfrom_reply_data_.size(), len);
+  memcpy(buf, recvfrom_reply_data_.data(), copy_length);
   return copy_length;
 }
 
@@ -217,8 +218,8 @@ TEST_F(EapListenerTest, ReceiveEmpty) {
 
 TEST_F(EapListenerTest, ReceiveShort) {
   StartListener();
-  recvfrom_reply_data_ =
-      ByteString(kEapPacketPayload, GetMaxEapPacketLength() - 1);
+  recvfrom_reply_data_ = {kEapPacketPayload,
+                          kEapPacketPayload + GetMaxEapPacketLength() - 1};
   EXPECT_CALL(*sockets_,
               RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
       .WillOnce(Invoke(this, &EapListenerTest::SimulateRecvFrom));
@@ -236,7 +237,7 @@ TEST_F(EapListenerTest, ReceiveInvalid) {
   // part of it is incorrect.
   uint8_t bad_payload[sizeof(kEapPacketPayload)] = {
       eap_protocol::kIeee8021xEapolVersion1 - 1};
-  recvfrom_reply_data_ = ByteString(bad_payload, sizeof(bad_payload));
+  recvfrom_reply_data_ = {std::begin(bad_payload), std::end(bad_payload)};
   EXPECT_CALL(*sockets_,
               RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
       .WillOnce(Invoke(this, &EapListenerTest::SimulateRecvFrom));
@@ -250,8 +251,8 @@ TEST_F(EapListenerTest, ReceiveInvalid) {
 
 TEST_F(EapListenerTest, ReceiveSuccess) {
   StartListener();
-  recvfrom_reply_data_ =
-      ByteString(kEapPacketPayload, sizeof(kEapPacketPayload));
+  recvfrom_reply_data_ = {std::begin(kEapPacketPayload),
+                          std::end(kEapPacketPayload)};
   EXPECT_CALL(*sockets_,
               RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
       .WillOnce(Invoke(this, &EapListenerTest::SimulateRecvFrom));
