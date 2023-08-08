@@ -11,7 +11,6 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -65,19 +64,13 @@ class DlpDatabase : public DlpDatabaseDelegate {
   ~DlpDatabase();
 
   // Initializes database connection. Must be called before any other queries.
-  // Returns to the |callback| a pair of result and if migration is pending.
-  // Result is |SQLITE_OK| if no error occurred.
-  void Init(base::OnceCallback<void(std::pair<int, bool>)> callback);
+  // Returns |SQLITE_OK| to the |callback| if no error occurred.
+  void Init(base::OnceCallback<void(int)> callback);
 
   // Upserts file_entry into database. Returns true to the |callback| if no
   // error occurred.
   void UpsertFileEntry(const FileEntry& file_entry,
                        base::OnceCallback<void(bool)> callback);
-
-  // Upserts file_entry into the legacy database. Returns true to the |callback|
-  // if no error occurred.
-  void UpsertLegacyFileEntryForTesting(const FileEntry& file_entry,
-                                       base::OnceCallback<void(bool)> callback);
 
   // Upserts file_entries into database. Returns true to the |callback| if no
   // error occurred.
@@ -99,11 +92,6 @@ class DlpDatabase : public DlpDatabaseDelegate {
   // occurred.
   void DeleteFileEntriesWithIdsNotInSet(
       std::set<FileId> ids_to_keep, base::OnceCallback<void(bool)> callback);
-
-  // Migrates all entries from the old database to the new one, adding crtime
-  // base on |existing_files| info.
-  void MigrateDatabase(const std::vector<FileId>& existing_files,
-                       base::OnceCallback<void(bool)> callback);
 
  private:
   // DlpDatabaseDelegate overrides:

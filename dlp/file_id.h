@@ -11,7 +11,7 @@ namespace dlp {
 
 // Files are identified in the daemon by a pair of inode number and crtime
 // (creation time).
-typedef std::pair<ino64_t, int64_t> FileId;
+typedef std::pair<ino64_t, time_t> FileId;
 
 FileId GetFileId(const std::string& path);
 

@@ -61,10 +61,6 @@ class DlpAdaptorTestHelper {
 
   std::vector<int> GetMetrics(const std::string& metrics_name) const;
 
-  void AddFileToLegacyDb(FileId id,
-                         const std::string& source_url,
-                         const std::string& referrer_url);
-
  private:
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;

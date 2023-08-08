@@ -506,26 +506,11 @@ void DlpAdaptor::InitDatabase(const base::FilePath& database_path,
 void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
                                        std::unique_ptr<DlpDatabase> db,
                                        const base::FilePath& database_path,
-                                       std::pair<int, bool> db_status) {
-  if (db_status.first != SQLITE_OK) {
+                                       int db_status) {
+  if (db_status != SQLITE_OK) {
     LOG(ERROR) << "Cannot connect to database " << database_path;
     dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseConnectionError);
     std::move(init_callback).Run();
-    return;
-  }
-
-  dlp_metrics_->SendBooleanHistogram(kDlpDatabaseMigrationNeededHistogram,
-                                     db_status.second);
-
-  // Migration is needed.
-  if (db_status.second) {
-    LOG(INFO) << "Migrating from legacy table";
-    base::SingleThreadTaskRunner::GetCurrentDefault()
-        ->PostTaskAndReplyWithResult(
-            FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
-            base::BindOnce(&DlpAdaptor::MigrateDatabase, base::Unretained(this),
-                           std::move(db), std::move(init_callback),
-                           database_path));
     return;
   }
 
@@ -563,7 +548,7 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
 void DlpAdaptor::OnPendingFilesUpserted(base::OnceClosure init_callback,
                                         std::unique_ptr<DlpDatabase> db,
                                         const base::FilePath& database_path,
-                                        std::pair<int, bool> db_status,
+                                        int db_status,
                                         bool success) {
   if (!success) {
     LOG(ERROR) << "Error while adding pending files.";
@@ -1048,39 +1033,6 @@ void DlpAdaptor::OnDatabaseCleaned(std::unique_ptr<DlpDatabase> db,
     }
     std::move(callback).Run();
   }
-}
-
-void DlpAdaptor::MigrateDatabase(
-    std::unique_ptr<DlpDatabase> db,
-    base::OnceClosure callback,
-    const base::FilePath& database_path,
-    const std::set<std::pair<base::FilePath, FileId>>& files) {
-  DCHECK(db);
-  DlpDatabase* db_ptr = db.get();
-
-  std::vector<FileId> ids;
-  for (const auto& entry : files) {
-    ids.push_back(entry.second);
-  }
-
-  db_ptr->MigrateDatabase(
-      ids,
-      base::BindOnce(&DlpAdaptor::OnDatabaseMigrated, base::Unretained(this),
-                     std::move(db), std::move(callback), database_path));
-}
-
-void DlpAdaptor::OnDatabaseMigrated(std::unique_ptr<DlpDatabase> db,
-                                    base::OnceClosure init_callback,
-                                    const base::FilePath& database_path,
-                                    bool success) {
-  if (!success) {
-    LOG(ERROR) << "Error while migrating database.";
-    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseMigrationError);
-  } else {
-    LOG(INFO) << "Database was succesfully migrated.";
-  }
-  OnDatabaseInitialized(std::move(init_callback), std::move(db), database_path,
-                        {SQLITE_OK, false});
 }
 
 }  // namespace dlp

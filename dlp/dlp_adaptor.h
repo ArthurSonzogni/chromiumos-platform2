@@ -91,13 +91,13 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void OnDatabaseInitialized(base::OnceClosure init_callback,
                              std::unique_ptr<DlpDatabase> db,
                              const base::FilePath& database_path,
-                             std::pair<int, bool> db_status);
+                             int db_status);
 
   // Callback on UpsertFileEntries during OnDatabaseInitialized.
   void OnPendingFilesUpserted(base::OnceClosure init_callback,
                               std::unique_ptr<DlpDatabase> db,
                               const base::FilePath& database_path,
-                              std::pair<int, bool> db_status,
+                              int db_status,
                               bool success);
 
   // Initializes |fanotify_watcher_| if not yet started.
@@ -224,20 +224,6 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void OnDatabaseCleaned(std::unique_ptr<DlpDatabase> db,
                          base::OnceClosure callback,
                          bool success);
-
-  // Runs migration of the database from old entries without crtime to the new
-  // database with crtime. The crtime data is populated based on |files| data.
-  void MigrateDatabase(
-      std::unique_ptr<DlpDatabase> db,
-      base::OnceClosure callback,
-      const base::FilePath& database_path,
-      const std::set<std::pair<base::FilePath, FileId>>& files);
-
-  // Callback on MigratedDatabase called from the database after migration.
-  void OnDatabaseMigrated(std::unique_ptr<DlpDatabase> db,
-                          base::OnceClosure init_callback,
-                          const base::FilePath& database_path,
-                          bool success);
 
   // If true, DlpAdaptor won't try to initialise `fanotify_watcher_`.
   bool is_fanotify_watcher_started_for_testing_ = false;
