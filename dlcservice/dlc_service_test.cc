@@ -706,8 +706,8 @@ class DlcServiceTestLegacy : public BaseTest {
         .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
     EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
     EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-                SetDlcActiveValue(true, id, _, _))
-        .WillOnce(Return(true));
+                SetDlcActiveValueAsync(true, id, _, _, _))
+        .Times(1);
     EXPECT_CALL(*mock_metrics_,
                 SendInstallResult(InstallResult::kSuccessNewInstall));
 
@@ -815,8 +815,8 @@ TEST_F(DlcServiceTestLegacy, UninstallTestForUserDlc) {
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   // Uninstall should set the DLC inactive.
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(false, kFirstDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(false, kFirstDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
   EXPECT_CALL(*mock_metrics_, SendUninstallResult(UninstallResult::kSuccess));
 
@@ -835,8 +835,8 @@ TEST_F(DlcServiceTestLegacy, UninstallTestForUserDlc) {
 
 TEST_F(DlcServiceTestLegacy, UninstallNotInstalledIsValid) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(false, kSecondDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(false, kSecondDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
@@ -853,8 +853,8 @@ TEST_F(DlcServiceTestLegacy, UninstallFailToSetDlcActiveValueFalse) {
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(false, kFirstDlc, _, _))
-      .WillOnce(Return(false));
+              SetDlcActiveValueAsync(false, kFirstDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
   EXPECT_CALL(*mock_metrics_, SendUninstallResult(UninstallResult::kSuccess));
 
@@ -886,8 +886,8 @@ TEST_F(DlcServiceTestLegacy, UninstallImageLoaderFailureTest) {
 
   // |ImageLoader| not available.
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(false, kFirstDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(false, kFirstDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
@@ -942,8 +942,8 @@ TEST_F(DlcServiceTestLegacy, UninstallInstallingButInstalledFails) {
   // |kFirstDlc| was installed, so there should be no problem uninstalling it
   // |even if |kSecondDlc| is installing.
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(false, kFirstDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(false, kFirstDlc, _, _, _))
+      .Times(1);
   EXPECT_TRUE(dlc_service_->Uninstall(kFirstDlc, &err_));
   EXPECT_TRUE(err_.get() == nullptr);
   CheckDlcState(kFirstDlc, DlcState::NOT_INSTALLED);
@@ -981,8 +981,8 @@ TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledValid) {
 
   SetMountPath(mount_path_.value());
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(true, kFirstDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(true, kFirstDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_,
               LoadDlcImage(kFirstDlc, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
@@ -1010,8 +1010,8 @@ TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledWhileAnotherInstalling) {
   // ongoing.
   SetMountPath(mount_path_.value());
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(true, kFirstDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(true, kFirstDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_,
               LoadDlcImage(kFirstDlc, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
@@ -1028,8 +1028,8 @@ TEST_F(DlcServiceTestLegacy, InstallCannotSetDlcActiveValue) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(true, kSecondDlc, _, _))
-      .WillOnce(Return(false));
+              SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_,
               LoadDlcImage(kSecondDlc, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
@@ -1169,8 +1169,8 @@ TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledThatGotUnmountedTest) {
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(true, kFirstDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(true, kFirstDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
@@ -1200,8 +1200,8 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDlcRootTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(true, kSecondDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -1238,8 +1238,8 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalNoRemountTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(true, kSecondDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -1263,8 +1263,8 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(true, kSecondDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -1441,8 +1441,8 @@ TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDownloadProgressTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
-              SetDlcActiveValue(true, kSecondDlc, _, _))
-      .WillOnce(Return(true));
+              SetDlcActiveValueAsync(true, kSecondDlc, _, _, _))
+      .Times(1);
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));

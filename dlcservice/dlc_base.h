@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/errors/error.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
@@ -31,7 +32,7 @@ namespace dlcservice {
 // implementation truly common methods.
 class DlcBase : public DlcInterface {
  public:
-  explicit DlcBase(DlcId id) : id_(std::move(id)) {}
+  explicit DlcBase(DlcId id) : id_(std::move(id)), weak_ptr_factory_{this} {}
   virtual ~DlcBase() = default;
 
   DlcBase(const DlcBase&) = delete;
@@ -140,6 +141,8 @@ class DlcBase : public DlcInterface {
 
   // Sets the DLC as being active or not based on |active| value.
   void SetActiveValue(bool active);
+  void OnSetActiveValueSuccess();
+  void OnSetActiveValueError(brillo::Error* err);
 
   DlcId id_;
   std::string package_;
@@ -164,6 +167,8 @@ class DlcBase : public DlcInterface {
   base::FilePath prefs_package_path_;
   base::FilePath preloaded_image_path_;
   base::FilePath factory_install_image_path_;
+
+  base::WeakPtrFactory<DlcBase> weak_ptr_factory_;
 };
 
 }  // namespace dlcservice

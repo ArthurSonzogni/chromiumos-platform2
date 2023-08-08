@@ -811,13 +811,24 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
 }
 
 void DlcBase::SetActiveValue(bool active) {
-  ErrorPtr tmp_err;
-  if (!SystemState::Get()->update_engine()->SetDlcActiveValue(active, id_,
-                                                              &tmp_err))
-    LOG(WARNING) << "Failed to set DLC=" << id_ << (active ? " " : " in")
-                 << "active."
-                 << (tmp_err ? Error::ToString(tmp_err)
-                             : "Missing error from update engine proxy.");
+  LOG(INFO) << "Setting active value for DLC=" << id_ << " to "
+            << (active ? "true" : "false");
+  SystemState::Get()->update_engine()->SetDlcActiveValueAsync(
+      active, id_,
+      base::BindOnce(&DlcBase::OnSetActiveValueSuccess,
+                     weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&DlcBase::OnSetActiveValueError,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void DlcBase::OnSetActiveValueSuccess() {
+  LOG(INFO) << "Successfully set active value for DLC=" << id_;
+}
+
+void DlcBase::OnSetActiveValueError(brillo::Error* err) {
+  if (err)
+    LOG(ERROR) << "Failed to set active value for DLC=" << id_
+               << ", err=" << Error::ToString(err->Clone());
 }
 
 void DlcBase::ChangeState(DlcState::State state) {
