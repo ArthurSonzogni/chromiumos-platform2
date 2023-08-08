@@ -37,7 +37,7 @@ namespace {
 
 const char kAddress[] = "10.0.0.1";
 const char kGateway[] = "10.0.0.192";
-const int32_t kMtu = 512;
+const int32_t kMtu = 600;  // Larger than IPv4 min MTU (576).
 
 const char kNameServer0[] = "10.0.1.253";
 const char kNameServer1[] = "10.0.1.252";
