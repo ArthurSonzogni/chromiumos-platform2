@@ -11,6 +11,10 @@
     <description summary="Extension support for using text_input with X11 apps">
       Adds functionality for X11 apps running on Xwayland to connect to the
       Wayland compositor and receive text_input support.
+
+      TODO(b/295265862): Remove this protocol and its implementation some time
+      after M122. It has been replaced by zcr_text_input_crostini_v1 since M118,
+      but users can sometimes end up on older version of cros_im.
     </description>
 
     <request name="activate">

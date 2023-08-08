@@ -16,6 +16,7 @@ using cros_im::test::Request;
 const wl_interface zwp_text_input_manager_v1_interface = {};
 const wl_interface zcr_text_input_extension_v1_interface = {};
 const wl_interface zcr_text_input_x11_v1_interface = {};
+const wl_interface zcr_text_input_crostini_manager_v1_interface = {};
 
 namespace {
 
@@ -29,6 +30,13 @@ GetExtendedTextInputs() {
   static std::vector<std::unique_ptr<zcr_extended_text_input_v1>>
       extended_text_inputs;
   return extended_text_inputs;
+}
+
+std::vector<std::unique_ptr<zcr_text_input_crostini_v1>>&
+GetTextInputCrostinis() {
+  static std::vector<std::unique_ptr<zcr_text_input_crostini_v1>>
+      text_input_crostinis;
+  return text_input_crostinis;
 }
 
 void HandleRequest(const Request& request) {
@@ -154,6 +162,30 @@ void zcr_text_input_x11_v1_activate(zcr_text_input_x11_v1* text_input_x11,
                                     wl_seat*,
                                     uint32_t x11_id) {
   HandleRequest(text_input, Request::kActivate);
+}
+
+void zcr_text_input_crostini_v1_destroy(
+    zcr_text_input_crostini_v1* text_input_crostini) {
+  // Not tested yet.
+}
+
+void zcr_text_input_crostini_v1_activate_x11(
+    zcr_text_input_crostini_v1* text_input_crostini,
+    wl_seat*,
+    uint32_t x11_id) {
+  // Not tested yet.
+}
+
+zcr_text_input_crostini_v1*
+zcr_text_input_crostini_manager_v1_get_text_input_crostini(
+    zcr_text_input_crostini_manager_v1* text_input_crostini_manager,
+    zwp_text_input_v1* text_input) {
+  auto& text_input_crostinis = GetTextInputCrostinis();
+  int id = text_input_crostinis.size();
+  // text_input creation is always paired with text_input_crostini creation.
+  EXPECT_TRUE(text_input && text_input->id == id);
+  text_input_crostinis.emplace_back(new zcr_text_input_crostini_v1({id}));
+  return text_input_crostinis.back().get();
 }
 
 namespace cros_im {

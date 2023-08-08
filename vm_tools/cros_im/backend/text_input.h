@@ -8,6 +8,7 @@
 #ifdef TEST_BACKEND
 #include "backend/test/mock_text_input.h"
 #else
+#include "text-input-crostini-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-extension-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-x11-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)

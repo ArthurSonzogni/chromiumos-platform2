@@ -174,6 +174,31 @@ void zcr_text_input_x11_v1_activate(zcr_text_input_x11_v1*,
                                     wl_seat*,
                                     uint32_t x11_id);
 
+// Mocks for zcr_text_input_crostini_v1
+
+struct zcr_text_input_crostini_v1 {
+  // The n'th (0-indexed) mock object created has an id of n.
+  int id;
+};
+
+extern const wl_interface zcr_text_input_crostini_v1_interface;
+
+void zcr_text_input_crostini_v1_destroy(zcr_text_input_crostini_v1*);
+
+void zcr_text_input_crostini_v1_activate_x11(zcr_text_input_crostini_v1*,
+                                             wl_seat*,
+                                             uint32_t x11_id);
+
+// Mocks for zcr_text_input_crostini_manager_v1
+
+struct zcr_text_input_crostini_manager_v1;
+extern const wl_interface zcr_text_input_crostini_manager_v1_interface;
+
+zcr_text_input_crostini_v1*
+zcr_text_input_crostini_manager_v1_get_text_input_crostini(
+    zcr_text_input_crostini_manager_v1* text_input_crostini_manager,
+    zwp_text_input_v1* text_input);
+
 namespace cros_im {
 namespace test {
 

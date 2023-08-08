@@ -82,6 +82,8 @@ IMContextBackend::~IMContextBackend() {
     Deactivate();
   }
 
+  if (text_input_crostini_)
+    zcr_text_input_crostini_v1_destroy(text_input_crostini_);
   if (extended_text_input_)
     zcr_extended_text_input_v1_destroy(extended_text_input_);
   if (text_input_)
@@ -111,9 +113,14 @@ void IMContextBackend::ActivateX11(uint32_t x11_id) {
 
   is_active_ = true;
   auto* wayland_manager = WaylandManager::Get();
-  zcr_text_input_x11_v1_activate(wayland_manager->GetTextInputX11(),
-                                 text_input_, wayland_manager->GetSeat(),
-                                 x11_id);
+  if (text_input_crostini_) {
+    zcr_text_input_crostini_v1_activate_x11(text_input_crostini_,
+                                            wayland_manager->GetSeat(), x11_id);
+  } else {
+    zcr_text_input_x11_v1_activate(wayland_manager->GetTextInputX11(),
+                                   text_input_, wayland_manager->GetSeat(),
+                                   x11_id);
+  }
 }
 
 void IMContextBackend::Deactivate() {
@@ -185,6 +192,9 @@ bool IMContextBackend::EnsureInitialized() {
     extended_text_input_ = WaylandManager::Get()->CreateExtendedTextInput(
         text_input_, &extended_text_input_listener_, this);
     assert(extended_text_input_);
+    // May be null in M118. We can assert it is non-null from M119.
+    text_input_crostini_ =
+        WaylandManager::Get()->CreateTextInputCrostini(text_input_);
     return true;
   }
   return false;

@@ -17,6 +17,7 @@ struct zwp_text_input_v1;
 struct zwp_text_input_v1_listener;
 struct zcr_extended_text_input_v1;
 struct zcr_extended_text_input_v1_listener;
+struct zcr_text_input_crostini_v1;
 
 namespace cros_im {
 
@@ -102,6 +103,7 @@ class IMContextBackend {
   static const zcr_extended_text_input_v1_listener
       extended_text_input_listener_;
   zcr_extended_text_input_v1* extended_text_input_ = nullptr;
+  zcr_text_input_crostini_v1* text_input_crostini_ = nullptr;
 
   // Set/cleared when we call `activate`/`deactivate`. We currently ignore the
   // `enter` event so this may be true even if activation fails.

@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "text-input-crostini-unstable-v1-server-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-extension-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-extension-unstable-v1-server-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
@@ -22,6 +23,7 @@ namespace {
 // Versions supported by sommelier.
 constexpr uint32_t kTextInputManagerVersion = 1;
 constexpr uint32_t kTextInputExtensionVersion = 11;
+constexpr uint32_t kTextInputCrostiniManagerVersion = 1;
 constexpr uint32_t kTextInputX11Version = 1;
 
 }  // namespace
@@ -36,6 +38,8 @@ struct sl_host_text_input {
   struct sl_context* ctx;
   struct wl_resource* resource;
   struct zwp_text_input_v1* proxy;
+
+  struct wl_resource* text_input_crostini_resource;
 
   WeakResourcePtr<sl_host_surface> active_surface;
 };
@@ -54,6 +58,9 @@ struct sl_host_extended_text_input {
   struct zcr_extended_text_input_v1* proxy;
 };
 MAP_STRUCTS(zcr_extended_text_input_v1, sl_host_extended_text_input);
+
+////////////////////////////////////////////////////////////////////////////////
+// zwp_text_input_v1 implementation
 
 static void sl_text_input_activate(wl_client* client,
                                    wl_resource* resource,
@@ -127,7 +134,7 @@ static void sl_text_input_enter(void* data,
   // This is not currently used by cros_im. We can't simply forward the event
   // as for an x11-hosted cros_im instance the text_input and wl_surface
   // objects will be on different clients. We could add a corresponding event
-  // to text_input_x11 if needed.
+  // to zcr_text_input_crostini if needed.
 }
 
 static void sl_text_input_leave(void* data,
@@ -270,6 +277,9 @@ static void sl_destroy_host_text_input(struct wl_resource* resource) {
   delete host;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// zwp_text_input_manager_v1 implementation
+
 static void sl_text_input_manager_create_text_input(
     struct wl_client* client, struct wl_resource* resource, uint32_t id) {
   struct sl_host_text_input_manager* host =
@@ -332,6 +342,9 @@ struct sl_global* sl_text_input_manager_global_create(struct sl_context* ctx,
                           std::min(exo_version, kTextInputManagerVersion), ctx,
                           sl_bind_host_text_input_manager);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// zcr_extended_text_input_v1 implementation
 
 static void sl_extended_text_input_destroy(struct wl_client* client,
                                            struct wl_resource* resource) {
@@ -454,6 +467,9 @@ static void sl_destroy_host_extended_text_input(struct wl_resource* resource) {
   delete host;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// zcr_text_input_extension_v1 implementation
+
 static void sl_text_input_extension_get_extended_text_input(
     struct wl_client* client,
     struct wl_resource* resource,
@@ -527,13 +543,23 @@ struct sl_global* sl_text_input_extension_global_create(struct sl_context* ctx,
                           ctx, sl_bind_host_text_input_extension);
 }
 
-static void sl_text_input_x11_activate(wl_client* client,
-                                       wl_resource* resource,
-                                       wl_resource* text_input,
-                                       wl_resource* seat,
-                                       uint32_t x11_window_id) {
+////////////////////////////////////////////////////////////////////////////////
+// zcr_text_input_crostini implementation
+
+static void sl_text_input_crostini_destroy(struct wl_client* client,
+                                           struct wl_resource* resource) {
+  wl_resource_destroy(resource);
+}
+
+// Used by both text_input_crostini and (deprecated) text_input_x11.
+// |resource| is a zcr_text_input_crostini in the former and a zwp_text_input
+// in the latter, in either case the user data is the sl_host_text_input.
+static void sl_text_input_crostini_activate_x11(wl_client* client,
+                                                wl_resource* resource,
+                                                wl_resource* seat,
+                                                uint32_t x11_window_id) {
   struct sl_host_text_input* host_text_input =
-      static_cast<sl_host_text_input*>(wl_resource_get_user_data(text_input));
+      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
   struct sl_host_seat* host_seat =
       static_cast<sl_host_seat*>(wl_resource_get_user_data(seat));
   assert(host_text_input);
@@ -558,6 +584,88 @@ static void sl_text_input_x11_activate(wl_client* client,
                                host_surface->proxy);
     return;
   }
+}
+
+static const struct zcr_text_input_crostini_v1_interface
+    sl_text_input_crostini_implementation = {
+        sl_text_input_crostini_destroy,
+        sl_text_input_crostini_activate_x11,
+};
+
+static void sl_destroy_host_text_input_crostini(struct wl_resource* resource) {
+  struct sl_host_text_input* host =
+      static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
+
+  host->text_input_crostini_resource = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// zcr_text_input_crostini_manager implementation
+
+static void sl_text_input_crostini_manager_get_text_input_crostini(
+    struct wl_client* client,
+    struct wl_resource* resource,
+    uint32_t id,
+    struct wl_resource* text_input) {
+  struct sl_host_text_input* host_text_input =
+      static_cast<sl_host_text_input*>(wl_resource_get_user_data(text_input));
+
+  if (host_text_input->text_input_crostini_resource) {
+    wl_resource_post_error(
+        resource,
+        ZCR_TEXT_INPUT_CROSTINI_MANAGER_V1_ERROR_TEXT_INPUT_CROSTINI_EXISTS,
+        "text_input has already been associated with a text_input_crostini "
+        "object");
+    return;
+  }
+
+  wl_resource* text_input_crostini_resource =
+      wl_resource_create(client, &zcr_text_input_crostini_v1_interface,
+                         wl_resource_get_version(resource), id);
+  host_text_input->text_input_crostini_resource = text_input_crostini_resource;
+
+  wl_resource_set_implementation(
+      text_input_crostini_resource, &sl_text_input_crostini_implementation,
+      host_text_input, sl_destroy_host_text_input_crostini);
+}  // NOLINT(whitespace/indent)
+
+static struct zcr_text_input_crostini_manager_v1_interface
+    sl_text_input_crostini_manager_implementation = {
+        sl_text_input_crostini_manager_get_text_input_crostini,
+};
+
+static void sl_bind_host_text_input_crostini_manager(struct wl_client* client,
+                                                     void* data,
+                                                     uint32_t app_version,
+                                                     uint32_t id) {
+  // This exists only between sommelier and its clients and there is no proxy
+  // to the host. We don't use a sl_host_text_input_crostini_manager type as it
+  // is not needed.
+  wl_resource* resource = wl_resource_create(
+      client, &zcr_text_input_crostini_manager_v1_interface, app_version, id);
+  wl_resource_set_implementation(resource,
+                                 &sl_text_input_crostini_manager_implementation,
+                                 nullptr, nullptr);
+}
+
+struct sl_global* sl_text_input_crostini_manager_global_create(
+    struct sl_context* ctx) {
+  return sl_global_create(ctx, &zcr_text_input_crostini_manager_v1_interface,
+                          kTextInputCrostiniManagerVersion, ctx,
+                          sl_bind_host_text_input_crostini_manager);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// zcr_text_input_x11_v1 implementation
+// TODO(b/295265862): Deprecated, remove some time after M122.
+
+static void sl_text_input_x11_activate(wl_client* client,
+                                       wl_resource* resource,
+                                       wl_resource* text_input,
+                                       wl_resource* seat,
+                                       uint32_t x11_window_id) {
+  return sl_text_input_crostini_activate_x11(client, text_input, seat,
+                                             x11_window_id);
 }
 
 static const struct zcr_text_input_x11_v1_interface

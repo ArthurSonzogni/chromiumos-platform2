@@ -492,6 +492,7 @@ bool sl_client_supports_interface(const sl_context* ctx,
   return strcmp(name, "wl_seat") == 0 ||
          strcmp(name, "zwp_text_input_manager_v1") == 0 ||
          strcmp(name, "zcr_text_input_extension_v1") == 0 ||
+         strcmp(name, "zcr_text_input_crostini_manager_v1") == 0 ||
          strcmp(name, "zcr_text_input_x11_v1") == 0;
 }
 
@@ -709,6 +710,8 @@ void sl_registry_handler(void* data,
     text_input_manager->id = id;
     text_input_manager->host_global =
         sl_text_input_manager_global_create(ctx, version);
+    text_input_manager->host_crostini_manager_global =
+        sl_text_input_crostini_manager_global_create(ctx);
     text_input_manager->host_x11_global = sl_text_input_x11_global_create(ctx);
     assert(!ctx->text_input_manager);
     ctx->text_input_manager = text_input_manager;

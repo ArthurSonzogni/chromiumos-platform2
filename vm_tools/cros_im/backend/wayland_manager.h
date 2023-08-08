@@ -10,13 +10,15 @@
 struct wl_display;
 struct wl_registry;
 struct wl_seat;
-struct zwp_text_input_v1;
-struct zwp_text_input_v1_listener;
-struct zwp_text_input_manager_v1;
 struct zcr_extended_text_input_v1;
 struct zcr_extended_text_input_v1_listener;
+struct zcr_text_input_crostini_manager_v1;
+struct zcr_text_input_crostini_v1;
 struct zcr_text_input_extension_v1;
 struct zcr_text_input_x11_v1;
+struct zwp_text_input_manager_v1;
+struct zwp_text_input_v1;
+struct zwp_text_input_v1_listener;
 
 namespace cros_im {
 
@@ -25,14 +27,16 @@ namespace cros_im {
 // new one (for X11 app support).
 class WaylandManager {
  public:
-  // Created zcr_extended_text_input_v1 objects have a version in the range
-  // [min, max] (inclusive). On creation, the caller should provide a listener
-  // that supports the max version, and check GetTextInputExtensionVersion()
-  // before making requests from above the min version.
-  // The min version should be at most the version supported by Exo/sommelier
-  // at the time of the last branch, and it is safe to have this lag behind.
+  // Created zcr_extended_text_input_v1 and zcr_text_input_crostini_v1 objects
+  // have a version in the range [min, max] (inclusive). On creation, the
+  // caller should provide a listener that supports the max version, and check
+  // the actual version before making requests from above the min version. The
+  // min version should be at most the version supported by Exo/sommelier at
+  // the time of the last branch, and it is safe to have this lag behind.
   static const int kTextInputExtensionMinVersion = 4;
   static const int kTextInputExtensionMaxVersion = 9;
+  static const int kTextInputCrostiniMinVersion = 1;
+  static const int kTextInputCrostiniMaxVersion = 1;
 
   static void CreateInstance(wl_display* display);
   // Returns whether we were successfully able to make a connection.
@@ -59,11 +63,14 @@ class WaylandManager {
       zwp_text_input_v1* text_input,
       const zcr_extended_text_input_v1_listener* listener,
       void* listener_data);
+  zcr_text_input_crostini_v1* CreateTextInputCrostini(
+      zwp_text_input_v1* text_input);
 
   // Once initialized, these are not expected to change.
   wl_seat* GetSeat() { return wl_seat_; }
   zcr_text_input_x11_v1* GetTextInputX11() { return text_input_x11_; }
   int GetTextInputExtensionVersion() { return text_input_extension_version_; }
+  int GetTextInputCrostiniVersion() { return text_input_crostini_version_; }
 
   // Callbacks for wayland global events.
   void OnGlobal(wl_registry* registry,
@@ -94,11 +101,15 @@ class WaylandManager {
   // Creates extended_text_input objects
   zcr_text_input_extension_v1* text_input_extension_ = nullptr;
   uint32_t text_input_extension_id_ = 0;
-  // For X11 app support
+  // For support provided by sommelier.
+  zcr_text_input_crostini_manager_v1* text_input_crostini_manager_ = nullptr;
+  uint32_t text_input_crostini_manager_id_ = 0;
+  // TODO(timloh): Replaced by text_input_crostini, remove after M118 branches
   zcr_text_input_x11_v1* text_input_x11_ = nullptr;
   uint32_t text_input_x11_id_ = 0;
 
   int text_input_extension_version_ = 0;
+  int text_input_crostini_version_ = 0;
 };
 
 }  // namespace cros_im

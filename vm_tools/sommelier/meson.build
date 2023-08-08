@@ -48,6 +48,7 @@ wl_protocols = [
     'protocol/relative-pointer-unstable-v1.xml',
     'protocol/stylus-unstable-v2.xml',
     'protocol/tablet-unstable-v2.xml',
+    'protocol/text-input-crostini-unstable-v1.xml',
     'protocol/text-input-unstable-v1.xml',
     'protocol/text-input-extension-unstable-v1.xml',
     'protocol/text-input-x11-unstable-v1.xml',
