@@ -565,6 +565,7 @@ has_arc(`
 /mnt/stateful_partition/unencrypted/preserve                   u:object_r:cros_stateful_partition_unencrypted_preserve:s0
 /mnt/stateful_partition/unencrypted/preserve/rollback_data     u:object_r:cros_var_lib_oobe_config_save:s0
 /mnt/stateful_partition/unencrypted/preserve/rollback_data_tpm u:object_r:cros_var_lib_oobe_config_save:s0
+/mnt/stateful_partition/unencrypted/preserve/enterprise-rollback-metrics-data u:object_r:cros_stateful_partition_unencrypted_rollback_metrics:s0
 /mnt/stateful_partition/unencrypted/profraws(/.*)?             u:object_r:cros_stateful_partition_unencrypted_profraws:s0
 /mnt/stateful_partition/unencrypted/rma-data(/.*)?             u:object_r:cros_stateful_partition_unencrypted_rma:s0
 /mnt/stateful_partition/unencrypted/tpm_manager(/.*)?          u:object_r:cros_stateful_partition_unencrypted_tpm_manager:s0

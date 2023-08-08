@@ -649,6 +649,7 @@ type cros_stateful_partition_unencrypted_cache, file_type, cros_file_type, cros_
 type cros_stateful_partition_unencrypted_preserve, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_profraws, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_rma, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_stateful_partition_unencrypted_rollback_metrics, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_tpm_manager, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_userspace_swap, file_type, cros_file_type, cros_uncategorized_file_type;
 
