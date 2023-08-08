@@ -140,7 +140,7 @@ void ThirdPartyVpnDriver::UpdateConnectionState(
     return;
   }
   if (event_handler_ && connection_state == Service::kStateFailure) {
-    FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+    FailService(Service::kFailureConnect, "Failure state set by D-Bus caller");
     return;
   }
   if (!event_handler_ || connection_state != Service::kStateOnline) {
