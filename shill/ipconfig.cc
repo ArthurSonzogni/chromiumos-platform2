@@ -5,7 +5,7 @@
 #include "shill/ipconfig.h"
 
 #include <algorithm>
-#include <limits>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,7 +15,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
@@ -51,79 +53,142 @@ bool IPConfig::Properties::HasIPAddressAndDNS() const {
   return !address.empty() && !dns_servers.empty();
 }
 
-NetworkConfig IPConfig::Properties::ToNetworkConfig() const {
+// static
+NetworkConfig IPConfig::Properties::ToNetworkConfig(
+    const IPConfig::Properties* ipv4_prop,
+    const IPConfig::Properties* ipv6_prop) {
   NetworkConfig ret;
+  if (ipv4_prop && ipv4_prop->address_family != net_base::IPFamily::kIPv4) {
+    LOG(ERROR) << "Expecting IPv4 config, seeing "
+               << (ipv4_prop->address_family
+                       ? net_base::ToString(*ipv4_prop->address_family)
+                       : "none");
+  }
+  if (ipv6_prop && ipv6_prop->address_family != net_base::IPFamily::kIPv6) {
+    LOG(ERROR) << "Expecting IPv6 config, seeing "
+               << (ipv6_prop->address_family
+                       ? net_base::ToString(*ipv6_prop->address_family)
+                       : "none");
+  }
 
-  if (mtu != IPConfig::kUndefinedMTU) {
+  // IPv4 address/gateway configurations from ipv4_prop.
+  if (ipv4_prop) {
+    ret.ipv4_address = net_base::IPv4CIDR::CreateFromStringAndPrefix(
+        ipv4_prop->address, ipv4_prop->subnet_prefix);
+    if (!ret.ipv4_address && !ipv4_prop->address.empty()) {
+      LOG(WARNING) << "Ignoring invalid IP address \"" << ipv4_prop->address
+                   << "/" << ipv4_prop->subnet_prefix << "\"";
+    }
+    ret.ipv4_gateway =
+        net_base::IPv4Address::CreateFromString(ipv4_prop->gateway);
+    if (!ret.ipv4_gateway && !ipv4_prop->gateway.empty()) {
+      LOG(WARNING) << "Ignoring invalid gateway address \""
+                   << ipv4_prop->gateway << "\"";
+    }
+    ret.ipv4_broadcast =
+        net_base::IPv4Address::CreateFromString(ipv4_prop->broadcast_address);
+    if (!ret.ipv4_broadcast && !ipv4_prop->broadcast_address.empty()) {
+      LOG(WARNING) << "Ignoring invalid broadcast address \""
+                   << ipv4_prop->broadcast_address << "\"";
+    }
+    ret.ipv4_default_route = ipv4_prop->default_route;
+  }
+
+  // IPv6 address/gateway configurations from ipv6_prop.
+  if (ipv6_prop) {
+    ret.ipv6_addresses = {};
+    auto parsed_ipv6_address = net_base::IPv6CIDR::CreateFromStringAndPrefix(
+        ipv6_prop->address, ipv6_prop->subnet_prefix);
+    if (parsed_ipv6_address) {
+      ret.ipv6_addresses.push_back(parsed_ipv6_address.value());
+    } else if (!ipv6_prop->address.empty()) {
+      LOG(WARNING) << "Ignoring invalid IP address \"" << ipv6_prop->address
+                   << "/" << ipv6_prop->subnet_prefix << "\"";
+    }
+    ret.ipv6_gateway =
+        net_base::IPv6Address::CreateFromString(ipv6_prop->gateway);
+    if (!ret.ipv6_gateway && !ipv6_prop->gateway.empty()) {
+      LOG(WARNING) << "Ignoring invalid gateway address \""
+                   << ipv6_prop->gateway << "\"";
+    }
+  }
+
+  // Merge included routes and excluded route from ipv4_prop and ipv6_prop.
+  std::vector<const IPConfig::Properties*> non_empty_props;
+  if (ipv4_prop) {
+    non_empty_props.push_back(ipv4_prop);
+  }
+  if (ipv6_prop) {
+    non_empty_props.push_back(ipv6_prop);
+  }
+  for (const auto* prop : non_empty_props) {
+    for (const auto& item : prop->inclusion_list) {
+      auto cidr = net_base::IPCIDR::CreateFromCIDRString(item);
+      if (cidr) {
+        ret.included_route_prefixes.push_back(*cidr);
+      } else {
+        LOG(WARNING) << "Ignoring invalid included route \"" << item << "\"";
+      }
+    }
+    for (const auto& item : prop->exclusion_list) {
+      auto cidr = net_base::IPCIDR::CreateFromCIDRString(item);
+      if (cidr) {
+        ret.excluded_route_prefixes.push_back(*cidr);
+      } else {
+        LOG(WARNING) << "Ignoring invalid excluded route \"" << item << "\"";
+      }
+    }
+  }
+
+  // Merge DNS and DNSSL from ipv4_prop and ipv6_prop.
+  std::set<std::string> domain_search_dedup;
+  // When DNS information is available from both IPv6 source (RDNSS) and IPv4
+  // source (DHCPv4), the ideal behavior is happy eyeballs (RFC 8305). When
+  // happy eyeballs is not implemented, the priority of DNS servers are not
+  // strictly defined by standard. Prefer IPv6 here as most of the RFCs just
+  // "assume" IPv6 is preferred.
+  for (const auto* properties : non_empty_props) {
+    for (const auto& item : properties->dns_servers) {
+      auto dns = net_base::IPAddress::CreateFromString(item);
+      if (dns) {
+        ret.dns_servers.push_back(*dns);
+      } else {
+        LOG(WARNING) << "Ignoring invalid DNS server \"" << item << "\"";
+      }
+    }
+    for (const auto& item : properties->domain_search) {
+      if (domain_search_dedup.count(item) == 0) {
+        ret.dns_search_domains.push_back(item);
+        domain_search_dedup.insert(item);
+      }
+    }
+    if (properties->domain_search.empty() && !properties->domain_name.empty()) {
+      auto search_list_derived = properties->domain_name + ".";
+      if (domain_search_dedup.count(search_list_derived) == 0) {
+        ret.dns_search_domains.push_back(search_list_derived);
+        domain_search_dedup.insert(search_list_derived);
+      }
+    }
+  }
+
+  // Merge MTU from ipv4_prop and ipv6_prop.
+  int mtu = INT32_MAX;
+  if (ipv4_prop && ipv4_prop->mtu > 0) {
+    mtu = std::min(mtu, ipv4_prop->mtu);
+  }
+  if (ipv6_prop && ipv6_prop->mtu > 0) {
+    mtu = std::min(mtu, ipv6_prop->mtu);
+  }
+  int min_mtu = ipv6_prop ? IPConfig::kMinIPv6MTU : IPConfig::kMinIPv4MTU;
+  if (mtu < min_mtu) {
+    LOG(INFO) << __func__ << " MTU " << mtu << " is too small; adjusting up to "
+              << min_mtu;
+    mtu = min_mtu;
+  }
+  if (mtu != INT32_MAX) {
     ret.mtu = mtu;
   }
-  ret.dns_search_domains = domain_search;
-  for (const auto& item : dns_servers) {
-    auto dns = net_base::IPAddress::CreateFromString(item);
-    if (dns) {
-      ret.dns_servers.push_back(*dns);
-    } else {
-      LOG(WARNING) << "Ignoring invalid DNS server \"" << item << "\"";
-    }
-  }
-  for (const auto& item : inclusion_list) {
-    auto cidr = net_base::IPCIDR::CreateFromCIDRString(item);
-    if (cidr) {
-      ret.included_route_prefixes.push_back(*cidr);
-    } else {
-      LOG(WARNING) << "Ignoring invalid included route \"" << item << "\"";
-    }
-  }
-  for (const auto& item : exclusion_list) {
-    auto cidr = net_base::IPCIDR::CreateFromCIDRString(item);
-    if (cidr) {
-      ret.excluded_route_prefixes.push_back(*cidr);
-    } else {
-      LOG(WARNING) << "Ignoring invalid excluded route \"" << item << "\"";
-    }
-  }
 
-  if (!address_family) {
-    LOG(INFO) << "The input IPConfig::Properties does not have a valid "
-                 "family. Skip setting family-specific fields.";
-    return ret;
-  }
-  switch (address_family.value()) {
-    case net_base::IPFamily::kIPv4:
-      ret.ipv4_address =
-          net_base::IPv4CIDR::CreateFromStringAndPrefix(address, subnet_prefix);
-      if (!ret.ipv4_address && !address.empty()) {
-        LOG(WARNING) << "Ignoring invalid IP address \"" << address << "\"";
-      }
-      ret.ipv4_gateway = net_base::IPv4Address::CreateFromString(gateway);
-      if (!ret.ipv4_gateway && !gateway.empty()) {
-        LOG(WARNING) << "Ignoring invalid gateway address \"" << gateway
-                     << "\"";
-      }
-      ret.ipv4_broadcast =
-          net_base::IPv4Address::CreateFromString(broadcast_address);
-      if (!ret.ipv4_broadcast && !broadcast_address.empty()) {
-        LOG(WARNING) << "Ignoring invalid broadcast address \""
-                     << broadcast_address << "\"";
-      }
-      ret.ipv4_default_route = default_route;
-      break;
-    case net_base::IPFamily::kIPv6:
-      ret.ipv6_addresses = {};
-      auto parsed_ipv6_address =
-          net_base::IPv6CIDR::CreateFromStringAndPrefix(address, subnet_prefix);
-      if (parsed_ipv6_address) {
-        ret.ipv6_addresses.push_back(parsed_ipv6_address.value());
-      } else if (!address.empty()) {
-        LOG(WARNING) << "Ignoring invalid IP address \"" << address << "\"";
-      }
-      ret.ipv6_gateway = net_base::IPv6Address::CreateFromString(gateway);
-      if (!ret.ipv6_gateway && !gateway.empty()) {
-        LOG(WARNING) << "Ignoring invalid gateway address \"" << gateway
-                     << "\"";
-      }
-      break;
-  }
   return ret;
 }
 

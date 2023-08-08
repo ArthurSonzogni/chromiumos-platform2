@@ -43,7 +43,10 @@ class IPConfig {
     // to be used for network connection.
     bool HasIPAddressAndDNS() const;
 
-    NetworkConfig ToNetworkConfig() const;
+    // Generate a NetworkConfig from an IPConfig::Properties for IPv4 and
+    // another one from IPv6. Non-family-specific fields are merged.
+    static NetworkConfig ToNetworkConfig(const Properties* ipv4_prop,
+                                         const Properties* ipv6_prop);
 
     // Applies all non-empty properties in |network_config| to this object. This
     // function assumes that |this| is an IPv4 config. When |force_overwrite| is
