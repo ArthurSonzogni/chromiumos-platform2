@@ -233,12 +233,10 @@ const RpcIdentifier& IPConfig::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-NetworkConfig IPConfig::ApplyNetworkConfig(const NetworkConfig& config,
-                                           bool force_overwrite) {
-  auto current_config = properties_.ToNetworkConfig();
+void IPConfig::ApplyNetworkConfig(const NetworkConfig& config,
+                                  bool force_overwrite) {
   properties_.UpdateFromNetworkConfig(config, force_overwrite);
   EmitChanges();
-  return current_config;
 }
 
 void IPConfig::UpdateProperties(const Properties& properties) {

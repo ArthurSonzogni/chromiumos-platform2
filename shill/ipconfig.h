@@ -134,12 +134,10 @@ class IPConfig {
   const PropertyStore& store() const { return store_; }
 
   // Applies |config| to this object and inform D-Bus listeners of the change.
-  // Returns the current config before applying the incoming one. When
-  // |force_overwrite| is false, field will be kept unchanged if the
+  // When |force_overwrite| is false, field will be kept unchanged if the
   // corresponding field in |network_config| is empty. This is used in scenarios
   // such as combining IP address from static IP config with DNS from DHCP.
-  NetworkConfig ApplyNetworkConfig(const NetworkConfig& config,
-                                   bool force_overwrite);
+  void ApplyNetworkConfig(const NetworkConfig& config, bool force_overwrite);
 
  private:
   friend class IPConfigTest;

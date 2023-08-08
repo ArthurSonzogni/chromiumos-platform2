@@ -321,8 +321,8 @@ void Network::OnIPv4ConfigUpdated() {
   if (!ipconfig()) {
     return;
   }
-  saved_network_config_ =
-      ipconfig()->ApplyNetworkConfig(static_network_config_, false);
+  saved_network_config_ = ipconfig()->properties().ToNetworkConfig();
+  ipconfig()->ApplyNetworkConfig(static_network_config_, false);
   if (static_network_config_.ipv4_address.has_value() && dhcp_controller_) {
     // If we are using a statically configured IP address instead of a leased IP
     // address, release any acquired lease so it may be used by others.  This
