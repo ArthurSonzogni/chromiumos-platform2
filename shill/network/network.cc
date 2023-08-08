@@ -731,12 +731,14 @@ std::vector<net_base::IPCIDR> Network::GetAddresses() const {
   };
 
   if (link_protocol_ipv6_properties_ &&
+      !link_protocol_ipv6_properties_->address.empty() &&
       link_protocol_ipv6_properties_->subnet_prefix > 0) {
     insert_addr(link_protocol_ipv6_properties_->address,
                 link_protocol_ipv6_properties_->subnet_prefix);
   }
 
-  if (ipconfig() && ipconfig()->properties().subnet_prefix > 0) {
+  if (ipconfig() && !ipconfig()->properties().address.empty() &&
+      ipconfig()->properties().subnet_prefix > 0) {
     insert_addr(ipconfig()->properties().address,
                 ipconfig()->properties().subnet_prefix);
   }
