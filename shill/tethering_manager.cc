@@ -87,25 +87,24 @@ bool StoreToConfigString(const StoreInterface* storage,
 // Returns std::nullopt if the upstream is an IPv6-only network.
 std::optional<patchpanel::Client::DHCPOptions> GetDHCPOptions(
     const Network& network, const Service& service) {
-  const auto ipconfig = network.ipconfig();
+  const auto network_config = network.GetNetworkConfig();
   // Checks if upstream has IPv4 configuration and it's ready. If not, then we
   // don't start the DHCP server.
-  if (!ipconfig || !ipconfig->properties().HasIPAddressAndDNS()) {
+  if (!network_config.ipv4_address) {
     return std::nullopt;
   }
 
   patchpanel::Client::DHCPOptions options;
   // Fill the DNS servers.
-  for (const auto& dns_server : ipconfig->properties().dns_servers) {
-    const auto dns_server_ip =
-        net_base::IPv4Address::CreateFromString(dns_server);
-    if (dns_server_ip) {
-      options.dns_server_addresses.push_back(*dns_server_ip);
+  for (const auto& dns_server : network_config.dns_servers) {
+    const auto dns_server_ipv4 = dns_server.ToIPv4Address();
+    if (dns_server_ipv4) {
+      options.dns_server_addresses.push_back(*dns_server_ipv4);
     }
   }
 
   // Fill the list of domain search.
-  options.domain_search_list = ipconfig->properties().domain_search;
+  options.domain_search_list = network_config.dns_search_domains;
 
   // Set the flag for "ANDROID_METERED" option.
   options.is_android_metered = service.IsMetered();
@@ -458,12 +457,8 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
 
   const auto& downstream_ifname = hotspot_dev_->link_name();
   const auto& upstream_ifname = upstream_network_->interface_name();
-  std::optional<int> mtu = std::nullopt;
-  if (upstream_network_->GetCurrentIPConfig() &&
-      upstream_network_->GetCurrentIPConfig()->properties().mtu !=
-          IPConfig::kUndefinedMTU) {
-    mtu = upstream_network_->GetCurrentIPConfig()->properties().mtu;
-  }
+
+  std::optional<int> mtu = upstream_network_->GetNetworkConfig().mtu;
 
   if (downstream_network_started_) {
     LOG(ERROR) << "Request to start downstream network " << downstream_ifname

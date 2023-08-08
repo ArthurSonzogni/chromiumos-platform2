@@ -208,7 +208,9 @@ class Network {
   mockable void RegisterCurrentIPConfigChangeHandler(
       base::RepeatingClosure handler);
   // Returns the IPConfig object which is used to setup the Connection of this
-  // Network. Returns nullptr if there is no such IPConfig.
+  // Network. Returns nullptr if there is no such IPConfig. This is only used by
+  // Service to expose its IPConfig dbus API. Other user who would like to get
+  // the configuration of the Network should use GetNetworkConfig() instead.
   mockable IPConfig* GetCurrentIPConfig() const;
   // The NetworkConfig before applying the static one. Only needed by Service.
   const std::optional<NetworkConfig>& saved_network_config() const {
@@ -252,12 +254,19 @@ class Network {
   // Returns the current priority of the Network.
   NetworkPriority GetPriority();
 
+  // Returns the current active configuration of the Network. That could be from
+  // DHCPv4, static IPv4 configuration, SLAAC, data-link layer control
+  // protocols, or merged from multiple of these sources.
+  NetworkConfig GetNetworkConfig() const;
+
   // Returns all known (global) addresses of the Network. That includes IPv4
   // address from link protocol, or from DHCPv4, or from static IPv4
   // configuration; and IPv6 address from SLAAC and/or from link protocol.
+  // TODO(b/269401899): deprecate this and use GetNetworkConfig() instead.
   mockable std::vector<net_base::IPCIDR> GetAddresses() const;
 
   // Return all (both IPv4 and IPv6) DNS servers configured for the Network.
+  // TODO(b/269401899): deprecate this and use GetNetworkConfig() instead.
   mockable std::vector<net_base::IPAddress> GetDNSServers() const;
 
   // Responds to a neighbor reachability event from patchpanel.
@@ -348,6 +357,10 @@ class Network {
   void set_primary_family_for_testing(
       std::optional<net_base::IPFamily> family) {
     primary_family_ = family;
+  }
+  void set_ipconfig_properties_for_testing(
+      const IPConfig::Properties& properties) {
+    ipconfig_->UpdateProperties(properties);
   }
   const std::vector<EventHandler*>& event_handlers() const {
     return event_handlers_;

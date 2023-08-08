@@ -712,6 +712,16 @@ NetworkPriority Network::GetPriority() {
   return priority_;
 }
 
+NetworkConfig Network::GetNetworkConfig() const {
+  // TODO(b/269401899): Instead of generating NetworkConfig from IPConfigs,
+  // Network will internally holds a NetworkConfig as the source of truth.
+  // ipconfig_ and ip6config_ should only used for IPConfig dbus API purpose,
+  // and update automatically when NetworkConfig changes.
+  return IPConfig::Properties::ToNetworkConfig(
+      ipconfig_ ? &ipconfig_->properties() : nullptr,
+      ip6config_ ? &ip6config_->properties() : nullptr);
+}
+
 std::vector<net_base::IPCIDR> Network::GetAddresses() const {
   std::vector<net_base::IPCIDR> result;
   if (slaac_controller_) {

@@ -100,16 +100,8 @@ class StaticIPParametersTest : public Test {
   void TriggerRestore() { service_->NotifyStaticIPConfigChanged(); }
 
   void ExpectEmptyIPConfig() {
-    const auto& ipconfig_props = GetIPConfig()->properties();
-    EXPECT_TRUE(ipconfig_props.address.empty());
-    EXPECT_TRUE(ipconfig_props.gateway.empty());
-    EXPECT_EQ(IPConfig::kUndefinedMTU, ipconfig_props.mtu);
-    EXPECT_TRUE(ipconfig_props.dns_servers.empty());
-    EXPECT_TRUE(ipconfig_props.domain_search.empty());
-    EXPECT_FALSE(ipconfig_props.subnet_prefix);
-    EXPECT_TRUE(ipconfig_props.exclusion_list.empty());
-    EXPECT_TRUE(ipconfig_props.inclusion_list.empty());
-    EXPECT_TRUE(ipconfig_props.default_route);
+    const auto& network_config = network_->GetNetworkConfig();
+    EXPECT_EQ(NetworkConfig{}, network_config);
   }
   // Modify an IP address string in some predictable way.  There's no need
   // for the output string to be valid from a networking perspective.
@@ -120,39 +112,42 @@ class StaticIPParametersTest : public Test {
     return returned_address;
   }
   void ExpectPopulatedIPConfigWithVersion(int version) {
-    const auto& ipconfig_props = GetIPConfig()->properties();
-    EXPECT_EQ(VersionedAddress(kAddress, version), ipconfig_props.address);
-    EXPECT_EQ(VersionedAddress(kGateway, version), ipconfig_props.gateway);
+    const auto& ipconfig_props = network_->GetNetworkConfig();
+    EXPECT_EQ(VersionedAddress(kAddress, version),
+              ipconfig_props.ipv4_address->address().ToString());
+    EXPECT_EQ(VersionedAddress(kGateway, version),
+              ipconfig_props.ipv4_gateway->ToString());
     EXPECT_EQ(kMtu + version, ipconfig_props.mtu);
 
     EXPECT_EQ(2, ipconfig_props.dns_servers.size());
     EXPECT_EQ(VersionedAddress(kNameServer0, version),
-              ipconfig_props.dns_servers[0]);
+              ipconfig_props.dns_servers[0].ToString());
     EXPECT_EQ(VersionedAddress(kNameServer1, version),
-              ipconfig_props.dns_servers[1]);
+              ipconfig_props.dns_servers[1].ToString());
 
     // VersionedAddress() increments the final character of each domain
     // name.
-    EXPECT_EQ(2, ipconfig_props.domain_search.size());
+    EXPECT_EQ(2, ipconfig_props.dns_search_domains.size());
     EXPECT_EQ(VersionedAddress(kSearchDomain0, version),
-              ipconfig_props.domain_search[0]);
+              ipconfig_props.dns_search_domains[0]);
     EXPECT_EQ(VersionedAddress(kSearchDomain1, version),
-              ipconfig_props.domain_search[1]);
+              ipconfig_props.dns_search_domains[1]);
 
-    EXPECT_EQ(kPrefixLen + version, ipconfig_props.subnet_prefix);
+    EXPECT_EQ(kPrefixLen + version,
+              ipconfig_props.ipv4_address->prefix_length());
 
-    EXPECT_EQ(2, ipconfig_props.exclusion_list.size());
+    EXPECT_EQ(2, ipconfig_props.excluded_route_prefixes.size());
     EXPECT_EQ(VersionedAddress(kExcludedRoute0, version),
-              ipconfig_props.exclusion_list[0]);
+              ipconfig_props.excluded_route_prefixes[0].ToString());
     EXPECT_EQ(VersionedAddress(kExcludedRoute1, version),
-              ipconfig_props.exclusion_list[1]);
+              ipconfig_props.excluded_route_prefixes[1].ToString());
 
-    EXPECT_EQ(2, ipconfig_props.inclusion_list.size());
+    EXPECT_EQ(2, ipconfig_props.included_route_prefixes.size());
     EXPECT_EQ(VersionedAddress(kIncludedRoute0, version),
-              ipconfig_props.inclusion_list[0]);
+              ipconfig_props.included_route_prefixes[0].ToString());
     EXPECT_EQ(VersionedAddress(kIncludedRoute1, version),
-              ipconfig_props.inclusion_list[1]);
-    EXPECT_FALSE(ipconfig_props.default_route);
+              ipconfig_props.included_route_prefixes[1].ToString());
+    EXPECT_FALSE(ipconfig_props.ipv4_default_route);
   }
   void ExpectPopulatedIPConfig() { ExpectPopulatedIPConfigWithVersion(0); }
   void ExpectPropertiesWithVersion(const std::string& property_prefix,
@@ -199,7 +194,7 @@ class StaticIPParametersTest : public Test {
     ipconfig_props.exclusion_list = {kExcludedRoute0, kExcludedRoute1};
     ipconfig_props.inclusion_list = {kIncludedRoute0, kIncludedRoute1};
     ipconfig_props.default_route = false;
-    GetIPConfig()->UpdateProperties(ipconfig_props);
+    network_->set_ipconfig_properties_for_testing(ipconfig_props);
   }
   void SetStaticProperties() { SetStaticPropertiesWithVersion(0); }
   void SetStaticPropertiesWithVersion(int version) {
@@ -250,11 +245,6 @@ class StaticIPParametersTest : public Test {
                                                      &ret, &unused_err));
     return ret;
   }
-  IPConfig* GetIPConfig() {
-    auto* ipconfig = network_->GetCurrentIPConfig();
-    CHECK(ipconfig);
-    return ipconfig;
-  }
 
  protected:
   MockControl control_interface_;
@@ -282,12 +272,12 @@ TEST_F(StaticIPParametersTest, ApplyEmptyParameters) {
 TEST_F(StaticIPParametersTest, DefaultRoute) {
   SetStaticPropertiesWithoutRoute(service_->mutable_store());
   AttachNetwork();
-  EXPECT_TRUE(GetIPConfig()->properties().default_route);
+  EXPECT_TRUE(network_->GetNetworkConfig().ipv4_default_route);
   SetStaticProperties();
   dispatcher_.task_environment().RunUntilIdle();
-  EXPECT_FALSE(GetIPConfig()->properties().default_route);
+  EXPECT_FALSE(network_->GetNetworkConfig().ipv4_default_route);
   TriggerRestore();
-  EXPECT_TRUE(GetIPConfig()->properties().default_route);
+  EXPECT_TRUE(network_->GetNetworkConfig().ipv4_default_route);
 }
 
 TEST_F(StaticIPParametersTest, ControlInterface) {
