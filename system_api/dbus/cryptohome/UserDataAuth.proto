@@ -442,7 +442,7 @@ message StartMigrateToDircryptoRequest {
   // Auth Session id will let migrate derive credentials from AuthSessions.
   // AuthSession needs to be authenticated for this to be successful. If both
   // account_id and auth_session_id is mentioned, auth_session_id would be
-  // superseed and identity would be derived from that.
+  // supersede and identity would be derived from that.
   bytes auth_session_id = 3;
 }
 
@@ -1596,4 +1596,17 @@ message PrepareAuthFactorProgress {
     PrepareAuthFactorForAddProgress add_progress = 2;
     PrepareAuthFactorForAuthProgress auth_progress = 3;
   }
+}
+
+// Contains the result of authenticating the auth factor.
+// Used in the AuthenticateAuthFactorCompleted signal to notify
+// if authentication was successful/failed.
+message AuthenticateAuthFactorCompleted {
+  // Both error fields will be empty on success and filled on error.
+  CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
+
+  // Auth factor type can be filled on an error, so do not
+  // use to check for success.
+  AuthFactorType auth_factor_type = 3;
 }
