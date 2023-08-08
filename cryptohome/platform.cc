@@ -1488,7 +1488,7 @@ bool Platform::RestoreSELinuxContexts(const base::FilePath& path,
   if (recursive)
     restorecon_flag |= SELINUX_RESTORECON_RECURSE;
   if (selinux_restorecon(path.value().c_str(), restorecon_flag) != 0) {
-    PLOG(ERROR) << "restorecon(" << path.value() << ") failed";
+    LOG(ERROR) << "restorecon(" << path.value() << ") failed";
     return false;
   }
 #endif
@@ -1499,7 +1499,7 @@ std::optional<std::string> Platform::GetSELinuxContextOfFD(int fd) {
 #if USE_SELINUX
   char* con = nullptr;
   if (fgetfilecon(fd, &con) < 0) {
-    PLOG(ERROR) << "fgetfilecon failed";
+    LOG(ERROR) << "fgetfilecon failed";
     return std::nullopt;
   }
   std::string result = con;
@@ -1517,8 +1517,7 @@ bool Platform::SetSELinuxContext(const base::FilePath& path,
 #if USE_SELINUX
   int result = setfilecon(path.value().c_str(), context.c_str());
   if (result != 0) {
-    LOG(ERROR) << "Failed to set SELinux context for " << path
-               << ", errno = " << errno;
+    LOG(ERROR) << "Failed to set SELinux context for " << path;
     return false;
   }
 #else
