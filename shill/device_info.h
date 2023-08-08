@@ -19,9 +19,9 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/mac_address.h>
 
 #include "shill/metrics.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
 #include "shill/refptr_types.h"
@@ -70,11 +70,13 @@ class DeviceInfo {
 
   virtual DeviceRefPtr GetDevice(int interface_index) const;
 
-  virtual bool GetMacAddress(int interface_index, ByteString* address) const;
+  virtual std::optional<net_base::MacAddress> GetMacAddress(
+      int interface_index) const;
 
-  // Queries the kernel for a MAC address for |interface_index|.  Returns an
-  // empty ByteString on failure.
-  virtual ByteString GetMacAddressFromKernel(int interface_index) const;
+  // Queries the kernel for a MAC address for |interface_index|.
+  // Returns std::nullopt on failure.
+  virtual std::optional<net_base::MacAddress> GetMacAddressFromKernel(
+      int interface_index) const;
 
   // Query IDs that identify the adapter (e.g. PCI IDs). Returns |false| if
   // there was an error. Even if there was an error (say, when probing the
@@ -157,7 +159,7 @@ class DeviceInfo {
 
     DeviceRefPtr device;
     std::string name;
-    ByteString mac_address;
+    std::optional<net_base::MacAddress> mac_address;
     unsigned int flags;
     uint64_t rx_bytes;
     uint64_t tx_bytes;

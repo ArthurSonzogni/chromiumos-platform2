@@ -4,6 +4,7 @@
 
 #include "shill/device_info.h"
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <set>
@@ -32,6 +33,7 @@
 #include <net-base/byte_utils.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mac_address.h>
 
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/ipconfig.h"
@@ -79,7 +81,8 @@ const net_base::IPAddress kTestIPAddress2 =
     *net_base::IPAddress::CreateFromString("fe80::1aa9:5ff:abcd:1235");
 constexpr int kTestDeviceIndex = 123456;
 constexpr char kTestDeviceName[] = "test-device";
-constexpr uint8_t kTestMacAddress[] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
+constexpr std::array<uint8_t, 6> kTestMacAddress = {0xaa, 0xbb, 0xcc,
+                                                    0xdd, 0xee, 0xff};
 constexpr int kReceiveByteCount = 1234;
 constexpr int kTransmitByteCount = 5678;
 constexpr char kVendorIdString[] = "0x0123";
@@ -276,11 +279,8 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   unsigned int flags = 0;
   EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
   EXPECT_EQ(IFF_LOWER_UP, flags);
-  ByteString address;
-  EXPECT_TRUE(device_info_.GetMacAddress(kTestDeviceIndex, &address));
-  EXPECT_FALSE(address.IsEmpty());
-  EXPECT_TRUE(
-      address.Equals(ByteString(kTestMacAddress, sizeof(kTestMacAddress))));
+  const auto address = device_info_.GetMacAddress(kTestDeviceIndex);
+  EXPECT_EQ(address, net_base::MacAddress(kTestMacAddress));
   EXPECT_EQ(kTestDeviceIndex, device_info_.GetIndex(kTestDeviceName));
 
   message = BuildLinkMessage(RTNLMessage::kModeAdd);
@@ -636,9 +636,9 @@ TEST_F(DeviceInfoTest, HasSubdir) {
 TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnknownDevice) {
   SetSockets();
   EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).Times(0);
-  ByteString mac_address =
+  const auto mac_address =
       device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
-  EXPECT_TRUE(mac_address.IsEmpty());
+  EXPECT_EQ(mac_address, std::nullopt);
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnableToOpenSocket) {
@@ -648,9 +648,9 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnableToOpenSocket) {
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
-  ByteString mac_address =
+  const auto mac_address =
       device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
-  EXPECT_TRUE(mac_address.IsEmpty());
+  EXPECT_EQ(mac_address, std::nullopt);
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressFromKernelIoctlFails) {
@@ -666,9 +666,9 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelIoctlFails) {
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
-  ByteString mac_address =
+  const auto mac_address =
       device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
-  EXPECT_TRUE(mac_address.IsEmpty());
+  EXPECT_EQ(mac_address, std::nullopt);
 }
 
 MATCHER_P2(IfreqEquals, ifindex, ifname, "") {
@@ -686,8 +686,9 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernel) {
   SetSockets();
   const int kFd = 99;
   struct ifreq ifr;
-  static uint8_t kMacAddress[] = {0x00, 0x01, 0x02, 0xaa, 0xbb, 0xcc};
-  memcpy(ifr.ifr_hwaddr.sa_data, kMacAddress, sizeof(kMacAddress));
+  static std::array<uint8_t, 6> kMacAddress = {0x00, 0x01, 0x02,
+                                               0xaa, 0xbb, 0xcc};
+  memcpy(ifr.ifr_hwaddr.sa_data, kMacAddress.data(), kMacAddress.size());
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
   EXPECT_CALL(
       *mock_sockets_,
@@ -700,10 +701,9 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernel) {
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
-  ByteString mac_address =
+  const auto mac_address =
       device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
-  EXPECT_THAT(kMacAddress,
-              ElementsAreArray(mac_address.GetData(), sizeof(kMacAddress)));
+  EXPECT_EQ(mac_address, net_base::MacAddress(kMacAddress));
 }
 
 MATCHER_P2(ArpreqEquals, ifname, peer, "") {
@@ -1127,7 +1127,7 @@ TEST_F(DeviceInfoTest, GetWiFiHardwareIdsInvalidSubsystem) {
 
 class DeviceInfoTechnologyTest : public DeviceInfoTest {
  public:
-  DeviceInfoTechnologyTest() : DeviceInfoTest() {}
+  DeviceInfoTechnologyTest() = default;
   ~DeviceInfoTechnologyTest() override = default;
 
   void SetUp() override {

@@ -4,13 +4,13 @@
 
 #include "shill/cellular/modem.h"
 
-#include <limits>
 #include <optional>
 #include <tuple>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 
 #include <ModemManager/ModemManager.h>
 
@@ -18,7 +18,6 @@
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
 #include "shill/logging.h"
-#include "shill/manager.h"
 
 namespace shill {
 
@@ -189,12 +188,12 @@ std::optional<int> Modem::GetLinkDetailsFromDeviceInfo(
     return std::nullopt;
   }
 
-  ByteString address_bytes;
-  if (!device_info_->GetMacAddress(interface_index, &address_bytes)) {
+  const auto addr = device_info_->GetMacAddress(interface_index);
+  if (!addr) {
     return std::nullopt;
   }
 
-  *mac_address = address_bytes.HexEncode();
+  *mac_address = base::HexEncode(addr->ToBytes());
   return interface_index;
 }
 

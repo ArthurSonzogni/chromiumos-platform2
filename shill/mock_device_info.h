@@ -6,7 +6,6 @@
 #define SHILL_MOCK_DEVICE_INFO_H_
 
 #include <string>
-#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -15,7 +14,6 @@
 
 namespace shill {
 
-class ByteString;
 class Manager;
 
 class MockDeviceInfo : public DeviceInfo {
@@ -31,8 +29,14 @@ class MockDeviceInfo : public DeviceInfo {
   MOCK_METHOD(void, AllowDevice, (const std::string&), (override));
   MOCK_METHOD(DeviceRefPtr, GetDevice, (int), (const, override));
   MOCK_METHOD(int, GetIndex, (const std::string&), (const, override));
-  MOCK_METHOD(bool, GetMacAddress, (int, ByteString*), (const, override));
-  MOCK_METHOD(ByteString, GetMacAddressFromKernel, (int), (const, override));
+  MOCK_METHOD(std::optional<net_base::MacAddress>,
+              GetMacAddress,
+              (int),
+              (const, override));
+  MOCK_METHOD(std::optional<net_base::MacAddress>,
+              GetMacAddressFromKernel,
+              (int),
+              (const, override));
   MOCK_METHOD(bool,
               GetByteCounts,
               (int, uint64_t*, uint64_t*),

@@ -15,7 +15,6 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <map>
@@ -220,6 +219,13 @@ class DeviceStub : public Device {
   }
   void Initialize() override {}
 };
+
+std::string HexEncode(const std::optional<net_base::MacAddress>& mac_address) {
+  if (!mac_address) {
+    return "";
+  }
+  return base::HexEncode(mac_address->ToBytes());
+}
 
 }  // namespace
 
@@ -632,7 +638,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
       // The MAC address provided by RTNL is not reliable for Gobi 2K modems.
       // Clear it here, and it will be fetched from the kernel in
       // GetMacAddress().
-      infos_[interface_index].mac_address.Clear();
+      infos_[interface_index].mac_address = std::nullopt;
       manager_->modem_info()->OnDeviceInfoAvailable(link_name);
       break;
     case Technology::kEthernet:
@@ -789,12 +795,12 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
       technology = GetDeviceTechnology(link_name, msg.link_status().kind);
     }
 
-    std::string address;
-    if (msg.HasAttribute(IFLA_ADDRESS)) {
-      infos_[dev_index].mac_address =
-          ByteString(msg.GetAttribute(IFLA_ADDRESS));
-      address = infos_[dev_index].mac_address.HexEncode();
-      SLOG(2) << "link index " << dev_index << " address " << address;
+    const auto mac_address =
+        net_base::MacAddress::CreateFromBytes(msg.GetAttribute(IFLA_ADDRESS));
+    if (mac_address) {
+      infos_[dev_index].mac_address = *mac_address;
+      SLOG(2) << "link index " << dev_index << " address "
+              << mac_address->ToString();
     } else if (technology == Technology::kWiFi ||
                technology == Technology::kEthernet) {
       LOG(ERROR) << "Add link message does not have IFLA_ADDRESS, link: "
@@ -802,7 +808,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
       return;
     }
     metrics_->RegisterDevice(dev_index, technology);
-    device = CreateDevice(link_name, address, dev_index, technology);
+    device =
+        CreateDevice(link_name, HexEncode(mac_address), dev_index, technology);
     if (device) {
       RegisterDevice(device);
     }
@@ -841,33 +848,33 @@ int DeviceInfo::GetIndex(const std::string& interface_name) const {
   return it == indices_.end() ? -1 : it->second;
 }
 
-bool DeviceInfo::GetMacAddress(int interface_index, ByteString* address) const {
+std::optional<net_base::MacAddress> DeviceInfo::GetMacAddress(
+    int interface_index) const {
   const Info* info = GetInfo(interface_index);
   if (!info) {
-    return false;
+    return std::nullopt;
   }
   // |mac_address| from RTNL is not used for some devices, in which case it will
   // be empty here.
-  if (!info->mac_address.IsEmpty()) {
-    *address = info->mac_address;
-    return true;
+  if (info->mac_address) {
+    return info->mac_address;
   }
 
   // Ask the kernel for the MAC address.
-  *address = GetMacAddressFromKernel(interface_index);
-  return !address->IsEmpty();
+  return GetMacAddressFromKernel(interface_index);
 }
 
-ByteString DeviceInfo::GetMacAddressFromKernel(int interface_index) const {
+std::optional<net_base::MacAddress> DeviceInfo::GetMacAddressFromKernel(
+    int interface_index) const {
   const Info* info = GetInfo(interface_index);
   if (!info) {
-    return ByteString();
+    return std::nullopt;
   }
 
   const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
   if (fd < 0) {
     PLOG(ERROR) << __func__ << ": Unable to open socket";
-    return ByteString();
+    return std::nullopt;
   }
 
   ScopedSocketCloser socket_closer(sockets_.get(), fd);
@@ -878,10 +885,11 @@ ByteString DeviceInfo::GetMacAddressFromKernel(int interface_index) const {
   int err = sockets_->Ioctl(fd, SIOCGIFHWADDR, &ifr);
   if (err < 0) {
     PLOG(ERROR) << __func__ << ": Unable to read MAC address";
-    return ByteString();
+    return std::nullopt;
   }
 
-  return ByteString(ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
+  return net_base::MacAddress::CreateFromBytes(
+      {ifr.ifr_hwaddr.sa_data, net_base::MacAddress::kAddressLength});
 }
 
 bool DeviceInfo::GetIntegratedWiFiHardwareIds(const std::string& iface_name,
@@ -1195,7 +1203,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
                    << " is unexpected technology " << technology;
     }
 
-    std::string address = infos_[dev_index].mac_address.HexEncode();
+    const std::string address = HexEncode(infos_[dev_index].mac_address);
     int arp_type = GetDeviceArpType(link_name);
 
     // NB: ARHRD_RAWIP was introduced in kernel 4.14.
@@ -1313,7 +1321,6 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
   }
   LOG(INFO) << "Creating WiFi device for station mode interface " << info->name
             << " at interface index " << interface_index;
-  std::string address = info->mac_address.HexEncode();
 
 #if !defined(DISABLE_WAKE_ON_WIFI)
   auto wake_on_wifi = std::make_unique<WakeOnWiFi>(
@@ -1323,8 +1330,9 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
 #else
   auto wake_on_wifi = std::unique_ptr<WakeOnWiFi>(nullptr);
 #endif  // DISABLE_WAKE_ON_WIFI
-  DeviceRefPtr device = new WiFi(manager_, info->name, address, interface_index,
-                                 phy_index, std::move(wake_on_wifi));
+  DeviceRefPtr device =
+      new WiFi(manager_, info->name, HexEncode(info->mac_address),
+               interface_index, phy_index, std::move(wake_on_wifi));
   RegisterDevice(device);
 }
 

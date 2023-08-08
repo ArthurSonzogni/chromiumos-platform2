@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -18,6 +17,7 @@
 #include "shill/data_types.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/net/byte_string.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_message.h"
@@ -28,7 +28,6 @@
 
 namespace shill {
 
-class ByteString;
 class Error;
 class KeyValueStore;
 class Manager;
