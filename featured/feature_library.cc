@@ -18,6 +18,7 @@
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/errors/error.h>
+#include <chromeos/constants/featured.h>
 #include <chromeos/dbus/service_constants.h>
 #include <featured/proto_bindings/featured.pb.h>
 
@@ -29,8 +30,6 @@ namespace {
 PlatformFeatures* g_instance = nullptr;
 
 }  // namespace
-
-constexpr char kActiveTrialFileDirectory[] = "/run/featured/active";
 
 PlatformFeatures::PlatformFeatures(scoped_refptr<dbus::Bus> bus,
                                    dbus::ObjectProxy* chrome_proxy,

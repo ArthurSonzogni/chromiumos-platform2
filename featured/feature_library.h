@@ -29,12 +29,6 @@
 
 namespace feature {
 
-// This character is not allowed in trial names so it makes for a good
-// separator. Context: FeatureList::IsValidFeatureOrFieldTrialName().
-// NOTE: If a trial name contains "," because it was not validated, the
-// separator will be escaped when writing the active trial file.
-constexpr char kTrialGroupSeparator[] = ",";
-
 class FEATURE_EXPORT PlatformFeaturesInterface {
  public:
   using IsEnabledCallback = base::OnceCallback<void(bool)>;
