@@ -119,7 +119,7 @@ constexpr TimerHistogramParams kTimerHistogramParams[] = {
     // just check if PKCS#11 was previously initialized, returning immediately.
     // These will all fall into the first histogram bucket.
     {kPkcs11InitTimer, "Cryptohome.TimeToInitPkcs11", 1000, 100000, 50},
-    {kMountExTimer, "Cryptohome.TimeToMountEx", 0, 4000, 50},
+    {kMountExTimer, "Cryptohome.TimeToMountEx", 0, 40000, 150},
 
     {kMountGuestExTimer, "Cryptohome.TimeToMountGuestEx", 0, 4000, 50},
     // This is only being reported from the out-of-process helper so it's
