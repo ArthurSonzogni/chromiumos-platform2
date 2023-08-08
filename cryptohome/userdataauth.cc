@@ -18,6 +18,8 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <base/json/json_writer.h>
@@ -38,11 +40,13 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <dbus_adaptors/org.chromium.UserDataAuth.h>
 #include <featured/feature_library.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec-foundation/utility/task_dispatching_framework.h>
 #include <metrics/timer.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
@@ -56,6 +60,7 @@
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor/with_driver.h"
+#include "cryptohome/auth_input_utils.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_flatbuffer.h"
@@ -75,15 +80,10 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
-#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/cryptohome_vault.h"
-#include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
@@ -1378,6 +1378,12 @@ void UserDataAuth::SetPrepareAuthFactorProgressCallback(
     const base::RepeatingCallback<
         void(user_data_auth::PrepareAuthFactorProgress)>& callback) {
   prepare_auth_factor_progress_callback_ = callback;
+}
+
+void UserDataAuth::SetAuthenticateAuthFactorCompletedCallback(
+    const base::RepeatingCallback<
+        void(user_data_auth::AuthenticateAuthFactorCompleted)>& callback) {
+  authenticate_auth_factor_completed_callback_ = callback;
 }
 
 void UserDataAuth::SetAuthFactorStatusUpdateCallback(
@@ -3046,13 +3052,44 @@ void UserDataAuth::AuthenticateAuthFactor(
   AssertOnMountThread();
   user_data_auth::AuthenticateAuthFactorReply reply;
 
+  // Wrap callback to signal AuthenticateAuthFactorCompleted.
+  base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+      on_done_wrapped_with_signal_cb = base::BindOnce(
+          [](base::RepeatingCallback<void(
+                 user_data_auth::AuthenticateAuthFactorCompleted)>
+                 authenticate_auth_factor_result_callback,
+             base::OnceCallback<void(
+                 const user_data_auth::AuthenticateAuthFactorReply&)> cb,
+             user_data_auth::AuthFactorType auth_factor_type,
+             const user_data_auth::AuthenticateAuthFactorReply& reply) {
+            user_data_auth::AuthenticateAuthFactorCompleted completed_proto;
+
+            if (reply.has_error_info()) {
+              auto* failure_proto = completed_proto.mutable_failure();
+              failure_proto->set_error(reply.error());
+              auto* error_info = failure_proto->mutable_error_info();
+              *error_info = reply.error_info();
+            } else {
+              auto* success_proto = completed_proto.mutable_success();
+              success_proto->set_auth_factor_type(auth_factor_type);
+            }
+            if (!authenticate_auth_factor_result_callback.is_null()) {
+              authenticate_auth_factor_result_callback.Run(completed_proto);
+            }
+            std::move(cb).Run(reply);
+          },
+          authenticate_auth_factor_completed_callback_, std::move(on_done),
+          AuthFactorTypeToProto(
+              DetermineFactorTypeFromAuthInput(request.auth_input())
+                  .value_or(AuthFactorType::kUnspecified)));
+
   InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(request.auth_session_id());
   CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
   if (!auth_session_status.ok()) {
     LOG(ERROR) << "Invalid AuthSession token provided.";
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_wrapped_with_signal_cb), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInAuthAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
@@ -3071,7 +3108,7 @@ void UserDataAuth::AuthenticateAuthFactor(
     LOG(ERROR) << "Cannot accept request with both auth_factor_label and "
                   "auth_factor_labels.";
     ReplyWithError(
-        std::move(on_done), reply,
+        std::move(on_done_wrapped_with_signal_cb), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataMalformedRequestInAuthAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -3088,6 +3125,7 @@ void UserDataAuth::AuthenticateAuthFactor(
       auth_factor_labels.push_back(label);
     }
   }
+
   AuthSession::AuthenticateAuthFactorRequest authenticate_auth_factor_request{
       .auth_factor_labels = std::move(auth_factor_labels),
       .auth_input_proto = std::move(request.auth_input()),
@@ -3100,7 +3138,7 @@ void UserDataAuth::AuthenticateAuthFactor(
   auth_session_ptr->AuthenticateAuthFactor(
       authenticate_auth_factor_request,
       base::BindOnce(&HandleAuthenticationResult, std::move(auth_session),
-                     std::move(on_done)));
+                     std::move(on_done_wrapped_with_signal_cb)));
 }
 
 void UserDataAuth::UpdateAuthFactor(

@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -206,6 +205,12 @@ class UserDataAuth {
   void SetPrepareAuthFactorProgressCallback(
       const base::RepeatingCallback<
           void(user_data_auth::PrepareAuthFactorProgress)>& callback);
+
+  // Set the AuthenticateAuthFactorCompleted callback. This is usually called by
+  // the DBus adaptor.
+  void SetAuthenticateAuthFactorCompletedCallback(
+      const base::RepeatingCallback<
+          void(user_data_auth::AuthenticateAuthFactorCompleted)>& callback);
 
   // List the keys stored in |homedirs_|.
   // See definition of ListKeysReply for what is returned.
@@ -1083,7 +1088,7 @@ class UserDataAuth {
   // The homedirs_ object in normal operation
   std::unique_ptr<HomeDirs> default_homedirs_;
 
-  // This holds the object that records informations about the homedirs.
+  // This holds the object that records information about the homedirs.
   // This is usually set to default_homedirs_, but can be overridden for
   // testing.
   // This is to be accessed from the mount thread only because there's no
@@ -1118,6 +1123,10 @@ class UserDataAuth {
   // The repeating callback to send PrepareAuthFactorProgress signal.
   base::RepeatingCallback<void(user_data_auth::PrepareAuthFactorProgress)>
       prepare_auth_factor_progress_callback_;
+
+  // The repeating callback to send AuthenticateAuthFactorCompleted signal.
+  base::RepeatingCallback<void(user_data_auth::AuthenticateAuthFactorCompleted)>
+      authenticate_auth_factor_completed_callback_;
 
   // The object used to instantiate AuthBlocks.
   std::unique_ptr<AuthBlockUtility> default_auth_block_utility_;

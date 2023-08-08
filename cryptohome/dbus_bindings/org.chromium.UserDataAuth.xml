@@ -559,6 +559,16 @@ do.
                     value="user_data_auth::PrepareAuthFactorProgress" />
       </arg>
     </signal>
+
+    <!-- AuthenticateAuthFactorCompleted: Emitted when Authenticating Auth Factor is completed with the result. -->
+    <signal name="AuthenticateAuthFactorCompleted">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AuthenticateAuthFactorCompleted" />
+      </arg>
+    </signal>
   </interface>
 
   <!-- TODO(b/229122701): Remove ArcQuota methods after migrating them to

@@ -11,6 +11,7 @@
 #include <base/functional/callback.h>
 #include <brillo/cryptohome.h>
 #include <chromeos/constants/cryptohome.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/utility/task_dispatching_framework.h>
 
 #include "cryptohome/service_userdataauth.h"
@@ -845,6 +846,11 @@ void UserDataAuthAdaptor::FingerprintScanResultCallback(
 void UserDataAuthAdaptor::PrepareAuthFactorProgressCallback(
     user_data_auth::PrepareAuthFactorProgress signal) {
   SendPrepareAuthFactorProgressSignal(signal);
+}
+
+void UserDataAuthAdaptor::AuthenticateAuthFactorCompletedCallback(
+    user_data_auth::AuthenticateAuthFactorCompleted signal) {
+  SendAuthenticateAuthFactorCompletedSignal(signal);
 }
 
 void ArcQuotaAdaptor::GetArcDiskFeatures(

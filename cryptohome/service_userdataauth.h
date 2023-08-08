@@ -37,6 +37,9 @@ class UserDataAuthAdaptor
     service_->SetPrepareAuthFactorProgressCallback(base::BindRepeating(
         &UserDataAuthAdaptor::PrepareAuthFactorProgressCallback,
         base::Unretained(this)));
+    service_->SetAuthenticateAuthFactorCompletedCallback(base::BindRepeating(
+        &UserDataAuthAdaptor::AuthenticateAuthFactorCompletedCallback,
+        base::Unretained(this)));
   }
   UserDataAuthAdaptor(const UserDataAuthAdaptor&) = delete;
   UserDataAuthAdaptor& operator=(const UserDataAuthAdaptor&) = delete;
@@ -382,6 +385,11 @@ class UserDataAuthAdaptor
   // a prepared AuthFactor. All we do here is send the signal.
   void PrepareAuthFactorProgressCallback(
       user_data_auth::PrepareAuthFactorProgress signal);
+
+  // This is called by UserDataAuth for processing the result of Authenticating
+  // the AuthFactor. All we do here is send the signal.
+  void AuthenticateAuthFactorCompletedCallback(
+      user_data_auth::AuthenticateAuthFactorCompleted signal);
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;

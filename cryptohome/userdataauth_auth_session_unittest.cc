@@ -2646,6 +2646,54 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
                                    AUTH_INTENT_WEBAUTHN));
 }
 
+TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange.
+  EXPECT_CALL(platform_, DirectoryExists(UserPath(obfuscated_username)))
+      .WillRepeatedly(Return(true));
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  std::string serialized_token;
+  {
+    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+        auth_session_manager_->CreateAuthSession(kUsername, /*flags=*/0,
+                                                 AuthIntent::kDecrypt);
+    EXPECT_THAT(auth_session_status, IsOk());
+    AuthSession* auth_session = auth_session_status.value().Get();
+
+    ASSERT_TRUE(auth_session);
+    serialized_token = auth_session->serialized_token();
+  }
+
+  // Copy results from callback.
+  user_data_auth::AuthenticateAuthFactorCompleted result_proto;
+  userdataauth_.SetAuthenticateAuthFactorCompletedCallback(base::BindRepeating(
+      [](user_data_auth::AuthenticateAuthFactorCompleted* proto_copy,
+         const user_data_auth::AuthenticateAuthFactorCompleted proto) {
+        proto_copy->CopyFrom(proto);
+      },
+      &result_proto));
+
+  // Act.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(serialized_token);
+  request.add_auth_factor_labels("password");
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
+  const user_data_auth::AuthenticateAuthFactorReply reply =
+      AuthenticateAuthFactor(request);
+
+  // Verify
+  ASSERT_TRUE(result_proto.has_failure());
+  EXPECT_EQ(user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND,
+            result_proto.failure().error());
+}
+
 }  // namespace
 
 }  // namespace cryptohome
