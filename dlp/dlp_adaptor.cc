@@ -79,10 +79,9 @@ std::set<std::pair<base::FilePath, FileId>> EnumerateFiles(
                                   base::FileEnumerator::FILES);
   for (base::FilePath entry = enumerator.Next(); !entry.empty();
        entry = enumerator.Next()) {
-    FileId file_id = GetFileId(entry.value());
-    if (file_id.first > 0) {
-      files.insert(std::make_pair(entry, file_id));
-    }
+    files.insert(std::make_pair(
+        entry,
+        std::make_pair(enumerator.GetInfo().stat().st_ino, /*crtime=*/0)));
   }
 
   return files;
@@ -292,11 +291,10 @@ void DlpAdaptor::RequestFileAccess(
   }
 
   db_->GetFileEntriesByIds(
-      ids, /*ignore_crtime=*/false,
-      base::BindOnce(&DlpAdaptor::ProcessRequestFileAccessWithData,
-                     base::Unretained(this), std::move(response),
-                     std::move(request), std::move(local_fd),
-                     std::move(remote_fd)));
+      ids, base::BindOnce(&DlpAdaptor::ProcessRequestFileAccessWithData,
+                          base::Unretained(this), std::move(response),
+                          std::move(request), std::move(local_fd),
+                          std::move(remote_fd)));
 }
 
 void DlpAdaptor::ProcessRequestFileAccessWithData(
@@ -433,13 +431,10 @@ void DlpAdaptor::GetFilesSources(
     }
   }
 
-  // Crtime is not provided via requests with only inode, so ignoring it for
-  // now.
   db_->GetFileEntriesByIds(
-      ids, /*ignore_crtime=*/true,
-      base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
-                     base::Unretained(this), std::move(response),
-                     requested_files));
+      ids, base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
+                          base::Unretained(this), std::move(response),
+                          requested_files));
 }
 
 void DlpAdaptor::CheckFilesTransfer(
@@ -473,10 +468,9 @@ void DlpAdaptor::CheckFilesTransfer(
   }
 
   db_->GetFileEntriesByIds(
-      ids, /*ignore_crtime=*/false,
-      base::BindOnce(&DlpAdaptor::ProcessCheckFilesTransferWithData,
-                     base::Unretained(this), std::move(response),
-                     std::move(request)));
+      ids, base::BindOnce(&DlpAdaptor::ProcessCheckFilesTransferWithData,
+                          base::Unretained(this), std::move(response),
+                          std::move(request)));
 }
 
 void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {
@@ -590,9 +584,8 @@ void DlpAdaptor::AddPerFileWatch(
   }
 
   db_->GetFileEntriesByIds(
-      ids, /*ignore_crtime=*/false,
-      base::BindOnce(&DlpAdaptor::ProcessAddPerFileWatchWithData,
-                     base::Unretained(this), files));
+      ids, base::BindOnce(&DlpAdaptor::ProcessAddPerFileWatchWithData,
+                          base::Unretained(this), files));
 }
 
 void DlpAdaptor::ProcessAddPerFileWatchWithData(
@@ -645,9 +638,8 @@ void DlpAdaptor::ProcessFileOpenRequest(
   }
 
   db_->GetFileEntriesByIds(
-      {id}, /*ignore_crtime=*/false,
-      base::BindOnce(&DlpAdaptor::ProcessFileOpenRequestWithData,
-                     base::Unretained(this), pid, std::move(callback)));
+      {id}, base::BindOnce(&DlpAdaptor::ProcessFileOpenRequestWithData,
+                           base::Unretained(this), pid, std::move(callback)));
 }
 
 void DlpAdaptor::ProcessFileOpenRequestWithData(
@@ -691,15 +683,15 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
                      base::Unretained(this), std::move(callbacks.second)));
 }
 
-void DlpAdaptor::OnFileDeleted(ino64_t inode) {
+void DlpAdaptor::OnFileDeleted(FileId id) {
   if (!db_) {
     LOG(WARNING) << "DLP database is not ready yet.";
     dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
     return;
   }
 
-  db_->DeleteFileEntryByInode(inode,
-                              /*callback=*/base::DoNothing());
+  db_->DeleteFileEntryById(id,
+                           /*callback=*/base::DoNothing());
 }
 
 void DlpAdaptor::OnFanotifyError(FanotifyError error) {
@@ -960,21 +952,18 @@ void DlpAdaptor::ProcessGetFilesSourcesWithData(
     std::map<FileId, FileEntry> file_entries) {
   GetFilesSourcesResponse response_proto;
   for (const auto& [id, path] : requested_files) {
-    // GetFilesSources request might've contained only inode info, so we need to
-    // compare elements only by inode part of |id|.
-    for (const auto& [file_id, file_entry] : file_entries) {
-      if (file_id.first == id.first) {
-        FileMetadata* file_metadata = response_proto.add_files_metadata();
-        file_metadata->set_inode(file_id.first);
-        file_metadata->set_crtime(file_id.second);
-        if (!path.empty()) {
-          file_metadata->set_path(path);
-        }
-        file_metadata->set_source_url(file_entry.source_url);
-        file_metadata->set_referrer_url(file_entry.referrer_url);
-        break;
-      }
+    auto it = file_entries.find(id);
+    if (it == std::end(file_entries)) {
+      continue;
     }
+    FileMetadata* file_metadata = response_proto.add_files_metadata();
+    file_metadata->set_inode(id.first);
+    file_metadata->set_crtime(id.second);
+    if (!path.empty()) {
+      file_metadata->set_path(path);
+    }
+    file_metadata->set_source_url(it->second.source_url);
+    file_metadata->set_referrer_url(it->second.referrer_url);
   }
 
   response->Return(SerializeProto(response_proto));

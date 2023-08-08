@@ -2036,7 +2036,7 @@ TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
   FileMetadata file2_metadata;
   file2_metadata.set_path(file_path2.value());
   file2_metadata.set_inode(id2.first);
-  file2_metadata.set_crtime(id2.second);
+  file1_metadata.set_crtime(id2.second);
   files_restrictions_.push_back(
       {std::move(file1_metadata), RestrictionLevel::LEVEL_BLOCK});
   files_restrictions_.push_back({std::move(file2_metadata), GetParam()});

@@ -52,14 +52,6 @@ struct fanotify_event_info_fid {
   unsigned char handle[];
 };
 
-// Converts a statx_timestamp struct to time_t.
-time_t ConvertStatxTimestampToTimeT(const struct statx_timestamp& sts) {
-  struct timespec ts;
-  ts.tv_sec = sts.tv_sec;
-  ts.tv_nsec = sts.tv_nsec;
-  return base::Time::FromTimeSpec(ts).ToTimeT();
-}
-
 }  // namespace
 
 namespace dlp {
@@ -162,18 +154,10 @@ void FanotifyReaderThread::RunLoop() {
           continue;
         }
         base::ScopedFD fd(metadata->fd);
-        struct statx st;
-        if (statx(fd.get(), "", AT_EMPTY_PATH, STATX_INO | STATX_BTIME, &st)) {
-          PLOG(ERROR) << "statx failed";
+        struct stat st;
+        if (fstat(fd.get(), &st)) {
+          PLOG(ERROR) << "fstat failed";
           ForwardUMAErrorToParentThread(FanotifyError::kFstatError);
-          AllowRequest(fd.get());
-          continue;
-        }
-
-        if (!(st.stx_mask & STATX_BTIME) || !(st.stx_mask & STATX_INO)) {
-          PLOG(ERROR) << "statx failed";
-          ForwardUMAErrorToParentThread(FanotifyError::kFstatError);
-          AllowRequest(fd.get());
           continue;
         }
         // If the request is not replied on time, the watchdog will restart
@@ -184,8 +168,7 @@ void FanotifyReaderThread::RunLoop() {
         parent_task_runner_->PostTask(
             FROM_HERE,
             base::BindOnce(&Delegate::OnFileOpenRequested,
-                           base::Unretained(delegate_), st.stx_ino,
-                           ConvertStatxTimestampToTimeT(st.stx_btime),
+                           base::Unretained(delegate_), st.st_ino,
                            metadata->pid, std::move(fd), std::move(watchdog)));
       } else if (metadata->mask & FAN_DELETE_SELF) {
         struct file_handle* file_handle;
@@ -223,13 +206,6 @@ void FanotifyReaderThread::ForwardUMAErrorToParentThread(FanotifyError error) {
   parent_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&Delegate::OnFanotifyError,
                                 base::Unretained(delegate_), error));
-}
-
-void FanotifyReaderThread::AllowRequest(int fd) {
-  struct fanotify_response response = {};
-  response.fd = fd;
-  response.response = FAN_ALLOW;
-  HANDLE_EINTR(write(fanotify_fd_, &response, sizeof(response)));
 }
 
 }  // namespace dlp
