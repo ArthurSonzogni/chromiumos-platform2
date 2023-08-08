@@ -1414,17 +1414,17 @@ class NetworkStartTest : public NetworkTest {
       EXPECT_EQ(network_->ipconfig(), nullptr);
     } else {
       ASSERT_NE(network_->ipconfig(), nullptr);
-      EXPECT_EQ(network_->ipconfig()->properties(),
-                GetIPPropertiesFromType(ipv4_type));
     }
 
     if (ipv6_type == IPConfigType::kNone) {
       EXPECT_EQ(network_->ip6config(), nullptr);
     } else {
       ASSERT_NE(network_->ip6config(), nullptr);
-      EXPECT_EQ(network_->ip6config()->properties(),
-                GetIPPropertiesFromType(ipv6_type));
     }
+    EXPECT_EQ(IPConfig::Properties::ToNetworkConfig(
+                  GetIPPropertiesPtrFromType(ipv4_type),
+                  GetIPPropertiesPtrFromType(ipv6_type)),
+              network_->GetNetworkConfig());
   }
 
   // Verifies that GetAddresses() returns all configured addresses, in the order
@@ -1453,26 +1453,31 @@ class NetworkStartTest : public NetworkTest {
   }
 
  private:
-  IPConfig::Properties GetIPPropertiesFromType(IPConfigType type) {
+  const IPConfig::Properties* GetIPPropertiesPtrFromType(IPConfigType type) {
     switch (type) {
       case IPConfigType::kIPv4DHCP:
-        return ipv4_dhcp_props_;
+        return &ipv4_dhcp_props_;
       case IPConfigType::kIPv4Static:
-        return ipv4_static_props_;
+        return &ipv4_static_props_;
       case IPConfigType::kIPv4LinkProtocol:
-        return ipv4_link_protocol_props_;
+        return &ipv4_link_protocol_props_;
       case IPConfigType::kIPv4DHCPWithStatic:
-        return ipv4_dhcp_with_static_props_;
+        return &ipv4_dhcp_with_static_props_;
       case IPConfigType::kIPv4LinkProtocolWithStatic:
-        return ipv4_link_protocol_with_static_props_;
+        return &ipv4_link_protocol_with_static_props_;
       case IPConfigType::kIPv6SLAAC:
-        return ipv6_slaac_props_;
+        return &ipv6_slaac_props_;
       case IPConfigType::kIPv6LinkProtocol:
-        return ipv6_link_protocol_props_;
+        return &ipv6_link_protocol_props_;
       default:
-        NOTREACHED();
+        return nullptr;
     }
-    return {};
+  }
+
+  IPConfig::Properties GetIPPropertiesFromType(IPConfigType type) {
+    auto ptr = GetIPPropertiesPtrFromType(type);
+    CHECK_NE(nullptr, ptr);
+    return IPConfig::Properties(*ptr);
   }
 
   NetworkConfig ipv4_dhcp_config_;
@@ -1806,7 +1811,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   EXPECT_CALL(event_handler2_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
   TriggerSLAACNameServersUpdate({});
-  EXPECT_TRUE(network_->ip6config()->properties().dns_servers.empty());
+  EXPECT_TRUE(network_->GetNetworkConfig().dns_servers.empty());
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // Reset the DNS server.
@@ -1819,7 +1824,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   EXPECT_CALL(event_handler2_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
   TriggerSLAACNameServersUpdate({dns_server});
-  EXPECT_EQ(network_->ip6config()->properties().dns_servers.size(), 1);
+  EXPECT_EQ(network_->GetNetworkConfig().dns_servers.size(), 1);
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
 }
