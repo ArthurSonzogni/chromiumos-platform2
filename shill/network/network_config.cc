@@ -28,6 +28,7 @@ bool operator==(const NetworkConfig& lhs, const NetworkConfig& rhs) {
          lhs.ipv4_default_route == rhs.ipv4_default_route &&
          lhs.excluded_route_prefixes == rhs.excluded_route_prefixes &&
          lhs.included_route_prefixes == rhs.included_route_prefixes &&
+         lhs.rfc3442_routes == rhs.rfc3442_routes &&
          lhs.dns_servers == rhs.dns_servers &&
          lhs.dns_search_domains == rhs.dns_search_domains && lhs.mtu == rhs.mtu;
 }
@@ -54,6 +55,17 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   }
   if (!config.ipv4_default_route) {
     stream << ", no IPv4 default route";
+  }
+  if (!config.rfc3442_routes.empty()) {
+    std::vector<std::string> rfc3442_routes_str;
+    std::transform(
+        config.rfc3442_routes.begin(), config.rfc3442_routes.end(),
+        std::back_inserter(rfc3442_routes_str),
+        [](std::pair<net_base::IPv4CIDR, net_base::IPv4Address> route) {
+          return route.first.ToString() + " via " + route.second.ToString();
+        });
+    stream << ", RFC 3442 classless static routes: ["
+           << base::JoinString(rfc3442_routes_str, ",") << "]";
   }
   if (!config.excluded_route_prefixes.empty()) {
     std::vector<std::string> excluded_route_str;

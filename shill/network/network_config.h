@@ -8,6 +8,7 @@
 #include <optional>
 #include <ostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <net-base/ip_address.h>
@@ -45,6 +46,8 @@ struct NetworkConfig {
   bool ipv4_default_route = true;
   std::vector<net_base::IPCIDR> excluded_route_prefixes;
   std::vector<net_base::IPCIDR> included_route_prefixes;
+  std::vector<std::pair<net_base::IPv4CIDR, net_base::IPv4Address>>
+      rfc3442_routes;
 
   // DNS and MTU configurations.
   std::vector<net_base::IPAddress> dns_servers;

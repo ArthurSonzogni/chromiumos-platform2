@@ -92,6 +92,22 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
                    << ipv4_prop->broadcast_address << "\"";
     }
     ret.ipv4_default_route = ipv4_prop->default_route;
+
+    for (const auto& route : ipv4_prop->dhcp_classless_static_routes) {
+      auto prefix = net_base::IPv4CIDR::CreateFromStringAndPrefix(route.host,
+                                                                  route.prefix);
+      if (!prefix) {
+        LOG(WARNING) << "Invalid RFC3442 route destination " << route.host
+                     << "/" << route.prefix;
+        continue;
+      }
+      auto gateway = net_base::IPv4Address::CreateFromString(route.gateway);
+      if (!gateway) {
+        LOG(WARNING) << "Invalid RFC3442 route gateway " << route.gateway;
+        continue;
+      }
+      ret.rfc3442_routes.emplace_back(*prefix, *gateway);
+    }
   }
 
   // IPv6 address/gateway configurations from ipv6_prop.
@@ -250,6 +266,20 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
   }
   if (force_overwrite || !network_config.dns_search_domains.empty()) {
     domain_search = network_config.dns_search_domains;
+  }
+
+  if (force_overwrite || !network_config.rfc3442_routes.empty()) {
+    dhcp_classless_static_routes = {};
+    std::transform(
+        network_config.rfc3442_routes.begin(),
+        network_config.rfc3442_routes.end(),
+        std::back_inserter(dhcp_classless_static_routes),
+        [](const std::pair<net_base::IPv4CIDR, net_base::IPv4Address>&
+               rfc3442_route) {
+          return IPConfig::Route(rfc3442_route.first.address().ToString(),
+                                 rfc3442_route.first.prefix_length(),
+                                 rfc3442_route.second.ToString());
+        });
   }
 }
 
