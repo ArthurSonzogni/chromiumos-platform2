@@ -4,8 +4,6 @@
 
 #include "shill/net/mock_netlink_socket.h"
 
-#include "shill/net/byte_string.h"
-
 namespace shill {
 
 MockNetlinkSocket::MockNetlinkSocket() = default;

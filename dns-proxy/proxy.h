@@ -25,7 +25,6 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <shill/dbus/client/client.h>
-#include <shill/net/byte_string.h>
 #include <shill/net/rtnl_listener.h>
 
 #include "dns-proxy/ipc.pb.h"

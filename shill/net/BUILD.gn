@@ -25,7 +25,6 @@ group("all") {
 install_config("install_headers") {
   sources = [
     "attribute_list.h",
-    "byte_string.h",
     "control_netlink_attribute.h",
     "event_history.h",
     "generic_netlink_message.h",
@@ -92,7 +91,6 @@ write_deps("libshill-net_deps") {
 shared_library("libshill-net") {
   sources = [
     "attribute_list.cc",
-    "byte_string.cc",
     "control_netlink_attribute.cc",
     "event_history.cc",
     "generic_netlink_message.cc",
@@ -182,7 +180,6 @@ if (use.test) {
     sources = [
       "../mock_log.cc",
       "attribute_list_test.cc",
-      "byte_string_test.cc",
       "event_history_test.cc",
       "netlink_attribute_test.cc",
       "netlink_manager_test.cc",
