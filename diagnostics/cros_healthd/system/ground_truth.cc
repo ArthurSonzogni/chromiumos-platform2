@@ -239,9 +239,10 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 }
 
-void GroundTruth::IsRoutineSupported(
+void GroundTruth::IsRoutineArgumentSupported(
     mojom::RoutineArgumentPtr routine_arg,
-    mojom::CrosHealthdRoutinesService::IsRoutineSupportedCallback callback) {
+    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
+        callback) {
   auto status = GetRoutineSupportStatus(std::move(routine_arg));
   std::move(callback).Run(std::move(status));
 }

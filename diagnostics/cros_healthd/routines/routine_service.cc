@@ -100,11 +100,12 @@ std::unique_ptr<BaseRoutineControl> RoutineService::CreateRoutineControl(
   }
 }
 
-void RoutineService::IsRoutineSupported(
+void RoutineService::IsRoutineArgumentSupported(
     mojom::RoutineArgumentPtr routine_arg,
-    mojom::CrosHealthdRoutinesService::IsRoutineSupportedCallback callback) {
-  ground_truth_->IsRoutineSupported(std::move(routine_arg),
-                                    std::move(callback));
+    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
+        callback) {
+  ground_truth_->IsRoutineArgumentSupported(std::move(routine_arg),
+                                            std::move(callback));
 }
 
 void RoutineService::AddRoutine(

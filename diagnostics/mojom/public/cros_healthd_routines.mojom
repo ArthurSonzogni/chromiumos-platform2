@@ -56,16 +56,16 @@ interface CrosHealthdRoutinesService {
       pending_receiver<RoutineControl> routine_receiver,
       pending_remote<RoutineObserver>? routine_observer);
 
-  // Checks whether a routine is supported.
+  // Checks whether a given `RoutineArgument` is supported.
   //
   // The request:
-  // * |routine_argument| - a RoutineArgument type that provides all the
-  //                        necessary parameters and configs to create a
-  //                        particular type of routine.
+  // * |routine_argument| - a `RoutineArgument` type that provides all the
+  //                        necessary parameters to create a particular type of
+  //                        routine.
   //
   // The response:
   // * |status| - See the documentation of `SupportStatus`.
-  [MinVersion=1] IsRoutineSupported@1(
+  [MinVersion=1] IsRoutineArgumentSupported@1(
       RoutineArgument routine_argument) => (SupportStatus status);
 };
 

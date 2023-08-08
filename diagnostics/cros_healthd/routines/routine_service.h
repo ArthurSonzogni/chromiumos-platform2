@@ -34,10 +34,10 @@ class RoutineService
           routine_receiver,
       mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver>
           routine_observer) override;
-  void IsRoutineSupported(
+  void IsRoutineArgumentSupported(
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
       ash::cros_healthd::mojom::CrosHealthdRoutinesService::
-          IsRoutineSupportedCallback callback) override;
+          IsRoutineArgumentSupportedCallback callback) override;
 
  private:
   // A helper function that adds a routine into the routine receiver set and

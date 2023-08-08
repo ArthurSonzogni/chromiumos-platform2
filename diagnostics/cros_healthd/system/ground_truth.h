@@ -29,10 +29,10 @@ class GroundTruth final {
                             IsEventSupportedCallback callback);
   ash::cros_healthd::mojom::SupportStatusPtr GetRoutineSupportStatus(
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg);
-  void IsRoutineSupported(
+  void IsRoutineArgumentSupported(
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
       ash::cros_healthd::mojom::CrosHealthdRoutinesService::
-          IsRoutineSupportedCallback callback);
+          IsRoutineArgumentSupportedCallback callback);
 
   // cros_config related functions.
   std::string FormFactor();

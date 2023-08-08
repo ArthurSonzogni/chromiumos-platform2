@@ -4,8 +4,8 @@ Healthd develops more and more [routines][cros_healthd_routines.mojom],
 our clients use them as part of their diagnostic flow. However, clients want
 to know if a certain routine is supported or not so that they can decide to
 render an icon on the UI or not. Hence, we release an interface
-`CrosHealthdRoutinesService.IsRoutineSupported` for our clients to query the
-routine support status.
+`CrosHealthdRoutinesService.IsRoutineArgumentSupported` for our clients to
+query the routine support status.
 
 This document focuses on the following things:
 - How we determine if a routine is supported.

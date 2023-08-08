@@ -98,8 +98,8 @@ int CheckV2RoutineSupportStatus(mojom::RoutineArgumentPtr argument) {
       cros_healthd_routines_service_);
 
   MojoResponseWaiter<mojom::SupportStatusPtr> waiter;
-  cros_healthd_routines_service_->IsRoutineSupported(std::move(argument),
-                                                     waiter.CreateCallback());
+  cros_healthd_routines_service_->IsRoutineArgumentSupported(
+      std::move(argument), waiter.CreateCallback());
   OutputSupportStatus(waiter.WaitForResponse());
 
   return EXIT_SUCCESS;
