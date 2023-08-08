@@ -52,34 +52,27 @@ void SLAACController::Start(
       net_base::IPFamily::kIPv6,
       ProcFsStub::kIPFlagAcceptDuplicateAddressDetection,
       ProcFsStub::kIPFlagAcceptDuplicateAddressDetectionEnabled);
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
+                      ProcFsStub::kIPFlagAcceptRouterAdvertisements,
+                      ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
 
   // Temporarily disable IPv6 to remove all existing addresses.
   proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagDisableIPv6,
                       "1");
-  if (link_local_address_) {
-    // Temporarily disable accepting RA so we get a time to configure link local
-    // address.
-    proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
-                        ProcFsStub::kIPFlagAcceptRouterAdvertisements,
-                        ProcFsStub::kIPFlagAcceptRouterAdvertisementsNever);
-  } else {
-    proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
-                        ProcFsStub::kIPFlagAcceptRouterAdvertisements,
-                        ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
-  }
+  // If link local address is specified, don't let kernel generate another one.
+  proc_fs_->SetIPFlag(
+      net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagAddressGenerationMode,
+      link_local_address_ ? ProcFsStub::kIPFlagAddressGenerationModeNoLinkLocal
+                          : ProcFsStub::kIPFlagAddressGenerationModeDefault);
 
-  // Re-enable IPv6.
+  // Re-enable IPv6. If kIPFlagAddressGenerationMode is Default, kernel will
+  // start SLAAC upon this. If it is NoLinkLocal, kernel will start SLAAC as
+  // soon as we add the link local address manually.
   proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6, ProcFsStub::kIPFlagDisableIPv6,
                       "0");
   if (link_local_address_) {
     ConfigureLinkLocalAddress();
-    proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
-                        ProcFsStub::kIPFlagAcceptRouterAdvertisements,
-                        ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
   }
-  // Turning on accept_ra does not force sending RS so we need to do it
-  // ourselves.
-  SendRouterSolicitation();
 }
 
 void SLAACController::RegisterCallback(UpdateCallback update_callback) {
