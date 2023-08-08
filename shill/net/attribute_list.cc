@@ -12,7 +12,6 @@
 #include <base/containers/span.h>
 #include <base/logging.h>
 
-#include "shill/net/byte_string.h"
 #include "shill/net/netlink_attribute.h"
 
 namespace shill {
@@ -46,11 +45,11 @@ bool AttributeList::CreateNl80211Attribute(
 bool AttributeList::CreateAndInitAttribute(
     const AttributeList::NewFromIdMethod& factory,
     int id,
-    const ByteString& value) {
+    base::span<const uint8_t> value) {
   if (!CreateAttribute(id, factory)) {
     return false;
   }
-  return InitAttributeFromValue(id, {value.GetConstData(), value.GetLength()});
+  return InitAttributeFromValue(id, value);
 }
 
 bool AttributeList::InitAttributeFromValue(int id,
@@ -99,10 +98,9 @@ bool AttributeList::IterateAttributes(
       return false;
     }
 
-    ByteString value;
+    base::span<const uint8_t> value;
     if (attribute->nla_len > NLA_HDRLEN) {
-      value = ByteString(remaining.data() + NLA_HDRLEN,
-                         attribute->nla_len - NLA_HDRLEN);
+      value = remaining.subspan(NLA_HDRLEN, attribute->nla_len - NLA_HDRLEN);
     }
     if (!method.Run(attribute->nla_type, value)) {
       return false;

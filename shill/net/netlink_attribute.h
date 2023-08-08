@@ -15,7 +15,6 @@
 #include <base/functional/callback.h>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/netlink_message.h"
 
 namespace shill {
@@ -353,12 +352,12 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
       const NetlinkNestedAttribute::NestedData::NestedDataMap& templates,
       const AttributeListRefPtr& list,
       int id,
-      const ByteString& value);
+      base::span<const uint8_t> value);
   static bool AddAttributeToNestedArray(
       const NetlinkNestedAttribute::NestedData& array_template,
       const AttributeListRefPtr& list,
       int id,
-      const ByteString& value);
+      base::span<const uint8_t> value);
   static bool AddAttributeToNestedInner(
       const NetlinkNestedAttribute::NestedData& nested_template,
       const std::string& attribute_name,

@@ -16,7 +16,6 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 
-#include "shill/net/byte_string.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"
 
@@ -33,7 +32,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   using NewFromIdMethod =
       base::RepeatingCallback<std::unique_ptr<NetlinkAttribute>(int id)>;
   using AttributeMethod =
-      base::RepeatingCallback<bool(int id, const ByteString& value)>;
+      base::RepeatingCallback<bool(int id, base::span<const uint8_t> value)>;
 
   AttributeList();
   AttributeList(const AttributeList&) = delete;
@@ -53,7 +52,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   // using |factory|, initializes it from |value|, and adds it to |attributes_|.
   bool CreateAndInitAttribute(const NewFromIdMethod& factory,
                               int id,
-                              const ByteString& value);
+                              base::span<const uint8_t> value);
 
   // Initializes the attribute |id| from the data in |value|.
   bool InitAttributeFromValue(int id, base::span<const uint8_t> value);

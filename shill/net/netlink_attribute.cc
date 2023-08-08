@@ -795,11 +795,11 @@ bool NetlinkNestedAttribute::AddAttributeToNestedArray(
     const NetlinkNestedAttribute::NestedData& array_template,
     const AttributeListRefPtr& list,
     int id,
-    const ByteString& value) {
+    base::span<const uint8_t> value) {
   auto attribute_name =
       base::StringPrintf("%s_%d", array_template.attribute_name.c_str(), id);
   return AddAttributeToNestedInner(array_template, attribute_name, list, id,
-                                   {value.GetConstData(), value.GetLength()});
+                                   value);
 }
 
 // static
@@ -807,16 +807,15 @@ bool NetlinkNestedAttribute::AddAttributeToNestedMap(
     const NetlinkNestedAttribute::NestedData::NestedDataMap& templates,
     const AttributeListRefPtr& list,
     int id,
-    const ByteString& value) {
+    base::span<const uint8_t> value) {
   auto template_it = templates.find(id);
   if (template_it == templates.end()) {
     // No interest in this value.
     return true;
   }
   const NestedData& nested_template = template_it->second;
-  return AddAttributeToNestedInner(nested_template,
-                                   nested_template.attribute_name, list, id,
-                                   {value.GetConstData(), value.GetLength()});
+  return AddAttributeToNestedInner(
+      nested_template, nested_template.attribute_name, list, id, value);
 }
 
 // static

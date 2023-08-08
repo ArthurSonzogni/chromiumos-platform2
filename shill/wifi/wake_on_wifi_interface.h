@@ -12,11 +12,11 @@
 #include <base/time/time.h>
 
 #include "shill/callbacks.h"
+#include "shill/net/byte_string.h"
 #include "shill/wifi/wifi.h"
 
 namespace shill {
 
-class ByteString;
 class Error;
 class Nl80211Message;
 class PropertyStore;
