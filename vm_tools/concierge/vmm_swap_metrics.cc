@@ -225,7 +225,7 @@ void VmmSwapMetrics::ReportDurations(base::Time time) const {
     // If vmm-swap is force-enabled, `pending_started_at_` can be empty or
     // later than enabled time.
     if (swappable_idle_start_time_.has_value() &&
-        swappable_idle_start_time_.value() < vmm_swap_enable_time_.value()) {
+        swappable_idle_start_time_.value() <= vmm_swap_enable_time_.value()) {
       if (!SendDurationToUMA(kMetricsInactiveBeforeEnableDuration,
                              vmm_swap_enable_time_.value() -
                                  swappable_idle_start_time_.value())) {
