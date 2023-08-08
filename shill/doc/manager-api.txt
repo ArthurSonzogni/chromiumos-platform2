@@ -869,3 +869,9 @@ Properties	object ActiveProfile [readonly]
 			each value is a comma-separated list of the IP addresses
 			(both v4 and v6 are supported) of the standard DNS name
 			servers that map to the secure DNS service provider.
+
+		boolean P2PAllowed [readwrite]
+
+			Whether P2P feature is allowed. When false, all P2P-related calls
+			will return failure. Should only be modified by Chrome feature flag
+			or tests.

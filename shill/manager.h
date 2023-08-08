@@ -549,6 +549,7 @@ class Manager {
   friend class ModemInfoTest;
   friend class ModemManagerTest;
   friend class OpenVPNDriverTest;
+  friend class P2PManagerTest;
   friend class ServiceTest;
   friend class TetheringManagerTest;
   friend class VPNServiceTest;

@@ -241,6 +241,7 @@ WiFiProvider::WiFiProvider(Manager* manager)
     : manager_(manager),
       netlink_manager_(NetlinkManager::GetInstance()),
       weak_ptr_factory_while_started_(this),
+      p2p_manager_(new P2PManager(manager_)),
       hotspot_device_factory_(
           base::BindRepeating([](Manager* manager,
                                  const std::string& primary_link_name,
@@ -259,6 +260,7 @@ WiFiProvider::~WiFiProvider() = default;
 
 void WiFiProvider::Start() {
   running_ = true;
+  p2p_manager_->InitPropertyStore(manager_->mutable_store());
   broadcast_handler_ =
       base::BindRepeating(&WiFiProvider::HandleNetlinkBroadcast,
                           weak_ptr_factory_while_started_.GetWeakPtr());
@@ -273,6 +275,7 @@ void WiFiProvider::Start() {
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
                                       NetlinkManager::kEventTypeMlme);
   GetPhyInfo(kAllPhys);
+  p2p_manager_->Start();
 }
 
 void WiFiProvider::Stop() {
@@ -287,6 +290,7 @@ void WiFiProvider::Stop() {
   weak_ptr_factory_while_started_.InvalidateWeakPtrs();
   netlink_manager_->RemoveBroadcastHandler(broadcast_handler_);
   wifi_phys_.clear();
+  p2p_manager_->Stop();
   running_ = false;
 }
 

@@ -105,6 +105,7 @@ constexpr char kEnableRFC8925Property[] = "EnableRFC8925";
 constexpr char kExperimentalTetheringFunctionality[] =
     "ExperimentalTetheringFunctionality";
 constexpr char kLOHSConfigProperty[] = "LOHSConfig";
+constexpr char kP2PAllowedProperty[] = "P2PAllowed";
 constexpr char kPortalFallbackHttpUrlsProperty[] = "PortalFallbackHttpUrls";
 constexpr char kPortalFallbackHttpsUrlsProperty[] = "PortalFallbackHttpsUrls";
 constexpr char kPortalHttpUrlProperty[] = "PortalHttpUrl";

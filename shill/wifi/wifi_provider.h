@@ -24,6 +24,7 @@
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/local_device.h"
+#include "shill/wifi/p2p_manager.h"
 #include "shill/wifi/wifi_rf.h"
 
 namespace shill {
@@ -266,6 +267,9 @@ class WiFiProvider : public ProviderInterface {
   // Sets the regulatory domain to the "world" domain.
   mockable void ResetRegDomain();
 
+  // Getter for p2p_manager_.
+  P2PManager* p2p_manager() const { return p2p_manager_.get(); }
+
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);
@@ -378,6 +382,8 @@ class WiFiProvider : public ProviderInterface {
   // a UpdateRegAndPhy() function).
   base::CancelableOnceClosure phy_update_timeout_cb_;
   base::OnceClosure phy_info_ready_cb_;
+  // P2P manager to manage P2P related state machine, properties and session.
+  std::unique_ptr<P2PManager> p2p_manager_;
 
   // The factory method to create a HotspotDevice instance. It's used to inject
   // the mock factory at testing.
