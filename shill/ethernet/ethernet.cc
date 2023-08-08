@@ -44,7 +44,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/net/byte_string.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
@@ -171,7 +170,7 @@ Ethernet::Ethernet(Manager* manager,
   }
 }
 
-Ethernet::~Ethernet() {}
+Ethernet::~Ethernet() = default;
 
 void Ethernet::Start(EnabledStateChangedCallback callback) {
   if (IsExternalPciDev(link_name())) {
@@ -863,7 +862,8 @@ std::string Ethernet::GetPermanentMacAddressFromKernel() {
     return std::string();
   }
 
-  ByteString mac_address(perm_addr->data, ETH_ALEN);
+  const auto mac_address = *net_base::MacAddress::CreateFromBytes(
+      {perm_addr->data, net_base::MacAddress::kAddressLength});
   if (mac_address.IsZero()) {
     // All-zero permanent MAC address ("00:00:00:00:00:00") is not meaningful,
     // no matter if it is expected (e.g., for veths) or not.
@@ -872,7 +872,8 @@ std::string Ethernet::GetPermanentMacAddressFromKernel() {
     return std::string();
   }
 
-  std::string mac_address_str = base::ToLowerASCII(mac_address.HexEncode());
+  const std::string mac_address_str =
+      base::ToLowerASCII(base::HexEncode(mac_address.ToBytes()));
   if (!IsValidMac(mac_address_str)) {
     LOG(ERROR) << "Invalid permanent MAC address: " << mac_address_str;
     return std::string();
