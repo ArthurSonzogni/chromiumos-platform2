@@ -329,8 +329,8 @@ void PeripheralBatteryWatcher::ReadCallback(const base::FilePath& path,
     SendBatteryStatus(path, model_name, level, status, serial_number,
                       active_update);
   } else {
-    LOG(ERROR) << "Invalid battery level reading : [" << data << "]"
-               << " from " << path.value();
+    LOG(ERROR) << "Invalid battery level reading : [" << data << "]" << " from "
+               << path.value();
   }
   base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(
       FROM_HERE, std::move(battery_readers_.extract(path).mapped()));

@@ -14,6 +14,8 @@
 #include <dbus/message.h>
 #include <dbus/object_manager.h>
 
+#include "power_manager/powerd/system/bluetooth_battery_provider.h"
+
 namespace power_manager::system {
 
 // Represents an exported battery object on org.bluez.BatteryProvider1
@@ -56,7 +58,8 @@ class BluezBattery {
 // the registered root path and export the expected properties: Device and
 // Percentage. When there is a battery level change, the Percentage property is
 // updated and BlueZ will know since it monitors the exported objects.
-class BluezBatteryProvider : public dbus::ObjectManager::Interface {
+class BluezBatteryProvider : public dbus::ObjectManager::Interface,
+                             public BluetoothBatteryProvider {
  public:
   BluezBatteryProvider();
 
@@ -64,11 +67,11 @@ class BluezBatteryProvider : public dbus::ObjectManager::Interface {
   void Init(scoped_refptr<dbus::Bus> bus);
 
   // Resets the state like it was just init-ed.
-  void Reset();
+  void Reset() override;
 
   // Notifies about a change in Bluetooth device battery level, or creates one
   // if this is the first notification of the device.
-  virtual void UpdateDeviceBattery(const std::string& address, int level);
+  void UpdateDeviceBattery(const std::string& address, int level) override;
 
   // dbus::ObjectManager::Interface overrides:
   // This is to monitor BlueZ's BatteryProviderManager interface presence.

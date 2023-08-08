@@ -19,6 +19,7 @@
 #include <dbus/message.h>
 
 #include "power_manager/powerd/system/async_file_reader.h"
+#include "power_manager/powerd/system/bluetooth_battery_provider.h"
 #include "power_manager/powerd/system/bluez_battery_provider.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
