@@ -118,7 +118,6 @@ class IPConfig {
   const RpcIdentifier& GetRpcIdentifier() const;
 
   void set_properties(const Properties& props) { properties_ = props; }
-  mockable const Properties& properties() const { return properties_; }
 
   // Update DNS servers setting for this ipconfig, this allows Chrome
   // to retrieve the new DNS servers.
@@ -142,8 +141,14 @@ class IPConfig {
   // such as combining IP address from static IP config with DNS from DHCP.
   void ApplyNetworkConfig(const NetworkConfig& config, bool force_overwrite);
 
+ protected:
+  mockable const Properties& properties() const { return properties_; }
+
  private:
   friend class IPConfigTest;
+  // TODO(b/269401899): Remove all usage of properties() in Network.
+  friend class Network;
+  friend std::ostream& operator<<(std::ostream& stream, const IPConfig& config);
 
   // Inform RPC listeners of changes to our properties. MAY emit
   // changes even on unchanged properties.
