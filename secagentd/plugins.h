@@ -5,12 +5,11 @@
 #ifndef SECAGENTD_PLUGINS_H_
 #define SECAGENTD_PLUGINS_H_
 
-#include <missive/proto/record_constants.pb.h>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -21,6 +20,9 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
+#include "cryptohome/proto_bindings/auth_factor.pb.h"
+#include "cryptohome/proto_bindings/UserDataAuth.pb.h"
+#include "missive/proto/record_constants.pb.h"
 #include "secagentd/batch_sender.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
@@ -33,8 +35,15 @@
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "tpm_manager-client/tpm_manager/dbus-proxies.h"
+#include "user_data_auth/dbus-proxies.h"
 
 namespace secagentd {
+
+using AuthFactorType = cros_xdr::reporting::Authentication_AuthenticationType;
+
+// If the auth factor is not yet filled wait to see
+// if dbus signal is late.
+static constexpr base::TimeDelta kWaitForAuthFactorS = base::Seconds(1);
 
 namespace testing {
 class AgentPluginTestFixture;
@@ -327,11 +336,50 @@ class AuthenticationPlugin : public PluginInterface {
                                 bool success);
   // Creates and sends a login/out event based on the state.
   void HandleSessionStateChange(const std::string& state);
+  // Used to fill the auth factor for login and unlock.
+  // Also fills in the device user.
+  void HandleAuthenticateAuthFactorCompleted(
+      const user_data_auth::AuthenticateAuthFactorCompleted& result);
+  // Fills the proto's auth factor if auth_factor_ is known.
+  // Returns if auth factor was filled.
+  bool FillAuthFactor(cros_xdr::reporting::Authentication* proto);
+  // Sends the Authentication event to the CROS_SECURITY_USER destination.
+  void SendAuthenticationEvent(
+      std::unique_ptr<cros_xdr::reporting::XdrAuthenticateEvent>);
+  // If there is an entry event but auth factor is not filled, wait and
+  // then check again for auth factor. If still not found send message anyway.
+  void DelayedCheckForAuthSignal(
+      std::unique_ptr<cros_xdr::reporting::XdrAuthenticateEvent> xdr_proto,
+      cros_xdr::reporting::Authentication* authentication);
 
   base::WeakPtrFactory<AuthenticationPlugin> weak_ptr_factory_;
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<DeviceUserInterface> device_user_;
+  std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
+      cryptohome_proxy_;
+  AuthFactorType auth_factor_type_ =
+      AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
+  const std::unordered_map<user_data_auth::AuthFactorType, AuthFactorType>
+      auth_factor_map_ = {
+          {user_data_auth::AUTH_FACTOR_TYPE_UNSPECIFIED,
+           AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN},
+          {user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+           AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD},
+          {user_data_auth::AUTH_FACTOR_TYPE_PIN,
+           AuthFactorType::Authentication_AuthenticationType_AUTH_PIN},
+          {user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
+           AuthFactorType::
+               Authentication_AuthenticationType_AUTH_ONLINE_RECOVERY},
+          {user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
+           AuthFactorType::Authentication_AuthenticationType_AUTH_KIOSK},
+          {user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
+           AuthFactorType::Authentication_AuthenticationType_AUTH_SMART_CARD},
+          {user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT,
+           AuthFactorType::Authentication_AuthenticationType_AUTH_FINGERPRINT},
+          {user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT,
+           AuthFactorType::Authentication_AuthenticationType_AUTH_FINGERPRINT},
+      };
   bool is_active_{false};
 };
 

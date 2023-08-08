@@ -75,6 +75,7 @@ pkg_config("target_defaults") {
     "libshill-client",
     "libshill-dbus-client",
     "libtpm_manager-client",
+    "libuser_data_auth-client",
     "openssl",
     "protobuf",
     "system_api",
@@ -147,6 +148,7 @@ if (use.test) {
       "libchrome-test",
       "libsession_manager-client-test",
       "libtpm_manager-client-test",
+      "libuser_data_auth-client-test",
     ]
   }
 
