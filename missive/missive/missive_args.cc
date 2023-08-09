@@ -28,6 +28,11 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/util/statusor.h"
 
+// Temporary replacement for `Priority_Name` that does
+// not work in certain CQ.
+// TODO(b/294756107): Remove this function once fixed.
+#include "missive/proto/priority_name.h"
+
 namespace reporting {
 namespace {
 
@@ -99,7 +104,7 @@ const char* MissiveArgs::kLegacyStorageEnabledDefault = []() {
     if (!priorities_list.empty()) {
       base::StrAppend(&priorities_list, {","});
     }
-    base::StrAppend(&priorities_list, {Priority_Name(priority)});
+    base::StrAppend(&priorities_list, {Priority_Name_Substitute(priority)});
   }
   return priorities_list.c_str();
 }();

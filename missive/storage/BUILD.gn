@@ -23,6 +23,11 @@ static_library("storage_configuration") {
   configs += [ ":target_defaults" ]
   deps = [
     "//missive/proto:libmissiveprotorecordconstants",
+
+    # Temporary replacement for `Priority_Name` that does
+    # not work in certain CQ.
+    # TODO(b/294756107): Remove this function once fixed.
+    "//missive/proto:priority_name",
     "//missive/resources:resource_manager",
   ]
 }

@@ -5,6 +5,33 @@
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
+# Temporary replacement for `Priority_Name` that does
+# not work in certain CQ.
+# TODO(b/294756107): Remove this function once fixed.
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+source_set("priority_name") {
+  sources = [
+    "priority_name.cc",
+    "priority_name.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+
+  deps = [ ":libmissiveprotorecordconstants" ]
+}
+
 # Only used by the reporting-proto ebuild.
 group("all") {
   deps = [ ":libmissive-interface-goprotos" ]

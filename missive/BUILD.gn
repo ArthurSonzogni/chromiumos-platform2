@@ -155,6 +155,11 @@ static_library("missiveclienttestlib") {
     "//missive/client:report_queue_provider",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
+
+    # Temporary replacement for `Priority_Name` that does
+    # not work in certain CQ.
+    # TODO(b/294756107): Remove this function once fixed.
+    "//missive/proto:priority_name",
     "//missive/proto:test_proto",
     "//missive/storage:storage_test_support",
     "//missive/util:dynamic_flag",
@@ -184,6 +189,11 @@ if (use.test) {
       "client/report_queue_test.cc",
       "compression/compression_module_test.cc",
       "dbus/upload_client_impl_test.cc",
+
+      # Temporary replacement for `Priority_Name` that does
+      # not work in certain CQ.
+      # TODO(b/294756107): Remove this function once fixed.
+      "proto/priority_name_test.cc",
       "resources/enqueuing_record_tallier_test.cc",
       "resources/resource_managed_buffer_test.cc",
       "resources/resource_manager_test.cc",
@@ -228,6 +238,11 @@ if (use.test) {
       "//missive/health:unit_tests",
       "//missive/missive:missive_args",
       "//missive/missive:unit_tests",
+
+      # Temporary replacement for `Priority_Name` that does
+      # not work in certain CQ.
+      # TODO(b/294756107): Remove this function once fixed.
+      "//missive/proto:priority_name",
       "//missive/resources:resource_manager",
       "//missive/scheduler",
       "//missive/scheduler:enqueue_job",

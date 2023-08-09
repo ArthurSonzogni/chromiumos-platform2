@@ -26,6 +26,11 @@
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 
+// Temporary replacement for `Priority_Name` that does
+// not work in certain CQ.
+// TODO(b/294756107): Remove this function once fixed.
+#include "missive/proto/priority_name.h"
+
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::Invoke;
@@ -198,7 +203,7 @@ TEST_F(ReportQueueProviderTest, CreateMultipleQueues) {
     // Compose the message.
     std::string message = std::string(kTestMessage)
                               .append(" priority=")
-                              .append(Priority_Name(s.first))
+                              .append(Priority_Name_Substitute(s.first))
                               .append(" destination=")
                               .append(Destination_Name(s.second));
     // Asynchronously create ReportingQueue and then asynchronously send the
@@ -247,7 +252,7 @@ TEST_F(ReportQueueProviderTest, CreateMultipleSpeculativeQueues) {
     // Compose the message.
     std::string message = std::string(kTestMessage)
                               .append(" priority=")
-                              .append(Priority_Name(s.first))
+                              .append(Priority_Name_Substitute(s.first))
                               .append(" destination=")
                               .append(Destination_Name(s.second));
     // Create SpeculativeReportingQueue and then asynchronously send the

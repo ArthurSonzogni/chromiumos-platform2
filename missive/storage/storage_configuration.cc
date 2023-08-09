@@ -12,6 +12,11 @@
 #include "missive/resources/resource_manager.h"
 #include "missive/util/status.h"
 
+// Temporary replacement for `Priority_Name` that does
+// not work in certain CQ.
+// TODO(b/294756107): Remove this function once fixed.
+#include "missive/proto/priority_name.h"
+
 namespace reporting {
 
 namespace {
@@ -72,7 +77,7 @@ void StorageOptions::MultiGenerational::set(Priority priority, bool state) {
   const bool was_multigenerational =
       is_multi_generational_[priority].exchange(state);
   LOG_IF(WARNING, was_multigenerational != state)
-      << "Priority " << Priority_Name(priority) << " switched to "
+      << "Priority " << Priority_Name_Substitute(priority) << " switched to "
       << (state ? "multi" : "single") << "-generational state";
 }
 
