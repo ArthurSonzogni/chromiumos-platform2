@@ -14,10 +14,28 @@
 
 namespace cros {
 
+#if USE_CAMERA_ANGLE_BACKEND
+#define EGL_PLATFORM_ANGLE_ANGLE 0x3202
+#define EGL_PLATFORM_ANGLE_TYPE_ANGLE 0x3203
+#define EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE 0x3450
+#endif
+
 // static
 std::unique_ptr<EglContext> EglContext::GetSurfacelessContext(
     const EglContextOptions& options) {
+#if USE_CAMERA_ANGLE_BACKEND
+  std::vector<EGLAttrib> display_attributes = {
+      EGL_PLATFORM_ANGLE_TYPE_ANGLE,
+      EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE,
+      EGL_NONE,
+  };
+
+  EGLDisplay egl_display = eglGetPlatformDisplay(
+      EGL_PLATFORM_ANGLE_ANGLE, nullptr, display_attributes.data());
+#else
   EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+#endif
+
   if (eglInitialize(egl_display, /*major=*/nullptr, /*minor=*/nullptr) !=
       EGL_TRUE) {
     LOGF(ERROR) << "Failed to create EGL display";

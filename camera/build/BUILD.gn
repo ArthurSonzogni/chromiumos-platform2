@@ -27,6 +27,13 @@ config("cros_camera_common") {
     "-Wl,-rpath=/build/share/cros_camera/",
   ]
 
+  if (use.camera_angle_backend) {
+    ldflags += [
+      # Link to the ANGLE GL library distributed by Chrome on the device.
+      "-Wl,-rpath=/opt/google/chrome/",
+    ]
+  }
+
   # Feature USE flags as declared in chromeos-base/cros-camera-libs.
   defines += [
     "USE_ARCVM=${use.arcvm}",
@@ -40,6 +47,7 @@ config("cros_camera_common") {
     "USE_IPU6=${use.ipu6}",
     "USE_IPU6EP=${use.ipu6ep}",
     "USE_IPU6EPMTL=${use.ipu6epmtl}",
+    "USE_CAMERA_ANGLE_BACKEND=${use.camera_angle_backend}",
   ]
 
   # Uncomment to enable DVLOGF*() logs.

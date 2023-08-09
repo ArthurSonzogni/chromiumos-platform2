@@ -51,6 +51,7 @@ _IUSE = [
     "asan",
     "attestation",
     "bluetooth_suspend_management",
+    "camera_angle_backend",
     "camera_feature_auto_framing",
     "camera_feature_diagnostics",
     "camera_feature_effects",
