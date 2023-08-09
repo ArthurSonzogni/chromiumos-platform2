@@ -40,6 +40,7 @@ constexpr pid_t kInitPid = 1;
 constexpr pid_t kKThreadDPid = 2;
 
 constexpr char kProcSubdirPattern[] = "[0-9]*";
+constexpr char kMinijailExecName[] = "minijail0";
 
 const base::FilePath kProcStatusFile("status");
 const base::FilePath kProcCmdlineFile("cmdline");
@@ -294,6 +295,9 @@ MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries) {
 
 bool IsProcInForbiddenIntersection(const ProcEntry& proc,
                                    const ProcEntry& init_proc) {
+  if (proc.comm() == kMinijailExecName) {
+    return false;
+  }
   // The process is properly sandboxed if at least one of these conditions is
   // met:
   //   - The process is not running as root and does not have CAP_SYS_ADMIN in

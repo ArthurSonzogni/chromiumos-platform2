@@ -161,9 +161,11 @@ class ProcessesTestFixture : public ::testing::Test {
   void DestroyFakeProcfs() { ASSERT_TRUE(fake_root_.Delete()); }
 
   base::ScopedTempDir fake_root_;
-  const std::set<pid_t> kAllProcs = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  const std::set<pid_t> kInitPidNamespaceOnlyProcs = {1, 2, 3, 4, 5, 7, 8, 10};
-  const std::set<pid_t> kNoKernelTasksProcs = {1, 3, 4, 5, 6, 7, 8, 9};
+  const std::set<pid_t> kAllProcs = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+  const std::set<pid_t> kInitPidNamespaceOnlyProcs = {1, 2, 3,  4, 5,
+                                                      7, 8, 10, 11};
+  const std::set<pid_t> kNoKernelTasksProcs = {1, 3, 4, 5, 6, 7, 8, 9, 11};
+  const std::set<pid_t> kForbiddenIntersectionProcs = {1, 3, 6, 7, 8};
   // Each key corresponds to the name of the test.
   std::map<std::string, MockProccess> mock_processes_ = {
       {"InitProcess",
@@ -320,6 +322,22 @@ class ProcessesTestFixture : public ::testing::Test {
            .mnt_ns_symlink = base::FilePath("mnt:[4026531836]"),
            .user_ns_symlink = base::FilePath("user:[4026531837]"),
        }},
+      {"MinijailProcess",
+       {
+           .pid = "11",
+           .uid = "0",
+           .ppid = "1",
+           .name = "minijail0",
+           .cap_eff = "ffffffffffffffff",
+           .no_new_privs = "0",
+           .seccomp = "0",
+           .cmdline = std::string("minijail0\0--config\0/usr/share/minijail/"
+                                  "secagentd.conf\0--\0/usr/sbin/secagentd",
+                                  74),
+           .pid_ns_symlink = base::FilePath("pid:[4026531841]"),
+           .mnt_ns_symlink = base::FilePath("mnt:[4026531836]"),
+           .user_ns_symlink = base::FilePath("user:[4026531837]"),
+       }},
   };
 
  private:
@@ -461,6 +479,32 @@ TEST_F(ProcessesTestFixture, ReadProcessesNoKernelTasks) {
   ASSERT_TRUE(actual_proc_entries.has_value());
   EXPECT_EQ(actual_proc_entries.value().size(), kNoKernelTasksProcs.size());
   ExpectProcEntryPids(actual_proc_entries, kNoKernelTasksProcs);
+}
+
+TEST_F(ProcessesTestFixture, ForbiddenIntersectionProcs) {
+  base::FilePath proc_dir;
+  ASSERT_NO_FATAL_FAILURE(CreateFakeProcfs(proc_dir));
+  MaybeProcEntries actual_proc_entries =
+      ReadProcesses(ProcessFilter::kNoKernelTasks, proc_dir);
+  ASSERT_TRUE(actual_proc_entries.has_value());
+
+  MaybeProcEntry init_proc = GetInitProcEntry(actual_proc_entries.value());
+  ASSERT_TRUE(init_proc.has_value());
+
+  ProcEntries flagged_procs;
+  std::copy_if(actual_proc_entries->begin(), actual_proc_entries->end(),
+               std::back_inserter(flagged_procs), [&](const ProcEntry& e) {
+                 return IsProcInForbiddenIntersection(e, init_proc.value());
+               });
+  MaybeProcEntries actual_forbidden_intersection_procs =
+      MaybeProcEntries(flagged_procs);
+  ASSERT_TRUE(actual_forbidden_intersection_procs.has_value());
+
+  EXPECT_EQ(actual_forbidden_intersection_procs.value().size(),
+            kForbiddenIntersectionProcs.size());
+
+  ExpectProcEntryPids(actual_forbidden_intersection_procs,
+                      kForbiddenIntersectionProcs);
 }
 
 }  // namespace secanomalyd::testing
