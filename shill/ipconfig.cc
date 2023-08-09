@@ -195,7 +195,8 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
   if (ipv6_prop && ipv6_prop->mtu > 0) {
     mtu = std::min(mtu, ipv6_prop->mtu);
   }
-  int min_mtu = ipv6_prop ? IPConfig::kMinIPv6MTU : IPConfig::kMinIPv4MTU;
+  int min_mtu =
+      ipv6_prop ? NetworkConfig::kMinIPv6MTU : NetworkConfig::kMinIPv4MTU;
   if (mtu < min_mtu) {
     LOG(INFO) << __func__ << " MTU " << mtu << " is too small; adjusting up to "
               << min_mtu;

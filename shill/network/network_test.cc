@@ -1107,7 +1107,8 @@ TEST_F(NetworkTest, IsConnectedViaTether) {
 }
 
 TEST_F(NetworkTest, ApplyMTU) {
-  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, IPConfig::kDefaultMTU));
+  EXPECT_CALL(network_applier_,
+              ApplyMTU(kTestIfindex, NetworkConfig::kDefaultMTU));
   network_->TriggerApplyMTU();
 
   // IPv4
@@ -1119,9 +1120,10 @@ TEST_F(NetworkTest, ApplyMTU) {
   EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, 1480));
   network_->TriggerApplyMTU();
 
-  properties.mtu = 400;  // less than IPConfig::kMinIPv4MTU
+  properties.mtu = 400;  // less than NetworkConfig::kMinIPv4MTU
   network_->ipconfig()->UpdateProperties(properties);
-  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, IPConfig::kMinIPv4MTU));
+  EXPECT_CALL(network_applier_,
+              ApplyMTU(kTestIfindex, NetworkConfig::kMinIPv4MTU));
   network_->TriggerApplyMTU();
 
   // IPv6
@@ -1133,9 +1135,10 @@ TEST_F(NetworkTest, ApplyMTU) {
   EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, 1480));
   network_->TriggerApplyMTU();
 
-  properties.mtu = 800;  // less than IPConfig::kMinIPv6MTU
+  properties.mtu = 800;  // less than NetworkConfig::kMinIPv6MTU
   network_->ip6config()->UpdateProperties(properties);
-  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, IPConfig::kMinIPv6MTU));
+  EXPECT_CALL(network_applier_,
+              ApplyMTU(kTestIfindex, NetworkConfig::kMinIPv6MTU));
   network_->TriggerApplyMTU();
 
   // Dual Stack
@@ -1149,9 +1152,10 @@ TEST_F(NetworkTest, ApplyMTU) {
               ApplyMTU(kTestIfindex, 1400));  // the smaller of two
   network_->TriggerApplyMTU();
 
-  properties.mtu = 800;  // less than IPConfig::kMinIPv6MTU
+  properties.mtu = 800;  // less than NetworkConfig::kMinIPv6MTU
   network_->ipconfig()->UpdateProperties(properties);
-  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, IPConfig::kMinIPv6MTU));
+  EXPECT_CALL(network_applier_,
+              ApplyMTU(kTestIfindex, NetworkConfig::kMinIPv6MTU));
   network_->TriggerApplyMTU();
 }
 

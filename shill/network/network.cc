@@ -1296,9 +1296,10 @@ void Network::ApplyMTU() {
     mtu = ip6config_->properties().mtu;
   }
   if (mtu == INT32_MAX) {
-    mtu = IPConfig::kDefaultMTU;
+    mtu = NetworkConfig::kDefaultMTU;
   }
-  int min_mtu = ip6config_ ? IPConfig::kMinIPv6MTU : IPConfig::kMinIPv4MTU;
+  int min_mtu =
+      ip6config_ ? NetworkConfig::kMinIPv6MTU : NetworkConfig::kMinIPv4MTU;
   if (mtu < min_mtu) {
     LOG(INFO) << __func__ << " MTU " << mtu << " is too small; adjusting up to "
               << min_mtu;

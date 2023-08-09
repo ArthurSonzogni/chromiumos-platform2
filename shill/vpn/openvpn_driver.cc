@@ -530,7 +530,7 @@ OpenVPNDriver::IPProperties OpenVPNDriver::ParseIPConfiguration(
   const bool has_ipv6 = !ipv6_local.empty();
   if (mtu != 0) {
     const int min_mtu =
-        has_ipv6 ? IPConfig::kMinIPv6MTU : IPConfig::kMinIPv4MTU;
+        has_ipv6 ? NetworkConfig::kMinIPv6MTU : NetworkConfig::kMinIPv4MTU;
     if (mtu < min_mtu) {
       LOG(ERROR) << "MTU value " << mtu << " ignored";
       mtu = 0;

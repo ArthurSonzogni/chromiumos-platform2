@@ -21,6 +21,11 @@ namespace shill {
 // TODO(b/269401899): Add more fields and replace IPConfig::Properties.
 // TODO(b/269401899): Add unit tests.
 struct NetworkConfig {
+  // Define a default and the minimum viable MTU values.
+  static constexpr int kDefaultMTU = 1500;
+  static constexpr int kMinIPv4MTU = 576;
+  static constexpr int kMinIPv6MTU = 1280;
+
   NetworkConfig();
   ~NetworkConfig();
 

@@ -163,7 +163,7 @@ void L2TPConnection::Notify(const std::string& reason,
   // support IPv6, it is a reasonable value to start with, since the minimum
   // IPv6 packet size will plausibly be a size any gateway would support, and
   // is also larger than the IPv4 minimum size.
-  ipv4_properties->mtu = IPConfig::kMinIPv6MTU;
+  ipv4_properties->mtu = NetworkConfig::kMinIPv6MTU;
 
   ipv4_properties->method = kTypeVPN;
 

@@ -147,7 +147,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       properties->domain_search = value.Get<std::vector<std::string>>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.Get<uint16_t>();
-      if (mtu > IPConfig::kMinIPv4MTU) {
+      if (mtu > NetworkConfig::kMinIPv4MTU) {
         properties->mtu = mtu;
       }
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {

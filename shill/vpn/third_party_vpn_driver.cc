@@ -357,7 +357,8 @@ void ThirdPartyVpnDriver::SetParameters(
   ProcessInt32(parameters, kSubnetPrefixParameterThirdPartyVpn,
                &ipv4_properties_->subnet_prefix, 0, 32, true, error_message);
   ProcessInt32(parameters, kMtuParameterThirdPartyVpn, &ipv4_properties_->mtu,
-               IPConfig::kMinIPv4MTU, kConstantMaxMtu, false, error_message);
+               NetworkConfig::kMinIPv4MTU, kConstantMaxMtu, false,
+               error_message);
 
   ProcessSearchDomainArray(parameters, kDomainSearchParameterThirdPartyVpn,
                            kNonIPDelimiter, &ipv4_properties_->domain_search,

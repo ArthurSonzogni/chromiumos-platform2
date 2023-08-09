@@ -94,10 +94,6 @@ class IPConfig {
     uint32_t lease_duration_seconds = 0;
   };
 
-  // Define a default and a minimum viable MTU value.
-  static constexpr int kDefaultMTU = 1500;
-  static constexpr int kMinIPv4MTU = 576;
-  static constexpr int kMinIPv6MTU = 1280;
   static constexpr int kUndefinedMTU = 0;
 
   static constexpr char kTypeDHCP[] = "dhcp";

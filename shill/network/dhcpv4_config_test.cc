@@ -109,13 +109,13 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
 
 TEST(DHCPv4ConfigTest, ParseConfigurationRespectingMinimumMTU) {
   // Values smaller than or equal to 576 should be ignored.
-  for (int mtu = IPConfig::kMinIPv4MTU - 3; mtu < IPConfig::kMinIPv4MTU + 3;
-       mtu++) {
+  for (int mtu = NetworkConfig::kMinIPv4MTU - 3;
+       mtu < NetworkConfig::kMinIPv4MTU + 3; mtu++) {
     KeyValueStore conf;
     IPConfig::Properties properties;
     conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, mtu);
     ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, &properties));
-    if (mtu <= IPConfig::kMinIPv4MTU) {
+    if (mtu <= NetworkConfig::kMinIPv4MTU) {
       EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
     } else {
       EXPECT_EQ(mtu, properties.mtu);
