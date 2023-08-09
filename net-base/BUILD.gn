@@ -32,6 +32,7 @@ shared_library("libnet-base") {
     "ipv4_address.cc",
     "ipv6_address.cc",
     "mac_address.cc",
+    "socket.cc",
   ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
@@ -47,6 +48,15 @@ generate_pkg_config("libnet-base_pc") {
 }
 
 if (use.test) {
+  source_set("net_base_test_support") {
+    sources = [ "mock_socket.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    pkg_deps = [ "libnet-base" ]
+  }
+
   executable("libnet-base-testrunner") {
     run_test = true
     sources = [
@@ -55,6 +65,7 @@ if (use.test) {
       "ipv4_address_test.cc",
       "ipv6_address_test.cc",
       "mac_address_test.cc",
+      "socket_test.cc",
     ]
     configs += [
       "//common-mk:test",
