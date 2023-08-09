@@ -37,6 +37,10 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
+// Please update docs/diag-routines-for-oems.md.
+// Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
+// LINT.IfChange
+
 const struct {
   const char* readable_name;
   mojom::LedName name;
@@ -850,6 +854,8 @@ void PrintHelp() {
   std::cout << "    Usage: cros-health-tool diag get_routines" << std::endl;
   std::cout << "$routine: " << ss.str() << std::endl;
 }
+
+// LINT.ThenChange(//diagnostics/docs/diag-routines-for-oems.md)
 
 }  // namespace
 
