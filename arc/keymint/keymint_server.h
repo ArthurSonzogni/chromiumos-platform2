@@ -109,6 +109,9 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
           secret_params,
       ComputeSharedSecretCallback callback) override;
 
+  void GenerateTimeStamp(const uint64 challenge,
+                         GenerateTimeStampCallback callback) override;
+
  private:
   class Backend {
    public:

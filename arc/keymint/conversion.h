@@ -129,6 +129,9 @@ MakeGetSharedSecretParametersResult(
 
 arc::mojom::keymint::ByteArrayOrErrorPtr MakeComputeSharedSecretResult(
     const ::keymaster::ComputeSharedHmacResponse& km_response);
+
+arc::mojom::keymint::TimeStampTokenOrErrorPtr MakeGenerateTimeStampTokenResult(
+    const ::keymaster::GenerateTimestampTokenResponse& km_response);
 }  // namespace arc::keymint
 
 #endif  // ARC_KEYMINT_CONVERSION_H_

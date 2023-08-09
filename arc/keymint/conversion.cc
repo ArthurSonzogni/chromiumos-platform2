@@ -675,4 +675,27 @@ arc::mojom::keymint::ByteArrayOrErrorPtr MakeComputeSharedSecretResult(
   return arc::mojom::keymint::ByteArrayOrError::NewOutput(std::move(result));
 }
 
+arc::mojom::keymint::TimeStampTokenOrErrorPtr MakeGenerateTimeStampTokenResult(
+    const ::keymaster::GenerateTimestampTokenResponse& km_response) {
+  if (km_response.error != KM_ERROR_OK) {
+    return arc::mojom::keymint::TimeStampTokenOrError::NewError(
+        km_response.error);
+  }
+
+  uint64_t challenge = km_response.token.challenge;
+
+  auto time_stamp = arc::mojom::keymint::Timestamp::New(
+      base::strict_cast<uint64_t>(km_response.token.timestamp));
+
+  std::vector<uint8_t> mac(
+      km_response.token.mac.data,
+      km_response.token.mac.data + km_response.token.mac.data_length);
+
+  auto time_stamp_token = arc::mojom::keymint::TimeStampToken::New(
+      std::move(challenge), std::move(time_stamp), std::move(mac));
+
+  return arc::mojom::keymint::TimeStampTokenOrError::NewTimestampToken(
+      std::move(time_stamp_token));
+}
+
 }  // namespace arc::keymint

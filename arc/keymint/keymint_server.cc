@@ -649,4 +649,33 @@ void KeyMintServer::ComputeSharedSecret(
       std::move(km_request), std::move(task_lambda));
 }
 
+void KeyMintServer::GenerateTimeStamp(const uint64 challenge,
+                                      GenerateTimeStampCallback callback) {
+  // Convert input |request| into |km_request|. All data is deep copied to avoid
+  // use-after-free.
+  auto km_request =
+      std::make_unique<::keymaster::GenerateTimestampTokenRequest>(
+          backend_.keymint()->message_version());
+
+  km_request->challenge = challenge;
+
+  auto task_lambda = base::BindOnce(
+      [](GenerateTimeStampCallback callback,
+         std::unique_ptr<::keymaster::GenerateTimestampTokenResponse>
+             km_response) {
+        // Prepare mojo response.
+        CHECK(km_response);
+        auto response = MakeGenerateTimeStampTokenResult(*km_response);
+
+        // Run callback.
+        std::move(callback).Run(std::move(response));
+      },
+      std::move(callback));
+
+  // Call KeyMint.
+  RunKeyMintRequest(FROM_HERE,
+                    &::keymaster::AndroidKeymaster::GenerateTimestampToken,
+                    std::move(km_request), std::move(task_lambda));
+}
+
 }  // namespace arc::keymint
