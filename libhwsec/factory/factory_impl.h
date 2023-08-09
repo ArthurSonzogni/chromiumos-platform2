@@ -41,6 +41,8 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
 
   std::unique_ptr<const CryptohomeFrontend> GetCryptohomeFrontend() override;
   std::unique_ptr<const PinWeaverFrontend> GetPinWeaverFrontend() override;
+  std::unique_ptr<const LECredentialManagerFrontend>
+  GetLECredentialManagerFrontend() override;
   std::unique_ptr<const RecoveryCryptoFrontend> GetRecoveryCryptoFrontend()
       override;
   std::unique_ptr<const ClientFrontend> GetClientFrontend() override;

@@ -35,6 +35,7 @@
 #include "libhwsec/fuzzed/key_management.h"
 #include "libhwsec/fuzzed/middleware.h"
 #include "libhwsec/fuzzed/pinweaver.h"
+#include "libhwsec/fuzzed/pinweaver_manager.h"
 #include "libhwsec/fuzzed/protobuf.h"
 #include "libhwsec/fuzzed/recovery_crypto.h"
 #include "libhwsec/fuzzed/sealing.h"

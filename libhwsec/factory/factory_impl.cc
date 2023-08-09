@@ -18,6 +18,7 @@
 #include "libhwsec/frontend/oobe_config/frontend_impl.h"
 #include "libhwsec/frontend/optee-plugin/frontend_impl.h"
 #include "libhwsec/frontend/pinweaver/frontend_impl.h"
+#include "libhwsec/frontend/pinweaver_manager/frontend_impl.h"
 #include "libhwsec/frontend/recovery_crypto/frontend_impl.h"
 #include "libhwsec/frontend/u2fd/frontend_impl.h"
 #include "libhwsec/frontend/u2fd/vendor_frontend_impl.h"
@@ -41,6 +42,12 @@ std::unique_ptr<const CryptohomeFrontend> FactoryImpl::GetCryptohomeFrontend() {
 
 std::unique_ptr<const PinWeaverFrontend> FactoryImpl::GetPinWeaverFrontend() {
   return std::make_unique<PinWeaverFrontendImpl>(middleware_.Derive());
+}
+
+std::unique_ptr<const LECredentialManagerFrontend>
+FactoryImpl::GetLECredentialManagerFrontend() {
+  return std::make_unique<LECredentialManagerFrontendImpl>(
+      middleware_.Derive());
 }
 
 std::unique_ptr<const RecoveryCryptoFrontend>
