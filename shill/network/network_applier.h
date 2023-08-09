@@ -31,6 +31,19 @@ namespace shill {
 // and other components implementing network stack.
 class NetworkApplier {
  public:
+  enum class Area : uint32_t {
+    kNone = 0,
+    kIPv4Address = 0x1,
+    kIPv4Route = 0x2,
+    kIPv4DefaultRoute = 0x4,
+    kIPv6Address = 0x100,
+    kIPv6Route = 0x200,
+    kIPv6DefaultRoute = 0x400,
+    kRoutingPolicy = 0x10000,
+    kDNS = 0x20000,
+    kMTU = 0x40000,
+  };
+
   virtual ~NetworkApplier();
 
   // Singleton accessor.
@@ -48,19 +61,23 @@ class NetworkApplier {
   // Clear all configurations applied to a certain interface.
   void Clear(int interface_index);
 
+  void ApplyNetworkConfig(int interface_index,
+                          const std::string& interface_name,
+                          Area area,
+                          const NetworkConfig& network_config,
+                          NetworkPriority priority,
+                          Technology technology);
+
   // Apply the DNS configuration by writing into /etc/resolv.conf.
   // TODO(b/259354228): dnsproxy will take the ownership of resolv.conf file
   // after b/207657239 is resolved.
-  // TODO(b/269401899): Use NetworkConfig as parameter.
-  void ApplyDNS(NetworkPriority priority,
-                const IPConfig::Properties* ipv4_properties,
-                const IPConfig::Properties* ipv6_properties);
+  mockable void ApplyDNS(NetworkPriority priority,
+                         const std::vector<net_base::IPAddress>& dns_servers,
+                         const std::vector<std::string>& dns_search_domains);
 
   // Apply the local address onto kernel netdevice with interface index
   // |interface_index|. If IPv4, a customized |broadcast| address can be
   // specified.
-  // TODO(b/264963034): Current version only applies a single IP family one
-  // time. Modify the call so that it configures IPv4 and IPv6 together.
   // TODO(b/264963034): Multiple IPv6 addresses is currently not supported.
   mockable void ApplyAddress(
       int interface_index,
@@ -70,8 +87,6 @@ class NetworkApplier {
   // Apply the routes into per-device routing table. If |gateway| is nullopt,
   // the network is assumed to be point-to-point, and routes are added as
   // on-link.
-  // TODO(b/264963034): Current version only applies a single IP family one
-  // time. Modify the call so that it configures IPv4 and IPv6 together.
   mockable void ApplyRoute(
       int interface_index,
       net_base::IPFamily family,
@@ -121,6 +136,21 @@ class NetworkApplier {
   // calling FlushRoutingCache().
   std::unique_ptr<ProcFsStub> proc_fs_;
 };
+
+inline uint32_t operator&(NetworkApplier::Area a, NetworkApplier::Area b) {
+  return static_cast<uint32_t>(a) & static_cast<uint32_t>(b);
+}
+
+inline NetworkApplier::Area operator|(NetworkApplier::Area a,
+                                      NetworkApplier::Area b) {
+  return static_cast<NetworkApplier::Area>(static_cast<uint32_t>(a) |
+                                           static_cast<uint32_t>(b));
+}
+
+inline NetworkApplier::Area& operator|=(NetworkApplier::Area& a,
+                                        NetworkApplier::Area b) {
+  return a = a | b;
+}
 
 }  // namespace shill
 

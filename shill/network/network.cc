@@ -205,13 +205,26 @@ void Network::SetupConnection(IPConfig* ipconfig) {
 
   LOG(INFO) << *this << ": Setting " << *ipconfig->properties().address_family
             << " connection";
-  ApplyAddress(ipconfig->properties());
-  ApplyRoute(ipconfig->properties());
-  ApplyRoutingPolicy();
-  network_applier_->ApplyDNS(priority_,
-                             ipconfig_ ? &ipconfig_->properties() : nullptr,
-                             ip6config_ ? &ip6config_->properties() : nullptr);
-  ApplyMTU();
+  NetworkApplier::Area to_apply = NetworkApplier::Area::kRoutingPolicy |
+                                  NetworkApplier::Area::kDNS |
+                                  NetworkApplier::Area::kMTU;
+  if (ipconfig->properties().address_family == net_base::IPFamily::kIPv4) {
+    if (!fixed_ip_params_) {
+      to_apply |= NetworkApplier::Area::kIPv4Address;
+    }
+    to_apply |= NetworkApplier::Area::kIPv4Route;
+    to_apply |= NetworkApplier::Area::kIPv4DefaultRoute;
+  } else {
+    if (!fixed_ip_params_ && ipconfig->properties().method != kTypeSLAAC) {
+      to_apply |= NetworkApplier::Area::kIPv6Address;
+    }
+    to_apply |= NetworkApplier::Area::kIPv6Route;
+    if (ipconfig->properties().method != kTypeSLAAC) {
+      to_apply |= NetworkApplier::Area::kIPv6DefaultRoute;
+    }
+  }
+  ApplyNetworkConfig(to_apply);
+
   if (state_ != State::kConnected && technology_ != Technology::kVPN) {
     // The Network becomes connected, wait for 30 seconds to report its IP type.
     // Skip VPN since it's already reported separately in VPNService.
@@ -557,7 +570,7 @@ void Network::OnIPv6AddressChanged() {
   // No matter whether the primary address changes, any address change will
   // need to trigger address-based routing rule to be updated.
   if (primary_family_) {
-    ApplyRoutingPolicy();
+    ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy);
   }
 
   std::string addresses_str;
@@ -638,9 +651,7 @@ void Network::OnIPv6ConfigUpdated() {
       SetupConnection(ip6config());
     } else {
       // Still apply IPv6 DNS even if the Connection is setup with IPv4.
-      network_applier_->ApplyDNS(
-          priority_, ipconfig_ ? &ipconfig_->properties() : nullptr,
-          ip6config_ ? &ip6config_->properties() : nullptr);
+      ApplyNetworkConfig(NetworkApplier::Area::kDNS);
     }
   }
 }
@@ -702,10 +713,8 @@ void Network::SetPriority(NetworkPriority priority) {
     return;
   }
   priority_ = priority;
-  ApplyRoutingPolicy();
-  network_applier_->ApplyDNS(priority,
-                             ipconfig_ ? &ipconfig_->properties() : nullptr,
-                             ip6config_ ? &ip6config_->properties() : nullptr);
+  ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy |
+                     NetworkApplier::Area::kDNS);
 }
 
 NetworkPriority Network::GetPriority() {
@@ -1133,180 +1142,12 @@ void Network::ReportIPType() {
   metrics_->SendEnumToUMA(Metrics::kMetricIPType, technology_, ip_type);
 }
 
-void Network::ApplyRoutingPolicy() {
-  SLOG(2) << *this << ": " << __func__;
-  std::vector<net_base::IPv4CIDR> rfc3442_dsts;
-  if (ipconfig_) {
-    for (const auto& route :
-         ipconfig_->properties().dhcp_classless_static_routes) {
-      const auto dst = net_base::IPv4CIDR::CreateFromStringAndPrefix(
-          route.host, route.prefix);
-      if (!dst) {
-        LOG(WARNING) << *this
-                     << ": Failed to parse static route destination address "
-                     << route.host << ", prefix length" << route.prefix;
-        continue;
-      }
-      rfc3442_dsts.push_back(*dst);
-    }
-  }
-
-  network_applier_->ApplyRoutingPolicy(interface_index_, interface_name_,
-                                       technology_, priority_, GetAddresses(),
-                                       rfc3442_dsts);
-}
-
-void Network::ApplyRoute(const IPConfig::Properties& properties) {
-  auto family = properties.address_family;
-  if (!family) {
-    LOG(ERROR) << *this << ": Invalid IP family";
-    return;
-  }
-  SLOG(2) << *this << ": " << __func__ << " on " << net_base::ToString(*family);
-
-  // nullopt means no gateway, a valid value for p2p networks. Present of
-  // |peer_address| also suggest that this is a p2p network. Also accepts
-  // "0.0.0.0" and "::" as indicators of no gateway.
-  auto gateway = net_base::IPAddress::CreateFromString(properties.gateway);
-  if (!gateway && !properties.gateway.empty()) {
-    LOG(ERROR) << *this << ": Gateway address " << properties.gateway
-               << " is invalid";
-    return;
-  }
-  if (gateway && gateway->IsZero()) {
-    gateway = std::nullopt;
-  }
-  if (!properties.peer_address.empty()) {
-    const auto peer =
-        net_base::IPAddress::CreateFromString(properties.peer_address);
-    if (!peer) {
-      LOG(ERROR) << *this << ": Peer address " << properties.peer_address
-                 << " is invalid";
-      return;
-    }
-    gateway = std::nullopt;
-  }
-  CHECK(!gateway || gateway->GetFamily() == family);
-
-  // Check if an IPv4 gateway is on-link, and add a /32 on-link route to the
-  // gateway if not. Note that IPv6 uses link local address for gateway so this
-  // is not needed.
-  bool fix_gateway_reachability = false;
-  if (gateway && gateway->GetFamily() == net_base::IPFamily::kIPv4) {
-    auto local = net_base::IPCIDR::CreateFromStringAndPrefix(
-        properties.address, properties.subnet_prefix);
-    if (!local) {
-      LOG(ERROR) << *this << ": Local address " << properties.address
-                 << " with prefix length " << properties.subnet_prefix
-                 << " is invalid";
-      return;
-    }
-    fix_gateway_reachability = !local->InSameSubnetWith(*gateway);
-    if (fix_gateway_reachability) {
-      LOG(WARNING)
-          << *this << ": Gateway " << gateway->ToString()
-          << " is unreachable from local address/prefix " << local->ToString()
-          << ", mitigating this by creating a link route to the gateway.";
-    }
-  }
-
-  // For IPv4, IPv6 VPNs, and IPv6 celluar where SLAAC is done by modem shill
-  // has to create default route by itself. For other IPv6 networks with
-  // in-kernel SLAAC, the default route is set up by the kernel.
-  bool default_route =
-      properties.default_route && (properties.method != kTypeSLAAC);
-
-  bool blackhole_ipv6 = properties.blackhole_ipv6;
-
-  const auto parse_prefix_list = [&logging_tag = this->logging_tag_](
-                                     const std::vector<std::string>& in) {
-    std::vector<net_base::IPCIDR> out;
-    for (const auto& prefix_str : in) {
-      auto prefix = net_base::IPCIDR::CreateFromCIDRString(prefix_str);
-      if (!prefix) {
-        LOG(WARNING) << logging_tag << ": Invalid CIDR string " << prefix_str;
-        continue;
-      }
-      out.push_back(*prefix);
-    }
-    return out;
-  };
-  auto excluded_routes = parse_prefix_list(properties.exclusion_list);
-  auto included_routes = parse_prefix_list(properties.inclusion_list);
-
-  std::vector<std::pair<net_base::IPv4CIDR, net_base::IPv4Address>>
-      rfc3442_routes;
-  for (const auto& route : properties.dhcp_classless_static_routes) {
-    auto prefix =
-        net_base::IPv4CIDR::CreateFromStringAndPrefix(route.host, route.prefix);
-    if (!prefix) {
-      LOG(WARNING) << *this << ": Invalid route destination " << route.host
-                   << "/" << route.prefix;
-      continue;
-    }
-    auto gateway = net_base::IPv4Address::CreateFromString(route.gateway);
-    if (!gateway) {
-      LOG(WARNING) << *this << ": Invalid route gateway " << route.gateway;
-      continue;
-    }
-    rfc3442_routes.emplace_back(*prefix, *gateway);
-  }
-  network_applier_->ApplyRoute(interface_index_, *family, gateway,
-                               fix_gateway_reachability, default_route,
-                               blackhole_ipv6, excluded_routes, included_routes,
-                               rfc3442_routes);
-}
-
-void Network::ApplyAddress(const IPConfig::Properties& properties) {
-  SLOG(2) << *this << ": " << __func__ << " on " << *properties.address_family;
-
-  // Skip address configuration if the address is from SLAAC.
-  const bool skip_ip_configuration = properties.method == kTypeSLAAC;
-  if (fixed_ip_params_ || skip_ip_configuration) {
-    return;
-  }
-
-  auto local = net_base::IPCIDR::CreateFromStringAndPrefix(
-      properties.address, properties.subnet_prefix);
-  if (!local) {
-    LOG(ERROR) << *this << ":Local address " << properties.address
-               << " with prefix length " << properties.subnet_prefix
-               << " is invalid";
-    return;
-  }
-  auto broadcast =
-      net_base::IPv4Address::CreateFromString(properties.broadcast_address);
-  if (properties.broadcast_address != "" && !broadcast) {
-    LOG(WARNING) << *this << ": Broadcast address "
-                 << properties.broadcast_address
-                 << " is invalid, will use default instead";
-  }
-  network_applier_->ApplyAddress(interface_index_, *local, broadcast);
-}
-
-void Network::ApplyMTU() {
-  SLOG(2) << *this << ": " << __func__;
-  int mtu = INT32_MAX;
-  if (ipconfig_ && ipconfig_->properties().mtu > 0 &&
-      ipconfig_->properties().mtu < mtu) {
-    mtu = ipconfig_->properties().mtu;
-  }
-  if (ip6config_ && ip6config_->properties().mtu > 0 &&
-      ip6config_->properties().mtu < mtu) {
-    mtu = ip6config_->properties().mtu;
-  }
-  if (mtu == INT32_MAX) {
-    mtu = NetworkConfig::kDefaultMTU;
-  }
-  int min_mtu =
-      ip6config_ ? NetworkConfig::kMinIPv6MTU : NetworkConfig::kMinIPv4MTU;
-  if (mtu < min_mtu) {
-    LOG(INFO) << __func__ << " MTU " << mtu << " is too small; adjusting up to "
-              << min_mtu;
-    mtu = min_mtu;
-  }
-
-  network_applier_->ApplyMTU(interface_index_, mtu);
+void Network::ApplyNetworkConfig(NetworkApplier::Area area) {
+  network_applier_->ApplyNetworkConfig(interface_index_, interface_name_, area,
+                                       GetNetworkConfig(), priority_,
+                                       technology_);
+  // TODO(b/293997937): Notify patchpanel about the network change and register
+  // callback for patchpanel response.
 }
 
 void Network::ReportNeighborLinkMonitorFailure(

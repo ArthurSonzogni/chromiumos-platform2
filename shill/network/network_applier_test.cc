@@ -14,6 +14,7 @@
 #include "shill/ipconfig.h"
 #include "shill/mock_resolver.h"
 #include "shill/net/mock_rtnl_handler.h"
+#include "shill/network/mock_network_applier.h"
 #include "shill/network/mock_proc_fs_stub.h"
 #include "shill/network/mock_routing_policy_service.h"
 #include "shill/network/mock_routing_table.h"
@@ -24,6 +25,7 @@
 using testing::_;
 using testing::Eq;
 using testing::Mock;
+using testing::Ne;
 using testing::Return;
 using testing::ReturnRef;
 using testing::StrictMock;
@@ -134,68 +136,186 @@ class NetworkApplierTest : public Test {
   std::unique_ptr<NetworkApplier> network_applier_;
 };
 
-using NetworkApplierDNSTest = NetworkApplierTest;
-
-TEST_F(NetworkApplierDNSTest, ApplyDNS) {
+TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
+  // Use a mocked NetworkApplier to test behavior at Apply*() layer.
+  StrictMock<MockNetworkApplier> applier;
+  const int kInterfaceIndex = 3;
+  const std::string kInterfaceName = "placeholder";
   NetworkPriority priority;
-  priority.is_primary_for_dns = true;
-  IPConfig::Properties ipv4_properties;
-  ipv4_properties.dns_servers = {"8.8.8.8"};
-  ipv4_properties.domain_search = {"domain1"};
+  NetworkConfig config;
+  config.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
+  config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1::1000/64")};
 
-  EXPECT_CALL(resolver_, SetDNSFromLists(ipv4_properties.dns_servers,
-                                         ipv4_properties.domain_search));
-  network_applier_->ApplyDNS(priority, &ipv4_properties, nullptr);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kNone, config, priority,
+                             Technology::kEthernet);
 
-  priority.is_primary_for_dns = false;
-  EXPECT_CALL(resolver_, SetDNSFromLists(_, _)).Times(0);
-  network_applier_->ApplyDNS(priority, &ipv4_properties, nullptr);
+  EXPECT_CALL(applier, ApplyAddress(kInterfaceIndex, _, _)).Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv4Address, config,
+                             priority, Technology::kEthernet);
+
+  EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
+                                  /*gateway=*/Eq(std::nullopt),
+                                  /*fix_gateway_reachability=*/false,
+                                  /*default_route=*/false,
+                                  /*blackhole_ipv6=*/false, _, _, _))
+      .Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv4Route, config, priority,
+                             Technology::kEthernet);
+
+  EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
+                                  /*gateway=*/Eq(std::nullopt),
+                                  /*fix_gateway_reachability=*/false,
+                                  /*default_route=*/true,
+                                  /*blackhole_ipv6=*/false, _, _, _))
+      .Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv4Route |
+                                 NetworkApplier::Area::kIPv4DefaultRoute,
+                             config, priority, Technology::kEthernet);
+
+  EXPECT_CALL(applier, ApplyAddress(kInterfaceIndex, _, _)).Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv6Address, config,
+                             priority, Technology::kEthernet);
+
+  EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
+                                  /*gateway=*/Eq(std::nullopt),
+                                  /*fix_gateway_reachability=*/false,
+                                  /*default_route=*/false,
+                                  /*blackhole_ipv6=*/false, _, _, _))
+      .Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv6Route, config, priority,
+                             Technology::kEthernet);
+
+  EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
+                                  /*gateway=*/Eq(std::nullopt),
+                                  /*fix_gateway_reachability=*/false,
+                                  /*default_route=*/true,
+                                  /*blackhole_ipv6=*/false, _, _, _))
+      .Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv6Route |
+                                 NetworkApplier::Area::kIPv6DefaultRoute,
+                             config, priority, Technology::kEthernet);
+
+  EXPECT_CALL(applier,
+              ApplyRoutingPolicy(kInterfaceIndex, kInterfaceName,
+                                 Technology::kEthernet, priority, _, _));
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kRoutingPolicy, config,
+                             priority, Technology::kEthernet);
+
+  EXPECT_CALL(applier, ApplyDNS(priority, _, _)).Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kDNS, config, priority,
+                             Technology::kEthernet);
+
+  config.mtu = 1480;
+  EXPECT_CALL(applier, ApplyMTU(kInterfaceIndex, 1480)).Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kMTU, config, priority,
+                             Technology::kEthernet);
 }
 
-TEST_F(NetworkApplierDNSTest, DomainAdded) {
+TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
+  // Use a mocked NetworkApplier to test behavior at Apply*() layer.
+  StrictMock<MockNetworkApplier> applier;
+  const int kInterfaceIndex = 3;
+  const std::string kInterfaceName = "placeholder";
   NetworkPriority priority;
-  priority.is_primary_for_dns = true;
-  IPConfig::Properties ipv4_properties;
-  ipv4_properties.dns_servers = {"8.8.8.8"};
-  const std::string kDomainName("chromium.org");
-  ipv4_properties.domain_name = kDomainName;
+  NetworkConfig config;
+  config.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
+  config.ipv4_gateway = *net_base::IPv4Address::CreateFromString("192.0.2.1");
 
-  std::vector<std::string> expected_domain_search_list = {kDomainName + "."};
-  EXPECT_CALL(resolver_, SetDNSFromLists(_, expected_domain_search_list));
-  network_applier_->ApplyDNS(priority, &ipv4_properties, nullptr);
+  EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
+                                  /*gateway=*/Ne(std::nullopt),
+                                  /*fix_gateway_reachability=*/false,
+                                  /*default_route=*/true,
+                                  /*blackhole_ipv6=*/false, _, _, _))
+      .Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv4Route |
+                                 NetworkApplier::Area::kIPv4DefaultRoute,
+                             config, priority, Technology::kEthernet);
+
+  config.ipv4_default_route = false;
+  EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
+                                  /*gateway=*/Ne(std::nullopt),
+                                  /*fix_gateway_reachability=*/false,
+                                  /*default_route=*/false,
+                                  /*blackhole_ipv6=*/false, _, _, _))
+      .Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv4Route |
+                                 NetworkApplier::Area::kIPv4DefaultRoute,
+                             config, priority, Technology::kEthernet);
+
+  config.ipv4_default_route = true;
+  config.ipv6_blackhole_route = true;
+  EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
+                                  /*gateway=*/Ne(std::nullopt),
+                                  /*fix_gateway_reachability=*/false,
+                                  /*default_route=*/true,
+                                  /*blackhole_ipv6=*/true, _, _, _))
+      .Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv4Route |
+                                 NetworkApplier::Area::kIPv4DefaultRoute,
+                             config, priority, Technology::kEthernet);
+
+  config.ipv4_gateway = *net_base::IPv4Address::CreateFromString(
+      "198.51.100.1");  // Out of 192.0.2.100/24
+  EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
+                                  /*gateway=*/Ne(std::nullopt),
+                                  /*fix_gateway_reachability=*/true,
+                                  /*default_route=*/true,
+                                  /*blackhole_ipv6=*/true, _, _, _))
+      .Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv4Route |
+                                 NetworkApplier::Area::kIPv4DefaultRoute,
+                             config, priority, Technology::kEthernet);
 }
 
-TEST_F(NetworkApplierDNSTest, DualStack) {
+TEST_F(NetworkApplierTest, ApplyNetworkConfigRoutingPolicyParameters) {
+  // Use a mocked NetworkApplier to test behavior at Apply*() layer.
+  StrictMock<MockNetworkApplier> applier;
+  const int kInterfaceIndex = 3;
+  const std::string kInterfaceName = "placeholder";
   NetworkPriority priority;
-  priority.is_primary_for_dns = true;
-  IPConfig::Properties ipv4_properties;
-  ipv4_properties.dns_servers = {"8.8.8.8"};
-  ipv4_properties.domain_search = {"domain1", "domain2"};
-  IPConfig::Properties ipv6_properties;
-  ipv6_properties.dns_servers = {"2001:4860:4860:0:0:0:0:8888"};
-  ipv6_properties.domain_search = {"domain3", "domain4"};
+  NetworkConfig config;
+  config.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
+  config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1::1000/64"),
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1::2000/64")};
+  config.rfc3442_routes = {
+      {*net_base::IPv4CIDR::CreateFromCIDRString("203.0.113.100/32"),
+       *net_base::IPv4Address::CreateFromString("203.0.113.1")},
+      {*net_base::IPv4CIDR::CreateFromCIDRString("203.0.113.128/25"),
+       *net_base::IPv4Address::CreateFromString("203.0.113.2")}};
 
-  std::vector<std::string> expected_dns = {"2001:4860:4860:0:0:0:0:8888",
-                                           "8.8.8.8"};
-  std::vector<std::string> expected_dnssl = {"domain3", "domain4", "domain1",
-                                             "domain2"};
-  EXPECT_CALL(resolver_, SetDNSFromLists(expected_dns, expected_dnssl));
-  network_applier_->ApplyDNS(priority, &ipv4_properties, &ipv6_properties);
-}
-
-TEST_F(NetworkApplierDNSTest, DualStackSearchListDedup) {
-  NetworkPriority priority;
-  priority.is_primary_for_dns = true;
-  IPConfig::Properties ipv4_properties;
-  ipv4_properties.dns_servers = {"8.8.8.8"};
-  ipv4_properties.domain_search = {"domain1", "domain2"};
-  IPConfig::Properties ipv6_properties;
-  ipv6_properties.dns_servers = {"2001:4860:4860:0:0:0:0:8888"};
-  ipv6_properties.domain_search = {"domain1", "domain2"};
-
-  std::vector<std::string> expected_dnssl = {"domain1", "domain2"};
-  EXPECT_CALL(resolver_, SetDNSFromLists(_, expected_dnssl));
-  network_applier_->ApplyDNS(priority, &ipv4_properties, &ipv6_properties);
+  EXPECT_CALL(
+      applier,
+      ApplyRoutingPolicy(
+          kInterfaceIndex, kInterfaceName, Technology::kEthernet, priority,
+          Eq(std::vector<net_base::IPCIDR>{
+              *net_base::IPCIDR::CreateFromCIDRString("192.0.2.100/24"),
+              *net_base::IPCIDR::CreateFromCIDRString("2001:db8:1::1000/64"),
+              *net_base::IPCIDR::CreateFromCIDRString("2001:db8:1::2000/64")}),
+          Eq(std::vector<net_base::IPv4CIDR>{
+              *net_base::IPv4CIDR::CreateFromCIDRString("203.0.113.100/32"),
+              *net_base::IPv4CIDR::CreateFromCIDRString("203.0.113.128/25")})));
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kRoutingPolicy, config,
+                             priority, Technology::kEthernet);
 }
 
 using NetworkApplierRoutingPolicyTest = NetworkApplierTest;

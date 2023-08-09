@@ -90,6 +90,16 @@ constexpr int kIPv6LinkProtocolPrefix = 96;
 constexpr char kIPv6LinkProtocolGateway[] = "fd00:1::1";
 constexpr char kIPv6LinkProtocolNameserver[] = "fd00:1::3";
 
+MATCHER_P(ContainsAddressAndRoute, family, "") {
+  if (family == net_base::IPFamily::kIPv4) {
+    return arg & NetworkApplier::Area::kIPv4Address &&
+           arg & NetworkApplier::Area::kIPv4Route;
+  } else if (family == net_base::IPFamily::kIPv6) {
+    return arg & NetworkApplier::Area::kIPv6Route;
+  }
+  return false;
+}
+
 NetworkConfig CreateIPv4NetworkConfig(
     const std::string& addr,
     int prefix_len,
@@ -173,22 +183,10 @@ class NetworkInTest : public Network {
                const net_base::IPAddress& gateway,
                const std::vector<std::string>& dns_list),
               (override));
-
   MOCK_METHOD(void,
-              ApplyAddress,
-              (const IPConfig::Properties& properties),
+              ApplyNetworkConfig,
+              (NetworkApplier::Area area),
               (override));
-  MOCK_METHOD(void,
-              ApplyRoute,
-              (const IPConfig::Properties& properties),
-              (override));
-  void TriggerApplyAddress(IPConfig::Properties properties) {
-    Network::ApplyAddress(properties);
-  }
-  void TriggerApplyRoute(IPConfig::Properties properties) {
-    Network::ApplyRoute(properties);
-  }
-  void TriggerApplyMTU() { Network::ApplyMTU(); }
 };
 
 class NetworkTest : public ::testing::Test {
@@ -1106,170 +1104,6 @@ TEST_F(NetworkTest, IsConnectedViaTether) {
   EXPECT_FALSE(network_->IsConnectedViaTether());
 }
 
-TEST_F(NetworkTest, ApplyMTU) {
-  EXPECT_CALL(network_applier_,
-              ApplyMTU(kTestIfindex, NetworkConfig::kDefaultMTU));
-  network_->TriggerApplyMTU();
-
-  // IPv4
-  network_->set_ipconfig(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-  IPConfig::Properties properties;
-  properties.mtu = 1480;
-  network_->ipconfig()->UpdateProperties(properties);
-  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, 1480));
-  network_->TriggerApplyMTU();
-
-  properties.mtu = 400;  // less than NetworkConfig::kMinIPv4MTU
-  network_->ipconfig()->UpdateProperties(properties);
-  EXPECT_CALL(network_applier_,
-              ApplyMTU(kTestIfindex, NetworkConfig::kMinIPv4MTU));
-  network_->TriggerApplyMTU();
-
-  // IPv6
-  network_->set_ipconfig(nullptr);
-  network_->set_ip6config(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-  properties.mtu = 1480;
-  network_->ip6config()->UpdateProperties(properties);
-  EXPECT_CALL(network_applier_, ApplyMTU(kTestIfindex, 1480));
-  network_->TriggerApplyMTU();
-
-  properties.mtu = 800;  // less than NetworkConfig::kMinIPv6MTU
-  network_->ip6config()->UpdateProperties(properties);
-  EXPECT_CALL(network_applier_,
-              ApplyMTU(kTestIfindex, NetworkConfig::kMinIPv6MTU));
-  network_->TriggerApplyMTU();
-
-  // Dual Stack
-  network_->set_ipconfig(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-  properties.mtu = 1480;
-  network_->ipconfig()->UpdateProperties(properties);
-  properties.mtu = 1400;
-  network_->ip6config()->UpdateProperties(properties);
-  EXPECT_CALL(network_applier_,
-              ApplyMTU(kTestIfindex, 1400));  // the smaller of two
-  network_->TriggerApplyMTU();
-
-  properties.mtu = 800;  // less than NetworkConfig::kMinIPv6MTU
-  network_->ipconfig()->UpdateProperties(properties);
-  EXPECT_CALL(network_applier_,
-              ApplyMTU(kTestIfindex, NetworkConfig::kMinIPv6MTU));
-  network_->TriggerApplyMTU();
-}
-
-TEST_F(NetworkTest, ApplyAddress) {
-  IPConfig::Properties properties;
-  const auto ipv4_local =
-      net_base::IPCIDR::CreateFromCIDRString("192.168.1.2/24");
-  const auto ipv4_broadcast =
-      net_base::IPv4Address::CreateFromString("192.168.1.100");
-  const auto ipv6_local =
-      net_base::IPCIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64");
-
-  properties.address_family = net_base::IPFamily::kIPv4;
-  properties.method = kTypeDHCP;
-  properties.address = ipv4_local->address().ToString();
-  properties.subnet_prefix = ipv4_local->prefix_length();
-  EXPECT_CALL(network_applier_,
-              ApplyAddress(kTestIfindex, *ipv4_local, Eq(std::nullopt)));
-  network_->TriggerApplyAddress(properties);
-
-  properties.broadcast_address = ipv4_broadcast->ToString();
-  EXPECT_CALL(network_applier_,
-              ApplyAddress(kTestIfindex, *ipv4_local, ipv4_broadcast));
-  network_->TriggerApplyAddress(properties);
-
-  properties.address_family = net_base::IPFamily::kIPv6;
-  properties.method = kTypeSLAAC;
-  properties.address = ipv6_local->address().ToString();
-  properties.subnet_prefix = ipv6_local->prefix_length();
-  properties.broadcast_address = "";
-  // SLAAC (kTypeSLAAC) address should not trigger ApplyAddress.
-  EXPECT_CALL(network_applier_, ApplyAddress(kTestIfindex, _, _)).Times(0);
-  network_->TriggerApplyAddress(properties);
-
-  properties.method = kTypeVPN;
-  // IPv6 VPN address should trigger ApplyAddress.
-  EXPECT_CALL(network_applier_,
-              ApplyAddress(kTestIfindex, *ipv6_local, Eq(std::nullopt)));
-  network_->TriggerApplyAddress(properties);
-}
-
-TEST_F(NetworkTest, ApplyRoute) {
-  IPConfig::Properties properties;
-  const auto ipv4_gateway =
-      net_base::IPAddress::CreateFromString("192.168.1.1");
-  properties.address_family = net_base::IPFamily::kIPv4;
-  properties.method = kTypeDHCP;
-  properties.address = "192.168.100.100";
-  properties.subnet_prefix = 16;
-  properties.gateway = ipv4_gateway->ToString();
-  properties.default_route = true;
-  EXPECT_CALL(network_applier_,
-              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4, ipv4_gateway,
-                         false, true, false, IsEmpty(), IsEmpty(), IsEmpty()));
-  network_->TriggerApplyRoute(properties);
-
-  properties.subnet_prefix = 24;
-  // If gateway is out of local subnet then |fix_gateway_reachability|.
-  EXPECT_CALL(network_applier_,
-              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4, ipv4_gateway,
-                         true, true, false, _, _, _));
-  network_->TriggerApplyRoute(properties);
-
-  properties.method = kTypeVPN;
-  properties.gateway = "";
-  // No gateway is a valid configuration.
-  EXPECT_CALL(network_applier_,
-              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4,
-                         Eq(std::nullopt), false, true, false, _, _, _));
-  network_->TriggerApplyRoute(properties);
-
-  properties.gateway = "0.0.0.0";
-  // So does zero-address gateway.
-  EXPECT_CALL(network_applier_,
-              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4,
-                         Eq(std::nullopt), false, true, false, _, _, _));
-  network_->TriggerApplyRoute(properties);
-
-  properties.gateway = ipv4_gateway->ToString();
-  properties.subnet_prefix = 16;
-  properties.default_route = false;
-  EXPECT_CALL(network_applier_,
-              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4, ipv4_gateway,
-                         false, false, false, _, _, _));
-  network_->TriggerApplyRoute(properties);
-
-  properties.blackhole_ipv6 = true;
-  EXPECT_CALL(network_applier_,
-              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv4, ipv4_gateway,
-                         false, false, true, _, _, _));
-  network_->TriggerApplyRoute(properties);
-}
-
-TEST_F(NetworkTest, ApplyRouteIPv6) {
-  IPConfig::Properties properties;
-  const auto ipv6_gateway = net_base::IPAddress::CreateFromString("fe80::abcd");
-
-  properties.address_family = net_base::IPFamily::kIPv6;
-  properties.method = kTypeVPN;
-  properties.gateway = ipv6_gateway->ToString();
-  properties.default_route = true;
-  EXPECT_CALL(network_applier_,
-              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv6, ipv6_gateway,
-                         false, true, false, IsEmpty(), IsEmpty(), IsEmpty()));
-  network_->TriggerApplyRoute(properties);
-
-  properties.method = kTypeSLAAC;
-  // Don't need to add default route for SLAAC.
-  EXPECT_CALL(network_applier_,
-              ApplyRoute(kTestIfindex, net_base::IPFamily::kIPv6, ipv6_gateway,
-                         false, false, false, _, _, _));
-  network_->TriggerApplyRoute(properties);
-}
-
 // This group of tests verify the interaction between Network and Connection,
 // and the events sent out from Network, on calling Network::Start() and other
 // IP acquisition events.
@@ -1408,8 +1242,8 @@ class NetworkStartTest : public NetworkTest {
 
   void ExpectConnectionUpdateFromIPConfig(IPConfigType ipconfig_type) {
     const auto expected_props = GetIPPropertiesFromType(ipconfig_type);
-    EXPECT_CALL(*network_, ApplyAddress(expected_props));
-    EXPECT_CALL(*network_, ApplyRoute(expected_props));
+    const auto family = expected_props.address_family;
+    EXPECT_CALL(*network_, ApplyNetworkConfig(ContainsAddressAndRoute(family)));
   }
 
   // Verifies the IPConfigs object exposed by Network is expected.
@@ -1505,8 +1339,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailure) {
                                                /*is_failure=*/true));
   EXPECT_CALL(event_handler2_, OnNetworkStopped(network_->interface_index(),
                                                 /*is_failure=*/true));
-  EXPECT_CALL(*network_, ApplyAddress(_)).Times(0);
-  EXPECT_CALL(*network_, ApplyRoute(_)).Times(0);
+  EXPECT_CALL(*network_, ApplyNetworkConfig(_)).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/false);
   InvokeStart(test_opts);
@@ -1528,8 +1361,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailureWithStaticIP) {
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPFailure) {
   const TestOptions test_opts = {.dhcp = true};
-  EXPECT_CALL(*network_, ApplyAddress(_)).Times(0);
-  EXPECT_CALL(*network_, ApplyRoute(_)).Times(0);
+  EXPECT_CALL(*network_, ApplyNetworkConfig(_)).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/true);
   InvokeStart(test_opts);
@@ -1734,8 +1566,11 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   // Changing the address should trigger the connection update.
   const auto new_addr =
       *net_base::IPv6Address::CreateFromString("fe80::1aa9:5ff:abcd:1234");
-  EXPECT_CALL(*network_, ApplyAddress(_));
-  EXPECT_CALL(*network_, ApplyRoute(_));
+  EXPECT_CALL(
+      *network_,
+      ApplyNetworkConfig(ContainsAddressAndRoute(net_base::IPFamily::kIPv6)));
+  EXPECT_CALL(*network_,
+              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
   EXPECT_CALL(*slaac_controller_, GetAddresses())
       .WillRepeatedly(Return(
           std::vector<net_base::IPv6CIDR>{net_base::IPv6CIDR(new_addr)}));
@@ -1752,16 +1587,19 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // If the IPv6 address does not change, no signal is emitted.
-  EXPECT_CALL(*network_, ApplyAddress(_)).Times(0);
-  EXPECT_CALL(*network_, ApplyRoute(_)).Times(0);
+  EXPECT_CALL(*network_,
+              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
   slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // If the IPv6 prefix changes, a signal is emitted.
-  EXPECT_CALL(*network_, ApplyAddress(_));
-  EXPECT_CALL(*network_, ApplyRoute(_));
+  EXPECT_CALL(
+      *network_,
+      ApplyNetworkConfig(ContainsAddressAndRoute(net_base::IPFamily::kIPv6)));
+  EXPECT_CALL(*network_,
+              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
   EXPECT_CALL(*slaac_controller_, GetAddresses())
       .WillRepeatedly(Return(std::vector<net_base::IPv6CIDR>{
           *net_base::IPv6CIDR::CreateFromAddressAndPrefix(new_addr, 64)}));
@@ -1990,9 +1828,11 @@ TEST_F(NetworkStartTest, DualStackDHCPFirst) {
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
-  // These functions will not be called when IPv6 config comes after IPv4.
-  EXPECT_CALL(*network_, ApplyAddress(_)).Times(0);
-  EXPECT_CALL(*network_, ApplyRoute(_)).Times(0);
+  // Only routing policy and DNS will be updated when IPv6 config comes after
+  // IPv4.
+  EXPECT_CALL(*network_,
+              ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
+  EXPECT_CALL(*network_, ApplyNetworkConfig(NetworkApplier::Area::kDNS));
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 

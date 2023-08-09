@@ -34,6 +34,10 @@ class AddressService {
   // Removes all addresses previous configured onto |interface_index|.
   mockable void FlushAddress(int interface_index);
 
+  // Removes all addresses of |family| previous configured onto
+  // |interface_index|.
+  void FlushAddress(int interface_index, net_base::IPFamily family);
+
   // Removes all configured addresses that shares a family with |local|, but not
   // |local| itself. Return true if any address removed that way.
   mockable bool RemoveAddressOtherThan(int interface_index,

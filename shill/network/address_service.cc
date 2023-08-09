@@ -42,6 +42,27 @@ void AddressService::FlushAddress(int interface_index) {
   added_addresses_.erase(interface_addresses);
 }
 
+void AddressService::FlushAddress(int interface_index,
+                                  net_base::IPFamily family) {
+  auto interface_addresses = added_addresses_.find(interface_index);
+  if (interface_addresses == added_addresses_.end()) {
+    return;
+  }
+  for (auto iter = interface_addresses->second.begin();
+       iter != interface_addresses->second.end();
+       /*no-op*/) {
+    if (iter->GetFamily() == family) {
+      rtnl_handler_->RemoveInterfaceAddress(interface_index, *iter);
+      iter = interface_addresses->second.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+  if (interface_addresses->second.empty()) {
+    added_addresses_.erase(interface_addresses);
+  }
+}
+
 bool AddressService::RemoveAddressOtherThan(int interface_index,
                                             const net_base::IPCIDR& local) {
   auto interface_addresses = added_addresses_.find(interface_index);

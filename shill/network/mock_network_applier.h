@@ -29,7 +29,6 @@ class MockNetworkApplier : public NetworkApplier {
                const net_base::IPCIDR&,
                const std::optional<net_base::IPv4Address>&),
               (override));
-
   MOCK_METHOD(void,
               ApplyRoute,
               (int,
@@ -43,7 +42,6 @@ class MockNetworkApplier : public NetworkApplier {
                (const std::vector<
                    std::pair<net_base::IPv4CIDR, net_base::IPv4Address>>&)),
               (override));
-
   MOCK_METHOD(void,
               ApplyRoutingPolicy,
               (int interface_index,
@@ -52,6 +50,12 @@ class MockNetworkApplier : public NetworkApplier {
                NetworkPriority priority,
                const std::vector<net_base::IPCIDR>& all_addresses,
                const std::vector<net_base::IPv4CIDR>& rfc3442_dsts),
+              (override));
+  MOCK_METHOD(void,
+              ApplyDNS,
+              (NetworkPriority priority,
+               const std::vector<net_base::IPAddress>& dns_servers,
+               const std::vector<std::string>& dns_search_domains),
               (override));
 };
 

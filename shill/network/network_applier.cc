@@ -6,6 +6,7 @@
 
 #include <linux/fib_rules.h>
 
+#include <algorithm>
 #include <optional>
 #include <set>
 #include <string>
@@ -109,42 +110,18 @@ void NetworkApplier::Clear(int interface_index) {
   proc_fs_->FlushRoutingCache();
 }
 
-void NetworkApplier::ApplyDNS(NetworkPriority priority,
-                              const IPConfig::Properties* ipv4_properties,
-                              const IPConfig::Properties* ipv6_properties) {
+void NetworkApplier::ApplyDNS(
+    NetworkPriority priority,
+    const std::vector<net_base::IPAddress>& dns_servers,
+    const std::vector<std::string>& dns_search_domains) {
   if (!priority.is_primary_for_dns) {
     return;
   }
-  std::vector<std::string> dns_servers;
-  std::vector<std::string> domain_search;
-  std::set<std::string> domain_search_dedup;
-  // When DNS information is available from both IPv6 source (RDNSS) and IPv4
-  // source (DHCPv4), the ideal behavior is happy eyeballs (RFC 8305). When
-  // happy eyeballs is not implemented, the priority of DNS servers are not
-  // strictly defined by standard. Prefer IPv6 here as most of the RFCs just
-  // "assume" IPv6 is preferred.
-  for (const auto* properties : {ipv6_properties, ipv4_properties}) {
-    if (!properties) {
-      continue;
-    }
-    dns_servers.insert(dns_servers.end(), properties->dns_servers.begin(),
-                       properties->dns_servers.end());
-
-    for (const auto& item : properties->domain_search) {
-      if (domain_search_dedup.count(item) == 0) {
-        domain_search.push_back(item);
-        domain_search_dedup.insert(item);
-      }
-    }
-    if (properties->domain_search.empty() && !properties->domain_name.empty()) {
-      auto search_list_derived = properties->domain_name + ".";
-      if (domain_search_dedup.count(search_list_derived) == 0) {
-        domain_search.push_back(search_list_derived);
-        domain_search_dedup.insert(search_list_derived);
-      }
-    }
-  }
-  resolver_->SetDNSFromLists(dns_servers, domain_search);
+  std::vector<std::string> dns_strs;
+  std::transform(dns_servers.begin(), dns_servers.end(),
+                 std::back_inserter(dns_strs),
+                 [](net_base::IPAddress dns) { return dns.ToString(); });
+  resolver_->SetDNSFromLists(dns_strs, dns_search_domains);
 }
 
 void NetworkApplier::ApplyRoutingPolicy(
@@ -359,8 +336,6 @@ void NetworkApplier::ApplyRoute(
   // routing table and try the next rule in the list.
   for (const auto& excluded_prefix : excluded_routes) {
     if (excluded_prefix.GetFamily() != family) {
-      LOG(WARNING) << "Unmatched IP family for excluded route "
-                   << excluded_prefix;
       continue;
     }
     auto entry = RoutingTableEntry(family)
@@ -378,8 +353,6 @@ void NetworkApplier::ApplyRoute(
   // 4. Included Routes
   for (const auto& included_prefix : included_routes) {
     if (included_prefix.GetFamily() != family) {
-      LOG(WARNING) << "Unmatched IP family for included route "
-                   << included_prefix;
       continue;
     }
     auto entry = RoutingTableEntry(included_prefix, empty_ip,
@@ -415,6 +388,109 @@ void NetworkApplier::ApplyAddress(
     LOG(INFO) << __func__ << ": Flushing old addresses.";
   }
   address_service_->AddAddress(interface_index, local, broadcast);
+}
+
+void NetworkApplier::ApplyNetworkConfig(int interface_index,
+                                        const std::string& interface_name,
+                                        Area area,
+                                        const NetworkConfig& network_config,
+                                        NetworkPriority priority,
+                                        Technology technology) {
+  if (area & Area::kIPv4Address) {
+    if (network_config.ipv4_address) {
+      ApplyAddress(interface_index,
+                   net_base::IPCIDR(*network_config.ipv4_address),
+                   network_config.ipv4_broadcast);
+    } else {
+      address_service_->FlushAddress(interface_index,
+                                     net_base::IPFamily::kIPv4);
+    }
+  }
+  if (area & Area::kIPv4Route) {
+    bool default_route =
+        (area & Area::kIPv4DefaultRoute) && network_config.ipv4_default_route;
+
+    // Check if an IPv4 gateway is on-link, and add a /32 on-link route to the
+    // gateway if not. Note that IPv6 uses link local address for gateway so
+    // this is not needed.
+    bool fix_gateway_reachability =
+        network_config.ipv4_gateway && network_config.ipv4_address &&
+        !network_config.ipv4_address->InSameSubnetWith(
+            *network_config.ipv4_gateway);
+    if (fix_gateway_reachability) {
+      LOG(WARNING)
+          << interface_name << ": Gateway " << *network_config.ipv4_gateway
+          << " is unreachable from local address/prefix "
+          << *network_config.ipv4_address
+          << ", mitigating this by creating a link route to the gateway.";
+    }
+
+    bool blackhole_ipv6 = network_config.ipv6_blackhole_route;
+
+    std::optional<net_base::IPAddress> gateway = std::nullopt;
+    if (network_config.ipv4_gateway) {
+      gateway = net_base::IPAddress(*network_config.ipv4_gateway);
+    }
+
+    ApplyRoute(interface_index, net_base::IPFamily::kIPv4, gateway,
+               fix_gateway_reachability, default_route, blackhole_ipv6,
+               network_config.excluded_route_prefixes,
+               network_config.included_route_prefixes,
+               network_config.rfc3442_routes);
+  }
+  if (area & Area::kIPv6Address) {
+    // For 1 address case, use ApplyAddress() to avoid removing-and-readding the
+    // address.
+    // TODO(b/264963034): Extend ApplyAddress() to support multiple addresses.
+    if (network_config.ipv6_addresses.size() == 1) {
+      ApplyAddress(interface_index,
+                   net_base::IPCIDR(network_config.ipv6_addresses[0]),
+                   std::nullopt);
+    } else {
+      address_service_->FlushAddress(interface_index,
+                                     net_base::IPFamily::kIPv6);
+      for (const auto& address : network_config.ipv6_addresses) {
+        address_service_->AddAddress(interface_index, net_base::IPCIDR(address),
+                                     std::nullopt);
+      }
+    }
+  }
+  if (area & Area::kIPv6Route) {
+    bool default_route = (area & Area::kIPv6DefaultRoute);
+
+    std::optional<net_base::IPAddress> gateway = std::nullopt;
+    if (network_config.ipv6_gateway) {
+      gateway = net_base::IPAddress(*network_config.ipv6_gateway);
+    }
+
+    ApplyRoute(interface_index, net_base::IPFamily::kIPv6, gateway,
+               /*fix_gateway_reachability=*/false, default_route,
+               /*blackhole_ipv6=*/false, network_config.excluded_route_prefixes,
+               network_config.included_route_prefixes, {});
+  }
+  if (area & Area::kRoutingPolicy) {
+    std::vector<net_base::IPCIDR> all_addresses;
+    if (network_config.ipv4_address) {
+      all_addresses.emplace_back(*network_config.ipv4_address);
+    }
+    for (const auto& item : network_config.ipv6_addresses) {
+      all_addresses.emplace_back(item);
+    }
+    std::vector<net_base::IPv4CIDR> rfc3442_dsts;
+    for (const auto& item : network_config.rfc3442_routes) {
+      rfc3442_dsts.push_back(item.first);
+    }
+    ApplyRoutingPolicy(interface_index, interface_name, technology, priority,
+                       all_addresses, rfc3442_dsts);
+  }
+  if (area & Area::kDNS) {
+    ApplyDNS(priority, network_config.dns_servers,
+             network_config.dns_search_domains);
+  }
+  if (area & Area::kMTU) {
+    ApplyMTU(interface_index,
+             network_config.mtu.value_or(NetworkConfig::kDefaultMTU));
+  }
 }
 
 }  // namespace shill

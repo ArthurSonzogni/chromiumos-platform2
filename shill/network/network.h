@@ -338,13 +338,7 @@ class Network {
 
   // Helper functions to prepare data and call corresponding NetworkApplier
   // function. Protected for manual-triggering in test.
-  // TODO(b/264963034): Currently ApplyAddress and ApplyRoute needs to be called
-  // per each IP family therefore |properties| is passed as an argument. Change
-  // to apply both IPv4 and IPv6 together and use NetworkConfig instead.
-  mockable void ApplyAddress(const IPConfig::Properties& properties);
-  mockable void ApplyRoute(const IPConfig::Properties& properties);
-  void ApplyRoutingPolicy();
-  mockable void ApplyMTU();
+  mockable void ApplyNetworkConfig(NetworkApplier::Area area);
 
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
   void set_dhcp_provider_for_testing(DHCPProvider* provider) {
