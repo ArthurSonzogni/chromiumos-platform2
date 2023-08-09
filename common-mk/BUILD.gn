@@ -298,6 +298,9 @@ config("test") {
     ]
   }
 
+  # Disable legacy APIs so people are forced to upgrade.
+  defines = [ "GTEST_REMOVE_LEGACY_TEST_CASEAPI_" ]
+
   # gnlint: disable=GnLintCommonTesting
   libs = [
     "gmock",
