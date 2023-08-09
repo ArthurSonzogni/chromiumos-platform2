@@ -193,6 +193,8 @@ crash_reporter --log_to_stderr --clean_shutdown
 # Flush buffers to disk to reflect this part of shutdown in the metrics.
 sync
 
+# Remove old metrics since we only care about the last one.
+rm -rf /var/log/metrics/shutdown.*
 # Measure shutdown time up to this point.
 bootstat_archive "/var/log/metrics/shutdown.$(date --utc '+%Y%m%d%H%M%S')"
 

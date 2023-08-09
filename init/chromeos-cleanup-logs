@@ -113,13 +113,6 @@ remove_old_pattern_log_files() {
 
   # Remove old modemfwd helper logs
   remove_old_files /var/log/modemfwd "helper_log.*"
-
-  # Remove old bootstat metrics files. NB: this can still leave empty
-  # /var/log/metrics/shutdown.<timestamp>/ directories.
-  # bootstat metrics are typically small files (~30 files per reboot). Override
-  # the number of files to keep in calling remove_old_files() since the default
-  # is too small.
-  remove_old_files /var/log/metrics "*" 210
 }
 
 usage() {
