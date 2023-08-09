@@ -64,6 +64,9 @@ sysinfo: 1
 mlock: 1
 munlock: 1
 
+# For base::FilePathWatcher
+ioctl: arg1 == FIONREAD
+
 # For Ti50 emulator
 connect: 1
 recvmsg: 1
