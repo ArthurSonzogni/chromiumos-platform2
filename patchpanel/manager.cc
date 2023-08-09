@@ -15,6 +15,7 @@
 #include <base/task/single_thread_task_runner.h>
 
 #include "patchpanel/address_manager.h"
+#include "patchpanel/datapath.h"
 #include "patchpanel/downstream_network_service.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_metrics.h"
@@ -180,12 +181,22 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
       continue;
     }
     if (prev_device) {
-      StopForwarding(*prev_device, nsinfo.host_ifname,
-                     ForwardingSet{.ipv6 = true});
       nsinfo.current_outbound_device = std::nullopt;
     }
     if (new_device) {
       nsinfo.current_outbound_device = *new_device;
+    }
+
+    // When IPv6 is configured statically, no need to update forwarding set and
+    // restart IPv6 inside the namespace.
+    if (nsinfo.static_ipv6_config.has_value()) {
+      continue;
+    }
+    if (prev_device) {
+      StopForwarding(*prev_device, nsinfo.host_ifname,
+                     ForwardingSet{.ipv6 = true});
+    }
+    if (new_device) {
       StartForwarding(*new_device, nsinfo.host_ifname,
                       ForwardingSet{.ipv6 = true});
 
@@ -223,12 +234,22 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
       continue;
     }
     if (prev_device) {
-      StopForwarding(*prev_device, nsinfo.host_ifname,
-                     ForwardingSet{.ipv6 = true});
       nsinfo.current_outbound_device = std::nullopt;
     }
     if (new_device) {
       nsinfo.current_outbound_device = *new_device;
+    }
+
+    // When IPv6 is configured statically, no need to update forwarding set and
+    // restart IPv6 inside the namespace.
+    if (nsinfo.static_ipv6_config.has_value()) {
+      continue;
+    }
+    if (prev_device) {
+      StopForwarding(*prev_device, nsinfo.host_ifname,
+                     ForwardingSet{.ipv6 = true});
+    }
+    if (new_device) {
       StartForwarding(*new_device, nsinfo.host_ifname,
                       ForwardingSet{.ipv6 = true});
 
@@ -262,9 +283,13 @@ void Manager::OnShillDevicesChanged(
   // the last to make sure every packet is counted.
   for (const auto& device : removed) {
     for (auto& [_, nsinfo] : connected_namespaces_) {
-      if (nsinfo.outbound_ifname == device.ifname) {
-        StopForwarding(device, nsinfo.host_ifname, ForwardingSet{.ipv6 = true});
+      if (nsinfo.outbound_ifname != device.ifname) {
+        continue;
       }
+      if (nsinfo.static_ipv6_config.has_value()) {
+        continue;
+      }
+      StopForwarding(device, nsinfo.host_ifname, ForwardingSet{.ipv6 = true});
     }
     StopForwarding(device, /*ifname_virtual=*/"");
     datapath_->StopConnectionPinning(device);
@@ -290,6 +315,9 @@ void Manager::OnShillDevicesChanged(
     multicast_metrics_->OnPhysicalDeviceAdded(device);
     for (auto& [_, nsinfo] : connected_namespaces_) {
       if (nsinfo.outbound_ifname != device.ifname) {
+        continue;
+      }
+      if (nsinfo.static_ipv6_config.has_value()) {
         continue;
       }
       StartForwarding(device, nsinfo.host_ifname, ForwardingSet{.ipv6 = true});
@@ -365,6 +393,9 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
       continue;
     }
 
+    if (nsinfo.static_ipv6_config.has_value()) {
+      continue;
+    }
     // Disable and re-enable IPv6 inside the namespace. This is necessary to
     // trigger SLAAC in the kernel to send RS.
     RestartIPv6(nsinfo.netns_name);
@@ -787,9 +818,17 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   if (current_outbound_device) {
     nsinfo.current_outbound_device = *current_outbound_device;
   }
-
-  // TODO(jasongustaman): Implement static IPv6 for ConnectNamespace.
-  nsinfo.static_ipv6_config = std::nullopt;
+  if (request.static_ipv6()) {
+    nsinfo.static_ipv6_config = StaticIPv6Config{};
+    auto ipv6_subnet = addr_mgr_.AllocateIPv6Subnet();
+    nsinfo.static_ipv6_config->host_cidr =
+        addr_mgr_.GetRandomizedIPv6Address(ipv6_subnet);
+    do {
+      nsinfo.static_ipv6_config->peer_cidr =
+          addr_mgr_.GetRandomizedIPv6Address(ipv6_subnet);
+    } while (nsinfo.static_ipv6_config->peer_cidr ==
+             nsinfo.static_ipv6_config->host_cidr);
+  }
 
   if (!datapath_->StartRoutingNamespace(nsinfo)) {
     LOG(ERROR) << "Failed to setup datapath";
@@ -810,15 +849,15 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   LOG(INFO) << "Connected network namespace " << nsinfo;
 
   // Start forwarding for IPv6.
-  if (current_outbound_device) {
+  if (!nsinfo.static_ipv6_config.has_value() && current_outbound_device) {
     StartForwarding(*current_outbound_device, nsinfo.host_ifname,
                     ForwardingSet{.ipv6 = true});
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
+                       nsinfo.netns_name),
+        base::Milliseconds(kIPv6RestartDelayMs));
   }
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
-                     nsinfo.netns_name),
-      base::Milliseconds(kIPv6RestartDelayMs));
 
   // Store ConnectedNamespace
   connected_namespaces_next_id_++;
@@ -895,7 +934,7 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     return;
   }
 
-  // Remove the rules tied to the lifeline fd.
+  // Remove the rules and IP addresses tied to the lifeline fd.
   auto connected_namespace_it = connected_namespaces_.find(client_fd);
   if (connected_namespace_it != connected_namespaces_.end()) {
     if (connected_namespace_it->second.current_outbound_device) {
@@ -906,6 +945,11 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     datapath_->StopRoutingNamespace(connected_namespace_it->second);
     LOG(INFO) << "Disconnected network namespace "
               << connected_namespace_it->second;
+    if (connected_namespace_it->second.static_ipv6_config.has_value()) {
+      addr_mgr_.ReleaseIPv6Subnet(
+          connected_namespace_it->second.static_ipv6_config->host_cidr
+              .GetPrefixCIDR());
+    }
     // This release the allocated IPv4 subnet.
     connected_namespaces_.erase(connected_namespace_it);
     return;
