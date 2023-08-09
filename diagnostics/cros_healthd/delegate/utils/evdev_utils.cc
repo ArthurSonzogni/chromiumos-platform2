@@ -184,7 +184,8 @@ EvdevAudioJackObserver::EvdevAudioJackObserver(
     : observer_(std::move(observer)) {}
 
 bool EvdevAudioJackObserver::IsTarget(LibevdevWrapper* dev) {
-  return dev->HasEventCode(EV_SW, SW_HEADPHONE_INSERT) &&
+  // Sarien board has separated event nodes so we use || instead of && here.
+  return dev->HasEventCode(EV_SW, SW_HEADPHONE_INSERT) ||
          dev->HasEventCode(EV_SW, SW_MICROPHONE_INSERT);
 }
 

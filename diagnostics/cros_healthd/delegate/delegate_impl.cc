@@ -275,7 +275,7 @@ void DelegateImpl::MonitorAudioJack(
   auto delegate = std::make_unique<EvdevAudioJackObserver>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
-  new EvdevUtil(std::move(delegate));
+  new EvdevUtil(std::move(delegate), /*allow_multiple_devices*/ true);
 }
 
 void DelegateImpl::MonitorTouchpad(
