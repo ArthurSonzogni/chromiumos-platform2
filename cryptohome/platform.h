@@ -992,21 +992,6 @@ class BRILLO_EXPORT Platform {
   template <class T>
   bool ReadFileToBlob(const base::FilePath& path, T* blob);
 
-  // Computes a checksum and returns an ASCII representation.
-  std::string GetChecksum(const void* input, size_t input_size);
-
-  // Computes a checksum of |content| and writes it atomically to the same
-  // |path| but with a .sum suffix and the given |mode|.
-  void WriteChecksum(const base::FilePath& path,
-                     const void* content,
-                     size_t content_size,
-                     mode_t mode);
-
-  // Looks for a .sum file for |path| and verifies the checksum if it exists.
-  void VerifyChecksum(const base::FilePath& path,
-                      const void* content,
-                      size_t content_size);
-
   // Returns list of mounts from |mount_info_path_| file.
   std::vector<DecodedProcMountInfo> ReadMountInfoFile();
 

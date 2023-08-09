@@ -715,7 +715,6 @@ bool Platform::WriteSecureBlobToFileAtomicDurable(
   if (!WriteSecureBlobToFileAtomic(path, blob, mode))
     return false;
 
-  WriteChecksum(path, blob.data(), blob.size(), mode);
   return SyncDirectory(FilePath(path).DirName());
 }
 
@@ -726,7 +725,6 @@ bool Platform::WriteStringToFileAtomicDurable(const FilePath& path,
 
   if (!WriteStringToFileAtomic(path, data, mode))
     return false;
-  WriteChecksum(path, data.data(), data.size(), mode);
   return SyncDirectory(FilePath(path).DirName());
 }
 
@@ -751,7 +749,6 @@ bool Platform::ReadFileToString(const FilePath& path, std::string* string) {
   if (!base::ReadFileToString(path, string)) {
     return false;
   }
-  VerifyChecksum(path, string->data(), string->size());
   return true;
 }
 
@@ -1617,71 +1614,7 @@ bool Platform::ReadFileToBlob(const FilePath& path, T* blob) {
                << " from " << path.value() << ".";
     return false;
   }
-  VerifyChecksum(path, blob->data(), blob->size());
   return true;
-}
-
-std::string Platform::GetChecksum(const void* input, size_t input_size) {
-  uint32_t sum = Crc32(input, input_size);
-  return base::HexEncode(&sum, 4);
-}
-
-void Platform::WriteChecksum(const FilePath& path,
-                             const void* content,
-                             const size_t content_size,
-                             mode_t mode) {
-  DCHECK(path.IsAbsolute()) << "path=" << path;
-
-  FilePath name = path.AddExtension(kChecksumExtension);
-  WriteStringToFileAtomic(name, GetChecksum(content, content_size), mode);
-}
-
-void Platform::VerifyChecksum(const FilePath& path,
-                              const void* content,
-                              const size_t content_size) {
-  DCHECK(path.IsAbsolute()) << "path=" << path;
-
-  // Exclude some system paths.
-  std::string path_value = path.value();
-  if (base::StartsWith(path_value, "/etc", base::CompareCase::SENSITIVE) ||
-      base::StartsWith(path_value, "/dev", base::CompareCase::SENSITIVE) ||
-      base::StartsWith(path_value, "/sys", base::CompareCase::SENSITIVE) ||
-      base::StartsWith(path_value, "/proc", base::CompareCase::SENSITIVE)) {
-    return;
-  }
-  FilePath name = path.AddExtension(kChecksumExtension);
-  if (!FileExists(name)) {
-    return;
-  }
-  std::string saved_sum;
-  if (!base::ReadFileToString(name, &saved_sum)) {
-    LOG(ERROR) << "CHECKSUM: Failed to read checksum for " << path.value();
-    return;
-  }
-  if (saved_sum != GetChecksum(content, content_size)) {
-    // Check if the last modified time is out-of-sync for the two files. If they
-    // weren't written together they can't be expected to match.
-    base::File::Info content_file_info;
-    base::File::Info checksum_file_info;
-    if (!base::GetFileInfo(path, &content_file_info) ||
-        !base::GetFileInfo(name, &checksum_file_info)) {
-      LOG(ERROR) << "CHECKSUM: Failed to read file info for " << path.value();
-      return;
-    }
-    base::TimeDelta checksum_timestamp_diff =
-        checksum_file_info.last_modified - content_file_info.last_modified;
-    if (checksum_timestamp_diff.magnitude().InSeconds() > 1) {
-      LOG(ERROR) << "CHECKSUM: Checksum out-of-sync for " << path.value();
-    } else {
-      LOG(ERROR) << "CHECKSUM: Failed to verify checksum for " << path.value();
-    }
-    // Attempt to update the checksum to match the current content.
-    mode_t current_mode;
-    if (GetPermissions(name, &current_mode)) {
-      WriteChecksum(path, content, content_size, current_mode);
-    }
-    return;
-  }
 }
 
 FileEnumerator::FileInfo::FileInfo(

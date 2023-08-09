@@ -349,10 +349,6 @@ TEST_F(AuthFactorManagerTest, RemoveFailureWithAuthBlock) {
                                         remove_result.GetCallback());
   EXPECT_TRUE(remove_result.IsReady());
   EXPECT_THAT(remove_result.Take(), Not(IsOk()));
-  EXPECT_TRUE(platform_.FileExists(
-      AuthFactorPath(kObfuscatedUsername,
-                     /*auth_factor_type_string=*/"password", kSomeIdpLabel)
-          .AddExtension(cryptohome::kChecksumExtension)));
 }
 
 TEST_F(AuthFactorManagerTest, RemoveFailureWithFactorFile) {
@@ -385,10 +381,6 @@ TEST_F(AuthFactorManagerTest, RemoveFailureWithFactorFile) {
                                         remove_result.GetCallback());
   EXPECT_TRUE(remove_result.IsReady());
   EXPECT_THAT(remove_result.Take(), Not(IsOk()));
-  EXPECT_TRUE(platform_.FileExists(
-      AuthFactorPath(kObfuscatedUsername,
-                     /*auth_factor_type_string=*/"password", kSomeIdpLabel)
-          .AddExtension(cryptohome::kChecksumExtension)));
 }
 
 TEST_F(AuthFactorManagerTest, RemoveOkWithChecksumFileRemovalFailure) {
@@ -410,6 +402,10 @@ TEST_F(AuthFactorManagerTest, RemoveOkWithChecksumFileRemovalFailure) {
                      /*auth_factor_type_string=*/"password", kSomeIdpLabel);
   auto auth_factor_checksum_file_path =
       auth_factor_file_path.AddExtension(kChecksumExtension);
+  // Write out a checksum file. These are no longer automatically produced and
+  // so to test it not being removed we need to manually create it.
+  ASSERT_TRUE(platform_.TouchFileDurable(auth_factor_checksum_file_path));
+
   // Removes the auth factor file.
   EXPECT_CALL(platform_, DeleteFileSecurely(auth_factor_file_path))
       .WillOnce(Return(true));
