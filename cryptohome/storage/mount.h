@@ -69,10 +69,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   username - name of the user to mount
   //   file_system_keys - file system encryption keys of the user
-  //   mount_args - The options for the call to mount:
-  //                * Whether to create the cryptohome if it doesn't exist.
-  //                * Whether to ensure that the mount is ephemeral.
-  //   error - The specific error condition on failure
+  //   vault_options - The options for mounting the cryptohome vault.
   virtual StorageStatus MountCryptohome(
       const Username& username,
       const FileSystemKeyset& file_system_keys,

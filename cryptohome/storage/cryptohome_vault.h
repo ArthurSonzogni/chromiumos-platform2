@@ -24,10 +24,6 @@ namespace cryptohome {
 // comprise the user's home directory and handles operations relating to setting
 // up the user's home directory for mount and tearing down the encrypted
 // containers after unmount.
-//
-// Note that the mount arguments passed to the vault define the setup/teardown
-// functions. This is intentional: it allows use of a deterministic teardown
-// function on restart from a crash.
 class CryptohomeVault {
  public:
   struct Options {
