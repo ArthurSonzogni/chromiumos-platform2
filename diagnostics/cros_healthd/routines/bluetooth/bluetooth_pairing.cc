@@ -403,6 +403,7 @@ void BluetoothPairingRoutine::SetResultAndStop(
   StopDiscoveryIfNeeded();
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
+  ResetPoweredState();
   UpdateStatus(status, status_message);
 }
 
