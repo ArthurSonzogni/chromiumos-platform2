@@ -114,7 +114,7 @@ class HomeDirs {
   // Removes the cryptohome for the given obfuscated username.
   virtual bool Remove(const ObfuscatedUsername& obfuscated);
 
-  // Removes the Dmcryot cache container for the named user.
+  // Removes the Dmcrypt cache container for the named user.
   virtual bool RemoveDmcryptCacheContainer(
       const ObfuscatedUsername& obfuscated);
 

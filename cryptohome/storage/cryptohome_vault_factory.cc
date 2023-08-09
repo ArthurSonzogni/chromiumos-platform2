@@ -228,10 +228,9 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   std::unordered_map<std::string, std::unique_ptr<EncryptedContainer>>
       application_containers;
   if (container_type == EncryptedContainerType::kDmcrypt ||
-      container_type == EncryptedContainerType::kEcryptfsToDmcrypt ||
-      container_type == EncryptedContainerType::kFscryptToDmcrypt) {
+      migrating_container_type == EncryptedContainerType::kDmcrypt) {
     cache_container = GenerateEncryptedContainer(
-        container_type, obfuscated_username, key_reference,
+        EncryptedContainerType::kDmcrypt, obfuscated_username, key_reference,
         kDmcryptCacheContainerSuffix, vault_dm_options);
     if (!cache_container) {
       LOG(ERROR) << "Could not create vault container for cache";
@@ -241,8 +240,9 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
       for (const auto& app : std::vector<std::string>{"arcvm"}) {
         app_dm_options.iv_offset = GetContainerIVOffset(app);
         std::unique_ptr<EncryptedContainer> tmp_container =
-            GenerateEncryptedContainer(container_type, obfuscated_username,
-                                       key_reference, app, app_dm_options);
+            GenerateEncryptedContainer(EncryptedContainerType::kDmcrypt,
+                                       obfuscated_username, key_reference, app,
+                                       app_dm_options);
         if (!tmp_container) {
           LOG(ERROR) << "Could not create vault container for app: " << app;
           return nullptr;
