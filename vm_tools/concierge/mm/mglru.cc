@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_tools/concierge/mglru_util.h"
+#include "vm_tools/concierge/mm/mglru.h"
 
 #include <utility>
 #include <vector>

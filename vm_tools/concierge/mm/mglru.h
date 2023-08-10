@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_TOOLS_CONCIERGE_MGLRU_UTIL_H_
-#define VM_TOOLS_CONCIERGE_MGLRU_UTIL_H_
+#ifndef VM_TOOLS_CONCIERGE_MM_MGLRU_H_
+#define VM_TOOLS_CONCIERGE_MM_MGLRU_H_
 
 #include <optional>
 #include <string>
@@ -29,4 +29,4 @@ std::string StatsToString(const MglruStats& stats, const size_t page_size);
 
 }  // namespace vm_tools::concierge::mglru
 
-#endif  // VM_TOOLS_CONCIERGE_MGLRU_UTIL_H_
+#endif  // VM_TOOLS_CONCIERGE_MM_MGLRU_H_
