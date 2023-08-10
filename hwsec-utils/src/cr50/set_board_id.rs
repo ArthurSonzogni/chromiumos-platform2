@@ -100,7 +100,7 @@ pub fn cr50_set_board_id_and_flag(
     board_id: u32,
     flag: u16,
 ) -> Result<(), Cr50SetBoardIDVerdict> {
-    let updater_arg = &format!("{:08x}:{:08x}", board_id, flag);
+    let updater_arg = &format!("0x{:08x}:0x{:08x}", board_id, flag);
     let update_output =
         run_gsctool_cmd(ctx, vec!["--any", "--board_id", updater_arg]).map_err(|_| {
             eprintln!("Failed to run gsctool.");
@@ -329,7 +329,7 @@ mod tests {
     fn test_cr50_set_board_id_and_flag_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["--any", "--board_id", "12345678:0000abcd"],
+            vec!["--any", "--board_id", "0x12345678:0x0000abcd"],
             0,
             "",
             "",
@@ -343,7 +343,7 @@ mod tests {
     fn test_cr50_set_board_id_and_flag_failed() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["--any", "--board_id", "12345678:0000abcd"],
+            vec!["--any", "--board_id", "0x12345678:0x0000abcd"],
             1,
             "",
             "",
