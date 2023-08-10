@@ -34,6 +34,7 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/mock_socket.h>
 
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/ipconfig.h"
@@ -45,7 +46,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/net/mock_sockets.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_link_stats.h"
@@ -130,10 +130,19 @@ class DeviceInfoTest : public Test {
     return device_info_.delayed_devices_;
   }
 
-  void SetSockets() {
-    auto sockets = std::make_unique<MockSockets>();
-    mock_sockets_ = sockets.get();
-    device_info_.set_sockets_for_test(std::move(sockets));
+  // Set the socket factory method into |device_into_|.
+  // |method| is a lambda function that creates a net_base::MockSocket.
+  void SetSocketFactory(
+      std::function<std::unique_ptr<net_base::MockSocket>()> method) {
+    device_info_.set_socket_factory_for_test(base::BindRepeating(
+        [](std::function<std::unique_ptr<net_base::MockSocket>()> method,
+           int domain, int type,
+           int protocol) -> std::unique_ptr<net_base::Socket> {
+          EXPECT_EQ(domain, PF_INET);
+          EXPECT_EQ(protocol, 0);
+          return method();
+        },
+        std::move(method)));
   }
 
   // Takes ownership of |provider|.
@@ -180,7 +189,6 @@ class DeviceInfoTest : public Test {
   EventDispatcherForTest dispatcher_;
   MockNetlinkManager netlink_manager_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
-  MockSockets* mock_sockets_;  // Owned by DeviceInfo.
   MockTime time_;
   patchpanel::FakeClient* patchpanel_client_;  // Owned by Manager
   NiceMock<MockNetworkApplier> network_applier_;
@@ -634,16 +642,21 @@ TEST_F(DeviceInfoTest, HasSubdir) {
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnknownDevice) {
-  SetSockets();
-  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).Times(0);
+  // We should not create socket when queying an unknown device.
+  SetSocketFactory([]() {
+    EXPECT_TRUE(false);
+    return nullptr;
+  });
+
   const auto mac_address =
       device_info_.GetMacAddressFromKernel(kTestDeviceIndex);
   EXPECT_EQ(mac_address, std::nullopt);
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnableToOpenSocket) {
-  SetSockets();
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(-1));
+  // Fails to create a socket.
+  SetSocketFactory([]() { return nullptr; });
+
   auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
@@ -654,12 +667,14 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelUnableToOpenSocket) {
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressFromKernelIoctlFails) {
-  SetSockets();
-  const int kFd = 99;
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
-  EXPECT_CALL(*mock_sockets_, Ioctl(kFd, SIOCGIFHWADDR, NotNull()))
-      .WillOnce(Return(-1));
-  EXPECT_CALL(*mock_sockets_, Close(kFd));
+  // Creates a socket successfully, but fails to call ioctl.
+  SetSocketFactory([]() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, Ioctl(SIOCGIFHWADDR, NotNull()))
+        .WillOnce(Return(false));
+
+    return socket;
+  });
 
   auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
@@ -678,23 +693,25 @@ MATCHER_P2(IfreqEquals, ifindex, ifname, "") {
 }
 
 ACTION_P(SetIfreq, ifr) {
-  struct ifreq* const ifr_arg = static_cast<struct ifreq*>(arg2);
+  struct ifreq* const ifr_arg = static_cast<struct ifreq*>(arg1);
   *ifr_arg = ifr;
 }
 
 TEST_F(DeviceInfoTest, GetMacAddressFromKernel) {
-  SetSockets();
-  const int kFd = 99;
-  struct ifreq ifr;
   static std::array<uint8_t, 6> kMacAddress = {0x00, 0x01, 0x02,
                                                0xaa, 0xbb, 0xcc};
-  memcpy(ifr.ifr_hwaddr.sa_data, kMacAddress.data(), kMacAddress.size());
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
-  EXPECT_CALL(
-      *mock_sockets_,
-      Ioctl(kFd, SIOCGIFHWADDR, IfreqEquals(kTestDeviceIndex, kTestDeviceName)))
-      .WillOnce(DoAll(SetIfreq(ifr), Return(0)));
-  EXPECT_CALL(*mock_sockets_, Close(kFd));
+
+  SetSocketFactory([&]() {
+    struct ifreq ifr;
+    memcpy(ifr.ifr_hwaddr.sa_data, kMacAddress.data(), kMacAddress.size());
+
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, Ioctl(SIOCGIFHWADDR,
+                               IfreqEquals(kTestDeviceIndex, kTestDeviceName)))
+        .WillOnce(DoAll(SetIfreq(ifr), Return(true)));
+
+    return socket;
+  });
 
   auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));

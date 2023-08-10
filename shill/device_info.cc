@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -234,7 +235,6 @@ DeviceInfo::DeviceInfo(Manager* manager)
       device_info_root_(kDeviceInfoRoot),
       rtnl_handler_(RTNLHandler::GetInstance()),
       netlink_manager_(NetlinkManager::GetInstance()),
-      sockets_(new Sockets()),
       time_(Time::GetInstance()) {
   if (manager) {
     // |manager| may be null in tests.
@@ -871,19 +871,18 @@ std::optional<net_base::MacAddress> DeviceInfo::GetMacAddressFromKernel(
     return std::nullopt;
   }
 
-  const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-  if (fd < 0) {
+  std::unique_ptr<net_base::Socket> socket =
+      socket_factory_.Run(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+  if (!socket) {
     PLOG(ERROR) << __func__ << ": Unable to open socket";
     return std::nullopt;
   }
 
-  ScopedSocketCloser socket_closer(sockets_.get(), fd);
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   ifr.ifr_ifindex = interface_index;
   strcpy(ifr.ifr_ifrn.ifrn_name, info->name.c_str());  // NOLINT(runtime/printf)
-  int err = sockets_->Ioctl(fd, SIOCGIFHWADDR, &ifr);
-  if (err < 0) {
+  if (!socket->Ioctl(SIOCGIFHWADDR, &ifr)) {
     PLOG(ERROR) << __func__ << ": Unable to read MAC address";
     return std::nullopt;
   }

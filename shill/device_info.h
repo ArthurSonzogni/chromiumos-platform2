@@ -20,10 +20,10 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/mac_address.h>
+#include <net-base/socket.h>
 
 #include "shill/metrics.h"
 #include "shill/net/shill_time.h"
-#include "shill/net/sockets.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 
@@ -37,7 +37,6 @@ class RoutingTable;
 class RTNLHandler;
 class RTNLListener;
 class RTNLMessage;
-class Sockets;
 
 class DeviceInfo {
  public:
@@ -266,8 +265,8 @@ class DeviceInfo {
                                  base::OnceClosure failure_callback,
                                  int32_t error);
 
-  void set_sockets_for_test(std::unique_ptr<Sockets> sockets) {
-    sockets_ = std::move(sockets);
+  void set_socket_factory_for_test(net_base::Socket::SocketFactory factory) {
+    socket_factory_ = std::move(factory);
   }
 
   Manager* manager_;
@@ -299,8 +298,10 @@ class DeviceInfo {
   RTNLHandler* rtnl_handler_;
   NetlinkManager* netlink_manager_;
 
-  // A member of the class so that a mock can be injected for testing.
-  std::unique_ptr<Sockets> sockets_;
+  // The factory method to create net_base::Socket. Keep it as a class member so
+  // that a mock can be injected for testing.
+  net_base::Socket::SocketFactory socket_factory_ =
+      net_base::Socket::kDefaultSocketFactory;
 
   Time* time_;
   base::WeakPtrFactory<DeviceInfo> weak_factory_{this};

@@ -848,6 +848,7 @@ if (use.test) {
       ":mobile_operator_db-db",
       ":mobile_operator_db-test-db",
       "//metrics:metrics_test_support",
+      "//net-base:net_base_test_support",
       "//shill/net:net_test_support",
     ]
 
