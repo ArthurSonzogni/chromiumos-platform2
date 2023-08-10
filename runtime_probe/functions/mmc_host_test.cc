@@ -40,6 +40,7 @@ class MmcHostFunctionTest : public BaseFunctionTest {
                     {bus_dev, "subsystem"});
     SetFile({bus_dev, "device"}, "0x1111");
     SetFile({bus_dev, "vendor"}, "0x2222");
+    SetFile({bus_dev, "class"}, "0x010203");
 
     return bus_dev + "/mmc_host/" + dev_name;
   }

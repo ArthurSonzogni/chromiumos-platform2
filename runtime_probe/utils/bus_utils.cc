@@ -26,7 +26,7 @@ namespace {
 
 constexpr auto kPciFields =
     base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
-        {{"vendor_id", "vendor"}, {"device_id", "device"}});
+        {{"vendor_id", "vendor"}, {"device_id", "device"}, {"class", "class"}});
 constexpr auto kPciOptionalFields =
     base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
         {{"revision", "revision"}, {"subsystem", "subsystem_device"}});

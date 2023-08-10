@@ -54,6 +54,7 @@ class NetworkFunctionTest : public BaseFunctionTest {
                     {bus_dev, "subsystem"});
     SetFile({bus_dev, "device"}, "0x1111");
     SetFile({bus_dev, "vendor"}, "0x2222");
+    SetFile({bus_dev, "class"}, "0x010203");
 
     shill_devices_["/dev/" + dev_name] = {{shill::kInterfaceProperty, dev_name},
                                           {shill::kTypeProperty, network_type}};

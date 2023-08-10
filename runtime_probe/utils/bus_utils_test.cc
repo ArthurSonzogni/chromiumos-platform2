@@ -40,6 +40,7 @@ class BusUtilsTest : public BaseFileTest {
                     {bus_dev, "subsystem"});
     SetFile({bus_dev, "device"}, "0x1111");
     SetFile({bus_dev, "vendor"}, "0x2222");
+    SetFile({bus_dev, "class"}, "0x010203");
 
     return bus_dev;
   }
@@ -51,11 +52,13 @@ TEST_F(BusUtilsTest, ProbePci) {
   SetFile({bus_dev, "device"}, "0x1111");
   SetFile({bus_dev, "vendor"}, "0x2222");
   SetFile({bus_dev, "revision"}, "0x01");
+  SetFile({bus_dev, "class"}, "0x010203");
   auto ans = MakeValue({
       {"bus_type", "pci"},
       {"pci_device_id", "0x1111"},
       {"pci_vendor_id", "0x2222"},
       {"pci_revision", "0x01"},
+      {"pci_class", "0x010203"},
       {"path", GetPathUnderRoot({kFakeSysClassDir, dev_name}).value()},
   });
   auto result = GetDeviceBusDataFromSysfsNode(
