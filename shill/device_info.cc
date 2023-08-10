@@ -669,13 +669,8 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
                 << interface_index << " -- triggering callback.";
         std::move(pending_links_[link_name]).Run(link_name, interface_index);
         pending_links_.erase(link_name);
-      } else if (technology == Technology::kTunnel) {
-        // If no one claims this tunnel, it is probably
-        // left over from a previous instance and should not exist.
-        SLOG(2) << "Tunnel link " << link_name << " at index "
-                << interface_index << " is unused. Deleting.";
-        DeleteInterface(interface_index);
       }
+      // Shill doesn't touch the tunnel interface not claimed anywhere in shill.
       break;
     case Technology::kLoopback:
       // Loopback devices are largely ignored, but we should make sure the

@@ -486,11 +486,8 @@ class MockLinkReadyListener {
 };
 
 TEST_F(DeviceInfoTest, CreateDeviceTunnel) {
-  // Since the device was not expected, DeviceInfo will remove the interface.
-  EXPECT_CALL(rtnl_handler_, RemoveInterface(kTestDeviceIndex)).Times(1);
-  EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
-                            Technology::kTunnel));
-
+  // We do not remove tunnel interfaces even if they are not claimed anywhere in
+  // shill.
   MockLinkReadyListener listener;
   device_info_.pending_links_.emplace(kTestDeviceName,
                                       listener.GetOnceCallback());
