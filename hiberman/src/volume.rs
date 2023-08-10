@@ -85,8 +85,7 @@ const SIZE_1G: u64 = SIZE_1K * SIZE_1M;
 const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
 
 /// Define the list of logical volumes known to not need a snapshot.
-const NO_SNAPSHOT_LVS: [&str; 6] = [
-    "cryptohome-",
+const NO_SNAPSHOT_LVS: [&str; 5] = [
     // DLC LVs are read-only, therefore they don't need snapshots.
     "dlc_",
     HIBERIMAGE_VOLUME_NAME,
