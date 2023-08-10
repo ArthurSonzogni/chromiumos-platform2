@@ -627,9 +627,10 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
 
-  HandleVmStarted(vm_id, *vm_info, vm->GetVmSocketPath(), response.status());
-
   vms_[vm_id] = std::move(vm);
+
+  HandleVmStarted(vm_id, apps::VmType::ARCVM, *vm_info,
+                  vms_[vm_id]->GetVmSocketPath(), response.status());
 
   double vm_boost = topology.GlobalVMBoost();
   if (vm_boost > 0.0) {

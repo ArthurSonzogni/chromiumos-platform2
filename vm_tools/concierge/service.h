@@ -44,6 +44,7 @@
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/dbus_adaptors/org.chromium.VmConcierge.h"
 #include "vm_tools/concierge/disk_image.h"
+#include "vm_tools/concierge/mm/mm_service.h"
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
@@ -274,6 +275,16 @@ class Service final : public org::chromium::VmConciergeInterface,
                              AggressiveBalloonResponse>> response,
                          const AggressiveBalloonRequest& request) override;
 
+  // Enables and initializes the VM Memory Management Service
+  EnableVmMemoryManagementServiceResponse EnableVmMemoryManagementService(
+      const EnableVmMemoryManagementServiceRequest& request) override;
+
+  // Returns an opened FD to the VM memory management kills server.
+  void GetVmMemoryManagementKillsConnection(
+      const GetVmMemoryManagementKillsConnectionRequest& request,
+      GetVmMemoryManagementKillsConnectionResponse* response,
+      base::ScopedFD* fd) override;
+
   // Creates DnsSettings from current configuration.
   DnsSettings ComposeDnsResponse();
 
@@ -299,6 +310,7 @@ class Service final : public org::chromium::VmConciergeInterface,
                                  pid_t pid,
                                  std::string vm_token);
   void HandleVmStarted(const VmId& vm_id,
+                       apps::VmType classification,
                        const vm_tools::concierge::VmInfo& vm_info,
                        const std::string& vm_socket,
                        vm_tools::concierge::VmStatus status);
@@ -435,6 +447,9 @@ class Service final : public org::chromium::VmConciergeInterface,
   void OnStatefulDiskSpaceUpdate(
       const spaced::StatefulDiskSpaceUpdate& update) override;
 
+  // Returns true iff the balloon timer should be running.
+  bool BalloonTimerShouldRun();
+
   base::Thread metrics_thread_ GUARDED_BY_CONTEXT(sequence_checker_){
       "metrics thread"};
   // Destructor will need to run last after all metrics logging to allow
@@ -532,6 +547,10 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;
+
+  // The VM Memory Management service
+  std::unique_ptr<mm::MmService> vm_memory_management_service_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Proxy for interacting with spaced.
   std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;

@@ -1058,14 +1058,6 @@ void Service::RunBalloonPolicy() {
   // TODO(b/191946183): Design and migrate to a new D-Bus API
   // that is less chatty for implementing balloon logic.
 
-  if (vms_.size() == 0) {
-    // If there are no VMs there are no balloon policies to
-    // run. The timer will be restarted when a new VM is launched.
-    balloon_resizing_timer_.Stop();
-    LOG(INFO) << "Stopping balloon resize timer.";
-    return;
-  }
-
   std::optional<MemoryMargins> memory_margins_opt = GetMemoryMargins();
   if (!memory_margins_opt) {
     LOG(ERROR) << "Failed to get ChromeOS memory margins";
@@ -1657,6 +1649,15 @@ void Service::HandleChildExit() {
       vms_.erase(iter);
     }
   }
+
+  // By this point if a VM exited, the VM instance is guaranteed to have been
+  // removed from vms_. HandleChildExit() is run regardless of the exit type
+  // (graceful, crash, etc.) so this is the best place to check if the balloon
+  // policy timer should be stopped.
+  if (balloon_resizing_timer_.IsRunning() && !BalloonTimerShouldRun()) {
+    LOG(INFO) << "Balloon timer no longer needed. Stopping the timer.";
+    balloon_resizing_timer_.Stop();
+  }
 }
 
 void Service::HandleSigterm() {
@@ -2246,9 +2247,12 @@ StartVmResponse Service::StartVmInternal(
   vm_info->set_permission_token(vm->PermissionToken());
   vm_info->set_storage_ballooning(storage_ballooning);
 
-  HandleVmStarted(vm_id, *vm_info, vm->GetVmSocketPath(), response.status());
+  const std::string& socket_path = vm->GetVmSocketPath();
 
   vms_[vm_id] = std::move(vm);
+
+  HandleVmStarted(vm_id, classification, *vm_info, socket_path,
+                  response.status());
   return response;
 }
 
@@ -2523,12 +2527,16 @@ SetBalloonTimerResponse Service::SetBalloonTimer(
   if (request.timer_interval_millis() == 0) {
     LOG(INFO) << "timer_interval_millis is 0. Stop the timer.";
     balloon_resizing_timer_.Stop();
-  } else {
+  } else if (BalloonTimerShouldRun()) {
     LOG(INFO) << "Update balloon timer interval as "
               << request.timer_interval_millis() << "ms.";
     balloon_resizing_timer_.Start(
         FROM_HERE, base::Milliseconds(request.timer_interval_millis()), this,
         &Service::RunBalloonPolicy);
+  } else {
+    LOG(WARNING) << "SetBalloonTimer request received but the balloon timer "
+                    "should not be "
+                    "running. Defaulting to a disabled balloon timer.";
   }
 
   response.set_success(true);
@@ -3874,6 +3882,75 @@ void Service::AggressiveBalloon(
   }
 }
 
+EnableVmMemoryManagementServiceResponse
+Service::EnableVmMemoryManagementService(
+    const EnableVmMemoryManagementServiceRequest&) {
+  LOG(INFO) << "Received request: " << __func__;
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  EnableVmMemoryManagementServiceResponse response;
+
+  // VmMemoryManagementService is already enabled
+  if (vm_memory_management_service_) {
+    static constexpr char error[] = "Service already running.";
+    LOG(ERROR) << error;
+    response.set_failure_reason(error);
+    return response;
+  }
+
+  if (vms_.size() != 0) {
+    static constexpr char error[] =
+        "Cannot enable VmMemoryManagementService if VMs are already running.";
+    LOG(ERROR) << error;
+    response.set_failure_reason(error);
+    return response;
+  }
+
+  // Initialize VmMemoryManagementService
+  vm_memory_management_service_ = std::make_unique<mm::MmService>();
+
+  if (!vm_memory_management_service_->Start()) {
+    vm_memory_management_service_.reset();
+    static constexpr char error[] =
+        "Failed to initialize VmMemoryManagementService.";
+    LOG(ERROR) << error;
+    response.set_failure_reason(error);
+    return response;
+  }
+
+  response.set_success(true);
+  return response;
+}
+
+void Service::GetVmMemoryManagementKillsConnection(
+    const GetVmMemoryManagementKillsConnectionRequest& request,
+    GetVmMemoryManagementKillsConnectionResponse* response,
+    base::ScopedFD* fd) {
+  LOG(INFO) << "Received request: " << __func__;
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (!vm_memory_management_service_) {
+    static constexpr char error[] = "Service is not enabled.";
+    LOG(ERROR) << error;
+    response->set_failure_reason(error);
+    return;
+  }
+
+  *fd = vm_memory_management_service_->GetKillsServerConnection(
+      request.read_timeout_ms());
+
+  if (!fd->is_valid()) {
+    static constexpr char error[] = "Failed to connect.";
+    LOG(ERROR) << error;
+    response->set_failure_reason(error);
+    return;
+  }
+
+  response->set_success(true);
+
+  return;
+}
+
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,
                                     std::vector<string> search_domains) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -3933,13 +4010,17 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
 }
 
 void Service::HandleVmStarted(const VmId& vm_id,
+                              apps::VmType classification,
                               const vm_tools::concierge::VmInfo& vm_info,
-                              const std::string&,
+                              const std::string& vm_socket,
                               vm_tools::concierge::VmStatus status) {
-  // TODO(b:254164308) forward the vm started notification to the
-  // VmMemoryManagement system once it is landed
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (vm_memory_management_service_) {
+    vm_memory_management_service_->NotifyVmStarted(classification,
+                                                   vm_info.cid(), vm_socket);
+  }
 
-  if (!balloon_resizing_timer_.IsRunning()) {
+  if (BalloonTimerShouldRun() && !balloon_resizing_timer_.IsRunning()) {
     LOG(INFO) << "New VM. Starting balloon resize timer.";
     balloon_resizing_timer_.Start(FROM_HERE, base::Seconds(1), this,
                                   &Service::RunBalloonPolicy);
@@ -3979,6 +4060,11 @@ void Service::SendVmGuestUserlandReadySignal(
 
 void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (vm_memory_management_service_) {
+    vm_memory_management_service_->NotifyVmStopping(cid);
+  }
+
   // Notify cicerone.
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStoppingMethod);
@@ -4005,6 +4091,15 @@ void Service::NotifyVmStopped(const VmId& vm_id,
                               int64_t cid,
                               VmStopReason reason) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // Note: In the case of a VM crash, NotifyVmStopped is called without a
+  // proceeding NotifyVmStopping(). In this case, the
+  // vm_memory_management_service should still be informed that the VM has
+  // stopped. Multiple NotifyVmStopping calls for the same VM are supported.
+  if (vm_memory_management_service_) {
+    vm_memory_management_service_->NotifyVmStopping(cid);
+  }
+
   // Notify cicerone.
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStoppedMethod);
@@ -4747,4 +4842,30 @@ void Service::OnStatefulDiskSpaceUpdate(
     iter.second->HandleStatefulUpdate(update);
   }
 }
+
+bool Service::BalloonTimerShouldRun() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // If there are no VMs, there is no need for the balloon timer.
+  if (vms_.size() == 0) {
+    return false;
+  }
+
+  // If there are VMs but VmMemoryManagementService has not been initialized,
+  // the balloon timer should run.
+  if (!vm_memory_management_service_) {
+    return true;
+  }
+
+  // If any VM is not managed by the VM Memory Management Service, the balloon
+  // timer should run.
+  for (const auto& vm : vms_) {
+    if (!mm::MmService::ManagedVms().contains(vm.second->GetInfo().type)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 }  // namespace vm_tools::concierge

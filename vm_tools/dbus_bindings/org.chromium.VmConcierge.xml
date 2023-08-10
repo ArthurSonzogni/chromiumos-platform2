@@ -182,6 +182,21 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="EnableVmMemoryManagementService">
+      <tp:docstring>
+        Enables the VM Memory Management service which allows for no-poll
+        and responsive ballooning for client VMs.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::EnableVmMemoryManagementServiceRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::EnableVmMemoryManagementServiceResponse"/>
+      </arg>
+    </method>
     <method name="ExportDiskImage">
       <tp:docstring>
         Exports a VM disk image.
@@ -298,6 +313,25 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmLogsResponse"/>
+      </arg>
+    </method>
+    <method name="GetVmMemoryManagementKillsConnection">
+      <tp:docstring>
+        Returns an open FD to the VM Memory Management Service kills server.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmMemoryManagementKillsConnectionRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmMemoryManagementKillsConnectionResponse"/>
+      </arg>
+      <arg type="h" name="out_fd" direction="out">
+        <tp:docstring>
+          The FD to the server.
+        </tp:docstring>
       </arg>
     </method>
     <method name="ImportDiskImage">

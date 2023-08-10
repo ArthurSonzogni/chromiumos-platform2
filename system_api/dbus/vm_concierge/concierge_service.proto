@@ -1492,3 +1492,32 @@ message AggressiveBalloonResponse {
   // The reason for failure.
   string failure_reason = 2;
 }
+
+// Request to enable the VmMemoryManagementService.
+message EnableVmMemoryManagementServiceRequest {}
+
+// Response to an EnableVmMemoryManagementService request.
+message EnableVmMemoryManagementServiceResponse {
+  // Whether the service was successfully enabled
+  bool success = 1;
+
+  // The reason for failure.
+  string failure_reason = 2;
+}
+
+// Request to get an open FD to the VM Memory Management kills server.
+message GetVmMemoryManagementKillsConnectionRequest {
+  // The read timeout that should be set on the connection.
+  uint32 read_timeout_ms = 1;
+}
+
+// Response to an GetVmMemoryManagementKillsConnection request.
+// A successful response must be accompanied with the fd that was opened to the
+// server.
+message GetVmMemoryManagementKillsConnectionResponse {
+  // Whether the request was successful.
+  bool success = 1;
+
+  // The reason for failure.
+  string failure_reason = 2;
+}

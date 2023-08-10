@@ -171,6 +171,7 @@ static_library("libconcierge") {
     "../concierge/dlc_helper.cc",
     "../concierge/metrics/duration_recorder.cc",
     "../concierge/mm/mglru.cc",
+    "../concierge/mm/mm_service.cc",
     "../concierge/pci_utils.cc",
     "../concierge/plugin_vm.cc",
     "../concierge/plugin_vm_helper.cc",

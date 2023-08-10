@@ -22,6 +22,8 @@ const char kCreateDiskImageMethod[] = "CreateDiskImage";
 const char kDestroyDiskImageMethod[] = "DestroyDiskImage";
 const char kDetachUsbDeviceMethod[] = "DetachUsbDevice";
 const char kDiskImageStatusMethod[] = "DiskImageStatus";
+const char kEnableVmMemoryManagementServiceMethod[] =
+    "EnableVmMemoryManagementService";
 const char kExportDiskImageMethod[] = "ExportDiskImage";
 const char kGetContainerSshKeysMethod[] = "GetContainerSshKeys";
 const char kGetDnsSettingsMethod[] = "GetDnsSettings";
@@ -31,6 +33,8 @@ const char kGetVmGpuCachePathMethod[] = "GetVmGpuCachePath";
 const char kGetVmInfoMethod[] = "GetVmInfo";
 const char kGetVmLaunchAllowedMethod[] = "GetVmLaunchAllowed";
 const char kGetVmLogsMethod[] = "GetVmLogs";
+const char kGetVmMemoryManagementKillsConnectionMethod[] =
+    "GetVmMemoryManagementKillsConnection";
 const char kImportDiskImageMethod[] = "ImportDiskImage";
 const char kInstallPflashMethod[] = "InstallPflash";
 const char kListUsbDeviceMethod[] = "ListUsbDevices";
