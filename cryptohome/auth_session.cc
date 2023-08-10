@@ -1717,14 +1717,20 @@ void AuthSession::ResaveUssWithFactorRemoved(
     return;
   }
 
+  // At any step after this point if we fail in updating the USS we still report
+  // OkStatus as the final result. The AuthFactor itself is already gone and so
+  // no matter how the rest of the cleanup goes the removal has happened.
+
+  auto uss_snapshot = user_secret_stash_->TakeSnapshot();
+  absl::Cleanup revert_uss = [this, &uss_snapshot]() {
+    user_secret_stash_->RestoreSnapshot(std::move(uss_snapshot));
+  };
   status = RemoveAuthFactorFromUssInMemory(auth_factor_label);
   if (!status.ok()) {
-    std::move(on_done).Run(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionRemoveFromUssFailedInRemoveAuthFactor),
-            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
-            .Wrap(std::move(status)));
+    LOG(ERROR) << "AuthSession: Failed to remove the auth factor from the "
+                  "in-memory USS: "
+               << status;
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
     return;
   }
 
@@ -1734,11 +1740,7 @@ void AuthSession::ResaveUssWithFactorRemoved(
   if (!encrypted_uss_container.ok()) {
     LOG(ERROR) << "AuthSession: Failed to encrypt user secret stash after auth "
                   "factor removal.";
-    std::move(on_done).Run(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInRemoveAuthFactor),
-            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
-            .Wrap(std::move(encrypted_uss_container).err_status()));
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
     return;
   }
 
@@ -1747,14 +1749,10 @@ void AuthSession::ResaveUssWithFactorRemoved(
   if (!status.ok()) {
     LOG(ERROR) << "AuthSession: Failed to persist user secret stash after auth "
                   "factor removal.";
-    std::move(on_done).Run(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionPersistUSSFailedInRemoveAuthFactor),
-            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
-            .Wrap(std::move(status)));
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    return;
   }
-
+  std::move(revert_uss).Cancel();
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 

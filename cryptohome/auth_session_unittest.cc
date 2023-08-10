@@ -3990,6 +3990,97 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
 }
 
 TEST_F(AuthSessionWithUssExperimentTest,
+       RemoveAuthFactorPartialRemoveIsStillOk) {
+  // Setup.
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  error = AddPinAuthFactor(kFakePin, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Both password and pin are available.
+  std::map<std::string, AuthFactorType> stored_factors =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(stored_factors,
+              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
+                          Pair(kFakePinLabel, AuthFactorType::kPin)));
+  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
+  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakePinLabel), Optional(_));
+
+  // Disable the writing of the USS file. This shouldn't cause the remove
+  // operation to fail.
+  EXPECT_CALL(platform_,
+              WriteFileAtomicDurable(
+                  UserSecretStashPath(SanitizeUserName(kFakeUsername),
+                                      kUserSecretStashDefaultSlot),
+                  _, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(false));
+
+  // Test.
+
+  // Calling RemoveAuthFactor for pin.
+  user_data_auth::RemoveAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakePinLabel);
+
+  TestFuture<CryptohomeStatus> remove_future;
+  auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
+      request, remove_future.GetCallback());
+
+  EXPECT_THAT(remove_future.Get(), IsOk());
+
+  // Only password is available.
+  std::map<std::string, AuthFactorType> stored_factors_1 =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(stored_factors_1,
+              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
+  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
+  EXPECT_THAT(auth_session.auth_factor_map().Find(kFakePinLabel),
+              Eq(std::nullopt));
+
+  // Calling AuthenticateAuthFactor for password succeeds.
+  error = AuthenticatePasswordAuthFactor(kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Calling AuthenticateAuthFactor for pin fails.
+  std::vector<std::string> auth_factor_labels{kFakePinLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
+  AuthenticateTestFuture authenticate_future;
+  auth_session.AuthenticateAuthFactor(
+      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
+      authenticate_future.GetCallback());
+
+  // Verify.
+  auto& [action, status] = authenticate_future.Get();
+  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
+  EXPECT_THAT(status, NotOk());
+  EXPECT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  // The verifier still uses the password.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(),
+              UnorderedElementsAre(
+                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
+}
+
+TEST_F(AuthSessionWithUssExperimentTest,
        RemoveAuthFactorRemovesCredentialVerifier) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,

@@ -1047,9 +1047,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionRemoveVKFailedInRemoveAuthFactor = 610,
   /* ./auth_session.cc */
   kLocAuthSessionRemoveMainKeyFailedInRemoveSecretFromUss = 611,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionEncryptFailedInRemoveAuthFactor = 612,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionPersistUSSFailedInRemoveAuthFactor = 613,
   /* ./auth_session.cc */
   kLocAuthSessionInvalidBlockTypeInAddAuthFactor = 614,
@@ -1085,7 +1085,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthUserNonexistentInListAuthFactors = 629,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoAuthSessionInUpdateAuthFactor = 630,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionRemoveFromUssFailedInRemoveAuthFactor = 631,
   /* ./userdataauth.cc */
   kLocUserDataAuthUnauthedInUpdateAuthFactor = 632,
@@ -1829,9 +1829,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataMalformedRequestInAuthAuthFactor = 3524,
   /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSDeserializeFailedInGeUserMetadata = 3525,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSGetUserMetadataFailedInFromEncContainer = 3526,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSGetUserMetadataFailedInFromEncContainerWrappingKey = 3527,
   /* =Obsolete= */
   kLocFingerprintAuthBlockFailedToGetStateFailedInPrepareForRemoval = 3528,
