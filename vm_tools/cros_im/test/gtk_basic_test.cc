@@ -19,12 +19,18 @@ namespace {
 
 class GtkBasicTest : public GtkTestBase {
  public:
-  GtkBasicTest() {
+  void OnActivate() override {
+    application_->add_window(window_);
+#ifdef GTK4
+    window_.set_child(box_);
+    box_.append(text_view_0_);
+#else
     window_.add(box_);
-    box_.show();
     box_.add(text_view_0_);
-    text_view_0_.show();
-    window_.show();
+#endif
+    box_.set_visible(true);
+    text_view_0_.set_visible(true);
+    window_.set_visible(true);
   }
 
  protected:
@@ -44,8 +50,13 @@ TEST_F(GtkBasicTest, SwitchFocus) {
   RunUntilWidgetFocused(&text_view_0_);
   RunUntilIdle();
 
+#ifdef GTK4
+  box_.append(text_view_1_);
+  text_view_1_.set_visible(true);
+#else
   box_.add(text_view_1_);
   text_view_1_.show();
+#endif
   // This immediately triggers the focus-in-event.
   text_view_1_.grab_focus();
   RunUntilIdle();

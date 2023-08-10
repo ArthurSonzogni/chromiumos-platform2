@@ -10,15 +10,21 @@ namespace cros_im {
 namespace test {
 
 BACKEND_TEST(GtkPopoverWindowTest, CommitString) {
+  Ignore<0>(Request::kReset);
+  Ignore<1>(Request::kReset);
+
   ExpectCreateTextInput<0>();
   Expect<0>(Request::kActivate);
 
   SendCommitString<0>("ツ");
-  Expect<0>(Request::kDeactivate);
-
+#ifdef GTK4
   ExpectCreateTextInput<1>();
+  Expect<0>(Request::kDeactivate);
+#else
+  Expect<0>(Request::kDeactivate);
+  ExpectCreateTextInput<1>();
+#endif
   Expect<1>(Request::kActivate);
-  Expect<1>(Request::kReset);
 
   SendCommitString<1>("ü");
   Expect<1>(Request::kDeactivate);
@@ -26,9 +32,7 @@ BACKEND_TEST(GtkPopoverWindowTest, CommitString) {
 
   SendCommitString<0>(":)");
 
-  Expect<1>(Request::kReset);
   Expect<0>(Request::kDeactivate);
-  Expect<0>(Request::kReset);
 }
 
 }  // namespace test

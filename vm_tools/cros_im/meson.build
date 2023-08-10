@@ -66,6 +66,10 @@ gtk3_sources = gtk_sources + [
   'frontend/gtk/im_cros_gtk3.cc',
 ]
 
+gtk4_sources = gtk_sources + [
+  'frontend/gtk/im_cros_gtk4.cc',
+]
+
 libim_cros_gtk3 = shared_library('im-cros-gtk3',
   sources: gtk3_sources + wl_outs,
   dependencies: [
@@ -82,9 +86,7 @@ libim_cros_gtk3 = shared_library('im-cros-gtk3',
 
 if get_option('build_gtk4')
   libim_cros_gtk4 = shared_library('im-cros-gtk4',
-    sources: gtk_sources + [
-    'frontend/gtk/im_cros_gtk4.cc',
-  ]  + wl_outs,
+    sources: gtk4_sources + wl_outs,
     dependencies: [
       meson.get_compiler('cpp').find_library('m'),
       dependency('gtk4'),
@@ -130,9 +132,7 @@ shared_library('libcrosplatforminputcontextplugin',
   install_dir: get_option('libdir') / 'qt5/plugins/platforminputcontexts',
 )
 
-# TODO(b/283915925): Add tests for GTK4.
-libim_test_cros_gtk3 = shared_library('im_test_cros_gtk3',
-  sources: [
+backend_test_sources = [
     'backend/test/backend_test.cc',
     'backend/test/backend_test.h',
     'backend/test/backend_test_utils.h',
@@ -149,7 +149,10 @@ libim_test_cros_gtk3 = shared_library('im_test_cros_gtk3',
     'backend/test/mock_wayland_client.h',
     'backend/test/request.cc',
     'backend/test/request.h',
-  ] + gtk3_sources,
+  ]
+
+libim_test_cros_gtk3 = shared_library('im-test-cros-gtk3',
+  sources: backend_test_sources + gtk3_sources,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
     dependency('gtk+-3.0'),
@@ -157,17 +160,31 @@ libim_test_cros_gtk3 = shared_library('im_test_cros_gtk3',
   cpp_args: ['-DTEST_BACKEND'],
 )
 
+if get_option('build_gtk4')
+  libim_test_cros_gtk4 = shared_library('im-test-cros-gtk4',
+    sources: backend_test_sources + gtk4_sources,
+    dependencies: [
+      meson.get_compiler('cpp').find_library('m'),
+      dependency('gtk4'),
+    ],
+    cpp_args: ['-DTEST_BACKEND', '-DGTK4'],
+  )
+endif
+
 test_sources = [
   'test/gtk_basic_test.cc',
   'test/gtk_commit_string_test.cc',
   'test/gtk_content_type_test.cc',
-  'test/gtk_key_sym_test.cc',
   'test/gtk_test_base.h',
   'test/gtk_windowing_test.cc',
+  'util/logging.cc',
+  'util/logging.h',
 ]
 
 cros_im_tests_gtk3 = executable('cros_im_tests_gtk3',
-  sources: test_sources,
+  sources: test_sources + [
+  'test/gtk_key_sym_test.cc',
+  ],
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
     dependency('gtkmm-3.0'),
@@ -175,11 +192,36 @@ cros_im_tests_gtk3 = executable('cros_im_tests_gtk3',
   ],
 )
 
+if get_option('build_gtk4')
+  cros_im_tests_gtk4 = executable('cros_im_tests_gtk4',
+    sources: test_sources,
+    dependencies: [
+      meson.get_compiler('cpp').find_library('m'),
+      dependency('gtkmm-4.0'),
+      dependency('gtest', main: true),
+    ],
+    cpp_args: ['-DGTK4'],
+  )
+endif
+
 python3 = find_program('python3')
-test('run_all_tests',
+# The following tests cannot be run in parallel because they share the same wayland server resources.
+test('run_gtk3_unittests',
   python3,
-  args: ['../test/run_tests.py', '--with_xvfb'],
+  args: ['../test/run_tests.py', '--with_xvfb',  '--suite=gtk3'],
   depends: [libim_test_cros_gtk3, cros_im_tests_gtk3],
+  is_parallel: false,
   timeout: 120,
   verbose : true,
 )
+
+if get_option('build_gtk4')
+  test('run_gtk4_unittests',
+    python3,
+    args: ['../test/run_tests.py', '--with_xvfb', '--suite=gtk4'],
+    depends: [libim_test_cros_gtk4, cros_im_tests_gtk4],
+    is_parallel: false,
+    timeout: 120,
+    verbose : true,
+  )
+endif

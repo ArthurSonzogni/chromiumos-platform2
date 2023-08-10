@@ -34,16 +34,27 @@ void on_display_notify_signal(GdkDisplayManager* self,
   MaybeDisconnectSignalHandler();
 
   CrosGtkIMContext::RegisterType(G_TYPE_MODULE(module));
+
+#ifdef TEST_BACKEND
   g_io_extension_point_implement(GTK_IM_MODULE_EXTENSION_POINT_NAME,
                                  CrosGtkIMContext::GetType(), "cros",
                                  /* priority= */ 0);
+#else
+  g_io_extension_point_implement(GTK_IM_MODULE_EXTENSION_POINT_NAME,
+                                 CrosGtkIMContext::GetType(), "test-cros",
+                                 /* priority= */ 0);
+#endif
 }
 
 }  // namespace
 
 extern "C" {
 
+#ifdef TEST_BACKEND
+void g_io_im_test_cros_gtk4_load(GIOModule* module) {
+#else
 void g_io_im_cros_gtk4_load(GIOModule* module) {
+#endif
   g_type_module_use(G_TYPE_MODULE(module));
 
   // Unlike GTK3, GTK4 doesn't provide an initialization hook where the
@@ -54,7 +65,11 @@ void g_io_im_cros_gtk4_load(GIOModule* module) {
                        G_CALLBACK(on_display_notify_signal), module);
 }
 
+#ifdef TEST_BACKEND
+void g_io_im_test_cros_gtk4_unload(GIOModule* module) {
+#else
 void g_io_im_cros_gtk4_unload(GIOModule* module) {
+#endif
   g_type_module_unuse(G_TYPE_MODULE(module));
   MaybeDisconnectSignalHandler();
 }

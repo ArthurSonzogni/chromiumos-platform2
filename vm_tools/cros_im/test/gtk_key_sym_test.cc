@@ -19,7 +19,9 @@ using GtkKeySymTextViewTest = GtkSimpleTextViewTest;
 // Test for enter and tab.
 class GtkKeySymEntryTest : public GtkTestBase {
  public:
-  GtkKeySymEntryTest() {
+  void OnActivate() override {
+    application_->add_window(window_);
+
     box_.add(entry_);
     entry_.show();
     box_.add(button_);

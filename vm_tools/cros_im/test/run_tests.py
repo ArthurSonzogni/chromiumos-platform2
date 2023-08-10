@@ -25,7 +25,8 @@ import time
 from typing import Callable, Dict, List, Optional
 
 
-TEST_BINARY = "./cros_im_tests_gtk3"
+TEST_BINARY_GTK3 = "./cros_im_tests_gtk3"
+TEST_BINARY_GTK4 = "./cros_im_tests_gtk4"
 
 
 def run_tests_with_wayland_server(test_func: Callable) -> bool:
@@ -70,29 +71,33 @@ def run_tests_with_wayland_server(test_func: Callable) -> bool:
 
 
 def verify_in_build_directory() -> bool:
-    if not os.path.isfile(TEST_BINARY):
+    if not os.path.isfile(TEST_BINARY_GTK3):
         print(
-            f"Could not find {TEST_BINARY}. "
+            f"Could not find {TEST_BINARY_GTK3}. "
             "This script should be run from a cros_im build directory."
         )
         return False
     return True
 
 
-def set_up_immodules_cache() -> bool:
+def get_gnu_type() -> str:
+    get_gnu_process = subprocess.run(
+        ["dpkg-architecture", "-q", "DEB_BUILD_MULTIARCH"],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    return get_gnu_process.stdout.strip()
+
+
+def set_up_gtk3_immodules_cache() -> bool:
     with open("test_immodules.cache", "w", encoding="utf-8") as f:
         try:
-            get_gnu_process = subprocess.run(
-                ["dpkg-architecture", "-q", "DEB_BUILD_MULTIARCH"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            gnu_type = get_gnu_process.stdout.strip()
+            gnu_type = get_gnu_type()
             subprocess.call(
                 [
                     f"/usr/lib/{gnu_type}/libgtk-3-0/gtk-query-immodules-3.0",
-                    "libim_test_cros_gtk3.so",
+                    "libim-test-cros-gtk3.so",
                 ],
                 stdout=f,
             )
@@ -103,8 +108,31 @@ def set_up_immodules_cache() -> bool:
             return False
 
 
-def get_test_names(test_filter: Optional[str]) -> List[str]:
-    args = [TEST_BINARY, "--gtest_list_tests"]
+def set_up_gtk4_immodule() -> bool:
+    try:
+        gnu_type = get_gnu_type()
+        subprocess.run(
+            [
+                "sudo",
+                "cp",
+                "libim-test-cros-gtk4.so",
+                f"/usr/lib/{gnu_type}/gtk-4.0/4.0.0/immodules/.",
+            ],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        print(e.output.decode())
+        print(e)
+        return False
+
+
+def get_test_names(
+    test_binary: Optional[str], test_filter: Optional[str]
+) -> List[str]:
+    args = [test_binary, "--gtest_list_tests"]
     if test_filter is not None:
         args.append(f"--gtest_filter={test_filter}")
     stdout = subprocess.check_output(args)
@@ -125,8 +153,9 @@ def get_test_names(test_filter: Optional[str]) -> List[str]:
     return result
 
 
-def run_gtk3_wayland_tests(
+def run_gtk_wayland_tests(
     test_filter: Optional[str],
+    test_binary: Optional[str],
     xvfb_env_override: Optional[Dict[str, str]] = None,
 ) -> bool:
     env_override = {
@@ -147,8 +176,8 @@ def run_gtk3_wayland_tests(
 
     successes = []
     failures = []
-    for test in get_test_names(test_filter):
-        args = [TEST_BINARY, f"--gtest_filter={test}"]
+    for test in get_test_names(test_binary, test_filter):
+        args = [test_binary, f"--gtest_filter={test}"]
         print("=" * 80)
         print(f'Running: {env_override_str} {" ".join(args)}')
         try:
@@ -194,25 +223,35 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--gtest_filter", help="Restrict test cases run")
     parser.add_argument(
+        "--suite",
+        choices=["gtk3", "gtk4"],
+        help="Test suite to run",
+        required=True,
+    )
+    parser.add_argument(
         "--with_xvfb", action="store_true", help="Run tests on xvfb"
     )
     args = parser.parse_args()
 
-    if not set_up_immodules_cache():
-        sys.exit("Failed to set up immodules cache.")
+    if args.suite == "gtk4" and not set_up_gtk4_immodule():
+        sys.exit("Failed to setup test IM module for GTK4.")
+    if args.suite == "gtk3" and not set_up_gtk3_immodules_cache():
+        sys.exit("Failed to set up immodules for GTK3.")
 
     tests_passed = True
 
-    gtk3_wayland_runner = functools.partial(
-        run_gtk3_wayland_tests, args.gtest_filter
+    test_binary = TEST_BINARY_GTK4 if args.suite == "gtk4" else TEST_BINARY_GTK3
+
+    gtk_wayland_runner = functools.partial(
+        run_gtk_wayland_tests, args.gtest_filter, test_binary
     )
 
     if args.with_xvfb:
         tests_passed = tests_passed and run_tests_with_wayland_server(
-            gtk3_wayland_runner
+            gtk_wayland_runner
         )
     else:
-        tests_passed = tests_passed and gtk3_wayland_runner()
+        tests_passed = tests_passed and gtk_wayland_runner()
 
     if not tests_passed:
         sys.exit("At least one test did not pass.")

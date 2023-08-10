@@ -27,6 +27,12 @@ BACKEND_TEST(GtkBasicTest, TextViewShownImmediately) {
       ZCR_EXTENDED_TEXT_INPUT_V1_INLINE_COMPOSITION_SUPPORT_SUPPORTED);
   Expect(Request::kShowInputPanel);
 
+#ifdef GTK4
+  // GTK4 calls SetCursorLocation twice due to 2 eventcontrollers.
+  Expect(Request::kSetCursorRectangle);
+  Expect(Request::kSetCursorRectangle);
+#endif
+
   Expect(Request::kHideInputPanel);
   Expect(Request::kDeactivate);
   Expect(Request::kExtensionDestroy);
@@ -48,6 +54,10 @@ BACKEND_TEST(GtkBasicTest, SwitchFocus) {
       ZCR_EXTENDED_TEXT_INPUT_V1_INLINE_COMPOSITION_SUPPORT_SUPPORTED);
   Expect<0>(Request::kShowInputPanel);
 
+#if GTK4
+  // GTK4 calls SetCursorLocation twice due to 2 eventcontrollers.
+  Expect<0>(Request::kSetCursorRectangle);
+#endif
   Expect<0>(Request::kSetCursorRectangle);
 
   Expect<1>(Request::kCreateTextInput);
@@ -71,6 +81,15 @@ BACKEND_TEST(GtkBasicTest, SwitchFocus) {
 
   Expect<1>(Request::kSetCursorRectangle);
 
+#if GTK4
+  Expect<0>(Request::kExtensionDestroy);
+  Expect<0>(Request::kDestroy);
+
+  Expect<1>(Request::kHideInputPanel);
+  Expect<1>(Request::kDeactivate);
+  Expect<1>(Request::kExtensionDestroy);
+  Expect<1>(Request::kDestroy);
+#else
   Expect<1>(Request::kHideInputPanel);
   Expect<1>(Request::kDeactivate);
   Expect<1>(Request::kExtensionDestroy);
@@ -78,6 +97,7 @@ BACKEND_TEST(GtkBasicTest, SwitchFocus) {
 
   Expect<0>(Request::kExtensionDestroy);
   Expect<0>(Request::kDestroy);
+#endif
 }
 
 }  // namespace test
