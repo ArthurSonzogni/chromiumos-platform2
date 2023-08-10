@@ -5,6 +5,7 @@
 #ifndef CAMERA_COMMON_ANALYZE_FRAME_CAMERA_DIAGNOSTICS_CLIENT_H_
 #define CAMERA_COMMON_ANALYZE_FRAME_CAMERA_DIAGNOSTICS_CLIENT_H_
 
+#include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
