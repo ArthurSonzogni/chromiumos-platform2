@@ -67,17 +67,16 @@ mojom::ProbeErrorPtr ParseBiosTime(double* firmware_time,
   return nullptr;
 }
 
-mojom::ProbeErrorPtr ParseBootKernelToLoginTime(double& kernel_to_login_time) {
+mojom::ProbeErrorPtr GetBootStatValue(const std::string& event_name,
+                                      double& value) {
   auto events =
-      bootstat::BootStat(GetRootedPath("/")).GetEventTimings("boot-complete");
+      bootstat::BootStat(GetRootedPath("/")).GetEventTimings(event_name);
   if (!events || events->empty()) {
     return CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
-                                  "Failed to get boot-complete stats");
+                                  "Failed to get bootstat: " + event_name);
   }
 
-  // Usually there is only one event because this upstart job only starts once.
-  // But no matter what, we only care about the first occurrence.
-  kernel_to_login_time = (*events)[0].uptime.InSecondsF();
+  value = (*events)[0].uptime.InSecondsF();
   return nullptr;
 }
 
@@ -133,7 +132,7 @@ mojom::ProbeErrorPtr PopulateBootUpInfo(mojom::BootPerformanceInfoPtr& info) {
       tpm_initialization_finish_time - tpm_initialization_start_time);
 
   double kernel_to_login_time = 0.0;
-  error = ParseBootKernelToLoginTime(kernel_to_login_time);
+  error = GetBootStatValue("boot-complete", kernel_to_login_time);
   if (!error.is_null()) {
     return error;
   }
