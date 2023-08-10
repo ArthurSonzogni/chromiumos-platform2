@@ -8,9 +8,11 @@
 #include <optional>
 #include <string>
 #include <utility>
-#include <vector>
 
+#include <base/functional/callback.h>
 #include <base/json/json_reader.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -26,7 +28,10 @@ using ::testing::NiceMock;
 
 class MockProbeStatement : public ProbeStatement {
  public:
-  MOCK_METHOD(base::Value::List, Eval, (), (const, override));
+  MOCK_METHOD(void,
+              Eval,
+              (base::OnceCallback<void(base::Value::List)>),
+              (const, override));
   MOCK_METHOD(std::optional<base::Value>,
               GetInformation,
               (),
@@ -44,9 +49,12 @@ class ComponentCategoryTest : public ::testing::Test {
       const base::Value::List& eval_result,
       const std::optional<base::Value>& information = std::nullopt) {
     auto probe_statement = std::make_unique<NiceMock<MockProbeStatement>>();
-    ON_CALL(*probe_statement, Eval).WillByDefault([&eval_result]() {
-      return eval_result.Clone();
-    });
+    ON_CALL(*probe_statement, Eval)
+        .WillByDefault(
+            [&eval_result](
+                base::OnceCallback<void(base::Value::List)> callback) {
+              std::move(callback).Run(eval_result.Clone());
+            });
 
     if (information) {
       ON_CALL(*probe_statement, GetInformation).WillByDefault([&information]() {
@@ -60,6 +68,9 @@ class ComponentCategoryTest : public ::testing::Test {
     component_category.SetComponentForTesting(component_name,
                                               std::move(probe_statement));
   }
+
+ private:
+  base::test::SingleThreadTaskEnvironment task_environment_;
 };
 
 }  // namespace
@@ -111,8 +122,9 @@ TEST_F(ComponentCategoryTest, Eval) {
       }
     }
   ])");
-  auto res = category->Eval();
-  EXPECT_EQ(res, ans);
+  base::test::TestFuture<base::Value::List> future;
+  category->Eval(future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ComponentCategoryTest, EvalWithInformation) {
@@ -153,8 +165,9 @@ TEST_F(ComponentCategoryTest, EvalWithInformation) {
       }
     }
   ])");
-  auto res = category->Eval();
-  EXPECT_EQ(res, ans);
+  base::test::TestFuture<base::Value::List> future;
+  category->Eval(future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ComponentCategoryTest, GetComponentNames) {

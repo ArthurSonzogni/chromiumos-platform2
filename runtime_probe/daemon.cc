@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/bind.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
@@ -49,19 +50,18 @@ void Daemon::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 
 void Daemon::ProbeCategories(Daemon::DBusCallback<ProbeResult> cb,
                              const ProbeRequest& request) {
-  ProbeResult reply;
-
   AvlProbeConfigLoader config_loader;
   const auto probe_config = config_loader.Load();
   if (!probe_config) {
+    ProbeResult reply;
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
     cb->Return(reply);
     return Quit();
   }
 
-  base::Value probe_result;
   if (request.probe_default_category()) {
-    probe_result = probe_config->Eval();
+    probe_config->Eval(base::BindOnce(&Daemon::ProbeCallback<ProbeResult>,
+                                      base::Unretained(this), std::move(cb)));
   } else {
     // Convert the ProbeReuslt from enum into array of string.
     std::vector<std::string> categories_to_probe;
@@ -72,28 +72,10 @@ void Daemon::ProbeCategories(Daemon::DBusCallback<ProbeResult> cb,
       categories_to_probe.push_back(
           descriptor->FindValueByNumber(request.categories(j))->name());
 
-    probe_result = probe_config->Eval(categories_to_probe);
+    probe_config->Eval(categories_to_probe,
+                       base::BindOnce(&Daemon::ProbeCallback<ProbeResult>,
+                                      base::Unretained(this), std::move(cb)));
   }
-
-  // TODO(itspeter): Report assigned but not in the probe config's category.
-  std::string output_json;
-  base::JSONWriter::Write(probe_result, &output_json);
-  DVLOG(3) << "Raw JSON probe result\n" << output_json;
-
-  // Convert JSON to Protocol Buffer.
-  auto options = google::protobuf::util::JsonParseOptions();
-  options.ignore_unknown_fields = true;
-  ProbeResult placeholder;
-  const auto json_parse_status = google::protobuf::util::JsonStringToMessage(
-      output_json, &placeholder, options);
-  reply.MergeFrom(placeholder);
-  VLOG(3) << "serialize JSON to Protobuf status: " << json_parse_status;
-  if (!json_parse_status.ok()) {
-    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_RESULT_INVALID);
-  }
-
-  cb->Return(reply);
-  return Quit();
 }
 
 void Daemon::GetKnownComponents(
@@ -125,30 +107,34 @@ void Daemon::GetKnownComponents(
 void Daemon::ProbeSsfcComponents(
     Daemon::DBusCallback<ProbeSsfcComponentsResponse> cb,
     const ProbeSsfcComponentsRequest& request) {
-  ProbeSsfcComponentsResponse reply;
-
   SsfcProbeConfigLoader config_loader;
   const auto probe_config = config_loader.Load();
   if (!probe_config) {
+    ProbeSsfcComponentsResponse reply;
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
     cb->Return(reply);
     return Quit();
   }
 
-  base::Value probe_result;
-  probe_result = probe_config->Eval();
+  probe_config->Eval(
+      base::BindOnce(&Daemon::ProbeCallback<ProbeSsfcComponentsResponse>,
+                     base::Unretained(this), std::move(cb)));
+}
 
-  std::string output_js;
-  base::JSONWriter::Write(probe_result, &output_js);
-  DVLOG(3) << "Raw JSON probe result\n" << output_js;
+template <typename MessageType>
+void Daemon::ProbeCallback(Daemon::DBusCallback<MessageType> cb,
+                           base::Value::Dict probe_result) {
+  std::string output_json;
+  base::JSONWriter::Write(probe_result, &output_json);
+  DVLOG(3) << "Raw JSON probe result\n" << output_json;
 
   // Convert JSON to Protocol Buffer.
+  MessageType reply;
   auto options = google::protobuf::util::JsonParseOptions();
   options.ignore_unknown_fields = true;
-  ProbeSsfcComponentsResponse placeholder;
-  const auto json_parse_status = google::protobuf::util::JsonStringToMessage(
-      output_js, &placeholder, options);
-  reply.MergeFrom(placeholder);
+  const auto json_parse_status =
+      google::protobuf::util::JsonStringToMessage(output_json, &reply, options);
+
   VLOG(3) << "serialize JSON to Protobuf status: " << json_parse_status;
   if (!json_parse_status.ok()) {
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_RESULT_INVALID);

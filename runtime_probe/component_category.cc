@@ -7,6 +7,9 @@
 #include <memory>
 #include <utility>
 
+#include <base/barrier_callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/values.h>
 #include <brillo/map_utils.h>
@@ -14,6 +17,40 @@
 #include "runtime_probe/probe_statement.h"
 
 namespace runtime_probe {
+
+namespace {
+
+// Callback to handle a single result from |ProbeStatement::EvalAsync|.
+void OnProbeStatementEvalCompleted(
+    base::OnceCallback<void(base::Value::List)> callback,
+    const std::string& component_name,
+    std::optional<base::Value> information_dv,
+    base::Value::List probe_result) {
+  base::Value::List results;
+  for (auto& probe_statement_dv : probe_result) {
+    base::Value::Dict result;
+    result.Set("name", component_name);
+    result.Set("values", std::move(probe_statement_dv));
+    if (information_dv.has_value())
+      result.Set("information", information_dv->Clone());
+    results.Append(std::move(result));
+  }
+  std::move(callback).Run(std::move(results));
+}
+
+void CollectProbeStatementResults(
+    base::OnceCallback<void(base::Value::List)> callback,
+    std::vector<base::Value::List> probe_results) {
+  base::Value::List results;
+  for (auto& probe_result : probe_results) {
+    for (auto& result : probe_result) {
+      results.Append(std::move(result));
+    }
+  }
+  std::move(callback).Run(std::move(results));
+}
+
+}  // namespace
 
 std::unique_ptr<ComponentCategory> ComponentCategory::FromValue(
     const std::string& category_name, const base::Value& dv) {
@@ -41,24 +78,15 @@ std::unique_ptr<ComponentCategory> ComponentCategory::FromValue(
   return instance;
 }
 
-base::Value::List ComponentCategory::Eval() const {
-  base::Value::List results;
-
-  for (const auto& entry : component_) {
-    const auto& component_name = entry.first;
-    const auto& probe_statement = entry.second;
-    for (auto& probe_statement_dv : probe_statement->Eval()) {
-      base::Value::Dict result;
-      result.Set("name", component_name);
-      result.Set("values", std::move(probe_statement_dv));
-      auto information_dv = probe_statement->GetInformation();
-      if (information_dv)
-        result.Set("information", std::move(*information_dv));
-      results.Append(std::move(result));
-    }
-  }
-
-  return results;
+void ComponentCategory::Eval(
+    base::OnceCallback<void(base::Value::List)> callback) const {
+  auto barrier_callback = base::BarrierCallback<base::Value::List>(
+      component_.size(),
+      base::BindOnce(&CollectProbeStatementResults, std::move(callback)));
+  for (auto& [component_name, probe_statement] : component_)
+    probe_statement->Eval(base::BindOnce(&OnProbeStatementEvalCompleted,
+                                         barrier_callback, component_name,
+                                         probe_statement->GetInformation()));
 }
 
 std::vector<std::string> ComponentCategory::GetComponentNames() const {

@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback.h>
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
@@ -53,12 +54,13 @@ class ProbeConfig {
   //       }
   //     ]
   //   }
-  base::Value Eval(const std::vector<std::string>& category) const;
+  void Eval(const std::vector<std::string>& category,
+            base::OnceCallback<void(base::Value::Dict)> callback) const;
 
   // Evaluates the probe config.
   //
-  // This is the same as calling `this->eval({keys of category_})`.
-  base::Value Eval() const;
+  // This is the same as calling `this->Eval({keys of category_})`.
+  void Eval(base::OnceCallback<void(base::Value::Dict)> callback) const;
 
   // Gets the component category with given name or return nullptr on failure.
   ComponentCategory* GetComponentCategory(

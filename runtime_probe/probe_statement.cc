@@ -3,10 +3,16 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
+#include <vector>
 
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/values.h>
 
+#include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_result_checker.h"
 #include "runtime_probe/probe_statement.h"
 
 namespace runtime_probe {
@@ -23,6 +29,28 @@ void FilterValueByKey(base::Value* dv, const std::set<std::string>& keys) {
   for (const auto& k : keys_to_delete) {
     dv->GetDict().Remove(k);
   }
+}
+
+// Callback to handle a single result from |ProbeFunction::EvalAsync|.
+void OnProbeFunctionEvalCompleted(
+    base::OnceCallback<void(ProbeFunction::DataType)> callback,
+    std::set<std::string> keys,
+    std::optional<base::Value> expect_value,
+    ProbeFunction::DataType results) {
+  if (!keys.empty()) {
+    std::for_each(results.begin(), results.end(),
+                  [keys](auto& result) { FilterValueByKey(&result, keys); });
+  }
+
+  if (expect_value.has_value()) {
+    const auto expect = ProbeResultChecker::FromValue(expect_value.value());
+    // |expect_->Apply| will return false if the probe result is considered
+    // invalid.
+    // Erase all elements that failed.
+    results.EraseIf(
+        [&](base::Value& result) { return !expect->Apply(&result); });
+  }
+  std::move(callback).Run(std::move(results));
 }
 
 }  // namespace
@@ -77,13 +105,7 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
   if (!expect_value) {
     VLOG(3) << "\"expect\" does not exist.";
   } else {
-    auto checker = ProbeResultChecker::FromValue(*expect_value);
-    if (!checker) {
-      VLOG(1) << "Component " << component_name
-              << " doesn't contain a valid checker.";
-    } else {
-      instance->expect_ = std::move(checker);
-    }
+    instance->expect_value_ = expect_value->Clone();
   }
 
   // Parse optional field "information"
@@ -97,22 +119,14 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
   return instance;
 }
 
-ProbeFunction::DataType ProbeStatement::Eval() const {
-  auto results = probe_function_->Eval();
-
-  if (!key_.empty()) {
-    std::for_each(results.begin(), results.end(),
-                  [this](auto& result) { FilterValueByKey(&result, key_); });
-  }
-
-  if (expect_) {
-    // |expect_->Apply| will return false if the probe result is considered
-    // invalid.
-    // Erase all elements that failed.
-    results.EraseIf(
-        [&](base::Value& result) { return !expect_->Apply(&result); });
-  }
-
-  return results;
+void ProbeStatement::Eval(
+    base::OnceCallback<void(ProbeFunction::DataType)> callback) const {
+  std::optional<base::Value> expect_value;
+  if (expect_value_.has_value())
+    expect_value = expect_value_.value().Clone();
+  probe_function_->EvalAsync(base::BindOnce(&OnProbeFunctionEvalCompleted,
+                                            std::move(callback), key_,
+                                            std::move(expect_value)));
 }
+
 }  // namespace runtime_probe

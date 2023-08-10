@@ -4,10 +4,14 @@
 
 #include "runtime_probe/probe_config.h"
 
+#include <memory>
 #include <optional>
 #include <utility>
 
+#include <base/barrier_callback.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/json/json_reader.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
@@ -24,6 +28,26 @@ namespace {
 std::string HashProbeConfigSHA1(const std::string& content) {
   const auto& hash_val = base::SHA1HashString(content);
   return base::HexEncode(hash_val.data(), hash_val.size());
+}
+
+// Callback to handle a single result from |ComponentCategory::EvalAsync|.
+void OnComponentCategoryEvalCompleted(
+    base::OnceCallback<void(std::pair<std::string, base::Value::List>)>
+        callback,
+    const std::string& category_name,
+    base::Value::List probe_result) {
+  std::move(callback).Run(
+      std::make_pair(category_name, std::move(probe_result)));
+}
+
+void CollectComponentCategoryResults(
+    base::OnceCallback<void(base::Value::Dict)> callback,
+    std::vector<std::pair<std::string, base::Value::List>> probe_results) {
+  base::Value::Dict results;
+  for (auto& [category_name, probe_result] : probe_results) {
+    results.Set(category_name, std::move(probe_result));
+  }
+  std::move(callback).Run(std::move(results));
 }
 
 }  // namespace
@@ -76,24 +100,33 @@ std::optional<ProbeConfig> ProbeConfig::FromValue(const base::Value& dv) {
   return instance;
 }
 
-base::Value ProbeConfig::Eval() const {
-  return Eval(brillo::GetMapKeysAsVector(category_));
+void ProbeConfig::Eval(
+    base::OnceCallback<void(base::Value::Dict)> callback) const {
+  Eval(brillo::GetMapKeysAsVector(category_), std::move(callback));
 }
 
-base::Value ProbeConfig::Eval(const std::vector<std::string>& category) const {
-  base::Value result(base::Value::Type::DICT);
-
+void ProbeConfig::Eval(
+    const std::vector<std::string>& category,
+    base::OnceCallback<void(base::Value::Dict)> callback) const {
+  std::vector<std::string> valid_category;
   for (const auto& c : category) {
     auto it = category_.find(c);
     if (it == category_.end()) {
       LOG(ERROR) << "Category " << c << " is not defined";
       continue;
     }
-
-    result.GetDict().Set(c, base::Value(it->second->Eval()));
+    valid_category.push_back(it->first);
   }
 
-  return result;
+  const auto barrier_callback =
+      base::BarrierCallback<std::pair<std::string, base::Value::List>>(
+          valid_category.size(),
+          base::BindOnce(&CollectComponentCategoryResults,
+                         std::move(callback)));
+
+  for (const auto& c : valid_category)
+    category_.at(c)->Eval(
+        base::BindOnce(&OnComponentCategoryEvalCompleted, barrier_callback, c));
 }
 
 ComponentCategory* ProbeConfig::GetComponentCategory(

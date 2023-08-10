@@ -9,6 +9,9 @@
 #include <base/command_line.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
+#include <base/message_loop/message_pump_type.h>
+#include <base/run_loop.h>
+#include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -28,6 +31,8 @@ int main(int argc, char* argv[]) {
   // Required by dbus in libchrome.
   base::AtExitManager at_exit_manager;
   runtime_probe::ContextFactoryImpl context;
+
+  base::SingleThreadTaskExecutor task_executor{base::MessagePumpType::IO};
 
   const auto* command_line = base::CommandLine::ForCurrentProcess();
   const auto args = command_line->GetArgs();
@@ -53,7 +58,14 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  const base::Value probe_result = probe_config->Eval();
-  std::cout << probe_result;
+  base::RunLoop run_loop;
+  probe_config->Eval(base::BindOnce(
+      [](base::OnceClosure quit_closure, base::Value::Dict probe_result) {
+        std::cout << probe_result;
+        std::move(quit_closure).Run();
+      },
+      run_loop.QuitClosure()));
+  run_loop.Run();
+
   return EXIT_SUCCESS;
 }

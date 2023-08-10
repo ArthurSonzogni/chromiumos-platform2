@@ -7,8 +7,12 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
+#include <base/functional/callback_forward.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
+#include <base/message_loop/message_pump_type.h>
+#include <base/run_loop.h>
+#include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -87,6 +91,8 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
   base::AtExitManager at_exit_manager;
   runtime_probe::ContextRuntimeImpl context;
 
+  base::SingleThreadTaskExecutor task_executor{base::MessagePumpType::IO};
+
   std::unique_ptr<runtime_probe::ProbeConfigLoader> config_loader;
   if (config_file_path.empty()) {
     config_loader = std::make_unique<runtime_probe::AvlProbeConfigLoader>();
@@ -104,13 +110,20 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
   LOG(INFO) << "Load probe config from: " << probe_config->path()
             << " (checksum: " << probe_config->checksum() << ")";
 
-  const auto probe_result = probe_config->Eval();
-  if (to_stdout) {
-    LOG(INFO) << "Dumping probe results to stdout";
-    std::cout << probe_result;
-  } else {
-    LOG(INFO) << probe_result;
-  }
+  base::RunLoop run_loop;
+  probe_config->Eval(base::BindOnce(
+      [](base::OnceClosure quit_closure, bool to_stdout,
+         base::Value::Dict probe_result) {
+        if (to_stdout) {
+          LOG(INFO) << "Dumping probe results to stdout";
+          std::cout << probe_result;
+        } else {
+          LOG(INFO) << probe_result;
+        }
+        std::move(quit_closure).Run();
+      },
+      run_loop.QuitClosure(), to_stdout));
+  run_loop.Run();
 
   return ExitStatus::kSuccess;
 }

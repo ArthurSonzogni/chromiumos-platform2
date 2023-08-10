@@ -10,6 +10,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_reader.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
@@ -37,7 +39,10 @@ base::FilePath GetTestDataPath() {
 
 class MockComponentCategory : public ComponentCategory {
  public:
-  MOCK_METHOD(base::Value::List, Eval, (), (const, override));
+  MOCK_METHOD(void,
+              Eval,
+              (base::OnceCallback<void(base::Value::List)>),
+              (const, override));
 };
 
 class ProbeConfigTest : public ::testing::Test {
@@ -49,12 +54,18 @@ class ProbeConfigTest : public ::testing::Test {
                               const std::string& category_eval_result) {
     auto eval_result = base::JSONReader::Read(category_eval_result);
     auto category = std::make_unique<NiceMock<MockComponentCategory>>();
-    ON_CALL(*category, Eval).WillByDefault([&category_eval_result]() {
-      auto eval_result = base::JSONReader::Read(category_eval_result);
-      return std::move(eval_result->GetList());
-    });
+    ON_CALL(*category, Eval)
+        .WillByDefault(
+            [&category_eval_result](
+                base::OnceCallback<void(base::Value::List)> callback) {
+              auto eval_result = base::JSONReader::Read(category_eval_result);
+              std::move(callback).Run(std::move(eval_result->GetList()));
+            });
     probe_config.SetCategoryForTesting(category_name, std::move(category));
   }
+
+ private:
+  base::test::SingleThreadTaskEnvironment task_environment_;
 };
 
 }  // namespace
@@ -96,7 +107,7 @@ TEST_F(ProbeConfigTest, LoadConfig) {
 
   EXPECT_EQ(probe_statement->component_name_, "generic");
   EXPECT_EQ(probe_statement->key_.size(), 0);
-  EXPECT_NE(probe_statement->expect_, nullptr);
+  EXPECT_NE(probe_statement->expect_value_, nullptr);
   EXPECT_EQ(probe_statement->information_->GetDict().size(), 0);
   EXPECT_NE(probe_statement->probe_function_, nullptr);
 
@@ -189,8 +200,9 @@ TEST_F(ProbeConfigTest, Eval) {
   })",
                                                        eval_content_1.c_str(),
                                                        eval_content_2.c_str()));
-  auto res = probe_config->Eval();
-  EXPECT_EQ(res, ans);
+  base::test::TestFuture<base::Value::Dict> future;
+  probe_config->Eval(future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ProbeConfigTest, EvalWithDefinedCategory) {
@@ -223,8 +235,9 @@ TEST_F(ProbeConfigTest, EvalWithDefinedCategory) {
     "category_1": %s
   })",
                                                        eval_content_1.c_str()));
-  auto res = probe_config->Eval(categories);
-  EXPECT_EQ(res, ans);
+  base::test::TestFuture<base::Value::Dict> future;
+  probe_config->Eval(categories, future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ProbeConfigTest, EvalWithUndefinedCategory) {
@@ -248,8 +261,9 @@ TEST_F(ProbeConfigTest, EvalWithUndefinedCategory) {
     "category_1": %s
   })",
                                                        eval_content_1.c_str()));
-  auto res = probe_config->Eval(categories);
-  EXPECT_EQ(res, ans);
+  base::test::TestFuture<base::Value::Dict> future;
+  probe_config->Eval(categories, future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ProbeConfigTest, GetComponentCategory) {
@@ -270,7 +284,9 @@ TEST_F(ProbeConfigTest, GetComponentCategory) {
   auto ans = base::JSONReader::Read(eval_content_1);
   auto category = probe_config->GetComponentCategory("category_1");
   EXPECT_NE(category, nullptr);
-  EXPECT_EQ(category->Eval(), ans);
+  base::test::TestFuture<base::Value::List> future;
+  category->Eval(future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
 }
 
 TEST_F(ProbeConfigTest, GetComponentCategoryWithUndefinedCategory) {

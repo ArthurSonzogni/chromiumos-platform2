@@ -6,12 +6,13 @@
 #include <string>
 
 #include <base/json/json_reader.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "runtime_probe/probe_function.h"
-#include "runtime_probe/probe_result_checker.h"
 #include "runtime_probe/probe_statement.h"
 
 namespace runtime_probe {
@@ -29,12 +30,12 @@ class MockProbeFunction : public ProbeFunction {
   DataType EvalImpl() const override { return {}; }
 };
 
-class MockProbeResultChecker : public ProbeResultChecker {
- public:
-  MOCK_METHOD(bool, Apply, (base::Value*), (const, override));
+class ProbeStatementTest : public testing::Test {
+ private:
+  base::test::SingleThreadTaskEnvironment task_environment_;
 };
 
-TEST(ProbeStatementTest, FromValue) {
+TEST_F(ProbeStatementTest, FromValue) {
   auto dict_value = base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
@@ -45,7 +46,7 @@ TEST(ProbeStatementTest, FromValue) {
   EXPECT_NE(probe_statement, nullptr);
 }
 
-TEST(ProbeStatementTest, FromValueWithNonDictValue) {
+TEST_F(ProbeStatementTest, FromValueWithNonDictValue) {
   auto non_dict_value = base::JSONReader::Read("[]");
 
   auto probe_statement =
@@ -53,7 +54,7 @@ TEST(ProbeStatementTest, FromValueWithNonDictValue) {
   EXPECT_EQ(probe_statement, nullptr);
 }
 
-TEST(ProbeStatementTest, FromValueWithoutEval) {
+TEST_F(ProbeStatementTest, FromValueWithoutEval) {
   // No required field "eval".
   auto dict_value = base::JSONReader::Read("{}");
 
@@ -61,7 +62,7 @@ TEST(ProbeStatementTest, FromValueWithoutEval) {
   EXPECT_EQ(probe_statement, nullptr);
 }
 
-TEST(ProbeStatementTest, FromValueWithInvalidFunction) {
+TEST_F(ProbeStatementTest, FromValueWithInvalidFunction) {
   // The probe function is not defined.
   auto dict_value = base::JSONReader::Read(R"({
     "eval": {
@@ -73,7 +74,7 @@ TEST(ProbeStatementTest, FromValueWithInvalidFunction) {
   EXPECT_EQ(probe_statement, nullptr);
 }
 
-TEST(ProbeStatementTest, Eval) {
+TEST_F(ProbeStatementTest, Eval) {
   // Set a valid probe function and mock it later.
   auto dict_value = base::JSONReader::Read(R"({
     "eval": {
@@ -94,11 +95,12 @@ TEST(ProbeStatementTest, Eval) {
 
   probe_statement->SetProbeFunctionForTesting(std::move(probe_function));
 
-  auto res = probe_statement->Eval();
-  EXPECT_EQ(res, ans);
+  base::test::TestFuture<ProbeFunction::DataType> future;
+  probe_statement->Eval(future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
 }
 
-TEST(ProbeStatementTest, EvalWithFilteredKeys) {
+TEST_F(ProbeStatementTest, EvalWithFilteredKeys) {
   // Set a valid probe function and mock it later.
   auto dict_value = base::JSONReader::Read(R"({
     "eval": {
@@ -131,11 +133,12 @@ TEST(ProbeStatementTest, EvalWithFilteredKeys) {
     }
   ])")
                            ->GetList());
-  auto res = probe_statement->Eval();
-  EXPECT_EQ(res, ans);
+  base::test::TestFuture<ProbeFunction::DataType> future;
+  probe_statement->Eval(future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
 }
 
-TEST(ProbeStatementTest, EvalWithProbeResultChecker) {
+TEST_F(ProbeStatementTest, EvalWithExpectValue) {
   // Set a valid probe function and mock it later.
   auto dict_value = base::JSONReader::Read(R"({
     "eval": {
@@ -158,14 +161,14 @@ TEST(ProbeStatementTest, EvalWithProbeResultChecker) {
   EXPECT_CALL(*probe_function, Eval())
       .WillOnce(Return(ByMove(std::move(eval_result))));
 
-  auto probe_result_checker = std::make_unique<MockProbeResultChecker>();
-  // The second one passes the check.
-  EXPECT_CALL(*probe_result_checker, Apply)
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
+  auto expect_value = base::JSONReader::Read(R"([
+    {
+      "field_2": [true, "str"]
+    }
+  ])");
 
   probe_statement->SetProbeFunctionForTesting(std::move(probe_function));
-  probe_statement->SetExpectForTesting(std::move(probe_result_checker));
+  probe_statement->SetExpectForTesting(std::move(*expect_value));
 
   // Should only get results that pass the check.
   auto ans = std::move(base::JSONReader::Read(R"([
@@ -174,11 +177,12 @@ TEST(ProbeStatementTest, EvalWithProbeResultChecker) {
     }
   ])")
                            ->GetList());
-  auto res = probe_statement->Eval();
-  EXPECT_EQ(res, ans);
+  base::test::TestFuture<ProbeFunction::DataType> future;
+  probe_statement->Eval(future.GetCallback());
+  EXPECT_EQ(future.Get(), ans);
 }
 
-TEST(ProbeStatementTest, GetInformation) {
+TEST_F(ProbeStatementTest, GetInformation) {
   auto dict_value = base::JSONReader::Read(R"({
     "eval": {
       "memory": {}
@@ -197,7 +201,7 @@ TEST(ProbeStatementTest, GetInformation) {
   EXPECT_EQ(res, ans);
 }
 
-TEST(ProbeStatementTest, GetInformationWithoutInformation) {
+TEST_F(ProbeStatementTest, GetInformationWithoutInformation) {
   auto dict_value = base::JSONReader::Read(R"({
     "eval": {
       "memory": {}

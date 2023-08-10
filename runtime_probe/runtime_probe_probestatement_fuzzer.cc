@@ -8,6 +8,7 @@
 
 #include <string>
 
+#include <base/functional/callback_helpers.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 
@@ -112,7 +113,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     auto probe_statement = ProbeStatement::FromValue("nop", *eval);
 
     if (probe_statement != nullptr)
-      auto results = probe_statement->Eval();
+      probe_statement->Eval(base::DoNothing());
   } else {  // Fuzz EvalInHelper
     auto probe_function = runtime_probe::ProbeFunction::FromValue(*eval);
 

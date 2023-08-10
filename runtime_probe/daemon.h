@@ -51,6 +51,10 @@ class Daemon : public brillo::DBusServiceDaemon,
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
+  template <typename MessageType>
+  void ProbeCallback(Daemon::DBusCallback<MessageType> cb,
+                     base::Value::Dict probe_result);
+
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 };
 

@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 
@@ -35,7 +36,7 @@ class ComponentCategory {
   virtual ~ComponentCategory() = default;
 
   // Evaluates this category and return a base::Value::List.
-  virtual base::Value::List Eval() const;
+  virtual void Eval(base::OnceCallback<void(base::Value::List)> callback) const;
 
   // Gets all component names of this category.
   std::vector<std::string> GetComponentNames() const;

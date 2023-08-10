@@ -12,9 +12,9 @@
 #include <optional>
 #include <string>
 #include <type_traits>
-#include <variant>
-#include <vector>
+#include <utility>
 
+#include <base/functional/callback.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
 #include <base/strings/string_util.h>
@@ -99,7 +99,15 @@ class ProbeFunction {
 
   // Evaluates this probe function. Returns a list of base::Value. For the probe
   // function that requests sandboxing, see |PrivilegedProbeFunction|.
+  //
+  // TODO(b/295421415): Migrate all sync calls to async call.
   virtual DataType Eval() const { return EvalImpl(); }
+
+  // Asynchronously evaluates this probe function, then pass the result to the
+  // callback function.
+  virtual void EvalAsync(base::OnceCallback<void(DataType)> callback) const {
+    std::move(callback).Run(Eval());
+  }
 
   // This is for helper to evaluate the probe function. Helper is designed for
   // portion that need extended sandbox. See |PrivilegedProbeFunction| for more
