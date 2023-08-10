@@ -826,12 +826,17 @@ event --help`.
 #####  BootPerformanceInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| boot_up_seconds | double | Total time since power on to login screen prompt. |
+| boot_up_seconds | double | Total time of [power on, boot up complete], a.k.a. boot up time.<br />Boot up complete event is fired when login screen is shown. |
 | boot_up_timestamp | double | The timestamp when power on. |
 | shutdown_seconds | double | Total time(rough) since shutdown start to power off.<br />Only meaningful when shutdown_reason is not "N/A". |
 | shutdown_timestamp | double | The timestamp when shutdown.<br />Only meaningful when shutdown_reason is not "N/A". |
 | shutdown_reason | string | The shutdown reason (including reboot). |
 | tpm_initialization_seconds | double? | TPM initialization time. |
+| power_on_to_kernel_seconds | double? | Total time of [power on, jump to kernel], a.k.a. firmware time.|
+| kernel_to_pre_startup_seconds | double? | Total time of [jump to kernel, pre start up], a.k.a. kernel time.|
+| kernel_to_post_startup_seconds | double? | Total time of [jump to kernel, post start up].|
+| startup_to_chrome_exec_seconds | double? | Total time of [start up, chrome exec], a.k.a. system time.|
+| chrome_exec_to_login_seconds | double? | Total time of [chrome exec, login screen prompt], a.k.a. chrome time.|
 
 
 ###  Sensor

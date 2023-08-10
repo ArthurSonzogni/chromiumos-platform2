@@ -17,13 +17,21 @@ inline constexpr char kBiosTimes[] = "/var/log/bios_times.txt";
 inline constexpr char kShutdownMetrics[] = "/var/log/metrics";
 inline constexpr char kPreviousPowerdLog[] =
     "/var/log/power_manager/powerd.PREVIOUS";
-inline constexpr char kUptimeBootComplete[] =
-    "/run/bootstat/uptime-boot-complete";
+inline constexpr char kBootstatDir[] = "/run/bootstat";
 
 // The path to the fingerprint device node.
 inline constexpr char kCrosFpDevice[] = "/dev/cros_fp";
 
 }  // namespace path
+
+namespace bootstat_event {
+
+inline constexpr char kPreStartup[] = "pre-startup";
+inline constexpr char kPostStartup[] = "post-startup";
+inline constexpr char kChromeExec[] = "chrome-exec";
+inline constexpr char kBootComplete[] = "boot-complete";
+
+}  // namespace bootstat_event
 
 }  // namespace diagnostics
 

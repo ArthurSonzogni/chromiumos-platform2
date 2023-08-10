@@ -324,6 +324,11 @@ void DisplayBootPerformanceInfo(const mojom::BootPerformanceResultPtr& result) {
   SET_DICT(shutdown_seconds, info, &output);
   SET_DICT(shutdown_timestamp, info, &output);
   SET_DICT(tpm_initialization_seconds, info, &output);
+  SET_DICT(power_on_to_kernel_seconds, info, &output);
+  SET_DICT(kernel_to_pre_startup_seconds, info, &output);
+  SET_DICT(kernel_to_post_startup_seconds, info, &output);
+  SET_DICT(startup_to_chrome_exec_seconds, info, &output);
+  SET_DICT(chrome_exec_to_login_seconds, info, &output);
 
   OutputJson(output);
 }

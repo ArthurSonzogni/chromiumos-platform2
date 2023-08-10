@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 
 #include <cctype>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -80,6 +81,27 @@ mojom::ProbeErrorPtr GetBootStatValue(const std::string& event_name,
   return nullptr;
 }
 
+mojom::ProbeErrorPtr GetCriticalBootStatMetrics(
+    std::map<std::string, double>& event_time) {
+  std::vector<std::string> events = {
+      bootstat_event::kPreStartup,
+      bootstat_event::kPostStartup,
+      bootstat_event::kChromeExec,
+      bootstat_event::kBootComplete,
+  };
+
+  for (const auto& event : events) {
+    double value = 0.0;
+    auto error = GetBootStatValue(event, value);
+    if (!error.is_null()) {
+      return error;
+    }
+    event_time.emplace(event, value);
+  }
+
+  return nullptr;
+}
+
 mojom::ProbeErrorPtr ParseProcUptime(double& proc_uptime) {
   const auto& data_path = GetRootedPath(path::kProcUptime);
   std::string content;
@@ -127,24 +149,38 @@ mojom::ProbeErrorPtr PopulateBootUpInfo(mojom::BootPerformanceInfoPtr& info) {
     return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to parse /var/log/bios_times.txt");
   }
+  info->power_on_to_kernel_seconds = firmware_time;
   info->boot_up_seconds += firmware_time;
   info->tpm_initialization_seconds = mojom::NullableDouble::New(
       tpm_initialization_finish_time - tpm_initialization_start_time);
 
-  double kernel_to_login_time = 0.0;
-  error = GetBootStatValue("boot-complete", kernel_to_login_time);
+  // Bootstat metrics. Key is the event name, value is the elapsed time(after
+  // jumping to kernel) of the first occurrence.
+  std::map<std::string, double> event_time;
+  error = GetCriticalBootStatMetrics(event_time);
   if (!error.is_null()) {
     return error;
   }
-  info->boot_up_seconds += kernel_to_login_time;
+
+  info->boot_up_seconds += event_time[bootstat_event::kBootComplete];
   if (info->boot_up_seconds > 3600) {
     // This is an impossible case, there must be something wrong when parsing.
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,
-        base::StringPrintf("boot_up_seconds is too large. firmware_time: %lf, "
-                           "kernel_to_login_time: %lf",
-                           firmware_time, kernel_to_login_time));
+        base::StringPrintf("boot_up_seconds is too large. firmware time: %lf, "
+                           "boot complete time: %lf",
+                           firmware_time,
+                           event_time[bootstat_event::kBootComplete]));
   }
+  info->kernel_to_pre_startup_seconds = event_time[bootstat_event::kPreStartup];
+  info->kernel_to_post_startup_seconds =
+      event_time[bootstat_event::kPostStartup];
+  info->startup_to_chrome_exec_seconds =
+      event_time[bootstat_event::kChromeExec] -
+      event_time[bootstat_event::kPreStartup];
+  info->chrome_exec_to_login_seconds =
+      event_time[bootstat_event::kBootComplete] -
+      event_time[bootstat_event::kChromeExec];
 
   double proc_uptime = 0.0;
   error = ParseProcUptime(proc_uptime);

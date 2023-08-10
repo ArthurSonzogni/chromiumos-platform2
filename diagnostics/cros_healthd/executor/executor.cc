@@ -670,7 +670,7 @@ void Executor::FetchBootPerformance(FetchBootPerformanceCallback callback) {
                   base::FilePath{path::kPreviousPowerdLog},
                   base::FilePath{path::kProcUptime},
                   base::FilePath{path::kShutdownMetrics},
-                  base::FilePath{path::kUptimeBootComplete},
+                  base::FilePath{path::kBootstatDir},
               },
       });
 
