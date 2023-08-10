@@ -145,10 +145,6 @@ ScopedCameraMetadata StaticMetadataForAndroid(
   android::CameraMetadata data(static_metadata);
   std::vector<int32_t> stream_configurations;
 
-  // TODO(b/226688669): Remove this once we support the buffer management APIs
-  // for Android.
-  data.erase(ANDROID_INFO_SUPPORTED_BUFFER_MANAGEMENT_VERSION);
-
   if (device_info.quirks & kQuirkAndroidExternal) {
     data.update(
         ANDROID_LENS_FACING,
