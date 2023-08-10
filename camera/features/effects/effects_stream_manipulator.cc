@@ -844,17 +844,22 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
         stream_context->original_stream == result_buffer.stream()) {
       CaptureContext& capture_context =
           *stream_context->GetCaptureContext(result.frame_number());
-      capture_context.processing_time_start = processing_time_start;
       yuv_stream_for_blob = stream_context->yuv_stream_for_blob;
       yuv_stream_appended = capture_context.yuv_stream_appended;
-      if (!still_capture_processor_->IsPendingOutputBufferQueued(
-              result.frame_number())) {
-        still_capture_processor_->QueuePendingOutputBuffer(
-            result.frame_number(), result_buffer.mutable_raw_buffer());
+      if (has_enabled_effects) {
+        capture_context.processing_time_start = processing_time_start;
+        if (!still_capture_processor_->IsPendingOutputBufferQueued(
+                result.frame_number())) {
+          still_capture_processor_->QueuePendingOutputBuffer(
+              result.frame_number(), result_buffer.mutable_raw_buffer());
+        }
+        still_capture_processor_->QueuePendingAppsSegments(
+            result.frame_number(), *result_buffer.buffer(),
+            base::ScopedFD(result_buffer.take_release_fence()));
+      } else {
+        // Return the blob directly if no effects.
+        result.AppendOutputBuffer(std::move(result_buffer));
       }
-      still_capture_processor_->QueuePendingAppsSegments(
-          result.frame_number(), *result_buffer.buffer(),
-          base::ScopedFD(result_buffer.take_release_fence()));
       capture_context.blob_result_pending = false;
       std::move(capture_context).CheckForCompletion();
       continue;
@@ -897,16 +902,6 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       existing_process_ctx_it->second->copy_buffers.push_back(
           std::move(result_buffer));
       continue;
-    }
-
-    if (!last_set_effect_config_.HasEnabledEffects() &&
-        result_buffer.stream() == yuv_stream_for_blob &&
-        !ProcessStillCapture(result.frame_number(), result_buffer,
-                             /*result_image=*/nullptr)) {
-      LOGF(ERROR) << "Failed to process YUV for still capture on frame "
-                  << result.frame_number();
-      // TODO(kamesan): Fail the blob capture queued to the still capture
-      // processor.
     }
 
     auto [it, inserted] =
