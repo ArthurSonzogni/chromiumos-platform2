@@ -10,6 +10,7 @@
 
 #include "cros-camera/common.h"
 #include "hal_adapter/camera_hal_adapter.h"
+#include "hal_adapter/camera_trace_event.h"
 
 #include <base/check.h>
 
@@ -30,6 +31,7 @@ void CameraModuleDelegate::OpenDevice(
     mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
     OpenDeviceCallback callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
   std::move(callback).Run(camera_hal_adapter_->OpenDevice(
       camera_id, std::move(device_ops_receiver), camera_client_type_));
 }
@@ -37,12 +39,14 @@ void CameraModuleDelegate::OpenDevice(
 void CameraModuleDelegate::GetNumberOfCameras(
     GetNumberOfCamerasCallback callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
   std::move(callback).Run(camera_hal_adapter_->GetNumberOfCameras());
 }
 
 void CameraModuleDelegate::GetCameraInfo(int32_t camera_id,
                                          GetCameraInfoCallback callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
   mojom::CameraInfoPtr camera_info;
   int32_t result = camera_hal_adapter_->GetCameraInfo(camera_id, &camera_info,
                                                       camera_client_type_);
@@ -52,6 +56,7 @@ void CameraModuleDelegate::GetCameraInfo(int32_t camera_id,
 void CameraModuleDelegate::SetCallbacks(
     mojo::PendingRemote<mojom::CameraModuleCallbacks> callbacks,
     SetCallbacksCallback callback) {
+  TRACE_HAL_ADAPTER();
   LOGF(ERROR) << "CameraModuleDelegate::SetCallbacks() is deprecated";
   std::move(callback).Run(-ENODEV);
 }
@@ -60,12 +65,14 @@ void CameraModuleDelegate::SetTorchMode(int32_t camera_id,
                                         bool enabled,
                                         SetTorchModeCallback callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
   std::move(callback).Run(
       camera_hal_adapter_->SetTorchMode(camera_id, enabled));
 }
 
 void CameraModuleDelegate::Init(InitCallback callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
   std::move(callback).Run(camera_hal_adapter_->Init());
 }
 
@@ -73,6 +80,7 @@ void CameraModuleDelegate::GetVendorTagOps(
     mojo::PendingReceiver<mojom::VendorTagOps> vendor_tag_ops_receiver,
     GetVendorTagOpsCallback callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
   camera_hal_adapter_->GetVendorTagOps(std::move(vendor_tag_ops_receiver));
   std::move(callback).Run();
 }
@@ -81,6 +89,7 @@ void CameraModuleDelegate::SetCallbacksAssociated(
     mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks,
     SetCallbacksAssociatedCallback callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
   std::move(callback).Run(
       camera_hal_adapter_->SetCallbacks(std::move(callbacks)));
 }

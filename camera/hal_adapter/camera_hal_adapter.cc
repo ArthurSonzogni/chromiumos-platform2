@@ -237,15 +237,19 @@ int32_t CameraHalAdapter::OpenDevice(
   hw_module_t* common = &camera_module->common;
   camera3_device_t* camera_device;
   int ret;
-  if (cros_camera_hal && cros_camera_hal->camera_device_open_ext) {
-    ret = cros_camera_hal->camera_device_open_ext(
-        common, std::to_string(internal_camera_id).c_str(),
-        reinterpret_cast<hw_device_t**>(&camera_device),
-        static_cast<ClientType>(camera_client_type));
-  } else {
-    ret = common->methods->open(
-        common, std::to_string(internal_camera_id).c_str(),
-        reinterpret_cast<hw_device_t**>(&camera_device));
+  {
+    TRACE_HAL_ADAPTER_EVENT("HAL::OpenDevice", "camera_module_name",
+                            camera_module->common.name);
+    if (cros_camera_hal && cros_camera_hal->camera_device_open_ext) {
+      ret = cros_camera_hal->camera_device_open_ext(
+          common, std::to_string(internal_camera_id).c_str(),
+          reinterpret_cast<hw_device_t**>(&camera_device),
+          static_cast<ClientType>(camera_client_type));
+    } else {
+      ret = common->methods->open(
+          common, std::to_string(internal_camera_id).c_str(),
+          reinterpret_cast<hw_device_t**>(&camera_device));
+    }
   }
   if (ret != 0) {
     LOGF(ERROR) << "Failed to open camera device " << camera_id;

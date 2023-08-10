@@ -14,6 +14,7 @@
 
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
+#include "hal_adapter/camera_trace_event.h"
 
 namespace cros {
 
@@ -25,6 +26,7 @@ CameraModuleCallbacksAssociatedDelegate::
 
 void CameraModuleCallbacksAssociatedDelegate::CameraDeviceStatusChange(
     int camera_id, int new_status) {
+  TRACE_HAL_ADAPTER();
   auto future = cros::Future<void>::Create(&relay_);
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&CameraModuleCallbacksAssociatedDelegate::
@@ -36,6 +38,7 @@ void CameraModuleCallbacksAssociatedDelegate::CameraDeviceStatusChange(
 
 void CameraModuleCallbacksAssociatedDelegate::TorchModeStatusChange(
     int camera_id, int new_status) {
+  TRACE_HAL_ADAPTER();
   auto future = cros::Future<void>::Create(&relay_);
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&CameraModuleCallbacksAssociatedDelegate::
@@ -48,6 +51,7 @@ void CameraModuleCallbacksAssociatedDelegate::TorchModeStatusChange(
 void CameraModuleCallbacksAssociatedDelegate::CameraDeviceStatusChangeOnThread(
     int camera_id, int new_status, base::OnceClosure callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
   remote_->CameraDeviceStatusChange(
       camera_id, static_cast<mojom::CameraDeviceStatus>(new_status));
   std::move(callback).Run();
@@ -56,6 +60,7 @@ void CameraModuleCallbacksAssociatedDelegate::CameraDeviceStatusChangeOnThread(
 void CameraModuleCallbacksAssociatedDelegate::TorchModeStatusChangeOnThread(
     int camera_id, int new_status, base::OnceClosure callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER();
   remote_->TorchModeStatusChange(
       camera_id, static_cast<mojom::TorchModeStatus>(new_status));
   std::move(callback).Run();
