@@ -6,9 +6,6 @@
 #define CRYPTOHOME_CRC_H_
 
 #include <stdint.h>
-#include <limits>
-
-#include <base/metrics/crc32.h>
 
 namespace cryptohome {
 
@@ -27,17 +24,6 @@ inline uint8_t Crc8(const void* buffer, uint32_t len) {
     }
   }
   return static_cast<uint8_t>(crc >> 8);
-}
-
-// Calculate the CRC-32 of the data. Based on base::Crc32 which does not quite
-// calculate the actual CRC.
-inline uint32_t Crc32(const void* buffer, uint32_t len) {
-  // The base::Crc32 method should really be called "UpdateCRC". Initial
-  // checksum needs to be initialized to all 1's; final value is 1's
-  // complement.
-  // See https://www.w3.org/TR/PNG/#D-CRCAppendix.
-  // TODO(b/168049518): Move to libchrome.
-  return ~base::Crc32(std::numeric_limits<uint32_t>::max(), buffer, len);
 }
 
 }  // namespace cryptohome

@@ -85,7 +85,6 @@ extern "C" {
 #include <linux/fs.h>
 }
 
-#include "cryptohome/crc.h"
 #include "cryptohome/dircrypto_util.h"
 
 using base::FilePath;
