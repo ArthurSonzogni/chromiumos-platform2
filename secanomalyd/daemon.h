@@ -22,8 +22,14 @@ namespace secanomalyd {
 
 class Daemon : public brillo::DBusDaemon {
  public:
-  explicit Daemon(bool generate_reports = false, bool dev = false)
-      : brillo::DBusDaemon(), generate_reports_{generate_reports}, dev_{dev} {}
+  explicit Daemon(bool generate_reports = false,
+                  bool forbidden_intersection_only_reports = false,
+                  bool dev = false)
+      : brillo::DBusDaemon(),
+        generate_reports_{generate_reports},
+        forbidden_intersection_only_reports_(
+            forbidden_intersection_only_reports),
+        dev_{dev} {}
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
@@ -83,6 +89,7 @@ class Daemon : public brillo::DBusDaemon {
   bool has_emitted_non_initns_proc_percentage_uma_ = false;
 
   bool generate_reports_ = false;
+  bool forbidden_intersection_only_reports_ = false;
   bool dev_ = false;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;

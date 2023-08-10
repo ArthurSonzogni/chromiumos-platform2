@@ -49,6 +49,7 @@ constexpr int CalculateSampleFrequency(size_t wx_mount_count) {
   else
     return 2;
 }
+constexpr int kProcAnomalySampleFrequency = 10000000;  // 10 million
 
 constexpr base::TimeDelta kScanInterval = base::Seconds(30);
 // Used to limit the total number of UMA reports.
@@ -332,37 +333,59 @@ void Daemon::DoProcScan() {
 }
 
 void Daemon::DoAnomalousSystemReporting() {
-  // Skip reporting if the if the daemon has previously attempted to send a
-  // report or there is no anomalous condition.
-  // TODO(b/293928928) Check for and append any forbidden intersection
-  // violations to the anomaly report.
-  if (has_attempted_anomaly_report_ || wx_mounts_.empty()) {
+  // TODO(b/255818130): Check for and append the details of any discovered memfd
+  // execution events so that they appear in the report.
+  // Skip reporting if the daemon has previously attempted to
+  // send a report or there are no anomalous conditions.
+  if (has_attempted_anomaly_report_ ||
+      (wx_mounts_.empty() && (!forbidden_intersection_procs_ ||
+                              forbidden_intersection_procs_.value().empty()))) {
     return;
   }
 
   // Stop subsequent reporting attempts for this execution.
   has_attempted_anomaly_report_ = true;
 
-  VLOG(1) << "Reporting anomalous system: W+X mount count";
-  if (ShouldReport(dev_)) {
-    // Send one out of every |kSampleFrequency| reports, unless |dev_| is set.
-    // |base::RandInt()| returns a random int in [min, max].
-    int range = dev_ ? 1 : CalculateSampleFrequency(wx_mounts_.size());
-    if (base::RandInt(1, range) > 1) {
-      return;
-    }
+  if (!ShouldReport(dev_)) {
+    VLOG(1) << "Not reporting anomalous system due to dev mode";
+    return;
+  }
+  VLOG(1) << "Attempting to report anomalous system";
 
-    bool success =
-        ReportAnomalousSystem(wx_mounts_, all_mounts_, all_procs_, range, dev_);
-    if (!success) {
-      // Reporting is best-effort so on failure we just print a warning.
-      LOG(WARNING) << "Failed to report anomalous system";
-    }
+  ProcEntries anomalous_procs = forbidden_intersection_procs_
+                                    ? forbidden_intersection_procs_.value()
+                                    : ProcEntries();
+  int range = 0;
+  int weight = 1;
+  // If |dev_| is set, always send the report. Otherwise, if W+X anomalies
+  // exist, send one in every |CalculateSampleFrequency(wx_mounts_.size())|
+  // reports. Finally, if only forbidden intersection violations exist, send one
+  // in every |kProcAnomalySampleFrequency| reports.
+  if (dev_) {
+    range = 1;
+  } else if (!wx_mounts_.empty()) {
+    range = CalculateSampleFrequency(wx_mounts_.size());
+    weight = range;
+  } else if (!anomalous_procs.empty() && forbidden_intersection_only_reports_) {
+    range = kProcAnomalySampleFrequency;
+  }
 
-    // Report whether uploading the anomalous system report succeeded.
-    if (!SendAnomalyUploadResultToUMA(success)) {
-      LOG(WARNING) << "Could not upload metrics";
-    }
+  // |base::RandInt(min, max)| returns a random int between [min, max], which in
+  // this case gives the report one in |range| chance of being sent.
+  if (range < 1 || base::RandInt(1, range) > 1) {
+    return;
+  }
+
+  bool success = ReportAnomalousSystem(wx_mounts_, anomalous_procs, all_mounts_,
+                                       all_procs_, weight, dev_);
+  if (!success) {
+    // Reporting is best-effort so on failure we just print a warning.
+    LOG(WARNING) << "Failed to report anomalous system";
+  }
+
+  // Report whether uploading the anomalous system report succeeded.
+  if (!SendAnomalyUploadResultToUMA(success)) {
+    LOG(WARNING) << "Could not upload metrics";
   }
 }
 
@@ -415,9 +438,6 @@ void Daemon::DoAuditLogScan() {
       }
     }
   }
-  // TODO(b/255818130): Add a function for reporting the details of any
-  // discovered memfd execution events through crash reporter and invoke it
-  // here.
 }
 
 void Daemon::EmitWXMountCountUma() {

@@ -5,11 +5,14 @@
 #include "secanomalyd/reporter.h"
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
+#include <base/rand_util.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -41,7 +44,7 @@ bool ShouldReport(bool report_in_dev_mode) {
   return ::VbGetSystemPropertyInt("cros_debug") == 0 || report_in_dev_mode;
 }
 
-std::string GenerateSignature(const MountEntryMap& wx_mounts) {
+std::string GenerateMountSignature(const MountEntryMap& wx_mounts) {
   std::vector<std::string> dests;
 
   for (const auto& p : wx_mounts) {
@@ -69,45 +72,85 @@ std::string GenerateSignature(const MountEntryMap& wx_mounts) {
   return signature;
 }
 
-MaybeReport GenerateAnomalousSystemReport(const MountEntryMap& wx_mounts,
-                                          const MaybeMountEntries& all_mounts,
-                                          const MaybeProcEntries& all_procs) {
-  // First line: signature
-  // Second line: metadata
-  //    signals: wx-mount|root-proc|non-vb-proc
-  //    dest: /usr/local, e.g.
-  // Third+ line: content
-
-  // We need at least one anomalous condition to generate the report signature.
-  if (wx_mounts.empty()) {
+std::optional<std::string> GenerateProcSignature(const ProcEntries& procs) {
+  if (procs.empty()) {
     return std::nullopt;
   }
+  std::string signature;
+  int signature_proc = base::RandInt(0, procs.size() - 1);
+  signature = procs[base::checked_cast<size_t>(signature_proc)].comm();
+  return std::optional<std::string>(signature);
+}
 
+MaybeReport GenerateAnomalousSystemReport(
+    const MountEntryMap& wx_mounts,
+    const ProcEntries& forbidden_intersection_procs,
+    const MaybeMountEntries& all_mounts,
+    const MaybeProcEntries& all_procs) {
+  // First line: signature
+  // Second line: metadata
+  //    signals: wx-mount|forbidden-intersection-violation|multiple-anomalies
+  //    dest: /usr/local, e.g.
+  // Third+ line: content
   std::vector<std::string> lines;
 
-  // Generate signature.
-  lines.emplace_back(GenerateSignature(wx_mounts));
+  // Generate signature based on the anomaly type. If multiple anomaly types are
+  // present, the W+X mount anomaly is used to generate the signature. At least
+  // one anomaly has to be preset to proceed.
+  std::optional<std::string> signature;
+  if (!wx_mounts.empty()) {
+    signature = GenerateMountSignature(wx_mounts);
+  } else if (!forbidden_intersection_procs.empty()) {
+    signature = GenerateProcSignature(forbidden_intersection_procs);
+  } else {
+    return std::nullopt;
+  }
+  if (!signature) {
+    return std::nullopt;
+  }
+  lines.emplace_back(signature.value());
 
   // Generate metadata.
-  base::FilePath dest = wx_mounts.begin()->first;
-  std::string metadata;
   // Metadata are a set of key-value pairs where keys and values are separated
   // by \x01 and pairs are separated by \x02:
   // 'signals\x01wx-mount\x02dest\x01/usr/local'
-  // Right now we only support listing which anomalies triggered the upload of
-  // this report, and signalling which specific anomaly was used for the
-  // signature.
-  base::StrAppend(&metadata,
-                  {"signals\x01wx-mount", "\x02", "dest\x01", dest.value()});
+  // Right now we only support specifying which anomaly type triggered the
+  // upload of this report, and signalling which specific anomaly was used for
+  // the signature.
+  std::string metadata;
+  if (!wx_mounts.empty() && !forbidden_intersection_procs.empty()) {
+    base::FilePath dest = wx_mounts.begin()->first;
+    base::StrAppend(&metadata, {"\x01", "multiple-anomalies", "\x02", "dest",
+                                "\x01", dest.value()});
+  } else if (!wx_mounts.empty()) {
+    base::FilePath dest = wx_mounts.begin()->first;
+    base::StrAppend(&metadata, {"\x01", "wx-mount", "\x02",
+                                "dest"
+                                "\x01",
+                                dest.value()});
+  } else {
+    base::StrAppend(&metadata, {"\x01", "forbidden-intersection-violation",
+                                "\x02", "comm", "\x01", signature.value()});
+  }
   lines.emplace_back(metadata);
 
   // List anomalous conditions.
   lines.emplace_back("=== Anomalous conditions ===");
-  for (const auto& tuple : wx_mounts) {
-    lines.push_back(tuple.second.FullDescription());
+  if (!wx_mounts.empty()) {
+    lines.emplace_back("=== W+X mounts ===");
+    for (const auto& tuple : wx_mounts) {
+      lines.push_back(tuple.second.FullDescription());
+    }
+  }
+  if (!forbidden_intersection_procs.empty()) {
+    lines.emplace_back("=== Forbidden intersection processes ===");
+    for (const auto& e : forbidden_intersection_procs) {
+      lines.push_back(e.comm() + " " + e.args());
+    }
   }
 
-  lines.emplace_back("=== Mounts ===");
+  // Include the list of all mounts.
+  lines.emplace_back("=== All mounts ===");
   if (all_mounts) {
     // List mounts.
     for (const auto& mount_entry : all_mounts.value()) {
@@ -117,7 +160,8 @@ MaybeReport GenerateAnomalousSystemReport(const MountEntryMap& wx_mounts,
     lines.emplace_back("Could not obtain mounts");
   }
 
-  lines.emplace_back("=== Processes ===");
+  // Include the list of all processes.
+  lines.emplace_back("=== All processes ===");
   if (all_procs) {
     // List processes.
     for (const auto& proc_entry : all_procs.value()) {
@@ -175,6 +219,7 @@ bool SendReport(base::StringPiece report,
 }
 
 bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
+                           const ProcEntries& forbidden_intersection_procs,
                            const MaybeMountEntries& all_mounts,
                            const MaybeProcEntries& all_procs,
                            int weight,
@@ -189,7 +234,8 @@ bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
   }
 
   MaybeReport anomaly_report = GenerateAnomalousSystemReport(
-      wx_mounts, uploadable_mounts, MaybeProcEntries(init_pidns_procs));
+      wx_mounts, forbidden_intersection_procs, uploadable_mounts,
+      MaybeProcEntries(init_pidns_procs));
 
   if (!anomaly_report) {
     LOG(ERROR) << "Failed to generate anomalous system report";

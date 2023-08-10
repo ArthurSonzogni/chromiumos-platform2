@@ -19,12 +19,15 @@ using MaybeReport = std::optional<std::string>;
 bool ShouldReport(bool report_in_dev_mode);
 
 // Exposed mostly for testing.
-std::string GenerateSignature(const MountEntryMap& wx_mounts);
+std::string GenerateMountSignature(const MountEntryMap& wx_mounts);
+std::optional<std::string> GenerateProcSignature(const ProcEntries& procs);
 
 // Exposed mostly for testing.
-MaybeReport GenerateAnomalousSystemReport(const MountEntryMap& wx_mounts,
-                                          const MaybeMountEntries& all_mounts,
-                                          const MaybeProcEntries& all_procs);
+MaybeReport GenerateAnomalousSystemReport(
+    const MountEntryMap& wx_mounts,
+    const ProcEntries& forbidden_intersection_procs,
+    const MaybeMountEntries& all_mounts,
+    const MaybeProcEntries& all_procs);
 
 bool SendReport(base::StringPiece report,
                 brillo::Process* crash_reporter,
@@ -32,6 +35,7 @@ bool SendReport(base::StringPiece report,
                 bool report_in_dev_mode);
 
 bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
+                           const ProcEntries& forbidden_intersection_procs,
                            const MaybeMountEntries& all_mounts,
                            const MaybeProcEntries& all_procs,
                            int weight,

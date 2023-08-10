@@ -9,12 +9,17 @@
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(generate_reports, false, "generate crash reports for anomalies");
+  DEFINE_bool(forbidden_intersection_only_reports, false,
+              "whether or not to generate crash reports that only contain the "
+              "forbidden intersection anomaly");
   DEFINE_bool(dev, false, "report anomalies when cros_debug=1");
   brillo::FlagHelper::Init(argc, argv,
                            "CrOS security anomaly reporting daemon");
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  secanomalyd::Daemon(FLAGS_generate_reports, FLAGS_dev).Run();
+  secanomalyd::Daemon(FLAGS_generate_reports,
+                      FLAGS_forbidden_intersection_only_reports, FLAGS_dev)
+      .Run();
   return 0;
 }

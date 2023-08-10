@@ -51,8 +51,13 @@ class ProcEntry {
   std::string args() const { return args_; }
   SandboxStatus sandbox_status() const { return sandbox_status_; }
 
+  std::string FullDescription() const;
+
  private:
   friend class testing::ProcessesTestFixture;
+  FRIEND_TEST(SignatureTest, SignatureForOneProc);
+  FRIEND_TEST(SignatureTest, SignatureForMultipleProcs);
+  FRIEND_TEST(ReporterTest, SimpleForbiddenIntersectionReport);
   FRIEND_TEST(ReporterTest, FullReport);
 
   ProcEntry(pid_t pid,

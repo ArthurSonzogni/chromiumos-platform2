@@ -223,6 +223,10 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   return ProcEntry(pid, ppid, pidns, mntns, usrns, comm, args, sandbox_status);
 }
 
+std::string ProcEntry::FullDescription() const {
+  return base::JoinString({comm_, args_}, " ");
+}
+
 MaybeProcEntries ReadProcesses(ProcessFilter filter,
                                const base::FilePath& proc) {
   ProcEntries all_entries;
