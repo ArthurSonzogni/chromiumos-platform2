@@ -8,8 +8,6 @@
 #include <optional>
 #include <string>
 
-#include <base/strings/string_piece.h>
-
 #include <vm_memory_management/vm_memory_management.pb.h>
 
 using vm_tools::vm_memory_management::MglruStats;
@@ -20,7 +18,7 @@ namespace vm_tools::concierge::mglru {
 // Usually: /sys/kernel/mm/lru_gen/admin.
 // The admin file is in page units, so page_size is used to convert to KiB.
 std::optional<MglruStats> ParseStatsFromString(
-    const base::StringPiece stats_string, const size_t page_size);
+    const std::string_view stats_string, const size_t page_size);
 
 // Formats the given stats into a human readable string
 // page_size is used to convert from KiB (input) to page size units in the

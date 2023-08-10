@@ -24,8 +24,8 @@ namespace {
 
 // Parses a single generation from the input line and returns it if successful.
 // On failure a std::nullopt is returned.
-std::optional<MglruGeneration> ParseGeneration(const base::StringPiece line) {
-  std::vector<base::StringPiece> tokens =
+std::optional<MglruGeneration> ParseGeneration(const std::string_view line) {
+  std::vector<std::string_view> tokens =
       base::SplitStringPiece(line, base::kWhitespaceASCII,
                              base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -61,7 +61,7 @@ std::optional<MglruGeneration> ParseGeneration(const base::StringPiece line) {
 // line index is expected to be at the starting position for the node, otherwise
 // this function will fail. On failure a std::nullopt is returned and the index
 // is reset to the original position.
-std::optional<MglruNode> ParseNode(const std::vector<base::StringPiece>& lines,
+std::optional<MglruNode> ParseNode(const std::vector<std::string_view>& lines,
                                    size_t& index) {
   size_t starting_position = index;
 
@@ -70,7 +70,7 @@ std::optional<MglruNode> ParseNode(const std::vector<base::StringPiece>& lines,
     return std::nullopt;
   }
 
-  std::vector<base::StringPiece> tokens =
+  std::vector<std::string_view> tokens =
       base::SplitStringPiece(lines.at(index++), base::kWhitespaceASCII,
                              base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -113,15 +113,15 @@ std::optional<MglruNode> ParseNode(const std::vector<base::StringPiece>& lines,
 // line index is expected to be at the starting position for the memcg,
 // otherwise this function will fail. On failure the line index is reset to its
 // original position and a std::nullopt is returned.
-std::optional<MglruMemcg> ParseMemcg(
-    const std::vector<base::StringPiece>& lines, size_t& index) {
+std::optional<MglruMemcg> ParseMemcg(const std::vector<std::string_view>& lines,
+                                     size_t& index) {
   size_t starting_index = index;
 
   if (index >= lines.size()) {
     return std::nullopt;
   }
 
-  std::vector<base::StringPiece> tokens =
+  std::vector<std::string_view> tokens =
       base::SplitStringPiece(lines.at(index++), base::kWhitespaceASCII,
                              base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -172,8 +172,8 @@ void ConvertStatsToKbUnits(MglruStats& stats, const size_t page_size) {
 }  // namespace
 
 std::optional<MglruStats> ParseStatsFromString(
-    const base::StringPiece stats_string, const size_t page_size) {
-  std::vector<base::StringPiece> lines = base::SplitStringPiece(
+    const std::string_view stats_string, const size_t page_size) {
+  std::vector<std::string_view> lines = base::SplitStringPiece(
       stats_string, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   MglruStats parsed_stats;
