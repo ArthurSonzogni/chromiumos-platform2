@@ -81,16 +81,6 @@ void WaitUntilEnterPressed() {
   std::getline(std::cin, dummy);
 }
 
-// Saves |response| to |response_destination|.
-// TODO(b/262814572): Migrate this to MojoResponseWaiter.
-template <class T>
-void OnMojoResponseReceived(T* response_destination,
-                            base::OnceClosure quit_closure,
-                            T response) {
-  *response_destination = std::move(response);
-  std::move(quit_closure).Run();
-}
-
 void PrintStatusMessage(const std::string& status_message) {
   std::cout << "Status message: " << status_message << std::endl;
 }
