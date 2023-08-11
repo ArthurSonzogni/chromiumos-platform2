@@ -74,8 +74,6 @@ void SetJsonDictValue(std::string_view key,
   } else if constexpr (std::is_same_v<T, std::optional<std::string>>) {
     if (value.has_value())
       SetJsonDictValue(key, value.value(), output);
-    // TODO(b/194872701)
-    // NOLINTNEXTLINE(readability/braces)
   } else if constexpr (std::is_same_v<
                            T, std::optional<std::vector<std::string>>>) {
     if (value.has_value())
@@ -104,17 +102,13 @@ void SetJsonDictValue(std::string_view key,
                            T, ash::cros_healthd::mojom::NullableUint64Ptr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
-    // TODO(b/194872701): This line cannot be broken because the linter issue.
-    // clang-format off
   } else if constexpr (std::is_same_v<
-                           T, chromeos::network_health::mojom::UInt32ValuePtr>){
-    // clang-format on
+                           T,
+                           chromeos::network_health::mojom::UInt32ValuePtr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
   } else if constexpr (std::is_enum_v<T>) {
     SetJsonDictValue(key, EnumToString(value), output);
-    // TODO(b/194872701)
-    // NOLINTNEXTLINE(readability/braces)
   } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
     base::Value::List string_vector;
     for (const auto& s : value)
