@@ -32,6 +32,7 @@ type cros_arc_camera_service_exec, exec_type, file_type, cros_file_type, cros_sy
 type cros_arc_file_syncer_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_host_clock_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_keymasterd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_arc_keymintd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_obb_mounter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_packages_xml_reader_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_setup_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
