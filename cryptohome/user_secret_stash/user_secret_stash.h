@@ -121,7 +121,7 @@ class UserSecretStash {
   // Sets up a UserSecretStash with random contents (reset secret, etc.) and the
   // values from the specified file system keyset.
   static CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> CreateRandom(
-      const FileSystemKeyset& file_system_keyset);
+      FileSystemKeyset file_system_keyset);
   // This deserializes the |flatbuffer| into a UserSecretStashContainer table.
   // Besides unencrypted data, that table contains a ciphertext, which is
   // decrypted with the |main_key| using AES-GCM-256. It doesn't return the
@@ -225,6 +225,41 @@ class UserSecretStash {
   CryptohomeStatusOr<brillo::Blob> GetEncryptedContainer(
       const brillo::SecureBlob& main_key);
 
+  // Functions to create a snapshot of the current state of the USS and to
+  // restore it to the state from a given snapshot. These are generally useful
+  // when you want to be able to make changes to the state of the USS that can
+  // be reverted, e.g. if persisting the changes fails.
+  class Snapshot {
+   public:
+    // The snapshot can be moved around but not copied. In general snapshots
+    // should be "use once".
+    Snapshot(const Snapshot&) = delete;
+    Snapshot& operator=(const Snapshot&) = delete;
+    Snapshot(Snapshot&&) = default;
+    Snapshot& operator=(Snapshot&&) = default;
+
+   private:
+    friend class UserSecretStash;
+
+    Snapshot(const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
+             const std::map<std::string, brillo::SecureBlob>& reset_secrets,
+             const std::map<AuthFactorType, brillo::SecureBlob>&
+                 rate_limiter_reset_secrets,
+             const UserMetadata& user_metadata);
+
+    // These are copies of all of the internal mutable state of the USS.
+    std::map<std::string, WrappedKeyBlock> wrapped_key_blocks_;
+    std::map<std::string, brillo::SecureBlob> reset_secrets_;
+    std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets_;
+    UserMetadata user_metadata_;
+  };
+  // Take will capture the current state of the USS in the returned snapshot.
+  Snapshot TakeSnapshot() const;
+  // Restore will restore the USS to the state it was in at the time that
+  // TakeSnapshot() was called. It takes an rvalue reference because snapshots
+  // are intended to be single use only and so restoring "consumes" it.
+  void RestoreSnapshot(Snapshot&& snapshot);
+
  private:
   // Decrypts the USS payload flatbuffer using the passed main key and
   // constructs the USS instance from it. Returns null on decryption or
@@ -241,10 +276,12 @@ class UserSecretStash {
 
   UserSecretStash(
       FileSystemKeyset file_system_keyset,
+      std::string created_on_os_version,
       std::map<std::string, brillo::SecureBlob> reset_secrets,
       std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets);
 
-  explicit UserSecretStash(const FileSystemKeyset& file_system_keyset);
+  UserSecretStash(FileSystemKeyset file_system_keyset,
+                  std::string created_on_os_version);
 
   // Keys registered with the kernel to decrypt files and file names, together
   // with corresponding salts and signatures.
@@ -256,7 +293,7 @@ class UserSecretStash {
   std::map<std::string, WrappedKeyBlock> wrapped_key_blocks_;
   // The OS version on which this particular user secret stash was originally
   // created.
-  std::string created_on_os_version_;
+  const std::string created_on_os_version_;
   // The reset secrets corresponding to each auth factor, by label.
   std::map<std::string, brillo::SecureBlob> reset_secrets_;
   // The reset secrets corresponding to each auth factor type's rate limiter.

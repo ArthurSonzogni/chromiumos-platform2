@@ -442,14 +442,11 @@ UserSecretStash::Container::FromBlob(const brillo::Blob& flatbuffer) {
 
 // static
 CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-UserSecretStash::CreateRandom(const FileSystemKeyset& file_system_keyset) {
+UserSecretStash::CreateRandom(FileSystemKeyset file_system_keyset) {
   std::string current_os_version = GetCurrentOsVersion();
 
-  // Note: make_unique() wouldn't work due to the constructor being private.
-  std::unique_ptr<UserSecretStash> stash(
-      new UserSecretStash(file_system_keyset));
-  stash->created_on_os_version_ = std::move(current_os_version);
-  return stash;
+  return base::WrapUnique(new UserSecretStash(std::move(file_system_keyset),
+                                              std::move(current_os_version)));
 }
 
 // static
@@ -565,10 +562,10 @@ UserSecretStash::FromEncryptedPayload(
   }
 
   auto stash = base::WrapUnique(new UserSecretStash(
-      std::move(file_system_keyset_status).value(), std::move(reset_secrets),
+      std::move(file_system_keyset_status).value(),
+      std::move(created_on_os_version), std::move(reset_secrets),
       std::move(rate_limiter_reset_secrets)));
   stash->wrapped_key_blocks_ = wrapped_key_blocks;
-  stash->created_on_os_version_ = created_on_os_version;
   stash->user_metadata_ = user_metadata;
   return stash;
 }
@@ -867,6 +864,29 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
   return serialized_contaner.value();
 }
 
+UserSecretStash::Snapshot::Snapshot(
+    const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
+    const std::map<std::string, brillo::SecureBlob>& reset_secrets,
+    const std::map<AuthFactorType, brillo::SecureBlob>&
+        rate_limiter_reset_secrets,
+    const UserMetadata& user_metadata)
+    : wrapped_key_blocks_(wrapped_key_blocks),
+      reset_secrets_(reset_secrets),
+      rate_limiter_reset_secrets_(rate_limiter_reset_secrets),
+      user_metadata_(user_metadata) {}
+
+UserSecretStash::Snapshot UserSecretStash::TakeSnapshot() const {
+  return Snapshot(wrapped_key_blocks_, reset_secrets_,
+                  rate_limiter_reset_secrets_, user_metadata_);
+}
+
+void UserSecretStash::RestoreSnapshot(Snapshot&& snapshot) {
+  wrapped_key_blocks_ = std::move(snapshot.wrapped_key_blocks_);
+  reset_secrets_ = std::move(snapshot.reset_secrets_);
+  rate_limiter_reset_secrets_ = std::move(snapshot.rate_limiter_reset_secrets_);
+  user_metadata_ = std::move(snapshot.user_metadata_);
+}
+
 std::optional<uint64_t> UserSecretStash::GetFingerprintRateLimiterId() {
   return user_metadata_.fingerprint_rate_limiter_id;
 }
@@ -881,13 +901,17 @@ bool UserSecretStash::InitializeFingerprintRateLimiterId(uint64_t id) {
 
 UserSecretStash::UserSecretStash(
     FileSystemKeyset file_system_keyset,
+    std::string created_on_os_version,
     std::map<std::string, brillo::SecureBlob> reset_secrets,
     std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets)
     : file_system_keyset_(std::move(file_system_keyset)),
+      created_on_os_version_(std::move(created_on_os_version)),
       reset_secrets_(std::move(reset_secrets)),
       rate_limiter_reset_secrets_(std::move(rate_limiter_reset_secrets)) {}
 
-UserSecretStash::UserSecretStash(const FileSystemKeyset& file_system_keyset)
-    : file_system_keyset_(file_system_keyset) {}
+UserSecretStash::UserSecretStash(FileSystemKeyset file_system_keyset,
+                                 std::string created_on_os_version)
+    : file_system_keyset_(std::move(file_system_keyset)),
+      created_on_os_version_(std::move(created_on_os_version)) {}
 
 }  // namespace cryptohome

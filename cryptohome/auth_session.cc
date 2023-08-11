@@ -16,6 +16,7 @@
 #include <variant>
 #include <vector>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/flat_set.h>
@@ -2798,6 +2799,13 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
       std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
                                    auth_factor_metadata, *auth_block_state);
 
+  // Grab a snapshot of the USS that will be reverted if these changes fail.
+  auto uss_snapshot = user_secret_stash_->TakeSnapshot();
+  absl::Cleanup revert_uss = [this, &uss_snapshot]() {
+    user_secret_stash_->RestoreSnapshot(std::move(uss_snapshot));
+  };
+
+  // Add the factor into the USS.
   CryptohomeStatus status = AddAuthFactorToUssInMemory(*auth_factor, *key_blobs,
                                                        clobber_uss_key_block);
   if (!status.ok()) {
@@ -2854,18 +2862,14 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
                user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
         .Wrap(std::move(status));
   }
+  std::move(revert_uss).Cancel();
 
   // If a USS only factor is added backup keysets should be removed.
   if (!IsFactorTypeSupportedByVk(auth_factor_type)) {
     CryptohomeStatus cleanup_status = CleanUpAllBackupKeysets(
         *keyset_management_, obfuscated_username_, auth_factor_map_);
     if (!cleanup_status.ok()) {
-      LOG(ERROR) << "Cleaning up backup keysets failed.";
-      return (MakeStatus<CryptohomeError>(
-                  CRYPTOHOME_ERR_LOC(
-                      kLocAuthSessionCleanupBackupFailedInAddauthFactor),
-                  user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-                  .Wrap(std::move(cleanup_status).err_status()));
+      LOG(ERROR) << "Cleaning up backup keysets failed: " << cleanup_status;
     }
   }
 

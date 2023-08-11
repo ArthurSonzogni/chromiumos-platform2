@@ -569,6 +569,59 @@ TEST_F(UserSecretStashTest, GetInitializeFingerprintRateLimiterId) {
   ASSERT_EQ(stash_->GetFingerprintRateLimiterId(), fake_id);
 }
 
+// Test that wrapped key blocks are [de]serialized correctly.
+TEST_F(UserSecretStashTest, SnapshotRestoreRevertsChanges) {
+  const char kWrappingId1[] = "id1";
+  const char kWrappingId2[] = "id2";
+  const brillo::SecureBlob kWrappingKey1(kAesGcm256KeySize, 0xB);
+  const brillo::SecureBlob kWrappingKey2(kAesGcm256KeySize, 0xC);
+  brillo::SecureBlob reset_secret1 = {0xAA, 0xBB, 0xCC};
+  brillo::SecureBlob reset_secret2 = {0xDD, 0xEE, 0x11};
+  uint64_t fake_id = 123;
+
+  // Add the first wrapped key block and a reset secret.
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
+  EXPECT_TRUE(stash_->SetResetSecretForLabel(kWrappingId1, reset_secret1));
+
+  // We should see the first key and secret, not the second.
+  EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId1));
+  EXPECT_FALSE(stash_->HasWrappedMainKey(kWrappingId2));
+  EXPECT_EQ(stash_->GetResetSecretForLabel(kWrappingId1), reset_secret1);
+  EXPECT_EQ(stash_->GetResetSecretForLabel(kWrappingId2), std::nullopt);
+  EXPECT_EQ(stash_->GetFingerprintRateLimiterId(), std::nullopt);
+
+  // Take a snapshot.
+  auto snapshot = stash_->TakeSnapshot();
+
+  // Add a second wrapped key block and reset secret, plus a rate limiter.
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
+  EXPECT_TRUE(stash_->SetResetSecretForLabel(kWrappingId2, reset_secret2));
+  EXPECT_TRUE(stash_->InitializeFingerprintRateLimiterId(fake_id));
+
+  // We should see both keys and secrets.
+  EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId1));
+  EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId2));
+  EXPECT_EQ(stash_->GetResetSecretForLabel(kWrappingId1), reset_secret1);
+  EXPECT_EQ(stash_->GetResetSecretForLabel(kWrappingId2), reset_secret2);
+  EXPECT_EQ(stash_->GetFingerprintRateLimiterId(), fake_id);
+
+  // Restore the snapshot.
+  stash_->RestoreSnapshot(std::move(snapshot));
+
+  // We should see the original pre-snapshot state again.
+  EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId1));
+  EXPECT_FALSE(stash_->HasWrappedMainKey(kWrappingId2));
+  EXPECT_EQ(stash_->GetResetSecretForLabel(kWrappingId1), reset_secret1);
+  EXPECT_EQ(stash_->GetResetSecretForLabel(kWrappingId2), std::nullopt);
+  EXPECT_EQ(stash_->GetFingerprintRateLimiterId(), std::nullopt);
+}
+
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using
 // the flatbuffer C++ bindings.
 class UserSecretStashInternalsTest : public UserSecretStashTest {
