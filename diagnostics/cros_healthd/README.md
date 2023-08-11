@@ -1,56 +1,58 @@
 # cros_healthd: Telemetry and Diagnostics Daemon
 
-cros_healthd provides the universal one-stop telemetry and diagnostics API
+`cros_healthd` provides the universal one-stop telemetry and diagnostics API
 support for the ChromeOS system.
 
-## Design
+## Design doc
 
 [go/cros_healthd](https://goto.google.com/cros_healthd)
 
-## Manual Testing
+## Development
 
-Because the telem and diag utilities are currently unable to test cros_healthd,
-manual testing of cros_healthd in a sandbox is necessary. If any new sources of
-telemetry data or diagnostic routines are added before the automation framework
-is complete, the new functionality must be manually tested by the developer
-prior to code review.
+### Set up Device Under Test (DUT)
 
-TODO(crbug.com/1023933): Update these instructions once telem can talk to
-cros_healthd and cherry-picking a test CL is no longer necessary.
-
-### Procedure
-
-*   Make sure both ChromeOS and Chrome sources are up to date. This is
-    necessary because there are a number of dependencies between ChromeOS and
-    Chrome, and trying to deploy a recent Chrome image onto an older ChromeOS
-    image (or vice versa) will likely fail in a manner unrelated to the code
-    under test.
-
-*   Enterprise-enroll the DUT. Make sure that the DUT is running a recent
-    ChromeOS image, preferably by running:
+*   Make sure that the DUT is running a recent ChromeOS image, preferably by
+    running:
     ```bash
     (cros-sdk) cros flash ${DUT_IP} xbuddy://remote/${BOARD}/latest-dev/test
     ```
 
-*   Build and deploy the diagnostics package with the local changes under
-    test:
+### Build packages (once each board)
+
+*   Build the `diagnostics` package:
     ```bash
-    (cros-sdk) USE="-cros-debug" ~/trunk/src/scripts/build_packages --board=${BOARD}
+    (cros-sdk) USE="-cros-debug" cros build-packages --board=${BOARD}
     (cros-sdk) cros_workon-${BOARD} start diagnostics
+    ```
+    Note that `cros build-packages` is necessary to rebuild all dependencies
+    with the correct USE flags.
+
+### Emerge and deploy to DUT
+
+*   `emerge` the package. This is needed whenever you make code changes.
+    ```bash
     (cros-sdk) USE="-cros-debug" emerge-${BOARD} diagnostics
+    ```
+
+*   Deploy the package to DUT:
+    ```bash
     (cros-sdk) cros deploy ${DUT_IP} diagnostics
     ```
-    Note that build_packages is necessary to rebuild all dependencies with the
-    correct USE flags.
 
-*   Cherry-pick https://crrev.com/c/1779132 to use as a starting point for
-    testing. Extend the CL to log any new data reported by cros_healthd in
-    `status_uploader.cc`.
-
-*   Build and deploy Chrome to the DUT using simple Chrome:
-    https://chromium.googlesource.com/chromiumos/docs/+/HEAD/simple_chrome_workflow.md
-
-*   Restart the DUT, and check that the fields are being reported properly:
+*   Restart the `cros_healthd` daemon:
     ```bash
-    (DUT) grep status_uploader /var/log/chrome/chrome
+    (DUT) restart cros_healthd
+    ```
+
+### Run command line tools and inspect the output
+*   Run `cros-health-tool` for telemetry, diagnostic routines or events. For
+    examples:
+    ```bash
+    (DUT) cros-health-tool telem --category=system
+    ```
+    ```bash
+    (DUT) cros-health-tool diag disk_read
+    ```
+    ```bash
+    (DUT) cros-health-tool event --category=touchpad
     ```
