@@ -1,8 +1,4 @@
-# Wilco telemetry and diagnostics owners:
-lamzin@google.com
-mgawad@google.com
-
-# healthd owners:
+# healthd and Wilco owners:
 menghuan@chromium.org
 kerker@chromium.org
 chungsheng@google.com
@@ -12,5 +8,4 @@ byronlee@chromium.org
 yycheng@google.com
 
 # Backup Wilco reviewers:
-pbond@chromium.org
-pmarko@chromium.org
+lamzin@google.com
