@@ -12,8 +12,8 @@ This document focuses on the following things:
 - How we determine if an event is supported.
 - What we need from OEMs to configure to make the event supported.
 
-This document assumes that OEMs/ODMs understand how to make change to the
-Boxster config, if OEMs/ODMs have any trouble on this, please
+This document assumes that OEMs/ODMs understand how to make changes to the
+Boxster config. If OEMs/ODMs have any trouble on this, please
 [contact us][team-contact].
 
 [team-contact]: mailto:cros-tdm-tpe-eng@google.com
@@ -22,7 +22,7 @@ Boxster config, if OEMs/ODMs have any trouble on this, please
 
 ## Command line interface
 
-Some commands help you to debug the issue or have a quick try:
+Some commands help you debug the issue or have a quick try:
 
 1. `cros-health-tool event --help` Use this command to check all possible event
    types.
@@ -31,9 +31,9 @@ Some commands help you to debug the issue or have a quick try:
 
 ## Events
 
-### Usb
+### USB
 
-This is always supported.
+Always supported.
 
 Spec (Partners only):
 [Chromebook](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebook.html#usbc-gen-0001-v01),
@@ -45,12 +45,12 @@ Spec (Partners only):
 
 ### Thunderbolt
 
-This is always supported. If any OEMs need to distinguish it with the USB,
-please [reach out to us][team-contact].
+Always supported. If any OEMs need to distinguish it with the USB, please
+[reach out to us][team-contact].
 
 ### Lid
 
-It's supported only when `form-factor` is explicitly configured as one of the
+Supported only when `form-factor` is explicitly configured as one of the
 following:
 - CLAMSHELL
 - CONVERTIBLE
@@ -62,14 +62,12 @@ You can run the following commands on your DUT:
 2. `cros-health-tool event --category=lid --check_supported` Use this to see if
    healthd reports the correct support status.
 
-To configure `form-factor` in Boxster, you can use `create_form_factor` function
-defined in
-[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
-to set it up.
+To configure `form-factor` in Boxster, you can use the `create_form_factor`
+function defined in [hw_topology.star] to set it up.
 
 ### Bluetooth
 
-This is always supported.
+Always supported.
 
 Spec (Partners only):
 [Chromebook](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebook.html#bt-gen-0001-v01),
@@ -81,12 +79,12 @@ Spec (Partners only):
 
 ### Power
 
-This is always supported.
+Always supported.
 
 ### Audio
 
-This is always supported. Chromebox may not have a speaker so the event may not
-be suitable, if OEMs want us to report it as non-supported, please
+Always supported. Chromebox may not have a speaker so the event may not be
+suitable, if OEMs want us to report it as non-supported, please
 [reach out to us][team-contact].
 
 Spec (Partners only):
@@ -97,9 +95,9 @@ Spec (Partners only):
 [Chromebox](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebox.html#spkr-gen-0004-v01),
 [Chromebase](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebase.html#spkr-gen-0007-v01)
 
-### AudioJack
+### Audio Jack
 
-It's supported only when `has-audio-jack` is explicitly configured as "true".
+Supported only when `has-audio-jack` is explicitly configured as "true".
 
 You can run the following commands on your DUT:
 1. `cros_config /hardware-properties has-audio-jack` This is helpful to
@@ -108,16 +106,14 @@ You can run the following commands on your DUT:
    to see if healthd reports the correct support status.
 
 To configure `has-audio-jack` in Boxster, you can use `create_audio` function
-defined in
-[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
-to set it up by filling up the `headphone_codec` value to non
-`AUDIO_CODEC_UNKNOWN`. Because as long as there is a headphone codec, the audio
-jack is supported. So we transform this into `has-audio-jack` in
-chromeos-config.
+defined in [hw_topology.star] to set it up by filling up the `headphone_codec`
+value to non `AUDIO_CODEC_UNKNOWN`. Because as long as there is a headphone
+codec, the audio jack is supported. So we transform this into `has-audio-jack`
+in chromeos-config.
 
-### SdCard
+### SD Card
 
-It's supported only when `has-sd-reader` is explicitly configured as "true".
+Supported only when `has-sd-reader` is explicitly configured as "true".
 
 You can run the following commands on your DUT:
 1. `cros_config /hardware-properties has-sd-reader` This is helpful to
@@ -125,19 +121,17 @@ You can run the following commands on your DUT:
 2. `cros-health-tool event --category=sd_card --check_supported` Use this to see
    if healthd reports the correct support status.
 
-To configure `has-sd-reader` in Boxster, you can use `create_sd_reader` function
-defined in
-[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
-to set it up.
+To configure `has-sd-reader` in Boxster, you can use the `create_sd_reader`
+function defined in [hw_topology.star] to set it up.
 
 ### Network
 
-Not supported for the new event interface. Since there are no users at this
+Not supported by the new event interface. Since there are no users at this
 moment. Please [reach out to us][team-contact] if you need network events.
 
-### KeyboardDiagnostic
+### Keyboard Diagnostic
 
-It's supported only when `form-factor` is explicitly configured as one of the
+Supported only when `form-factor` is explicitly configured as one of the
 following:
 - CLAMSHELL
 - CONVERTIBLE
@@ -149,14 +143,12 @@ You can run the following commands on your DUT:
 2. `cros-health-tool event --category=keyboard_diagnostic --check_supported` Use
    this to see if healthd reports the correct support status.
 
-To configure `form-factor` in Boxster, you can use `create_form_factor` function
-defined in
-[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
-to set it up.
+To configure `form-factor` in Boxster, you can use the `create_form_factor`
+function defined in [hw_topology.star] to set it up.
 
 ### Touchpad
 
-It's supported only when `form-factor` is explicitly configured as one of the
+Supported only when `form-factor` is explicitly configured as one of the
 following:
 - CLAMSHELL
 - CONVERTIBLE
@@ -169,14 +161,12 @@ You can run the following commands on your DUT:
    see if healthd reports the correct support status.
 
 To configure `form-factor` in Boxster, you can use `create_form_factor` function
-defined in
-[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
-to set it up.
+defined in [hw_topology.star] to set it up.
 
 ### External Display
 
-Currently the External Display event only supports detecting event based on HDMI
-input. Therefore the event is supported only when `has-hdmi` is explicitly
+Currently the External Display event only supports detecting events based on
+HDMI input. Therefore the event is supported only when `has-hdmi` is explicitly
 configured as "true".
 
 You can run the following commands on your DUT:
@@ -185,14 +175,12 @@ You can run the following commands on your DUT:
 2. `cros-health-tool event --category=external_display --check_supported` Use this
    to see if healthd reports the correct support status.
 
-To configure `has-hdmi` in Boxster, you can use `create_hdmi` function defined
-in
-[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
-to set it up.
+To configure `has-hdmi` in Boxster, you can use the `create_hdmi` function
+defined in [hw_topology.star] to set it up.
 
 ### Touchscreen
 
-It's supported only when `has-touchscreen` is explicitly configured as "true".
+Supported only when `has-touchscreen` is explicitly configured as "true".
 
 You can run the following commands on your DUT:
 1. `cros_config /hardware-properties has-touchscreen` This is helpful to
@@ -201,14 +189,13 @@ You can run the following commands on your DUT:
    to see if healthd reports the correct support status.
 
 To configure `has-touchscreen` in Boxster, you can use `create_screen` function
-defined in
-[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
-to set it up, in this case, you should fill the `touch` parameter as `True`.
+defined in [hw_topology.star] to set it up, in this case, you should fill the
+`touch` parameter as `True`.
 
-### StylusGarage
+### Stylus Garage
 
-It's supported only when `stylus-category` is explicitly configured as
-"internal", which means it's a "garaged stylus".
+Supported only when `stylus-category` is explicitly configured as "internal",
+which means it's a "garaged stylus".
 
 You can run the following commands on your DUT:
 1. `cros_config /hardware-properties stylus-category` This is helpful to
@@ -216,15 +203,13 @@ You can run the following commands on your DUT:
 2. `cros-health-tool event --category=stylus_garage --check_supported` Use this
    to see if healthd reports the correct support status.
 
-To configure `stylus-category` in Boxster, you can use `create_stylus` function
-defined in
-[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
-to set it up.
+To configure `stylus-category` in Boxster, you can use the `create_stylus`
+function defined in [hw_topology.star] to set it up.
 
 ### Stylus
 
-It's supported only when `stylus-category` is explicitly configured as
-"internal" or "external".
+Supported only when `stylus-category` is explicitly configured as "internal" or
+"external".
 
 You can run the following commands on your DUT:
 1. `cros_config /hardware-properties stylus-category` This is helpful to
@@ -232,7 +217,7 @@ You can run the following commands on your DUT:
 2. `cros-health-tool event --category=stylus --check_supported` Use this to see
    if healthd reports the correct support status.
 
-To configure `stylus-category` in Boxster, you can use `create_stylus` function
-defined in
-[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
-to set it up.
+To configure `stylus-category` in Boxster, you can use the `create_stylus`
+function defined in [hw_topology.star] to set it up.
+
+[hw_topology.star]: https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star
