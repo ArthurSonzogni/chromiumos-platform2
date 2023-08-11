@@ -5,10 +5,9 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search_v2.h"
 
 #include <cstdint>
-#include <memory>
 #include <utility>
 
-#include <base/notreached.h>
+#include <base/check.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
