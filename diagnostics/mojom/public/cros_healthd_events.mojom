@@ -379,7 +379,7 @@ union TouchpadEventInfo {
 // External display event info.
 //
 // NextMinVersion: 2, NextIndex: 2
-[Stable, RenamedFrom="ash.cros_healthd.mojom.HdmiEventInfo"]
+[Stable]
 struct ExternalDisplayEventInfo {
   [Stable, Extensible]
   enum State {
