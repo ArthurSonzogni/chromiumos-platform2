@@ -97,6 +97,7 @@ static_library("libsecagent") {
     "message_sender.cc",
     "metrics_sender.cc",
     "network_plugin.cc",
+    "platform.cc",
     "policies_features_broker.cc",
     "process_cache.cc",
     "process_plugin.cc",
@@ -170,6 +171,7 @@ if (use.test) {
       "test/device_user_test.cc",
       "test/message_sender_test.cc",
       "test/metrics_sender_test.cc",
+      "test/network_bpf_test.cc",
       "test/network_plugin_test.cc",
       "test/policies_features_broker_test.cc",
       "test/process_cache_test.cc",
@@ -181,6 +183,7 @@ if (use.test) {
       ":secagentd_testrunner_config",
       ":target_defaults",
     ]
+    defines = [ "SECAGENTD_TEST=1" ]
     run_test = true
     deps = [
       ":libsecagent",

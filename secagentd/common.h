@@ -18,16 +18,7 @@ namespace secagentd {
 extern "C" int indirect_c_callback(void* ctx, void* data, size_t size);
 namespace common {
 void SetDBus(scoped_refptr<dbus::Bus>);
-
 scoped_refptr<dbus::Bus> GetDBus();
-
-int if_nametoindex(const char* ifname);
-
-class PlatformInterface {
- public:
-  virtual int IfNameToIndex(std::string_view ifname) = 0;
-  virtual ~PlatformInterface();
-};
 }  // namespace common
 
 namespace Types {

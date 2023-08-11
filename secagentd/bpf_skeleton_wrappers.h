@@ -9,14 +9,12 @@
 #include <bpf/libbpf.h>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <utility>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_format.h"
 #include "base/files/file_descriptor_watcher_posix.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
@@ -25,10 +23,13 @@
 #include "secagentd/bpf_skeletons/skeleton_network_bpf.h"
 #include "secagentd/common.h"
 #include "secagentd/metrics_sender.h"
+#include "secagentd/platform.h"
 #include "shill/dbus/client/client.h"
 
 namespace secagentd {
-
+namespace testing {
+class NetworkBpfTestFixture;
+}
 // Directory with min_core_btf payloads. Must match the ebuild.
 constexpr char kMinCoreBtfDir[] = "/usr/share/btf/secagentd/";
 
@@ -82,14 +83,16 @@ class BpfSkeleton : public BpfSkeletonInterface {
  public:
   BpfSkeleton(std::string_view plugin_name,
               const SkeletonCallbacks<SkeletonType>& skel_cb)
-      : name_(plugin_name), skel_cbs_(skel_cb) {}
+      : name_(plugin_name), skel_cbs_(skel_cb) {
+    platform_ = GetPlatform();
+  }
   ~BpfSkeleton() override {
     // The file descriptor being watched must outlive the controller.
     // Force rb_watch_readable_ destruction before closing fd.
     rb_watch_readable_ = nullptr;
     if (rb_ != nullptr) {
       // Free and close all ring buffer fds.
-      ring_buffer__free(rb_);
+      platform_->RingBufferFree(rb_);
     }
     if (skel_ != nullptr) {
       skel_cbs_.destroy.Run(skel_);
@@ -99,7 +102,7 @@ class BpfSkeleton : public BpfSkeletonInterface {
     if (rb_ == nullptr) {
       return -1;
     }
-    return ring_buffer__consume(rb_);
+    return platform_->RingBufferConsume(rb_);
   }
 
  protected:
@@ -115,7 +118,7 @@ class BpfSkeleton : public BpfSkeletonInterface {
                "are null."})),
           metrics::BpfAttachResult(-1));
     }
-    libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
+    platform_->LibbpfSetStrictMode(LIBBPF_STRICT_ALL);
 #if defined(USE_MIN_CORE_BTF) && USE_MIN_CORE_BTF == 1
     // Ask libbpf to load a BTF that's tailored specifically to this BPF. Note
     // that this is more of a suggestion because libbpf will silently ignore the
@@ -135,29 +138,28 @@ class BpfSkeleton : public BpfSkeletonInterface {
                                 {name_, "BPF skeleton failed to open."})),
                             metrics::BpfAttachResult::kErrorOpen);
     }
-    if (bpf_object__load_skeleton(skel_->skeleton)) {
+    if (platform_->BpfObjectLoadSkeleton(skel_->skeleton)) {
       return std::make_pair(
           absl::InternalError(base::StrCat(
               {name_, ": application failed loading and verification."})),
           metrics::BpfAttachResult::kErrorLoad);
     }
-
-    if (bpf_object__attach_skeleton(skel_->skeleton)) {
+    if (platform_->BpfObjectAttachSkeleton(skel_->skeleton)) {
       return std::make_pair(absl::InternalError(base::StrCat(
                                 {name_, ": program failed to attach."})),
                             metrics::BpfAttachResult::kErrorAttach);
     }
 
-    int map_fd = bpf_map__fd(skel_->maps.rb);
+    int map_fd = platform_->BpfMapFd(skel_->maps.rb);
     int epoll_fd{-1};
 
     // ring_buffer__new will fail with an invalid fd but we explicitly check
     // anyways for code clarity.
     if (map_fd >= 0) {
-      rb_ = ring_buffer__new(
+      rb_ = platform_->RingBufferNew(
           map_fd, indirect_c_callback,
           static_cast<void*>(&callbacks_.ring_buffer_event_callback), nullptr);
-      epoll_fd = ring_buffer__epoll_fd(rb_);
+      epoll_fd = platform_->RingBufferEpollFd(rb_);
     }
 
     if (map_fd < 0 || !rb_ || epoll_fd < 0) {
@@ -166,7 +168,7 @@ class BpfSkeleton : public BpfSkeletonInterface {
                             metrics::BpfAttachResult::kErrorRingBuffer);
     }
 
-    rb_watch_readable_ = base::FileDescriptorWatcher::WatchReadable(
+    rb_watch_readable_ = platform_->WatchReadable(
         epoll_fd, callbacks_.ring_buffer_read_ready_callback);
     return std::make_pair(absl::OkStatus(), metrics::BpfAttachResult::kSuccess);
   }
@@ -178,16 +180,20 @@ class BpfSkeleton : public BpfSkeletonInterface {
   std::string name_;
   const SkeletonCallbacks<SkeletonType> skel_cbs_;
   struct ring_buffer* rb_{nullptr};
+  base::WeakPtr<PlatformInterface> platform_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> rb_watch_readable_;
 };
 
 class NetworkBpfSkeleton : public BpfSkeletonInterface {
  public:
-  explicit NetworkBpfSkeleton(uint32_t batch_interval_s,
-                              std::unique_ptr<shill::Client> shill);
+  NetworkBpfSkeleton(
+      uint32_t batch_interval_s,
+      std::unique_ptr<shill::Client> shill,
+      std::optional<SkeletonCallbacks<network_bpf>> cbs = std::nullopt);
   int ConsumeEvent() override;
 
  protected:
+  friend testing::NetworkBpfTestFixture;
   std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() override;
   void ScanFlowMap();
   std::unordered_set<uint64_t> GetActiveSocketsSet();
@@ -206,6 +212,7 @@ class NetworkBpfSkeleton : public BpfSkeletonInterface {
   // Timer to periodically scan the BPF map and generate synthetic flow
   // events.
   base::RepeatingTimer scan_bpf_maps_timer_;
+  base::WeakPtr<PlatformInterface> platform_;
   base::WeakPtrFactory<NetworkBpfSkeleton> weak_ptr_factory_;
 };
 

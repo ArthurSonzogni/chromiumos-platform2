@@ -8,15 +8,22 @@
 #include "secagentd/common.h"
 
 namespace secagentd {
-NetworkBpfSkeleton::NetworkBpfSkeleton(uint32_t batch_interval_s,
-                                       std::unique_ptr<shill::Client> shill)
+NetworkBpfSkeleton::NetworkBpfSkeleton(
+    uint32_t batch_interval_s,
+    std::unique_ptr<shill::Client> shill,
+    std::optional<SkeletonCallbacks<network_bpf>> cbs)
     : batch_interval_s_(batch_interval_s), weak_ptr_factory_(this) {
-  SkeletonCallbacks<network_bpf> skel_cbs;
   CHECK(shill != nullptr);
+  platform_ = GetPlatform();
+  SkeletonCallbacks<network_bpf> skel_cbs;
+  if (cbs) {
+    skel_cbs = std::move(*cbs);
+  } else {
+    skel_cbs.destroy = base::BindRepeating(network_bpf__destroy);
+    skel_cbs.open = base::BindRepeating(network_bpf__open);
+    skel_cbs.open_opts = base::BindRepeating(network_bpf__open_opts);
+  }
   shill_ = std::move(shill);
-  skel_cbs.destroy = base::BindRepeating(network_bpf__destroy);
-  skel_cbs.open = base::BindRepeating(network_bpf__open);
-  skel_cbs.open_opts = base::BindRepeating(network_bpf__open_opts);
   default_bpf_skeleton_ =
       std::make_unique<BpfSkeleton<network_bpf>>("network", skel_cbs);
 }
@@ -74,10 +81,10 @@ void NetworkBpfSkeleton::AddExternalDevice(
     const shill::Client::Device* device) {
   auto map =
       default_bpf_skeleton_->skel_->maps.cros_network_external_interfaces;
-  int64_t key = common::if_nametoindex(device->ifname.c_str());
+  int64_t key = platform_->IfNameToIndex(device->ifname.c_str());
   int64_t value = key;
-  int rv = bpf_map__update_elem(map, &key, sizeof(key), &value, sizeof(value),
-                                BPF_NOEXIST);
+  int rv = platform_->BpfMapUpdateElem(map, &key, sizeof(key), &value,
+                                       sizeof(value), BPF_NOEXIST);
   if (rv == EEXIST) {
     LOG(WARNING) << "Network: External device " << device->ifname
                  << " already in the BPF external device map.";
@@ -95,8 +102,8 @@ void NetworkBpfSkeleton::RemoveExternalDevice(
     const shill::Client::Device* device) {
   auto map =
       default_bpf_skeleton_->skel_->maps.cros_network_external_interfaces;
-  int64_t key = common::if_nametoindex(device->ifname.c_str());
-  if (bpf_map__delete_elem(map, &key, sizeof(key), 0) < 0) {
+  int64_t key = platform_->IfNameToIndex(device->ifname.c_str());
+  if (platform_->BpfMapDeleteElem(map, &key, sizeof(key), 0) < 0) {
     LOG(ERROR) << "Failed to remove " << device->ifname
                << " from BPF external device map.";
     // TODO(b:277815178): Add a UMA metric to log errors related to external
@@ -125,7 +132,7 @@ std::unordered_set<uint64_t> NetworkBpfSkeleton::GetActiveSocketsSet() {
   int bpf_rv;
   std::unordered_set<uint64_t> rv;
   do {
-    bpf_rv = bpf_map__get_next_key(
+    bpf_rv = platform_->BpfMapGetNextKey(
         default_bpf_skeleton_->skel_->maps.active_socket_map, cur_key,
         &next_key, sizeof(next_key));
     cur_key = &next_key;
@@ -161,14 +168,14 @@ void NetworkBpfSkeleton::ScanFlowMap() {
   network_event.type = bpf::kSyntheticNetworkFlow;
   cros_event.type = bpf::kNetworkEvent;
   do {
-    rv = bpf_map__get_next_key(
+    rv = platform_->BpfMapGetNextKey(
         default_bpf_skeleton_->skel_->maps.cros_network_flow_map, cur_key,
         next_key, sizeof(*next_key));
     cur_key = next_key;
     if (rv == 0 || rv == -ENOENT) {  // ENOENT means last key.
-      if (bpf_map__lookup_elem(skel_flow_map, cur_key, sizeof(*cur_key),
-                               &event_flow_map_value,
-                               sizeof(event_flow_map_value), 0) < 0) {
+      if (platform_->BpfMapLookupElem(skel_flow_map, cur_key, sizeof(*cur_key),
+                                      &event_flow_map_value,
+                                      sizeof(event_flow_map_value), 0) < 0) {
         LOG(ERROR) << "Flow metrics map retrieval failed for a given key.";
         // TODO(b:277815178): Add a UMA metric to log errors.
         continue;
@@ -179,18 +186,18 @@ void NetworkBpfSkeleton::ScanFlowMap() {
         // delete elements while we're iterating through the map.
         flow_map_entries_to_delete.push_back(*next_key);
       }
-      if (bpf_map__lookup_elem(skel_process_map, &cur_key->sock,
-                               sizeof(cur_key->sock),
-                               &event_flow.process_map_value,
-                               sizeof(event_flow.process_map_value), 0) < 0) {
+      if (platform_->BpfMapLookupElem(
+              skel_process_map, &cur_key->sock, sizeof(cur_key->sock),
+              &event_flow.process_map_value,
+              sizeof(event_flow.process_map_value), 0) < 0) {
         LOG(ERROR) << "Error fetching process related information for a "
                       "flow entry.";
         // TODO(b:277815178): Add a UMA metric to log errors.
         continue;
       }
       if (event_flow_map_value.garbage_collect_me) {
-        bpf_map__delete_elem(skel_process_map, &(next_key->sock),
-                             sizeof(next_key->sock), 0);
+        platform_->BpfMapDeleteElem(skel_process_map, &(next_key->sock),
+                                    sizeof(next_key->sock), 0);
       }
       default_bpf_skeleton_->callbacks_.ring_buffer_event_callback.Run(
           cros_event);
@@ -198,7 +205,7 @@ void NetworkBpfSkeleton::ScanFlowMap() {
   } while (rv == 0);
   // Garbage collect entries in the flow map.
   for (const auto& flow_key : flow_map_entries_to_delete) {
-    bpf_map__delete_elem(skel_flow_map, &flow_key, sizeof(flow_key), 0);
+    platform_->BpfMapDeleteElem(skel_flow_map, &flow_key, sizeof(flow_key), 0);
   }
 }
 

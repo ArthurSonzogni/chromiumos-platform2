@@ -4,12 +4,11 @@
 
 #include "secagentd/common.h"
 
-#include <memory>
-#include <net/if.h>
 #include <string>
 #include <unistd.h>
 #include <utility>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_format.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
@@ -28,7 +27,6 @@ extern "C" int indirect_c_callback(void* ctx, void* data, size_t size) {
 namespace common {
 namespace {
 scoped_refptr<dbus::Bus> dbus{nullptr};
-std::unique_ptr<PlatformInterface> platform{nullptr};
 }  // namespace
 
 scoped_refptr<dbus::Bus> GetDBus() {
@@ -39,16 +37,6 @@ void SetDBus(scoped_refptr<dbus::Bus> bus) {
   dbus = bus;
 }
 
-void SetPlatform(std::unique_ptr<PlatformInterface> platform_in) {
-  platform = std::move(platform_in);
-}
-
-int if_nametoindex(const char* ifname) {
-  if (platform) {
-    return platform->IfNameToIndex(std::string_view(ifname));
-  }
-  return ::if_nametoindex(ifname);
-}
 }  // namespace common
 namespace Types {
 
