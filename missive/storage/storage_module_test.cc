@@ -78,7 +78,8 @@ class StorageModuleTest : public ::testing::Test {
     StorageModule::Create(
         {.options = options_,
          .legacy_storage_enabled = legacy_storage_enabled,
-         .queues_container = QueuesContainer::Create(/*is_enabled=*/false),
+         .queues_container =
+             QueuesContainer::Create(/*storage_degradation_enabled=*/false),
          .encryption_module = EncryptionModule::Create(/*is_enabled=*/false),
          .compression_module = CompressionModule::Create(
              /*is_enabled=*/true, /*compression_threshold=*/0,

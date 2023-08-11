@@ -927,13 +927,14 @@ class NewStorageTest
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
     NewStorage::Create(
         {.options = options,
-         .queues_container = QueuesContainer::Create(/*is_enabled=*/false),
+         .queues_container =
+             QueuesContainer::Create(/*storage_degradation_enabled=*/false),
          .encryption_module = encryption_module,
          .compression_module =
              base::MakeRefCounted<test::TestCompressionModule>(),
          .signature_verification_dev_flag =
              base::MakeRefCounted<SignatureVerificationDevFlag>(
-                 /*is_enabled=*/false),
+                 /*storage_degradation_enabled=*/false),
          .async_start_upload_cb = base::BindRepeating(
              &NewStorageTest::AsyncStartMockUploader, base::Unretained(this))},
         e.cb());
@@ -1003,19 +1004,19 @@ class NewStorageTest
               /*renew_encryption_key_period=*/base::Minutes(30))) {
     // Initialize NewStorage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    NewStorage::Create(
-        {.options = options,
-         .queues_container = QueuesContainer::Create(/*is_enabled=*/false),
-         .encryption_module = encryption_module,
-         .compression_module =
-             base::MakeRefCounted<test::TestCompressionModule>(),
-         .signature_verification_dev_flag =
-             base::MakeRefCounted<SignatureVerificationDevFlag>(
-                 /*is_enabled=*/false),
-         .async_start_upload_cb =
-             base::BindRepeating(&NewStorageTest::AsyncStartMockUploaderFailing,
-                                 base::Unretained(this))},
-        e.cb());
+    NewStorage::Create({.options = options,
+                        .queues_container = QueuesContainer::Create(
+                            /*storage_degradation_enabled=*/false),
+                        .encryption_module = encryption_module,
+                        .compression_module =
+                            base::MakeRefCounted<test::TestCompressionModule>(),
+                        .signature_verification_dev_flag =
+                            base::MakeRefCounted<SignatureVerificationDevFlag>(
+                                /*is_enabled=*/false),
+                        .async_start_upload_cb = base::BindRepeating(
+                            &NewStorageTest::AsyncStartMockUploaderFailing,
+                            base::Unretained(this))},
+                       e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }

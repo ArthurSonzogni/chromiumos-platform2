@@ -163,17 +163,19 @@ void QueueUploaderInterface::WrapInstantiatedUploader(
 }
 
 // static
-scoped_refptr<QueuesContainer> QueuesContainer::Create(bool is_enabled) {
+scoped_refptr<QueuesContainer> QueuesContainer::Create(
+    bool storage_degradation_enabled) {
   // Cannot use MakeRefCounted, because constructor is declared private.
   return base::WrapRefCounted(new QueuesContainer(
-      is_enabled, base::ThreadPool::CreateSequencedTaskRunner(
-                      {base::TaskPriority::BEST_EFFORT, base::MayBlock()})));
+      storage_degradation_enabled,
+      base::ThreadPool::CreateSequencedTaskRunner(
+          {base::TaskPriority::BEST_EFFORT, base::MayBlock()})));
 }
 
 QueuesContainer::QueuesContainer(
-    bool is_enabled,
+    bool storage_degradation_enabled,
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
-    : DynamicFlag("controlled_degradation", is_enabled),
+    : DynamicFlag("controlled_degradation", storage_degradation_enabled),
       base::RefCountedDeleteOnSequence<QueuesContainer>(sequenced_task_runner),
       sequenced_task_runner_(sequenced_task_runner) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
@@ -282,7 +284,7 @@ void QueuesContainer::GetDegradationCandidates(
     return;
   }
   DCHECK_CALLED_ON_VALID_SEQUENCE(container->sequence_checker_);
-  if (!container->is_enabled()) {
+  if (!container->storage_degradation_enabled()) {
     std::move(result_cb).Run({});
     return;
   }
@@ -335,6 +337,10 @@ void QueuesContainer::DropAllQueues() {
 
 base::WeakPtr<QueuesContainer> QueuesContainer::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
+}
+
+bool QueuesContainer::storage_degradation_enabled() const {
+  return is_enabled();  // Propagate from DynamicFlag.
 }
 
 scoped_refptr<base::SequencedTaskRunner>

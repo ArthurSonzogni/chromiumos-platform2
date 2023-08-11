@@ -53,7 +53,8 @@ class QueuesContainer
       public base::RefCountedDeleteOnSequence<QueuesContainer> {
  public:
   // Factory method creates task runner and the container.
-  static scoped_refptr<QueuesContainer> Create(bool is_enabled);
+  static scoped_refptr<QueuesContainer> Create(
+      bool storage_degradation_enabled);
   QueuesContainer(const QueuesContainer&) = delete;
   QueuesContainer& operator=(const QueuesContainer) = delete;
 
@@ -90,6 +91,8 @@ class QueuesContainer
 
   base::WeakPtr<QueuesContainer> GetWeakPtr();
 
+  // Accessors.
+  bool storage_degradation_enabled() const;
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner() const;
 
  protected:
@@ -115,7 +118,7 @@ class QueuesContainer
                                        Hash>;
 
   QueuesContainer(
-      bool is_enabled,
+      bool storage_degradation_enabled,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;

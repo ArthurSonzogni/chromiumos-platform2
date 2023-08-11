@@ -705,8 +705,8 @@ class LegacyStorageDegradationTest
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
     NewStorage::Create(
         {.options = options,
-         .queues_container =
-             QueuesContainer::Create(/*is_enabled=*/is_degradation_enabled()),
+         .queues_container = QueuesContainer::Create(
+             /*storage_degradation_enabled=*/is_degradation_enabled()),
          .encryption_module = encryption_module,
          .compression_module =
              base::MakeRefCounted<test::TestCompressionModule>(),
