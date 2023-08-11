@@ -179,13 +179,15 @@ void DiskReadRoutine::CheckStorageSpace(brillo::Error* err,
     RaiseException("Failed to retrieve free storage space");
     return;
   }
-  const uint32_t free_space_mib =
-      static_cast<uint32_t>(free_space_byte / 1024 / 1024);
 
   // Ensure DUT has sufficient storage space and prevent storage space state
   // from falling into low state during test.
+  const uint32_t free_space_mib =
+      static_cast<uint32_t>(free_space_byte / 1024 / 1024);
   if (free_space_mib < file_size_mib_ ||
       free_space_mib - file_size_mib_ < kDiskReadRoutineReservedSpaceMiB) {
+    LOG(ERROR) << "Insufficient storage space. Free space: " << free_space_byte
+               << " bytes";
     RaiseException("Failed to reserve sufficient storage space");
     return;
   }
