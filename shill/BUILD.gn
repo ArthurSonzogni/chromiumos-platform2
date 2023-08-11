@@ -218,8 +218,11 @@ generate_dbus_proxies("generate_supplicant_proxies") {
   proxy_output_file = "include/supplicant/dbus-proxies.h"
   sources = [
     "dbus_bindings/supplicant-bss.dbus-xml",
+    "dbus_bindings/supplicant-group.dbus-xml",
     "dbus_bindings/supplicant-interface.dbus-xml",
     "dbus_bindings/supplicant-network.dbus-xml",
+    "dbus_bindings/supplicant-p2pdevice.dbus-xml",
+    "dbus_bindings/supplicant-peer.dbus-xml",
     "dbus_bindings/supplicant-process.dbus-xml",
   ]
 }
@@ -287,8 +290,11 @@ static_library("libshill") {
     "dbus/rpc_task_dbus_adaptor.cc",
     "dbus/service_dbus_adaptor.cc",
     "dbus/supplicant_bss_proxy.cc",
+    "dbus/supplicant_group_proxy.cc",
     "dbus/supplicant_interface_proxy.cc",
     "dbus/supplicant_network_proxy.cc",
+    "dbus/supplicant_p2pdevice_proxy.cc",
+    "dbus/supplicant_peer_proxy.cc",
     "dbus/supplicant_process_proxy.cc",
     "dbus/third_party_vpn_dbus_adaptor.cc",
     "dbus/upstart_proxy.cc",
