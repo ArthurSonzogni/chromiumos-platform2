@@ -110,6 +110,12 @@ const char* kCrosEventNames[] = {
 static_assert(std::size(kCrosEventNames) == 35,
               "CrosEvent enums not lining up properly");
 
+// Per base::UmaHistogramExactLinear documentation in chromium, we cannot have
+// more than 101 buckets for linear histograms. Break the build if we fail this.
+// (Also, the max is exclusive.)
+static_assert(std::size(kCrosEventNames) < kCrosEventHistogramMax,
+              "Too many CrOS events for a linear histogram.");
+
 }  // namespace
 
 MetricsLibrary::MetricsLibrary()
