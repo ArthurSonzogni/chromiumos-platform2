@@ -5,6 +5,13 @@
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
+# Required syscalls by seccomp_checker
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1
+exit_group: 1
+clock_getres_time64: 1
+
 openat: 1
 read: 1
 brk: 1
@@ -16,14 +23,26 @@ ioctl: arg1 == 0xc00c3a01 || arg1 == 0xc01c3a00 || arg1 == 0xc108ec01 || \
        arg1 == 0xc014ec00
 uname: 1
 write: 1
-exit_group: 1
-restart_syscall: 1
-exit: 1
-rt_sigreturn: 1
-sched_getattr: 1
-sched_setattr: 1
-clock_getres: 1
-clock_getres_time64: 1
-clock_gettime: 1
 clock_gettime64: 1
-gettimeofday: 1
+socket: 1
+connect: 1
+send: 1
+getuid32: 1
+geteuid32: 1
+getgid32: 1
+getegid32: 1
+epoll_create1: 1
+pipe2: 1
+epoll_ctl: 1
+getrandom: 1
+fcntl64: 1
+recvmsg: 1
+rt_sigprocmask: 1
+signalfd4: 1
+getpid: 1
+gettid: 1
+memfd_create: 1
+eventfd2: 1
+epoll_wait: 1
+mmap2: 1
+close: 1

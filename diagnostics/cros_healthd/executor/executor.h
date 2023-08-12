@@ -57,7 +57,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
                     std::optional<uint64_t> size,
                     ReadFilePartCallback callback) override;
   void GetFileInfo(File file_enum, GetFileInfoCallback callback) override;
-  void GetFanSpeed(GetFanSpeedCallback callback) override;
+  void GetAllFanSpeed(GetAllFanSpeedCallback callback) override;
   void RunIw(IwCommand cmd,
              const std::string& interface_name,
              RunIwCallback callback) override;

@@ -199,11 +199,12 @@ interface Executor {
   // Gets file info. Returns the file info or null if failed.
   GetFileInfo(File file_enum) => (FileInfo? info);
 
-  // Obtains fan speed by running ectool and returns the result.
+  // Get the fan speed for all fans in rpm through the EC. The number of
+  // returned fan speed is the same as the total number of fans.
   //
   // The response:
-  // * |result| - contains information received from running the tool.
-  GetFanSpeed() => (ExecutedProcessResult result);
+  // * |fan_rpms| - An array containing the rpm of each fan.
+  GetAllFanSpeed() => (array<uint32> fan_rpms, string? err);
 
   // Runs the `iw` command and returns the result.
   enum IwCommand {

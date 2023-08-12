@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_FAN_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_FAN_FETCHER_H_
 
+#include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -34,10 +35,10 @@ class FanFetcher final : public BaseFetcher {
   void FetchFanInfo(FetchFanInfoCallback callback);
 
  private:
-  // Handles the executor's response to a GetFanSpeed IPC.
-  void HandleFanSpeedResponse(
-      FetchFanInfoCallback callback,
-      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
+  // Handles the executor's response to a GetAllFanSpeed IPC.
+  void HandleFanSpeedResponse(FetchFanInfoCallback callback,
+                              const std::vector<uint32_t>& fan_rpms,
+                              const std::optional<std::string>& error);
 
   // Must be the last member of the class, so that it's destroyed first when an
   // instance of the class is destroyed. This will prevent any outstanding

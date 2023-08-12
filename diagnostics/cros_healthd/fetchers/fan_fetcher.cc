@@ -23,15 +23,13 @@
 
 #include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
-
-constexpr auto kFanStalledRegex = R"(Fan \d+ stalled \(RPM: 65534\))";
-constexpr auto kFanSpeedRegex = R"(Fan \d+ RPM: (\d+))";
 
 }  // namespace
 
@@ -43,51 +41,26 @@ void FanFetcher::FetchFanInfo(FetchFanInfoCallback callback) {
     return;
   }
 
-  context_->executor()->GetFanSpeed(
+  context_->executor()->GetAllFanSpeed(
       base::BindOnce(&FanFetcher::HandleFanSpeedResponse,
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void FanFetcher::HandleFanSpeedResponse(
-    FetchFanInfoCallback callback, mojom::ExecutedProcessResultPtr result) {
-  std::string err = result->err;
-  int32_t return_code = result->return_code;
-  if (!err.empty() || return_code != EXIT_SUCCESS) {
+    FetchFanInfoCallback callback,
+    const std::vector<uint32_t>& fan_rpms,
+    const std::optional<std::string>& error) {
+  if (error.has_value()) {
     std::move(callback).Run(mojom::FanResult::NewError(CreateAndLogProbeError(
         mojom::ErrorType::kSystemUtilityError,
-        base::StringPrintf(
-            "GetFanSpeed failed with return code: %d and error: %s",
-            return_code, err.c_str()))));
+        base::StringPrintf("GetAllFanSpeed failed with error: %s",
+                           error.value().c_str()))));
     return;
   }
 
   std::vector<mojom::FanInfoPtr> fan_info;
-  std::string output = result->out;
-  std::vector<std::string> lines = base::SplitString(
-      output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const auto& line : lines) {
-    if (RE2::FullMatch(line, kFanStalledRegex)) {
-      fan_info.push_back(mojom::FanInfo::New(0));
-      continue;
-    }
-
-    std::string regex_result;
-    if (!RE2::FullMatch(line, kFanSpeedRegex, &regex_result)) {
-      std::move(callback).Run(mojom::FanResult::NewError(
-          CreateAndLogProbeError(mojom::ErrorType::kParseError,
-                                 "Line does not match regex: " + line)));
-      return;
-    }
-
-    uint32_t speed;
-    if (base::StringToUint(regex_result, &speed)) {
-      fan_info.push_back(mojom::FanInfo::New(speed));
-    } else {
-      std::move(callback).Run(mojom::FanResult::NewError(CreateAndLogProbeError(
-          mojom::ErrorType::kParseError,
-          "Failed to convert regex result to integer: " + regex_result)));
-      return;
-    }
+  for (uint32_t fan_rpm : fan_rpms) {
+    fan_info.push_back(mojom::FanInfo::New(fan_rpm));
   }
 
   std::move(callback).Run(mojom::FanResult::NewFanInfo(std::move(fan_info)));

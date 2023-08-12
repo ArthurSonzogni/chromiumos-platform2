@@ -54,7 +54,6 @@ namespace diagnostics {
 namespace path {
 namespace {
 
-constexpr char kEctoolBinary[] = "/usr/sbin/ectool";
 constexpr char kIwBinary[] = "/usr/sbin/iw";
 constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
 constexpr char kHciconfigBinary[] = "/usr/bin/hciconfig";
@@ -75,8 +74,8 @@ namespace seccomp_file {
 
 // SECCOMP policy for evdev related routines.
 constexpr char kEvdev[] = "evdev-seccomp.policy";
-// SECCOMP policy for ectool pwmgetfanrpm.
-constexpr char kFanSpeed[] = "ectool_pwmgetfanrpm-seccomp.policy";
+// SECCOMP policy for fan related routines.
+constexpr char kFan[] = "ec_fan-seccomp.policy";
 // SECCOMP policy for fingerprint related routines.
 constexpr char kFingerprint[] = "fingerprint-seccomp.policy";
 // SECCOMP policy for hciconfig.
@@ -130,9 +129,6 @@ constexpr char kFio[] = "fio-dlc";
 
 // Amount of time we wait for a process to respond to SIGTERM before killing it.
 constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
-
-// The ectool command used to collect fan speed in RPM.
-constexpr char kGetFanRpmCommand[] = "pwmgetfanrpm";
 
 // wireless interface name start with "wl" or "ml" and end it with a number. All
 // characters are in lowercase.  Max length is 16 characters.
@@ -302,18 +298,19 @@ void Executor::GetFileInfo(File file_enum, GetFileInfoCallback callback) {
       /*creation_time=*/result));
 }
 
-void Executor::GetFanSpeed(GetFanSpeedCallback callback) {
-  std::vector<std::string> command = {path::kEctoolBinary, kGetFanRpmCommand};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kFanSpeed,
+void Executor::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kFan,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .capabilities_mask = CAP_TO_MASK(CAP_SYS_RAWIO),
-          .readonly_mount_points = {base::FilePath(path::kCrosEcDevice)},
+          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
       });
 
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetAllFanSpeed(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback), std::vector<uint32_t>{},
+      kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::RunIw(IwCommand cmd,
