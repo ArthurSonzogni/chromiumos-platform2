@@ -64,6 +64,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
           observer) override;
   void RunFloatingPoint(base::TimeDelta exec_duration,
                         RunFloatingPointCallback callback) override;
+  void GetAllFanSpeed(GetAllFanSpeedCallback callback) override;
 };
 
 }  // namespace diagnostics

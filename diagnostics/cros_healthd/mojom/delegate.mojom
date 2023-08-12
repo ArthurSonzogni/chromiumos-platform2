@@ -153,4 +153,11 @@ interface Delegate {
   RunFloatingPoint(
       ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration)
       => (bool passed);
+
+  // Get the fan speed for all fans in rpm through the EC. The number of
+  // returned fan speed is the same as the total number of fans.
+  //
+  // The response:
+  // * |fan_rpms| - An array containing the rpm of each fan.
+  GetAllFanSpeed() => (array<uint32> fan_rpms, string? err);
 };

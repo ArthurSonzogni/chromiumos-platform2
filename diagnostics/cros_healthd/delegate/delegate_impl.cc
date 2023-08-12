@@ -8,6 +8,7 @@
 #include <array>
 #include <cstdint>
 #include <fcntl.h>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -23,11 +24,13 @@
 #include <libec/fingerprint/fp_frame_command.h>
 #include <libec/fingerprint/fp_info_command.h>
 #include <libec/fingerprint/fp_mode_command.h>
+#include <libec/get_features_command.h>
 #include <libec/get_protocol_info_command.h>
 #include <libec/get_version_command.h>
 #include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
 #include <libec/motion_sense_command_lid_angle.h>
+#include <libec/pwm/pwm_get_fan_target_rpm_command.h>
 
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
@@ -103,6 +106,36 @@ mojom::PsrInfo::LogState LogStateToMojo(diagnostics::psr::LogState log_state) {
     case diagnostics::psr::LogState::kStopped:
       return mojom::PsrInfo::LogState::kStopped;
   }
+}
+
+// A common util function to read the number of fans in the device.
+std::optional<uint8_t> GetNumFans(const int cros_fd) {
+  ec::GetFeaturesCommand get_features;
+  if (!get_features.Run(cros_fd)) {
+    LOG(ERROR) << "Failed to run ec::GetFeaturesCommand";
+    return std::nullopt;
+  }
+
+  if (!get_features.IsFeatureSupported(EC_FEATURE_PWM_FAN)) {
+    return 0;
+  }
+
+  static_assert(EC_FAN_SPEED_ENTRIES < std::numeric_limits<uint8_t>::max(),
+                "Value of EC_FAN_SPEED_ENTRIES exceeds maximum value of uint8");
+
+  uint8_t fan_idx;
+  for (fan_idx = 0; fan_idx < EC_FAN_SPEED_ENTRIES; ++fan_idx) {
+    ec::PwmGetFanTargetRpmCommand get_fan_rpm{fan_idx};
+    if (!get_fan_rpm.Run(cros_fd) || !get_fan_rpm.Rpm().has_value()) {
+      LOG(ERROR) << "Failed to read fan speed for fan idx: "
+                 << static_cast<int>(fan_idx);
+      return std::nullopt;
+    }
+
+    if (get_fan_rpm.Rpm().value() == EC_FAN_SPEED_NOT_PRESENT)
+      return fan_idx;
+  }
+  return fan_idx;
 }
 
 }  // namespace
@@ -529,6 +562,38 @@ void DelegateImpl::RunFloatingPoint(base::TimeDelta exec_duration,
     }
   }
   std::move(callback).Run(true);
+}
+
+void DelegateImpl::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  std::vector<uint32_t> fan_rpms;
+  std::optional<uint8_t> num_fans = GetNumFans(cros_fd.get());
+
+  if (!num_fans.has_value()) {
+    std::move(callback).Run({}, "Failed to get number of fans");
+    return;
+  }
+
+  for (uint8_t fan_idx = 0; fan_idx < num_fans.value(); ++fan_idx) {
+    ec::PwmGetFanTargetRpmCommand get_fan_rpm{fan_idx};
+    if (!get_fan_rpm.Run(cros_fd.get()) || !get_fan_rpm.Rpm().has_value() ||
+        get_fan_rpm.Rpm().value() == EC_FAN_SPEED_NOT_PRESENT) {
+      LOG(ERROR) << "Failed to read fan speed for fan idx: "
+                 << static_cast<int>(fan_idx);
+      std::move(callback).Run({}, "Failed to read fan speed");
+      return;
+    }
+
+    if (get_fan_rpm.Rpm().value() == EC_FAN_SPEED_STALLED_DEPRECATED) {
+      // For a stalled fan, we will output the fan speed as 0.
+      fan_rpms.push_back(0);
+      continue;
+    }
+
+    fan_rpms.push_back(get_fan_rpm.Rpm().value());
+  }
+
+  std::move(callback).Run(fan_rpms, std::nullopt);
 }
 
 }  // namespace diagnostics
