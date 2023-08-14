@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
+#include <brillo/files/file_util.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
@@ -84,7 +85,7 @@ class TpmManagerServiceFuzzer : public brillo::Daemon {
     OTHER_TPM_SECTION();
     TPM_SELECT_END;
 
-    if (!base::DeletePathRecursively(base::FilePath(kTpmLocalDataFile))) {
+    if (!brillo::DeletePathRecursively(base::FilePath(kTpmLocalDataFile))) {
       PLOG(FATAL) << "Failed to clear directory for LocalDataStore.";
     }
 
