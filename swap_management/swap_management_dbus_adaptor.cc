@@ -17,17 +17,10 @@
 namespace swap_management {
 
 SwapManagementDBusAdaptor::SwapManagementDBusAdaptor(
-    scoped_refptr<dbus::Bus> bus,
-    std::unique_ptr<base::OneShotTimer> shutdown_timer)
+    scoped_refptr<dbus::Bus> bus)
     : org::chromium::SwapManagementAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kSwapManagementServicePath)),
-      swap_tool_(std::make_unique<SwapTool>()),
-      shutdown_timer_(std::move(shutdown_timer)) {}
-
-SwapManagementDBusAdaptor::~SwapManagementDBusAdaptor() {
-  if (shutdown_timer_)
-    shutdown_timer_->Stop();
-}
+      swap_tool_(std::make_unique<SwapTool>()) {}
 
 void SwapManagementDBusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
@@ -37,13 +30,7 @@ void SwapManagementDBusAdaptor::RegisterAsync(
   dbus_object_.RegisterAsync(std::move(cb));
 }
 
-void SwapManagementDBusAdaptor::ResetShutdownTimer() {
-  if (shutdown_timer_)
-    shutdown_timer_->Reset();
-}
-
 bool SwapManagementDBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
-  ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapStart();
   swap_management::SwapToolMetrics::Get()->ReportSwapStartStatus(status);
   if (!status.ok()) {
@@ -56,7 +43,6 @@ bool SwapManagementDBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
 }
 
 bool SwapManagementDBusAdaptor::SwapStop(brillo::ErrorPtr* error) {
-  ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapStop();
   swap_management::SwapToolMetrics::Get()->ReportSwapStopStatus(status);
   if (!status.ok()) {
@@ -74,7 +60,6 @@ bool SwapManagementDBusAdaptor::SwapRestart(brillo::ErrorPtr* error) {
 
 bool SwapManagementDBusAdaptor::SwapSetSize(brillo::ErrorPtr* error,
                                             int32_t size) {
-  ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapSetSize(size);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -88,7 +73,6 @@ bool SwapManagementDBusAdaptor::SwapSetSize(brillo::ErrorPtr* error,
 
 bool SwapManagementDBusAdaptor::SwapSetSwappiness(brillo::ErrorPtr* error,
                                                   uint32_t swappiness) {
-  ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapSetSwappiness(swappiness);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -100,13 +84,11 @@ bool SwapManagementDBusAdaptor::SwapSetSwappiness(brillo::ErrorPtr* error,
 }
 
 std::string SwapManagementDBusAdaptor::SwapStatus() {
-  ResetShutdownTimer();
   return swap_tool_->SwapStatus();
 }
 
 bool SwapManagementDBusAdaptor::SwapZramEnableWriteback(brillo::ErrorPtr* error,
                                                         uint32_t size_mb) {
-  ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapZramEnableWriteback(size_mb);
   if (!status.ok()) {
     brillo::Error::AddTo(
@@ -120,7 +102,6 @@ bool SwapManagementDBusAdaptor::SwapZramEnableWriteback(brillo::ErrorPtr* error,
 
 bool SwapManagementDBusAdaptor::SwapZramMarkIdle(brillo::ErrorPtr* error,
                                                  uint32_t age) {
-  ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapZramMarkIdle(age);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -133,7 +114,6 @@ bool SwapManagementDBusAdaptor::SwapZramMarkIdle(brillo::ErrorPtr* error,
 
 bool SwapManagementDBusAdaptor::SwapZramSetWritebackLimit(
     brillo::ErrorPtr* error, uint32_t limit) {
-  ResetShutdownTimer();
   absl::Status status = swap_tool_->SwapZramSetWritebackLimit(limit);
   if (!status.ok()) {
     brillo::Error::AddTo(
@@ -147,7 +127,6 @@ bool SwapManagementDBusAdaptor::SwapZramSetWritebackLimit(
 
 bool SwapManagementDBusAdaptor::InitiateSwapZramWriteback(
     brillo::ErrorPtr* error, uint32_t mode) {
-  ResetShutdownTimer();
   absl::Status status = swap_tool_->InitiateSwapZramWriteback(mode);
   if (!status.ok()) {
     brillo::Error::AddTo(
@@ -161,7 +140,6 @@ bool SwapManagementDBusAdaptor::InitiateSwapZramWriteback(
 
 bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
                                                uint8_t value) {
-  ResetShutdownTimer();
   absl::Status status = swap_tool_->MGLRUSetEnable(value);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
