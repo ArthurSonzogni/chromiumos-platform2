@@ -29,6 +29,9 @@ class ScreenControllerInterface {
   // Changes to the previous action in flow and shows UI.
   virtual void OnBackward(ScreenInterface* screen) = 0;
 
+  // Changes the screen to the specified screen.
+  virtual void GoToScreen(ScreenType type, bool save_previous = false) = 0;
+
   // Changes the screen to the given error.
   virtual void OnError(ScreenType error_screen) = 0;
 

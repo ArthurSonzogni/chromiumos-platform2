@@ -74,6 +74,9 @@ class ScreenController : public ScreenControllerInterface,
   // Called by screens when the user presses the back or cancel button.
   void OnBackward(ScreenInterface* screen) override;
 
+  // Changes the screen to the specified screen.
+  void GoToScreen(ScreenType type, bool save_previous = false) override;
+
   // Called by screens to show an error screen.
   void OnError(ScreenType error_screen) override;
 
@@ -101,6 +104,8 @@ class ScreenController : public ScreenControllerInterface,
   }
 
  private:
+  FRIEND_TEST(GoToScreenTest, ChangeScreensSavePrevious);
+
   // Creates each class ptr as needed.
   std::unique_ptr<ScreenInterface> CreateScreen(ScreenType screen_type);
 

@@ -4,10 +4,13 @@
 
 #include <linux/input.h>
 
+#include <memory>
+#include <tuple>
 #include <utility>
 
 #include <base/test/mock_log.h>
 #include <brillo/message_loops/fake_message_loop.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "minios/draw_interface.h"
@@ -18,13 +21,43 @@
 #include "minios/mock_state_reporter_interface.h"
 #include "minios/mock_update_engine_proxy.h"
 #include "minios/screen_controller.h"
+#include "minios/screen_types.h"
 #include "minios/utils.h"
 
 using testing::_;
+using ::testing::Combine;
 using testing::HasSubstr;
 using ::testing::NiceMock;
+using ::testing::Return;
+using ::testing::TestWithParam;
+using ::testing::Values;
 
 namespace minios {
+
+const auto kChangeableScreenTypes = Values(ScreenType::kWelcomeScreen,
+                                           ScreenType::kNetworkDropDownScreen,
+                                           ScreenType::kLanguageDropDownScreen,
+                                           ScreenType::kUserPermissionScreen,
+                                           ScreenType::kDownloadError,
+                                           ScreenType::kNetworkError,
+                                           ScreenType::kPasswordError,
+                                           ScreenType::kConnectionError,
+                                           ScreenType::kGeneralError,
+                                           ScreenType::kDebugOptionsScreen,
+                                           ScreenType::kLogScreen);
+
+const auto kAllScreenTypes = Values(ScreenType::kWelcomeScreen,
+                                    ScreenType::kNetworkDropDownScreen,
+                                    ScreenType::kLanguageDropDownScreen,
+                                    ScreenType::kUserPermissionScreen,
+                                    ScreenType::kStartDownload,
+                                    ScreenType::kDownloadError,
+                                    ScreenType::kNetworkError,
+                                    ScreenType::kPasswordError,
+                                    ScreenType::kConnectionError,
+                                    ScreenType::kGeneralError,
+                                    ScreenType::kDebugOptionsScreen,
+                                    ScreenType::kLogScreen);
 
 class ScreenControllerTest : public ::testing::Test {
  public:
@@ -306,6 +339,71 @@ TEST_F(ScreenControllerTest, OnStateChanged) {
   State state;
   state.set_state(State::CONNECTED);
   screen_controller_.OnStateChanged(state);
+}
+
+// Verify that we can go to any screen from any other screen (except
+// kStartDownload)
+class GoToScreenTest
+    : public TestWithParam<std::tuple<ScreenType, ScreenType>> {
+  void SetUp() override {
+    if (next_screen_ == ScreenType::kStartDownload &&
+        starting_screen_ != ScreenType::kStartDownload) {
+      // Expect `StartUpdate` call when going to kStartDownload. Update is
+      // started on this screen's `Show`
+      EXPECT_CALL(*update_engine_proxy_, StartUpdate).WillOnce(Return(true));
+    }
+    screen_controller_.SetCurrentScreenForTest(starting_screen_);
+  }
+
+ protected:
+  NiceMock<MockProcessManager> process_manager_;
+  std::shared_ptr<NiceMock<MockUpdateEngineProxy>> update_engine_proxy_ =
+      std::make_shared<NiceMock<MockUpdateEngineProxy>>();
+  ScreenController screen_controller_{
+      std::make_shared<NiceMock<MockDrawInterface>>(), update_engine_proxy_,
+      std::make_shared<NiceMock<MockNetworkManager>>(), &process_manager_};
+  const ScreenType starting_screen_ = std::get<0>(GetParam()),
+                   next_screen_ = std::get<1>(GetParam());
+};
+
+INSTANTIATE_TEST_SUITE_P(GoToScreenParams,
+                         GoToScreenTest,
+                         Combine(kChangeableScreenTypes, kAllScreenTypes));
+
+TEST_P(GoToScreenTest, ChangeScreens) {
+  EXPECT_EQ(starting_screen_, screen_controller_.GetCurrentScreen());
+  screen_controller_.GoToScreen(next_screen_);
+  EXPECT_EQ(next_screen_, screen_controller_.GetCurrentScreen());
+}
+
+TEST_P(GoToScreenTest, ChangeScreensSavePrevious) {
+  auto mock_screen =
+      std::make_unique<testing::StrictMock<MockScreenInterface>>();
+  EXPECT_CALL(*mock_screen, GetType)
+      .WillRepeatedly(testing::Return(starting_screen_));
+  const auto expected_prev_screen = mock_screen.get();
+
+  screen_controller_.SetCurrentScreenForTest(std::move(mock_screen));
+
+  EXPECT_EQ(starting_screen_, screen_controller_.GetCurrentScreen());
+  screen_controller_.GoToScreen(next_screen_, true);
+  EXPECT_EQ(next_screen_, screen_controller_.GetCurrentScreen());
+  EXPECT_EQ(expected_prev_screen, screen_controller_.previous_screen_.get());
+}
+
+// Verify that we stay in Download screen when asked to switch. Switching out of
+// Download screen is not supported.
+class DownloadGoToScreenTest : public GoToScreenTest {};
+
+INSTANTIATE_TEST_SUITE_P(DownloadGoToScreenParams,
+                         DownloadGoToScreenTest,
+                         Combine(Values(ScreenType::kStartDownload),
+                                 kAllScreenTypes));
+
+TEST_P(DownloadGoToScreenTest, ChangeScreensNoOp) {
+  EXPECT_EQ(starting_screen_, screen_controller_.GetCurrentScreen());
+  screen_controller_.GoToScreen(next_screen_);
+  EXPECT_EQ(starting_screen_, screen_controller_.GetCurrentScreen());
 }
 
 }  // namespace minios

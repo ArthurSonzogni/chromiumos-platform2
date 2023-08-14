@@ -27,6 +27,7 @@ class MockScreenControllerInterface : public ScreenControllerInterface {
   MOCK_METHOD(void, UpdateLocale, (ScreenInterface * screen, int locale_index));
   MOCK_METHOD(void, OnForward, (ScreenInterface * screen));
   MOCK_METHOD(void, OnBackward, (ScreenInterface * screen));
+  MOCK_METHOD(void, GoToScreen, (const ScreenType type, bool save_previous));
   MOCK_METHOD(void, OnError, (ScreenType error_screen));
   MOCK_METHOD(void, OnStateChanged, (State state));
   MOCK_METHOD(ScreenType, GetCurrentScreen, ());

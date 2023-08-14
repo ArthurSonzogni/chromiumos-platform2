@@ -14,6 +14,7 @@
 
 #include "minios/error.h"
 #include "minios/recovery_installer.h"
+#include "minios/screen_types.h"
 #include "minios/screens/screen_debug_options.h"
 #include "minios/screens/screen_download.h"
 #include "minios/screens/screen_error.h"
@@ -152,6 +153,7 @@ void ScreenController::OnBackward(ScreenInterface* screen) {
       current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
       break;
     case ScreenType::kDebugOptionsScreen:
+      // Back to previous screen, reset index.
       // Back to original error screen, reset index.
       if (previous_screen_ &&
           dynamic_cast<ScreenError*>(previous_screen_.get())) {
@@ -177,6 +179,20 @@ void ScreenController::OnBackward(ScreenInterface* screen) {
     default:
       LOG(FATAL) << "Invalid screen.";
   }
+  current_screen_->Show();
+}
+
+void ScreenController::GoToScreen(ScreenType type, bool save_previous) {
+  const auto current_type = current_screen_->GetType();
+  if (current_type == ScreenType::kStartDownload) {
+    // Return without changing screen if we have started recovery.
+    LOG(ERROR) << "Screen change requested during download.";
+    return;
+  }
+  if (save_previous) {
+    previous_screen_ = std::move(current_screen_);
+  }
+  current_screen_ = CreateScreen(type);
   current_screen_->Show();
 }
 
@@ -240,8 +256,8 @@ void ScreenController::OnKeyPress(int fd_index,
 
   if (key_released && key_states_[fd_index][key_changed]) {
     key_states_[fd_index][key_changed] = false;
-    // Send key event to the currently displayed screen. It will decide what to
-    // do with it.
+    // Send key event to the currently displayed screen. It will decide what
+    // to do with it.
     current_screen_->OnKeyPress(key_changed);
     return;
   } else if (!key_released) {
@@ -268,8 +284,8 @@ bool ScreenController::MoveForward(brillo::ErrorPtr* error) {
 
 void ScreenController::PressKey(int key_changed) {
   CHECK(current_screen_) << "Could not send key event to screen.";
-  // TODO(hbarnor): Does not support GetPassword screen. Need to look into using
-  // `KeyReader` for this.
+  // TODO(hbarnor): Does not support GetPassword screen. Need to look into
+  // using `KeyReader` for this.
   current_screen_->OnKeyPress(key_changed);
 }
 
