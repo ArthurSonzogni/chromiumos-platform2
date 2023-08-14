@@ -909,7 +909,7 @@ constexpr std::array<const char*, 3> kData = {"Rec1111", "Rec222", "Rec33"};
 constexpr std::array<const char*, 3> kMoreData = {"More1111", "More222",
                                                   "More33"};
 
-TEST_P(StorageQueueTest, WriteIntoNewStorageQueueAndReopen) {
+TEST_P(StorageQueueTest, WriteIntoStorageQueueAndReopen) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -935,7 +935,7 @@ TEST_P(StorageQueueTest, WriteIntoNewStorageQueueAndReopen) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
 }
 
-TEST_P(StorageQueueTest, WriteIntoNewStorageQueueReopenAndWriteMore) {
+TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenAndWriteMore) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -968,7 +968,7 @@ TEST_P(StorageQueueTest, WriteIntoNewStorageQueueReopenAndWriteMore) {
   WriteStringOrDie(kMoreData[2]);
 }
 
-TEST_P(StorageQueueTest, WriteIntoNewStorageQueueAndUpload) {
+TEST_P(StorageQueueTest, WriteIntoStorageQueueAndUpload) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -992,7 +992,7 @@ TEST_P(StorageQueueTest, WriteIntoNewStorageQueueAndUpload) {
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
-TEST_P(StorageQueueTest, WriteIntoNewStorageQueueAndUploadWithFailures) {
+TEST_P(StorageQueueTest, WriteIntoStorageQueueAndUploadWithFailures) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -1026,7 +1026,7 @@ TEST_P(StorageQueueTest, WriteIntoNewStorageQueueAndUploadWithFailures) {
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
-TEST_P(StorageQueueTest, WriteIntoNewStorageQueueReopenWriteMoreAndUpload) {
+TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenWriteMoreAndUpload) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -1080,7 +1080,7 @@ TEST_P(StorageQueueTest, WriteIntoNewStorageQueueReopenWriteMoreAndUpload) {
 }
 
 TEST_P(StorageQueueTest,
-       WriteIntoNewStorageQueueReopenWithMissingMetadataWriteMoreAndUpload) {
+       WriteIntoStorageQueueReopenWithMissingMetadataWriteMoreAndUpload) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -1139,9 +1139,8 @@ TEST_P(StorageQueueTest,
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
-TEST_P(
-    StorageQueueTest,
-    WriteIntoNewStorageQueueReopenWithMissingLastMetadataWriteMoreAndUpload) {
+TEST_P(StorageQueueTest,
+       WriteIntoStorageQueueReopenWithMissingLastMetadataWriteMoreAndUpload) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -1213,7 +1212,7 @@ TEST_P(
 }
 
 TEST_P(StorageQueueTest,
-       WriteIntoNewStorageQueueReopenWithMissingDataWriteMoreAndUpload) {
+       WriteIntoStorageQueueReopenWithMissingDataWriteMoreAndUpload) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -1314,7 +1313,7 @@ TEST_P(StorageQueueTest,
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
-TEST_P(StorageQueueTest, WriteIntoNewStorageQueueAndFlush) {
+TEST_P(StorageQueueTest, WriteIntoStorageQueueAndFlush) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -1338,7 +1337,7 @@ TEST_P(StorageQueueTest, WriteIntoNewStorageQueueAndFlush) {
   FlushOrDie();
 }
 
-TEST_P(StorageQueueTest, WriteIntoNewStorageQueueReopenWriteMoreAndFlush) {
+TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenWriteMoreAndFlush) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);
@@ -2616,7 +2615,7 @@ TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
   }
 }
 
-TEST_P(StorageQueueTest, WriteIntoNewStorageQueueReopenWithCorruptData) {
+TEST_P(StorageQueueTest, WriteIntoStorageQueueReopenWithCorruptData) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
   WriteStringOrDie(kData[0]);
   WriteStringOrDie(kData[1]);

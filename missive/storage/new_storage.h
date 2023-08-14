@@ -5,13 +5,10 @@
 #ifndef MISSIVE_STORAGE_NEW_STORAGE_H_
 #define MISSIVE_STORAGE_NEW_STORAGE_H_
 
-#include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
-#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
@@ -38,31 +35,37 @@
 
 namespace reporting {
 
-// NewStorage is a newer implementation of Storage that allows for multiple
-// generations for a given priority. In this implementation, a queue is uniquely
-// identifiable by a generation globally unique ID (guid) + priority tuple
-// The generation guid is a randomly generation string. Generation guids have a
-// one-to-one relationship with <DM token, Priority> tuples.
+// Storage allows for multiple generations for a given priority (if
+// multi-genetation mode is enabled for this priority via finch flag).
 
-//  Features that distinguish NewStorage from Storage:
-//
-// - Queues are created lazily with given priority when Write is called with a
-//   DM token we haven't seen before, as opposed to creating all queues during
-//   storage creation.
-//
-// - Empty subdirectories in the storage directory are deleted on storage
-//   creation. TODO(b/278620137): should also delete empty directories every 1-2
-//   days.
-//
-// - NewStorage only creates queues on startup if it finds non-empty queue
-//   subdirectories in the storage directory. But these queues do not enqueue
-//   new records. They send their records and stay empty until they are deleted
-//   on the next restart of NewStorage.
-//
-// - Queue directory names now have the format of <priority>.<generation GUID>
-class NewStorage : public StorageInterface {
+// In multi-generation mode each queue is uniquely identifiable by a generation
+// globally unique ID (guid) + priority tuple The generation guid is a randomly
+// generation string. Generation guids have a one-to-one relationship with <DM
+// token, Priority> tuples.
+
+// Queues are created lazily with given priority when Write is called with a
+// DM token we haven't seen before, as opposed to creating all queues during
+// storage creation.
+
+// Multi-generation queue directory names now have the format of
+// <priority>.<generation GUID>, as oppsed to legacy queues named just
+// <priority>
+
+// Storage only creates queues on startup if it finds non-empty queue
+// subdirectories in the storage directory. But these queues do not enqueue
+// new records. They send their records and stay empty until they are deleted
+// on the next restart of Storage.
+
+// Empty subdirectories in the storage directory are deleted on storage
+// creation. TODO(b/278620137): should also delete empty directories every 1-2
+// days.
+
+// In single-generation mode (legacy mode) there is only one queue per priority.
+// Queues are created at the first start of the Storage and never erased.
+
+class Storage : public base::RefCountedThreadSafe<Storage> {
  public:
-  // Transient settings used by `NewStorage` instantiation.
+  // Transient settings used by `Storage` instantiation.
   struct Settings {
     const StorageOptions& options;
     const scoped_refptr<QueuesContainer> queues_container;
@@ -73,25 +76,24 @@ class NewStorage : public StorageInterface {
     const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb;
   };
 
-  // Creates NewStorage instance and returns it with the completion callback.
+  // Creates Storage instance and returns it with the completion callback.
   static void Create(
       const Settings& settings,
-      base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
-          completion_cb);
+      base::OnceCallback<void(StatusOr<scoped_refptr<Storage>>)> completion_cb);
 
   // Wraps and serializes Record (taking ownership of it), encrypts and writes
-  // the resulting blob into the NewStorage (the last file of it) according to
+  // the resulting blob into the Storage (the last file of it) according to
   // the priority with the next sequencing id assigned. If file is going to
   // become too large, it is closed and new file is created.
   void Write(Priority priority,
              Record record,
-             base::OnceCallback<void(Status)> completion_cb) override;
+             base::OnceCallback<void(Status)> completion_cb);
 
   // Confirms acceptance of the records according to the
   // |sequence_information.priority()| up to
   // |sequence_information.sequencing_id()| (inclusively), if the
   // |sequence_information.generation_id()| matches. All records with sequencing
-  // ids <= this one can be removed from the NewStorage, and can no longer be
+  // ids <= this one can be removed from the Storage, and can no longer be
   // uploaded. In order to reset to the very first record (seq_id=0)
   // |sequence_information.sequencing_id()| should be set to -1.
   // If |force| is false (which is used in most cases),
@@ -99,25 +101,26 @@ class NewStorage : public StorageInterface {
   // were confirmed before; otherwise it is accepted unconditionally.
   void Confirm(SequenceInformation sequence_information,
                bool force,
-               base::OnceCallback<void(Status)> completion_cb) override;
+               base::OnceCallback<void(Status)> completion_cb);
 
   // Initiates upload of collected records according to the priority.
   // Called usually for a queue with an infinite or very large upload period.
   // Multiple |Flush| calls can safely run in parallel.
   // Invokes |completion_cb| with error if upload fails or cannot start.
-  void Flush(Priority priority,
-             base::OnceCallback<void(Status)> completion_cb) override;
+  void Flush(Priority priority, base::OnceCallback<void(Status)> completion_cb);
 
   // If the server attached signed encryption key to the response, it needs to
   // be paased here.
-  void UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key) override;
+  void UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key);
 
   // Registers completion notification callback. Thread-safe.
   // All registered callbacks are called when all queues destructions come
-  // to their completion and the NewStorage is destructed as well.
-  void RegisterCompletionCallback(base::OnceClosure callback) override;
+  // to their completion and the Storage is destructed as well.
+  void RegisterCompletionCallback(base::OnceClosure callback);
 
  private:
+  friend class base::RefCountedThreadSafe<Storage>;
+
   // Private helper class to initialize a single queue
   friend class CreateQueueContext;
 
@@ -144,14 +147,17 @@ class NewStorage : public StorageInterface {
 
   // Private constructor, to be called by Create factory method only.
   // Queues need to be added afterwards.
-  explicit NewStorage(const Settings& settings);
+  explicit Storage(const Settings& settings);
+
+  // Private destructor, as required by RefCountedThreadSafe.
+  ~Storage();
 
   // Initializes the object by adding all queues for all priorities.
   // Must be called once and only once after construction.
   // Returns OK or error status, if anything failed to initialize.
   Status Init();
 
-  // Helper method to select queue by priority on the NewStorage task runner and
+  // Helper method to select queue by priority on the Storage task runner and
   // then perform `queue_action`, if succeeded. Returns failure on any stage
   // with `completion_cb`.
   void AsyncGetQueueAndProceed(
@@ -184,7 +190,14 @@ class NewStorage : public StorageInterface {
   // Immutable options, stored at the time of creation.
   const StorageOptions options_;
 
+  // Task runner for storage-wide operations (initialized in
+  // `queues_container_`).
+  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
+
+  // Health module for debugging support. Exists always, but active only when
+  // the `is_debugging_` flag is set.
+  const scoped_refptr<HealthModule> health_module_;
 
   // Encryption module.
   const scoped_refptr<EncryptionModuleInterface> encryption_module_;
@@ -204,6 +217,11 @@ class NewStorage : public StorageInterface {
   // <DM token, Priority> -> Generation guid map
   GenerationGuidMap dmtoken_to_generation_guid_map_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Queues container and storage degradation controller. If degradation is
+  // enabled, in case of disk space pressure it facilitates dropping low
+  // priority events to free up space for the higher priority ones.
+  const scoped_refptr<QueuesContainer> queues_container_;
 };
 
 }  // namespace reporting

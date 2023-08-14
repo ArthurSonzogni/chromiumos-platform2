@@ -262,8 +262,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   TestUploadClient::LastRecordDigest::Map last_record_digest_map_;
 };
 
-TEST_P(StorageQueueStressTest,
-       WriteIntoNewStorageQueueReopenWriteMoreAndUpload) {
+TEST_P(StorageQueueStressTest, WriteIntoStorageQueueReopenWriteMoreAndUpload) {
   for (size_t iStart = 0; iStart < kTotalQueueStarts; ++iStart) {
     test::TestCallbackWaiter write_waiter;
     base::RepeatingCallback<void(Status)> cb = base::BindRepeating(

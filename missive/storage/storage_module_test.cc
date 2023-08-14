@@ -125,7 +125,7 @@ class StorageModuleTest : public ::testing::Test {
   scoped_refptr<StorageModule> storage_module_;
 };
 
-TEST_F(StorageModuleTest, SwitchFromLegacyToNewStorage) {
+TEST_F(StorageModuleTest, SwitchFromLegacyToStorage) {
   // Create storage module with IMMEDIATE and FAST_BACTH in single-generation
   // mode.
   CreateStorageModule("IMMEDIATE, FAST_BATCH");

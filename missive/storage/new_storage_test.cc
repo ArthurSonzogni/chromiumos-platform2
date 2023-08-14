@@ -104,7 +104,7 @@ bool RecordsArrivedInExpectedOrder(
 
 // Stores an entire upload of records from `SequenceBoundUpload` in the order
 // they were received when the upload is declared complete. Intended to be a
-// class member of `NewStorageTest`, so that it outlives
+// class member of `StorageTest`, so that it outlives
 // `TestUploader` and `SequenceBoundUpload` and can be used to perform checks
 // that span multiple separate uploads. The user is responsible for resetting
 // the state by calling `Reset()`.
@@ -140,7 +140,7 @@ std::atomic<int64_t> next_uploader_id{0};
 // Maximum length of debug data prints to prevent excessive output.
 static constexpr size_t kDebugDataPrintSize = 16uL;
 
-// NewStorage options to be used in tests.
+// Storage options to be used in tests.
 class TestStorageOptions : public StorageOptions {
  public:
   TestStorageOptions()
@@ -152,7 +152,7 @@ class TestStorageOptions : public StorageOptions {
   }
 
   // Prepare options adjustment.
-  // Must be called before the options are used by NewStorage::Create().
+  // Must be called before the options are used by Storage::Create().
   void set_upload_retry_delay(base::TimeDelta upload_retry_delay) {
     upload_retry_delay_ = upload_retry_delay;
   }
@@ -286,10 +286,9 @@ class SingleDecryptionContext {
   base::OnceCallback<void(StatusOr<base::StringPiece>)> response_;
 };
 
-class NewStorageTest
-    : public ::testing::TestWithParam<
-          ::testing::tuple<bool /*is_encryption_enabled*/,
-                           size_t /*single_file_size_limit*/>> {
+class StorageTest : public ::testing::TestWithParam<
+                        ::testing::tuple<bool /*is_encryption_enabled*/,
+                                         size_t /*single_file_size_limit*/>> {
  private:
   // Mapping of <generation id, sequencing id> to matching record digest.
   // Whenever a record is uploaded and includes last record digest, this map
@@ -345,7 +344,7 @@ class NewStorageTest
       decryptor_ = std::move(decryptor_result.ValueOrDie());
       // Prepare the key.
       signed_encryption_key_ = GenerateAndSignKey();
-      // First record enqueue to NewStorage would need key delivered.
+      // First record enqueue to Storage would need key delivered.
       expect_to_need_key_ = true;
     }
     upload_store_.Reset();
@@ -640,7 +639,7 @@ class NewStorageTest
   };
 
   // Uploader interface implementation to be assigned to tests.
-  // Note that NewStorage guarantees that all APIs are executed on the same
+  // Note that Storage guarantees that all APIs are executed on the same
   // sequenced task runner (not the main test thread!).
   class TestUploader : public UploaderInterface {
    public:
@@ -650,7 +649,7 @@ class NewStorageTest
      public:
       SetUp(Priority priority,
             test::TestCallbackWaiter* waiter,
-            NewStorageTest* self)
+            StorageTest* self)
           : priority_(priority),
             uploader_(std::make_unique<TestUploader>(self)),
             uploader_id_(uploader_->uploader_id_),
@@ -758,7 +757,7 @@ class NewStorageTest
     // Helper class for setting up mock uploader expectations for key delivery.
     class SetKeyDelivery {
      public:
-      explicit SetKeyDelivery(NewStorageTest* self)
+      explicit SetKeyDelivery(StorageTest* self)
           : self_(self), uploader_(std::make_unique<TestUploader>(self)) {}
       SetKeyDelivery(const SetKeyDelivery& other) = delete;
       SetKeyDelivery& operator=(const SetKeyDelivery& other) = delete;
@@ -776,17 +775,17 @@ class NewStorageTest
         EXPECT_CALL(
             *uploader_->mock_upload_,
             UploadComplete(Eq(uploader_->uploader_id_), Eq(Status::StatusOK())))
-            .WillOnce(WithoutArgs(Invoke(self_, &NewStorageTest::DeliverKey)))
+            .WillOnce(WithoutArgs(Invoke(self_, &StorageTest::DeliverKey)))
             .RetiresOnSaturation();
         return std::move(uploader_);
       }
 
      private:
-      NewStorageTest* const self_;
+      StorageTest* const self_;
       std::unique_ptr<TestUploader> uploader_;
     };
 
-    explicit TestUploader(NewStorageTest* self)
+    explicit TestUploader(StorageTest* self)
         : uploader_id_(next_uploader_id.fetch_add(1)),
           // Allocate MockUpload as raw pointer and immediately wrap it in
           // unique_ptr and pass to SequenceBoundUpload to own.
@@ -869,7 +868,7 @@ class NewStorageTest
     // Helper method for setting up dummy mock uploader expectations.
     // To be used only for uploads that we want to just ignore and do not care
     // about their outcome.
-    static std::unique_ptr<TestUploader> SetUpDummy(NewStorageTest* self) {
+    static std::unique_ptr<TestUploader> SetUpDummy(StorageTest* self) {
       auto uploader = std::make_unique<TestUploader>(self);
       // Any Record, RecordFailure of Gap could be encountered, and
       // returning false will cut the upload short.
@@ -920,12 +919,12 @@ class NewStorageTest
     Sequence test_upload_sequence_;
   };
 
-  StatusOr<scoped_refptr<StorageInterface>> CreateTestStorage(
+  StatusOr<scoped_refptr<Storage>> CreateTestStorage(
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
-    // Initialize NewStorage with no key.
-    test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    NewStorage::Create(
+    // Initialize Storage with no key.
+    test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
+    Storage::Create(
         {.options = options,
          .queues_container =
              QueuesContainer::Create(/*storage_degradation_enabled=*/false),
@@ -936,7 +935,7 @@ class NewStorageTest
              base::MakeRefCounted<SignatureVerificationDevFlag>(
                  /*storage_degradation_enabled=*/false),
          .async_start_upload_cb = base::BindRepeating(
-             &NewStorageTest::AsyncStartMockUploader, base::Unretained(this))},
+             &StorageTest::AsyncStartMockUploader, base::Unretained(this))},
         e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
@@ -966,7 +965,7 @@ class NewStorageTest
     }
 
     ASSERT_FALSE(storage_) << "TestStorage already assigned";
-    StatusOr<scoped_refptr<StorageInterface>> storage_result =
+    StatusOr<scoped_refptr<Storage>> storage_result =
         CreateTestStorage(options, encryption_module);
     ASSERT_OK(storage_result)
         << "Failed to create TestStorage, error=" << storage_result.status();
@@ -975,7 +974,7 @@ class NewStorageTest
 
   void ResetTestStorage() {
     if (storage_) {
-      // StorageQueue comprising NewStorage are destructed on threads, wait for
+      // StorageQueue comprising Storage are destructed on threads, wait for
       // them to finish.
       test::TestCallbackAutoWaiter waiter;
       storage_->RegisterCompletionCallback(base::BindOnce(
@@ -990,33 +989,32 @@ class NewStorageTest
     EXPECT_THAT(expected_uploads_count_, Eq(0u));
     // Make sure all memory is deallocated.
     EXPECT_THAT(options_.memory_resource()->GetUsed(), Eq(0u));
-    // Make sure all disk is not reserved (files remain, but NewStorage is not
+    // Make sure all disk is not reserved (files remain, but Storage is not
     // responsible for them anymore).
     EXPECT_THAT(options_.disk_space_resource()->GetUsed(), Eq(0u));
   }
 
-  StatusOr<scoped_refptr<StorageInterface>>
-  CreateTestStorageWithFailedKeyDelivery(
+  StatusOr<scoped_refptr<Storage>> CreateTestStorageWithFailedKeyDelivery(
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module =
           EncryptionModule::Create(
               /*is_enabled=*/true,
               /*renew_encryption_key_period=*/base::Minutes(30))) {
-    // Initialize NewStorage with no key.
-    test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    NewStorage::Create({.options = options,
-                        .queues_container = QueuesContainer::Create(
-                            /*storage_degradation_enabled=*/false),
-                        .encryption_module = encryption_module,
-                        .compression_module =
-                            base::MakeRefCounted<test::TestCompressionModule>(),
-                        .signature_verification_dev_flag =
-                            base::MakeRefCounted<SignatureVerificationDevFlag>(
-                                /*is_enabled=*/false),
-                        .async_start_upload_cb = base::BindRepeating(
-                            &NewStorageTest::AsyncStartMockUploaderFailing,
-                            base::Unretained(this))},
-                       e.cb());
+    // Initialize Storage with no key.
+    test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
+    Storage::Create({.options = options,
+                     .queues_container = QueuesContainer::Create(
+                         /*storage_degradation_enabled=*/false),
+                     .encryption_module = encryption_module,
+                     .compression_module =
+                         base::MakeRefCounted<test::TestCompressionModule>(),
+                     .signature_verification_dev_flag =
+                         base::MakeRefCounted<SignatureVerificationDevFlag>(
+                             /*is_enabled=*/false),
+                     .async_start_upload_cb = base::BindRepeating(
+                         &StorageTest::AsyncStartMockUploaderFailing,
+                         base::Unretained(this))},
+                    e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -1031,7 +1029,7 @@ class NewStorageTest
         base::BindOnce(
             [](UploaderInterface::UploadReason reason,
                UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
-               NewStorageTest* self) {
+               StorageTest* self) {
               if (self->expect_to_need_key_ &&
                   reason == UploaderInterface::UploadReason::KEY_DELIVERY) {
                 // Ignore expectation count in this special case.
@@ -1086,7 +1084,7 @@ class NewStorageTest
   Status WriteString(Priority priority,
                      base::StringPiece data,
                      DMtoken dm_token) {
-    EXPECT_TRUE(storage_) << "NewStorage not created yet";
+    EXPECT_TRUE(storage_) << "Storage not created yet";
     test::TestEvent<Status> w;
     Record record;
     record.set_data(std::string(data));
@@ -1151,7 +1149,7 @@ class NewStorageTest
     auto prepare_key_result = prepare_key_pair.result();
     CHECK(prepare_key_result.ok());
     public_key_id = prepare_key_result.ValueOrDie();
-    // Prepare signed encryption key to be delivered to NewStorage.
+    // Prepare signed encryption key to be delivered to Storage.
     SignedEncryptionInfo signed_encryption_key;
     signed_encryption_key.set_public_asymmetric_key(
         std::string(reinterpret_cast<const char*>(public_value), kKeySize));
@@ -1219,7 +1217,7 @@ class NewStorageTest
   base::ScopedTempDir location_;
   TestStorageOptions options_;
   scoped_refptr<test::Decryptor> decryptor_;
-  scoped_refptr<StorageInterface> storage_;
+  scoped_refptr<Storage> storage_;
   LastUploadedGenerationIdMap last_upload_generation_id_
       GUARDED_BY_CONTEXT(sequence_checker_);
   SignedEncryptionInfo signed_encryption_key_;
@@ -1255,7 +1253,7 @@ constexpr std::array<const char*, 3> kData = {"Rec1111", "Rec222", "Rec33"};
 constexpr std::array<const char*, 3> kMoreData = {"More1111", "More222",
                                                   "More33"};
 
-TEST_P(NewStorageTest, WriteIntoNewStorageAndReopen) {
+TEST_P(StorageTest, WriteIntoStorageAndReopen) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(FAST_BATCH, kData[0]);
   WriteStringOrDie(FAST_BATCH, kData[1]);
@@ -1281,7 +1279,7 @@ TEST_P(NewStorageTest, WriteIntoNewStorageAndReopen) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 }
 
-TEST_P(NewStorageTest, WriteIntoNewStorageReopenAndWriteMore) {
+TEST_P(StorageTest, WriteIntoStorageReopenAndWriteMore) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(FAST_BATCH, kData[0]);
   WriteStringOrDie(FAST_BATCH, kData[1]);
@@ -1311,7 +1309,7 @@ TEST_P(NewStorageTest, WriteIntoNewStorageReopenAndWriteMore) {
   WriteStringOrDie(FAST_BATCH, kMoreData[2]);
 }
 
-TEST_P(NewStorageTest, WriteIntoNewStorageAndUpload) {
+TEST_P(StorageTest, WriteIntoStorageAndUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(FAST_BATCH, kData[0]);
   WriteStringOrDie(FAST_BATCH, kData[1]);
@@ -1335,7 +1333,7 @@ TEST_P(NewStorageTest, WriteIntoNewStorageAndUpload) {
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
-TEST_P(NewStorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
+TEST_P(StorageTest, WriteIntoStorageAndUploadWithKeyUpdate) {
   // Run the test only when encryption is enabled.
   if (!is_encryption_enabled()) {
     return;
@@ -1400,7 +1398,7 @@ TEST_P(NewStorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
   FlushOrDie(MANUAL_BATCH);
 }
 
-TEST_P(NewStorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
+TEST_P(StorageTest, WriteIntoStorageReopenWriteMoreAndUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(FAST_BATCH, kData[0]);
   WriteStringOrDie(FAST_BATCH, kData[1]);
@@ -1476,7 +1474,7 @@ TEST_P(NewStorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
   // Trigger upload.
   task_environment_.FastForwardBy(base::Seconds(1));
 
-  // Wait for the TestUploader to finish because it runs on NewStorage's
+  // Wait for the TestUploader to finish because it runs on Storage's
   // sequenced task runner, not the main test thread.
   task_environment_.RunUntilIdle();
 
@@ -1493,7 +1491,7 @@ TEST_P(NewStorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
       RecordsArrivedInExpectedOrder(upload_store_.Records(), allKMoreData));
 }
 
-TEST_P(NewStorageTest, WriteIntoNewStorageAndFlush) {
+TEST_P(StorageTest, WriteIntoStorageAndFlush) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
   WriteStringOrDie(MANUAL_BATCH, kData[1]);
@@ -1517,7 +1515,7 @@ TEST_P(NewStorageTest, WriteIntoNewStorageAndFlush) {
   FlushOrDie(MANUAL_BATCH);
 }
 
-TEST_P(NewStorageTest, WriteIntoNewStorageReopenWriteMoreAndFlush) {
+TEST_P(StorageTest, WriteIntoStorageReopenWriteMoreAndFlush) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
   WriteStringOrDie(MANUAL_BATCH, kData[1]);
@@ -1579,7 +1577,7 @@ TEST_P(NewStorageTest, WriteIntoNewStorageReopenWriteMoreAndFlush) {
   SetExpectedUploadsCount(2);
   FlushOrDie(MANUAL_BATCH);
 
-  // Wait for the TestUploader to finish because it runs on NewStorage's
+  // Wait for the TestUploader to finish because it runs on Storage's
   // sequenced task runner, not the main test thread.
   task_environment_.RunUntilIdle();
 
@@ -1597,7 +1595,7 @@ TEST_P(NewStorageTest, WriteIntoNewStorageReopenWriteMoreAndFlush) {
       RecordsArrivedInExpectedOrder(upload_store_.Records(), allKMoreData));
 }
 
-TEST_P(NewStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
+TEST_P(StorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   WriteStringOrDie(FAST_BATCH, kData[0]);
@@ -1710,7 +1708,7 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
   }
 }
 
-TEST_P(NewStorageTest, WriteAndUploadWithBadConfirmation) {
+TEST_P(StorageTest, WriteAndUploadWithBadConfirmation) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   WriteStringOrDie(FAST_BATCH, kData[0]);
@@ -1750,7 +1748,7 @@ TEST_P(NewStorageTest, WriteAndUploadWithBadConfirmation) {
   ASSERT_FALSE(c_result.ok()) << c_result;
 }
 
-TEST_P(NewStorageTest, WriteAndRepeatedlySecurityUpload) {
+TEST_P(StorageTest, WriteAndRepeatedlySecurityUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   // Upload is initiated asynchronously, so it may happen after the next
@@ -1808,7 +1806,7 @@ TEST_P(NewStorageTest, WriteAndRepeatedlySecurityUpload) {
   }
 }
 
-TEST_P(NewStorageTest, WriteAndRepeatedlyImmediateUpload) {
+TEST_P(StorageTest, WriteAndRepeatedlyImmediateUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   // Upload is initiated asynchronously, so it may happen after the next
@@ -1866,7 +1864,7 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyImmediateUpload) {
   }
 }
 
-TEST_P(NewStorageTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
+TEST_P(StorageTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   // Upload is initiated asynchronously, so it may happen after the next
@@ -1980,7 +1978,7 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
   }
 }
 
-TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
+TEST_P(StorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   {
@@ -2119,7 +2117,7 @@ TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
   }
 }
 
-TEST_P(NewStorageTest, WriteAndImmediateUploadWithFailure) {
+TEST_P(StorageTest, WriteAndImmediateUploadWithFailure) {
   // Reset options to enable failure retry.
   options_.set_upload_retry_delay(base::Seconds(1));
 
@@ -2152,7 +2150,7 @@ TEST_P(NewStorageTest, WriteAndImmediateUploadWithFailure) {
   }
 }
 
-TEST_P(NewStorageTest, WriteEncryptFailure) {
+TEST_P(StorageTest, WriteEncryptFailure) {
   if (!is_encryption_enabled()) {
     return;  // No need to test when encryption is disabled.
   }
@@ -2175,7 +2173,7 @@ TEST_P(NewStorageTest, WriteEncryptFailure) {
   EXPECT_EQ(result.error_code(), error::UNKNOWN);
 }
 
-TEST_P(NewStorageTest, ForceConfirm) {
+TEST_P(StorageTest, ForceConfirm) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   WriteStringOrDie(FAST_BATCH, kData[0]);
@@ -2274,15 +2272,15 @@ TEST_P(NewStorageTest, ForceConfirm) {
   }
 }
 
-TEST_P(NewStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
+TEST_P(StorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
   if (!is_encryption_enabled()) {
     return;  // Test only makes sense with encryption enabled.
   }
 
-  // Initialize NewStorage with failure to deliver key.
-  ASSERT_FALSE(storage_) << "NewStorageTest already assigned";
+  // Initialize Storage with failure to deliver key.
+  ASSERT_FALSE(storage_) << "StorageTest already assigned";
   options_.set_key_check_period(base::Seconds(4));
-  StatusOr<scoped_refptr<StorageInterface>> storage_result =
+  StatusOr<scoped_refptr<Storage>> storage_result =
       CreateTestStorageWithFailedKeyDelivery(
           BuildTestStorageOptions(),
           // Set the renew encryption key period to be 1 second less than the
@@ -2293,7 +2291,7 @@ TEST_P(NewStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
               /*is_enabled=*/true,
               base::Seconds(options_.key_check_period().InSeconds() - 1)));
   ASSERT_OK(storage_result)
-      << "Failed to create NewStorageTest, error=" << storage_result.status();
+      << "Failed to create StorageTest, error=" << storage_result.status();
   storage_ = std::move(storage_result.ValueOrDie());
 
   test::TestCallbackAutoWaiter waiter;
@@ -2309,7 +2307,7 @@ TEST_P(NewStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
       }))
       .RetiresOnSaturation();
 
-  // NewStorage doesn't have a key yet, so key request should succeed, and thus
+  // Storage doesn't have a key yet, so key request should succeed, and thus
   // we expect UMA to log success for key delivery
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
@@ -2329,19 +2327,19 @@ TEST_P(NewStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
   task_environment_.FastForwardBy(options_.key_check_period());
 }
 
-TEST_P(NewStorageTest, KeyDeliveryFailureOnNewStorage) {
+TEST_P(StorageTest, KeyDeliveryFailureOnStorage) {
   static constexpr size_t kFailuresCount = 3;
 
   if (!is_encryption_enabled()) {
     return;  // Test only makes sense with encryption enabled.
   }
 
-  // Initialize NewStorage with failure to deliver key.
-  ASSERT_FALSE(storage_) << "NewStorageTest already assigned";
-  StatusOr<scoped_refptr<StorageInterface>> storage_result =
+  // Initialize Storage with failure to deliver key.
+  ASSERT_FALSE(storage_) << "StorageTest already assigned";
+  StatusOr<scoped_refptr<Storage>> storage_result =
       CreateTestStorageWithFailedKeyDelivery(BuildTestStorageOptions());
   ASSERT_OK(storage_result)
-      << "Failed to create NewStorageTest, error=" << storage_result.status();
+      << "Failed to create StorageTest, error=" << storage_result.status();
   storage_ = std::move(storage_result.ValueOrDie());
 
   key_delivery_failure_.store(true);
@@ -2364,7 +2362,7 @@ TEST_P(NewStorageTest, KeyDeliveryFailureOnNewStorage) {
     EXPECT_THAT(write_result.message(), HasSubstr(kKeyDeliveryErrorMessage))
         << write_result;
 
-    // NewStorage will continue to request the encryption key
+    // Storage will continue to request the encryption key
     EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
                 SendEnumToUMA(kKeyDeliveryResultUma, kKeyDeliveryError,
                               error::MAX_VALUE));
@@ -2474,7 +2472,7 @@ TEST_P(NewStorageTest, KeyDeliveryFailureOnNewStorage) {
   SetExpectedUploadsCount(2);
   FlushOrDie(MANUAL_BATCH);
 
-  // Wait for the TestUploader to finish because it runs on NewStorage's
+  // Wait for the TestUploader to finish because it runs on Storage's
   // sequenced task runner, not the main test thread.
   task_environment_.RunUntilIdle();
 
@@ -2492,7 +2490,7 @@ TEST_P(NewStorageTest, KeyDeliveryFailureOnNewStorage) {
       RecordsArrivedInExpectedOrder(upload_store_.Records(), allKMoreData));
 }
 
-TEST_P(NewStorageTest, MultipleUsersWriteSamePriorityAndUpload) {
+TEST_P(StorageTest, MultipleUsersWriteSamePriorityAndUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   std::vector<DMtoken> dm_tokens = {kDeviceDMToken};
@@ -2533,7 +2531,7 @@ TEST_P(NewStorageTest, MultipleUsersWriteSamePriorityAndUpload) {
 
 INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
-    NewStorageTest,
+    StorageTest,
     ::testing::Combine(::testing::Bool() /* true - encryption enabled */,
                        ::testing::Values(128u * 1024uLL * 1024uLL,
                                          256u /* two records in file */,

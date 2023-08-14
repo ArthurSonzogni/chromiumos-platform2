@@ -28,7 +28,6 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/new_storage.h"
-#include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/util/status.h"
@@ -183,19 +182,19 @@ void StorageModule::InitStorage(
                      std::move(callback));
 
   // Instantiate Storage.
-  NewStorage::Create({.options = settings.options,
-                      .queues_container = settings.queues_container,
-                      .encryption_module = settings.encryption_module,
-                      .compression_module = settings.compression_module,
-                      .signature_verification_dev_flag =
-                          settings.signature_verification_dev_flag,
-                      .async_start_upload_cb = settings.async_start_upload_cb},
-                     std::move(set_storage_cb));
+  Storage::Create({.options = settings.options,
+                   .queues_container = settings.queues_container,
+                   .encryption_module = settings.encryption_module,
+                   .compression_module = settings.compression_module,
+                   .signature_verification_dev_flag =
+                       settings.signature_verification_dev_flag,
+                   .async_start_upload_cb = settings.async_start_upload_cb},
+                  std::move(set_storage_cb));
 }
 
 void StorageModule::SetStorage(
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback,
-    StatusOr<scoped_refptr<StorageInterface>> storage) {
+    StatusOr<scoped_refptr<Storage>> storage) {
   if (!storage.ok()) {
     std::move(callback).Run(storage.status());
     return;

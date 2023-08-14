@@ -90,7 +90,7 @@ std::string xBigData() {
 
 // Stores an entire upload of records from `SequenceBoundUpload` in the order
 // they were received when the upload is declared complete. Intended to be a
-// class member of `NewStorageTest`, so that it outlives
+// class member of `StorageTest`, so that it outlives
 // `TestUploader` and `SequenceBoundUpload` and can be used to perform checks
 // that span multiple separate uploads. The user is responsible for resetting
 // the state by calling `Reset()`.
@@ -137,7 +137,7 @@ class TestStorageOptions : public StorageOptions {
   }
 
   // Prepare options adjustment.
-  // Must be called before the options are used by NewStorage::Create().
+  // Must be called before the options are used by Storage::Create().
   void set_upload_retry_delay(base::TimeDelta upload_retry_delay) {
     upload_retry_delay_ = upload_retry_delay;
   }
@@ -152,7 +152,7 @@ class TestStorageOptions : public StorageOptions {
       base::TimeDelta()};  // no retry by default
 };
 
-class NewStorageDegradationTest
+class StorageDegradationTest
     : public ::testing::TestWithParam<::testing::tuple<size_t, bool>> {
   // Mapping of <generation id, sequencing id> to matching record digest.
   // Whenever a record is uploaded and includes last record digest, this map
@@ -486,7 +486,7 @@ class NewStorageDegradationTest
      public:
       SetUp(Priority priority,
             test::TestCallbackWaiter* waiter,
-            NewStorageDegradationTest* self)
+            StorageDegradationTest* self)
           : priority_(priority),
             uploader_(std::make_unique<TestUploader>(self)),
             uploader_id_(uploader_->uploader_id_),
@@ -591,7 +591,7 @@ class NewStorageDegradationTest
       test::TestCallbackWaiter* const waiter_;
     };
 
-    explicit TestUploader(NewStorageDegradationTest* self)
+    explicit TestUploader(StorageDegradationTest* self)
         : uploader_id_(next_uploader_id.fetch_add(1)),
           // Allocate MockUpload as raw pointer and immediately wrap it in
           // unique_ptr and pass to SequenceBoundUpload to own.
@@ -647,7 +647,7 @@ class NewStorageDegradationTest
     // To be used only for uploads that we want to just ignore and do not care
     // about their outcome.
     static std::unique_ptr<TestUploader> SetUpDummy(
-        NewStorageDegradationTest* self) {
+        StorageDegradationTest* self) {
       auto uploader = std::make_unique<TestUploader>(self);
       // Any Record, RecordFailure of Gap could be encountered, and
       // returning false will cut the upload short.
@@ -698,12 +698,12 @@ class NewStorageDegradationTest
     Sequence test_upload_sequence_;
   };
 
-  StatusOr<scoped_refptr<StorageInterface>> CreateTestStorage(
+  StatusOr<scoped_refptr<Storage>> CreateTestStorage(
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize Storage with no key.
-    test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    NewStorage::Create(
+    test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
+    Storage::Create(
         {.options = options,
          .queues_container = QueuesContainer::Create(
              /*storage_degradation_enabled=*/is_degradation_enabled()),
@@ -714,7 +714,7 @@ class NewStorageDegradationTest
              base::MakeRefCounted<SignatureVerificationDevFlag>(
                  /*is_enabled=*/false),
          .async_start_upload_cb = base::BindRepeating(
-             &NewStorageDegradationTest::AsyncStartMockUploader,
+             &StorageDegradationTest::AsyncStartMockUploader,
              base::Unretained(this))},
         e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
@@ -733,7 +733,7 @@ class NewStorageDegradationTest
         .Times(0);
 
     ASSERT_FALSE(storage_) << "TestStorage already assigned";
-    StatusOr<scoped_refptr<StorageInterface>> storage_result =
+    StatusOr<scoped_refptr<Storage>> storage_result =
         CreateTestStorage(options, encryption_module);
     ASSERT_OK(storage_result)
         << "Failed to create TestStorage, error=" << storage_result.status();
@@ -772,7 +772,7 @@ class NewStorageDegradationTest
         base::BindOnce(
             [](UploaderInterface::UploadReason reason,
                UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
-               NewStorageDegradationTest* self) {
+               StorageDegradationTest* self) {
               if (self->expect_to_need_key_ &&
                   reason == UploaderInterface::UploadReason::KEY_DELIVERY) {
                 // Ignore expectation count in this special case.
@@ -878,7 +878,7 @@ class NewStorageDegradationTest
   base::ScopedTempDir location_;
   TestStorageOptions options_;
   scoped_refptr<test::Decryptor> decryptor_;
-  scoped_refptr<StorageInterface> storage_;
+  scoped_refptr<Storage> storage_;
   LastUploadedGenerationIdMap last_upload_generation_id_
       GUARDED_BY_CONTEXT(sequence_checker_);
   bool expect_to_need_key_{false};
@@ -909,7 +909,7 @@ class NewStorageDegradationTest
 };
 
 // Test no available files to delete
-TEST_P(NewStorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
+TEST_P(StorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
   // TO-DO cleanup this test, build a test that actually deletes files.
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
@@ -938,8 +938,7 @@ TEST_P(NewStorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
 }
 
 // Test Available files to delete in multiple queues when one is insufficient.
-TEST_P(NewStorageDegradationTest,
-       WriteAttemptWithRecordsSheddingMultipleQueues) {
+TEST_P(StorageDegradationTest, WriteAttemptWithRecordsSheddingMultipleQueues) {
   // The test will try to write this amount of records.
   static constexpr size_t kAmountOfBigRecords = 10;
 
@@ -1098,7 +1097,7 @@ TEST_P(NewStorageDegradationTest,
 }
 
 // Test Available files to delete in the lowest priority queue out of multiple.
-TEST_P(NewStorageDegradationTest, WriteAttemptWithRecordsSheddingLowestQueue) {
+TEST_P(StorageDegradationTest, WriteAttemptWithRecordsSheddingLowestQueue) {
   // The test will try to write this amount of records.
   static constexpr size_t kAmountOfBigRecords = 10;
 
@@ -1231,7 +1230,7 @@ TEST_P(NewStorageDegradationTest, WriteAttemptWithRecordsSheddingLowestQueue) {
 }
 
 // Test Security queue cant_shed_records option
-TEST_P(NewStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
+TEST_P(StorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
   // The test will try to write this amount of records.
   static constexpr size_t kAmountOfBigRecords = 3u;
 
@@ -1295,7 +1294,7 @@ TEST_P(NewStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
 
 INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
-    NewStorageDegradationTest,
+    StorageDegradationTest,
     ::testing::Combine(::testing::Values(128u * 1024uLL * 1024uLL,
                                          256u /* two records in file */,
                                          1u /* single record in file */),

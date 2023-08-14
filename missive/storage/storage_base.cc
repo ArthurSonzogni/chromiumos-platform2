@@ -49,22 +49,6 @@
 
 namespace reporting {
 
-StorageInterface::StorageInterface(
-    scoped_refptr<QueuesContainer> queues_container,
-    scoped_refptr<HealthModule> health_module,
-    const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
-    : queues_container_(queues_container),
-      sequenced_task_runner_(sequenced_task_runner),
-      health_module_(std::move(health_module)) {}
-
-StorageInterface::~StorageInterface() {
-  // Drop all queues inside `queues_container_`. This will
-  // destroy them soon, once all other references (if any) are dropped too.
-  sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&QueuesContainer::DropAllQueues,
-                                queues_container_->GetWeakPtr()));
-}
-
 QueueUploaderInterface::QueueUploaderInterface(
     Priority priority,
     HealthModule::Recorder recorder,
@@ -365,7 +349,7 @@ KeyDelivery::~KeyDelivery() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   upload_timer_.AbandonAndStop();
   PostResponses(
-      Status(error::UNAVAILABLE, "Key not delivered - NewStorage shuts down"));
+      Status(error::UNAVAILABLE, "Key not delivered - Storage shuts down"));
 }
 
 void KeyDelivery::Request(RequestCallback callback) {

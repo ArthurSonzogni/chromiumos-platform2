@@ -137,7 +137,7 @@ class TestStorageOptions : public StorageOptions {
   }
 
   // Prepare options adjustment.
-  // Must be called before the options are used by NewStorage::Create().
+  // Must be called before the options are used by Storage::Create().
   void set_upload_retry_delay(base::TimeDelta upload_retry_delay) {
     upload_retry_delay_ = upload_retry_delay;
   }
@@ -698,12 +698,12 @@ class LegacyStorageDegradationTest
     Sequence test_upload_sequence_;
   };
 
-  StatusOr<scoped_refptr<StorageInterface>> CreateTestStorage(
+  StatusOr<scoped_refptr<Storage>> CreateTestStorage(
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize Storage with no key.
-    test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    NewStorage::Create(
+    test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
+    Storage::Create(
         {.options = options,
          .queues_container = QueuesContainer::Create(
              /*storage_degradation_enabled=*/is_degradation_enabled()),
@@ -733,7 +733,7 @@ class LegacyStorageDegradationTest
         .Times(0);
 
     ASSERT_FALSE(storage_) << "TestStorage already assigned";
-    StatusOr<scoped_refptr<StorageInterface>> storage_result =
+    StatusOr<scoped_refptr<Storage>> storage_result =
         CreateTestStorage(options, encryption_module);
     ASSERT_OK(storage_result)
         << "Failed to create TestStorage, error=" << storage_result.status();
@@ -878,7 +878,7 @@ class LegacyStorageDegradationTest
   base::ScopedTempDir location_;
   TestStorageOptions options_;
   scoped_refptr<test::Decryptor> decryptor_;
-  scoped_refptr<StorageInterface> storage_;
+  scoped_refptr<Storage> storage_;
   LastUploadedGenerationIdMap last_upload_generation_id_
       GUARDED_BY_CONTEXT(sequence_checker_);
   bool expect_to_need_key_{false};

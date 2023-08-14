@@ -23,6 +23,7 @@
 #include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
+#include "missive/storage/new_storage.h"
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
@@ -102,11 +103,11 @@ class StorageModule : public StorageModuleInterface {
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 
-  // Sets `storage_` to a valid `StorageInterface` or returns error status via
+  // Sets `storage_` to a valid `Storage` or returns error status via
   // `callback`.
   void SetStorage(
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback,
-      StatusOr<scoped_refptr<StorageInterface>> storage);
+      StatusOr<scoped_refptr<Storage>> storage);
 
   void InjectStorageUnavailableErrorForTesting();
 
@@ -123,7 +124,7 @@ class StorageModule : public StorageModuleInterface {
   base::RepeatingCallback<void()> storage_upload_success_cb_;
 
   // Reference to `Storage` object.
-  scoped_refptr<StorageInterface> storage_;
+  scoped_refptr<Storage> storage_;
 
   // Parameters used to create Storage
   const StorageOptions options_;

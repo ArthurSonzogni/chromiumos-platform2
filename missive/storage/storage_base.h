@@ -32,9 +32,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_uploader_interface.h"
-#include "missive/util/file.h"
 #include "missive/util/status.h"
-#include "missive/util/status_macros.h"
 
 // This file is for common logic shared in both implementations of the storage
 // class: new_storage.cc and storage.cc
@@ -128,75 +126,6 @@ class QueuesContainer
 
   // Weak ptr factory.
   base::WeakPtrFactory<QueuesContainer> weak_ptr_factory_{this};
-};
-
-class StorageInterface : public base::RefCountedThreadSafe<StorageInterface> {
- public:
-  StorageInterface(const StorageInterface& other) = delete;
-  StorageInterface& operator=(const StorageInterface& other) = delete;
-
-  // Wraps and serializes Record (taking ownership of it), encrypts and writes
-  // the resulting blob into the StorageInterface (the last file of it)
-  // according to the priority with the next sequencing id assigned. If file is
-  // going to become too large, it is closed and new file is created.
-  virtual void Write(Priority priority,
-                     Record record,
-                     base::OnceCallback<void(Status)> completion_cb) = 0;
-
-  // Confirms acceptance of the records according to the
-  // |sequence_information.priority()| up to
-  // |sequence_information.sequencing_id()| (inclusively), if the
-  // |sequence_information.generation_id()| matches. All records with sequencing
-  // ids <= this one can be removed from the StorageInterface, and can no longer
-  // be uploaded. In order to reset to the very first record (seq_id=0)
-  // |sequence_information.sequencing_id()| should be set to -1.
-  // If |force| is false (which is used in most cases),
-  // |sequence_information.sequencing_id()| is only accepted if no higher ids
-  // were confirmed before; otherwise it is accepted unconditionally.
-  virtual void Confirm(SequenceInformation sequence_information,
-                       bool force,
-                       base::OnceCallback<void(Status)> completion_cb) = 0;
-
-  // Initiates upload of collected records according to the priority.
-  // Called usually for a queue with an infinite or very large upload period.
-  // Multiple |Flush| calls can safely run in parallel.
-  // Invokes |completion_cb| with error if upload fails or cannot start.
-  virtual void Flush(Priority priority,
-                     base::OnceCallback<void(Status)> completion_cb) = 0;
-
-  // If the server attached signed encryption key to the response, it needs to
-  // be paased here.
-  virtual void UpdateEncryptionKey(
-      SignedEncryptionInfo signed_encryption_key) = 0;
-
-  // Registers completion notification callback. Thread-safe.
-  // All registered callbacks are called when all queues destructions come
-  // to their completion and the StorageInterface is destructed as well.
-  virtual void RegisterCompletionCallback(base::OnceClosure callback) = 0;
-
- protected:
-  // No constructor. Only instantiated via implementation/subclass constructors
-  StorageInterface(
-      scoped_refptr<QueuesContainer> queues_container,
-      scoped_refptr<HealthModule> health_module,
-      scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
-
-  virtual ~StorageInterface();
-
-  friend class base::RefCountedThreadSafe<StorageInterface>;
-
-  // Queues container and storage degradation controller. If degradation is
-  // enabled, in case of disk space pressure it facilitates dropping low
-  // priority events to free up space for the higher priority ones.
-  const scoped_refptr<QueuesContainer> queues_container_;
-
-  // Task runner for storage-wide operations (initialized in
-  // `queues_container_`).
-  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
-
-  // Health module for debugging support. Exists always, but active only when
-  // the `is_debugging_` flag is set.
-  const scoped_refptr<HealthModule> health_module_;
 };
 
 // Bridge class for uploading records from a queue to storage.
