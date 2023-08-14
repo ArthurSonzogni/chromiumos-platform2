@@ -10,12 +10,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
-#include <limits.h>
 #include <linux/loop.h>
 #include <mntent.h>
 #include <pwd.h>
-#include <signal.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/file.h>
@@ -33,13 +30,8 @@
 
 #include <base/check_op.h>
 
-#include <ios>
-#include <iterator>
+#include <algorithm>
 #include <limits>
-#include <memory>
-#include <optional>
-#include <sstream>
-#include <utility>
 
 #if USE_SELINUX
 #include <selinux/restorecon.h>
@@ -1489,6 +1481,22 @@ bool Platform::RestoreSELinuxContexts(const base::FilePath& path,
   }
 #endif
   return true;
+}
+
+void Platform::AddGlobalSELinuxRestoreconExclusion(
+    const std::vector<base::FilePath>& exclude) {
+#if USE_SELINUX
+  if (!exclude.empty()) {
+    // Initialize the array to size of exclude and one more for NULL delimiter
+    // at the end.
+    std::vector<const char*> exclude_cstring(exclude.size() + 1);
+    std::transform(exclude.begin(), exclude.end(), exclude_cstring.begin(),
+                   [](const base::FilePath& path) -> const char* {
+                     return path.value().c_str();
+                   });
+    selinux_restorecon_set_exclude_list(exclude_cstring.data());
+  }
+#endif
 }
 
 std::optional<std::string> Platform::GetSELinuxContextOfFD(int fd) {

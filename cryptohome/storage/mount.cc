@@ -188,6 +188,18 @@ StorageStatus Mount::MountCryptohome(
   // directory to decide on the action on failure when we  move on to the next
   // phase in the cryptohome SELinux development, i.e. making cryptohome
   // enforcing.
+  std::vector<base::FilePath> exclude_path;
+  // The exclusion of android-data is intentional here because the directory and
+  // all its contents are labelled by the Android policy and cryptohome should
+  // not attempt to label them.
+  base::FilePath path_ap = GetUserMountDirectory(obfuscated_username)
+                               .Append("root")
+                               .Append("android-data")
+                               .Append("data");
+  exclude_path.push_back(path_ap);
+  platform_->AddGlobalSELinuxRestoreconExclusion(exclude_path);
+
+  // Restore context for UserPath.
   bool result = platform_->RestoreSELinuxContexts(UserPath(obfuscated_username),
                                                   true /*recursive*/);
 

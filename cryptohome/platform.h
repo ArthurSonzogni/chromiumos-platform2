@@ -941,6 +941,13 @@ class BRILLO_EXPORT Platform {
   virtual bool RestoreSELinuxContexts(const base::FilePath& path,
                                       bool recursive);
 
+  // Excludes certain paths from the following restorecon().
+  //
+  // Parameters
+  //   exclude - Path to the files/directories that need to be excluded.
+  virtual void AddGlobalSELinuxRestoreconExclusion(
+      const std::vector<base::FilePath>& exclude);
+
   // Safely change a directory's mode.
   virtual bool SafeDirChmod(const base::FilePath& path, mode_t mode);
 

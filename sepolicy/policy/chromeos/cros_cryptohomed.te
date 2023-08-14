@@ -27,6 +27,7 @@ allow cros_cryptohomed {
 }:dir mounton;
 #Access rule for devices without ARC (e.g. Flex)
 allow cros_cryptohomed cros_downloads_file:dir relabelfrom;
+allow cros_cryptohomed cros_home_shadow_uid_root_android:dir relabelto;
 
 allow cros_cryptohomed {
   cros_home_shadow_uid
@@ -150,19 +151,6 @@ create_dir_file( cros_cryptohomed cros_var_lib_devicesettings )
 # When running spaced_cli, this allows access to the child's /proc/<PID> dir.
 r_dir_file(cros_cryptohomed, cros_spaced_cli)
 
-# On start cryptohomed, which does the bind-mounting for the Chrome OS system, sets the file
-# contexts using Linux restorecon function recursively. On this process cryptohome shouldn't
-# relabel Android app data files which are already labeled by the Android policy. There is policy
-# avoiding this relabeling, also dont report the labeling attempts as this is an expected fail case.
-dontaudit cros_cryptohomed arc_files:{
-  file
-  blk_file
-  chr_file
-  fifo_file
-  lnk_file
-  sock_file
-} { relabelfrom relabelto };
-
 has_arc(`
   create_dir_file(cros_cryptohomed media_rw_data_file)
   allowxperm cros_cryptohomed media_rw_data_file:{ file dir } ioctl {
@@ -253,6 +241,8 @@ allow cros_cryptohomed cros_initctl_exec:file rx_file_perms;
 # Dm-crypt cryptohome related labels.
 allow cros_cryptohomed cros_run_udev:dir { read search};
 allow cros_cryptohomed cros_var_lock:dir { getattr search };
+allow cros_cryptohomed cros_var_cache_dlcservice:dir { getattr search };
+allow cros_cryptohomed cros_var_cache_dlcservice:file { getattr };
 allow cros_cryptohomed cros_run_lock:dir { add_name remove_name write };
 allow cros_cryptohomed cros_run_lock:file { append create getattr lock open read unlink };
 allow cros_cryptohomed device:lnk_file { create open read unlink };
