@@ -891,9 +891,11 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
     stateful_paths.push_back(demo_mode_resources_dir + "manifest.json");
     stateful_paths.push_back(demo_mode_resources_dir + "table");
 
-    // For rollback wipes, we preserve additional data as defined in
-    // oobe_config/rollback_data.proto.
+    // For rollback wipes, we preserve the rollback metrics file and additional
+    // data as defined in oobe_config/rollback_data.proto.
     if (args_.rollback_wipe) {
+      stateful_paths.push_back(
+          "unencrypted/preserve/enterprise-rollback-metrics-data");
       // Devices produced >= 2023 use the new rollback data
       // ("rollback_data_tpm") encryption.
       stateful_paths.push_back("unencrypted/preserve/rollback_data_tpm");
