@@ -190,7 +190,7 @@ static_library("libutil") {
     "common/util.cc",
   ]
   configs += [ ":target_defaults" ]
-  pkg_deps = [ "perfetto" ]
+
   all_dependent_configs = [ ":libutil_dependent_config" ]
 }
 

@@ -4,14 +4,14 @@
 
 #include "power_manager/common/tracing.h"
 
+#include <brillo/tracing.h>
+
 PERFETTO_TRACK_EVENT_STATIC_STORAGE_IN_NAMESPACE(power_manager);
 
 namespace power_manager {
 
 void InitTracing() {
-  perfetto::TracingInitArgs args;
-  args.backends |= perfetto::kSystemBackend;
-  perfetto::Tracing::Initialize(args);
+  brillo::InitPerfettoTracing();
   power_manager::TrackEvent::Register();
 }
 
