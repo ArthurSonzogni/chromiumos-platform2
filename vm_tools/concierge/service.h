@@ -451,8 +451,9 @@ class Service final : public org::chromium::VmConciergeInterface,
   VsockCidPool vsock_cid_pool_;
 
   // Current DNS resolution config.
-  std::vector<std::string> nameservers_;
-  std::vector<std::string> search_domains_;
+  std::vector<std::string> nameservers_ GUARDED_BY_CONTEXT(sequence_checker_);
+  std::vector<std::string> search_domains_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // File descriptor for the SIGCHLD events.
   base::ScopedFD signal_fd_;

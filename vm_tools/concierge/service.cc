@@ -3795,6 +3795,7 @@ ListUsbDeviceResponse Service::ListUsbDevices(
   return response;
 }
 DnsSettings Service::ComposeDnsResponse() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DnsSettings dns_settings;
   for (const auto& server : nameservers_) {
     dns_settings.add_nameservers(server);
