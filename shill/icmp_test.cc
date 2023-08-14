@@ -7,10 +7,12 @@
 #include <netinet/in.h>
 #include <netinet/ip_icmp.h>
 
+#include <utility>
+
 #include <gtest/gtest.h>
+#include <net-base/mock_socket.h>
 
 #include "shill/mock_log.h"
-#include "shill/net/mock_sockets.h"
 
 using testing::_;
 using testing::HasSubstr;
@@ -20,9 +22,9 @@ using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
-
 namespace {
 
+constexpr int kInterfaceIndex = 3;
 // These binary blobs representing ICMP headers and their respective checksums
 // were taken directly from Wireshark ICMP packet captures and are given in big
 // endian. The checksum field is zeroed in |kIcmpEchoRequestEvenLen| and
@@ -38,60 +40,49 @@ const uint8_t kIcmpEchoRequestOddLenChecksum[] = {0x4a, 0xae};
 
 const net_base::IPAddress kIPAddress =
     *net_base::IPAddress::CreateFromString("10.0.1.1");
+
 }  // namespace
 
 class IcmpTest : public Test {
  public:
-  IcmpTest() = default;
-  ~IcmpTest() override = default;
-
-  void SetUp() override {
-    sockets_ = new StrictMock<MockSockets>();
-    // Passes ownership.
-    icmp_.sockets_.reset(sockets_);
-  }
-
   void TearDown() override {
     if (icmp_.IsStarted()) {
-      EXPECT_CALL(*sockets_, Close(kSocketFD));
       icmp_.Stop();
     }
     EXPECT_FALSE(icmp_.IsStarted());
   }
 
- protected:
-  static const int kSocketFD;
-  static const int kInterfaceIndex;
+  // Set the socket factory method into |icmp_|.
+  // |method| is a lambda function that creates a net_base::MockSocket.
+  void SetSocketFactory(
+      int expected_domain,
+      int expected_type,
+      int expected_protocol,
+      std::function<std::unique_ptr<net_base::MockSocket>()> method) {
+    icmp_.socket_factory_ = base::BindRepeating(
+        [](int expected_domain, int expected_type, int expected_protocol,
+           std::function<std::unique_ptr<net_base::MockSocket>()> method,
+           int domain, int type,
+           int protocol) -> std::unique_ptr<net_base::Socket> {
+          EXPECT_EQ(domain, expected_domain);
+          EXPECT_EQ(type, expected_type);
+          EXPECT_EQ(protocol, expected_protocol);
 
-  int GetSocket() { return icmp_.socket_; }
-  bool StartIcmp() { return StartIcmpWithFD(kSocketFD); }
-  bool StartIcmpWithFD(int fd) {
-    EXPECT_CALL(*sockets_,
-                Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
-        .WillOnce(Return(fd));
-    EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
-
-    bool start_status = icmp_.Start(kIPAddress, kInterfaceIndex);
-    EXPECT_TRUE(start_status);
-    EXPECT_EQ(fd, icmp_.socket_);
-    EXPECT_TRUE(icmp_.IsStarted());
-    return start_status;
+          return method();
+        },
+        expected_domain, expected_type, expected_protocol, std::move(method));
   }
+
+ protected:
   uint16_t ComputeIcmpChecksum(const struct icmphdr& hdr, size_t len) {
     return Icmp::ComputeIcmpChecksum(hdr, len);
   }
 
-  // Owned by Icmp, and tracked here only for mocks.
-  MockSockets* sockets_;
-
   Icmp icmp_;
 };
 
-const int IcmpTest::kSocketFD = 456;
-const int IcmpTest::kInterfaceIndex = 3;
-
 TEST_F(IcmpTest, Constructor) {
-  EXPECT_EQ(-1, GetSocket());
+  EXPECT_EQ(-1, icmp_.socket());
   EXPECT_FALSE(icmp_.IsStarted());
 }
 
@@ -101,8 +92,8 @@ TEST_F(IcmpTest, SocketOpenFail) {
                        HasSubstr("Could not create ICMP socket")))
       .Times(1);
 
-  EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
-      .WillOnce(Return(-1));
+  SetSocketFactory(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP,
+                   []() { return nullptr; });
 
   EXPECT_FALSE(icmp_.Start(kIPAddress, kInterfaceIndex));
   EXPECT_FALSE(icmp_.IsStarted());
@@ -114,23 +105,32 @@ TEST_F(IcmpTest, SocketNonBlockingFail) {
                        HasSubstr("Could not set socket to be non-blocking")))
       .Times(1);
 
-  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
-  EXPECT_CALL(*sockets_, SetNonBlocking(kSocketFD)).WillOnce(Return(-1));
-  EXPECT_CALL(*sockets_, Close(kSocketFD));
+  SetSocketFactory(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP, []() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(false));
+    return socket;
+  });
 
   EXPECT_FALSE(icmp_.Start(kIPAddress, kInterfaceIndex));
   EXPECT_FALSE(icmp_.IsStarted());
 }
 
 TEST_F(IcmpTest, StartMultipleTimes) {
-  const int kFirstSocketFD = kSocketFD + 1;
-  StartIcmpWithFD(kFirstSocketFD);
-  EXPECT_CALL(*sockets_, Close(kFirstSocketFD));
-  StartIcmp();
+  SetSocketFactory(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP, []() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(true));
+    return socket;
+  });
+
+  EXPECT_TRUE(icmp_.Start(kIPAddress, kInterfaceIndex));
+  EXPECT_TRUE(icmp_.IsStarted());
+
+  EXPECT_TRUE(icmp_.Start(kIPAddress, kInterfaceIndex));
+  EXPECT_TRUE(icmp_.IsStarted());
 }
 
 MATCHER_P(IsIcmpHeader, header, "") {
-  return memcmp(arg, &header, sizeof(header)) == 0;
+  return memcmp(arg.data(), &header, arg.size()) == 0;
 }
 
 MATCHER_P(IsSocketAddress, address, "") {
@@ -143,10 +143,6 @@ MATCHER_P(IsSocketAddress, address, "") {
 }
 
 TEST_F(IcmpTest, TransmitEchoRequest) {
-  // Address isn't valid.
-  EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));
-  StartIcmp();
-
   struct icmphdr icmp_header;
   memset(&icmp_header, 0, sizeof(icmp_header));
   icmp_header.type = ICMP_ECHO;
@@ -155,13 +151,25 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
   icmp_header.un.echo.sequence = 1;
   icmp_header.checksum = ComputeIcmpChecksum(icmp_header, sizeof(icmp_header));
 
-  EXPECT_CALL(*sockets_,
-              SendTo(kSocketFD, IsIcmpHeader(icmp_header), sizeof(icmp_header),
-                     0, IsSocketAddress(kIPAddress), sizeof(sockaddr_in)))
-      .WillOnce(Return(-1))
-      .WillOnce(Return(0))
-      .WillOnce(Return(sizeof(icmp_header) - 1))
-      .WillOnce(Return(sizeof(icmp_header)));
+  SetSocketFactory(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP, [=]() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(true));
+
+    EXPECT_CALL(*socket,
+                SendTo(IsIcmpHeader(icmp_header), 0,
+                       IsSocketAddress(kIPAddress), sizeof(sockaddr_in)))
+        .WillOnce(Return(std::nullopt))
+        .WillOnce(Return(0))
+        .WillOnce(Return(sizeof(icmp_header) - 1))
+        .WillOnce(Return(sizeof(icmp_header)));
+    return socket;
+  });
+
+  // Address isn't valid.
+  EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));
+  EXPECT_TRUE(icmp_.Start(kIPAddress, kInterfaceIndex));
+  EXPECT_TRUE(icmp_.IsStarted());
+
   {
     InSequence seq;
     ScopedMockLog log;

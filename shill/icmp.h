@@ -10,6 +10,7 @@
 #include <memory>
 
 #include <net-base/ip_address.h>
+#include <net-base/socket.h>
 
 namespace shill {
 
@@ -42,7 +43,7 @@ class Icmp {
   // |seq_num| respectively.
   virtual bool TransmitEchoRequest(uint16_t id, uint16_t seq_num);
 
-  int socket() const { return socket_; }
+  int socket() const { return socket_ ? socket_->Get() : -1; }
   const std::optional<net_base::IPAddress>& destination() const {
     return destination_;
   }
@@ -60,9 +61,10 @@ class Icmp {
   // specifications in RFC 792.
   static uint16_t ComputeIcmpChecksum(const struct icmphdr& hdr, size_t len);
 
-  std::unique_ptr<Sockets> sockets_;
-  std::unique_ptr<ScopedSocketCloser> socket_closer_;
-  int socket_;
+  net_base::Socket::SocketFactory socket_factory_ =
+      net_base::Socket::kDefaultSocketFactory;
+  std::unique_ptr<net_base::Socket> socket_;
+
   std::optional<net_base::IPAddress> destination_;
   int interface_index_;
 };

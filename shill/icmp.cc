@@ -7,58 +7,55 @@
 #include <netinet/icmp6.h>
 #include <netinet/ip_icmp.h>
 
+#include <utility>
+
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-
-#include "shill/net/sockets.h"
 
 namespace shill {
 
 const int Icmp::kIcmpEchoCode = 0;  // value specified in RFC 792.
 
-Icmp::Icmp() : sockets_(new Sockets()), socket_(-1), interface_index_(-1) {}
+Icmp::Icmp() : interface_index_(-1) {}
 
 Icmp::~Icmp() = default;
 
 bool Icmp::Start(const net_base::IPAddress& destination, int interface_index) {
-  int socket = -1;
+  std::unique_ptr<net_base::Socket> socket;
   switch (destination.GetFamily()) {
     case net_base::IPFamily::kIPv4:
-      socket = sockets_->Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP);
+      socket =
+          socket_factory_.Run(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP);
       break;
     case net_base::IPFamily::kIPv6:
-      socket =
-          sockets_->Socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
+      socket = socket_factory_.Run(AF_INET6, SOCK_RAW | SOCK_CLOEXEC,
+                                   IPPROTO_ICMPV6);
       break;
   }
 
-  if (socket == -1) {
+  if (socket == nullptr) {
     PLOG(ERROR) << "Could not create ICMP socket";
-    Stop();
     return false;
   }
-  socket_ = socket;
-  socket_closer_.reset(new ScopedSocketCloser(sockets_.get(), socket_));
 
-  if (sockets_->SetNonBlocking(socket_) != 0) {
+  if (!socket->SetNonBlocking()) {
     PLOG(ERROR) << "Could not set socket to be non-blocking";
-    Stop();
     return false;
   }
 
+  socket_ = std::move(socket);
   destination_ = destination;
   interface_index_ = interface_index;
   return true;
 }
 
 void Icmp::Stop() {
-  socket_closer_.reset();
-  socket_ = -1;
+  socket_ = nullptr;
 }
 
 bool Icmp::IsStarted() const {
-  return socket_closer_.get();
+  return socket_ != nullptr;
 }
 
 bool Icmp::TransmitV4EchoRequest(uint16_t id, uint16_t seq_num) {
@@ -72,28 +69,24 @@ bool Icmp::TransmitV4EchoRequest(uint16_t id, uint16_t seq_num) {
   icmp_header.un.echo.id = id;
   icmp_header.un.echo.sequence = seq_num;
   icmp_header.checksum = ComputeIcmpChecksum(icmp_header, sizeof(icmp_header));
+  const base::span<const uint8_t> payload = {
+      reinterpret_cast<const uint8_t*>(&icmp_header), sizeof(icmp_header)};
 
   struct sockaddr_in destination_address;
   destination_address.sin_family = AF_INET;
   destination_address.sin_addr = destination_->ToIPv4Address()->ToInAddr();
 
-  int result =
-      sockets_->SendTo(socket_, &icmp_header, sizeof(icmp_header), 0,
-                       reinterpret_cast<struct sockaddr*>(&destination_address),
-                       sizeof(destination_address));
-  int expected_result = sizeof(icmp_header);
-  if (result != expected_result) {
-    if (result < 0) {
-      PLOG(ERROR) << "Socket sendto failed";
-    } else if (result < expected_result) {
-      LOG(ERROR) << "Socket sendto returned " << result
-                 << " which is less than the expected result "
-                 << expected_result;
-    }
-    return false;
+  const auto result = socket_->SendTo(
+      payload, 0, reinterpret_cast<struct sockaddr*>(&destination_address),
+      sizeof(destination_address));
+  if (!result) {
+    PLOG(ERROR) << "Socket sendto failed";
+  } else if (result < payload.size()) {
+    LOG(ERROR) << "Socket sendto returned " << *result
+               << " which is less than the expected result " << payload.size();
   }
 
-  return true;
+  return result == payload.size();
 }
 
 bool Icmp::TransmitV6EchoRequest(uint16_t id, uint16_t seq_num) {
@@ -106,6 +99,8 @@ bool Icmp::TransmitV6EchoRequest(uint16_t id, uint16_t seq_num) {
   icmp_header.icmp6_code = kIcmpEchoCode;
   icmp_header.icmp6_id = id;
   icmp_header.icmp6_seq = seq_num;
+  const base::span<const uint8_t> payload = {
+      reinterpret_cast<const uint8_t*>(&icmp_header), sizeof(icmp_header)};
   // icmp6_cksum is filled in by the kernel for IPPROTO_ICMPV6 sockets
   // (RFC3542 section 3.1)
 
@@ -115,23 +110,17 @@ bool Icmp::TransmitV6EchoRequest(uint16_t id, uint16_t seq_num) {
   destination_address.sin6_scope_id = interface_index_;
   destination_address.sin6_addr = destination_->ToIPv6Address()->ToIn6Addr();
 
-  int result =
-      sockets_->SendTo(socket_, &icmp_header, sizeof(icmp_header), 0,
-                       reinterpret_cast<struct sockaddr*>(&destination_address),
-                       sizeof(destination_address));
-  int expected_result = sizeof(icmp_header);
-  if (result != expected_result) {
-    if (result < 0) {
-      PLOG(ERROR) << "Socket sendto failed";
-    } else if (result < expected_result) {
-      LOG(ERROR) << "Socket sendto returned " << result
-                 << " which is less than the expected result "
-                 << expected_result;
-    }
-    return false;
+  const auto result = socket_->SendTo(
+      payload, 0, reinterpret_cast<struct sockaddr*>(&destination_address),
+      sizeof(destination_address));
+  if (!result) {
+    PLOG(ERROR) << "Socket sendto failed";
+  } else if (result < payload.size()) {
+    LOG(ERROR) << "Socket sendto returned " << *result
+               << " which is less than the expected result " << payload.size();
   }
 
-  return true;
+  return result == payload.size();
 }
 
 bool Icmp::TransmitEchoRequest(uint16_t id, uint16_t seq_num) {
