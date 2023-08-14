@@ -52,6 +52,7 @@ using ::cryptohome::storage::testing::IsError;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::ElementsAre;
 using ::testing::NiceMock;
 using ::testing::Pointee;
 using ::testing::Return;
@@ -533,6 +534,34 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
   ASSERT_TRUE(platform_.ReadFileToString(
       base::FilePath(kHomeChronosUser).Append(kFile), &result));
   ASSERT_THAT(result, kContent);
+}
+
+TEST_F(PersistentSystemTest, MountRestoreSelinux) {
+  // Verify we don't restore android-data selinux label.
+  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
+  const ObfuscatedUsername obfuscated_username =
+      brillo::cryptohome::home::SanitizeUserName(kUser);
+
+  // Create ecryptfs
+  CryptohomeVault::Options options = {
+      .force_type = EncryptedContainerType::kFscrypt,
+  };
+  MockPreclearKeyring(/*success=*/true);
+  MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
+                            /*success=*/true);
+  EXPECT_CALL(*mock_mount_interface_,
+              PerformMount(MountType::DIR_CRYPTO, kUser, _, _))
+      .WillOnce(Return(StorageStatus::Ok()));
+  std::vector<base::FilePath> exclude_path;
+  base::FilePath path_ap = GetUserMountDirectory(obfuscated_username)
+                               .Append("root")
+                               .Append("android-data")
+                               .Append("data");
+  EXPECT_CALL(platform_,
+              AddGlobalSELinuxRestoreconExclusion(ElementsAre(path_ap)));
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
+
+  ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
 }  // namespace

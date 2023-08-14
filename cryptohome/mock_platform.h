@@ -397,6 +397,10 @@ class MockPlatform : public Platform {
               RestoreSELinuxContexts,
               (const base::FilePath&, bool),
               (override));
+  MOCK_METHOD(void,
+              AddGlobalSELinuxRestoreconExclusion,
+              (const std::vector<base::FilePath>&),
+              (override));
   MOCK_METHOD(std::optional<std::string>,
               GetSELinuxContextOfFD,
               (int fd),
