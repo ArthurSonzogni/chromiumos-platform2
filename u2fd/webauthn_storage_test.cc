@@ -14,6 +14,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -55,7 +56,7 @@ class WebAuthnStorageTest : public ::testing::Test {
   }
 
   ~WebAuthnStorageTest() override {
-    EXPECT_TRUE(base::DeletePathRecursively(temp_dir_.GetPath()));
+    EXPECT_TRUE(brillo::DeletePathRecursively(temp_dir_.GetPath()));
   }
 
  protected:

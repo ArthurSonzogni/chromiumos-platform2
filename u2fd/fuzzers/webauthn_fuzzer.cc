@@ -16,6 +16,7 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/errors/error.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
@@ -237,7 +238,7 @@ class WebAuthnFuzzer : public brillo::Daemon {
   }
 
   void PrepareStorage() {
-    if (!base::DeletePathRecursively(base::FilePath(kStorageRootPath))) {
+    if (!brillo::DeletePathRecursively(base::FilePath(kStorageRootPath))) {
       PLOG(FATAL) << "Failed to clear directory for WebAuthnStorage.";
     }
     auto webauthn_storage = std::make_unique<u2f::WebAuthnStorage>();
