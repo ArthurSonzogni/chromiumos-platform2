@@ -4836,16 +4836,5 @@ void Service::OnStatefulDiskSpaceUpdate(
     iter.second->HandleStatefulUpdate(update);
   }
 }
-
-void Service::OnSiblingVmDead(VmId vm_id) {
-  // This function is called from a `TerminaVm` instance. If we don't post
-  // `StopVm` as a task, we will destroy it while we're being called from it.
-  // This is complicated and we rather do it as a separate task.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(&Service::StopVmInternalAsTask,
-                                weak_ptr_factory_.GetWeakPtr(), vm_id,
-                                VmStopReason::SIBLING_VM_EXITED));
-}
-
 }  // namespace concierge
 }  // namespace vm_tools

@@ -436,10 +436,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   void OnStatefulDiskSpaceUpdate(
       const spaced::StatefulDiskSpaceUpdate& update) override;
 
-  // Callback called by a |TerminaVm| instance (running as a sibling VM) when a
-  // sibling VM process has died on the hypervisor.
-  void OnSiblingVmDead(VmId vm_id);
-
   base::Thread metrics_thread_ GUARDED_BY_CONTEXT(sequence_checker_){
       "metrics thread"};
   // Destructor will need to run last after all metrics logging to allow
