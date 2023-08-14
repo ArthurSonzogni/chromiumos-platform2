@@ -19,6 +19,8 @@ path = "src/bin/uwbd_client.rs"
 [build-dependencies]
 chromeos-dbus-bindings = { path = "../chromeos-dbus-bindings"} # provided by ebuild
 protoc-rust = "2.24.1"
+cc = "1.0.25"
+pkg-config = "0.3.26"
 
 [dependencies]
 async-trait = "0.1.32"
