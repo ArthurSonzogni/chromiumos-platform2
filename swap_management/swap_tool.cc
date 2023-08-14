@@ -3,9 +3,12 @@
 // found in the LICENSE file.
 
 #include "swap_management/swap_tool.h"
+#include "swap_management/swap_tool_metrics.h"
+#include "swap_management/swap_tool_util.h"
 
 #include <cinttypes>
 #include <utility>
+#include <vector>
 
 #include <base/files/dir_reader_posix.h>
 #include <base/logging.h>

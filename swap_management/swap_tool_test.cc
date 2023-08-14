@@ -3,9 +3,10 @@
 // found in the LICENSE file.
 
 #include "swap_management/swap_tool.h"
+#include "swap_management/swap_tool_util.h"
 
-#include <limits>
 #include <utility>
+#include <vector>
 
 #include <absl/strings/str_cat.h>
 #include <gmock/gmock.h>

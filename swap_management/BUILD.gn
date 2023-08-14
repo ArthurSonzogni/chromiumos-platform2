@@ -9,7 +9,6 @@ group("all") {
     ":install_dbus_config",
     ":install_init",
     ":install_minijail_conf",
-    ":install_services",
     ":install_tmpfiles_config",
     ":install_udev_rule",
     ":swap_management",
@@ -69,11 +68,6 @@ install_config("install_dbus_config") {
 install_config("install_minijail_conf") {
   sources = [ "minijail/swap_management.conf" ]
   install_path = "/usr/share/minijail"
-}
-
-install_config("install_services") {
-  sources = [ "share/org.chromium.SwapManagement.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
 }
 
 install_config("install_init") {

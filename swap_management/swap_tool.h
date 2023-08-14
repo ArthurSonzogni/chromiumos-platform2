@@ -5,11 +5,8 @@
 #ifndef SWAP_MANAGEMENT_SWAP_TOOL_H_
 #define SWAP_MANAGEMENT_SWAP_TOOL_H_
 
-#include "swap_management/swap_tool_util.h"
-
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
