@@ -78,4 +78,5 @@ mremap: 1
 fstatat64: 1
 send: 1
 readlinkat: 1
+recv: 1
 recvfrom: 1
