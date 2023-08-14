@@ -74,7 +74,7 @@ clock_nanosleep: 1
 getppid: 1
 umask: 1
 # AF_UNIX = 0x1
-socket: arg0 == AF_UNIX || arg0 == 0x1
+socket: arg0 == 0x1
 connect: 1
 getcwd: 1
 getuid32: 1

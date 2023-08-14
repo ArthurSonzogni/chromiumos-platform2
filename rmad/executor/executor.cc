@@ -4,6 +4,9 @@
 
 #include "rmad/executor/executor.h"
 
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <cctype>
 #include <optional>
 #include <string>
@@ -36,9 +39,19 @@ constexpr char kSourceFirmwareUpdaterRelPath[] =
     "usr/sbin/chromeos-firmwareupdate";
 constexpr char kTargetFirmwareUpdaterAbsPath[] =
     "/var/lib/rmad/chromeos-firmwareupdate";
+constexpr char kSourceDiagnosticsAppSwbnRelPath[] = "diagnostics_app.swbn";
+constexpr char kSourceDiagnosticsAppCrxRelPath[] = "diagnostics_app.crx";
+constexpr char kTargetDiagnosticsAppSwbnAbsPath[] =
+    "/var/lib/rmad/diagnostics_app.swbn";
+constexpr char kTargetDiagnosticsAppCrxAbsPath[] =
+    "/var/lib/rmad/diagnostics_app.crx";
 
-// Partition for writing the log file. Only check the first partition.
-constexpr int kWriteLogPartitionIndex = 1;
+// chronos uid and gid.
+constexpr uid_t kChronosUid = 1000;
+constexpr gid_t kChronosGid = 1000;
+
+// Partition for stateful partition.
+constexpr int kStatefulPartitionIndex = 1;
 // Partition for rootfs A in a ChromeOS image. We don't check rootfs B.
 constexpr int kRootfsPartitionIndex = 3;
 
@@ -48,9 +61,9 @@ constexpr char kTextLogFilename[] = "text-log.txt";
 constexpr char kJsonLogFilename[] = "json-log.json";
 constexpr char kSystemLogFilename[] = "system-log.txt";
 constexpr char kDiagnosticsLogFilename[] = "diagnostics-log.txt";
-// Supported file systems for saving logs.
-const std::vector<std::string> kLogFileSystems = {"vfat", "ext4", "ext3",
-                                                  "ext2"};
+// Supported file systems for stateful partition.
+const std::vector<std::string> kStatefulFileSystems = {"vfat", "ext4", "ext3",
+                                                       "ext2"};
 
 std::string FormatTime(const base::Time& time) {
   base::Time::Exploded e;
@@ -71,6 +84,23 @@ rmad::Mount TryMount(const base::FilePath& device_file,
     }
   }
   return rmad::Mount();
+}
+
+bool CopyAndChown(const base::FilePath& from_path,
+                  const base::FilePath& to_path,
+                  uid_t uid,
+                  gid_t gid) {
+  if (!base::CopyFile(from_path, to_path)) {
+    LOG(ERROR) << "Failed to copy " << from_path.value() << " to "
+               << to_path.value();
+    return false;
+  }
+  if (chown(to_path.value().c_str(), uid, gid) != 0) {
+    PLOG(ERROR) << "Failed to chown file " << to_path.value()
+                << " with uid = " << uid << " and gid = " << gid;
+    return false;
+  }
+  return true;
 }
 
 // Powerwash related constants.
@@ -111,10 +141,10 @@ void Executor::MountAndWriteLog(uint8_t device_id,
   }
 
   const base::FilePath device_path(base::StringPrintf(
-      kDevicePathFormat, device_id, kWriteLogPartitionIndex));
+      kDevicePathFormat, device_id, kStatefulPartitionIndex));
   const base::FilePath mount_point = temp_dir.GetPath();
   const Mount mount =
-      TryMount(device_path, mount_point, kLogFileSystems, false);
+      TryMount(device_path, mount_point, kStatefulFileSystems, false);
   if (mount.IsValid()) {
     const std::string directory_name = base::StringPrintf(
         kDirectoryNameFormat, FormatTime(base::Time::Now()).c_str());
@@ -199,6 +229,52 @@ void Executor::MountAndCopyFirmwareUpdater(
     }
   }
   std::move(callback).Run(false);
+}
+
+void Executor::MountAndCopyDiagnosticsApp(
+    uint8_t device_id, MountAndCopyDiagnosticsAppCallback callback) {
+  // Input argument check.
+  if (!islower(device_id)) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+  // Create temporary mount point.
+  base::ScopedTempDir temp_dir;
+  if (!temp_dir.CreateUniqueTempDirUnderPath(base::FilePath(kTmpPath))) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
+  const base::FilePath device_path(base::StringPrintf(
+      kDevicePathFormat, device_id, kStatefulPartitionIndex));
+  const base::FilePath mount_point = temp_dir.GetPath();
+  const Mount mount = TryMount(device_path, mount_point, kStatefulFileSystems,
+                               /*read_only=*/true);
+  if (mount.IsValid()) {
+    const base::FilePath from_swbn_path =
+        mount_point.Append(kSourceDiagnosticsAppSwbnRelPath);
+    const base::FilePath from_crx_path =
+        mount_point.Append(kSourceDiagnosticsAppCrxRelPath);
+    const base::FilePath to_swbn_path(kTargetDiagnosticsAppSwbnAbsPath);
+    const base::FilePath to_crx_path(kTargetDiagnosticsAppCrxAbsPath);
+    if (base::PathExists(from_swbn_path) && base::PathExists(from_crx_path) &&
+        CopyAndChown(from_swbn_path, to_swbn_path, kChronosUid, kChronosGid) &&
+        CopyAndChown(from_crx_path, to_crx_path, kChronosUid, kChronosGid)) {
+      // Send out the reply first.
+      auto info = chromeos::rmad::mojom::DiagnosticsAppInfo::New(
+          to_swbn_path.value(), to_crx_path.value());
+      std::move(callback).Run(std::move(info));
+      // Then sync the files.
+      if (!brillo::SyncFileOrDirectory(to_swbn_path, false, true)) {
+        LOG(ERROR) << "Failed to sync " << to_swbn_path.value();
+      }
+      if (!brillo::SyncFileOrDirectory(to_crx_path, false, true)) {
+        LOG(ERROR) << "Failed to sync " << to_crx_path.value();
+      }
+      return;
+    }
+  }
+  std::move(callback).Run(nullptr);
 }
 
 void Executor::RebootEc(RebootEcCallback callback) {

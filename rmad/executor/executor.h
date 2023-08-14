@@ -36,6 +36,8 @@ class Executor final : public chromeos::rmad::mojom::Executor {
                         MountAndWriteLogCallback callback) override;
   void MountAndCopyFirmwareUpdater(
       uint8_t device_id, MountAndCopyFirmwareUpdaterCallback callback) override;
+  void MountAndCopyDiagnosticsApp(
+      uint8_t device_id, MountAndCopyDiagnosticsAppCallback callback) override;
   void RebootEc(RebootEcCallback callback) override;
   void RequestRmaPowerwash(RequestRmaPowerwashCallback callback) override;
   void RequestBatteryCutoff(RequestBatteryCutoffCallback callback) override;

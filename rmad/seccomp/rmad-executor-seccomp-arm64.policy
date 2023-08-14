@@ -97,3 +97,5 @@ restart_syscall: 1
 exit: 1
 rt_sigreturn: 1
 gettimeofday: 1
+# AF_UNIX = 0x1
+socket: arg0 == 0x1

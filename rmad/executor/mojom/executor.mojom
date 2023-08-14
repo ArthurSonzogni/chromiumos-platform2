@@ -7,6 +7,13 @@
 
 module chromeos.rmad.mojom;
 
+// Information of a diagnostics app.
+[Stable]
+struct DiagnosticsAppInfo {
+  string swbn_path@0;
+  string crx_path@1;
+};
+
 // Root-level executor interface exposed to the rmad daemon. In production,
 // this is implemented by the Executor daemon.
 interface Executor {
@@ -36,6 +43,18 @@ interface Executor {
   // Response:
   // * |success| - true if successfully copies the firmware updater.
   MountAndCopyFirmwareUpdater(uint8 device_id) => (bool success);
+
+  // Mount a stateful partition and copy the diagnostics app to fixed paths
+  // /usr/lib/rmad/diagnostics_app.[swbn|crx].
+  //
+  // Input:
+  // * |device_id| - a char between 'a' and 'z' indicating the device path of
+  //                 the stateful partition is "/dev/sd${device_id}1".
+  //
+  // Response:
+  // * |info| - a DiagnosticsAppInfo struct containing the information of the
+  //            diagnostics app, or null if failed to find the files.
+  MountAndCopyDiagnosticsApp(uint8 device_id) => (DiagnosticsAppInfo? info);
 
   // Perform an EC reboot.
   //
