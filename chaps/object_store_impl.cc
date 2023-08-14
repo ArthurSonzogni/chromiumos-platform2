@@ -18,6 +18,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
+#include <brillo/files/file_util.h>
 #include <leveldb/db.h>
 
 #include "chaps/chaps_metrics.h"
@@ -141,7 +142,7 @@ bool ObjectStoreImpl::Init(const FilePath& database_path,
     LOG(WARNING) << "Recreating database from scratch. Moving current database "
                  << "to " << kCorruptDatabaseDirectory;
     FilePath corrupt_db_path = database_path.Append(kCorruptDatabaseDirectory);
-    base::DeletePathRecursively(corrupt_db_path);
+    brillo::DeletePathRecursively(corrupt_db_path);
     if (!base::Move(database_name, corrupt_db_path)) {
       LOG(ERROR) << "Failed to move database." << status.ToString();
       return false;
