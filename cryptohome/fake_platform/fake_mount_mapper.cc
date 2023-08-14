@@ -15,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/notreached.h>
+#include <brillo/files/file_util.h>
 
 #include "cryptohome/fake_platform/real_fake_mount_mapping_redirect_factory.h"
 #include "cryptohome/fake_platform/test_file_path.h"
@@ -110,7 +111,7 @@ FakeMountMapper::FakeMountMapper(
 
 FakeMountMapper::~FakeMountMapper() {
   for (const auto& [unused, redirect] : source_to_redirect_) {
-    base::DeletePathRecursively(redirect);
+    brillo::DeletePathRecursively(redirect);
   }
 }
 

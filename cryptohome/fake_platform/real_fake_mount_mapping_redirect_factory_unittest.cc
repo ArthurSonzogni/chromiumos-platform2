@@ -6,6 +6,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 namespace cryptohome {
@@ -25,7 +26,7 @@ TEST_F(RealFakeMountMappingRedirectFactoryTest, ReturnsAChildOfTmpFs) {
   EXPECT_TRUE(base::PathExists(dir));
 
   // Cleanup.
-  ASSERT_TRUE(base::DeletePathRecursively(dir));
+  ASSERT_TRUE(brillo::DeletePathRecursively(dir));
 }
 
 }  // namespace
