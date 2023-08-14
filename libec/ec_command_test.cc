@@ -4,6 +4,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <string>
 
 #include "libec/ec_command.h"
 
@@ -263,6 +264,39 @@ TEST(EcCommand, RequestDoesNotAffectResponse) {
   EXPECT_EQ(mock.Resp()->mode, 0);
   mock.SetReq({.mode = 1});
   EXPECT_EQ(mock.Resp()->mode, 0);
+}
+
+TEST(EcCommand, ResultString_Success) {
+  MockEmptyResponseCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockEmptyResponseCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        return 0;
+      });
+  EXPECT_TRUE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.ResultString(), "SUCCESS");
+}
+
+TEST(EcCommand, ResultString_DupUnavailable) {
+  MockEmptyResponseCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockEmptyResponseCommand::Data* data) {
+        data->cmd.result = EC_RES_DUP_UNAVAILABLE;
+        return 0;
+      });
+  EXPECT_FALSE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.ResultString(), "DUP_UNAVAILABLE");
+}
+
+TEST(EcCommand, ResultString_Unknown) {
+  MockEmptyResponseCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockEmptyResponseCommand::Data* data) {
+        data->cmd.result = EC_RES_MAX;
+        return 0;
+      });
+  EXPECT_FALSE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.ResultString(), "65535");
 }
 
 }  // namespace

@@ -15,6 +15,7 @@
 #include <libusb-1.0/libusb.h>
 
 #include <string>
+#include <unordered_map>
 
 #include <base/logging.h>
 #include <chromeos/ec/cros_ec_dev.h>
@@ -25,6 +26,13 @@ namespace ec {
 
 // Character device exposing the EC command interface.
 inline constexpr char kCrosEcPath[] = "/dev/cros_ec";
+
+// Map from |enum ec_status| to the pretty string.
+#define EC_MAP_ITEM(k, v) \
+  { k, #v }
+inline const std::unordered_map<enum ec_status, const char*> kECStatusText =
+    EC_STATUS_TEXT;
+#undef EC_MAP_ITEM
 
 enum class EcCmdVersionSupportStatus {
   UNKNOWN = 0,
@@ -123,6 +131,9 @@ class EcCommand : public EcCommandInterface {
   const Params* Req() const { return &request_; }
   virtual uint32_t ReqSize() const { return cmd_.outsize; }
   virtual uint32_t Result() const { return cmd_.result; }
+  virtual std::string ResultString() const {
+    return ResultToString(cmd_.result);
+  }
 
   uint32_t Version() const override { return cmd_.version; }
   uint32_t Command() const override { return cmd_.command; }
@@ -136,6 +147,7 @@ class EcCommand : public EcCommandInterface {
     };
   };
 
+  std::string ResultToString(uint32_t ec_cmd_result) const;
   bool ErrorTypeCanBeRetried(uint32_t ec_cmd_result);
 
  private:
@@ -190,8 +202,8 @@ bool EcCommand<Params, Response>::Run(int ec_fd) {
               << std::dec << " ver=" << cmd_.version;
   } else if (cmd_.result != EC_RES_SUCCESS &&
              cmd_.result != EC_RES_IN_PROGRESS) {
-    LOG(WARNING) << "cros_ec returned error=" << cmd_.result << " for cmd=0x"
-                 << std::hex << cmd_.command;
+    LOG(WARNING) << "cros_ec returned error=" << ResultToString(cmd_.result)
+                 << " for cmd=0x" << std::hex << cmd_.command;
   }
 
   // Check size in addition to result code to guard against bugs in the
@@ -341,6 +353,16 @@ bool EcCommand<Params, Response>::RunWithMultipleAttempts(int fd,
                << num_attempts;
   }
   return false;
+}
+
+template <typename Params, typename Response>
+std::string EcCommand<Params, Response>::ResultToString(
+    uint32_t ec_cmd_result) const {
+  const auto it = kECStatusText.find((enum ec_status)ec_cmd_result);
+  if (it == kECStatusText.end()) {
+    return std::to_string(ec_cmd_result);
+  }
+  return std::string(it->second);
 }
 
 template <typename Params, typename Response>
