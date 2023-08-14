@@ -59,6 +59,12 @@ constexpr base::TimeDelta kHeartbeatDelay = base::Seconds(20);
 constexpr base::TimeDelta kCmdKillDelay = base::Seconds(1);
 const uint8_t kFailedHeartbeatsBeforeRecovery = 3;
 
+constexpr char const* kDevicesSupportingRecovery[] = {
+    "pci:14c3:4d75",  // FM350
+    "usb:2cb7:01a2",  // FM101
+    "usb:2c7c:0128"   // EM060
+};
+
 // Returns the modem firmware variant for the current model of the device by
 // reading the /modem/firmware-variant property of the current model via
 // chromeos-config. Returns an empty string if it fails to read the modem
@@ -115,6 +121,16 @@ bool IsAutoUpdateDisabledByPref() {
     return false;
 
   return (pref_value == 1);
+}
+
+bool IsRecoveryEnabledForDeviceId(const std::string& device_id) {
+  for (auto const& device : kDevicesSupportingRecovery) {
+    if (base::Contains(device_id, device)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 }  // namespace
@@ -521,9 +537,9 @@ void Daemon::CheckModemIsResponsive() {
 
 void Daemon::ResetModemWithHelper(const std::string& device_id,
                                   ModemHelper* helper) {
-  if (!base::Contains(device_id, "pci:14c3:4d75") &&
-      !base::Contains(device_id, "usb:2cb7:01a2")) {
-    LOG(WARNING) << "Not FM350 or FM101, not attempting recovery";
+  if (!IsRecoveryEnabledForDeviceId(device_id)) {
+    LOG(WARNING) << "Not rebooting unresponsive modem, feature not enabled for "
+                    "this module";
     metrics_->SendModemRecoveryState(
         metrics::ModemRecoveryState::kRecoveryStateSkipped);
     return;
