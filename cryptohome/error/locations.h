@@ -1405,6 +1405,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionVaultKeysetMissingInAuthViaVaultKey = 2120,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocRecoveryAuthBlockNoUserGaiaIdInCreate = 2121,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorAlreadyExistsInAddAuthFactor = 2122,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
@@ -1475,7 +1477,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocKeysetManagementFailedRemoveInRemoveKeysetFile = 2507,
   /* ./auth_session.cc */
   kLocAuthSessionRemoveFailedInCleanUpAllBackupKeysets = 2508,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionCleanupBackupFailedInAddauthFactor = 2509,
   /* ./auth_session.cc */
   kLocAuthSessionClobberResetSecretFailedInAddSecretToUSS = 2510,

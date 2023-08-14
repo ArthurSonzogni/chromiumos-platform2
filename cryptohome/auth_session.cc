@@ -2709,8 +2709,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     std::unique_ptr<AuthBlockState> auth_block_state) {
   CryptohomeStatus status = PersistAuthFactorToUserSecretStashImpl(
       auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
-      std::move(auth_session_performance_timer),
-      OverwriteExistingKeyBlock::kDisabled, std::move(callback_error),
+      std::move(auth_session_performance_timer), std::move(callback_error),
       std::move(key_blobs), std::move(auth_block_state));
 
   std::move(on_done).Run(std::move(status));
@@ -2731,8 +2730,7 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
   // backup VaultKeyset logic.
   CryptohomeStatus status = PersistAuthFactorToUserSecretStashImpl(
       auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
-      std::move(auth_session_performance_timer),
-      OverwriteExistingKeyBlock::kEnabled, std::move(callback_error),
+      std::move(auth_session_performance_timer), std::move(callback_error),
       std::move(key_blobs), std::move(auth_block_state));
   if (!status.ok()) {
     LOG(ERROR) << "USS migration of VaultKeyset with label "
@@ -2768,7 +2766,6 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
-    OverwriteExistingKeyBlock clobber_uss_key_block,
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
@@ -2804,8 +2801,8 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
   };
 
   // Add the factor into the USS.
-  CryptohomeStatus status = AddAuthFactorToUssInMemory(*auth_factor, *key_blobs,
-                                                       clobber_uss_key_block);
+  CryptohomeStatus status = AddAuthFactorToUssInMemory(
+      *auth_factor, *key_blobs, OverwriteExistingKeyBlock::kEnabled);
   if (!status.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthSessionAddToUssFailedInPersistToUSS),
@@ -3055,6 +3052,17 @@ void AuthSession::AuthForDecrypt::AddAuthFactor(
   on_done = WrapCallbackWithMetricsReporting(
       std::move(on_done), auth_factor_type,
       kCryptohomeErrorAddAuthFactorErrorBucket);
+
+  // You cannot add an auth factor with a label if one already exists.
+  if (session_->auth_factor_map_.Find(auth_factor_label)) {
+    LOG(ERROR) << "Cannot add a new auth factor when one already exists: "
+               << auth_factor_label;
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorAlreadyExistsInAddAuthFactor),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
 
   CryptohomeStatusOr<AuthInput> auth_input_status =
       session_->CreateAuthInputForAdding(request.auth_input(), auth_factor_type,
