@@ -5,6 +5,13 @@
 /// Runs a [9P] server.
 ///
 /// [9P]: http://man.cat-v.org/plan_9/5/0intro
+extern crate getopts;
+extern crate libc;
+extern crate libchromeos;
+#[macro_use]
+extern crate log;
+extern crate p9;
+
 use libc::gid_t;
 
 use std::ffi::CString;
@@ -26,12 +33,8 @@ use std::sync::Arc;
 use std::thread;
 
 use libchromeos::panic_handler::install_memfd_handler;
+use libchromeos::sys::vsock::*;
 use libchromeos::syslog;
-use log::error;
-use log::info;
-use log::warn;
-use vsock::VsockListener;
-use vsock::VMADDR_CID_ANY;
 
 const DEFAULT_BUFFER_SIZE: usize = 8192;
 
@@ -212,15 +215,15 @@ fn spawn_server_thread<
 
 fn run_vsock_server(
     server_params: Arc<ServerParams>,
-    port: u32,
-    accept_cid: u32,
+    port: c_uint,
+    accept_cid: VsockCid,
 ) -> io::Result<()> {
-    let listener = VsockListener::bind_with_cid_port(VMADDR_CID_ANY, port)?;
+    let listener = VsockListener::bind((VsockCid::Any, port))?;
 
     loop {
         let (stream, peer) = listener.accept()?;
 
-        if accept_cid != peer.cid() {
+        if accept_cid != peer.cid {
             warn!("ignoring connection from {}", peer);
             continue;
         }
@@ -401,7 +404,7 @@ fn main() -> Result<()> {
     {
         ListenAddress::Vsock(port) => {
             let accept_cid = if let Some(cid) = matches.opt_str("accept_cid") {
-                cid.parse::<u32>().map_err(Error::Cid)
+                cid.parse::<VsockCid>().map_err(Error::Cid)
             } else {
                 Err(Error::MissingAcceptCid)
             }?;

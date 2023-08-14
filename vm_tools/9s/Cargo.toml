@@ -2,7 +2,6 @@
 name = "p9s"
 version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
-edition = "2021"
 
 [dependencies]
 getopts = "0.2"
@@ -10,7 +9,6 @@ libc = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 p9 = "0.2.3"
 log = "0.4"
-vsock = "0.3"
 
 [patch.crates-io] # ignored by ebuild
 audio_streams = { path = "../../../../chroot/usr/lib/cros_rust_registry/registry/audio_streams-0.1.0/" } # ignored by ebuild
