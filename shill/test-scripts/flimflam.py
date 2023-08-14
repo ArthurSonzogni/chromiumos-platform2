@@ -222,7 +222,7 @@ class FlimFlam(object):
         self,
         assoc_timeout=15,
         config_timeout=15,
-        async=False,
+        asynchronous=False,
         service=None,
         service_type="",
         retry=False,
@@ -234,7 +234,7 @@ class FlimFlam(object):
         """Connect to a service and wait until connection is up
         Args:
           assoc_timeout, config_timeout:  Timeouts in seconds.
-          async:  return immediately.  do not wait for connection.
+          asynchronous:  return immediately.  do not wait for connection.
           service: DBus service
           service_type:  If supplied, invoke type-specific code to find service.
           retry: Retry connection after Connect failure.
@@ -313,7 +313,7 @@ class FlimFlam(object):
                 if service_type != "":
                     service = None
 
-        if async:
+        if asynchronous:
             return (True, output)
 
         logging.info("Associating...")
