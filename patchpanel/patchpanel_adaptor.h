@@ -93,6 +93,9 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   NotifyAndroidInteractiveStateResponse NotifyAndroidInteractiveState(
       const NotifyAndroidInteractiveStateRequest& request) override;
 
+  NotifySocketConnectionEventResponse NotifySocketConnectionEvent(
+      const NotifySocketConnectionEventRequest& request) override;
+
   // Implements Manager::ClientNotifier, which are mapping to the exported D-Bus
   // signals.
   void OnNetworkDeviceChanged(NetworkDevice* virtual_device,

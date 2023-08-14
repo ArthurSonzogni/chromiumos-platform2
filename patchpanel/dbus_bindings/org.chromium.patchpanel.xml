@@ -293,6 +293,18 @@
       </arg>
     </method>
 
+    <method name="NotifySocketConnectionEvent">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::NotifySocketConnectionEventRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::NotifySocketConnectionEventResponse" />
+      </arg>
+    </method>
+
     <!-- Exported signals. -->
     <signal name="NetworkDeviceChanged">
       <arg name="payload" type="ay" direction="out">

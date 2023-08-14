@@ -1217,4 +1217,7 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
     multicast_metrics_->OnARCWiFiForwarderStopped();
   }
 }
+
+void Manager::NotifySocketConnectionEvent(
+    const NotifySocketConnectionEventRequest& request) {}
 }  // namespace patchpanel

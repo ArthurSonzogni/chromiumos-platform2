@@ -816,3 +816,58 @@ message NotifyAndroidWifiMulticastLockChangeRequest {
 
 // Response to a NotifyAndroidWifiMulticastLockChange call.
 message NotifyAndroidWifiMulticastLockChangeResponse {}
+
+// A socket connection event that contains socket information and QoS category
+// of this socket.
+message SocketConnectionEvent {
+  // IP protocol used in a socket connection. Currently we only care about TCP
+  // and UDP.
+  enum IpProtocol {
+    UNKNOWN_PROTO = 0;
+    TCP = 1;
+    UDP = 2;
+  }
+
+  // Socket event suggesting whether this socket is opened or closed.
+  enum SocketEvent {
+    UNKNOWN_EVENT = 0;
+    OPEN = 1;
+    CLOSE = 2;
+  }
+
+  // List of supported QoS categories, details can be found at
+  // go/cros-qos-dscp-classes-1p.
+  enum QosCategory {
+    UNKNOWN_CATEGORY = 0;
+    REALTIME_INTERACTIVE = 1;
+    MULTIMEDIA_CONFERENCING = 2;
+  }
+
+  // Source address and port on local side, currently only used for local
+  // address in ARC before SNAT.
+  bytes saddr = 1;
+  int32 sport = 2;
+
+  // Destination address and port on remote side.
+  bytes daddr = 3;
+  int32 dport = 4;
+
+  // IP Protocol used in this socket connection.
+  IpProtocol proto = 5;
+
+  // Whether socket is opened or closed.
+  SocketEvent event = 6;
+
+  // The inferred QoS category of this connection.
+  QosCategory category = 7;
+}
+
+// Notification for a socket connection event, currently only for socket
+// connections in ARC. Patchpanel will apply proper QoS treatment for this
+// connection.
+message NotifySocketConnectionEventRequest {
+  SocketConnectionEvent msg = 1;
+}
+
+// Response to a NotifySocketConnectionEvent call.
+message NotifySocketConnectionEventResponse {}

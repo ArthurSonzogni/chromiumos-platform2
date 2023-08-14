@@ -377,6 +377,13 @@ PatchpanelAdaptor::NotifyAndroidInteractiveState(
   return {};
 }
 
+NotifySocketConnectionEventResponse
+PatchpanelAdaptor::NotifySocketConnectionEvent(
+    const NotifySocketConnectionEventRequest& request) {
+  manager_->NotifySocketConnectionEvent(request);
+  return {};
+}
+
 void PatchpanelAdaptor::OnNetworkDeviceChanged(
     NetworkDevice* virtual_device, NetworkDeviceChangedSignal::Event event) {
   NetworkDeviceChangedSignal signal;

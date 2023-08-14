@@ -380,6 +380,23 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
                int),
               (override));
 
+  MOCK_METHOD(bool,
+              NotifySocketConnectionEvent,
+              (const patchpanel::NotifySocketConnectionEventRequest&,
+               patchpanel::NotifySocketConnectionEventResponse*,
+               brillo::ErrorPtr*,
+               int),
+              (override));
+
+  MOCK_METHOD(
+      void,
+      NotifySocketConnectionEventAsync,
+      (const patchpanel::NotifySocketConnectionEventRequest&,
+       base::OnceCallback<void(const NotifySocketConnectionEventResponse&)>,
+       base::OnceCallback<void(brillo::Error*)>,
+       int),
+      (override));
+
   MOCK_METHOD(void,
               RegisterNetworkDeviceChangedSignalHandler,
               (const base::RepeatingCallback<
