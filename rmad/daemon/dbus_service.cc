@@ -148,6 +148,21 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       &DBusService::DelegateToInterface<
           RecordBrowserActionMetricRequest, RecordBrowserActionMetricReply,
           &RmadInterface::RecordBrowserActionMetric>);
+  dbus_interface->AddMethodHandler(
+      kExtractExternalDiagnosticsAppMethod, weak_ptr_factory_.GetWeakPtr(),
+      &DBusService::DelegateToInterface<
+          ExtractExternalDiagnosticsAppReply,
+          &RmadInterface::ExtractExternalDiagnosticsApp>);
+  dbus_interface->AddMethodHandler(
+      kInstallExtractedDiagnosticsAppMethod, weak_ptr_factory_.GetWeakPtr(),
+      &DBusService::DelegateToInterface<
+          InstallExtractedDiagnosticsAppReply,
+          &RmadInterface::InstallExtractedDiagnosticsApp>);
+  dbus_interface->AddMethodHandler(
+      kGetInstalledDiagnosticsAppMethod, weak_ptr_factory_.GetWeakPtr(),
+      &DBusService::DelegateToInterface<
+          GetInstalledDiagnosticsAppReply,
+          &RmadInterface::GetInstalledDiagnosticsApp>);
 
   error_signal_ = dbus_interface->RegisterSignal<int>(kErrorSignal);
   hardware_verification_signal_ =

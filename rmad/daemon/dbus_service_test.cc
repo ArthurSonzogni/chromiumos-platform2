@@ -515,6 +515,56 @@ TEST_F(DBusServiceTest, SaveLog) {
   EXPECT_EQ("/save/path", reply.save_path());
 }
 
+TEST_F(DBusServiceTest, ExtractExternalDiagnosticsApp) {
+  EXPECT_CALL(mock_rmad_service_, ExtractExternalDiagnosticsApp(_))
+      .WillOnce(Invoke(
+          [](RmadInterface::ExtractExternalDiagnosticsAppCallback callback) {
+            ExtractExternalDiagnosticsAppReply reply;
+            reply.set_error(RMAD_ERROR_OK);
+            reply.set_diagnostics_app_swbn_path("diagnostics_app.swbn");
+            reply.set_diagnostics_app_crx_path("diagnostics_app.crx");
+            std::move(callback).Run(reply, false);
+          }));
+
+  ExtractExternalDiagnosticsAppReply reply;
+  ExecuteMethod(kExtractExternalDiagnosticsAppMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+  EXPECT_EQ("diagnostics_app.swbn", reply.diagnostics_app_swbn_path());
+  EXPECT_EQ("diagnostics_app.crx", reply.diagnostics_app_crx_path());
+}
+
+TEST_F(DBusServiceTest, InstallExtractedDiagnosticsApp) {
+  EXPECT_CALL(mock_rmad_service_, InstallExtractedDiagnosticsApp(_))
+      .WillOnce(Invoke(
+          [](RmadInterface::InstallExtractedDiagnosticsAppCallback callback) {
+            InstallExtractedDiagnosticsAppReply reply;
+            reply.set_error(RMAD_ERROR_OK);
+            std::move(callback).Run(reply, false);
+          }));
+
+  InstallExtractedDiagnosticsAppReply reply;
+  ExecuteMethod(kInstallExtractedDiagnosticsAppMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+}
+
+TEST_F(DBusServiceTest, GetInstalledDiagnosticsApp) {
+  EXPECT_CALL(mock_rmad_service_, GetInstalledDiagnosticsApp(_))
+      .WillOnce(Invoke(
+          [](RmadInterface::GetInstalledDiagnosticsAppCallback callback) {
+            GetInstalledDiagnosticsAppReply reply;
+            reply.set_error(RMAD_ERROR_OK);
+            reply.set_diagnostics_app_swbn_path("diagnostics_app.swbn");
+            reply.set_diagnostics_app_crx_path("diagnostics_app.crx");
+            std::move(callback).Run(reply, false);
+          }));
+
+  GetInstalledDiagnosticsAppReply reply;
+  ExecuteMethod(kGetInstalledDiagnosticsAppMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+  EXPECT_EQ("diagnostics_app.swbn", reply.diagnostics_app_swbn_path());
+  EXPECT_EQ("diagnostics_app.crx", reply.diagnostics_app_crx_path());
+}
+
 TEST_F(DBusServiceTest, SignalError) {
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillOnce(Invoke([](dbus::Signal* signal) {

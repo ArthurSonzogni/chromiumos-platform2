@@ -20,6 +20,7 @@ class MockRmadInterface : public RmadInterface {
 
   MOCK_METHOD(bool, SetUp, (scoped_refptr<DaemonCallback>), (override));
   MOCK_METHOD(RmadState::StateCase, GetCurrentStateCase, (), (override));
+  MOCK_METHOD(bool, CanAbort, (), (const, override));
   MOCK_METHOD(void, TryTransitionNextStateFromCurrentState, (), (override));
   MOCK_METHOD(void, GetCurrentState, (GetStateCallback), (override));
   MOCK_METHOD(void,
@@ -35,7 +36,18 @@ class MockRmadInterface : public RmadInterface {
               (const RecordBrowserActionMetricRequest&,
                RecordBrowserActionMetricCallback),
               (override));
-  MOCK_METHOD(bool, CanAbort, (), (const, override));
+  MOCK_METHOD(void,
+              ExtractExternalDiagnosticsApp,
+              (ExtractExternalDiagnosticsAppCallback),
+              (override));
+  MOCK_METHOD(void,
+              InstallExtractedDiagnosticsApp,
+              (InstallExtractedDiagnosticsAppCallback),
+              (override));
+  MOCK_METHOD(void,
+              GetInstalledDiagnosticsApp,
+              (GetInstalledDiagnosticsAppCallback),
+              (override));
 };
 
 }  // namespace rmad

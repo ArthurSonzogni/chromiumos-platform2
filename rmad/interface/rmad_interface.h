@@ -28,6 +28,9 @@ class RmadInterface {
   // Get the current state_case.
   virtual RmadState::StateCase GetCurrentStateCase() = 0;
 
+  // Returns whether it's allowed to abort RMA now.
+  virtual bool CanAbort() const = 0;
+
   // Try to transition to the next state using the current state without
   // additional user input.
   virtual void TryTransitionNextStateFromCurrentState() = 0;
@@ -65,8 +68,23 @@ class RmadInterface {
       const RecordBrowserActionMetricRequest& browser_action,
       RecordBrowserActionMetricCallback callback) = 0;
 
-  // Returns whether it's allowed to abort RMA now.
-  virtual bool CanAbort() const = 0;
+  using ExtractExternalDiagnosticsAppCallback =
+      base::OnceCallback<void(const ExtractExternalDiagnosticsAppReply&, bool)>;
+  // Extract the diagnostics app from external storage to internal storage.
+  virtual void ExtractExternalDiagnosticsApp(
+      ExtractExternalDiagnosticsAppCallback callback) = 0;
+
+  using InstallExtractedDiagnosticsAppCallback = base::OnceCallback<void(
+      const InstallExtractedDiagnosticsAppReply&, bool)>;
+  // Install the extracted diagnostics app from internal storage.
+  virtual void InstallExtractedDiagnosticsApp(
+      InstallExtractedDiagnosticsAppCallback callback) = 0;
+
+  using GetInstalledDiagnosticsAppCallback =
+      base::OnceCallback<void(const GetInstalledDiagnosticsAppReply&, bool)>;
+  // Get the installed diagnostics app.
+  virtual void GetInstalledDiagnosticsApp(
+      GetInstalledDiagnosticsAppCallback callback) = 0;
 };
 
 }  // namespace rmad

@@ -652,6 +652,30 @@ void RmadInterfaceImpl::RecordBrowserActionMetric(
   ReplyCallback(std::move(callback), reply);
 }
 
+void RmadInterfaceImpl::ExtractExternalDiagnosticsApp(
+    ExtractExternalDiagnosticsAppCallback callback) {
+  ExtractExternalDiagnosticsAppReply reply;
+  reply.set_error(RMAD_ERROR_USB_NOT_FOUND);
+
+  ReplyCallback(std::move(callback), reply);
+}
+
+void RmadInterfaceImpl::InstallExtractedDiagnosticsApp(
+    InstallExtractedDiagnosticsAppCallback callback) {
+  InstallExtractedDiagnosticsAppReply reply;
+  reply.set_error(RMAD_ERROR_USB_NOT_FOUND);
+
+  ReplyCallback(std::move(callback), reply);
+}
+
+void RmadInterfaceImpl::GetInstalledDiagnosticsApp(
+    GetInstalledDiagnosticsAppCallback callback) {
+  GetInstalledDiagnosticsAppReply reply;
+  reply.set_error(RMAD_ERROR_USB_NOT_FOUND);
+
+  ReplyCallback(std::move(callback), reply);
+}
+
 bool RmadInterfaceImpl::CanGoBack() const {
   if (state_history_.size() > 1) {
     const auto current_state_handler =

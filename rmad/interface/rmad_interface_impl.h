@@ -61,6 +61,8 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadState::StateCase GetCurrentStateCase() override {
     return current_state_case_;
   }
+  bool CanAbort() const override { return can_abort_; }
+
   void TryTransitionNextStateFromCurrentState() override;
   void GetCurrentState(GetStateCallback callback) override;
   void TransitionNextState(const TransitionNextStateRequest& request,
@@ -73,7 +75,12 @@ class RmadInterfaceImpl final : public RmadInterface {
   void RecordBrowserActionMetric(
       const RecordBrowserActionMetricRequest& browser_action,
       RecordBrowserActionMetricCallback callback) override;
-  bool CanAbort() const override { return can_abort_; }
+  void ExtractExternalDiagnosticsApp(
+      const ExtractExternalDiagnosticsAppCallback callback) override;
+  void InstallExtractedDiagnosticsApp(
+      const InstallExtractedDiagnosticsAppCallback callback) override;
+  void GetInstalledDiagnosticsApp(
+      const GetInstalledDiagnosticsAppCallback callback) override;
 
  private:
   void InitializeExternalUtils(scoped_refptr<DaemonCallback> daemon_callback);
