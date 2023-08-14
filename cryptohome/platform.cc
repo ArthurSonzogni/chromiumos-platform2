@@ -18,7 +18,6 @@
 #include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
-#include <sys/quota.h>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -455,43 +454,6 @@ int64_t Platform::AmountOfFreeDiskSpace(const FilePath& path) const {
   return base::SysInfo::AmountOfFreeDiskSpace(path);
 }
 
-int64_t Platform::GetQuotaCurrentSpaceForUid(const base::FilePath& device,
-                                             uid_t user_id) const {
-  DCHECK(device.IsAbsolute()) << "device=" << device;
-
-  struct dqblk dq = {};
-  if (quotactl(QCMD(Q_GETQUOTA, USRQUOTA), device.value().c_str(), user_id,
-               reinterpret_cast<char*>(&dq)) != 0) {
-    PLOG(ERROR) << "quotactl failed for user " << user_id;
-    return -1;
-  }
-  return dq.dqb_curspace;
-}
-
-int64_t Platform::GetQuotaCurrentSpaceForGid(const base::FilePath& device,
-                                             gid_t group_id) const {
-  DCHECK(device.IsAbsolute()) << "device=" << device;
-
-  struct dqblk dq = {};
-  if (quotactl(QCMD(Q_GETQUOTA, GRPQUOTA), device.value().c_str(), group_id,
-               reinterpret_cast<char*>(&dq)) != 0) {
-    return -1;
-  }
-  return dq.dqb_curspace;
-}
-
-int64_t Platform::GetQuotaCurrentSpaceForProjectId(const base::FilePath& device,
-                                                   int project_id) const {
-  DCHECK(device.IsAbsolute()) << "device=" << device;
-
-  struct dqblk dq = {};
-  if (quotactl(QCMD(Q_GETQUOTA, PRJQUOTA), device.value().c_str(), project_id,
-               reinterpret_cast<char*>(&dq)) != 0) {
-    return -1;
-  }
-  return dq.dqb_curspace;
-}
-
 bool Platform::GetQuotaProjectId(const base::FilePath& path,
                                  int* project_id) const {
   base::stat_wrapper_t stat = {};
@@ -542,45 +504,14 @@ bool Platform::SetQuotaProjectId(const base::FilePath& path, int project_id) {
   }
   CHECK(fd.is_valid());
 
-  int error = 0;
-  return SetQuotaProjectIdWithFd(project_id, fd.get(), &error);
-}
-
-bool Platform::SetQuotaProjectIdWithFd(int project_id, int fd, int* out_error) {
   struct fsxattr fsx = {};
-  if (ioctl(fd, FS_IOC_FSGETXATTR, &fsx) < 0) {
-    *out_error = errno;
+  if (ioctl(fd.get(), FS_IOC_FSGETXATTR, &fsx) < 0) {
     PLOG(ERROR) << "ioctl(FS_IOC_FSGETXATTR) failed";
     return false;
   }
   fsx.fsx_projid = project_id;
-  if (ioctl(fd, FS_IOC_FSSETXATTR, &fsx) < 0) {
-    *out_error = errno;
+  if (ioctl(fd.get(), FS_IOC_FSSETXATTR, &fsx) < 0) {
     PLOG(ERROR) << "ioctl(FS_IOC_FSSETXATTR) failed: project_id=" << project_id;
-    return false;
-  }
-  return true;
-}
-
-bool Platform::SetQuotaProjectInheritanceFlagWithFd(bool enable,
-                                                    int fd,
-                                                    int* out_error) {
-  uint32_t flags;
-  if (ioctl(fd, FS_IOC_GETFLAGS, &flags) < 0) {
-    *out_error = errno;
-    PLOG(ERROR) << "ioctl(FS_IOC_GETFLAGS) failed";
-    return false;
-  }
-
-  if (enable) {
-    flags |= FS_PROJINHERIT_FL;
-  } else {
-    flags &= ~FS_PROJINHERIT_FL;
-  }
-
-  if (ioctl(fd, FS_IOC_SETFLAGS, reinterpret_cast<void*>(&flags)) < 0) {
-    *out_error = errno;
-    PLOG(ERROR) << "ioctl(FS_IOC_SETFLAGS) failed: flags=" << std::hex << flags;
     return false;
   }
   return true;
@@ -1496,21 +1427,6 @@ void Platform::AddGlobalSELinuxRestoreconExclusion(
                    });
     selinux_restorecon_set_exclude_list(exclude_cstring.data());
   }
-#endif
-}
-
-std::optional<std::string> Platform::GetSELinuxContextOfFD(int fd) {
-#if USE_SELINUX
-  char* con = nullptr;
-  if (fgetfilecon(fd, &con) < 0) {
-    LOG(ERROR) << "fgetfilecon failed";
-    return std::nullopt;
-  }
-  std::string result = con;
-  freecon(con);
-  return result;
-#else
-  return std::string();
 #endif
 }
 

@@ -309,18 +309,6 @@ class MockPlatform : public Platform {
               CreateProcessInstance,
               (),
               (override));
-  MOCK_METHOD(int64_t,
-              GetQuotaCurrentSpaceForUid,
-              (const base::FilePath&, uid_t),
-              (const, override));
-  MOCK_METHOD(int64_t,
-              GetQuotaCurrentSpaceForGid,
-              (const base::FilePath&, gid_t),
-              (const, override));
-  MOCK_METHOD(int64_t,
-              GetQuotaCurrentSpaceForProjectId,
-              (const base::FilePath&, int),
-              (const, override));
   MOCK_METHOD(bool,
               GetQuotaProjectId,
               (const base::FilePath&, int*),
@@ -328,11 +316,6 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool,
               SetQuotaProjectId,
               (const base::FilePath&, int),
-              (override));
-  MOCK_METHOD(bool, SetQuotaProjectIdWithFd, (int, int, int*), (override));
-  MOCK_METHOD(bool,
-              SetQuotaProjectInheritanceFlagWithFd,
-              (bool, int, int*),
               (override));
   MOCK_METHOD(int64_t,
               ComputeDirectoryDiskUsage,
@@ -400,10 +383,6 @@ class MockPlatform : public Platform {
   MOCK_METHOD(void,
               AddGlobalSELinuxRestoreconExclusion,
               (const std::vector<base::FilePath>&),
-              (override));
-  MOCK_METHOD(std::optional<std::string>,
-              GetSELinuxContextOfFD,
-              (int fd),
               (override));
   MOCK_METHOD(bool,
               SetSELinuxContext,

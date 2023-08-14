@@ -493,33 +493,6 @@ int64_t FuzzedPlatform::AmountOfFreeDiskSpace(
       0, std::numeric_limits<int64_t>::max());
 }
 
-int64_t FuzzedPlatform::GetQuotaCurrentSpaceForUid(const base::FilePath& device,
-                                                   uid_t /*user_id*/) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  AssertIsValidAbsolutePath(device);
-  // Quota is not simulated, hence return random result.
-  return fuzzed_data_provider_.ConsumeIntegralInRange<int64_t>(
-      0, std::numeric_limits<int64_t>::max());
-}
-
-int64_t FuzzedPlatform::GetQuotaCurrentSpaceForGid(const base::FilePath& device,
-                                                   gid_t /*group_id*/) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  AssertIsValidAbsolutePath(device);
-  // Quota is not simulated, hence return random result.
-  return fuzzed_data_provider_.ConsumeIntegralInRange<int64_t>(
-      0, std::numeric_limits<int64_t>::max());
-}
-
-int64_t FuzzedPlatform::GetQuotaCurrentSpaceForProjectId(
-    const base::FilePath& device, int /*project_id*/) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  AssertIsValidAbsolutePath(device);
-  // Quota is not simulated, hence return random result.
-  return fuzzed_data_provider_.ConsumeIntegralInRange<int64_t>(
-      0, std::numeric_limits<int64_t>::max());
-}
-
 bool FuzzedPlatform::GetQuotaProjectId(const base::FilePath& path,
                                        int* project_id) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -540,36 +513,6 @@ bool FuzzedPlatform::SetQuotaProjectId(const base::FilePath& path,
   AssertIsValidAbsolutePath(path);
   // Quota is not simulated, hence return random result.
   return GetArbitraryOutcome();
-}
-
-bool FuzzedPlatform::SetQuotaProjectIdWithFd(int /*project_id*/,
-                                             int /*fd*/,
-                                             int* out_error) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(out_error);
-  // Quota is not simulated, hence return random result.
-  int code = fuzzed_data_provider_.ConsumeIntegralInRange<int>(
-      0, std::numeric_limits<int>::max());
-  if (code != 0) {
-    *out_error = code;
-    return false;
-  }
-  return true;
-}
-
-bool FuzzedPlatform::SetQuotaProjectInheritanceFlagWithFd(bool /*enable*/,
-                                                          int /*fd*/,
-                                                          int* out_error) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(out_error);
-  // Quota is not simulated, hence return random result.
-  int code = fuzzed_data_provider_.ConsumeIntegralInRange<int>(
-      0, std::numeric_limits<int>::max());
-  if (code != 0) {
-    *out_error = code;
-    return false;
-  }
-  return true;
 }
 
 bool FuzzedPlatform::FileExists(const base::FilePath& path) const {
@@ -1543,16 +1486,6 @@ bool FuzzedPlatform::ResizeFilesystem(const base::FilePath& file,
   AssertIsValidAbsolutePath(file);
   // FS properties are not simulated, hence return random result.
   return GetArbitraryOutcome();
-}
-
-std::optional<std::string> FuzzedPlatform::GetSELinuxContextOfFD(int /*fd*/) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // SELinux is not simulated, hence return random result.
-  std::string context = fuzzed_data_provider_.ConsumeRandomLengthString();
-  if (context.empty()) {
-    return std::nullopt;
-  }
-  return context;
 }
 
 bool FuzzedPlatform::SetSELinuxContext(const base::FilePath& path,

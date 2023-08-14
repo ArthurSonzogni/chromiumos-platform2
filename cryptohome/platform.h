@@ -347,33 +347,6 @@ class BRILLO_EXPORT Platform {
   //   path - the pathname of any file within the mounted file system
   virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const;
 
-  // Returns the current space for the given uid from quotactl syscall, or -1 if
-  // the syscall fails.
-  //
-  // Parameters
-  //   device - The pathname to the block special device
-  //   user_id - The user ID to query for
-  virtual int64_t GetQuotaCurrentSpaceForUid(const base::FilePath& device,
-                                             uid_t user_id) const;
-
-  // Returns the current space for the given gid from quotactl syscall, or -1 if
-  // the syscall fails.
-  //
-  // Parameters
-  //   device - The pathname to the block special device
-  //   group_id - The group ID to query for
-  virtual int64_t GetQuotaCurrentSpaceForGid(const base::FilePath& device,
-                                             gid_t group_id) const;
-
-  // Returns the current space for the given project ID from quotactl syscall,
-  // or -1 if the syscall fails.
-  //
-  // Parameters
-  //   device - The pathname to the block special device
-  //   project_id - The project ID to query for
-  virtual int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& device,
-                                                   int project_id) const;
-
   // Gets the project ID of a file or directory at |path|.
   // Returns true if ioctl syscall succeeds.
   //
@@ -390,26 +363,6 @@ class BRILLO_EXPORT Platform {
   //   path - The path to the file or directory to set project ID
   //   project_id - The project ID
   virtual bool SetQuotaProjectId(const base::FilePath& path, int project_id);
-
-  // Sets the project ID to the FD.
-  // Returns true if ioctl syscall succeeds.
-  //
-  // Parameters
-  //   project_id - The project ID
-  //   fd - The FD
-  //   out_error - errno when ioctl fails
-  virtual bool SetQuotaProjectIdWithFd(int project_id, int fd, int* out_error);
-
-  // Sets or resets the Quota Inheritance flags on |fd|.
-  // Returns true if ioctl syscall succeeds.
-  //
-  // Parameters
-  //   enable - Whether we want to enable the project inheritance flag.
-  //   fd - The FD
-  //   out_error - errno when ioctl fails
-  virtual bool SetQuotaProjectInheritanceFlagWithFd(bool enable,
-                                                    int fd,
-                                                    int* out_error);
 
   // Returns true if the specified file exists.
   //
@@ -915,13 +868,6 @@ class BRILLO_EXPORT Platform {
   //   file - Path to the file to be resized.
   //   blocks - number of blocks to be resized to.
   virtual bool ResizeFilesystem(const base::FilePath& file, uint64_t blocks);
-
-  // Returns the SELinux context of the file descriptor.
-  // Returns nullopt in case of error.
-  //
-  // Parameters
-  //   fd - The FD.
-  virtual std::optional<std::string> GetSELinuxContextOfFD(int fd);
 
   // Set the SELinux context for the file/directory pointed by path.
   // Returns true if the context is set successfully.

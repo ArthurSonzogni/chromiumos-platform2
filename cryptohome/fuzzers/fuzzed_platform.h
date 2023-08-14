@@ -100,19 +100,9 @@ class FuzzedPlatform : public Platform {
   bool GetPermissions(const base::FilePath& path, mode_t* mode) const override;
   bool SetPermissions(const base::FilePath& path, mode_t mode) override;
   int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const override;
-  int64_t GetQuotaCurrentSpaceForUid(const base::FilePath& device,
-                                     uid_t user_id) const override;
-  int64_t GetQuotaCurrentSpaceForGid(const base::FilePath& device,
-                                     gid_t group_id) const override;
-  int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& device,
-                                           int project_id) const override;
   bool GetQuotaProjectId(const base::FilePath& path,
                          int* project_id) const override;
   bool SetQuotaProjectId(const base::FilePath& path, int project_id) override;
-  bool SetQuotaProjectIdWithFd(int project_id, int fd, int* out_error) override;
-  bool SetQuotaProjectInheritanceFlagWithFd(bool enable,
-                                            int fd,
-                                            int* out_error) override;
   bool FileExists(const base::FilePath& path) const override;
   int Access(const base::FilePath& path, uint32_t flag) override;
   bool DirectoryExists(const base::FilePath& path) override;
@@ -230,7 +220,6 @@ class FuzzedPlatform : public Platform {
   bool Tune2Fs(const base::FilePath& file,
                const std::vector<std::string>& opts) override;
   bool ResizeFilesystem(const base::FilePath& file, uint64_t blocks) override;
-  std::optional<std::string> GetSELinuxContextOfFD(int fd) override;
   bool SetSELinuxContext(const base::FilePath& path,
                          const std::string& context) override;
   bool RestoreSELinuxContexts(const base::FilePath& path,
