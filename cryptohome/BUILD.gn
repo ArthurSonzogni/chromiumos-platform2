@@ -404,7 +404,6 @@ if (use.test) {
       "pinweaver_manager/sign_in_hash_tree_unittest.cc",
       "platform_unittest.cc",
       "signature_sealing/structures_proto_test.cc",
-      "storage/arc_disk_quota_unittest.cc",
       "storage/cryptohome_vault_test.cc",
       "storage/dircrypto_migration_helper_delegate_test.cc",
       "storage/encrypted_container/dmcrypt_container_test.cc",

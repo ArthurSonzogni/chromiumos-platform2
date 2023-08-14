@@ -13,7 +13,6 @@ inline constexpr char kUserDataAuthServicePath[] = "/org/chromium/UserDataAuth";
 
 inline constexpr char kUserDataAuthInterface[] =
     "org.chromium.UserDataAuthInterface";
-inline constexpr char kArcQuotaInterface[] = "org.chromium.ArcQuota";
 inline constexpr char kCryptohomePkcs11Interface[] =
     "org.chromium.CryptohomePkcs11Interface";
 inline constexpr char kInstallAttributesInterface[] =
@@ -66,14 +65,7 @@ inline constexpr char kGetAuthSessionStatus[] = "GetAuthSessionStatus";
 inline constexpr char kGetRecoveryRequest[] = "GetRecoveryRequest";
 inline constexpr char kModifyAuthFactorIntents[] = "ModifyAuthFactorIntents";
 inline constexpr char kCreateVaultkeyset[] = "CreateVaultKeyset";
-
-// Methods of the |kArcQuotaInterface| interface:
 inline constexpr char kGetArcDiskFeatures[] = "GetArcDiskFeatures";
-inline constexpr char kGetCurrentSpaceForArcUid[] = "GetCurrentSpaceForArcUid";
-inline constexpr char kGetCurrentSpaceForArcGid[] = "GetCurrentSpaceForArcGid";
-inline constexpr char kGetCurrentSpaceForArcProjectId[] =
-    "GetCurrentSpaceForArcProjectId";
-inline constexpr char kSetProjectId[] = "SetProjectId";
 
 // Methods of the |kCryptohomePkcs11Interface| interface:
 inline constexpr char kPkcs11IsTpmTokenReady[] = "Pkcs11IsTpmTokenReady";

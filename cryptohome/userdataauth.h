@@ -51,7 +51,6 @@
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/arc_disk_quota.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_factory.h"
@@ -231,37 +230,6 @@ class UserDataAuth {
   // Return true if we support low entropy credential.
   bool IsLowEntropyCredentialSupported();
 
-  // =============== ARC Quota Related Public Methods ===============
-  // TODO(b/229122701): Remove these methods after migrating them to spaced.
-
-  // Return true is ARC Disk Quota is supported, false otherwise.
-  bool IsArcQuotaSupported();
-
-  // Return the current disk usage for an android uid (a shifted uid) in bytes.
-  // Will return a negative number if the request fails. See
-  // cryptohome/arc_disk_quota.h for more details.
-  int64_t GetCurrentSpaceForArcUid(uid_t android_uid);
-
-  // Return the current disk usage for an android gid (a shifted gid) in bytes.
-  // Will return a negative number if the request fails. See
-  // cryptohome/arc_disk_quota.h for more details.
-  int64_t GetCurrentSpaceForArcGid(uid_t android_gid);
-
-  // Return the current disk usage for an android project id in bytes.
-  // Will return a negative number if the request fails. See
-  // cryptohome/arc_disk_quota.h for more details.
-  int64_t GetCurrentSpaceForArcProjectId(int project_id);
-
-  // Sets the project ID of a media_rw_data_file.
-  // See cryptohome/arc_disk_quota.h for more details.
-  bool SetMediaRWDataFileProjectId(int project_id, int fd, int* out_error);
-
-  // Sets the project inheritance flag of a media_rw_data_file.
-  // See cryptohome/arc_disk_quota.h for more details.
-  bool SetMediaRWDataFileProjectInheritanceFlag(bool enable,
-                                                int fd,
-                                                int* out_error);
-
   // =============== PKCS#11 Related Public Methods ===============
 
   // Returns true if and only if PKCS#11 tokens are ready for all mounts.
@@ -400,10 +368,8 @@ class UserDataAuth {
   // user.
   bool OwnerUserExists();
 
-  // Returns false if there are any unmounted Android users.
-  // TODO(b/229122701): Rename this to IsArcQuotaSupported() after deprecating
-  // the current IsArcQuotaSupported() method.
-  bool UnmountedAndroidUsersDoNotExist();
+  // Returns whether ARC quota is supported.
+  bool IsArcQuotaSupported();
 
   // =============== Miscellaneous ===============
 
@@ -549,11 +515,6 @@ class UserDataAuth {
   // Override |install_attrs_| for testing purpose
   void set_install_attrs(InstallAttributes* install_attrs) {
     install_attrs_ = install_attrs;
-  }
-
-  // Override |arc_disk_quota_| for testing purpose
-  void set_arc_disk_quota(ArcDiskQuota* arc_disk_quota) {
-    arc_disk_quota_ = arc_disk_quota;
   }
 
   // Override |pkcs11_init_| for testing purpose
@@ -1244,14 +1205,6 @@ class UserDataAuth {
 
   // Whether Downloads/ should be bind mounted.
   bool bind_mount_downloads_;
-
-  // The default ARC Disk Quota object. This is used to provide Quota related
-  // information function for ARC.
-  std::unique_ptr<ArcDiskQuota> default_arc_disk_quota_;
-
-  // The actual ARC Disk Quota object used by this class. Usually set to
-  // default_arc_disk_quota_, but can be overridden for testing.
-  ArcDiskQuota* arc_disk_quota_;
 
   // A counter to count the number of parallel tasks on mount thread.
   // Recorded when a requests comes in. Counts of 1 will not reported.

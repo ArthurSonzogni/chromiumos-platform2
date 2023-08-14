@@ -518,6 +518,7 @@ do.
       </arg>
     </method>
 
+    <!-- Gets disk features related to ARC. -->
     <method name="GetArcDiskFeatures">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>
@@ -583,89 +584,6 @@ do.
                     value="user_data_auth::AuthenticateAuthFactorCompleted" />
       </arg>
     </signal>
-  </interface>
-
-  <!-- TODO(b/229122701): Remove ArcQuota methods after migrating them to
-       spaced. -->
-  <interface name="org.chromium.ArcQuota">
-    <method name="GetArcDiskFeatures">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetArcDiskFeaturesRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetArcDiskFeaturesReply" />
-      </arg>
-    </method>
-    <method name="GetCurrentSpaceForArcUid">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForArcUidRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForArcUidReply" />
-      </arg>
-    </method>
-
-    <method name="GetCurrentSpaceForArcGid">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForArcGidRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForArcGidReply" />
-      </arg>
-    </method>
-
-    <method name="GetCurrentSpaceForArcProjectId">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForArcProjectIdRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetCurrentSpaceForArcProjectIdReply" />
-      </arg>
-    </method>
-
-    <method name="SetMediaRWDataFileProjectId">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="fd" type="h" direction="in" />
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::SetMediaRWDataFileProjectIdRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::SetMediaRWDataFileProjectIdReply" />
-      </arg>
-    </method>
-
-    <method name="SetMediaRWDataFileProjectInheritanceFlag">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="fd" type="h" direction="in" />
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::SetMediaRWDataFileProjectInheritanceFlagRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::SetMediaRWDataFileProjectInheritanceFlagReply" />
-      </arg>
-    </method>
   </interface>
 
   <interface name="org.chromium.CryptohomePkcs11Interface">

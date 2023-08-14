@@ -433,8 +433,6 @@ UserDataAuth::UserDataAuth()
       fscrypt_v2_(false),
       legacy_mount_(true),
       bind_mount_downloads_(true),
-      default_arc_disk_quota_(nullptr),
-      arc_disk_quota_(nullptr),
       default_features_(nullptr),
       features_(nullptr),
       async_init_features_(base::BindRepeating(&UserDataAuth::GetFeatures,
@@ -681,14 +679,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
       disk_cleanup_critical_threshold_);
   low_disk_space_handler_->disk_cleanup()->set_target_free_space(
       disk_cleanup_target_free_space_);
-
-  if (!arc_disk_quota_) {
-    default_arc_disk_quota_ = std::make_unique<ArcDiskQuota>(
-        homedirs_, platform_, base::FilePath(kArcDiskHome));
-    arc_disk_quota_ = default_arc_disk_quota_.get();
-  }
-  // Initialize ARC Disk Quota Service.
-  arc_disk_quota_->Initialize();
 
   if (!mount_task_runner_) {
     base::Thread::Options options;
@@ -1838,42 +1828,6 @@ int64_t UserDataAuth::GetAccountDiskUsage(const AccountIdentifier& account) {
   return homedirs_->ComputeDiskUsage(GetAccountId(account));
 }
 
-bool UserDataAuth::IsArcQuotaSupported() {
-  AssertOnOriginThread();
-  return arc_disk_quota_->IsQuotaSupported();
-}
-
-int64_t UserDataAuth::GetCurrentSpaceForArcUid(uid_t android_uid) {
-  AssertOnOriginThread();
-  return arc_disk_quota_->GetCurrentSpaceForUid(android_uid);
-}
-
-int64_t UserDataAuth::GetCurrentSpaceForArcGid(uid_t android_gid) {
-  AssertOnOriginThread();
-  return arc_disk_quota_->GetCurrentSpaceForGid(android_gid);
-}
-
-int64_t UserDataAuth::GetCurrentSpaceForArcProjectId(int project_id) {
-  AssertOnOriginThread();
-  return arc_disk_quota_->GetCurrentSpaceForProjectId(project_id);
-}
-
-bool UserDataAuth::SetMediaRWDataFileProjectId(int project_id,
-                                               int fd,
-                                               int* out_error) {
-  AssertOnOriginThread();
-  return arc_disk_quota_->SetMediaRWDataFileProjectId(project_id, fd,
-                                                      out_error);
-}
-
-bool UserDataAuth::SetMediaRWDataFileProjectInheritanceFlag(bool enable,
-                                                            int fd,
-                                                            int* out_error) {
-  AssertOnOriginThread();
-  return arc_disk_quota_->SetMediaRWDataFileProjectInheritanceFlag(enable, fd,
-                                                                   out_error);
-}
-
 bool UserDataAuth::Pkcs11IsTpmTokenReady() {
   AssertOnMountThread();
   // We touched the sessions_ object, so we need to be on mount thread.
@@ -2269,8 +2223,10 @@ bool UserDataAuth::OwnerUserExists() {
   return homedirs_->GetPlainOwner(&owner);
 }
 
-bool UserDataAuth::UnmountedAndroidUsersDoNotExist() {
+bool UserDataAuth::IsArcQuotaSupported() {
   AssertOnOriginThread();
+  // Quota is not supported if there are one or more unmounted Android users.
+  // (b/181159107)
   return homedirs_->GetUnmountedAndroidDataCount() == 0;
 }
 
