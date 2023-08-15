@@ -37,10 +37,4 @@ int64_t TPMError::CalculateUnifiedErrorCode(const std::string& msg) {
   return result;
 }
 
-void TPMError::LogUnifiedErrorCodeMapping() const {
-  LOG(INFO) << "TPMUnified" << UnifiedErrorCode()
-            << " is mapped from generic TPM error message '" << ToString()
-            << "'";
-}
-
 }  // namespace hwsec

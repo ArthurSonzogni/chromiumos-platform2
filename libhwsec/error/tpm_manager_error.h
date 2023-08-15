@@ -47,8 +47,6 @@ class HWSEC_EXPORT TPMManagerError : public TPMErrorBase {
     return error_code;
   }
 
-  void LogUnifiedErrorCodeMapping() const override {}
-
  private:
   TpmManagerStatus error_code_;
 };

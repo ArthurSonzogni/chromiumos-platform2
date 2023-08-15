@@ -47,8 +47,6 @@ class HWSEC_EXPORT TPMNvramError : public TPMErrorBase {
     return error_code;
   }
 
-  void LogUnifiedErrorCodeMapping() const override {}
-
  private:
   const NvramResult error_code_;
 };

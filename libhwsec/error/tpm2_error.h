@@ -43,8 +43,6 @@ class HWSEC_EXPORT TPM2Error : public TPMErrorBase {
     return error_code | unified_tpm_error::kUnifiedErrorBit;
   }
 
-  void LogUnifiedErrorCodeMapping() const override {}
-
  private:
   const trunks::TPM_RC error_code_;
 };

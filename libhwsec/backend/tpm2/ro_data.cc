@@ -219,11 +219,8 @@ StatusOr<bool> RoDataTpm2::IsReady(RoSpace space) {
   StatusOr<DetailSpaceInfo> detail_info =
       GetDetailSpaceInfo(tpm_nvram_, space_info);
 
-  if (!detail_info.ok() &&
-      detail_info.err_status()->UnifiedErrorCode() ==
-          TPMNvramError(
-              tpm_manager::NvramResult::NVRAM_RESULT_SPACE_DOES_NOT_EXIST)
-              .UnifiedErrorCode()) {
+  if (!detail_info.ok() && detail_info.err_status()->ToTPMRetryAction() ==
+                               TPMRetryAction::kSpaceNotFound) {
     return false;
   }
   if (!detail_info.ok()) {

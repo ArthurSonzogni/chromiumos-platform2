@@ -139,11 +139,6 @@ class HWSEC_EXPORT TPMErrorBase : public hwsec_foundation::status::Error {
 
   // Returns a unified error code.
   virtual unified_tpm_error::UnifiedError UnifiedErrorCode() const = 0;
-
-  // If there's any hashing that is used to derive the unified error code, then
-  // this method print out the original content before hashing so that we can
-  // discover what the hashed unified error code was when we're debugging.
-  virtual void LogUnifiedErrorCodeMapping() const = 0;
 };
 
 // A TPM error which contains error message and retry action. Doesn't contain
@@ -225,8 +220,6 @@ class HWSEC_EXPORT TPMError : public TPMErrorBase {
   unified_tpm_error::UnifiedError UnifiedErrorCode() const override {
     return CalculateUnifiedErrorCode(ToString());
   }
-
-  void LogUnifiedErrorCodeMapping() const override;
 
  private:
   static unified_tpm_error::UnifiedError CalculateUnifiedErrorCode(
