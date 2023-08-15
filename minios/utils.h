@@ -90,5 +90,8 @@ std::optional<uint64_t> KernelSize(
     std::unique_ptr<ProcessManagerInterface> process_manager,
     const base::FilePath& device);
 
+// Read the kernel cmdline and get the current version.
+std::optional<std::string> GetMiniOSVersion();
+
 }  // namespace minios
 #endif  // MINIOS_UTILS_H__

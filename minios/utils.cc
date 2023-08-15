@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <brillo/kernel_config_utils.h>
 
 #include "minios/minios.h"
 #include "minios/process_manager.h"
@@ -40,6 +41,8 @@ const std::string kFutilityShowCmd[]{"/usr/bin/futility", "show", "-P"};
 const char kKeyblockSizePrefix[] = "kernel::keyblock::size::";
 const char kKernelPreambleSizePrefix[] = "kernel::preamble::size::";
 const char kKernelBodySizePrefix[] = "kernel::body::size::";
+
+const char kMiniOsVersionKey[] = "cros_minios_version";
 }  // namespace
 
 namespace minios {
@@ -316,6 +319,21 @@ std::optional<uint64_t> KernelSize(
 
   return keyblock_size.value() + kernel_preamble_size.value() +
          kernel_body_size.value();
+}
+
+std::optional<std::string> GetMiniOSVersion() {
+  auto kernel_config = brillo::GetCurrentKernelConfig();
+  if (!kernel_config) {
+    LOG(ERROR) << "Failed to read kernel config.";
+    return std::nullopt;
+  }
+  auto version = brillo::ExtractKernelArgValue(kernel_config.value(),
+                                               std::string{kMiniOsVersionKey});
+  if (!version) {
+    LOG(ERROR) << "Failed to extract version value with key: "
+               << kMiniOsVersionKey;
+  }
+  return version;
 }
 
 }  // namespace minios
