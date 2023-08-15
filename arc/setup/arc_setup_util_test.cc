@@ -974,7 +974,7 @@ TEST(ArcSetupUtil, TestParseContainerState) {
   const base::FilePath kRootfsPath(
       "/opt/google/containers/android/rootfs/root");
 
-  constexpr char kJsonTemplate[] = R"json(
+  static constexpr char kJsonTemplate[] = R"json(
     {
       "ociVersion": "1.0",
       "id": "android-container",
@@ -1165,10 +1165,11 @@ TEST(ArcSetupUtil, SafeCopyFile) {
 }
 
 TEST(ArcSetupUtil, GenerateFirstStageFstab) {
-  constexpr const char kFakeCombinedBuildPropPath[] = "/path/to/build.prop";
-  constexpr const char kAnotherFakeCombinedBuildPropPath[] =
+  static constexpr const char kFakeCombinedBuildPropPath[] =
+      "/path/to/build.prop";
+  static constexpr const char kAnotherFakeCombinedBuildPropPath[] =
       "/foo/bar/baz.prop";
-  constexpr const char kCachePartition[] = "/cache";
+  static constexpr const char kCachePartition[] = "/cache";
 
   std::string content;
   base::ScopedTempDir dir;

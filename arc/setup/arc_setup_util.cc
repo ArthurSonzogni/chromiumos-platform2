@@ -338,7 +338,7 @@ class ArcMounterImpl : public ArcMounter {
                          LoopMountFilesystemType filesystem_type,
                          unsigned long mount_flags,  // NOLINT(runtime/int)
                          bool* out_retry) {
-    constexpr char kLoopControl[] = "/dev/loop-control";
+    static constexpr char kLoopControl[] = "/dev/loop-control";
 
     *out_retry = false;
     base::ScopedFD scoped_control_fd(open(kLoopControl, O_RDONLY));
@@ -771,7 +771,7 @@ std::unique_ptr<ArcMounter> GetDefaultMounter() {
 
 std::string GetChromeOsChannelFromFile(
     const base::FilePath& lsb_release_file_path) {
-  constexpr char kChromeOsReleaseTrackProp[] = "CHROMEOS_RELEASE_TRACK";
+  static constexpr char kChromeOsReleaseTrackProp[] = "CHROMEOS_RELEASE_TRACK";
   const std::set<std::string> kChannels = {
       "beta-channel",    "canary-channel", "dev-channel",
       "dogfood-channel", "stable-channel", "testimage-channel"};
