@@ -26,12 +26,6 @@ class RoData {
   // Certifies data of the |space| with a |key|.
   virtual StatusOr<attestation::Quote> Certify(RoSpace space, Key key) = 0;
 
-  // Certifies data of the |space| with a |key|. The size of data to be
-  // certified will be |size|.
-  virtual StatusOr<attestation::Quote> CertifyWithSize(RoSpace space,
-                                                       Key key,
-                                                       int size) = 0;
-
  protected:
   RoData() = default;
   ~RoData() = default;

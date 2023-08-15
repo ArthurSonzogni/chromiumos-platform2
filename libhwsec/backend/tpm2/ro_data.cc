@@ -271,13 +271,6 @@ StatusOr<attestation::Quote> RoDataTpm2::Certify(RoSpace space, Key key) {
     size = detail_info.full_size;
   }
 
-  return CertifyWithSize(space, key, static_cast<int>(size));
-}
-
-StatusOr<attestation::Quote> RoDataTpm2::CertifyWithSize(RoSpace space,
-                                                         Key key,
-                                                         int size) {
-  ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
   std::unique_ptr<trunks::AuthorizationDelegate> empty_password_authorization =
       context_.GetTrunksFactory().GetPasswordAuthorization("");
 

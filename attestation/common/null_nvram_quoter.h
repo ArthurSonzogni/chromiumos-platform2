@@ -24,10 +24,6 @@ class NullNvramQuoter : public NvramQuoter {
   bool Certify(NVRAMQuoteType type,
                const std::string& signing_key_blob,
                Quote& quote) override;
-  bool CertifyWithSize(NVRAMQuoteType type,
-                       const std::string& signing_key_blob,
-                       int size,
-                       Quote& quote) override;
 };
 
 }  // namespace attestation

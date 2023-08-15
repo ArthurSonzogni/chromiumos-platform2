@@ -35,10 +35,6 @@ class MockNvramQuoter : public NvramQuoter {
               Certify,
               (NVRAMQuoteType, const std::string&, Quote&),
               (override));
-  MOCK_METHOD(bool,
-              CertifyWithSize,
-              (NVRAMQuoteType, const std::string&, int, Quote&),
-              (override));
 };
 
 }  // namespace attestation

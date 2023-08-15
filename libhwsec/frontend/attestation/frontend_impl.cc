@@ -82,18 +82,6 @@ StatusOr<attestation::Quote> AttestationFrontendImpl::CertifyNV(
   return middleware_.CallSync<&Backend::RoData::Certify>(space, key.GetKey());
 }
 
-StatusOr<attestation::Quote> AttestationFrontendImpl::CertifyNVWithSize(
-    RoSpace space, const brillo::Blob& key_blob, int size) const {
-  ASSIGN_OR_RETURN(
-      ScopedKey key,
-      middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
-          OperationPolicy{}, key_blob,
-          Backend::KeyManagement::LoadKeyOptions{.auto_reload = true}));
-
-  return middleware_.CallSync<&Backend::RoData::CertifyWithSize>(
-      space, key.GetKey(), size);
-}
-
 StatusOr<attestation::CertifiedKey> AttestationFrontendImpl::CreateCertifiedKey(
     const brillo::Blob& identity_key_blob,
     attestation::KeyType key_type,

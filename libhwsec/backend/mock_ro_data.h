@@ -34,10 +34,6 @@ class MockRoData : public RoData {
               Certify,
               (RoSpace space, Key key),
               (override));
-  MOCK_METHOD(StatusOr<attestation::Quote>,
-              CertifyWithSize,
-              (RoSpace space, Key key, int size),
-              (override));
 
  private:
   RoData* default_;

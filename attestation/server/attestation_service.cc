@@ -3464,8 +3464,7 @@ void AttestationService::GetCertifiedNvIndexTask(
   }
 
   Quote quote;
-  if (!nvram_quoter_->CertifyWithSize(type, key.key_blob(), request.nv_size(),
-                                      quote)) {
+  if (!nvram_quoter_->Certify(type, key.key_blob(), quote)) {
     LOG(WARNING) << __func__ << ": Failed to certify NV by key with label: "
                  << request.key_label();
     result->set_status(STATUS_INVALID_PARAMETER);

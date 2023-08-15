@@ -22,10 +22,6 @@ class NvramQuoter {
   virtual bool Certify(NVRAMQuoteType type,
                        const std::string& signing_key_blob,
                        Quote& quote) = 0;
-  virtual bool CertifyWithSize(NVRAMQuoteType type,
-                               const std::string& signing_key_blob,
-                               int size,
-                               Quote& quote) = 0;
 };
 
 }  // namespace attestation

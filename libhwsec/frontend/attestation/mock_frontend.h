@@ -47,10 +47,6 @@ class MockAttestationFrontend : public MockFrontend,
               CertifyNV,
               (RoSpace space, const brillo::Blob& key_blob),
               (const override));
-  MOCK_METHOD(StatusOr<attestation::Quote>,
-              CertifyNVWithSize,
-              (RoSpace space, const brillo::Blob& key_blob, int size),
-              (const override));
   MOCK_METHOD(StatusOr<attestation::CertifiedKey>,
               CreateCertifiedKey,
               (const brillo::Blob& identity_key_blob,

@@ -38,9 +38,6 @@ class AttestationFrontendImpl : public AttestationFrontend,
       const override;
   StatusOr<attestation::Quote> CertifyNV(
       RoSpace space, const brillo::Blob& key_blob) const override;
-  StatusOr<attestation::Quote> CertifyNVWithSize(RoSpace space,
-                                                 const brillo::Blob& key_blob,
-                                                 int size) const override;
   StatusOr<attestation::CertifiedKey> CreateCertifiedKey(
       const brillo::Blob& identity_key_blob,
       attestation::KeyType key_type,
