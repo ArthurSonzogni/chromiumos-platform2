@@ -26,8 +26,8 @@ impl TryFrom<u8> for ProcessSchedulerState {
     }
 }
 
-static CGROUP_NORMAL: &str = "/sys/fs/cgroup/cpu/cgroup.procs";
-static CGROUP_BACKGROUND: &str = "/sys/fs/cgroup/cpu/chrome_renderers/background/cgroup.procs";
+static CGROUP_NORMAL: &str = "/sys/fs/cgroup/cpu/resourced/normal/cgroup.procs";
+static CGROUP_BACKGROUND: &str = "/sys/fs/cgroup/cpu/resourced/background/cgroup.procs";
 
 pub fn change_process_state(process_id: i32, process_state: ProcessSchedulerState) -> Result<()> {
     match process_state {
