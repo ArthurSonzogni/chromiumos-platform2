@@ -5,14 +5,10 @@
 #ifndef MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_H_
 #define MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_H_
 
-#include <memory>
-
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>
-
-#include "missive/analytics/metrics.h"
 
 namespace reporting::analytics {
 

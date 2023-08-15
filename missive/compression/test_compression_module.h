@@ -10,14 +10,11 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_piece.h>
+#include <gmock/gmock.h>
 
 #include "missive/compression/compression_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
-#include "missive/util/statusor.h"
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 namespace reporting::test {
 

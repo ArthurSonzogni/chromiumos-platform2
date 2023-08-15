@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_set>
 #include <utility>
@@ -464,7 +465,7 @@ void KeyDelivery::EncryptionKeyReceiverReady(
 }
 
 KeyInStorage::KeyInStorage(
-    base::StringPiece signature_verification_public_key,
+    std::string_view signature_verification_public_key,
     scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag,
     const base::FilePath& directory)
     : verifier_(signature_verification_public_key,

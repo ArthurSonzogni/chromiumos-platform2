@@ -7,9 +7,9 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
@@ -33,11 +33,10 @@ class Registry {
   // ownership of the |ResourceCollector| instance. If another collector with
   // the same name has already been registered, it is replaced with the
   // collector argument.
-  void Add(base::StringPiece name,
-           std::unique_ptr<ResourceCollector> collector);
+  void Add(std::string_view name, std::unique_ptr<ResourceCollector> collector);
   // Removes a resource collector. Returns true if a collector is removed.
   // Returns false if there is no collector with the given name.
-  bool Remove(base::StringPiece name);
+  bool Remove(std::string_view name);
 
  private:
   std::unordered_map<std::string, std::unique_ptr<ResourceCollector>>

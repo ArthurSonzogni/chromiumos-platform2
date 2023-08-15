@@ -5,7 +5,6 @@
 #ifndef MISSIVE_RESOURCES_RESOURCE_MANAGED_BUFFER_H_
 #define MISSIVE_RESOURCES_RESOURCE_MANAGED_BUFFER_H_
 
-#include <cstdint>
 #include <memory>
 
 #include <base/memory/scoped_refptr.h>

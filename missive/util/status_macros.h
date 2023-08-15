@@ -7,9 +7,6 @@
 
 #include <utility>
 
-#include "missive/util/status.h"
-#include "missive/util/statusor.h"
-
 namespace reporting {
 
 // Run a command that returns a Status.  If the called code returns an

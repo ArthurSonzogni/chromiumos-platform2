@@ -5,7 +5,6 @@
 #ifndef MISSIVE_UTIL_TIME_H_
 #define MISSIVE_UTIL_TIME_H_
 
-#include <cstddef>
 #include <ctime>
 
 #include "missive/util/statusor.h"

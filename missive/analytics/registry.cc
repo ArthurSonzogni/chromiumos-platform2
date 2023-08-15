@@ -4,19 +4,18 @@
 
 #include "missive/analytics/registry.h"
 
+#include <string_view>
 #include <utility>
-
-#include <base/location.h>
 
 namespace reporting::analytics {
 
-void Registry::Add(base::StringPiece name,
+void Registry::Add(std::string_view name,
                    std::unique_ptr<ResourceCollector> collector) {
   resource_collectors_.insert_or_assign(std::string(name),
                                         std::move(collector));
 }
 
-bool Registry::Remove(base::StringPiece name) {
+bool Registry::Remove(std::string_view name) {
   auto it = resource_collectors_.find(std::string(name));
   if (it == resource_collectors_.end()) {
     return false;

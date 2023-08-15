@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -34,7 +35,6 @@
 
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
-#include "missive/compression/compression_module.h"
 #include "missive/compression/test_compression_module.h"
 #include "missive/encryption/decryption.h"
 #include "missive/encryption/encryption.h"
@@ -171,7 +171,7 @@ class SingleDecryptionContext {
   SingleDecryptionContext(
       const EncryptedRecord& encrypted_record,
       scoped_refptr<test::Decryptor> decryptor,
-      base::OnceCallback<void(StatusOr<base::StringPiece>)> response)
+      base::OnceCallback<void(StatusOr<std::string_view>)> response)
       : encrypted_record_(encrypted_record),
         decryptor_(decryptor),
         response_(std::move(response)) {}
@@ -192,7 +192,7 @@ class SingleDecryptionContext {
   }
 
  private:
-  void Respond(StatusOr<base::StringPiece> result) {
+  void Respond(StatusOr<std::string_view> result) {
     std::move(response_).Run(result);
     delete this;
   }
@@ -217,7 +217,7 @@ class SingleDecryptionContext {
             base::Unretained(this)));
   }
 
-  void DecryptSharedSecret(base::StringPiece private_key) {
+  void DecryptSharedSecret(std::string_view private_key) {
     // Decrypt shared secret from private key and peer public key.
     auto shared_secret_result = decryptor_->DecryptSecret(
         private_key, encrypted_record_.encryption_info().encryption_key());
@@ -231,7 +231,7 @@ class SingleDecryptionContext {
                                   shared_secret_result.ValueOrDie()));
   }
 
-  void OpenRecord(base::StringPiece shared_secret) {
+  void OpenRecord(std::string_view shared_secret) {
     decryptor_->OpenRecord(
         shared_secret,
         base::BindOnce(
@@ -272,7 +272,7 @@ class SingleDecryptionContext {
   void CloseRecord(test::Decryptor::Handle* handle) {
     handle->CloseRecord(base::BindOnce(
         [](SingleDecryptionContext* self,
-           StatusOr<base::StringPiece> decryption_result) {
+           StatusOr<std::string_view> decryption_result) {
           self->Respond(decryption_result);
         },
         base::Unretained(this)));
@@ -281,7 +281,7 @@ class SingleDecryptionContext {
  private:
   const EncryptedRecord encrypted_record_;
   const scoped_refptr<test::Decryptor> decryptor_;
-  base::OnceCallback<void(StatusOr<base::StringPiece>)> response_;
+  base::OnceCallback<void(StatusOr<std::string_view>)> response_;
 };
 
 class LegacyStorageTest
@@ -366,7 +366,7 @@ class LegacyStorageTest
                 (const));
     MOCK_METHOD(bool,
                 UploadRecord,
-                (int64_t /*uploader_id*/, Priority, int64_t, base::StringPiece),
+                (int64_t /*uploader_id*/, Priority, int64_t, std::string_view),
                 (const));
     MOCK_METHOD(bool,
                 UploadRecordFailure,
@@ -534,7 +534,7 @@ class LegacyStorageTest
                         Priority priority,
                         int64_t sequencing_id,
                         int64_t generation_id,
-                        base::StringPiece data,
+                        std::string_view data,
                         base::OnceCallback<void(bool)> processed_cb) {
       DoEncounterSeqId(uploader_id, priority, sequencing_id, generation_id);
       DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
@@ -655,7 +655,7 @@ class LegacyStorageTest
         return std::move(uploader_);
       }
 
-      SetUp& Required(int64_t sequencing_id, base::StringPiece value) {
+      SetUp& Required(int64_t sequencing_id, std::string_view value) {
         CHECK(uploader_) << "'Complete' already called";
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(Eq(uploader_id_), Eq(priority_),
@@ -666,9 +666,9 @@ class LegacyStorageTest
       }
 
       SetUp& RequireEither(int64_t seq_id,
-                           base::StringPiece value,
+                           std::string_view value,
                            int64_t seq_id_other,
-                           base::StringPiece value_other) {
+                           std::string_view value_other) {
         CHECK(uploader_) << "'Complete' already called";
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(uploader_id_, priority_, _, _))
@@ -680,7 +680,7 @@ class LegacyStorageTest
         return *this;
       }
 
-      SetUp& Possible(int64_t sequencing_id, base::StringPiece value) {
+      SetUp& Possible(int64_t sequencing_id, std::string_view value) {
         CHECK(uploader_) << "'Complete' already called";
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(Eq(uploader_id_), Eq(priority_),
@@ -810,7 +810,7 @@ class LegacyStorageTest
                [](SequenceInformation sequence_information,
                   base::OnceCallback<void(bool)> processed_cb,
                   scoped_refptr<base::SequencedTaskRunner> task_runner,
-                  TestUploader* uploader, StatusOr<base::StringPiece> result) {
+                  TestUploader* uploader, StatusOr<std::string_view> result) {
                  ASSERT_OK(result.status()) << result.status();
                  WrappedRecord wrapped_record;
                  ASSERT_TRUE(wrapped_record.ParseFromArray(
@@ -1057,7 +1057,7 @@ class LegacyStorageTest
     AsyncStartMockUploader(reason, std::move(start_uploader_cb));
   }
 
-  Status WriteString(Priority priority, base::StringPiece data) {
+  Status WriteString(Priority priority, std::string_view data) {
     EXPECT_TRUE(storage_) << "Storage not created yet";
     test::TestEvent<Status> w;
     Record record;
@@ -1070,7 +1070,7 @@ class LegacyStorageTest
     return w.result();
   }
 
-  void WriteStringOrDie(Priority priority, base::StringPiece data) {
+  void WriteStringOrDie(Priority priority, std::string_view data) {
     const Status write_result = WriteString(priority, data);
     ASSERT_OK(write_result) << write_result;
   }
@@ -1127,16 +1127,16 @@ class LegacyStorageTest
     uint8_t signature[kSignatureSize];
     test::SignMessage(
         signing_private_key_,
-        base::StringPiece(reinterpret_cast<const char*>(value_to_sign),
-                          sizeof(value_to_sign)),
+        std::string_view(reinterpret_cast<const char*>(value_to_sign),
+                         sizeof(value_to_sign)),
         signature);
     signed_encryption_key.set_signature(
         std::string(reinterpret_cast<const char*>(signature), kSignatureSize));
     // Double check signature.
     CHECK(VerifySignature(
         signature_verification_public_key_,
-        base::StringPiece(reinterpret_cast<const char*>(value_to_sign),
-                          sizeof(value_to_sign)),
+        std::string_view(reinterpret_cast<const char*>(value_to_sign),
+                         sizeof(value_to_sign)),
         signature));
     return signed_encryption_key;
   }

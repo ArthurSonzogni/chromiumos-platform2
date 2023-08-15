@@ -5,7 +5,6 @@
 #include "missive/compression/decompression.h"
 
 #include <string>
-#include <utility>
 
 #include <snappy.h>
 

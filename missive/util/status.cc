@@ -4,10 +4,9 @@
 
 #include "missive/util/status.h"
 
-#include <stdio.h>
 #include <ostream>
 #include <string>
-#include <utility>
+#include <string_view>
 
 #include <base/no_destructor.h>
 #include <base/strings/strcat.h>
@@ -66,7 +65,7 @@ const Status& Status::StatusOK() {
 
 Status::Status() : error_code_(error::OK) {}
 
-Status::Status(error::Code error_code, base::StringPiece error_message)
+Status::Status(error::Code error_code, std::string_view error_message)
     : error_code_(error_code) {
   if (error_code != error::OK) {
     error_message_ = std::string(error_message);

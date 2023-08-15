@@ -5,7 +5,6 @@
 #include "missive/analytics/resource_collector_cpu.h"
 
 #include <memory>
-#include <string>
 
 #include <base/test/task_environment.h>
 #include <base/time/time.h>

@@ -5,16 +5,13 @@
 #ifndef MISSIVE_ENCRYPTION_TESTING_PRIMITIVES_H_
 #define MISSIVE_ENCRYPTION_TESTING_PRIMITIVES_H_
 
-#include <cstddef>
 #include <cstdint>
 #include <string>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 #include "missive/encryption/primitives.h"
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 // Generates new pair of encryption private key and public value.
 void GenerateEncryptionKeyPair(uint8_t private_key[kKeySize],
@@ -27,7 +24,7 @@ void RestoreSharedSecret(const uint8_t private_key[kKeySize],
 
 // Performs AEAD decryption with Chacha20Poly1305 key.
 void PerformSymmetricDecryption(const uint8_t symmetric_key[kKeySize],
-                                base::StringPiece input_data,
+                                std::string_view input_data,
                                 std::string* output_data);
 
 // Generates new pair of signing private key and public value.
@@ -36,10 +33,9 @@ void GenerateSigningKeyPair(uint8_t private_key[kSignKeySize],
 
 // Signs the |message| producing ED25519 |signature|.
 void SignMessage(const uint8_t signing_key[kSignKeySize],
-                 base::StringPiece message,
+                 std::string_view message,
                  uint8_t signature[kSignatureSize]);
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test
 
 #endif  // MISSIVE_ENCRYPTION_TESTING_PRIMITIVES_H_

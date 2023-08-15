@@ -4,7 +4,6 @@
 
 #include "missive/daemon/missive_daemon.h"
 
-#include <cstdlib>
 #include <memory>
 #include <string>
 #include <utility>
@@ -13,9 +12,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "missive/missive/missive_service.h"
-#include "missive/proto/interface.pb.h"
-#include "missive/proto/record.pb.h"
-#include "missive/util/status.h"
 
 namespace reporting {
 

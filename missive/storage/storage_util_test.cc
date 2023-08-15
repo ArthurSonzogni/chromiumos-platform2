@@ -13,10 +13,8 @@
 #include <base/uuid.h>
 #include <gtest/gtest.h>
 
-#include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_util.h"
-#include "missive/util/status.h"
 
 namespace reporting {
 

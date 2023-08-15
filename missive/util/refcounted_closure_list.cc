@@ -4,7 +4,7 @@
 
 #include "missive/util/refcounted_closure_list.h"
 
-#include <memory>
+#include <utility>
 
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>

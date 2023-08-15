@@ -12,7 +12,6 @@
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 namespace reporting::test {
 

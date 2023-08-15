@@ -10,7 +10,6 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/missive_storage_module.h"
-#include "missive/util/status.h"
 
 namespace reporting {
 

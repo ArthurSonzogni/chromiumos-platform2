@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -31,14 +32,10 @@
 
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
-#include "missive/compression/compression_module.h"
 #include "missive/compression/test_compression_module.h"
 #include "missive/encryption/decryption.h"
-#include "missive/encryption/encryption.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/encryption_module_interface.h"
-#include "missive/encryption/test_encryption_module.h"
-#include "missive/encryption/testing_primitives.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
@@ -221,7 +218,7 @@ class LegacyStorageDegradationTest
                 (const));
     MOCK_METHOD(bool,
                 UploadRecord,
-                (int64_t /*uploader_id*/, Priority, int64_t, base::StringPiece),
+                (int64_t /*uploader_id*/, Priority, int64_t, std::string_view),
                 (const));
     MOCK_METHOD(bool,
                 UploadRecordFailure,
@@ -392,7 +389,7 @@ class LegacyStorageDegradationTest
                         Priority priority,
                         int64_t sequencing_id,
                         int64_t generation_id,
-                        base::StringPiece data,
+                        std::string_view data,
                         base::OnceCallback<void(bool)> processed_cb) {
       DoEncounterSeqId(uploader_id, priority, sequencing_id, generation_id);
       DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
@@ -513,7 +510,7 @@ class LegacyStorageDegradationTest
         return std::move(uploader_);
       }
 
-      SetUp& Required(int64_t sequencing_id, base::StringPiece value) {
+      SetUp& Required(int64_t sequencing_id, std::string_view value) {
         CHECK(uploader_) << "'Complete' already called";
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(Eq(uploader_id_), Eq(priority_),
@@ -524,9 +521,9 @@ class LegacyStorageDegradationTest
       }
 
       SetUp& RequireEither(int64_t seq_id,
-                           base::StringPiece value,
+                           std::string_view value,
                            int64_t seq_id_other,
-                           base::StringPiece value_other) {
+                           std::string_view value_other) {
         CHECK(uploader_) << "'Complete' already called";
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(uploader_id_, priority_, _, _))
@@ -538,7 +535,7 @@ class LegacyStorageDegradationTest
         return *this;
       }
 
-      SetUp& Possible(int64_t sequencing_id, base::StringPiece value) {
+      SetUp& Possible(int64_t sequencing_id, std::string_view value) {
         CHECK(uploader_) << "'Complete' already called";
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(Eq(uploader_id_), Eq(priority_),
@@ -808,7 +805,7 @@ class LegacyStorageDegradationTest
             reason, std::move(start_uploader_cb), base::Unretained(this)));
   }
 
-  Status WriteString(Priority priority, base::StringPiece data) {
+  Status WriteString(Priority priority, std::string_view data) {
     EXPECT_TRUE(storage_) << "Storage not created yet";
     test::TestEvent<Status> w;
     Record record;
@@ -821,7 +818,7 @@ class LegacyStorageDegradationTest
     return w.result();
   }
 
-  void WriteStringOrDie(Priority priority, base::StringPiece data) {
+  void WriteStringOrDie(Priority priority, std::string_view data) {
     const Status write_result = WriteString(priority, data);
     ASSERT_OK(write_result) << write_result;
   }

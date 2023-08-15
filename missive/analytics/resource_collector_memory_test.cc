@@ -4,9 +4,6 @@
 
 #include "missive/analytics/resource_collector_memory.h"
 
-#include <cstddef>
-#include <memory>
-
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>

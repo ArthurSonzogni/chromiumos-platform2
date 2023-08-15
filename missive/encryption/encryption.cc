@@ -4,8 +4,8 @@
 
 #include "missive/encryption/encryption.h"
 
-#include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/containers/span.h>
@@ -29,7 +29,7 @@ Encryptor::Handle::Handle(scoped_refptr<Encryptor> encryptor)
 
 Encryptor::Handle::~Handle() = default;
 
-void Encryptor::Handle::AddToRecord(base::StringPiece data,
+void Encryptor::Handle::AddToRecord(std::string_view data,
                                     base::OnceCallback<void(Status)> cb) {
   // Append new data to the record.
   record_.append(data.data(), data.size());
@@ -116,7 +116,7 @@ Encryptor::Encryptor()
 Encryptor::~Encryptor() = default;
 
 void Encryptor::UpdateAsymmetricKey(
-    base::StringPiece new_public_key,
+    std::string_view new_public_key,
     PublicKeyId new_public_key_id,
     base::OnceCallback<void(Status)> response_cb) {
   if (new_public_key.empty()) {
@@ -129,7 +129,7 @@ void Encryptor::UpdateAsymmetricKey(
   asymmetric_key_sequenced_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
-          [](base::StringPiece new_public_key, PublicKeyId new_public_key_id,
+          [](std::string_view new_public_key, PublicKeyId new_public_key_id,
              scoped_refptr<Encryptor> encryptor) {
             encryptor->asymmetric_key_ =
                 std::make_pair(std::string(new_public_key), new_public_key_id);

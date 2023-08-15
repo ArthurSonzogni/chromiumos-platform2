@@ -4,7 +4,6 @@
 
 #include "missive/util/status_macros.h"
 
-#include <stdio.h>
 #include <memory>
 #include <utility>
 

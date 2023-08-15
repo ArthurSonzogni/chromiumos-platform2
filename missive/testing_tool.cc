@@ -3,31 +3,32 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/at_exit.h>
 #include <base/logging.h>
+#include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/run_loop.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
+#include <base/task/task_traits.h>
 #include <base/threading/sequence_bound.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
 
-#include "base/functional/bind.h"
-#include "base/task/task_traits.h"
 #include "missive/client/missive_client.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
+#include "missive/util/statusor.h"
 
 // The tool for manual Enqueue and Flush operations.
 // Built as part of missive when running tests.
@@ -49,9 +50,9 @@ class DBusSender {
 
   ~DBusSender() { MissiveClient::Shutdown(); }
 
-  void EnqueueEvent(base::StringPiece priority_string,
-                    base::StringPiece destination_string,
-                    base::StringPiece event_string,
+  void EnqueueEvent(std::string_view priority_string,
+                    std::string_view destination_string,
+                    std::string_view event_string,
                     base::OnceCallback<void(Status)> cb) {
     ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(Priority priority, cb,
                                        DecodePriority(priority_string));
@@ -68,7 +69,7 @@ class DBusSender {
         ->Run();
   }
 
-  void Flush(base::StringPiece priority_string,
+  void Flush(std::string_view priority_string,
              base::OnceCallback<void(Status)> cb) {
     ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(Priority priority, cb,
                                        DecodePriority(priority_string));
@@ -113,7 +114,7 @@ class DBusSender {
     base::OnceCallback<void(Status)> cb_;
   };
 
-  StatusOr<Priority> DecodePriority(base::StringPiece priority_string) {
+  StatusOr<Priority> DecodePriority(std::string_view priority_string) {
     Priority priority;
     if (!Priority_Parse(std::string(priority_string), &priority) ||
         priority == Priority::UNDEFINED_PRIORITY) {
@@ -124,8 +125,7 @@ class DBusSender {
     return priority;
   }
 
-  StatusOr<Destination> DecodeDestination(
-      base::StringPiece destination_string) {
+  StatusOr<Destination> DecodeDestination(std::string_view destination_string) {
     Destination destination;
     if (!Destination_Parse(std::string(destination_string), &destination) ||
         destination == Destination::UNDEFINED_DESTINATION) {

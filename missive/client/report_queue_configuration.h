@@ -7,7 +7,7 @@
 
 #include <memory>
 #include <string>
-#include <utility>
+#include <string_view>
 
 #include <base/functional/callback.h>
 
@@ -53,7 +53,7 @@ class ReportQueueConfiguration {
   // request if after it remaining amount of disk space will not drop below
   // `reserved_space`. Intended for use by opportunistic queue.
   static StatusOr<std::unique_ptr<ReportQueueConfiguration>> Create(
-      base::StringPiece dm_token,
+      std::string_view dm_token,
       Destination destination,
       PolicyCheckCallback policy_check_callback,
       int64_t reserved_space = 0L);
@@ -84,7 +84,7 @@ class ReportQueueConfiguration {
 
   int64_t reserved_space() const { return reserved_space_; }
 
-  Status SetDMToken(base::StringPiece dm_token);
+  Status SetDMToken(std::string_view dm_token);
 
   Status CheckPolicy() const;
 

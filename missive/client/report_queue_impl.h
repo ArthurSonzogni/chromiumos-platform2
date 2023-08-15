@@ -8,8 +8,6 @@
 #include <memory>
 #include <optional>
 #include <queue>
-#include <string>
-#include <utility>
 
 #include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
@@ -19,7 +17,6 @@
 
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
-#include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/util/status.h"

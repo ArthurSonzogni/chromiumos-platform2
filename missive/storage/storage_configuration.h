@@ -6,8 +6,8 @@
 #define MISSIVE_STORAGE_STORAGE_CONFIGURATION_H_
 
 #include <atomic>
-#include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -16,12 +16,10 @@
 #include <base/functional/callback_forward.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
-#include "missive/util/statusor.h"
 
 namespace reporting {
 
@@ -101,7 +99,7 @@ class StorageOptions {
   static base::span<const Priority> GetPrioritiesOrder();
 
   StorageOptions& set_signature_verification_public_key(
-      base::StringPiece signature_verification_public_key) {
+      std::string_view signature_verification_public_key) {
     signature_verification_public_key_ =
         std::string(signature_verification_public_key);
     return *this;
@@ -126,7 +124,7 @@ class StorageOptions {
   }
 
   const base::FilePath& directory() const { return directory_; }
-  base::StringPiece signature_verification_public_key() const {
+  std::string_view signature_verification_public_key() const {
     return signature_verification_public_key_;
   }
   size_t max_record_size() const { return max_record_size_; }

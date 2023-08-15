@@ -10,7 +10,6 @@
 
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
-#include "missive/util/status.h"
 
 // Temporary replacement for `Priority_Name` that does
 // not work in certain CQ.

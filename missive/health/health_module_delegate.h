@@ -10,7 +10,7 @@
 #include <base/sequence_checker.h>
 #include <base/thread_annotations.h>
 
-#include "missive/proto/record.pb.h"
+#include "missive/proto/health.pb.h"
 #include "missive/util/status.h"
 
 namespace reporting {

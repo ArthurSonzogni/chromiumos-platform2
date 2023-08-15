@@ -8,10 +8,10 @@
 #include <cstdint>
 #include <iosfwd>
 #include <string>
+#include <string_view>
 
 #include <base/check.h>
 #include <base/compiler_specific.h>
-#include <base/strings/string_piece.h>
 
 #include <missive/proto/status.pb.h>
 
@@ -55,7 +55,7 @@ class [[nodiscard]] Status {
   // code, and error message.  If "code == 0", error_message is
   // ignored and a Status object identical to Status::OK is
   // constructed.
-  Status(error::Code error_code, base::StringPiece error_message);
+  Status(error::Code error_code, std::string_view error_message);
   Status(const Status&);
   Status& operator=(const Status& x);
   ~Status() = default;
@@ -67,8 +67,8 @@ class [[nodiscard]] Status {
   bool ok() const { return error_code_ == error::OK; }
   int error_code() const { return error_code_; }
   error::Code code() const { return error_code_; }
-  base::StringPiece error_message() const { return error_message_; }
-  base::StringPiece message() const { return error_message_; }
+  std::string_view error_message() const { return error_message_; }
+  std::string_view message() const { return error_message_; }
 
   bool operator==(const Status& x) const;
   bool operator!=(const Status& x) const { return !operator==(x); }

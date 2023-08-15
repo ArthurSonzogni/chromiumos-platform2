@@ -5,6 +5,7 @@
 #include "missive/client/report_queue_configuration.h"
 
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -37,7 +38,7 @@ ReportQueueConfiguration::Create(EventType event_type,
 }
 
 StatusOr<std::unique_ptr<ReportQueueConfiguration>>
-ReportQueueConfiguration::Create(base::StringPiece dm_token,
+ReportQueueConfiguration::Create(std::string_view dm_token,
                                  Destination destination,
                                  PolicyCheckCallback policy_check_callback,
                                  int64_t reserved_space) {
@@ -73,7 +74,7 @@ Status ReportQueueConfiguration::CheckPolicy() const {
   return policy_check_callback_.Run();
 }
 
-Status ReportQueueConfiguration::SetDMToken(base::StringPiece dm_token) {
+Status ReportQueueConfiguration::SetDMToken(std::string_view dm_token) {
   dm_token_ = std::string(dm_token);
   return Status::StatusOK();
 }

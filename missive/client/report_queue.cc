@@ -21,7 +21,6 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
-#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {

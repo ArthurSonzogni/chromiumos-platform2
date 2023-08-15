@@ -5,7 +5,6 @@
 #include "missive/missive/missive_impl.h"
 
 #include <cstdlib>
-#include <string>
 #include <tuple>
 #include <utility>
 
@@ -34,7 +33,6 @@
 #include "missive/scheduler/upload_job.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module.h"
-#include "missive/storage/storage_module_interface.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"

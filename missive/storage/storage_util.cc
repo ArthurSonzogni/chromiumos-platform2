@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "missive/storage/storage_util.h"
+
 #include <string>
 #include <tuple>
-#include <unordered_set>
 
 #include <base/strings/strcat.h>
 #include <base/uuid.h>
 
-#include "missive/storage/storage_util.h"
 #include "missive/util/file.h"
 #include "missive/util/status.h"
 

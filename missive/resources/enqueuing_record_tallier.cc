@@ -14,7 +14,6 @@
 #include <base/timer/timer.h>
 
 #include "missive/proto/record.pb.h"
-#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/time.h"
 

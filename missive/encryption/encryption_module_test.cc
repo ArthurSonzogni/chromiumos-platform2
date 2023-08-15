@@ -4,8 +4,8 @@
 
 #include "missive/encryption/encryption_module.h"
 
-#include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -26,7 +26,6 @@
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/testing_primitives.h"
 #include "missive/proto/record.pb.h"
-#include "missive/resources/resource_manager.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
@@ -50,7 +49,7 @@ class EncryptionModuleTest : public ::testing::Test {
     decryptor_ = std::move(decryptor_result.ValueOrDie());
   }
 
-  StatusOr<EncryptedRecord> EncryptSync(base::StringPiece data) {
+  StatusOr<EncryptedRecord> EncryptSync(std::string_view data) {
     test::TestEvent<StatusOr<EncryptedRecord>> encrypt_record;
     encryption_module_->EncryptRecord(data, encrypt_record.cb());
     return encrypt_record.result();
@@ -75,7 +74,7 @@ class EncryptionModuleTest : public ::testing::Test {
     dec_handle->CloseRecord(base::BindOnce(
         [](std::string* decrypted_string,
            base::OnceCallback<void(Status)> close_cb,
-           StatusOr<base::StringPiece> result) {
+           StatusOr<std::string_view> result) {
           if (!result.ok()) {
             std::move(close_cb).Run(result.status());
             return;
@@ -89,7 +88,7 @@ class EncryptionModuleTest : public ::testing::Test {
   }
 
   StatusOr<std::string> DecryptMatchingSecret(
-      Encryptor::PublicKeyId public_key_id, base::StringPiece encrypted_key) {
+      Encryptor::PublicKeyId public_key_id, std::string_view encrypted_key) {
     // Retrieve private key that matches public key hash.
     test::TestEvent<StatusOr<std::string>> retrieve_private_key;
     decryptor_->RetrieveMatchingPrivateKey(public_key_id,
@@ -273,8 +272,8 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
   class SingleEncryptionContext {
    public:
     SingleEncryptionContext(
-        base::StringPiece test_string,
-        base::StringPiece public_key,
+        std::string_view test_string,
+        std::string_view public_key,
         Encryptor::PublicKeyId public_key_id,
         scoped_refptr<EncryptionModuleInterface> encryption_module,
         base::OnceCallback<void(StatusOr<EncryptedRecord>)> response)
@@ -347,7 +346,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
     SingleDecryptionContext(
         const EncryptedRecord& encrypted_record,
         scoped_refptr<test::Decryptor> decryptor,
-        base::OnceCallback<void(StatusOr<base::StringPiece>)> response)
+        base::OnceCallback<void(StatusOr<std::string_view>)> response)
         : encrypted_record_(encrypted_record),
           decryptor_(decryptor),
           response_(std::move(response)) {}
@@ -368,7 +367,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
     }
 
    private:
-    void Respond(StatusOr<base::StringPiece> result) {
+    void Respond(StatusOr<std::string_view> result) {
       std::move(response_).Run(result);
       delete this;
     }
@@ -394,7 +393,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
               base::Unretained(this)));
     }
 
-    void DecryptSharedSecret(base::StringPiece private_key) {
+    void DecryptSharedSecret(std::string_view private_key) {
       // Decrypt shared secret from private key and peer public key.
       auto shared_secret_result = decryptor_->DecryptSecret(
           private_key, encrypted_record_.encryption_info().encryption_key());
@@ -408,7 +407,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
                                     shared_secret_result.ValueOrDie()));
     }
 
-    void OpenRecord(base::StringPiece shared_secret) {
+    void OpenRecord(std::string_view shared_secret) {
       decryptor_->OpenRecord(
           shared_secret,
           base::BindOnce(
@@ -450,7 +449,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
     void CloseRecord(test::Decryptor::Handle* handle) {
       handle->CloseRecord(base::BindOnce(
           [](SingleDecryptionContext* self,
-             StatusOr<base::StringPiece> decryption_result) {
+             StatusOr<std::string_view> decryption_result) {
             self->Respond(decryption_result);
           },
           base::Unretained(this)));
@@ -459,7 +458,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
    private:
     const EncryptedRecord encrypted_record_;
     const scoped_refptr<test::Decryptor> decryptor_;
-    base::OnceCallback<void(StatusOr<base::StringPiece>)> response_;
+    base::OnceCallback<void(StatusOr<std::string_view>)> response_;
   };
 
   constexpr std::array<const char*, 6> kTestStrings = {
@@ -487,8 +486,8 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
     base::ThreadPool::PostTask(
         FROM_HERE,
         base::BindOnce(
-            [](base::StringPiece private_key_string,
-               base::StringPiece public_key_string,
+            [](std::string_view private_key_string,
+               std::string_view public_key_string,
                scoped_refptr<test::Decryptor> decryptor,
                base::OnceCallback<void(StatusOr<Encryptor::PublicKeyId>)>
                    done_cb) {
@@ -530,7 +529,7 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
          base::BindOnce(
              [](base::OnceCallback<void(StatusOr<std::string>)>
                     decryption_result,
-                StatusOr<base::StringPiece> result) {
+                StatusOr<std::string_view> result) {
                if (!result.ok()) {
                  std::move(decryption_result).Run(result.status());
                  return;

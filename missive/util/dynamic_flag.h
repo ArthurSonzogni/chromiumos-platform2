@@ -7,8 +7,7 @@
 
 #include <atomic>
 #include <string>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 namespace reporting {
 
@@ -17,7 +16,7 @@ namespace reporting {
 // Can be subclassed or aggregated by the owner class.
 class DynamicFlag {
  public:
-  DynamicFlag(base::StringPiece name, bool is_enabled);
+  DynamicFlag(std::string_view name, bool is_enabled);
   DynamicFlag(const DynamicFlag&) = delete;
   DynamicFlag& operator=(const DynamicFlag&) = delete;
   virtual ~DynamicFlag();

@@ -6,13 +6,12 @@
 #define MISSIVE_DAEMON_MISSIVE_DAEMON_H_
 
 #include <memory>
-#include <string>
-#include "base/functional/bind.h"
 
 #include <brillo/daemons/dbus_daemon.h>
-#include <missive/dbus/dbus_adaptor.h>
-#include <missive/missive/missive_impl.h>
-#include <missive/missive/missive_service.h>
+
+#include "missive/dbus/dbus_adaptor.h"
+#include "missive/missive/missive_impl.h"
+#include "missive/missive/missive_service.h"
 
 namespace reporting {
 

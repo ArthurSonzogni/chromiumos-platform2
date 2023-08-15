@@ -7,7 +7,9 @@
 #include <cstdint>
 #include <utility>
 
+#include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
@@ -15,8 +17,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "base/functional/bind.h"
-#include "base/sequence_checker.h"
 #include "missive/util/test_support_callbacks.h"
 
 using ::testing::Eq;

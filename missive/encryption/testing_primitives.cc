@@ -7,8 +7,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
-#include <base/strings/string_piece.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
 #include <openssl/evp.h>
@@ -16,8 +16,7 @@
 
 #include "missive/encryption/primitives.h"
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 void GenerateEncryptionKeyPair(uint8_t private_key[kKeySize],
                                uint8_t public_value[kKeySize]) {
@@ -60,7 +59,7 @@ void RestoreSharedSecret(const uint8_t private_key[kKeySize],
 }
 
 void PerformSymmetricDecryption(const uint8_t symmetric_key[kKeySize],
-                                base::StringPiece input_data,
+                                std::string_view input_data,
                                 std::string* output_data) {
   // Initialize decryption context.
   const crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
@@ -121,7 +120,7 @@ void GenerateSigningKeyPair(uint8_t private_key[kSignKeySize],
 }
 
 void SignMessage(const uint8_t signing_key[kSignKeySize],
-                 base::StringPiece message,
+                 std::string_view message,
                  uint8_t signature[kSignatureSize]) {
   const crypto::ScopedEVP_PKEY sign_private_key(EVP_PKEY_new_raw_private_key(
       EVP_PKEY_ED25519, nullptr, signing_key, kSignKeySize));
@@ -139,5 +138,4 @@ void SignMessage(const uint8_t signing_key[kSignKeySize],
   EXPECT_EQ(slen, kSignatureSize);
 }
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test

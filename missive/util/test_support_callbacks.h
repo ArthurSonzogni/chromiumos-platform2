@@ -22,8 +22,7 @@
 #include <base/thread_annotations.h>
 #include <gtest/gtest.h>
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 // Usage (in tests only):
 //
@@ -208,7 +207,6 @@ class TestCallbackAutoWaiter : public TestCallbackWaiter {
   ~TestCallbackAutoWaiter();
 };
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test
 
 #endif  // MISSIVE_UTIL_TEST_SUPPORT_CALLBACKS_H_

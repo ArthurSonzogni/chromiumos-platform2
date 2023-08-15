@@ -10,6 +10,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/resources/resource_manager.h"
 
 namespace reporting::analytics {

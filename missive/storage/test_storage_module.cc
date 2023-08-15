@@ -8,7 +8,6 @@
 
 #include <base/functional/callback.h>
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
@@ -17,8 +16,7 @@
 using ::testing::Invoke;
 using ::testing::WithArg;
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 TestStorageModuleStrict::TestStorageModuleStrict() {
   ON_CALL(*this, AddRecord)
@@ -51,5 +49,4 @@ void TestStorageModuleStrict::AddRecordSuccessfully(Priority priority,
   std::move(callback).Run(Status::StatusOK());
 }
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test

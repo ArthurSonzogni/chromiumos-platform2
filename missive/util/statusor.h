@@ -56,9 +56,7 @@
 #ifndef MISSIVE_UTIL_STATUSOR_H_
 #define MISSIVE_UTIL_STATUSOR_H_
 
-#include <new>
 #include <optional>
-#include <string>
 #include <type_traits>
 #include <utility>
 

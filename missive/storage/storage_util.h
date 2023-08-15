@@ -10,6 +10,7 @@
 #include <unordered_set>
 
 #include "missive/storage/storage_configuration.h"
+#include "missive/util/statusor.h"
 
 namespace reporting {
 

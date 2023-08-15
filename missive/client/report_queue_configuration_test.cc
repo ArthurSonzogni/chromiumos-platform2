@@ -4,7 +4,7 @@
 
 #include "missive/client/report_queue_configuration.h"
 
-#include <stdio.h>
+#include <utility>
 
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>

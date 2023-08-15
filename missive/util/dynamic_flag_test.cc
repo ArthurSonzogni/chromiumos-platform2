@@ -4,6 +4,9 @@
 
 #include "missive/util/dynamic_flag.h"
 
+#include <string_view>
+
+#include <base/check.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -32,7 +35,7 @@ class TestFlagAggregated {
  private:
   class EmbeddedFlag : public DynamicFlag {
    public:
-    EmbeddedFlag(base::StringPiece name,
+    EmbeddedFlag(std::string_view name,
                  bool is_enabled,
                  TestFlagAggregated* owner)
         : DynamicFlag(name, is_enabled), owner_(owner) {

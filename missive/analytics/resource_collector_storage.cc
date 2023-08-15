@@ -6,11 +6,14 @@
 
 #include <algorithm>
 #include <string>
+#include <string_view>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
+
+#include "missive/analytics/metrics.h"
 
 namespace reporting::analytics {
 

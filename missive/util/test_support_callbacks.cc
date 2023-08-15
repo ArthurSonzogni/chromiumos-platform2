@@ -4,8 +4,7 @@
 
 #include "missive/util/test_support_callbacks.h"
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 TestCallbackWaiter::TestCallbackWaiter() : signaled_cb_(cb()) {}
 TestCallbackWaiter::~TestCallbackWaiter() = default;
@@ -16,6 +15,4 @@ TestCallbackAutoWaiter::TestCallbackAutoWaiter() {
 TestCallbackAutoWaiter::~TestCallbackAutoWaiter() {
   Wait();
 }
-
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test

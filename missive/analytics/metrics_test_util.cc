@@ -4,8 +4,6 @@
 
 #include "missive/analytics/metrics_test_util.h"
 
-#include <atomic>
-
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>

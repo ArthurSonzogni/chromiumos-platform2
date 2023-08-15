@@ -10,11 +10,9 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/strings/string_piece.h>
 #include <base/task/thread_pool.h>
 #include <snappy.h>
 
-#include "base/check.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 

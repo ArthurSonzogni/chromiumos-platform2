@@ -7,12 +7,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/evp.h>
 #include <openssl/kdf.h>
-
-#include <base/strings/string_piece.h>
 
 namespace reporting {
 
@@ -86,7 +85,7 @@ bool ProduceSymmetricKey(const uint8_t shared_secret[kKeySize],
 }
 
 bool PerformSymmetricEncryption(const uint8_t symmetric_key[kKeySize],
-                                base::StringPiece input_data,
+                                std::string_view input_data,
                                 std::string* output_data) {
   // Initialize encryption context.
   const crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
@@ -142,7 +141,7 @@ bool PerformSymmetricEncryption(const uint8_t symmetric_key[kKeySize],
 }
 
 bool VerifySignature(const uint8_t verification_key[kKeySize],
-                     base::StringPiece message,
+                     std::string_view message,
                      const uint8_t signature[kSignatureSize]) {
   // Create the Message Digest Context
   const crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_create());

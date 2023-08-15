@@ -5,12 +5,12 @@
 #include "missive/encryption/encryption_module_interface.h"
 
 #include <atomic>
+#include <string_view>
 #include <utility>
 
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 
 #include "missive/proto/record.pb.h"
@@ -28,7 +28,7 @@ EncryptionModuleInterface::EncryptionModuleInterface(
 EncryptionModuleInterface::~EncryptionModuleInterface() = default;
 
 void EncryptionModuleInterface::EncryptRecord(
-    base::StringPiece record,
+    std::string_view record,
     base::OnceCallback<void(StatusOr<EncryptedRecord>)> cb) const {
   if (!is_enabled()) {
     // Encryptor disabled.
@@ -52,7 +52,7 @@ void EncryptionModuleInterface::EncryptRecord(
 }
 
 void EncryptionModuleInterface::UpdateAsymmetricKey(
-    base::StringPiece new_public_key,
+    std::string_view new_public_key,
     PublicKeyId new_public_key_id,
     base::OnceCallback<void(Status)> response_cb) {
   UpdateAsymmetricKeyImpl(

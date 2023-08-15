@@ -5,7 +5,6 @@
 #ifndef MISSIVE_UTIL_REFCOUNTED_CLOSURE_LIST_H_
 #define MISSIVE_UTIL_REFCOUNTED_CLOSURE_LIST_H_
 
-#include <utility>
 #include <vector>
 
 #include <base/functional/callback.h>

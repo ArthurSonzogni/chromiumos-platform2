@@ -8,15 +8,14 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/files/file.h>
 #include <base/sequence_checker.h>
 #include <base/thread_annotations.h>
 
-#include "missive/proto/record.pb.h"
-#include "missive/util/file.h"
+#include "missive/proto/health.pb.h"
 #include "missive/util/status.h"
-#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
@@ -38,7 +37,7 @@ class HealthModuleFiles {
   // much is being used relative to |max_storage_space|.
   static std::unique_ptr<HealthModuleFiles> Create(
       const base::FilePath& directory,
-      base::StringPiece file_base_name,
+      std::string_view file_base_name,
       uint32_t max_storage_space);
 
   // Dumps contents of underlying files into |data|.
@@ -46,12 +45,12 @@ class HealthModuleFiles {
 
   // Writes data to the underlying files. If space is full, this will cause
   // other bits of data to be removed from the files.
-  Status Write(base::StringPiece data);
+  Status Write(std::string_view data);
 
  private:
   // Constructor for the class. Called by Create method.
   HealthModuleFiles(const base::FilePath& directory,
-                    base::StringPiece file_base_name,
+                    std::string_view file_base_name,
                     uint32_t max_storage_space,
                     uint32_t storage_used,
                     uint32_t max_file_header,

@@ -4,7 +4,6 @@
 
 #include "missive/util/statusor.h"
 
-#include <errno.h>
 #include <algorithm>
 #include <memory>
 

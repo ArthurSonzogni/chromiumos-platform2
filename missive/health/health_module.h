@@ -7,7 +7,6 @@
 
 #include <atomic>
 #include <memory>
-#include <utility>
 
 #include <base/functional/bind.h>
 #include <base/memory/ref_counted.h>
@@ -16,8 +15,6 @@
 
 #include "missive/health/health_module_delegate.h"
 #include "missive/proto/health.pb.h"
-#include "missive/proto/record.pb.h"
-#include "missive/util/status.h"
 
 namespace reporting {
 

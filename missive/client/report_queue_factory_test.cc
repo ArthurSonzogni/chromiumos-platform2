@@ -5,7 +5,6 @@
 #include "missive/client/report_queue_factory.h"
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include <base/logging.h>

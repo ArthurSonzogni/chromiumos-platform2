@@ -6,15 +6,12 @@
 #define MISSIVE_CLIENT_REPORT_QUEUE_NONCHROME_PROVIDER_H_
 
 #include <memory>
-#include <string>
 
 #include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
 
-#include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_provider.h"
-#include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/util/statusor.h"
 

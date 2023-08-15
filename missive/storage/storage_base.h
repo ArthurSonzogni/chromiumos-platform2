@@ -11,6 +11,7 @@
 #include <optional>
 #include <queue>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -233,7 +234,7 @@ class KeyDelivery {
 // Class that represents the encryption key in storage.
 class KeyInStorage {
  public:
-  KeyInStorage(base::StringPiece signature_verification_public_key,
+  KeyInStorage(std::string_view signature_verification_public_key,
                scoped_refptr<SignatureVerificationDevFlag>
                    signature_verification_dev_flag,
                const base::FilePath& directory);

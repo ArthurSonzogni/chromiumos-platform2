@@ -5,9 +5,10 @@
 #ifndef MISSIVE_ENCRYPTION_ENCRYPTION_MODULE_H_
 #define MISSIVE_ENCRYPTION_ENCRYPTION_MODULE_H_
 
+#include <string_view>
+
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 
 #include "missive/encryption/encryption.h"
@@ -40,11 +41,11 @@ class EncryptionModule : public EncryptionModuleInterface {
 
   // Interface methods implementations.
   void EncryptRecordImpl(
-      base::StringPiece record,
+      std::string_view record,
       base::OnceCallback<void(StatusOr<EncryptedRecord>)> cb) const override;
 
   void UpdateAsymmetricKeyImpl(
-      base::StringPiece new_public_key,
+      std::string_view new_public_key,
       PublicKeyId new_public_key_id,
       base::OnceCallback<void(Status)> response_cb) override;
 

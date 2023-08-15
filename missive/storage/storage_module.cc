@@ -5,11 +5,13 @@
 #include "missive/storage/storage_module.h"
 
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/flat_map.h>
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
@@ -24,7 +26,6 @@
 #include <base/task/bind_post_task.h>
 #include <base/task/thread_pool.h>
 
-#include "base/containers/flat_map.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/new_storage.h"
@@ -125,8 +126,8 @@ void StorageModule::UpdateEncryptionKey(
 }
 
 void StorageModule::SetLegacyEnabledPriorities(
-    base::StringPiece legacy_storage_enabled) {
-  const std::vector<base::StringPiece> splits =
+    std::string_view legacy_storage_enabled) {
+  const std::vector<std::string_view> splits =
       base::SplitStringPieceUsingSubstr(legacy_storage_enabled, ",",
                                         base::TRIM_WHITESPACE,
                                         base::SPLIT_WANT_NONEMPTY);

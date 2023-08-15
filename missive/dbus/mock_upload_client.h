@@ -5,14 +5,13 @@
 #ifndef MISSIVE_DBUS_MOCK_UPLOAD_CLIENT_H_
 #define MISSIVE_DBUS_MOCK_UPLOAD_CLIENT_H_
 
-#include <memory>
 #include <optional>
-#include <string>
 #include <vector>
 
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/task/sequenced_task_runner.h>
+#include <gmock/gmock.h>
 
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/record.pb.h"

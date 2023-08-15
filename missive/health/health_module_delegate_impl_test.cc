@@ -4,10 +4,14 @@
 
 #include "missive/health/health_module_delegate_impl.h"
 
+#include <string_view>
+
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/strcat.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "missive/util/file.h"
 
 using ::testing::StrEq;
 
@@ -27,7 +31,7 @@ constexpr char kHexCharLookup[0x10] = {
     '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
 };
 
-std::string BytesToHexString(base::StringPiece bytes) {
+std::string BytesToHexString(std::string_view bytes) {
   std::string result;
   for (char byte : bytes) {
     result.push_back(kHexCharLookup[(byte >> 4) & 0xf]);
@@ -36,7 +40,7 @@ std::string BytesToHexString(base::StringPiece bytes) {
   return result;
 }
 
-void CompareHealthData(base::StringPiece expected, ERPHealthData got) {
+void CompareHealthData(std::string_view expected, ERPHealthData got) {
   EXPECT_THAT(expected, StrEq(got.SerializeAsString()));
 }
 

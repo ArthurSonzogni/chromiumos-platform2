@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/daemon/missive_daemon.h"
-
 #include <memory>
 #include <utility>
 
@@ -25,7 +23,6 @@
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"

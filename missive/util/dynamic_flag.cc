@@ -6,12 +6,13 @@
 
 #include <atomic>
 #include <string>
+#include <string_view>
 
 #include <base/logging.h>
 
 namespace reporting {
 
-DynamicFlag::DynamicFlag(base::StringPiece name, bool is_enabled)
+DynamicFlag::DynamicFlag(std::string_view name, bool is_enabled)
     : name_(name), is_enabled_(is_enabled) {
   LOG(WARNING) << "Flag `" << name_ << "` is initially "
                << (is_enabled ? "enabled" : "disabled");

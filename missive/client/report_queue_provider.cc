@@ -5,7 +5,7 @@
 #include "missive/client/report_queue_provider.h"
 
 #include <memory>
-#include <string>
+#include <utility>
 
 #include <base/feature_list.h>
 #include <base/functional/bind.h>
@@ -22,7 +22,6 @@
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_impl.h"
-#include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"

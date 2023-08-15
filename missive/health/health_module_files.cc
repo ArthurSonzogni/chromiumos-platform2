@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/files/file.h>
@@ -16,15 +17,17 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <brillo/files/file_util.h>
 #include <re2/re2.h>
 
-#include "brillo/files/file_util.h"
+#include "missive/util/file.h"
+#include "missive/util/status_macros.h"
 
 namespace reporting {
 
 std::unique_ptr<HealthModuleFiles> HealthModuleFiles::Create(
     const base::FilePath& directory,
-    base::StringPiece file_base_name,
+    std::string_view file_base_name,
     const uint32_t max_storage_space) {
   if (max_storage_space == 0) {
     return nullptr;
@@ -68,7 +71,7 @@ std::unique_ptr<HealthModuleFiles> HealthModuleFiles::Create(
 
 HealthModuleFiles::HealthModuleFiles(
     const base::FilePath& directory,
-    base::StringPiece file_base_name,
+    std::string_view file_base_name,
     uint32_t max_storage_space,
     uint32_t storage_used,
     uint32_t max_file_header,
@@ -127,7 +130,7 @@ void HealthModuleFiles::PopulateHistory(ERPHealthData* data) const {
   }
 }
 
-Status HealthModuleFiles::Write(base::StringPiece data) {
+Status HealthModuleFiles::Write(std::string_view data) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   Status free_status = ReserveStorage(data.size());
   RETURN_IF_ERROR(free_status);

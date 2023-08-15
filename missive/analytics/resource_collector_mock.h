@@ -7,11 +7,8 @@
 
 #include "missive/analytics/resource_collector.h"
 
-#include <ctime>
-
 #include <base/time/time.h>
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 namespace reporting::analytics {
 

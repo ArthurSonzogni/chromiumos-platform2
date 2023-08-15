@@ -5,8 +5,6 @@
 #ifndef MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_MEMORY_H_
 #define MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_MEMORY_H_
 
-#include <ctime>
-
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>

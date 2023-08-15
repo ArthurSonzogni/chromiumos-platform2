@@ -13,7 +13,6 @@
 
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/util/status.h"
 
 namespace reporting {
 

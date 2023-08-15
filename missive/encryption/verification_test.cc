@@ -5,7 +5,6 @@
 #include "missive/encryption/verification.h"
 
 #include <cstdint>
-#include <memory>
 #include <string>
 
 #include <base/memory/scoped_refptr.h>

@@ -4,7 +4,6 @@
 
 #include "missive/util/task_runner_context.h"
 
-#include <functional>
 #include <memory>
 #include <vector>
 

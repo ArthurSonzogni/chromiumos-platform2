@@ -5,9 +5,9 @@
 #include "missive/encryption/verification.h"
 
 #include <string>
+#include <string_view>
 
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_piece.h>
 
 #include "missive/encryption/primitives.h"
 #include "missive/util/dynamic_flag.h"
@@ -34,25 +34,25 @@ SignatureVerificationDevFlag::SignatureVerificationDevFlag(bool is_enabled)
     : DynamicFlag("signature_verification_dev", is_enabled) {}
 
 // static
-base::StringPiece SignatureVerifier::VerificationKey() {
-  return base::StringPiece(reinterpret_cast<const char*>(kProdVerificationKey),
-                           kKeySize);
+std::string_view SignatureVerifier::VerificationKey() {
+  return std::string_view(reinterpret_cast<const char*>(kProdVerificationKey),
+                          kKeySize);
 }
 
 // static
-base::StringPiece SignatureVerifier::VerificationKeyDev() {
-  return base::StringPiece(reinterpret_cast<const char*>(kDevVerificationKey),
-                           kKeySize);
+std::string_view SignatureVerifier::VerificationKeyDev() {
+  return std::string_view(reinterpret_cast<const char*>(kDevVerificationKey),
+                          kKeySize);
 }
 
 SignatureVerifier::SignatureVerifier(
-    base::StringPiece verification_public_key,
+    std::string_view verification_public_key,
     scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag)
     : verification_public_key_(verification_public_key),
       signature_verification_dev_flag_(signature_verification_dev_flag) {}
 
-Status SignatureVerifier::Verify(base::StringPiece message,
-                                 base::StringPiece signature) const {
+Status SignatureVerifier::Verify(std::string_view message,
+                                 std::string_view signature) const {
   std::string verification_key_dev = std::string(VerificationKeyDev());
   const std::string& verification_public_key =
       signature_verification_dev_flag_->is_enabled() ? verification_key_dev

@@ -5,7 +5,6 @@
 #ifndef MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_CPU_H_
 #define MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_CPU_H_
 
-#include <cstddef>
 #include <ctime>
 #include <memory>
 

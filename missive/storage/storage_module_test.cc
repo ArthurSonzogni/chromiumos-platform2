@@ -4,10 +4,8 @@
 
 #include "missive/storage/storage_module.h"
 
-#include <algorithm>
-#include <cstddef>
 #include <memory>
-#include <string>
+#include <string_view>
 #include <utility>
 #include <unistd.h>
 
@@ -24,7 +22,6 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
-#include "missive/storage/new_storage.h"
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
@@ -73,7 +70,7 @@ class StorageModuleTest : public ::testing::Test {
     storage_module_.reset();
   }
 
-  void CreateStorageModule(base::StringPiece legacy_storage_enabled) {
+  void CreateStorageModule(std::string_view legacy_storage_enabled) {
     test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> module_event;
     StorageModule::Create(
         {.options = options_,

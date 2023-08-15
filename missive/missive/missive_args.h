@@ -5,12 +5,10 @@
 #ifndef MISSIVE_MISSIVE_MISSIVE_ARGS_H_
 #define MISSIVE_MISSIVE_MISSIVE_ARGS_H_
 
-#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece.h>
 #include <base/thread_annotations.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>

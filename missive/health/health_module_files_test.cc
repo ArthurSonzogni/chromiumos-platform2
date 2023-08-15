@@ -5,12 +5,15 @@
 #include "missive/health/health_module_files.h"
 
 #include <string>
+#include <string_view>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "missive/util/file.h"
 
 using ::testing::IsEmpty;
 using ::testing::StrEq;
@@ -32,7 +35,7 @@ constexpr char kHexCharLookup[0x10] = {
     '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
 };
 
-std::string BytesToHexString(base::StringPiece bytes) {
+std::string BytesToHexString(std::string_view bytes) {
   std::string result;
   for (char byte : bytes) {
     result.push_back(kHexCharLookup[(byte >> 4) & 0xf]);

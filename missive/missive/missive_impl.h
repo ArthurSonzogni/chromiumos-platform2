@@ -6,9 +6,9 @@
 #define MISSIVE_MISSIVE_MISSIVE_IMPL_H_
 
 #include <memory>
-#include <string>
 
 #include <base/files/file_path.h>
+#include <base/functional/callback_forward.h>
 #include <base/gtest_prod_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
@@ -17,7 +17,6 @@
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
-#include "base/functional/callback_forward.h"
 #include "missive/analytics/registry.h"
 #include "missive/compression/compression_module.h"
 #include "missive/dbus/upload_client.h"

@@ -9,8 +9,8 @@
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <brillo/files/file_util.h>
 
-#include "brillo/files/file_util.h"
 #include "missive/analytics/metrics.h"
 #include "missive/util/file.h"
 

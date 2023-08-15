@@ -5,9 +5,6 @@
 #ifndef MISSIVE_ANALYTICS_METRICS_TEST_UTIL_H_
 #define MISSIVE_ANALYTICS_METRICS_TEST_UTIL_H_
 
-#include <memory>
-#include <utility>
-
 #include <base/memory/scoped_refptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <metrics/metrics_library.h>

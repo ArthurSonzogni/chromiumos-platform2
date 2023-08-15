@@ -6,17 +6,12 @@
 #define MISSIVE_MISSIVE_MISSIVE_SERVICE_H_
 
 #include <memory>
-#include <string>
 
 #include <brillo/dbus/dbus_method_response.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
-#include "missive/dbus/upload_client.h"
 #include "missive/proto/interface.pb.h"
-#include "missive/storage/storage_configuration.h"
-#include "missive/storage/storage_module_interface.h"
-#include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 
 namespace reporting {

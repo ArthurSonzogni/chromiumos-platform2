@@ -15,7 +15,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
-#include <base/strings/string_piece.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/thread_annotations.h>
 #include <base/time/time.h>

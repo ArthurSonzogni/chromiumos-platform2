@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/files/file.h>
 #include <base/memory/ref_counted.h>
@@ -16,9 +17,7 @@
 
 #include "missive/health/health_module_delegate.h"
 #include "missive/health/health_module_files.h"
-#include "missive/proto/record.pb.h"
 #include "missive/util/status.h"
-#include "missive/util/statusor.h"
 
 namespace reporting {
 
@@ -31,7 +30,7 @@ class HealthModuleDelegateImpl : public HealthModuleDelegate {
   explicit HealthModuleDelegateImpl(
       const base::FilePath& directory,
       size_t max_history_storage = kNaxHistoryStorage,
-      base::StringPiece file_base_name = kHistoryFileBasename);
+      std::string_view file_base_name = kHistoryFileBasename);
   HealthModuleDelegateImpl(const HealthModuleDelegateImpl& other) = delete;
   HealthModuleDelegateImpl& operator=(const HealthModuleDelegateImpl& other) =
       delete;

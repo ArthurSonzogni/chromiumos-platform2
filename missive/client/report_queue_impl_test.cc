@@ -4,9 +4,8 @@
 
 #include "missive/client/report_queue_impl.h"
 
-#include <stdio.h>
-
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <base/containers/queue.h>
@@ -27,7 +26,6 @@
 #include "missive/storage/storage_module_interface.h"
 #include "missive/storage/test_storage_module.h"
 #include "missive/util/status.h"
-#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 

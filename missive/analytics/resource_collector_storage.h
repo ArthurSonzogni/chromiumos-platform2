@@ -8,6 +8,7 @@
 #include "missive/analytics/resource_collector.h"
 
 #include <atomic>
+#include <string_view>
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>

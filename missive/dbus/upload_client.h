@@ -5,9 +5,7 @@
 #ifndef MISSIVE_DBUS_UPLOAD_CLIENT_H_
 #define MISSIVE_DBUS_UPLOAD_CLIENT_H_
 
-#include <memory>
 #include <optional>
-#include <string>
 #include <vector>
 
 #include <base/functional/callback.h>

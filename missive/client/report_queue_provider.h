@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <queue>
-#include <utility>
 
 #include <base/feature_list.h>
 #include <base/functional/callback.h>
@@ -18,9 +17,7 @@
 
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
-#include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
-#include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
@@ -58,7 +55,7 @@ namespace reporting {
 //             reporting::ReportQueueProvider::CreateQueue(
 //                 std::move(config),
 //                 base::BindOnce(
-//                     [](base::StringPiece data,
+//                     [](std::string_view data,
 //                        reporting::ReportQueue::EnqueueCallback
 //                        done_cb, reporting::StatusOr<std::unique_ptr<
 //                            reporting::ReportQueue>>

@@ -17,7 +17,6 @@
 
 #include "missive/proto/record.pb.h"
 #include "missive/util/statusor.h"
-#include "missive/util/time.h"
 
 namespace reporting {
 

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -221,7 +222,7 @@ class StorageDegradationTest
                 (const));
     MOCK_METHOD(bool,
                 UploadRecord,
-                (int64_t /*uploader_id*/, Priority, int64_t, base::StringPiece),
+                (int64_t /*uploader_id*/, Priority, int64_t, std::string_view),
                 (const));
     MOCK_METHOD(bool,
                 UploadRecordFailure,
@@ -392,7 +393,7 @@ class StorageDegradationTest
                         Priority priority,
                         int64_t sequencing_id,
                         int64_t generation_id,
-                        base::StringPiece data,
+                        std::string_view data,
                         base::OnceCallback<void(bool)> processed_cb) {
       DoEncounterSeqId(uploader_id, priority, sequencing_id, generation_id);
       DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
@@ -513,7 +514,7 @@ class StorageDegradationTest
         return std::move(uploader_);
       }
 
-      SetUp& Required(int64_t sequencing_id, base::StringPiece value) {
+      SetUp& Required(int64_t sequencing_id, std::string_view value) {
         CHECK(uploader_) << "'Complete' already called";
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(Eq(uploader_id_), Eq(priority_),
@@ -524,9 +525,9 @@ class StorageDegradationTest
       }
 
       SetUp& RequireEither(int64_t seq_id,
-                           base::StringPiece value,
+                           std::string_view value,
                            int64_t seq_id_other,
-                           base::StringPiece value_other) {
+                           std::string_view value_other) {
         CHECK(uploader_) << "'Complete' already called";
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(uploader_id_, priority_, _, _))
@@ -538,7 +539,7 @@ class StorageDegradationTest
         return *this;
       }
 
-      SetUp& Possible(int64_t sequencing_id, base::StringPiece value) {
+      SetUp& Possible(int64_t sequencing_id, std::string_view value) {
         CHECK(uploader_) << "'Complete' already called";
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(Eq(uploader_id_), Eq(priority_),
@@ -808,7 +809,7 @@ class StorageDegradationTest
             reason, std::move(start_uploader_cb), base::Unretained(this)));
   }
 
-  Status WriteString(Priority priority, base::StringPiece data) {
+  Status WriteString(Priority priority, std::string_view data) {
     EXPECT_TRUE(storage_) << "Storage not created yet";
     test::TestEvent<Status> w;
     Record record;
@@ -821,7 +822,7 @@ class StorageDegradationTest
     return w.result();
   }
 
-  void WriteStringOrDie(Priority priority, base::StringPiece data) {
+  void WriteStringOrDie(Priority priority, std::string_view data) {
     const Status write_result = WriteString(priority, data);
     ASSERT_OK(write_result) << write_result;
   }

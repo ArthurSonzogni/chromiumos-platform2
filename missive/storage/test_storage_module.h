@@ -9,14 +9,12 @@
 
 #include <base/functional/callback.h>
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 class TestStorageModuleStrict : public StorageModuleInterface {
  public:
@@ -52,7 +50,6 @@ class TestStorageModuleStrict : public StorageModuleInterface {
 // Most of the time no need to log uninterested calls to |AddRecord|.
 typedef ::testing::NiceMock<TestStorageModuleStrict> TestStorageModule;
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test
 
 #endif  // MISSIVE_STORAGE_TEST_STORAGE_MODULE_H_

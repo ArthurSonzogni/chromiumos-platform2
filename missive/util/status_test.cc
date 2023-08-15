@@ -4,7 +4,7 @@
 
 #include "missive/util/status.h"
 
-#include <stdio.h>
+#include <algorithm>
 #include <utility>
 
 #include <base/logging.h>

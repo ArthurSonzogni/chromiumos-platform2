@@ -4,11 +4,9 @@
 
 #include "missive/missive/missive_impl.h"
 
-#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>

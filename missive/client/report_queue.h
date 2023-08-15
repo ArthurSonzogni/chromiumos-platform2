@@ -7,9 +7,7 @@
 #define MISSIVE_CLIENT_REPORT_QUEUE_H_
 
 #include <memory>
-#include <queue>
 #include <string>
-#include <utility>
 
 #include <base/functional/callback.h>
 #include <base/values.h>

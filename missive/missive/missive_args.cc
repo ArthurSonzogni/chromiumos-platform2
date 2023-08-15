@@ -4,10 +4,9 @@
 
 #include "missive/missive/missive_args.h"
 
-#include <cstdlib>
 #include <map>
-#include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -15,7 +14,6 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/task/bind_post_task.h>
 #include <base/time/time.h>
@@ -24,7 +22,6 @@
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
-#include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/util/statusor.h"
 
@@ -47,7 +44,7 @@ std::string FindValueOrEmpty(const std::string& key,
 }
 
 // Parses duration. If the parsed duration is invalid.
-StatusOr<base::TimeDelta> ParseDuration(base::StringPiece duration_string) {
+StatusOr<base::TimeDelta> ParseDuration(std::string_view duration_string) {
   const auto duration_result = base::TimeDeltaFromString(duration_string);
   if (!duration_result.has_value()) {
     return Status(error::INVALID_ARGUMENT, "Duration is not parseable.");
@@ -60,9 +57,9 @@ StatusOr<base::TimeDelta> ParseDuration(base::StringPiece duration_string) {
 
 // Parses duration_string if valid. Otherwise, parses duration_default, which
 // should always be valid.
-base::TimeDelta DurationParameterValue(base::StringPiece parameter_name,
-                                       base::StringPiece duration_string,
-                                       base::StringPiece duration_default) {
+base::TimeDelta DurationParameterValue(std::string_view parameter_name,
+                                       std::string_view duration_string,
+                                       std::string_view duration_default) {
   CHECK(ParseDuration(duration_default).ok());
 
   if (duration_string.empty()) {
@@ -79,8 +76,8 @@ base::TimeDelta DurationParameterValue(base::StringPiece parameter_name,
 }
 
 // Recognizes boolean setting if valid. Otherwise, substitutes default value.
-bool BoolParameterValue(base::StringPiece parameter_name,
-                        base::StringPiece value_string,
+bool BoolParameterValue(std::string_view parameter_name,
+                        std::string_view value_string,
                         bool value_default) {
   if (value_string.empty()) {
     return value_default;

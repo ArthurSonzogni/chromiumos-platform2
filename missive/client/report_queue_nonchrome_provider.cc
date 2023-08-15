@@ -19,11 +19,8 @@
 
 #include "missive/client/empty_dm_token_retriever.h"
 #include "missive/client/missive_client.h"
-#include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
-#include "missive/client/report_queue_impl.h"
 #include "missive/client/report_queue_provider.h"
-#include "missive/proto/record_constants.pb.h"
 #include "missive/storage/missive_storage_module.h"
 #include "missive/storage/missive_storage_module_delegate_impl.h"
 #include "missive/storage/storage_module_interface.h"

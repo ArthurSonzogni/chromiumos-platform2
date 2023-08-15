@@ -16,7 +16,6 @@
 
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/record.pb.h"
-#include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/scheduler/scheduler.h"
 #include "missive/storage/storage_uploader_interface.h"

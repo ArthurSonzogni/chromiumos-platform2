@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cstdint>
-#include <memory>
-
 #include "missive/resources/resource_managed_buffer.h"
+
+#include <memory>
 
 #include <base/check_op.h>
 #include <base/memory/scoped_refptr.h>

@@ -10,11 +10,9 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_piece.h>
 
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
-#include "missive/util/statusor.h"
 
 using ::testing::Invoke;
 

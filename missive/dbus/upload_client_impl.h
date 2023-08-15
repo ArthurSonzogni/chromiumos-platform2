@@ -7,7 +7,6 @@
 
 #include "missive/dbus/upload_client.h"
 
-#include <atomic>
 #include <memory>
 #include <optional>
 #include <string>
@@ -20,7 +19,6 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
-#include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/disconnectable_client.h"
 #include "missive/util/statusor.h"

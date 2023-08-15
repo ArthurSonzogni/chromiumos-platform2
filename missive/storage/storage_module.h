@@ -5,9 +5,7 @@
 #ifndef MISSIVE_STORAGE_STORAGE_MODULE_H_
 #define MISSIVE_STORAGE_STORAGE_MODULE_H_
 
-#include <memory>
-#include <queue>
-#include <string>
+#include <string_view>
 
 #include <base/functional/callback.h>
 #include <base/functional/callback_forward.h>
@@ -16,8 +14,8 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece_forward.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/threading/sequence_bound.h>
 
-#include "base/threading/sequence_bound.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
@@ -37,7 +35,7 @@ class StorageModule : public StorageModuleInterface {
   // Transient settings used by `StorageModule` instantiation.
   struct Settings {
     const StorageOptions& options;
-    const base::StringPiece legacy_storage_enabled;
+    const std::string_view legacy_storage_enabled;
     const scoped_refptr<QueuesContainer> queues_container;
     const scoped_refptr<EncryptionModuleInterface> encryption_module;
     const scoped_refptr<CompressionModule> compression_module;
@@ -84,7 +82,7 @@ class StorageModule : public StorageModuleInterface {
 
   // Parse list of priorities to be in legacy single-generation action state
   // from now on. All other priorities are in multi-generation action state.
-  void SetLegacyEnabledPriorities(base::StringPiece legacy_storage_enabled);
+  void SetLegacyEnabledPriorities(std::string_view legacy_storage_enabled);
 
   // Attaches a repeating callback to be invoked every time `ReportSuccess`
   // detects material progress in upload.
