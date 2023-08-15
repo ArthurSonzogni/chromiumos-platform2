@@ -34,7 +34,11 @@ constexpr char kVmToken[] = "token";
 // Test fixture for actually testing the VirtualMachine functionality.
 class VirtualMachineTest : public ::testing::Test {
  public:
-  VirtualMachineTest() : termina_vm_(1, 2, ""), plugin_vm_(0, 3, kVmToken) {}
+  VirtualMachineTest() : termina_vm_(1, 2, ""), plugin_vm_(0, 3, kVmToken) {
+    // Disable wait time on the cicerone connection waiting for garcon which
+    // doesn't run in tests.
+    Container::DisableChannelWaitForTesting();
+  }
   VirtualMachineTest(const VirtualMachineTest&) = delete;
   VirtualMachineTest& operator=(const VirtualMachineTest&) = delete;
 
