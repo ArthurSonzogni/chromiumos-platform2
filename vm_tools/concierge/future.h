@@ -18,8 +18,6 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
 
-#include "vm_tools/concierge/apply_impl.h"
-
 // A future class and utilities adapted to the Chrome OS code base. It can be
 // used to post jobs to the same/different threads, and to add async support
 // to methods. Please refer to FutureTest_Tutorial of future_test.cc on how to
@@ -128,6 +126,24 @@ Reject() {
 }
 
 namespace internal {
+
+template <typename U, typename... Ts, class Tuple, std::size_t... I>
+U ApplyImpl(base::OnceCallback<U(Ts...)> f,
+            Tuple&& t,
+            std::index_sequence<I...>) {
+  return std::move(f).Run(std::move(std::get<I>(std::forward<Tuple>(t)))...);
+}
+
+template <typename U, typename... Ts, class Tuple>
+U Apply(base::OnceCallback<U(Ts...)> f, Tuple&& t) {
+  return ApplyImpl(std::move(f), std::forward<Tuple>(t),
+                   std::make_index_sequence<sizeof...(Ts)>{});
+}
+
+template <typename U, typename T>
+U Apply(base::OnceCallback<U(T)> f, T&& val) {
+  return std::move(f).Run(std::forward<T>(val));
+}
 
 template <typename T, typename Error>
 struct SharedState {
