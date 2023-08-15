@@ -28,7 +28,7 @@ CaptureRequest::CaptureRequest(const camera3_capture_request& request,
     memset(&to, 0, sizeof(camera3_stream_buffer_t));
 
     to.stream = from->stream;
-    to.buffer = buffer_handles_[i] != nullptr ? &buffer_handles_[i] : nullptr;
+    to.buffer = &buffer_handles_[i];
     to.status = CAMERA3_BUFFER_STATUS_OK;
     to.acquire_fence = from->acquire_fence;
     to.release_fence = kBufferFenceReady;

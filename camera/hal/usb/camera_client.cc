@@ -778,7 +778,7 @@ void CameraClient::RequestHandler::HandleRequest(
   // request_stream_buffers().
   camera3_stream_buffer_t* returned_output_buffers =
       const_cast<camera3_stream_buffer_t*>(capture_result.output_buffers);
-  if (!capture_result.output_buffers[0].buffer) {
+  if (*capture_result.output_buffers[0].buffer == nullptr) {
     std::vector<camera3_buffer_request_t> buf_reqs;
     std::vector<camera3_stream_buffer_ret_t> returned_buf_reqs(
         capture_result.num_output_buffers, camera3_stream_buffer_ret_t{});
