@@ -1325,6 +1325,7 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
   return true;
 }
 
+// static
 std::unique_ptr<Service> Service::Create(base::OnceClosure quit_closure) {
   auto service = base::WrapUnique(new Service(std::move(quit_closure)));
 
