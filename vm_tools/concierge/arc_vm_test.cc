@@ -957,7 +957,7 @@ class ArcVmTest : public ::testing::Test {
     disk_usage_proxy_ = std::make_unique<spaced::DiskUsageProxy>(
         std::unique_ptr<org::chromium::SpacedProxyMock>(spaced_proxy_));
 
-    vm_ = std::unique_ptr<ArcVm>(new ArcVm(ArcVm::Config{
+    vm_ = base::WrapUnique(new ArcVm(ArcVm::Config{
         .vsock_cid = vsock_cid,
         .network_client = std::make_unique<patchpanel::FakeClient>(),
         .seneschal_server_proxy = nullptr,

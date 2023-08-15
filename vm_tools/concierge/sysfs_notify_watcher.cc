@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include <base/memory/ptr_util.h>
+
 #include "vm_tools/concierge/sysfs_notify_watcher_impl.h"
 
 namespace vm_tools::concierge {
@@ -13,8 +15,7 @@ namespace vm_tools::concierge {
 std::unique_ptr<SysfsNotifyWatcher> SysfsNotifyWatcher::Create(
     int fd, const SysfsNotifyCallback& callback) {
   std::unique_ptr<SysfsNotifyWatcher> watcher =
-      std::unique_ptr<SysfsNotifyWatcherImpl>(
-          new SysfsNotifyWatcherImpl(fd, callback));
+      base::WrapUnique(new SysfsNotifyWatcherImpl(fd, callback));
 
   if (!watcher->StartWatching()) {
     return {};

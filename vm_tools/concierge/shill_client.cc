@@ -190,7 +190,7 @@ void ShillClient::OnServicePropertyChange(const std::string& property_name,
   }
 
   std::unique_ptr<IPConfigProxy> ipconfig_proxy{
-      new IPConfigProxy(bus_, ipconfig_path)};
+      std::make_unique<IPConfigProxy>(bus_, ipconfig_path)};
   auto properties = GetPropertiesHelper(bus_.get(), ipconfig_proxy.get());
   if (!properties) {
     LOG(ERROR) << "Unable to get shill IPConfig properties";

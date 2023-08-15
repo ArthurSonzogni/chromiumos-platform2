@@ -93,11 +93,11 @@ class ArcVm final : public VmBaseImpl {
     base::FilePath data_disk_path;
     ArcVmFeatures features;
     std::unique_ptr<base::OneShotTimer> swap_policy_timer{
-        new base::OneShotTimer()};
+        std::make_unique<base::OneShotTimer>()};
     std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer{
-        new base::RepeatingTimer()};
+        std::make_unique<base::RepeatingTimer>()};
     std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer{
-        new base::RepeatingTimer()};
+        std::make_unique<base::RepeatingTimer>()};
     VmBuilder vm_builder;
   };
 
