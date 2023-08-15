@@ -6,8 +6,12 @@
 
 #include <netinet/in.h>
 
+#include <memory>
+#include <utility>
+
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_socket.h>
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"
@@ -15,23 +19,24 @@
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_process_manager.h"
-#include "shill/net/mock_sockets.h"
 #include "shill/store/key_value_store.h"
 #include "shill/vpn/mock_openvpn_driver.h"
 
 using testing::_;
 using testing::Assign;
+using testing::DoAll;
 using testing::Eq;
 using testing::InSequence;
 using testing::Return;
 using testing::ReturnNew;
+using testing::SaveArg;
 using testing::StrEq;
 
 namespace shill {
-
 namespace {
-MATCHER_P(VoidStringEq, value, "") {
-  return value == reinterpret_cast<const char*>(arg);
+MATCHER_P(StringEq, value, "") {
+  return std::string(reinterpret_cast<const char*>(arg.data()), arg.size()) ==
+         value;
 }
 }  // namespace
 
@@ -46,62 +51,79 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   ~OpenVPNManagementServerTest() override = default;
 
- protected:
-  static const int kConnectedSocket;
+  // Set the socket factory method into |server_|.
+  // |method| is a lambda function that creates a net_base::MockSocket.
+  void SetSocketFactory(
+      int expected_domain,
+      int expected_type,
+      int expected_protocol,
+      std::function<std::unique_ptr<net_base::MockSocket>()> method) {
+    server_.socket_factory_ = base::BindRepeating(
+        [](int expected_domain, int expected_type, int expected_protocol,
+           std::function<std::unique_ptr<net_base::MockSocket>()> method,
+           int domain, int type,
+           int protocol) -> std::unique_ptr<net_base::Socket> {
+          EXPECT_EQ(domain, expected_domain);
+          EXPECT_EQ(type, expected_type);
+          EXPECT_EQ(protocol, expected_protocol);
 
-  void SetSockets() { server_.sockets_ = &sockets_; }
-  void ExpectNotStarted() { EXPECT_FALSE(server_.IsStarted()); }
-
-  void SetConnectedSocket() {
-    server_.connected_socket_ = kConnectedSocket;
-    SetSockets();
+          return method();
+        },
+        expected_domain, expected_type, expected_protocol, std::move(method));
   }
 
-  void ExpectSend(const std::string& value) {
-    EXPECT_CALL(sockets_,
-                Send(kConnectedSocket, VoidStringEq(value), value.size(), _))
+ protected:
+  void SetSocket(std::unique_ptr<net_base::MockSocket> socket) {
+    server_.socket_ = std::move(socket);
+  }
+
+  void SetConnectedSocket(std::unique_ptr<net_base::MockSocket> socket) {
+    server_.connected_socket_ = std::move(socket);
+  }
+
+  void ExpectSend(net_base::MockSocket& connected_socket,
+                  const std::string& value) {
+    EXPECT_CALL(connected_socket, Send(StringEq(value), _))
         .WillOnce(Return(value.size()));
   }
 
-  void ExpectOTPStaticChallengeResponse() {
+  void ExpectOTPStaticChallengeResponse(
+      net_base::MockSocket& connected_socket) {
     driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
     driver_.args()->Set<std::string>(kOpenVPNPasswordProperty, "yoyo");
     driver_.args()->Set<std::string>(kOpenVPNOTPProperty, "123456");
-    SetConnectedSocket();
-    ExpectSend("username \"Auth\" \"jojo\"\n");
-    ExpectSend("password \"Auth\" \"SCRV1:eW95bw==:MTIzNDU2\"\n");
+    ExpectSend(connected_socket, "username \"Auth\" \"jojo\"\n");
+    ExpectSend(connected_socket,
+               "password \"Auth\" \"SCRV1:eW95bw==:MTIzNDU2\"\n");
   }
 
-  void ExpectTokenStaticChallengeResponse() {
+  void ExpectTokenStaticChallengeResponse(
+      net_base::MockSocket& connected_socket) {
     driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
     driver_.args()->Set<std::string>(kOpenVPNTokenProperty, "toto");
-    SetConnectedSocket();
-    ExpectSend("username \"Auth\" \"jojo\"\n");
-    ExpectSend("password \"Auth\" \"toto\"\n");
+    ExpectSend(connected_socket, "username \"Auth\" \"jojo\"\n");
+    ExpectSend(connected_socket, "password \"Auth\" \"toto\"\n");
   }
 
-  void ExpectAuthenticationResponse() {
+  void ExpectAuthenticationResponse(net_base::MockSocket& connected_socket) {
     driver_.args()->Set<std::string>(kOpenVPNUserProperty, "jojo");
     driver_.args()->Set<std::string>(kOpenVPNPasswordProperty, "yoyo");
-    SetConnectedSocket();
-    ExpectSend("username \"Auth\" \"jojo\"\n");
-    ExpectSend("password \"Auth\" \"yoyo\"\n");
+    ExpectSend(connected_socket, "username \"Auth\" \"jojo\"\n");
+    ExpectSend(connected_socket, "password \"Auth\" \"yoyo\"\n");
   }
 
-  void ExpectPinResponse() {
+  void ExpectPinResponse(net_base::MockSocket& connected_socket) {
     driver_.args()->Set<std::string>(kOpenVPNPinProperty, "987654");
-    SetConnectedSocket();
-    ExpectSend("password \"User-Specific TPM Token FOO\" \"987654\"\n");
+    ExpectSend(connected_socket,
+               "password \"User-Specific TPM Token FOO\" \"987654\"\n");
   }
 
-  void ExpectHoldRelease() {
-    SetConnectedSocket();
-    ExpectSend("hold release\n");
+  void ExpectHoldRelease(net_base::MockSocket& connected_socket) {
+    ExpectSend(connected_socket, "hold release\n");
   }
 
-  void ExpectRestart() {
-    SetConnectedSocket();
-    ExpectSend("signal SIGUSR1\n");
+  void ExpectRestart(net_base::MockSocket& connected_socket) {
+    ExpectSend(connected_socket, "signal SIGUSR1\n");
   }
 
   InputData CreateInputDataFromString(const std::string& str) {
@@ -155,56 +177,55 @@ class OpenVPNManagementServerTest : public testing::Test {
   MockProcessManager process_manager_;
   Manager manager_;
   MockOpenVPNDriver driver_;
-  MockSockets sockets_;
   MockIOHandlerFactory io_handler_factory_;
   OpenVPNManagementServer server_;  // Destroy before anything it references.
 };
 
-// static
-const int OpenVPNManagementServerTest::kConnectedSocket = 555;
-
 TEST_F(OpenVPNManagementServerTest, StartStarted) {
-  SetSockets();
-  EXPECT_TRUE(server_.Start(nullptr, nullptr));
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  EXPECT_TRUE(server_.Start(nullptr));
 }
 
 TEST_F(OpenVPNManagementServerTest, StartSocketFail) {
-  EXPECT_CALL(sockets_,
-              Socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP))
-      .WillOnce(Return(-1));
-  EXPECT_FALSE(server_.Start(&sockets_, nullptr));
-  ExpectNotStarted();
+  SetSocketFactory(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP,
+                   []() { return nullptr; });
+  EXPECT_FALSE(server_.Start(nullptr));
+  EXPECT_FALSE(server_.IsStarted());
 }
 
 TEST_F(OpenVPNManagementServerTest, StartGetSockNameFail) {
-  const int kSocket = 123;
-  EXPECT_CALL(sockets_, Socket(AF_INET, _, IPPROTO_TCP))
-      .WillOnce(Return(kSocket));
-  EXPECT_CALL(sockets_, Bind(kSocket, _, _)).WillOnce(Return(0));
-  EXPECT_CALL(sockets_, Listen(kSocket, 1)).WillOnce(Return(0));
-  EXPECT_CALL(sockets_, GetSockName(kSocket, _, _)).WillOnce(Return(-1));
-  EXPECT_CALL(sockets_, Close(kSocket)).WillOnce(Return(0));
-  EXPECT_FALSE(server_.Start(&sockets_, nullptr));
-  ExpectNotStarted();
+  SetSocketFactory(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP, []() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
+    EXPECT_CALL(*socket, Listen(1)).WillOnce(Return(true));
+    EXPECT_CALL(*socket, GetSockName).WillOnce(Return(false));
+    return socket;
+  });
+
+  EXPECT_FALSE(server_.Start(nullptr));
+  EXPECT_FALSE(server_.IsStarted());
 }
 
 TEST_F(OpenVPNManagementServerTest, Start) {
   const std::string kStaticChallenge = "static-challenge";
   driver_.args()->Set<std::string>(kOpenVPNStaticChallengeProperty,
                                    kStaticChallenge);
-  const int kSocket = 123;
-  EXPECT_CALL(sockets_, Socket(AF_INET, _, IPPROTO_TCP))
-      .WillOnce(Return(kSocket));
-  EXPECT_CALL(sockets_, Bind(kSocket, _, _)).WillOnce(Return(0));
-  EXPECT_CALL(sockets_, Listen(kSocket, 1)).WillOnce(Return(0));
-  EXPECT_CALL(sockets_, GetSockName(kSocket, _, _)).WillOnce(Return(0));
+
+  SetSocketFactory(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP, []() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
+    EXPECT_CALL(*socket, Listen(1)).WillOnce(Return(true));
+    EXPECT_CALL(*socket, GetSockName).WillOnce(Return(true));
+    return socket;
+  });
+
+  int socket_fd;
   EXPECT_CALL(io_handler_factory_,
-              CreateIOReadyHandler(kSocket, IOHandler::kModeInput, _))
-      .WillOnce(ReturnNew<IOHandler>());
+              CreateIOReadyHandler(_, IOHandler::kModeInput, _))
+      .WillOnce(DoAll(SaveArg<0>(&socket_fd), ReturnNew<IOHandler>()));
   std::vector<std::vector<std::string>> options;
-  EXPECT_TRUE(server_.Start(&sockets_, &options));
-  EXPECT_EQ(&sockets_, server_.sockets_);
-  EXPECT_EQ(kSocket, server_.socket_);
+  EXPECT_TRUE(server_.Start(&options));
+  EXPECT_EQ(server_.socket_->Get(), socket_fd);
   EXPECT_NE(nullptr, server_.ready_handler_);
   std::vector<std::vector<std::string>> expected_options{
       {"management", "127.0.0.1", "0"},
@@ -217,44 +238,50 @@ TEST_F(OpenVPNManagementServerTest, Start) {
 
 TEST_F(OpenVPNManagementServerTest, Stop) {
   EXPECT_TRUE(server_.state().empty());
-  SetSockets();
-  server_.input_handler_.reset(new IOHandler());
-  const int kConnectedSocket = 234;
-  server_.connected_socket_ = kConnectedSocket;
-  EXPECT_CALL(sockets_, Close(kConnectedSocket)).WillOnce(Return(0));
-  server_.ready_handler_.reset(new IOHandler());
-  const int kSocket = 345;
-  server_.socket_ = kSocket;
+
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  SetConnectedSocket(std::make_unique<net_base::MockSocket>());
+  server_.input_handler_ = std::make_unique<IOHandler>();
+  server_.ready_handler_ = std::make_unique<IOHandler>();
+
   SetClientState(OpenVPNManagementServer::kStateReconnecting);
-  EXPECT_CALL(sockets_, Close(kSocket)).WillOnce(Return(0));
   server_.Stop();
   EXPECT_EQ(nullptr, server_.input_handler_);
-  EXPECT_EQ(-1, server_.connected_socket_);
+  EXPECT_EQ(nullptr, server_.connected_socket_);
   EXPECT_EQ(nullptr, server_.ready_handler_);
-  EXPECT_EQ(-1, server_.socket_);
+  EXPECT_EQ(nullptr, server_.socket_);
   EXPECT_TRUE(server_.state().empty());
-  ExpectNotStarted();
+  EXPECT_FALSE(server_.IsStarted());
 }
 
 TEST_F(OpenVPNManagementServerTest, OnReadyAcceptFail) {
-  const int kSocket = 333;
-  SetSockets();
-  EXPECT_CALL(sockets_, Accept(kSocket, nullptr, nullptr)).WillOnce(Return(-1));
-  server_.OnReady(kSocket);
-  EXPECT_EQ(-1, server_.connected_socket_);
+  auto socket = std::make_unique<net_base::MockSocket>();
+  int socket_fd = socket->Get();
+  EXPECT_CALL(*socket, Accept(nullptr, nullptr)).WillOnce(Return(nullptr));
+  SetSocket(std::move(socket));
+
+  server_.OnReady(socket_fd);
+  EXPECT_EQ(nullptr, server_.connected_socket_);
 }
 
 TEST_F(OpenVPNManagementServerTest, OnReady) {
-  const int kSocket = 111;
-  SetConnectedSocket();
-  EXPECT_CALL(sockets_, Accept(kSocket, nullptr, nullptr))
-      .WillOnce(Return(kConnectedSocket));
-  server_.ready_handler_.reset(new IOHandler());
-  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(kConnectedSocket, _, _))
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  int connected_socket_fd = connected_socket->Get();
+  ExpectSend(*connected_socket, "state on\n");
+
+  auto socket = std::make_unique<net_base::MockSocket>();
+  int socket_fd = socket->Get();
+  EXPECT_CALL(*socket, Accept(nullptr, nullptr))
+      .WillOnce(Return(std::move(connected_socket)));
+  SetSocket(std::move(socket));
+
+  server_.ready_handler_ = std::make_unique<IOHandler>();
+  EXPECT_CALL(io_handler_factory_,
+              CreateIOInputHandler(connected_socket_fd, _, _))
       .WillOnce(ReturnNew<IOHandler>());
-  ExpectSend("state on\n");
-  server_.OnReady(kSocket);
-  EXPECT_EQ(kConnectedSocket, server_.connected_socket_);
+
+  server_.OnReady(socket_fd);
+  EXPECT_EQ(connected_socket_fd, server_.connected_socket_->Get());
   EXPECT_EQ(nullptr, server_.ready_handler_);
   EXPECT_NE(nullptr, server_.input_handler_);
 }
@@ -277,8 +304,13 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
         ">HOLD:Waiting for hold release\n"
         "SUCCESS: Hold released.";
     InputData data = CreateInputDataFromString(s);
-    ExpectOTPStaticChallengeResponse();
-    ExpectPinResponse();
+
+    SetSocket(std::make_unique<net_base::MockSocket>());
+    auto connected_socket = std::make_unique<net_base::MockSocket>();
+    ExpectOTPStaticChallengeResponse(*connected_socket);
+    ExpectPinResponse(*connected_socket);
+    SetConnectedSocket(std::move(connected_socket));
+
     EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
                                      StrEq(Service::kErrorDetailsNone)));
     EXPECT_CALL(driver_, OnReconnecting(_));
@@ -293,11 +325,13 @@ TEST_F(OpenVPNManagementServerTest, OnInputStop) {
       ">PASSWORD:Verification Failed: .\n"
       ">STATE:123,RECONNECTING,detail,...,...";
   InputData data = CreateInputDataFromString(s);
-  SetSockets();
+
+  SetSocket(std::make_unique<net_base::MockSocket>());
+
   // Stops the server after the first message is processed.
   EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
                                    StrEq(Service::kErrorDetailsNone)))
-      .WillOnce(Assign(&server_.sockets_, nullptr));
+      .WillOnce(Assign(&server_.socket_, nullptr));
   // The second message should not be processed.
   EXPECT_CALL(driver_, OnReconnecting(_)).Times(0);
   OnInput(&data);
@@ -315,7 +349,7 @@ TEST_F(OpenVPNManagementServerTest, OnInputStatus) {
       "Data channel cipher,AES-256-GCM\n"
       "END";
   InputData data = CreateInputDataFromString(s);
-  SetSockets();
+  SetSocket(std::make_unique<net_base::MockSocket>());
   EXPECT_CALL(driver_, ReportCipherMetrics("AES-256-GCM"));
   OnInput(&data);
 }
@@ -358,26 +392,42 @@ TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
 
 TEST_F(OpenVPNManagementServerTest, ProcessStateMessageConnected) {
   EXPECT_TRUE(server_.state().empty());
-  SetConnectedSocket();
-  ExpectSend("status\n");
+
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectSend(*connected_socket, "status\n");
+  SetConnectedSocket(std::move(connected_socket));
+
   EXPECT_TRUE(ProcessStateMessage(">STATE:123,CONNECTED,SUCCESS,...,..."));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {
-  ExpectOTPStaticChallengeResponse();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectOTPStaticChallengeResponse(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   EXPECT_TRUE(server_.ProcessNeedPasswordMessage(
       ">PASSWORD:Need 'Auth' SC:user/password/otp"));
   EXPECT_FALSE(driver_.args()->Contains<std::string>(kOpenVPNOTPProperty));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuth) {
-  ExpectAuthenticationResponse();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectAuthenticationResponse(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   EXPECT_TRUE(server_.ProcessNeedPasswordMessage(
       ">PASSWORD:Need 'Auth' username/password"));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageTPMToken) {
-  ExpectPinResponse();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectPinResponse(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   EXPECT_TRUE(server_.ProcessNeedPasswordMessage(
       ">PASSWORD:Need 'User-Specific TPM Token FOO' ..."));
 }
@@ -429,13 +479,21 @@ TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeOTP) {
-  ExpectOTPStaticChallengeResponse();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectOTPStaticChallengeResponse(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.PerformStaticChallenge("Auth");
   EXPECT_FALSE(driver_.args()->Contains<std::string>(kOpenVPNOTPProperty));
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeToken) {
-  ExpectTokenStaticChallengeResponse();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectTokenStaticChallengeResponse(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.PerformStaticChallenge("Auth");
   EXPECT_FALSE(driver_.args()->Contains<std::string>(kOpenVPNTokenProperty));
 }
@@ -450,7 +508,11 @@ TEST_F(OpenVPNManagementServerTest, PerformAuthenticationNoCreds) {
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformAuthentication) {
-  ExpectAuthenticationResponse();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectAuthenticationResponse(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.PerformAuthentication("Auth");
 }
 
@@ -464,7 +526,11 @@ TEST_F(OpenVPNManagementServerTest, ProcessHoldMessage) {
   EXPECT_FALSE(server_.hold_release_);
   EXPECT_TRUE(server_.hold_waiting_);
 
-  ExpectHoldRelease();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectHoldRelease(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.hold_release_ = true;
   server_.hold_waiting_ = false;
   EXPECT_TRUE(server_.ProcessHoldMessage(">HOLD:Waiting for hold release"));
@@ -479,46 +545,70 @@ TEST_F(OpenVPNManagementServerTest, SupplyTPMTokenNoPin) {
 }
 
 TEST_F(OpenVPNManagementServerTest, SupplyTPMToken) {
-  ExpectPinResponse();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectPinResponse(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.SupplyTPMToken("User-Specific TPM Token FOO");
 }
 
 TEST_F(OpenVPNManagementServerTest, Send) {
   constexpr char kMessage[] = "foo\n";
-  SetConnectedSocket();
-  ExpectSend(kMessage);
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectSend(*connected_socket, kMessage);
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.Send(kMessage);
 }
 
 TEST_F(OpenVPNManagementServerTest, SendState) {
-  SetConnectedSocket();
-  ExpectSend("state off\n");
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectSend(*connected_socket, "state off\n");
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.SendState("off");
 }
 
 TEST_F(OpenVPNManagementServerTest, SendUsername) {
-  SetConnectedSocket();
-  ExpectSend("username \"Auth\" \"joesmith\"\n");
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectSend(*connected_socket, "username \"Auth\" \"joesmith\"\n");
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.SendUsername("Auth", "joesmith");
 }
 
 TEST_F(OpenVPNManagementServerTest, SendUsernameWithSpecialCharacters) {
-  SetConnectedSocket();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectSend(*connected_socket,
+             "username \"\\\\ and \\\"\" \"joesmith with \\\" and \\\\\"\n");
+  SetConnectedSocket(std::move(connected_socket));
+
   // Verify that \ and " are escaped as \\ and \" in tag and username.
-  ExpectSend("username \"\\\\ and \\\"\" \"joesmith with \\\" and \\\\\"\n");
   server_.SendUsername("\\ and \"", "joesmith with \" and \\");
 }
 
 TEST_F(OpenVPNManagementServerTest, SendPassword) {
-  SetConnectedSocket();
-  ExpectSend("password \"Auth\" \"foobar\"\n");
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectSend(*connected_socket, "password \"Auth\" \"foobar\"\n");
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.SendPassword("Auth", "foobar");
 }
 
 TEST_F(OpenVPNManagementServerTest, SendPasswordWithSpecialCharacters) {
-  SetConnectedSocket();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectSend(*connected_socket,
+             "password \"\\\\ and \\\"\" \"foobar with \\\" and \\\\\"\n");
+  SetConnectedSocket(std::move(connected_socket));
+
   // Verify that \ and " are escaped as \\ and \" in tag and password.
-  ExpectSend("password \"\\\\ and \\\"\" \"foobar with \\\" and \\\\\"\n");
   server_.SendPassword("\\ and \"", "foobar with \" and \\");
 }
 
@@ -544,18 +634,29 @@ TEST_F(OpenVPNManagementServerTest, ProcessAuthTokenMessage) {
 }
 
 TEST_F(OpenVPNManagementServerTest, SendSignal) {
-  SetConnectedSocket();
-  ExpectSend("signal SIGUSR2\n");
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectSend(*connected_socket, "signal SIGUSR2\n");
+  SetConnectedSocket(std::move(connected_socket));
+
   SendSignal("SIGUSR2");
 }
 
 TEST_F(OpenVPNManagementServerTest, Restart) {
-  ExpectRestart();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectRestart(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.Restart();
 }
 
 TEST_F(OpenVPNManagementServerTest, SendHoldRelease) {
-  ExpectHoldRelease();
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectHoldRelease(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.SendHoldRelease();
 }
 
@@ -572,7 +673,12 @@ TEST_F(OpenVPNManagementServerTest, Hold) {
   EXPECT_FALSE(server_.hold_waiting_);
 
   server_.hold_waiting_ = true;
-  ExpectHoldRelease();
+
+  SetSocket(std::make_unique<net_base::MockSocket>());
+  auto connected_socket = std::make_unique<net_base::MockSocket>();
+  ExpectHoldRelease(*connected_socket);
+  SetConnectedSocket(std::move(connected_socket));
+
   server_.ReleaseHold();
   EXPECT_TRUE(server_.hold_release_);
   EXPECT_FALSE(server_.hold_waiting_);

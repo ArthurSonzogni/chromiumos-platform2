@@ -7,6 +7,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -18,10 +20,8 @@
 #include <brillo/data_encoding.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/net/io_handler_factory.h"
-#include "shill/net/sockets.h"
 #include "shill/vpn/openvpn_driver.h"
 
 namespace shill {
@@ -36,10 +36,7 @@ constexpr char kPasswordTagAuth[] = "Auth";
 
 OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver* driver)
     : driver_(driver),
-      sockets_(nullptr),
-      socket_(-1),
       io_handler_factory_(IOHandlerFactory::GetInstance()),
-      connected_socket_(-1),
       hold_waiting_(false),
       hold_release_(false) {}
 
@@ -48,15 +45,15 @@ OpenVPNManagementServer::~OpenVPNManagementServer() {
 }
 
 bool OpenVPNManagementServer::Start(
-    Sockets* sockets, std::vector<std::vector<std::string>>* options) {
+    std::vector<std::vector<std::string>>* options) {
   SLOG(2) << __func__;
   if (IsStarted()) {
     return true;
   }
 
-  int socket =
-      sockets->Socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
-  if (socket < 0) {
+  auto socket =
+      socket_factory_.Run(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+  if (!socket) {
     PLOG(ERROR) << "Unable to create management server socket.";
     return false;
   }
@@ -66,21 +63,19 @@ bool OpenVPNManagementServer::Start(
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  if (sockets->Bind(socket, reinterpret_cast<struct sockaddr*>(&addr),
-                    addrlen) < 0 ||
-      sockets->Listen(socket, 1) < 0 ||
-      sockets->GetSockName(socket, reinterpret_cast<struct sockaddr*>(&addr),
-                           &addrlen) < 0) {
+  if (!socket->Bind(reinterpret_cast<struct sockaddr*>(&addr), addrlen) ||
+      !socket->Listen(1) ||
+      !socket->GetSockName(reinterpret_cast<struct sockaddr*>(&addr),
+                           &addrlen)) {
     PLOG(ERROR) << "Socket setup failed.";
-    sockets->Close(socket);
     return false;
   }
 
   SLOG(2) << "Listening socket: " << socket;
-  sockets_ = sockets;
-  socket_ = socket;
+  socket_ = std::move(socket);
+
   ready_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
-      socket, IOHandler::kModeInput,
+      socket_->Get(), IOHandler::kModeInput,
       base::BindRepeating(&OpenVPNManagementServer::OnReady,
                           base::Unretained(this))));
 
@@ -107,16 +102,10 @@ void OpenVPNManagementServer::Stop() {
   }
   state_.clear();
   input_handler_.reset();
-  if (connected_socket_ >= 0) {
-    sockets_->Close(connected_socket_);
-    connected_socket_ = -1;
-  }
+  connected_socket_.reset();
+
   ready_handler_.reset();
-  if (socket_ >= 0) {
-    sockets_->Close(socket_);
-    socket_ = -1;
-  }
-  sockets_ = nullptr;
+  socket_.reset();
 }
 
 void OpenVPNManagementServer::ReleaseHold() {
@@ -142,14 +131,15 @@ void OpenVPNManagementServer::Restart() {
 
 void OpenVPNManagementServer::OnReady(int fd) {
   SLOG(2) << __func__ << "(" << fd << ")";
-  connected_socket_ = sockets_->Accept(fd, nullptr, nullptr);
-  if (connected_socket_ < 0) {
+  connected_socket_ = socket_->Accept(nullptr, nullptr);
+  if (!connected_socket_) {
     PLOG(ERROR) << "Connected socket accept failed.";
     return;
   }
+
   ready_handler_.reset();
   input_handler_.reset(io_handler_factory_->CreateIOInputHandler(
-      connected_socket_,
+      connected_socket_->Get(),
       base::BindRepeating(&OpenVPNManagementServer::OnInput,
                           base::Unretained(this)),
       base::BindRepeating(&OpenVPNManagementServer::OnInputError,
@@ -461,14 +451,14 @@ std::string OpenVPNManagementServer::EscapeToQuote(const std::string& str) {
 
 void OpenVPNManagementServer::Send(const std::string& data) {
   SLOG(2) << __func__;
-  if (!sockets_) {
-    LOG(DFATAL) << "Send() is called but sockets_ is nullptr";
+  if (!IsStarted()) {
+    LOG(DFATAL) << "Send() is called but the management server is not started";
     return;
   }
-  ssize_t len =
-      sockets_->Send(connected_socket_, data.data(), data.size(), MSG_NOSIGNAL);
-  PLOG_IF(ERROR, len < 0 || static_cast<size_t>(len) != data.size())
-      << "Send failed.";
+  const auto len = connected_socket_->Send(
+      {reinterpret_cast<const uint8_t*>(data.data()), data.size()},
+      MSG_NOSIGNAL);
+  PLOG_IF(ERROR, len != data.size()) << "Send failed.";
 }
 
 void OpenVPNManagementServer::SendState(const std::string& state) {

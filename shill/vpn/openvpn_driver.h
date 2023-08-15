@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -15,7 +16,6 @@
 #include <net-base/ip_address.h>
 
 #include "shill/ipconfig.h"
-#include "shill/net/sockets.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn/vpn_driver.h"
 #include "shill/vpn/vpn_util.h"
@@ -60,7 +60,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // ErrorDetails property to |error_details|, and disassociates from the
   // service.
   virtual void FailService(Service::ConnectFailure failure,
-                           base::StringPiece error_details);
+                           std::string_view error_details);
 
   // Append zero-valued, single-valued and double-valued options to the
   // |options| array.
@@ -234,7 +234,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
 
   void ReportConnectionMetrics();
 
-  Sockets sockets_;
   std::unique_ptr<OpenVPNManagementServer> management_server_;
   std::unique_ptr<CertificateFile> certificate_file_;
   std::unique_ptr<CertificateFile> extra_certificates_file_;

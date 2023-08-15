@@ -2,20 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
+
+#include <memory>
+#include <string_view>
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <net-base/socket.h>
 
 #include "shill/net/io_handler.h"
-#include "shill/net/sockets.h"
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/openvpn_management_server.h"
-
-namespace {
-const int kPlaceholderSocket = 234;
-}
 
 namespace shill {
 
@@ -25,33 +26,17 @@ class FakeOpenVPNDriver : public OpenVPNDriver {
   FakeOpenVPNDriver(const FakeOpenVPNDriver&) = delete;
   FakeOpenVPNDriver& operator=(const FakeOpenVPNDriver&) = delete;
 
-  ~FakeOpenVPNDriver() = default;
+  ~FakeOpenVPNDriver() override = default;
 
-  void OnReconnecting(ReconnectReason) override{};
-  void FailService(Service::ConnectFailure, base::StringPiece) override{};
-  void ReportCipherMetrics(const std::string&) override{};
+  void OnReconnecting(ReconnectReason) override {}
+  void FailService(Service::ConnectFailure, std::string_view) override {}
+  void ReportCipherMetrics(const std::string&) override {}
 };
 
-class FakeSockets : public Sockets {
- public:
-  FakeSockets() = default;
-  FakeSockets(const FakeSockets&) = delete;
-  FakeSockets& operator=(const FakeSockets&) = delete;
-
-  ~FakeSockets() override = default;
-  int Accept(int sockfd,
-             struct sockaddr* addr,
-             socklen_t* addrlen) const override {
-    return kPlaceholderSocket;
-  };
-  int Close(int fd) const override { return 0; };
-  ssize_t Send(int sockfd,
-               const void* buf,
-               size_t len,
-               int flags) const override {
-    return len;
-  };
-};
+std::unique_ptr<net_base::Socket> CreateFakeSocket() {
+  return net_base::Socket::CreateFromFd(
+      base::ScopedFD(base::ScopedFD(open("/dev/null", O_RDONLY))));
+}
 
 class OpenVPNManagementServerFuzzer {
  public:
@@ -78,10 +63,9 @@ class OpenVPNManagementServerFuzzer {
     auto data_vector = provider.ConsumeRemainingBytes<uint8_t>();
     InputData input_data(data_vector.data(), data_vector.size());
     FakeOpenVPNDriver driver;
-    FakeSockets sockets;
     OpenVPNManagementServer server(&driver);
-    server.connected_socket_ = kPlaceholderSocket;
-    server.sockets_ = &sockets;
+    server.connected_socket_ = CreateFakeSocket();
+    server.socket_ = CreateFakeSocket();
     server.OnInput(&input_data);
   }
 };

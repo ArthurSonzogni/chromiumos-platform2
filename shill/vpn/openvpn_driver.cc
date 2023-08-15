@@ -166,7 +166,7 @@ OpenVPNDriver::~OpenVPNDriver() {
 }
 
 void OpenVPNDriver::FailService(Service::ConnectFailure failure,
-                                base::StringPiece error_details) {
+                                std::string_view error_details) {
   SLOG(2) << __func__ << "(" << error_details << ")";
   Cleanup();
   if (event_handler_) {
@@ -957,7 +957,7 @@ void OpenVPNDriver::InitClientAuthOptions(
 
 bool OpenVPNDriver::InitManagementChannelOptions(
     std::vector<std::vector<std::string>>* options, Error* error) {
-  if (!management_server_->Start(&sockets_, options)) {
+  if (!management_server_->Start(options)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Unable to setup management channel.");
     return false;

@@ -25,7 +25,7 @@ class MockOpenVPNManagementServer : public OpenVPNManagementServer {
 
   MOCK_METHOD(bool,
               Start,
-              (Sockets*, std::vector<std::vector<std::string>>*),
+              (std::vector<std::vector<std::string>>*),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(void, ReleaseHold, (), (override));

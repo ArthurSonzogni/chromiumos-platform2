@@ -10,8 +10,8 @@
 #include <vector>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/socket.h>
 
-#include "shill/data_types.h"
 #include "shill/mockable.h"
 
 namespace shill {
@@ -20,7 +20,6 @@ struct InputData;
 class IOHandler;
 class IOHandlerFactory;
 class OpenVPNDriver;
-class Sockets;
 
 class OpenVPNManagementServer {
  public:
@@ -37,8 +36,7 @@ class OpenVPNManagementServer {
 
   // Returns false on failure. On success, returns true and appends management
   // interface openvpn options to |options|.
-  virtual bool Start(Sockets* sockets,
-                     std::vector<std::vector<std::string>>* options);
+  virtual bool Start(std::vector<std::vector<std::string>>* options);
 
   virtual void Stop();
 
@@ -59,7 +57,7 @@ class OpenVPNManagementServer {
   const std::string& state() const { return state_; }
 
   // If Start() was called and no Stop() after that.
-  mockable bool IsStarted() const { return sockets_ != nullptr; }
+  mockable bool IsStarted() const { return socket_ != nullptr; }
 
  private:
   friend class OpenVPNDriverTest;
@@ -146,11 +144,13 @@ class OpenVPNManagementServer {
 
   OpenVPNDriver* driver_;
 
-  Sockets* sockets_;
-  int socket_;
+  net_base::Socket::SocketFactory socket_factory_ =
+      net_base::Socket::GetDefaultFactory();
+  std::unique_ptr<net_base::Socket> socket_;
+
   IOHandlerFactory* io_handler_factory_;
   std::unique_ptr<IOHandler> ready_handler_;
-  int connected_socket_;
+  std::unique_ptr<net_base::Socket> connected_socket_;
   std::unique_ptr<IOHandler> input_handler_;
 
   std::string state_;
