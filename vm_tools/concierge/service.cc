@@ -2895,55 +2895,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
       return response;
     }
 
-    struct stat st;
-    if (stat(disk_path.value().c_str(), &st) < 0) {
-      PLOG(ERROR) << "stat() of existing VM image failed for "
-                  << disk_path.value();
-      response.set_status(DISK_STATUS_FAILED);
-      response.set_failure_reason(
-          "internal error: image exists but stat() failed");
-      return response;
-    }
-
-    uint64_t current_size = st.st_size;
-    uint64_t current_usage = st.st_blocks * 512ull;
-    LOG(INFO) << "Found existing disk at " << disk_path.value()
-              << " with current size " << current_size << " and usage "
-              << current_usage;
-
-    // Automatically extend existing sparse disk images if |disk_size| is
-    // unspecified or 0 (unless storage ballooning is being used).
-    if (is_sparse && !request.storage_ballooning()) {
-      if (request.disk_size() != 0) {
-        // TODO(b/232176243): Think about cases where a non-zero |disk_size| is
-        // specified for an existing sparse disk image.
-        LOG(INFO) << "Ignoring specified disk size for existing sparse image. "
-                     "Automatic resizing is enabled only when the disk size is "
-                     "unspecified or specified to be 0";
-      } else if (IsDiskPreallocatedWithUserChosenSize(disk_path.value())) {
-        // If the user.crostini.user_chosen_size xattr exists, don't resize the
-        // disk. (The value stored in the xattr is ignored; only its existence
-        // matters.)
-        LOG(INFO) << "Disk image has "
-                  << kDiskImagePreallocatedWithUserChosenSizeXattr
-                  << " xattr - keeping existing size " << current_size;
-      } else {
-        uint64_t disk_size = CalculateDesiredDiskSize(disk_path, current_usage);
-        if (disk_size > current_size) {
-          LOG(INFO) << "Expanding disk image from " << current_size << " to "
-                    << disk_size;
-          if (expand_disk_image(disk_path.value().c_str(), disk_size) != 0) {
-            // If expanding the disk failed, continue with a warning.
-            // Currently, raw images can be resized, and qcow2 images cannot.
-            LOG(WARNING) << "Failed to expand disk image " << disk_path.value();
-          }
-        } else {
-          LOG(INFO) << "Current size " << current_size
-                    << " is already at least requested size " << disk_size
-                    << " - not expanding";
-        }
-      }
-    }
+    LOG(INFO) << "Found existing disk at " << disk_path.value();
 
     response.set_status(DISK_STATUS_EXISTS);
     response.set_disk_path(disk_path.value());
