@@ -4455,6 +4455,10 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     const std::string& vm_name,
     bool enable_render_server,
     bool enable_foz_db_list) {
+  // We want to delete and recreate the cache directory atomically, and in order
+  // to do that we ensure that this method runs on the main thread always.
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   base::FilePath cache_path = GetVmGpuCachePathInternal(owner_id, vm_name);
   // Cache ID is either boot id or OS build hash
   base::FilePath cache_id_path = cache_path.DirName();
@@ -4473,8 +4477,6 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
   const base::FilePath* permissions_to_update[] = {
       &base_path, &cache_id_path, &cache_path, &cache_device_path,
       &cache_render_server_path};
-
-  base::AutoLock guard(cache_mutex_);
 
   // In order to always provide an empty GPU shader cache on each boot or
   // build id change, we hash the boot_id or build number, and erase the whole

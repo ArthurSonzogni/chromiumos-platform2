@@ -533,10 +533,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Proxy for interacting with spaced.
   std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;
 
-  // Used to serialize erasing and creating the GPU shader disk cache in the
-  // event that VMs are started simultaneously from multiple threads.
-  base::Lock cache_mutex_;
-
   // Watcher to monitor changes to the system timezone file.
   base::FilePathWatcher localtime_watcher_;
 
