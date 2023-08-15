@@ -38,6 +38,7 @@ using Attributes = std::bitset<tpm_manager::NvramSpaceAttribute_ARRAYSIZE>;
 struct SpaceInfo {
   NoDefault<uint32_t> index;
   NoDefault<bool> read_with_owner_auth;
+  NoDefault<bool> trim_x509_cert;
   Attributes require_attributes;
   Attributes deny_attributes;
 };
@@ -62,48 +63,80 @@ bool CheckAttributes(const Attributes& require_attributes,
   return true;
 }
 
+// There may exist some padding 0s at the end of the cert, we should remove
+// them.
+Status TrimCertificatePadding(brillo::Blob& cert) {
+  const uint8_t* parse_ptr = cert.data();
+
+  crypto::ScopedOpenSSL<X509, X509_free> x509(
+      d2i_X509(nullptr /* create and return new X509 struct */, &parse_ptr,
+               cert.size()));
+
+  if (!x509) {
+    return MakeStatus<TPMError>("Failed to parse X509 certificate",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  size_t size = parse_ptr - cert.data();
+
+  if (size > cert.size()) {
+    return MakeStatus<TPMError>("Parsed X509 cert larger than input",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  cert.resize(size);
+  return OkStatus();
+}
+
 StatusOr<SpaceInfo> GetSpaceInfo(RoSpace space) {
   switch (space) {
     case RoSpace::kG2fCert:
       return SpaceInfo{
           .index = VIRTUAL_NV_INDEX_G2F_CERT,
           .read_with_owner_auth = false,
+          .trim_x509_cert = true,
           .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kBoardId:
       return SpaceInfo{
           .index = VIRTUAL_NV_INDEX_BOARD_ID,
           .read_with_owner_auth = false,
+          .trim_x509_cert = false,
           .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kSNData:
       return SpaceInfo{
           .index = VIRTUAL_NV_INDEX_SN_DATA,
           .read_with_owner_auth = false,
+          .trim_x509_cert = false,
           .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kEndorsementRsaCert:
       return SpaceInfo{
           .index = trunks::kRsaEndorsementCertificateIndex,
           .read_with_owner_auth = false,
+          .trim_x509_cert = false,
           .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kRsuDeviceId:
       return SpaceInfo{
           .index = VIRTUAL_NV_INDEX_RSU_DEV_ID,
           .read_with_owner_auth = false,
+          .trim_x509_cert = false,
           .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kWidevineRootOfTrustCert:
       return SpaceInfo{
           .index = 0x013fff07,
           .read_with_owner_auth = false,
+          .trim_x509_cert = true,
           .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kChipIdentityKeyCert:
       return SpaceInfo{
           .index = 0x013fff08,
           .read_with_owner_auth = false,
+          .trim_x509_cert = false,
           .require_attributes = kDefaultRoRequiredAttributes,
       };
     default:
@@ -112,7 +145,7 @@ StatusOr<SpaceInfo> GetSpaceInfo(RoSpace space) {
 }
 
 struct DetailSpaceInfo {
-  uint32_t size = 0;
+  uint32_t full_size = 0;
   Attributes attributes;
 };
 
@@ -134,7 +167,7 @@ StatusOr<DetailSpaceInfo> GetDetailSpaceInfo(
 
   RETURN_IF_ERROR(MakeStatus<TPMNvramError>(reply.result()));
 
-  result.size = reply.size();
+  result.full_size = reply.size();
   for (int i = 0; i < reply.attributes().size(); ++i) {
     result.attributes[reply.attributes(i)] = true;
   }
@@ -218,16 +251,30 @@ StatusOr<brillo::Blob> RoDataTpm2::Read(RoSpace space) {
 
   RETURN_IF_ERROR(MakeStatus<TPMNvramError>(reply.result()));
 
-  return brillo::BlobFromString(reply.data());
+  brillo::Blob blob = brillo::BlobFromString(reply.data());
+
+  if (space_info.trim_x509_cert) {
+    RETURN_IF_ERROR(TrimCertificatePadding(blob));
+  }
+
+  return blob;
 }
 
 StatusOr<attestation::Quote> RoDataTpm2::Certify(RoSpace space, Key key) {
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
-  ASSIGN_OR_RETURN(const DetailSpaceInfo& detail_info,
-                   GetDetailSpaceInfo(tpm_nvram_, space_info),
-                   _.WithStatus<TPMError>("Failed to get detail space info"));
+  size_t size;
+  if (space_info.trim_x509_cert) {
+    ASSIGN_OR_RETURN(const brillo::Blob& blob, Read(space),
+                     _.WithStatus<TPMError>("Failed to read space"));
+    size = blob.size();
+  } else {
+    ASSIGN_OR_RETURN(const DetailSpaceInfo& detail_info,
+                     GetDetailSpaceInfo(tpm_nvram_, space_info),
+                     _.WithStatus<TPMError>("Failed to get detail space info"));
+    size = detail_info.full_size;
+  }
 
-  return CertifyWithSize(space, key, detail_info.size);
+  return CertifyWithSize(space, key, static_cast<int>(size));
 }
 
 StatusOr<attestation::Quote> RoDataTpm2::CertifyWithSize(RoSpace space,
