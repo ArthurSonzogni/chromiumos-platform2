@@ -1460,10 +1460,17 @@ void Cellular::OnConnectReply(ApnList::ApnType apn_type,
   if (!error.IsSuccess()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__ << ": Failed: " << error;
     if (service_ && service_->iccid() == iccid) {
-      if (error.type() == Error::kInvalidApn)
-        service_->SetFailure(Service::kFailureInvalidAPN);
-      else
-        service_->SetFailure(Service::kFailureConnect);
+      switch (error.type()) {
+        case Error::kInvalidApn:
+          service_->SetFailure(Service::kFailureInvalidAPN);
+          break;
+        case Error::kNoCarrier:
+          service_->SetFailure(Service::kFailureOutOfRange);
+          break;
+        default:
+          service_->SetFailure(Service::kFailureConnect);
+          break;
+      }
     }
     // If we are connecting or disconnecting DUN as DEFAULT and an error happens
     // in the reconnection procedure, the operation must be aborted right away.
