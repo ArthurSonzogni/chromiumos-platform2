@@ -170,7 +170,7 @@ bool IsValidDataImagePath(const base::FilePath& path) {
 // Returns true if the StartArcVmRequest contains valid ARCVM config values.
 bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
   // Validate disks.
-  constexpr char kEmptyDiskPath[] = "/dev/null";
+  static constexpr char kEmptyDiskPath[] = "/dev/null";
   if (request->disks().size() < 1 || request->disks().size() > 4) {
     LOG(ERROR) << "Invalid number of disks: " << request->disks().size();
     return false;

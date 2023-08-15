@@ -380,7 +380,7 @@ int64_t LimitCacheBalloonPolicy::MaxFree() {
 }
 
 std::optional<uint64_t> HostZoneLowSum(bool log_on_error) {
-  constexpr char kProcZoneinfo[] = "/proc/zoneinfo";
+  static constexpr char kProcZoneinfo[] = "/proc/zoneinfo";
   const base::FilePath zoneinfo_path(kProcZoneinfo);
   std::string zoneinfo;
   if (!base::ReadFileToString(zoneinfo_path, &zoneinfo)) {

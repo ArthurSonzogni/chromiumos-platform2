@@ -696,7 +696,7 @@ bool IsDiskPreallocatedWithUserChosenSize(const std::string& disk_path) {
 bool SetPreallocatedWithUserChosenSizeAttr(const base::ScopedFD& fd) {
   // The xattr value doesn't matter, only its existence.
   // Store something human-readable for debugging.
-  constexpr char val[] = "1";
+  static constexpr char val[] = "1";
   return fsetxattr(fd.get(), kDiskImagePreallocatedWithUserChosenSizeXattr, val,
                    sizeof(val), 0) == 0;
 }

@@ -557,7 +557,7 @@ bool PluginVm::WriteResolvConf(const base::FilePath& parent_dir,
     }
   }
 
-  constexpr char kResolvConfOptions[] =
+  static constexpr char kResolvConfOptions[] =
       "options single-request timeout:1 attempts:5\n";
   if (!file.WriteAtCurrentPos(kResolvConfOptions, strlen(kResolvConfOptions))) {
     LOG(ERROR) << "Failed to write search resolver options to temporary file";

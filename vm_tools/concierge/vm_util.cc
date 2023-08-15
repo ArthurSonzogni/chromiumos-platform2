@@ -167,7 +167,7 @@ int64_t GetVmMemoryMiB() {
   //
   // 3328 is chosen because it's a rounded number (i.e. 3328 % 256 == 0).
   // TODO(hashimoto): Remove this once crosvm becomes 64-bit on ARM.
-  constexpr int64_t k32bitVmMemoryMaxMb = 3328;
+  static constexpr int64_t k32bitVmMemoryMaxMb = 3328;
   if (sizeof(uintptr_t) == 4) {
     vm_memory_mb = std::min(vm_memory_mb, k32bitVmMemoryMaxMb);
   }
