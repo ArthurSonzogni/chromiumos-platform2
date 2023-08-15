@@ -182,5 +182,35 @@ TEST(ServiceTest, IsUntrustedVMAllowed) {
       << "New enough kernel version trusted and CPU is great";
 }
 
+TEST(ServiceTest, IsUntrustedVM) {
+  KernelVersionAndMajorRevision old_kernel_version{4, 4};
+  EXPECT_TRUE(IsUntrustedVM(/*run_as_untrusted*/ true,
+                            /*is_trusted_image*/ true,
+                            /*has_custom_kernel_params*/ false,
+                            old_kernel_version))
+      << "VM runs as untrusted VM is untrusted";
+  EXPECT_TRUE(IsUntrustedVM(/*run_as_untrusted*/ false,
+                            /*is_trusted_image*/ false,
+                            /*has_custom_kernel_params*/ false,
+                            old_kernel_version))
+      << "VM using untrusted image can not be trusted";
+  EXPECT_TRUE(IsUntrustedVM(/*run_as_untrusted*/ false,
+                            /*is_trusted_image*/ true,
+                            /*has_custom_kernel_params*/ true,
+                            old_kernel_version))
+      << "VM started with custom parameters can not be trusted";
+  EXPECT_TRUE(IsUntrustedVM(/*run_as_untrusted*/ false,
+                            /*is_trusted_image*/ true,
+                            /*has_custom_kernel_params*/ true,
+                            kMinKernelVersionForUntrustedAndNestedVM))
+      << "Host kernel version >= v4.19 enables nested VM which is untrusted";
+  EXPECT_FALSE(IsUntrustedVM(/*run_as_untrusted*/ false,
+                             /*is_trusted_image*/ true,
+                             /*has_custom_kernel_params*/ false,
+                             old_kernel_version))
+      << "A VM using a trusted image runs as trusted without custom kernel "
+         "parameters, and host kernel versions below 4.19 are trusted";
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

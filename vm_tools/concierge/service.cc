@@ -786,33 +786,6 @@ std::string GetMd5HashForFilename(const std::string& str) {
   return result;
 }
 
-// Returns whether the VM is trusted or untrusted based on the source image,
-// whether we're passing custom kernel args, the host kernel version and a
-// flag passed down by the user.
-bool IsUntrustedVM(bool run_as_untrusted,
-                   bool is_trusted_image,
-                   bool has_custom_kernel_params,
-                   KernelVersionAndMajorRevision host_kernel_version) {
-  // Nested virtualization is enabled for all kernels >=
-  // |kMinKernelVersionForUntrustedAndNestedVM|. This means that even with a
-  // trusted image the VM started will essentially be untrusted.
-  if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM)
-    return true;
-
-  // Any untrusted image definitely results in an unstrusted VM.
-  if (!is_trusted_image)
-    return true;
-
-  // Arbitrary kernel params cannot be trusted.
-  if (has_custom_kernel_params)
-    return true;
-
-  if (run_as_untrusted)
-    return true;
-
-  return false;
-}
-
 // Clears close-on-exec flag for a file descriptor to pass it to a subprocess
 // such as crosvm. Returns a failure reason on failure.
 string RemoveCloseOnExec(int raw_fd) {

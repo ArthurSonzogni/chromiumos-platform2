@@ -184,5 +184,29 @@ bool UntrustedVMUtils::IsUntrustedVMAllowed(
   return false;
 }
 
+bool IsUntrustedVM(bool run_as_untrusted,
+                   bool is_trusted_image,
+                   bool has_custom_kernel_params,
+                   KernelVersionAndMajorRevision host_kernel_version) {
+  // Nested virtualization is enabled for all kernels >=
+  // |kMinKernelVersionForUntrustedAndNestedVM|. This means that even with a
+  // trusted image the VM started will essentially be untrusted.
+  if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM)
+    return true;
+
+  // Any untrusted image definitely results in an untrusted VM.
+  if (!is_trusted_image)
+    return true;
+
+  // Arbitrary kernel params cannot be trusted.
+  if (has_custom_kernel_params)
+    return true;
+
+  if (run_as_untrusted)
+    return true;
+
+  return false;
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

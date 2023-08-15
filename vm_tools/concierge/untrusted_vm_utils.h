@@ -65,6 +65,14 @@ class UntrustedVMUtils {
   base::FilePath mds_status_path_;
 };
 
+// Returns whether the VM is trusted or untrusted based on the source image,
+// whether we're passing custom kernel args, the host kernel version and a
+// flag passed down by the user.
+bool IsUntrustedVM(bool run_as_untrusted,
+                   bool is_trusted_image,
+                   bool has_custom_kernel_params,
+                   KernelVersionAndMajorRevision host_kernel_version);
+
 }  // namespace concierge
 }  // namespace vm_tools
 
