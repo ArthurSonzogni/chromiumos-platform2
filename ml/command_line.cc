@@ -51,5 +51,9 @@ int main(int argc, char** argv) {
   std::cout << "Status: " << result.status << std::endl;
   std::cout << "Sum: " << result.sum << std::endl;
 
+  if (result.status != ml::simple::kStatusOk) {
+    return 1;
+  }
+
   return 0;
 }

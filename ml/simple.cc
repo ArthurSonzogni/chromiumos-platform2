@@ -134,7 +134,7 @@ AddResult Add(const double x,
     return result;
   }
 
-  result.status = "OK";
+  result.status = kStatusOk;
   return result;
 }
 

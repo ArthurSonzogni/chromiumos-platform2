@@ -13,6 +13,8 @@
 namespace ml {
 namespace simple {
 
+constexpr char kStatusOk[] = "OK";
+
 // Result of adding two numbers
 struct AddResult {
   std::string status;
