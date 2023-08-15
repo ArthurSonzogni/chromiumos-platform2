@@ -11,6 +11,7 @@ group("all") {
     ":feature-protos",
     ":feature_check",
     ":install_libsegmentation_headers",
+    ":install_tmpfiles_config",
     ":internal_protos",
     ":libsegmentation",
     ":libsegmentation-test",
@@ -147,6 +148,11 @@ executable("feature_check") {
   configs += [ ":feature_check_pkg_deps" ]
   deps = [ ":libsegmentation" ]
   install_path = "sbin"
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/libsegmentation.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
 
 if (use.test) {

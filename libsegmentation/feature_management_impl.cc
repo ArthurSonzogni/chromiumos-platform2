@@ -38,7 +38,8 @@ namespace segmentation {
 // info state and read cache device info state.
 constexpr const char kVpdSysfsFilePath[] =
     "/sys/firmware/vpd/rw/feature_device_info";
-constexpr const char kTempDeviceInfoPath[] = "/tmp/feature_device_info";
+constexpr const char kTempDeviceInfoPath[] =
+    "/run/libsegmentation/feature_device_info";
 
 #if USE_FEATURE_MANAGEMENT
 // Sysfs file corresponding to VPD state. This will be used to persist device
