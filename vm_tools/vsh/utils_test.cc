@@ -12,7 +12,7 @@ namespace vm_tools {
 namespace vsh {
 
 TEST(VshTest, SendAndRecvGuestMessage) {
-  constexpr char msg[] = "GuestMessage";
+  static constexpr char msg[] = "GuestMessage";
   int pipe_fds[2];
 
   ASSERT_TRUE(base::CreateLocalNonBlockingPipe(pipe_fds));
@@ -34,7 +34,7 @@ TEST(VshTest, SendAndRecvGuestMessage) {
 }
 
 TEST(VshTest, SendAndRecvHostMessage) {
-  constexpr char msg[] = "HostMessage";
+  static constexpr char msg[] = "HostMessage";
   int pipe_fds[2];
 
   ASSERT_TRUE(base::CreateLocalNonBlockingPipe(pipe_fds));

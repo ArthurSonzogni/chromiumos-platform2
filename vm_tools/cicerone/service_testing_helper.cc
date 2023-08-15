@@ -609,7 +609,7 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
       base::Thread::Options(base::MessagePumpType::IO, 0)));
 
   dbus::Bus::Options opts;
-  constexpr char kFakeServicePath[] = "/fake/path";
+  static constexpr char kFakeServicePath[] = "/fake/path";
   if (mock_type == NORMAL_MOCKS) {
     mock_bus_ = new dbus::MockBus(opts);
 
