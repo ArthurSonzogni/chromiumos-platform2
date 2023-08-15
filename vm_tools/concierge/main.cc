@@ -13,6 +13,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "vm_tools/concierge/service.h"
+#include "vm_tools/concierge/tracing.h"
 
 int main(int argc, char** argv) {
   base::AtExitManager at_exit;
@@ -26,6 +27,8 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Unexpected command line arguments";
     return EXIT_FAILURE;
   }
+
+  vm_tools::concierge::InitTracing();
 
   base::RunLoop run_loop;
 

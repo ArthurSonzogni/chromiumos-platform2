@@ -189,6 +189,9 @@ _IUSE = [
     "virtgpu_native_context",
     "vm_borealis",
     "vm_sludge",
+    # TODO(b/296341333): This flag is temporary to avoid a compilation error
+    # under tests. When that issue is fixed, remove this use flag.
+    "vmt_tracing",
     "vpn",
     "vtpm_proxy",
     "vulkan",

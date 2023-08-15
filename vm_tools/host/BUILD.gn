@@ -145,6 +145,23 @@ proto_library("vm_concierge-protos") {
   sources = [ "${proto_in_dir}/vmm_swap_policy.proto" ]
 }
 
+config("tracing_config") {
+  defines = [ "USE_TRACING=${use.vmt_tracing}" ]
+}
+
+static_library("tracing") {
+  all_dependent_configs = [ ":tracing_config" ]
+
+  # TODO(b/296341333): Tracing is optional because you get symbol conflicts
+  # if you try to include it in tests. When that's fixed, make it always-on,
+  # or behind use.cros_debug to make it on for dev/test images.
+  if (use.vmt_tracing) {
+    sources = [ "../concierge/tracing.cc" ]
+    configs += [ ":host_target_defaults" ]
+    all_dependent_pkg_deps = [ "perfetto" ]
+  }
+}
+
 static_library("libconcierge") {
   sources = [
     "../concierge/arc_vm.cc",
@@ -212,6 +229,7 @@ static_library("libconcierge") {
     "-Wthread-safety",
   ]
   deps = [
+    ":tracing",
     ":vm_concierge-adaptors",
     ":vm_concierge-protos",
     "//featured:libfeatures",

@@ -106,6 +106,7 @@
 #include "vm_tools/concierge/shadercached_helper.h"
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/termina_vm.h"
+#include "vm_tools/concierge/tracing.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
@@ -1347,6 +1348,8 @@ void Service::OnSignalReadable() {
 }
 
 bool Service::Init() {
+  VMT_TRACE(kCategory, "Service::Init");
+  VMT_TRACE_BEGIN(kCategory, "Service::Init::signals");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // It's not possible to ask minijail to set up a user namespace and switch to
   // a non-0 uid/gid, or to set up supplemental groups. Concierge needs both
@@ -1423,7 +1426,9 @@ bool Service::Init() {
   // TODO(b/193806814): This log line helps us detect when there is a race
   // during signal setup. When we eventually fix that bug we won't need it.
   LOG(INFO) << "Finished setting up signal handlers";
+  VMT_TRACE_END(kCategory);
 
+  VMT_TRACE_BEGIN(kCategory, "Service::Init::bus");
   if (!metrics_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::DEFAULT, 0))) {
     LOG(ERROR) << "Failed to start metrics thread";
@@ -1601,6 +1606,7 @@ bool Service::Init() {
   }
 
   CHECK(feature::PlatformFeatures::Initialize(bus_));
+  VMT_TRACE_END(kCategory);
 
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(
