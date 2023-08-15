@@ -21,8 +21,8 @@ ScopedGbmDevice ScopedGbmDevice::Create() {
   constexpr int kDrmNumNodes = 63;
   constexpr int kDrmRenderNodeStart = 128;
   constexpr int kDrmCardNodeStart = 0;
-  constexpr char kRenderNodesFmt[] = "/dev/dri/renderD%d";
-  constexpr char kCardNodesFmt[] = "/dev/dri/card%d";
+  static constexpr char kRenderNodesFmt[] = "/dev/dri/renderD%d";
+  static constexpr char kCardNodesFmt[] = "/dev/dri/card%d";
 
   char path[32];
   // Try render nodes...
