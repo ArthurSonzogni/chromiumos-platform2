@@ -264,7 +264,7 @@ TEST_F(KernelWarningCollectorTest, CollectUMACOK) {
       collector_.Collect(50, KernelWarningCollector::WarningType::kIwlwifi));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_iwlwifi_error_ADVANCED_SYSASSERT.*.meta",
-      "sig=iwlwifi 0000:00:14.3: 0x201002FF | ADVANCED_SYSASSERT"));
+      "sig=iwlwifi 0x201002FF ADVANCED_SYSASSERT"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_iwlwifi_error_ADVANCED_SYSASSERT.*.meta",
       "upload_var_weight=50"));
@@ -390,7 +390,7 @@ TEST_F(KernelWarningCollectorTest, CollectLMACOK) {
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory_,
       "kernel_iwlwifi_error_NMI_INTERRUPT_UNKNOWN.*.meta",
-      "sig=iwlwifi 0000:00:14.3: 0x00000084 | NMI_INTERRUPT_UNKNOWN"));
+      "sig=iwlwifi 0x00000084 NMI_INTERRUPT_UNKNOWN"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory_,
       "kernel_iwlwifi_error_NMI_INTERRUPT_UNKNOWN.*.meta",
@@ -466,7 +466,7 @@ TEST_F(KernelWarningCollectorTest, CollectDriverError) {
       collector_.Collect(50, KernelWarningCollector::WarningType::kIwlwifi));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_iwlwifi_error_ADVANCED_SYSASSERT.*.meta",
-      "sig=iwlwifi 0000:01:00.0: 0x00000000 | ADVANCED_SYSASSERT"));
+      "sig=iwlwifi 0x00000000 ADVANCED_SYSASSERT"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_iwlwifi_error_ADVANCED_SYSASSERT.*.meta",
       "upload_var_weight=50"));
