@@ -19,7 +19,6 @@ namespace shill {
 
 // Properties related to the IP layer used to represent a configuration.
 // TODO(b/269401899): Add more fields and replace IPConfig::Properties.
-// TODO(b/269401899): Add unit tests.
 struct NetworkConfig {
   // Define a default and the minimum viable MTU values.
   static constexpr int kDefaultMTU = 1500;

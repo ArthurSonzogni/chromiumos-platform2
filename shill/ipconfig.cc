@@ -5,6 +5,7 @@
 #include "shill/ipconfig.h"
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -72,11 +73,27 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
       LOG(WARNING) << "Ignoring invalid IP address \"" << ipv4_prop->address
                    << "/" << ipv4_prop->subnet_prefix << "\"";
     }
+    // Empty means no gateway, a valid value for p2p networks. Present of
+    // |peer_address| also suggest that this is a p2p network. Also accepts
+    // "0.0.0.0" and "::" as indicators of no gateway.
     ret.ipv4_gateway =
         net_base::IPv4Address::CreateFromString(ipv4_prop->gateway);
     if (!ret.ipv4_gateway && !ipv4_prop->gateway.empty()) {
       LOG(WARNING) << "Ignoring invalid gateway address \""
                    << ipv4_prop->gateway << "\"";
+    }
+    if (ret.ipv4_gateway && ret.ipv4_gateway->IsZero()) {
+      ret.ipv4_gateway = std::nullopt;
+    }
+    if (!ipv4_prop->peer_address.empty()) {
+      const auto peer =
+          net_base::IPAddress::CreateFromString(ipv4_prop->peer_address);
+      if (!peer) {
+        LOG(ERROR) << "Ignoring invalid peer address \""
+                   << ipv4_prop->peer_address << "\"";
+      } else {
+        ret.ipv4_gateway = std::nullopt;
+      }
     }
     ret.ipv4_broadcast =
         net_base::IPv4Address::CreateFromString(ipv4_prop->broadcast_address);
@@ -121,17 +138,17 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
       LOG(WARNING) << "Ignoring invalid gateway address \""
                    << ipv6_prop->gateway << "\"";
     }
+    if (ret.ipv6_gateway && ret.ipv6_gateway->IsZero()) {
+      // Some VPNs use all-zero to represent no gateway.
+      ret.ipv6_gateway = std::nullopt;
+    }
   }
 
   // Merge included routes and excluded route from ipv4_prop and ipv6_prop.
-  std::vector<const IPConfig::Properties*> non_empty_props;
-  if (ipv4_prop) {
-    non_empty_props.push_back(ipv4_prop);
-  }
-  if (ipv6_prop) {
-    non_empty_props.push_back(ipv6_prop);
-  }
-  for (const auto* prop : non_empty_props) {
+  for (const auto* prop : {ipv4_prop, ipv6_prop}) {
+    if (!prop) {
+      continue;
+    }
     for (const auto& item : prop->inclusion_list) {
       auto cidr = net_base::IPCIDR::CreateFromCIDRString(item);
       if (cidr) {
@@ -155,9 +172,12 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
   // When DNS information is available from both IPv6 source and IPv4 source,
   // the ideal behavior is happy eyeballs (RFC 8305). When happy eyeballs is not
   // implemented, the priority of DNS servers are not strictly defined by
-  // standard. Prefer IPv6 here as most of the RFCs just "assume" IPv6 is
+  // standard. Put IPv6 in front here as most of the RFCs just "assume" IPv6 is
   // preferred.
-  for (const auto* properties : non_empty_props) {
+  for (const auto* properties : {ipv6_prop, ipv4_prop}) {
+    if (!properties) {
+      continue;
+    }
     for (const auto& item : properties->dns_servers) {
       auto dns = net_base::IPAddress::CreateFromString(item);
       if (dns) {
