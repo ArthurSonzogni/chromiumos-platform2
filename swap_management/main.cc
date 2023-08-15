@@ -44,28 +44,16 @@ class Daemon : public brillo::DBusServiceDaemon {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  DEFINE_bool(swap_start, false, "Start zram swap");
   DEFINE_bool(swap_stop, false, "Stop zram swap");
   brillo::FlagHelper::Init(argc, argv, "CrOS swap_management");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  if (FLAGS_swap_start && FLAGS_swap_stop) {
-    LOG(ERROR) << "--swap_start and --swap_stop can not be set together.";
-    return EX_USAGE;
-  }
-
-  if (FLAGS_swap_start || FLAGS_swap_stop) {
+  if (FLAGS_swap_stop) {
     std::unique_ptr<swap_management::SwapTool> swap_tool =
         std::make_unique<swap_management::SwapTool>();
-    absl::Status status = absl::OkStatus();
 
-    if (FLAGS_swap_start) {
-      status = swap_tool->SwapStart();
-      swap_management::SwapToolMetrics::Get()->ReportSwapStartStatus(status);
-    } else if (FLAGS_swap_stop) {
-      status = swap_tool->SwapStop();
-      swap_management::SwapToolMetrics::Get()->ReportSwapStopStatus(status);
-    }
+    absl::Status status = swap_tool->SwapStop();
+    swap_management::SwapToolMetrics::Get()->ReportSwapStopStatus(status);
 
     if (!status.ok()) {
       LOG(ERROR) << status.ToString();
