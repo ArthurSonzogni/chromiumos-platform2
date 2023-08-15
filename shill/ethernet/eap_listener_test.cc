@@ -17,17 +17,18 @@
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_socket.h>
 
 #include "shill/ethernet/eap_protocol.h"
 #include "shill/mock_log.h"
 #include "shill/net/mock_io_handler_factory.h"
-#include "shill/net/mock_sockets.h"
 
 using testing::_;
+using testing::DoAll;
 using testing::HasSubstr;
 using testing::Invoke;
 using testing::Return;
-using testing::StrictMock;
+using testing::SaveArg;
 
 namespace shill {
 
@@ -40,33 +41,27 @@ class EapListenerTest : public testing::Test {
   ~EapListenerTest() override = default;
 
   void SetUp() override {
-    auto sockets = std::make_unique<StrictMock<MockSockets>>();
-    sockets_ = sockets.get();
-    listener_.sockets_ = std::move(sockets);
     listener_.set_request_received_callback(base::BindRepeating(
         &EapListenerTest::ReceiveCallback, base::Unretained(this)));
   }
 
-  void TearDown() override {
-    if (GetSocket() == kSocketFD) {
-      EXPECT_CALL(*sockets_, Close(kSocketFD));
-      listener_.Stop();
-    }
-  }
+  void TearDown() override { listener_.Stop(); }
 
-  ssize_t SimulateRecvFrom(int sockfd,
-                           void* buf,
-                           size_t len,
-                           int flags,
-                           struct sockaddr* src_addr,
-                           socklen_t* addrlen);
+  std::optional<size_t> SimulateRecvFrom(base::span<uint8_t> buf,
+                                         int flags,
+                                         struct sockaddr* src_addr,
+                                         socklen_t* addrlen);
+
+  // Set the socket factory method into |listener_|.
+  // |method| is a lambda function that creates a net_base::MockSocket.
+  void SetSocketFactory(
+      std::function<std::unique_ptr<net_base::MockSocket>()> method);
 
   MOCK_METHOD(void, ReceiveCallback, ());
 
  protected:
   static constexpr int kInterfaceIndex = 123;
   static constexpr char kLinkName[] = "eth0";
-  static constexpr int kSocketFD = 456;
   static constexpr uint8_t kEapPacketPayload[] = {
       eap_protocol::kIeee8021xEapolVersion2,
       eap_protocol::kIIeee8021xTypeEapPacket,
@@ -79,34 +74,48 @@ class EapListenerTest : public testing::Test {
       0x01   // Request type: Identity (not parsed by EapListener).
   };
 
-  bool CreateSocket() { return listener_.CreateSocket(); }
+  std::unique_ptr<net_base::Socket> CreateSocket() {
+    return listener_.CreateSocket();
+  }
   int GetInterfaceIndex() { return listener_.interface_index_; }
   size_t GetMaxEapPacketLength() { return EapListener::kMaxEapPacketLength; }
-  int GetSocket() { return listener_.socket_; }
-  void StartListener() { StartListenerWithFD(kSocketFD); }
-  void ReceiveRequest() { listener_.ReceiveRequest(kSocketFD); }
-  void StartListenerWithFD(int fd);
+  net_base::MockSocket* GetSocket() {
+    return reinterpret_cast<net_base::MockSocket*>(listener_.socket_.get());
+  }
+  void StartListener();
+  void ReceiveRequest() { listener_.ReceiveRequest(GetSocket()->Get()); }
 
   MockIOHandlerFactory io_handler_factory_;
   EapListener listener_;
-
-  // Owned by EapListener, and tracked here only for mocks.
-  MockSockets* sockets_;
 
   // Tests can assign this in order to set the data isreturned in our
   // mock implementation of Sockets::RecvFrom().
   std::vector<uint8_t> recvfrom_reply_data_;
 };
 
-ssize_t EapListenerTest::SimulateRecvFrom(int sockfd,
-                                          void* buf,
-                                          size_t len,
-                                          int flags,
-                                          struct sockaddr* src_addr,
-                                          socklen_t* addrlen) {
+void EapListenerTest::SetSocketFactory(
+    std::function<std::unique_ptr<net_base::MockSocket>()> method) {
+  listener_.socket_factory_ = base::BindRepeating(
+      [](std::function<std::unique_ptr<net_base::MockSocket>()> method,
+         int domain, int type,
+         int protocol) -> std::unique_ptr<net_base::Socket> {
+        EXPECT_EQ(domain, PF_PACKET);
+        EXPECT_EQ(type, SOCK_DGRAM | SOCK_CLOEXEC);
+        EXPECT_EQ(protocol, htons(ETH_P_PAE));
+
+        return method();
+      },
+      std::move(method));
+}
+
+std::optional<size_t> EapListenerTest::SimulateRecvFrom(
+    base::span<uint8_t> buf,
+    int flags,
+    struct sockaddr* src_addr,
+    socklen_t* addrlen) {
   // Mimic behavior of the real recvfrom -- copy no more than requested.
-  int copy_length = std::min(recvfrom_reply_data_.size(), len);
-  memcpy(buf, recvfrom_reply_data_.data(), copy_length);
+  size_t copy_length = std::min(recvfrom_reply_data_.size(), buf.size());
+  memcpy(buf.data(), recvfrom_reply_data_.data(), copy_length);
   return copy_length;
 }
 
@@ -118,24 +127,29 @@ MATCHER_P(IsEapLinkAddress, interface_index, "") {
          socket_address->sll_ifindex == interface_index;
 }
 
-void EapListenerTest::StartListenerWithFD(int fd) {
-  EXPECT_CALL(*sockets_,
-              Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
-      .WillOnce(Return(fd));
-  EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
-  EXPECT_CALL(*sockets_,
-              Bind(fd, IsEapLinkAddress(kInterfaceIndex), sizeof(sockaddr_ll)))
-      .WillOnce(Return(0));
+void EapListenerTest::StartListener() {
+  SetSocketFactory([]() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(true));
+    EXPECT_CALL(*socket,
+                Bind(IsEapLinkAddress(kInterfaceIndex), sizeof(sockaddr_ll)))
+        .WillOnce(Return(true));
+
+    return socket;
+  });
+
+  int socket_fd;
   EXPECT_CALL(io_handler_factory_,
-              CreateIOReadyHandler(fd, IOHandler::kModeInput, _));
+              CreateIOReadyHandler(_, IOHandler::kModeInput, _))
+      .WillOnce(DoAll(SaveArg<0>(&socket_fd), Return(nullptr)));
   EXPECT_TRUE(listener_.Start());
-  EXPECT_EQ(fd, listener_.socket_);
+  EXPECT_EQ(socket_fd, listener_.socket_->Get());
 }
 
 TEST_F(EapListenerTest, Constructor) {
   EXPECT_EQ(kInterfaceIndex, GetInterfaceIndex());
   EXPECT_EQ(8, GetMaxEapPacketLength());
-  EXPECT_EQ(-1, GetSocket());
+  EXPECT_EQ(nullptr, GetSocket());
 }
 
 TEST_F(EapListenerTest, SocketOpenFail) {
@@ -144,9 +158,8 @@ TEST_F(EapListenerTest, SocketOpenFail) {
                        HasSubstr("Could not create EAP listener socket")))
       .Times(1);
 
-  EXPECT_CALL(*sockets_, Socket(PF_PACKET, _, htons(ETH_P_PAE)))
-      .WillOnce(Return(-1));
-  EXPECT_FALSE(CreateSocket());
+  SetSocketFactory([]() { return nullptr; });
+  EXPECT_EQ(CreateSocket(), nullptr);
 }
 
 TEST_F(EapListenerTest, SocketNonBlockingFail) {
@@ -155,9 +168,13 @@ TEST_F(EapListenerTest, SocketNonBlockingFail) {
                        HasSubstr("Could not set socket to be non-blocking")))
       .Times(1);
 
-  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
-  EXPECT_CALL(*sockets_, SetNonBlocking(kSocketFD)).WillOnce(Return(-1));
-  EXPECT_FALSE(CreateSocket());
+  SetSocketFactory([]() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, SetNonBlocking).WillOnce(Return(false));
+    return socket;
+  });
+
+  EXPECT_EQ(CreateSocket(), nullptr);
 }
 
 TEST_F(EapListenerTest, SocketBindFail) {
@@ -166,10 +183,14 @@ TEST_F(EapListenerTest, SocketBindFail) {
                        HasSubstr("Could not bind socket to interface")))
       .Times(1);
 
-  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
-  EXPECT_CALL(*sockets_, SetNonBlocking(kSocketFD)).WillOnce(Return(0));
-  EXPECT_CALL(*sockets_, Bind(kSocketFD, _, _)).WillOnce(Return(-1));
-  EXPECT_FALSE(CreateSocket());
+  SetSocketFactory([]() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, SetNonBlocking).WillOnce(Return(true));
+    EXPECT_CALL(*socket, Bind).WillOnce(Return(false));
+    return socket;
+  });
+
+  EXPECT_EQ(CreateSocket(), nullptr);
 }
 
 TEST_F(EapListenerTest, StartSuccess) {
@@ -177,27 +198,23 @@ TEST_F(EapListenerTest, StartSuccess) {
 }
 
 TEST_F(EapListenerTest, StartMultipleTimes) {
-  const int kFirstSocketFD = kSocketFD + 1;
-  StartListenerWithFD(kFirstSocketFD);
-  EXPECT_CALL(*sockets_, Close(kFirstSocketFD));
+  StartListener();
   StartListener();
 }
 
 TEST_F(EapListenerTest, Stop) {
   StartListener();
-  EXPECT_EQ(kSocketFD, GetSocket());
-  EXPECT_CALL(*sockets_, Close(kSocketFD));
+
   listener_.Stop();
-  EXPECT_EQ(-1, GetSocket());
+  EXPECT_EQ(nullptr, GetSocket());
 }
 
 TEST_F(EapListenerTest, ReceiveFail) {
   StartListener();
-  EXPECT_CALL(*sockets_,
-              RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
-      .WillOnce(Return(-1));
+
+  EXPECT_CALL(*GetSocket(), RecvFrom(_, 0, _, _))
+      .WillOnce(Return(std::nullopt));
   EXPECT_CALL(*this, ReceiveCallback()).Times(0);
-  EXPECT_CALL(*sockets_, Close(kSocketFD));
 
   ScopedMockLog log;
   // RecvFrom returns an error.
@@ -209,19 +226,19 @@ TEST_F(EapListenerTest, ReceiveFail) {
 
 TEST_F(EapListenerTest, ReceiveEmpty) {
   StartListener();
-  EXPECT_CALL(*sockets_,
-              RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
-      .WillOnce(Return(0));
+
+  EXPECT_CALL(*GetSocket(), RecvFrom(_, 0, _, _))
+      .WillOnce(Return(std::nullopt));
   EXPECT_CALL(*this, ReceiveCallback()).Times(0);
   ReceiveRequest();
 }
 
 TEST_F(EapListenerTest, ReceiveShort) {
   StartListener();
+
   recvfrom_reply_data_ = {kEapPacketPayload,
                           kEapPacketPayload + GetMaxEapPacketLength() - 1};
-  EXPECT_CALL(*sockets_,
-              RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
+  EXPECT_CALL(*GetSocket(), RecvFrom(_, 0, _, _))
       .WillOnce(Invoke(this, &EapListenerTest::SimulateRecvFrom));
   EXPECT_CALL(*this, ReceiveCallback()).Times(0);
   ScopedMockLog log;
@@ -238,8 +255,7 @@ TEST_F(EapListenerTest, ReceiveInvalid) {
   uint8_t bad_payload[sizeof(kEapPacketPayload)] = {
       eap_protocol::kIeee8021xEapolVersion1 - 1};
   recvfrom_reply_data_ = {std::begin(bad_payload), std::end(bad_payload)};
-  EXPECT_CALL(*sockets_,
-              RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
+  EXPECT_CALL(*GetSocket(), RecvFrom(_, 0, _, _))
       .WillOnce(Invoke(this, &EapListenerTest::SimulateRecvFrom));
   EXPECT_CALL(*this, ReceiveCallback()).Times(0);
   ScopedMockLog log;
@@ -253,8 +269,7 @@ TEST_F(EapListenerTest, ReceiveSuccess) {
   StartListener();
   recvfrom_reply_data_ = {std::begin(kEapPacketPayload),
                           std::end(kEapPacketPayload)};
-  EXPECT_CALL(*sockets_,
-              RecvFrom(kSocketFD, _, GetMaxEapPacketLength(), 0, _, _))
+  EXPECT_CALL(*GetSocket(), RecvFrom(_, 0, _, _))
       .WillOnce(Invoke(this, &EapListenerTest::SimulateRecvFrom));
   EXPECT_CALL(*this, ReceiveCallback()).Times(1);
   ReceiveRequest();

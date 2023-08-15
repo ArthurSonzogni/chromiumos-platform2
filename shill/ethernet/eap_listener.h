@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/functional/callback.h>
+#include <net-base/socket.h>
 
 namespace shill {
 
@@ -48,8 +49,8 @@ class EapListener {
   // The largest EAP packet we expect to receive.
   static const size_t kMaxEapPacketLength;
 
-  // Creates |socket_|.  Returns true on succes, false on failure.
-  bool CreateSocket();
+  // Creates the socket file descriptor. Returns nullptr on failure.
+  std::unique_ptr<net_base::Socket> CreateSocket();
 
   // Retrieves an EAP packet from |socket_|.  This is the callback method
   // configured on |receive_request_handler_|.
@@ -69,14 +70,12 @@ class EapListener {
   // Callback handle to invoke when an EAP request is received.
   EapRequestReceivedCallback request_received_callback_;
 
-  // Sockets instance to perform socket calls on.
-  std::unique_ptr<Sockets> sockets_;
+  // The factory method to create |socket_|.
+  net_base::Socket::SocketFactory socket_factory_ =
+      net_base::Socket::GetDefaultFactory();
 
   // Receive socket configured to receive PAE (Port Access Entity) packets.
-  int socket_;
-
-  // Scoped socket closer for the receive |socket_|.
-  std::unique_ptr<ScopedSocketCloser> socket_closer_;
+  std::unique_ptr<net_base::Socket> socket_;
 
   // Input handler for |socket_|.  Calls ReceiveRequest().
   std::unique_ptr<IOHandler> receive_request_handler_;

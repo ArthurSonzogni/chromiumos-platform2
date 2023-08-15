@@ -5,6 +5,7 @@
 #include "shill/ethernet/eap_listener.h"
 
 #include <string>
+#include <utility>
 
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -15,10 +16,8 @@
 #include <base/logging.h>
 
 #include "shill/ethernet/eap_protocol.h"
-#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/net/io_handler_factory.h"
-#include "shill/net/sockets.h"
 
 namespace shill {
 
@@ -32,46 +31,41 @@ const size_t EapListener::kMaxEapPacketLength =
 EapListener::EapListener(int interface_index, const std::string& link_name)
     : io_handler_factory_(IOHandlerFactory::GetInstance()),
       interface_index_(interface_index),
-      link_name_(link_name),
-      sockets_(new Sockets()),
-      socket_(-1) {}
+      link_name_(link_name) {}
 
 EapListener::~EapListener() = default;
 
 bool EapListener::Start() {
-  if (!CreateSocket()) {
+  auto socket = CreateSocket();
+  if (!socket) {
     LOG(ERROR) << LoggingTag() << ": Could not open EAP listener socket";
-    Stop();
     return false;
   }
 
+  socket_ = std::move(socket);
   receive_request_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
-      socket_, IOHandler::kModeInput,
+      socket_->Get(), IOHandler::kModeInput,
       base::BindRepeating(&EapListener::ReceiveRequest,
                           base::Unretained(this))));
-
   return true;
 }
 
 void EapListener::Stop() {
   receive_request_handler_.reset();
-  socket_closer_.reset();
-  socket_ = -1;
+  socket_.reset();
 }
 
-bool EapListener::CreateSocket() {
-  int socket =
-      sockets_->Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE));
-  if (socket == -1) {
+std::unique_ptr<net_base::Socket> EapListener::CreateSocket() {
+  auto socket = socket_factory_.Run(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
+                                    htons(ETH_P_PAE));
+  if (!socket) {
     PLOG(ERROR) << LoggingTag() << ": Could not create EAP listener socket";
-    return false;
+    return nullptr;
   }
-  socket_ = socket;
-  socket_closer_.reset(new ScopedSocketCloser(sockets_.get(), socket_));
 
-  if (sockets_->SetNonBlocking(socket_) != 0) {
+  if (!socket->SetNonBlocking()) {
     PLOG(ERROR) << LoggingTag() << ": Could not set socket to be non-blocking";
-    return false;
+    return nullptr;
   }
 
   sockaddr_ll socket_address;
@@ -80,14 +74,13 @@ bool EapListener::CreateSocket() {
   socket_address.sll_protocol = htons(ETH_P_PAE);
   socket_address.sll_ifindex = interface_index_;
 
-  if (sockets_->Bind(socket_,
-                     reinterpret_cast<struct sockaddr*>(&socket_address),
-                     sizeof(socket_address)) != 0) {
+  if (!socket->Bind(reinterpret_cast<struct sockaddr*>(&socket_address),
+                    sizeof(socket_address))) {
     PLOG(ERROR) << LoggingTag() << ": Could not bind socket to interface";
-    return false;
+    return nullptr;
   }
 
-  return true;
+  return socket;
 }
 
 void EapListener::ReceiveRequest(int fd) {
@@ -98,15 +91,14 @@ void EapListener::ReceiveRequest(int fd) {
   sockaddr_ll remote_address;
   memset(&remote_address, 0, sizeof(remote_address));
   socklen_t socklen = sizeof(remote_address);
-  int result = sockets_->RecvFrom(
-      socket_, &payload, sizeof(payload), 0,
+  const auto result = socket_->RecvFrom(
+      {reinterpret_cast<uint8_t*>(&payload), sizeof(payload)}, 0,
       reinterpret_cast<struct sockaddr*>(&remote_address), &socklen);
-  if (result < 0) {
+  if (!result) {
     PLOG(ERROR) << LoggingTag() << ": Socket recvfrom failed";
     Stop();
     return;
   }
-
   if (result != sizeof(payload)) {
     LOG(INFO) << LoggingTag() << ": Short EAP packet received";
     return;
