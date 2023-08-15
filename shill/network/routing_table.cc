@@ -278,8 +278,8 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
   // with a lower metric.
   uint32_t lowest_metric = UINT_MAX;
   for (auto& nent : table->second) {
-    if (nent.dst.address().IsZero() && nent.dst.prefix_length() == 0 &&
-        nent.dst.GetFamily() == family && nent.metric < lowest_metric) {
+    if (nent.dst.IsDefault() && nent.dst.GetFamily() == family &&
+        nent.metric < lowest_metric) {
       *entry = &nent;
       lowest_metric = nent.metric;
     }
@@ -307,7 +307,7 @@ bool RoutingTable::GetDefaultRouteFromKernel(int interface_index,
   }
 
   for (auto& nent : table->second) {
-    if (nent.dst.address().IsZero() && nent.dst.prefix_length() == 0 &&
+    if (nent.dst.IsDefault() &&
         nent.dst.GetFamily() == net_base::IPFamily::kIPv6 &&
         nent.metric == kKernelSlaacRouteMetric) {
       *entry = nent;
@@ -409,7 +409,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     // The kernel sends one of these messages pretty much every time it
     // connects to another IPv6 host.  The only interesting message is the
     // one containing the default gateway.
-    if (!entry.dst.address().IsZero() || entry.dst.prefix_length() != 0) {
+    if (!entry.dst.IsDefault()) {
       return;
     }
   } else if (entry.protocol != RTPROT_BOOT) {
@@ -518,7 +518,7 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
   if (entry.type != RTN_BLACKHOLE) {
     message->SetAttribute(RTA_DST, entry.dst.address().ToBytes());
   }
-  if (!entry.src.address().IsZero() || entry.src.prefix_length() != 0) {
+  if (!entry.src.IsDefault()) {
     message->SetAttribute(RTA_SRC, entry.src.address().ToBytes());
   }
   if (!entry.gateway.IsZero()) {

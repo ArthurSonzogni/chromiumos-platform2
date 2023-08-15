@@ -185,6 +185,9 @@ class NET_BASE_EXPORT CIDR {
     return GetPrefixCIDR() == CIDR(b, prefix_length_).GetPrefixCIDR();
   }
 
+  // Returns true if address is all zero and prefix length equals to 0.
+  bool IsDefault() const { return address().IsZero() && prefix_length_ == 0; }
+
   // Returns the string in the CIDR notation.
   std::string ToString() const {
     return address_.ToString() + "/" + std::to_string(prefix_length_);

@@ -192,8 +192,12 @@ class NET_BASE_EXPORT IPCIDR {
   // host-part bits to 1.
   IPAddress GetBroadcast() const;
 
-  // Returns true is the address |b| is in the same subnet with |*this| CIDR.
+  // Returns true if the address |b| is in the same subnet with |*this| CIDR.
   bool InSameSubnetWith(const IPAddress& b) const;
+
+  // Returns true if the address is all-zero and prefix length is 0.
+  // (i.e. "0.0.0.0/0" for IPv4, "::/0" for IPv6)
+  bool IsDefault() const;
 
   // Returns the string in the CIDR notation.
   std::string ToString() const;

@@ -337,6 +337,11 @@ bool IPCIDR::InSameSubnetWith(const IPAddress& b) const {
   return false;
 }
 
+bool IPCIDR::IsDefault() const {
+  return std::visit([](auto&& cidr) -> bool { return cidr.IsDefault(); },
+                    cidr_);
+}
+
 std::string IPCIDR::ToString() const {
   return std::visit([](auto&& cidr) -> std::string { return cidr.ToString(); },
                     cidr_);

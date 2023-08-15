@@ -156,8 +156,7 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
          status.protocol == RTPROT_BOOT && status.scope == entry.scope &&
          status.type == RTN_UNICAST && arg->HasAttribute(RTA_DST) &&
          arg->GetRtaDst() == entry.dst &&
-         ((!arg->HasAttribute(RTA_SRC) && entry.src.address().IsZero() &&
-           entry.src.prefix_length() == 0) ||
+         ((!arg->HasAttribute(RTA_SRC) && entry.src.IsDefault()) ||
           arg->GetRtaSrc() == entry.src) &&
          ((!arg->HasAttribute(RTA_GATEWAY) && entry.gateway.IsZero()) ||
           arg->GetRtaGateway() == entry.gateway) &&

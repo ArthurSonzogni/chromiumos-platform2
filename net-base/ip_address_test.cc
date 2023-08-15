@@ -401,5 +401,25 @@ TEST(IPCIDRTest, ToNetmask) {
             IPAddress(*IPv6Address::CreateFromString("ffff:ff00::")));
 }
 
+TEST(IPCIDRTest, IsDefault) {
+  const auto cidr1 = *IPCIDR::CreateFromCIDRString("0.0.0.0/0");
+  EXPECT_TRUE(cidr1.IsDefault());
+
+  const auto cidr2 = *IPCIDR::CreateFromCIDRString("192.168.2.1/0");
+  EXPECT_FALSE(cidr2.IsDefault());
+
+  const auto cidr3 = *IPCIDR::CreateFromCIDRString("0.0.0.0/32");
+  EXPECT_FALSE(cidr3.IsDefault());
+
+  const auto cidr4 = *IPCIDR::CreateFromCIDRString("::/0");
+  EXPECT_TRUE(cidr4.IsDefault());
+
+  const auto cidr5 = *IPCIDR::CreateFromCIDRString("2001:db8::/0");
+  EXPECT_FALSE(cidr5.IsDefault());
+
+  const auto cidr6 = *IPCIDR::CreateFromCIDRString("::/128");
+  EXPECT_FALSE(cidr6.IsDefault());
+}
+
 }  // namespace
 }  // namespace net_base

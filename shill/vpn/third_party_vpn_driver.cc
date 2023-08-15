@@ -381,7 +381,7 @@ void ThirdPartyVpnDriver::SetParameters(
     if (!cidr.has_value()) {
       LOG(ERROR) << "Invalid prefix string: "
                  << ipv4_properties_->exclusion_list[0];
-    } else if (cidr->address().IsZero() && cidr->prefix_length() == 0) {
+    } else if (cidr->IsDefault()) {
       if (ipv4_properties_->exclusion_list.size() > 1) {
         swap(ipv4_properties_->exclusion_list[0],
              ipv4_properties_->exclusion_list[1]);

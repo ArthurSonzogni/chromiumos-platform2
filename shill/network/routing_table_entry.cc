@@ -61,9 +61,7 @@ bool RoutingTableEntry::operator==(const RoutingTableEntry& b) const {
 
 std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry) {
   std::string dest_address =
-      entry.dst.address().IsZero() && entry.dst.prefix_length() == 0
-          ? "default"
-          : entry.dst.ToString();
+      entry.dst.IsDefault() ? "default" : entry.dst.ToString();
   const char* dest_prefix;
   switch (entry.type) {
     case RTN_LOCAL:
@@ -89,7 +87,7 @@ std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry) {
     gateway = " via " + entry.gateway.ToString();
   }
   std::string src;
-  if (!entry.src.address().IsZero() || entry.src.prefix_length() != 0) {
+  if (!entry.src.IsDefault()) {
     src = " src " + entry.src.ToString();
   }
 
