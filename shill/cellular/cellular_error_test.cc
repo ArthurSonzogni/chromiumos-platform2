@@ -39,6 +39,10 @@ const char kErrorIpv6OnlyAllowedMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "Ipv6OnlyAllowed";
 
+const char kErrorIpv4v6OnlyAllowedMM1[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "Ipv4v6OnlyAllowed";
+
 const char kErrorUnknownMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "Unknown";
@@ -84,6 +88,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestParam(kErrorSimPukMM1, Error::kPinBlocked),
         TestParam(kErrorIpv4OnlyAllowedMM1, Error::kInvalidApn),
         TestParam(kErrorIpv6OnlyAllowedMM1, Error::kInvalidApn),
+        TestParam(kErrorIpv4v6OnlyAllowedMM1, Error::kInvalidApn),
         TestParam(kErrorNotSubscribedMM1, Error::kInvalidApn),
         TestParam(kErrorMissingOrUnknownApnMM1, Error::kInvalidApn),
         TestParam(kErrorUserAuthenticationFailedMM1, Error::kInvalidApn),
