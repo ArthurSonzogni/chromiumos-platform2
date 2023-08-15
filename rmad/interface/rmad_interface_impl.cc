@@ -5,8 +5,10 @@
 #include "rmad/interface/rmad_interface_impl.h"
 
 #include <cctype>
+#include <list>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -32,6 +34,7 @@
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/rpc_utils.h"
 
 namespace rmad {
 
@@ -48,9 +51,9 @@ constexpr char kSummaryDivider[] =
     "\n========================================="
     "=================================\n\n";
 
-bool GetDeviceIdFromDeviceFile(const std::string& device_file,
+bool GetDeviceIdFromDeviceNode(const std::string& device_node,
                                char* device_id) {
-  re2::StringPiece string_piece(device_file);
+  re2::StringPiece string_piece(device_node);
   re2::RE2 regexp("/dev/sd([[:lower:]])([[:digit:]]*)");
   std::string device_id_string;
   if (RE2::FullMatch(string_piece, regexp, &device_id_string)) {
@@ -58,6 +61,11 @@ bool GetDeviceIdFromDeviceFile(const std::string& device_file,
     return true;
   }
   return false;
+}
+
+template <typename T>
+bool HasOptionalValue(const std::optional<T>& v) {
+  return v.has_value();
 }
 
 }  // namespace
@@ -532,7 +540,7 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
   ReplyCallback(std::move(callback), reply);
 }
 
-void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_text,
+void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log,
                                 SaveLogCallback callback) {
   const std::string text_log = GenerateLogsText(json_store_);
   const std::string json_log = GenerateLogsJson(json_store_);
@@ -545,81 +553,51 @@ void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_text,
     return;
   }
 
-  std::vector<std::string> device_paths = GetRemovableBlockDevicePaths();
-  auto device_list = std::make_unique<std::list<std::string>>(
-      device_paths.begin(), device_paths.end());
-  if (device_list->empty()) {
-    // No detected external storage.
-    SaveLogReply reply;
-    reply.set_error(RMAD_ERROR_USB_NOT_FOUND);
-    ReplyCallback(std::move(callback), reply);
-    return;
-  }
-
-  SaveLogToFirstMountableDevice(std::move(device_list), text_log, json_log,
-                                system_log, diagnostics_log_text,
-                                std::move(callback));
+  RunRpcWithRemovableBlockDevices(
+      std::move(callback),
+      base::BindRepeating(&RmadInterfaceImpl::SaveLogRpc,
+                          base::Unretained(this), text_log, json_log,
+                          system_log, diagnostics_log),
+      base::BindRepeating(&HasOptionalValue<std::string>),
+      base::BindOnce(&RmadInterfaceImpl::SaveLogSuccessHandler,
+                     base::Unretained(this)),
+      base::BindOnce(&RmadInterfaceImpl::SaveLogFailHandler,
+                     base::Unretained(this)));
 }
 
-void RmadInterfaceImpl::SaveLogToFirstMountableDevice(
-    std::unique_ptr<std::list<std::string>> devices,
+void RmadInterfaceImpl::SaveLogRpc(
     const std::string& text_log,
     const std::string& json_log,
     const std::string& system_log,
     const std::string& diagnostics_log,
-    SaveLogCallback callback) {
-  if (devices->empty()) {
-    // No devices left to try.
-    SaveLogReply reply;
-    reply.set_error(RMAD_ERROR_CANNOT_SAVE_LOG);
-    ReplyCallback(std::move(callback), reply);
-    return;
-  }
-  if (char device_id; GetDeviceIdFromDeviceFile(devices->front(), &device_id)) {
-    daemon_callback_->GetExecuteMountAndWriteLogCallback().Run(
-        static_cast<uint8_t>(device_id), text_log, json_log, system_log,
-        diagnostics_log,
-        base::BindOnce(&RmadInterfaceImpl::SaveLogExecutorCompleteCallback,
-                       base::Unretained(this), std::move(devices), text_log,
-                       json_log, system_log, diagnostics_log,
-                       std::move(callback)));
-  } else {
-    // Try next device.
-    devices->pop_front();
-    SaveLogToFirstMountableDevice(std::move(devices), text_log, json_log,
-                                  system_log, diagnostics_log,
-                                  std::move(callback));
-  }
+    uint8_t device_id,
+    RpcCallbackType<const std::optional<std::string>&> callback) {
+  daemon_callback_->GetExecuteMountAndWriteLogCallback().Run(
+      static_cast<uint8_t>(device_id), text_log, json_log, system_log,
+      diagnostics_log, std::move(callback));
 }
 
-void RmadInterfaceImpl::SaveLogExecutorCompleteCallback(
-    std::unique_ptr<std::list<std::string>> devices,
-    const std::string& text_log,
-    const std::string& json_log,
-    const std::string& system_log,
-    const std::string& diagnostics_log,
-    SaveLogCallback callback,
+void RmadInterfaceImpl::SaveLogSuccessHandler(
+    ReplyCallbackType<SaveLogReply> callback,
     const std::optional<std::string>& file_name) {
-  CHECK(!devices->empty());
-  if (file_name.has_value()) {
-    // Save file succeeds.
-    if (!MetricsUtils::UpdateStateMetricsOnSaveLog(json_store_,
-                                                   current_state_case_)) {
-      // TODO(genechang): Add error replies when failed to update state metrics
-      //                  in |json_store| -> |metrics| -> |state_metrics|.
-      LOG(ERROR) << "SaveLog: Failed to update state metrics.";
-    }
-    SaveLogReply reply;
-    reply.set_error(RMAD_ERROR_OK);
-    reply.set_save_path(file_name.value());
-    ReplyCallback(std::move(callback), reply);
-  } else {
-    // Failed to save file. Try next device.
-    devices->pop_front();
-    SaveLogToFirstMountableDevice(std::move(devices), text_log, json_log,
-                                  system_log, diagnostics_log,
-                                  std::move(callback));
+  CHECK(file_name.has_value());
+  if (!MetricsUtils::UpdateStateMetricsOnSaveLog(json_store_,
+                                                 current_state_case_)) {
+    // TODO(genechang): Add error replies when failed to update state metrics
+    //                  in |json_store| -> |metrics| -> |state_metrics|.
+    LOG(ERROR) << "SaveLog: Failed to update state metrics.";
   }
+  SaveLogReply reply;
+  reply.set_error(RMAD_ERROR_OK);
+  reply.set_save_path(file_name.value());
+  ReplyCallback(std::move(callback), reply);
+}
+
+void RmadInterfaceImpl::SaveLogFailHandler(
+    ReplyCallbackType<SaveLogReply> callback) {
+  SaveLogReply reply;
+  reply.set_error(RMAD_ERROR_CANNOT_SAVE_LOG);
+  ReplyCallback(std::move(callback), reply);
 }
 
 void RmadInterfaceImpl::RecordBrowserActionMetric(
@@ -690,15 +668,43 @@ bool RmadInterfaceImpl::CanGoBack() const {
   return false;
 }
 
-std::vector<std::string> RmadInterfaceImpl::GetRemovableBlockDevicePaths()
-    const {
-  std::vector<std::string> device_paths;
+std::list<uint8_t> RmadInterfaceImpl::GetUniqueRemovableBlockDeviceIds() const {
+  std::list<uint8_t> device_id_list;
+  std::set<uint8_t> device_id_set;
   for (const auto& device : udev_utils_->EnumerateBlockDevices()) {
-    if (device->IsRemovable()) {
-      device_paths.push_back(device->GetDeviceNode());
+    if (char device_id;
+        device->IsRemovable() &&
+        GetDeviceIdFromDeviceNode(device->GetDeviceNode(), &device_id) &&
+        device_id_set.find(device_id) == device_id_set.end()) {
+      device_id_list.push_back(device_id);
+      device_id_set.insert(device_id);
     }
   }
-  return device_paths;
+  return device_id_list;
+}
+
+template <typename ReplyProtobufType, typename... RpcReplyTypes>
+void RmadInterfaceImpl::RunRpcWithRemovableBlockDevices(
+    ReplyCallbackType<ReplyProtobufType> callback,
+    base::RepeatingCallback<void(uint8_t, RpcCallbackType<RpcReplyTypes...>)>
+        rpc,
+    base::RepeatingCallback<bool(RpcReplyTypes...)> rpc_output_checker,
+    base::OnceCallback<void(ReplyCallbackType<ReplyProtobufType>,
+                            RpcReplyTypes...)> success_callback,
+    base::OnceCallback<void(ReplyCallbackType<ReplyProtobufType>)>
+        fail_callback) {
+  std::list<uint8_t> device_ids = GetUniqueRemovableBlockDeviceIds();
+  if (device_ids.empty()) {
+    // No detected external storage.
+    ReplyProtobufType reply;
+    reply.set_error(RMAD_ERROR_USB_NOT_FOUND);
+    ReplyCallback(std::move(callback), reply);
+    return;
+  }
+
+  RunRpcWithInputs(std::move(callback), rpc, std::move(device_ids),
+                   rpc_output_checker, std::move(success_callback),
+                   std::move(fail_callback));
 }
 
 }  // namespace rmad

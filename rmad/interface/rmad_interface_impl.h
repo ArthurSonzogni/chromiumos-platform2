@@ -70,7 +70,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   void TransitionPreviousState(GetStateCallback callback) override;
   void AbortRma(AbortRmaCallback callback) override;
   void GetLog(GetLogCallback callback) override;
-  void SaveLog(const std::string& diagnostics_log_text,
+  void SaveLog(const std::string& diagnostics_log,
                SaveLogCallback callback) override;
   void RecordBrowserActionMetric(
       const RecordBrowserActionMetricRequest& browser_action,
@@ -89,28 +89,16 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   std::string GetSystemLog() const;
   bool GetLogString(std::string* log_string) const;
-  void SaveLogToFirstMountableDevice(
-      std::unique_ptr<std::list<std::string>> devices,
-      const std::string& text_log,
-      const std::string& json_log,
-      const std::string& system_log,
-      const std::string& diagnostics_log,
-      SaveLogCallback callback);
-  void SaveLogExecutorCompleteCallback(
-      std::unique_ptr<std::list<std::string>> devices,
-      const std::string& text_log,
-      const std::string& json_log,
-      const std::string& system_log,
-      const std::string& diagnostics_log,
-      SaveLogCallback callback,
-      const std::optional<std::string>& file_name);
-  std::vector<std::string> GetRemovableBlockDevicePaths() const;
+  std::list<uint8_t> GetUniqueRemovableBlockDeviceIds() const;
 
   // Wrapper to trigger D-Bus callbacks.
   template <typename ReplyProtobufType>
-  void ReplyCallback(
-      base::OnceCallback<void(const ReplyProtobufType&, bool)> callback,
-      const ReplyProtobufType reply) {
+  using ReplyCallbackType =
+      base::OnceCallback<void(const ReplyProtobufType&, bool)>;
+
+  template <typename ReplyProtobufType>
+  void ReplyCallback(ReplyCallbackType<ReplyProtobufType> callback,
+                     const ReplyProtobufType& reply) {
     // Quit the daemon if we are no longer in RMA.
     bool quit_daemon = false;
     if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
@@ -118,6 +106,32 @@ class RmadInterfaceImpl final : public RmadInterface {
     }
     std::move(callback).Run(reply, quit_daemon);
   }
+
+  template <typename... RpcOutputTypes>
+  using RpcCallbackType = base::OnceCallback<void(RpcOutputTypes...)>;
+  // Helper functions for GetLog.
+  void SaveLogRpc(
+      const std::string& text_log,
+      const std::string& json_log,
+      const std::string& system_log,
+      const std::string& diagnostics_log,
+      uint8_t device_id,
+      RpcCallbackType<const std::optional<std::string>&> rpc_callback);
+  void SaveLogSuccessHandler(ReplyCallbackType<SaveLogReply> callback,
+                             const std::optional<std::string>& file_name);
+  void SaveLogFailHandler(ReplyCallbackType<SaveLogReply> callback);
+
+  // Helper functions for running RPCs over a list.
+  template <typename ReplyProtobufType, typename... RpcReplyTypes>
+  void RunRpcWithRemovableBlockDevices(
+      ReplyCallbackType<ReplyProtobufType> callback,
+      base::RepeatingCallback<void(uint8_t, RpcCallbackType<RpcReplyTypes...>)>
+          rpc,
+      base::RepeatingCallback<bool(RpcReplyTypes...)> rpc_output_checker,
+      base::OnceCallback<void(ReplyCallbackType<ReplyProtobufType>,
+                              RpcReplyTypes...)> success_callback,
+      base::OnceCallback<void(ReplyCallbackType<ReplyProtobufType>)>
+          fail_callback);
 
   // Get and initialize the state handler for |state case|, and store it to
   // |state_handler|. If there's no state handler for |state_case|, or the
