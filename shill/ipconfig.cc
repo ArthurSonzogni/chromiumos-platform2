@@ -37,13 +37,6 @@ namespace {
 
 constexpr char kTypeIP[] = "ip";
 
-template <class T>
-void ApplyOptional(const std::optional<T>& src, T* dst) {
-  if (src.has_value()) {
-    *dst = src.value();
-  }
-}
-
 }  // namespace
 
 IPConfig::Properties::Properties() = default;
@@ -158,11 +151,11 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
 
   // Merge DNS and DNSSL from ipv4_prop and ipv6_prop.
   std::set<std::string> domain_search_dedup;
-  // When DNS information is available from both IPv6 source (RDNSS) and IPv4
-  // source (DHCPv4), the ideal behavior is happy eyeballs (RFC 8305). When
-  // happy eyeballs is not implemented, the priority of DNS servers are not
-  // strictly defined by standard. Prefer IPv6 here as most of the RFCs just
-  // "assume" IPv6 is preferred.
+  // When DNS information is available from both IPv6 source and IPv4 source,
+  // the ideal behavior is happy eyeballs (RFC 8305). When happy eyeballs is not
+  // implemented, the priority of DNS servers are not strictly defined by
+  // standard. Prefer IPv6 here as most of the RFCs just "assume" IPv6 is
+  // preferred.
   for (const auto* properties : non_empty_props) {
     for (const auto& item : properties->dns_servers) {
       auto dns = net_base::IPAddress::CreateFromString(item);
@@ -238,8 +231,9 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
   if (network_config.ipv4_broadcast) {
     broadcast_address = network_config.ipv4_broadcast->ToString();
   }
-
-  default_route = network_config.ipv4_default_route;
+  if (force_overwrite || !network_config.ipv4_default_route) {
+    default_route = network_config.ipv4_default_route;
+  }
 
   if (force_overwrite || !network_config.included_route_prefixes.empty()) {
     inclusion_list = {};
@@ -256,7 +250,9 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
                    [](net_base::IPCIDR cidr) { return cidr.ToString(); });
   }
 
-  ApplyOptional(network_config.mtu, &mtu);
+  if (network_config.mtu) {
+    mtu = *network_config.mtu;
+  }
 
   if (force_overwrite || !network_config.dns_servers.empty()) {
     dns_servers = {};
