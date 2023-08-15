@@ -197,7 +197,6 @@ static_library("libconcierge") {
     "libdlcservice-client",
     "libmetrics",
     "libminijail",
-    "libqcow_utils",
     "libshill-client",
     "libspaced",
     "protobuf",

@@ -79,7 +79,6 @@
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <crosvm/qcow_utils.h>
 #include <dbus/error.h>
 #include <dbus/object_proxy.h>
 #include <dbus/shadercached/dbus-constants.h>
@@ -2960,6 +2959,14 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
                            : CalculateDesiredDiskSize(
                                  disk_path, 0, request.storage_ballooning());
 
+  if (request.image_type() == DISK_IMAGE_QCOW2) {
+    LOG(ERROR) << "Creating qcow2 disk images is unsupported";
+    response.set_status(DISK_STATUS_FAILED);
+    response.set_failure_reason("Creating qcow2 disk images is unsupported");
+
+    return response;
+  }
+
   if (request.image_type() == DISK_IMAGE_RAW ||
       request.image_type() == DISK_IMAGE_AUTO) {
     LOG(INFO) << "Creating raw disk at: " << disk_path.value() << " size "
@@ -3047,20 +3054,10 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
     return response;
   }
 
-  LOG(INFO) << "Creating qcow2 disk at: " << disk_path.value() << " size "
-            << disk_size;
-  int ret = create_qcow_with_size(disk_path.value().c_str(), disk_size);
-  if (ret != 0) {
-    LOG(ERROR) << "Failed to create qcow2 disk image: " << strerror(ret);
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Failed to create qcow2 disk image");
-
-    return response;
-  }
-
-  response.set_disk_path(disk_path.value());
-  response.set_status(DISK_STATUS_CREATED);
-
+  LOG(ERROR) << "Unknown image_type in CreateDiskImage: "
+             << request.image_type();
+  response.set_status(DISK_STATUS_FAILED);
+  response.set_failure_reason("Unknown image_type");
   return response;
 }
 

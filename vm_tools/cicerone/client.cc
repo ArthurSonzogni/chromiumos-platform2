@@ -33,7 +33,6 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
-#include <crosvm/qcow_utils.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
