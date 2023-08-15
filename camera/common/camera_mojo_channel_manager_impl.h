@@ -63,6 +63,12 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
       const std::string& service_name,
       mojo::ScopedMessagePipeHandle receiver) override;
 
+  void RegisterServiceToMojoServiceManager(
+      const std::string& service_name,
+      mojo::PendingRemote<
+          chromeos::mojo_service_manager::mojom::ServiceProvider> remote)
+      override;
+
  protected:
   friend class CameraMojoChannelManager;
 
@@ -99,6 +105,11 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
 
   chromeos::mojo_service_manager::mojom::ServiceManager*
   GetServiceManagerProxy();
+
+  void RegisterServiceToMojoServiceManagerOnIpcThread(
+      const std::string& service_name,
+      mojo::PendingRemote<
+          chromeos::mojo_service_manager::mojom::ServiceProvider> remote);
 
   // The Mojo channel to CameraHalDispatcher in Chrome. All the Mojo
   // communication to |dispatcher_| happens on |ipc_thread_|.

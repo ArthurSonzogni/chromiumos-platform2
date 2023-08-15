@@ -18,10 +18,14 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/public/cpp/bindings/remote_set.h>
+#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
+#include "camera/mojo/unguessable_token.mojom.h"
 #include "cros-camera/cros_camera_hal.h"
 #include "hal_adapter/camera_hal_adapter.h"
 
@@ -57,7 +61,10 @@ class CameraHalServerImpl {
 
   // IPCBridge wraps all the IPC-related calls. Most of its methods should/will
   // be run on IPC thread.
-  class IPCBridge : public mojom::CameraHalServer {
+  class IPCBridge
+      : public mojom::CameraHalServer,
+        public mojom::CrosCameraService,
+        public chromeos::mojo_service_manager::mojom::ServiceProvider {
    public:
     IPCBridge(CameraHalServerImpl* camera_hal_server,
               CameraMojoChannelManager* mojo_manager);
@@ -72,6 +79,9 @@ class CameraHalServerImpl {
     void CreateChannel(
         mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
         mojom::CameraClientType camera_client_type) override;
+
+    void GetCameraModule(mojom::CameraClientType camera_client_type,
+                         GetCameraModuleCallback callback) override;
 
     void SetTracingEnabled(bool enabled) override;
 
@@ -91,9 +101,14 @@ class CameraHalServerImpl {
     void SetCameraEffect(
         mojom::EffectsConfigPtr config,
         mojom::CameraHalServer::SetCameraEffectCallback callback) override;
+
     void NotifyCameraActivityChange(int32_t camera_id,
                                     bool opened,
                                     mojom::CameraClientType type);
+
+    void AddCrosCameraServiceObserver(
+        mojo::PendingRemote<mojom::CrosCameraServiceObserver> observer)
+        override;
 
     // Gets a weak pointer of the IPCBridge. This method can be called on
     // non-IPC thread.
@@ -102,7 +117,6 @@ class CameraHalServerImpl {
    private:
     // Triggered when the HAL server is registered.
     void OnServerRegistered(
-        SetPrivacySwitchCallback set_privacy_switch_callback,
         int32_t result,
         mojo::PendingRemote<mojom::CameraHalServerCallbacks> callbacks);
 
@@ -111,6 +125,13 @@ class CameraHalServerImpl {
 
     // Triggers when the camera privacy switch status changed.
     void OnPrivacySwitchStatusChanged(int camera_id, PrivacySwitchState state);
+
+    // chromeos::mojo_service_manager::mojom::ServiceProvider overrides.
+    void Request(
+        chromeos::mojo_service_manager::mojom::ProcessIdentityPtr identity,
+        mojo::ScopedMessagePipeHandle receiver) override;
+
+    void OnObserverDisconnected(mojo::RemoteSetElementId id);
 
     CameraHalServerImpl* camera_hal_server_;
 
@@ -123,11 +144,21 @@ class CameraHalServerImpl {
 
     CameraHalAdapter* camera_hal_adapter_;
 
+    SetPrivacySwitchCallback set_privacy_switch_callback_;
+
     // The CameraHalServer implementation receiver.  All the function calls to
     // |receiver_| runs on |ipc_task_runner_|.
-    mojo::Receiver<mojom::CameraHalServer> receiver_;
+    mojo::Receiver<mojom::CameraHalServer> receiver_{this};
 
     mojo::Remote<mojom::CameraHalServerCallbacks> callbacks_;
+
+    mojo::RemoteSet<mojom::CrosCameraServiceObserver> observers_;
+
+    mojo::ReceiverSet<mojom::CrosCameraService> camera_service_receiver_set_;
+
+    // Receiver for mojo service manager service provider.
+    mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
+        provider_receiver_{this};
 
     base::WeakPtrFactory<IPCBridge> weak_ptr_factory_{this};
   };

@@ -33,6 +33,7 @@
 #include <base/posix/safe_strerror.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/single_thread_task_runner.h>
+#include <chromeos/mojo/service_constants.h>
 
 #include "common/utils/camera_hal_enumerator.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
@@ -94,12 +95,14 @@ CameraHalServerImpl::IPCBridge::IPCBridge(
     : camera_hal_server_(camera_hal_server),
       mojo_manager_(mojo_manager),
       ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()),
-      main_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
-      receiver_(this) {}
+      main_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {}
 
 CameraHalServerImpl::IPCBridge::~IPCBridge() {
   receiver_.reset();
+  camera_service_receiver_set_.Clear();
   callbacks_.reset();
+  observers_.Clear();
+  provider_receiver_.reset();
 }
 
 void CameraHalServerImpl::IPCBridge::Start(
@@ -107,11 +110,13 @@ void CameraHalServerImpl::IPCBridge::Start(
     SetPrivacySwitchCallback set_privacy_switch_callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  if (receiver_.is_bound()) {
+  if (receiver_.is_bound() || provider_receiver_.is_bound()) {
     return;
   }
 
   camera_hal_adapter_ = camera_hal_adapter;
+
+  set_privacy_switch_callback_ = std::move(set_privacy_switch_callback);
 
   mojo::PendingRemote<mojom::CameraHalServer> server =
       receiver_.BindNewPipeAndPassRemote();
@@ -121,18 +126,41 @@ void CameraHalServerImpl::IPCBridge::Start(
   mojo_manager_->RegisterServer(
       std::move(server),
       base::BindOnce(&CameraHalServerImpl::IPCBridge::OnServerRegistered,
-                     GetWeakPtr(), std::move(set_privacy_switch_callback)),
+                     GetWeakPtr()),
       base::BindOnce(&CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError,
                      GetWeakPtr()));
+  mojo_manager_->RegisterServiceToMojoServiceManager(
+      /*service_name=*/chromeos::mojo_services::kCrosCameraService,
+      provider_receiver_.BindNewPipeAndPassRemote());
+  provider_receiver_.set_disconnect_with_reason_handler(
+      base::BindOnce([](uint32_t error, const std::string& reason) {
+        LOGF(ERROR) << chromeos::mojo_services::kCrosCameraService
+                    << " provider disconnected, error: " << error
+                    << ", reason: " << reason;
+      }));
+  camera_service_receiver_set_.set_disconnect_handler(base::BindRepeating(
+      &CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError,
+      GetWeakPtr()));
+  observers_.set_disconnect_handler(
+      base::BindRepeating(&IPCBridge::OnObserverDisconnected, GetWeakPtr()));
 }
 
 void CameraHalServerImpl::IPCBridge::CreateChannel(
     mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
     mojom::CameraClientType camera_client_type) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
   camera_hal_adapter_->OpenCameraHal(std::move(camera_module_receiver),
                                      camera_client_type);
+}
+
+void CameraHalServerImpl::IPCBridge::GetCameraModule(
+    mojom::CameraClientType camera_client_type,
+    GetCameraModuleCallback callback) {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  mojo::PendingRemote<mojom::CameraModule> camera_module;
+  camera_hal_adapter_->OpenCameraHal(
+      camera_module.InitWithNewPipeAndPassReceiver(), camera_client_type);
+  std::move(callback).Run(std::move(camera_module));
 }
 
 void CameraHalServerImpl::IPCBridge::SetTracingEnabled(bool enabled) {
@@ -178,7 +206,12 @@ void CameraHalServerImpl::IPCBridge::SetCameraSWPrivacySwitchState(
     return;
   }
   camera_hal_adapter_->SetCameraSWPrivacySwitchState(state);
-  callbacks_->CameraSWPrivacySwitchStateChange(state);
+  if (callbacks_.is_bound()) {
+    callbacks_->CameraSWPrivacySwitchStateChange(state);
+  }
+  for (auto& observer : observers_) {
+    observer->CameraSWPrivacySwitchStateChange(state);
+  }
 }
 
 void CameraHalServerImpl::IPCBridge::GetAutoFramingSupported(
@@ -191,9 +224,12 @@ void CameraHalServerImpl::IPCBridge::GetAutoFramingSupported(
 void CameraHalServerImpl::IPCBridge::NotifyCameraActivityChange(
     int32_t camera_id, bool opened, mojom::CameraClientType type) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  DCHECK(callbacks_.is_bound());
-
-  callbacks_->CameraDeviceActivityChange(camera_id, opened, type);
+  if (callbacks_.is_bound()) {
+    callbacks_->CameraDeviceActivityChange(camera_id, opened, type);
+  }
+  for (auto& observer : observers_) {
+    observer->CameraDeviceActivityChange(camera_id, opened, type);
+  }
 }
 
 base::WeakPtr<CameraHalServerImpl::IPCBridge>
@@ -202,10 +238,10 @@ CameraHalServerImpl::IPCBridge::GetWeakPtr() {
 }
 
 void CameraHalServerImpl::IPCBridge::OnServerRegistered(
-    SetPrivacySwitchCallback set_privacy_switch_callback,
     int32_t result,
     mojo::PendingRemote<mojom::CameraHalServerCallbacks> callbacks) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK(!callbacks_.is_bound());
 
   if (result != 0) {
     LOGF(ERROR) << "Failed to register camera server: "
@@ -219,12 +255,11 @@ void CameraHalServerImpl::IPCBridge::OnServerRegistered(
       base::BindRepeating(
           &CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged,
           base::Unretained(this)));
-  std::move(set_privacy_switch_callback).Run(privacy_switch_callback);
+  std::move(set_privacy_switch_callback_).Run(privacy_switch_callback);
 
   DCHECK(camera_hal_adapter_);
   callbacks_->CameraSWPrivacySwitchStateChange(
       camera_hal_adapter_->GetCameraSWPrivacySwitchState());
-
   LOGF(INFO) << "Successfully registered camera server.";
 }
 
@@ -236,6 +271,7 @@ void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
   LOGF(INFO) << "Mojo connection to (Chrome) CameraHalDispatcher is "
                 "disconnected. Chrome may have crashed.";
   receiver_.reset();
+  camera_service_receiver_set_.Clear();
   main_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraHalServerImpl::ExitOnMainThread,
@@ -245,7 +281,6 @@ void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
 void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(
     int camera_id, PrivacySwitchState state) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  DCHECK(callbacks_.is_bound());
 
   cros::mojom::CameraPrivacySwitchState state_in_mojo;
   if (state == PrivacySwitchState::kUnknown) {
@@ -255,7 +290,51 @@ void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(
   } else {  // state == PrivacySwitchState::kOff
     state_in_mojo = cros::mojom::CameraPrivacySwitchState::OFF;
   }
-  callbacks_->CameraPrivacySwitchStateChange(state_in_mojo, camera_id);
+  if (callbacks_.is_bound()) {
+    callbacks_->CameraPrivacySwitchStateChange(state_in_mojo, camera_id);
+  }
+  for (auto& observer : observers_) {
+    observer->CameraPrivacySwitchStateChange(state_in_mojo, camera_id);
+  }
+}
+
+void CameraHalServerImpl::IPCBridge::Request(
+    chromeos::mojo_service_manager::mojom::ProcessIdentityPtr identity,
+    mojo::ScopedMessagePipeHandle receiver) {
+  // Survey what we can do identify the connection between ash and cros-camera
+  // service if we want to decouple CrosCameraHalDispatcher.
+  camera_service_receiver_set_.Add(
+      this,
+      mojo::PendingReceiver<mojom::CrosCameraService>(std::move(receiver)));
+}
+
+void CameraHalServerImpl::IPCBridge::OnObserverDisconnected(
+    mojo::RemoteSetElementId id) {
+  observers_.Remove(id);
+}
+
+void CameraHalServerImpl::IPCBridge::AddCrosCameraServiceObserver(
+    mojo::PendingRemote<mojom::CrosCameraServiceObserver> observer) {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK(!callbacks_.is_bound());
+
+  auto id = observers_.Add(std::move(observer));
+  auto privacy_switch_callback = base::BindPostTask(
+      ipc_task_runner_,
+      base::BindRepeating(
+          &CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged,
+          base::Unretained(this)));
+  if (set_privacy_switch_callback_) {
+    // TODO(b/277860974): Move this to |IPCBridge::Start| once the cleanup is
+    // done. In the old design, |set_privacy_switch_callback_| has to be run
+    // when |OnServerRegistered| is called to make sure |callbacks_| is bound.
+    // After migration to the new interface, the observer pattern is used so
+    // there is no limitation.
+    std::move(set_privacy_switch_callback_).Run(privacy_switch_callback);
+  }
+  DCHECK(camera_hal_adapter_);
+  observers_.Get(id)->CameraSWPrivacySwitchStateChange(
+      camera_hal_adapter_->GetCameraSWPrivacySwitchState());
 }
 
 int CameraHalServerImpl::LoadCameraHal() {

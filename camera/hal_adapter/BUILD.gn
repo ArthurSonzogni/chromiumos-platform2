@@ -10,6 +10,7 @@ group("all") {
     ":cros_camera_service",
     ":install_cros_camera_conf",
     ":install_cros_camera_policy",
+    ":install_cros_camera_service_mojo",
     ":install_dbus_cros_camera_conf",
   ]
 
@@ -90,4 +91,9 @@ if (use.cheets) {
     sources = [ "init/init.camera.rc" ]
     install_path = "/build/rootfs/opt/google/containers/android/vendor/etc/init"
   }
+}
+
+install_config("install_cros_camera_service_mojo") {
+  sources = [ "cros_camera_service_mojo_policy.jsonc" ]
+  install_path = "/etc/mojo/service_manager/policy"
 }

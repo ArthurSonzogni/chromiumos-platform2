@@ -80,6 +80,11 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
   virtual void RequestServiceFromMojoServiceManager(
       const std::string& service_name,
       mojo::ScopedMessagePipeHandle receiver) = 0;
+
+  virtual void RegisterServiceToMojoServiceManager(
+      const std::string& service_name,
+      mojo::PendingRemote<
+          chromeos::mojo_service_manager::mojom::ServiceProvider> remote) = 0;
 };
 
 }  // namespace cros

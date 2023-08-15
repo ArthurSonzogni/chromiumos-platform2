@@ -253,4 +253,24 @@ CameraMojoChannelManagerImpl::GetServiceManagerProxy() {
   return remote->get();
 }
 
+void CameraMojoChannelManagerImpl::RegisterServiceToMojoServiceManager(
+    const std::string& service_name,
+    mojo::PendingRemote<chromeos::mojo_service_manager::mojom::ServiceProvider>
+        remote) {
+  GetIpcTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&CameraMojoChannelManagerImpl::
+                         RegisterServiceToMojoServiceManagerOnIpcThread,
+                     base::Unretained(this), service_name, std::move(remote)));
+}
+
+void CameraMojoChannelManagerImpl::
+    RegisterServiceToMojoServiceManagerOnIpcThread(
+        const std::string& service_name,
+        mojo::PendingRemote<
+            chromeos::mojo_service_manager::mojom::ServiceProvider> remote) {
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
+  GetServiceManagerProxy()->Register(service_name, std::move(remote));
+}
+
 }  // namespace cros
