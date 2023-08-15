@@ -22,6 +22,12 @@ class OpteePluginFrontend : public Frontend {
   // Send the raw command.
   virtual StatusOr<brillo::Blob> SendRawCommand(
       const brillo::Blob& command) const = 0;
+
+  // Get the widevine root of trust certificate.
+  virtual StatusOr<brillo::Blob> GetRootOfTrustCert() const = 0;
+
+  // Get the chip identity key certificate.
+  virtual StatusOr<brillo::Blob> GetChipIdentifyKeyCert() const = 0;
 };
 
 }  // namespace hwsec

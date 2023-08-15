@@ -23,6 +23,8 @@ enum class RoSpace {
   kG2fCert,
   kRsuDeviceId,
   kRmaBytes,
+  kWidevineRootOfTrustCert,
+  kChipIdentityKeyCert,
 };
 
 }  // namespace hwsec

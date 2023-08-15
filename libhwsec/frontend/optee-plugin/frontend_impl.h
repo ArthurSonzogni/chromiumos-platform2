@@ -25,6 +25,10 @@ class OpteePluginFrontendImpl : public OpteePluginFrontend,
 
   StatusOr<brillo::Blob> SendRawCommand(
       const brillo::Blob& command) const override;
+
+  StatusOr<brillo::Blob> GetRootOfTrustCert() const override;
+
+  StatusOr<brillo::Blob> GetChipIdentifyKeyCert() const override;
 };
 
 }  // namespace hwsec

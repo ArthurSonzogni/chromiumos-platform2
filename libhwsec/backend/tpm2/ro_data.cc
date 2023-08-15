@@ -44,23 +44,7 @@ struct SpaceInfo {
 
 // Note: These bitset initialization steps would not work if we have more than
 // 64 kind of attributes.
-constexpr Attributes kG2fCertRequiredAttributes =
-    (1ULL << tpm_manager::NVRAM_PERSISTENT_WRITE_LOCK) |
-    (1ULL << tpm_manager::NVRAM_READ_AUTHORIZATION);
-
-constexpr Attributes kBoardIdRequiredAttributes =
-    (1ULL << tpm_manager::NVRAM_PERSISTENT_WRITE_LOCK) |
-    (1ULL << tpm_manager::NVRAM_READ_AUTHORIZATION);
-
-constexpr Attributes kSNDataRequiredAttributes =
-    (1ULL << tpm_manager::NVRAM_PERSISTENT_WRITE_LOCK) |
-    (1ULL << tpm_manager::NVRAM_READ_AUTHORIZATION);
-
-constexpr Attributes kEndorsementRsaCertRequiredAttributes =
-    (1ULL << tpm_manager::NVRAM_PERSISTENT_WRITE_LOCK) |
-    (1ULL << tpm_manager::NVRAM_READ_AUTHORIZATION);
-
-constexpr Attributes kRsuDeviceIdRequiredAttributes =
+constexpr Attributes kDefaultRoRequiredAttributes =
     (1ULL << tpm_manager::NVRAM_PERSISTENT_WRITE_LOCK) |
     (1ULL << tpm_manager::NVRAM_READ_AUTHORIZATION);
 
@@ -84,31 +68,43 @@ StatusOr<SpaceInfo> GetSpaceInfo(RoSpace space) {
       return SpaceInfo{
           .index = VIRTUAL_NV_INDEX_G2F_CERT,
           .read_with_owner_auth = false,
-          .require_attributes = kG2fCertRequiredAttributes,
+          .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kBoardId:
       return SpaceInfo{
           .index = VIRTUAL_NV_INDEX_BOARD_ID,
           .read_with_owner_auth = false,
-          .require_attributes = kBoardIdRequiredAttributes,
+          .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kSNData:
       return SpaceInfo{
           .index = VIRTUAL_NV_INDEX_SN_DATA,
           .read_with_owner_auth = false,
-          .require_attributes = kSNDataRequiredAttributes,
+          .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kEndorsementRsaCert:
       return SpaceInfo{
           .index = trunks::kRsaEndorsementCertificateIndex,
           .read_with_owner_auth = false,
-          .require_attributes = kEndorsementRsaCertRequiredAttributes,
+          .require_attributes = kDefaultRoRequiredAttributes,
       };
     case RoSpace::kRsuDeviceId:
       return SpaceInfo{
           .index = VIRTUAL_NV_INDEX_RSU_DEV_ID,
           .read_with_owner_auth = false,
-          .require_attributes = kRsuDeviceIdRequiredAttributes,
+          .require_attributes = kDefaultRoRequiredAttributes,
+      };
+    case RoSpace::kWidevineRootOfTrustCert:
+      return SpaceInfo{
+          .index = 0x013fff07,
+          .read_with_owner_auth = false,
+          .require_attributes = kDefaultRoRequiredAttributes,
+      };
+    case RoSpace::kChipIdentityKeyCert:
+      return SpaceInfo{
+          .index = 0x013fff08,
+          .read_with_owner_auth = false,
+          .require_attributes = kDefaultRoRequiredAttributes,
       };
     default:
       return MakeStatus<TPMError>("Unknown space", TPMRetryAction::kNoRetry);
