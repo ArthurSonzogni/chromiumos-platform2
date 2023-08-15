@@ -333,11 +333,18 @@ bool IsBuildTimestampTooOldForUploads(int64_t build_time_millis,
 std::string GetHardwareClass() {
   std::string hw_class;
   for (const auto& path : kHwClassPaths) {
-    if (base::ReadFileToString(paths::Get(path), &hw_class))
+    if (base::ReadFileToString(paths::Get(path), &hw_class)) {
+      base::TrimWhitespaceASCII(hw_class, base::TRIM_TRAILING, &hw_class);
       return hw_class;
+    }
   }
   auto vb_value = crossystem::GetInstance()->VbGetSystemPropertyString("hwid");
-  return vb_value ? vb_value.value() : "undefined";
+  if (vb_value.has_value()) {
+    std::string out;
+    base::TrimWhitespaceASCII(vb_value.value(), base::TRIM_TRAILING, &out);
+    return out;
+  }
+  return "undefined";
 }
 
 std::string GetBootModeString() {

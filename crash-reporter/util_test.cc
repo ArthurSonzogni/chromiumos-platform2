@@ -294,23 +294,23 @@ TEST_F(CrashCommonUtilTest, GetHardwareClass) {
   EXPECT_EQ("undefined", GetHardwareClass());
 
   // HWID file not found and but manage to get the "hwid" system property.
-  stub_crossystem.VbSetSystemPropertyString("hwid", "TEST_HWID_123");
+  stub_crossystem.VbSetSystemPropertyString("hwid", "TEST_HWID_123\n");
   EXPECT_EQ("TEST_HWID_123", GetHardwareClass());
 
   // When the HWID file exists, it should prioritize to return the file content.
   // .../chromeos_acpi/HWID is prior to
   // .../GGL0001:00/HWID and .../GOOG0016:00/HWID for backward compatible.
   ASSERT_TRUE(test_util::CreateFile(
-      paths::Get("/sys/devices/platform/GOOG0016:00/HWID"), "TEST_HWID_321"));
+      paths::Get("/sys/devices/platform/GOOG0016:00/HWID"), "TEST_HWID_321\n"));
   EXPECT_EQ("TEST_HWID_321", GetHardwareClass());
 
   ASSERT_TRUE(test_util::CreateFile(
-      paths::Get("/sys/devices/platform/GGL0001:00/HWID"), "TEST_HWID_000"));
+      paths::Get("/sys/devices/platform/GGL0001:00/HWID"), "TEST_HWID_000\n"));
   EXPECT_EQ("TEST_HWID_000", GetHardwareClass());
 
   ASSERT_TRUE(test_util::CreateFile(
       paths::Get("/sys/devices/platform/chromeos_acpi/HWID"),
-      kHwClassContents));
+      std::string(kHwClassContents) + "\n"));
   EXPECT_EQ(kHwClassContents, GetHardwareClass());
 
   crossystem::ReplaceInstanceForTest(old_instance);
