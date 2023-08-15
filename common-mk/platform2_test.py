@@ -172,7 +172,7 @@ class Platform2Test:
         else:
             self.sysroot = build_target_lib.get_default_sysroot_path(self.board)
 
-        # SetupSysrootInSysroot expects the sysroot to be in /build.
+        # _setup_build() expects the sysroot to be in /build.
         # Would cause pollution in the sysroot otherwise.
         assert self.sysroot == "/" or self.sysroot.startswith("/build/"), (
             f"unexpected sysroot {self.sysroot!r}, "
@@ -633,7 +633,6 @@ class Platform2Test:
         """
         if self.sysroot == "/":
             return
-        assert self.sysroot.startswith("/build/")
 
         double_sysroot = new_sysroot + self.sysroot
         osutils.SafeMakedirs(os.path.dirname(double_sysroot), mode=0o755)
