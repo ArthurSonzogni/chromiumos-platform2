@@ -85,7 +85,7 @@ static_library("storage_module") {
   configs += [ ":target_defaults" ]
   public_deps = [ ":storage_configuration" ]
   deps = [
-    ":new_storage",
+    ":storage",
     ":storage_module_interface",
     ":storage_uploader_interface",
     "//missive/encryption:encryption_module",
@@ -123,8 +123,8 @@ static_library("storage_util") {
   configs += [ ":target_defaults" ]
 }
 
-static_library("new_storage") {
-  sources = [ "new_storage.cc" ]
+static_library("storage") {
+  sources = [ "storage.cc" ]
   configs += [ ":target_defaults" ]
   public_deps = [ ":storage_configuration" ]
   deps = [

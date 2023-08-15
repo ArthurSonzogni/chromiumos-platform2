@@ -153,7 +153,7 @@ TEST_F(StorageModuleTest, SwitchFromLegacyToStorage) {
 TEST_F(StorageModuleTest, SwitchFromNewToLegacyStorage) {
   // Create storage module with new storage implementation.
   CreateStorageModule("SECURITY, FAST_BATCH");
-  auto new_storage_module = storage_module_;
+  auto storage_module = storage_module_;
 
   // Expect multi-/single-generational state match.
   EXPECT_FALSE(options_.is_multi_generational(SECURITY));
@@ -162,7 +162,7 @@ TEST_F(StorageModuleTest, SwitchFromNewToLegacyStorage) {
   EXPECT_TRUE(options_.is_multi_generational(SLOW_BATCH));
 
   // Verify we can write to new storage module
-  ASSERT_OK(CallAddRecord(new_storage_module));
+  ASSERT_OK(CallAddRecord(storage_module));
 
   // Flip the value of multi-generation action flag to false, triggering
   // `storage_module` to switch IMMEDIATE and SECURITY

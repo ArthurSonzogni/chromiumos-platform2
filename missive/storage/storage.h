@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MISSIVE_STORAGE_NEW_STORAGE_H_
-#define MISSIVE_STORAGE_NEW_STORAGE_H_
+#ifndef MISSIVE_STORAGE_STORAGE_H_
+#define MISSIVE_STORAGE_STORAGE_H_
 
 #include <memory>
 #include <string>
@@ -225,4 +225,4 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
 
 }  // namespace reporting
 
-#endif  // MISSIVE_STORAGE_NEW_STORAGE_H_
+#endif  // MISSIVE_STORAGE_STORAGE_H_

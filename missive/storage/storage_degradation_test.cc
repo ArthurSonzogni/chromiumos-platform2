@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/storage/new_storage.h"
+#include "missive/storage/storage.h"
 
 #include <atomic>
 #include <cstdint>
@@ -64,7 +64,7 @@ using ::testing::WithArg;
 using ::testing::WithoutArgs;
 
 // TODO(b/278734198): Combine common degradation test logic with
-// new_storage_degradation_test.cc
+// legacy_storage_degradation_test.cc
 namespace reporting {
 
 namespace {
@@ -87,7 +87,7 @@ std::string xBigData() {
 
 // Stores an entire upload of records from `SequenceBoundUpload` in the order
 // they were received when the upload is declared complete. Intended to be a
-// class member of `LegacyStorageTest`, so that it outlives
+// class member of `StorageTest`, so that it outlives
 // `TestUploader` and `SequenceBoundUpload` and can be used to perform checks
 // that span multiple separate uploads. The user is responsible for resetting
 // the state by calling `Reset()`.
@@ -149,7 +149,7 @@ class TestStorageOptions : public StorageOptions {
       base::TimeDelta()};  // no retry by default
 };
 
-class LegacyStorageDegradationTest
+class StorageDegradationTest
     : public ::testing::TestWithParam<::testing::tuple<size_t, bool>> {
   // Mapping of <generation id, sequencing id> to matching record digest.
   // Whenever a record is uploaded and includes last record digest, this map
@@ -163,10 +163,10 @@ class LegacyStorageDegradationTest
                            int64_t /*sequencing id*/>& v) const noexcept {
         const auto& [priority, generation_id, sequencing_id] = v;
         static constexpr std::hash<Priority> priority_hasher;
-        static constexpr std::hash<int64_t> generation_hasher;
-        static constexpr std::hash<int64_t> sequencing_hasher;
-        return priority_hasher(priority) ^ generation_hasher(generation_id) ^
-               sequencing_hasher(sequencing_id);
+        static constexpr std::hash<int64_t> generation_id_hasher;
+        static constexpr std::hash<int64_t> sequencing_id_hasher;
+        return priority_hasher(priority) ^ generation_id_hasher(generation_id) ^
+               sequencing_id_hasher(sequencing_id);
       }
     };
     using Map = std::unordered_map<std::tuple<Priority,
@@ -483,7 +483,7 @@ class LegacyStorageDegradationTest
      public:
       SetUp(Priority priority,
             test::TestCallbackWaiter* waiter,
-            LegacyStorageDegradationTest* self)
+            StorageDegradationTest* self)
           : priority_(priority),
             uploader_(std::make_unique<TestUploader>(self)),
             uploader_id_(uploader_->uploader_id_),
@@ -588,7 +588,7 @@ class LegacyStorageDegradationTest
       test::TestCallbackWaiter* const waiter_;
     };
 
-    explicit TestUploader(LegacyStorageDegradationTest* self)
+    explicit TestUploader(StorageDegradationTest* self)
         : uploader_id_(next_uploader_id.fetch_add(1)),
           // Allocate MockUpload as raw pointer and immediately wrap it in
           // unique_ptr and pass to SequenceBoundUpload to own.
@@ -644,7 +644,7 @@ class LegacyStorageDegradationTest
     // To be used only for uploads that we want to just ignore and do not care
     // about their outcome.
     static std::unique_ptr<TestUploader> SetUpDummy(
-        LegacyStorageDegradationTest* self) {
+        StorageDegradationTest* self) {
       auto uploader = std::make_unique<TestUploader>(self);
       // Any Record, RecordFailure of Gap could be encountered, and
       // returning false will cut the upload short.
@@ -711,7 +711,7 @@ class LegacyStorageDegradationTest
              base::MakeRefCounted<SignatureVerificationDevFlag>(
                  /*is_enabled=*/false),
          .async_start_upload_cb = base::BindRepeating(
-             &LegacyStorageDegradationTest::AsyncStartMockUploader,
+             &StorageDegradationTest::AsyncStartMockUploader,
              base::Unretained(this))},
         e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
@@ -769,7 +769,7 @@ class LegacyStorageDegradationTest
         base::BindOnce(
             [](UploaderInterface::UploadReason reason,
                UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
-               LegacyStorageDegradationTest* self) {
+               StorageDegradationTest* self) {
               if (self->expect_to_need_key_ &&
                   reason == UploaderInterface::UploadReason::KEY_DELIVERY) {
                 // Ignore expectation count in this special case.
@@ -906,7 +906,7 @@ class LegacyStorageDegradationTest
 };
 
 // Test no available files to delete
-TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
+TEST_P(StorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
   // TO-DO cleanup this test, build a test that actually deletes files.
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
@@ -921,8 +921,8 @@ TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
   const uint64_t to_reserve = temp_total - temp_used;
   options_.disk_space_resource()->Reserve(to_reserve);
 
-  // Write records on a higher priority queue to see if records shedding has
-  // any effect.
+  // Write records on a higher priority queue to see if records shedding has any
+  // effect.
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), _))
@@ -935,8 +935,7 @@ TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
 }
 
 // Test Available files to delete in multiple queues when one is insufficient.
-TEST_P(LegacyStorageDegradationTest,
-       WriteAttemptWithRecordsSheddingMultipleQueues) {
+TEST_P(StorageDegradationTest, WriteAttemptWithRecordsSheddingMultipleQueues) {
   // The test will try to write this amount of records.
   static constexpr size_t kAmountOfBigRecords = 10;
 
@@ -976,8 +975,8 @@ TEST_P(LegacyStorageDegradationTest,
   const uint64_t to_reserve = temp_total - temp_used;
   options_.disk_space_resource()->Reserve(to_reserve);
 
-  // Write records on a higher priority queue to see if records shedding has
-  // any effect.
+  // Write records on a higher priority queue to see if records shedding has any
+  // effect.
   if (is_degradation_enabled()) {
     LOG(ERROR) << "Feature Enabled >> RecordSheddingSuccessTest";
     EXPECT_CALL(
@@ -1023,8 +1022,8 @@ TEST_P(LegacyStorageDegradationTest,
       task_environment_.FastForwardBy(base::Seconds(1));
     }
 
-    // Add one more record, so that the last file is not empty (otherwise
-    // upload may be skipped).
+    // Add one more record, so that the last file is not empty (otherwise upload
+    // may be skipped).
     WriteStringOrDie(MANUAL_BATCH, kData[0]);
 
     {
@@ -1094,10 +1093,8 @@ TEST_P(LegacyStorageDegradationTest,
   options_.disk_space_resource()->Discard(to_reserve);
 }
 
-// Test Available files to delete in the lowest priority queue out of
-// multiple.
-TEST_P(LegacyStorageDegradationTest,
-       WriteAttemptWithRecordsSheddingLowestQueue) {
+// Test Available files to delete in the lowest priority queue out of multiple.
+TEST_P(StorageDegradationTest, WriteAttemptWithRecordsSheddingLowestQueue) {
   // The test will try to write this amount of records.
   static constexpr size_t kAmountOfBigRecords = 10;
 
@@ -1117,8 +1114,8 @@ TEST_P(LegacyStorageDegradationTest,
   const uint64_t to_reserve = temp_total - temp_used;
   options_.disk_space_resource()->Reserve(to_reserve);
 
-  // Write records on a higher priority queue to see if records shedding has
-  // any effect.
+  // Write records on a higher priority queue to see if records shedding has any
+  // effect.
   if (is_degradation_enabled()) {
     LOG(ERROR) << "Feature Enabled >> RecordSheddingSuccessTest";
     EXPECT_CALL(
@@ -1230,7 +1227,7 @@ TEST_P(LegacyStorageDegradationTest,
 }
 
 // Test Security queue cant_shed_records option
-TEST_P(LegacyStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
+TEST_P(StorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
   // The test will try to write this amount of records.
   static constexpr size_t kAmountOfBigRecords = 3u;
 
@@ -1263,9 +1260,9 @@ TEST_P(LegacyStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
   const uint64_t to_reserve = temp_total - temp_used;
   options_.disk_space_resource()->Reserve(to_reserve);
 
-  // Write records on a higher priority queue to see if records shedding has
-  // no effect. Expect upload even with failure, since there are other records
-  // in the queue.
+  // Write records on a higher priority queue to see if records shedding has no
+  // effect. Expect upload even with failure, since there are other records in
+  // the queue.
   {
     EXPECT_CALL(
         analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
@@ -1294,7 +1291,7 @@ TEST_P(LegacyStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
 
 INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
-    LegacyStorageDegradationTest,
+    StorageDegradationTest,
     ::testing::Combine(::testing::Values(128u * 1024uLL * 1024uLL,
                                          256u /* two records in file */,
                                          1u /* single record in file */),

@@ -36,7 +36,7 @@
 #include "missive/util/status.h"
 
 // This file is for common logic shared in both implementations of the storage
-// class: new_storage.cc and storage.cc
+// class: multi-generation and single-generation (legacy).
 namespace reporting {
 
 // Helper class keeps all `StorageQueue`s and manages controlled degradation
