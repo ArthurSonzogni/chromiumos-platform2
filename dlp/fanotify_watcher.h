@@ -29,7 +29,7 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
     virtual void ProcessFileOpenRequest(
         FileId id, int pid, base::OnceCallback<void(bool)> callback) = 0;
 
-    virtual void OnFileDeleted(FileId id) = 0;
+    virtual void OnFileDeleted(ino64_t inode) = 0;
 
     virtual void OnFanotifyError(FanotifyError error) = 0;
   };
@@ -53,6 +53,7 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
   // FanotifyReaderThread::Delegate overrides:
   void OnFileOpenRequested(
       ino_t inode,
+      time_t crtime,
       int pid,
       base::ScopedFD fd,
       std::unique_ptr<FanotifyReaderThread::FanotifyReplyWatchdog> watchdog)

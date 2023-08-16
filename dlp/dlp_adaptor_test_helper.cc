@@ -85,7 +85,7 @@ void DlpAdaptorTestHelper::ProcessFileOpenRequest(
 }
 
 void DlpAdaptorTestHelper::OnFileDeleted(FileId id) {
-  adaptor_->OnFileDeleted(id);
+  adaptor_->OnFileDeleted(id.first);
 }
 
 void DlpAdaptorTestHelper::ReCreateAdaptor() {
