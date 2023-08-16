@@ -37,6 +37,15 @@ namespace {
 // We don't need a minimal Mojo version. Set it to 0.
 constexpr uint32_t kMojoVersion = 0;
 
+std::optional<rmad::DiagnosticsAppInfo> ConvertFromMojomDiagnosticsAppInfo(
+    chromeos::rmad::mojom::DiagnosticsAppInfoPtr ptr) {
+  if (ptr) {
+    return rmad::DiagnosticsAppInfo{.swbn_path = ptr->swbn_path,
+                                    .crx_path = ptr->crx_path};
+  }
+  return std::nullopt;
+}
+
 }  // namespace
 
 namespace rmad {
@@ -284,6 +293,9 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
   daemon_callback->SetExecuteMountAndCopyFirmwareUpdaterCallback(
       base::BindRepeating(&DBusService::ExecuteMountAndCopyFirmwareUpdater,
                           weak_ptr_factory_.GetMutableWeakPtr()));
+  daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
+      base::BindRepeating(&DBusService::ExecuteMountAndCopyDiagnosticsApp,
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetExecuteRebootEcCallback(base::BindRepeating(
       &DBusService::ExecuteRebootEc, weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetExecuteRequestRmaPowerwashCallback(
@@ -396,6 +408,15 @@ void DBusService::ExecuteMountAndWriteLog(
 void DBusService::ExecuteMountAndCopyFirmwareUpdater(
     uint8_t device_id, base::OnceCallback<void(bool)> callback) {
   executor_->MountAndCopyFirmwareUpdater(device_id, std::move(callback));
+}
+
+void DBusService::ExecuteMountAndCopyDiagnosticsApp(
+    uint8_t device_id,
+    base::OnceCallback<void(const std::optional<DiagnosticsAppInfo>&)>
+        callback) {
+  executor_->MountAndCopyDiagnosticsApp(
+      device_id, base::BindOnce(&ConvertFromMojomDiagnosticsAppInfo)
+                     .Then(std::move(callback)));
 }
 
 void DBusService::ExecuteRebootEc(base::OnceCallback<void(bool)> callback) {

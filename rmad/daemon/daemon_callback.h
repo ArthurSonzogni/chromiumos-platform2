@@ -16,6 +16,11 @@
 
 namespace rmad {
 
+struct DiagnosticsAppInfo {
+  std::string swbn_path;
+  std::string crx_path;
+};
+
 using HardwareVerificationSignalCallback =
     base::RepeatingCallback<void(const HardwareVerificationResult&)>;
 using UpdateRoFirmwareSignalCallback =
@@ -40,6 +45,9 @@ using ExecuteMountAndWriteLogCallback = base::RepeatingCallback<void(
     base::OnceCallback<void(const std::optional<std::string>&)>)>;
 using ExecuteMountAndCopyFirmwareUpdaterCallback =
     base::RepeatingCallback<void(uint8_t, base::OnceCallback<void(bool)>)>;
+using ExecuteMountAndCopyDiagnosticsAppCallback = base::RepeatingCallback<void(
+    uint8_t,
+    base::OnceCallback<void(const std::optional<DiagnosticsAppInfo>&)>)>;
 using ExecuteRebootEcCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 using ExecuteRequestRmaPowerwashCallback =
@@ -82,6 +90,8 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
                    execute_mount_and_write_log_callback_);
   DECLARE_CALLBACK(ExecuteMountAndCopyFirmwareUpdaterCallback,
                    execute_mount_and_copy_firmware_updater_callback_);
+  DECLARE_CALLBACK(ExecuteMountAndCopyDiagnosticsAppCallback,
+                   execute_mount_and_copy_diagnostics_app_callback_);
   DECLARE_CALLBACK(ExecuteRebootEcCallback, execute_reboot_ec_callback_);
   DECLARE_CALLBACK(ExecuteRequestRmaPowerwashCallback,
                    execute_request_rma_powerwash_callback_);

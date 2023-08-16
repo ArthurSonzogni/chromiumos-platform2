@@ -68,6 +68,10 @@ class DBusService : public brillo::DBusServiceDaemon {
       base::OnceCallback<void(const std::optional<std::string>&)> callback);
   void ExecuteMountAndCopyFirmwareUpdater(
       uint8_t device_id, base::OnceCallback<void(bool)> callback);
+  void ExecuteMountAndCopyDiagnosticsApp(
+      uint8_t device_id,
+      base::OnceCallback<void(const std::optional<DiagnosticsAppInfo>&)>
+          callback);
   void ExecuteRebootEc(base::OnceCallback<void(bool)> callback);
   void ExecuteRequestRmaPowerwash(base::OnceCallback<void(bool)> callback);
   void ExecuteRequestBatteryCutoff(base::OnceCallback<void(bool)> callback);
