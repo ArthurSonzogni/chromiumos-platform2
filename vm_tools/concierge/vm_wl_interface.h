@@ -33,6 +33,9 @@ class ScopedWlSocket {
   // the OS cleaning up its /tmp on shutdown.
   ~ScopedWlSocket();
 
+  ScopedWlSocket(const ScopedWlSocket&) = delete;
+  ScopedWlSocket& operator=(ScopedWlSocket&) = delete;
+
   // Returns the filesystem path to the server.
   base::FilePath GetPath() const;
 

@@ -208,6 +208,8 @@ class CustomParametersForDev {
  public:
   // By default this class would do nothing.
   CustomParametersForDev() = default;
+  CustomParametersForDev(const CustomParametersForDev&) = delete;
+  CustomParametersForDev& operator=(CustomParametersForDev&) = delete;
 
   // Allow custom parameters on development devices with arcvm_dev.conf.
   // Loads custom parameters from a string. Please check
@@ -371,6 +373,9 @@ class VmStartChecker {
   // Create an instance of |VmStartChecker|. |signal_fd| is owned by the client.
   static std::unique_ptr<VmStartChecker> Create(int32_t signal_fd);
   ~VmStartChecker() = default;
+
+  VmStartChecker(const VmStartChecker&) = delete;
+  VmStartChecker& operator=(const VmStartChecker&) = delete;
 
   // Wait for the VM to start with |timeout|.
   Status Wait(base::TimeDelta timeout);

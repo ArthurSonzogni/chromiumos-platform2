@@ -27,6 +27,8 @@ class SysfsNotifyWatcher {
       int fd, const SysfsNotifyCallback& callback);
 
   virtual ~SysfsNotifyWatcher() = default;
+  SysfsNotifyWatcher(const SysfsNotifyWatcher&) = delete;
+  SysfsNotifyWatcher& operator=(const SysfsNotifyWatcher&) = delete;
 
   void SetCallback(const SysfsNotifyCallback& callback);
 

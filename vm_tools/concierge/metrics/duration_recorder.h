@@ -45,6 +45,9 @@ class DurationRecorder {
   // Used to log the metrics.
   const raw_ref<MetricsLibraryInterface> metrics_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  DurationRecorder(const DurationRecorder&) = delete;
+  DurationRecorder& operator=(const DurationRecorder&) = delete;
 };
 
 namespace internal {
