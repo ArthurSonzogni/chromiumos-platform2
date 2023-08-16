@@ -488,7 +488,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                                 if is_unspported_error(&e) {
                                     return sender_context.reply(Err(MethodErr::no_method(&e)));
                                 }
-                                error!("Failed to validate target pid: {}", e);
+                                error!("Failed to validate target pid: {:#}", e);
                                 return sender_context.reply(Err(MethodErr::failed(
                                     format!("Failed to validate pid {}", e).as_str(),
                                 )));
@@ -499,9 +499,59 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     match result {
                         Ok(()) => sender_context.reply(Ok(())),
                         Err(e) => {
-                            error!("change_process_state failed: {}, pid={}", e, process_id);
+                            error!("change_process_state failed: {}, pid={:#}", e, process_id);
                             sender_context
                                 .reply(Err(MethodErr::failed("Failed to update process state")))
+                        }
+                    }
+                }
+            },
+        );
+        let conn_clone4 = conn.clone();
+        b.method_with_cr_async(
+            "ChangeThreadState",
+            ("ProcessId", "ThreadId", "ThreadState"),
+            (),
+            move |mut sender_context, _, (process_id, thread_id, thread_state): (i32, i32, u8)| {
+                let conn_clone = conn_clone4.clone();
+                async move {
+                    let state = match qos::ThreadSchedulerState::try_from(thread_state) {
+                        Ok(s) => s,
+                        Err(_) => {
+                            return sender_context
+                                .reply(Err(MethodErr::failed("Unsupported thread state")))
+                        }
+                    };
+
+                    let sender_id: String = match sender_context.message().sender() {
+                        Some(s) => s.to_string(),
+                        None => {
+                            return sender_context
+                                .reply(Err(MethodErr::failed("Failed to get sender id")))
+                        }
+                    };
+
+                    let _target_pidfd: OwnedFd =
+                        match validate_target_pid(sender_id, process_id, conn_clone).await {
+                            Ok(pidfd) => pidfd,
+                            Err(e) => {
+                                if is_unspported_error(&e) {
+                                    return sender_context.reply(Err(MethodErr::no_method(&e)));
+                                }
+                                error!("Failed to validate target pid: {:#}", e);
+                                return sender_context.reply(Err(MethodErr::failed(
+                                    format!("Failed to validate pid {}", e).as_str(),
+                                )));
+                            }
+                        };
+
+                    let result = qos::change_thread_state(process_id, thread_id, state);
+                    match result {
+                        Ok(()) => sender_context.reply(Ok(())),
+                        Err(e) => {
+                            error!("change_thread_state failed: {}, pid={:#}", e, process_id);
+                            sender_context
+                                .reply(Err(MethodErr::failed("Failed to update thread state")))
                         }
                     }
                 }
