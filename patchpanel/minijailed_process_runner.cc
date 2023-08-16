@@ -38,6 +38,9 @@ constexpr char kIptablesPath[] = "/sbin/iptables";
 constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
 constexpr char kModprobePath[] = "/sbin/modprobe";
 
+constexpr char kIptablesSeccompFilterPath[] =
+    "/usr/share/policy/iptables-seccomp.policy";
+
 // An empty string will be returned if read fails.
 std::string ReadBlockingFDToStringAndClose(base::ScopedFD fd) {
   if (!fd.is_valid()) {
@@ -207,6 +210,10 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
   minijail* jail = mj_->New();
   CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
   mj_->UseCapabilities(jail, kNetRawAdminCapMask);
+
+  // Set up seccomp filter.
+  mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
+
   return RunSyncDestroy(args, mj_, jail, log_failures, output);
 }
 
