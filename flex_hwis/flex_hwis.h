@@ -20,6 +20,8 @@ enum class Result {
   HasRunRecently,
   // Hardware data not sent because the device policy does not allow it.
   NotAuthorized,
+  // Encountered an Error.
+  Error
 };
 
 enum class Debug {

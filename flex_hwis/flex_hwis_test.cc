@@ -117,6 +117,17 @@ class FlexHwisTest : public ::testing::Test {
   flex_hwis::MockMojo mock_mojo_;
 };
 
+TEST_F(FlexHwisTest, FailToGetUuid) {
+  auto flex_hwis_sender_ =
+      flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
+  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+
+  CreateUuid("");
+
+  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
+            Result::Error);
+}
+
 TEST_F(FlexHwisTest, HasRunRecently) {
   auto flex_hwis_sender_ =
       flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);

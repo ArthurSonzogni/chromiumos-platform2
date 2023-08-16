@@ -113,8 +113,15 @@ TEST_F(FlexHwisCheckTest, CheckUuid) {
   constexpr char kUuid[] = "reven-uuid";
   auto flex_hwis_check_ =
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
-  CreateUuid(kUuid);
+
+  // Simulate failure to read kernel UUID.
+  CreateUuid("");
   UuidInfo info = flex_hwis_check_.GetOrCreateUuid();
+  EXPECT_EQ(std::nullopt, info.uuid);
+  EXPECT_FALSE(info.already_exists);
+
+  CreateUuid(kUuid);
+  info = flex_hwis_check_.GetOrCreateUuid();
   EXPECT_FALSE(info.already_exists);
   EXPECT_EQ(kUuid, info.uuid);
   info = flex_hwis_check_.GetOrCreateUuid();

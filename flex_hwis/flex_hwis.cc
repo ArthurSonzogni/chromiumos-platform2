@@ -75,7 +75,12 @@ Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
 
   mojo_.SetHwisInfo(&data);
   const UuidInfo info = check_.GetOrCreateUuid();
-  mojo_.SetHwisUuid(&data, info.uuid);
+  if (info.uuid) {
+    data.set_uuid(info.uuid.value());
+  } else {
+    LOG(ERROR) << "Unable to get nor create uuid.";
+    return Result::Error;
+  }
 
   // If the UUID was just generated this should be a POST request.
   // If the UUID already exists, then it should be a PUT request.

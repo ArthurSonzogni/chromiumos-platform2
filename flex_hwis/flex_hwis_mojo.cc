@@ -294,9 +294,4 @@ void FlexHwisMojo::SetHwisInfo(hwis_proto::Device* data) {
   SetInputInfo(data);
   SetTpmInfo(data);
 }
-
-void FlexHwisMojo::SetHwisUuid(hwis_proto::Device* data,
-                               std::optional<std::string> uuid) {
-  data->set_uuid(uuid.value());
-}
 }  // namespace flex_hwis

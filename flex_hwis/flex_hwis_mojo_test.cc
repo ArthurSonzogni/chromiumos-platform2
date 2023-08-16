@@ -155,10 +155,4 @@ TEST_F(FlexHwisMojoTest, MojoTpm) {
   EXPECT_EQ(data.mutable_tpm()->tpm_owned(), kTpmOwned);
 }
 
-TEST_F(FlexHwisMojoTest, MojoUuid) {
-  hwis_proto::Device data;
-  flex_hwis_mojo_->SetHwisUuid(&data, kUuid);
-  EXPECT_EQ(data.uuid(), kUuid);
-}
-
 }  // namespace flex_hwis

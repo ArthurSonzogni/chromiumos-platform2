@@ -20,8 +20,6 @@ class FlexHwisMojo {
   // The HWIS data should be retrieved from the telemetry API though mojo
   // service and formatted into protobuf format.
   void SetHwisInfo(hwis_proto::Device* data);
-  // The UUID read from a specific path shall be written into the HWIS data.
-  void SetHwisUuid(hwis_proto::Device* data, std::optional<std::string> uuid);
   // Extract the system data needed by the HWIS system from the telemetry API
   // and convert it into protobuf format.
   void SetSystemInfo(hwis_proto::Device* data);

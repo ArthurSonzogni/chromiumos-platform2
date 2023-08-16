@@ -49,8 +49,12 @@ int main(int argc, char** argv) {
     case flex_hwis::Result::NotAuthorized:
       LOG(INFO) << "flex_hwis_tool wasn't authorized to send data";
       break;
+    case flex_hwis::Result::Error:
+      LOG(ERROR) << "flex_hwis_tool encountered an error";
+      return 1;
     default:
       LOG(INFO) << "flex_hwis_tool has unexpected return value";
+      return 1;
   }
   return 0;
 }
