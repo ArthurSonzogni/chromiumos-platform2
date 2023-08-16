@@ -516,7 +516,7 @@ void DelegateImpl::MonitorVolumeButton(
 }
 
 void DelegateImpl::RunFloatingPoint(base::TimeDelta exec_duration,
-                                    RunPrimeSearchCallback callback) {
+                                    RunFloatingPointCallback callback) {
   base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
 
   auto floating_point_accuracy =
