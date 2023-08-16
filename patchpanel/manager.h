@@ -311,7 +311,7 @@ class Manager {
 
   // Whether multicast lock is held by any app in ARC, used to decide whether
   // to start/stop forwarding multicast traffic to ARC on WiFi.
-  bool android_wifi_multicast_lock_held_ = true;
+  bool android_wifi_multicast_lock_held_ = false;
 
   // Whether device is interactive, used to decide whether to start/stop
   // forwarding multicast traffic to ARC on all multicast enabled networks.
