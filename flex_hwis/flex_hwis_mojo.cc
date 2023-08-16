@@ -269,18 +269,14 @@ void FlexHwisMojo::SetTelemetryInfoForTesting(mojom::TelemetryInfoPtr info) {
 }
 
 void FlexHwisMojo::SetHwisInfo(hwis_proto::Device* data) {
-  // List of hardware information categories to request from cros_healthd.
-  const mojom::ProbeCategoryEnum categories[] = {
-      mojom::ProbeCategoryEnum::kSystem,   mojom::ProbeCategoryEnum::kCpu,
-      mojom::ProbeCategoryEnum::kMemory,   mojom::ProbeCategoryEnum::kBus,
-      mojom::ProbeCategoryEnum::kGraphics, mojom::ProbeCategoryEnum::kInput,
-      mojom::ProbeCategoryEnum::kTpm};
-
   if (telemetry_info_.is_null()) {
-    std::vector<mojom::ProbeCategoryEnum> categories_to_probe;
-    for (const auto& category : categories) {
-      categories_to_probe.push_back(category);
-    }
+    // List of hardware information categories to request from cros_healthd.
+    const std::vector<mojom::ProbeCategoryEnum> categories_to_probe = {
+        mojom::ProbeCategoryEnum::kSystem,   mojom::ProbeCategoryEnum::kCpu,
+        mojom::ProbeCategoryEnum::kMemory,   mojom::ProbeCategoryEnum::kBus,
+        mojom::ProbeCategoryEnum::kGraphics, mojom::ProbeCategoryEnum::kInput,
+        mojom::ProbeCategoryEnum::kTpm};
+
     // Collect hardware information from cros_healthd over mojo interface.
     mojo::Remote<mojom::CrosHealthdProbeService> remote;
     RequestMojoServiceWithDisconnectHandler(
