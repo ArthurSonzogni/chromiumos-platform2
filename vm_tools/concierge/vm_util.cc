@@ -322,7 +322,7 @@ bool CheckProcessExists(pid_t pid) {
 }
 
 std::optional<BalloonStats> GetBalloonStats(
-    std::string socket_path, std::optional<base::TimeDelta> timeout) {
+    const std::string& socket_path, std::optional<base::TimeDelta> timeout) {
   BalloonStats stats;
   if (!CrosvmControl::Get()->BalloonStats(
           socket_path, timeout, &stats.stats_ffi, &stats.balloon_actual)) {
@@ -333,7 +333,8 @@ std::optional<BalloonStats> GetBalloonStats(
   return stats;
 }
 
-std::optional<BalloonWorkingSet> GetBalloonWorkingSet(std::string socket_path) {
+std::optional<BalloonWorkingSet> GetBalloonWorkingSet(
+    const std::string& socket_path) {
   BalloonWorkingSet ws;
   if (!CrosvmControl::Get()->BalloonWorkingSet(socket_path, &ws.working_set_ffi,
                                                &ws.balloon_actual)) {
@@ -381,7 +382,7 @@ std::optional<BalloonStats> ParseBalloonStats(
   return stats;
 }
 
-bool AttachUsbDevice(std::string socket_path,
+bool AttachUsbDevice(const std::string& socket_path,
                      uint8_t bus,
                      uint8_t addr,
                      uint16_t vid,
@@ -393,14 +394,14 @@ bool AttachUsbDevice(std::string socket_path,
   fcntl(fd, F_SETFD, 0);  // Remove the CLOEXEC
 
   return CrosvmControl::Get()->UsbAttach(socket_path, bus, addr, vid, pid,
-                                         device_path, out_port);
+                                         device_path.c_str(), out_port);
 }
 
-bool DetachUsbDevice(std::string socket_path, uint8_t port) {
+bool DetachUsbDevice(const std::string& socket_path, uint8_t port) {
   return CrosvmControl::Get()->UsbDetach(socket_path, port);
 }
 
-bool ListUsbDevice(std::string socket_path,
+bool ListUsbDevice(const std::string& socket_path,
                    std::vector<UsbDeviceEntry>* device) {
   // Allocate enough slots for the max number of USB devices
   // This will never be more than 255
@@ -419,7 +420,7 @@ bool ListUsbDevice(std::string socket_path,
   return true;
 }
 
-bool CrosvmDiskResize(std::string socket_path,
+bool CrosvmDiskResize(const std::string& socket_path,
                       int disk_index,
                       uint64_t new_size) {
   return CrosvmControl::Get()->ResizeDisk(socket_path, disk_index, new_size);

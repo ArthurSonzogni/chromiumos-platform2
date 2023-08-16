@@ -1343,8 +1343,7 @@ void ArcVm::RunVmmSwapOutAfterTrim() {
 
 base::expected<SwapStatus, std::string> ArcVm::FetchVmmSwapStatus() {
   SwapStatus status;
-  if (!CrosvmControl::Get()->VmmSwapStatus(GetVmSocketPath().c_str(),
-                                           &status)) {
+  if (!CrosvmControl::Get()->VmmSwapStatus(GetVmSocketPath(), &status)) {
     return base::unexpected("crosvm command error");
   }
   return status;

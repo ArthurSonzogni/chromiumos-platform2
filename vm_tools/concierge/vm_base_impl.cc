@@ -23,7 +23,8 @@ VmBaseImpl::VmBaseImpl(Config config)
     : network_client_(std::move(config.network_client)),
       seneschal_server_proxy_(std::move(config.seneschal_server_proxy)),
       vsock_cid_(config.vsock_cid),
-      cros_vm_socket_(std::move(config.cros_vm_socket)) {
+      control_socket_path_(
+          config.runtime_dir.Append(config.cros_vm_socket).value()) {
   // Take ownership of the runtime directory.
   CHECK(base::DirectoryExists(config.runtime_dir));
   CHECK(runtime_dir_.Set(config.runtime_dir));
@@ -131,8 +132,8 @@ bool VmBaseImpl::StartProcess(base::StringPairs args) {
   return true;
 }
 
-std::string VmBaseImpl::GetVmSocketPath() const {
-  return runtime_dir_.GetPath().Append(cros_vm_socket_).value();
+const std::string& VmBaseImpl::GetVmSocketPath() const {
+  return control_socket_path_;
 }
 
 bool VmBaseImpl::Stop() const {

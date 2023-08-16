@@ -143,10 +143,11 @@ bool CheckProcessExists(pid_t pid);
 
 // Returns balloon stats info retrieved from virtio-balloon device.
 std::optional<BalloonStats> GetBalloonStats(
-    std::string socket_path, std::optional<base::TimeDelta> timeout);
+    const std::string& socket_path, std::optional<base::TimeDelta> timeout);
 
 // Returns the guest working set from the virtio-balloon device.
-std::optional<BalloonWorkingSet> GetBalloonWorkingSet(std::string socket_path);
+std::optional<BalloonWorkingSet> GetBalloonWorkingSet(
+    const std::string& socket_path);
 
 // Parses balloon stats info from a JSON value.
 std::optional<BalloonStats> ParseBalloonStats(
@@ -154,7 +155,7 @@ std::optional<BalloonStats> ParseBalloonStats(
 
 // Attaches an usb device at host |bus|:|addr|, with |vid|, |pid| and an
 // opened |fd|.
-bool AttachUsbDevice(std::string socket_path,
+bool AttachUsbDevice(const std::string& socket_path,
                      uint8_t bus,
                      uint8_t addr,
                      uint16_t vid,
@@ -163,14 +164,14 @@ bool AttachUsbDevice(std::string socket_path,
                      uint8_t* out_port);
 
 // Detaches the usb device at guest |port|.
-bool DetachUsbDevice(std::string socket_path, uint8_t port);
+bool DetachUsbDevice(const std::string& socket_path, uint8_t port);
 
 // Lists all usb devices attached to guest.
-bool ListUsbDevice(std::string socket_path,
+bool ListUsbDevice(const std::string& socket_path,
                    std::vector<UsbDeviceEntry>* devices);
 
 // Resizes the disk identified by |disk_index| to |new_size| in bytes.
-bool CrosvmDiskResize(std::string socket_path,
+bool CrosvmDiskResize(const std::string& socket_path,
                       int disk_index,
                       uint64_t new_size);
 

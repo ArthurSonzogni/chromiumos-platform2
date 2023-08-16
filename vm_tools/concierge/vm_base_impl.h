@@ -222,7 +222,7 @@ class VmBaseImpl {
   virtual void HandleStatefulUpdate(
       const spaced::StatefulDiskSpaceUpdate update) = 0;
 
-  std::string GetVmSocketPath() const;
+  const std::string& GetVmSocketPath() const;
 
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
@@ -278,11 +278,12 @@ class VmBaseImpl {
   // Handle the device resuming from a suspend.
   virtual void HandleSuspendDone() = 0;
 
+  // The socket that communicates directly with crosvm to change VM
+  // configuration.
+  const std::string control_socket_path_;
+
   // Whether the VM is currently suspended.
   bool suspended_ = false;
-
-  // Name of the socket to communicate to the crosvm binary.
-  const std::string cros_vm_socket_;
 };
 
 }  // namespace concierge
