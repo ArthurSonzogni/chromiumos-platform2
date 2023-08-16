@@ -2575,8 +2575,8 @@ class UserDataAuthExTest : public UserDataAuthTest {
                     << container.status();
       return;
     }
-    if (auto status = userdataauth_->user_secret_stash_storage_->Persist(
-            *container, obfuscated_username);
+    if (auto status = userdataauth_->uss_storage_->Persist(*container,
+                                                           obfuscated_username);
         !status.ok()) {
       ADD_FAILURE() << "Making a test USS failed during Persist: " << status;
       return;

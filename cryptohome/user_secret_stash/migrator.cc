@@ -40,7 +40,7 @@ constexpr char kMigrationSecretLabel[] = "vk_to_uss_migration_secret_label";
 UssMigrator::UssMigrator(Username username) : username_(std::move(username)) {}
 
 void UssMigrator::MigrateVaultKeysetToUss(
-    const UserSecretStashStorage& user_secret_stash_storage,
+    const UssStorage& user_secret_stash_storage,
     const std::string& label,
     const FileSystemKeyset& filesystem_keyset,
     CompletionCallback completion_callback) {

@@ -5,9 +5,6 @@
 #ifndef CRYPTOHOME_USER_SECRET_STASH_STORAGE_H_
 #define CRYPTOHOME_USER_SECRET_STASH_STORAGE_H_
 
-#include <optional>
-#include <string>
-
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/error/cryptohome_error.h"
@@ -16,14 +13,14 @@
 
 namespace cryptohome {
 
-class UserSecretStashStorage final {
+class UssStorage final {
  public:
-  explicit UserSecretStashStorage(Platform* platform);
+  explicit UssStorage(Platform* platform);
 
-  UserSecretStashStorage(const UserSecretStashStorage&) = delete;
-  UserSecretStashStorage& operator=(const UserSecretStashStorage&) = delete;
+  UssStorage(const UssStorage&) = delete;
+  UssStorage& operator=(const UssStorage&) = delete;
 
-  ~UserSecretStashStorage();
+  ~UssStorage();
 
   // Persists the serialized USS container, as created by
   // `UserSecretStash::GetEncryptedContainer()`, in the given user's directory

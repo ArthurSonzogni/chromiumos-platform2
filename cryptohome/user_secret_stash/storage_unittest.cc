@@ -4,8 +4,6 @@
 
 #include "cryptohome/user_secret_stash/storage.h"
 
-#include <optional>
-
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
@@ -27,16 +25,16 @@ constexpr char kUssContainer[] = "fake_uss_container";
 
 }  // namespace
 
-class UserSecretStashStorageTest : public ::testing::Test {
+class UssStorageTest : public ::testing::Test {
  protected:
   const ObfuscatedUsername kObfuscatedUsername{"foo@gmail.com"};
 
   MockPlatform platform_;
-  UserSecretStashStorage uss_storage_{&platform_};
+  UssStorage uss_storage_{&platform_};
 };
 
 // Test the successful scenario of the USS persisting and loading.
-TEST_F(UserSecretStashStorageTest, PersistThenLoad) {
+TEST_F(UssStorageTest, PersistThenLoad) {
   // Write the USS.
   EXPECT_TRUE(
       uss_storage_.Persist(BlobFromString(kUssContainer), kObfuscatedUsername)
@@ -53,7 +51,7 @@ TEST_F(UserSecretStashStorageTest, PersistThenLoad) {
 }
 
 // Test that the persisting fails when the USS file writing fails.
-TEST_F(UserSecretStashStorageTest, PersistFailure) {
+TEST_F(UssStorageTest, PersistFailure) {
   const base::FilePath path =
       UserSecretStashPath(kObfuscatedUsername, kUserSecretStashDefaultSlot);
   EXPECT_CALL(platform_, WriteFileAtomicDurable(path, _, _))
@@ -64,7 +62,7 @@ TEST_F(UserSecretStashStorageTest, PersistFailure) {
 }
 
 // Test that the loading fails when the USS file doesn't exist.
-TEST_F(UserSecretStashStorageTest, LoadFailureNonExisting) {
+TEST_F(UssStorageTest, LoadFailureNonExisting) {
   EXPECT_FALSE(uss_storage_.LoadPersisted(kObfuscatedUsername).ok());
 }
 

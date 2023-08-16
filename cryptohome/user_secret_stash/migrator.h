@@ -26,6 +26,7 @@ namespace cryptohome {
 class UssMigrator {
  public:
   explicit UssMigrator(Username username);
+
   UssMigrator(const UssMigrator&) = delete;
   UssMigrator& operator=(const UssMigrator&) = delete;
 
@@ -37,11 +38,10 @@ class UssMigrator {
 
   // The function that migrates the VaultKeyset with |label| and
   // |filesystem_keyset| to AuthFactor and USS.
-  void MigrateVaultKeysetToUss(
-      const UserSecretStashStorage& user_secret_stash_storage,
-      const std::string& label,
-      const FileSystemKeyset& filesystem_keyset,
-      CompletionCallback completion_callback);
+  void MigrateVaultKeysetToUss(const UssStorage& user_secret_stash_storage,
+                               const std::string& label,
+                               const FileSystemKeyset& filesystem_keyset,
+                               CompletionCallback completion_callback);
 
  private:
   // Generates migration secret from the filesystem keyset.

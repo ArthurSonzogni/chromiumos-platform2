@@ -15,7 +15,7 @@ namespace cryptohome {
 // Interface for reading UserMetadata.
 class UserMetadataReader {
  public:
-  explicit UserMetadataReader(UserSecretStashStorage* storage);
+  explicit UserMetadataReader(UssStorage* storage);
 
   UserMetadataReader(const UserMetadataReader&) = delete;
   UserMetadataReader& operator=(const UserMetadataReader&) = delete;
@@ -26,7 +26,7 @@ class UserMetadataReader {
       const ObfuscatedUsername& username);
 
  private:
-  UserSecretStashStorage* storage_;
+  UssStorage* storage_;
 };
 
 }  // namespace cryptohome

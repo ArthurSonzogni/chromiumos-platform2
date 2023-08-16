@@ -570,13 +570,11 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     auth_factor_manager_ = default_auth_factor_manager_.get();
   }
 
-  if (!user_secret_stash_storage_) {
-    default_user_secret_stash_storage_ =
-        std::make_unique<UserSecretStashStorage>(platform_);
-    user_secret_stash_storage_ = default_user_secret_stash_storage_.get();
+  if (!uss_storage_) {
+    default_uss_storage_ = std::make_unique<UssStorage>(platform_);
+    uss_storage_ = default_uss_storage_.get();
   }
-  user_metadata_reader_ =
-      std::make_unique<UserMetadataReader>(user_secret_stash_storage_);
+  user_metadata_reader_ = std::make_unique<UserMetadataReader>(uss_storage_);
 
   if (!auth_factor_driver_manager_) {
     default_auth_factor_driver_manager_ =
@@ -592,8 +590,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             crypto_, platform_, sessions_, keyset_management_,
             auth_block_utility_, auth_factor_driver_manager_,
-            auth_factor_manager_, user_secret_stash_storage_,
-            user_metadata_reader_.get(), &async_init_features_});
+            auth_factor_manager_, uss_storage_, user_metadata_reader_.get(),
+            &async_init_features_});
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 
@@ -3298,8 +3296,7 @@ void UserDataAuth::ListAuthFactors(
     // factors being loaded.
     UserSecretStash::Container uss_container;
     std::set<std::string_view> uss_labels;
-    if (auto uss_blob =
-            user_secret_stash_storage_->LoadPersisted(obfuscated_username);
+    if (auto uss_blob = uss_storage_->LoadPersisted(obfuscated_username);
         uss_blob.ok()) {
       if (auto loaded_container =
               UserSecretStash::Container::FromBlob(*uss_blob);

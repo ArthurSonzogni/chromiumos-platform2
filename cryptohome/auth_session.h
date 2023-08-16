@@ -122,7 +122,7 @@ class AuthSession final {
     AuthBlockUtility* auth_block_utility = nullptr;
     AuthFactorDriverManager* auth_factor_driver_manager = nullptr;
     AuthFactorManager* auth_factor_manager = nullptr;
-    UserSecretStashStorage* user_secret_stash_storage = nullptr;
+    UssStorage* user_secret_stash_storage = nullptr;
     UserMetadataReader* user_metadata_reader = nullptr;
     AsyncInitFeatures* features = nullptr;
   };
@@ -826,7 +826,7 @@ class AuthSession final {
   AuthBlockUtility* const auth_block_utility_;
   AuthFactorDriverManager* const auth_factor_driver_manager_;
   AuthFactorManager* const auth_factor_manager_;
-  UserSecretStashStorage* const user_secret_stash_storage_;
+  UssStorage* const uss_storage_;
   UserMetadataReader* const user_metadata_reader_;
   // Unowned pointer.
   AsyncInitFeatures* const features_;

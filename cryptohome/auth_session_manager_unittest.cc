@@ -73,8 +73,8 @@ class AuthSessionManagerTest : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
       nullptr};
   AuthFactorManager auth_factor_manager_{&platform_};
-  UserSecretStashStorage user_secret_stash_storage_{&platform_};
-  UserMetadataReader user_metadata_reader_{&user_secret_stash_storage_};
+  UssStorage uss_storage_{&platform_};
+  UserMetadataReader user_metadata_reader_{&uss_storage_};
   FakeFeaturesForTesting features_;
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
@@ -83,7 +83,7 @@ class AuthSessionManagerTest : public ::testing::Test {
                                          &auth_block_utility_,
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
-                                         &user_secret_stash_storage_,
+                                         &uss_storage_,
                                          &user_metadata_reader_,
                                          &features_.async};
   AuthSessionManager auth_session_manager_{backing_apis_};

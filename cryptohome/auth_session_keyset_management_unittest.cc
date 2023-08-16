@@ -161,8 +161,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             &crypto_, &platform_, &user_session_map_, &keyset_management_,
             &auth_block_utility_, &auth_factor_driver_manager_,
-            &auth_factor_manager_, &user_secret_stash_storage_,
-            &user_metadata_reader_, &features_.async});
+            &auth_factor_manager_, &uss_storage_, &user_metadata_reader_,
+            &features_.async});
     // Initializing UserData class.
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -171,8 +171,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     userdataauth_.set_auth_factor_driver_manager_for_testing(
         &auth_factor_driver_manager_);
     userdataauth_.set_auth_factor_manager_for_testing(&auth_factor_manager_);
-    userdataauth_.set_user_secret_stash_storage_for_testing(
-        &user_secret_stash_storage_);
+    userdataauth_.set_uss_storage_for_testing(&uss_storage_);
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
     userdataauth_.set_pkcs11_token_factory(&pkcs11_token_factory_);
     userdataauth_.set_user_activity_timestamp_manager(
@@ -584,8 +583,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
       nullptr};
   AuthFactorManager auth_factor_manager_{&platform_};
-  UserSecretStashStorage user_secret_stash_storage_{&platform_};
-  UserMetadataReader user_metadata_reader_{&user_secret_stash_storage_};
+  UssStorage uss_storage_{&platform_};
+  UserMetadataReader user_metadata_reader_{&uss_storage_};
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
                                          &user_session_map_,
@@ -593,7 +592,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                          &auth_block_utility_,
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
-                                         &user_secret_stash_storage_,
+                                         &uss_storage_,
                                          &user_metadata_reader_,
                                          &features_.async};
 
@@ -834,7 +833,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       &auth_block_utility_,
       &auth_factor_driver_manager_,
       &auth_factor_manager_,
-      &user_secret_stash_storage_,
+      &uss_storage_,
       &user_metadata_reader_,
       &features_.async};
   backing_apis_ = std::move(backing_api_with_mock_km);
@@ -917,7 +916,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   AuthenticateAndMigrate(auth_session, kDefaultLabel, kPassword);
 
   // Verify that migrator created the user_secret_stash and uss_main_key.
-  UserSecretStashStorage uss_storage(&platform_);
+  UssStorage uss_storage(&platform_);
   CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
       uss_storage.LoadPersisted(users_[0].obfuscated);
   ASSERT_TRUE(uss_serialized_container_status.ok());
@@ -978,7 +977,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
   AuthenticateAndMigrate(auth_session2, kPasswordLabel, kPassword);
 
   // Verify that migrator loaded the user_secret_stash and uss_main_key.
-  UserSecretStashStorage uss_storage(&platform_);
+  UssStorage uss_storage(&platform_);
   CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
       uss_storage.LoadPersisted(users_[0].obfuscated);
   ASSERT_TRUE(uss_serialized_container_status.ok());
@@ -1049,7 +1048,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
 
   // Verify
   // Verify that migrator loaded the user_secret_stash and uss_main_key.
-  UserSecretStashStorage uss_storage(&platform_);
+  UssStorage uss_storage(&platform_);
   CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
       uss_storage.LoadPersisted(users_[0].obfuscated);
   ASSERT_TRUE(uss_serialized_container_status.ok());
@@ -1108,7 +1107,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   AuthenticateAndMigrate(auth_session3, kPasswordLabel2, kPassword2);
 
   // Verify that migrator created the user_secret_stash and uss_main_key.
-  UserSecretStashStorage uss_storage(&platform_);
+  UssStorage uss_storage(&platform_);
   CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
       uss_storage.LoadPersisted(users_[0].obfuscated);
   ASSERT_TRUE(uss_serialized_container_status.ok());
@@ -1226,8 +1225,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
       std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
           &crypto_, &platform_, &user_session_map_, &keyset_management_,
           &mock_auth_block_utility_, &auth_factor_driver_manager_,
-          &auth_factor_manager_, &user_secret_stash_storage_,
-          &user_metadata_reader_, &features_.async});
+          &auth_factor_manager_, &uss_storage_, &user_metadata_reader_,
+          &features_.async});
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       auth_session_manager_mock->CreateAuthSession(Username(kUsername), flags,
                                                    AuthIntent::kDecrypt);

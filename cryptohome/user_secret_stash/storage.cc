@@ -6,9 +6,6 @@
 
 #include <sys/stat.h>
 
-#include <optional>
-#include <string>
-
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -31,12 +28,11 @@ namespace cryptohome {
 // Use rw------- for the USS files.
 constexpr mode_t kUserSecretStashFilePermissions = 0600;
 
-UserSecretStashStorage::UserSecretStashStorage(Platform* platform)
-    : platform_(platform) {}
+UssStorage::UssStorage(Platform* platform) : platform_(platform) {}
 
-UserSecretStashStorage::~UserSecretStashStorage() = default;
+UssStorage::~UssStorage() = default;
 
-CryptohomeStatus UserSecretStashStorage::Persist(
+CryptohomeStatus UssStorage::Persist(
     const brillo::Blob& uss_container_flatbuffer,
     const ObfuscatedUsername& obfuscated_username) {
   // TODO(b:232299885): Write to the next available slot, and clean up old slots
@@ -61,7 +57,7 @@ CryptohomeStatus UserSecretStashStorage::Persist(
   return OkStatus<CryptohomeError>();
 }
 
-CryptohomeStatusOr<brillo::Blob> UserSecretStashStorage::LoadPersisted(
+CryptohomeStatusOr<brillo::Blob> UssStorage::LoadPersisted(
     const ObfuscatedUsername& obfuscated_username) const {
   // TODO(b:232299885): Read from the latest available slot.
   const base::FilePath path =

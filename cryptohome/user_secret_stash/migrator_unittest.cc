@@ -72,9 +72,9 @@ class UssMigratorTest : public ::testing::Test {
     std::unique_ptr<VaultKeyset> vault_keyset = std::move(iter->second);
     TestFuture<std::unique_ptr<UserSecretStash>, brillo::SecureBlob>
         migrate_future;
-    migrator_.MigrateVaultKeysetToUss(
-        user_secret_stash_storage_, vault_keyset->GetLabel(),
-        file_system_keyset_, migrate_future.GetCallback());
+    migrator_.MigrateVaultKeysetToUss(uss_storage_, vault_keyset->GetLabel(),
+                                      file_system_keyset_,
+                                      migrate_future.GetCallback());
     std::tie(user_secret_stash_, uss_main_key_) = migrate_future.Take();
   }
 
@@ -82,10 +82,9 @@ class UssMigratorTest : public ::testing::Test {
     CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
         user_secret_stash_->GetEncryptedContainer(uss_main_key_);
     ASSERT_THAT(encrypted_uss_container, IsOk());
-    EXPECT_THAT(
-        user_secret_stash_storage_.Persist(encrypted_uss_container.value(),
-                                           SanitizeUserName(username_)),
-        IsOk());
+    EXPECT_THAT(uss_storage_.Persist(encrypted_uss_container.value(),
+                                     SanitizeUserName(username_)),
+                IsOk());
   }
 
   void CorruptUssAndResetState() {
@@ -115,7 +114,7 @@ class UssMigratorTest : public ::testing::Test {
   FileSystemKeyset file_system_keyset_;
   std::unique_ptr<UserSecretStash> user_secret_stash_;
   brillo::SecureBlob uss_main_key_;
-  UserSecretStashStorage user_secret_stash_storage_{&platform_};
+  UssStorage uss_storage_{&platform_};
   std::map<std::string, std::unique_ptr<VaultKeyset>> vk_map_;
   std::unique_ptr<VaultKeyset> pin_vault_keyset_;
   const Username username_;

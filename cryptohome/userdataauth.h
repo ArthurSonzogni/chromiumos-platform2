@@ -482,11 +482,8 @@ class UserDataAuth {
     auth_factor_manager_ = value;
   }
 
-  // Override |user_secret_stash_storage_| for testing purpose
-  void set_user_secret_stash_storage_for_testing(
-      UserSecretStashStorage* value) {
-    user_secret_stash_storage_ = value;
-  }
+  // Override |uss_storage_| for testing purpose
+  void set_uss_storage_for_testing(UssStorage* value) { uss_storage_ = value; }
 
   void set_user_session_map_for_testing(UserSessionMap* user_session_map) {
     sessions_ = user_session_map;
@@ -1143,10 +1140,10 @@ class UserDataAuth {
   AuthFactorManager* auth_factor_manager_ = nullptr;
 
   // User secret stash storage helper.
-  std::unique_ptr<UserSecretStashStorage> default_user_secret_stash_storage_;
-  // Usually set to |default_user_secret_stash_storage_|, but can be overridden
+  std::unique_ptr<UssStorage> default_uss_storage_;
+  // Usually set to |default_uss_storage_|, but can be overridden
   // for tests.
-  UserSecretStashStorage* user_secret_stash_storage_ = nullptr;
+  UssStorage* uss_storage_ = nullptr;
 
   // User metadata helper, wrapped around the USS storage.
   std::unique_ptr<UserMetadataReader> user_metadata_reader_;

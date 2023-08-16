@@ -222,8 +222,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     userdataauth_.set_auth_factor_driver_manager_for_testing(
         &auth_factor_driver_manager_);
     userdataauth_.set_auth_factor_manager_for_testing(&auth_factor_manager_);
-    userdataauth_.set_user_secret_stash_storage_for_testing(
-        &user_secret_stash_storage_);
+    userdataauth_.set_uss_storage_for_testing(&uss_storage_);
     userdataauth_.set_user_session_map_for_testing(&user_session_map_);
     userdataauth_.set_pkcs11_token_factory(&pkcs11_token_factory_);
     userdataauth_.set_user_activity_timestamp_manager(
@@ -260,8 +259,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             &crypto_, &platform_, &user_session_map_, &keyset_management_,
             auth_block_utility, &auth_factor_driver_manager_,
-            &auth_factor_manager_, &user_secret_stash_storage_,
-            &user_metadata_reader_, &features_.async});
+            &auth_factor_manager_, &uss_storage_, &user_metadata_reader_,
+            &features_.async});
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
   }
 
@@ -292,8 +291,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
       nullptr};
   AuthFactorManager auth_factor_manager_{&platform_};
-  UserSecretStashStorage user_secret_stash_storage_{&platform_};
-  UserMetadataReader user_metadata_reader_{&user_secret_stash_storage_};
+  UssStorage uss_storage_{&platform_};
+  UserMetadataReader user_metadata_reader_{&uss_storage_};
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   NiceMock<MockUserOldestActivityTimestampManager>

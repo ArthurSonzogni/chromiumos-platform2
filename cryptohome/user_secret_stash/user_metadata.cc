@@ -12,7 +12,7 @@
 
 namespace cryptohome {
 
-UserMetadataReader::UserMetadataReader(UserSecretStashStorage* storage)
+UserMetadataReader::UserMetadataReader(UssStorage* storage)
     : storage_(storage) {}
 
 CryptohomeStatusOr<UserMetadata> UserMetadataReader::Load(

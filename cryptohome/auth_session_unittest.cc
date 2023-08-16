@@ -389,8 +389,8 @@ class AuthSessionTest : public ::testing::Test {
       nullptr};
   AuthFactorManager auth_factor_manager_{&platform_};
   FakeFeaturesForTesting fake_features_;
-  UserSecretStashStorage user_secret_stash_storage_{&platform_};
-  UserMetadataReader user_metadata_reader_{&user_secret_stash_storage_};
+  UssStorage uss_storage_{&platform_};
+  UserMetadataReader user_metadata_reader_{&uss_storage_};
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
                                          &user_session_map_,
@@ -398,7 +398,7 @@ class AuthSessionTest : public ::testing::Test {
                                          &auth_block_utility_,
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
-                                         &user_secret_stash_storage_,
+                                         &uss_storage_,
                                          &user_metadata_reader_,
                                          &fake_features_.async};
 
@@ -2555,9 +2555,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -2656,9 +2655,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -2758,9 +2756,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -2857,9 +2854,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -2953,9 +2949,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3066,9 +3061,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3170,9 +3164,8 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3330,9 +3323,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3471,9 +3463,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3654,9 +3645,8 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordPostAction) {
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
   ASSERT_TRUE(encrypted_uss.ok());
-  EXPECT_TRUE(user_secret_stash_storage_
-                  .Persist(encrypted_uss.value(), obfuscated_username)
-                  .ok());
+  EXPECT_TRUE(
+      uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
   // Setup the credential verifier.
   auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, VerifyUser(SanitizeUserName(kFakeUsername)))
