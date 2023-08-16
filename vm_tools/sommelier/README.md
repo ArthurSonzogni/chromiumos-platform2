@@ -233,7 +233,7 @@ sommelier --accelerators="<Alt>Bracketright,<Alt>Bracketleft" gedit
 
 ## Gamepad Support
 
-See [GAMING.md](GAMING.md).
+See [gaming.md](gaming.md).
 
 ## Writing unit tests
 
