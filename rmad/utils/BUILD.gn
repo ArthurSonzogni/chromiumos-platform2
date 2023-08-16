@@ -71,6 +71,7 @@ if (use.test) {
       "json_store_test.cc",
       "mojo_service_utils_test.cc",
       "regions_utils_test.cc",
+      "rpc_utils_test.cc",
       "sensor_calibration_utils_test.cc",
       "sys_utils_test.cc",
       "type_conversions_test.cc",
