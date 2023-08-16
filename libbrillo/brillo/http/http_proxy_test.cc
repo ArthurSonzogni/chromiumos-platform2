@@ -40,10 +40,10 @@ class HttpProxyTest : public testing::Test {
     std::move(*callback).Run(CreateDBusResponse(method_call).get());
   }
 
-  std::unique_ptr<dbus::Response> ResolveProxyHandler(
-      dbus::MethodCall* method_call, int timeout_msec) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error>
+  ResolveProxyHandler(dbus::MethodCall* method_call, int timeout_msec) {
     if (null_dbus_response_) {
-      return std::unique_ptr<dbus::Response>();
+      return base::unexpected(dbus::Error());
     }
     return CreateDBusResponse(method_call);
   }
@@ -99,7 +99,7 @@ class HttpProxyTest : public testing::Test {
 TEST_F(HttpProxyTest, DBusNullResponseFails) {
   std::vector<std::string> proxies;
   null_dbus_response_ = true;
-  EXPECT_CALL(*object_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*object_proxy_, CallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_FALSE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
 }
@@ -107,14 +107,14 @@ TEST_F(HttpProxyTest, DBusNullResponseFails) {
 TEST_F(HttpProxyTest, DBusInvalidResponseFails) {
   std::vector<std::string> proxies;
   invalid_dbus_response_ = true;
-  EXPECT_CALL(*object_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*object_proxy_, CallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_FALSE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
 }
 
 TEST_F(HttpProxyTest, NoProxies) {
   std::vector<std::string> proxies;
-  EXPECT_CALL(*object_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*object_proxy_, CallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_TRUE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
   EXPECT_THAT(proxies, ElementsAre(kDirectProxy));
@@ -123,7 +123,7 @@ TEST_F(HttpProxyTest, NoProxies) {
 TEST_F(HttpProxyTest, MultipleProxiesWithoutDirect) {
   proxy_info_ = "proxy example.com; socks5 foo.com;";
   std::vector<std::string> proxies;
-  EXPECT_CALL(*object_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*object_proxy_, CallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_TRUE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
   EXPECT_THAT(proxies, ElementsAre("http://example.com", "socks5://foo.com",
@@ -135,7 +135,7 @@ TEST_F(HttpProxyTest, MultipleProxiesWithDirect) {
       "socks foo.com; Https example.com ; badproxy example2.com ; "
       "socks5 test.com  ; proxy foobar.com; DIRECT ";
   std::vector<std::string> proxies;
-  EXPECT_CALL(*object_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*object_proxy_, CallMethodAndBlock(_, _))
       .WillOnce(Invoke(this, &HttpProxyTest::ResolveProxyHandler));
   EXPECT_TRUE(GetChromeProxyServers(bus_, kTestUrl, &proxies));
   EXPECT_THAT(proxies, ElementsAre("socks4://foo.com", "https://example.com",

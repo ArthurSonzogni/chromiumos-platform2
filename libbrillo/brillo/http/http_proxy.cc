@@ -112,8 +112,10 @@ bool GetChromeProxyServers(scoped_refptr<dbus::Bus> bus,
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(url);
   std::unique_ptr<dbus::Response> response =
-      proxy->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      proxy
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   return ParseProxyInfo(response.get(), proxies_out);
 }
 
