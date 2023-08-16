@@ -198,9 +198,8 @@ class ClobberState {
   // contents (unlike on an SSD).
   void ShredRotationalStatefulFiles();
 
-  // Wipe encryption key information from the stateful partition for supported
-  // devices.
-  bool WipeKeysets();
+  // Wipe key information from the stateful partition for supported devices.
+  bool WipeKeyMaterial();
 
   // Forces a delay, writing progress to the TTY.  This is used to prevent
   // developer mode transitions from happening too quickly.

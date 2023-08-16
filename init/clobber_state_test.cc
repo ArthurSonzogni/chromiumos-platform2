@@ -986,13 +986,20 @@ class AttemptSwitchToFastWipeTest : public ::testing::Test {
         shadow.Append("vault/fileB"),
     });
 
-    keyset_paths_ = std::vector<base::FilePath>({
+    key_material_paths_ = std::vector<base::FilePath>({
         fake_stateful_.Append("encrypted.key"),
         fake_stateful_.Append("encrypted.needs-finalization"),
         fake_stateful_.Append("home/.shadow/cryptohome.key"),
         fake_stateful_.Append("home/.shadow/extra_dir/master"),
         fake_stateful_.Append("home/.shadow/other_dir/master"),
-        fake_stateful_.Append("home/.shadow/random_dir/master"),
+        fake_stateful_.Append("home/.shadow/random_dir/master.0"),
+        fake_stateful_.Append("home/.shadow/random_dir/master.1"),
+        fake_stateful_.Append(
+            "home/.shadow/new_dir/auth_factors/password.first"),
+        fake_stateful_.Append(
+            "home/.shadow/new_dir/auth_factors/password.second"),
+        fake_stateful_.Append("home/.shadow/new_dir/auth_factors/pin.other"),
+        fake_stateful_.Append("home/.shadow/new_dir/user_secret_stash/uss.0"),
         fake_stateful_.Append("home/.shadow/salt"),
         fake_stateful_.Append("home/.shadow/salt.sum"),
     });
@@ -1005,7 +1012,7 @@ class AttemptSwitchToFastWipeTest : public ::testing::Test {
       ASSERT_TRUE(CreateDirectoryAndWriteFile(path, kContents));
     }
 
-    for (const base::FilePath& path : keyset_paths_) {
+    for (const base::FilePath& path : key_material_paths_) {
       ASSERT_TRUE(CreateDirectoryAndWriteFile(path, kContents));
     }
 
@@ -1047,8 +1054,8 @@ class AttemptSwitchToFastWipeTest : public ::testing::Test {
   base::FilePath fake_stateful_;
   // Files which are deleted by ShredRotationalStatefulPaths.
   std::vector<base::FilePath> encrypted_stateful_paths_;
-  // Files which are deleted by WipeKeysets.
-  std::vector<base::FilePath> keyset_paths_;
+  // Files which are deleted by WipeKeyMaterial.
+  std::vector<base::FilePath> key_material_paths_;
   // Files which will be shredded (overwritten) but not deleted by
   // ShredRotationalStatefulPaths.
   std::vector<base::FilePath> shredded_paths_;
@@ -1063,7 +1070,7 @@ TEST_F(AttemptSwitchToFastWipeTest, NotRotationalNoSecureErase) {
   clobber_.AttemptSwitchToFastWipe(false);
   EXPECT_FALSE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsUntouched(encrypted_stateful_paths_);
-  CheckPathsUntouched(keyset_paths_);
+  CheckPathsUntouched(key_material_paths_);
   CheckPathsUntouched(shredded_paths_);
 }
 
@@ -1076,7 +1083,7 @@ TEST_F(AttemptSwitchToFastWipeTest, AlreadyFast) {
   clobber_.AttemptSwitchToFastWipe(true);
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsUntouched(encrypted_stateful_paths_);
-  CheckPathsUntouched(keyset_paths_);
+  CheckPathsUntouched(key_material_paths_);
   CheckPathsUntouched(shredded_paths_);
 }
 
@@ -1089,7 +1096,7 @@ TEST_F(AttemptSwitchToFastWipeTest, RotationalNoSecureErase) {
   clobber_.AttemptSwitchToFastWipe(true);
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsDeleted(encrypted_stateful_paths_);
-  CheckPathsShredded(keyset_paths_);
+  CheckPathsShredded(key_material_paths_);
   CheckPathsShredded(shredded_paths_);
 }
 
@@ -1102,7 +1109,7 @@ TEST_F(AttemptSwitchToFastWipeTest, SecureEraseNotRotational) {
   clobber_.AttemptSwitchToFastWipe(false);
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsUntouched(encrypted_stateful_paths_);
-  CheckPathsDeleted(keyset_paths_);
+  CheckPathsDeleted(key_material_paths_);
   CheckPathsUntouched(shredded_paths_);
 }
 
@@ -1116,7 +1123,7 @@ TEST_F(AttemptSwitchToFastWipeTest, SecureEraseNotRotationalFactoryWipe) {
   clobber_.AttemptSwitchToFastWipe(false);
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsUntouched(encrypted_stateful_paths_);
-  CheckPathsDeleted(keyset_paths_);
+  CheckPathsDeleted(key_material_paths_);
   CheckPathsUntouched(shredded_paths_);
 }
 
@@ -1129,7 +1136,7 @@ TEST_F(AttemptSwitchToFastWipeTest, RotationalSecureErase) {
   clobber_.AttemptSwitchToFastWipe(true);
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsDeleted(encrypted_stateful_paths_);
-  CheckPathsShredded(keyset_paths_);
+  CheckPathsShredded(key_material_paths_);
   CheckPathsShredded(shredded_paths_);
 }
 
@@ -1143,7 +1150,7 @@ TEST_F(AttemptSwitchToFastWipeTest, RotationalSecureEraseFactoryWipe) {
   clobber_.AttemptSwitchToFastWipe(true);
   EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
   CheckPathsDeleted(encrypted_stateful_paths_);
-  CheckPathsShredded(keyset_paths_);
+  CheckPathsShredded(key_material_paths_);
   CheckPathsShredded(shredded_paths_);
 }
 
@@ -1233,9 +1240,9 @@ TEST_F(ShredRotationalStatefulFilesTest, Mounted) {
   CheckPathsShredded(shredded_paths_);
 }
 
-class WipeKeysetsTest : public ::testing::Test {
+class WipeCryptohomeTest : public ::testing::Test {
  protected:
-  WipeKeysetsTest()
+  WipeCryptohomeTest()
       : clobber_(ClobberState::Arguments(),
                  std::make_unique<CrosSystemFake>(),
                  std::make_unique<ClobberUi>(DevNull())) {}
@@ -1251,7 +1258,14 @@ class WipeKeysetsTest : public ::testing::Test {
         fake_stateful_.Append("home/.shadow/cryptohome.key"),
         fake_stateful_.Append("home/.shadow/extra_dir/master"),
         fake_stateful_.Append("home/.shadow/other_dir/master"),
-        fake_stateful_.Append("home/.shadow/random_dir/master"),
+        fake_stateful_.Append("home/.shadow/random_dir/master.0"),
+        fake_stateful_.Append("home/.shadow/random_dir/master.1"),
+        fake_stateful_.Append(
+            "home/.shadow/new_dir/auth_factors/password.first"),
+        fake_stateful_.Append(
+            "home/.shadow/new_dir/auth_factors/password.second"),
+        fake_stateful_.Append("home/.shadow/new_dir/auth_factors/pin.other"),
+        fake_stateful_.Append("home/.shadow/new_dir/user_secret_stash/uss.0"),
         fake_stateful_.Append("home/.shadow/salt"),
         fake_stateful_.Append("home/.shadow/salt.sum"),
     });
@@ -1297,22 +1311,22 @@ class WipeKeysetsTest : public ::testing::Test {
   std::vector<base::FilePath> ignored_paths_;
 };
 
-TEST_F(WipeKeysetsTest, NotSupported) {
+TEST_F(WipeCryptohomeTest, NotSupported) {
   clobber_.SetSecureEraseSupported(false);
   CheckPathsUntouched(deleted_paths_);
   CheckPathsUntouched(ignored_paths_);
 
-  EXPECT_FALSE(clobber_.WipeKeysets());
+  EXPECT_FALSE(clobber_.WipeKeyMaterial());
 
   CheckPathsUntouched(ignored_paths_);
 }
 
-TEST_F(WipeKeysetsTest, Supported) {
+TEST_F(WipeCryptohomeTest, Supported) {
   clobber_.SetSecureEraseSupported(true);
   CheckPathsUntouched(deleted_paths_);
   CheckPathsUntouched(ignored_paths_);
 
-  EXPECT_TRUE(clobber_.WipeKeysets());
+  EXPECT_TRUE(clobber_.WipeKeyMaterial());
 
   CheckPathsDeleted(deleted_paths_);
   CheckPathsUntouched(ignored_paths_);

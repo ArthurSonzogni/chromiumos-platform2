@@ -1565,18 +1565,18 @@ void ClobberState::AttemptSwitchToFastWipe(bool is_rotational) {
     LOG(INFO) << "Switching to fast wipe";
   }
 
-  // For drives that support secure erasure, wipe the keysets,
-  // and then run the drives through "fast" mode.
+  // For drives that support secure erasure, wipe the stateful key material, and
+  // then run the drives through "fast" mode.
   //
   // Note: currently only eMMC-based SSDs are supported.
   if (!args_.fast_wipe) {
-    LOG(INFO) << "Attempting to wipe encryption keysets";
-    if (WipeKeysets()) {
-      LOG(INFO) << "Wiping encryption keysets succeeded";
+    LOG(INFO) << "Attempting to wipe key material";
+    if (WipeKeyMaterial()) {
+      LOG(INFO) << "Wiping key material succeeded";
       args_.fast_wipe = true;
       LOG(INFO) << "Switching to fast wipe";
     } else {
-      LOG(INFO) << "Wiping encryption keysets failed";
+      LOG(INFO) << "Wiping key material failed";
     }
   }
 }
@@ -1619,7 +1619,8 @@ void ClobberState::ShredRotationalStatefulFiles() {
   sync();
 }
 
-bool ClobberState::WipeKeysets() {
+bool ClobberState::WipeKeyMaterial() {
+  // Delete all of the top-level key files.
   std::vector<std::string> key_files{
       "encrypted.key", "encrypted.needs-finalization",
       "home/.shadow/cryptohome.key", "home/.shadow/salt",
@@ -1636,22 +1637,45 @@ bool ClobberState::WipeKeysets() {
     }
   }
 
-  // Delete files named 'master' in directories contained in '.shadow'.
+  // Delete user-specific keyfiles in individual user shadow directories.
   base::FileEnumerator directories(stateful_.Append("home/.shadow"),
                                    /*recursive=*/false,
                                    base::FileEnumerator::FileType::DIRECTORIES);
-  for (base::FilePath dir = directories.Next(); !dir.empty();
-       dir = directories.Next()) {
-    base::FileEnumerator files(dir, /*recursive=*/false,
-                               base::FileEnumerator::FileType::FILES);
-    for (base::FilePath file = files.Next(); !file.empty();
-         file = files.Next()) {
-      if (file.RemoveExtension().BaseName() == base::FilePath("master")) {
-        found_file = true;
-        if (!SecureErase(file)) {
-          LOG(ERROR) << "Securely erasing file failed: " << file.value();
-          return false;
-        }
+  for (base::FilePath user_dir = directories.Next(); !user_dir.empty();
+       user_dir = directories.Next()) {
+    std::vector<base::FilePath> files_to_erase;
+    // Find old-style vault keyset files. This support can be removed once
+    // cryptohomed no longer has support for reading from VaultKeyset files.
+    base::FileEnumerator vk_files(user_dir, /*recursive=*/false,
+                                  base::FileEnumerator::FileType::FILES);
+    for (base::FilePath file = vk_files.Next(); !file.empty();
+         file = vk_files.Next()) {
+      if (file.RemoveFinalExtension().BaseName() == base::FilePath("master")) {
+        files_to_erase.push_back(std::move(file));
+      }
+    }
+    // Find new-style auth factor files.
+    base::FileEnumerator af_files(user_dir.Append("auth_factors"),
+                                  /*recursive=*/false,
+                                  base::FileEnumerator::FileType::FILES);
+    for (base::FilePath file = af_files.Next(); !file.empty();
+         file = af_files.Next()) {
+      files_to_erase.push_back(std::move(file));
+    }
+    // Find user secret stashes.
+    base::FileEnumerator uss_files(
+        user_dir.Append("user_secret_stash"),
+        /*recursive=*/false, base::FileEnumerator::FileType::FILES, "uss.*");
+    for (base::FilePath file = uss_files.Next(); !file.empty();
+         file = uss_files.Next()) {
+      files_to_erase.push_back(std::move(file));
+    }
+    // Try to erase all of the found files.
+    for (const base::FilePath& file : files_to_erase) {
+      found_file = true;
+      if (!SecureErase(file)) {
+        LOG(ERROR) << "Securely erasing file failed: " << file.value();
+        return false;
       }
     }
   }
