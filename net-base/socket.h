@@ -22,12 +22,16 @@ namespace net_base {
 // the standard POSIX and Linux socket operations.
 class NET_BASE_EXPORT Socket {
  public:
-  // The signature of Socket::Create() method. It's used for injecting the
-  // MockSocket::Create() method at testing.
+  // The signature of Socket::Create() method and its binding. It's used
+  // for injecting the MockSocket::Create() method at testing.
+  //
+  // The common pattern is like:
+  //
+  //   net_base::Socket::SocketFactory socket_factory_ =
+  //       net_base::Socket::GetDefaultFactory();
   using SocketFactory = base::RepeatingCallback<std::unique_ptr<Socket>(
       int domain, int type, int protocol)>;
-  // Binds to the Socket::Create() method.
-  static SocketFactory kDefaultSocketFactory;
+  static SocketFactory GetDefaultFactory();
 
   // Creates the socket instance. Delegates to socket(...) method. Returns
   // nullptr if failed.

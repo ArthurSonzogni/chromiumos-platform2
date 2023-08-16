@@ -62,7 +62,7 @@ class Icmp {
   static uint16_t ComputeIcmpChecksum(const struct icmphdr& hdr, size_t len);
 
   net_base::Socket::SocketFactory socket_factory_ =
-      net_base::Socket::kDefaultSocketFactory;
+      net_base::Socket::GetDefaultFactory();
   std::unique_ptr<net_base::Socket> socket_;
 
   std::optional<net_base::IPAddress> destination_;

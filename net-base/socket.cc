@@ -30,8 +30,10 @@ std::optional<size_t> ToOptionalSizeT(ssize_t size) {
 
 }  // namespace
 
-Socket::SocketFactory Socket::kDefaultSocketFactory =
-    base::BindRepeating(&Socket::Create);
+// static
+Socket::SocketFactory Socket::GetDefaultFactory() {
+  return base::BindRepeating(&Socket::Create);
+}
 
 // static
 std::unique_ptr<Socket> Socket::Create(int domain, int type, int protocol) {

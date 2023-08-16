@@ -301,7 +301,7 @@ class DeviceInfo {
   // The factory method to create net_base::Socket. Keep it as a class member so
   // that a mock can be injected for testing.
   net_base::Socket::SocketFactory socket_factory_ =
-      net_base::Socket::kDefaultSocketFactory;
+      net_base::Socket::GetDefaultFactory();
 
   Time* time_;
   base::WeakPtrFactory<DeviceInfo> weak_factory_{this};
