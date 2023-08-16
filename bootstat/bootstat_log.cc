@@ -41,6 +41,12 @@ static constexpr char kProcUptime[] = "proc/uptime";
 
 static constexpr int64_t kNsecsPerSec = 1e9;
 
+// Length of the longest valid string naming an event, including the
+// terminating NUL character.
+//
+// This value is arbitrarily chosen.
+static constexpr int kBootstatMaxEventLength = 64;
+
 // Parse a line of text containing one or more space-separated columns of
 // decimal numbers. For example (without the quotes):
 //   "12.76543 0.89"
@@ -200,7 +206,7 @@ base::FilePath BootStat::GetEventPath(const std::string& prefix,
   // to the proper number of characters..
   //
   std::string output_file =
-      base::StringPrintf("%s-%.*s", prefix.c_str(), BOOTSTAT_MAX_EVENT_LEN - 1,
+      base::StringPrintf("%s-%.*s", prefix.c_str(), kBootstatMaxEventLength - 1,
                          event_name.c_str());
 
   return output_directory_path_.Append(output_file);

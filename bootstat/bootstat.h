@@ -134,17 +134,4 @@ class BRILLO_EXPORT BootStat {
 };
 }  // namespace bootstat
 
-//
-// Length of the longest valid string naming an event, including the
-// terminating NUL character.  Clients of bootstat_log() can use
-// this value for the size of buffers to hold event names; names
-// that exceed this buffer size will be truncated.
-//
-// This value is arbitrarily chosen, but see comments in
-// bootstat_log.c regarding implementation assumptions for this
-// value.
-//
-// TODO(drinkcat): Rename this to a kConstant in the namespace
-#define BOOTSTAT_MAX_EVENT_LEN 64
-
 #endif  // BOOTSTAT_BOOTSTAT_H_
