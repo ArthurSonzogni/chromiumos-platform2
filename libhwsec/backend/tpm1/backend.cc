@@ -35,7 +35,8 @@ BackendTpm1::BackendTpm1(Proxy& proxy,
       storage_(tpm_manager_, tpm_nvram_),
       config_(overalls_, tss_helper_, crossystem_),
       random_(overalls_, tss_helper_),
-      key_management_(overalls_, tss_helper_, config_, middleware_derivative_),
+      key_management_(
+          overalls_, tss_helper_, state_, config_, middleware_derivative_),
       sealing_(
           overalls_, tss_helper_, config_, key_management_, da_mitigation_),
       deriving_(),

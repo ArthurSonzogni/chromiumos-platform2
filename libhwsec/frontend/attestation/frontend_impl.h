@@ -48,6 +48,8 @@ class AttestationFrontendImpl : public AttestationFrontend,
       const std::string& external_data) const override;
   StatusOr<Attestation::CreateIdentityResult> CreateIdentity(
       attestation::KeyType key_type) const override;
+  StatusOr<brillo::Blob> GetEndorsementPublicKey(
+      attestation::KeyType key_type) const override;
 };
 
 }  // namespace hwsec

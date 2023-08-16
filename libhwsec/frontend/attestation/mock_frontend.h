@@ -61,6 +61,10 @@ class MockAttestationFrontend : public MockFrontend,
               CreateIdentity,
               (attestation::KeyType key_type),
               (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>,
+              GetEndorsementPublicKey,
+              (attestation::KeyType key_type),
+              (const override));
 };
 
 }  // namespace hwsec

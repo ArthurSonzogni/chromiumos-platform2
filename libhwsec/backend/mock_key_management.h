@@ -59,6 +59,9 @@ class MockKeyManagement : public KeyManagement {
         .WillByDefault(Invoke(default_, &KeyManagement::GetRSAPublicInfo));
     ON_CALL(*this, GetECCPublicInfo)
         .WillByDefault(Invoke(default_, &KeyManagement::GetECCPublicInfo));
+    ON_CALL(*this, GetEndorsementPublicKey)
+        .WillByDefault(
+            Invoke(default_, &KeyManagement::GetEndorsementPublicKey));
   }
 
   MOCK_METHOD(StatusOr<absl::flat_hash_set<KeyAlgoType>>,
@@ -117,6 +120,10 @@ class MockKeyManagement : public KeyManagement {
               (override));
   MOCK_METHOD(StatusOr<RSAPublicInfo>, GetRSAPublicInfo, (Key key), (override));
   MOCK_METHOD(StatusOr<ECCPublicInfo>, GetECCPublicInfo, (Key key), (override));
+  MOCK_METHOD(StatusOr<brillo::Blob>,
+              GetEndorsementPublicKey,
+              (KeyAlgoType key_algo),
+              (override));
 
  private:
   KeyManagement* default_;

@@ -85,6 +85,7 @@ using FuzzCommandList =
                 &Backend::KeyManagement::WrapECCKey,
                 &Backend::KeyManagement::GetRSAPublicInfo,
                 &Backend::KeyManagement::GetECCPublicInfo,
+                &Backend::KeyManagement::GetEndorsementPublicKey,
                 &Backend::PinWeaverManager::CheckCredential,
                 &Backend::PinWeaverManager::GetDelayInSeconds,
                 &Backend::PinWeaverManager::GetDelaySchedule,

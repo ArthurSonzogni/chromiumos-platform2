@@ -70,6 +70,10 @@ class AttestationFrontend : public Frontend {
   // attestation::IdentityKey and attestation::IdentityBinding.
   virtual StatusOr<Attestation::CreateIdentityResult> CreateIdentity(
       attestation::KeyType key_type) const = 0;
+
+  // Gets the DER-encoded endorsement public key based on |key_type|.
+  virtual StatusOr<brillo::Blob> GetEndorsementPublicKey(
+      attestation::KeyType key_type) const = 0;
 };
 
 }  // namespace hwsec

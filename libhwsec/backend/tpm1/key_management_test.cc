@@ -749,6 +749,37 @@ TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpkiFailed) {
       NotOk());
 }
 
+TEST_F(BackendKeyManagementTpm1Test, GetEndorsementPublicKey) {
+  const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
+  TSS_HKEY kFakeEkHandle = 0x1337;
+
+  SetupHandleByEkReadability(true);
+  SetupSrk();
+
+  tpm_manager::GetTpmNonsensitiveStatusReply reply;
+  reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  reply.set_is_owned(true);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_TPM_GetPubEndorsementKey(kDefaultTpm, true, nullptr, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kFakeEkHandle), Return(TPM_SUCCESS)));
+
+  brillo::Blob key_blob = kFakeKeyBlob;
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Ospi_GetAttribData(kFakeEkHandle, TSS_TSPATTRIB_KEY_BLOB,
+                                 TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(key_blob.size()),
+                      SetArgPointee<4>(key_blob.data()), Return(TPM_SUCCESS)));
+  brillo::Blob fake_public_key_der = SetupGetPublicKeyDer(key_blob);
+
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().GetEndorsementPublicKey(
+                  KeyAlgoType::kRsa),
+              IsOkAndHolds(fake_public_key_der));
+}
+
 TEST_F(BackendKeyManagementTpm1Test, WrapRsaKey) {
   const OperationPolicySetting kFakePolicy{};
   const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");

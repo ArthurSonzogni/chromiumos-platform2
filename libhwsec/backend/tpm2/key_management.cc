@@ -81,6 +81,17 @@ StatusOr<trunks::TpmUtility::AsymmetricKeyUsage> GetKeyUsage(
   }
 }
 
+StatusOr<trunks::TPM_ALG_ID> GetTrunksKeyAlgo(KeyAlgoType key_algo) {
+  switch (key_algo) {
+    case KeyAlgoType::kRsa:
+      return trunks::TPM_ALG_RSA;
+    case KeyAlgoType::kEcc:
+      return trunks::TPM_ALG_ECC;
+  }
+  return MakeStatus<TPMError>("Unknown key algorithm",
+                              TPMRetryAction::kNoRetry);
+}
+
 struct RsaParameters {
   uint32_t key_exponent;
   brillo::Blob key_modulus;
@@ -206,6 +217,34 @@ StatusOr<brillo::SecureBlob> GetEndorsementPassword(
   RETURN_IF_ERROR(MakeStatus<TPMManagerError>(status_reply.status()));
 
   brillo::SecureBlob password(status_reply.local_data().endorsement_password());
+
+  if (password.empty()) {
+    return MakeStatus<TPMError>("Empty endorsement password",
+                                TPMRetryAction::kLater);
+  }
+
+  if (password.size() > kMaxPasswordLength) {
+    return MakeStatus<TPMError>("Endorsement password too large",
+                                TPMRetryAction::kLater);
+  }
+
+  return password;
+}
+
+StatusOr<brillo::SecureBlob> GetOwnerPassword(
+    org::chromium::TpmManagerProxyInterface& tpm_manager) {
+  tpm_manager::GetTpmStatusRequest status_request;
+  tpm_manager::GetTpmStatusReply status_reply;
+
+  if (brillo::ErrorPtr err; !tpm_manager.GetTpmStatus(
+          status_request, &status_reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
+    return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
+        .Wrap(std::move(err));
+  }
+
+  RETURN_IF_ERROR(MakeStatus<TPMManagerError>(status_reply.status()));
+
+  brillo::SecureBlob password(status_reply.local_data().owner_password());
 
   if (password.empty()) {
     return MakeStatus<TPMError>("Empty endorsement password",
@@ -689,20 +728,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(
 
 StatusOr<ScopedKey> KeyManagementTpm2::GetPolicyEndorsementKey(
     const OperationPolicySetting& policy, KeyAlgoType key_algo) {
-  trunks::TPM_ALG_ID key_type;
-
-  switch (key_algo) {
-    case KeyAlgoType::kRsa:
-      key_type = trunks::TPM_ALG_RSA;
-      break;
-    case KeyAlgoType::kEcc:
-      key_type = trunks::TPM_ALG_ECC;
-      break;
-    default:
-      return MakeStatus<TPMError>(
-          "Unsupported policy endorsement key algorithm",
-          TPMRetryAction::kNoRetry);
-  }
+  ASSIGN_OR_RETURN(trunks::TPM_ALG_ID key_type, GetTrunksKeyAlgo(key_algo));
 
   if (policy.permission.auth_value.has_value() &&
       policy.permission.type == PermissionType::kAuthValue) {
@@ -744,6 +770,67 @@ StatusOr<ScopedKey> KeyManagementTpm2::GetPolicyEndorsementKey(
       _.WithStatus<TPMError>("Failed to side load policy endorsement key"));
 
   return key;
+}
+
+StatusOr<ScopedKey> KeyManagementTpm2::GetEndorsementKey(KeyAlgoType key_algo) {
+  ASSIGN_OR_RETURN(trunks::TPM_ALG_ID key_type, GetTrunksKeyAlgo(key_algo));
+
+  ASSIGN_OR_RETURN(
+      const brillo::SecureBlob& endorsement_password,
+      GetEndorsementPassword(tpm_manager_),
+      _.WithStatus<TPMError>("Failed to get endorsement password"));
+  std::unique_ptr<trunks::HmacSession> endorsement_session =
+      context_.GetTrunksFactory().GetHmacSession();
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(endorsement_session->StartUnboundSession(
+          true /* salted */, false /* enable_encryption */)))
+      .WithStatus<TPMError>("Failed to start hmac session");
+  endorsement_session->SetEntityAuthorizationValue(
+      endorsement_password.to_string());
+
+  brillo::SecureBlob owner_password;
+  // We only need owner password to make RSA EK persistent.
+  if (key_type == trunks::TPM_ALG_RSA) {
+    // Don't fail if the owner password is not available, it may not be needed
+    // if the RSA EK is already made persistent.
+    auto owner_password_status = GetOwnerPassword(tpm_manager_);
+    if (!owner_password_status.ok()) {
+      LOG(WARNING) << __func__ << ": Failed to get owner password: "
+                   << owner_password_status.status();
+    }
+    owner_password =
+        std::move(owner_password_status).value_or(brillo::SecureBlob());
+  }
+
+  std::unique_ptr<trunks::HmacSession> owner_session =
+      context_.GetTrunksFactory().GetHmacSession();
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(owner_session->StartUnboundSession(
+                      /*salted=*/true, /*enable_encryption=*/false)))
+      .WithStatus<TPMError>("Failed to start hmac session");
+  owner_session->SetEntityAuthorizationValue(owner_password.to_string());
+
+  trunks::TPM_HANDLE key_handle;
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().GetEndorsementKey(
+          key_type, endorsement_session->GetDelegate(),
+          owner_session->GetDelegate(), &key_handle)))
+      .WithStatus<TPMError>("Failed to get endorsement key");
+
+  ASSIGN_OR_RETURN(
+      ScopedKey key,
+      LoadKeyInternal(OperationPolicy{}, KeyTpm2::Type::kTransientKey,
+                      key_handle,
+                      /*reload_data=*/std::nullopt),
+      _.WithStatus<TPMError>("Failed to side load policy endorsement key"));
+
+  return key;
+}
+
+StatusOr<brillo::Blob> KeyManagementTpm2::GetEndorsementPublicKey(
+    KeyAlgoType key_algo) {
+  ASSIGN_OR_RETURN(ScopedKey key, GetEndorsementKey(key_algo),
+                   _.WithStatus<TPMError>("Failed to get endorsement key"));
+  return GetPublicKeyDer(key.GetKey(), /*use_rsa_subject_key_info=*/true);
 }
 
 StatusOr<ScopedKey> KeyManagementTpm2::GetPersistentKey(

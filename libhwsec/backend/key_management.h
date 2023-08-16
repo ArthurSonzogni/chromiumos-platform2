@@ -121,6 +121,10 @@ class KeyManagement {
   // Gets the public information of a ECC |key|.
   virtual StatusOr<ECCPublicInfo> GetECCPublicInfo(Key key) = 0;
 
+  // Gets the DER-encoded endorsement public key based on |key_algo|.
+  virtual StatusOr<brillo::Blob> GetEndorsementPublicKey(
+      KeyAlgoType key_algo) = 0;
+
  protected:
   KeyManagement() = default;
   ~KeyManagement() = default;

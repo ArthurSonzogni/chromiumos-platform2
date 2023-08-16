@@ -19,7 +19,24 @@
 #include "libhwsec/structures/operation_policy.h"
 #include "libhwsec/structures/space.h"
 
+using hwsec_foundation::status::MakeStatus;
+
 namespace hwsec {
+
+namespace {
+
+StatusOr<KeyAlgoType> ToKeyAlgoType(attestation::KeyType key_type) {
+  switch (key_type) {
+    case attestation::KeyType::KEY_TYPE_RSA:
+      return KeyAlgoType::kRsa;
+    case attestation::KeyType::KEY_TYPE_ECC:
+      return KeyAlgoType::kEcc;
+  }
+  return MakeStatus<TPMError>("Unsuported attestation key algorithm type",
+                              TPMRetryAction::kNoRetry);
+}
+
+}  // namespace
 
 Status AttestationFrontendImpl::WaitUntilReady() const {
   return middleware_.CallSync<&Backend::State::WaitUntilReady>();
@@ -106,6 +123,13 @@ StatusOr<attestation::CertifiedKey> AttestationFrontendImpl::CreateCertifiedKey(
 StatusOr<Attestation::CreateIdentityResult>
 AttestationFrontendImpl::CreateIdentity(attestation::KeyType key_type) const {
   return middleware_.CallSync<&Backend::Attestation::CreateIdentity>(key_type);
+}
+
+StatusOr<brillo::Blob> AttestationFrontendImpl::GetEndorsementPublicKey(
+    attestation::KeyType key_type) const {
+  ASSIGN_OR_RETURN(KeyAlgoType key_algo, ToKeyAlgoType(key_type));
+  return middleware_.CallSync<&Backend::KeyManagement::GetEndorsementPublicKey>(
+      key_algo);
 }
 
 }  // namespace hwsec

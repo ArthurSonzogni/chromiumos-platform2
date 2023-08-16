@@ -103,6 +103,7 @@ class KeyManagementTpm2 : public KeyManagement {
       const CreateKeyOptions& options) override;
   StatusOr<RSAPublicInfo> GetRSAPublicInfo(Key key) override;
   StatusOr<ECCPublicInfo> GetECCPublicInfo(Key key) override;
+  StatusOr<brillo::Blob> GetEndorsementPublicKey(KeyAlgoType key_algo) override;
 
   // Below are TPM2.0 specific code.
 
@@ -155,6 +156,7 @@ class KeyManagementTpm2 : public KeyManagement {
       const trunks::TPMT_PUBLIC& public_data);
   StatusOr<crypto::ScopedRSA> GetRsaPublicKey(
       const trunks::TPMT_PUBLIC& public_data);
+  StatusOr<ScopedKey> GetEndorsementKey(KeyAlgoType key_algo);
 
   TrunksContext& context_;
   ConfigTpm2& config_;

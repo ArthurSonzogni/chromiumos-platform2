@@ -22,6 +22,8 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "libhwsec/backend/tpm1/static_utils.h"
 #include "libhwsec/error/tpm1_error.h"
@@ -579,6 +581,49 @@ StatusOr<ScopedKey> KeyManagementTpm1::GetPolicyEndorsementKey(
     const OperationPolicySetting& policy, KeyAlgoType key_algo) {
   return MakeStatus<TPMError>("Unsupported policy endorsement key",
                               TPMRetryAction::kNoRetry);
+}
+
+StatusOr<brillo::Blob> KeyManagementTpm1::GetEndorsementPublicKey(
+    KeyAlgoType key_algo) {
+  if (key_algo != KeyAlgoType::kRsa) {
+    return MakeStatus<TPMError>("Unsupported key creation algorithm",
+                                TPMRetryAction::kNoRetry);
+  }
+  ASSIGN_OR_RETURN(ScopedTssContext context, tss_helper_.GetScopedTssContext());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle(),
+                   _.WithStatus<TPMError>("Failed to get tpm handle"));
+
+  ASSIGN_OR_RETURN(bool is_ready, state_.IsReady(),
+                   _.WithStatus<TPMError>("Failed to check readiness"));
+  ASSIGN_OR_RETURN(base::ScopedClosureRunner tpm_handle_cleanup,
+                   tss_helper_.SetTpmHandleByEkReadability());
+
+  ScopedTssKey ek_handle(overalls_, context);
+  auto status = MakeStatus<TPM1Error>(overalls_.Ospi_TPM_GetPubEndorsementKey(
+      tpm_handle, is_ready, nullptr, ek_handle.ptr()));
+  if (!status.ok()) {
+    bool is_ready_now = state_.IsReady().value_or(false);
+    bool just_took_onwership = !is_ready && is_ready_now;
+    // Getting key by user handle would fail if we just took ownership, but we
+    // could retry it.
+    return MakeStatus<TPMError>("Failed to call Ospi_TPM_GetPubEndorsementKey",
+                                just_took_onwership
+                                    ? TPMRetryAction::kCommunication
+                                    : TPMRetryAction::kNoRetry);
+  }
+
+  // Get the public key in TPM_PUBKEY form.
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& ek_public_key_blob,
+      GetAttribData(overalls_, context, ek_handle, TSS_TSPATTRIB_KEY_BLOB,
+                    TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY),
+      _.WithStatus<TPMError>("Failed to get endorsement public key blob"));
+  ASSIGN_OR_RETURN(const brillo::Blob& ek_public_key_der,
+                   GetPublicKeyDerFromBlob(ek_public_key_blob),
+                   _.WithStatus<TPMError>(
+                       "Failed to get DER-encoded endorsement public key"));
+
+  return ek_public_key_der;
 }
 
 StatusOr<ScopedKey> KeyManagementTpm1::GetPersistentKey(

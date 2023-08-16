@@ -17,6 +17,7 @@
 
 #include "libhwsec/backend/key_management.h"
 #include "libhwsec/backend/tpm1/config.h"
+#include "libhwsec/backend/tpm1/state.h"
 #include "libhwsec/backend/tpm1/tss_helper.h"
 #include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/proxy/proxy.h"
@@ -56,10 +57,12 @@ class KeyManagementTpm1 : public KeyManagement {
  public:
   KeyManagementTpm1(overalls::Overalls& overalls,
                     TssHelper& tss_helper,
+                    StateTpm1& state,
                     ConfigTpm1& config,
                     MiddlewareDerivative& middleware_derivative)
       : overalls_(overalls),
         tss_helper_(tss_helper),
+        state_(state),
         config_(config),
         middleware_derivative_(middleware_derivative) {}
 
@@ -99,6 +102,7 @@ class KeyManagementTpm1 : public KeyManagement {
       const CreateKeyOptions& options) override;
   StatusOr<RSAPublicInfo> GetRSAPublicInfo(Key key) override;
   StatusOr<ECCPublicInfo> GetECCPublicInfo(Key key) override;
+  StatusOr<brillo::Blob> GetEndorsementPublicKey(KeyAlgoType key_algo) override;
 
   // Below are TPM1.2 specific code.
 
@@ -152,6 +156,7 @@ class KeyManagementTpm1 : public KeyManagement {
 
   overalls::Overalls& overalls_;
   TssHelper& tss_helper_;
+  StateTpm1& state_;
   ConfigTpm1& config_;
   MiddlewareDerivative& middleware_derivative_;
 
