@@ -47,6 +47,18 @@ const char kErrorNoCellsInArea[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "NoCellsInArea";
 
+const char kErrorPlmnNotAllowed[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "PlmnNotAllowed";
+
+const char kErrorServiceOptionNotAuthorizedInPlmn[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "ServiceOptionNotAuthorizedInPlmn";
+
+const char kErrorServingNetworkNotAuthorized[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "ServingNetworkNotAuthorized";
+
 const char kErrorUnknownMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "Unknown";
@@ -97,6 +109,9 @@ INSTANTIATE_TEST_SUITE_P(
         TestParam(kErrorMissingOrUnknownApnMM1, Error::kInvalidApn),
         TestParam(kErrorUserAuthenticationFailedMM1, Error::kInvalidApn),
         TestParam(kErrorNoCellsInArea, Error::kNoCarrier),
+        TestParam(kErrorPlmnNotAllowed, Error::kNoCarrier),
+        TestParam(kErrorServiceOptionNotAuthorizedInPlmn, Error::kNoCarrier),
+        TestParam(kErrorServingNetworkNotAuthorized, Error::kNoCarrier),
         TestParam(kErrorUnknownMM1, Error::kInternalError),
         TestParam(kErrorWrongStateMM1, Error::kWrongState),
         TestParam("Some random error name.", Error::kOperationFailed)));

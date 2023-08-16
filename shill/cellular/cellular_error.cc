@@ -43,6 +43,15 @@ const char kErrorIpv4v6OnlyAllowed[] =
 const char kErrorNoCellsInArea[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".NoCellsInArea";
 
+const char kErrorPlmnNotAllowed[] =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".PlmnNotAllowed";
+
+const char kErrorServiceOptionNotAuthorizedInPlmn[] =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".ServiceOptionNotAuthorizedInPlmn";
+
+const char kErrorServingNetworkNotAuthorized[] =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".ServingNetworkNotAuthorized";
+
 const char kErrorSimPin[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPin";
 
 const char kErrorSimPuk[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk";
@@ -84,7 +93,9 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
            name == kErrorIpv4OnlyAllowed || name == kErrorIpv6OnlyAllowed ||
            name == kErrorIpv4v6OnlyAllowed)
     type = Error::kInvalidApn;
-  else if (name == kErrorNoCellsInArea)
+  else if (name == kErrorNoCellsInArea || name == kErrorPlmnNotAllowed ||
+           name == kErrorServiceOptionNotAuthorizedInPlmn ||
+           name == kErrorServingNetworkNotAuthorized)
     type = Error::kNoCarrier;
   else if (name == kErrorMobileEquipmentUnknown)
     type = Error::kInternalError;
