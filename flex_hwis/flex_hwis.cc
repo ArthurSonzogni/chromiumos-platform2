@@ -11,7 +11,6 @@
 #include <base/logging.h>
 
 namespace flex_hwis {
-namespace mojom = ::ash::cros_healthd::mojom;
 namespace {
 // Track the result of management policies.
 void SendPermissionMetric(PermissionInfo info,
@@ -142,32 +141,25 @@ FlexHwisSender::FlexHwisSender(const base::FilePath& base_path,
                                HttpSender& sender)
     : base_path_(base_path), check_(base_path, provider), sender_(sender) {}
 
-void FlexHwisSender::SetTelemetryInfoForTesting(mojom::TelemetryInfoPtr info) {
-  mojo_.SetTelemetryInfoForTesting(std::move(info));
-}
-
-Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
-                                      Debug debug) {
+Result FlexHwisSender::MaybeSend(hwis_proto::Device& hardware_info,
+                                 MetricsLibraryInterface& metrics) {
   // Exit if HWIS runs successfully within 24 hours.
   if (check_.HasRunRecently()) {
     return Result::HasRunRecently;
   }
+
   // Exit if the device does not have permission to send data to the server.
   if (!CheckPermission(check_, sender_, metrics)) {
     return Result::NotAuthorized;
   }
-  // Collect hardware information from cros_healthd via its mojo interface.
-  hwis_proto::Device hardware_info;
-  mojo_.SetHwisInfo(&hardware_info);
+
   // Exit if the hardware information is not successfully sent.
   if (!SendHardwareInfo(check_, sender_, hardware_info, metrics)) {
     return Result::Error;
   }
 
   check_.RecordSendTime();
-  if (debug == Debug::Print) {
-    LOG(INFO) << hardware_info.DebugString();
-  }
+
   return Result::Sent;
 }
 
