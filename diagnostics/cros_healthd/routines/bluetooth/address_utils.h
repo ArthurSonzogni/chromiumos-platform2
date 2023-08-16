@@ -5,7 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_ADDRESS_UTILS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_ADDRESS_UTILS_H_
 
+#include <optional>
 #include <string>
+#include <utility>
 
 namespace diagnostics {
 
@@ -14,7 +16,8 @@ namespace diagnostics {
 // Institute of Electrical and Electronics Engineers (IEEE).
 //
 // To validate an IEEE administered address, we check whether the first 3 octets
-// of the address are an OUI or CID identifier.
+// of the address are an OUI or CID identifier. These 3 octets are also the
+// manufacturer ID.
 //
 // OUI (Organizationally Unique Identifier):
 //   The last two bits of the first octet should be 00.
@@ -22,8 +25,11 @@ namespace diagnostics {
 //   The last four bits of the first octet should be 1010.
 //
 // The |address_type| should be either "public" or "private".
-bool ValidatePeripheralAddress(const std::string& address,
-                               const std::string& address_type);
+//
+// The return value is the validation result and manufacturer ID. If validation
+// passes or address parsing fails, the manufacturer ID will be null.
+std::pair<bool, std::optional<std::string>> ValidatePeripheralAddress(
+    const std::string& address, const std::string& address_type);
 
 }  // namespace diagnostics
 

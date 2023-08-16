@@ -10,36 +10,59 @@ namespace diagnostics {
 namespace {
 
 TEST(AddressUtilsTest, ValidPublicAddressOui) {
-  EXPECT_TRUE(ValidatePeripheralAddress("24:E5:0F:AC:73:29", "public"));
+  const auto& [is_address_valid, failed_manufacturer_id] =
+      ValidatePeripheralAddress("24:E5:0F:AC:73:29", "public");
+  EXPECT_TRUE(is_address_valid);
+  EXPECT_FALSE(failed_manufacturer_id.has_value());
 }
 
 TEST(AddressUtilsTest, ValidPublicAddressCid) {
-  EXPECT_TRUE(ValidatePeripheralAddress("DA:A1:19:AC:73:29", "public"));
+  const auto& [is_address_valid, failed_manufacturer_id] =
+      ValidatePeripheralAddress("DA:A1:19:AC:73:29", "public");
+  EXPECT_TRUE(is_address_valid);
+  EXPECT_FALSE(failed_manufacturer_id.has_value());
 }
 
 TEST(AddressUtilsTest, ValidPublicAddressKnownException) {
-  EXPECT_TRUE(ValidatePeripheralAddress("52:54:4C:92:34:70", "public"));
+  const auto& [is_address_valid, failed_manufacturer_id] =
+      ValidatePeripheralAddress("52:54:4C:92:34:70", "public");
+  EXPECT_TRUE(is_address_valid);
+  EXPECT_FALSE(failed_manufacturer_id.has_value());
 }
 
 TEST(AddressUtilsTest, InvalidPublicAddress) {
-  EXPECT_FALSE(ValidatePeripheralAddress("56:54:4C:92:34:70", "public"));
+  const auto& [is_address_valid, failed_manufacturer_id] =
+      ValidatePeripheralAddress("56:54:4C:92:34:70", "public");
+  EXPECT_FALSE(is_address_valid);
+  EXPECT_EQ(failed_manufacturer_id, "56:54:4C");
 }
 
 TEST(AddressUtilsTest, InvalidPublicAddressWrongFormat) {
-  EXPECT_FALSE(ValidatePeripheralAddress("WRONG_ADDRESS_FORMAT", "public"));
+  const auto& [is_address_valid, failed_manufacturer_id] =
+      ValidatePeripheralAddress("WRONG_ADDRESS_FORMAT", "public");
+  EXPECT_FALSE(is_address_valid);
+  EXPECT_FALSE(failed_manufacturer_id.has_value());
 }
 
 TEST(AddressUtilsTest, ValidRandomAddress) {
-  EXPECT_TRUE(ValidatePeripheralAddress("70:88:6B:92:34:70", "random"));
+  const auto& [is_address_valid, failed_manufacturer_id] =
+      ValidatePeripheralAddress("70:88:6B:92:34:70", "random");
+  EXPECT_TRUE(is_address_valid);
+  EXPECT_FALSE(failed_manufacturer_id.has_value());
 }
 
 TEST(AddressUtilsTest, InvalidRandomAddressWrongFormat) {
-  EXPECT_FALSE(ValidatePeripheralAddress("WRONG_ADDRESS_FORMAT", "random"));
+  const auto& [is_address_valid, failed_manufacturer_id] =
+      ValidatePeripheralAddress("WRONG_ADDRESS_FORMAT", "random");
+  EXPECT_FALSE(is_address_valid);
+  EXPECT_FALSE(failed_manufacturer_id.has_value());
 }
 
 TEST(AddressUtilsTest, InvalidAddressType) {
-  EXPECT_FALSE(
-      ValidatePeripheralAddress("70:88:6B:92:34:70", "WRONG_ADDRESS_TYPE"));
+  const auto& [is_address_valid, failed_manufacturer_id] =
+      ValidatePeripheralAddress("70:88:6B:92:34:70", "WRONG_ADDRESS_TYPE");
+  EXPECT_FALSE(is_address_valid);
+  EXPECT_FALSE(failed_manufacturer_id.has_value());
 }
 
 }  // namespace

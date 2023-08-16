@@ -272,8 +272,12 @@ void BluetoothPairingRoutine::OnDeviceAdded(
 
   const auto& address_type = device->address_type();
   output_dict_.Set("address_type", address_type);
-  output_dict_.Set("is_address_valid",
-                   ValidatePeripheralAddress(address, address_type));
+  const auto& [is_address_valid, failed_manufacturer_id] =
+      ValidatePeripheralAddress(address, address_type);
+  output_dict_.Set("is_address_valid", is_address_valid);
+  if (failed_manufacturer_id.has_value()) {
+    output_dict_.Set("failed_manufacturer_id", failed_manufacturer_id.value());
+  }
 
   if (device->is_bluetooth_class_valid()) {
     output_dict_.Set("bluetooth_class",

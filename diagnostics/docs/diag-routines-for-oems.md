@@ -1574,6 +1574,11 @@ Status: Passed
 Status message: Bluetooth routine passed.
 ```
 
+Optional fields in output:
+- `failed_manufacturer_id` (Type: string): The first half of the Bluetooth
+  address, which is reported when `is_address_valid` is false and the address
+  can be parsed successfully.
+
 Errors:
 
 - `Bluetooth routine is not supported when adapter is in discovery mode.`

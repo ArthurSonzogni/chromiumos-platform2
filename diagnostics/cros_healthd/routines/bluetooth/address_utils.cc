@@ -7,7 +7,6 @@
 #include <set>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -54,35 +53,41 @@ bool IsKnownAuthorizedAddress(const std::string& manufacturer_id) {
 }
 
 // Check if the public address is an IEEE Registration Authorized address.
-bool ValidatePublicPeripheralAddress(const std::string& address) {
+std::pair<bool, std::optional<std::string>> ValidatePublicPeripheralAddress(
+    const std::string& address) {
   std::string manufacturer_id, raw_first_octet;
   if (!RE2::FullMatch(address, kBluetoothAddressRegex, &manufacturer_id,
                       &raw_first_octet)) {
     LOG(ERROR) << "Failed to parse the address: " << address;
-    return false;
+    return std::make_pair(false, std::nullopt);
   }
 
   uint32_t first_octet;
   if (!base::HexStringToUInt(raw_first_octet, &first_octet)) {
     LOG(ERROR) << "Failed to convert the first octet of address: " << address;
-    return false;
+    return std::make_pair(false, manufacturer_id);
   }
 
-  return IsOui(first_octet) || IsCid(first_octet) ||
-         IsKnownAuthorizedAddress(manufacturer_id);
+  if (!IsOui(first_octet) && !IsCid(first_octet) &&
+      !IsKnownAuthorizedAddress(manufacturer_id)) {
+    return std::make_pair(false, manufacturer_id);
+  }
+
+  return std::make_pair(true, std::nullopt);
 }
 
 }  // namespace
 
-bool ValidatePeripheralAddress(const std::string& address,
-                               const std::string& address_type) {
+std::pair<bool, std::optional<std::string>> ValidatePeripheralAddress(
+    const std::string& address, const std::string& address_type) {
   if (address_type == "public") {
     return ValidatePublicPeripheralAddress(address);
   } else if (address_type == "random") {
-    return RE2::FullMatch(address, kBluetoothAddressRegex);
+    return std::make_pair(RE2::FullMatch(address, kBluetoothAddressRegex),
+                          std::nullopt);
   } else {
     LOG(ERROR) << "Unexpected address type: " << address_type;
-    return false;
+    return std::make_pair(false, std::nullopt);
   }
 }
 
