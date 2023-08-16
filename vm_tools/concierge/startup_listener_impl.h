@@ -47,9 +47,10 @@ class StartupListenerImpl final : public vm_tools::StartupListener::Service {
  private:
   // VMs that have been started but have not checked in as being ready yet. This
   // is a map of their cids to event fds registered in |AddPendingVm|.
-  std::map<uint32_t, int32_t> pending_vms_;
+  std::map<uint32_t, int32_t> pending_vms_ GUARDED_BY(vm_lock_);
 
   // Lock to protect |pending_vms_|.
+  // TODO(b/294160898): Use sequences instead of acquiring a lock here.
   base::Lock vm_lock_;
 };
 
