@@ -24,6 +24,7 @@
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
+#include "libhwsec/tss_utils/scoped_tss_type.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -457,6 +458,21 @@ StatusOr<crypto::ScopedRSA> ExtractCmkPrivateKeyFromMigratedBlob(
   }
 
   return cmk_rsa;
+}
+
+StatusOr<brillo::Blob> GetAttribData(overalls::Overalls& overalls,
+                                     TSS_HCONTEXT context,
+                                     TSS_HOBJECT object,
+                                     TSS_FLAG flag,
+                                     TSS_FLAG sub_flag) {
+  uint32_t length = 0;
+  ScopedTssMemory buf(overalls, context);
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
+                      object, flag, sub_flag, &length, buf.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
+
+  return brillo::Blob(buf.value(), buf.value() + length);
 }
 
 }  // namespace hwsec

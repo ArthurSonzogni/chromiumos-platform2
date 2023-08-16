@@ -72,21 +72,6 @@ StatusOr<std::string> buildPcrComposite(uint32_t pcr_index,
   return std::string(buffer, sizeof(composite_header)) + quoted_pcr_value;
 }
 
-StatusOr<brillo::Blob> GetAttribData(overalls::Overalls& overalls,
-                                     TSS_HCONTEXT context,
-                                     TSS_HOBJECT object,
-                                     TSS_FLAG flag,
-                                     TSS_FLAG sub_flag) {
-  uint32_t length = 0;
-  ScopedTssMemory buf(overalls, context);
-
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
-                      object, flag, sub_flag, &length, buf.ptr())))
-      .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
-
-  return brillo::Blob(buf.value(), buf.value() + length);
-}
-
 StatusOr<std::string> DecryptIdentityRequest(overalls::Overalls& overalls,
                                              RSA* pca_key,
                                              const std::string& request) {

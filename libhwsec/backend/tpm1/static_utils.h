@@ -67,6 +67,12 @@ StatusOr<crypto::ScopedRSA> ExtractCmkPrivateKeyFromMigratedBlob(
     const brillo::Blob& msa_composite_digest,
     RSA& migration_destination_rsa);
 
+StatusOr<brillo::Blob> GetAttribData(overalls::Overalls& overalls,
+                                     TSS_HCONTEXT context,
+                                     TSS_HOBJECT object,
+                                     TSS_FLAG flag,
+                                     TSS_FLAG sub_flag);
+
 }  // namespace hwsec
 
 #endif  // LIBHWSEC_BACKEND_TPM1_STATIC_UTILS_H_
