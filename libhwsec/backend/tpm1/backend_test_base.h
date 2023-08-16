@@ -37,6 +37,7 @@ class BackendTpm1TestBase : public ::testing::Test {
   void SetupOwner();
   void SetupHandleByEkReadability(bool readable);
   void SetupGetTpmStatus();
+  brillo::Blob SetupGetPublicKeyDer(const brillo::Blob& fake_pubkey);
 
   brillo::Blob kDefaultSrkPubkey = brillo::BlobFromString("default_srk");
   std::unique_ptr<ProxyForTest> proxy_;
