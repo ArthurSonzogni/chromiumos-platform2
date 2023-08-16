@@ -121,6 +121,16 @@ class RmadInterfaceImpl final : public RmadInterface {
                              const std::optional<std::string>& file_name);
   void SaveLogFailHandler(ReplyCallbackType<SaveLogReply> callback);
 
+  // Helper functions for ExtractExternalDiagnosticsApp.
+  void ExtractExternalDiagnosticsAppRpc(
+      uint8_t device_id,
+      RpcCallbackType<const std::optional<DiagnosticsAppInfo>&> rpc_callback);
+  void SetDiagnosticsAppNameHandler(
+      ReplyCallbackType<ExtractExternalDiagnosticsAppReply> callback,
+      const std::optional<DiagnosticsAppInfo>& info);
+  void SetDiagnosticsAppNotFoundHandler(
+      ReplyCallbackType<ExtractExternalDiagnosticsAppReply> callback);
+
   // Helper functions for running RPCs over a list.
   template <typename ReplyProtobufType, typename... RpcReplyTypes>
   void RunRpcWithRemovableBlockDevices(

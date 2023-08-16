@@ -632,9 +632,40 @@ void RmadInterfaceImpl::RecordBrowserActionMetric(
 
 void RmadInterfaceImpl::ExtractExternalDiagnosticsApp(
     ExtractExternalDiagnosticsAppCallback callback) {
-  ExtractExternalDiagnosticsAppReply reply;
-  reply.set_error(RMAD_ERROR_USB_NOT_FOUND);
+  RunRpcWithRemovableBlockDevices(
+      std::move(callback),
+      base::BindRepeating(&RmadInterfaceImpl::ExtractExternalDiagnosticsAppRpc,
+                          base::Unretained(this)),
+      base::BindRepeating(&HasOptionalValue<DiagnosticsAppInfo>),
+      base::BindOnce(&RmadInterfaceImpl::SetDiagnosticsAppNameHandler,
+                     base::Unretained(this)),
+      base::BindOnce(&RmadInterfaceImpl::SetDiagnosticsAppNotFoundHandler,
+                     base::Unretained(this)));
+}
 
+void RmadInterfaceImpl::ExtractExternalDiagnosticsAppRpc(
+    uint8_t device_id,
+    RpcCallbackType<const std::optional<DiagnosticsAppInfo>&> callback) {
+  daemon_callback_->GetExecuteMountAndCopyDiagnosticsAppCallback().Run(
+      device_id, std::move(callback));
+}
+
+void RmadInterfaceImpl::SetDiagnosticsAppNameHandler(
+    ReplyCallbackType<ExtractExternalDiagnosticsAppReply> callback,
+    const std::optional<DiagnosticsAppInfo>& info) {
+  CHECK(info.has_value());
+
+  ExtractExternalDiagnosticsAppReply reply;
+  reply.set_error(RMAD_ERROR_OK);
+  reply.set_diagnostics_app_swbn_path(info.value().swbn_path);
+  reply.set_diagnostics_app_crx_path(info.value().crx_path);
+  ReplyCallback(std::move(callback), reply);
+}
+
+void RmadInterfaceImpl::SetDiagnosticsAppNotFoundHandler(
+    ReplyCallbackType<ExtractExternalDiagnosticsAppReply> callback) {
+  ExtractExternalDiagnosticsAppReply reply;
+  reply.set_error(RMAD_ERROR_DIAGNOSTICS_APP_NOT_FOUND);
   ReplyCallback(std::move(callback), reply);
 }
 

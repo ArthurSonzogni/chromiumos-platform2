@@ -334,6 +334,19 @@ class RmadInterfaceImplTest : public testing::Test {
     }
   }
 
+  void MountDiagnosticsAppCallback(
+      uint8_t device_id,
+      base::OnceCallback<void(const std::optional<DiagnosticsAppInfo>&)>
+          callback) {
+    if (device_id == kMountSuccessDeviceId) {
+      std::move(callback).Run(
+          DiagnosticsAppInfo{.swbn_path = "diagnostics_app.swbn",
+                             .crx_path = "diagnostics_app.crx"});
+    } else {
+      std::move(callback).Run(std::nullopt);
+    }
+  }
+
  protected:
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
 
@@ -1295,7 +1308,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog_NoExternalDisk) {
   EXPECT_EQ(state_it->second.save_log_count, 0);
 }
 
-TEST_F(RmadInterfaceImplTest, SaveLog_MountFail) {
+TEST_F(RmadInterfaceImplTest, SaveLog_NoValidPartition) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
   auto json_store =
@@ -1361,7 +1374,7 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
                  AdditionalActivity_Name(RMAD_ADDITIONAL_ACTIVITY_OS_UPDATE)}));
 }
 
-TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp) {
+TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_Success) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
   auto json_store =
@@ -1370,12 +1383,45 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
-      CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
+      CreatePowerManagerClient(), CreateUdevUtils(10), CreateCmdUtils(),
       CreateMetricsUtils(true));
-  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  // Inject fake |ExecuteMountAndCopyDiagnosticsApp| callback.
+  auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
+  daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
+      base::BindRepeating(&RmadInterfaceImplTest::MountDiagnosticsAppCallback,
+                          base::Unretained(this)));
+  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
-  // This is still a faked function.
+  auto callback = [](const ExtractExternalDiagnosticsAppReply& reply,
+                     bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ("diagnostics_app.swbn", reply.diagnostics_app_swbn_path());
+    EXPECT_EQ("diagnostics_app.crx", reply.diagnostics_app_crx_path());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.ExtractExternalDiagnosticsApp(base::BindOnce(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_NoExternalDisk) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, "", 0);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateUdevUtils(0), CreateCmdUtils(),
+      CreateMetricsUtils(true));
+  // Inject fake |ExecuteMountAndCopyDiagnosticsApp| callback.
+  auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
+  daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
+      base::BindRepeating(&RmadInterfaceImplTest::MountDiagnosticsAppCallback,
+                          base::Unretained(this)));
+  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
   auto callback = [](const ExtractExternalDiagnosticsAppReply& reply,
                      bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_USB_NOT_FOUND, reply.error());
@@ -1384,7 +1430,34 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp) {
   rmad_interface.ExtractExternalDiagnosticsApp(base::BindOnce(callback));
 }
 
-TEST_F(RmadInterfaceImplTest, InstallExtractedDiagnosticsApp) {
+TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_NoValidPartition) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, "", 0);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateUdevUtils(3), CreateCmdUtils(),
+      CreateMetricsUtils(true));
+  // Inject fake |ExecuteMountAndCopyDiagnosticsApp| callback.
+  auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
+  daemon_callback->SetExecuteMountAndCopyDiagnosticsAppCallback(
+      base::BindRepeating(&RmadInterfaceImplTest::MountDiagnosticsAppCallback,
+                          base::Unretained(this)));
+  EXPECT_TRUE(rmad_interface.SetUp(daemon_callback));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  auto callback = [](const ExtractExternalDiagnosticsAppReply& reply,
+                     bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_DIAGNOSTICS_APP_NOT_FOUND, reply.error());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.ExtractExternalDiagnosticsApp(base::BindOnce(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, GetInternalDiagnosticsApp) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
   auto json_store =
