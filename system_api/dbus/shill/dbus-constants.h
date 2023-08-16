@@ -1063,6 +1063,72 @@ constexpr char kWiFiRequestScanTypeActive[] = "active";
 constexpr char kWiFiRequestScanTypeDefault[] = "default";
 constexpr char kWiFiRequestScanTypePassive[] = "passive";
 
+// P2P device state values
+constexpr char kP2PDeviceStateUninitialized[] = "uninitialized";
+constexpr char kP2PDeviceStateReady[] = "ready";
+constexpr char kP2PDeviceStateClientAssociating[] = "client_associating";
+constexpr char kP2PDeviceStateClientConfiguring[] = "client_configuring";
+constexpr char kP2PDeviceStateClientConnected[] = "client_connected";
+constexpr char kP2PDeviceStateClientDisconnecting[] = "client_disconnecting";
+constexpr char kP2PDeviceStateGOStarting[] = "go_starting";
+constexpr char kP2PDeviceStateGOConfiguring[] = "go_configuring";
+constexpr char kP2PDeviceStateGOActive[] = "go_active";
+constexpr char kP2PDeviceStateGOStopping[] = "go_stopping";
+
+// Manager CreateP2PGroup and ConnectToP2PGroup dictionary argument key names
+constexpr char kP2PDeviceSSID[] = "ssid";
+constexpr char kP2PDevicePassphrase[] = "passphrase";
+constexpr char kP2PDeviceFrequency[] = "frequency";
+constexpr char kP2PDeviceBSSID[] = "bssid";
+
+// P2P result dictionary key names
+constexpr char kP2PDeviceShillID[] = "shill_id";
+constexpr char kP2PResultCode[] = "result_code";
+
+// Manager CreateP2PGroup result values
+constexpr char kCreateP2PGroupResultSuccess[] = "success";
+constexpr char kCreateP2PGroupResultNotAllowed[] = "not_allowed";
+constexpr char kCreateP2PGroupResultNotSupported[] = "not_supported";
+constexpr char kCreateP2PGroupResultConcurrencyNotSupported[] =
+    "concurrency_not_supported";
+constexpr char kCreateP2PGroupResultTimeout[] = "timeout";
+constexpr char kCreateP2PGroupResultFrequencyNotSupported[] =
+    "frequency_not_supported";
+constexpr char kCreateP2PGroupResultBadSSID[] = "bad_ssid";
+constexpr char kCreateP2PGroupResultOperationFailed[] = "operation_failed";
+
+// Manager ConnectToP2PGroup result values
+constexpr char kConnectToP2PGroupResultSuccess[] = "success";
+constexpr char kConnectToP2PGroupResultNotAllowed[] = "not_allowed";
+constexpr char kConnectToP2PGroupResultNotSupported[] = "not_supported";
+constexpr char kConnectToP2PGroupResultConcurrencyNotSupported[] =
+    "concurrency_not_supported";
+constexpr char kConnectToP2PGroupResultTimeout[] = "timeout";
+constexpr char kConnectToP2PGroupResultAuthFailure[] = "auth_failure";
+constexpr char kConnectToP2PGroupResultFrequencyNotSupported[] =
+    "frequency_not_supported";
+constexpr char kConnectToP2PGroupResultGroupNotFound[] = "group_not_found";
+constexpr char kConnectToP2PGroupResultAlreadyConnected[] = "already_connected";
+constexpr char kConnectToP2PGroupResultInvalidArguments[] = "invalid_arguments";
+constexpr char kConnectToP2PGroupResultOperationFailed[] = "operation_failed";
+
+// Manager DestroyP2PGroup result values
+constexpr char kDestroyP2PGroupResultSuccess[] = "success";
+constexpr char kDestroyP2PGroupResultNotAllowed[] = "not_allowed";
+constexpr char kDestroyP2PGroupResultNotSupported[] = "not_supported";
+constexpr char kDestroyP2PGroupResultTimeout[] = "timeout";
+constexpr char kDestroyP2PGroupResultNoGroup[] = "no_group";
+constexpr char kDestroyP2PGroupResultOperationFailed[] = "operation_failed";
+
+// Manager DisconnectFromP2PGroup result values
+constexpr char kDisconnectFromP2PGroupResultSuccess[] = "success";
+constexpr char kDisconnectFromP2PGroupResultNotAllowed[] = "not_allowed";
+constexpr char kDisconnectFromP2PGroupResultNotSupported[] = "not_supported";
+constexpr char kDisconnectFromP2PGroupResultTimeout[] = "timeout";
+constexpr char kDisconnectFromP2PGroupResultNotConnected[] = "not_connected";
+constexpr char kDisconnectFromP2PGroupResultOperationFailed[] =
+    "operation_failed";
+
 }  // namespace shill
 
 #endif  // SYSTEM_API_DBUS_SHILL_DBUS_CONSTANTS_H_

@@ -98,16 +98,17 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   ControlInterface* ControlInterface() const;
   EventDispatcher* Dispatcher() const;
   Manager* manager() { return manager_; }
+  std::optional<std::string> link_name_;
 
  private:
   friend class LocalDeviceTest;
+  friend class P2PManagerTest;
 
   void DeviceEventTask(DeviceEvent event) const;
 
   bool enabled_;
   Manager* manager_;
   IfaceType iface_type_;
-  std::optional<std::string> link_name_;
   uint32_t phy_index_;
   EventCallback callback_;
   base::WeakPtrFactory<LocalDevice> weak_factory_{this};

@@ -254,6 +254,12 @@ class WiFiProvider : public ProviderInterface {
       uint32_t device_phy_index_for_test,
       LocalDevice::EventCallback callback);
 
+  // Construct a new P2PDevice of type |iface_type|, which must be kP2PGO or
+  // kP2PClient.
+  mockable P2PDeviceRefPtr CreateP2PDevice(LocalDevice::IfaceType iface_type,
+                                           LocalDevice::EventCallback callback,
+                                           uint32_t shill_id);
+
   // Delete the WiFi LocalDevice |device|.
   mockable void DeleteLocalDevice(LocalDeviceRefPtr device);
 
@@ -269,6 +275,11 @@ class WiFiProvider : public ProviderInterface {
 
   // Getter for p2p_manager_.
   P2PManager* p2p_manager() const { return p2p_manager_.get(); }
+
+  // Register a P2P device object to WiFiProvider and a WiFiPhy object.
+  // This method asserts that there is a WiFiPhy object at the given phy_index,
+  // so it is expected that the caller checks this condition before calling.
+  mockable void RegisterP2PDevice(P2PDeviceRefPtr device);
 
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);

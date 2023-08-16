@@ -13,6 +13,7 @@
 #include "shill/manager.h"
 #include "shill/wifi/hotspot_device.h"
 #include "shill/wifi/local_device.h"
+#include "shill/wifi/p2p_device.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
@@ -109,6 +110,13 @@ class MockWiFiProvider : public WiFiProvider {
       CreateHotspotDevice,
       (const std::string&, WiFiBand, WiFiSecurity, LocalDevice::EventCallback),
       (override));
+  MOCK_METHOD(P2PDeviceRefPtr,
+              CreateP2PDevice,
+              (LocalDevice::IfaceType,
+               LocalDevice::EventCallback,
+               uint32_t shill_id),
+              (override));
+  MOCK_METHOD(void, RegisterP2PDevice, (P2PDeviceRefPtr), (override));
   MOCK_METHOD(void, DeleteLocalDevice, (LocalDeviceRefPtr), (override));
   MOCK_METHOD(void, UpdateRegAndPhyInfo, (base::OnceClosure), (override));
   MOCK_METHOD(void, UpdatePhyInfo, (base::OnceClosure), (override));

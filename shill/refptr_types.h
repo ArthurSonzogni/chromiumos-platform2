@@ -70,6 +70,10 @@ class HotspotDevice;
 using HotspotDeviceConstRefPtr = scoped_refptr<const HotspotDevice>;
 using HotspotDeviceRefPtr = scoped_refptr<HotspotDevice>;
 
+class P2PDevice;
+using P2PDeviceConstRefPtr = scoped_refptr<const P2PDevice>;
+using P2PDeviceRefPtr = scoped_refptr<P2PDevice>;
+
 }  // namespace shill
 
 #endif  // SHILL_REFPTR_TYPES_H_

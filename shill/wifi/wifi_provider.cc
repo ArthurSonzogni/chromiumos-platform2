@@ -71,8 +71,11 @@ static constexpr uint32_t kAllPhys = UINT32_MAX;
 // function.
 static constexpr auto kPhyUpdateTimeout = base::Milliseconds(500);
 
-// Interface name prefix used in local connection interfaces
+// Interface name prefix used in local connection interfaces.
 const char kHotspotIfacePrefix[] = "ap";
+
+// Hard coded link_name value used for feature bringup.
+static constexpr char kDefaultP2PLinkName[] = "p2p0";
 
 // Retrieve a WiFi service's identifying properties from passed-in |args|.
 // Returns true if |args| are valid and populates |ssid|, |mode|,
@@ -1354,16 +1357,59 @@ HotspotDeviceRefPtr WiFiProvider::CreateHotspotDeviceForTest(
   }
 }
 
-void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {
-  // It should be impossible for a device without a link_name value to be
-  // registered.
-  CHECK(device->link_name()) << "Tried to delete a device without a link_name";
-  if (!base::Contains(local_devices_, *device->link_name())) {
-    LOG(ERROR) << "Unmanaged interface: " << *device->link_name();
-    return;
+P2PDeviceRefPtr WiFiProvider::CreateP2PDevice(
+    LocalDevice::IfaceType iface_type,
+    LocalDevice::EventCallback callback,
+    uint32_t shill_id) {
+  if (iface_type != LocalDevice::IfaceType::kP2PGO &&
+      iface_type != LocalDevice::IfaceType::kP2PClient) {
+    LOG(ERROR) << "Failed to create P2PDevice, invalid interface type: "
+               << iface_type;
+    return nullptr;
+  }
+  if (wifi_phys_.empty()) {
+    LOG(ERROR) << "No WiFiPhy available.";
+    return nullptr;
   }
 
+  // TODO(b/257340615) Select capable WiFiPhy according to capabilities.
+  uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
+
+  // TODO(b/269163735) Use WiFi device registered in WiFiPhy to get the primary
+  // interface.
+  const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
+  if (wifi_devices.empty()) {
+    LOG(ERROR) << "No WiFi device available.";
+    return nullptr;
+  }
+
+  P2PDeviceRefPtr dev = new P2PDevice(manager_, iface_type,
+                                      wifi_devices.front().get()->link_name(),
+                                      phy_index, shill_id, callback);
+  return dev;
+}
+
+void WiFiProvider::RegisterP2PDevice(P2PDeviceRefPtr device) {
+  // TODO(b/295050791): Device registration should only happen after
+  // wpa_supplicant creates the interface and selects a link_name. We provide a
+  // hard-coded link_name here so that we can validate the basic device creation
+  // flow before the supplicant interaction is implemented.
+  device->SetLinkName(kDefaultP2PLinkName);
+  RegisterLocalDevice(device);
+}
+
+void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {
   device->SetEnabled(false);
+  // It's impossible for a device without a link_name value to be registered,
+  // so we can skip deregistration in that case.
+  if (!device->link_name()) {
+    return;
+  }
+  // If the device has a link_name, then we can only deregister it if it is
+  // already registered.
+  if (!base::Contains(local_devices_, *device->link_name())) {
+    return;
+  }
   DeregisterLocalDevice(device);
 }
 

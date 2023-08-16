@@ -498,20 +498,74 @@ Methods		dict GetProperties()
 
 		dict CreateP2PGroup(dict properties)
 
-			Non-operational stub function.
+			Creates a P2P group with the specified config with this device as
+			the group owner. Possible arguments are "ssid" (string),
+			"passphrase" (string), and "frequency" (uint32). All arguments are
+			optional and all omitted args will be chosen by the platform.
+
+			Returns a dictionary with the following entries:
+
+			"result_code" (string): A string indicating the result of the
+			operation. This could be any one of "success", "not_allowed",
+			"not_supported", "concurrency_not_supported", "timeout",
+			"frequency_not_supported", "bad_ssid", "operation_failed".
+
+			"shill_id" (uint32): Only included when result_code == "success".
+			Unique ID for the newly formed P2P group.
+
+			Some functionality is stubbed.
 
 		dict ConnectToP2PGroup(dict properties)
 
-			Non-operational stub function.
+			Starts a P2P connection with a P2P group with the specified
+			config. Possible arguments are "ssid" (string), "passphrase"
+			(string), and "frequency" (uint32). "ssid" and "passphrase" are
+			mandatory. If "frequency" is omitted then the platform will scan
+			all available channels.
+
+			Returns a dictionary with the following entries:
+
+			"result_code" (string): A string indicating the result of the
+			operation. This could be any one of "success", "not_allowed",
+			"not_supported", "concurrency_not_supported", "timeout",
+			"auth_failure", "frequency_not_supported",  "group_not_found",
+			"already_connected", "invalid_arguments", "operation_failed".
+
+			"shill_id" (uint32): Only included when result_code == "success".
+			Unique ID for the newly created P2P client.
+
+			Some functionality is stubbed.
 
 		dict DestroyP2PGroup(uint32 shill_id)
 
-			Non-operational stub function.
+			Destroys the P2P group with the specified shill_id. Prior to
+			destruction of the group, all P2P clients connected to the group
+			will be disconnected.
+
+			Returns a dictionary with the following entries:
+
+			"result_code" (string): A string indicating the result of the
+			operation. This could be any one of "success", "not_allowed",
+			"not_supported", "timeout", "no_group", "operation_failed".
+
+			"shill_id" (uint32): Unique ID for the requested P2P client.
+
+			Some functionality is stubbed.
 
 		dict DisconnectFromP2PGroup(uint32 shill_id)
 
-			Non-operational stub function.
+			Disconnects the P2P client with the specified shill_id from it's
+			P2P group.
 
+			Returns a dictionary with the following entries:
+
+			"result_code" (string): A string indicating the result of the
+			operation. This could be any one of "success", "not_allowed",
+			"not_supported", "timeout", "not_connected", "operation_failed".
+
+			"shill_id" (uint32): Unique ID for the requested P2P client.
+
+			Some functionality is stubbed.
 
 Signals		PropertyChanged(string name, variant value)
 

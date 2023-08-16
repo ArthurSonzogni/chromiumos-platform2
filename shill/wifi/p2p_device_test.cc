@@ -29,6 +29,7 @@ namespace shill {
 namespace {
 const char kPrimaryInterfaceName[] = "wlan0";
 const uint32_t kPhyIndex = 5678;
+const uint32_t kSHillID = 0;
 }  // namespace
 
 class P2PDeviceTest : public testing::Test {
@@ -62,9 +63,12 @@ class P2PDeviceTest : public testing::Test {
 TEST_F(P2PDeviceTest, DeviceOnOff) {
   scoped_refptr<P2PDevice> device =
       new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,
-                    kPrimaryInterfaceName, kPhyIndex, cb.Get());
+                    kPrimaryInterfaceName, kPhyIndex, kSHillID, cb.Get());
+  CHECK_EQ(device->state_, P2PDevice::P2PDeviceState::kUninitialized);
   device->Start();
+  CHECK_EQ(device->state_, P2PDevice::P2PDeviceState::kReady);
   device->Stop();
+  CHECK_EQ(device->state_, P2PDevice::P2PDeviceState::kUninitialized);
 }
 
 }  // namespace shill

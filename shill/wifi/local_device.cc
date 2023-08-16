@@ -25,10 +25,10 @@ LocalDevice::LocalDevice(Manager* manager,
                          std::optional<std::string> link_name,
                          uint32_t phy_index,
                          const EventCallback& callback)
-    : enabled_(false),
+    : link_name_(link_name),
+      enabled_(false),
       manager_(manager),
       iface_type_(type),
-      link_name_(link_name),
       phy_index_(phy_index),
       callback_(std::move(callback)) {
   SLOG(1) << "LocalDevice(): " << link_name_.value_or("(no link_name)")

@@ -5,12 +5,18 @@
 #ifndef SHILL_WIFI_P2P_MANAGER_H_
 #define SHILL_WIFI_P2P_MANAGER_H_
 
+#include <map>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
+
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/error.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store.h"
+#include "shill/wifi/p2p_device.h"
 
 namespace shill {
 
@@ -61,6 +67,11 @@ class P2PManager {
  private:
   friend class P2PManagerTest;
   FRIEND_TEST(P2PManagerTest, SetP2PAllowed);
+  FRIEND_TEST(P2PManagerTest, ConnectAndDisconnectClient);
+  FRIEND_TEST(P2PManagerTest, CreateAndDestroyGroup);
+  FRIEND_TEST(P2PManagerTest, DisconnectWithoutConnect);
+  FRIEND_TEST(P2PManagerTest, DestroyWithoutCreate);
+  FRIEND_TEST(P2PManagerTest, ShillIDs);
 
   void HelpRegisterDerivedBool(PropertyStore* store,
                                std::string_view name,
@@ -70,11 +81,35 @@ class P2PManager {
   bool SetAllowed(const bool& value, Error* error);
   bool GetAllowed(Error* /*error*/) { return allowed_; }
 
+  // Stubbed P2P device event handler.
+  void OnP2PDeviceEvent(LocalDevice::DeviceEvent event,
+                        const LocalDevice* device) {
+    return;
+  }
+
+  void PostResult(std::string result_code,
+                  std::optional<uint32_t> shill_id,
+                  base::OnceCallback<void(KeyValueStore result)> callback);
+
+  // Delete a P2P device, stopping all active operations and deleting it's
+  // references.
+  void DeleteP2PDevice(P2PDeviceRefPtr p2p_dev_);
+
   // Reference to the main Shill Manager instance. P2PManager is created and
   // owned by WiFiProvider, which can be accessed indirectly through manager_.
   Manager* manager_;
   // P2P feature flag.
   bool allowed_;
+
+  // Map of unique IDs to P2P group owners.
+  std::map<uint32_t, P2PDeviceRefPtr> p2p_group_owners_;
+  // Map of unique IDs to P2P clients.
+  std::map<uint32_t, P2PDeviceRefPtr> p2p_clients_;
+
+  // The next value that should be used as a unique ID for a P2P device.
+  // Increases by 1 for each new device and resets to 0 when P2PManager is
+  // reset.
+  uint32_t next_unique_id_;
 };
 
 }  // namespace shill
