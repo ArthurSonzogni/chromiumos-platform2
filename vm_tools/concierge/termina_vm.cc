@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -30,6 +31,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <google/protobuf/repeated_field.h>
 #include <chromeos/constants/vm_tools.h>
@@ -37,6 +39,7 @@
 #include <net-base/ipv4_address.h>
 #include <sys/epoll.h>
 #include <vm_concierge/concierge_service.pb.h>
+#include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/future.h"
@@ -125,6 +128,29 @@ TerminaVm::TerminaVm(Config config)
 
 TerminaVm::~TerminaVm() {
   Shutdown();
+
+  // TODO(hollingum): shutdown is currently in flux (crrev.com/c/4613567) so
+  // I'm putting this here for now. When shutdown has stabilized, make this a
+  // part of it.
+  if (maitred_handle_) {
+    stub_ = nullptr;
+    brillo::AsyncGrpcClient<vm_tools::Maitred>* maitred_handle_ptr =
+        maitred_handle_.get();
+    maitred_handle_ptr->ShutDown(base::BindOnce(
+        [](std::unique_ptr<brillo::AsyncGrpcClient<vm_tools::Maitred>>
+               maitred_handle) {
+          // It is unsafe to delete the handle until shutdown has completed, so
+          // instead of blocking the destructor, we move ownership to a callback
+          // which deletes the handle.
+          //
+          // Deleting in a callback like this looks dangerous, but it's
+          // (currently) safe for the same reason that *not* deleting in a
+          // callback (currently) deadlocks, i.e. that the callback is posted to
+          // the same sequence that called ShutDown().
+          maitred_handle.reset();
+        },
+        std::move(maitred_handle_)));
+  }
 }
 
 std::unique_ptr<TerminaVm> TerminaVm::Create(Config config) {
@@ -318,9 +344,10 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   }
 
   // Create a stub for talking to the maitre'd instance inside the VM.
-  stub_ = std::make_unique<vm_tools::Maitred::Stub>(grpc::CreateChannel(
-      base::StringPrintf("vsock:%u:%u", vsock_cid_, vm_tools::kMaitredPort),
-      grpc::InsecureChannelCredentials()));
+  InitializeMaitredService(
+      std::make_unique<vm_tools::Maitred::Stub>(grpc::CreateChannel(
+          base::StringPrintf("vsock:%u:%u", vsock_cid_, vm_tools::kMaitredPort),
+          grpc::InsecureChannelCredentials())));
 
   return true;
 }
@@ -1002,13 +1029,17 @@ void TerminaVm::HandleStatefulUpdate(
   vm_tools::UpdateStorageBalloonRequest out;
   request.set_state(MapSpacedStateToGuestState(update.state()));
   request.set_free_space_bytes(update.free_space_bytes());
-  vm_tools::UpdateStorageBalloonResponse response;
 
-  grpc::Status status = stub_->UpdateStorageBalloon(&ctx, request, &response);
-
-  if (!status.ok()) {
-    LOG(ERROR) << "HandleStatefulUpdate RPC failed";
-  }
+  maitred_handle_->CallRpc(
+      &vm_tools::Maitred::Stub::AsyncUpdateStorageBalloon,
+      base::Seconds(kDefaultTimeoutSeconds), std::move(request),
+      base::BindOnce(
+          [](grpc::Status status,
+             std::unique_ptr<vm_tools::UpdateStorageBalloonResponse> response) {
+            if (!status.ok()) {
+              LOG(ERROR) << "HandleStatefulUpdate RPC failed";
+            }
+          }));
 
   return;
 }
@@ -1055,9 +1086,16 @@ void TerminaVm::set_kernel_version_for_testing(std::string kernel_version) {
   kernel_version_ = kernel_version;
 }
 
-void TerminaVm::set_stub_for_testing(
+void TerminaVm::InitializeMaitredService(
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {
-  stub_ = std::move(stub);
+  // It is not safe to delete the maitred handle without shutting it down first.
+  CHECK(!maitred_handle_);
+  stub_ = stub.get();
+  // The TaskRunner supplied here is the one on which *responses* will be
+  // posted, so we use the current sequence.
+  maitred_handle_ =
+      std::make_unique<brillo::AsyncGrpcClient<vm_tools::Maitred>>(
+          base::SequencedTaskRunner::GetCurrentDefault(), std::move(stub));
 }
 
 std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
@@ -1088,7 +1126,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
                         .id = VmId("foo", "bar"),
                         .classification = apps::VmType::UNKNOWN}));
   vm->set_kernel_version_for_testing(kernel_version);
-  vm->set_stub_for_testing(std::move(stub));
+  vm->InitializeMaitredService(std::move(stub));
   vm->network_alloc_ = network_allocation;
   return vm;
 }

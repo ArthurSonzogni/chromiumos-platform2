@@ -20,6 +20,7 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/process/process.h>
+#include <brillo/grpc/async_grpc_client.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <net-base/ipv4_address.h>
@@ -267,6 +268,10 @@ class TerminaVm final : public VmBaseImpl {
   // Starts the VM with the given kernel and root file system.
   bool Start(VmBuilder vm_builder);
 
+  // Initialized the maitred service (i.e. the one where concierge calls
+  // maitred) for this VM.
+  void InitializeMaitredService(std::unique_ptr<vm_tools::Maitred::Stub> stub);
+
   // Helper version to record the VM kernel version at startup.
   void RecordKernelVersionForEnterpriseReporting();
 
@@ -277,7 +282,6 @@ class TerminaVm final : public VmBaseImpl {
   grpc::Status SendVMShutdownMessage();
 
   void set_kernel_version_for_testing(std::string kernel_version);
-  void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
   // Network IPv4 subnet and tap device allocation from patchpanel.
   patchpanel::Client::TerminaAllocation network_alloc_;
@@ -288,8 +292,14 @@ class TerminaVm final : public VmBaseImpl {
   // Token assigned to the VM by the permission service.
   std::string permission_token_;
 
-  // Stub for making RPC requests to the maitre'd process inside the VM.
-  std::unique_ptr<vm_tools::Maitred::Stub> stub_;
+  // Used for making RPC requests to the maitre'd process inside the VM.
+  std::unique_ptr<brillo::AsyncGrpcClient<vm_tools::Maitred>> maitred_handle_;
+
+  // A handle to the maitred service, used for synchronous operations. Owned by
+  // |maitred_handle_|.
+  //
+  // TODO(b/294160898): remove stub_ when all the RPCs called on it are async.
+  vm_tools::Maitred::Stub* stub_;
 
   // Whether a TremplinStartedSignal has been received for the VM.
   bool is_tremplin_started_ = false;

@@ -165,6 +165,10 @@ class FakeMaitredService final : public vm_tools::Maitred::Service {
   grpc::Status SetResolvConfig(grpc::ServerContext* ctx,
                                const vm_tools::SetResolvConfigRequest* request,
                                vm_tools::EmptyMessage* response) override;
+  grpc::Status UpdateStorageBalloon(
+      grpc::ServerContext* ctx,
+      const vm_tools::UpdateStorageBalloonRequest* request,
+      vm_tools::UpdateStorageBalloonResponse* response) override;
 
  private:
   // Populated the first time this class receives a LaunchProcess RPC.
@@ -297,6 +301,14 @@ grpc::Status FakeMaitredService::SetResolvConfig(
   return grpc::Status::OK;
 }
 
+grpc::Status FakeMaitredService::UpdateStorageBalloon(
+    grpc::ServerContext* ctx,
+    const vm_tools::UpdateStorageBalloonRequest* request,
+    vm_tools::UpdateStorageBalloonResponse* response) {
+  *response = {};
+  return grpc::Status::OK;
+}
+
 // Runs on the grpc thread and starts the grpc server.
 void StartFakeMaitredService(
     TerminaVmTest* vm_test,
@@ -387,6 +399,8 @@ void TerminaVmTest::TearDown() {
   server_->Shutdown();
   server_.reset();
   server_thread_.Stop();
+  // Ensure asynchronous cleanup happens.
+  task_environment_.RunUntilIdle();
 }
 
 void TerminaVmTest::ServerStartCallback(base::OnceClosure quit,
@@ -466,6 +480,10 @@ TEST_F(TerminaVmTest, GetVmEnterpriseReportingInfo) {
   bool result = vm_->GetVmEnterpriseReportingInfo(&response);
   EXPECT_TRUE(result);
   EXPECT_EQ(kKernelVersion, response.vm_kernel_version());
+}
+
+TEST_F(TerminaVmTest, HandleStatefulUpdate) {
+  vm_->HandleStatefulUpdate({});
 }
 
 }  // namespace concierge
