@@ -49,6 +49,9 @@ struct NetworkConfig {
   // information is redundant with included routes, we plan to remove this
   // later.
   bool ipv4_default_route = true;
+  // If true a IPv6 default blackhole route is added to aggressively block IPv6
+  // traffic. Used if connected to an IPv4-only VPN.
+  bool ipv6_blackhole_route = false;
   std::vector<net_base::IPCIDR> excluded_route_prefixes;
   std::vector<net_base::IPCIDR> included_route_prefixes;
   std::vector<std::pair<net_base::IPv4CIDR, net_base::IPv4Address>>

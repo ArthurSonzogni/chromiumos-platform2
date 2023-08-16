@@ -85,6 +85,7 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
                    << ipv4_prop->broadcast_address << "\"";
     }
     ret.ipv4_default_route = ipv4_prop->default_route;
+    ret.ipv6_blackhole_route = ipv4_prop->blackhole_ipv6;
 
     for (const auto& route : ipv4_prop->dhcp_classless_static_routes) {
       auto prefix = net_base::IPv4CIDR::CreateFromStringAndPrefix(route.host,
@@ -233,6 +234,9 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
   }
   if (force_overwrite || !network_config.ipv4_default_route) {
     default_route = network_config.ipv4_default_route;
+  }
+  if (force_overwrite || network_config.ipv6_blackhole_route) {
+    blackhole_ipv6 = network_config.ipv6_blackhole_route;
   }
 
   if (force_overwrite || !network_config.included_route_prefixes.empty()) {

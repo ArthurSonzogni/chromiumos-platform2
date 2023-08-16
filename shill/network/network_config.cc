@@ -26,6 +26,7 @@ bool operator==(const NetworkConfig& lhs, const NetworkConfig& rhs) {
          lhs.ipv6_addresses == rhs.ipv6_addresses &&
          lhs.ipv6_gateway == rhs.ipv6_gateway &&
          lhs.ipv4_default_route == rhs.ipv4_default_route &&
+         lhs.ipv6_blackhole_route == rhs.ipv6_blackhole_route &&
          lhs.excluded_route_prefixes == rhs.excluded_route_prefixes &&
          lhs.included_route_prefixes == rhs.included_route_prefixes &&
          lhs.rfc3442_routes == rhs.rfc3442_routes &&
@@ -55,6 +56,9 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   }
   if (!config.ipv4_default_route) {
     stream << ", no IPv4 default route";
+  }
+  if (config.ipv6_blackhole_route) {
+    stream << ", blackhole IPv6";
   }
   if (!config.rfc3442_routes.empty()) {
     std::vector<std::string> rfc3442_routes_str;
