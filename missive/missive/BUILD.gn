@@ -62,6 +62,7 @@ static_library("missive_impl") {
     ":missive_service",
     "//missive/analytics:libanalytics",
     "//missive/dbus:upload_client_impl",
+    "//missive/health:health_module_test_support",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/resources:resource_manager",

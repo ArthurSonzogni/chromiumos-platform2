@@ -38,7 +38,6 @@
 
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/health/health_module.h"
-#include "missive/health/health_module_delegate_impl.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_base.h"
@@ -297,10 +296,7 @@ Storage::Storage(const Storage::Settings& settings)
     : options_(settings.options),
       sequenced_task_runner_(
           settings.queues_container->sequenced_task_runner()),
-      health_module_(
-          HealthModule::Create(std::make_unique<HealthModuleDelegateImpl>(
-              settings.options.directory().Append(
-                  HealthModule::kHealthSubdirectory)))),
+      health_module_(settings.health_module),
       encryption_module_(settings.encryption_module),
       key_delivery_(KeyDelivery::Create(settings.encryption_module,
                                         health_module_,

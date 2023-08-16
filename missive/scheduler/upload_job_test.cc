@@ -122,8 +122,8 @@ TEST_F(UploadJobTest, UploadsRecords) {
 
   // Create a copy of the records to ensure they are passed correctly.
   const std::vector<EncryptedRecord> expected_records(records);
-  EXPECT_CALL(*upload_client_, SendEncryptedRecords(_, _, _, _, _))
-      .WillOnce(WithArgs<0, 4>(Invoke(
+  EXPECT_CALL(*upload_client_, SendEncryptedRecords(_, _, _, _, _, _))
+      .WillOnce(WithArgs<0, 5>(Invoke(
           [&expected_records](
               std::vector<EncryptedRecord> records,
               UploadClient::HandleUploadResponseCallback response_callback) {
@@ -142,6 +142,7 @@ TEST_F(UploadJobTest, UploadsRecords) {
   auto job_result =
       UploadJob::Create(upload_client_,
                         /*need_encryption_keys=*/false,
+                        /*health_data=*/std::nullopt,
                         /*remaining_storage_capacity=*/3000U,
                         /*new_events_rate=*/300U,
                         base::BindOnce(&TestRecordUploader::StartUpload,

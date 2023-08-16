@@ -18,6 +18,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/health/health_module.h"
+#include "missive/health/health_module_delegate_mock.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
@@ -65,6 +67,8 @@ class EnqueueJobTest : public ::testing::Test {
     record_.set_dm_token("TEST_DM_TOKEN");
     record_.set_timestamp_us(1234567);
 
+    health_module_ =
+        HealthModule::Create(std::make_unique<HealthModuleDelegateMock>());
     storage_module_ = MockStorageModule::Create();
   }
 
@@ -81,6 +85,8 @@ class EnqueueJobTest : public ::testing::Test {
   Record record_;
 
   scoped_refptr<MockStorageModule> storage_module_;
+
+  scoped_refptr<HealthModule> health_module_;
 };
 
 TEST_F(EnqueueJobTest, CompletesSuccessfully) {
@@ -101,7 +107,8 @@ TEST_F(EnqueueJobTest, CompletesSuccessfully) {
         std::move(cb).Run(Status::StatusOK());
       })));
 
-  auto job = EnqueueJob::Create(storage_module_, request, std::move(delegate));
+  auto job = EnqueueJob::Create(storage_module_, health_module_, request,
+                                std::move(delegate));
 
   test::TestEvent<Status> enqueued;
   job->Start(enqueued.cb());
@@ -125,7 +132,8 @@ TEST_F(EnqueueJobTest, CancelsSuccessfully) {
   *request.mutable_record() = std::move(record_);
   request.set_priority(Priority::BACKGROUND_BATCH);
 
-  auto job = EnqueueJob::Create(storage_module_, request, std::move(delegate));
+  auto job = EnqueueJob::Create(storage_module_, health_module_, request,
+                                std::move(delegate));
 
   auto status = job->Cancel(failure_status);
   EXPECT_OK(status) << status;

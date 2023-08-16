@@ -136,7 +136,7 @@ static_library("storage") {
     "//missive/encryption:encryption_module",
     "//missive/encryption:encryption_module_interface",
     "//missive/encryption:verification",
-    "//missive/health:health_module",
+    "//missive/health:health_module_impl",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
 

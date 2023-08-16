@@ -90,7 +90,11 @@ HealthModule::Recorder HealthModule::NewRecorder() {
                                               : nullptr);
 }
 
-void HealthModule::SetDebugging(bool is_debugging) {
-  is_debugging_ = is_debugging;
+void HealthModule::set_debugging(bool is_debugging) {
+  is_debugging_.store(is_debugging);
+}
+
+bool HealthModule::is_debugging() const {
+  return is_debugging_.load();
 }
 }  // namespace reporting

@@ -187,6 +187,7 @@ void StorageModule::InitStorage(
                    .queues_container = settings.queues_container,
                    .encryption_module = settings.encryption_module,
                    .compression_module = settings.compression_module,
+                   .health_module = settings.health_module,
                    .signature_verification_dev_flag =
                        settings.signature_verification_dev_flag,
                    .async_start_upload_cb = settings.async_start_upload_cb},

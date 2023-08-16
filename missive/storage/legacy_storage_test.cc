@@ -43,6 +43,8 @@
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/encryption/testing_primitives.h"
 #include "missive/encryption/verification.h"
+#include "missive/health/health_module.h"
+#include "missive/health/health_module_delegate_mock.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
@@ -910,6 +912,8 @@ class LegacyStorageTest
                      .encryption_module = encryption_module,
                      .compression_module =
                          base::MakeRefCounted<test::TestCompressionModule>(),
+                     .health_module = HealthModule::Create(
+                         std::make_unique<HealthModuleDelegateMock>()),
                      .signature_verification_dev_flag =
                          base::MakeRefCounted<SignatureVerificationDevFlag>(
                              /*is_enabled=*/false),
@@ -988,6 +992,8 @@ class LegacyStorageTest
                      .encryption_module = encryption_module,
                      .compression_module =
                          base::MakeRefCounted<test::TestCompressionModule>(),
+                     .health_module = HealthModule::Create(
+                         std::make_unique<HealthModuleDelegateMock>()),
                      .signature_verification_dev_flag =
                          base::MakeRefCounted<SignatureVerificationDevFlag>(
                              /*is_enabled=*/false),

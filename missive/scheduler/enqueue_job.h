@@ -10,6 +10,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_method_response.h>
 
+#include "missive/health/health_module.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/scheduler/scheduler.h"
 #include "missive/storage/storage_module_interface.h"
@@ -48,6 +49,7 @@ class EnqueueJob : public Scheduler::Job {
 
   static SmartPtr<EnqueueJob> Create(
       scoped_refptr<StorageModuleInterface> storage_module,
+      scoped_refptr<HealthModule> health_module,
       EnqueueRecordRequest request,
       std::unique_ptr<EnqueueResponseDelegate> delegate);
 
@@ -64,11 +66,13 @@ class EnqueueJob : public Scheduler::Job {
 
  private:
   EnqueueJob(scoped_refptr<StorageModuleInterface> storage_module,
+             scoped_refptr<HealthModule> health_module,
              scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
              EnqueueRecordRequest request,
              std::unique_ptr<EnqueueResponseDelegate> delegate);
 
   scoped_refptr<StorageModuleInterface> storage_module_;
+  scoped_refptr<HealthModule> health_module_;
   const EnqueueRecordRequest request_;
   base::WeakPtrFactory<EnqueueJob> weak_ptr_factory_{this};
 };

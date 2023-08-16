@@ -27,6 +27,8 @@
 #include "missive/dbus/dbus_test_environment.h"
 #include "missive/dbus/mock_upload_client.h"
 #include "missive/encryption/test_encryption_module.h"
+#include "missive/health/health_module.h"
+#include "missive/health/health_module_delegate_mock.h"
 #include "missive/missive/migration.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module.h"
@@ -110,8 +112,9 @@ class MissiveImplTest : public ::testing::Test {
                 /*max=*/analytics::ResourceCollectorMemory::kUmaMax))
         .WillByDefault(Return(true));
 
-    missive_ = std::make_unique<MissiveImpl>(
-        base::BindOnce(
+    missive_ = std::make_unique<MissiveImpl>();
+    missive_
+        ->SetUploadClientFactory(base::BindOnce(
             [](MissiveImplTest* self, scoped_refptr<dbus::Bus> bus,
                base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
                    callback) {
@@ -119,16 +122,16 @@ class MissiveImplTest : public ::testing::Test {
                   base::MakeRefCounted<test::MockUploadClient>();
               std::move(callback).Run(self->upload_client_);
             },
-            base::Unretained(this)),
-        base::BindOnce(
+            base::Unretained(this)))
+        .SetCompressionModuleFactory(base::BindOnce(
             [](MissiveImplTest* self,
                const MissiveArgs::StorageParameters& parameters) {
               self->compression_module_ =
                   base::MakeRefCounted<test::TestCompressionModule>();
               return self->compression_module_;
             },
-            base::Unretained(this)),
-        base::BindOnce(
+            base::Unretained(this)))
+        .SetEncryptionModuleFactory(base::BindOnce(
             [](MissiveImplTest* self,
                const MissiveArgs::StorageParameters& parameters) {
               self->encryption_module_ =
@@ -136,8 +139,15 @@ class MissiveImplTest : public ::testing::Test {
                       parameters.encryption_enabled);
               return self->encryption_module_;
             },
-            base::Unretained(this)),
-        base::BindOnce(
+            base::Unretained(this)))
+        .SetHealthModuleFactory(base::BindOnce(
+            [](MissiveImplTest* self, const base::FilePath&) {
+              auto delegate = std::make_unique<HealthModuleDelegateMock>();
+              self->health_module_delegate_ = delegate.get();
+              return HealthModule::Create(std::move(delegate));
+            },
+            base::Unretained(this)))
+        .SetStorageModuleFactory(base::BindOnce(
             [](MissiveImplTest* self, MissiveImpl* missive,
                StorageOptions storage_options,
                MissiveArgs::StorageParameters parameters,
@@ -166,7 +176,8 @@ class MissiveImplTest : public ::testing::Test {
 
   void TearDown() override {
     if (missive_) {
-      EXPECT_OK(missive_->ShutDown());
+      ASSERT_OK(missive_->ShutDown());
+      health_module_delegate_ = nullptr;  // No longer available.
     }
     // Let everything ongoing to finish.
     task_environment_.RunUntilIdle();
@@ -180,6 +191,7 @@ class MissiveImplTest : public ::testing::Test {
   // Use the metrics test environment to prevent the real metrics from
   // initializing.
   analytics::Metrics::TestEnvironment metrics_test_environment_;
+  HealthModuleDelegateMock* health_module_delegate_ = nullptr;
   scoped_refptr<UploadClient> upload_client_;
   scoped_refptr<CompressionModule> compression_module_;
   scoped_refptr<EncryptionModuleInterface> encryption_module_;

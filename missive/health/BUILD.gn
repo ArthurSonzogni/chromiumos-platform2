@@ -20,16 +20,12 @@ pkg_config("target_defaults") {
   }
 }
 
-static_library("health_module") {
+source_set("health_module") {
   sources = [
     "health_module.cc",
     "health_module.h",
     "health_module_delegate.cc",
     "health_module_delegate.h",
-    "health_module_delegate_impl.cc",
-    "health_module_delegate_impl.h",
-    "health_module_files.cc",
-    "health_module_files.h",
   ]
   configs += [ ":target_defaults" ]
 
@@ -38,10 +34,31 @@ static_library("health_module") {
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/proto:libmissiveprotostatus",
-    "//missive/util:file",
     "//missive/util:status",
     "//missive/util:status_macros",
   ]
+}
+
+static_library("health_module_impl") {
+  sources = [
+    "health_module_delegate_impl.cc",
+    "health_module_delegate_impl.h",
+    "health_module_files.cc",
+    "health_module_files.h",
+  ]
+  configs += [ ":target_defaults" ]
+
+  deps = [
+    ":health_module",
+    "//missive/util:file",
+  ]
+}
+
+static_library("health_module_test_support") {
+  sources = [ "health_module_delegate_mock.h" ]
+  configs += [ ":target_defaults" ]
+
+  deps = [ ":health_module" ]
 }
 
 source_set("unit_tests") {
@@ -52,5 +69,8 @@ source_set("unit_tests") {
   ]
   configs += [ ":target_defaults" ]
 
-  deps = [ ":health_module" ]
+  deps = [
+    ":health_module",
+    ":health_module_test_support",
+  ]
 }

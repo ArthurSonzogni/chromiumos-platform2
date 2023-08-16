@@ -70,6 +70,7 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
     const scoped_refptr<QueuesContainer> queues_container;
     const scoped_refptr<EncryptionModuleInterface> encryption_module;
     const scoped_refptr<CompressionModule> compression_module;
+    const scoped_refptr<HealthModule> health_module;
     const scoped_refptr<SignatureVerificationDevFlag>
         signature_verification_dev_flag;
     const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb;

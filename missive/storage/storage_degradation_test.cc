@@ -36,6 +36,8 @@
 #include "missive/encryption/decryption.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/encryption_module_interface.h"
+#include "missive/health/health_module.h"
+#include "missive/health/health_module_delegate_mock.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
@@ -707,6 +709,8 @@ class StorageDegradationTest
          .encryption_module = encryption_module,
          .compression_module =
              base::MakeRefCounted<test::TestCompressionModule>(),
+         .health_module =
+             HealthModule::Create(std::make_unique<HealthModuleDelegateMock>()),
          .signature_verification_dev_flag =
              base::MakeRefCounted<SignatureVerificationDevFlag>(
                  /*is_enabled=*/false),

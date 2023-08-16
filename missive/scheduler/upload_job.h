@@ -35,6 +35,7 @@ class UploadJob : public Scheduler::Job {
    public:
     UploadDelegate(scoped_refptr<UploadClient> upload_client,
                    bool need_encryption_key,
+                   std::optional<ERPHealthData> health_data,
                    uint64_t remaining_storage_capacity,
                    std::optional<uint64_t> new_events_rate,
                    UploadClient::HandleUploadResponseCallback response_cb);
@@ -52,6 +53,8 @@ class UploadJob : public Scheduler::Job {
 
     const scoped_refptr<UploadClient> upload_client_;
     const bool need_encryption_key_;
+    std::optional<ERPHealthData> health_data_;
+
     EncryptedRecords encrypted_records_;
     ScopedReservation encrypted_records_reservation_;
 
@@ -95,6 +98,7 @@ class UploadJob : public Scheduler::Job {
   static StatusOr<SmartPtr<UploadJob>> Create(
       scoped_refptr<UploadClient> upload_client,
       bool need_encryption_key,
+      std::optional<ERPHealthData> health_data,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
       UploaderInterface::UploaderInterfaceResultCb start_cb,

@@ -22,6 +22,7 @@
 #include "missive/dbus/upload_client.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
+#include "missive/health/health_module.h"
 #include "missive/missive/missive_args.h"
 #include "missive/missive/missive_service.h"
 #include "missive/proto/interface.pb.h"
@@ -37,34 +38,40 @@ namespace reporting {
 
 class MissiveImpl : public MissiveService {
  public:
-  // MissiveImpl constructor features `upload_client_factory` and
-  // `create_storage_factory` parameters to allow tests to mock them.
-  // Default values provided are intended for production.
-  explicit MissiveImpl(
+  // `MissiveImpl` constructor features `..._factory` members to allow tests to
+  // mock them. Default values provided are intended for production.
+  MissiveImpl();
+  MissiveImpl(const MissiveImpl&) = delete;
+  MissiveImpl& operator=(const MissiveImpl&) = delete;
+  ~MissiveImpl() override;
+
+  // Factory setters. If needed, must be called before calling `StartUp`.
+  MissiveImpl& SetUploadClientFactory(
       base::OnceCallback<
           void(scoped_refptr<dbus::Bus> bus,
                base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
-                   callback)> upload_client_factory =
-          base::BindOnce(&UploadClient::Create),
+                   callback)> upload_client_factory);
+  MissiveImpl& SetCompressionModuleFactory(
       base::OnceCallback<scoped_refptr<CompressionModule>(
           const MissiveArgs::StorageParameters& parameters)>
-          compression_module_factory =
-              base::BindOnce(&MissiveImpl::CreateCompressionModule),
+          compression_module_factory);
+  MissiveImpl& SetEncryptionModuleFactory(
       base::OnceCallback<scoped_refptr<EncryptionModuleInterface>(
           const MissiveArgs::StorageParameters& parameters)>
-          encryption_module_factory =
-              base::BindOnce(&MissiveImpl::CreateEncryptionModule),
+          encryption_module_factory);
+  MissiveImpl& SetHealthModuleFactory(
+      base::OnceCallback<scoped_refptr<HealthModule>(
+          const base::FilePath& file_path)> health_module_factory);
+  MissiveImpl& SetStorageModuleFactory(
       base::OnceCallback<
           void(MissiveImpl* self,
                StorageOptions storage_options,
                MissiveArgs::StorageParameters parameters,
                base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
-                   callback)> create_storage_factory =
-          base::BindOnce(&MissiveImpl::CreateStorage));
-  MissiveImpl(const MissiveImpl&) = delete;
-  MissiveImpl& operator=(const MissiveImpl&) = delete;
-  ~MissiveImpl() override;
+                   callback)> create_storage_factory);
 
+  // Asynchronous StartUp called once `bus` and `feature_lib` are available.
+  // Once finished, invokes `cb` passing OK or error status.
   void StartUp(scoped_refptr<dbus::Bus> bus,
                feature::PlatformFeaturesInterface* feature_lib,
                base::OnceCallback<void(Status)> cb) override;
@@ -107,6 +114,8 @@ class MissiveImpl : public MissiveService {
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 
+  static scoped_refptr<HealthModule> CreateHealthModule(
+      const base::FilePath& file_path);
   static scoped_refptr<CompressionModule> CreateCompressionModule(
       const MissiveArgs::StorageParameters& parameters);
 
@@ -134,6 +143,11 @@ class MissiveImpl : public MissiveService {
       UploaderInterface::UploadReason reason,
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 
+  void CreateUploadJob(
+      std::optional<ERPHealthData> health_data,
+      UploaderInterface::UploadReason reason,
+      UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
+
   void HandleUploadResponse(
       StatusOr<UploadEncryptedRecordResponse> upload_response);
 
@@ -146,20 +160,25 @@ class MissiveImpl : public MissiveService {
   base::OnceCallback<void(
       scoped_refptr<dbus::Bus> bus,
       base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)> callback)>
-      upload_client_factory_;
+      upload_client_factory_ = base::BindOnce(&UploadClient::Create);
   base::OnceCallback<scoped_refptr<CompressionModule>(
       const MissiveArgs::StorageParameters& parameters)>
-      compression_module_factory_;
+      compression_module_factory_ =
+          base::BindOnce(&MissiveImpl::CreateCompressionModule);
   base::OnceCallback<scoped_refptr<EncryptionModuleInterface>(
       const MissiveArgs::StorageParameters& parameters)>
-      encryption_module_factory_;
+      encryption_module_factory_ =
+          base::BindOnce(&MissiveImpl::CreateEncryptionModule);
+  base::OnceCallback<scoped_refptr<HealthModule>(
+      const base::FilePath& file_path)>
+      health_module_factory_ = base::BindOnce(&MissiveImpl::CreateHealthModule);
   base::OnceCallback<void(
       MissiveImpl* self,
       StorageOptions storage_options,
       MissiveArgs::StorageParameters parameters,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback)>
-      create_storage_factory_;
+      create_storage_factory_ = base::BindOnce(&MissiveImpl::CreateStorage);
 
   SEQUENCE_CHECKER(sequence_checker_);
 
@@ -170,6 +189,10 @@ class MissiveImpl : public MissiveService {
       GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<StorageModule> storage_module_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  scoped_refptr<HealthModule> health_module_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
   scoped_refptr<const ResourceManager> disk_space_resource_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<EnqueuingRecordTallier> enqueuing_record_tallier_

@@ -26,6 +26,7 @@ static_library("enqueue_job") {
   configs += [ ":target_defaults" ]
   deps = [
     ":scheduler",
+    "//missive/health:health_module_test_support",
     "//missive/proto:libmissiveprotointerface",
     "//missive/storage:storage_module_interface",
     "//missive/util:status",

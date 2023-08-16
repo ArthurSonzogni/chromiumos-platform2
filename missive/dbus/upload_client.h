@@ -14,6 +14,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 
+#include "missive/proto/health.pb.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/statusor.h"
@@ -38,10 +39,15 @@ class UploadClient : public base::RefCountedDeleteOnSequence<UploadClient> {
       base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)> cb);
 
   // Utilizes DBus to send a list of encrypted records to Chrome. Caller can
-  // expect a response via the |response_callback|.
+  // expect a response via the `response_callback`.
+  // `records` may be an empty vector, `need_encryption_key` is true or false,
+  // regardless of `records`, `health_data` is only provided if health module is
+  // in debugging state (it is not counted towards
+  // `remaining_storage_capacity`).
   virtual void SendEncryptedRecords(
       std::vector<EncryptedRecord> records,
       bool need_encryption_keys,
+      std::optional<ERPHealthData> health_data,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
       HandleUploadResponseCallback response_callback) = 0;

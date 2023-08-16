@@ -52,27 +52,31 @@ Status EnqueueJob::EnqueueResponseDelegate::SendResponse(Status status) {
 // static
 Scheduler::Job::SmartPtr<EnqueueJob> EnqueueJob::Create(
     scoped_refptr<StorageModuleInterface> storage_module,
+    scoped_refptr<HealthModule> health_module,
     EnqueueRecordRequest request,
     std::unique_ptr<EnqueueResponseDelegate> delegate) {
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner =
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   return std::unique_ptr<EnqueueJob, base::OnTaskRunnerDeleter>(
-      new EnqueueJob(storage_module, sequenced_task_runner, std::move(request),
-                     std::move(delegate)),
+      new EnqueueJob(storage_module, health_module, sequenced_task_runner,
+                     std::move(request), std::move(delegate)),
       base::OnTaskRunnerDeleter(sequenced_task_runner));
 }
 
 EnqueueJob::EnqueueJob(
     scoped_refptr<StorageModuleInterface> storage_module,
+    scoped_refptr<HealthModule> health_module,
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
     EnqueueRecordRequest request,
     std::unique_ptr<EnqueueResponseDelegate> delegate)
     : Job(std::move(delegate), sequenced_task_runner),
       storage_module_(storage_module),
+      health_module_(health_module),
       request_(std::move(request)) {}
 
 void EnqueueJob::StartImpl() {
+  health_module_->set_debugging(request_.health_data_logging_enabled());
   storage_module_->AddRecord(
       request_.priority(), std::move(request_.record()),
       base::BindPostTask(

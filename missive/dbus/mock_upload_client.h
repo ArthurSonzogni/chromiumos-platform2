@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 
 #include "missive/dbus/upload_client.h"
+#include "missive/proto/health.pb.h"
 #include "missive/proto/record.pb.h"
 
 namespace reporting::test {
@@ -27,6 +28,7 @@ class MockUploadClient : public UploadClient {
               SendEncryptedRecords,
               (std::vector<EncryptedRecord> records,
                bool need_encryption_keys,
+               std::optional<ERPHealthData> health_data,
                uint64_t remaining_storage_capacity,
                std::optional<uint64_t> new_events_rate,
                HandleUploadResponseCallback response_callback),

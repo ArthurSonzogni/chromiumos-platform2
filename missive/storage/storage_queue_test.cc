@@ -40,7 +40,7 @@
 #include "missive/compression/decompression.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/health/health_module.h"
-#include "missive/health/health_module_delegate_impl.h"
+#include "missive/health/health_module_delegate_mock.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/storage/storage_configuration.h"
@@ -659,10 +659,9 @@ class StorageQueueTest
           })) {
     CreateTestEncryptionModuleOrDie();
     health_module_ =
-        HealthModule::Create(std::make_unique<HealthModuleDelegateImpl>(
-            options_.directory().Append(HealthModule::kHealthSubdirectory)));
+        HealthModule::Create(std::make_unique<HealthModuleDelegateMock>());
     // Just to check everything works identically with debugging active.
-    health_module_->SetDebugging(testing::get<2>(GetParam()));
+    health_module_->set_debugging(testing::get<2>(GetParam()));
     test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
     StorageQueue::Create(

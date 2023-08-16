@@ -34,11 +34,11 @@ class UploadClientImpl : public UploadClient {
       dbus::ObjectProxy* chrome_proxy,
       base::OnceCallback<void(StatusOr<scoped_refptr<UploadClientImpl>>)> cb);
 
-  // Utilizes DBus to send a list of encrypted records to Chrome. Caller can
-  // expect a response via the |response_callback|.
+  // `UploadClient` overrides.
   void SendEncryptedRecords(
       std::vector<EncryptedRecord> records,
       bool need_encryption_keys,
+      std::optional<ERPHealthData> health_data,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
       HandleUploadResponseCallback response_callback) override;
@@ -61,6 +61,7 @@ class UploadClientImpl : public UploadClient {
   friend class base::DeleteHelper<UploadClientImpl>;
   void MaybeMakeCall(std::vector<EncryptedRecord> records,
                      const bool need_encryption_keys,
+                     std::optional<ERPHealthData> health_data,
                      uint64_t remaining_storage_capacity,
                      std::optional<uint64_t> new_events_rate,
                      HandleUploadResponseCallback response_callback);

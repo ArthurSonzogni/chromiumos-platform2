@@ -70,12 +70,15 @@ class HealthModule : public base::RefCountedThreadSafe<HealthModule> {
   // Gets health data and send to |cb|.
   void GetHealthData(HealthCallback cb);
 
-  // Sets or resets debugging. Safe to be called at any time, will only affect
-  // future activity, will not stop debugging action being already in progress.
-  void SetDebugging(bool is_debugging = true);
-
   // Creates new `Recorder` instance if debugging is on.
   HealthModule::Recorder NewRecorder();
+
+  // Returns current debugging state. Safe to be called at any time.
+  bool is_debugging() const;
+
+  // Sets or resets debugging. Safe to be called at any time, will only affect
+  // future activity, will not stop debugging action being already in progress.
+  void set_debugging(bool is_debugging = true);
 
  protected:
   // Constructor can only be called by |Create| factory method.

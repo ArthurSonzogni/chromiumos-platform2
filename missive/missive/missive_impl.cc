@@ -5,6 +5,7 @@
 #include "missive/missive/missive_impl.h"
 
 #include <cstdlib>
+#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -24,8 +25,11 @@
 #include "missive/dbus/upload_client.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/verification.h"
+#include "missive/health/health_module.h"
+#include "missive/health/health_module_delegate_impl.h"
 #include "missive/missive/migration.h"
 #include "missive/missive/missive_args.h"
+#include "missive/proto/health.pb.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/scheduler/enqueue_job.h"
@@ -63,33 +67,52 @@ ResponseType RespondMissiveDisabled() {
 }
 }  // namespace
 
-MissiveImpl::MissiveImpl(
-    base::OnceCallback<
-        void(scoped_refptr<dbus::Bus> bus,
-             base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
-                 callback)> upload_client_factory,
-    base::OnceCallback<scoped_refptr<CompressionModule>(
-        const MissiveArgs::StorageParameters& parameters)>
-        compression_module_factory,
-    base::OnceCallback<scoped_refptr<EncryptionModuleInterface>(
-        const MissiveArgs::StorageParameters& parameters)>
-        encryption_module_factory,
-    base::OnceCallback<
-        void(MissiveImpl* self,
-             StorageOptions storage_options,
-             MissiveArgs::StorageParameters parameters,
-             base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
-                 callback)> create_storage_factory)
-    : upload_client_factory_(std::move(upload_client_factory)),
-      compression_module_factory_(std::move(compression_module_factory)),
-      encryption_module_factory_(std::move(encryption_module_factory)),
-      create_storage_factory_(std::move(create_storage_factory)) {
+MissiveImpl::MissiveImpl() {
   // Constructor may even be called not on any seq task runner.
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
 MissiveImpl::~MissiveImpl() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
+
+MissiveImpl& MissiveImpl::SetUploadClientFactory(
+    base::OnceCallback<
+        void(scoped_refptr<dbus::Bus> bus,
+             base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
+                 callback)> upload_client_factory) {
+  upload_client_factory_ = std::move(upload_client_factory);
+  return *this;
+}
+MissiveImpl& MissiveImpl::SetCompressionModuleFactory(
+    base::OnceCallback<scoped_refptr<CompressionModule>(
+        const MissiveArgs::StorageParameters& parameters)>
+        compression_module_factory) {
+  compression_module_factory_ = std::move(compression_module_factory);
+  return *this;
+}
+MissiveImpl& MissiveImpl::SetEncryptionModuleFactory(
+    base::OnceCallback<scoped_refptr<EncryptionModuleInterface>(
+        const MissiveArgs::StorageParameters& parameters)>
+        encryption_module_factory) {
+  encryption_module_factory_ = std::move(encryption_module_factory);
+  return *this;
+}
+MissiveImpl& MissiveImpl::SetHealthModuleFactory(
+    base::OnceCallback<scoped_refptr<HealthModule>(
+        const base::FilePath& file_path)> health_module_factory) {
+  health_module_factory_ = std::move(health_module_factory);
+  return *this;
+}
+MissiveImpl& MissiveImpl::SetStorageModuleFactory(
+    base::OnceCallback<
+        void(MissiveImpl* self,
+             StorageOptions storage_options,
+             MissiveArgs::StorageParameters parameters,
+             base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
+                 callback)> create_storage_factory) {
+  create_storage_factory_ = std::move(create_storage_factory);
+  return *this;
 }
 
 void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
@@ -207,6 +230,9 @@ void MissiveImpl::OnStorageParameters(
       .WithArgs(base::BindPostTaskToCurrentDefault(base::BindRepeating(
                     &MissiveImpl::OnStorageParametersUpdate, GetWeakPtr())),
                 base::DoNothing());
+  health_module_ = std::move(health_module_factory_)
+                       .Run(storage_options.directory().Append(
+                           HealthModule::kHealthSubdirectory));
 
   std::move(create_storage_factory_)
       .Run(this, std::move(storage_options), std::move(parameters),
@@ -232,10 +258,18 @@ void MissiveImpl::CreateStorage(
        .queues_container = queues_container_,
        .encryption_module = encryption_module_,
        .compression_module = compression_module_,
+       .health_module = health_module_,
        .signature_verification_dev_flag = signature_verification_dev_flag_,
        .async_start_upload_cb = base::BindPostTaskToCurrentDefault(
            base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr()))},
       std::move(callback));
+}
+
+// static
+scoped_refptr<HealthModule> MissiveImpl::CreateHealthModule(
+    const base::FilePath& file_path) {
+  return HealthModule::Create(
+      std::make_unique<HealthModuleDelegateImpl>(file_path));
 }
 
 // static
@@ -295,11 +329,38 @@ void MissiveImpl::AsyncStartUploadInternal(
                     "Missive service not yet ready"));
     return;
   }
+  if (health_module_->is_debugging()) {
+    health_module_->GetHealthData(base::BindOnce(
+        [](base::WeakPtr<MissiveImpl> missive,
+           UploaderInterface::UploadReason reason,
+           UploaderInterface::UploaderInterfaceResultCb uploader_result_cb,
+           ERPHealthData health_data) {
+          if (!missive) {
+            std::move(uploader_result_cb)
+                .Run(Status(error::UNAVAILABLE,
+                            "Missive service has been shut down"));
+            return;
+          }
+          missive->CreateUploadJob(std::move(health_data), reason,
+                                   std::move(uploader_result_cb));
+        },
+        weak_ptr_factory_.GetWeakPtr(), reason, std::move(uploader_result_cb)));
+  } else {
+    CreateUploadJob(/*health_data=*/std::nullopt, reason,
+                    std::move(uploader_result_cb));
+  }
+}
+
+void MissiveImpl::CreateUploadJob(
+    std::optional<ERPHealthData> health_data,
+    UploaderInterface::UploadReason reason,
+    UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   auto upload_job_result = UploadJob::Create(
       upload_client_,
       /*need_encryption_key=*/
       (encryption_module_->is_enabled() &&
        reason == UploaderInterface::UploadReason::KEY_DELIVERY),
+      std::move(health_data),
       /*remaining_storage_capacity=*/disk_space_resource_->GetTotal() -
           disk_space_resource_->GetUsed(),
       /*new_events_rate=*/enqueuing_record_tallier_->GetAverage(),
@@ -349,7 +410,7 @@ void MissiveImpl::EnqueueRecord(
   }
 
   scheduler_.EnqueueJob(
-      EnqueueJob::Create(storage_module_, in_request,
+      EnqueueJob::Create(storage_module_, health_module_, in_request,
                          std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
                              std::move(out_response))));
 }
@@ -435,10 +496,12 @@ void MissiveImpl::HandleUploadResponse(
     CHECK(upload_response_value.has_status())
         << "Disable signal should be accompanied by status";
     Status upload_status;
-    upload_status.RestoreFrom(upload_response.ValueOrDie().status());
+    upload_status.RestoreFrom(upload_response_value.status());
     LOG(ERROR) << "Disable reporting, status=" << upload_status;
     SetEnabled(/*is_enabled=*/false);
   }
+  health_module_->set_debugging(
+      upload_response_value.health_data_logging_enabled());
 }
 
 void MissiveImpl::SetEnabled(bool is_enabled) {
