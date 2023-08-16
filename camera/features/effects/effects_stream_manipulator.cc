@@ -23,7 +23,6 @@
 #include <vector>
 
 #include <base/containers/flat_set.h>
-#include <base/containers/stack_container.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
