@@ -4295,6 +4295,7 @@ Service::VmMap::iterator Service::FindVm(const std::string& owner_id,
 base::FilePath Service::GetVmImagePath(const std::string& dlc_id,
                                        std::string* failure_reason) {
   DCHECK(failure_reason);
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   std::optional<std::string> dlc_root =
       AsyncNoReject(bus_->GetDBusTaskRunner(),
                     base::BindOnce(
@@ -4324,6 +4325,7 @@ VMImageSpec Service::GetImageSpec(
     string* failure_reason) {
   DCHECK(failure_reason);
   DCHECK(failure_reason->empty());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // A VM image is trusted when both:
   // 1) This daemon (or a trusted daemon) chooses the kernel and rootfs path.

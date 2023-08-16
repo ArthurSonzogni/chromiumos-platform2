@@ -477,13 +477,16 @@ class Service final : public org::chromium::VmConciergeInterface,
   VmMap vms_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The shill D-Bus client.
-  std::unique_ptr<ShillClient> shill_client_;
+  std::unique_ptr<ShillClient> shill_client_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The power manager D-Bus client.
-  std::unique_ptr<PowerManagerClient> power_manager_client_;
+  std::unique_ptr<PowerManagerClient> power_manager_client_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The dlcservice helper D-Bus client.
-  std::unique_ptr<DlcHelper> dlcservice_client_;
+  std::unique_ptr<DlcHelper> dlcservice_client_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The StartupListener service.
   StartupListenerImpl startup_listener_;
