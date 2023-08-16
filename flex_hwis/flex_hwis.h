@@ -6,14 +6,13 @@
 #define FLEX_HWIS_FLEX_HWIS_H_
 
 #include "flex_hwis/flex_hwis_check.h"
-#include "flex_hwis/flex_hwis_mojo.h"
 #include "flex_hwis/http_sender.h"
+#include "flex_hwis/hwis_data.pb.h"
 
 #include <base/files/file_path.h>
 #include <metrics/metrics_library.h>
 
 namespace flex_hwis {
-namespace mojom = ::ash::cros_healthd::mojom;
 enum class Result {
   // Hardware data sent successfully.
   Sent,
@@ -23,13 +22,6 @@ enum class Result {
   NotAuthorized,
   // Encountered an Error.
   Error
-};
-
-enum class Debug {
-  // The user enters the "--debug" flag to output debug messages and hardware
-  // data.
-  Print,
-  None,
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -51,25 +43,22 @@ enum class [[nodiscard]] PermissionResult {
   kMax = kError,
 };
 
-// This class is responsible for collecting device hardware information,
-// evaluating management policies and device settings,
-// and then sending the data to a remote API.
+// This class is responsible for evaluating management policies and device
+// settings and then sending the data to a remote API.
 class FlexHwisSender {
  public:
   // |base_path| is normally "/" but can be adjusted for testing.
   FlexHwisSender(const base::FilePath& base_path,
                  policy::PolicyProvider& provider,
                  HttpSender& sender);
-  // Collect and send the device hardware information.
-  Result CollectAndSend(MetricsLibraryInterface& metrics, Debug debug);
-  // This function is used by tests only to set the telemetry info.
-  void SetTelemetryInfoForTesting(mojom::TelemetryInfoPtr info);
+  // Send the device hardware information if policy allows.
+  Result MaybeSend(hwis_proto::Device& hardware_info,
+                   MetricsLibraryInterface& metrics);
 
  private:
   // The base FilePath, adjustable for testing.
   base::FilePath base_path_;
   flex_hwis::FlexHwisCheck check_;
-  flex_hwis::FlexHwisMojo mojo_;
   HttpSender& sender_;
 };
 

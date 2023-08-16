@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "flex_hwis/flex_hwis.h"
+#include "flex_hwis/flex_hwis_mojo.h"
 #include "flex_hwis/flex_hwis_server_info.h"
 #include "flex_hwis/http_sender.h"
 
@@ -34,15 +35,23 @@ int main(int argc, char** argv) {
       // See scoped_ipc_support.h
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
+  // Fill our proto with hardware data.
+  hwis_proto::Device hardware_info;
+  flex_hwis::FlexHwisMojo mojo;
+  mojo.SetHwisInfo(&hardware_info);
+
+  if (FLAGS_debug) {
+    LOG(INFO) << hardware_info.DebugString();
+  }
+
   auto server_info = flex_hwis::ServerInfo();
   auto sender = flex_hwis::HttpSender(server_info);
   auto provider = policy::PolicyProvider();
   flex_hwis::FlexHwisSender flex_hwis_sender(base::FilePath("/"), provider,
                                              sender);
   MetricsLibrary metrics_library;
-  auto flex_hwis_res = flex_hwis_sender.CollectAndSend(
-      metrics_library,
-      FLAGS_debug ? flex_hwis::Debug::Print : flex_hwis::Debug::None);
+  auto flex_hwis_res =
+      flex_hwis_sender.MaybeSend(hardware_info, metrics_library);
 
   switch (flex_hwis_res) {
     case flex_hwis::Result::Sent:
