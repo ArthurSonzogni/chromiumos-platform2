@@ -624,12 +624,13 @@ std::optional<std::string> AttestationService::GetEndorsementPublicKey() const {
   }
 
   // Try to read the public key directly.
-  std::string public_key;
-  if (!tpm_utility_->GetEndorsementPublicKey(GetEndorsementKeyType(),
-                                             &public_key)) {
-    return std::nullopt;
-  }
-  return public_key;
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& public_key,
+      hwsec_->GetEndorsementPublicKey(GetEndorsementKeyType()),
+      _.WithStatus<TPMError>("Failed to get endorsement public key")
+          .LogError()
+          .As(std::nullopt));
+  return BlobToString(public_key);
 }
 
 std::optional<std::string> AttestationService::GetEndorsementCertificate()
@@ -1608,16 +1609,17 @@ void AttestationService::PrepareForEnrollment(
   KeyType key_type = GetEndorsementKeyType();
 
   // Gather information about the endorsement key.
-  std::string ek_public_key;
-  if (!tpm_utility_->GetEndorsementPublicKey(key_type, &ek_public_key)) {
+  auto result = hwsec_->GetEndorsementPublicKey(key_type);
+  if (!result.ok()) {
     LOG(ERROR) << __func__ << ": Failed to get EK public key with key_type "
-               << key_type;
+               << key_type << ": " << result.status();
     metrics_.ReportAttestationOpsStatus(
         kAttestationPrepareForEnrollment,
         AttestationOpsStatus::kEndorsementFailure);
     std::move(callback).Run(false);
     return;
   }
+  std::string ek_public_key = BlobToString(std::move(result).value());
   LOG(INFO) << "GetEndorsementPublicKey done. (from start: "
             << (base::TimeTicks::Now() - start).InMilliseconds() << "ms.)";
 
@@ -2236,18 +2238,18 @@ bool AttestationService::VerifyCertifiedKeyGeneration(
 
 bool AttestationService::VerifyActivateIdentity(
     const std::string& aik_public_key_tpm_format) {
-  std::string rsa_ek_public_key;
-  if (!tpm_utility_->GetEndorsementPublicKey(KEY_TYPE_RSA,
-                                             &rsa_ek_public_key)) {
-    LOG(ERROR) << __func__
-               << ": Can't get RSA EK public key for VerifyActivateIdentity.";
-    return false;
-  }
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& rsa_ek_public_key,
+      hwsec_->GetEndorsementPublicKey(KEY_TYPE_RSA),
+      _.WithStatus<TPMError>("Failed to get endorsement public key")
+          .LogError()
+          .As(false));
   std::string test_credential = "test credential";
   EncryptedIdentityCredential encrypted_credential;
   if (!crypto_utility_->EncryptIdentityCredential(
-          tpm_utility_->GetVersion(), test_credential, rsa_ek_public_key,
-          aik_public_key_tpm_format, &encrypted_credential)) {
+          tpm_utility_->GetVersion(), test_credential,
+          BlobToString(rsa_ek_public_key), aik_public_key_tpm_format,
+          &encrypted_credential)) {
     LOG(ERROR) << __func__ << ": Failed to encrypt identity credential";
     return false;
   }

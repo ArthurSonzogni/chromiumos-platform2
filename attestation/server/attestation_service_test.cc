@@ -39,6 +39,7 @@
 #include "attestation/server/mock_database.h"
 #include "attestation/server/mock_key_store.h"
 
+using brillo::BlobFromString;
 using hwsec::EndorsementAuth;
 using hwsec::KeyRestriction;
 using hwsec::TPMError;
@@ -267,6 +268,9 @@ class AttestationServiceBaseTest : public testing::Test {
     };
     EXPECT_CALL(mock_hwsec_, CreateIdentity)
         .WillRepeatedly(ReturnValue(fake_create_identity_result));
+    EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey)
+        .WillRepeatedly(
+            ReturnValue(BlobFromString("fake_endorsement_public_key")));
     // Run out initialize task(s) to avoid any race conditions with tests that
     // need to change the default setup.
     CHECK(
@@ -484,8 +488,8 @@ TEST_F(AttestationServiceBaseTest, GetFeatures) {
 }
 
 TEST_F(AttestationServiceBaseTest, GetEndorsementInfoNoInfo) {
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey(_))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure,
                      const GetEndorsementInfoReply& reply) {
@@ -2294,8 +2298,8 @@ TEST_P(AttestationServiceTest,
 TEST_P(AttestationServiceTest, PrepareForEnrollmentNoPublicKey) {
   // Start with an empty database.
   mock_database_.GetMutableProtobuf()->Clear();
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementPublicKey(_, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey(_))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
                                    base::Unretained(service_.get()))));
