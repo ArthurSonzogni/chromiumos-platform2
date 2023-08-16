@@ -14,7 +14,7 @@ use std::vec::Vec;
 use libchromeos::deprecated::{EventFd, PollContext};
 use log::{debug, error, info};
 use rusb::{Direction, GlobalContext, Registration, TransferType, UsbContext};
-use sync::{Condvar, Mutex};
+use std::sync::{Condvar, Mutex};
 
 const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(60);
 const USB_CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
@@ -377,7 +377,7 @@ impl InterfaceManager {
             .name("interface cleanup".into())
             .spawn(move || {
                 debug!("Cleanup thread starting");
-                let mut state = manager.state.lock();
+                let mut state = manager.state.lock().unwrap();
 
                 // We wait in two phases:
                 // 1. As long as no cleanup is pending or there is an active interface, we need to
@@ -391,7 +391,8 @@ impl InterfaceManager {
                     // returned.
                     state = manager
                         .interface_available
-                        .wait_while(state, |t| t.active > 0 || !t.pending_cleanup);
+                        .wait_while(state, |t| t.active > 0 || !t.pending_cleanup)
+                        .unwrap();
 
                     // Phase 2: Wait for the cleanup time to arrive.
                     // 1. If an interface is claimed and returned during the timeout, we will
@@ -404,10 +405,10 @@ impl InterfaceManager {
                     //    exit the while loop and release all the interfaces.
                     while state.next_cleanup > Instant::now() {
                         let wait = state.next_cleanup - Instant::now();
-                        let result =
-                            manager
-                                .interface_available
-                                .wait_timeout_while(state, wait, |t| t.active == 0);
+                        let result = manager
+                            .interface_available
+                            .wait_timeout_while(state, wait, |t| t.active == 0)
+                            .unwrap();
                         state = result.0; // Throw away the timed out part of the result.
                         if state.active > 0 {
                             continue 'outer;
@@ -454,7 +455,7 @@ impl InterfaceManager {
     /// If interfaces are currently not claimed, will first set the active device
     /// configuration and re-claim USB interfaces.
     fn request_interface(&mut self) -> Result<ClaimedInterface> {
-        let mut state = self.state.lock();
+        let mut state = self.state.lock().unwrap();
 
         if state.active == 0 && !state.pending_cleanup {
             debug!("Claiming all interfaces");
@@ -472,7 +473,7 @@ impl InterfaceManager {
                 return Ok(interface);
             }
 
-            state = self.interface_available.wait(state);
+            state = self.interface_available.wait(state).unwrap();
         }
     }
 
@@ -482,7 +483,7 @@ impl InterfaceManager {
             "* Returning interface {}",
             interface.descriptor.interface_number
         );
-        let mut state = self.state.lock();
+        let mut state = self.state.lock().unwrap();
         state.interfaces.push_back(interface);
         state.next_cleanup = Instant::now() + USB_CLEANUP_TIMEOUT;
         state.pending_cleanup = true;
