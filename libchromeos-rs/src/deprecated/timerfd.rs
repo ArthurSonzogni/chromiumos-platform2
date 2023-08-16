@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 use std::io;
+use std::sync::Mutex;
 use std::{
     fs::File,
     mem,
@@ -11,7 +12,6 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use sync::Mutex;
 
 use libc::{self, clock_getres, timerfd_create, timerfd_settime, CLOCK_MONOTONIC, TFD_CLOEXEC};
 
@@ -168,7 +168,7 @@ impl FakeTimerFd {
     /// the period for repeated expirations after the initial expiration.  Otherwise
     /// the timer will expire just once.  Cancels any existing duration and repeating interval.
     pub fn reset(&mut self, dur: Duration, interval: Option<Duration>) -> io::Result<()> {
-        let mut guard = self.clock.lock();
+        let mut guard = self.clock.lock().unwrap();
         let deadline = guard.nanos() + FakeTimerFd::duration_to_nanos(dur);
         self.deadline_ns = Some(deadline);
         self.interval = interval;
@@ -183,7 +183,7 @@ impl FakeTimerFd {
         loop {
             self.fd.read()?;
             if let Some(deadline_ns) = &mut self.deadline_ns {
-                let mut guard = self.clock.lock();
+                let mut guard = self.clock.lock().unwrap();
                 let now = guard.nanos();
                 if now >= *deadline_ns {
                     let mut expirys = 0;
@@ -270,7 +270,7 @@ mod tests {
         let dur = Duration::from_nanos(200);
         tfd.reset(dur, None).expect("failed to arm timer");
 
-        clock.lock().add_ns(200);
+        clock.lock().unwrap().add_ns(200);
 
         let count = tfd.wait().expect("unable to wait for timer");
 
@@ -286,13 +286,13 @@ mod tests {
         let interval = Duration::from_nanos(100);
         tfd.reset(dur, Some(interval)).expect("failed to arm timer");
 
-        clock.lock().add_ns(300);
+        clock.lock().unwrap().add_ns(300);
 
         let mut count = tfd.wait().expect("unable to wait for timer");
         // An expiration from the initial expiry and from 1 repeat.
         assert_eq!(count, 2);
 
-        clock.lock().add_ns(300);
+        clock.lock().unwrap().add_ns(300);
         count = tfd.wait().expect("unable to wait for timer");
         assert_eq!(count, 3);
     }

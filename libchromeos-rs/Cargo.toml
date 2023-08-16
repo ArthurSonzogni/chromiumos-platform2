@@ -17,7 +17,6 @@ nix = { version = "0.26", features = ["signal"] }
 poll_token_derive = { path = "./src/deprecated/poll_token_derive" } # provided by ebuild
 serde = { version = "1.0.114", features = ["derive"] }
 stderrlog = "0.5.0"
-sync = "*"
 syslog = "6.0.1"
 system_api = { path = "../system_api", optional = true } # provided by ebuild
 thiserror = "1.0.20"

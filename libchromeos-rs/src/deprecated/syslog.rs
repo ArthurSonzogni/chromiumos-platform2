@@ -35,7 +35,7 @@ use std::{
     sync::{MutexGuard, Once},
 };
 
-use sync::Mutex;
+use std::sync::Mutex;
 use thiserror::Error as ThisError;
 
 use crate::deprecated::linux::syslog::PlatformSyslog;
@@ -183,7 +183,7 @@ fn lock() -> Result<MutexGuard<'static, State>, Error> {
     }
     // Safe because STATE only mutates once and we checked for NULL.
     let state = unsafe { &*state_ptr };
-    let guard = state.lock();
+    let guard = state.lock().unwrap();
     Ok(guard)
 }
 
