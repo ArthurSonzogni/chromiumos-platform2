@@ -189,13 +189,6 @@ class BluetoothPairingRoutineTest : public testing::Test {
         }));
   }
 
-  base::Value::Dict GetErrorDict(const brillo::Error& error) {
-    base::Value::Dict out_error;
-    out_error.Set("code", error.GetCode());
-    out_error.Set("message", error.GetMessage());
-    return out_error;
-  }
-
   base::Value::Dict ConstructOutputDict(
       const brillo::Error* connect_error = nullptr,
       const brillo::Error* pair_error = nullptr) {
@@ -215,9 +208,9 @@ class BluetoothPairingRoutineTest : public testing::Test {
     }
 
     if (connect_error)
-      output_dict.Set("connect_error", GetErrorDict(*connect_error));
+      output_dict.Set("connect_error", connect_error->GetCode());
     if (pair_error)
-      output_dict.Set("pair_error", GetErrorDict(*pair_error));
+      output_dict.Set("pair_error", pair_error->GetCode());
 
     return output_dict;
   }

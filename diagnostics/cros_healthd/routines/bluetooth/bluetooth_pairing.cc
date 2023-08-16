@@ -29,15 +29,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-base::Value::Dict GetErrorDict(brillo::Error* error) {
-  base::Value::Dict out_error;
-  if (error) {
-    out_error.Set("code", error->GetCode());
-    out_error.Set("message", error->GetMessage());
-  }
-  return out_error;
-}
-
 }  // namespace
 
 BluetoothPairingRoutine::BluetoothPairingRoutine(
@@ -349,12 +340,14 @@ void BluetoothPairingRoutine::HandleError(brillo::Error* error) {
                        "Bluetooth routine failed to remove target peripheral.");
       break;
     case TestStep::kBasebandConnection:
-      output_dict_.Set("connect_error", GetErrorDict(error));
+      if (error)
+        output_dict_.Set("connect_error", error->GetCode());
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
                        kBluetoothRoutineFailedCreateBasebandConnection);
       break;
     case TestStep::kPairTargetDevice:
-      output_dict_.Set("pair_error", GetErrorDict(error));
+      if (error)
+        output_dict_.Set("pair_error", error->GetCode());
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
                        kBluetoothRoutineFailedFinishPairing);
       break;
