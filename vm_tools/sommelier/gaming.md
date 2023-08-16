@@ -24,6 +24,7 @@ with each input on your gamepad.
 To figure out what the mapping should be, you can follow the reference table below which demonstrates which event codes are mapped to which buttons on an Xbox gamepad (which we emulate) - we suggest making the mappings locality focused, rather than glyph-focused (i.e bottom face button should map to the Xbox “A”).
 
 Xbox One S gamepad button-event code mapping:
+
 | Button/axes      | Input code           |
 | -----------------|----------------------|
 | left joystick    | ABS_X, ABX_Y         |
