@@ -35,7 +35,7 @@ class NET_BASE_EXPORT MockSocket : public Socket {
               (struct sockaddr*, socklen_t*),
               (const, override));
   MOCK_METHOD(bool, Listen, (int backlog), (const, override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(std::optional<int>,
               Ioctl,
               // NOLINTNEXTLINE(runtime/int)
               (unsigned long request, void* argp),

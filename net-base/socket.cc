@@ -92,8 +92,12 @@ bool Socket::Listen(int backlog) const {
 }
 
 // NOLINTNEXTLINE(runtime/int)
-bool Socket::Ioctl(unsigned long request, void* argp) const {
-  return HANDLE_EINTR(ioctl(fd_.get(), request, argp)) == 0;
+std::optional<int> Socket::Ioctl(unsigned long request, void* argp) const {
+  int res = HANDLE_EINTR(ioctl(fd_.get(), request, argp));
+  if (res < 0) {
+    return std::nullopt;
+  }
+  return res;
 }
 
 std::optional<size_t> Socket::RecvFrom(base::span<uint8_t> buf,

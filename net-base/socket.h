@@ -33,8 +33,9 @@ class NET_BASE_EXPORT Socket {
       int domain, int type, int protocol)>;
   static SocketFactory GetDefaultFactory();
 
-  // Creates the socket instance. Delegates to socket(...) method. Returns
-  // nullptr if failed.
+  // Creates the socket instance. Delegates to socket(...) method.
+  // On failure, returns nullptr and the errno is set. The caller should use
+  // PLOG() to print errno.
   static std::unique_ptr<Socket> Create(int domain, int type, int protocol);
 
   // Creates the socket instance with the socket descriptor. Returns nullptr if
@@ -59,42 +60,52 @@ class NET_BASE_EXPORT Socket {
                                          socklen_t* addrlen) const;
 
   // Delegates to bind(fd_.get(), ...). Returns true if successful.
+  // On failure, the errno is set. The caller should use PLOG() to print errno.
   virtual bool Bind(const struct sockaddr* addr, socklen_t addrlen) const;
 
   // Delegates to getsockname(fd_.get(), ...). Returns true if successful.
+  // On failure, the errno is set. The caller should use PLOG() to print errno.
   virtual bool GetSockName(struct sockaddr* addr, socklen_t* addrlen) const;
 
   // Delegates to listen(fd_.get(), ...). Returns true if successful.
+  // On failure, the errno is set. The caller should use PLOG() to print errno.
   virtual bool Listen(int backlog) const;
 
-  // Delegates to ioctl(fd_.get(), ...). Returns true if successful.
+  // Delegates to ioctl(fd_.get(), ...). Returns the returned value of ioctl()
+  // if successful. On failure, returns std::nullopt and the errno is set. The
+  // caller should use PLOG() to print errno.
   // NOLINTNEXTLINE(runtime/int)
-  virtual bool Ioctl(unsigned long request, void* argp) const;
+  virtual std::optional<int> Ioctl(unsigned long request, void* argp) const;
 
   // Delegates to recvfrom(fd_.get(), ...). On success, returns the length of
-  // the received message in bytes. On error, returns std::nullopt.
+  // the received message in bytes. On failure, returns std::nullopt and the
+  // errno is set. The caller should use PLOG() to print errno.
   virtual std::optional<size_t> RecvFrom(base::span<uint8_t> buf,
                                          int flags,
                                          struct sockaddr* src_addr,
                                          socklen_t* addrlen) const;
 
   // Delegates to send(fd_.get(), ...). On success, returns the number of bytes
-  // sent. On error, returns std::nullopt.
+  // sent. On failure, returns std::nullopt and the errno is set. The caller
+  // should use PLOG() to print errno.
   virtual std::optional<size_t> Send(base::span<const uint8_t> buf,
                                      int flags) const;
 
   // Delegates to sendto(fd_.get(), ...). On success, returns the number of
-  // bytes sent. On error, returns std::nullopt.
+  // bytes sent. On failure, returns std::nullopt and the errno is set. The
+  // caller should use PLOG() to print errno.
   virtual std::optional<size_t> SendTo(base::span<const uint8_t> buf,
                                        int flags,
                                        const struct sockaddr* dest_addr,
                                        socklen_t addrlen) const;
 
   // Sets the socket file descriptor non-blocking. Returns true if successful.
+  // On failure, the errno is set. The caller should use PLOG() to print errno.
   virtual bool SetNonBlocking() const;
 
   // Set the size of receiver buffer in bytes for the socket file descriptor.
   // Returns true if successful.
+  // On failure, the errno is set. The caller should use PLOG() to print errno.
   virtual bool SetReceiveBuffer(int size) const;
 
  protected:

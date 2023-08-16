@@ -668,7 +668,7 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernelIoctlFails) {
   SetSocketFactory([]() {
     auto socket = std::make_unique<net_base::MockSocket>();
     EXPECT_CALL(*socket, Ioctl(SIOCGIFHWADDR, NotNull()))
-        .WillOnce(Return(false));
+        .WillOnce(Return(std::nullopt));
 
     return socket;
   });
@@ -705,7 +705,7 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernel) {
     auto socket = std::make_unique<net_base::MockSocket>();
     EXPECT_CALL(*socket, Ioctl(SIOCGIFHWADDR,
                                IfreqEquals(kTestDeviceIndex, kTestDeviceName)))
-        .WillOnce(DoAll(SetIfreq(ifr), Return(true)));
+        .WillOnce(DoAll(SetIfreq(ifr), Return(0)));
 
     return socket;
   });
