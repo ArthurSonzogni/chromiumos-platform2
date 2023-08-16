@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <libhwsec-foundation/status/status_chain_macros.h>
@@ -82,6 +83,49 @@ StatusOr<TSS_HTPM> TssHelper::GetTpmHandle() {
 }
 
 StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleAsDelegate() {
+  ASSIGN_OR_RETURN(const tpm_manager::GetTpmStatusReply& reply,
+                   GetTpmStatusReply());
+  ASSIGN_OR_RETURN(TSS_HTPM local_tpm_handle, GetTpmHandle());
+  return SetAsDelegate(local_tpm_handle, reply.local_data().owner_delegate());
+}
+
+StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleAsOwner() {
+  ASSIGN_OR_RETURN(const tpm_manager::GetTpmStatusReply& reply,
+                   GetTpmStatusReply());
+  ASSIGN_OR_RETURN(TSS_HTPM local_tpm_handle, GetTpmHandle());
+  return SetAsOwner(local_tpm_handle, reply.local_data().owner_password());
+}
+
+StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleByEkReadability() {
+  ASSIGN_OR_RETURN(const tpm_manager::GetTpmStatusReply& reply,
+                   GetTpmStatusReply());
+
+  brillo::Blob delegate_blob =
+      brillo::BlobFromString(reply.local_data().owner_delegate().blob());
+  if (delegate_blob.empty()) {
+    return MakeStatus<TPMError>("No valid owner delegate",
+                                TPMRetryAction::kNoRetry);
+  }
+  ASSIGN_OR_RETURN(TSS_HTPM local_tpm_handle, GetTpmHandle());
+  ASSIGN_OR_RETURN(bool can_read_ek, CanDelegateReadInternalPub(delegate_blob));
+
+  base::ScopedClosureRunner tpm_handle_cleanup;
+  if (can_read_ek) {
+    ASSIGN_OR_RETURN(
+        tpm_handle_cleanup,
+        SetAsDelegate(local_tpm_handle, reply.local_data().owner_delegate()),
+        _.WithStatus<TPMError>("Failed to set tpm handle as delegate"));
+  } else {
+    LOG(WARNING) << __func__ << ": owner delegate cannot read ek.";
+    ASSIGN_OR_RETURN(
+        tpm_handle_cleanup,
+        SetAsOwner(local_tpm_handle, reply.local_data().owner_password()),
+        _.WithStatus<TPMError>("Failed to set tpm handle as owner"));
+  }
+  return tpm_handle_cleanup;
+}
+
+StatusOr<tpm_manager::GetTpmStatusReply> TssHelper::GetTpmStatusReply() {
   tpm_manager::GetTpmStatusRequest request;
   tpm_manager::GetTpmStatusReply reply;
 
@@ -90,16 +134,17 @@ StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleAsDelegate() {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
   }
-
   RETURN_IF_ERROR(MakeStatus<TPMManagerError>(reply.status()));
+  return reply;
+}
 
-  if (reply.local_data().owner_delegate().blob().empty() ||
-      reply.local_data().owner_delegate().secret().empty()) {
+StatusOr<base::ScopedClosureRunner> TssHelper::SetAsDelegate(
+    TSS_HTPM local_tpm_handle,
+    const tpm_manager::AuthDelegate& owner_delegate) {
+  if (owner_delegate.blob().empty() || owner_delegate.secret().empty()) {
     return MakeStatus<TPMError>("No valid owner delegate",
                                 TPMRetryAction::kNoRetry);
   }
-
-  ASSIGN_OR_RETURN(TSS_HTPM local_tpm_handle, GetTpmHandle());
 
   TSS_HPOLICY tpm_usage_policy;
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetPolicyObject(
@@ -110,14 +155,13 @@ StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleAsDelegate() {
       DelegateHandleSettingCleanup, std::ref(overalls_), tpm_usage_policy));
 
   brillo::Blob delegate_secret =
-      brillo::BlobFromString(reply.local_data().owner_delegate().secret());
+      brillo::BlobFromString(owner_delegate.secret());
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_SetSecret(
                       tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
                       delegate_secret.size(), delegate_secret.data())))
       .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
 
-  brillo::Blob delegate_blob =
-      brillo::BlobFromString(reply.local_data().owner_delegate().blob());
+  brillo::Blob delegate_blob = brillo::BlobFromString(owner_delegate.blob());
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribData(
                       tpm_usage_policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
                       TSS_TSPATTRIB_POLDEL_OWNERBLOB, delegate_blob.size(),
@@ -127,22 +171,12 @@ StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleAsDelegate() {
   return cleanup;
 }
 
-StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleAsOwner() {
-  tpm_manager::GetTpmStatusRequest request;
-  tpm_manager::GetTpmStatusReply reply;
-  if (brillo::ErrorPtr err; !tpm_manager_.GetTpmStatus(
-          request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
-    return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
-        .Wrap(std::move(err));
-  }
-  RETURN_IF_ERROR(MakeStatus<TPMManagerError>(reply.status()));
-
-  if (reply.local_data().owner_password().empty()) {
+StatusOr<base::ScopedClosureRunner> TssHelper::SetAsOwner(
+    TSS_HTPM local_tpm_handle, const std::string& owner_password) {
+  if (owner_password.empty()) {
     return MakeStatus<TPMError>("No valid owner password",
                                 TPMRetryAction::kNoRetry);
   }
-
-  ASSIGN_OR_RETURN(TSS_HTPM local_tpm_handle, GetTpmHandle());
 
   TSS_HPOLICY tpm_usage_policy;
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetPolicyObject(
@@ -152,13 +186,31 @@ StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleAsOwner() {
   base::ScopedClosureRunner cleanup(base::BindOnce(
       OwnerHandleSettingCleanup, std::ref(overalls_), tpm_usage_policy));
 
-  brillo::Blob owner_password =
-      brillo::BlobFromString(reply.local_data().owner_password());
+  brillo::Blob owner_password_blob = brillo::BlobFromString(owner_password);
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_SetSecret(
                       tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
-                      owner_password.size(), owner_password.data())))
+                      owner_password_blob.size(), owner_password_blob.data())))
       .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
   return cleanup;
+}
+
+StatusOr<bool> TssHelper::CanDelegateReadInternalPub(
+    brillo::Blob& delegate_blob) {
+  UINT64 offset = 0;
+  TPM_DELEGATE_OWNER_BLOB owner_blob = {};
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(
+                      overalls_.Orspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB_s(
+                          &offset, delegate_blob.data(), delegate_blob.size(),
+                          &owner_blob)))
+      .WithStatus<TPMError>(
+          "Failed to call Orspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB");
+  free(owner_blob.pub.pcrInfo.pcrSelection.pcrSelect);
+  free(owner_blob.additionalArea);
+  free(owner_blob.sensitiveArea);
+  if (offset != delegate_blob.size()) {
+    return MakeStatus<TPMError>("Bad delegate blob", TPMRetryAction::kNoRetry);
+  }
+  return owner_blob.pub.permissions.per1 & TPM_DELEGATE_OwnerReadInternalPub;
 }
 
 }  // namespace hwsec

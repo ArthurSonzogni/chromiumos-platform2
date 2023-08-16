@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <absl/base/attributes.h>
@@ -38,6 +39,10 @@ namespace hwsec {
 
 namespace {
 
+constexpr std::string_view kFakeDelegateBlob = "fake_deleagte_blob";
+constexpr std::string_view kFakeDelegateSecret = "fake_deleagte_secret";
+constexpr std::string_view kFakeOwnerPassword = "fake_owner_password";
+
 // TSS UUID matcher.
 MATCHER_P(MatchTssUUID, uuid, "") {
   return arg.ulTimeLow == uuid.ulTimeLow && arg.usTimeMid == uuid.usTimeMid &&
@@ -49,6 +54,10 @@ MATCHER_P(MatchTssUUID, uuid, "") {
          arg.rgbNode[2] == uuid.rgbNode[2] &&
          arg.rgbNode[3] == uuid.rgbNode[3] &&
          arg.rgbNode[4] == uuid.rgbNode[4] && arg.rgbNode[5] == uuid.rgbNode[5];
+}
+
+MATCHER_P(MemEq, expected, "") {
+  return memcmp(std::data(expected), arg, std::size(expected)) == 0;
 }
 
 }  // namespace
@@ -125,22 +134,24 @@ void BackendTpm1TestBase::SetupSrk() {
                             Return(TPM_SUCCESS)));
 }
 
-void BackendTpm1TestBase::SetupDelegate() {
-  TSS_HPOLICY kPolicy1 = 0x9909;
-
-  std::string fake_delegate_blob = "fake_deleagte_blob";
-  std::string fake_delegate_secret = "fake_deleagte_secret";
-
+void BackendTpm1TestBase::SetupGetTpmStatus() {
   tpm_manager::GetTpmStatusReply reply;
   reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  *reply.mutable_local_data()->mutable_owner_password() = kFakeOwnerPassword;
   *reply.mutable_local_data()->mutable_owner_delegate()->mutable_blob() =
-      fake_delegate_blob;
+      kFakeDelegateBlob;
   *reply.mutable_local_data()->mutable_owner_delegate()->mutable_secret() =
-      fake_delegate_secret;
+      kFakeDelegateSecret;
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
       .Times(AtMost(1))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)))
       .RetiresOnSaturation();
+}
+
+void BackendTpm1TestBase::SetupDelegate() {
+  TSS_HPOLICY kPolicy1 = 0x9909;
+
+  SetupGetTpmStatus();
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
@@ -148,13 +159,13 @@ void BackendTpm1TestBase::SetupDelegate() {
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kPolicy1, TSS_SECRET_MODE_PLAIN, _, _))
-      .With(Args<3, 2>(ElementsAreArray(fake_delegate_secret)))
+      .With(Args<3, 2>(ElementsAreArray(kFakeDelegateSecret)))
       .WillRepeatedly(Return(TPM_SUCCESS));
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_SetAttribData(kPolicy1, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
                                  TSS_TSPATTRIB_POLDEL_OWNERBLOB, _, _))
-      .With(Args<4, 3>(ElementsAreArray(fake_delegate_blob)))
+      .With(Args<4, 3>(ElementsAreArray(kFakeDelegateBlob)))
       .WillRepeatedly(Return(TPM_SUCCESS));
 
   // Setup cleanup
@@ -170,15 +181,7 @@ void BackendTpm1TestBase::SetupDelegate() {
 void BackendTpm1TestBase::SetupOwner() {
   TSS_HPOLICY kPolicy1 = 0x9909;
 
-  std::string fake_owner_password = "fake_owner_password";
-
-  tpm_manager::GetTpmStatusReply reply;
-  reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
-  *reply.mutable_local_data()->mutable_owner_password() = fake_owner_password;
-  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
-      .Times(AtMost(1))
-      .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)))
-      .RetiresOnSaturation();
+  SetupGetTpmStatus();
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
@@ -186,12 +189,27 @@ void BackendTpm1TestBase::SetupOwner() {
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kPolicy1, TSS_SECRET_MODE_PLAIN, _, _))
-      .With(Args<3, 2>(ElementsAreArray(fake_owner_password)))
+      .With(Args<3, 2>(ElementsAreArray(kFakeOwnerPassword)))
       .WillRepeatedly(Return(TPM_SUCCESS));
 
   // Setup cleanup
   EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Policy_FlushSecret(kPolicy1))
       .WillRepeatedly(Return(TPM_SUCCESS));
+}
+
+void BackendTpm1TestBase::SetupHandleByEkReadability(bool readable) {
+  TPM_DELEGATE_OWNER_BLOB fake_owner_blob = {};
+  if (readable) {
+    SetupDelegate();
+    fake_owner_blob.pub.permissions.per1 = TPM_DELEGATE_OwnerReadInternalPub;
+  } else {
+    SetupOwner();
+  }
+  EXPECT_CALL(proxy_->GetMockOveralls(),
+              Orspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB_s(_, _, _, _))
+      .With(Args<1, 2>(ElementsAreArray(kFakeDelegateBlob)))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakeDelegateBlob.size()),
+                      SetArgPointee<3>(fake_owner_blob), Return(TPM_SUCCESS)));
 }
 
 }  // namespace hwsec

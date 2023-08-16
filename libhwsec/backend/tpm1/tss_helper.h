@@ -8,10 +8,12 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <base/functional/callback_helpers.h>
 #include <brillo/secure_blob.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
@@ -38,7 +40,22 @@ class TssHelper {
   // permission.
   StatusOr<base::ScopedClosureRunner> SetTpmHandleAsOwner();
 
+  // Set TpmHandle according to EK readability. If EK can be read by delegate,
+  // the TpmHandle would set as delegate, otherwise as owner.
+  StatusOr<base::ScopedClosureRunner> SetTpmHandleByEkReadability();
+
  private:
+  StatusOr<tpm_manager::GetTpmStatusReply> GetTpmStatusReply();
+
+  StatusOr<base::ScopedClosureRunner> SetAsDelegate(
+      TSS_HTPM local_tpm_handle,
+      const tpm_manager::AuthDelegate& owner_delegate);
+
+  StatusOr<base::ScopedClosureRunner> SetAsOwner(
+      TSS_HTPM local_tpm_handle, const std::string& owner_password);
+
+  StatusOr<bool> CanDelegateReadInternalPub(brillo::Blob& delegate_blob);
+
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
   overalls::Overalls& overalls_;
 

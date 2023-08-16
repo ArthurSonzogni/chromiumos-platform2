@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstring>
 #include <memory>
 #include <utility>
 
@@ -198,6 +199,16 @@ TEST_F(TssHelperTest, GetOwnerTpmHandle) {
 
   EXPECT_THAT(backend_->GetTssHelper().GetTpmHandle(), IsOkAndHolds(kFakeTpm));
   EXPECT_THAT(backend_->GetTssHelper().SetTpmHandleAsOwner(), IsOk());
+}
+
+TEST_F(TssHelperTest, SetTpmHandleEkReadable) {
+  SetupHandleByEkReadability(true);
+  EXPECT_THAT(backend_->GetTssHelper().SetTpmHandleByEkReadability(), IsOk());
+}
+
+TEST_F(TssHelperTest, SetTpmHandleEkUnreadable) {
+  SetupHandleByEkReadability(false);
+  EXPECT_THAT(backend_->GetTssHelper().SetTpmHandleByEkReadability(), IsOk());
 }
 
 }  // namespace hwsec
