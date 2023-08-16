@@ -1056,6 +1056,7 @@ static std::optional<std::string> GameModeToForegroundVmName(
 // Runs balloon policy against each VM to balance memory.
 // This will be called periodically by balloon_resizing_timer_.
 void Service::RunBalloonPolicy() {
+  VMT_TRACE(kCategory, "Service::RunBalloonPolicy");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // TODO(b/191946183): Design and migrate to a new D-Bus API
   // that is less chatty for implementing balloon logic.
@@ -1711,6 +1712,7 @@ void Service::StartVm(dbus::MethodCall* method_call,
 
 StartVmResponse Service::StartVmInternal(
     StartVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
+  VMT_TRACE(kCategory, "Service::StartVmInternal", "name", request.name());
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -2451,6 +2453,7 @@ void Service::OnAllVmsStopped(base::OnceCallback<void(bool)> callback,
 }
 
 SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
+  VMT_TRACE(kCategory, "Service::SuspendVm");
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -2485,6 +2488,7 @@ SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
 }
 
 ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
+  VMT_TRACE(kCategory, "Service::ResumeVm");
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -4355,6 +4359,8 @@ void Service::OnSignalConnected(const std::string& interface_name,
 void Service::HandleSuspendImminent() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (const auto& pair : vms_) {
+    VMT_TRACE(kCategory, "Service::HandleSuspendImminent::vm", "name",
+              pair.first.name());
     auto& vm = pair.second;
     if (vm->UsesExternalSuspendSignals()) {
       continue;
@@ -4366,6 +4372,8 @@ void Service::HandleSuspendImminent() {
 void Service::HandleSuspendDone() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (const auto& vm_entry : vms_) {
+    VMT_TRACE(kCategory, "Service::HandleSuspendDone::vm", "name",
+              vm_entry.first.name());
     auto& vm = vm_entry.second;
     if (vm->UsesExternalSuspendSignals()) {
       continue;
@@ -4938,6 +4946,7 @@ int Service::GetCpuQuota() {
 
 void Service::OnStatefulDiskSpaceUpdate(
     const spaced::StatefulDiskSpaceUpdate& update) {
+  VMT_TRACE(kCategory, "Service::OnStatefulDiskSpaceUpdate");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (auto& iter : vms_) {
     iter.second->HandleStatefulUpdate(update);

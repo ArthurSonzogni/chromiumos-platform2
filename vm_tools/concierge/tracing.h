@@ -13,8 +13,10 @@ namespace vm_tools::concierge {
 constexpr char kCategory[] = "concierge";
 }  // namespace vm_tools::concierge
 
-PERFETTO_DEFINE_CATEGORIES(perfetto::Category(vm_tools::concierge::kCategory)
-                               .SetDescription("Events from concierge"));
+PERFETTO_DEFINE_CATEGORIES_IN_NAMESPACE(
+    vm_tools::concierge,
+    perfetto::Category(vm_tools::concierge::kCategory)
+        .SetDescription("Events from concierge"));
 
 #define VMT_TRACE(...) TRACE_EVENT(__VA_ARGS__)
 #define VMT_TRACE_BEGIN(...) TRACE_EVENT_BEGIN(__VA_ARGS__)

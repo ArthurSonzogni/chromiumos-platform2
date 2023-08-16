@@ -41,6 +41,7 @@
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/tap_device_builder.h"
+#include "vm_tools/concierge/tracing.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
@@ -679,6 +680,7 @@ bool TerminaVm::MountExternalDisk(string source, std::string target_dir) {
 
 bool TerminaVm::SetResolvConfig(const std::vector<string>& nameservers,
                                 const std::vector<string>& search_domains) {
+  VMT_TRACE(kCategory, "TerminaVm::SetResolvConfig");
   LOG(INFO) << "Setting resolv config for VM " << vsock_cid_;
 
   vm_tools::SetResolvConfigRequest request;
@@ -728,6 +730,7 @@ void TerminaVm::HostNetworkChanged() {
 }
 
 bool TerminaVm::SetTime(string* failure_reason) {
+  VMT_TRACE(kCategory, "TerminaVm::SetTime");
   DCHECK(failure_reason);
 
   base::Time now = base::Time::Now();

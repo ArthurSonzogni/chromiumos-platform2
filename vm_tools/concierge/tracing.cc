@@ -9,7 +9,7 @@
 #include "base/logging.h"
 #include "perfetto/perfetto.h"
 
-PERFETTO_TRACK_EVENT_STATIC_STORAGE();
+PERFETTO_TRACK_EVENT_STATIC_STORAGE_IN_NAMESPACE(vm_tools::concierge);
 
 namespace vm_tools::concierge {
 
@@ -44,7 +44,7 @@ void InitTracing() {
   args.backends |= perfetto::kSystemBackend;
 
   perfetto::Tracing::Initialize(args);
-  if (!perfetto::TrackEvent::Register()) {
+  if (!::vm_tools::concierge::TrackEvent::Register()) {
     LOG(ERROR) << "Failed to set up tracing";
     return;
   }

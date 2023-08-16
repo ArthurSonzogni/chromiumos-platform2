@@ -14,6 +14,8 @@
 #include <dbus/object_path.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
+#include "vm_tools/concierge/tracing.h"
+
 namespace vm_tools::concierge {
 namespace {
 // How long powerd should wait for us to report suspend readiness.
@@ -118,6 +120,7 @@ void PowerManagerClient::RegisterSuspendDelay(
 }
 
 void PowerManagerClient::HandleSuspendImminent(dbus::Signal* signal) {
+  VMT_TRACE(kCategory, "PowerManagerClient::HandleSuspendImminent");
   power_manager::SuspendImminent message;
   if (!dbus::MessageReader(signal).PopArrayOfBytesAsProto(&message)) {
     LOG(ERROR) << "Failed to decode SuspendImminent message";
@@ -133,6 +136,7 @@ void PowerManagerClient::HandleSuspendImminent(dbus::Signal* signal) {
 
   suspend_imminent_cb_.Run();
 
+  VMT_TRACE(kCategory, "PowerManagerClient::HandleSuspendImminent::Reply");
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                power_manager::kHandleSuspendReadinessMethod);
 
@@ -155,6 +159,7 @@ void PowerManagerClient::HandleSuspendImminent(dbus::Signal* signal) {
 }
 
 void PowerManagerClient::HandleSuspendDone(dbus::Signal* signal) {
+  VMT_TRACE(kCategory, "PowerManagerClient::HandleSuspendDone");
   power_manager::SuspendDone message;
   if (!dbus::MessageReader(signal).PopArrayOfBytesAsProto(&message)) {
     LOG(ERROR) << "Failed to decode SuspendImminent message";
