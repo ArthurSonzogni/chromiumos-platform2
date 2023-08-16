@@ -66,6 +66,7 @@ void FloatingPointRoutineV2::Run(
 }
 
 void FloatingPointRoutineV2::OnFinished(bool passed) {
+  scoped_process_control_.Reset();
   SetFinishedState(passed, mojom::RoutineDetail::NewFloatingPoint(
                                mojom::FloatingPointRoutineDetail::New()));
 }

@@ -91,6 +91,7 @@ void CpuCacheRoutineV2::Run(
 }
 
 void CpuCacheRoutineV2::HandleGetReturnCode(int return_code) {
+  scoped_process_control_.Reset();
   bool passed = return_code == EXIT_SUCCESS;
   SetFinishedState(passed, mojom::RoutineDetail::NewCpuCache(
                                mojom::CpuCacheRoutineDetail::New()));

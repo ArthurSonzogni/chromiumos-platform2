@@ -91,6 +91,7 @@ void CpuStressRoutineV2::Run(
 }
 
 void CpuStressRoutineV2::HandleGetReturnCode(int return_code) {
+  scoped_process_control_.Reset();
   bool passed = return_code == EXIT_SUCCESS;
   SetFinishedState(passed, mojom::RoutineDetail::NewCpuStress(
                                mojom::CpuStressRoutineDetail::New()));

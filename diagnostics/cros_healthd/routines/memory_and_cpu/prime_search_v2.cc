@@ -90,6 +90,7 @@ void PrimeSearchRoutineV2::Run(
 }
 
 void PrimeSearchRoutineV2::OnFinished(bool passed) {
+  scoped_process_control_.Reset();
   SetFinishedState(passed, mojom::RoutineDetail::NewPrimeSearch(
                                mojom::PrimeSearchRoutineDetail::New()));
 }
