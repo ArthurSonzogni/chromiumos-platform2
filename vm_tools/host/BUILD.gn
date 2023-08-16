@@ -150,7 +150,6 @@ static_library("libconcierge") {
     "../concierge/arc_vm.cc",
     "../concierge/balloon_policy.cc",
     "../concierge/crosvm_control.cc",
-    "../concierge/crosvm_control_impl.cc",
     "../concierge/disk_image.cc",
     "../concierge/dlc_helper.cc",
     "../concierge/metrics/duration_recorder.cc",

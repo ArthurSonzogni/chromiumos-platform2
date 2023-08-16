@@ -9,6 +9,9 @@
 namespace vm_tools::concierge {
 
 void FakeCrosvmControl::Init() {
+  // Call Get() once so the fake instance doesn't get clobbered by the base
+  // class's call_once.
+  CrosvmControl::Get();
   CrosvmControl::SetInstance(base::WrapUnique(new FakeCrosvmControl()));
 }
 
