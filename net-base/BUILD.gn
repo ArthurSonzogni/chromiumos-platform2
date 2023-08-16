@@ -73,6 +73,7 @@ if (use.test) {
     ]
     deps = [
       ":libnet-base",
+      ":net_base_test_support",
       "//common-mk/testrunner",
     ]
     pkg_deps = [ "libchrome-test" ]

@@ -5,6 +5,7 @@
 #include "net-base/socket.h"
 
 #include <fcntl.h>
+#include <linux/netlink.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -47,6 +48,39 @@ std::unique_ptr<Socket> Socket::CreateFromFd(base::ScopedFD fd) {
   }
 
   return std::unique_ptr<Socket>(new Socket(std::move(fd)));
+}
+
+// static
+std::unique_ptr<Socket> Socket::CreateNetlink(SocketFactory socket_factory,
+                                              int netlink_family,
+                                              uint32_t netlink_groups_mask,
+                                              bool set_receive_buffer) {
+  auto socket =
+      socket_factory.Run(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, netlink_family);
+  if (!socket) {
+    PLOG(ERROR) << "Failed to open netlink socket for family "
+                << netlink_family;
+    return nullptr;
+  }
+
+  if (set_receive_buffer) {
+    if (!socket->SetReceiveBuffer(kNetlinkReceiveBufferSize)) {
+      PLOG(WARNING) << "Failed to increase receive buffer size to "
+                    << kNetlinkReceiveBufferSize << "b";
+    }
+  }
+
+  struct sockaddr_nl addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.nl_family = AF_NETLINK;
+  addr.nl_groups = netlink_groups_mask;
+
+  if (!socket->Bind(reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr))) {
+    PLOG(ERROR) << "Netlink socket bind failed for family " << netlink_family;
+    return nullptr;
+  }
+
+  return socket;
 }
 
 Socket::Socket(base::ScopedFD fd) : fd_(std::move(fd)) {

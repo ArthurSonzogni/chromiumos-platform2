@@ -22,6 +22,10 @@ namespace net_base {
 // the standard POSIX and Linux socket operations.
 class NET_BASE_EXPORT Socket {
  public:
+  // Keep this large enough to avoid overflows on IPv6 SNM routing update
+  // spikes.
+  static constexpr int kNetlinkReceiveBufferSize = 512 * 1024;
+
   // The signature of Socket::Create() method and its binding. It's used
   // for injecting the MockSocket::Create() method at testing.
   //
@@ -41,6 +45,19 @@ class NET_BASE_EXPORT Socket {
   // Creates the socket instance with the socket descriptor. Returns nullptr if
   // |fd| is invalid.
   static std::unique_ptr<Socket> CreateFromFd(base::ScopedFD fd);
+
+  // Creates the socket instance and binds to netlink. Sets the received buffer
+  // size to kNetlinkReceiveBufferSize if |set_receive_buffer| is set.
+  // Returns nullptr on failure.
+  //
+  // Note: setting the received buffer size requires CAP_NET_ADMIN. So
+  // |set_receive_buffer| should set to false when the process doesn't have
+  // CAP_NET_ADMIN.
+  static std::unique_ptr<Socket> CreateNetlink(SocketFactory socket_factory,
+                                               int netlink_family,
+                                               uint32_t netlink_groups_mask,
+                                               bool set_receive_buffer = true);
+
   virtual ~Socket();
 
   Socket(const Socket&) = delete;
