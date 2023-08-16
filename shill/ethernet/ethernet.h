@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
+#include <net-base/socket.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device.h"
@@ -219,7 +220,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // at a time.
   base::CancelableOnceClosure try_eap_authentication_callback_;
 
-  std::unique_ptr<Sockets> sockets_;
+  net_base::Socket::SocketFactory socket_factory_ =
+      net_base::Socket::GetDefaultFactory();
 
   std::string permanent_mac_address_;
 

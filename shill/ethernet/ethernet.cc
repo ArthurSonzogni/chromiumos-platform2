@@ -143,7 +143,6 @@ Ethernet::Ethernet(Manager* manager,
       is_eap_authenticated_(false),
       is_eap_detected_(false),
       eap_listener_(std::make_unique<EapListener>(interface_index, link_name)),
-      sockets_(std::make_unique<Sockets>()),
       permanent_mac_address_(GetPermanentMacAddressFromKernel()),
       weak_ptr_factory_(this) {
   PropertyStore* store = this->mutable_store();
@@ -923,16 +922,16 @@ void Ethernet::UpdateLinkSpeed() {
 }
 
 bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
-  int sock = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
-  if (sock < 0) {
+  auto socket =
+      socket_factory_.Run(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
+  if (!socket) {
     return false;
   }
-  ScopedSocketCloser socket_closer(sockets_.get(), sock);
 
   strncpy(interface_command->ifr_name, link_name().c_str(),
           sizeof(interface_command->ifr_name));
 
-  return sockets_->Ioctl(sock, SIOCETHTOOL, interface_command) >= 0;
+  return socket->Ioctl(SIOCETHTOOL, interface_command).has_value();
 }
 
 void Ethernet::OnNeighborReachabilityEvent(

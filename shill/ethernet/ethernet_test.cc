@@ -10,6 +10,7 @@
 #include <netinet/ether.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -25,6 +26,7 @@
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/mock_socket.h>
 
 #include "shill/ethernet/mock_eap_listener.h"
 #include "shill/ethernet/mock_ethernet_eap_provider.h"
@@ -40,7 +42,6 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/net/mock_sockets.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network.h"
@@ -103,14 +104,12 @@ class EthernetTest : public testing::Test {
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
-        mock_sockets_(new StrictMock<MockSockets>()),
         mock_service_(new MockEthernetService(
             &manager_, ethernet_->weak_ptr_factory_.GetWeakPtr())) {}
-  ~EthernetTest() override {}
+  ~EthernetTest() override = default;
 
   void SetUp() override {
     ethernet_->rtnl_handler_ = &rtnl_handler_;
-    ethernet_->sockets_.reset(mock_sockets_);  // Transfers ownership.
 
     ethernet_->GetPrimaryNetwork()->set_dhcp_provider_for_testing(
         &dhcp_provider_);
@@ -135,8 +134,23 @@ class EthernetTest : public testing::Test {
     ethernet_eap_provider_.set_service(nullptr);
     ethernet_->eap_listener_.reset();
     ethernet_->GetPrimaryNetwork()->set_dhcp_provider_for_testing(nullptr);
-    ethernet_->sockets_.reset();
     Mock::VerifyAndClearExpectations(&manager_);
+  }
+
+  void SetSocketFactoryWithIoctlResult(std::optional<int> ioctl_result) {
+    ethernet_->socket_factory_ = base::BindRepeating(
+        [](std::optional<int> ioctl_result, int domain, int type,
+           int protocol) -> std::unique_ptr<net_base::Socket> {
+          EXPECT_EQ(domain, PF_INET);
+          EXPECT_EQ(type, SOCK_DGRAM | SOCK_CLOEXEC);
+          EXPECT_EQ(protocol, IPPROTO_IP);
+
+          auto socket = std::make_unique<net_base::MockSocket>();
+          EXPECT_CALL(*socket, Ioctl(SIOCETHTOOL, _))
+              .WillOnce(Return(ioctl_result));
+          return socket;
+        },
+        ioctl_result);
   }
 
   MOCK_METHOD(void, ErrorCallback, (const Error& error));
@@ -166,12 +180,7 @@ class EthernetTest : public testing::Test {
   void StartEthernet() {
     // We do not care about Sockets call but they are used in Ethernet::Start
     // to get ethernet driver name.
-    int kFakeFd = 789;
-    EXPECT_CALL(*mock_sockets_, Socket(_, _, _))
-        .WillRepeatedly(Return(kFakeFd));
-    EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _))
-        .WillRepeatedly(Return(1));
-    EXPECT_CALL(*mock_sockets_, Close(kFakeFd)).WillRepeatedly(Return(1));
+    SetSocketFactoryWithIoctlResult(1);
 
     EXPECT_CALL(ethernet_provider_, CreateService(_))
         .WillOnce(Return(mock_service_));
@@ -273,9 +282,6 @@ class EthernetTest : public testing::Test {
   std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
   MockSupplicantProcessProxy* supplicant_process_proxy_;
 
-  // Owned by Ethernet instance, but tracked here for expectations.
-  MockSockets* mock_sockets_;
-
   MockRTNLHandler rtnl_handler_;
   scoped_refptr<MockEthernetService> mock_service_;
   MockEthernetProvider ethernet_provider_;
@@ -315,13 +321,12 @@ TEST_F(EthernetTest, LinkEvent) {
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Link-up event while down.
-  int kFakeFd = 789;
   EXPECT_CALL(manager_, UpdateService(IsRefPtrTo(mock_service_)));
   EXPECT_CALL(*mock_service_, OnVisibilityChanged());
   EXPECT_CALL(*eap_listener_, Start());
-  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
-  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _));
-  EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
+
+  SetSocketFactoryWithIoctlResult(0);
+
   ethernet_->LinkEvent(IFF_LOWER_UP, 0);
   EXPECT_TRUE(GetLinkUp());
   EXPECT_FALSE(GetIsEapDetected());
@@ -682,11 +687,7 @@ TEST_F(EthernetTest, UpdateLinkSpeed) {
   // We do not care about Sockets call but they are used in UpdateLinkSpeed()
   // In order to let RunEthtoolCmd() succeed we need to return a positive number
   // for Ioctl
-  constexpr int kFakeFd = 789;
-  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
-  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _))
-      .WillOnce(Return(1));
-  EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
+  SetSocketFactoryWithIoctlResult(1);
 
   EXPECT_CALL(*mock_service_, SetUplinkSpeedKbps(_));
 
@@ -702,8 +703,6 @@ TEST_F(EthernetTest, UpdateLinkSpeedNoSelectedService) {
 }
 
 TEST_F(EthernetTest, RunEthtoolCmd) {
-  constexpr int kFakeFd = 789;
-
   struct ethtool_cmd ecmd;
   struct ifreq ifr;
 
@@ -711,15 +710,10 @@ TEST_F(EthernetTest, RunEthtoolCmd) {
   ecmd.cmd = ETHTOOL_GSET;
   ifr.ifr_data = &ecmd;
 
-  EXPECT_CALL(*mock_sockets_,
-              Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP))
-      .WillRepeatedly(Return(kFakeFd));
-  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, &ifr))
-      .WillOnce(Return(0))
-      .WillOnce(Return(-1));
-  EXPECT_CALL(*mock_sockets_, Close(kFakeFd)).Times(2);
-
+  SetSocketFactoryWithIoctlResult(0);
   EXPECT_TRUE(ethernet_->RunEthtoolCmd(&ifr));
+
+  SetSocketFactoryWithIoctlResult(std::nullopt);
   EXPECT_FALSE(ethernet_->RunEthtoolCmd(&ifr));
 }
 
