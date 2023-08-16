@@ -521,7 +521,7 @@ class CrashSenderUtilTest : public testing::Test {
                     base::StringPrintf(
                         "payload=good.log\n"
                         "os_millis=%" PRId64 "\n"
-                        "build_time_millis=%" PRId64 "\n"
+                        "upload_var_build_time_millis=%" PRId64 "\n"
                         "done=1\n",
                         ((now - base::Time::UnixEpoch()) - base::Days(200))
                             .InMilliseconds(),
@@ -537,7 +537,7 @@ class CrashSenderUtilTest : public testing::Test {
                     base::StringPrintf(
                         "payload=good.log\n"
                         "os_millis=%" PRId64 "\n"
-                        "build_time_millis=%" PRId64 "\n"
+                        "upload_var_build_time_millis=%" PRId64 "\n"
                         "done=1\n",
                         ((now - base::Time::UnixEpoch()) - base::Days(200))
                             .InMilliseconds(),

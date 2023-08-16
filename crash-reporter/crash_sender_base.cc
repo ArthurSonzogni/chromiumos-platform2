@@ -460,7 +460,8 @@ SenderBase::Action SenderBase::EvaluateMetaFileMinimal(
     // sufficiently new, we'll send the crash anyway, as it's possible there's
     // an ash<->lacros compatibility issue.
     int64_t build_time_millis;
-    if (!info->metadata.GetString("build_time_millis", &build_time_str)) {
+    if (!info->metadata.GetString("upload_var_build_time_millis",
+                                  &build_time_str)) {
       *reason = "Old OS version";
       RecordCrashRemoveReason(kOSVersionTooOld);
       return kRemove;
