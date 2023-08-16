@@ -63,14 +63,11 @@ ScopedProcessControl::~ScopedProcessControl() {
 
 void ScopedProcessControl::Reset() {
   CHECK(state_) << "state pointer is invalid";
-  // Don't attempt to call ProcessControl method if the remote is not bound, and
-  // no need to kill and wait again if the process has already terminated.
   if (!state_->process_control_remote.is_bound() || state_->has_terminated) {
     delete state_;
     state_ = nullptr;
     return;
   }
-  // Kill the running process.
   state_->process_control_remote->Kill();
   // Set flag such that state_ will be deleted once the process is terminated.
   state_->should_be_deleted = true;
