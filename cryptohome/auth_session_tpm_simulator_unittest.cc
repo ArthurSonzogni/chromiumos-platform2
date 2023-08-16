@@ -15,6 +15,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/secure_blob.h>
@@ -45,10 +46,12 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/features.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 
 namespace cryptohome {
@@ -67,15 +70,6 @@ using ::testing::NiceMock;
 using ::testing::ValuesIn;
 
 constexpr int kPinResetCounter = 6;
-
-constexpr AuthFactorStorageType kAllAuthFactorStorageFromTypes[] = {
-    AuthFactorStorageType::kVaultKeyset,
-    AuthFactorStorageType::kUserSecretStash,
-};
-
-constexpr AuthFactorStorageType kAllAuthFactorStorageToTypes[] = {
-    AuthFactorStorageType::kUserSecretStash,
-};
 
 constexpr char kPasswordLabel[] = "fake-password-label";
 constexpr char kPassword[] = "fake-password";
@@ -138,19 +132,6 @@ CryptohomeStatus RunUpdateAuthFactor(
   return future.Take();
 }
 
-CryptohomeStatus AddPasswordFactor(const std::string& label,
-                                   const std::string& password,
-                                   AuthSession& auth_session) {
-  user_data_auth::AddAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  user_data_auth::AuthFactor& factor = *request.mutable_auth_factor();
-  factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  factor.set_label(label);
-  factor.mutable_password_metadata();
-  request.mutable_auth_input()->mutable_password_input()->set_secret(password);
-  return RunAddAuthFactor(request, auth_session);
-}
-
 CryptohomeStatus AuthenticatePasswordFactor(const std::string& label,
                                             const std::string& password,
                                             AuthSession& auth_session) {
@@ -188,19 +169,6 @@ CryptohomeStatus UpdatePinFactor(const std::string& label,
   factor.mutable_pin_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(new_pin);
   return RunUpdateAuthFactor(request, auth_session);
-}
-
-CryptohomeStatus AddPinFactor(const std::string& label,
-                              const std::string& pin,
-                              AuthSession& auth_session) {
-  user_data_auth::AddAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  user_data_auth::AuthFactor& factor = *request.mutable_auth_factor();
-  factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  factor.set_label(label);
-  factor.mutable_pin_metadata();
-  request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
-  return RunAddAuthFactor(request, auth_session);
 }
 
 CryptohomeStatus AuthenticatePinFactor(const std::string& label,
@@ -314,6 +282,11 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
         .WillByDefault(ReturnValue(0x43524F53));
 
     crypto_.Init();
+    ASSERT_TRUE(platform_.CreateDirectory(ShadowRoot()));
+    ASSERT_TRUE(platform_.CreateDirectory(
+        brillo::cryptohome::home::GetUserPathPrefix()));
+    ASSERT_TRUE(
+        platform_.CreateDirectory(UserPath(SanitizeUserName(kUsername))));
   }
 
   const Username kUsername{"foo@example.com"};
@@ -383,48 +356,95 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
 class AuthSessionWithTpmSimulatorUssMigrationTest
     : public AuthSessionWithTpmSimulatorTest {
  protected:
-  // Configures the experiment states to the desired storage type.
-  void SetStorageType(AuthFactorStorageType storage_type) {
-    // Decide whether to enable both of USS experiments (for new users and for
-    // existing ones). The test doesn't support switching them in isolation.
-    bool enable_uss = storage_type == AuthFactorStorageType::kUserSecretStash;
+  void AddPasswordVaultKeyset(const std::string& label,
+                              const std::string& password) {
+    AuthInput auth_input = {
+        .user_input = brillo::SecureBlob(password),
+        .locked_to_single_user = std::nullopt,
+        .username = kUsername,
+        .obfuscated_username = SanitizeUserName(kUsername),
+    };
+    auth_block_utility_.CreateKeyBlobsWithAuthBlock(
+        AuthBlockType::kTpmEcc, auth_input,
+        base::BindLambdaForTesting(
+            [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+                std::unique_ptr<AuthBlockState> auth_block_state) {
+              ASSERT_THAT(error, IsOk());
+              VaultKeyset vk;
+              vk.Initialize(&platform_, &crypto_);
+              KeyData key_data;
+              key_data.set_label(label);
+              key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+              vk.SetKeyData(key_data);
+              vk.CreateFromFileSystemKeyset(file_system_keyset_);
+              ASSERT_THAT(vk.EncryptEx(*key_blobs, *auth_block_state), IsOk());
+              ASSERT_TRUE(vk.Save(UserPath(SanitizeUserName(kUsername))
+                                      .Append(kKeyFile)
+                                      .AddExtension("0")));
+            }));
+  }
+  void AddPasswordAndPinVaultKeyset(const std::string& password_label,
+                                    const std::string& password,
+                                    const std::string& pin_label,
+                                    const std::string& pin) {
+    VaultKeyset password_vk;
+    password_vk.Initialize(&platform_, &crypto_);
+    KeyData key_data;
+    key_data.set_label(password_label);
+    key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+    password_vk.SetKeyData(key_data);
+    password_vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
-    // First destroy the old override, if present, as having two overrides with
-    // non-nested lifetimes isn't supported.
-    uss_experiment_override_.reset();
-    uss_experiment_override_ =
-        std::make_unique<SetUssExperimentOverride>(enable_uss);
+    VaultKeyset pin_vk;
+    pin_vk.Initialize(&platform_, &crypto_);
+    key_data.set_label(pin_label);
+    key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+    key_data.mutable_policy()->set_low_entropy_credential(true);
+    pin_vk.InitializeToAdd(password_vk);
+    pin_vk.SetKeyData(key_data);
+
+    AuthInput password_auth_input = {
+        .user_input = brillo::SecureBlob(password),
+        .locked_to_single_user = std::nullopt,
+        .username = kUsername,
+        .obfuscated_username = SanitizeUserName(kUsername),
+    };
+
+    AuthInput pin_auth_input = {
+        .user_input = brillo::SecureBlob(pin),
+        .locked_to_single_user = std::nullopt,
+        .username = kUsername,
+        .obfuscated_username = SanitizeUserName(kUsername),
+        .reset_seed = password_vk.GetResetSeed(),
+    };
+
+    auth_block_utility_.CreateKeyBlobsWithAuthBlock(
+        AuthBlockType::kTpmEcc, password_auth_input,
+        base::BindLambdaForTesting(
+            [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+                std::unique_ptr<AuthBlockState> auth_block_state) {
+              ASSERT_THAT(error, IsOk());
+              ASSERT_THAT(password_vk.EncryptEx(*key_blobs, *auth_block_state),
+                          IsOk());
+              ASSERT_TRUE(password_vk.Save(UserPath(SanitizeUserName(kUsername))
+                                               .Append(kKeyFile)
+                                               .AddExtension("0")));
+            }));
+    auth_block_utility_.CreateKeyBlobsWithAuthBlock(
+        AuthBlockType::kPinWeaver, pin_auth_input,
+        base::BindLambdaForTesting(
+            [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+                std::unique_ptr<AuthBlockState> auth_block_state) {
+              ASSERT_THAT(error, IsOk());
+              ASSERT_THAT(pin_vk.EncryptEx(*key_blobs, *auth_block_state),
+                          IsOk());
+              ASSERT_TRUE(pin_vk.Save(UserPath(SanitizeUserName(kUsername))
+                                          .Append(kKeyFile)
+                                          .AddExtension("1")));
+            }));
   }
 
- private:
-  std::unique_ptr<SetUssExperimentOverride> uss_experiment_override_;
-};
-
-// Parameterized fixture for tests that should work regardless of the
-// UserSecretStash migration state, i.e. for all 4 combinations (VK/USS used
-// initially/finally).
-//
-// Note that this kind of test skips this combination: USS is enabled for new
-// users but the USS migration of the existing users is disabled.
-class AuthSessionWithTpmSimulatorUssMigrationAgnosticTest
-    : public AuthSessionWithTpmSimulatorUssMigrationTest,
-      public ::testing::WithParamInterface<
-          std::tuple<AuthFactorStorageType, AuthFactorStorageType>> {
- protected:
-  static AuthFactorStorageType storage_type_initially() {
-    return std::get<0>(GetParam());
-  }
-  static AuthFactorStorageType storage_type_finally() {
-    return std::get<1>(GetParam());
-  }
-
-  // Aliases to `SetStorageType()` that call it with the corresponding test
-  // parameter.
-  void SetToInitialStorageType() { SetStorageType(storage_type_initially()); }
-  void SetToFinalStorageType() { SetStorageType(storage_type_finally()); }
-
- private:
-  std::unique_ptr<SetUssExperimentOverride> uss_experiment_override_;
+  FileSystemKeyset file_system_keyset_ = FileSystemKeyset::CreateRandom();
 };
 
 // Test that it's possible to migrate PIN from VaultKeyset to UserSecretStash
@@ -441,20 +461,10 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
                                AuthIntent::kDecrypt, backing_apis_);
   };
 
-  //  Assert. Create a user with password and PIN VKs.
-  SetStorageType(AuthFactorStorageType::kVaultKeyset);
-  {
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
-                IsOk());
-    EXPECT_THAT(AddPinFactor(kPinLabel, kPin, *auth_session), IsOk());
-  }
-
-  // Act. Enable USS experiment, add recovery (after using the password and
+  // Arrange. Create a user with password and PIN VKs.
+  AddPasswordAndPinVaultKeyset(kPasswordLabel, kPassword, kPinLabel, kPin);
+  // Add recovery (after authenticating with password and
   // hence migrating it to USS), and use recovery to update the password.
-  SetStorageType(AuthFactorStorageType::kUserSecretStash);
   {
     std::unique_ptr<AuthSession> auth_session = create_auth_session();
     ASSERT_TRUE(auth_session);
@@ -506,19 +516,10 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
   };
 
   // Arrange. Create a user with password and PIN VKs.
-  SetStorageType(AuthFactorStorageType::kVaultKeyset);
-  {
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
-                IsOk());
-    EXPECT_THAT(AddPinFactor(kPinLabel, kPin, *auth_session), IsOk());
-  }
+  AddPasswordAndPinVaultKeyset(kPasswordLabel, kPassword, kPinLabel, kPin);
 
   // Act. Enable USS experiment, add recovery (after using the password and
   // hence migrating it to USS).
-  SetStorageType(AuthFactorStorageType::kUserSecretStash);
   {
     std::unique_ptr<AuthSession> auth_session = create_auth_session();
     ASSERT_TRUE(auth_session);
@@ -554,80 +555,17 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    All,
-    AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
-    Combine(ValuesIn(kAllAuthFactorStorageFromTypes),
-            ValuesIn(kAllAuthFactorStorageToTypes)),
-    [](auto info) {
-      // Return human-readable parameterized test name. Use caps in order to
-      // clearly separate lowercase words visually.
-      return base::StringPrintf(
-          "%sTHEN%s",
-          AuthFactorStorageTypeToDebugString(std::get<0>(info.param)),
-          AuthFactorStorageTypeToDebugString(std::get<1>(info.param)));
-    });
-
-// Test that authentication via a previously added password works.
-TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
-       AuthenticateViaPassword) {
-  auto create_auth_session = [this]() {
-    return AuthSession::Create(kUsername,
-                               user_data_auth::AUTH_SESSION_FLAGS_NONE,
-                               AuthIntent::kDecrypt, backing_apis_);
-  };
-
-  // Arrange.
-  // Configure the creation via USS or VK, depending on the first test
-  // parameter.
-  SetToInitialStorageType();
-  {
-    // Create a user with a password factor.
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
-                IsOk());
-  }
-  // Configure whether authenticating via USS is allowed, or VK should be used
-  // (regardless of whether it's backup or not).
-  SetToFinalStorageType();
-  // Create a new AuthSession for authentication.
-  std::unique_ptr<AuthSession> auth_session = create_auth_session();
-  ASSERT_TRUE(auth_session);
-
-  // Act.
-  CryptohomeStatus auth_status =
-      AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session);
-
-  // Assert.
-  EXPECT_THAT(auth_status, IsOk());
-}
-
 // Test that updating via a previously added password works correctly: you can
 // authenticate via the new password but not via the old one.
-TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest, UpdatePassword) {
+TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest, UpdatePassword) {
   auto create_auth_session = [this]() {
     return AuthSession::Create(kUsername,
                                user_data_auth::AUTH_SESSION_FLAGS_NONE,
                                AuthIntent::kDecrypt, backing_apis_);
   };
 
-  // Arrange.
-  // Configure the creation via USS or VK, depending on the first test
-  // parameter.
-  SetToInitialStorageType();
-  {
-    // Create a user with a password factor.
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
-                IsOk());
-  }
-  // Switch to the new backend (USS or VK) depending on the second test
-  // parameter).
-  SetToFinalStorageType();
+  // Arrange. Configure the creation of a VK.
+  AddPasswordVaultKeyset(kPasswordLabel, kPassword);
 
   // Act.
   // Update the password factor after authenticating via the old password.
@@ -654,92 +592,12 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest, UpdatePassword) {
   // Check the old password isn't accepted, but the new one is.
   EXPECT_THAT(try_authenticate(kPassword), NotOk());
   EXPECT_THAT(try_authenticate(kNewPassword), IsOk());
-  // Check the same holds after switching back to the initial storage type.
-  SetToInitialStorageType();
-  EXPECT_THAT(try_authenticate(kPassword), NotOk());
-}
-
-// Test a password factor can be successfully updated after authenticating via a
-// recovery factor.
-TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
-       UpdatePasswordAfterRecoveryAuth) {
-  // Move time to `kFakeTimestamp`.
-  task_environment_.FastForwardBy((kFakeTimestamp - base::Time::Now()));
-
-  auto create_auth_session = [this]() {
-    return AuthSession::Create(kUsername,
-                               user_data_auth::AUTH_SESSION_FLAGS_NONE,
-                               AuthIntent::kDecrypt, backing_apis_);
-  };
-
-  // Arrange.
-  // Create a user with a password factor. Configure the creation via USS or VK,
-  // depending on the first test parameter.
-  SetToInitialStorageType();
-  {
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
-                IsOk());
-  }
-  // Add a recovery factor after authenticating via the password. Do this with
-  // the USS usage configured, since recovery isn't supported on VKs.
-  SetStorageType(AuthFactorStorageType::kUserSecretStash);
-  {
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(
-        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
-        IsOk());
-    EXPECT_THAT(AddRecoveryFactor(*auth_session), IsOk());
-    // Adding recovery factor removes the backup keyset.
-    EXPECT_EQ(nullptr,
-              keyset_management_.GetVaultKeyset(
-                  auth_session->obfuscated_username(), kPasswordLabel));
-  }
-
-  // Test.
-  // Update password after authenticating via recovery.
-  {
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(AuthenticateRecoveryFactor(*auth_session), IsOk());
-    EXPECT_THAT(
-        UpdatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
-        IsOk());
-  }
-
-  // Verify.
-  // Check the old password isn't accepted, meanwhile the new one does.
-  {
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(
-        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
-        NotOk());
-    EXPECT_THAT(
-        AuthenticatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
-        IsOk());
-  }
-  // Check the old password isn't accepted even after switching back to the
-  // original storage type. Note that we don't check the new password since, due
-  // to implementation limitation, this is not guaranteed to work in the
-  // rollback scenario with USS-only factors (see b/262632342).
-  SetToInitialStorageType();
-  {
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(
-        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
-        NotOk());
-  }
 }
 
 // Test that updating via a previously added password works correctly: you can
 // authenticate via the new password but not via the old one. All this while Pin
 // is not migrated.
-TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
+TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
        UpdatePasswordPartialMigration) {
   auto create_auth_session = [this]() {
     return AuthSession::Create(kUsername,
@@ -747,22 +605,8 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
                                AuthIntent::kDecrypt, backing_apis_);
   };
 
-  // Arrange.
-  // Configure the creation via USS or VK, depending on the first test
-  // parameter.
-  SetToInitialStorageType();
-  {
-    // Create a user with a password factor.
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
-                IsOk());
-    EXPECT_THAT(AddPinFactor(kPinLabel, kPin, *auth_session), IsOk());
-  }
-  // Switch to the new backend (USS or VK) depending on the second test
-  // parameter).
-  SetToFinalStorageType();
+  // Arrange. Configure a password and a PIN VK.
+  AddPasswordAndPinVaultKeyset(kPasswordLabel, kPassword, kPinLabel, kPin);
 
   // Act.
   // Update the password factor after authenticating via the old password.
@@ -799,30 +643,15 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
 // Test that updating via a previously added PIN works correctly: you can
 // authenticate via the new PIN but not via the old one. Update migrates the
 // PIN.
-TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
-       UpdatePinPartialMigration) {
+TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest, UpdatePinPartialMigration) {
   auto create_auth_session = [this]() {
     return AuthSession::Create(kUsername,
                                user_data_auth::AUTH_SESSION_FLAGS_NONE,
                                AuthIntent::kDecrypt, backing_apis_);
   };
 
-  // Arrange.
-  // Configure the creation via USS or VK, depending on the first test
-  // parameter.
-  SetToInitialStorageType();
-  {
-    // Create a user with a password and PIN factor.
-    std::unique_ptr<AuthSession> auth_session = create_auth_session();
-    ASSERT_TRUE(auth_session);
-    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
-                IsOk());
-    EXPECT_THAT(AddPinFactor(kPinLabel, kPin, *auth_session), IsOk());
-  }
-  // Switch to the new backend (USS or VK) depending on the second test
-  // parameter).
-  SetToFinalStorageType();
+  // Arrange. Configure a password and a PIN VK.
+  AddPasswordAndPinVaultKeyset(kPasswordLabel, kPassword, kPinLabel, kPin);
 
   // Act.
   // Update the PIN factor after authenticating via the password.
