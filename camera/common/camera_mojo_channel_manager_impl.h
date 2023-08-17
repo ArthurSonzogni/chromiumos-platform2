@@ -53,12 +53,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
 
   SensorHalClient* GetSensorHalClient() override;
 
-  void RegisterSensorHalClient(
-      mojo::PendingRemote<mojom::SensorHalClient> client,
-      mojom::CameraHalDispatcher::RegisterSensorClientWithTokenCallback
-          on_construct_callback,
-      Callback on_error_callback) override;
-
   void RequestServiceFromMojoServiceManager(
       const std::string& service_name,
       mojo::ScopedMessagePipeHandle receiver) override;
@@ -93,10 +87,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
       mojo::PendingRemote<mojom::CameraHalServer>,
       mojom::CameraHalDispatcher::RegisterServerWithTokenCallback>;
 
-  using SensorClientPendingMojoTask = PendingMojoTask<
-      mojo::PendingRemote<mojom::SensorHalClient>,
-      mojom::CameraHalDispatcher::RegisterSensorClientWithTokenCallback>;
-
   template <typename T>
   using JpegPendingMojoTask = PendingMojoTask<T, Callback>;
 
@@ -130,7 +120,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   // Pending Mojo tasks information which should be consumed when the
   // |dispatcher_| is connected.
   ServerPendingMojoTask camera_hal_server_task_;
-  SensorClientPendingMojoTask sensor_hal_client_task_;
 
   // TODO(b/151270948): Remove this static variable once we implemnet CrOS
   // specific interface on all camera HALs.

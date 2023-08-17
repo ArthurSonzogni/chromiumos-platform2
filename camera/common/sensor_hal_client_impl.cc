@@ -16,6 +16,7 @@
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
+#include <chromeos/mojo/service_constants.h>
 
 #include "cros-camera/common.h"
 
@@ -179,23 +180,40 @@ SensorHalClientImpl::IPCBridge::IPCBridge(
 SensorHalClientImpl::IPCBridge::~IPCBridge() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  receiver_.reset();
   ResetSensorService();
 }
 
 void SensorHalClientImpl::IPCBridge::Start() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  DCHECK(!receiver_.is_bound());
 
-  mojo_manager_->RegisterSensorHalClient(
-      receiver_.BindNewPipeAndPassRemote(),
-      base::BindOnce(&SensorHalClientImpl::IPCBridge::OnClientRegistered,
-                     GetWeakPtr()),
-      base::BindOnce(&SensorHalClientImpl::IPCBridge::OnServiceMojoChannelError,
-                     GetWeakPtr()));
-  receiver_.set_disconnect_handler(
-      base::BindOnce(&SensorHalClientImpl::IPCBridge::OnServiceMojoChannelError,
-                     base::Unretained(this)));
+  mojo_service_manager_observer_ =
+      mojo_manager_->CreateMojoServiceManagerObserver(
+          /*service_name=*/chromeos::mojo_services::kIioSensor,
+          /*on_register_callback=*/
+          base::BindRepeating(&SensorHalClientImpl::IPCBridge::RequestService,
+                              GetWeakPtr()),
+          /*on_unregister_callback=*/
+          base::BindRepeating(
+              &SensorHalClientImpl::IPCBridge::OnUnregisterCallback,
+              GetWeakPtr()));
+}
+
+void SensorHalClientImpl::IPCBridge::RequestService() {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+
+  mojo::PendingRemote<cros::mojom::SensorService> sensor_service_remote;
+  mojo_manager_->RequestServiceFromMojoServiceManager(
+      /*service_name=*/chromeos::mojo_services::kIioSensor,
+      sensor_service_remote.InitWithNewPipeAndPassReceiver().PassPipe());
+
+  SetUpChannel(std::move(sensor_service_remote));
+}
+
+void SensorHalClientImpl::IPCBridge::OnUnregisterCallback() {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+
+  LOGF(WARNING)
+      << "IioSensor service is no longer registered in mojo service manager.";
 }
 
 void SensorHalClientImpl::IPCBridge::HasDevice(
@@ -547,36 +565,10 @@ bool SensorHalClientImpl::IPCBridge::HasDeviceInternal(mojom::DeviceType type,
          base::Contains(device_maps_[type], location);
 }
 
-void SensorHalClientImpl::IPCBridge::OnClientRegistered(int32_t result) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
-  if (result == 0)
-    return;
-
-  LOGF(ERROR) << "Failed to register sensor HAL: "
-              << base::safe_strerror(-result);
-  OnServiceMojoChannelError();
-}
-
-void SensorHalClientImpl::IPCBridge::OnServiceMojoChannelError() {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
-  // The CameraHalDispatcher Mojo parent is probably dead. We need to restart
-  // another process in order to connect to the new Mojo parent.
-  LOGF(INFO) << "Mojo connection to SensorHalDispatcher is broken";
-
-  cancellation_relay_->CancelAllFutures();
-  receiver_.reset();
-  ResetSensorService();
-
-  for (auto& [samples_observer, reader_data] : readers_) {
-    samples_observer->OnErrorOccurred(
-        SamplesObserver::ErrorType::MOJO_DISCONNECTED);
-  }
-}
-
 void SensorHalClientImpl::IPCBridge::ResetSensorService() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+
+  cancellation_relay_->CancelAllFutures();
 
   for (auto& [id, device] : devices_) {
     // Only reset the mojo pipe and keep all the other initialized types and
@@ -598,7 +590,6 @@ void SensorHalClientImpl::IPCBridge::OnSensorServiceDisconnect() {
 
   LOGF(ERROR) << "Wait for IIO Service's reconnection.";
 
-  cancellation_relay_->CancelAllFutures();
   ResetSensorService();
 }
 

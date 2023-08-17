@@ -51,8 +51,7 @@ class SensorHalClientImpl : public SensorHalClient {
  private:
   // IPCBridge wraps all the IPC-related calls. Most of its methods should/will
   // be run on IPC thread.
-  class IPCBridge : public mojom::SensorHalClient,
-                    public mojom::SensorServiceNewDevicesObserver {
+  class IPCBridge : public mojom::SensorServiceNewDevicesObserver {
    public:
     IPCBridge(CameraMojoChannelManager* mojo_manager,
               CancellationRelay* cancellation_relay);
@@ -73,15 +72,12 @@ class SensorHalClientImpl : public SensorHalClient {
                                  base::OnceCallback<void(bool)> callback);
     void UnregisterSamplesObserver(SamplesObserver* samples_observer);
 
-    // SensorHalClient Mojo interface implementation.
-    void SetUpChannel(
-        mojo::PendingRemote<mojom::SensorService> pending_remote) override;
+    void SetUpChannel(mojo::PendingRemote<mojom::SensorService> pending_remote);
 
     // SensorServiceNewDevicesObserver Mojo interface implementation.
     void OnNewDeviceAdded(int32_t iio_device_id,
                           const std::vector<mojom::DeviceType>& types) override;
 
-    bool ClientIsBound() { return receiver_.is_bound(); }
     bool IsReady() { return sensor_service_remote_.is_bound(); }
 
     // Gets a weak pointer of the IPCBridge. This method can be called on
@@ -115,6 +111,10 @@ class SensorHalClientImpl : public SensorHalClient {
       std::unique_ptr<SensorReader> sensor_reader;
     };
 
+    // Used as MojoServiceManagerObserver's OnRegisterCallback.
+    void RequestService();
+    void OnUnregisterCallback();
+
     void OnDeviceQueryTimedOut(uint32_t info_id);
 
     void RegisterDevice(int32_t iio_device_id,
@@ -141,9 +141,6 @@ class SensorHalClientImpl : public SensorHalClient {
 
     bool HasDeviceInternal(mojom::DeviceType type, Location location);
 
-    void OnClientRegistered(int32_t result);
-    void OnServiceMojoChannelError();
-
     void ResetSensorService();
 
     void OnSensorServiceDisconnect();
@@ -158,7 +155,8 @@ class SensorHalClientImpl : public SensorHalClient {
     // The Mojo IPC task runner.
     const scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
 
-    mojo::Receiver<mojom::SensorHalClient> receiver_{this};
+    std::unique_ptr<MojoServiceManagerObserver> mojo_service_manager_observer_;
+
     mojo::Remote<mojom::SensorService> sensor_service_remote_;
 
     // The Mojo channel to get notified when new devices are added to IIO

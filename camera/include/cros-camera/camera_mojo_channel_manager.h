@@ -76,11 +76,6 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
                                  const std::string& pipe_name) = 0;
 
   virtual SensorHalClient* GetSensorHalClient() = 0;
-  virtual void RegisterSensorHalClient(
-      mojo::PendingRemote<mojom::SensorHalClient> client,
-      mojom::CameraHalDispatcher::RegisterSensorClientWithTokenCallback
-          on_construct_callback,
-      Callback on_error_callback) = 0;
 
   virtual void RequestServiceFromMojoServiceManager(
       const std::string& service_name,
