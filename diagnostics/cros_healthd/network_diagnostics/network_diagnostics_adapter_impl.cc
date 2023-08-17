@@ -7,6 +7,10 @@
 #include <optional>
 #include <utility>
 
+#include <base/functional/bind.h>
+#include <base/logging.h>
+#include <mojo/public/cpp/bindings/callback_helpers.h>
+
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 
 namespace diagnostics {
@@ -14,6 +18,10 @@ namespace diagnostics {
 namespace {
 
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
+
+void LogCallbackDropped() {
+  LOG(ERROR) << "Network diagnostics callback is dropped";
+}
 
 }  // namespace
 
@@ -42,7 +50,9 @@ void NetworkDiagnosticsAdapterImpl::RunLanConnectivityRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunLanConnectivity(std::move(callback));
+  network_diagnostics_routines_->RunLanConnectivity(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunSignalStrengthRoutine(
@@ -56,7 +66,9 @@ void NetworkDiagnosticsAdapterImpl::RunSignalStrengthRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunSignalStrength(std::move(callback));
+  network_diagnostics_routines_->RunSignalStrength(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunGatewayCanBePingedRoutine(
@@ -70,7 +82,9 @@ void NetworkDiagnosticsAdapterImpl::RunGatewayCanBePingedRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunGatewayCanBePinged(std::move(callback));
+  network_diagnostics_routines_->RunGatewayCanBePinged(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunHasSecureWiFiConnectionRoutine(
@@ -84,7 +98,8 @@ void NetworkDiagnosticsAdapterImpl::RunHasSecureWiFiConnectionRoutine(
     return;
   }
   network_diagnostics_routines_->RunHasSecureWiFiConnection(
-      std::move(callback));
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunDnsResolverPresentRoutine(
@@ -98,7 +113,9 @@ void NetworkDiagnosticsAdapterImpl::RunDnsResolverPresentRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunDnsResolverPresent(std::move(callback));
+  network_diagnostics_routines_->RunDnsResolverPresent(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunDnsLatencyRoutine(
@@ -111,7 +128,9 @@ void NetworkDiagnosticsAdapterImpl::RunDnsLatencyRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunDnsLatency(std::move(callback));
+  network_diagnostics_routines_->RunDnsLatency(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunDnsResolutionRoutine(
@@ -124,7 +143,9 @@ void NetworkDiagnosticsAdapterImpl::RunDnsResolutionRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunDnsResolution(std::move(callback));
+  network_diagnostics_routines_->RunDnsResolution(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunCaptivePortalRoutine(
@@ -137,7 +158,9 @@ void NetworkDiagnosticsAdapterImpl::RunCaptivePortalRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunCaptivePortal(std::move(callback));
+  network_diagnostics_routines_->RunCaptivePortal(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunHttpFirewallRoutine(
@@ -150,7 +173,9 @@ void NetworkDiagnosticsAdapterImpl::RunHttpFirewallRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunHttpFirewall(std::move(callback));
+  network_diagnostics_routines_->RunHttpFirewall(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunHttpsFirewallRoutine(
@@ -163,7 +188,9 @@ void NetworkDiagnosticsAdapterImpl::RunHttpsFirewallRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunHttpsFirewall(std::move(callback));
+  network_diagnostics_routines_->RunHttpsFirewall(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunHttpsLatencyRoutine(
@@ -176,7 +203,9 @@ void NetworkDiagnosticsAdapterImpl::RunHttpsLatencyRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunHttpsLatency(std::move(callback));
+  network_diagnostics_routines_->RunHttpsLatency(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunVideoConferencingRoutine(
@@ -191,8 +220,10 @@ void NetworkDiagnosticsAdapterImpl::RunVideoConferencingRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunVideoConferencing(stun_server_hostname,
-                                                      std::move(callback));
+  network_diagnostics_routines_->RunVideoConferencing(
+      stun_server_hostname,
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunArcHttpRoutine(
@@ -205,7 +236,8 @@ void NetworkDiagnosticsAdapterImpl::RunArcHttpRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunArcHttp(std::move(callback));
+  network_diagnostics_routines_->RunArcHttp(mojo::WrapCallbackWithDropHandler(
+      std::move(callback), base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunArcPingRoutine(
@@ -218,7 +250,8 @@ void NetworkDiagnosticsAdapterImpl::RunArcPingRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunArcPing(std::move(callback));
+  network_diagnostics_routines_->RunArcPing(mojo::WrapCallbackWithDropHandler(
+      std::move(callback), base::BindOnce(&LogCallbackDropped)));
 }
 
 void NetworkDiagnosticsAdapterImpl::RunArcDnsResolutionRoutine(
@@ -232,7 +265,9 @@ void NetworkDiagnosticsAdapterImpl::RunArcDnsResolutionRoutine(
     std::move(callback).Run(std::move(result));
     return;
   }
-  network_diagnostics_routines_->RunArcDnsResolution(std::move(callback));
+  network_diagnostics_routines_->RunArcDnsResolution(
+      mojo::WrapCallbackWithDropHandler(std::move(callback),
+                                        base::BindOnce(&LogCallbackDropped)));
 }
 
 }  // namespace diagnostics
