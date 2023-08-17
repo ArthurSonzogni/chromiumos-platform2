@@ -177,9 +177,6 @@ constexpr const char* kDiskImageExtensions[] = {kRawImageExtension,
 constexpr const char* kPluginVmImageExtensions[] = {kPluginVmImageExtension,
                                                     nullptr};
 
-// The Id of the DLC that supplies the Bios for the Bruschetta VM.
-constexpr char kBruschettaBiosDlcId[] = "edk2-ovmf-dlc";
-
 // File path for the Bruschetta Bios file inside the DLC root.
 constexpr char kBruschettaBiosDlcPath[] = "opt/CROSVM_CODE.fd";
 
@@ -858,30 +855,6 @@ ReclaimVmMemoryResponse ReclaimVmMemoryInternal(pid_t pid, int32_t page_limit) {
   LOG(INFO) << "Successfully reclaimed VM memory. PID=" << pid;
   response.set_success(true);
   return response;
-}
-
-// Determines what classification type this VM has. Classifications are
-// roughly related to products, and the classification broadly determines what
-// features are available to a given VM.
-//
-// TODO(b/213090722): Determining a VM's type based on its properties like
-// this is undesirable. Instead we should provide the type in the request, and
-// determine its properties from that.
-apps::VmType ClassifyVm(const StartVmRequest& request) {
-  if (request.vm_type() == VmInfo::BOREALIS ||
-      request.vm().dlc_id() == "borealis-dlc")
-    return apps::VmType::BOREALIS;
-  if (request.vm_type() == VmInfo::TERMINA || request.start_termina())
-    return apps::VmType::TERMINA;
-  // Bruschetta VMs are distinguished by having a separate bios, either as an FD
-  // or a dlc.
-  bool has_bios_fd =
-      std::any_of(request.fds().begin(), request.fds().end(),
-                  [](int type) { return type == StartVmRequest::BIOS; });
-  if (request.vm_type() == VmInfo::BRUSCHETTA || has_bios_fd ||
-      request.vm().dlc_id() == "edk2-ovmf-dlc")
-    return apps::VmType::BRUSCHETTA;
-  return apps::VmType::UNKNOWN;
 }
 
 }  // namespace
@@ -1731,7 +1704,7 @@ StartVmResponse Service::StartVmInternal(
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
 
-  apps::VmType classification = ClassifyVm(request);
+  apps::VmType classification = internal::ClassifyVm(request);
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(ToLegacyVmType(classification));
 

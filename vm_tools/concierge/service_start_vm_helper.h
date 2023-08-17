@@ -19,6 +19,12 @@
 namespace vm_tools {
 namespace concierge {
 
+// The Id of the DLC that supplies the Bios for the Bruschetta VM.
+constexpr char kBruschettaBiosDlcId[] = "edk2-ovmf-dlc";
+
+// The Id of the DLC that supplies the Bios for the Borealis VM.
+constexpr char kBorealisBiosDlcId[] = "borealis-dlc";
+
 // Check Cpu setting in request not exceeds processor number
 template <class T>
 bool CheckCpuCount(const T& request, StartVmResponse* response) {
@@ -109,6 +115,14 @@ bool Service::CheckStartVmPreconditions(const StartXXRequest& request,
   }
   return true;
 }
+
+namespace internal {
+
+// Determines what classification type this VM has. Classifications are
+// roughly related to products, and the classification broadly determines what
+// features are available to a given VM.
+apps::VmType ClassifyVm(const StartVmRequest& request);
+}  // namespace internal
 
 }  // namespace concierge
 }  // namespace vm_tools

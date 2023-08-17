@@ -180,6 +180,7 @@ static_library("libconcierge") {
     "../concierge/service_arc.cc",
     "../concierge/service_common.cc",
     "../concierge/service_plugin.cc",
+    "../concierge/service_start_vm_helper.cc",
     "../concierge/shadercached_helper.cc",
     "../concierge/shill_client.cc",
     "../concierge/ssh_keys.cc",
