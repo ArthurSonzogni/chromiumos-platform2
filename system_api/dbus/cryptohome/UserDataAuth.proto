@@ -1602,11 +1602,19 @@ message PrepareAuthFactorProgress {
 // Used in the AuthenticateAuthFactorCompleted signal to notify
 // if authentication was successful/failed.
 message AuthenticateAuthFactorCompleted {
-  // Both error fields will be empty on success and filled on error.
+  oneof result {
+    AuthenticateAuthFactorCompletedSuccess success = 1;
+    AuthenticateAuthFactorCompletedFailure failure = 2;
+  }
+}
+
+// Used when Authentication succeeds.
+message AuthenticateAuthFactorCompletedSuccess {
+  AuthFactorType auth_factor_type = 1;
+}
+
+// Used when Authentication fails.
+message AuthenticateAuthFactorCompletedFailure {
   CryptohomeErrorCode error = 1;
   CryptohomeErrorInfo error_info = 2;
-
-  // Auth factor type can be filled on an error, so do not
-  // use to check for success.
-  AuthFactorType auth_factor_type = 3;
 }

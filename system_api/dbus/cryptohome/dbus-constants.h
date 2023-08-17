@@ -113,6 +113,8 @@ inline constexpr char kAuthEnrollmentProgressSignal[] =
     "AuthEnrollmentProgress";
 inline constexpr char kPrepareAuthFactorProgressSignal[] =
     "PrepareAuthFactorProgress";
+inline constexpr char kAuthenticateAuthFactorCompletedSignal[] =
+    "AuthenticateAuthFactorCompleted";
 
 }  // namespace user_data_auth
 
