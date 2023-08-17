@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/threading/platform_thread.h>
 #include <keymaster/android_keymaster_messages.h>
@@ -225,10 +226,10 @@ void KeyMintServer::GetKeyCharacteristics(
          std::unique_ptr<::keymaster::GetKeyCharacteristicsResponse>
              km_response) {
         // Prepare mojo response.
-        uint32_t error;
-        auto response = MakeGetKeyCharacteristicsResult(*km_response, error);
+        CHECK(km_response);
+        auto response = MakeGetKeyCharacteristicsResult(*km_response);
         // Run callback.
-        std::move(callback).Run(error, std::move(response));
+        std::move(callback).Run(std::move(response));
       },
       std::move(callback));
 
@@ -248,15 +249,10 @@ void KeyMintServer::GenerateKey(
       [](GenerateKeyCallback callback,
          std::unique_ptr<::keymaster::GenerateKeyResponse> km_response) {
         // Prepare mojo response.
-        uint32_t error;
-        auto response = MakeGenerateKeyResult(*km_response, error);
+        CHECK(km_response);
+        auto response = MakeGenerateKeyResult(*km_response);
         // Run callback.
-        if (response.has_value()) {
-          std::move(callback).Run(error, std::move(response.value()));
-        } else {
-          std::move(callback).Run(error,
-                                  arc::mojom::keymint::KeyCreationResultPtr());
-        }
+        std::move(callback).Run(std::move(response));
       },
       std::move(callback));
 
@@ -274,15 +270,10 @@ void KeyMintServer::ImportKey(arc::mojom::keymint::ImportKeyRequestPtr request,
       [](ImportKeyCallback callback,
          std::unique_ptr<::keymaster::ImportKeyResponse> km_response) {
         // Prepare mojo response.
-        uint32_t error;
-        auto response = MakeImportKeyResult(*km_response, error);
+        CHECK(km_response);
+        auto response = MakeImportKeyResult(*km_response);
         // Run callback.
-        if (response.has_value()) {
-          std::move(callback).Run(error, std::move(response.value()));
-        } else {
-          std::move(callback).Run(error,
-                                  arc::mojom::keymint::KeyCreationResultPtr());
-        }
+        std::move(callback).Run(std::move(response));
       },
       std::move(callback));
 
@@ -301,15 +292,9 @@ void KeyMintServer::ImportWrappedKey(
       [](ImportKeyCallback callback,
          std::unique_ptr<::keymaster::ImportWrappedKeyResponse> km_response) {
         // Prepare mojo response.
-        uint32_t error = KM_ERROR_UNKNOWN_ERROR;
-        auto response = MakeImportWrappedKeyResult(*km_response, error);
-        // Run callback.
-        if (response.has_value()) {
-          std::move(callback).Run(error, std::move(response.value()));
-        } else {
-          std::move(callback).Run(error,
-                                  arc::mojom::keymint::KeyCreationResultPtr());
-        }
+        CHECK(km_response);
+        auto response = MakeImportWrappedKeyResult(*km_response);
+        std::move(callback).Run(std::move(response));
       },
       std::move(callback));
 
@@ -328,15 +313,11 @@ void KeyMintServer::UpgradeKey(
       [](UpgradeKeyCallback callback,
          std::unique_ptr<::keymaster::UpgradeKeyResponse> km_response) {
         // Prepare mojo response.
-        uint32_t error = KM_ERROR_UNKNOWN_ERROR;
-        auto response = MakeUpgradeKeyResult(*km_response, error);
+        CHECK(km_response);
+        auto response = MakeUpgradeKeyResult(*km_response);
 
         // Run callback.
-        if (error == KM_ERROR_OK) {
-          std::move(callback).Run(error, std::move(response));
-        } else {
-          std::move(callback).Run(error, std::nullopt);
-        }
+        std::move(callback).Run(std::move(response));
       },
       std::move(callback));
 
@@ -357,6 +338,7 @@ void KeyMintServer::DeleteKey(const std::vector<uint8_t>& key_blob,
       [](DeleteKeyCallback callback,
          std::unique_ptr<::keymaster::DeleteKeyResponse> km_response) {
         // Run callback.
+        CHECK(km_response);
         std::move(callback).Run(km_response->error);
       },
       std::move(callback));
@@ -375,6 +357,7 @@ void KeyMintServer::DeleteAllKeys(DeleteAllKeysCallback callback) {
       [](DeleteAllKeysCallback callback,
          std::unique_ptr<::keymaster::DeleteAllKeysResponse> km_response) {
         // Run callback.
+        CHECK(km_response);
         std::move(callback).Run(km_response->error);
       },
       std::move(callback));
@@ -401,15 +384,11 @@ void KeyMintServer::Begin(arc::mojom::keymint::BeginRequestPtr request,
       [](BeginCallback callback,
          std::unique_ptr<::keymaster::BeginOperationResponse> km_response) {
         // Prepare mojo response.
-        uint32_t error = KM_ERROR_UNKNOWN_ERROR;
-        auto response = MakeBeginResult(*km_response, error);
+        CHECK(km_response);
+        auto response = MakeBeginResult(*km_response);
 
         // Run callback.
-        if (response.has_value()) {
-          std::move(callback).Run(error, std::move(response.value()));
-        } else {
-          std::move(callback).Run(error, arc::mojom::keymint::BeginResultPtr());
-        }
+        std::move(callback).Run(std::move(response));
       },
       std::move(callback));
 
@@ -432,6 +411,7 @@ void KeyMintServer::DeviceLocked(
       [](DeviceLockedCallback callback,
          std::unique_ptr<::keymaster::DeviceLockedResponse> km_response) {
         // Run callback.
+        CHECK(km_response);
         std::move(callback).Run(km_response->error);
       },
       std::move(callback));
@@ -447,6 +427,7 @@ void KeyMintServer::EarlyBootEnded(EarlyBootEndedCallback callback) {
       [](EarlyBootEndedCallback callback,
          std::unique_ptr<::keymaster::EarlyBootEndedResponse> km_response) {
         // Run callback.
+        CHECK(km_response);
         std::move(callback).Run(km_response->error);
       },
       std::move(callback));
@@ -461,19 +442,25 @@ void KeyMintServer::ConvertStorageKeyToEphemeral(
     const std::vector<uint8_t>& storage_key_blob,
     ConvertStorageKeyToEphemeralCallback callback) {
   // Implement this when needed.
-  std::move(callback).Run(KM_ERROR_UNIMPLEMENTED, std::nullopt);
+  auto error =
+      arc::mojom::keymint::ByteArrayOrError::NewError(KM_ERROR_UNIMPLEMENTED);
+  std::move(callback).Run(std::move(error));
 }
 
 void KeyMintServer::GetRootOfTrustChallenge(
     GetRootOfTrustChallengeCallback callback) {
   // Implement this when needed.
-  std::move(callback).Run(KM_ERROR_UNIMPLEMENTED, std::nullopt);
+  auto error =
+      arc::mojom::keymint::ByteArrayOrError::NewError(KM_ERROR_UNIMPLEMENTED);
+  std::move(callback).Run(std::move(error));
 }
 
 void KeyMintServer::GetRootOfTrust(const std::vector<uint8_t>& challenge,
                                    GetRootOfTrustCallback callback) {
   // Implement this when needed.
-  std::move(callback).Run(KM_ERROR_UNIMPLEMENTED, std::nullopt);
+  auto error =
+      arc::mojom::keymint::ByteArrayOrError::NewError(KM_ERROR_UNIMPLEMENTED);
+  std::move(callback).Run(std::move(error));
 }
 
 void KeyMintServer::SendRootOfTrust(const std::vector<uint8_t>& root_of_trust,
@@ -493,10 +480,10 @@ void KeyMintServer::UpdateAad(arc::mojom::keymint::UpdateRequestPtr request,
       [](UpdateAadCallback callback,
          std::unique_ptr<::keymaster::UpdateOperationResponse> km_response) {
         // Prepare mojo response.
-        uint32_t error = KM_ERROR_UNKNOWN_ERROR;
-        auto response = MakeUpdateResult(*km_response, error);
+        CHECK(km_response);
+        auto response = MakeUpdateResult(*km_response);
 
-        std::move(callback).Run(error);
+        std::move(callback).Run(km_response->error);
       },
       std::move(callback));
 
@@ -517,17 +504,20 @@ void KeyMintServer::Update(arc::mojom::keymint::UpdateRequestPtr request,
       [](UpdateCallback callback, const size_t input_size,
          std::unique_ptr<::keymaster::UpdateOperationResponse> km_response) {
         // Prepare mojo response.
-        uint32_t error = KM_ERROR_UNKNOWN_ERROR;
-        auto response = MakeUpdateResult(*km_response, error);
+        CHECK(km_response);
+        auto response = MakeUpdateResult(*km_response);
 
         // Run callback.
-        if (error != KM_ERROR_OK) {
-          std::move(callback).Run(error, std::nullopt);
-        } else if (km_response->input_consumed != input_size) {
-          error = KM_ERROR_UNKNOWN_ERROR;
-          std::move(callback).Run(error, std::nullopt);
+        // This logic is derived from AndroidKeyMintOperation.cpp
+        if (km_response->error == KM_ERROR_OK &&
+            km_response->input_consumed != input_size) {
+          LOG(ERROR) << "KeyMint Server: Unknown error in Update due to size "
+                        "mismatch.";
+          std::move(callback).Run(
+              arc::mojom::keymint::ByteArrayOrError::NewError(
+                  KM_ERROR_UNKNOWN_ERROR));
         } else {
-          std::move(callback).Run(error, std::move(response));
+          std::move(callback).Run(std::move(response));
         }
       },
       std::move(callback), std::move(input_size));
@@ -548,15 +538,11 @@ void KeyMintServer::Finish(arc::mojom::keymint::FinishRequestPtr request,
       [](FinishCallback callback,
          std::unique_ptr<::keymaster::FinishOperationResponse> km_response) {
         // Prepare mojo response.
-        uint32_t error = KM_ERROR_UNKNOWN_ERROR;
-        auto response = MakeFinishResult(*km_response, error);
+        CHECK(km_response);
+        auto response = MakeFinishResult(*km_response);
 
         // Run callback.
-        if (error != KM_ERROR_OK) {
-          std::move(callback).Run(error, std::nullopt);
-        } else {
-          std::move(callback).Run(error, std::move(response));
-        }
+        std::move(callback).Run(std::move(response));
       },
       std::move(callback));
 
@@ -575,6 +561,7 @@ void KeyMintServer::Abort(uint64_t op_handle, AbortCallback callback) {
       [](AbortCallback callback,
          std::unique_ptr<::keymaster::AbortOperationResponse> km_response) {
         // Run callback.
+        CHECK(km_response);
         std::move(callback).Run(km_response->error);
       },
       std::move(callback));

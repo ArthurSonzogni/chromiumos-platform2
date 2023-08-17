@@ -455,13 +455,12 @@ MakeComputeSharedSecretRequest(
 }
 
 // Mojo Result Methods.
-std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
+arc::mojom::keymint::KeyCharacteristicsArrayOrErrorPtr
 MakeGetKeyCharacteristicsResult(
-    const ::keymaster::GetKeyCharacteristicsResponse& km_response,
-    uint32_t& error) {
-  error = km_response.error;
+    const ::keymaster::GetKeyCharacteristicsResponse& km_response) {
   if (km_response.error != KM_ERROR_OK) {
-    return std::nullopt;
+    return arc::mojom::keymint::KeyCharacteristicsArrayOrError::NewError(
+        km_response.error);
   }
 
   // Enforced response corresponds to Trusted Execution
@@ -477,14 +476,16 @@ MakeGetKeyCharacteristicsResult(
   std::vector<arc::mojom::keymint::KeyCharacteristicsPtr> output;
   output.push_back(std::move(teeChars));
   output.push_back(std::move(softwareChars));
-  return output;
+
+  return arc::mojom::keymint::KeyCharacteristicsArrayOrError::
+      NewKeyCharacteristics(std::move(output));
 }
 
-std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeGenerateKeyResult(
-    const ::keymaster::GenerateKeyResponse& km_response, uint32_t& error) {
-  error = km_response.error;
+arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeGenerateKeyResult(
+    const ::keymaster::GenerateKeyResponse& km_response) {
   if (km_response.error != KM_ERROR_OK) {
-    return std::nullopt;
+    return arc::mojom::keymint::KeyCreationResultOrError::NewError(
+        km_response.error);
   }
 
   // Create the Key Blob.
@@ -512,15 +513,18 @@ std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeGenerateKeyResult(
   std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
   cert_array.push_back(std::move(cert));
 
-  return arc::mojom::keymint::KeyCreationResult::New(
+  auto key_result = arc::mojom::keymint::KeyCreationResult::New(
       std::move(key_blob), std::move(key_chars_array), std::move(cert_array));
+
+  return arc::mojom::keymint::KeyCreationResultOrError::NewKeyCreationResult(
+      std::move(key_result));
 }
 
-std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
-    const ::keymaster::ImportKeyResponse& km_response, uint32_t& error) {
-  error = km_response.error;
+arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeImportKeyResult(
+    const ::keymaster::ImportKeyResponse& km_response) {
   if (km_response.error != KM_ERROR_OK) {
-    return std::nullopt;
+    return arc::mojom::keymint::KeyCreationResultOrError::NewError(
+        km_response.error);
   }
 
   // Create the Key Blob.
@@ -548,16 +552,18 @@ std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
   std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
   cert_array.push_back(std::move(cert));
 
-  return arc::mojom::keymint::KeyCreationResult::New(
+  auto key_creation_result = arc::mojom::keymint::KeyCreationResult::New(
       std::move(key_blob), std::move(key_chars_array), std::move(cert_array));
+
+  return arc::mojom::keymint::KeyCreationResultOrError::NewKeyCreationResult(
+      std::move(key_creation_result));
 }
 
-std::optional<arc::mojom::keymint::KeyCreationResultPtr>
-MakeImportWrappedKeyResult(
-    const ::keymaster::ImportWrappedKeyResponse& km_response, uint32_t& error) {
-  error = km_response.error;
+arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeImportWrappedKeyResult(
+    const ::keymaster::ImportWrappedKeyResponse& km_response) {
   if (km_response.error != KM_ERROR_OK) {
-    return std::nullopt;
+    return arc::mojom::keymint::KeyCreationResultOrError::NewError(
+        km_response.error);
   }
 
   // Create the Key Blob.
@@ -585,61 +591,69 @@ MakeImportWrappedKeyResult(
   std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
   cert_array.push_back(std::move(cert));
 
-  return arc::mojom::keymint::KeyCreationResult::New(
+  auto key_creation_result = arc::mojom::keymint::KeyCreationResult::New(
       std::move(key_blob), std::move(key_chars_array), std::move(cert_array));
+
+  return arc::mojom::keymint::KeyCreationResultOrError::NewKeyCreationResult(
+      std::move(key_creation_result));
 }
 
-std::vector<uint8_t> MakeUpgradeKeyResult(
-    const ::keymaster::UpgradeKeyResponse& km_response, uint32_t& error) {
-  error = km_response.error;
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeUpgradeKeyResult(
+    const ::keymaster::UpgradeKeyResponse& km_response) {
   if (km_response.error != KM_ERROR_OK) {
-    return std::vector<uint8_t>();
+    return arc::mojom::keymint::ByteArrayOrError::NewError(km_response.error);
   }
   // Create the Key Blob.
-  auto key_blob =
+  auto upgraded_key_blob =
       ConvertFromKeymasterMessage(km_response.upgraded_key.key_material,
                                   km_response.upgraded_key.key_material_size);
-  return key_blob;
+
+  return arc::mojom::keymint::ByteArrayOrError::NewOutput(
+      std::move(upgraded_key_blob));
 }
 
-std::vector<uint8_t> MakeUpdateResult(
-    const ::keymaster::UpdateOperationResponse& km_response, uint32_t& error) {
-  error = km_response.error;
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeUpdateResult(
+    const ::keymaster::UpdateOperationResponse& km_response) {
   if (km_response.error != KM_ERROR_OK) {
-    return std::vector<uint8_t>();
+    return arc::mojom::keymint::ByteArrayOrError::NewError(km_response.error);
   }
   // UpdateOperationResponse also carries a field - |input_consumed|,
   // which is used in keymint_server.cc file.
   // It also carries another field - |output_params|, which is a
   // part of |output| returned from here.
-  return ConvertFromKeymasterMessage(km_response.output.begin(),
-                                     km_response.output.available_read());
+  auto output = ConvertFromKeymasterMessage(
+      km_response.output.begin(), km_response.output.available_read());
+
+  return arc::mojom::keymint::ByteArrayOrError::NewOutput(std::move(output));
 }
 
-std::optional<arc::mojom::keymint::BeginResultPtr> MakeBeginResult(
-    const ::keymaster::BeginOperationResponse& km_response, uint32_t& error) {
-  error = km_response.error;
+arc::mojom::keymint::BeginResultOrErrorPtr MakeBeginResult(
+    const ::keymaster::BeginOperationResponse& km_response) {
   if (km_response.error != KM_ERROR_OK) {
-    return std::nullopt;
+    return arc::mojom::keymint::BeginResultOrError::NewError(km_response.error);
   }
 
   uint64_t challenge = km_response.op_handle;
   uint64_t op_handle = km_response.op_handle;
 
-  return arc::mojom::keymint::BeginResult::New(
+  auto begin_result = arc::mojom::keymint::BeginResult::New(
       std::move(challenge),
       ConvertFromKeymasterMessage(km_response.output_params),
       std::move(op_handle));
+
+  return arc::mojom::keymint::BeginResultOrError::NewBeginResult(
+      std::move(begin_result));
 }
 
-std::vector<uint8_t> MakeFinishResult(
-    const ::keymaster::FinishOperationResponse& km_response, uint32_t& error) {
-  error = km_response.error;
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeFinishResult(
+    const ::keymaster::FinishOperationResponse& km_response) {
   if (km_response.error != KM_ERROR_OK) {
-    return std::vector<uint8_t>();
+    return arc::mojom::keymint::ByteArrayOrError::NewError(km_response.error);
   }
-  return ConvertFromKeymasterMessage(km_response.output.begin(),
-                                     km_response.output.available_read());
+  auto output = ConvertFromKeymasterMessage(
+      km_response.output.begin(), km_response.output.available_read());
+
+  return arc::mojom::keymint::ByteArrayOrError::NewOutput(std::move(output));
 }
 
 arc::mojom::keymint::SharedSecretParametersOrErrorPtr

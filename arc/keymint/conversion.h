@@ -96,32 +96,30 @@ MakeComputeSharedSecretRequest(
     const int32_t keymint_message_version);
 
 // Mojo Result Methods.
-std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
+arc::mojom::keymint::KeyCharacteristicsArrayOrErrorPtr
 MakeGetKeyCharacteristicsResult(
-    const ::keymaster::GetKeyCharacteristicsResponse& km_response,
-    uint32_t& error);
+    const ::keymaster::GetKeyCharacteristicsResponse& km_response);
 
-std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeGenerateKeyResult(
-    const ::keymaster::GenerateKeyResponse& km_response, uint32_t& error);
+arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeGenerateKeyResult(
+    const ::keymaster::GenerateKeyResponse& km_response);
 
-std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
-    const ::keymaster::ImportKeyResponse& km_response, uint32_t& error);
+arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeImportKeyResult(
+    const ::keymaster::ImportKeyResponse& km_response);
 
-std::optional<arc::mojom::keymint::KeyCreationResultPtr>
-MakeImportWrappedKeyResult(
-    const ::keymaster::ImportWrappedKeyResponse& km_response, uint32_t& error);
+arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeImportWrappedKeyResult(
+    const ::keymaster::ImportWrappedKeyResponse& km_response);
 
-std::vector<uint8_t> MakeUpgradeKeyResult(
-    const ::keymaster::UpgradeKeyResponse& km_response, uint32_t& error);
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeUpgradeKeyResult(
+    const ::keymaster::UpgradeKeyResponse& km_response);
 
-std::vector<uint8_t> MakeUpdateResult(
-    const ::keymaster::UpdateOperationResponse& km_response, uint32_t& error);
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeUpdateResult(
+    const ::keymaster::UpdateOperationResponse& km_response);
 
-std::optional<arc::mojom::keymint::BeginResultPtr> MakeBeginResult(
-    const ::keymaster::BeginOperationResponse& km_response, uint32_t& error);
+arc::mojom::keymint::BeginResultOrErrorPtr MakeBeginResult(
+    const ::keymaster::BeginOperationResponse& km_response);
 
-std::vector<uint8_t> MakeFinishResult(
-    const ::keymaster::FinishOperationResponse& km_response, uint32_t& error);
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeFinishResult(
+    const ::keymaster::FinishOperationResponse& km_response);
 
 arc::mojom::keymint::SharedSecretParametersOrErrorPtr
 MakeGetSharedSecretParametersResult(
