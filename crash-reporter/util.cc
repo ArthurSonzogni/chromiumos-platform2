@@ -48,7 +48,6 @@ constexpr size_t kBufferSize = 4096;
 // Path to hardware class description.
 // The order here is important: the legacy one should come first.
 const char* kHwClassPaths[] = {
-    "/sys/devices/platform/chromeos_acpi/HWID",
     "/sys/devices/platform/GGL0001:00/HWID",
     "/sys/devices/platform/GOOG0016:00/HWID",
 };
