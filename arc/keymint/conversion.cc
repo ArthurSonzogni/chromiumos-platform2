@@ -508,7 +508,7 @@ std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeGenerateKeyResult(
 
   // Create the Certificate Array.
   // TODO(b/286944450): Add certificates for Attestation.
-  auto cert = arc::mojom::keymint::Certificate::New();
+  auto cert = arc::mojom::keymint::CertificatePtr();
   std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
   cert_array.push_back(std::move(cert));
 
@@ -544,7 +544,7 @@ std::optional<arc::mojom::keymint::KeyCreationResultPtr> MakeImportKeyResult(
 
   // Create the Certificate Array.
   // TODO(b/286944450): Add certificates for Attestation.
-  auto cert = arc::mojom::keymint::Certificate::New();
+  auto cert = arc::mojom::keymint::CertificatePtr();
   std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
   cert_array.push_back(std::move(cert));
 
@@ -581,7 +581,7 @@ MakeImportWrappedKeyResult(
 
   // Create the Certificate Array.
   // TODO(b/286944450): Add certificates for Attestation.
-  auto cert = arc::mojom::keymint::Certificate::New();
+  auto cert = arc::mojom::keymint::CertificatePtr();
   std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
   cert_array.push_back(std::move(cert));
 

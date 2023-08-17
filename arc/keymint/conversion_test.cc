@@ -435,7 +435,7 @@ TEST(ConvertToMessage, ImportKeyRequest) {
   auto input = arc::mojom::keymint::ImportKeyRequest::New(
       KeyParameterVector(), arc::mojom::keymint::KeyFormat::PKCS8,
       std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()),
-      arc::mojom::keymint::AttestationKey::New());
+      arc::mojom::keymint::AttestationKeyPtr());
 
   // Convert.
   auto output = MakeImportKeyRequest(std::move(input), kKeyMintMessageVersion);
