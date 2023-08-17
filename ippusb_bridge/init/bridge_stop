@@ -3,8 +3,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+: "${PRODUCT:=}"
+: "${BUSNUM:=}"
+: "${DEVNUM:=}"
+: "${DEVNAME:=}"
+
+if [ -z "${ID_VENDOR_ID}" ]; then
+  # Leading zeroes are omitted in $PRODUCT, so we need to put them back
+  # to match the 4-digit versions that were used when the device was plugged in.
+  ID_VENDOR_ID=$(printf "%04x" 0x"$(expr "${PRODUCT}" : '^\([^/]*\)')")
+  ID_MODEL_ID=$(printf "%04x" 0x"$(expr "${PRODUCT}" : '^[^/]*/\([^/]*\)')")
+fi
+
 logger -t bridge_stop \
-  "Stopping ippusb_bridge for $ID_VENDOR_ID:$ID_MODEL_ID" \
-  "on $BUSNUM:$DEVNUM ($DEVNAME)"
+  "Stopping ippusb_bridge for ${ID_VENDOR_ID}:${ID_MODEL_ID}" \
+  "on ${BUSNUM}:${DEVNUM} (${DEVNAME})"
 exec /sbin/stop --no-wait --quiet ippusb-bridge \
-  BUS="$BUSNUM" DEV="$DEVNUM" VID="$ID_VENDOR_ID" PID="$ID_MODEL_ID"
+  BUS="${BUSNUM}" DEV="${DEVNUM}" VID="${ID_VENDOR_ID}" PID="${ID_MODEL_ID}"

@@ -8,7 +8,7 @@
 SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", \
   ACTION=="add", \
   ENV{ID_USB_INTERFACES}=="*:070104:*", OWNER="root", GROUP="ippusb", \
-  MODE="0660", RUN+="/usr/libexec/ippusb/bridge_start"
+  MODE="0660", RUN+="/usr/libexec/ippusb/bridge_start", TAG+="ippusb"
 
 # For other events, ensure the permissions don't get reset to usb or usbprinter
 # by earlier rules.  The RUN key is left off so we don't start additional
@@ -21,6 +21,5 @@ SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", \
 # ippusb_bridge will shut itself down when the USB device is removed, but we
 # also want to tell upstart to stop tracking the job.  Otherwise it will try to
 # respawn ippusb_bridge several times before giving up.
-SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", \
-  ACTION=="remove", ENV{ID_USB_INTERFACES}=="*:070104:*", \
+SUBSYSTEM=="usb", TAG=="ippusb", ACTION=="remove", \
   RUN+="/usr/libexec/ippusb/bridge_stop"
