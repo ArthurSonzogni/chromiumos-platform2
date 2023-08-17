@@ -186,11 +186,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     PrepareDirectoryStructure();
   }
 
-  ~AuthSessionTestWithKeysetManagement() override {
-    // Reset USS experiment test flag.
-    ResetUserSecretStashExperimentForTesting();
-  }
-
  protected:
   struct UserInfo {
     Username username;
@@ -649,8 +644,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, StartAuthSessionWithoutKeyData) {
 TEST_F(AuthSessionTestWithKeysetManagement,
        MigrationToUssWithNoKeyDataAndNewFactor) {
   // Setup
-  // UserSecretStash is not enabled, setup VaultKeysets for the user.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
+  // Setup legacy VaultKeysets to test USS migration. On AuthSession start
+  // legacy keyset should be migrated to USS following successful
+  // authentication.
   SetUpHwsecAuthenticationMocks();
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(kPassword),
@@ -674,14 +670,12 @@ TEST_F(AuthSessionTestWithKeysetManagement,
             ASSERT_TRUE(vk.Save(
                 users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
           }));
-  // Set the UserSecretStash experiment for testing to enable USS
-  // migration with the authentication.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
+
   AuthSession auth_session1 = StartAuthSession();
   ASSERT_EQ(auth_session1.auth_factor_map().Find(kDefaultLabel)->storage_type(),
             AuthFactorStorageType::kVaultKeyset);
-  // Test that authenticating the password should migrate VaultKeyset to
-  // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
+  // Test that authenticating the password migrates VaultKeyset to
+  // UserSecretStash.
   AuthenticatePasswordFactor(auth_session1, kDefaultLabel, kPassword);
   ASSERT_EQ(auth_session1.auth_factor_map().Find(kDefaultLabel)->storage_type(),
             AuthFactorStorageType::kUserSecretStash);
@@ -696,7 +690,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
             AuthFactorStorageType::kUserSecretStash);
   AuthenticatePasswordFactor(auth_session2, kDefaultLabel, kPassword);
 
-  // Turn on the migration again and test that adding a new keyset succeeds.
+  // Test that adding a new factor succeeds.
   AuthSession auth_session4 = StartAuthSession();
   ASSERT_EQ(auth_session4.auth_factor_map().Find(kDefaultLabel)->storage_type(),
             AuthFactorStorageType::kUserSecretStash);
@@ -705,7 +699,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   ASSERT_EQ(
       auth_session4.auth_factor_map().Find(kPasswordLabel2)->storage_type(),
       AuthFactorStorageType::kUserSecretStash);
-  // Verify authentication works with the added keyset.
+  // Verify authentication works with the added factor.
   AuthenticatePasswordFactor(auth_session4, kPasswordLabel2, kPassword2);
 }
 
@@ -762,7 +756,6 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 
   // AuthenticateAuthFactor also removes the original keyset but not the backup
   // keyset simulator, since it has a different label.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
   {
     AuthSession auth_session = StartAuthSession();
     EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
@@ -899,15 +892,15 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 // Test that a VaultKeyset without KeyData migration succeeds during login.
 TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   // Setup
-  // UserSecretStash is not enabled, setup VaultKeysets for the user.
+  // Setup legacy VaultKeysets to test USS migration. On AuthSession start
+  // legacy keyset should be migrated to USS following successful
+  // authentication.
   KeysetSetUpWithoutKeyDataAndKeyBlobs();
 
-  // Create an AuthSession and set the USS migration enabled.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
   AuthSession auth_session = StartAuthSessionWithMockAuthBlockUtility();
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 
-  // Test that authenticating the password should migrate VaultKeyset to
+  // Test that authenticating the password migrates VaultKeyset to
   // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
   EXPECT_TRUE(auth_session.auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kVaultKeyset));
@@ -958,14 +951,13 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
 // Test UpdateAuthFactor for partially migrated users.
 TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
   // Setup
+  // Setup legacy VaultKeysets to test USS migration. On AuthSession start
+  // legacy keyset should be migrated to USS following successful
+  // authentication.
   KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
   KeyData key_data = DefaultKeyData();
   key_data.set_label(kPasswordLabel2);
   KeysetSetUpWithKeyDataAndKeyBlobs(key_data, 1);
-
-  // Set the UserSecretStash experiment for testing to enable USS
-  // migration with the authentication.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
 
   // Test that authenticating the password should migrate VaultKeyset to
   // UserSecretStash.
@@ -1026,15 +1018,14 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
 // enabled, converting the existing VaultKeysets to migrated VaultKeysets.
 TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
   // Setup
-  // UserSecretStash is not enabled, setup VaultKeysets for the user.
+  // Setup legacy VaultKeysets to test USS migration. On AuthSession start
+  // legacy keyset should be migrated to USS following successful
+  // authentication.
   KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
   KeyData key_data = DefaultKeyData();
   key_data.set_label(kPasswordLabel2);
   KeysetSetUpWithKeyDataAndKeyBlobs(key_data, 1);
 
-  // Set the UserSecretStash and USS migration for testing to enable USS
-  // migration with the authentication.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
   AuthSession auth_session2 = StartAuthSessionWithMockAuthBlockUtility();
   EXPECT_TRUE(auth_session2.auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kVaultKeyset));
@@ -1084,11 +1075,11 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
 TEST_F(AuthSessionTestWithKeysetManagement,
        MigrationEnabledAddNextFactorsToUss) {
   // Setup
-  // UserSecretStash is not enabled, setup VaultKeysets for the user.
+  // Setup legacy VaultKeysets to test USS migration. On AuthSession start
+  // legacy keyset should be migrated to USS following successful
+  // authentication.
   KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
-  // Set the UserSecretStash and USS migration for testing to enable USS
-  // migration with the authentication.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
+
   AuthSession auth_session2 = StartAuthSessionWithMockAuthBlockUtility();
   EXPECT_TRUE(auth_session2.auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kVaultKeyset));
@@ -1146,6 +1137,9 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 TEST_F(AuthSessionTestWithKeysetManagement,
        AuthFactorMapStatusDuringMigration) {
   // Setup
+  // Setup legacy VaultKeysets to test USS migration. On AuthSession start
+  // legacy keyset should be migrated to USS following successful
+  // authentication.
   KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
   KeyData key_data = DefaultKeyData();
   key_data.set_label(kPasswordLabel2);
@@ -1165,24 +1159,9 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 
   // Tests
 
-  // 1-Test that enabling USS and migration doesn't change the AuthFactorMap
-  // when there are only regular VaultKeysets.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
+  // 1- Test migration of the first factor. Storage type for the migrated factor
+  // should be KUserSecretStash and non-migrated factor should be kVaultKeyset.
   AuthSession auth_session2 = StartAuthSessionWithMockAuthBlockUtility();
-  EXPECT_TRUE(auth_session2.auth_factor_map().HasFactorWithStorage(
-      AuthFactorStorageType::kVaultKeyset));
-  EXPECT_FALSE(auth_session2.auth_factor_map().HasFactorWithStorage(
-      AuthFactorStorageType::kUserSecretStash));
-  ASSERT_EQ(
-      auth_session2.auth_factor_map().Find(kPasswordLabel)->storage_type(),
-      AuthFactorStorageType::kVaultKeyset);
-  ASSERT_EQ(
-      auth_session2.auth_factor_map().Find(kPasswordLabel2)->storage_type(),
-      AuthFactorStorageType::kVaultKeyset);
-
-  // 2- Test migration of the first factor on auth_session2. Storage type for
-  // the migrated factor should be KUserSecretStash and non-migrated factor
-  // should be kVaultKeyset.
   AuthenticateAndMigrate(auth_session2, kPasswordLabel, kPassword);
   // auth_session3 should list both the migrated factor and the not migrated
   // VK
@@ -1198,7 +1177,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       auth_session3.auth_factor_map().Find(kPasswordLabel2)->storage_type(),
       AuthFactorStorageType::kVaultKeyset);
 
-  // 3- Test migration of the second factor on auth_session3. Storage type for
+  // 2- Test migration of the second factor on auth_session3. Storage type for
   // the migrated factors should be KUserSecretStash.
   AuthenticateAndMigrate(auth_session3, kPasswordLabel2, kPassword2);
   EXPECT_FALSE(auth_session3.auth_factor_map().HasFactorWithStorage(
@@ -1217,7 +1196,6 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 // store on session start when USS is enabled.
 TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   // Setup
-  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Attach the mock_auth_block_utility to our AuthSessionManager and created
   // AuthSession.
