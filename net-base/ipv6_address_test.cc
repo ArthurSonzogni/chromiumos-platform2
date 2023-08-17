@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 
 #include <array>
+#include <set>
 #include <unordered_set>
 
 #include <base/logging.h>
@@ -128,8 +129,11 @@ TEST(IPv6AddressTest, Order) {
 }
 
 TEST(IPv6AddressTest, Hash) {
-  std::unordered_set<IPv6Address> set;
+  std::set<IPv6Address> set;
   set.insert(IPv6Address());
+
+  std::unordered_set<IPv6Address> unordered_set;
+  unordered_set.insert(IPv6Address());
 }
 
 TEST(IPv6CIDR, CreateFromCIDRString) {
@@ -283,9 +287,12 @@ TEST(IPv6CIDR, ToNetmask) {
   EXPECT_EQ(cidr3.ToNetmask(), *IPv6Address::CreateFromString("ffff:ff00::"));
 }
 
-TEST(IPv6CIDRTest, Hash) {
-  std::unordered_set<IPv6CIDR> set;
+TEST(IPv6CIDRTest, Container) {
+  std::set<IPv6CIDR> set;
   set.insert(IPv6CIDR());
+
+  std::unordered_set<IPv6CIDR> unordered_set;
+  unordered_set.insert(IPv6CIDR());
 }
 
 }  // namespace

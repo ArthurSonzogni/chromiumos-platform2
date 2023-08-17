@@ -159,6 +159,12 @@ class NET_BASE_EXPORT CIDR {
     return address_ == b.address_ && prefix_length_ == b.prefix_length_;
   }
   bool operator!=(const CIDR<Address>& b) const { return !(*this == b); }
+  bool operator<(const CIDR<Address>& b) const {
+    if (address_ != b.address_) {
+      return address_ < b.address_;
+    }
+    return prefix_length_ < b.prefix_length_;
+  }
 
   // Creates the Address that has all the high-order |prefix_length_| bits set.
   Address ToNetmask() const {

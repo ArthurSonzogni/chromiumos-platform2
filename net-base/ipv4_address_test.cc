@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 
 #include <array>
+#include <set>
 #include <unordered_set>
 
 #include <base/logging.h>
@@ -128,9 +129,12 @@ TEST(IPv4Address, Uint32_t) {
   EXPECT_EQ(IPv4Address(addr), expected_ipv4_addr);
 }
 
-TEST(IPv4AddressTest, Hash) {
-  std::unordered_set<IPv4Address> set;
+TEST(IPv4AddressTest, Container) {
+  std::set<IPv4Address> set;
   set.insert(IPv4Address());
+
+  std::unordered_set<IPv4Address> unordered_set;
+  unordered_set.insert(IPv4Address());
 }
 
 TEST(IPv4CIDRTest, CreateFromCIDRString) {
@@ -290,9 +294,12 @@ TEST(IPv4CIDRTest, ToNetmask) {
   EXPECT_EQ(cidr4.ToNetmask(), IPv4Address(255, 255, 255, 255));
 }
 
-TEST(IPv4CIDRTest, Hash) {
-  std::unordered_set<IPv4CIDR> set;
+TEST(IPv4CIDRTest, Container) {
+  std::set<IPv4CIDR> set;
   set.insert(IPv4CIDR());
+
+  std::unordered_set<IPv4CIDR> unordered_set;
+  unordered_set.insert(IPv4CIDR());
 }
 
 }  // namespace
