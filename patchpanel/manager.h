@@ -20,6 +20,7 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/arc_service.h"
+#include "patchpanel/clat_service.h"
 #include "patchpanel/counters_service.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
@@ -270,6 +271,8 @@ class Manager {
 
   // IPv6 address provisioning / ndp forwarding service.
   std::unique_ptr<GuestIPv6Service> ipv6_svc_;
+  // CLAT service.
+  std::unique_ptr<ClatService> clat_svc_;
   // Traffic counter service.
   std::unique_ptr<CountersService> counters_svc_;
   // Multicast packet counter service.

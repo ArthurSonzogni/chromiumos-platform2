@@ -123,6 +123,7 @@ static_library("libpatchpanel") {
     "adb_proxy.cc",
     "arc_service.cc",
     "broadcast_forwarder.cc",
+    "clat_service.cc",
     "counters_service.cc",
     "crostini_service.cc",
     "datapath.cc",

@@ -89,7 +89,7 @@ Manager::Manager(const base::FilePath& cmd_path,
                           weak_factory_.GetWeakPtr()));
   ipv6_svc_ = std::make_unique<GuestIPv6Service>(nd_proxy_.get(),
                                                  datapath_.get(), system);
-
+  clat_svc_ = std::make_unique<ClatService>();
   network_monitor_svc_->Start();
   ipv6_svc_->Start();
 
@@ -107,6 +107,7 @@ Manager::~Manager() {
   network_monitor_svc_.reset();
   cros_svc_.reset();
   arc_svc_.reset();
+  clat_svc_.reset();
 
   // Tear down any remaining active lifeline file descriptors.
   std::vector<int> lifeline_fds;
@@ -190,6 +191,7 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
           base::Milliseconds(kIPv6RestartDelayMs));
     }
   }
+  clat_svc_->OnShillDefaultLogicalDeviceChanged(new_device, prev_device);
 }
 
 void Manager::OnShillDefaultPhysicalDeviceChanged(
@@ -331,6 +333,12 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
   }
 
   arc_svc_->UpdateDeviceIPConfig(shill_device);
+
+  const auto* default_logical_device = shill_client_->default_logical_device();
+  if (default_logical_device &&
+      shill_device.ifname == default_logical_device->ifname) {
+    clat_svc_->OnDefaultLogicalDeviceIPConfigChanged(shill_device);
+  }
 }
 
 void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
