@@ -17,18 +17,30 @@ using ::testing::Return;
 namespace vm_tools::concierge::metrics {
 
 TEST(DurationRecorderTest, GetMetricsName) {
-  for (int vm_type = static_cast<int>(apps::VmType_MIN);
-       vm_type <= apps::VmType_MAX; vm_type++) {
-    std::string vm_name = apps::VmType_Name(vm_type);
-    EXPECT_EQ(internal::GetVirtualizationMetricsName(
-                  static_cast<apps::VmType>(vm_type),
-                  DurationRecorder::Event::kVmStart),
-              "Virtualization." + vm_name + ".Start.Duration");
-    EXPECT_EQ(internal::GetVirtualizationMetricsName(
-                  static_cast<apps::VmType>(vm_type),
-                  DurationRecorder::Event::kVmStop),
-              "Virtualization." + vm_name + ".Stop.Duration");
-  }
+  // must match chrome browser
+  // tools/metrics/histograms/metadata/virtualization/histograms.xml
+  EXPECT_EQ(internal::GetVirtualizationMetricsName(
+                apps::VmType::TERMINA, DurationRecorder::Event::kVmStart),
+            "Virtualization.TERMINA.StartDuration");
+  EXPECT_EQ(internal::GetVirtualizationMetricsName(
+                apps::VmType::TERMINA, DurationRecorder::Event::kVmStop),
+            "Virtualization.TERMINA.StopDuration");
+
+  EXPECT_EQ(internal::GetVirtualizationMetricsName(
+                apps::VmType::PLUGIN_VM, DurationRecorder::Event::kVmStart),
+            "Virtualization.PLUGIN_VM.StartDuration");
+
+  EXPECT_EQ(internal::GetVirtualizationMetricsName(
+                apps::VmType::BOREALIS, DurationRecorder::Event::kVmStart),
+            "Virtualization.BOREALIS.StartDuration");
+
+  EXPECT_EQ(internal::GetVirtualizationMetricsName(
+                apps::VmType::BRUSCHETTA, DurationRecorder::Event::kVmStart),
+            "Virtualization.BRUSCHETTA.StartDuration");
+
+  EXPECT_EQ(internal::GetVirtualizationMetricsName(
+                apps::VmType::ARCVM, DurationRecorder::Event::kVmStart),
+            "Virtualization.ARCVM.StartDuration");
 }
 
 }  // namespace vm_tools::concierge::metrics

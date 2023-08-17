@@ -51,11 +51,10 @@ std::string GetVirtualizationMetricsName(apps::VmType vm_type,
       break;
   }
 
-  // This will create names such as "crostini.VmStart.Duration" or
-  // "borealis.VmStop.duration". The VMs already have buckets registered for
-  // them.
-  return base::StrCat({"Virtualization", ".", apps::VmType_Name(vm_type), ".",
-                       event_name, ".", kDurationSuffix});
+  // This will create names such as "Virtualization.TERMINA.StopDuration". The
+  // VMs already have buckets registered for them.
+  return base::StrCat({"Virtualization.", apps::VmType_Name(vm_type), ".",
+                       event_name, kDurationSuffix});
 }
 
 }  // namespace internal
