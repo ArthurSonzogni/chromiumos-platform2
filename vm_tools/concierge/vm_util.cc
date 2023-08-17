@@ -394,7 +394,7 @@ bool AttachUsbDevice(const std::string& socket_path,
   fcntl(fd, F_SETFD, 0);  // Remove the CLOEXEC
 
   return CrosvmControl::Get()->UsbAttach(socket_path, bus, addr, vid, pid,
-                                         device_path.c_str(), out_port);
+                                         device_path, out_port);
 }
 
 bool DetachUsbDevice(const std::string& socket_path, uint8_t port) {
