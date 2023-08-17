@@ -40,6 +40,10 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   if (it == streams.end()) {
     LOGF(ERROR) << "Unknown stream set in buffer: "
                 << GetDebugString(buffer->stream);
+    for (const auto& stream : streams) {
+      LOGF(ERROR) << "Configured stream: "
+                  << GetDebugString(stream.second.get());
+    }
     ret.reset();
     return ret;
   }

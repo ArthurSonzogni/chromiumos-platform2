@@ -839,15 +839,20 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       continue;
     }
 
+    if (stream_context->yuv_stream_for_blob) {
+      yuv_stream_for_blob = stream_context->yuv_stream_for_blob;
+    }
+    CaptureContext* capture_context =
+        stream_context->GetCaptureContext(result.frame_number());
+    if (capture_context) {
+      yuv_stream_appended = capture_context->yuv_stream_appended;
+    }
+
     // If this a blob stream, extract its metadata.
     if (stream_context->yuv_stream_for_blob &&
         stream_context->original_stream == result_buffer.stream()) {
-      CaptureContext& capture_context =
-          *stream_context->GetCaptureContext(result.frame_number());
-      yuv_stream_for_blob = stream_context->yuv_stream_for_blob;
-      yuv_stream_appended = capture_context.yuv_stream_appended;
       if (has_enabled_effects) {
-        capture_context.processing_time_start = processing_time_start;
+        capture_context->processing_time_start = processing_time_start;
         if (!still_capture_processor_->IsPendingOutputBufferQueued(
                 result.frame_number())) {
           still_capture_processor_->QueuePendingOutputBuffer(
@@ -860,8 +865,8 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
         // Return the blob directly if no effects.
         result.AppendOutputBuffer(std::move(result_buffer));
       }
-      capture_context.blob_result_pending = false;
-      std::move(capture_context).CheckForCompletion();
+      capture_context->blob_result_pending = false;
+      std::move(*capture_context).CheckForCompletion();
       continue;
     }
 
