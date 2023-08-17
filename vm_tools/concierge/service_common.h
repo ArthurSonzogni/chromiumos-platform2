@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_TOOLS_CONCIERGE_SHARED_DATA_H_
-#define VM_TOOLS_CONCIERGE_SHARED_DATA_H_
+// This file contains common helper functions for service*.cc
+
+#ifndef VM_TOOLS_CONCIERGE_SERVICE_COMMON_H_
+#define VM_TOOLS_CONCIERGE_SERVICE_COMMON_H_
 
 #include <memory>
 #include <optional>
@@ -245,4 +247,4 @@ bool Service::CheckStartVmPreconditions(const StartXXRequest& request,
 }  // namespace concierge
 }  // namespace vm_tools
 
-#endif  // VM_TOOLS_CONCIERGE_SHARED_DATA_H_
+#endif  // VM_TOOLS_CONCIERGE_SERVICE_COMMON_H_

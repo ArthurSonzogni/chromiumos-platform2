@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_tools/concierge/shared_data.h"
+#include "vm_tools/concierge/service_common.h"
 
 #include <unordered_map>
 
@@ -15,30 +15,30 @@
 namespace vm_tools {
 namespace concierge {
 
-TEST(SharedDataTest, TestValidOwnerId) {
+TEST(ServiceCommonTest, TestValidOwnerId) {
   EXPECT_EQ(IsValidOwnerId("abdcefABCDEF0123456789"), true);
 }
 
-TEST(SharedDataTest, TestEmptyOwnerId) {
+TEST(ServiceCommonTest, TestEmptyOwnerId) {
   EXPECT_EQ(IsValidOwnerId(""), false);
 }
 
-TEST(SharedDataTest, TestInvalidOwnerId) {
+TEST(ServiceCommonTest, TestInvalidOwnerId) {
   EXPECT_EQ(IsValidOwnerId("Invalid"), false);
   EXPECT_EQ(IsValidOwnerId("abcd/../012345"), false);
 }
 
-TEST(SharedDataTest, TestValidVmName) {
+TEST(ServiceCommonTest, TestValidVmName) {
   EXPECT_EQ(IsValidVmName("A Valid VM"), true);
 }
 
-TEST(SharedDataTest, TestEmptyVmName) {
+TEST(ServiceCommonTest, TestEmptyVmName) {
   EXPECT_EQ(IsValidVmName(""), false);
 }
 
 // Check we get a failure while retrieving the pflash path for an invalid owner
 // id.
-TEST(SharedDataTest, TestGetPflashMetadataInvalidOwnerId) {
+TEST(ServiceCommonTest, TestGetPflashMetadataInvalidOwnerId) {
   base::ScopedTempDir temp_root_dir;
   EXPECT_TRUE(temp_root_dir.CreateUniqueTempDir());
   base::FilePath test_root_dir = temp_root_dir.GetPath();
@@ -56,7 +56,7 @@ TEST(SharedDataTest, TestGetPflashMetadataInvalidOwnerId) {
 }
 
 // Check the pflash path for a VM.
-TEST(SharedDataTest, TestGetPflashMetadataSuccess) {
+TEST(ServiceCommonTest, TestGetPflashMetadataSuccess) {
   base::ScopedTempDir temp_root_dir;
   EXPECT_TRUE(temp_root_dir.CreateUniqueTempDir());
   base::FilePath test_root_dir = temp_root_dir.GetPath();

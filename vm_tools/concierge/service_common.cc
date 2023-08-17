@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_tools/concierge/shared_data.h"
+#include "vm_tools/concierge/service_common.h"
 
 #include <optional>
 
