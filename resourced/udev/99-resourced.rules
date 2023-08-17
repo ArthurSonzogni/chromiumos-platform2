@@ -29,9 +29,6 @@ KERNEL=="cpu*", SUBSYSTEM=="cpu", ACTION=="add", \
 KERNEL=="cpu*", SUBSYSTEM=="cpu", ACTION=="add", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/cpufreq/scaling_min_freq"
 
-KERNEL=="mm*", ACTION=="add", \
-  RUN+="/bin/chown resourced:resourced /sys/kernel/mm/transparent_hugepage/enabled"
-
 DRIVERS=="amdgpu", ACTION=="add", TEST=="pp_od_clk_voltage", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/pp_od_clk_voltage"
 
