@@ -114,6 +114,10 @@ constexpr char kStabilityUnspecifiedHistogram[] =
     "ChromeOS.Stability.Unspecified";
 constexpr char kStabilityWarningHistogram[] = "ChromeOS.Stability.Warning";
 
+// UMA histogram name to record the result of adding a weight for crash metrics.
+constexpr char kAddWeightResultHistogram[] =
+    "Platform.CrashCollector.AddWeightResult";
+
 #if !USE_KVM_GUEST
 // Directory mode of the user crash spool directory.
 // This is SGID so that files created in it are also accessible to the group.
@@ -1451,8 +1455,19 @@ void CrashCollector::AddCrashMetaUploadFile(const std::string& key,
 
 void CrashCollector::AddCrashMetaUploadData(const std::string& key,
                                             const std::string& value) {
-  if (!value.empty())
-    AddCrashMetaData(constants::kUploadVarPrefix + key, value);
+  if (value.empty()) {
+    return;
+  }
+  if (key == "weight") {
+    LOG(ERROR) << "Tried adding a crash weight of " << value
+               << " in AddCrashMetaUploadData(). Weights must be added with "
+                  "AddCrashMetaWeight()";
+    metrics_lib_->data->SendEnumToUMA(kAddWeightResultHistogram,
+                                      AddWeightResult::kAddedInWrongMethod);
+    return;
+  }
+
+  AddCrashMetaData(constants::kUploadVarPrefix + key, value);
 }
 
 void CrashCollector::AddCrashMetaUploadText(const std::string& key,
@@ -1464,6 +1479,27 @@ void CrashCollector::AddCrashMetaUploadText(const std::string& key,
     }
     AddCrashMetaData(constants::kUploadTextPrefix + key, path);
   }
+}
+
+void CrashCollector::AddCrashMetaWeight(int weight) {
+  if (weight_ != 1) {
+    LOG(ERROR) << "Tried adding crash weight twice. Tried changing weight from "
+               << weight_ << " to " << weight;
+    metrics_lib_->data->SendEnumToUMA(kAddWeightResultHistogram,
+                                      AddWeightResult::kAddedTwice);
+    return;
+  }
+  if (weight < 1) {
+    LOG(ERROR) << "Tried adding an invalid crash weight: " << weight;
+    metrics_lib_->data->SendEnumToUMA(kAddWeightResultHistogram,
+                                      AddWeightResult::kBadValue);
+    return;
+  }
+  metrics_lib_->data->SendEnumToUMA(kAddWeightResultHistogram,
+                                    AddWeightResult::kGoodValue);
+  weight_ = weight;
+  AddCrashMetaData(constants::kUploadVarPrefix + std::string("weight"),
+                   base::NumberToString(weight_));
 }
 
 std::string CrashCollector::GetLsbReleaseValue(const std::string& key) const {
@@ -1689,8 +1725,8 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
       ValidateProductGroupForHistogram(computed_crash_severity.product_group);
   const std::string histogram =
       CrashSeverityEnumToHistogram(computed_crash_severity.crash_severity);
-  metrics_lib_->data->SendEnumToUMA(histogram,
-                                    computed_crash_severity.product_group);
+  metrics_lib_->data->SendRepeatedEnumToUMA(
+      histogram, computed_crash_severity.product_group, weight_);
 
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     SetUpDBus();

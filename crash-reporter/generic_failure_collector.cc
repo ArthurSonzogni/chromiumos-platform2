@@ -87,7 +87,7 @@ bool GenericFailureCollector::CollectFull(const std::string& exec_name,
   FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
   FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
   if (weight) {
-    AddCrashMetaUploadData("weight", StringPrintf("%d", *weight));
+    AddCrashMetaWeight(*weight);
   }
 
   AddCrashMetaData(kSignatureKey, failure_signature);

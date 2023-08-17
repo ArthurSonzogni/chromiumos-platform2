@@ -108,6 +108,16 @@ class CrashCollector {
     kMaxValue = kUnknownValue,
   };
 
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class AddWeightResult {
+    kGoodValue = 0,
+    kBadValue = 1,
+    kAddedTwice = 2,
+    kAddedInWrongMethod = 3,
+    kMaxValue = kAddedInWrongMethod,
+  };
+
   struct ComputedCrashSeverity {
     CrashSeverity crash_severity;
     Product product_group;
@@ -279,6 +289,10 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, MetaDataDoesntCreateSymlink);
   FRIEND_TEST(CrashCollectorTest, MetaDataDoesntOverwriteSymlink);
   FRIEND_TEST(CrashCollectorTest, CollectionLogsToUMA);
+  FRIEND_TEST(CrashCollectorTest, AddCrashMetaWeight_ValidWeight);
+  FRIEND_TEST(CrashCollectorTest, AddCrashMetaWeight_InvalidWeight);
+  FRIEND_TEST(CrashCollectorTest, AddCrashMetaWeight_CalledTwice);
+  FRIEND_TEST(CrashCollectorTest, AddCrashMetaUploadData_WeightKey);
   FRIEND_TEST(CrashCollectorTest, ParseProcessTicksFromStat);
   FRIEND_TEST(CrashCollectorTest, Sanitize);
   FRIEND_TEST(CrashCollectorTest, StripMacAddressesBasic);
@@ -497,12 +511,18 @@ class CrashCollector {
   // Add non-standard meta data to the crash metadata file.
   // Data added though this call will be uploaded to the crash reporter server,
   // appearing as a form field. Virtual for testing.
+  //
+  // NOTE: To add a weight key, use AddCrashMetaWeight instead of this method.
   virtual void AddCrashMetaUploadData(const std::string& key,
                                       const std::string& value);
 
   // Like AddCrashMetaUploadData, but loads the value from the file at |path|.
   // The file is not uploaded as an attachment, unlike AddCrashMetaUploadFile.
   void AddCrashMetaUploadText(const std::string& key, const std::string& path);
+
+  // Like AddCrashMetaUploadData, but only adds weight meta data to the crash
+  // metadata file. |weight| is also used as the weight when recording to UMA.
+  void AddCrashMetaWeight(int weight);
 
   // Gets the corresponding value for |key| from the lsb-release file.
   // If |use_saved_lsb_| is true, prefer the lsb-release saved in
@@ -561,6 +581,7 @@ class CrashCollector {
   std::string test_kernel_version_;
   bool device_policy_loaded_;
   std::unique_ptr<policy::DevicePolicy> device_policy_;
+  int weight_ = 1;
 
   // Should reports always be stored in the user crash directory, or can they be
   // stored in the system directory if we are not running as "chronos"?

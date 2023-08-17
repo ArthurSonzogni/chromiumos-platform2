@@ -75,7 +75,7 @@ bool SecurityAnomalyCollector::Collect(int32_t weight) {
   LOG(INFO) << "Processing security anomaly";
 
   if (weight != 1) {
-    AddCrashMetaUploadData("weight", base::NumberToString(weight));
+    AddCrashMetaWeight(weight);
   }
 
   std::string signature;

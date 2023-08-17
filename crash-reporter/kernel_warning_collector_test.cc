@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -25,6 +26,8 @@
 using base::FilePath;
 
 namespace {
+
+using testing::Return;
 
 const char kTestFilename[] = "test-kernel-warning";
 const char kTestCrashDirectory[] = "test-crash-directory";
@@ -499,6 +502,30 @@ TEST_F(KernelWarningCollectorTest, CollectOKBadIwlwifiSig) {
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "kernel_iwlwifi_error.*.meta",
       "upload_var_weight=50"));
+}
+
+TEST_F(KernelWarningCollectorTest, CollectOK_UploadWeightedUMA) {
+  auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_ref = metrics_lib.get();
+  collector_.set_metrics_library_for_test(std::move(metrics_lib));
+  EXPECT_CALL(*mock_ref,
+              SendRepeatedEnumToUMA(
+                  "ChromeOS.Stability.Warning",
+                  static_cast<int>(CrashCollector::Product::kPlatform),
+                  static_cast<int>(CrashCollector::Product::kMaxValue) + 1, 10))
+      .WillOnce(Return(true));
+
+  // Collector produces a crash report.
+  ASSERT_TRUE(
+      test_util::CreateFile(test_path_,
+                            "70e67541-iwl_mvm_rm_sta+0x161/0x344 [iwlmvm]()\n"
+                            "\n"
+                            "<remaining log contents>"));
+  EXPECT_TRUE(
+      collector_.Collect(10, KernelWarningCollector::WarningType::kGeneric));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_warning_iwl_mvm_rm_sta.*.meta",
+      "upload_var_weight=10"));
 }
 
 class KernelWarningCollectorCrashSeverityTest

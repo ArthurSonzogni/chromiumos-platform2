@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -24,6 +25,8 @@
 using base::FilePath;
 
 namespace {
+
+using testing::Return;
 
 // Source tree log config file name.
 const char kLogConfigFileName[] = "crash_reporter_logs.conf";
@@ -157,6 +160,26 @@ TEST_F(GenericFailureCollectorTest, CollectOKPreStart) {
   ASSERT_TRUE(base::ReadFileToString(meta_path, &contents));
   EXPECT_TRUE(contents.find("upload_var_weight=50") != std::string::npos)
       << contents;
+}
+
+TEST_F(GenericFailureCollectorTest, CollectOK_UploadWeightedUMA) {
+  auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_ref = metrics_lib.get();
+  collector_.set_metrics_library_for_test(std::move(metrics_lib));
+  EXPECT_CALL(*mock_ref,
+              SendRepeatedEnumToUMA(
+                  "ChromeOS.Stability.Warning",
+                  static_cast<int>(CrashCollector::Product::kPlatform),
+                  static_cast<int>(CrashCollector::Product::kMaxValue) + 1, 50))
+      .WillOnce(Return(true));
+
+  // Collector produces a crash report.
+  ASSERT_TRUE(test_util::CreateFile(
+      test_path_,
+      "crash-crash pre-start process (2563) terminated with status 2\n"));
+  EXPECT_TRUE(collector_.CollectFull(
+      "service-failure-crash-crash", GenericFailureCollector::kServiceFailure,
+      /*weight=*/50, /*use_log_conf_file=*/true));
 }
 
 TEST_F(GenericFailureCollectorTest, CollectFullGuestOOM) {

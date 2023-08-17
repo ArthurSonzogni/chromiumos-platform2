@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -23,6 +24,8 @@
 using base::FilePath;
 
 namespace {
+
+using testing::Return;
 
 // Source tree log config file name.
 constexpr char kLogConfigFileName[] = "crash_reporter_logs.conf";
@@ -257,6 +260,23 @@ TEST_F(SELinuxViolationCollectorTest, CollectSample) {
   std::string content;
   base::ReadFileToString(file_path, &content);
   EXPECT_STREQ(content.c_str(), TestSELinuxViolationMessageContent);
+}
+
+TEST_F(SELinuxViolationCollectorTest, UploadWeightedUMA) {
+  auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_ref = metrics_lib.get();
+  collector_.set_metrics_library_for_test(std::move(metrics_lib));
+  EXPECT_CALL(
+      *mock_ref,
+      SendRepeatedEnumToUMA(
+          "ChromeOS.Stability.Info",
+          static_cast<int>(CrashCollector::Product::kPlatform),
+          static_cast<int>(CrashCollector::Product::kMaxValue) + 1, 100))
+      .WillOnce(Return(true));
+
+  // Collector produces a violation report.
+  ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
+  EXPECT_TRUE(collector_.Collect(100));
 }
 
 TEST_F(SELinuxViolationCollectorTest, FailureReportDoesNotExist) {

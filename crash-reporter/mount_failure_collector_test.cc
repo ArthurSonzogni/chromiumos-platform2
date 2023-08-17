@@ -5,6 +5,7 @@
 #include "crash-reporter/mount_failure_collector.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -186,6 +187,25 @@ TEST(MountFailureCollectorTest, TestCryptohomeUmountFailure) {
   // Check report contents.
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
   EXPECT_EQ("cryptohome\ndmesg\n", report_contents);
+}
+
+TEST(MountFailureCollectorTest, TestStatefulMountFailure_UploadWeightedUMA) {
+  MountFailureCollectorMock collector(StorageDeviceType::kStateful,
+                                      /*testonly_send_all=*/true);
+  base::ScopedTempDir tmp_dir;
+  auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_ref = metrics_lib.get();
+  collector.set_metrics_library_for_test(std::move(metrics_lib));
+  EXPECT_CALL(*mock_ref,
+              SendRepeatedEnumToUMA(
+                  "ChromeOS.Stability.Warning",
+                  static_cast<int>(CrashCollector::Product::kPlatform),
+                  static_cast<int>(CrashCollector::Product::kMaxValue) + 1, 10))
+      .WillOnce(Return(true));
+
+  Initialize(&collector, &tmp_dir);
+
+  EXPECT_TRUE(collector.Collect(false /* is_mount_failure */));
 }
 
 class MountFailureCollectorCrashSeverityTest

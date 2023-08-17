@@ -107,7 +107,7 @@ bool SELinuxViolationCollector::Collect(int32_t weight) {
   LOG(INFO) << "Processing selinux violation";
 
   if (weight != 1) {
-    AddCrashMetaUploadData("weight", StringPrintf("%d", weight));
+    AddCrashMetaWeight(weight);
   }
 
   std::string violation_signature;

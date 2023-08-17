@@ -291,7 +291,7 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
   LOG(INFO) << "Processing kernel warning";
 
   if (weight != 1) {
-    AddCrashMetaUploadData("weight", StringPrintf("%d", weight));
+    AddCrashMetaWeight(weight);
   }
 
   std::string kernel_warning;

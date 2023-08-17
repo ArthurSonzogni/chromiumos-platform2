@@ -107,9 +107,7 @@ bool MountFailureCollector::Collect(bool is_mount_failure) {
       LOG(INFO) << "Skipping umount failure";
       return true;
     }
-    AddCrashMetaUploadData(
-        "weight",
-        base::StringPrintf("%d", util::GetUmountStatefulFailureWeight()));
+    AddCrashMetaWeight(util::GetUmountStatefulFailureWeight());
   }
 
   std::string device_label = StorageDeviceTypeToString(device_type_);

@@ -2138,13 +2138,115 @@ TEST_F(CrashCollectorTest, CollectionLogsToUMA) {
 
   EXPECT_CALL(*mock_ref, SendCrosEventToUMA("Crash.Collector.CollectionCount"))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_ref,
+              SendRepeatedEnumToUMA(
+                  "ChromeOS.Stability.Unspecified",
+                  static_cast<int>(CrashCollector::Product::kUnspecified),
+                  static_cast<int>(CrashCollector::Product::kMaxValue) + 1, 1))
+      .WillOnce(Return(true));
+  collector_.FinishCrash(kMetaFilePath, "test_exec", kPayloadName);
+}
+
+TEST_F(CrashCollectorTest, AddCrashMetaWeight_ValidWeight) {
+  auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_ref = metrics_lib.get();
+  collector_.set_metrics_library_for_test(std::move(metrics_lib));
+
+  const FilePath kMetaFilePath = test_dir_.Append("meta.txt");
+  const char kPayloadName[] = "payload-file";
+  FilePath payload_file = test_dir_.Append(kPayloadName);
+
   EXPECT_CALL(
       *mock_ref,
-      SendEnumToUMA("ChromeOS.Stability.Unspecified",
-                    static_cast<int>(CrashCollector::Product::kUnspecified),
-                    static_cast<int>(CrashCollector::Product::kMaxValue) + 1))
+      SendEnumToUMA(
+          "Platform.CrashCollector.AddWeightResult",
+          static_cast<int>(CrashCollector::AddWeightResult::kGoodValue),
+          static_cast<int>(CrashCollector::AddWeightResult::kMaxValue) + 1))
       .WillOnce(Return(true));
-  collector_.FinishCrash(kMetaFilePath, "kernel", kPayloadName);
+  EXPECT_CALL(*mock_ref,
+              SendRepeatedEnumToUMA(
+                  "ChromeOS.Stability.Unspecified",
+                  static_cast<int>(CrashCollector::Product::kUnspecified),
+                  static_cast<int>(CrashCollector::Product::kMaxValue) + 1, 10))
+      .WillOnce(Return(true));
+  collector_.AddCrashMetaWeight(10);
+  collector_.FinishCrash(kMetaFilePath, "test_exec", kPayloadName);
+}
+
+TEST_F(CrashCollectorTest, AddCrashMetaWeight_InvalidWeight) {
+  auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_ref = metrics_lib.get();
+  collector_.set_metrics_library_for_test(std::move(metrics_lib));
+
+  const FilePath kMetaFilePath = test_dir_.Append("meta.txt");
+  const char kPayloadName[] = "payload-file";
+  FilePath payload_file = test_dir_.Append(kPayloadName);
+
+  EXPECT_CALL(
+      *mock_ref,
+      SendEnumToUMA(
+          "Platform.CrashCollector.AddWeightResult",
+          static_cast<int>(CrashCollector::AddWeightResult::kBadValue),
+          static_cast<int>(CrashCollector::AddWeightResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_ref,
+              SendRepeatedEnumToUMA(
+                  "ChromeOS.Stability.Unspecified",
+                  static_cast<int>(CrashCollector::Product::kUnspecified),
+                  static_cast<int>(CrashCollector::Product::kMaxValue) + 1, 1))
+      .WillOnce(Return(true));
+  collector_.AddCrashMetaWeight(0);
+  collector_.FinishCrash(kMetaFilePath, "test_exec", kPayloadName);
+}
+
+TEST_F(CrashCollectorTest, AddCrashMetaWeight_CalledTwice) {
+  auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_ref = metrics_lib.get();
+  collector_.set_metrics_library_for_test(std::move(metrics_lib));
+
+  const FilePath kMetaFilePath = test_dir_.Append("meta.txt");
+  const char kPayloadName[] = "payload-file";
+  FilePath payload_file = test_dir_.Append(kPayloadName);
+
+  EXPECT_CALL(
+      *mock_ref,
+      SendEnumToUMA(
+          "Platform.CrashCollector.AddWeightResult",
+          static_cast<int>(CrashCollector::AddWeightResult::kGoodValue),
+          static_cast<int>(CrashCollector::AddWeightResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      *mock_ref,
+      SendEnumToUMA(
+          "Platform.CrashCollector.AddWeightResult",
+          static_cast<int>(CrashCollector::AddWeightResult::kAddedTwice),
+          static_cast<int>(CrashCollector::AddWeightResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_ref,
+              SendRepeatedEnumToUMA(
+                  "ChromeOS.Stability.Unspecified",
+                  static_cast<int>(CrashCollector::Product::kUnspecified),
+                  static_cast<int>(CrashCollector::Product::kMaxValue) + 1, 10))
+      .WillOnce(Return(true));
+  collector_.AddCrashMetaWeight(10);
+  collector_.AddCrashMetaWeight(0);
+  collector_.FinishCrash(kMetaFilePath, "test_exec", kPayloadName);
+}
+
+TEST_F(CrashCollectorTest, AddCrashMetaUploadData_WeightKey) {
+  auto metrics_lib = std::make_unique<MetricsLibraryMock>();
+  MetricsLibraryMock* mock_ref = metrics_lib.get();
+  collector_.set_metrics_library_for_test(std::move(metrics_lib));
+
+  EXPECT_CALL(
+      *mock_ref,
+      SendEnumToUMA(
+          "Platform.CrashCollector.AddWeightResult",
+          static_cast<int>(
+              CrashCollector::AddWeightResult::kAddedInWrongMethod),
+          static_cast<int>(CrashCollector::AddWeightResult::kMaxValue) + 1))
+      .WillOnce(Return(true));
+  collector_.AddCrashMetaUploadData("weight", "10");
 }
 
 TEST_F(CrashCollectorTest, GetLogContents) {

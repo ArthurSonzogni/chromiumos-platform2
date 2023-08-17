@@ -93,6 +93,7 @@ class GenericFailureCollector : public CrashCollector {
   FRIEND_TEST(GenericFailureCollectorTest, SuspendExecName);
   FRIEND_TEST(GenericFailureCollectorTest, CollectOKMainServiceFailure);
   FRIEND_TEST(GenericFailureCollectorTest, CollectOKPreStart);
+  FRIEND_TEST(GenericFailureCollectorTest, CollectOK_UploadWeightedUMA);
 
   static const char* const kGenericFailure;
   static const char* const kAuthFailure;
