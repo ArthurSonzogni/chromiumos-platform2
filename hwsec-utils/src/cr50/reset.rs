@@ -9,7 +9,6 @@ use std::path::Path;
 use crate::command_runner::CommandRunner;
 use crate::context::Context;
 use crate::cr50::clear_terminal;
-use crate::cr50::gsctool_cmd_successful;
 use crate::cr50::run_gsctool_cmd;
 use crate::error::HwsecError;
 
@@ -176,10 +175,16 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
         while io::stdin().read_line(&mut auth_code).is_err() {
             println!("Please only enter ASCII characters.");
         }
-        let auth_code = auth_code.to_uppercase();
+        let auth_code = auth_code.trim().to_uppercase();
 
         // Test authorization code.
-        if gsctool_cmd_successful(ctx, vec!["--trunks_send", "--rma_auth", &auth_code]) {
+        let gsctool_output = run_gsctool_cmd(ctx, vec!["--trunks_send", "--rma_auth", &auth_code])
+            .map_err(|e| {
+                eprintln!("Failed to run gsctool.");
+                e
+            })?;
+
+        if gsctool_output.status.success() {
             println!("The system will reboot shortly.");
             // Wait for cr50 to enter RMA mode.
             ctx.sleep(WAIT_TO_ENTER_RMA_SECS);
@@ -201,6 +206,8 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
 
             // Sleep indefinitely to avoid continue.
             ctx.sleep(SECS_IN_A_DAY);
+        } else {
+            eprintln!("{}", std::str::from_utf8(&gsctool_output.stderr).unwrap());
         }
 
         println!("Invalid authorization code. Please try again.\n");
