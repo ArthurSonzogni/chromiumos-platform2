@@ -3673,7 +3673,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
               .extended_tpm_key = SecureBlob("fake extended tpm key"),
               .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
           }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -3685,7 +3685,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                          .fek_iv = SecureBlob("fake file encryption IV"),
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   // ListAuthFactors() load the factors according to the USS experiment status.
@@ -3824,7 +3824,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
               .extended_tpm_key = SecureBlob("fake extended tpm key"),
               .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
           }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -3836,7 +3836,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithIncompleteFactorsFromUss) {
                          .fek_iv = SecureBlob("fake file encryption IV"),
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label"});
 
   // ListAuthFactors() should just list the single complete factor.
@@ -3926,7 +3926,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
               .extended_tpm_key = SecureBlob("fake extended tpm key"),
               .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
           }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -3938,7 +3938,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
                          .fek_iv = SecureBlob("fake file encryption IV"),
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
@@ -4049,7 +4049,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
               .extended_tpm_key = SecureBlob("fake extended tpm key"),
               .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
           }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -4065,7 +4065,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
                          .fek_iv = SecureBlob("fake file encryption IV"),
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
@@ -4176,7 +4176,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
               .extended_tpm_key = SecureBlob("fake extended tpm key"),
               .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
           }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -4188,7 +4188,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
                          .fek_iv = SecureBlob("fake file encryption IV"),
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
@@ -4309,7 +4309,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
               .extended_tpm_key = SecureBlob("fake extended tpm key"),
               .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
           }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *password_factor),
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *password_factor),
               IsOk());
   auto pin_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPin, "pin-label",
@@ -4325,7 +4325,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
                          .fek_iv = SecureBlob("fake file encryption IV"),
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
@@ -4455,7 +4455,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
                          .fek_iv = SecureBlob("fake file encryption IV"),
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+  ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"pin-label"});
 
   // ListAuthFactors() load the factors according to the USS experiment status.

@@ -151,6 +151,43 @@ TEST_F(UserSecretStashTest, MainKeyWrapping) {
   EXPECT_FALSE(stash_->RemoveWrappedMainKey(kWrappingId1));
 }
 
+// Verify the renaming of wrapped key fields.
+TEST_F(UserSecretStashTest, MainKeyRename) {
+  const char kWrappingId1[] = "id1";
+  const char kWrappingId2[] = "id2";
+  const char kWrappingId3[] = "id3";
+  const char kWrappingId4[] = "id4";
+  const brillo::SecureBlob kWrappingKeyA(kAesGcm256KeySize, 0xA);
+  const brillo::SecureBlob kWrappingKeyB(kAesGcm256KeySize, 0xB);
+
+  // And the main key wrapped with two wrapping keys.
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKeyA,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKeyB,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
+
+  // Renaming from an ID that doesn't exist should fail.
+  EXPECT_FALSE(stash_->RenameWrappedMainKey(kWrappingId3, kWrappingId4));
+
+  // Renaming to an ID that exists should fail.
+  EXPECT_FALSE(stash_->RenameWrappedMainKey(kWrappingId1, kWrappingId2));
+
+  // Now actually rename id1 -> i3.
+  EXPECT_TRUE(stash_->RenameWrappedMainKey(kWrappingId1, kWrappingId3));
+  EXPECT_FALSE(stash_->HasWrappedMainKey(kWrappingId1));
+  EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId2));
+  EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId3));
+  EXPECT_FALSE(stash_->HasWrappedMainKey(kWrappingId4));
+  CryptohomeStatusOr<brillo::SecureBlob> got_main_key =
+      stash_->UnwrapMainKey(kWrappingId3, kWrappingKeyA);
+  ASSERT_TRUE(got_main_key.ok());
+  EXPECT_EQ(got_main_key.value(), kMainKey);
+}
+
 TEST_F(UserSecretStashTest, GetEncryptedUSS) {
   // Add two reset secrets to make sure encryption covers those.
   brillo::SecureBlob reset_secret1 =

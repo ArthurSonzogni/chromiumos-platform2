@@ -763,6 +763,20 @@ CryptohomeStatus UserSecretStash::AddWrappedMainKey(
   return OkStatus<CryptohomeError>();
 }
 
+bool UserSecretStash::RenameWrappedMainKey(const std::string& old_wrapping_id,
+                                           const std::string& new_wrapping_id) {
+  if (wrapped_key_blocks_.contains(new_wrapping_id)) {
+    return false;  // A wrapped key with the new ID already exists.
+  }
+  auto node = wrapped_key_blocks_.extract(old_wrapping_id);
+  if (!node) {
+    return false;  // No node with the old ID exists.
+  }
+  node.key() = new_wrapping_id;
+  wrapped_key_blocks_.insert(std::move(node));
+  return true;
+}
+
 bool UserSecretStash::RemoveWrappedMainKey(const std::string& wrapping_id) {
   auto iter = wrapped_key_blocks_.find(wrapping_id);
   if (iter == wrapped_key_blocks_.end()) {

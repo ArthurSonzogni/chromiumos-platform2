@@ -288,21 +288,23 @@ class AuthSession final {
    public:
     using AuthForBase::AuthForBase;
 
-    // AddAuthFactor is called when newly created or existing user wants to add
-    // new AuthFactor.
+    // Add a new auth factor from the given request.
     void AddAuthFactor(const user_data_auth::AddAuthFactorRequest& request,
                        StatusCallback on_done);
 
-    // RemoveAuthFactor is called when the user wants to remove auth factor
-    // provided in the `request`.
-    void RemoveAuthFactor(
-        const user_data_auth::RemoveAuthFactorRequest& request,
-        StatusCallback on_done);
-
-    // UpdateAuthFactor is called when the user wants to update auth factor
-    // provided in the `request`.
+    // Update an existing auth factor from the given request.
     void UpdateAuthFactor(
         const user_data_auth::UpdateAuthFactorRequest& request,
+        StatusCallback on_done);
+
+    // Relabel an auth factor as specified by the given request.
+    void RelabelAuthFactor(
+        const user_data_auth::RelabelAuthFactorRequest& request,
+        StatusCallback on_done);
+
+    // Remove an auth factor specified by the given request.
+    void RemoveAuthFactor(
+        const user_data_auth::RemoveAuthFactorRequest& request,
         StatusCallback on_done);
   };
   friend class AuthForDecrypt;

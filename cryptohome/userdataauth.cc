@@ -218,7 +218,7 @@ void ReplyWithAuthFactorStatus(
     UserPolicyFile* user_policy_file,
     AuthFactorDriverManager* auth_factor_driver_manager,
     UserSession* user_session,
-    user_data_auth::AuthFactor auth_factor,
+    std::string auth_factor_label,
     base::OnceCallback<void(const ReplyType&)> on_done,
     CryptohomeStatus status) {
   ReplyType reply;
@@ -228,11 +228,13 @@ void ReplyWithAuthFactorStatus(
   }
 
   // These should be active and we expect these to be set always. Static assert
-  // is required as this function should only used for the three replies.
+  // is required as this function should only used for these specific replies.
   static_assert(
       std::is_same_v<ReplyType, user_data_auth::AddAuthFactorReply> ||
       std::is_same_v<ReplyType, user_data_auth::UpdateAuthFactorReply> ||
-      std::is_same_v<ReplyType, user_data_auth::UpdateAuthFactorMetadataReply>);
+      std::is_same_v<ReplyType,
+                     user_data_auth::UpdateAuthFactorMetadataReply> ||
+      std::is_same_v<ReplyType, user_data_auth::RelabelAuthFactorReply>);
   CHECK(auth_session);
   CHECK(auth_factor_driver_manager);
 
@@ -243,14 +245,12 @@ void ReplyWithAuthFactorStatus(
     auth_factor_with_status = GetAuthFactorWithStatus(
         auth_session->obfuscated_username(), user_policy_file,
         auth_factor_driver_manager,
-        user_session->FindCredentialVerifier(auth_factor.label()));
+        user_session->FindCredentialVerifier(auth_factor_label));
   } else {
-    auth_factor_with_status =
-        GetAuthFactorWithStatus(auth_session->obfuscated_username(),
-                                user_policy_file, auth_factor_driver_manager,
-                                auth_session->auth_factor_map()
-                                    .Find(auth_factor.label())
-                                    ->auth_factor());
+    auth_factor_with_status = GetAuthFactorWithStatus(
+        auth_session->obfuscated_username(), user_policy_file,
+        auth_factor_driver_manager,
+        auth_session->auth_factor_map().Find(auth_factor_label)->auth_factor());
   }
 
   if (!auth_factor_with_status.has_value()) {
@@ -274,6 +274,10 @@ void ReplyWithAuthFactorStatus(
                            ReplyType,
                            user_data_auth::UpdateAuthFactorMetadataReply>) {
     *reply.mutable_updated_auth_factor() =
+        std::move(auth_factor_with_status.value());
+  } else if constexpr (std::is_same_v<ReplyType,
+                                      user_data_auth::RelabelAuthFactorReply>) {
+    *reply.mutable_relabelled_auth_factor() =
         std::move(auth_factor_with_status.value());
   }
 
@@ -3042,7 +3046,7 @@ void UserDataAuth::AddAuthFactor(
           auth_session_status->Get(), user_policy_file_status.value(),
           auth_factor_driver_manager_,
           sessions_->Find(auth_session_status.value()->username()),
-          request.auth_factor(), std::move(on_done)));
+          request.auth_factor().label(), std::move(on_done)));
 }
 
 void UserDataAuth::AuthenticateAuthFactor(
@@ -3191,7 +3195,7 @@ void UserDataAuth::UpdateAuthFactor(
           auth_session_status->Get(), user_policy_file_status.value(),
           auth_factor_driver_manager_,
           sessions_->Find(auth_session_status.value()->username()),
-          request.auth_factor(), std::move(on_done)));
+          request.auth_factor().label(), std::move(on_done)));
 }
 
 void UserDataAuth::UpdateAuthFactorMetadata(
@@ -3232,7 +3236,59 @@ void UserDataAuth::UpdateAuthFactorMetadata(
                    auth_session_status->Get(), user_policy_file_status.value(),
                    auth_factor_driver_manager_,
                    sessions_->Find(auth_session_status.value()->username()),
-                   request.auth_factor(), std::move(on_done)));
+                   request.auth_factor().label(), std::move(on_done)));
+}
+
+void UserDataAuth::RelabelAuthFactor(
+    user_data_auth::RelabelAuthFactorRequest request,
+    base::OnceCallback<void(const user_data_auth::RelabelAuthFactorReply&)>
+        on_done) {
+  AssertOnMountThread();
+  user_data_auth::RelabelAuthFactorReply reply;
+
+  // Find the auth session.
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  if (!auth_session_status.ok()) {
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthNoAuthSessionInRelabelAuthFactor))
+                       .Wrap(std::move(auth_session_status).err_status()));
+    return;
+  }
+  AuthSession& auth_session = **auth_session_status;
+  auto* session_decrypt = auth_session.GetAuthForDecrypt();
+  if (!session_decrypt) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUnauthedInRelabelAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    return;
+  }
+
+  // Load the user policy, also needed for the final result.
+  auto user_policy_file =
+      LoadUserPolicyFile(auth_session.obfuscated_username());
+  if (!user_policy_file.ok()) {
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocCouldntLoadUserPolicyFileInRelabelAuthFactor))
+                       .Wrap(std::move(user_policy_file).err_status()));
+    return;
+  }
+
+  // Execute the actual relabel.
+  session_decrypt->RelabelAuthFactor(
+      request,
+      base::BindOnce(
+          &ReplyWithAuthFactorStatus<user_data_auth::RelabelAuthFactorReply>,
+          &auth_session, *user_policy_file, auth_factor_driver_manager_,
+          sessions_->Find(auth_session.username()),
+          request.new_auth_factor_label(), std::move(on_done)));
 }
 
 void UserDataAuth::RemoveAuthFactor(

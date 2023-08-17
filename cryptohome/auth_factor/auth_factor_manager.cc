@@ -93,7 +93,7 @@ AuthFactorManager::AuthFactorManager(Platform* platform) : platform_(platform) {
   CHECK(platform_);
 }
 
-CryptohomeStatus AuthFactorManager::SaveAuthFactor(
+CryptohomeStatus AuthFactorManager::SaveAuthFactorFile(
     const ObfuscatedUsername& obfuscated_username,
     const AuthFactor& auth_factor) {
   CryptohomeStatusOr<base::FilePath> file_path = GetAuthFactorPath(
@@ -137,6 +137,60 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactor(
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
+  return OkStatus<CryptohomeError>();
+}
+
+CryptohomeStatus AuthFactorManager::DeleteAuthFactorFile(
+    const ObfuscatedUsername& obfuscated_username,
+    const AuthFactor& auth_factor) {
+  CryptohomeStatusOr<base::FilePath> file_path = GetAuthFactorPath(
+      obfuscated_username, auth_factor.type(), auth_factor.label());
+  if (!file_path.ok()) {
+    LOG(ERROR) << "Failed to get auth factor path in Save.";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerGetPathFailedInDelete),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+
+  // Remove the file.
+  if (!platform_->DeleteFileSecurely(*file_path)) {
+    LOG(WARNING) << "Failed to securely delete from disk auth factor "
+                 << auth_factor.label() << " of type "
+                 << AuthFactorTypeToString(auth_factor.type()) << " for "
+                 << obfuscated_username
+                 << ". Attempting to delete without zeroization.";
+    if (!platform_->DeleteFile(*file_path)) {
+      LOG(ERROR) << "Failed to delete from disk auth factor "
+                 << auth_factor.label() << " of type "
+                 << AuthFactorTypeToString(auth_factor.type()) << " for "
+                 << obfuscated_username;
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerDeleteFailedInDelete),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kRetry, PossibleAction::kReboot}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+    }
+  }
+  LOG(INFO) << "Deleted from disk auth factor label: " << auth_factor.label();
+
+  // Remove the checksum file and only log warnings if the removal failed.
+  base::FilePath auth_factor_checksum_path =
+      file_path->AddExtension(kChecksumExtension);
+  if (!platform_->DeleteFileSecurely(auth_factor_checksum_path)) {
+    LOG(WARNING)
+        << "Failed to securely delete checksum file from disk for auth factor "
+        << auth_factor.label() << " of type "
+        << AuthFactorTypeToString(auth_factor.type()) << " for "
+        << obfuscated_username << ". Attempting to delete without zeroization.";
+    if (!platform_->DeleteFile(auth_factor_checksum_path)) {
+      LOG(WARNING)
+          << "Failed to delete checksum file from disk for auth factor "
+          << auth_factor.label() << " of type "
+          << AuthFactorTypeToString(auth_factor.type()) << " for "
+          << obfuscated_username;
+    }
+  }
   return OkStatus<CryptohomeError>();
 }
 
@@ -309,22 +363,11 @@ void AuthFactorManager::RemoveAuthFactor(
     const AuthFactor& auth_factor,
     AuthBlockUtility* auth_block_utility,
     StatusCallback callback) {
-  CryptohomeStatusOr<base::FilePath> file_path = GetAuthFactorPath(
-      obfuscated_username, auth_factor.type(), auth_factor.label());
-  if (!file_path.ok()) {
-    LOG(ERROR) << "Failed to get auth factor path in Remove.";
-    std::move(callback).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerGetPathFailedInRemove),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-    return;
-  }
-
   auth_block_utility->PrepareAuthBlockForRemoval(
       obfuscated_username, auth_factor.auth_block_state(),
       base::BindOnce(&AuthFactorManager::RemoveAuthFactorFiles,
                      base::Unretained(this), obfuscated_username, auth_factor,
-                     file_path.value(), std::move(callback)));
+                     std::move(callback)));
 }
 
 void AuthFactorManager::UpdateAuthFactor(
@@ -352,7 +395,7 @@ void AuthFactorManager::UpdateAuthFactor(
   // 2. Save auth factor to disk - the old auth factor state will be overridden
   // and accessible only from `existing_auth_factor` object.
   CryptohomeStatus save_result =
-      SaveAuthFactor(obfuscated_username, auth_factor);
+      SaveAuthFactorFile(obfuscated_username, auth_factor);
   if (!save_result.ok()) {
     LOG(ERROR) << "Failed to save auth factor " << auth_factor.label()
                << " of type " << AuthFactorTypeToString(auth_factor.type())
@@ -377,7 +420,6 @@ void AuthFactorManager::UpdateAuthFactor(
 void AuthFactorManager::RemoveAuthFactorFiles(
     const ObfuscatedUsername& obfuscated_username,
     const AuthFactor& auth_factor,
-    const base::FilePath& file_path,
     base::OnceCallback<void(CryptohomeStatus)> callback,
     CryptohomeStatus status) {
   if (!status.ok()) {
@@ -393,47 +435,8 @@ void AuthFactorManager::RemoveAuthFactorFiles(
             .Wrap(std::move(status)));
     return;
   }
-
-  // Remove the file.
-  if (!platform_->DeleteFileSecurely(file_path)) {
-    LOG(WARNING) << "Failed to securely delete from disk auth factor "
-                 << auth_factor.label() << " of type "
-                 << AuthFactorTypeToString(auth_factor.type()) << " for "
-                 << obfuscated_username
-                 << ". Attempting to delete without zeroization.";
-    if (!platform_->DeleteFile(file_path)) {
-      LOG(ERROR) << "Failed to delete from disk auth factor "
-                 << auth_factor.label() << " of type "
-                 << AuthFactorTypeToString(auth_factor.type()) << " for "
-                 << obfuscated_username;
-      std::move(callback).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerDeleteFailedInRemove),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                          PossibleAction::kRetry, PossibleAction::kReboot}),
-          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
-      return;
-    }
-  }
-  LOG(INFO) << "Deleted from disk auth factor label: " << auth_factor.label();
-
-  // Remove the checksum file and only log warnings if the removal failed.
-  base::FilePath auth_factor_checksum_path =
-      file_path.AddExtension(kChecksumExtension);
-  if (!platform_->DeleteFileSecurely(auth_factor_checksum_path)) {
-    LOG(WARNING)
-        << "Failed to securely delete checksum file from disk for auth factor "
-        << auth_factor.label() << " of type "
-        << AuthFactorTypeToString(auth_factor.type()) << " for "
-        << obfuscated_username << ". Attempting to delete without zeroization.";
-    if (!platform_->DeleteFile(auth_factor_checksum_path)) {
-      LOG(WARNING)
-          << "Failed to delete checksum file from disk for auth factor "
-          << auth_factor.label() << " of type "
-          << AuthFactorTypeToString(auth_factor.type()) << " for "
-          << obfuscated_username;
-    }
-  }
-  std::move(callback).Run(OkStatus<CryptohomeError>());
+  std::move(callback).Run(
+      DeleteAuthFactorFile(obfuscated_username, auth_factor));
 }
 
 void AuthFactorManager::LogPrepareForRemovalStatus(

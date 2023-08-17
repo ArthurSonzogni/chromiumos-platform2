@@ -1891,7 +1891,9 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
   }
 
   user_data_auth::CryptohomeErrorCode AuthenticatePasswordAuthFactor(
-      const std::string& password, AuthSession& auth_session) {
+      const std::string& label,
+      const std::string& password,
+      AuthSession& auth_session) {
     EXPECT_CALL(auth_block_utility_,
                 GetAuthBlockTypeFromState(
                     AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
@@ -1911,7 +1913,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
         });
 
     AuthenticateTestFuture authenticate_future;
-    std::vector<std::string> auth_factor_labels{kFakeLabel};
+    std::vector<std::string> auth_factor_labels{label};
     user_data_auth::AuthInput auth_input_proto;
     auth_input_proto.mutable_password_input()->set_secret(password);
     auth_session.AuthenticateAuthFactor(
@@ -1984,6 +1986,27 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     }
 
     return update_future.Get().status()->local_legacy_error().value();
+  }
+
+  user_data_auth::CryptohomeErrorCode RelabelAuthFactor(
+      const std::string& old_label,
+      const std::string& new_label,
+      AuthSession& auth_session) {
+    user_data_auth::RelabelAuthFactorRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.set_auth_factor_label(old_label);
+    request.set_new_auth_factor_label(new_label);
+
+    TestFuture<CryptohomeStatus> relabel_future;
+    auth_session.GetAuthForDecrypt()->RelabelAuthFactor(
+        request, relabel_future.GetCallback());
+
+    if (relabel_future.Get().ok() ||
+        !relabel_future.Get()->local_legacy_error().has_value()) {
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    }
+
+    return relabel_future.Get()->local_legacy_error().value();
   }
 
   user_data_auth::CryptohomeErrorCode AddPinAuthFactor(
@@ -2538,7 +2561,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
       AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -2638,7 +2661,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -2739,7 +2762,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -2837,7 +2860,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
       AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -2932,7 +2955,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -3044,7 +3067,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -3147,7 +3170,7 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
       AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{.le_label = 0xbaadf00d}});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -3305,7 +3328,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       AuthFactorMetadata{.metadata = auth_factor::CryptohomeRecoveryMetadata()},
       AuthBlockState{.state = CryptohomeRecoveryAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -3446,7 +3469,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
                                                          public_key_spki_der}},
       AuthBlockState{.state = ChallengeCredentialAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::make_unique<AuthFactor>(*auth_factor),
@@ -3628,7 +3651,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordPostAction) {
       AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -3954,7 +3977,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
               Eq(std::nullopt));
 
   // Calling AuthenticateAuthFactor for password succeeds.
-  error = AuthenticatePasswordAuthFactor(kFakePass, auth_session);
+  error = AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Calling AuthenticateAuthFactor for pin fails.
@@ -4045,7 +4068,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
               Eq(std::nullopt));
 
   // Calling AuthenticateAuthFactor for password succeeds.
-  error = AuthenticatePasswordAuthFactor(kFakePass, auth_session);
+  error = AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Calling AuthenticateAuthFactor for pin fails.
@@ -4134,7 +4157,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
               Eq(std::nullopt));
 
   // Calling AuthenticateAuthFactor for the first password succeeds.
-  error = AuthenticatePasswordAuthFactor(kFakePass, auth_session);
+  error = AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Calling AuthenticateAuthFactor for the second password fails.
@@ -4308,7 +4331,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, new_pass)));
   // AuthenticateAuthFactor should succeed using the new password.
   user_data_auth::CryptohomeErrorCode error =
-      AuthenticatePasswordAuthFactor(new_pass, new_auth_session);
+      AuthenticatePasswordAuthFactor(kFakeLabel, new_pass, new_auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(
       new_auth_session.authorized_intents(),
@@ -4731,7 +4754,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorMetadataSuccess) {
             kUserSpecifiedName);
 
   // Calling AuthenticateAuthFactor with the password succeeds.
-  error = AuthenticatePasswordAuthFactor(kFakePass, auth_session);
+  error = AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -5206,6 +5229,192 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
   EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
   EXPECT_THAT(status, NotOk());
   EXPECT_THAT(decrypt_session.authorized_intents(), IsEmpty());
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactor) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Calling AddAuthFactor.
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+
+  // Calling RelabelAuthFactor.
+  error = RelabelAuthFactor(kFakeLabel, kFakeOtherLabel, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Calling AuthenticateAuthFactor works with the new label.
+  error =
+      AuthenticatePasswordAuthFactor(kFakeOtherLabel, kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorWithBadInputs) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Add a couple of auth factors.
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  error = AddPinAuthFactor(kFakePin, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+
+  // Trying to relabel an empty label.
+  {
+    user_data_auth::RelabelAuthFactorRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.set_new_auth_factor_label(kFakeOtherLabel);
+
+    TestFuture<CryptohomeStatus> relabel_future;
+    auth_session.GetAuthForDecrypt()->RelabelAuthFactor(
+        request, relabel_future.GetCallback());
+    ASSERT_THAT(relabel_future.Get(), NotOk());
+    EXPECT_THAT(relabel_future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+
+  // Trying to relabel to an empty label.
+  {
+    user_data_auth::RelabelAuthFactorRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.set_auth_factor_label(kFakeLabel);
+
+    TestFuture<CryptohomeStatus> relabel_future;
+    auth_session.GetAuthForDecrypt()->RelabelAuthFactor(
+        request, relabel_future.GetCallback());
+    ASSERT_THAT(relabel_future.Get(), NotOk());
+    EXPECT_THAT(relabel_future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+
+  // Trying to relabel a factor that doesn't exist.
+  {
+    user_data_auth::RelabelAuthFactorRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.set_auth_factor_label(std::string(kFakeLabel) + "DoesNotExist");
+    request.set_new_auth_factor_label(kFakeOtherLabel);
+
+    TestFuture<CryptohomeStatus> relabel_future;
+    auth_session.GetAuthForDecrypt()->RelabelAuthFactor(
+        request, relabel_future.GetCallback());
+    ASSERT_THAT(relabel_future.Get(), NotOk());
+    EXPECT_THAT(relabel_future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+  }
+
+  // Trying to relabel a factor to a label that already exists.
+  {
+    user_data_auth::RelabelAuthFactorRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.set_auth_factor_label(kFakeLabel);
+    request.set_new_auth_factor_label(kFakePinLabel);
+
+    TestFuture<CryptohomeStatus> relabel_future;
+    auth_session.GetAuthForDecrypt()->RelabelAuthFactor(
+        request, relabel_future.GetCallback());
+    ASSERT_THAT(relabel_future.Get(), NotOk());
+    EXPECT_THAT(relabel_future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+
+  // Trying to relabel a factor to itself.
+  {
+    user_data_auth::RelabelAuthFactorRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.set_auth_factor_label(kFakeLabel);
+    request.set_new_auth_factor_label(kFakeLabel);
+
+    TestFuture<CryptohomeStatus> relabel_future;
+    auth_session.GetAuthForDecrypt()->RelabelAuthFactor(
+        request, relabel_future.GetCallback());
+    ASSERT_THAT(relabel_future.Get(), NotOk());
+    EXPECT_THAT(relabel_future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorWithFileFailure) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Add a couple of auth factors.
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Disable the writing of the USS file. The rename should fail and we should
+  // still be able to use the old name.
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(_, _, _))
+      .WillRepeatedly(DoDefault());
+  EXPECT_CALL(platform_,
+              WriteFileAtomicDurable(
+                  UserSecretStashPath(SanitizeUserName(kFakeUsername),
+                                      kUserSecretStashDefaultSlot),
+                  _, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(false));
+
+  // Test.
+
+  // Trying to relabel an empty label.
+  user_data_auth::RelabelAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  request.set_new_auth_factor_label(kFakeOtherLabel);
+
+  TestFuture<CryptohomeStatus> relabel_future;
+  auth_session.GetAuthForDecrypt()->RelabelAuthFactor(
+      request, relabel_future.GetCallback());
+  ASSERT_THAT(relabel_future.Get(), NotOk());
+
+  // Calling AuthenticateAuthFactor works with the old label.
+  error = AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
 }  // namespace cryptohome

@@ -42,8 +42,14 @@ class AuthFactorManager final {
 
   // Serializes and persists as a file the given auth factor in the user's data
   // vault.
-  CryptohomeStatus SaveAuthFactor(const ObfuscatedUsername& obfuscated_username,
-                                  const AuthFactor& auth_factor);
+  CryptohomeStatus SaveAuthFactorFile(
+      const ObfuscatedUsername& obfuscated_username,
+      const AuthFactor& auth_factor);
+
+  // Deletes the file for the given auth factor in the user's data vault.
+  CryptohomeStatus DeleteAuthFactorFile(
+      const ObfuscatedUsername& obfuscated_username,
+      const AuthFactor& auth_factor);
 
   // Loads from the auth factor with the given type and label from the file in
   // the user's data vault.
@@ -79,9 +85,9 @@ class AuthFactorManager final {
   // `auth_factor_label`.
   // 2. Saves the new auth factor on disk.
   // 3. Calls PrepareForRemoval() on the AuthBlock.
-  // Unlike calling `RemoveAuthFactor()`+`SaveAuthFactor()`, this operation is
-  // atomic, to the extent possible - it makes sure that we don't end up with no
-  // auth factor available.
+  // Unlike calling `RemoveAuthFactor()`+`SaveAuthFactorFile()`, this operation
+  // is atomic, to the extent possible - it makes sure that we don't end up with
+  // no auth factor available.
   void UpdateAuthFactor(const ObfuscatedUsername& obfuscated_username,
                         const std::string& auth_factor_label,
                         AuthFactor& auth_factor,
@@ -94,7 +100,6 @@ class AuthFactorManager final {
   // |callback|.
   void RemoveAuthFactorFiles(const ObfuscatedUsername& obfuscated_username,
                              const AuthFactor& auth_factor,
-                             const base::FilePath& file_path,
                              StatusCallback callback,
                              CryptohomeStatus status);
 

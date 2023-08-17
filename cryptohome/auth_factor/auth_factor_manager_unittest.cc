@@ -89,14 +89,14 @@ class AuthFactorManagerTest : public ::testing::Test {
       base::SequencedTaskRunner::GetCurrentDefault();
 };
 
-// Test the `SaveAuthFactor()` method correctly serializes the factor into a
+// Test the `SaveAuthFactorFile()` method correctly serializes the factor into a
 // file.
 TEST_F(AuthFactorManagerTest, Save) {
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
 
   // Persist the auth factor.
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername, *auth_factor)
           .ok());
   EXPECT_TRUE(platform_.FileExists(
       AuthFactorPath(kObfuscatedUsername,
@@ -122,7 +122,7 @@ TEST_F(AuthFactorManagerTest, Save) {
   // TODO(b/204441443): Check other fields too. Consider using a GTest matcher.
 }
 
-// Test the `SaveAuthFactor()` method fails when the label is empty.
+// Test the `SaveAuthFactorFile()` method fails when the label is empty.
 TEST_F(AuthFactorManagerTest, SaveBadEmptyLabel) {
   // Create an auth factor as a clone of a correct object, but with an empty
   // label.
@@ -133,13 +133,13 @@ TEST_F(AuthFactorManagerTest, SaveBadEmptyLabel) {
                              good_auth_factor->auth_block_state());
 
   // Verify the manager refuses to save this auth factor.
-  EXPECT_FALSE(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, bad_auth_factor)
-          .ok());
+  EXPECT_FALSE(auth_factor_manager_
+                   .SaveAuthFactorFile(kObfuscatedUsername, bad_auth_factor)
+                   .ok());
 }
 
-// Test the `SaveAuthFactor()` method fails when the label contains forbidden
-// characters.
+// Test the `SaveAuthFactorFile()` method fails when the label contains
+// forbidden characters.
 TEST_F(AuthFactorManagerTest, SaveBadMalformedLabel) {
   // Create an auth factor as a clone of a correct object, but with a malformed
   // label.
@@ -150,9 +150,9 @@ TEST_F(AuthFactorManagerTest, SaveBadMalformedLabel) {
                              good_auth_factor->auth_block_state());
 
   // Verify the manager refuses to save this auth factor.
-  EXPECT_FALSE(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, bad_auth_factor)
-          .ok());
+  EXPECT_FALSE(auth_factor_manager_
+                   .SaveAuthFactorFile(kObfuscatedUsername, bad_auth_factor)
+                   .ok());
 }
 
 // Test that `ListAuthFactors()` returns an empty map when there's no auth
@@ -168,7 +168,7 @@ TEST_F(AuthFactorManagerTest, ListSingle) {
   // Create the auth factor file.
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername, *auth_factor)
           .ok());
 
   // Verify the factor is listed.
@@ -280,9 +280,9 @@ TEST_F(AuthFactorManagerTest, RemoveSuccess) {
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
 
   // Persist the auth factor.
-  EXPECT_THAT(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor),
-      IsOk());
+  EXPECT_THAT(auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername,
+                                                      *auth_factor),
+              IsOk());
   CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
       auth_factor_manager_.LoadAuthFactor(
           kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
@@ -320,9 +320,9 @@ TEST_F(AuthFactorManagerTest, RemoveFailureWithAuthBlock) {
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
 
   // Persist the auth factor.
-  EXPECT_THAT(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor),
-      IsOk());
+  EXPECT_THAT(auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername,
+                                                      *auth_factor),
+              IsOk());
   CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
       auth_factor_manager_.LoadAuthFactor(
           kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
@@ -355,9 +355,9 @@ TEST_F(AuthFactorManagerTest, RemoveFailureWithFactorFile) {
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
 
   // Persist the auth factor.
-  EXPECT_THAT(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor),
-      IsOk());
+  EXPECT_THAT(auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername,
+                                                      *auth_factor),
+              IsOk());
   CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
       auth_factor_manager_.LoadAuthFactor(
           kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
@@ -387,9 +387,9 @@ TEST_F(AuthFactorManagerTest, RemoveOkWithChecksumFileRemovalFailure) {
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
 
   // Persist the auth factor.
-  EXPECT_THAT(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor),
-      IsOk());
+  EXPECT_THAT(auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername,
+                                                      *auth_factor),
+              IsOk());
   CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
       auth_factor_manager_.LoadAuthFactor(
           kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
@@ -430,7 +430,7 @@ TEST_F(AuthFactorManagerTest, Update) {
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
   // Persist the auth factor.
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername, *auth_factor)
           .ok());
   EXPECT_TRUE(platform_.FileExists(
       AuthFactorPath(kObfuscatedUsername,
@@ -494,7 +494,7 @@ TEST_F(AuthFactorManagerTest, UpdateFailureWithRemoval) {
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
   // Persist the auth factor.
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername, *auth_factor)
           .ok());
   EXPECT_TRUE(platform_.FileExists(
       AuthFactorPath(kObfuscatedUsername,
@@ -651,7 +651,8 @@ class LoadAllAuthFactorsTest : public ::testing::Test {
   // Install a single USS auth factor. If you want to set up multiple factors
   // for your test, call this multiple times.
   void InstallUssFactor(AuthFactor factor) {
-    EXPECT_THAT(manager_.SaveAuthFactor(kObfuscatedUsername, factor), IsOk());
+    EXPECT_THAT(manager_.SaveAuthFactorFile(kObfuscatedUsername, factor),
+                IsOk());
   }
 
   FakePlatform platform_;

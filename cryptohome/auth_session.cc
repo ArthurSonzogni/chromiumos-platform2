@@ -39,6 +39,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -2164,8 +2165,8 @@ void AuthSession::UpdateAuthFactorMetadata(
       auth_factor_type, auth_factor_label, auth_factor_metadata,
       stored_auth_factor.value().auth_factor().auth_block_state());
   // Update/persist the factor.
-  auto status =
-      auth_factor_manager_->SaveAuthFactor(obfuscated_username_, *auth_factor);
+  auto status = auth_factor_manager_->SaveAuthFactorFile(obfuscated_username_,
+                                                         *auth_factor);
   if (!status.ok()) {
     LOG(ERROR) << "AuthSession: Failed to save updated auth factor: " << status;
     std::move(on_done).Run(
@@ -2175,6 +2176,166 @@ void AuthSession::UpdateAuthFactorMetadata(
             .Wrap(std::move(status)));
     return;
   }
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
+}
+
+void AuthSession::AuthForDecrypt::RelabelAuthFactor(
+    const user_data_auth::RelabelAuthFactorRequest& request,
+    StatusCallback on_done) {
+  // Get the existing auth factor and make sure it's not a vault keyset.
+  if (request.auth_factor_label().empty()) {
+    LOG(ERROR) << "AuthSession: Old auth factor label is empty.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoOldLabelInRelabelAuthFactor),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  std::optional<AuthFactor> old_auth_factor;
+  {
+    std::optional<AuthFactorMap::ValueView> stored_auth_factor =
+        session_->auth_factor_map_.Find(request.auth_factor_label());
+    if (!stored_auth_factor) {
+      LOG(ERROR) << "AuthSession: Key to update not found: "
+                 << request.auth_factor_label();
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInRelabelAuthFactor),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+      return;
+    }
+    if (stored_auth_factor->storage_type() ==
+        AuthFactorStorageType::kVaultKeyset) {
+      LOG(ERROR) << "AuthSession: Vault keyset factors cannot be relabelled: "
+                 << request.auth_factor_label();
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthSessionFactorIsVaultKeysetInRelabelAuthFactor),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
+      return;
+    }
+    old_auth_factor = stored_auth_factor->auth_factor();
+  }
+
+  // Check that the new label is valid and does not already exist.
+  if (!IsValidAuthFactorLabel(request.new_auth_factor_label())) {
+    LOG(ERROR) << "AuthSession: New auth factor label is not valid: "
+               << request.new_auth_factor_label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidNewLabelInRelabelAuthFactor),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  if (session_->auth_factor_map_.Find(request.new_auth_factor_label())) {
+    LOG(ERROR) << "AuthSession: New auth factor label already exists: "
+               << request.new_auth_factor_label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionNewLabelAlreadyExistsInRelabelAuthFactor),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  // Create a copy of the existing factor with the new label and save it. Add a
+  // cleanup to undo this if we fail, which we'll cancel if we succeed instead.
+  auto new_auth_factor = std::make_unique<AuthFactor>(
+      old_auth_factor->type(), request.new_auth_factor_label(),
+      old_auth_factor->metadata(), old_auth_factor->auth_block_state());
+  if (auto status = session_->auth_factor_manager_->SaveAuthFactorFile(
+          session_->obfuscated_username_, *new_auth_factor);
+      !status.ok()) {
+    LOG(ERROR) << "AuthSession: Unable to save a new copy of the auth factor.";
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionSaveCopyFailedInRelabelAuthFactor))
+            .Wrap(std::move(status)));
+    return;
+  }
+  absl::Cleanup delete_new_aff = [this, &new_auth_factor]() {
+    if (auto status = session_->auth_factor_manager_->DeleteAuthFactorFile(
+            session_->obfuscated_username_, *new_auth_factor);
+        !status.ok()) {
+      LOG(ERROR)
+          << "AuthSession: Unable to delete the auth_factor file with the "
+             "new label: "
+          << new_auth_factor->label() << ": " << status;
+    }
+  };
+
+  // Update the USS to move the wrapped key to the new label.
+  auto uss_snapshot = session_->user_secret_stash_->TakeSnapshot();
+  absl::Cleanup revert_uss = [this, &uss_snapshot]() {
+    session_->user_secret_stash_->RestoreSnapshot(std::move(uss_snapshot));
+  };
+  if (!session_->user_secret_stash_->RenameWrappedMainKey(
+          request.auth_factor_label(), request.new_auth_factor_label())) {
+    // This shouldn't actually ever happen because we've already checked for
+    // collisions but just in case, we still need to handle it.
+    LOG(ERROR) << "AuthSession: Unable to rename the factor in USS.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionRenameWrappedKeyFailedInRelabelAuthFactor),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_RELABEL_CREDENTIALS_FAILED));
+    return;
+  }
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
+      session_->user_secret_stash_->GetEncryptedContainer(
+          session_->user_secret_stash_main_key_.value());
+  if (!encrypted_uss_container.ok()) {
+    LOG(ERROR)
+        << "Failed to persist user secret stash after changing labels from: "
+        << request.auth_factor_label()
+        << " to: " << request.new_auth_factor_label();
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInRelabelAuthFactor),
+            user_data_auth::CRYPTOHOME_RELABEL_CREDENTIALS_FAILED)
+            .Wrap(std::move(encrypted_uss_container).err_status()));
+    return;
+  }
+  if (auto status = session_->uss_storage_->Persist(
+          encrypted_uss_container.value(), session_->obfuscated_username_);
+      !status.ok()) {
+    LOG(ERROR)
+        << "Failed to persist user secret stash after changing labels from: "
+        << request.auth_factor_label()
+        << " to: " << request.new_auth_factor_label();
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionPersistUssFailedInRelabelAuthFactor),
+            user_data_auth::CRYPTOHOME_RELABEL_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
+  }
+  std::move(delete_new_aff).Cancel();
+  std::move(revert_uss).Cancel();
+  session_->auth_factor_map_.Remove(old_auth_factor->label());
+  session_->verifier_forwarder_.RemoveVerifier(old_auth_factor->label());
+  session_->auth_factor_map_.Add(std::move(new_auth_factor),
+                                 AuthFactorStorageType::kUserSecretStash);
+  LOG(INFO) << "AuthSession: relabelled auth factor "
+            << old_auth_factor->label() << " to "
+            << request.new_auth_factor_label();
+
+  // At this point the relabel is committed. If any subsequent cleanup steps
+  // fail they don't fail the Relabel operation.
+
+  // Try to clean up the leftover auth factor files.
+  if (auto status = session_->auth_factor_manager_->DeleteAuthFactorFile(
+          session_->obfuscated_username_, *old_auth_factor);
+      !status.ok()) {
+    LOG(ERROR) << "AuthSession: Unable to delete the leftover file from the "
+                  "original label: "
+               << request.auth_factor_label() << ": " << status;
+  }
+
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
@@ -2856,8 +3017,8 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
   // It's important to do this after all the non-persistent steps so that we
   // only start writing files after all validity checks (like the label
   // duplication check).
-  status =
-      auth_factor_manager_->SaveAuthFactor(obfuscated_username_, *auth_factor);
+  status = auth_factor_manager_->SaveAuthFactorFile(obfuscated_username_,
+                                                    *auth_factor);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to persist created auth factor: "
                << auth_factor_label;

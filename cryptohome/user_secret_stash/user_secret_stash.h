@@ -5,13 +5,13 @@
 #ifndef CRYPTOHOME_USER_SECRET_STASH_USER_SECRET_STASH_H_
 #define CRYPTOHOME_USER_SECRET_STASH_USER_SECRET_STASH_H_
 
-#include <brillo/secure_blob.h>
-#include <stdint.h>
-
 #include <map>
 #include <memory>
 #include <optional>
+#include <stdint.h>
 #include <string>
+
+#include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/error/cryptohome_error.h"
@@ -214,6 +214,11 @@ class UserSecretStash {
                                      const std::string& wrapping_id,
                                      const brillo::SecureBlob& wrapping_key,
                                      OverwriteExistingKeyBlock clobber);
+  // Changes the wrapping ID for an existing key. This does not modify the key
+  // itself in any way. Returns false if either the old ID doesn't exist or the
+  // new ID already does.
+  bool RenameWrappedMainKey(const std::string& old_wrapping_id,
+                            const std::string& new_wrapping_id);
   // Removes the wrapped key with the given ID. If it doesn't exist, returns
   // false.
   bool RemoveWrappedMainKey(const std::string& wrapping_id);
