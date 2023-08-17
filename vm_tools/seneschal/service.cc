@@ -603,7 +603,6 @@ std::unique_ptr<dbus::Response> Service::StartServer(
   minijail_no_new_privs(jail.get());
 
   // Use a seccomp filter.
-  minijail_log_seccomp_filter_failures(jail.get());
   minijail_parse_seccomp_filters(jail.get(), kSeccompPolicyPath);
   minijail_use_seccomp_filter(jail.get());
 
