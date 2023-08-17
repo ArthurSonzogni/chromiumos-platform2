@@ -330,21 +330,23 @@ void MissiveImpl::AsyncStartUploadInternal(
     return;
   }
   if (health_module_->is_debugging()) {
-    health_module_->GetHealthData(base::BindOnce(
-        [](base::WeakPtr<MissiveImpl> missive,
-           UploaderInterface::UploadReason reason,
-           UploaderInterface::UploaderInterfaceResultCb uploader_result_cb,
-           ERPHealthData health_data) {
-          if (!missive) {
-            std::move(uploader_result_cb)
-                .Run(Status(error::UNAVAILABLE,
-                            "Missive service has been shut down"));
-            return;
-          }
-          missive->CreateUploadJob(std::move(health_data), reason,
-                                   std::move(uploader_result_cb));
-        },
-        weak_ptr_factory_.GetWeakPtr(), reason, std::move(uploader_result_cb)));
+    health_module_->GetHealthData(
+        base::BindPostTaskToCurrentDefault(base::BindOnce(
+            [](base::WeakPtr<MissiveImpl> missive,
+               UploaderInterface::UploadReason reason,
+               UploaderInterface::UploaderInterfaceResultCb uploader_result_cb,
+               ERPHealthData health_data) {
+              if (!missive) {
+                std::move(uploader_result_cb)
+                    .Run(Status(error::UNAVAILABLE,
+                                "Missive service has been shut down"));
+                return;
+              }
+              missive->CreateUploadJob(std::move(health_data), reason,
+                                       std::move(uploader_result_cb));
+            },
+            weak_ptr_factory_.GetWeakPtr(), reason,
+            std::move(uploader_result_cb))));
   } else {
     CreateUploadJob(/*health_data=*/std::nullopt, reason,
                     std::move(uploader_result_cb));
@@ -355,6 +357,7 @@ void MissiveImpl::CreateUploadJob(
     std::optional<ERPHealthData> health_data,
     UploaderInterface::UploadReason reason,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto upload_job_result = UploadJob::Create(
       upload_client_,
       /*need_encryption_key=*/
