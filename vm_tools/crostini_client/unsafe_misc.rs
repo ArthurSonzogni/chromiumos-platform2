@@ -49,7 +49,7 @@ mod tests {
         let free_bytes = get_free_disk_space(".").expect("failed to get free disk space");
         let df_free_bytes = String::from_utf8(
             Command::new("df")
-                .args(&["--output=avail", "--block-size=1", "."])
+                .args(["--output=avail", "--block-size=1", "."])
                 .output()
                 .unwrap()
                 .stdout,

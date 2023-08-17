@@ -4,22 +4,18 @@
 
 use std::fmt;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub enum DiskOpType {
+    #[default]
     Create,
     Resize,
 }
 
-impl Default for DiskOpType {
-    fn default() -> Self {
-        DiskOpType::Create
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub enum VmDiskImageType {
     Raw,
     Qcow2,
+    #[default]
     Auto,
     PluginVm,
 }
@@ -32,12 +28,6 @@ impl fmt::Display for VmDiskImageType {
             VmDiskImageType::Auto => write!(f, "auto"),
             VmDiskImageType::PluginVm => write!(f, "pvm"),
         }
-    }
-}
-
-impl Default for VmDiskImageType {
-    fn default() -> Self {
-        VmDiskImageType::Auto
     }
 }
 

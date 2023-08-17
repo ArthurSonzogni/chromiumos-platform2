@@ -1229,7 +1229,7 @@ impl Methods {
         )?;
 
         if response.success {
-            Ok((response.images.into(), response.total_size))
+            Ok((response.images, response.total_size))
         } else {
             Err(FailedListDiskImages(response.failure_reason).into())
         }
@@ -1246,7 +1246,7 @@ impl Methods {
             Some(StorageLocation::STORAGE_CRYPTOHOME_PLUGINVM),
             Some(vm_name),
         )?;
-        Ok(images.len() != 0)
+        Ok(!images.is_empty())
     }
 
     /// Gets the id of the dlc to be used to boot a VM, or None if DLC should not be used.
@@ -1262,12 +1262,10 @@ impl Methods {
             } else {
                 Ok(Some(id))
             }
+        } else if is_termina {
+            Ok(Some("termina-dlc".to_owned()))
         } else {
-            if is_termina {
-                Ok(Some("termina-dlc".to_owned()))
-            } else {
-                Ok(None)
-            }
+            Ok(None)
         }
     }
 
@@ -1335,9 +1333,9 @@ impl Methods {
         request.enable_audio_capture = features.audio_capture;
         request.run_as_untrusted = features.run_as_untrusted;
         request.name = vm_name.to_owned();
-        request.kernel_params = features.kernel_params.into();
+        request.kernel_params = features.kernel_params;
         request.timeout = features.timeout;
-        request.oem_strings = features.oem_strings.into();
+        request.oem_strings = features.oem_strings;
         request.disks.push(DiskImage {
             path: stateful_disk_path,
             writable: true,
@@ -1365,7 +1363,7 @@ impl Methods {
                 OpenOptions::new()
                     .read(true)
                     .custom_flags(libc::O_NOFOLLOW)
-                    .open(&path)?,
+                    .open(path)?,
             );
         }
 
@@ -1378,7 +1376,7 @@ impl Methods {
                     .read(true)
                     .write(user_disks.writable_rootfs)
                     .custom_flags(libc::O_NOFOLLOW)
-                    .open(&path)?,
+                    .open(path)?,
             );
         }
 
@@ -1390,7 +1388,7 @@ impl Methods {
                     .read(true)
                     .write(true) // extra disk is writable
                     .custom_flags(libc::O_NOFOLLOW)
-                    .open(&path)?,
+                    .open(path)?,
             );
         }
 
@@ -1401,7 +1399,7 @@ impl Methods {
                 OpenOptions::new()
                     .read(true)
                     .custom_flags(libc::O_NOFOLLOW)
-                    .open(&path)?,
+                    .open(path)?,
             );
         }
 
@@ -1412,7 +1410,7 @@ impl Methods {
                 OpenOptions::new()
                     .read(true)
                     .custom_flags(libc::O_NOFOLLOW)
-                    .open(&path)?,
+                    .open(path)?,
             );
         }
 
@@ -1424,7 +1422,7 @@ impl Methods {
                     .read(true)
                     .write(true)
                     .custom_flags(libc::O_NOFOLLOW)
-                    .open(&path)?,
+                    .open(path)?,
             );
         }
 
@@ -1726,15 +1724,15 @@ impl Methods {
                 image_alias,
                 image_server,
             } => {
-                request.image_server = image_server.to_owned();
-                request.image_alias = image_alias.to_owned();
+                request.image_server = image_server;
+                request.image_alias = image_alias;
             }
             ContainerSource::Tarballs {
                 rootfs_path,
                 metadata_path,
             } => {
-                request.rootfs_path = rootfs_path.to_owned();
-                request.metadata_path = metadata_path.to_owned();
+                request.rootfs_path = rootfs_path;
+                request.metadata_path = metadata_path;
             }
         }
 
@@ -2000,7 +1998,7 @@ impl Methods {
         )?;
 
         if response.success {
-            Ok(response.usb_devices.into())
+            Ok(response.usb_devices)
         } else {
             Err(FailedListUsb.into())
         }
@@ -2040,7 +2038,7 @@ impl Methods {
 
         if let Some(name) = vm_name {
             let (images, _) = self.list_disk_images(user_id_hash, None, Some(&name))?;
-            if images.len() == 0 {
+            if images.is_empty() {
                 return Err(NoSuchVm.into());
             }
             if images[0].image_type != DiskImageType::DISK_IMAGE_PLUGINVM.into() {
@@ -2320,7 +2318,7 @@ impl Methods {
             Command::new("vsh")
                 .arg(format!("--vm_name={}", vm_name))
                 .arg(format!("--owner_id={}", user_id_hash))
-                .args(&[
+                .args([
                     "--",
                     "LXD_DIR=/mnt/stateful/lxd",
                     "LXD_CONF=/mnt/stateful/lxd_conf",
@@ -2340,7 +2338,7 @@ impl Methods {
             .arg(format!("--vm_name={}", vm_name))
             .arg(format!("--owner_id={}", user_id_hash))
             .arg(format!("--target_container={}", container_name))
-            .args(&[
+            .args([
                 "--",
                 "LXD_DIR=/mnt/stateful/lxd",
                 "LXD_CONF=/mnt/stateful/lxd_conf",

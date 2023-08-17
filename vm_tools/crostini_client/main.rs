@@ -70,7 +70,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     if args.len() == 1 {
-        print_usage(&args[0], &make_options());
+        print_usage(args[0], &make_options());
         return Ok(());
     }
 

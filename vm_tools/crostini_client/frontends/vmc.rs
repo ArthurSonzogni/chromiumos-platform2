@@ -64,7 +64,7 @@ static VM_NAME_OPTION: &str = "vm-name";
 fn trim_routine(s: &str) -> String {
     // We are guaranteed to have at least one element after splitn()
     s.trim_start_matches("self.methods.")
-        .splitn(2, '(')
+        .split('(')
         .next()
         .unwrap()
         .to_string()
@@ -109,7 +109,7 @@ impl fmt::Display for VmcError {
         match self {
             BadProblemReportArguments(e) => write!(f, "failed to parse arguments: {:?}", e),
             Command(routine, e) => {
-                write!(f, "operation `{}` failed: {}", trim_routine(&routine), e)
+                write!(f, "operation `{}` failed: {}", trim_routine(routine), e)
             }
             DiskOperation(op, e) => write!(f, "{} failed: {}", op, e),
             ExpectedCrosUserIdHash => write!(f, "expected CROS_USER_ID_HASH environment variable"),
@@ -400,7 +400,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn launch(&mut self) -> VmcResult {
-        if self.args.len() < 1 {
+        if self.args.is_empty() {
             return Err(ExpectedName.into());
         }
         let user_id_hash = get_user_hash(self.environ)?;
@@ -424,7 +424,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             None => None,
         };
 
-        if plugin_vm && size != None {
+        if plugin_vm && size.is_some() {
             return Err(UnexpectedSizeWithPluginVm.into());
         }
 
@@ -446,13 +446,13 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let user_id_hash = get_user_hash(self.environ)?;
 
         if let Some(uuid) = try_command!(self.methods.vm_create(
-            &vm_name,
+            vm_name,
             &user_id_hash,
             plugin_vm,
             size,
             file_name,
             removable_media,
-            &params,
+            params,
         )) {
             println!("VM creation in progress: {}", uuid);
             self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create, "VM creation")?;
@@ -488,7 +488,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let vm_name = &matches.free[0];
         let user_id_hash = get_user_hash(self.environ)?;
         let skip_prompt =
-            matches.opt_present("yes") || !self.environ.get("VMC_NONINTERACTIVE").is_none();
+            matches.opt_present("yes") || self.environ.get("VMC_NONINTERACTIVE").is_some();
 
         if !skip_prompt {
             println!(
@@ -525,7 +525,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     ) -> VmcResult {
         let mut progress_reported = false;
         loop {
-            match self.methods.wait_disk_op(&uuid, &user_id_hash, op_type) {
+            match self.methods.wait_disk_op(uuid, user_id_hash, op_type) {
                 Ok((done, progress)) => {
                     if done {
                         println!("\rOperation completed successfully");
@@ -543,7 +543,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                     }
 
                     if progress_reported {
-                        println!("");
+                        println!();
                     }
                     return Err(DiskOperation(op_name.to_string(), e).into());
                 }
@@ -625,7 +625,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn import(&mut self) -> VmcResult {
-        let plugin_vm = self.args.len() > 0 && self.args[0] == "-p";
+        let plugin_vm = !self.args.is_empty() && self.args[0] == "-p";
         if plugin_vm {
             // Discard the first argument (-p).
             self.args = &self.args[1..];
@@ -695,7 +695,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                 .join(path)
                 .into_os_string()
                 .into_string()
-                .map_err(|s| InvalidPath(s))?;
+                .map_err(InvalidPath)?;
         }
 
         try_command!(self.methods.extra_disk_create(&path, size));
@@ -808,7 +808,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
                 // If this argument looks like an absolute path, treat it and the following
                 // parameter as local paths to tarballs.  Otherwise, assume they are an
                 // image server URL and image alias.
-                if required_args[2].starts_with("/") {
+                if required_args[2].starts_with('/') {
                     ContainerSource::Tarballs {
                         rootfs_path: required_args[2].clone(),
                         metadata_path: required_args[3].clone(),
@@ -986,9 +986,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "name of the VM for which problem report is generated",
             "NAME",
         );
-        let matches = opts
-            .parse(self.args)
-            .map_err(|e| BadProblemReportArguments(e))?;
+        let matches = opts.parse(self.args).map_err(BadProblemReportArguments)?;
 
         let vm_name = matches.opt_str(VM_NAME_OPTION);
         let user_id_hash = get_user_hash(self.environ)?;
