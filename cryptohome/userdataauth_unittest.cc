@@ -852,10 +852,10 @@ static_assert(
     "user_data_auth:: and cryptohome::");
 
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 60,
-    "user_data_auth::CryptohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 60,
-              "cryptohome::CryptohomeErrorCode's element count is incorrect");
+    static_cast<int>(user_data_auth::CryptohomeErrorCode_MAX) ==
+        static_cast<int>(cryptohome::CryptohomeErrorCode_MAX),
+    "user_data_auth::CryptohomeErrorCode and cryptohome::CryptohomeErrorCode "
+    "have different element counts");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
 namespace SignatureAlgorithmEquivalenceTest {

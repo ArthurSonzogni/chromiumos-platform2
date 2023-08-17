@@ -110,6 +110,7 @@ enum CryptohomeErrorCode {
   // attempts AND expired, CRYPTOHOME_ERROR_CREDENTIAL_EXPIRED will take
   // precedence and be returned.
   CRYPTOHOME_ERROR_CREDENTIAL_EXPIRED = 60;
+  CRYPTOHOME_RELABEL_CREDENTIALS_FAILED = 61;
   // Note: After adding new fields to this enum, the new enum should be added
   // to ash/components/login/auth/auth_session_authenticator.cc's
   // AuthSessionAuthenticator::ProcessCryptohomeError() so that Chromium
@@ -1290,6 +1291,30 @@ message UpdateAuthFactorMetadataReply {
   // status information. This will be unset should the request not be
   // successful.
   AuthFactorWithStatus updated_auth_factor = 3;
+}
+
+// RelabelAuthFactor will change the label of an auth factor without modifying
+// the factor itself. Because the factor is not modified it does not require
+// an AuthInput but it does still require an authenticated session.
+message RelabelAuthFactorRequest {
+  // AuthFactor cannot be relabelled without an active and authenticated
+  // AuthSession running. This id would be used to associate the AuthFactor to
+  // an AuthSession.
+  bytes auth_session_id = 1;
+  // Label used to identify the existing AuthFactor.
+  string auth_factor_label = 2;
+  // New label to apply to the auth factor. It must be different from the
+  // original label and not already in use.
+  string new_auth_factor_label = 3;
+}
+
+message RelabelAuthFactorReply {
+  CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
+
+  // AuthFactorWithStatus returns newly updated auth factor. This will only be
+  // set if the relabel operation succeeds.
+  AuthFactorWithStatus relabelled_auth_factor = 3;
 }
 
 // RemoveAuthFactorRequest is built when a user is trying to
