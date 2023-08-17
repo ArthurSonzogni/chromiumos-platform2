@@ -452,8 +452,9 @@ class Service final : public org::chromium::VmConciergeInterface,
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // File descriptor for the SIGCHLD events.
-  base::ScopedFD signal_fd_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
+  base::ScopedFD signal_fd_ GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Connection to the system bus.
   base::Thread dbus_thread_{"dbus thread"};

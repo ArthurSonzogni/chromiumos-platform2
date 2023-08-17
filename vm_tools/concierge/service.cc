@@ -1357,6 +1357,7 @@ Service::~Service() {
 }
 
 void Service::OnSignalReadable() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   struct signalfd_siginfo siginfo;
   if (read(signal_fd_.get(), &siginfo, sizeof(siginfo)) != sizeof(siginfo)) {
     PLOG(ERROR) << "Failed to read from signalfd";
