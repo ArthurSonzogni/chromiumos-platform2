@@ -78,8 +78,9 @@ constexpr char kDevModeFile[] = ".developer_mode";
 // Flag file indicating that encrypted stateful should be preserved across
 // TPM clear. If the file is present, it's expected that TPM is not owned.
 constexpr char kPreservationRequestFile[] = "preservation_request";
-// This file is created after the TPM is initialized and the device is owned.
-constexpr char kInstallAttributesFile[] = "home/.shadow/install_attributes.pb";
+// This file is created after the TPM is owned/ready and before the
+// enterprise enrollment.
+constexpr char kCryptohomeKeyFile[] = "home/.shadow/cryptohome.key";
 // File used to trigger a stateful reset. Contains arguments for the
 // clobber-state" call. This file may exist at boot time, as some use cases
 // operate by creating this file with the necessary arguments and then
@@ -195,7 +196,7 @@ bool ChromeosStartup::IsTPMOwned() {
 bool ChromeosStartup::NeedsClobberWithoutDevModeFile() {
   base::FilePath preservation_request =
       stateful_.Append(kPreservationRequestFile);
-  base::FilePath install_attrs = stateful_.Append(kInstallAttributesFile);
+  base::FilePath install_attrs = stateful_.Append(kCryptohomeKeyFile);
   struct stat statbuf;
   if (!IsTPMOwned() &&
       (!platform_->Stat(preservation_request, &statbuf) ||
