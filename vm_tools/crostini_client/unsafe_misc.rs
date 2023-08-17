@@ -27,7 +27,7 @@ pub fn get_free_disk_space<P: AsRef<Path>>(path: P) -> Result<u64, i32> {
             if statvfs64(path_cstr.as_ptr(), &mut stats) == 0 {
                 // This clippy override is needed because the type of `stats.f_frsize` is sometimes
                 // `u64` depending on the target architecture.
-                #[cfg_attr(feature = "cargo-clippy", allow(identity_conversion))]
+                #[cfg_attr(feature = "cargo-clippy", allow(clippy::useless_conversion))]
                 return Ok(stats.f_bavail.saturating_mul(u64::from(stats.f_frsize)));
             }
             errno = *__errno_location();
