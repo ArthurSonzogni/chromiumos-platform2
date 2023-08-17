@@ -112,13 +112,8 @@ class EllipticCurveTest : public testing::Test {
       return nullptr;
     }
 
-    // Capture OpenSSL error from error stack.
-    std::string error = GetOpenSSLErrors();
-    if (error.find("EC_POINT_set_affine_coordinates:point is not on curve") ==
-        std::string::npos) {
-      LOG(ERROR) << "Failed to create invalid point";
-      return nullptr;
-    }
+    // Discard the OpenSSL error from error stack.
+    GetOpenSSLErrors();
 
     // Verify that the point is not at infinity anymore, so it was indeed set,
     // but it's not on a curve.
