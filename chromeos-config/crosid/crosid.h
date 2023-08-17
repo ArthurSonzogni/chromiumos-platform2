@@ -15,9 +15,6 @@
 #define PROC_FDT_PATH "/proc/device-tree"
 #define PROC_FDT_COREBOOT_PATH PROC_FDT_PATH "/firmware/coreboot"
 #define PROC_FDT_CHROMEOS_PATH PROC_FDT_PATH "/firmware/chromeos"
-/* Path with legacy chromeos_acpi ("ACPI_CHROMEOS") driver. */
-#define SYSFS_CHROMEOS_ACPI_LEGACY_DRIVER_PATH \
-	"/sys/devices/platform/chromeos_acpi"
 /*
  * Path with current chromeos_acpi ("CHROMEOS_ACPI") driver with firmwares
  * without https://crrev.com/c/2266713.
