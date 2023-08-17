@@ -102,17 +102,6 @@ std::optional<PflashMetadata> GetPflashMetadata(
 std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
     const VmId& vm_id, const base::FilePath& start_vm_request_pflash_path);
 
-template <class T>
-bool CheckCpuCount(const T& request, StartVmResponse* response) {
-  // Check the CPU count.
-  if (request.cpus() > base::SysInfo::NumberOfProcessors()) {
-    LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
-    response->set_failure_reason("Invalid CPU count");
-    return false;
-  }
-  return true;
-}
-
 // Typical check based on the name of protocol buffer fields. Our business logic
 // usually means that VM name is stored in field called name and owner_id stored
 // in owner_id.
@@ -163,84 +152,6 @@ bool CheckVmNameAndOwner(const _RequestProto& request,
     }
   }
 
-  return true;
-}
-
-template <class T>
-bool Service::CheckExistingVm(const T& request, StartVmResponse* response) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto iter = FindVm(request.owner_id(), request.name());
-  if (iter != vms_.end()) {
-    LOG(INFO) << "VM with requested name is already running";
-
-    VmBaseImpl::Info vm = iter->second->GetInfo();
-
-    VmInfo* vm_info = response->mutable_vm_info();
-    vm_info->set_ipv4_address(vm.ipv4_address);
-    vm_info->set_pid(vm.pid);
-    vm_info->set_cid(vm.cid);
-    vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
-    vm_info->set_vm_type(ToLegacyVmType(vm.type));
-    switch (vm.status) {
-      case VmBaseImpl::Status::STARTING: {
-        response->set_status(VM_STATUS_STARTING);
-        break;
-      }
-      case VmBaseImpl::Status::RUNNING: {
-        response->set_status(VM_STATUS_RUNNING);
-        break;
-      }
-      default: {
-        response->set_status(VM_STATUS_UNKNOWN);
-        break;
-      }
-    }
-    response->set_success(true);
-
-    return false;
-  }
-  return true;
-}
-
-template <class T>
-bool Service::CheckExistingDisk(const T& request, StartVmResponse* response) {
-  VmId vm_id(request.owner_id(), request.name());
-  auto op_iter = std::find_if(
-      disk_image_ops_.begin(), disk_image_ops_.end(), [&vm_id](auto& info) {
-        return info.op->vm_id() == vm_id &&
-               info.op->status() == DISK_STATUS_IN_PROGRESS;
-      });
-  if (op_iter != disk_image_ops_.end()) {
-    LOG(INFO) << "A disk operation for the VM is in progress";
-
-    response->set_status(VM_STATUS_DISK_OP_IN_PROGRESS);
-    response->set_failure_reason("A disk operation for the VM is in progress");
-    response->set_success(false);
-
-    return false;
-  }
-  return true;
-}
-
-// Returns false if any preconditions are not met.
-template <class StartXXRequest>
-bool Service::CheckStartVmPreconditions(const StartXXRequest& request,
-                                        StartVmResponse* response) {
-  if (!CheckVmNameAndOwner(request, response)) {
-    return false;
-  }
-
-  if (!CheckCpuCount(request, response)) {
-    return false;
-  }
-
-  if (!CheckExistingVm(request, response)) {
-    return false;
-  }
-
-  if (!CheckExistingDisk(request, response)) {
-    return false;
-  }
   return true;
 }
 

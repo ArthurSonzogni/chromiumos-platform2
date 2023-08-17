@@ -27,6 +27,7 @@
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/service_common.h"
+#include "vm_tools/concierge/service_start_vm_helper.h"
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
 #include "vm_tools/concierge/vmm_swap_metrics.h"

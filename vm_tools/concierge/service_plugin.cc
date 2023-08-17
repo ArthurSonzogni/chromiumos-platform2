@@ -16,6 +16,7 @@
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/service_common.h"
+#include "vm_tools/concierge/service_start_vm_helper.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 

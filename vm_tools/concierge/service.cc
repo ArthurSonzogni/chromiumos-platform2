@@ -103,6 +103,7 @@
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/service_common.h"
+#include "vm_tools/concierge/service_start_vm_helper.h"
 #include "vm_tools/concierge/shadercached_helper.h"
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/termina_vm.h"
