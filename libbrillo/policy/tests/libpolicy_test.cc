@@ -245,7 +245,7 @@ TEST(PolicyTest, DevicePolicyWhitelistTest) {
 
   enterprise_management::ChromeDeviceSettingsProto proto =
       static_cast<const DevicePolicyImpl&>(provider.GetDevicePolicy())
-          .get_device_policy();
+          .get_device_policy_for_testing();
   proto.clear_usb_detachable_allowlist();
   ASSERT_FALSE(proto.has_usb_detachable_allowlist());
   ASSERT_TRUE(proto.has_usb_detachable_whitelist());

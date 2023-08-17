@@ -41,11 +41,6 @@ class DevicePolicyImpl : public DevicePolicy {
 
   ~DevicePolicyImpl() override;
 
-  const enterprise_management::ChromeDeviceSettingsProto& get_device_policy()
-      const {
-    return *device_policy_;
-  }
-
   const enterprise_management::PolicyFetchResponse& get_policy_fetch_response()
       const {
     return *policy_;
@@ -130,6 +125,10 @@ class DevicePolicyImpl : public DevicePolicy {
   std::optional<bool> GetDeviceReportXDREvents() const override;
 
   // Methods that can be used only for testing.
+  const enterprise_management::ChromeDeviceSettingsProto&
+  get_device_policy_for_testing() const {
+    return *device_policy_;
+  }
   void set_policy_data_for_testing(
       const enterprise_management::PolicyData& policy_data);
   void set_verify_root_ownership_for_testing(bool verify_root_ownership);
