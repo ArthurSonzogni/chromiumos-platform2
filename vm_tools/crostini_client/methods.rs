@@ -12,14 +12,15 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, IntoRawFd};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
+use std::sync::mpsc::channel;
 use std::thread::sleep;
 use std::time::Duration;
 
-use dbus::blocking;
-
 use dbus::{
     arg::OwnedFd,
-    ffidisp::{BusType, Connection, ConnectionItem},
+    blocking::{self, BlockingSender, Connection},
+    channel::MatchingReceiver,
+    message::MatchRule,
     strings::{Interface, Member},
     Message,
 };
@@ -46,8 +47,8 @@ const MY_FILES_DIR: &str = "MyFiles";
 const MNT_SHARED_ROOT: &str = "/mnt/shared";
 
 /// Round to disk block size.
-const DEFAULT_TIMEOUT_MS: i32 = 80 * 1000;
-const EXPORT_DISK_TIMEOUT_MS: i32 = 15 * 60 * 1000;
+const DEFAULT_TIMEOUT: Duration = Duration::from_millis(80 * 1000);
+const EXPORT_DISK_TIMEOUT: Duration = Duration::from_millis(15 * 60 * 1000);
 
 const DLCSERVICE_NO_IMAGE_FOUND_ERROR: &str = "org.chromium.DlcServiceInterface.NO_IMAGE_FOUND";
 
@@ -326,47 +327,64 @@ impl<'a> ProtobusSignalWatcher<'a> {
             signal: signal.to_owned().into(),
         };
         if let Some(connection) = out.connection {
-            connection.add_match(&out.format_rule())?;
+            connection.add_match_no_cb(&out.match_rule().match_str())?;
         }
         Ok(out)
     }
 
-    fn format_rule(&self) -> String {
-        format!("interface='{}',member='{}'", self.interface, self.signal)
+    fn match_rule(&self) -> MatchRule {
+        MatchRule::new_signal(&self.interface, &self.signal)
     }
 
-    fn wait<O: ProtoMessage>(&self, timeout_millis: i32) -> Result<O, Box<dyn Error>> {
-        self.wait_with_filter(timeout_millis, |_| true)
+    fn wait<O: ProtoMessage>(&self, timeout: Duration) -> Result<O, Box<dyn Error>> {
+        self.wait_with_filter(timeout, |_| true)
     }
 
-    fn wait_with_filter<O, F>(&self, timeout_millis: i32, predicate: F) -> Result<O, Box<dyn Error>>
+    fn wait_with_filter<O, F>(&self, timeout: Duration, predicate: F) -> Result<O, Box<dyn Error>>
     where
         O: ProtoMessage,
         F: Fn(&O) -> bool,
     {
-        let connection = match self.connection.as_ref() {
+        let connection = match self.connection {
             Some(c) => c,
             None => return Err("waiting for items on mocked connections is not implemented".into()),
         };
-        for item in connection.iter(timeout_millis) {
-            match item {
-                ConnectionItem::Signal(message) => {
-                    if let (Some(msg_interface), Some(msg_signal)) =
-                        (message.interface(), message.member())
-                    {
-                        if msg_interface == self.interface && msg_signal == self.signal {
-                            let proto_message: O = dbus_message_to_proto(&message)?;
-                            if predicate(&proto_message) {
-                                return Ok(proto_message);
-                            }
-                        }
-                    }
-                }
-                ConnectionItem::Nothing => break,
-                _ => {}
+
+        // Need a channel to get a result out of the 'static life-time callback of start_receive
+        let (sender, receiver) = channel();
+
+        let callback_token = connection.start_receive(
+            self.match_rule().static_clone(),
+            Box::new(move |message: Message, _: &Connection| {
+                sender
+                    .send(
+                        dbus_message_to_proto(&message)
+                            .map_err(|e| format!("Failed to parse a protobuf: {e:#?}")),
+                    )
+                    .expect("Failed to pass a proto via a channel");
+                true
+            }),
+        );
+
+        let result = loop {
+            if !connection.process(timeout)? {
+                break Err("timeout while waiting for a signal".into());
+            }
+            let proto_message = match receiver.try_recv() {
+                Ok(proto_message) => proto_message?,
+                // There's no message when we received a non-matching dbus message
+                Err(std::sync::mpsc::TryRecvError::Empty) => continue,
+                Err(e) => break Err(format!("Failed to receive a message: {e:#?}").into()),
             };
-        }
-        Err("timeout while waiting for signal".into())
+            if predicate(&proto_message) {
+                break Ok(proto_message);
+            }
+        };
+        connection
+            .remove_match(callback_token)
+            .map_err(|_| "Failed to remove a signal callback")?;
+
+        result
     }
 }
 
@@ -374,7 +392,7 @@ impl Drop for ProtobusSignalWatcher<'_> {
     fn drop(&mut self) {
         if let Some(connection) = self.connection {
             connection
-                .remove_match(&self.format_rule())
+                .remove_match_no_cb(&self.match_rule().match_str())
                 .expect("unable to remove match rule on protobus");
         }
     }
@@ -414,7 +432,7 @@ impl ConnectionProxy {
     fn send_with_reply_and_block(
         &self,
         msg: Message,
-        timeout_millis: i32,
+        timeout: Duration,
     ) -> Result<Message, dbus::Error> {
         let mut filtered_msg = match &self.filter {
             Some(filter) => match filter(msg) {
@@ -424,7 +442,7 @@ impl ConnectionProxy {
             None => msg,
         };
         match &self.connection {
-            Some(connection) => connection.send_with_reply_and_block(filtered_msg, timeout_millis),
+            Some(connection) => connection.send_with_reply_and_block(filtered_msg, timeout),
             None => {
                 // A serial number is required to assign to the method return message.
                 filtered_msg.set_serial(1);
@@ -507,7 +525,7 @@ pub struct Methods {
 impl Methods {
     /// Initiates a D-Bus connection and returns an initialized `Methods`.
     pub fn new() -> Result<Methods, Box<dyn Error>> {
-        let connection = Connection::get_private(BusType::System)?;
+        let connection = Connection::new_system()?;
         Ok(Methods {
             connection: connection.into(),
             crostini_enabled: None,
@@ -534,7 +552,7 @@ impl Methods {
         message: Message,
         request: &I,
     ) -> Result<O, Box<dyn Error>> {
-        self.sync_protobus_timeout(message, request, &[], DEFAULT_TIMEOUT_MS)
+        self.sync_protobus_timeout(message, request, &[], DEFAULT_TIMEOUT)
     }
 
     /// Helper for doing protobuf over dbus requests and responses.
@@ -543,12 +561,10 @@ impl Methods {
         message: Message,
         request: &I,
         fds: &[OwnedFd],
-        timeout_millis: i32,
+        timeout: Duration,
     ) -> Result<O, Box<dyn Error>> {
         let method = message.append1(request.write_to_bytes()?).append_ref(fds);
-        let message = self
-            .connection
-            .send_with_reply_and_block(method, timeout_millis)?;
+        let message = self.connection.send_with_reply_and_block(method, timeout)?;
         dbus_message_to_proto(&message)
     }
 
@@ -556,10 +572,10 @@ impl Methods {
         &mut self,
         interface: &str,
         signal: &str,
-        timeout_millis: i32,
+        timeout: Duration,
     ) -> Result<O, Box<dyn Error>> {
         ProtobusSignalWatcher::new(self.connection.connection.as_ref(), interface, signal)?
-            .wait(timeout_millis)
+            .wait(timeout)
     }
 
     fn get_dlc_state(&mut self, name: &str) -> Result<DlcState, Box<dyn Error>> {
@@ -573,7 +589,7 @@ impl Methods {
 
         let message = self
             .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)
             .map_err(|e| FailedDlcInstall(name.to_owned(), e.to_string()))?;
 
         let response: DlcState = dbus_message_to_proto(&message)
@@ -592,7 +608,7 @@ impl Methods {
         .append1(name);
 
         self.connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)
             .map_err(|e| FailedDlcInstall(name.to_owned(), e.to_string()))?;
 
         Ok(())
@@ -646,7 +662,7 @@ impl Methods {
 
         let message = self
             .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
         let (enabled, reason): (Option<bool>, Option<String>) = message.get2();
         match enabled {
             Some(true) => Ok(VmTypeStatus::Enabled),
@@ -735,7 +751,7 @@ impl Methods {
         )?;
 
         self.connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
 
         Ok(())
     }
@@ -757,7 +773,7 @@ impl Methods {
 
         let message = self
             .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
         match message.get1() {
             Some(true) => Ok(()),
             _ => Err(BadVmPluginDispatcherStatus.into()),
@@ -914,7 +930,7 @@ impl Methods {
 
         let message = self
             .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
 
         let response: CreateDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status.enum_value() {
@@ -1019,7 +1035,7 @@ impl Methods {
 
         let message = self
             .connection
-            .send_with_reply_and_block(method, EXPORT_DISK_TIMEOUT_MS)?;
+            .send_with_reply_and_block(method, EXPORT_DISK_TIMEOUT)?;
 
         let response: ExportDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status.enum_value() {
@@ -1097,7 +1113,7 @@ impl Methods {
 
         let message = self
             .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
 
         let response: ImportDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status.enum_value() {
@@ -1192,7 +1208,7 @@ impl Methods {
             let response: DiskImageStatusResponse = self.protobus_wait_for_signal_timeout(
                 VM_CONCIERGE_INTERFACE,
                 DISK_IMAGE_PROGRESS_SIGNAL,
-                DEFAULT_TIMEOUT_MS,
+                DEFAULT_TIMEOUT,
             )?;
 
             if response.command_uuid == uuid {
@@ -1436,9 +1452,9 @@ impl Methods {
             .collect();
 
         let tremplin_timeout = if features.timeout == 0 {
-            DEFAULT_TIMEOUT_MS
+            DEFAULT_TIMEOUT
         } else {
-            features.timeout as i32 * 1_000
+            Duration::from_secs(features.timeout.into())
         };
 
         // Send a protobuf request with the FDs.
@@ -1492,7 +1508,7 @@ impl Methods {
             Ok(STARTING) => {
                 use self::start_lxd_progress_signal::Status::*;
                 let signal = lxd_started.wait_with_filter(
-                    DEFAULT_TIMEOUT_MS,
+                    DEFAULT_TIMEOUT,
                     |s: &StartLxdProgressSignal| {
                         s.vm_name == vm_name
                             && s.owner_id == user_id_hash
@@ -1718,7 +1734,9 @@ impl Methods {
         request.container_name = container_name.to_owned();
         request.owner_id = user_id_hash.to_owned();
 
-        let timeout = timeout.map(|x| x * 1_000).unwrap_or(DEFAULT_TIMEOUT_MS);
+        let timeout = timeout
+            .map(|x| Duration::from_secs(x.try_into().expect("timeout should not be negative")))
+            .unwrap_or(DEFAULT_TIMEOUT);
         match source {
             ContainerSource::ImageServer {
                 image_alias,
@@ -1781,7 +1799,9 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.privilege_level = privilege_level.into();
 
-        let timeout = timeout.map(|x| x * 1_000).unwrap_or(DEFAULT_TIMEOUT_MS);
+        let timeout = timeout
+            .map(|x| Duration::from_secs(x.try_into().expect("timeout should not be negative")))
+            .unwrap_or(DEFAULT_TIMEOUT);
 
         let response: StartLxdContainerResponse = self.sync_protobus(
             Message::new_method_call(
@@ -1913,7 +1933,7 @@ impl Methods {
             )?,
             &request,
             &[usb_fd],
-            DEFAULT_TIMEOUT_MS,
+            DEFAULT_TIMEOUT,
         )?;
 
         if !response.success {
@@ -2018,7 +2038,7 @@ impl Methods {
 
         let message = self
             .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)
             .map_err(FailedOpenPath)?;
 
         message
@@ -2107,7 +2127,7 @@ impl Methods {
         )?;
         let message = self
             .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT_MS)?;
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
         match message.get1::<HashMap<String, String>>() {
             Some(sessions) => Ok(sessions.into_iter().collect()),
             _ => Err(RetrieveActiveSessions.into()),
@@ -2582,13 +2602,13 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.name = vm_name.to_owned();
 
-        let conn = blocking::Connection::new_system()?;
+        let conn = Connection::new_system()?;
 
-        let proxy: blocking::Proxy<'_, _> = blocking::Connection::with_proxy(
+        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
             &conn,
             VM_CONCIERGE_SERVICE_NAME,
             VM_CONCIERGE_SERVICE_PATH,
-            Duration::from_millis(DEFAULT_TIMEOUT_MS.try_into().unwrap()),
+            DEFAULT_TIMEOUT,
         );
 
         let response: GetVmLogsResponse =
