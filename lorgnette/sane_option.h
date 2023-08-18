@@ -11,6 +11,8 @@
 
 #include <sane/sane.h>
 
+#include "lorgnette/sane_constraint.h"
+
 namespace lorgnette {
 
 // Represents a SANE_Option_Descriptor and its current value.
@@ -50,24 +52,25 @@ class SaneOption {
   std::string DisplayValue() const;
   SANE_Value_Type GetType() const;
   size_t GetSize() const;
+  std::optional<SaneConstraint> GetConstraint() const;
+
+  // Wrapper functions to process the embedded constraint.
+  std::optional<std::vector<std::string>> GetValidStringValues() const;
+  std::optional<std::vector<uint32_t>> GetValidIntValues() const;
+  std::optional<OptionRange> GetValidRange() const;
 
  private:
   std::string name_;
   int index_;
   SANE_Value_Type type_;  // The type that the backend uses for the option.
   bool active_;           // Inactive options don't contain a value.
+  std::optional<SaneConstraint> constraint_;
 
   // Only one of these will be set, depending on type_.
   std::optional<std::vector<SANE_Int>> int_data_;
   std::optional<std::vector<SANE_Fixed>> fixed_data_;
   SANE_Bool bool_data_;
   std::optional<std::vector<SANE_Char>> string_data_;
-};
-
-// Represents the possible values for an option.
-struct OptionRange {
-  double start;
-  double size;
 };
 
 }  // namespace lorgnette

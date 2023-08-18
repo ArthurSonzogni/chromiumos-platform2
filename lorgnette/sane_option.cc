@@ -110,6 +110,7 @@ SaneOption::SaneOption(const SANE_Option_Descriptor& opt, int index) {
   index_ = index;
   type_ = opt.type;
   active_ = SANE_OPTION_IS_ACTIVE(opt.cap);
+  constraint_ = SaneConstraint::Create(opt);
 
   size_t size = 0;
   switch (type_) {
@@ -468,6 +469,34 @@ std::string SaneOption::DisplayValue() const {
     default:
       return "[invalid]";
   }
+}
+
+std::optional<std::vector<std::string>> SaneOption::GetValidStringValues()
+    const {
+  if (!constraint_.has_value()) {
+    LOG(ERROR) << __func__ << ": No valid constraint in option " << name_
+               << " at index " << index_;
+    return std::nullopt;
+  }
+  return constraint_->GetValidStringOptionValues();
+}
+
+std::optional<std::vector<uint32_t>> SaneOption::GetValidIntValues() const {
+  if (!constraint_.has_value()) {
+    LOG(ERROR) << __func__ << ": No valid constraint in option " << name_
+               << " at index " << index_;
+    return std::nullopt;
+  }
+  return constraint_->GetValidIntOptionValues();
+}
+
+std::optional<OptionRange> SaneOption::GetValidRange() const {
+  if (!constraint_.has_value()) {
+    LOG(ERROR) << __func__ << ": No valid constraint in option " << name_
+               << " at index " << index_;
+    return std::nullopt;
+  }
+  return constraint_->GetOptionRange();
 }
 
 }  // namespace lorgnette

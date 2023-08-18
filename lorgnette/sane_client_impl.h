@@ -20,6 +20,7 @@
 #include <sane/sane.h>
 
 #include "lorgnette/sane_client.h"
+#include "lorgnette/sane_constraint.h"
 #include "lorgnette/sane_option.h"
 
 namespace lorgnette {
@@ -77,15 +78,6 @@ class SaneDeviceImpl : public SaneDevice {
                            size_t count,
                            size_t* read_out) override;
   bool CancelScan(brillo::ErrorPtr* error) override;
-
-  static std::optional<std::vector<std::string>> GetValidStringOptionValues(
-      brillo::ErrorPtr* error, const SANE_Option_Descriptor& opt);
-
-  static std::optional<std::vector<uint32_t>> GetValidIntOptionValues(
-      brillo::ErrorPtr* error, const SANE_Option_Descriptor& opt);
-
-  static std::optional<OptionRange> GetOptionRange(
-      brillo::ErrorPtr* error, const SANE_Option_Descriptor& opt);
 
  private:
   friend class SaneDeviceImplTest;

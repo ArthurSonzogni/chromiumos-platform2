@@ -178,21 +178,14 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
   values.resolutions = std::move(resolutions.value());
 
   if (options_.count(kSource) != 0) {
-    int index = options_.at(kSource).GetIndex();
-    const SANE_Option_Descriptor* descriptor =
-        sane_get_option_descriptor(handle_, index);
-    if (!descriptor) {
+    const SaneOption& option = options_.at(kSource);
+    std::optional<std::vector<std::string>> source_names =
+        option.GetValidStringValues();
+    if (!source_names.has_value()) {
       brillo::Error::AddToPrintf(
           error, FROM_HERE, kDbusDomain, kManagerServiceError,
-          "Unable to get source option at index %d", index);
-      return std::nullopt;
-    }
-
-    std::optional<std::vector<std::string>> source_names =
-        GetValidStringOptionValues(error, *descriptor);
-    if (!source_names.has_value()) {
-      brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                           "Failed to get valid values for sources setting");
+          "Failed to get valid values for sources setting from option %s",
+          option.GetName().c_str());
       return std::nullopt;
     }
 
@@ -487,81 +480,6 @@ bool SaneDeviceImpl::CancelScan(brillo::ErrorPtr* error) {
   return true;
 }
 
-// static
-std::optional<std::vector<std::string>>
-SaneDeviceImpl::GetValidStringOptionValues(brillo::ErrorPtr* error,
-                                           const SANE_Option_Descriptor& opt) {
-  if (opt.constraint_type != SANE_CONSTRAINT_STRING_LIST) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Invalid option constraint type %d", opt.constraint_type);
-    return std::nullopt;
-  }
-
-  std::vector<std::string> values;
-  for (int i = 0; opt.constraint.string_list[i]; i++) {
-    values.push_back(opt.constraint.string_list[i]);
-  }
-
-  return values;
-}
-
-// static
-std::optional<std::vector<uint32_t>> SaneDeviceImpl::GetValidIntOptionValues(
-    brillo::ErrorPtr* error, const SANE_Option_Descriptor& opt) {
-  std::vector<uint32_t> values;
-  if (opt.constraint_type == SANE_CONSTRAINT_WORD_LIST) {
-    int num_values = opt.constraint.word_list[0];
-    for (int i = 1; i <= num_values; i++) {
-      SANE_Word w = opt.constraint.word_list[i];
-      int value = opt.type == SANE_TYPE_FIXED ? SANE_UNFIX(w) : w;
-      values.push_back(value);
-    }
-  } else if (opt.constraint_type == SANE_CONSTRAINT_RANGE) {
-    const SANE_Range* range = opt.constraint.range;
-    for (int i = range->min; i <= range->max; i += range->quant) {
-      const int value = opt.type == SANE_TYPE_FIXED ? SANE_UNFIX(i) : i;
-      values.push_back(value);
-    }
-  } else {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Invalid option constraint type %d", opt.constraint_type);
-    return std::nullopt;
-  }
-
-  return values;
-}
-
-// static
-std::optional<OptionRange> SaneDeviceImpl::GetOptionRange(
-    brillo::ErrorPtr* error, const SANE_Option_Descriptor& opt) {
-  if (opt.constraint_type != SANE_CONSTRAINT_RANGE) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Expected range constraint for option %s", opt.name);
-    return std::nullopt;
-  }
-
-  OptionRange option_range;
-  const SANE_Range* range = opt.constraint.range;
-  switch (opt.type) {
-    case SANE_TYPE_INT:
-      option_range.start = range->min;
-      option_range.size = range->max - range->min;
-      return option_range;
-    case SANE_TYPE_FIXED:
-      option_range.start = SANE_UNFIX(range->min);
-      option_range.size = SANE_UNFIX(range->max - range->min);
-      return option_range;
-    default:
-      brillo::Error::AddToPrintf(
-          error, FROM_HERE, kDbusDomain, kManagerServiceError,
-          "Unexpected option type %d for option %s", opt.type, opt.name);
-      return std::nullopt;
-  }
-}
-
 SaneDeviceImpl::SaneDeviceImpl(SANE_Handle handle,
                                const std::string& name,
                                std::shared_ptr<DeviceSet> open_devices)
@@ -728,22 +646,12 @@ std::optional<double> SaneDeviceImpl::GetOptionOffset(
     return std::nullopt;
   }
 
-  int index = options_.at(option).GetIndex();
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, index);
-  if (!descriptor) {
-    brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
-                               kManagerServiceError,
-                               "Unable to get option %s at index %d",
-                               OptionDisplayName(option), index);
-    return std::nullopt;
-  }
-
-  std::optional<OptionRange> range = GetOptionRange(error, *descriptor);
+  const SaneOption& sane_opt = options_.at(option);
+  std::optional<OptionRange> range = sane_opt.GetValidRange();
   if (!range.has_value()) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Failed to get range for %s option.", descriptor->name);
+        "Failed to get range for option: %s", sane_opt.GetName().c_str());
     return std::nullopt;
   }
 
@@ -825,21 +733,13 @@ std::optional<std::vector<uint32_t>> SaneDeviceImpl::GetResolutions(
     return std::nullopt;
   }
 
-  int index = options_.at(kResolution).GetIndex();
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, index);
-  if (!descriptor) {
+  const SaneOption& option = options_.at(kResolution);
+  std::optional<std::vector<uint32_t>> resolutions = option.GetValidIntValues();
+  if (!resolutions.has_value()) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Unable to get resolution option at index %d", index);
-    return std::nullopt;
-  }
-
-  std::optional<std::vector<uint32_t>> resolutions =
-      GetValidIntOptionValues(error, *descriptor);
-  if (!resolutions.has_value()) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Failed to get valid values for resolution setting");
+        "Failed to get valid values for resolution setting from %s",
+        option.GetName().c_str());
     return std::nullopt;
   }
   return resolutions.value();
@@ -853,22 +753,15 @@ std::optional<std::vector<std::string>> SaneDeviceImpl::GetColorModes(
     return std::nullopt;
   }
 
-  int index = options_.at(kScanMode).GetIndex();
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, index);
-  if (!descriptor) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Unable to get scan mode option at index %d", index);
-    return std::nullopt;
-  }
-
+  const SaneOption& option = options_.at(kScanMode);
   std::optional<std::vector<std::string>> color_modes =
-      GetValidStringOptionValues(error, *descriptor);
+      option.GetValidStringValues();
 
   if (!color_modes.has_value()) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Failed to get valid values for scan modes setting");
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Failed to get valid values for scan modes setting from %s",
+        option.GetName().c_str());
     return std::nullopt;
   }
   return color_modes.value();
@@ -911,23 +804,19 @@ std::optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
 }
 
 std::optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
-  int index;
+  ScanOption which_option;
   if (base::Contains(options_, kPageWidth)) {
-    index = options_.at(kPageWidth).GetIndex();
+    which_option = kPageWidth;
   } else {
-    index = options_.at(kTopLeftX).GetIndex();
-  }
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, index);
-  if (!descriptor) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Unable to get top-left X option at index %d", index);
-    return std::nullopt;
+    which_option = kTopLeftX;
   }
 
-  std::optional<OptionRange> x_range = GetOptionRange(error, *descriptor);
+  const SaneOption& option = options_.at(which_option);
+  std::optional<OptionRange> x_range = option.GetValidRange();
   if (!x_range.has_value()) {
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Invalid top-left X constraint in option %s", option.GetName().c_str());
     return std::nullopt;
   }
 
@@ -935,24 +824,21 @@ std::optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
 }
 
 std::optional<OptionRange> SaneDeviceImpl::GetYRange(brillo::ErrorPtr* error) {
-  int index;
+  ScanOption which_option;
   if (base::Contains(options_, kPageHeight)) {
-    index = options_.at(kPageHeight).GetIndex();
+    which_option = kPageHeight;
   } else {
-    index = options_.at(kBottomRightY).GetIndex();
-  }
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, index);
-  if (!descriptor) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Unable to get bottom-right Y option at index %d", index);
-    return std::nullopt;
+    which_option = kBottomRightY;
   }
 
-  std::optional<OptionRange> y_range = GetOptionRange(error, *descriptor);
+  const SaneOption& option = options_.at(which_option);
+  std::optional<OptionRange> y_range = option.GetValidRange();
   if (!y_range.has_value()) {
-    return std::nullopt;  // brillo::Error::AddTo already called.
+    brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
+                               kManagerServiceError,
+                               "Invalid bottom-right Y constraint in option %s",
+                               option.GetName().c_str());
+    return std::nullopt;
   }
 
   return y_range;
