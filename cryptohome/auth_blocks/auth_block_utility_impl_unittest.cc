@@ -25,6 +25,7 @@
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
 #include <libhwsec-foundation/crypto/rsa.h>
@@ -110,6 +111,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
             hwsec_factory_.GetRecoveryCryptoFrontend()),
         crypto_(&hwsec_,
                 &pinweaver_,
+                &hwsec_pw_manager_,
                 &cryptohome_keys_manager_,
                 recovery_crypto_fake_backend_.get()),
         fp_service_(AsyncInitPtr<FingerprintManager>(&fp_manager_),
@@ -180,6 +182,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
       recovery_crypto_fake_backend_;

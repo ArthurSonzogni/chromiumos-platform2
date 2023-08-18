@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
@@ -118,7 +119,11 @@ std::string HexDecode(const std::string& hex) {
 class VaultKeysetTest : public ::testing::Test {
  public:
   VaultKeysetTest()
-      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {}
+      : crypto_(&hwsec_,
+                &pinweaver_,
+                &hwsec_pw_manager_,
+                &cryptohome_keys_manager_,
+                nullptr) {}
   VaultKeysetTest(const VaultKeysetTest&) = delete;
   VaultKeysetTest& operator=(const VaultKeysetTest&) = delete;
 
@@ -142,6 +147,7 @@ class VaultKeysetTest : public ::testing::Test {
   MockPlatform platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
 };
@@ -1071,7 +1077,11 @@ TEST_F(VaultKeysetTest, TpmEccAuthBlockTypeToVKFlagHasValues) {
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
   LeCredentialsManagerTest()
-      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {
+      : crypto_(&hwsec_,
+                &pinweaver_,
+                &hwsec_pw_manager_,
+                &cryptohome_keys_manager_,
+                nullptr) {
     EXPECT_CALL(cryptohome_keys_manager_, Init())
         .WillOnce(Return());  // because HasCryptohomeKey returned false once.
 
@@ -1109,6 +1119,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
   MockPlatform platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
   MockLECredentialManager* le_cred_manager_;
@@ -1131,8 +1142,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
   FakeFeaturesForTesting features;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(features.async,
-                                                         crypto_.le_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
+      features.async, crypto_.le_manager(), &hwsec_pw_manager_);
 
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)),
                           false,
@@ -1172,8 +1183,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
   brillo::SecureBlob reset_seed = CreateSecureRandomBlob(kAesBlockSize);
 
   FakeFeaturesForTesting features;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(features.async,
-                                                         crypto_.le_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
+      features.async, crypto_.le_manager(), crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {brillo::SecureBlob(44, 'A'),
                           false,
@@ -1199,8 +1210,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
   FakeFeaturesForTesting features;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(features.async,
-                                                         crypto_.le_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
+      features.async, crypto_.le_manager(), crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {
       brillo::SecureBlob(44, 'A'),   false, Username("unused"),
@@ -1232,8 +1243,8 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
   vk.InitializeFromSerialized(serialized);
 
   FakeFeaturesForTesting features;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(features.async,
-                                                         crypto_.le_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
+      features.async, crypto_.le_manager(), crypto_.GetPinWeaverManager());
 
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::optional<AuthBlock::SuggestedAction>>

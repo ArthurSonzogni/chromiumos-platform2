@@ -965,6 +965,13 @@ class UserDataAuth {
   // The object for accessing the pinweaver related functions.
   const hwsec::PinWeaverFrontend* pinweaver_;
 
+  // The default object for accessing the pinweaver managerrelated functions.
+  std::unique_ptr<const hwsec::PinWeaverManagerFrontend>
+      default_hwsec_pw_manager_;
+
+  // The object for accessing the pinweaver manager related functions.
+  const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager_;
+
   // The default object for accessing the recovery crypto related functions.
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend> default_recovery_crypto_;
 

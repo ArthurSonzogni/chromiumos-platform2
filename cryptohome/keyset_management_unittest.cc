@@ -26,6 +26,7 @@
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -110,7 +111,11 @@ using CreateTestFuture = TestFuture<CryptohomeStatus,
 class KeysetManagementTest : public ::testing::Test {
  public:
   KeysetManagementTest()
-      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {
+      : crypto_(&hwsec_,
+                &pinweaver_,
+                &hwsec_pw_manager_,
+                &cryptohome_keys_manager_,
+                nullptr) {
     CHECK(temp_dir_.CreateUniqueTempDir());
   }
 
@@ -155,6 +160,7 @@ class KeysetManagementTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
   FileSystemKeyset file_system_keyset_;
@@ -717,8 +723,8 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
 
   // Setup pin credentials.
   FakeFeaturesForTesting features;
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(features.async,
-                                                         crypto_.le_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
+      features.async, crypto_.le_manager(), &hwsec_pw_manager_);
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,

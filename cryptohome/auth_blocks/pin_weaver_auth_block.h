@@ -33,11 +33,14 @@ class PinWeaverAuthBlock : public AuthBlock {
   static constexpr auto kType = AuthBlockType::kPinWeaver;
   using StateType = PinWeaverAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
-  static std::unique_ptr<AuthBlock> New(AsyncInitFeatures& features,
-                                        LECredentialManager* le_manager);
+  static std::unique_ptr<AuthBlock> New(
+      AsyncInitFeatures& features,
+      LECredentialManager* le_manager,
+      const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager);
 
   PinWeaverAuthBlock(AsyncInitFeatures& features,
-                     LECredentialManager* le_manager);
+                     LECredentialManager* le_manager,
+                     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager);
 
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
@@ -61,6 +64,7 @@ class PinWeaverAuthBlock : public AuthBlock {
   AsyncInitFeatures* features_;
   // Handler for Low Entropy credentials.
   LECredentialManager* le_manager_;
+  const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
 };
 
 }  // namespace cryptohome

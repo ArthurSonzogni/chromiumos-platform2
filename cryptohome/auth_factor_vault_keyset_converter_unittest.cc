@@ -67,8 +67,12 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
  public:
   AuthFactorVaultKeysetConverterTest()
       : pinweaver_(tpm2_factory_.GetPinWeaverFrontend()),
-        crypto_(&hwsec_, pinweaver_.get(), &cryptohome_keys_manager_, nullptr) {
-  }
+        hwsec_pw_manager_(tpm2_factory_.GetPinWeaverManagerFrontend()),
+        crypto_(&hwsec_,
+                pinweaver_.get(),
+                hwsec_pw_manager_.get(),
+                &cryptohome_keys_manager_,
+                nullptr) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -110,6 +114,7 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   hwsec::Tpm2SimulatorFactoryForTest tpm2_factory_;
   std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver_;
+  std::unique_ptr<const hwsec::PinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
   FileSystemKeyset file_system_keyset_;

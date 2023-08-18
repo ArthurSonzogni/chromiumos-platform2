@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -85,7 +86,11 @@ MakeTestVerifier(std::string label) {
 class RealUserSessionTest : public ::testing::Test {
  public:
   RealUserSessionTest()
-      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {}
+      : crypto_(&hwsec_,
+                &pinweaver_,
+                &hwsec_pw_manager_,
+                &cryptohome_keys_manager_,
+                nullptr) {}
 
   // Not copyable or movable
   RealUserSessionTest(const RealUserSessionTest&) = delete;
@@ -142,6 +147,7 @@ class RealUserSessionTest : public ::testing::Test {
   std::vector<UserInfo> users_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;

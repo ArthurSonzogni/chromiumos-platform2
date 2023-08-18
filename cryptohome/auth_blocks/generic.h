@@ -12,6 +12,7 @@
 
 #include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
@@ -160,6 +161,7 @@ class GenericAuthBlockFunctions {
                                           crypto->le_manager(),
                                           *crypto->GetHwsec(),
                                           *crypto->GetRecoveryCrypto(),
+                                          *crypto->GetPinWeaverManager(),
                                           *crypto->cryptohome_keys_manager())) {
   }
 
@@ -207,6 +209,7 @@ class GenericAuthBlockFunctions {
              LECredentialManager*,
              const hwsec::CryptohomeFrontend&,
              const hwsec::RecoveryCryptoFrontend&,
+             const hwsec::PinWeaverManagerFrontend&,
              CryptohomeKeysManager&>
       parameters_;
 };

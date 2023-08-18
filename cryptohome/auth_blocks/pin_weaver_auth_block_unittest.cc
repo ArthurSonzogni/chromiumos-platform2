@@ -16,6 +16,7 @@
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/rsa.h>
@@ -75,14 +76,15 @@ using DeriveTestFuture = TestFuture<CryptohomeStatus,
 class PinWeaverAuthBlockTest : public ::testing::Test {
  public:
   void SetUp() override {
-    auth_block_ = std::make_unique<PinWeaverAuthBlock>(features_.async,
-                                                       &le_cred_manager_);
+    auth_block_ = std::make_unique<PinWeaverAuthBlock>(
+        features_.async, &le_cred_manager_, &hwsec_pw_manager_);
   }
 
  protected:
   base::test::TaskEnvironment task_environment_;
 
   NiceMock<MockLECredentialManager> le_cred_manager_;
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   FakeFeaturesForTesting features_;
   std::unique_ptr<PinWeaverAuthBlock> auth_block_;
 };

@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -66,10 +67,11 @@ class AuthFactorDriverGenericTest : public ::testing::Test {
   // A mock-based Crypto object, a common dependency for a lot of drivers.
   hwsec::MockCryptohomeFrontend hwsec_;
   hwsec::MockPinWeaverFrontend pinweaver_;
+  hwsec::MockPinWeaverManagerFrontend hwsec_pw_manager_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;
   hwsec::MockRecoveryCryptoFrontend recovery_frontend_;
-  Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_,
-                 &recovery_frontend_};
+  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
+                 &cryptohome_keys_manager_, &recovery_frontend_};
 };
 
 }  // namespace cryptohome

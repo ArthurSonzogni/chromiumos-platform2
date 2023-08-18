@@ -98,7 +98,8 @@ bool IsRevocationSupported(const hwsec::CryptohomeFrontend* hwsec) {
   return enabled.ok() && *enabled;
 }
 
-CryptoStatus Create(LECredentialManager* le_manager,
+CryptoStatus Create(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
+                    LECredentialManager* le_manager,
                     RevocationState* revocation_state,
                     KeyBlobs* key_blobs) {
   CHECK(le_manager);
@@ -180,7 +181,8 @@ CryptoStatus Create(LECredentialManager* le_manager,
   return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoStatus Derive(LECredentialManager* le_manager,
+CryptoStatus Derive(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
+                    LECredentialManager* le_manager,
                     const RevocationState& revocation_state,
                     KeyBlobs* key_blobs) {
   CHECK(le_manager);
@@ -252,6 +254,7 @@ CryptoStatus Derive(LECredentialManager* le_manager,
 }
 
 CryptoStatus Revoke(AuthBlockType auth_block_type,
+                    const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
                     LECredentialManager* le_manager,
                     const RevocationState& revocation_state) {
   CHECK(le_manager);

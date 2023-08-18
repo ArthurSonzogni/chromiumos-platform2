@@ -308,6 +308,9 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       hwsec_simulator_factory_.GetCryptohomeFrontend();
   std::unique_ptr<const hwsec::PinWeaverFrontend> hwsec_pinweaver_frontend_ =
       hwsec_simulator_factory_.GetPinWeaverFrontend();
+  std::unique_ptr<const hwsec::PinWeaverManagerFrontend>
+      hwsec_pinweaver_manager_frontend =
+          hwsec_simulator_factory_.GetPinWeaverManagerFrontend();
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
       hwsec_recovery_crypto_frontend_ =
           hwsec_simulator_factory_.GetRecoveryCryptoFrontend();
@@ -320,9 +323,10 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   FakePlatform platform_;
   CryptohomeKeysManager cryptohome_keys_manager_{
       hwsec_cryptohome_frontend_.get(), &platform_};
-  Crypto crypto_{hwsec_cryptohome_frontend_.get(),
-                 hwsec_pinweaver_frontend_.get(), &cryptohome_keys_manager_,
-                 hwsec_recovery_crypto_frontend_.get()};
+  Crypto crypto_{
+      hwsec_cryptohome_frontend_.get(), hwsec_pinweaver_frontend_.get(),
+      hwsec_pinweaver_manager_frontend.get(), &cryptohome_keys_manager_,
+      hwsec_recovery_crypto_frontend_.get()};
   UserSessionMap user_session_map_;
   KeysetManagement keyset_management_{&platform_, &crypto_,
                                       std::make_unique<VaultKeysetFactory>()};

@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
@@ -214,7 +215,11 @@ void MockOwnerUser(const std::string& username, MockHomeDirs& homedirs) {
 class AuthSessionInterfaceTestBase : public ::testing::Test {
  public:
   AuthSessionInterfaceTestBase()
-      : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {
+      : crypto_(&hwsec_,
+                &pinweaver_,
+                &hwsec_pw_manager_,
+                &cryptohome_keys_manager_,
+                nullptr) {
     SetUpHWSecExpectations();
     MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
     crypto_.set_le_manager_for_testing(
@@ -284,6 +289,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   Crypto crypto_;
   NiceMock<MockUserSessionFactory> user_session_factory_;
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{

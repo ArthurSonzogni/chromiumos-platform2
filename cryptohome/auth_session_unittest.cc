@@ -30,6 +30,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
@@ -285,8 +286,10 @@ class AuthSessionTest : public ::testing::Test {
   // Mocks and fakes for the test AuthSessions to use.
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr};
+  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
+                 &cryptohome_keys_manager_, nullptr};
   NiceMock<MockPlatform> platform_;
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;

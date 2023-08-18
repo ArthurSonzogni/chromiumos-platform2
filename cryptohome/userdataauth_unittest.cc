@@ -37,6 +37,7 @@
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
@@ -316,6 +317,10 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock pinweaver object, will be passed to UserDataAuth for its internal use.
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
 
+  // Mock pinweaver manager object, will be passed to UserDataAuth for its
+  // internal use.
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
+
   // Mock recovery crypto object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<hwsec::MockRecoveryCryptoFrontend> recovery_crypto_;
@@ -325,8 +330,8 @@ class UserDataAuthTestBase : public ::testing::Test {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
 
   // Fake Crypto object, will be passed to UserDataAuth for its internal use.
-  Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_,
-                 &recovery_crypto_};
+  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
+                 &cryptohome_keys_manager_, &recovery_crypto_};
 
   // Mock chaps token manager client, will be passed to UserDataAuth for its
   // internal use.

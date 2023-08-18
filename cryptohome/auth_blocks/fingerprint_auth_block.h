@@ -32,7 +32,8 @@ class FingerprintAuthBlock : public AuthBlock {
   static std::unique_ptr<AuthBlock> New(
       Crypto& crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 
-  FingerprintAuthBlock(LECredentialManager* le_manager,
+  FingerprintAuthBlock(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
+                       LECredentialManager* le_manager,
                        BiometricsAuthBlockService* service);
 
   FingerprintAuthBlock(const FingerprintAuthBlock&) = delete;
@@ -86,6 +87,7 @@ class FingerprintAuthBlock : public AuthBlock {
   // Check whether the rate-limiter leaf is locked-out currently.
   bool IsLocked(uint64_t label);
 
+  const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
   LECredentialManager* le_manager_;
   BiometricsAuthBlockService* service_;
   base::WeakPtrFactory<FingerprintAuthBlock> weak_factory_{this};

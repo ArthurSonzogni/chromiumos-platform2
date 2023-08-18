@@ -79,9 +79,15 @@ std::vector<hwsec::OperationPolicySetting> GetValidPoliciesOfUser(
 
 }  // namespace
 
-FingerprintAuthBlock::FingerprintAuthBlock(LECredentialManager* le_manager,
-                                           BiometricsAuthBlockService* service)
-    : AuthBlock(kBiometrics), le_manager_(le_manager), service_(service) {
+FingerprintAuthBlock::FingerprintAuthBlock(
+    const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
+    LECredentialManager* le_manager,
+    BiometricsAuthBlockService* service)
+    : AuthBlock(kBiometrics),
+      hwsec_pw_manager_(hwsec_pw_manager),
+      le_manager_(le_manager),
+      service_(service) {
+  CHECK(hwsec_pw_manager_);
   CHECK(le_manager_);
   CHECK(service_);
 }
@@ -147,8 +153,9 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
 std::unique_ptr<AuthBlock> FingerprintAuthBlock::New(
     Crypto& crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
   auto* le_manager = crypto.le_manager();
+  auto* hwsec_pw_manager = crypto.GetPinWeaverManager();
   if (le_manager && bio_service) {
-    return std::make_unique<FingerprintAuthBlock>(le_manager,
+    return std::make_unique<FingerprintAuthBlock>(hwsec_pw_manager, le_manager,
                                                   bio_service.get());
   }
   return nullptr;

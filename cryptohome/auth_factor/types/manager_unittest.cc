@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
@@ -37,8 +38,10 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
   MockPlatform platform_;
   hwsec::MockCryptohomeFrontend hwsec_;
   hwsec::MockPinWeaverFrontend pinweaver_;
+  hwsec::MockPinWeaverManagerFrontend hwsec_pw_manager_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;
-  Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_,
+  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
+                 &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
   MockFingerprintManager fp_manager_;
   FingerprintAuthBlockService fp_service_{

@@ -20,6 +20,7 @@
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/pinweaver/frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 
 #include "cryptohome/crypto_error.h"
@@ -34,6 +35,7 @@ class Crypto final {
  public:
   explicit Crypto(const hwsec::CryptohomeFrontend* hwsec,
                   const hwsec::PinWeaverFrontend* pinweaver,
+                  const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
                   CryptohomeKeysManager* cryptohome_keys_manager,
                   const hwsec::RecoveryCryptoFrontend* recovery_hwsec);
   Crypto(const Crypto&) = delete;
@@ -93,6 +95,11 @@ class Crypto final {
     return recovery_hwsec_;
   }
 
+  // Gets the hwsec::RecoveryCryptoFrontend object.
+  const hwsec::PinWeaverManagerFrontend* GetPinWeaverManager() {
+    return hwsec_pw_manager_;
+  }
+
   // Gets an instance of the LECredentialManagerImpl object.
   LECredentialManager* le_manager() { return le_manager_.get(); }
 
@@ -110,7 +117,7 @@ class Crypto final {
 
   // The pinweaver implementation.
   const hwsec::PinWeaverFrontend* const pinweaver_;
-
+  const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
   // The CryptohomeKeysManager object used to reload Cryptohome keys.
   CryptohomeKeysManager* const cryptohome_keys_manager_;
 

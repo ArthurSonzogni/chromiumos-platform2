@@ -9,6 +9,7 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 
 #include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 
@@ -37,54 +38,61 @@ const char kFakeHESecret[] = "fake high entropy secret";
 
 TEST(RevocationTest, Create) {
   brillo::SecureBlob per_credential_secret(kFakePerCredentialSecret);
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state;
   KeyBlobs key_blobs = {.vkk_key = per_credential_secret};
   EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>());
-  ASSERT_THAT(Create(&le_cred_manager, &state, &key_blobs), IsOk());
+  ASSERT_THAT(Create(&hwsec_pw_manager, &le_cred_manager, &state, &key_blobs),
+              IsOk());
 }
 
 TEST(RevocationTest, Derive) {
   brillo::SecureBlob he_secret(kFakeHESecret);
   brillo::SecureBlob per_credential_secret(kFakePerCredentialSecret);
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state = {.le_label = 0};
   KeyBlobs key_blobs = {.vkk_key = per_credential_secret};
   EXPECT_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(he_secret),
                       ReturnError<CryptohomeLECredError>()));
-  ASSERT_THAT(Derive(&le_cred_manager, state, &key_blobs), IsOk());
+  ASSERT_THAT(Derive(&hwsec_pw_manager, &le_cred_manager, state, &key_blobs),
+              IsOk());
 }
 
 TEST(RevocationTest, DeriveFailsWithoutLabel) {
   brillo::SecureBlob per_credential_secret(kFakePerCredentialSecret);
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   KeyBlobs key_blobs = {.vkk_key = per_credential_secret};
   RevocationState state;
-  auto status = Derive(&le_cred_manager, state, &key_blobs);
+  auto status = Derive(&hwsec_pw_manager, &le_cred_manager, state, &key_blobs);
   ASSERT_THAT(status, NotOk());
   EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
 
 TEST(RevocationTest, Revoke) {
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state = {.le_label = 0};
   uint64_t label;
   EXPECT_CALL(le_cred_manager, RemoveCredential(_))
       .WillOnce(
           DoAll(SaveArg<0>(&label), ReturnError<CryptohomeLECredError>()));
-  ASSERT_THAT(
-      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state),
-      IsOk());
+  ASSERT_THAT(Revoke(AuthBlockType::kCryptohomeRecovery, &hwsec_pw_manager,
+                     &le_cred_manager, state),
+              IsOk());
   EXPECT_EQ(label, state.le_label.value());
 }
 
 TEST(RevocationTest, RevokeFailsWithoutLabel) {
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state;
-  auto status =
-      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state);
+  auto status = Revoke(AuthBlockType::kCryptohomeRecovery, &hwsec_pw_manager,
+                       &le_cred_manager, state);
   ASSERT_THAT(status, NotOk());
   EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
@@ -94,6 +102,7 @@ TEST(RevocationTest, RevokeSucceedsWithLeCredErrorInvalidLabel) {
       CryptohomeError::ErrorLocationPair(
           static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
           std::string("Testing1"));
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state = {.le_label = 0};
   uint64_t label;
@@ -104,9 +113,9 @@ TEST(RevocationTest, RevokeSucceedsWithLeCredErrorInvalidLabel) {
                           ErrorActionSet({PossibleAction::kFatal}),
                           LE_CRED_ERROR_INVALID_LABEL)));
   // Revoke succeeds after LE_CRED_ERROR_INVALID_LABEL.
-  ASSERT_THAT(
-      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state),
-      IsOk());
+  ASSERT_THAT(Revoke(AuthBlockType::kCryptohomeRecovery, &hwsec_pw_manager,
+                     &le_cred_manager, state),
+              IsOk());
   EXPECT_EQ(label, state.le_label.value());
 }
 
@@ -115,6 +124,7 @@ TEST(RevocationTest, RevokeSucceedsWithLeCredErrorHashTree) {
       CryptohomeError::ErrorLocationPair(
           static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
           std::string("Testing1"));
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state = {.le_label = 0};
   uint64_t label;
@@ -125,9 +135,9 @@ TEST(RevocationTest, RevokeSucceedsWithLeCredErrorHashTree) {
                           ErrorActionSet({PossibleAction::kFatal}),
                           LE_CRED_ERROR_HASH_TREE)));
   // Revoke succeeds after LE_CRED_ERROR_HASH_TREE.
-  ASSERT_THAT(
-      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state),
-      IsOk());
+  ASSERT_THAT(Revoke(AuthBlockType::kCryptohomeRecovery, &hwsec_pw_manager,
+                     &le_cred_manager, state),
+              IsOk());
   EXPECT_EQ(label, state.le_label.value());
 }
 
@@ -136,6 +146,7 @@ TEST(RevocationTest, RevokeFailsWithLeCredErrorUnclassified) {
       CryptohomeError::ErrorLocationPair(
           static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
           std::string("Testing1"));
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state = {.le_label = 0};
   uint64_t label;
@@ -146,8 +157,8 @@ TEST(RevocationTest, RevokeFailsWithLeCredErrorUnclassified) {
                           ErrorActionSet({PossibleAction::kFatal}),
                           LE_CRED_ERROR_UNCLASSIFIED)));
   // Revoke fails after LE_CRED_ERROR_UNCLASSIFIED.
-  auto status =
-      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state);
+  auto status = Revoke(AuthBlockType::kCryptohomeRecovery, &hwsec_pw_manager,
+                       &le_cred_manager, state);
   ASSERT_THAT(status, NotOk());
   EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
@@ -157,6 +168,7 @@ TEST(RevocationTest, RevokeFailsWithLeCredErrorInvalidLeSecret) {
       CryptohomeError::ErrorLocationPair(
           static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
           std::string("Testing1"));
+  NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   RevocationState state = {.le_label = 0};
   uint64_t label;
@@ -167,8 +179,8 @@ TEST(RevocationTest, RevokeFailsWithLeCredErrorInvalidLeSecret) {
                           ErrorActionSet({PossibleAction::kFatal}),
                           LE_CRED_ERROR_INVALID_LE_SECRET)));
   // Revoke fails after LE_CRED_ERROR_INVALID_LE_SECRET.
-  auto status =
-      Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state);
+  auto status = Revoke(AuthBlockType::kCryptohomeRecovery, &hwsec_pw_manager,
+                       &le_cred_manager, state);
   ASSERT_THAT(status, NotOk());
   EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
