@@ -238,18 +238,6 @@ FakeCrosHealthdRoutineFactory::MakeAcPowerRoutine(
 }
 
 std::unique_ptr<DiagnosticRoutine>
-FakeCrosHealthdRoutineFactory::MakeCpuCacheRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
-  return std::move(next_routine_);
-}
-
-std::unique_ptr<DiagnosticRoutine>
-FakeCrosHealthdRoutineFactory::MakeCpuStressRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
-  return std::move(next_routine_);
-}
-
-std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeFloatingPointAccuracyRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
   return std::move(next_routine_);
@@ -268,12 +256,6 @@ FakeCrosHealthdRoutineFactory::MakeNvmeSelfTestRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
     mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
   CHECK(debugd_proxy);
-  return std::move(next_routine_);
-}
-
-std::unique_ptr<DiagnosticRoutine>
-FakeCrosHealthdRoutineFactory::MakePrimeSearchRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
   return std::move(next_routine_);
 }
 

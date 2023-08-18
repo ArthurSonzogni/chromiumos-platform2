@@ -28,15 +28,6 @@ executable("floating-point-accuracy") {
   install_path = "/usr/libexec/diagnostics"
 }
 
-executable("prime-search") {
-  sources = [
-    "memory_and_cpu/prime_number_search.cc",
-    "memory_and_cpu/prime_search_main.cc",
-  ]
-  configs += [ ":common_pkg_deps" ]
-  install_path = "/usr/libexec/diagnostics"
-}
-
 pkg_config("libdiag_routine_pkg_deps") {
   pkg_deps = [
     "iioservice_ipc",
@@ -82,15 +73,12 @@ source_set("libdiag_routine") {
     "hardware_button/power_button.cc",
     "hardware_button/volume_button.cc",
     "led/led_lit_up_v2.cc",
-    "memory_and_cpu/cpu_cache.cc",
     "memory_and_cpu/cpu_cache_v2.cc",
-    "memory_and_cpu/cpu_stress.cc",
     "memory_and_cpu/cpu_stress_v2.cc",
     "memory_and_cpu/floating_point_accuracy.cc",
     "memory_and_cpu/floating_point_v2.cc",
     "memory_and_cpu/memory.cc",
     "memory_and_cpu/memory_v2.cc",
-    "memory_and_cpu/prime_search.cc",
     "memory_and_cpu/prime_search_v2.cc",
     "memory_and_cpu/urandom.cc",
     "network/captive_portal.cc",
@@ -175,8 +163,6 @@ if (use.test) {
       "memory_and_cpu/floating_point_v2_test.cc",
       "memory_and_cpu/memory_test.cc",
       "memory_and_cpu/memory_v2_test.cc",
-      "memory_and_cpu/prime_number_search.cc",
-      "memory_and_cpu/prime_number_search_test.cc",
       "memory_and_cpu/prime_search_v2_test.cc",
       "network/captive_portal_test.cc",
       "network/dns_latency_test.cc",

@@ -49,14 +49,6 @@ class CrosHealthdRoutineFactory {
   virtual std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) = 0;
-  // Constructs a new instance of the CPU cache routine. See
-  // diagnostics/routines/memory_and_cpu for details on the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeCpuCacheRoutine(
-      const std::optional<base::TimeDelta>& exec_duration) = 0;
-  // Constructs a new instance of the CPU stress routine. See
-  // diagnostics/routines/memory_and_cpu for details on the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeCpuStressRoutine(
-      const std::optional<base::TimeDelta>& exec_duration) = 0;
   // Constructs a new instance of the floating point accuracy routine. See
   // diagnostics/routines/memory_and_cpu for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeFloatingPointAccuracyRoutine(
@@ -71,10 +63,6 @@ class CrosHealthdRoutineFactory {
   virtual std::unique_ptr<DiagnosticRoutine> MakeNvmeSelfTestRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy,
       ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) = 0;
-  // Constructs a new instance of the prime search routine. See
-  // diagnostics/routines/memory_and_cpu for details on the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakePrimeSearchRoutine(
-      const std::optional<base::TimeDelta>& exec_duration) = 0;
   // Constructs a new instance of the battery discharge routine. See
   // diagnostics/routines/battery_discharge for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeBatteryDischargeRoutine(

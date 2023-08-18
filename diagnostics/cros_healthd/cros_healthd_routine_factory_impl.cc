@@ -28,11 +28,8 @@
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint_alive.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/power_button.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 #include "diagnostics/cros_healthd/routines/network/captive_portal.h"
 #include "diagnostics/cros_healthd/routines/network/dns_latency.h"
@@ -113,18 +110,6 @@ CrosHealthdRoutineFactoryImpl::MakeAcPowerRoutine(
 }
 
 std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeCpuCacheRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
-  return CreateCpuCacheRoutine(exec_duration);
-}
-
-std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeCpuStressRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
-  return CreateCpuStressRoutine(exec_duration);
-}
-
-std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeFloatingPointAccuracyRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
   return CreateFloatingPointAccuracyRoutine(exec_duration);
@@ -156,14 +141,6 @@ CrosHealthdRoutineFactoryImpl::MakeNvmeSelfTestRoutine(
           : NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest;
 
   return std::make_unique<NvmeSelfTestRoutine>(debugd_proxy, type);
-}
-
-std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakePrimeSearchRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
-  std::optional<uint64_t> max_num;
-  parameter_fetcher_->GetPrimeSearchParameters(&max_num);
-  return CreatePrimeSearchRoutine(exec_duration, max_num);
 }
 
 std::unique_ptr<DiagnosticRoutine>
