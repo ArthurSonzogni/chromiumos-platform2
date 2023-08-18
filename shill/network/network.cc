@@ -481,7 +481,8 @@ void Network::OnDHCPDrop(bool is_voluntary) {
   }
 
   // Fallback to IPv6 if possible.
-  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
+  if (!combined_network_config_.ipv6_addresses.empty() &&
+      !combined_network_config_.dns_servers.empty()) {
     LOG(INFO) << *this << ": operating in IPv6-only because of "
               << (is_voluntary ? "receiving DHCP option 108" : "DHCP failure");
     if (primary_family_ == net_base::IPFamily::kIPv4) {
@@ -492,7 +493,7 @@ void Network::OnDHCPDrop(bool is_voluntary) {
       // there is no valid IPv4 lease. Also see b/261681299.
       network_applier_->Clear(interface_index_);
       SetupConnection(net_base::IPFamily::kIPv6,
-                      ip6config()->properties().method == kTypeSLAAC);
+                      slaac_network_config_ != nullptr);
     }
     return;
   }
@@ -542,39 +543,30 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
 void Network::OnIPv6AddressChanged() {
   auto slaac_addresses = slaac_controller_->GetAddresses();
   if (slaac_addresses.size() == 0) {
-    if (ip6config()) {
-      LOG(INFO) << *this << ": Removing all observed IPv6 addresses";
-      set_ip6config(nullptr);
-      for (auto* ev : event_handlers_) {
-        ev->OnIPConfigsPropertyUpdated(interface_index_);
-      }
-      // TODO(b/232177767): We may lose the whole IP connectivity here (if there
-      // is no IPv4).
+    if (slaac_network_config_) {
+      slaac_network_config_->ipv6_addresses = {};
     }
+    RecalculateNetworkConfig();
+    // TODO(b/232177767): We may lose the whole IP connectivity here (if there
+    // is no IPv4).
     return;
   }
 
-  const auto& primary_address = slaac_addresses[0];
-  IPConfig::Properties properties;
-  properties.address = primary_address.address().ToString();
-  properties.subnet_prefix = primary_address.prefix_length();
+  if (!slaac_network_config_) {
+    slaac_network_config_ = std::make_unique<NetworkConfig>();
+  }
+  slaac_network_config_->ipv6_addresses = slaac_addresses;
 
   RoutingTableEntry default_route(net_base::IPFamily::kIPv6);
   if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
                                                 &default_route)) {
-    properties.gateway = default_route.gateway.ToString();
+    slaac_network_config_->ipv6_gateway = default_route.gateway.ToIPv6Address();
   } else {
     // The kernel normally populates the default route before it performs
     // a neighbor solicitation for the new address, so it shouldn't be
     // missing at this point.
     LOG(WARNING) << *this << ": No default route for global IPv6 address "
-                 << properties.address;
-  }
-
-  // No matter whether the primary address changes, any address change will
-  // need to trigger address-based routing rule to be updated.
-  if (primary_family_) {
-    ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy);
+                 << slaac_addresses[0].address();
   }
 
   std::string addresses_str;
@@ -587,44 +579,29 @@ void Network::OnIPv6AddressChanged() {
   LOG(INFO) << *this << ": Updating IPv6 addresses to [" << addresses_str
             << "]";
 
-  if (!ip6config()) {
-    set_ip6config(
-        std::make_unique<IPConfig>(control_interface_, interface_name_));
-  } else if (properties.address == ip6config()->properties().address &&
-             properties.subnet_prefix ==
-                 ip6config()->properties().subnet_prefix &&
-             properties.gateway == ip6config()->properties().gateway) {
+  auto old_network_config = combined_network_config_;
+  RecalculateNetworkConfig();
+
+  for (auto* ev : event_handlers_) {
+    ev->OnGetSLAACAddress(interface_index_);
+  }
+  // No matter whether the primary address changes, any address change will
+  // need to trigger address-based routing rule to be updated.
+  if (primary_family_) {
+    ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy);
+  }
+
+  if (old_network_config.ipv6_addresses.size() >= 1 &&
+      combined_network_config_.ipv6_addresses.size() >= 1 &&
+      old_network_config.ipv6_addresses[0] ==
+          combined_network_config_.ipv6_addresses[0] &&
+      old_network_config.ipv6_gateway ==
+          combined_network_config_.ipv6_gateway) {
     SLOG(2) << *this << ": " << __func__ << ": primary address for "
             << interface_name_ << " is unchanged";
     return;
   }
 
-  properties.address_family = net_base::IPFamily::kIPv6;
-  properties.method = kTypeSLAAC;
-  // It is possible for device to receive DNS server notification before IP
-  // address notification, so preserve the saved DNS server if it exist.
-  properties.dns_servers = ip6config()->properties().dns_servers;
-  // Use DNS server from link local protocol if available. Relevant in certain
-  // celluar use case that IP address is from SLAAC but DNS is from bearer.
-  // TODO(b/269401899): Have a centralized MergeNetworkConfig() for network
-  // config from different sources.
-  if (link_local_protocol_network_config_ &&
-      !link_local_protocol_network_config_->dns_servers.empty()) {
-    std::vector<std::string> ipv6_dns;
-    for (const auto& item : link_local_protocol_network_config_->dns_servers) {
-      if (item.GetFamily() == net_base::IPFamily::kIPv6) {
-        ipv6_dns.push_back(item.ToString());
-      }
-    }
-    if (!ipv6_dns.empty()) {
-      properties.dns_servers = ipv6_dns;
-    }
-  }
-  ip6config()->set_properties(properties);
-  for (auto* ev : event_handlers_) {
-    ev->OnGetSLAACAddress(interface_index_);
-    ev->OnIPConfigsPropertyUpdated(interface_index_);
-  }
   OnIPv6ConfigUpdated();
   // TODO(b/232177767): OnIPv6ConfiguredWithSLAACAddress() should be called
   // inside Network::OnIPv6ConfigUpdated() and only if SetupConnection()
@@ -644,35 +621,15 @@ void Network::OnIPv6AddressChanged() {
 }
 
 void Network::OnIPv6ConfigUpdated() {
-  if (!ip6config()) {
-    LOG(WARNING) << *this << ": " << __func__
-                 << " called but |ip6config_| is empty";
-    return;
-  }
-
-  // Apply search domains from StaticIPConfig, if the list is not empty and
-  // there is a change. This is a workaround to apply search domains from policy
-  // on IPv6-only network (b/265680125), since StaticIPConfig is only applied to
-  // IPv4 now. This workaround can be removed after we unify IPv4 and IPv6
-  // config into a single object. Since currently we don't update it in
-  // OnStaticIPConfigChanged() (because it will make the code more tricky to
-  // handle IPv6 in that code path), SearchDomains change will not take effect
-  // on a connected network. This limitation should be acceptable that it cannot
-  // be changed via UI, but only through policy.
-  const auto& search_domains = static_network_config_.dns_search_domains;
-  if (!search_domains.empty() &&
-      ip6config()->properties().domain_search != search_domains) {
-    ip6config()->UpdateSearchDomains(search_domains);
-  }
-
-  if (ip6config()->properties().HasIPAddressAndDNS()) {
+  if (!combined_network_config_.ipv6_addresses.empty() &&
+      !combined_network_config_.dns_servers.empty()) {
     // Setup connection using IPv6 configuration only if the IPv6 configuration
     // is ready for connection (contained both IP address and DNS servers), and
     // there is no existing IPv4 connection. We always prefer IPv4 configuration
     // over IPv6.
     if (primary_family_ != net_base::IPFamily::kIPv4) {
       SetupConnection(net_base::IPFamily::kIPv6,
-                      ip6config()->properties().method == kTypeSLAAC);
+                      slaac_network_config_ != nullptr);
     } else {
       // Still apply IPv6 DNS even if the Connection is setup with IPv4.
       ApplyNetworkConfig(NetworkApplier::Area::kDNS);
@@ -682,42 +639,82 @@ void Network::OnIPv6ConfigUpdated() {
 
 void Network::OnIPv6DnsServerAddressesChanged() {
   const auto rdnss = slaac_controller_->GetRDNSSAddresses();
-  if (rdnss.size() == 0) {
-    if (!ip6config()) {
-      return;
-    }
-    LOG(INFO) << *this << ": Removing all observed IPv6 DNS addresses";
-    ip6config()->UpdateDNSServers(std::vector<std::string>());
-    for (auto* ev : event_handlers_) {
-      ev->OnIPConfigsPropertyUpdated(interface_index_);
-    }
-    return;
+  if (!slaac_network_config_) {
+    slaac_network_config_ = std::make_unique<NetworkConfig>();
+  }
+  slaac_network_config_->dns_servers = {};
+  for (const auto& ip : rdnss) {
+    slaac_network_config_->dns_servers.emplace_back(ip);
   }
 
-  if (!ip6config()) {
-    set_ip6config(
-        std::make_unique<IPConfig>(control_interface_, interface_name_));
+  auto old_network_config = combined_network_config_;
+  RecalculateNetworkConfig();
+
+  if (old_network_config.dns_servers == combined_network_config_.dns_servers) {
+    SLOG(2) << *this << ": " << __func__ << " DNS server list is unchanged.";
+    return;
   }
 
   std::vector<std::string> addresses_str;
-  for (const auto& ip : rdnss) {
+  for (const auto& ip : combined_network_config_.dns_servers) {
     addresses_str.push_back(ip.ToString());
   }
+  LOG(INFO) << *this << ": Updating DNS addresses to ["
+            << base::JoinString(addresses_str, ",") << "]";
 
-  // Done if no change in server addresses.
-  if (ip6config()->properties().dns_servers == addresses_str) {
-    SLOG(2) << *this << ": " << __func__ << " IPv6 DNS server list for "
-            << interface_name_ << " is unchanged.";
-    return;
+  OnIPv6ConfigUpdated();
+}
+
+void Network::RecalculateNetworkConfig() {
+  // TODO(b/269401899): currently the generated golden NetworkConfig contains
+  // only IPv6 information. IPv4 in the process to be migrated.
+  auto old_network_config = combined_network_config_;
+
+  if (slaac_network_config_) {
+    combined_network_config_ = *slaac_network_config_;
+  }
+  if (link_local_protocol_network_config_) {
+    if (slaac_network_config_) {
+      LOG(INFO) << *this
+                << ": both link local protocol config and SLAAC are enabled. "
+                   "Address config from link local protocol will be ignored.";
+    } else {
+      combined_network_config_.ipv6_addresses =
+          link_local_protocol_network_config_->ipv6_addresses;
+      combined_network_config_.ipv6_gateway =
+          link_local_protocol_network_config_->ipv6_gateway;
+    }
+    combined_network_config_.dns_servers =
+        link_local_protocol_network_config_->dns_servers;
+    combined_network_config_.dns_search_domains =
+        link_local_protocol_network_config_->dns_search_domains;
+  }
+  if (!static_network_config_.dns_search_domains.empty()) {
+    combined_network_config_.dns_search_domains =
+        static_network_config_.dns_search_domains;
+  }
+  if (!static_network_config_.dns_servers.empty()) {
+    combined_network_config_.dns_servers = static_network_config_.dns_servers;
   }
 
-  LOG(INFO) << *this << ": Updating DNS IPv6 addresses to ["
-            << base::JoinString(addresses_str, ",") << "]";
-  ip6config()->UpdateDNSServers(std::move(addresses_str));
+  if (old_network_config == combined_network_config_) {
+    return;
+  }
+  // If anything changes, update the dbus IPConfig objects.
+  if (combined_network_config_.ipv6_addresses.empty() ||
+      combined_network_config_.dns_servers.empty()) {
+    set_ip6config(nullptr);
+  } else {
+    if (!ip6config()) {
+      set_ip6config(
+          std::make_unique<IPConfig>(control_interface_, interface_name_));
+    }
+    ip6config()->ApplyNetworkConfig(combined_network_config_, true,
+                                    net_base::IPFamily::kIPv6);
+  }
   for (auto* ev : event_handlers_) {
     ev->OnIPConfigsPropertyUpdated(interface_index_);
   }
-  OnIPv6ConfigUpdated();
 }
 
 void Network::EnableARPFiltering() {

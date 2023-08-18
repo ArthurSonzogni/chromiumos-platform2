@@ -389,12 +389,6 @@ void IPConfig::UpdateDNSServers(std::vector<std::string> dns_servers) {
   EmitChanges();
 }
 
-void IPConfig::UpdateSearchDomains(
-    const std::vector<std::string>& search_domains) {
-  properties_.domain_search = search_domains;
-  EmitChanges();
-}
-
 void IPConfig::ResetProperties() {
   properties_ = Properties();
   EmitChanges();

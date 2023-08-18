@@ -121,9 +121,6 @@ class IPConfig {
   // to retrieve the new DNS servers.
   mockable void UpdateDNSServers(std::vector<std::string> dns_servers);
 
-  // Update search domains for this ipconfig.
-  void UpdateSearchDomains(const std::vector<std::string>& search_domains);
-
   // Reset the IPConfig properties to their default values.
   mockable void ResetProperties();
 
