@@ -25,11 +25,6 @@ constexpr char kFirstTimeoutWritingCommand[] =
 constexpr char kFirstTimeoutWritingTime[] =
     "Platform.Trunks.FirstTimeoutWritingTime";
 
-constexpr char kFirstTimeoutReadingCommand[] =
-    "Platform.Trunks.FirstTimeoutReadingCommand";
-constexpr char kFirstTimeoutReadingTime[] =
-    "Platform.Trunks.FirstTimeoutReadingTime";
-
 constexpr char kRecoverableWriteErrorNo[] =
     "Platform.Trunks.RecoverableWriteErrorNo";
 constexpr char kUnrecoverableWriteErrorNo[] =
@@ -50,9 +45,7 @@ bool TrunksMetrics::ReportTpmHandleTimeoutCommandAndTime(int error_result,
       time_metrics = kFirstTimeoutWritingTime;
       break;
     case TRUNKS_RC_READ_ERROR:
-      command_metrics = kFirstTimeoutReadingCommand;
-      time_metrics = kFirstTimeoutReadingTime;
-      break;
+      return true;
     default:
       LOG(INFO) << "Reporting unexpected error: " << error_result;
       return false;
