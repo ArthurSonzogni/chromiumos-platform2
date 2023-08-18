@@ -8,11 +8,13 @@
 #include <vector>
 #include "vm_tools/concierge/vm_builder.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_file.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 #include <vm_concierge/concierge_service.pb.h>
-
 namespace vm_tools {
 namespace concierge {
 
@@ -112,5 +114,110 @@ TEST(StartVMHelperTest, TestGetVmCpuArgs) {
       {{"0"}, {"1"}, {"2"}, {"3"}}, {{"4"}, {"5"}, {"6"}, {"7"}}};
   EXPECT_EQ(vm_cpu_args.cpu_clusters, cpu_cluster_vec);
 }
+
+TEST(StartVMHelperTest, TestGetImageSpec) {
+  std::optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, bios_fd,
+      pflash_fd;
+  std::string failure_reason;
+  kernel_fd = base::ScopedFD(open("/dev/null", O_RDWR));
+  rootfs_fd = base::ScopedFD(open("/dev/null", O_RDWR));
+  initrd_fd = base::ScopedFD(open("/dev/null", O_RDWR));
+  bios_fd = base::ScopedFD(open("/dev/null", O_RDWR));
+  pflash_fd = base::ScopedFD(open("/dev/null", O_RDWR));
+
+  // Create a VM image spec with user defined kernel, rootfs, and initrd.
+  VMImageSpec image_spec = internal::GetImageSpec(
+      VirtualMachineSpec{}, kernel_fd, rootfs_fd, initrd_fd, bios_fd, pflash_fd,
+      {}, {}, {}, false, failure_reason);
+  EXPECT_EQ(image_spec.kernel, base::FilePath(base::StringPrintf(
+                                   "/proc/self/fd/%d", kernel_fd->get())));
+  EXPECT_EQ(image_spec.rootfs, base::FilePath(base::StringPrintf(
+                                   "/proc/self/fd/%d", rootfs_fd->get())));
+  EXPECT_EQ(image_spec.initrd, base::FilePath(base::StringPrintf(
+                                   "/proc/self/fd/%d", initrd_fd->get())));
+  EXPECT_EQ(image_spec.bios, base::FilePath(base::StringPrintf(
+                                 "/proc/self/fd/%d", bios_fd->get())));
+  EXPECT_EQ(image_spec.pflash, base::FilePath(base::StringPrintf(
+                                   "/proc/self/fd/%d", pflash_fd->get())));
+  EXPECT_EQ(image_spec.is_trusted_image, false);
+
+  VirtualMachineSpec vm_spec;
+  vm_spec.set_kernel("kernel");
+  vm_spec.set_rootfs("rootfs");
+  vm_spec.set_initrd("initrd");
+  vm_spec.set_bios_dlc_id("0");
+  vm_spec.set_dlc_id("1");
+  vm_spec.set_tools_dlc_id("2");
+  std::optional<base::FilePath> biosDlcPath = base::FilePath("bios/");
+  std::optional<base::FilePath> vmDlcPath = base::FilePath("vm/");
+  std::optional<base::FilePath> toolsDlcPath = base::FilePath("tools/");
+
+  // Create a fake pre-defined vm spec
+  image_spec = internal::GetImageSpec(vm_spec, {}, {}, {}, {}, {}, biosDlcPath,
+                                      {}, toolsDlcPath, true, failure_reason);
+
+  EXPECT_EQ(image_spec.kernel, base::FilePath("kernel"));
+  EXPECT_EQ(image_spec.rootfs, base::FilePath("rootfs"));
+  EXPECT_EQ(image_spec.initrd, base::FilePath("initrd"));
+  EXPECT_EQ(image_spec.bios, base::FilePath("bios/opt/CROSVM_CODE.fd"));
+  EXPECT_EQ(image_spec.tools_disk, base::FilePath("tools/vm_tools.img"));
+  EXPECT_EQ(image_spec.is_trusted_image, true);
+
+  // Create a fake pre-defined vm spec but using container
+  image_spec = internal::GetImageSpec(vm_spec, {}, {}, {}, {}, {}, biosDlcPath,
+                                      vmDlcPath, {}, true, failure_reason);
+  EXPECT_EQ(image_spec.kernel, base::FilePath("vm/vm_kernel"));
+  EXPECT_EQ(image_spec.rootfs, base::FilePath("vm/vm_rootfs.img"));
+  EXPECT_EQ(image_spec.initrd, base::FilePath("initrd"));
+  EXPECT_EQ(image_spec.bios, base::FilePath("bios/opt/CROSVM_CODE.fd"));
+  EXPECT_EQ(image_spec.tools_disk, base::FilePath("vm/vm_tools.img"));
+  EXPECT_EQ(image_spec.is_trusted_image, true);
+}
+
+TEST(StartVMHelperTest, TestRemoveCloseOnExec) {
+  base::FilePath path;
+  base::ScopedFILE test_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(test_file.get(), nullptr);
+
+  int fd = fileno(test_file.get());
+
+  // Set CLOEXEC flag
+  int flags = fcntl(fd, F_GETFD);
+  EXPECT_NE(flags, -1);
+  flags |= FD_CLOEXEC;
+  EXPECT_NE(fcntl(fd, F_SETFD, flags), -1);
+  EXPECT_NE(fcntl(fd, F_GETFD) & FD_CLOEXEC, 0);
+
+  // Test remove CLOEXEC flag
+  internal::RemoveCloseOnExec(fd);
+  EXPECT_EQ(fcntl(fd, F_GETFD) & FD_CLOEXEC, 0);
+}
+
+TEST(StartVMHelperTest, TestGetLatestVMPath) {
+  base::ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
+  const base::FilePath& vm_dir_path = temp_dir.GetPath();
+
+  // test GetLatestVMPath on empty directory
+  base::FilePath vm_path = internal::GetLatestVMPath(vm_dir_path);
+  base::FilePath empty_path;
+  EXPECT_EQ(vm_path, empty_path);
+
+  // test GetLatestVMPath on 3 multiple versions
+  std::string version1 = "5.10";
+  std::string version2 = "4.19";
+  std::string latest_version = "5.15";
+
+  base::FilePath v1_path = vm_dir_path.Append(version1);
+  ASSERT_TRUE(base::CreateDirectory(v1_path));
+  base::FilePath v2_path = vm_dir_path.Append(version2);
+  ASSERT_TRUE(base::CreateDirectory(v2_path));
+  base::FilePath latest_version_path = vm_dir_path.Append(latest_version);
+  ASSERT_TRUE(base::CreateDirectory(latest_version_path));
+
+  vm_path = internal::GetLatestVMPath(vm_dir_path);
+  EXPECT_EQ(vm_path, latest_version_path);
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

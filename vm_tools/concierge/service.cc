@@ -126,18 +126,6 @@ namespace vm_tools::concierge {
 
 namespace {
 
-// Default path to VM kernel image and rootfs.
-constexpr char kVmDefaultPath[] = "/run/imageloader/cros-termina";
-
-// Name of the VM kernel image.
-constexpr char kVmKernelName[] = "vm_kernel";
-
-// Name of the VM rootfs image.
-constexpr char kVmRootfsName[] = "vm_rootfs.img";
-
-// Name of the VM tools image to be mounted at kToolsMountPath.
-constexpr char kVmToolsDiskName[] = "vm_tools.img";
-
 // How long we should wait for a VM to start up.
 // While this timeout might be high, it's meant to be a final failure point, not
 // the lower bound of how long it takes.  On a loaded system (like extracting
@@ -180,9 +168,6 @@ constexpr const char* kDiskImageExtensions[] = {kRawImageExtension,
 // Valid file extensions for Plugin VM images
 constexpr const char* kPluginVmImageExtensions[] = {kPluginVmImageExtension,
                                                     nullptr};
-
-// File path for the Bruschetta Bios file inside the DLC root.
-constexpr char kBruschettaBiosDlcPath[] = "opt/CROSVM_CODE.fd";
 
 constexpr uint64_t kMinimumDiskSize = GiB(1);
 constexpr uint64_t kDiskSizeMask = ~4095ll;  // Round to disk block size.
@@ -464,30 +449,6 @@ bool SetupListenerService(grpc::Service* listener_impl,
   return true;
 }
 
-// Get the path to the latest available cros-termina component.
-base::FilePath GetLatestVMPath() {
-  base::FilePath component_dir(kVmDefaultPath);
-  base::FileEnumerator dir_enum(component_dir, false,
-                                base::FileEnumerator::DIRECTORIES);
-
-  base::Version latest_version("0");
-  base::FilePath latest_path;
-
-  for (base::FilePath path = dir_enum.Next(); !path.empty();
-       path = dir_enum.Next()) {
-    base::Version version(path.BaseName().value());
-    if (!version.IsValid())
-      continue;
-
-    if (version > latest_version) {
-      latest_version = version;
-      latest_path = path;
-    }
-  }
-
-  return latest_path;
-}
-
 // Gets the path to a VM disk given the name, user id, and location.
 bool GetDiskPathFromName(
     const VmId& vm_id,
@@ -685,22 +646,6 @@ std::string GetMd5HashForFilename(const std::string& str) {
   base::Base64UrlEncode(hash_piece, base::Base64UrlEncodePolicy::OMIT_PADDING,
                         &result);
   return result;
-}
-
-// Clears close-on-exec flag for a file descriptor to pass it to a subprocess
-// such as crosvm. Returns a failure reason on failure.
-string RemoveCloseOnExec(int raw_fd) {
-  int flags = fcntl(raw_fd, F_GETFD);
-  if (flags == -1) {
-    return "Failed to get flags for passed fd";
-  }
-
-  flags &= ~FD_CLOEXEC;
-  if (fcntl(raw_fd, F_SETFD, flags) == -1) {
-    return "Failed to clear close-on-exec flag for fd";
-  }
-
-  return "";
 }
 
 // Reclaims memory of the crosvm process with |pid| by writing "shmem" to
@@ -1544,7 +1489,6 @@ void Service::StartVm(dbus::MethodCall* method_call,
 StartVmResponse Service::StartVmInternal(
     StartVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
 
@@ -1559,11 +1503,40 @@ StartVmResponse Service::StartVmInternal(
       raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
       classification, metrics::DurationRecorder::Event::kVmStart);
 
+  std::string failure_reason;
+  std::optional<base::FilePath> biosDlcPath, vmDlcPath, toolsDlcPath;
+
   std::optional<VmStartImageFds> vm_start_image_fds =
       GetVmStartImageFds(reader, request.fds());
   if (!vm_start_image_fds) {
     response.set_failure_reason("failed to get a VmStartImage fd");
     return response;
+  }
+
+  if (!vm_start_image_fds->bios_fd.has_value() &&
+      !request.vm().bios_dlc_id().empty() &&
+      request.vm().bios_dlc_id() == kBruschettaBiosDlcId) {
+    biosDlcPath = GetVmImagePath(kBruschettaBiosDlcId, failure_reason);
+    if (!failure_reason.empty() || !biosDlcPath.has_value()) {
+      response.set_failure_reason(failure_reason);
+      return response;
+    }
+  }
+
+  if (!request.vm().dlc_id().empty()) {
+    vmDlcPath = GetVmImagePath(request.vm().dlc_id(), failure_reason);
+    if (!failure_reason.empty() || !vmDlcPath.has_value()) {
+      response.set_failure_reason(failure_reason);
+      return response;
+    }
+  }
+
+  if (!request.vm().tools_dlc_id().empty()) {
+    toolsDlcPath = GetVmImagePath(request.vm().tools_dlc_id(), failure_reason);
+    if (!failure_reason.empty() || !toolsDlcPath.has_value()) {
+      response.set_failure_reason(failure_reason);
+      return response;
+    }
   }
 
   // Make sure we have our signal connected if starting a Termina VM.
@@ -1593,12 +1566,12 @@ StartVmResponse Service::StartVmInternal(
   }
   auto root_fd = std::move(root_fd_result.first);
 
-  string failure_reason;
-  VMImageSpec image_spec =
-      GetImageSpec(request.vm(), vm_start_image_fds->kernel_fd,
-                   vm_start_image_fds->rootfs_fd, vm_start_image_fds->initrd_fd,
-                   vm_start_image_fds->bios_fd, vm_start_image_fds->pflash_fd,
-                   classification == apps::VmType::TERMINA, &failure_reason);
+  VMImageSpec image_spec = internal::GetImageSpec(
+      request.vm(), vm_start_image_fds->kernel_fd,
+      vm_start_image_fds->rootfs_fd, vm_start_image_fds->initrd_fd,
+      vm_start_image_fds->bios_fd, vm_start_image_fds->pflash_fd, biosDlcPath,
+      vmDlcPath, toolsDlcPath, classification == apps::VmType::TERMINA,
+      failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);
@@ -1725,7 +1698,7 @@ StartVmResponse Service::StartVmInternal(
     }
 
     int raw_fd = vm_start_image_fds->storage_fd.value().get();
-    string failure_reason = RemoveCloseOnExec(raw_fd);
+    string failure_reason = internal::RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty()) {
       LOG(ERROR) << "failed to remove close-on-exec flag: " << failure_reason;
       response.set_failure_reason(
@@ -4364,163 +4337,6 @@ void Service::HandleSuspendDone() {
 Service::VmMap::iterator Service::FindVm(const VmId& vm_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return vms_.find(vm_id);
-}
-
-base::FilePath Service::GetVmImagePath(const std::string& dlc_id,
-                                       std::string* failure_reason) {
-  DCHECK(failure_reason);
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  std::optional<std::string> dlc_root = PostTaskAndWaitForResult(
-      bus_->GetDBusTaskRunner(),
-      base::BindOnce(
-          [](DlcHelper* dlc_helper, const std::string& dlc_id,
-             std::string* out_failure_reason) {
-            return dlc_helper->GetRootPath(dlc_id, out_failure_reason);
-          },
-          dlcservice_client_.get(), dlc_id, failure_reason));
-  if (!dlc_root.has_value()) {
-    // On an error, failure_reason will be set by GetRootPath().
-    return {};
-  }
-  return base::FilePath(dlc_root.value());
-}
-
-VMImageSpec Service::GetImageSpec(
-    const vm_tools::concierge::VirtualMachineSpec& vm,
-    const std::optional<base::ScopedFD>& kernel_fd,
-    const std::optional<base::ScopedFD>& rootfs_fd,
-    const std::optional<base::ScopedFD>& initrd_fd,
-    const std::optional<base::ScopedFD>& bios_fd,
-    const std::optional<base::ScopedFD>& pflash_fd,
-    bool is_termina,
-    string* failure_reason) {
-  DCHECK(failure_reason);
-  DCHECK(failure_reason->empty());
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  // A VM image is trusted when both:
-  // 1) This daemon (or a trusted daemon) chooses the kernel and rootfs path.
-  // 2) The chosen VM is a first-party VM.
-  // In practical terms this is true iff we are booting termina without
-  // specifying kernel and rootfs image.
-  bool is_trusted_image = is_termina;
-
-  base::FilePath kernel, rootfs, initrd, bios, pflash;
-  if (kernel_fd.has_value()) {
-    // User-chosen kernel is untrusted.
-    is_trusted_image = false;
-
-    int raw_fd = kernel_fd.value().get();
-    *failure_reason = RemoveCloseOnExec(raw_fd);
-    if (!failure_reason->empty())
-      return {};
-    kernel = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
-  } else {
-    kernel = base::FilePath(vm.kernel());
-  }
-
-  if (rootfs_fd.has_value()) {
-    // User-chosen rootfs is untrusted.
-    is_trusted_image = false;
-
-    int raw_fd = rootfs_fd.value().get();
-    *failure_reason = RemoveCloseOnExec(raw_fd);
-    if (!failure_reason->empty())
-      return {};
-    rootfs = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
-  } else {
-    rootfs = base::FilePath(vm.rootfs());
-  }
-
-  if (initrd_fd.has_value()) {
-    // User-chosen initrd is untrusted.
-    is_trusted_image = false;
-
-    int raw_fd = initrd_fd.value().get();
-    *failure_reason = RemoveCloseOnExec(raw_fd);
-    if (!failure_reason->empty())
-      return {};
-    initrd = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
-  } else {
-    initrd = base::FilePath(vm.initrd());
-  }
-
-  if (bios_fd.has_value()) {
-    // User-chosen bios is untrusted.
-    is_trusted_image = false;
-
-    int raw_fd = bios_fd.value().get();
-    *failure_reason = RemoveCloseOnExec(raw_fd);
-    if (!failure_reason->empty())
-      return {};
-    bios = base::FilePath(kProcFileDescriptorsPath)
-               .Append(base::NumberToString(raw_fd));
-  } else if (!vm.bios_dlc_id().empty() &&
-             (vm.bios_dlc_id() == kBruschettaBiosDlcId)) {
-    bios = GetVmImagePath(vm.bios_dlc_id(), failure_reason);
-    if (!failure_reason->empty() || bios.empty())
-      return {};
-    bios = bios.Append(kBruschettaBiosDlcPath);
-  }
-
-  if (pflash_fd.has_value()) {
-    // User-chosen pflash is untrusted.
-    is_trusted_image = false;
-
-    int raw_fd = pflash_fd.value().get();
-    *failure_reason = RemoveCloseOnExec(raw_fd);
-    if (!failure_reason->empty())
-      return {};
-    pflash = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
-  }
-
-  base::FilePath vm_path;
-  // As a legacy fallback, use the component rather than the DLC.
-  //
-  // TODO(crbug/953544): remove this once we no longer distribute termina as a
-  // component.
-  if (vm.dlc_id().empty() && is_termina) {
-    vm_path = GetLatestVMPath();
-    if (vm_path.empty()) {
-      *failure_reason = "Termina component is not loaded";
-      return {};
-    }
-  } else if (!vm.dlc_id().empty()) {
-    vm_path = GetVmImagePath(vm.dlc_id(), failure_reason);
-    if (vm_path.empty())
-      return {};
-  }
-
-  // Pull in the DLC-provided files if requested.
-  if (!kernel_fd.has_value() && !vm_path.empty())
-    kernel = vm_path.Append(kVmKernelName);
-  if (!rootfs_fd.has_value() && !vm_path.empty())
-    rootfs = vm_path.Append(kVmRootfsName);
-
-  base::FilePath tools_disk;
-  if (!vm.tools_dlc_id().empty()) {
-    base::FilePath tools_disk_path =
-        GetVmImagePath(vm.tools_dlc_id(), failure_reason);
-    if (tools_disk_path.empty())
-      return {};
-    tools_disk = tools_disk_path.Append(kVmToolsDiskName);
-  }
-  if (tools_disk.empty() && !vm_path.empty())
-    tools_disk = vm_path.Append(kVmToolsDiskName);
-
-  return VMImageSpec{
-      .kernel = std::move(kernel),
-      .initrd = std::move(initrd),
-      .rootfs = std::move(rootfs),
-      .bios = std::move(bios),
-      .pflash = std::move(pflash),
-      .tools_disk = std::move(tools_disk),
-      .is_trusted_image = is_trusted_image,
-  };
 }
 
 // TODO(b/244486983): move this functionality to shadercached

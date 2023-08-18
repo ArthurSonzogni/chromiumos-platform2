@@ -22,11 +22,26 @@
 namespace vm_tools {
 namespace concierge {
 
+// Default path to VM kernel image and rootfs.
+constexpr char kVmDefaultPath[] = "/run/imageloader/cros-termina";
+
+// Name of the VM kernel image.
+constexpr char kVmKernelName[] = "vm_kernel";
+
+// Name of the VM rootfs image.
+constexpr char kVmRootfsName[] = "vm_rootfs.img";
+
 // The Id of the DLC that supplies the Bios for the Bruschetta VM.
 constexpr char kBruschettaBiosDlcId[] = "edk2-ovmf-dlc";
 
 // The Id of the DLC that supplies the Bios for the Borealis VM.
 constexpr char kBorealisBiosDlcId[] = "borealis-dlc";
+
+// Name of the VM tools image to be mounted at kToolsMountPath.
+constexpr char kVmToolsDiskName[] = "vm_tools.img";
+
+// File path for the Bruschetta Bios file inside the DLC root.
+constexpr char kBruschettaBiosDlcPath[] = "opt/CROSVM_CODE.fd";
 
 // Check Cpu setting in request not exceeds processor number
 template <class T>
@@ -130,6 +145,28 @@ apps::VmType ClassifyVm(const StartVmRequest& request);
 // Get capacity & cluster & affinity information for cpu0~cpu${cpus}
 VmBuilder::VmCpuArgs GetVmCpuArgs(int32_t cpus,
                                   const base::FilePath& cpu_info_path);
+// Determines key components of a VM image. Also, decides if it's a trusted
+// VM. Returns the empty struct and sets |failure_reason| in the event of a
+// failure.
+VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
+                         const std::optional<base::ScopedFD>& kernel_fd,
+                         const std::optional<base::ScopedFD>& rootfs_fd,
+                         const std::optional<base::ScopedFD>& initrd_fd,
+                         const std::optional<base::ScopedFD>& bios_fd,
+                         const std::optional<base::ScopedFD>& pflash_fd,
+                         const std::optional<base::FilePath>& biosDlcPath,
+                         const std::optional<base::FilePath>& vmDlcPath,
+                         const std::optional<base::FilePath>& toolsDlcPath,
+                         bool is_termina,
+                         std::string& failure_reason);
+
+// Clears close-on-exec flag for a file descriptor to pass it to a subprocess
+// such as crosvm. Returns a failure reason on failure.
+std::string RemoveCloseOnExec(int raw_fd);
+
+// Get the path to the latest available cros-termina component.
+base::FilePath GetLatestVMPath(base::FilePath component_dir);
+
 }  // namespace internal
 
 }  // namespace concierge

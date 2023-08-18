@@ -500,20 +500,8 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Determine the path for a VM image based on |dlc_id| (or the component, if
   // the id is empty). Returns the empty path and sets failure_reason in the
   // event of a failure.
-  base::FilePath GetVmImagePath(const std::string& dlc_id,
-                                std::string* failure_reason);
-
-  // Determines key components of a VM image. Also, decides if it's a trusted
-  // VM. Returns the empty struct and sets |failure_reason| in the event of a
-  // failure.
-  VMImageSpec GetImageSpec(const vm_tools::concierge::VirtualMachineSpec& vm,
-                           const std::optional<base::ScopedFD>& kernel_fd,
-                           const std::optional<base::ScopedFD>& rootfs_fd,
-                           const std::optional<base::ScopedFD>& initrd_fd,
-                           const std::optional<base::ScopedFD>& bios_fd,
-                           const std::optional<base::ScopedFD>& pflash_fd,
-                           bool is_termina,
-                           std::string* failure_reason);
+  std::optional<base::FilePath> GetVmImagePath(const std::string& dlc_id,
+                                               std::string& failure_reason);
 
   // Get GPU cache path for the VM.
   base::FilePath GetVmGpuCachePathInternal(const VmId& vm_id);
