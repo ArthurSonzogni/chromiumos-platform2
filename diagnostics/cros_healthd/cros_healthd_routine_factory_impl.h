@@ -53,7 +53,6 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeBatteryChargeRoutine(
       base::TimeDelta exec_duration,
       uint32_t minimum_charge_percent_required) override;
-  std::unique_ptr<DiagnosticRoutine> MakeMemoryRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeLanConnectivityRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeSignalStrengthRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeGatewayCanBePingedRoutine() override;

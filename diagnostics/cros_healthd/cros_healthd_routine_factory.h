@@ -73,9 +73,6 @@ class CrosHealthdRoutineFactory {
   virtual std::unique_ptr<DiagnosticRoutine> MakeBatteryChargeRoutine(
       base::TimeDelta exec_duration,
       uint32_t minimum_charge_percent_required) = 0;
-  // Constructs a new instance of the memory routine. See
-  // diagnostics/routines/memory_and_cpu for details on the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeMemoryRoutine() = 0;
   // Constructs a new instance of the LAN connectivity routine. See
   // diagnostics/routines/lan_connectivity for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeLanConnectivityRoutine() = 0;

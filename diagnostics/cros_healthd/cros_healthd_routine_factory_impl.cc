@@ -29,7 +29,6 @@
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint_alive.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/power_button.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_accuracy.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 #include "diagnostics/cros_healthd/routines/network/captive_portal.h"
 #include "diagnostics/cros_healthd/routines/network/dns_latency.h"
@@ -155,11 +154,6 @@ CrosHealthdRoutineFactoryImpl::MakeBatteryChargeRoutine(
     base::TimeDelta exec_duration, uint32_t minimum_charge_percent_required) {
   return std::make_unique<BatteryChargeRoutine>(
       context_, exec_duration, minimum_charge_percent_required);
-}
-
-std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeMemoryRoutine() {
-  return std::make_unique<MemoryRoutine>(context_);
 }
 
 std::unique_ptr<DiagnosticRoutine>

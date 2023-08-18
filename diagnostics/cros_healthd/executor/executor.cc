@@ -127,9 +127,6 @@ constexpr char kFio[] = "fio-dlc";
 
 }  // namespace dlc
 
-// Amount of time we wait for a process to respond to SIGTERM before killing it.
-constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
-
 // wireless interface name start with "wl" or "ml" and end it with a number. All
 // characters are in lowercase.  Max length is 16 characters.
 constexpr auto kWirelessInterfaceRegex = R"(([wm]l[a-z][a-z0-9]{1,12}[0-9]))";
@@ -363,21 +360,6 @@ void Executor::RunIw(IwCommand cmd,
                     /*combine_stdout_and_stderr=*/false);
 }
 
-void Executor::RunMemtester(uint32_t test_mem_kib,
-                            RunMemtesterCallback callback) {
-  // Run with test_mem_kib memory and run for one loop.
-  std::vector<std::string> command = {
-      path::kMemtesterBinary, base::StringPrintf("%uK", test_mem_kib), "1"};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kMemtester,
-      SandboxedProcess::Options{
-          .capabilities_mask = CAP_TO_MASK(CAP_IPC_LOCK),
-      });
-
-  RunTrackedBinary(std::move(process), std::move(callback),
-                   path::kMemtesterBinary);
-}
-
 void Executor::RunMemtesterV2(
     uint32_t test_mem_kib,
     mojo::PendingReceiver<mojom::ProcessControl> receiver) {
@@ -392,22 +374,6 @@ void Executor::RunMemtesterV2(
 
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/true);
-}
-
-void Executor::KillMemtester() {
-  base::AutoLock auto_lock(lock_);
-  auto itr = tracked_processes_.find(path::kMemtesterBinary);
-  if (itr == tracked_processes_.end())
-    return;
-
-  SandboxedProcess* process = itr->second.get();
-  // If the process has ended, don't try to kill anything.
-  if (!process->pid())
-    return;
-
-  // Try to terminate the process nicely, then kill it if necessary.
-  if (!process->Kill(SIGTERM, kTerminationTimeout.InSeconds()))
-    process->Kill(SIGKILL, kTerminationTimeout.InSeconds());
 }
 
 void Executor::GetProcessIOContents(const std::vector<uint32_t>& pids,
@@ -907,39 +873,6 @@ void Executor::OnRunAndWaitProcessFinished(
 
   process->Release();
   std::move(callback).Run(std::move(result));
-}
-
-void Executor::RunTrackedBinary(
-    std::unique_ptr<SandboxedProcess> process,
-    base::OnceCallback<void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)>
-        callback,
-    const std::string& binary_path) {
-  DCHECK(!tracked_processes_.count(binary_path));
-
-  base::AutoLock auto_lock(lock_);
-
-  process->RedirectOutputToMemory(false);
-  process->Start();
-  pid_t pid = process->pid();
-
-  tracked_processes_[binary_path] = std::move(process);
-  process_reaper_->WatchForChild(
-      FROM_HERE, pid,
-      base::BindOnce(&Executor::OnTrackedBinaryFinished,
-                     weak_factory_.GetWeakPtr(), std::move(callback),
-                     binary_path));
-}
-
-void Executor::OnTrackedBinaryFinished(
-    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
-    const std::string& binary_path,
-    const siginfo_t& siginfo) {
-  auto result = mojom::ExecutedProcessResult::New();
-
-  result->return_code = siginfo.si_status;
-  result->out = tracked_processes_[binary_path]->GetOutputString(STDOUT_FILENO);
-  result->err = tracked_processes_[binary_path]->GetOutputString(STDERR_FILENO);
-  tracked_processes_[binary_path]->Release();
 }
 
 void Executor::RunLongRunningProcess(
