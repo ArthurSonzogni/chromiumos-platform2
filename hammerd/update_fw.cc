@@ -499,9 +499,13 @@ bool FirmwareUpdater::SendSubcommandReceiveResponse(
   }
   int received =
       endpoint_->Transfer(ufh.get(), usb_msg_size, resp, resp_size, allow_less);
-  // The first byte of the response is the status of the subcommand.
-  LOG(INFO) << base::StringPrintf("Status of subcommand: %d",
-                                  *(reinterpret_cast<uint8_t*>(resp)));
+  if (received != -1) {
+    // The first byte of the response is the status of the subcommand.
+    LOG(INFO) << base::StringPrintf("Status of subcommand: %d",
+                                    *(reinterpret_cast<uint8_t*>(resp)));
+  } else {
+    LOG(ERROR) << "USB transfer error!";
+  }
   return (received == resp_size);
 }
 
