@@ -522,56 +522,24 @@ void FillMessageMwifiex(struct nl_msg* msg, bool tablet) {
   CHECK(!nla_nest_end(msg, limits)) << "Failed in nla_nest_end";
 }
 
-// Returns a vector of three IWL transmit power limits for mode |tablet| if the
-// board doesn't contain limits in ACPI, or an empty vector if ACPI should be
-// used. ACPI limits are expected; this is just a hack for devices (currently
-// only cave) that lack limits in ACPI. See b:70549692 for details.
-std::vector<uint32_t> GetNonAcpiIwlPowerTable(bool tablet) {
-  // Get the board name minus an e.g. "-signed-mpkeys" suffix.
-  std::string board = base::SysInfo::GetLsbReleaseBoard();
-  const size_t index = board.find("-signed-");
-  if (index != std::string::npos)
-    board.resize(index);
-
-  if (board == "cave") {
-    return tablet ? std::vector<uint32_t>{13, 9, 9}
-                  : std::vector<uint32_t>{30, 30, 30};
-  }
-  return {};
-}
-
 // Fill in nl80211 message for the iwl driver.
 void FillMessageIwl(struct nl_msg* msg, bool tablet) {
   CHECK(!nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, INTEL_OUI))
       << "Failed to put NL80211_ATTR_VENDOR_ID";
 
-  const std::vector<uint32_t> table = GetNonAcpiIwlPowerTable(tablet);
-  const bool use_acpi = table.empty();
-
   CHECK(!nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-                     use_acpi ? IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE
-                              : IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT))
+                     IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE))
       << "Failed to put NL80211_ATTR_VENDOR_SUBCMD";
 
   struct nlattr* limits =
       nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA | NLA_F_NESTED);
   CHECK(limits) << "Failed in nla_nest_start";
 
-  if (use_acpi) {
-    int index = tablet ? IWL_TABLET_PROFILE_INDEX : IWL_CLAMSHELL_PROFILE_INDEX;
-    CHECK(!nla_put_u8(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE, index))
-        << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE";
-    CHECK(!nla_put_u8(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE, index))
-        << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE";
-  } else {
-    DCHECK_EQ(table.size(), 3);
-    CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24, table[0] * 8))
-        << "Failed to put IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24";
-    CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L, table[1] * 8))
-        << "Failed to put IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L";
-    CHECK(!nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H, table[2] * 8))
-        << "Failed to put IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H";
-  }
+  int index = tablet ? IWL_TABLET_PROFILE_INDEX : IWL_CLAMSHELL_PROFILE_INDEX;
+  CHECK(!nla_put_u8(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE, index))
+      << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE";
+  CHECK(!nla_put_u8(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE, index))
+      << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE";
 
   CHECK(!nla_nest_end(msg, limits)) << "Failed in nla_nest_end";
 }
