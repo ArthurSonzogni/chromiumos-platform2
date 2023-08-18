@@ -28,6 +28,47 @@ const uint32_t kAdbClass = 0xff;
 const uint32_t kAdbSubclass = 0x42;
 const uint32_t kAdbProtocol = 0x1;
 
+enum class RemovableAttr {
+  kUnknown,
+  kFixed,
+  kRemovable,
+};
+
+RemovableAttr ParseRemovableSysattr(const std::string& removable) {
+  if (removable == "fixed") {
+    return RemovableAttr::kFixed;
+  } else if (removable == "removable") {
+    return RemovableAttr::kRemovable;
+  } else {
+    if (removable != "unknown") {
+      LOG(WARNING) << "Unexpected value for removable sysattr: '" << removable
+                   << "'";
+    }
+    return RemovableAttr::kUnknown;
+  }
+}
+
+RemovableAttr GetRemovableSysattr(udev_device* device) {
+  const char* removable = udev_device_get_sysattr_value(device, "removable");
+  if (!removable) {
+    return RemovableAttr::kUnknown;
+  }
+  return ParseRemovableSysattr(removable);
+}
+
+bool HasRemovableParent(udev_device* device) {
+  for (udev_device* parent = udev_device_get_parent(device); parent != nullptr;
+       parent = udev_device_get_parent(parent)) {
+    const char* removable = udev_device_get_sysattr_value(parent, "removable");
+    if (!removable)
+      break;
+
+    if (ParseRemovableSysattr(removable) == RemovableAttr::kRemovable)
+      return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 namespace permission_broker {
@@ -169,10 +210,8 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
   if (!features_lib) {
     LOG(ERROR) << "Unable to get PlatformFeatures library, will not enable "
                   "permissive features";
-    return IGNORE;
-  }
-  if (features_lib->IsEnabledBlocking(
-          RuleUtils::kEnablePermissiveUsbPassthrough)) {
+  } else if (features_lib->IsEnabledBlocking(
+                 RuleUtils::kEnablePermissiveUsbPassthrough)) {
     // If permissive USB is enabled, we should potentially still allow claimed
     // interfaces, pending the result of other rules e.g.
     // AllowExternallyTaggedUsbDeviceRule.
@@ -232,6 +271,15 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
   }
 
   if (found_claimed_interface) {
+    // Fixed devices are likely internal, but in some cases external USB devices
+    // are marked as fixed. Don't allow detaching the driver for a fixed USB
+    // device unless it has a removable parent or is in the allow list.
+    if (GetRemovableSysattr(device) == RemovableAttr::kFixed &&
+        !IsDeviceAllowedFixed(device) && !HasRemovableParent(device)) {
+      LOG(INFO) << "Denying fixed USB device with driver.";
+      return DENY;
+    }
+
     if (found_only_safe_interfaces)
       LOG(INFO) << "Found only detachable interface(s), safe to claim.";
 
