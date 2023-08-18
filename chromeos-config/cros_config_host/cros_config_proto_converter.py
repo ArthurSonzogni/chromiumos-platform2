@@ -157,8 +157,8 @@ def _build_arc(config, config_files):
     result = {"build-properties": build_properties}
     _upsert(config_files.arc_hw_features(config), result, "hardware-features")
     _upsert(config_files.arc_media_profiles(config), result, "media-profiles")
-    topology = config.hw_design_config.hardware_topology
-    ppi = topology.screen.hardware_feature.screen.panel_properties.pixels_per_in
+    hw_features = config.hw_design_config.hardware_features
+    ppi = hw_features.screen.panel_properties.pixels_per_in
     # Only set for high resolution displays
     if ppi and ppi > 250:
         result["scale"] = ppi
@@ -778,14 +778,14 @@ def _build_display(screen_topo: topology_pb2.HardwareFeatures.Screen) -> dict:
     return result
 
 
-def _build_displays(hw_topology: topology_pb2.HardwareFeatures) -> list:
+def _build_displays(hw_features: topology_pb2.HardwareFeatures) -> list:
     """Builds the /displays object."""
     displays = []
 
     # Boxster only understands one display, which does not map to what
     # cros_config is capable of encoding.  We can fix this later should we
     # require it.
-    displays.append(_build_display(hw_topology.screen.hardware_feature.screen))
+    displays.append(_build_display(hw_features.screen))
 
     return [x for x in displays if x]
 
@@ -958,9 +958,7 @@ def _build_ash_flags(config: Config) -> dict:
         _add_flag("oobe-large-screen-special-scaling")
         _add_flag("enable-virtual-keyboard")
 
-    touch = (
-        config.hw_design_config.hardware_topology.touch.hardware_feature.touch
-    )
+    touch = config.hw_design_config.hardware_features.touch
     if touch.HasField("touch_slop_distance"):
         _add_flag("touch-slop-distance", touch.touch_slop_distance.value)
 
@@ -1010,11 +1008,11 @@ def _build_ui(config: Config) -> dict:
     return result
 
 
-def _build_keyboard(hw_topology):
-    if not hw_topology.HasField("keyboard"):
+def _build_keyboard(hw_features):
+    if not hw_features.HasField("keyboard"):
         return None
 
-    keyboard = hw_topology.keyboard.hardware_feature.keyboard
+    keyboard = hw_features.keyboard
     result = {}
     if keyboard.backlight == topology_pb2.HardwareFeatures.PRESENT:
         result["backlight"] = True
@@ -1364,12 +1362,12 @@ def _build_health_routines_fingerprint_diag(config):
     }
 
 
-def _build_health_routines(health_config, hw_topo):
+def _build_health_routines(health_config, hw_features):
     """Builds the health service routines configuration.
 
     Args:
         health_config: Health Config namedtuple.
-        hw_topo: Hardware topology.
+        hw_features: Hardware features.
 
     Returns:
         health routines configuration.
@@ -1396,8 +1394,8 @@ def _build_health_routines(health_config, hw_topo):
             )
             _upsert(nvme_wear_level_result, result, "nvme-wear-level")
 
-    if hw_topo.HasField("fingerprint"):
-        fingerprint = hw_topo.fingerprint.hardware_feature.fingerprint
+    if hw_features.HasField("fingerprint"):
+        fingerprint = hw_features.fingerprint
         if fingerprint.HasField("fingerprint_diag"):
             _upsert(
                 _build_health_routines_fingerprint_diag(
@@ -1423,11 +1421,13 @@ def _build_health(config: Config):
         return None
 
     health_config = config.sw_config.health_config
-    hw_topo = config.hw_design_config.hardware_topology
+    hw_features = config.hw_design_config.hardware_features
     result = {}
     _upsert(_build_health_cached_vpd(health_config), result, "cached-vpd")
     _upsert(_build_health_battery(health_config), result, "battery")
-    _upsert(_build_health_routines(health_config, hw_topo), result, "routines")
+    _upsert(
+        _build_health_routines(health_config, hw_features), result, "routines"
+    )
     return result
 
 
@@ -1612,16 +1612,13 @@ def _build_proximity(config, config_files):
     return config_files.proximity_map.get((design_name, design_config_id))
 
 
-def _build_fingerprint(hw_topology):
-    if not hw_topology.HasField("fingerprint"):
+def _build_fingerprint(hw_features):
+    fp = hw_features.fingerprint
+    if not fp.present:
         return None
-
-    fp = hw_topology.fingerprint.hardware_feature.fingerprint
     result = {}
-    if fp.present:
-        location = fp.Location.DESCRIPTOR.values_by_number[fp.location].name
-    else:
-        location = "none"
+
+    location = fp.Location.DESCRIPTOR.values_by_number[fp.location].name
     result["sensor-location"] = location.lower().replace("_", "-")
     if fp.board:
         result["board"] = fp.board
@@ -1631,11 +1628,11 @@ def _build_fingerprint(hw_topology):
     return result
 
 
-def _build_hps(hw_topology):
-    if not hw_topology.HasField("hps"):
+def _build_hps(hw_features):
+    if not hw_features.HasField("hps"):
         return None
 
-    hps = hw_topology.hps.hardware_feature.hps
+    hps = hw_features.hps
     result = {}
     if hps.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-hps"] = True
@@ -1643,11 +1640,11 @@ def _build_hps(hw_topology):
     return result
 
 
-def _build_dgpu(hw_topology):
-    if not hw_topology.HasField("dgpu"):
+def _build_dgpu(hw_features):
+    if not hw_features.HasField("dgpu_config"):
         return None
 
-    dgpu = hw_topology.dgpu.hardware_feature.dgpu_config
+    dgpu = hw_features.dgpu_config
     result = {}
     if dgpu.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-dgpu"] = True
@@ -1661,11 +1658,11 @@ def _build_dgpu(hw_topology):
     return result
 
 
-def _build_uwb(hw_topology):
-    if not hw_topology.HasField("uwb"):
+def _build_uwb(hw_features):
+    if not hw_features.HasField("uwb_config"):
         return None
 
-    uwb = hw_topology.uwb.hardware_feature.uwb_config
+    uwb = hw_features.uwb_config
     result = {}
     if uwb.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-uwb"] = True
@@ -1673,11 +1670,11 @@ def _build_uwb(hw_topology):
     return result
 
 
-def _build_poe(hw_topology):
-    if not hw_topology.HasField("poe"):
+def _build_poe(hw_features):
+    if not hw_features.HasField("poe"):
         return None
 
-    poe = hw_topology.poe.hardware_feature.poe
+    poe = hw_features.poe
     result = {}
     if poe.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-poe-peripheral-support"] = True
@@ -1728,13 +1725,11 @@ def _build_detachable_base(form_factor, detachable_base):
     return result
 
 
-def _build_hardware_properties(hw_topology):
-    if not hw_topology.HasField("form_factor"):
+def _build_hardware_properties(hw_features):
+    if not hw_features.HasField("form_factor"):
         return None
 
-    form_factor = (
-        hw_topology.form_factor.hardware_feature.form_factor.form_factor
-    )
+    form_factor = hw_features.form_factor.form_factor
     result = {}
     if form_factor in [
         topology_pb2.HardwareFeatures.FormFactor.CHROMEBIT,
@@ -1769,25 +1764,23 @@ def _build_hardware_properties(hw_topology):
             "RECOVERY_BUTTON"
         ),
     }
-    recovery_input = (
-        hw_topology.form_factor.hardware_feature.form_factor.recovery_input
-    )
+    recovery_input = hw_features.form_factor.recovery_input
     if recovery_input and recovery_input in recovery_input_names:
         _upsert(recovery_input_names[recovery_input], result, "recovery-input")
 
-    privacy_screen = hw_topology.screen.hardware_feature.privacy_screen
+    privacy_screen = hw_features.privacy_screen
     if privacy_screen.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-privacy-screen"] = True
 
-    screen = hw_topology.screen.hardware_feature.screen
+    screen = hw_features.screen
     if screen.touch_support == topology_pb2.HardwareFeatures.PRESENT:
         result["has-touchscreen"] = True
 
-    hdmi = hw_topology.hdmi.hardware_feature.hdmi
+    hdmi = hw_features.hdmi
     if hdmi.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-hdmi"] = True
 
-    audio = hw_topology.audio.hardware_feature.audio
+    audio = hw_features.audio
     if (
         audio.headphone_codec is not None
         and audio.headphone_codec
@@ -1795,30 +1788,29 @@ def _build_hardware_properties(hw_topology):
     ):
         result["has-audio-jack"] = True
 
-    sd_reader = hw_topology.sd_reader.hardware_feature.sd_reader
+    sd_reader = hw_features.sd_reader
     if sd_reader.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-sd-reader"] = True
 
-    if hw_topology.HasField("volume_button"):
+    if hw_features.HasField("volume_button"):
         result["has-side-volume-button"] = True
 
-    sensors = hw_topology.accelerometer_gyroscope_magnetometer.hardware_feature
-    acc = sensors.accelerometer
+    acc = hw_features.accelerometer
     if acc.base_accelerometer == topology_pb2.HardwareFeatures.PRESENT:
         result["has-base-accelerometer"] = True
     if acc.lid_accelerometer == topology_pb2.HardwareFeatures.PRESENT:
         result["has-lid-accelerometer"] = True
-    gyro = sensors.gyroscope
+    gyro = hw_features.gyroscope
     if gyro.base_gyroscope == topology_pb2.HardwareFeatures.PRESENT:
         result["has-base-gyroscope"] = True
     if gyro.lid_gyroscope == topology_pb2.HardwareFeatures.PRESENT:
         result["has-lid-gyroscope"] = True
-    magn = sensors.magnetometer
+    magn = hw_features.magnetometer
     if magn.base_magnetometer == topology_pb2.HardwareFeatures.PRESENT:
         result["has-base-magnetometer"] = True
     if magn.lid_magnetometer == topology_pb2.HardwareFeatures.PRESENT:
         result["has-lid-magnetometer"] = True
-    light_sensor = sensors.light_sensor
+    light_sensor = hw_features.light_sensor
     if light_sensor.base_lightsensor == topology_pb2.HardwareFeatures.PRESENT:
         result["has-base-light-sensor"] = True
     if light_sensor.lid_lightsensor == topology_pb2.HardwareFeatures.PRESENT:
@@ -1829,10 +1821,8 @@ def _build_hardware_properties(hw_topology):
     return result
 
 
-def _build_storage(hw_topology):
-    storage_type = (
-        hw_topology.non_volatile_storage.hardware_feature.storage.storage_type
-    )
+def _build_storage(hw_features):
+    storage_type = hw_features.storage.storage_type
 
     storage_type_names = {
         component_pb2.Component.Storage.StorageType.STORAGE_TYPE_UNKNOWN: (
@@ -1853,14 +1843,14 @@ def _build_storage(hw_topology):
     return result
 
 
-def _build_stylus(hw_topology):
+def _build_stylus(hw_features):
     stylus_category_names = {
         topology_pb2.HardwareFeatures.Stylus.STYLUS_UNKNOWN: "unknown",
         topology_pb2.HardwareFeatures.Stylus.NONE: "none",
         topology_pb2.HardwareFeatures.Stylus.INTERNAL: "internal",
         topology_pb2.HardwareFeatures.Stylus.EXTERNAL: "external",
     }
-    stylus_category = hw_topology.stylus.hardware_feature.stylus.stylus
+    stylus_category = hw_features.stylus.stylus
     result = {}
     if stylus_category in stylus_category_names:
         result["stylus-category"] = stylus_category_names[stylus_category]
@@ -2439,8 +2429,7 @@ def _build_audio(config):
     return result
 
 
-def _build_battery(hw_topology):
-    hw_features = hw_topology.hw_design_config.hardware_features
+def _build_battery(hw_features):
     hw_feat_battery = hw_features.battery
 
     result = {}
@@ -2451,9 +2440,9 @@ def _build_battery(hw_topology):
     return result
 
 
-def _build_camera(hw_topology):
+def _build_camera(hw_features):
     camera_pb = topology_pb2.HardwareFeatures.Camera
-    camera = hw_topology.camera.hardware_feature.camera
+    camera = hw_features.camera
     result = {"count": len(camera.devices)}
     if camera.devices:
         result["devices"] = []
@@ -2816,15 +2805,12 @@ def _transform_build_config(config, config_files, whitelabel):
         "name": _get_model_name(config.hw_design.id),
     }
 
+    hw_features = config.hw_design_config.hardware_features
     _upsert(_build_arc(config, config_files), result, "arc")
     _upsert(_build_audio(config), result, "audio")
-    _upsert(_build_battery(config), result, "battery")
+    _upsert(_build_battery(hw_features), result, "battery")
     _upsert(_build_bluetooth(config), result, "bluetooth")
-    _upsert(
-        _build_displays(config.hw_design_config.hardware_topology),
-        result,
-        "displays",
-    )
+    _upsert(_build_displays(hw_features), result, "displays")
     _upsert(_build_wifi(config, config_files), result, "wifi")
     _upsert(_build_health(config), result, "cros-healthd")
     _upsert(_build_rma(config), result, "rmad")
@@ -2835,18 +2821,10 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(config.brand_config.wallpaper, result, "wallpaper")
     _upsert(config.brand_config.regulatory_label, result, "regulatory-label")
     _upsert(config.device_brand.brand_code, result, "brand-code")
-    _upsert(
-        _build_camera(config.hw_design_config.hardware_topology),
-        result,
-        "camera",
-    )
+    _upsert(_build_camera(hw_features), result, "camera")
     _upsert(_build_firmware(config), result, "firmware")
     _upsert(_build_fw_signing(config, whitelabel), result, "firmware-signing")
-    _upsert(
-        _build_fingerprint(config.hw_design_config.hardware_topology),
-        result,
-        "fingerprint",
-    )
+    _upsert(_build_fingerprint(hw_features), result, "fingerprint")
     _upsert(_build_ui(config), result, "ui")
     _upsert(_build_usb(config), result, "typecd")
     _upsert(_build_power(config), result, "power")
@@ -2860,44 +2838,20 @@ def _transform_build_config(config, config_files, whitelabel):
         _upsert(camera_file, result, "camera")
     _upsert(config_files.touch_fw, result, "touch")
     _upsert(
-        _build_hardware_properties(config.hw_design_config.hardware_topology),
-        result,
-        "hardware-properties",
+        _build_hardware_properties(hw_features), result, "hardware-properties"
     )
     _upsert(_build_modem(config), result, "modem")
-    _upsert(
-        _build_keyboard(config.hw_design_config.hardware_topology),
-        result,
-        "keyboard",
-    )
-    _upsert(
-        _build_hps(config.hw_design_config.hardware_topology), result, "hps"
-    )
-    _upsert(
-        _build_poe(config.hw_design_config.hardware_topology),
-        result,
-        "hardware-properties",
-    )
-    _upsert(
-        _build_storage(config.hw_design_config.hardware_topology),
-        result,
-        "hardware-properties",
-    )
-    _upsert(
-        _build_stylus(config.hw_design_config.hardware_topology),
-        result,
-        "hardware-properties",
-    )
-    _upsert(
-        _build_dgpu(config.hw_design_config.hardware_topology), result, "dgpu"
-    )
-    _upsert(
-        _build_uwb(config.hw_design_config.hardware_topology), result, "uwb"
-    )
+    _upsert(_build_keyboard(hw_features), result, "keyboard")
+    _upsert(_build_hps(hw_features), result, "hps")
+    _upsert(_build_poe(hw_features), result, "hardware-properties")
+    _upsert(_build_storage(hw_features), result, "hardware-properties")
+    _upsert(_build_stylus(hw_features), result, "hardware-properties")
+    _upsert(_build_dgpu(hw_features), result, "dgpu")
+    _upsert(_build_uwb(hw_features), result, "uwb")
     _upsert(
         _build_detachable_base(
-            config.hw_design_config.hardware_features.form_factor.form_factor,
-            config.hw_design_config.hardware_features.detachable_base,
+            hw_features.form_factor.form_factor,
+            hw_features.detachable_base,
         ),
         result,
         "detachable-base",
