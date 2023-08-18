@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
@@ -27,6 +28,7 @@ SANE_Option_Descriptor CreateDescriptor(const char* name,
                                         SANE_Value_Type type,
                                         int size) {
   SANE_Option_Descriptor desc;
+  memset(&desc, 0, sizeof(SANE_Option_Descriptor));
   desc.name = name;
   desc.title = NULL;
   desc.desc = NULL;
@@ -544,6 +546,320 @@ TEST(SaneOptionBool, CopiesDoNotAlias) {
   EXPECT_TRUE(option_two.Set(SANE_FALSE));
   EXPECT_EQ(option_two.Get<bool>(), false);
   EXPECT_EQ(option.Get<bool>(), true);
+}
+
+TEST(SaneOptionToProto, BasicProtoFields) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.title = "Test Title";
+  desc.desc = "Long Test Description";
+  desc.unit = SANE_UNIT_MM;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_EQ(proto->name(), "Test Name");
+  EXPECT_EQ(proto->title(), "Test Title");
+  EXPECT_EQ(proto->description(), "Long Test Description");
+  EXPECT_EQ(proto->option_type(), OptionType::TYPE_INT);
+  EXPECT_EQ(proto->unit(), OptionUnit::UNIT_MM);
+  EXPECT_FALSE(proto->has_constraint());
+}
+
+TEST(SaneOptionToProto, CapabilitiesDetectable) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap = SANE_CAP_SOFT_DETECT;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_TRUE(proto->detectable());
+  EXPECT_FALSE(proto->sw_settable());
+  EXPECT_FALSE(proto->hw_settable());
+  EXPECT_FALSE(proto->auto_settable());
+  EXPECT_FALSE(proto->emulated());
+  EXPECT_TRUE(proto->active());  // Active is the opposite sense of other bits.
+  EXPECT_FALSE(proto->advanced());
+}
+
+TEST(SaneOptionToProto, CapabilitiesSwSettable) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap = SANE_CAP_SOFT_SELECT;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_FALSE(proto->detectable());
+  EXPECT_TRUE(proto->sw_settable());
+  EXPECT_FALSE(proto->hw_settable());
+  EXPECT_FALSE(proto->auto_settable());
+  EXPECT_FALSE(proto->emulated());
+  EXPECT_TRUE(proto->active());  // Active is the opposite sense of other bits.
+  EXPECT_FALSE(proto->advanced());
+}
+
+TEST(SaneOptionToProto, CapabilitiesHwSettable) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap = SANE_CAP_HARD_SELECT;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_FALSE(proto->detectable());
+  EXPECT_FALSE(proto->sw_settable());
+  EXPECT_TRUE(proto->hw_settable());
+  EXPECT_FALSE(proto->auto_settable());
+  EXPECT_FALSE(proto->emulated());
+  EXPECT_TRUE(proto->active());  // Active is the opposite sense of other bits.
+  EXPECT_FALSE(proto->advanced());
+}
+
+TEST(SaneOptionToProto, CapabilitiesAutoSettable) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap = SANE_CAP_AUTOMATIC;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_FALSE(proto->detectable());
+  EXPECT_FALSE(proto->sw_settable());
+  EXPECT_FALSE(proto->hw_settable());
+  EXPECT_TRUE(proto->auto_settable());
+  EXPECT_FALSE(proto->emulated());
+  EXPECT_TRUE(proto->active());  // Active is the opposite sense of other bits.
+  EXPECT_FALSE(proto->advanced());
+}
+
+TEST(SaneOptionToProto, CapabilitiesEmulated) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap = SANE_CAP_EMULATED;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_FALSE(proto->detectable());
+  EXPECT_FALSE(proto->sw_settable());
+  EXPECT_FALSE(proto->hw_settable());
+  EXPECT_FALSE(proto->auto_settable());
+  EXPECT_TRUE(proto->emulated());
+  EXPECT_TRUE(proto->active());  // Active is the opposite sense of other bits.
+  EXPECT_FALSE(proto->advanced());
+}
+
+TEST(SaneOptionToProto, CapabilitiesInactive) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap = SANE_CAP_INACTIVE;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_FALSE(proto->detectable());
+  EXPECT_FALSE(proto->sw_settable());
+  EXPECT_FALSE(proto->hw_settable());
+  EXPECT_FALSE(proto->auto_settable());
+  EXPECT_FALSE(proto->emulated());
+  EXPECT_FALSE(proto->active());  // Active is the opposite sense of other bits.
+  EXPECT_FALSE(proto->advanced());
+}
+
+TEST(SaneOptionToProto, CapabilitiesAdvanced) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap = SANE_CAP_ADVANCED;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_FALSE(proto->detectable());
+  EXPECT_FALSE(proto->sw_settable());
+  EXPECT_FALSE(proto->hw_settable());
+  EXPECT_FALSE(proto->auto_settable());
+  EXPECT_FALSE(proto->emulated());
+  EXPECT_TRUE(proto->active());  // Active is the opposite sense of other bits.
+  EXPECT_TRUE(proto->advanced());
+}
+
+TEST(SaneOptionToProto, CapabilitiesAllBits) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap = 0xff;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_TRUE(proto->detectable());
+  EXPECT_TRUE(proto->sw_settable());
+  EXPECT_TRUE(proto->hw_settable());
+  EXPECT_TRUE(proto->auto_settable());
+  EXPECT_TRUE(proto->emulated());
+  EXPECT_FALSE(proto->active());  // Active is the opposite sense of other bits.
+  EXPECT_TRUE(proto->advanced());
+}
+
+TEST(SaneOptionToProto, CapabilitiesNoBits) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap = 0;
+  SaneOption option(desc, 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+
+  EXPECT_FALSE(proto->detectable());
+  EXPECT_FALSE(proto->sw_settable());
+  EXPECT_FALSE(proto->hw_settable());
+  EXPECT_FALSE(proto->auto_settable());
+  EXPECT_FALSE(proto->emulated());
+  EXPECT_TRUE(proto->active());  // Active is the opposite sense of other bits.
+  EXPECT_FALSE(proto->advanced());
+}
+
+TEST(SaneOptionToProto, BoolOptionToProto) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_BOOL, sizeof(SANE_Word)), 1);
+  option.Set(SANE_TRUE);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+  EXPECT_EQ(proto->option_type(), OptionType::TYPE_BOOL);
+
+  EXPECT_TRUE(proto->has_bool_value());
+  EXPECT_FALSE(proto->has_int_value());
+  EXPECT_FALSE(proto->has_fixed_value());
+  EXPECT_FALSE(proto->has_string_value());
+  EXPECT_EQ(proto->bool_value(), true);
+}
+
+TEST(SaneOptionToProto, IntOptionToProto) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word)), 1);
+  option.Set(42);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+  EXPECT_EQ(proto->option_type(), OptionType::TYPE_INT);
+
+  EXPECT_FALSE(proto->has_bool_value());
+  EXPECT_TRUE(proto->has_int_value());
+  EXPECT_FALSE(proto->has_fixed_value());
+  EXPECT_FALSE(proto->has_string_value());
+  EXPECT_THAT(proto->int_value().value(), ElementsAre(42));
+}
+
+TEST(SaneOptionToProto, IntListOptionToProto) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 3 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<int>{0, 42, 314});
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+  EXPECT_EQ(proto->option_type(), OptionType::TYPE_INT);
+
+  EXPECT_FALSE(proto->has_bool_value());
+  EXPECT_TRUE(proto->has_int_value());
+  EXPECT_FALSE(proto->has_fixed_value());
+  EXPECT_FALSE(proto->has_string_value());
+  EXPECT_THAT(proto->int_value().value(), ElementsAre(0, 42, 314));
+}
+
+TEST(SaneOptionToProto, FixedOptionToProto) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, sizeof(SANE_Word)), 1);
+  option.Set(42.25);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+  EXPECT_EQ(proto->option_type(), OptionType::TYPE_FIXED);
+
+  EXPECT_FALSE(proto->has_bool_value());
+  EXPECT_FALSE(proto->has_int_value());
+  EXPECT_TRUE(proto->has_fixed_value());
+  EXPECT_FALSE(proto->has_string_value());
+  EXPECT_THAT(proto->fixed_value().value(), ElementsAre(42.25));
+}
+
+TEST(SaneOptionToProto, FixedListOptionToProto) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 3 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<double>{0, 42.25, -314.5});
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+  EXPECT_EQ(proto->option_type(), OptionType::TYPE_FIXED);
+
+  EXPECT_FALSE(proto->has_bool_value());
+  EXPECT_FALSE(proto->has_int_value());
+  EXPECT_TRUE(proto->has_fixed_value());
+  EXPECT_FALSE(proto->has_string_value());
+  EXPECT_THAT(proto->fixed_value().value(), ElementsAre(0, 42.25, -314.5));
+}
+
+TEST(SaneOptionToProto, StringOptionToProto) {
+  SaneOption option(CreateDescriptor("Test Name", SANE_TYPE_STRING, 16), 1);
+  option.Set("test_1234567890");
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+  EXPECT_EQ(proto->option_type(), OptionType::TYPE_STRING);
+
+  EXPECT_FALSE(proto->has_bool_value());
+  EXPECT_FALSE(proto->has_int_value());
+  EXPECT_FALSE(proto->has_fixed_value());
+  EXPECT_TRUE(proto->has_string_value());
+  EXPECT_EQ(proto->string_value(), "test_1234567890");
+}
+
+TEST(SaneOptionToProto, ButtonOptionToProto) {
+  SaneOption option(CreateDescriptor("Test Name", SANE_TYPE_BUTTON, 0), 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+  EXPECT_EQ(proto->option_type(), OptionType::TYPE_BUTTON);
+
+  EXPECT_FALSE(proto->has_bool_value());
+  EXPECT_FALSE(proto->has_int_value());
+  EXPECT_FALSE(proto->has_fixed_value());
+  EXPECT_FALSE(proto->has_string_value());
+}
+
+TEST(SaneOptionToProto, GroupOptionToProto) {
+  SaneOption option(CreateDescriptor("Test Name", SANE_TYPE_GROUP, 0), 1);
+
+  auto proto = option.ToScannerOption();
+  ASSERT_TRUE(proto);
+  EXPECT_EQ(proto->option_type(), OptionType::TYPE_GROUP);
+
+  EXPECT_FALSE(proto->has_bool_value());
+  EXPECT_FALSE(proto->has_int_value());
+  EXPECT_FALSE(proto->has_fixed_value());
+  EXPECT_FALSE(proto->has_string_value());
+}
+
+TEST(SaneOptionToProto, UnitMapping) {
+  std::unordered_map<SANE_Unit, OptionUnit> expected = {
+      {SANE_UNIT_NONE, OptionUnit::UNIT_NONE},
+      {SANE_UNIT_PIXEL, OptionUnit::UNIT_PIXEL},
+      {SANE_UNIT_BIT, OptionUnit::UNIT_BIT},
+      {SANE_UNIT_MM, OptionUnit::UNIT_MM},
+      {SANE_UNIT_DPI, OptionUnit::UNIT_DPI},
+      {SANE_UNIT_PERCENT, OptionUnit::UNIT_PERCENT},
+      {SANE_UNIT_MICROSECOND, OptionUnit::UNIT_MICROSECOND},
+  };
+
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  for (auto kv : expected) {
+    desc.unit = kv.first;
+    SaneOption option(desc, 1);
+
+    auto proto = option.ToScannerOption();
+    ASSERT_TRUE(proto);
+    EXPECT_EQ(proto->unit(), kv.second);
+  }
 }
 
 }  // namespace lorgnette

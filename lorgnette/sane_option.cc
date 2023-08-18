@@ -107,11 +107,33 @@ std::string JoinFixed(const std::vector<double>& fs,
 
 SaneOption::SaneOption(const SANE_Option_Descriptor& opt, int index) {
   name_ = opt.name ? opt.name : "";
+  title_ = opt.title ? opt.title : "";
+  description_ = opt.desc ? opt.desc : "";
   index_ = index;
   type_ = opt.type;
-  active_ = SANE_OPTION_IS_ACTIVE(opt.cap);
+  unit_ = opt.unit;
   constraint_ = SaneConstraint::Create(opt);
 
+  ParseCapabilities(opt.cap);
+  ReserveValueSize(opt);
+}
+
+void SaneOption::ParseCapabilities(SANE_Int cap) {
+  detectable_ = cap & SANE_CAP_SOFT_DETECT;
+  sw_settable_ = SANE_OPTION_IS_SETTABLE(cap);
+  hw_settable_ = cap & SANE_CAP_HARD_SELECT;
+  auto_settable_ = cap & SANE_CAP_AUTOMATIC;
+  emulated_ = cap & SANE_CAP_EMULATED;
+  active_ = SANE_OPTION_IS_ACTIVE(cap);
+  advanced_ = cap & SANE_CAP_ADVANCED;
+  if (cap & SANE_Int(~0x7f)) {
+    LOG(WARNING) << "Option " << name_ << " at index " << index_
+                 << " has unrecognized bits in capabilities: "
+                 << base::StringPrintf("0x%x", cap);
+  }
+}
+
+void SaneOption::ReserveValueSize(const SANE_Option_Descriptor& opt) {
   size_t size = 0;
   switch (type_) {
     case SANE_TYPE_BOOL:
@@ -446,6 +468,10 @@ size_t SaneOption::GetSize() const {
   }
 }
 
+bool SaneOption::IsActive() const {
+  return active_;
+}
+
 std::string SaneOption::DisplayValue() const {
   if (!active_) {
     return "[inactive]";
@@ -497,6 +523,104 @@ std::optional<OptionRange> SaneOption::GetValidRange() const {
     return std::nullopt;
   }
   return constraint_->GetOptionRange();
+}
+
+std::optional<ScannerOption> SaneOption::ToScannerOption() const {
+  ScannerOption option;
+  option.set_name(name_);
+  option.set_title(title_);
+  option.set_description(description_);
+
+  switch (type_) {
+    case SANE_TYPE_BOOL:
+      option.set_option_type(TYPE_BOOL);
+      if (Get<bool>().has_value()) {
+        option.set_bool_value(Get<bool>().value());
+      }
+      break;
+    case SANE_TYPE_INT: {
+      option.set_option_type(TYPE_INT);
+      auto int_list = Get<std::vector<int>>();
+      if (int_list.has_value()) {
+        for (int value : int_list.value()) {
+          option.mutable_int_value()->add_value(value);
+        }
+      }
+      break;
+    }
+    case SANE_TYPE_FIXED: {
+      option.set_option_type(TYPE_FIXED);
+      auto fixed_list = Get<std::vector<double>>();
+      if (fixed_list.has_value()) {
+        for (double value : fixed_list.value()) {
+          option.mutable_fixed_value()->add_value(value);
+        }
+      }
+      break;
+    }
+    case SANE_TYPE_STRING:
+      option.set_option_type(TYPE_STRING);
+      if (Get<std::string>().has_value()) {
+        option.set_string_value(Get<std::string>().value());
+      }
+      break;
+    case SANE_TYPE_BUTTON:
+      option.set_option_type(TYPE_BUTTON);
+      break;
+    case SANE_TYPE_GROUP:
+      option.set_option_type(TYPE_GROUP);
+      return option;  // No additional fields are valid for a group.
+    default:
+      LOG(ERROR) << "Skipping unhandled option type " << type_ << " in option "
+                 << name_;
+      return std::nullopt;
+  }
+
+  switch (unit_) {
+    case SANE_UNIT_NONE:
+      option.set_unit(UNIT_NONE);
+      break;
+    case SANE_UNIT_PIXEL:
+      option.set_unit(UNIT_PIXEL);
+      break;
+    case SANE_UNIT_BIT:
+      option.set_unit(UNIT_BIT);
+      break;
+    case SANE_UNIT_MM:
+      option.set_unit(UNIT_MM);
+      break;
+    case SANE_UNIT_DPI:
+      option.set_unit(UNIT_DPI);
+      break;
+    case SANE_UNIT_PERCENT:
+      option.set_unit(UNIT_PERCENT);
+      break;
+    case SANE_UNIT_MICROSECOND:
+      option.set_unit(UNIT_MICROSECOND);
+      break;
+    default:
+      LOG(ERROR) << "Skipping unhandled option unit " << unit_ << " in option "
+                 << name_;
+      return std::nullopt;
+  }
+
+  if (constraint_) {
+    auto proto_constraint = constraint_->ToOptionConstraint();
+    if (proto_constraint && proto_constraint->constraint_type() !=
+                                OptionConstraint::CONSTRAINT_NONE) {
+      *option.mutable_constraint() = *proto_constraint;
+    }
+  }
+
+  option.set_detectable(detectable_);
+  option.set_sw_settable(sw_settable_);
+  option.set_hw_settable(hw_settable_);
+  option.set_auto_settable(auto_settable_);
+  option.set_emulated(emulated_);
+  option.set_active(active_);
+  option.set_advanced(advanced_);
+
+  return option;
 }
 
 }  // namespace lorgnette

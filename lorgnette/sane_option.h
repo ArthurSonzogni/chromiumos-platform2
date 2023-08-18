@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <sane/sane.h>
 
 #include "lorgnette/sane_constraint.h"
@@ -53,17 +54,33 @@ class SaneOption {
   SANE_Value_Type GetType() const;
   size_t GetSize() const;
   std::optional<SaneConstraint> GetConstraint() const;
+  bool IsActive() const;
 
   // Wrapper functions to process the embedded constraint.
   std::optional<std::vector<std::string>> GetValidStringValues() const;
   std::optional<std::vector<uint32_t>> GetValidIntValues() const;
   std::optional<OptionRange> GetValidRange() const;
 
+  std::optional<ScannerOption> ToScannerOption() const;
+
  private:
+  void ParseCapabilities(SANE_Int cap);
+  void ReserveValueSize(const SANE_Option_Descriptor& opt);
+
   std::string name_;
+  std::string title_;
+  std::string description_;
   int index_;
-  SANE_Value_Type type_;  // The type that the backend uses for the option.
-  bool active_;           // Inactive options don't contain a value.
+  SANE_Value_Type type_;  // The value type used by the backend for this option.
+  SANE_Unit unit_;        // The unit type used by the backend for this option.
+  bool detectable_;       // Capabilities contains CAP_SOFT_DETECT.
+  bool sw_settable_;      // SANE_OPTION_IS_SETTABLE is true for capabilities.
+  bool hw_settable_;      // Capabilities contains CAP_HARD_SELECT.
+  bool auto_settable_;    // Capabilities contains CAP_AUTOMATIC.
+  bool emulated_;         // Capabilities contains CAP_EMULATED.
+  bool active_;           // SANE_OPTION_IS_ACTIVE is true for capabilities.
+                          // Inactive options do not contain a valid value.
+  bool advanced_;         // Capabilities contains CAP_ADVANCED.
   std::optional<SaneConstraint> constraint_;
 
   // Only one of these will be set, depending on type_.
