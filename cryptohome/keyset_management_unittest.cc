@@ -711,7 +711,9 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
       factory.GetPinWeaverFrontend();
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(pinweaver.get(), CredDirPath());
+  auto pw_manager = factory.GetPinWeaverManagerFrontend();
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.set_pinweaver_manager_for_testing(pw_manager.get());
   crypto_.Init();
 
   // Setup initial user.
@@ -724,7 +726,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   // Setup pin credentials.
   FakeFeaturesForTesting features;
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, crypto_.le_manager(), &hwsec_pw_manager_);
+      features.async, crypto_.le_manager(), crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,
@@ -733,7 +735,9 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
                           /*reset_secret*/ std::nullopt,
                           vk_status->get()->GetResetSeed()};
   CreateTestFuture result;
+  LOG(INFO) << "Before create";
   auth_block->Create(auth_input, result.GetCallback());
+  LOG(INFO) << "After create";
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 

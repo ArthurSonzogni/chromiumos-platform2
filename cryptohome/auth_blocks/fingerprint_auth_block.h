@@ -88,7 +88,7 @@ class FingerprintAuthBlock : public AuthBlock {
   bool IsLocked(uint64_t label);
 
   const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
-  LECredentialManager* le_manager_;
+  [[maybe_unused]] LECredentialManager* le_manager_;
   BiometricsAuthBlockService* service_;
   base::WeakPtrFactory<FingerprintAuthBlock> weak_factory_{this};
 };

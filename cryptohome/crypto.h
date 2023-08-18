@@ -111,13 +111,18 @@ class Crypto final {
     le_manager_ = std::move(le_manager);
   }
 
+  void set_pinweaver_manager_for_testing(
+      const hwsec::PinWeaverManagerFrontend* pw_manager) {
+    hwsec_pw_manager_ = pw_manager;
+  }
+
  private:
   // The HWSec implementation.
   const hwsec::CryptohomeFrontend* const hwsec_;
 
   // The pinweaver implementation.
   const hwsec::PinWeaverFrontend* const pinweaver_;
-  const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
+  const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager_;
   // The CryptohomeKeysManager object used to reload Cryptohome keys.
   CryptohomeKeysManager* const cryptohome_keys_manager_;
 

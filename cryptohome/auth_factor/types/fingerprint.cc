@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_factor/types/fingerprint.h"
 
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <utility>
@@ -23,6 +24,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/error/action.h"
+#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
@@ -145,13 +147,15 @@ CryptohomeStatus FingerprintAuthFactorDriver::TryCreateRateLimiter(
     delay_sched[entry.attempts] = entry.delay;
   }
 
-  uint64_t label;
-  LECredStatus ret = crypto_->le_manager()->InsertRateLimiter(
-      kFingerprintAuthChannel, policies, reset_secret, delay_sched,
-      kExpirationLockout.InSeconds(), &label);
-  if (!ret.ok()) {
-    return ret;
+  hwsec::StatusOr<uint64_t> result =
+      crypto_->GetPinWeaverManager()->InsertRateLimiter(
+          kFingerprintAuthChannel, policies, reset_secret, delay_sched,
+          kExpirationLockout.InSeconds());
+  if (!result.ok()) {
+    return MakeStatus<error::CryptohomeTPMError>(
+        std::move(result).err_status());
   }
+  uint64_t& label = result.value();
 
   // Attempt to populate the USS with the values.
   {
@@ -200,13 +204,14 @@ CryptohomeStatusOr<base::TimeDelta> FingerprintAuthFactorDriver::GetFactorDelay(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   // Try and extract the delay from the LE credential manager.
-  auto delay_in_seconds = crypto_->le_manager()->GetDelayInSeconds(
+  auto delay_in_seconds = crypto_->GetPinWeaverManager()->GetDelayInSeconds(
       *user_metadata->fingerprint_rate_limiter_id);
   if (!delay_in_seconds.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthFactorFingerprintGetFactorDelayReadFailed))
-        .Wrap(std::move(delay_in_seconds).err_status());
+        .Wrap(MakeStatus<error::CryptohomeTPMError>(
+            std::move(delay_in_seconds).err_status()));
   }
   // Return the extracted time, handling the max value case.
   if (*delay_in_seconds == std::numeric_limits<uint32_t>::max()) {
@@ -251,13 +256,14 @@ CryptohomeStatusOr<bool> FingerprintAuthFactorDriver::IsExpired(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   // Try and extract the expiration from the LE credential manager.
-  LECredStatusOr<std::optional<uint32_t>> time_until_expiration_in_seconds =
-      crypto_->le_manager()->GetExpirationInSeconds(
+  hwsec::StatusOr<std::optional<uint32_t>> time_until_expiration_in_seconds =
+      crypto_->GetPinWeaverManager()->GetExpirationInSeconds(
           *user_metadata->fingerprint_rate_limiter_id);
   if (!time_until_expiration_in_seconds.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintIsExpiredReadFailed))
-        .Wrap(std::move(time_until_expiration_in_seconds).err_status());
+        .Wrap(MakeStatus<error::CryptohomeTPMError>(
+            std::move(time_until_expiration_in_seconds).err_status()));
   }
   // If |time_until_expiration_in_seconds| is nullopt, the leaf has no
   // expiration.

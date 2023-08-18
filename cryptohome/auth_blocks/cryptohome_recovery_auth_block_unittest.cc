@@ -295,10 +295,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   // IsPinWeaverEnabled() returns `true` -> revocation is supported.
   brillo::SecureBlob le_secret, he_secret;
   uint64_t le_label = 1;
-  EXPECT_CALL(le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<2>(&he_secret),
-                      SetArgPointee<6>(le_label),
-                      ReturnError<CryptohomeLECredError>()));
+                      ReturnValue(/* ret_label */ le_label)));
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
@@ -354,9 +353,10 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
       derive_cryptohome_recovery_auth_input;
 
   brillo::SecureBlob le_secret_1;
-  EXPECT_CALL(le_cred_manager_, CheckCredential(le_label, _, _, _))
-      .WillOnce(DoAll(SaveArg<1>(&le_secret_1), SetArgPointee<2>(he_secret),
-                      ReturnError<CryptohomeLECredError>()));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(le_label, _))
+      .WillOnce(DoAll(SaveArg<1>(&le_secret_1),
+                      ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{
+                          .he_secret = he_secret})));
 
   DeriveTestFuture derive_result;
   auth_block.Derive(auth_input, *auth_state, derive_result.GetCallback());

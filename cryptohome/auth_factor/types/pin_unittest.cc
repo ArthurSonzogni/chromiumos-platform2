@@ -200,7 +200,7 @@ TEST_F(PinDriverTest, GetDelayInfinite) {
   AuthFactor factor(AuthFactorType::kPin, kLabel,
                     CreateMetadataWithType<auth_factor::PinMetadata>(),
                     {.state = PinWeaverAuthBlockState({.le_label = kLeLabel})});
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(std::numeric_limits<uint32_t>::max()));
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
@@ -215,7 +215,7 @@ TEST_F(PinDriverTest, GetDelayFinite) {
   AuthFactor factor(AuthFactorType::kPin, kLabel,
                     CreateMetadataWithType<auth_factor::PinMetadata>(),
                     {.state = PinWeaverAuthBlockState({.le_label = kLeLabel})});
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(10));
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
@@ -230,7 +230,7 @@ TEST_F(PinDriverTest, GetDelayZero) {
   AuthFactor factor(AuthFactorType::kPin, kLabel,
                     CreateMetadataWithType<auth_factor::PinMetadata>(),
                     {.state = PinWeaverAuthBlockState({.le_label = kLeLabel})});
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);

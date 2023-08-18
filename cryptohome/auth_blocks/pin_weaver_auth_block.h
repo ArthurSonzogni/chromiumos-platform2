@@ -63,7 +63,7 @@ class PinWeaverAuthBlock : public AuthBlock {
   // Feature lookup interface.
   AsyncInitFeatures* features_;
   // Handler for Low Entropy credentials.
-  LECredentialManager* le_manager_;
+  [[maybe_unused]] LECredentialManager* le_manager_;
   const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
 };
 

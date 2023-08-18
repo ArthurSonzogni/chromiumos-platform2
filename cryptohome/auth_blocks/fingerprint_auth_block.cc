@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
 
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <memory>
@@ -14,9 +15,11 @@
 #include <base/notreached.h>
 #include <base/time/time.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
@@ -24,6 +27,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_le_cred_error.h"
+#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/error/utilities.h"
@@ -35,6 +39,7 @@ namespace cryptohome {
 namespace {
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
+using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::PossibleAction;
 using cryptohome::error::PrimaryAction;
@@ -202,22 +207,24 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
         nullptr, nullptr);
     return;
   }
-  LECredStatusOr<LECredentialManager::StartBiometricsAuthReply> reply =
-      le_manager_->StartBiometricsAuth(kFingerprintAuthChannel,
-                                       *auth_input.rate_limiter_label, *nonce);
+  hwsec::StatusOr<hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply>
+      reply = hwsec_pw_manager_->StartBiometricsAuth(
+          kFingerprintAuthChannel, *auth_input.rate_limiter_label, *nonce);
   if (!reply.ok()) {
     LOG(ERROR) << "Failed to start biometrics auth with PinWeaver.";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocFingerprintAuthBlockStartBioAuthFailedInCreate))
-            .Wrap(std::move(reply).err_status()),
+            .Wrap(
+                MakeStatus<CryptohomeTPMError>(std::move(reply).err_status())),
         nullptr, nullptr);
     return;
   }
-  LECredStatus reset_status = le_manager_->ResetCredential(
+
+  hwsec::Status reset_status = hwsec_pw_manager_->ResetCredential(
       *auth_input.rate_limiter_label, *auth_input.reset_secret,
-      /*strong_reset=*/false);
+      hwsec::PinWeaverManagerFrontend::ResetType::kWrongAttempts);
   if (!reset_status.ok()) {
     // TODO(b/275027852): Report metrics because we silently fail here.
     LOG(WARNING)
@@ -286,11 +293,9 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
 
-  brillo::SecureBlob gsc_secret, unused_reset_secret;
-  LECredStatus status = le_manager_->CheckCredential(
-      *auth_state->gsc_secret_label, *auth_input.user_input, &gsc_secret,
-      &unused_reset_secret);
-  if (!status.ok()) {
+  auto result = hwsec_pw_manager_->CheckCredential(
+      *auth_state->gsc_secret_label, *auth_input.user_input);
+  if (!result.ok()) {
     LOG(ERROR) << "Failed to check biometrics secret with PinWeaver.";
     // Include kDevCheckUnexpectedState as according to the protocol this
     // authentication should never fail.
@@ -299,14 +304,15 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
             CRYPTOHOME_ERR_LOC(
                 kLocFingerprintAuthBlockCheckCredentialFailedInCreate),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
-            .Wrap(std::move(status).err_status()),
+            .Wrap(
+                MakeStatus<CryptohomeTPMError>(std::move(result).err_status())),
         nullptr, std::nullopt);
     return;
   }
 
   auto key_blobs = std::make_unique<KeyBlobs>();
   auto hmac_key = brillo::SecureBlob::Combine(
-      gsc_secret, *auth_input.fingerprint_auth_input->auth_secret);
+      result->he_secret, *auth_input.fingerprint_auth_input->auth_secret);
   key_blobs->vkk_key =
       HmacSha256(hmac_key, brillo::BlobFromString(kFekKeyHmacData));
   std::move(callback).Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
@@ -343,16 +349,17 @@ void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
         std::nullopt, std::nullopt);
     return;
   }
-  LECredStatusOr<LECredentialManager::StartBiometricsAuthReply> reply =
-      le_manager_->StartBiometricsAuth(kFingerprintAuthChannel,
-                                       *auth_input.rate_limiter_label, *nonce);
+  hwsec::StatusOr<hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply>
+      reply = hwsec_pw_manager_->StartBiometricsAuth(
+          kFingerprintAuthChannel, *auth_input.rate_limiter_label, *nonce);
   if (!reply.ok()) {
     LOG(ERROR) << "Failed to start biometrics auth with PinWeaver.";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocFingerprintAuthBlockStartBioAuthFailedInSelect))
-            .Wrap(std::move(reply).err_status()),
+            .Wrap(
+                MakeStatus<CryptohomeTPMError>(std::move(reply).err_status())),
         std::nullopt, std::nullopt);
     return;
   }
@@ -423,18 +430,18 @@ void FingerprintAuthBlock::ContinueCreate(
   // credential authentication should never fail.
   std::map<uint32_t, uint32_t> delay_sched{{1, kInfiniteDelay}};
 
-  uint64_t label;
-  LECredStatus ret = le_manager_->InsertCredential(
-      policies, /*le_secret=*/output->auth_pin,
-      /*he_secret=*/he_secret, reset_secret, delay_sched,
-      /*expiration_delay=*/std::nullopt, &label);
-  if (!ret.ok()) {
+  hwsec::StatusOr<uint64_t> result = hwsec_pw_manager_->InsertCredential(
+      policies, /*le_secret=*/output->auth_pin, /*he_secret=*/he_secret,
+      reset_secret, delay_sched,
+      /*expiration_delay=*/std::nullopt);
+  if (!result.ok()) {
     LOG(ERROR) << "Failed to insert the fingerprint PinWeaver credential.";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocFingerprintAuthBlockInsertCredentialFailedInCreate))
-            .Wrap(std::move(ret)),
+            .Wrap(
+                MakeStatus<CryptohomeTPMError>(std::move(result).err_status())),
         nullptr, nullptr);
     return;
   }
@@ -445,7 +452,7 @@ void FingerprintAuthBlock::ContinueCreate(
   auto auth_state = std::make_unique<AuthBlockState>();
   FingerprintAuthBlockState fingerprint_auth_state;
   fingerprint_auth_state.template_id = std::move(output->record_id);
-  fingerprint_auth_state.gsc_secret_label = label;
+  fingerprint_auth_state.gsc_secret_label = result.value();
   auth_state->state = std::move(fingerprint_auth_state);
 
   auto key_blobs = std::make_unique<KeyBlobs>();
@@ -552,11 +559,12 @@ void FingerprintAuthBlock::ContinuePrepareForRemoval(
     return;
   }
 
-  LECredStatus status =
-      le_manager_->RemoveCredential(state.gsc_secret_label.value());
+  hwsec::Status status =
+      hwsec_pw_manager_->RemoveCredential(state.gsc_secret_label.value());
   if (!status.ok()) {
-    if (status->local_lecred_error() ==
-        LECredError::LE_CRED_ERROR_INVALID_LABEL) {
+    // TODO(b/300553666): Don't block the RemovalFactor for other non-retryable
+    // libhwsec error actions (kNoRetry).
+    if (status->ToTPMRetryAction() == hwsec::TPMRetryAction::kSpaceNotFound) {
       LOG(ERROR) << "Invalid gsc_secret_label in fingerprint auth block: "
                  << status;
       // This error won't be solved by retrying, go ahead and delete the auth
@@ -566,7 +574,7 @@ void FingerprintAuthBlock::ContinuePrepareForRemoval(
     }
     // Other LE errors might be resolved by retrying, so fail the remove
     // operation here.
-    std::move(callback).Run(std::move(status));
+    std::move(callback).Run(MakeStatus<CryptohomeTPMError>(std::move(status)));
     return;
   }
 
@@ -578,7 +586,7 @@ void FingerprintAuthBlock::ContinuePrepareForRemoval(
 }
 
 bool FingerprintAuthBlock::IsLocked(uint64_t label) {
-  LECredStatusOr<uint32_t> delay = le_manager_->GetDelayInSeconds(label);
+  hwsec::StatusOr<uint32_t> delay = hwsec_pw_manager_->GetDelayInSeconds(label);
   if (!delay.ok()) {
     LOG(ERROR)
         << "Failed to obtain the delay in seconds in fingerprint auth block: "

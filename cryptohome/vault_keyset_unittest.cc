@@ -21,6 +21,9 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/backend/pinweaver_manager/pinweaver_manager.h>
+#include <libhwsec/error/tpm_error.h>
+#include <libhwsec/error/tpm_retry_action.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
@@ -1093,12 +1096,13 @@ class LeCredentialsManagerTest : public ::testing::Test {
     // Raw pointer as crypto_ expects unique_ptr, which we will wrap this
     // allocation into.
     le_cred_manager_ = new MockLECredentialManager();
-    EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
-        .WillRepeatedly(DoAll(
-            SetArgPointee<2>(
-                brillo::SecureBlob(HexDecode(kHexHighEntropySecret))),
-            SetArgPointee<3>(brillo::SecureBlob(HexDecode(kHexResetSecret))),
-            ReturnError<CryptohomeLECredError>()));
+    EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+        .WillRepeatedly(
+            DoAll(ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{
+                .he_secret =
+                    brillo::SecureBlob(HexDecode(kHexHighEntropySecret)),
+                .reset_secret = brillo::SecureBlob(HexDecode(kHexResetSecret)),
+            })));
     crypto_.set_le_manager_for_testing(
         std::unique_ptr<LECredentialManager>(le_cred_manager_));
 
@@ -1134,8 +1138,8 @@ class LeCredentialsManagerTest : public ::testing::Test {
 };
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
-      .WillOnce(ReturnError<CryptohomeLECredError>());
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(ReturnValue(/* ret_label */ 0));
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
@@ -1171,10 +1175,9 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_NO_FREE_LABEL));
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kSpaceNotFound));
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
@@ -1202,8 +1205,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
-      .Times(0);
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _)).Times(0);
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());

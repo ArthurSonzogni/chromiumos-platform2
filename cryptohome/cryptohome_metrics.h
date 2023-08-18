@@ -10,6 +10,7 @@
 #include <base/files/file.h>
 #include <base/time/time.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <libhwsec/error/tpm_retry_action.h>
 #include <metrics/metrics_library.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -436,8 +437,8 @@ void ReportTimerDuration(const TimerType& timer_type,
 
 // Reports the result of credentials revocation for `auth_block_type` to the
 // "Cryptohome.{AuthBlockType}.CredentialRevocationResult" histogram.
-void ReportCredentialRevocationResult(AuthBlockType auth_block_type,
-                                      LECredError result);
+void ReportRevokeCredentialResult(AuthBlockType auth_block_type,
+                                  hwsec::TPMRetryAction result);
 
 // Reports number of deleted user profiles to the
 // "Cryptohome.DeletedUserProfiles" histogram.

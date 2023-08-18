@@ -157,7 +157,7 @@ TEST_F(AuthFactorWithDriverTest, PinNoIntentsWithDelay) {
                    PinWeaverAuthBlockState{.le_label = kLeLabel});
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
 
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
@@ -176,7 +176,7 @@ TEST_F(AuthFactorWithDriverTest, PinSupportAllIntentsWhenUnlocked) {
                    PinWeaverAuthBlockState{.le_label = kLeLabel});
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
@@ -216,7 +216,7 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWhenExpired) {
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
-  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
@@ -240,9 +240,9 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillRepeatedly(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
-  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
 
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
@@ -266,9 +266,9 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillRepeatedly(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
-  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy(

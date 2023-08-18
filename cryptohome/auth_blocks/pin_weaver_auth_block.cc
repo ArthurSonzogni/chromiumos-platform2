@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <memory>
@@ -32,6 +33,7 @@
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/features.h"
@@ -42,6 +44,7 @@
 
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::CryptohomeTPMError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
 using ::cryptohome::error::PrimaryAction;
@@ -59,17 +62,6 @@ namespace cryptohome {
 namespace {
 
 constexpr int kDefaultSecretSize = 32;
-
-void LogLERetCode(int le_error) {
-  switch (le_error) {
-    case LE_CRED_ERROR_NO_FREE_LABEL:
-      LOG(ERROR) << "No free label available in hash tree.";
-      break;
-    case LE_CRED_ERROR_HASH_TREE:
-      LOG(ERROR) << "Hash tree error.";
-      break;
-  }
-}
 
 // String used as vector in HMAC operation to derive vkk_seed from High Entropy
 // secret.
@@ -304,22 +296,24 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
       },
   };
 
-  uint64_t label;
-  LECredStatus ret = le_manager_->InsertCredential(
+  hwsec::StatusOr<uint64_t> result = hwsec_pw_manager_->InsertCredential(
       policies, le_secret, he_secret, reset_secret, delay_sched,
-      /*expiration_delay=*/std::nullopt, &label);
-  if (!ret.ok()) {
-    LogLERetCode(ret->local_lecred_error());
+      /*expiration_delay=*/std::nullopt);
+  if (!result.ok()) {
+    LOG(ERROR) << "Failed to insert credential with PinWeaver.";
+    LOG(INFO) << result.status();
+    LOG(INFO) << "TEST";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocPinWeaverAuthBlockInsertCredentialFailedInCreate))
-            .Wrap(std::move(ret)),
+            .Wrap(
+                MakeStatus<CryptohomeTPMError>(std::move(result).err_status())),
         nullptr, nullptr);
     return;
   }
 
-  pin_auth_state.le_label = label;
+  pin_auth_state.le_label = result.value();
   pin_auth_state.salt = std::move(salt);
   auth_block_state->state = std::move(pin_auth_state);
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
@@ -392,7 +386,6 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
   auto key_blobs = std::make_unique<KeyBlobs>();
-  key_blobs->reset_secret = brillo::SecureBlob();
   // Note: Yes it is odd to pass the IV from the auth state into the key blobs
   // without performing any operation on the data. However, the fact that the
   // IVs are pre-generated in the VaultKeyset for PinWeaver credentials is an
@@ -405,36 +398,39 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
     key_blobs->vkk_iv = auth_state->fek_iv.value();
   }
 
-  // Try to obtain the High Entropy Secret from the LECredentialManager.
-  brillo::SecureBlob he_secret;
-  LECredStatus ret = le_manager_->CheckCredential(
-      auth_state->le_label.value(), le_secret, &he_secret,
-      &key_blobs->reset_secret.value());
+  // Try to obtain the High Entropy Secret from the PinWeaverManager.
+  hwsec::StatusOr<hwsec::PinWeaverManager::CheckCredentialReply> result =
+      hwsec_pw_manager_->CheckCredential(auth_state->le_label.value(),
+                                         le_secret);
 
-  if (!ret.ok()) {
+  if (!result.ok()) {
     // If the underlying credential is currently locked, include the
     // kLeLockedOut action.
     if (GetLockoutDelay(auth_state->le_label.value()) > 0) {
       // If it is caused by invalid LE secret
-      if (ret->local_lecred_error() == LE_CRED_ERROR_INVALID_LE_SECRET) {
+      if (result.err_status()->ToTPMRetryAction() ==
+          hwsec::TPMRetryAction::kUserAuth) {
         std::move(callback).Run(
             MakeStatus<CryptohomeCryptoError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocPinWeaverAuthBlockCheckCredLockedInDerive),
                 ErrorActionSet(PrimaryAction::kLeLockedOut),
                 CryptoError::CE_CREDENTIAL_LOCKED)
-                .Wrap(std::move(ret)),
+                .Wrap(MakeStatus<CryptohomeTPMError>(
+                    std::move(result).err_status())),
             nullptr, std::nullopt);
         return;
         // Or the LE node specified by le_label in PinWeaver is under a lockout
         // timer from previous failed attempts.
-      } else if (ret->local_lecred_error() == LE_CRED_ERROR_TOO_MANY_ATTEMPTS) {
+      } else if (result.err_status()->ToTPMRetryAction() ==
+                 hwsec::TPMRetryAction::kPinWeaverLockedOut) {
         std::move(callback).Run(
             MakeStatus<CryptohomeCryptoError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocPinWeaverAuthBlockCheckCredTPMLockedInDerive),
                 ErrorActionSet(PrimaryAction::kLeLockedOut))
-                .Wrap(std::move(ret)),
+                .Wrap(MakeStatus<CryptohomeTPMError>(
+                    std::move(result).err_status())),
             nullptr, std::nullopt);
         return;
       }
@@ -443,16 +439,20 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockCheckCredFailedInDerive))
-            .Wrap(std::move(ret)),
+            .Wrap(
+                MakeStatus<CryptohomeTPMError>(std::move(result).err_status())),
         nullptr, std::nullopt);
     return;
   }
+  brillo::SecureBlob& he_secret = result->he_secret;
+  key_blobs->reset_secret = result->reset_secret;
   std::optional<AuthBlock::SuggestedAction> suggested_action;
   // If PIN migration is enabled, check if the credential is currently
   // configured to use the modern delay policy. If it is not, attempt to migrate
   // it. If any of that fails we don't fail the already-successful derivation.
   if (features_->IsFeatureEnabled(Features::kMigratePin)) {
-    auto delay_sched = le_manager_->GetDelaySchedule(*auth_state->le_label);
+    auto delay_sched =
+        hwsec_pw_manager_->GetDelaySchedule(*auth_state->le_label);
     if (delay_sched.ok()) {
       if (*delay_sched != PinDelaySchedule()) {
         LOG(INFO) << "PIN factor is using obsolete delay schedule";
@@ -494,10 +494,12 @@ void PinWeaverAuthBlock::PrepareForRemoval(
     std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
     return;
   }
-  LECredStatus status = le_manager_->RemoveCredential(state->le_label.value());
+  hwsec::Status status =
+      hwsec_pw_manager_->RemoveCredential(state->le_label.value());
   if (!status.ok()) {
-    if (status->local_lecred_error() ==
-        LECredError::LE_CRED_ERROR_INVALID_LABEL) {
+    // TODO(b/300553666): Don't block the RemovalFactor for other non-retryable
+    // libhwsec error actions (kNoRetry).
+    if (status->ToTPMRetryAction() == hwsec::TPMRetryAction::kSpaceNotFound) {
       LOG(ERROR) << "Invalid le_label in pinweaver auth block: " << status;
       // This error won't be solved by retrying, go ahead and delete the auth
       // factor anyway.
@@ -510,7 +512,7 @@ void PinWeaverAuthBlock::PrepareForRemoval(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockRemoveCredential),
             ErrorActionSet({PossibleAction::kRetry}))
-            .Wrap(std::move(status)));
+            .Wrap(MakeStatus<CryptohomeTPMError>(std::move(status))));
     return;
   }
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
@@ -518,7 +520,7 @@ void PinWeaverAuthBlock::PrepareForRemoval(
 }
 
 uint32_t PinWeaverAuthBlock::GetLockoutDelay(uint64_t label) {
-  LECredStatusOr<uint32_t> delay = le_manager_->GetDelayInSeconds(label);
+  hwsec::StatusOr<uint32_t> delay = hwsec_pw_manager_->GetDelayInSeconds(label);
   if (!delay.ok()) {
     LOG(ERROR)
         << "Failed to obtain the delay in seconds in pinweaver auth block: "

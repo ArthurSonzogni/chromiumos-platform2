@@ -747,7 +747,9 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       factory.GetPinWeaverFrontend();
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(pinweaver.get(), temp_path);
+  auto pw_manager = factory.GetPinWeaverManagerFrontend();
   crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.set_pinweaver_manager_for_testing(pw_manager.get());
   crypto_.Init();
 
   SetUpHwsecAuthenticationMocks();

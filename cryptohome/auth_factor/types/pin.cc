@@ -18,6 +18,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -91,11 +92,12 @@ CryptohomeStatusOr<base::TimeDelta> PinAuthFactorDriver::GetFactorDelay(
   }
   // Try and extract the delay from the LE credential manager.
   auto delay_in_seconds =
-      crypto_->le_manager()->GetDelayInSeconds(*state->le_label);
+      crypto_->GetPinWeaverManager()->GetDelayInSeconds(*state->le_label);
   if (!delay_in_seconds.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthFactorPinGetFactorDelayReadFailed))
-        .Wrap(std::move(delay_in_seconds).status());
+        .Wrap(MakeStatus<error::CryptohomeTPMError>(
+            std::move(delay_in_seconds).err_status()));
   }
   // Return the extracted time, handling the max value case.
   if (*delay_in_seconds == std::numeric_limits<uint32_t>::max()) {

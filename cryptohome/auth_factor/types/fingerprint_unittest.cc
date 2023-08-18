@@ -315,7 +315,7 @@ TEST_F(FingerprintDriverTest, GetDelayInfinite) {
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(std::numeric_limits<uint32_t>::max()));
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
@@ -336,7 +336,7 @@ TEST_F(FingerprintDriverTest, GetDelayFinite) {
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(10));
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
@@ -357,7 +357,7 @@ TEST_F(FingerprintDriverTest, GetDelayZero) {
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
-  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
@@ -400,7 +400,7 @@ TEST_F(FingerprintDriverTest, IsNotExpired) {
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
-  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(10));
 
   auto is_expired = driver.IsExpired(kObfuscatedUser, factor);
@@ -421,7 +421,7 @@ TEST_F(FingerprintDriverTest, IsExpired) {
   EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
       .WillOnce(
           ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
-  EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
   auto is_expired = driver.IsExpired(kObfuscatedUser, factor);

@@ -4,12 +4,14 @@
 
 #include "cryptohome/auth_blocks/revocation.h"
 
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <utility>
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec/backend/pinweaver_manager/pinweaver_manager.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -19,6 +21,7 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -59,19 +62,17 @@ LECredentialManager::DelaySchedule GetDelaySchedule() {
   return std::map<uint32_t, uint32_t>{{UINT32_MAX, 1}};
 }
 
-CryptoError RevokeLECredErrorToCryptoError(LECredError le_error) {
-  switch (le_error) {
-    case LE_CRED_ERROR_INVALID_LABEL:
-    case LE_CRED_ERROR_HASH_TREE:
+CryptoError RevokeTPMRetryActionToCryptoError(
+    hwsec::TPMRetryAction retry_action) {
+  switch (retry_action) {
+    case hwsec::TPMRetryAction::kNoRetry:
+    case hwsec::TPMRetryAction::kSpaceNotFound:
       // Do not return an error here. RemoveCredential returns:
       // - LE_CRED_ERROR_INVALID_LABEL for invalid label.
       // - LE_CRED_ERROR_HASH_TREE for hash tree error (implies that all state
       // in PinWeaver is lost). Both of these cases are considered as "success"
       // for revocation.
       return CryptoError::CE_NONE;
-    case LE_CRED_ERROR_UNCLASSIFIED:
-    case LE_CRED_ERROR_LE_LOCKED:
-      return CryptoError::CE_OTHER_CRYPTO;
     default:
       return CryptoError::CE_OTHER_CRYPTO;
   }
@@ -135,32 +136,29 @@ CryptoStatus Create(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
   // Generate a random high entropy secret to be stored in LECredentialManager.
   brillo::SecureBlob he_secret = CreateSecureRandomBlob(kDefaultSecretSize);
 
-  // Label for the credential stored in LECredentialManager.
-  uint64_t label;
-
   // Note:
   // - We send an empty blob as reset_secret because resetting the delay counter
   // will not compromise security (we send MAX_UINT32 attempts for the delay
   // schedule). The size should still be kDefaultSecretSize.
   // - We don't set policies because PCR binding is expected to be
   // already done by the AuthBlock.
-  LECredStatus ret = le_manager->InsertCredential(
-      /*policy=*/std::vector<hwsec::OperationPolicySetting>(),
+  hwsec::StatusOr<uint64_t> result = hwsec_pw_manager->InsertCredential(
+      /*policies=*/std::vector<hwsec::OperationPolicySetting>(),
       /*le_secret=*/le_secret,
       /*he_secret=*/he_secret,
       /*reset_secret=*/brillo::SecureBlob(kDefaultSecretSize),
-      /*delay_sched=*/GetDelaySchedule(),
-      /*expiration_delay=*/std::nullopt, &label);
+      /*delay_schedule=*/GetDelaySchedule(),
+      /*expiration_delay=*/std::nullopt);
 
-  if (!ret.ok()) {
+  if (!result.ok()) {
     LOG(ERROR) << "InsertCredential failed for revocation with error "
-               << ret->local_lecred_error();
+               << result.err_status();
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocRevocationInsertCredentialFailedInCreate))
-        .Wrap(std::move(ret));
+        .Wrap(MakeStatus<error::CryptohomeTPMError>(
+            std::move(result).err_status()));
   }
-
-  revocation_state->le_label = label;
+  revocation_state->le_label = result.value();
 
   // Combine he_secret with kdf_skey:
   brillo::SecureBlob vkk_key;
@@ -217,28 +215,25 @@ CryptoStatus Derive(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  // The secret that is stored in LECredentialManager.
-  brillo::SecureBlob he_secret;
-  // Note: reset_secret is not used, see Create().
-  brillo::SecureBlob reset_secret;
-  LECredStatus ret = le_manager->CheckCredential(
-      /*label=*/revocation_state.le_label.value(),
-      /*le_secret=*/le_secret,
-      /*he_secret=*/&he_secret,
-      /*reset_secret=*/&reset_secret);
+  hwsec::StatusOr<hwsec::PinWeaverManager::CheckCredentialReply> result =
+      hwsec_pw_manager->CheckCredential(
+          /*label=*/revocation_state.le_label.value(),
+          /*le_secret=*/le_secret);
 
-  if (!ret.ok()) {
+  if (!result.ok()) {
     LOG(ERROR) << "CheckCredential failed for revocation with error "
-               << ret->local_lecred_error();
+               << result.err_status();
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocRevocationCheckCredentialFailedInDerive))
-        .Wrap(std::move(ret));
+        .Wrap(MakeStatus<error::CryptohomeTPMError>(
+            std::move(result).err_status()));
   }
 
   // Combine he_secret with kdf_skey:
   brillo::SecureBlob vkk_key;
   if (!Hkdf(HkdfHash::kSha256,
-            /*key=*/brillo::SecureBlob::Combine(he_secret, kdf_skey),
+            /*key=*/
+            brillo::SecureBlob::Combine(result->he_secret, kdf_skey),
             /*info=*/brillo::SecureBlob(),
             /*salt=*/brillo::SecureBlob(kHESecretHkdfData),
             /*result_len=*/0, &vkk_key)) {
@@ -267,29 +262,29 @@ CryptoStatus Revoke(AuthBlockType auth_block_type,
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  LECredStatus ret = le_manager->RemoveCredential(
+  hwsec::Status result = hwsec_pw_manager->RemoveCredential(
       /*label=*/revocation_state.le_label.value());
 
-  if (!ret.ok()) {
-    LOG(ERROR) << "RemoveCredential failed for revocation with error: " << ret;
-    ReportCredentialRevocationResult(auth_block_type,
-                                     ret->local_lecred_error());
+  if (!result.ok()) {
+    LOG(ERROR) << "RemoveCredential failed for revocation with error: "
+               << result.err_status();
+    ReportRevokeCredentialResult(auth_block_type, result->ToTPMRetryAction());
     CryptoError revoke_error =
-        RevokeLECredErrorToCryptoError(ret->local_lecred_error());
+        RevokeTPMRetryActionToCryptoError(result->ToTPMRetryAction());
     if (revoke_error == CryptoError::CE_NONE) {
       // This case is considered a success - do not return an error here. See
-      // the comment in `RevokeLECredErrorToCryptoError`.
+      // the comment in `RevokeTPMRetryActionToCryptoError`.
       return OkStatus<CryptohomeCryptoError>();
     }
     // Note: the local error must be overridden with revoke_error.
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocRevocationRemoveCredentialFailedInRevoke),
                ErrorActionSet({}), revoke_error)
-        .Wrap(std::move(ret));
+        .Wrap(MakeStatus<error::CryptohomeTPMError>(
+            std::move(result).err_status()));
   }
 
-  ReportCredentialRevocationResult(auth_block_type,
-                                   LECredError::LE_CRED_SUCCESS);
+  ReportRevokeCredentialResult(auth_block_type, hwsec::TPMRetryAction::kNone);
   return OkStatus<CryptohomeCryptoError>();
 }
 

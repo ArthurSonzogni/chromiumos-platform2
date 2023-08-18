@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <utility>
@@ -19,6 +20,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/sha2.h>
+#include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
@@ -41,6 +43,7 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
+using ResetType = hwsec::PinWeaverManagerFrontend::ResetType;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::SecureBlobToHex;
@@ -118,39 +121,47 @@ bool Crypto::ResetLeCredential(const uint64_t le_label,
                                bool strong_reset,
                                CryptoError& out_error) const {
   // Bail immediately if we don't have a valid LECredentialManager.
-  if (!le_manager_) {
+  hwsec::StatusOr<bool> is_enabled = hwsec_pw_manager_->IsEnabled();
+  if (!is_enabled.ok() || !is_enabled.value()) {
     LOG(ERROR) << "Attempting to Reset LECredential on a platform that doesn't "
                   "support LECredential";
     PopulateError(&out_error, CryptoError::CE_LE_NOT_SUPPORTED);
     return false;
   }
 
-  LECredStatus ret =
-      le_manager_->ResetCredential(le_label, reset_secret, strong_reset);
+  auto&& reset_type =
+      static_cast<hwsec::PinWeaverManagerFrontend::ResetType>(strong_reset);
+  hwsec::Status ret =
+      hwsec_pw_manager_->ResetCredential(le_label, reset_secret, reset_type);
   if (!ret.ok()) {
-    PopulateError(&out_error, ret->local_lecred_error() ==
-                                      LE_CRED_ERROR_INVALID_RESET_SECRET
-                                  ? CryptoError::CE_LE_INVALID_SECRET
-                                  : CryptoError::CE_OTHER_FATAL);
+    PopulateError(&out_error,
+                  ret->ToTPMRetryAction() == hwsec::TPMRetryAction::kUserAuth
+                      ? CryptoError::CE_LE_INVALID_SECRET
+                      : CryptoError::CE_OTHER_FATAL);
     return false;
   }
   return true;
 }
 
 int Crypto::GetWrongAuthAttempts(uint64_t le_label) const {
-  CHECK(le_manager_)
-      << "le_manage_ doesn't exist when calling GetWrongAuthAttempts()";
-  return le_manager_->GetWrongAuthAttempts(le_label);
+  hwsec::StatusOr<bool> is_enabled = hwsec_pw_manager_->IsEnabled();
+  CHECK(is_enabled.ok() && is_enabled.value())
+      << "pinweaver_manager isn't enabled when calling GetWrongAuthAttempts()";
+  hwsec::StatusOr<uint32_t> result =
+      hwsec_pw_manager_->GetWrongAuthAttempts(le_label);
+  return result.value_or(-1);
 }
 
 bool Crypto::RemoveLECredential(uint64_t label) const {
   // Bail immediately if we don't have a valid LECredentialManager.
-  if (!le_manager_) {
-    LOG(ERROR) << "No LECredentialManager instance for RemoveLECredential.";
+  hwsec::StatusOr<bool> is_enabled = hwsec_pw_manager_->IsEnabled();
+  if (!is_enabled.ok() || !is_enabled.value()) {
+    LOG(ERROR) << "Attempting to Reset LECredential on a platform that doesn't "
+                  "support LECredential";
     return false;
   }
 
-  return le_manager_->RemoveCredential(label).ok();
+  return hwsec_pw_manager_->RemoveCredential(label).ok();
 }
 
 bool Crypto::is_cryptohome_key_loaded() const {

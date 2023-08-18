@@ -6,6 +6,7 @@
 
 #include "cryptohome/auth_session.h"
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
@@ -30,6 +31,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -257,6 +259,8 @@ class AuthSessionTest : public ::testing::Test {
     EXPECT_CALL(hwsec_, GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
     EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_pw_manager_, IsEnabled())
+        .WillRepeatedly(ReturnValue(true));
     crypto_.Init();
   }
 
@@ -2263,7 +2267,6 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   EXPECT_TRUE(auth_session.user_exists());
 
   auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
   crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   auth_session.SetAuthFactorStatusUpdateCallback(base::BindRepeating(
       [](user_data_auth::AuthFactorWithStatus, const std::string&) {}));
@@ -2297,8 +2300,8 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   // be different than |kFakePin|.
   std::string wrong_pin = "232323";
   auth_input_proto.mutable_pin_input()->set_secret(wrong_pin);
-  EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds(_))
-      .WillRepeatedly([](auto) { return UINT32_MAX; });
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
+      .WillRepeatedly(ReturnValue(UINT32_MAX));
   AuthenticateTestFuture authenticate_future;
   SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
       {.type = *SerializeAuthFactorType(
@@ -4016,7 +4019,6 @@ TEST_F(AuthSessionWithUssTest, FingerprintAuthenticationForWebAuthn) {
 // Test that PrepareAuthFactor succeeds for fingerprint with the purpose of add.
 TEST_F(AuthSessionWithUssTest, PrepareFingerprintAdd) {
   auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
   crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   // Create an AuthSession and add a mock for a successful auth block prepare.
   auto auth_session = std::make_unique<AuthSession>(
@@ -4029,9 +4031,8 @@ TEST_F(AuthSessionWithUssTest, PrepareFingerprintAdd) {
                           .auth_factor_map = AuthFactorMap()},
       backing_apis_);
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_CALL(*mock_le_manager_ptr, InsertRateLimiter)
-      .WillOnce(DoAll(SetArgPointee<5>(0),
-                      Return(OkStatus<error::CryptohomeLECredError>())));
+  EXPECT_CALL(hwsec_pw_manager_, InsertRateLimiter)
+      .WillOnce(ReturnValue(/* ret_label */ 0));
 
   EXPECT_CALL(*bio_processor_, StartEnrollSession(_))
       .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
@@ -4080,7 +4081,6 @@ TEST_F(AuthSessionWithUssTest, PrepareFingerprintAdd) {
 TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   const brillo::SecureBlob kFakeAuthPin(32, 1), kFakeAuthSecret(32, 2);
   auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
   crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
@@ -4097,9 +4097,8 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 
   // Prepare is necessary to create the rate-limiter.
-  EXPECT_CALL(*mock_le_manager_ptr, InsertRateLimiter)
-      .WillOnce(DoAll(SetArgPointee<5>(kFakeRateLimiterLabel),
-                      Return(OkStatus<error::CryptohomeLECredError>())));
+  EXPECT_CALL(hwsec_pw_manager_, InsertRateLimiter)
+      .WillOnce(ReturnValue(kFakeRateLimiterLabel));
   EXPECT_CALL(*bio_processor_, StartEnrollSession(_))
       .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
   TestFuture<CryptohomeStatus> prepare_future;
@@ -4167,19 +4166,23 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
       });
   // Set expectations that fingerprint credential leaves with non-zero wrong
   // auth attempts will be reset after a successful authentication.
-  EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeFpLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetWrongAuthAttempts(kFakeFpLabel))
       .Times(2)
-      .WillRepeatedly(Return(1));
-  EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeSecondFpLabel))
+      .WillRepeatedly(ReturnValue(1));
+  EXPECT_CALL(hwsec_pw_manager_, GetWrongAuthAttempts(kFakeSecondFpLabel))
       .Times(2)
-      .WillRepeatedly(Return(0));
-  EXPECT_CALL(*mock_le_manager_ptr,
-              ResetCredential(kFakeRateLimiterLabel, _, /*strong_reset=*/true))
+      .WillRepeatedly(ReturnValue(0));
+  EXPECT_CALL(hwsec_pw_manager_,
+              ResetCredential(kFakeRateLimiterLabel, _,
+                              hwsec::PinWeaverManagerFrontend::ResetType::
+                                  kWrongAttemptsAndExpirationTime))
       .Times(2);
-  EXPECT_CALL(*mock_le_manager_ptr,
-              ResetCredential(kFakeFpLabel, _, /*strong_reset=*/false))
+  EXPECT_CALL(hwsec_pw_manager_,
+              ResetCredential(
+                  kFakeFpLabel, _,
+                  hwsec::PinWeaverManagerFrontend::ResetType::kWrongAttempts))
       .Times(2);
-  EXPECT_CALL(*mock_le_manager_ptr, ResetCredential(kFakeSecondFpLabel, _, _))
+  EXPECT_CALL(hwsec_pw_manager_, ResetCredential(kFakeSecondFpLabel, _, _))
       .Times(0);
 
   // Test.

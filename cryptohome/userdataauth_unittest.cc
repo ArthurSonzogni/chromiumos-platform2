@@ -3474,7 +3474,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
   SetUserSecretStashExperimentForTesting(false);
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
+      .WillRepeatedly(ReturnValue(UINT32_MAX));
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
@@ -3724,7 +3725,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
   auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
 
   SetUserSecretStashExperimentForTesting(true);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
@@ -3779,9 +3779,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
-  EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
-    return UINT32_MAX;
-  });
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds)
+      .WillRepeatedly(ReturnValue(UINT32_MAX));
 
   TestFuture<user_data_auth::StartAuthSessionReply> start_reply_future_2;
   userdataauth_->StartAuthSession(
@@ -3844,7 +3843,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
   auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
 
   SetUserSecretStashExperimentForTesting(true);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
@@ -3906,9 +3904,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
-  EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
-    return 30;
-  });
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds)
+      .WillRepeatedly(ReturnValue(30));
 
   TestFuture<user_data_auth::StartAuthSessionReply> start_reply_future_2;
   userdataauth_->StartAuthSession(
@@ -3970,7 +3967,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
   auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
 
   SetUserSecretStashExperimentForTesting(true);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
@@ -4029,10 +4025,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
-  EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
-    return UINT32_MAX;
-  });
-
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds)
+      .WillRepeatedly(ReturnValue(UINT32_MAX));
   // ListAuthFactors() load the factors according to the USS experiment status.
   SetUserSecretStashExperimentForTesting(true);
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_2;
@@ -4101,7 +4095,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
   AuthFactorManager manager(&platform_);
 
   SetUserSecretStashExperimentForTesting(true);
@@ -4166,9 +4159,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
   ASSERT_THAT(manager.SaveAuthFactorFile(kObfuscatedUser, *pin_factor), IsOk());
   MakeUssWithLabels(kObfuscatedUser, {"password-label", "pin-label"});
 
-  EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds).WillRepeatedly([](auto) {
-    return 30;
-  });
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds)
+      .WillRepeatedly(ReturnValue(30));
 
   // ListAuthFactors() load the factors according to the USS experiment status.
   SetUserSecretStashExperimentForTesting(true);
@@ -4240,7 +4232,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
   SetUserSecretStashExperimentForTesting(false);
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
+      .WillRepeatedly(ReturnValue(UINT32_MAX));
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few

@@ -30,8 +30,8 @@ struct TimerHistogramParams {
 };
 
 constexpr char kCryptohomeErrorHistogram[] = "Cryptohome.Errors";
-constexpr char kCredentialRevocationResultHistogram[] =
-    "Cryptohome.%s.CredentialRevocationResult";
+constexpr char kCryptohomeRevokeCredentialResultHistogram[] =
+    "Cryptohome.%s.RevokeCredentialResult";
 constexpr char kCryptohomeDeletedUserProfilesHistogram[] =
     "Cryptohome.DeletedUserProfiles";
 constexpr char kCryptohomeGCacheFreedDiskSpaceInMbHistogram[] =
@@ -372,16 +372,16 @@ void ReportTimerDuration(const TimerType& timer_type,
                        kTimerHistogramParams[timer_type].num_buckets);
 }
 
-void ReportCredentialRevocationResult(AuthBlockType auth_block_type,
-                                      LECredError result) {
+void ReportRevokeCredentialResult(AuthBlockType auth_block_type,
+                                  hwsec::TPMRetryAction result) {
   if (!g_metrics) {
     return;
   }
 
   g_metrics->SendEnumToUMA(
-      base::StringPrintf(kCredentialRevocationResultHistogram,
+      base::StringPrintf(kCryptohomeRevokeCredentialResultHistogram,
                          GetAuthBlockTypeStringVariant(auth_block_type)),
-      result, LE_CRED_ERROR_MAX);
+      result);
 }
 
 void ReportFreedGCacheDiskSpaceInMb(int mb) {

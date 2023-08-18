@@ -23,6 +23,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
+#include <libhwsec/error/pinweaver_error.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
@@ -84,6 +85,7 @@ using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::IsOkAndHolds;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::error::testing::ReturnOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::hwsec_foundation::status::StatusChainOr;
 using ::testing::_;
@@ -221,8 +223,8 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
   };
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
-  EXPECT_CALL(*le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
-      .WillOnce(ReturnError<CryptohomeLECredError>());
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(ReturnValue(/* ret_label*/ 0));
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<LECredentialManager>(le_cred_manager));
   crypto_.Init();
@@ -265,9 +267,10 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
 
   ASSERT_TRUE(DeriveSecretsScrypt(*auth_input.user_input, salt, {&le_secret}));
 
-  ON_CALL(*le_cred_manager, CheckCredential(_, _, _, _))
-      .WillByDefault(ReturnError<CryptohomeLECredError>());
-  EXPECT_CALL(*le_cred_manager, CheckCredential(_, le_secret, _, _))
+  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+      .WillByDefault(
+          ReturnValue(hwsec::PinWeaverManagerFrontend::CheckCredentialReply{}));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
 
   MakeAuthBlockUtilityImpl();
@@ -1465,12 +1468,9 @@ TEST_F(AuthBlockUtilityImplTest,
 TEST_F(AuthBlockUtilityImplTest,
        RemoveCryptohomeRecoveryWithRevocationAuthBlock) {
   ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(true));
-  MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
   uint64_t fake_label = 11;
-  EXPECT_CALL(*le_cred_manager, RemoveCredential(fake_label))
-      .WillOnce(ReturnError<CryptohomeLECredError>());
-  crypto_.set_le_manager_for_testing(
-      std::unique_ptr<LECredentialManager>(le_cred_manager));
+  EXPECT_CALL(hwsec_pw_manager_, RemoveCredential(fake_label))
+      .WillOnce(ReturnOk<hwsec::PinWeaverError>());
   crypto_.Init();
 
   CryptohomeRecoveryAuthBlockState recovery_state = {

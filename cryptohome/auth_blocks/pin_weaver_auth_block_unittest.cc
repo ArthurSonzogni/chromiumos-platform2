@@ -16,6 +16,10 @@
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
+#include <libhwsec/backend/pinweaver_manager/pinweaver_manager.h>
+#include <libhwsec/error/pinweaver_error.h>
+#include <libhwsec/error/tpm_error.h>
+#include <libhwsec/error/tpm_retry_action.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -26,6 +30,7 @@
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/le_credential_error.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
@@ -40,7 +45,7 @@ namespace {
 
 using base::test::TestFuture;
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::CryptohomeLECredError;
+using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::PossibleAction;
 using hwsec_foundation::error::testing::IsOk;
@@ -98,9 +103,9 @@ TEST_F(PinWeaverAuthBlockTest, CreateTest) {
   brillo::SecureBlob le_secret;
   LECredentialManager::DelaySchedule delay_sched;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  EXPECT_CALL(le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
-                      ReturnError<CryptohomeLECredError>()));
+                      ReturnValue(/* ret_label */ 0)));
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
@@ -138,9 +143,9 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
   brillo::SecureBlob le_secret;
   LECredentialManager::DelaySchedule delay_sched;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  EXPECT_CALL(le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
-                      ReturnError<CryptohomeLECredError>()));
+                      ReturnValue(/* ret_label */ 0)));
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
@@ -177,10 +182,9 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureLeManager) {
   brillo::SecureBlob reset_secret(32, 'S');
 
   // Now test that the method fails if the le_cred_manager fails.
-  ON_CALL(le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
-      .WillByDefault(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LECredError::LE_CRED_ERROR_HASH_TREE));
+  ON_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillByDefault(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kNoRetry));
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
@@ -332,11 +336,12 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTest) {
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
-  ON_CALL(le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillByDefault(ReturnError<CryptohomeLECredError>());
-  EXPECT_CALL(le_cred_manager_, CheckCredential(_, le_secret, _, _))
+  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+      .WillByDefault(
+          ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{}));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
-  EXPECT_CALL(le_cred_manager_, GetDelaySchedule(_))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelaySchedule(_))
       .WillOnce(Return(PinDelaySchedule()));
   features_.SetDefaultForFeature(Features::kMigratePin, true);
 
@@ -382,11 +387,12 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithLockoutPin) {
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
-  ON_CALL(le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillByDefault(ReturnError<CryptohomeLECredError>());
-  EXPECT_CALL(le_cred_manager_, CheckCredential(_, le_secret, _, _))
+  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+      .WillByDefault(
+          ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{}));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
-  EXPECT_CALL(le_cred_manager_, GetDelaySchedule(_))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelaySchedule(_))
       .WillOnce(Return(LockoutDelaySchedule()));
   features_.SetDefaultForFeature(Features::kMigratePin, true);
 
@@ -430,9 +436,10 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithoutMigratePin) {
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
-  ON_CALL(le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillByDefault(ReturnError<CryptohomeLECredError>());
-  EXPECT_CALL(le_cred_manager_, CheckCredential(_, le_secret, _, _))
+  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+      .WillByDefault(
+          ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{}));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
   features_.SetDefaultForFeature(Features::kMigratePin, false);
 
@@ -477,9 +484,10 @@ TEST_F(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
-  ON_CALL(le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillByDefault(ReturnError<CryptohomeLECredError>());
-  EXPECT_CALL(le_cred_manager_, CheckCredential(_, le_secret, _, _))
+  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+      .WillByDefault(
+          ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{}));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
 
   // Construct the vault keyset.
@@ -525,13 +533,12 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
-  ON_CALL(le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillByDefault(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LECredError::LE_CRED_ERROR_INVALID_LE_SECRET));
-  EXPECT_CALL(le_cred_manager_, CheckCredential(_, le_secret, _, _))
+  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+      .WillByDefault(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kUserAuth));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
-  EXPECT_CALL(le_cred_manager_, GetDelayInSeconds(_)).WillOnce(ReturnValue(0));
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_)).WillOnce(ReturnValue(0));
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -571,14 +578,14 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
-  ON_CALL(le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillByDefault(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LECredError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS));
-  EXPECT_CALL(le_cred_manager_, CheckCredential(_, le_secret, _, _))
+  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+      .WillByDefault(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kPinWeaverLockedOut));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
       .Times(Exactly(1));
   // Simulate a 30 second timeout duration on the le credential.
-  EXPECT_CALL(le_cred_manager_, GetDelayInSeconds(_)).WillOnce(ReturnValue(30));
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
+      .WillOnce(ReturnValue(30));
 
   PinWeaverAuthBlockState state;
   state.le_label = 0;
@@ -612,42 +619,23 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
-  ON_CALL(le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillByDefault(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_HASH_TREE));
-  EXPECT_CALL(le_cred_manager_, CheckCredential(_, le_secret, _, _))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_INVALID_LE_SECRET))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_INVALID_RESET_SECRET))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_TOO_MANY_ATTEMPTS))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_HASH_TREE))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_INVALID_LABEL))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_NO_FREE_LABEL))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_INVALID_METADATA))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_UNCLASSIFIED))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_LE_LOCKED))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
-          LE_CRED_ERROR_PCR_NOT_MATCH));
-  EXPECT_CALL(le_cred_manager_, GetDelayInSeconds(_))
+  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+      .WillByDefault(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kNoRetry));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
+      .WillOnce(ReturnError<hwsec::TPMError>("fake",
+                                             hwsec::TPMRetryAction::kUserAuth))
+      .WillOnce(
+          ReturnError<hwsec::TPMError>("fake", hwsec::TPMRetryAction::kReboot))
+      .WillOnce(
+          ReturnError<hwsec::TPMError>("fake", hwsec::TPMRetryAction::kNoRetry))
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kPinWeaverExpired))
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kPinWeaverLockedOut))
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kPinWeaverOutOfSync));
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
       .WillRepeatedly(ReturnValue(0));
 
   // Construct the vault keyset.
@@ -664,7 +652,7 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   AuthInput auth_input = {vault_key};
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 6; i++) {
     DeriveTestFuture result;
     auth_block_->Derive(auth_input, auth_state, result.GetCallback());
     ASSERT_TRUE(result.IsReady());
@@ -684,8 +672,8 @@ TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalSuccess) {
   pinweaver_auth_state.le_label = kLabel;
   auth_state.state = pinweaver_auth_state;
 
-  EXPECT_CALL(le_cred_manager_, RemoveCredential(kLabel))
-      .WillOnce(ReturnOk<CryptohomeLECredError>());
+  EXPECT_CALL(hwsec_pw_manager_, RemoveCredential(kLabel))
+      .WillOnce(ReturnOk<hwsec::PinWeaverError>());
 
   TestFuture<CryptohomeStatus> result;
   auth_block_->PrepareForRemoval(ObfuscatedUsername(kObfuscatedUsername),
@@ -717,12 +705,11 @@ TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalRemoveError) {
   pinweaver_auth_state.le_label = kLabel;
   auth_state.state = pinweaver_auth_state;
 
-  EXPECT_CALL(le_cred_manager_, RemoveCredential(kLabel))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet(), LE_CRED_ERROR_LE_LOCKED))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet(),
-          LE_CRED_ERROR_INVALID_LABEL));
+  EXPECT_CALL(hwsec_pw_manager_, RemoveCredential(kLabel))
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kPinWeaverLockedOut))
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kSpaceNotFound));
 
   TestFuture<CryptohomeStatus> result;
   auth_block_->PrepareForRemoval(ObfuscatedUsername(kObfuscatedUsername),

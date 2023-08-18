@@ -15,8 +15,14 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/backend/pinweaver_manager/pinweaver_manager.h>
+#include <libhwsec/error/pinweaver_error.h>
+#include <libhwsec/error/tpm_error.h>
+#include <libhwsec/error/tpm_retry_action.h>
+#include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -33,7 +39,6 @@ namespace {
 
 using base::test::TestFuture;
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::CryptohomeLECredError;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::PossibleAction;
 using cryptohome::error::PossibleActionsInclude;
@@ -211,16 +216,19 @@ TEST_F(FingerprintAuthBlockTest, CreateSuccess) {
   StartEnrollSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(mock_le_manager_,
+  EXPECT_CALL(hwsec_pw_manager_,
               StartBiometricsAuth(kFingerprintAuthChannel,
                                   kFakeRateLimiterLabel, kFakeAuthNonce))
-      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
-          .server_nonce = kFakeGscNonce,
-          .iv = kFakeGscIv,
-          .encrypted_he_secret = kFakeLabelSeed}));
-  EXPECT_CALL(mock_le_manager_,
-              ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret, false))
-      .WillOnce(ReturnOk<CryptohomeLECredError>());
+      .WillOnce(
+          ReturnValue(hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{
+              .server_nonce = kFakeGscNonce,
+              .iv = kFakeGscIv,
+              .encrypted_he_secret = kFakeLabelSeed}));
+  EXPECT_CALL(hwsec_pw_manager_,
+              ResetCredential(
+                  kFakeRateLimiterLabel, kFakeResetSecret,
+                  hwsec::PinWeaverManagerFrontend::ResetType::kWrongAttempts))
+      .WillOnce(ReturnOk<hwsec::PinWeaverError>());
   EXPECT_CALL(
       *mock_processor_,
       CreateCredential(
@@ -236,10 +244,10 @@ TEST_F(FingerprintAuthBlockTest, CreateSuccess) {
             .auth_pin = kFakeAuthPin,
         });
       });
-  EXPECT_CALL(mock_le_manager_,
-              InsertCredential(_, kFakeAuthPin, _, kFakeResetSecret, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<6>(kFakeCredLabel),
-                      ReturnOk<CryptohomeLECredError>()));
+
+  EXPECT_CALL(hwsec_pw_manager_,
+              InsertCredential(_, kFakeAuthPin, _, kFakeResetSecret, _, _))
+      .WillOnce(ReturnValue(kFakeCredLabel));
 
   CreateTestFuture result;
   auth_block_->Create(kFakeAuthInput, result.GetCallback());
@@ -301,13 +309,9 @@ TEST_F(FingerprintAuthBlockTest, CreateStartBioAuthFailed) {
   StartEnrollSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(mock_le_manager_, StartBiometricsAuth)
-      .WillOnce([this](auto&&, auto&&, auto&&) {
-        return MakeStatus<CryptohomeLECredError>(
-            kErrorLocationPlaceholder,
-            ErrorActionSet(PrimaryAction::kLeLockedOut),
-            LECredError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS);
-      });
+  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth(_, _, _))
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kPinWeaverLockedOut));
 
   CreateTestFuture result;
   auth_block_->Create(kFakeAuthInput, result.GetCallback());
@@ -331,16 +335,18 @@ TEST_F(FingerprintAuthBlockTest, CreateCreateCredentialFailed) {
   StartEnrollSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(mock_le_manager_,
+  EXPECT_CALL(hwsec_pw_manager_,
               StartBiometricsAuth(kFingerprintAuthChannel,
                                   kFakeRateLimiterLabel, kFakeAuthNonce))
-      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
+      .WillOnce(ReturnValue(hwsec::PinWeaverManager::StartBiometricsAuthReply{
           .server_nonce = kFakeGscNonce,
           .iv = kFakeGscIv,
           .encrypted_he_secret = kFakeLabelSeed}));
-  EXPECT_CALL(mock_le_manager_,
-              ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret, false))
-      .WillOnce(ReturnOk<CryptohomeLECredError>());
+  EXPECT_CALL(
+      hwsec_pw_manager_,
+      ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret,
+                      hwsec::PinWeaverManager::ResetType::kWrongAttempts))
+      .WillOnce(ReturnOk<hwsec::PinWeaverError>());
   EXPECT_CALL(*mock_processor_, CreateCredential(_, _, _))
       .WillOnce([&](auto&&, auto&&, auto&& callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(
@@ -373,16 +379,18 @@ TEST_F(FingerprintAuthBlockTest, CreateInsertCredentialFailed) {
   StartEnrollSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(mock_le_manager_,
+  EXPECT_CALL(hwsec_pw_manager_,
               StartBiometricsAuth(kFingerprintAuthChannel,
                                   kFakeRateLimiterLabel, kFakeAuthNonce))
-      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
+      .WillOnce(ReturnValue(hwsec::PinWeaverManager::StartBiometricsAuthReply{
           .server_nonce = kFakeGscNonce,
           .iv = kFakeGscIv,
           .encrypted_he_secret = kFakeLabelSeed}));
-  EXPECT_CALL(mock_le_manager_,
-              ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret, false))
-      .WillOnce(ReturnOk<CryptohomeLECredError>());
+  EXPECT_CALL(
+      hwsec_pw_manager_,
+      ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret,
+                      hwsec::PinWeaverManager::ResetType::kWrongAttempts))
+      .WillOnce(ReturnOk<hwsec::PinWeaverError>());
   EXPECT_CALL(
       *mock_processor_,
       CreateCredential(
@@ -398,21 +406,15 @@ TEST_F(FingerprintAuthBlockTest, CreateInsertCredentialFailed) {
             .auth_pin = kFakeAuthPin,
         });
       });
-  EXPECT_CALL(mock_le_manager_, InsertCredential)
-      .WillOnce([this](auto&&, auto&&, auto&&, auto&&, auto&&, auto&&, auto&&) {
-        return MakeStatus<CryptohomeLECredError>(
-            kErrorLocationPlaceholder,
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            LECredError::LE_CRED_ERROR_HASH_TREE);
-      });
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential)
+      .WillOnce(ReturnError<hwsec::TPMError>("fake",
+                                             hwsec::TPMRetryAction::kNoRetry));
 
   CreateTestFuture result;
   auth_block_->Create(kFakeAuthInput, result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
-  EXPECT_TRUE(
-      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_EQ(auth_state, nullptr);
 }
@@ -434,10 +436,10 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorSuccess) {
   StartAuthenticateSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(mock_le_manager_,
+  EXPECT_CALL(hwsec_pw_manager_,
               StartBiometricsAuth(kFingerprintAuthChannel,
                                   kFakeRateLimiterLabel, kFakeAuthNonce))
-      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
+      .WillOnce(ReturnValue(hwsec::PinWeaverManager::StartBiometricsAuthReply{
           .server_nonce = kFakeGscNonce,
           .iv = kFakeGscIv,
           .encrypted_he_secret = kFakeLabelSeed}));
@@ -528,13 +530,9 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorStartBioAuthFailed) {
   StartAuthenticateSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(mock_le_manager_, StartBiometricsAuth)
-      .WillOnce([this](auto&&, auto&&, auto&&) {
-        return MakeStatus<CryptohomeLECredError>(
-            kErrorLocationPlaceholder,
-            ErrorActionSet(PrimaryAction::kLeLockedOut),
-            LECredError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS);
-      });
+  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth)
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kPinWeaverLockedOut));
 
   SelectFactorTestFuture result;
   auth_block_->SelectFactor(kFakeAuthInput, kFakeAuthFactors,
@@ -563,10 +561,10 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailed) {
   StartAuthenticateSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(mock_le_manager_,
+  EXPECT_CALL(hwsec_pw_manager_,
               StartBiometricsAuth(kFingerprintAuthChannel,
                                   kFakeRateLimiterLabel, kFakeAuthNonce))
-      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
+      .WillOnce(ReturnValue(hwsec::PinWeaverManager::StartBiometricsAuthReply{
           .server_nonce = kFakeGscNonce,
           .iv = kFakeGscIv,
           .encrypted_he_secret = kFakeLabelSeed}));
@@ -577,7 +575,7 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailed) {
             ErrorActionSet(PrimaryAction::kIncorrectAuth),
             user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
       });
-  EXPECT_CALL(mock_le_manager_, GetDelayInSeconds(kFakeRateLimiterLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kFakeRateLimiterLabel))
       .WillOnce(ReturnValue(0));
 
   SelectFactorTestFuture result;
@@ -608,10 +606,10 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailedAndLocked) {
   StartAuthenticateSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(mock_le_manager_,
+  EXPECT_CALL(hwsec_pw_manager_,
               StartBiometricsAuth(kFingerprintAuthChannel,
                                   kFakeRateLimiterLabel, kFakeAuthNonce))
-      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
+      .WillOnce(ReturnValue(hwsec::PinWeaverManager::StartBiometricsAuthReply{
           .server_nonce = kFakeGscNonce,
           .iv = kFakeGscIv,
           .encrypted_he_secret = kFakeLabelSeed}));
@@ -623,7 +621,7 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailedAndLocked) {
             user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
       });
   // Even if the lockout isn't infinite, LeLockedOut should be reported.
-  EXPECT_CALL(mock_le_manager_, GetDelayInSeconds(kFakeRateLimiterLabel))
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kFakeRateLimiterLabel))
       .WillOnce(ReturnValue(10));
 
   SelectFactorTestFuture result;
@@ -654,10 +652,10 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorAuthFactorNotInList) {
   StartAuthenticateSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(mock_le_manager_,
+  EXPECT_CALL(hwsec_pw_manager_,
               StartBiometricsAuth(kFingerprintAuthChannel,
                                   kFakeRateLimiterLabel, kFakeAuthNonce))
-      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
+      .WillOnce(ReturnValue(hwsec::PinWeaverManager::StartBiometricsAuthReply{
           .server_nonce = kFakeGscNonce,
           .iv = kFakeGscIv,
           .encrypted_he_secret = kFakeLabelSeed}));
@@ -700,10 +698,10 @@ TEST_F(FingerprintAuthBlockTest, DeriveSuccess) {
   };
   const AuthBlockState kFakeAuthBlockState = GetFingerprintStateWithFakeLabel();
 
-  EXPECT_CALL(mock_le_manager_,
-              CheckCredential(kFakeCredLabel, kFakeAuthPin, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(kFakeGscSecret),
-                      ReturnOk<CryptohomeLECredError>()));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(kFakeCredLabel, kFakeAuthPin))
+      .WillOnce(ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{
+          .he_secret = kFakeGscSecret,
+      }));
 
   DeriveTestFuture result;
   auth_block_->Derive(kFakeAuthInput, kFakeAuthBlockState,
@@ -747,13 +745,9 @@ TEST_F(FingerprintAuthBlockTest, DeriveCheckCredentialFailed) {
   };
   const AuthBlockState kFakeAuthBlockState = GetFingerprintStateWithFakeLabel();
 
-  EXPECT_CALL(mock_le_manager_, CheckCredential)
-      .WillOnce([this](auto&&, auto&&, auto&&, auto&&) {
-        return MakeStatus<CryptohomeLECredError>(
-            kErrorLocationPlaceholder,
-            ErrorActionSet(PrimaryAction::kLeLockedOut),
-            LECredError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS);
-      });
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential)
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kPinWeaverLockedOut));
 
   DeriveTestFuture result;
   auth_block_->Derive(kFakeAuthInput, kFakeAuthBlockState,
@@ -773,8 +767,8 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalSuccess) {
   fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
   auth_state.state = fingerprint_auth_state;
   ExpectDeleteCredential(kFakeAccountId, kFakeRecordId, DeleteResult::kSuccess);
-  EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
-      .WillOnce(ReturnOk<CryptohomeLECredError>());
+  EXPECT_CALL(hwsec_pw_manager_, RemoveCredential(kFakeCredLabel))
+      .WillOnce(ReturnOk<hwsec::PinWeaverError>());
 
   TestFuture<CryptohomeStatus> result;
   auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
@@ -791,8 +785,8 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalRecordNotExist) {
   auth_state.state = fingerprint_auth_state;
   ExpectDeleteCredential(kFakeAccountId, kFakeRecordId,
                          DeleteResult::kNotExist);
-  EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
-      .WillOnce(ReturnOk<CryptohomeLECredError>());
+  EXPECT_CALL(hwsec_pw_manager_, RemoveCredential(kFakeCredLabel))
+      .WillOnce(ReturnOk<hwsec::PinWeaverError>());
 
   TestFuture<CryptohomeStatus> result;
   auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
@@ -824,8 +818,8 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalEmptyTemplateId) {
   FingerprintAuthBlockState fingerprint_auth_state;
   fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
   auth_state.state = fingerprint_auth_state;
-  EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
-      .WillOnce(ReturnOk<CryptohomeLECredError>());
+  EXPECT_CALL(hwsec_pw_manager_, RemoveCredential(kFakeCredLabel))
+      .WillOnce(ReturnOk<hwsec::PinWeaverError>());
   // Prepare for removal should continue to delete the PinWeaver leaf if the
   // template ID doesn't exist.
   TestFuture<CryptohomeStatus> result;
@@ -858,12 +852,11 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalPinWeaverRemoveFailed) {
   auth_state.state = fingerprint_auth_state;
   ExpectDeleteCredential(kFakeAccountId, kFakeRecordId, DeleteResult::kSuccess);
 
-  EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationPlaceholder, ErrorActionSet(), LE_CRED_ERROR_LE_LOCKED))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationPlaceholder, ErrorActionSet(),
-          LE_CRED_ERROR_INVALID_LABEL));
+  EXPECT_CALL(hwsec_pw_manager_, RemoveCredential(kFakeCredLabel))
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kPinWeaverLockedOut))
+      .WillOnce(ReturnError<hwsec::TPMError>(
+          "fake", hwsec::TPMRetryAction::kSpaceNotFound));
 
   TestFuture<CryptohomeStatus> result;
   auth_block_->PrepareForRemoval(kFakeAccountId, auth_state,
