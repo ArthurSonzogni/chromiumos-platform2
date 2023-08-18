@@ -235,6 +235,12 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   update_dev_info->set_original_sku_index(sku_index);
   update_dev_info->set_original_whitelabel_index(custom_label_index);
   update_dev_info->set_original_dram_part_number(dram_part_number);
+  // TODO(chenghan): Set it to |custom_label_index|. This is an intermediate
+  // step to wait for Chrome transitioning to use |custom_label_index|. Before
+  // the transition, |custom_label_index| is invalid and we fallback to use
+  // |whitelabel_index| as Chrome's input. After the transition,
+  // |custom_label_index| is valid and we can use it directly.
+  update_dev_info->set_original_custom_label_index(-1);
   update_dev_info->set_original_feature_level(feature_level);
 
   for (auto region_option : region_list) {
@@ -247,6 +253,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
 
   for (auto custom_label_option : custom_label_tag_list) {
     update_dev_info->add_whitelabel_list(custom_label_option);
+    update_dev_info->add_custom_label_list(custom_label_option);
   }
 
   update_dev_info->set_mlb_repair(mlb_repair);
@@ -316,6 +323,12 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
                   "|update device info| is changed.";
     return false;
   }
+  if (original_device_info.original_custom_label_index() !=
+      device_info.original_custom_label_index()) {
+    LOG(ERROR) << "The read-only |original custom-label-tag index| of "
+                  "|update device info| is changed.";
+    return false;
+  }
   if (original_device_info.original_feature_level() !=
       device_info.original_feature_level()) {
     LOG(ERROR) << "The read-only |original feature level| of "
@@ -338,6 +351,12 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
 
   if (!IsRepeatedFieldSame(original_device_info.whitelabel_list(),
                            device_info.whitelabel_list())) {
+    LOG(ERROR) << "The read-only legacy |custom-label-tag list| of "
+                  "|update device info| is changed.";
+    return false;
+  }
+  if (!IsRepeatedFieldSame(original_device_info.custom_label_list(),
+                           device_info.custom_label_list())) {
     LOG(ERROR)
         << "The read-only |custom-label-tag list| of |update device info| "
            "is changed.";
@@ -362,8 +381,13 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
     return false;
   }
 
-  if (device_info.whitelabel_index() < 0 ||
-      device_info.whitelabel_index() >= device_info.whitelabel_list_size()) {
+  // At least one of |custom_label_index| and |whitelabel_index| should be
+  // valid.
+  if ((device_info.custom_label_index() < 0 ||
+       device_info.custom_label_index() >=
+           device_info.custom_label_list_size()) &&
+      (device_info.whitelabel_index() < 0 ||
+       device_info.whitelabel_index() >= device_info.whitelabel_list_size())) {
     LOG(ERROR)
         << "It is a wrong |custom-label-tag index| of |custom-label-tag list|.";
     return false;
@@ -394,11 +418,21 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  const std::string custom_label_tag =
-      device_info.whitelabel_list(device_info.whitelabel_index());
-  // We need to set the custom-label-tag when the model has it.
-  if (device_info.whitelabel_index() !=
-          device_info.original_whitelabel_index() &&
+  bool custom_label_tag_updated;
+  std::string custom_label_tag;
+  if (device_info.custom_label_index() >= 0 &&
+      device_info.custom_label_index() < device_info.custom_label_list_size()) {
+    custom_label_tag_updated = (device_info.custom_label_index() !=
+                                device_info.original_custom_label_index());
+    custom_label_tag =
+        device_info.custom_label_list(device_info.custom_label_index());
+  } else {
+    custom_label_tag_updated = (device_info.whitelabel_index() !=
+                                device_info.original_whitelabel_index());
+    custom_label_tag =
+        device_info.whitelabel_list(device_info.whitelabel_index());
+  }
+  if (custom_label_tag_updated &&
       !vpd_utils_->SetCustomLabelTag(custom_label_tag,
                                      rmad_config_.use_legacy_custom_label)) {
     LOG(ERROR) << "Failed to save custom_label_tag to vpd cache.";

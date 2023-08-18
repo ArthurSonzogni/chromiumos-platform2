@@ -465,13 +465,14 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_SkuOverflow_Success) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_CustomLabelListNotMatched_Success) {
-  auto handler = CreateStateHandler({.custom_label = "WLNotMatched"});
+  auto handler = CreateStateHandler({.custom_label = "CustomLabelNotMatched"});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto state = handler->GetState();
   EXPECT_EQ(state.update_device_info().original_whitelabel_index(), -1);
+  EXPECT_EQ(state.update_device_info().original_custom_label_index(), -1);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
@@ -563,6 +564,28 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
   EXPECT_EQ(legacy_custom_label_set_,
             kCustomLabelTagList[kNewCustomLabelSelection]);
+  EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_CustomLabelOverride_Success) {
+  auto handler = CreateStateHandler({});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // |custom_label_index| overrides |whitelabel_index|.
+  auto state = CreateStateReply(
+      handler,
+      {.whitelabel_index = -1, .custom_label_index = kNewCustomLabelSelection});
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+
+  EXPECT_EQ(serial_number_set_, kNewSerialNumber);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
+  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
+  EXPECT_EQ(custom_label_set_, kCustomLabelTagList[kNewCustomLabelSelection]);
   EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
 }
 
@@ -730,12 +753,41 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       GetNextStateCase_CustomLabelEmpty_Failed) {
+       GetNextStateCase_LegacyCustomLabelEmpty_Failed) {
   auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto state = CreateStateReply(handler, {.whitelabel_index = -1});
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_LegacyCustomLabelWrongIndex_Failed) {
+  auto handler = CreateStateHandler({});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = CreateStateReply(
+      handler,
+      {.whitelabel_index = static_cast<int>(kCustomLabelTagList.size())});
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_CustomLabelEmpty_Failed) {
+  auto handler = CreateStateHandler({});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = CreateStateReply(
+      handler, {.whitelabel_index = -1, .custom_label_index = -1});
   auto [error, state_case] = handler->GetNextStateCase(state);
 
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
@@ -750,7 +802,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto state = CreateStateReply(
       handler,
-      {.whitelabel_index = static_cast<int>(kCustomLabelTagList.size())});
+      {.whitelabel_index = -1,
+       .custom_label_index = static_cast<int>(kCustomLabelTagList.size())});
   auto [error, state_case] = handler->GetNextStateCase(state);
 
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
@@ -811,7 +864,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlySku_Failed) {
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       GetNextStateCase_ReadOnlyCustomLabel_Failed) {
+       GetNextStateCase_ReadOnlyLegacyCustomLabel_Failed) {
   auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -831,6 +884,21 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyDram_Failed) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto state = CreateStateReply(handler, {.original_dram_part_number = ""});
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_ReadOnlyCustomLabel_Failed) {
+  auto handler = CreateStateHandler({});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = CreateStateReply(
+      handler,
+      {.original_custom_label_index = kOriginalCustomLabelSelection + 1});
   auto [error, state_case] = handler->GetNextStateCase(state);
 
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
@@ -906,7 +974,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       GetNextStateCase_ReadOnlyCustomLabelListSize_Failed) {
+       GetNextStateCase_ReadOnlyLegacyCustomLabelListSize_Failed) {
   auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -924,7 +992,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       GetNextStateCase_ReadOnlyCustomLabelListItem_Failed) {
+       GetNextStateCase_ReadOnlyLegacyCustomLabelListItem_Failed) {
   auto handler = CreateStateHandler({});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -935,6 +1003,42 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto state =
       CreateStateReply(handler, {.whitelabel_list = custom_label_list});
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_ReadOnlyCustomLabelListSize_Failed) {
+  auto handler = CreateStateHandler({});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Append a new custom label.
+  auto custom_label_list = kCustomLabelTagList;
+  custom_label_list.push_back("");
+
+  auto state =
+      CreateStateReply(handler, {.custom_label_list = custom_label_list});
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       GetNextStateCase_ReadOnlyCustomLabelListItem_Failed) {
+  auto handler = CreateStateHandler({});
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Change a custom label.
+  auto custom_label_list = kCustomLabelTagList;
+  custom_label_list[1] = "";
+
+  auto state =
+      CreateStateReply(handler, {.custom_label_list = custom_label_list});
   auto [error, state_case] = handler->GetNextStateCase(state);
 
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
