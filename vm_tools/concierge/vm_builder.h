@@ -29,6 +29,13 @@ class VmBuilder {
     bool writable;
   };
 
+  // Args related to CPU configuration for a VM.
+  struct VmCpuArgs {
+    std::string cpu_affinity;
+    std::vector<std::string> cpu_capacity;
+    std::vector<std::vector<std::string>> cpu_clusters;
+  };
+
   VmBuilder();
   VmBuilder(VmBuilder&&);
   VmBuilder& operator=(VmBuilder&& other);
@@ -42,6 +49,7 @@ class VmBuilder {
   VmBuilder& SetPflash(base::FilePath pflash);
   VmBuilder& SetRootfs(const struct Rootfs& rootfs);
   VmBuilder& SetCpus(int32_t cpus);
+  VmBuilder& SetVmCpuArgs(const struct VmCpuArgs& vm_cpu_args);
   VmBuilder& SetVsockCid(uint32_t vsock_cid);
   VmBuilder& AppendDisks(std::vector<Disk> disks);
   VmBuilder& SetMemory(const std::string& memory_in_mb);
@@ -125,6 +133,7 @@ class VmBuilder {
   base::FilePath pflash_;
   std::optional<Rootfs> rootfs_;
   int32_t cpus_ = 0;
+  std::optional<VmCpuArgs> vm_cpu_args_;
   std::optional<uint32_t> vsock_cid_;
   std::string memory_in_mib_;
   std::string balloon_bias_mib_;

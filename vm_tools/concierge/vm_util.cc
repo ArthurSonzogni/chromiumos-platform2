@@ -69,6 +69,9 @@ constexpr char kSchedulerTunePath[] = "/scheduler-tune";
 constexpr char kBoostTopAppProperty[] = "boost-top-app";
 constexpr char kBoostArcVmProperty[] = "boost-arcvm";
 
+// Path to cpu information directories
+constexpr char kCpuInfosPath[] = "/sys/devices/system/cpu/";
+
 std::string BooleanParameter(const char* parameter, bool value) {
   std::string result = base::StrCat({parameter, value ? "true" : "false"});
   return result;
@@ -201,15 +204,19 @@ std::optional<int32_t> ReadFileToInt32(const base::FilePath& filename) {
   return std::nullopt;
 }
 
-std::optional<int32_t> GetCpuPackageId(int32_t cpu) {
-  base::FilePath topology_path(base::StringPrintf(
-      "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", cpu));
+std::optional<int32_t> GetCpuPackageId(int32_t cpu,
+                                       const base::FilePath& cpu_info_path) {
+  base::FilePath topology_path(
+      base::StringPrintf("cpu%d/topology/physical_package_id", cpu));
+  topology_path = cpu_info_path.Append(topology_path);
   return ReadFileToInt32(topology_path);
 }
 
-std::optional<int32_t> GetCpuCapacity(int32_t cpu) {
+std::optional<int32_t> GetCpuCapacity(int32_t cpu,
+                                      const base::FilePath& cpu_info_path) {
   base::FilePath cpu_capacity_path(
-      base::StringPrintf("/sys/devices/system/cpu/cpu%d/cpu_capacity", cpu));
+      base::StringPrintf("cpu%d/cpu_capacity", cpu));
+  cpu_capacity_path = cpu_info_path.Append(cpu_capacity_path);
   return ReadFileToInt32(cpu_capacity_path);
 }
 
@@ -920,8 +927,8 @@ void ArcVmCPUTopology::CreateAffinity() {
 // Creates CPU grouping by cpu_capacity.
 void ArcVmCPUTopology::CreateTopology() {
   for (uint32_t cpu = 0; cpu < num_cpus_; cpu++) {
-    auto capacity = GetCpuCapacity(cpu);
-    auto package = GetCpuPackageId(cpu);
+    auto capacity = GetCpuCapacity(cpu, base::FilePath(kCpuInfosPath));
+    auto package = GetCpuPackageId(cpu, base::FilePath(kCpuInfosPath));
 
     // Do not fail, carry on, but use an aritifical capacity group.
     if (!capacity)

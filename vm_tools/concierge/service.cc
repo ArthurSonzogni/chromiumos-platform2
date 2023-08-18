@@ -208,6 +208,9 @@ constexpr uint64_t kDefaultIoLimit = MiB(1);
 // How often we should broadcast state of a disk operation (import or export).
 constexpr base::TimeDelta kDiskOpReportInterval = base::Seconds(15);
 
+// Path to cpu information directories
+constexpr char kCpuInfosPath[] = "/sys/devices/system/cpu/";
+
 // Path of system timezone file.
 constexpr char kLocaltimePath[] = "/etc/localtime";
 // Path to zone info directory in host.
@@ -301,13 +304,6 @@ struct VmStartImageFds {
   std::optional<base::ScopedFD> storage_fd;
   std::optional<base::ScopedFD> bios_fd;
   std::optional<base::ScopedFD> pflash_fd;
-};
-
-// Args related to CPU configuration for a VM.
-struct VmCpuArgs {
-  std::string cpu_affinity;
-  std::vector<std::string> cpu_capacity;
-  std::vector<std::vector<std::string>> cpu_clusters;
 };
 
 std::optional<VmStartImageFds> GetVmStartImageFds(
@@ -415,70 +411,6 @@ std::string ConvertToFdBasedPaths(brillo::SafeFD& root_fd,
   }
 
   return failure_reason;
-}
-
-VmCpuArgs GetVmCpuArgs(int32_t cpus) {
-  VmCpuArgs result;
-  // Group the CPUs by their physical package ID to determine CPU cluster
-  // layout.
-  std::vector<std::vector<std::string>> cpu_clusters;
-  std::map<int32_t, std::vector<std::string>> cpu_capacity_groups;
-  std::vector<std::string> cpu_capacity;
-  for (int32_t cpu = 0; cpu < cpus; cpu++) {
-    auto physical_package_id = GetCpuPackageId(cpu);
-    if (physical_package_id) {
-      CHECK_GE(*physical_package_id, 0);
-      if (*physical_package_id + 1 > cpu_clusters.size())
-        cpu_clusters.resize(*physical_package_id + 1);
-      cpu_clusters[*physical_package_id].push_back(std::to_string(cpu));
-    }
-
-    auto capacity = GetCpuCapacity(cpu);
-    if (capacity) {
-      CHECK_GE(*capacity, 0);
-      cpu_capacity.push_back(base::StringPrintf("%d=%d", cpu, *capacity));
-      auto group = cpu_capacity_groups.find(*capacity);
-      if (group != cpu_capacity_groups.end()) {
-        group->second.push_back(std::to_string(cpu));
-      } else {
-        auto g = {std::to_string(cpu)};
-        cpu_capacity_groups.insert({*capacity, g});
-      }
-    }
-  }
-
-  std::optional<std::string> cpu_affinity =
-      GetCpuAffinityFromClusters(cpu_clusters, cpu_capacity_groups);
-  if (cpu_affinity) {
-    result.cpu_affinity = *cpu_affinity;
-  }
-  result.cpu_capacity = std::move(cpu_capacity);
-  result.cpu_clusters = std::move(cpu_clusters);
-  return result;
-}
-
-void SetVmCpuArgs(int32_t cpus, VmBuilder& vm_builder) {
-  VmCpuArgs vm_cpu_args = GetVmCpuArgs(cpus);
-  if (!vm_cpu_args.cpu_affinity.empty()) {
-    vm_builder.AppendCustomParam("--cpu-affinity", vm_cpu_args.cpu_affinity);
-  }
-
-  if (!vm_cpu_args.cpu_capacity.empty()) {
-    vm_builder.AppendCustomParam(
-        "--cpu-capacity", base::JoinString(vm_cpu_args.cpu_capacity, ","));
-  }
-
-  if (!vm_cpu_args.cpu_clusters.empty()) {
-    for (const auto& cluster : vm_cpu_args.cpu_clusters) {
-      auto cpu_list = base::JoinString(cluster, ",");
-      vm_builder.AppendCustomParam("--cpu-cluster", cpu_list);
-    }
-  }
-
-  /* Enable hugepages on devices with > 7 GB memory */
-  if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 7 * 1024) {
-    vm_builder.AppendCustomParam("--hugepages", "");
-  }
 }
 
 // Posted to a grpc thread to startup a listener service. Puts a copy of
@@ -1997,7 +1929,14 @@ StartVmResponse Service::StartVmInternal(
 
   // Group the CPUs by their physical package ID to determine CPU cluster
   // layout.
-  SetVmCpuArgs(cpus, vm_builder);
+  VmBuilder::VmCpuArgs vm_cpu_args =
+      internal::GetVmCpuArgs(cpus, base::FilePath(kCpuInfosPath));
+  vm_builder.SetVmCpuArgs(vm_cpu_args);
+
+  /* Enable hugepages on devices with > 7 GB memory */
+  if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 7 * 1024) {
+    vm_builder.AppendCustomParam("--hugepages", "");
+  }
 
   if (classification == apps::BOREALIS) {
     bool vcpu_tweaks = feature::PlatformFeatures::Get()->IsEnabledBlocking(

@@ -7,10 +7,13 @@
 #ifndef VM_TOOLS_CONCIERGE_SERVICE_START_VM_HELPER_H_
 #define VM_TOOLS_CONCIERGE_SERVICE_START_VM_HELPER_H_
 
+#include <sys/types.h>
+#include <string>
+
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/system/sys_info.h>
-#include <sys/types.h>
 
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/vm_base_impl.h"
@@ -123,6 +126,10 @@ namespace internal {
 // roughly related to products, and the classification broadly determines what
 // features are available to a given VM.
 apps::VmType ClassifyVm(const StartVmRequest& request);
+
+// Get capacity & cluster & affinity information for cpu0~cpu${cpus}
+VmBuilder::VmCpuArgs GetVmCpuArgs(int32_t cpus,
+                                  const base::FilePath& cpu_info_path);
 }  // namespace internal
 
 }  // namespace concierge

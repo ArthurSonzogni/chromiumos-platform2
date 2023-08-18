@@ -94,6 +94,11 @@ VmBuilder& VmBuilder::SetCpus(int32_t cpus) {
   return *this;
 }
 
+VmBuilder& VmBuilder::SetVmCpuArgs(const struct VmCpuArgs& vm_cpu_args) {
+  vm_cpu_args_ = vm_cpu_args;
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetVsockCid(uint32_t vsock_cid) {
   vsock_cid_ = vsock_cid;
   return *this;
@@ -591,6 +596,22 @@ base::StringPairs VmBuilder::BuildRunParams() const {
 
   if (!vmm_swap_dir_.empty()) {
     args.emplace_back("--swap", vmm_swap_dir_.value());
+  }
+
+  if (vm_cpu_args_.has_value()) {
+    if (!vm_cpu_args_->cpu_affinity.empty())
+      args.emplace_back("--cpu-affinity", vm_cpu_args_->cpu_affinity);
+
+    if (!vm_cpu_args_->cpu_capacity.empty())
+      args.emplace_back("--cpu-capacity",
+                        base::JoinString(vm_cpu_args_->cpu_capacity, ","));
+
+    if (!vm_cpu_args_->cpu_clusters.empty()) {
+      for (const auto& cluster : vm_cpu_args_->cpu_clusters) {
+        auto cpu_list = base::JoinString(cluster, ",");
+        args.emplace_back("--cpu-cluster", cpu_list);
+      }
+    }
   }
 
   return args;

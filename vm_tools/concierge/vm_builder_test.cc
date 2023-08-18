@@ -256,4 +256,33 @@ TEST(VmBuilderTest, ARCVMDisks) {
   EXPECT_EQ(blocks[2], "/dev/2,ro=false,o_direct=true,block_size=4096");
 }
 
+TEST(VmBuilderTest, VmCpuArgs) {
+  VmBuilder::VmCpuArgs vm_cpu_args = {
+      .cpu_affinity = {"0=0,1:1=0,1:2=2,3:3=2,3"},
+      .cpu_capacity = {"0=741", "1=741", "2=1024", "3=1024"},
+      .cpu_clusters = {{"0", "1"}, {"2", "3"}},
+  };
+
+  VmBuilder builder;
+  builder.SetVmCpuArgs(vm_cpu_args);
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+
+  EXPECT_THAT(result,
+              testing::Contains(
+                  std::make_pair("--cpu-affinity", "0=0,1:1=0,1:2=2,3:3=2,3"))
+                  .Times(1));
+  EXPECT_THAT(result,
+              testing::Contains(
+                  std::make_pair("--cpu-capacity", "0=741,1=741,2=1024,3=1024"))
+                  .Times(1));
+
+  EXPECT_THAT(
+      result,
+      testing::Contains(std::make_pair("--cpu-cluster", "0,1")).Times(1));
+
+  EXPECT_THAT(
+      result,
+      testing::Contains(std::make_pair("--cpu-cluster", "2,3")).Times(1));
+}
+
 }  // namespace vm_tools::concierge

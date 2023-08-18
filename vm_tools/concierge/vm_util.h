@@ -110,11 +110,13 @@ extern const char kCrosvmBin[];
 int64_t GetVmMemoryMiB();
 
 // Retrieves the physical package ID for |cpu| from the topology information in
-// sysfs.
-std::optional<int32_t> GetCpuPackageId(int32_t cpu);
+// cpu_info_path.
+std::optional<int32_t> GetCpuPackageId(int32_t cpu,
+                                       const base::FilePath& cpu_info_path);
 
-// Retrieves the CPU capacity property for |cpu| from sysfs.
-std::optional<int32_t> GetCpuCapacity(int32_t cpu);
+// Retrieves the CPU capacity property for |cpu| from cpu_info_path.
+std::optional<int32_t> GetCpuCapacity(int32_t cpu,
+                                      const base::FilePath& cpu_info_path);
 
 // Calculate an appropriate CPU affinity setting based on the host system's
 // CPU clusters and capacity. CPUs will be grouped based on cluster if multiple

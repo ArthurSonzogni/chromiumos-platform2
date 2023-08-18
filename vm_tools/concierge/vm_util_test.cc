@@ -4,12 +4,15 @@
 
 #include "vm_tools/concierge/vm_util.h"
 
+#include <cstring>
 #include <optional>
+#include <string>
 
-#include <base/containers/contains.h>
-#include <base/strings/string_number_conversions.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "base/containers/contains.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 #include "vm_tools/concierge/fake_crosvm_control.h"
 
@@ -721,6 +724,52 @@ TEST(VMUtilTest, GetVmMemoryMiB) {
   // 16GB Brya
   EXPECT_EQ(internal::GetVmMemoryMiBInternal(15785, /* is_32bit */ false),
             14761);
+}
+
+TEST(VMUtilTest, GetCpuPackageIdAndCapacity) {
+  // Create temporary directory for CPU topology
+  base::ScopedTempDir cpu_info_dir;
+  EXPECT_TRUE(cpu_info_dir.CreateUniqueTempDir());
+  EXPECT_TRUE(
+      base::CreateDirectory(cpu_info_dir.GetPath().Append("cpu0/topology/")));
+
+  // Create package_id file inside temporary directory
+  base::FilePath cpu_id_path =
+      cpu_info_dir.GetPath().Append("cpu0/topology/physical_package_id");
+  base::File id_file(cpu_id_path, base::File::FLAG_CREATE |
+                                      base::File::FLAG_WRITE |
+                                      base::File::FLAG_READ);
+  EXPECT_TRUE(id_file.created());
+
+  // Test on artificial CPU with out corresponding physical cpu
+  auto noneID = GetCpuPackageId(0, cpu_info_dir.GetPath());
+  EXPECT_FALSE(noneID);
+
+  // Test on valid cpu id
+  constexpr char test_cpu_id[] = "1";
+  base::WriteFile(cpu_id_path, test_cpu_id, strlen(test_cpu_id));
+  auto validID = GetCpuPackageId(0, cpu_info_dir.GetPath());
+  EXPECT_TRUE(validID);
+  EXPECT_EQ(*validID, 1);
+
+  // Create cpu_capacity file inside temporary directory
+  base::FilePath cpu_capacity_path =
+      cpu_info_dir.GetPath().Append("cpu0/cpu_capacity");
+  base::File capacity_file(cpu_id_path, base::File::FLAG_CREATE |
+                                            base::File::FLAG_WRITE |
+                                            base::File::FLAG_READ);
+
+  // Test on no cpu capacity infos
+  auto noneCapacity = GetCpuCapacity(0, cpu_info_dir.GetPath());
+  EXPECT_FALSE(noneCapacity);
+
+  // Test on valid cpu capacity
+  constexpr char test_cpu_capacity[] = "741";
+  base::WriteFile(cpu_capacity_path, test_cpu_capacity,
+                  strlen(test_cpu_capacity));
+  auto valid_capacity = GetCpuCapacity(0, cpu_info_dir.GetPath());
+  EXPECT_TRUE(valid_capacity);
+  EXPECT_EQ(*valid_capacity, 741);
 }
 
 }  // namespace concierge
