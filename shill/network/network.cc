@@ -130,9 +130,10 @@ void Network::Start(const Network::StartOptions& opts) {
     ip6config_->ApplyNetworkConfig(*link_local_protocol_network_config_,
                                    /*force_overwrite=*/true,
                                    net_base::IPFamily::kIPv6);
-    dispatcher_->PostTask(FROM_HERE,
-                          base::BindOnce(&Network::SetupConnection, AsWeakPtr(),
-                                         ip6config_.get()));
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&Network::SetupConnection, AsWeakPtr(),
+                       net_base::IPFamily::kIPv6, /*is_slaac=*/false));
     ipv6_started = true;
   }
 
@@ -198,30 +199,23 @@ std::unique_ptr<SLAACController> Network::CreateSLAACController() {
   return slaac_controller;
 }
 
-void Network::SetupConnection(IPConfig* ipconfig) {
-  DCHECK(ipconfig);
-  if (!ipconfig->properties().address_family) {
-    LOG(ERROR) << *this << ": " << __func__ << " with invalid address family";
-    return;
-  }
-
-  LOG(INFO) << *this << ": Setting " << *ipconfig->properties().address_family
-            << " connection";
+void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
+  LOG(INFO) << *this << ": Setting " << family << " connection";
   NetworkApplier::Area to_apply = NetworkApplier::Area::kRoutingPolicy |
                                   NetworkApplier::Area::kDNS |
                                   NetworkApplier::Area::kMTU;
-  if (ipconfig->properties().address_family == net_base::IPFamily::kIPv4) {
+  if (family == net_base::IPFamily::kIPv4) {
     if (!fixed_ip_params_) {
       to_apply |= NetworkApplier::Area::kIPv4Address;
     }
     to_apply |= NetworkApplier::Area::kIPv4Route;
     to_apply |= NetworkApplier::Area::kIPv4DefaultRoute;
   } else {
-    if (!fixed_ip_params_ && ipconfig->properties().method != kTypeSLAAC) {
+    if (!fixed_ip_params_ && !is_slaac) {
       to_apply |= NetworkApplier::Area::kIPv6Address;
     }
     to_apply |= NetworkApplier::Area::kIPv6Route;
-    if (ipconfig->properties().method != kTypeSLAAC) {
+    if (!is_slaac) {
       to_apply |= NetworkApplier::Area::kIPv6DefaultRoute;
     }
   }
@@ -241,9 +235,8 @@ void Network::SetupConnection(IPConfig* ipconfig) {
     ev->OnConnectionUpdated(interface_index_);
   }
 
-  bool current_ipconfig_changed =
-      primary_family_ != ipconfig->properties().address_family;
-  primary_family_ = ipconfig->properties().address_family;
+  bool current_ipconfig_changed = primary_family_ != family;
+  primary_family_ = family;
   if (current_ipconfig_changed && !current_ipconfig_change_handler_.is_null()) {
     current_ipconfig_change_handler_.Run();
   }
@@ -347,7 +340,7 @@ void Network::OnIPv4ConfigUpdated() {
     // could assign to someone else who might actually use it.
     dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
   }
-  SetupConnection(ipconfig());
+  SetupConnection(net_base::IPFamily::kIPv4, /*is_slaac=*/false);
   for (auto* ev : event_handlers_) {
     ev->OnIPConfigsPropertyUpdated(interface_index_);
   }
@@ -489,7 +482,8 @@ void Network::OnDHCPDrop(bool is_voluntary) {
       // lease at first. Static IP is handled above so it's guaranteed that
       // there is no valid IPv4 lease. Also see b/261681299.
       network_applier_->Clear(interface_index_);
-      SetupConnection(ip6config());
+      SetupConnection(net_base::IPFamily::kIPv6,
+                      ip6config()->properties().method == kTypeSLAAC);
     }
     return;
   }
@@ -661,7 +655,8 @@ void Network::OnIPv6ConfigUpdated() {
     // there is no existing IPv4 connection. We always prefer IPv4 configuration
     // over IPv6.
     if (primary_family_ != net_base::IPFamily::kIPv4) {
-      SetupConnection(ip6config());
+      SetupConnection(net_base::IPFamily::kIPv6,
+                      ip6config()->properties().method == kTypeSLAAC);
     } else {
       // Still apply IPv6 DNS even if the Connection is setup with IPv4.
       ApplyNetworkConfig(NetworkApplier::Area::kDNS);

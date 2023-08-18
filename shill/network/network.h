@@ -376,11 +376,9 @@ class Network {
   // dependency
   friend class StaticIPParametersTest;
 
-  // Configures (or reconfigures) the associated Connection object with the
-  // given IPConfig. When configuration is from SLAAC, set
-  // |ipconfig->properties.method| to kTypeIPv6so that Connection skips address
-  // configuration and only does routing policy setup.
-  void SetupConnection(IPConfig* ipconfig);
+  // Configures (or reconfigures) the Network for |family|. If |is_slaac, the
+  // address and default route configuration is skipped.
+  void SetupConnection(net_base::IPFamily family, bool is_slaac);
 
   // Creates a SLAACController object. Isolated for unit test mock injection.
   mockable std::unique_ptr<SLAACController> CreateSLAACController();
