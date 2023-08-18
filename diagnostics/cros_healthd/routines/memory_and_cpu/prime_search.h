@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_PRIME_SEARCH_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_PRIME_SEARCH_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_PRIME_SEARCH_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_PRIME_SEARCH_H_
 
 #include <cstdint>
 
@@ -22,14 +22,14 @@ namespace diagnostics {
 
 // The prime search routine checks that the device's CPU can calculate
 // correctly.
-class PrimeSearchRoutineV2 final : public BaseRoutineControl {
+class PrimeSearchRoutine final : public BaseRoutineControl {
  public:
-  explicit PrimeSearchRoutineV2(
+  explicit PrimeSearchRoutine(
       Context* context,
       const ash::cros_healthd::mojom::PrimeSearchRoutineArgumentPtr& arg);
-  PrimeSearchRoutineV2(const PrimeSearchRoutineV2&) = delete;
-  PrimeSearchRoutineV2& operator=(const PrimeSearchRoutineV2&) = delete;
-  ~PrimeSearchRoutineV2() override;
+  PrimeSearchRoutine(const PrimeSearchRoutine&) = delete;
+  PrimeSearchRoutine& operator=(const PrimeSearchRoutine&) = delete;
+  ~PrimeSearchRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
@@ -62,9 +62,9 @@ class PrimeSearchRoutineV2 final : public BaseRoutineControl {
   base::DefaultTickClock tick_clock_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<PrimeSearchRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<PrimeSearchRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_PRIME_SEARCH_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_PRIME_SEARCH_H_

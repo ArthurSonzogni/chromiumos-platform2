@@ -61,7 +61,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void RunIw(IwCommand cmd,
              const std::string& interface_name,
              RunIwCallback callback) override;
-  void RunMemtesterV2(
+  void RunMemtester(
       uint32_t test_mem_kib,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver)
       override;

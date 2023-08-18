@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
 
 #include <memory>
 #include <string>
@@ -31,12 +31,11 @@ namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::WithArgs;
 
-class CpuCacheRoutineV2TestBase : public BaseFileTest {
+class CpuCacheRoutineTestBase : public BaseFileTest {
  protected:
-  CpuCacheRoutineV2TestBase() = default;
-  CpuCacheRoutineV2TestBase(const CpuCacheRoutineV2TestBase&) = delete;
-  CpuCacheRoutineV2TestBase& operator=(const CpuCacheRoutineV2TestBase&) =
-      delete;
+  CpuCacheRoutineTestBase() = default;
+  CpuCacheRoutineTestBase(const CpuCacheRoutineTestBase&) = delete;
+  CpuCacheRoutineTestBase& operator=(const CpuCacheRoutineTestBase&) = delete;
 
   void SetUp() override {
     SetTestRoot(mock_context_.root_dir());
@@ -76,15 +75,15 @@ class CpuCacheRoutineV2TestBase : public BaseFileTest {
   int received_test_seconds_ = -1;
 };
 
-class CpuCacheRoutineV2Test : public CpuCacheRoutineV2TestBase {
+class CpuCacheRoutineTest : public CpuCacheRoutineTestBase {
  protected:
-  CpuCacheRoutineV2Test() = default;
-  CpuCacheRoutineV2Test(const CpuCacheRoutineV2Test&) = delete;
-  CpuCacheRoutineV2Test& operator=(const CpuCacheRoutineV2Test&) = delete;
+  CpuCacheRoutineTest() = default;
+  CpuCacheRoutineTest(const CpuCacheRoutineTest&) = delete;
+  CpuCacheRoutineTest& operator=(const CpuCacheRoutineTest&) = delete;
 
   void SetUp() {
-    CpuCacheRoutineV2TestBase::SetUp();
-    routine_ = std::make_unique<CpuCacheRoutineV2>(
+    CpuCacheRoutineTestBase::SetUp();
+    routine_ = std::make_unique<CpuCacheRoutine>(
         &mock_context_,
         mojom::CpuCacheRoutineArgument::New(/*length_seconds=*/std::nullopt));
   }
@@ -110,18 +109,18 @@ class CpuCacheRoutineV2Test : public CpuCacheRoutineV2TestBase {
     run_loop.Run();
   }
 
-  std::unique_ptr<CpuCacheRoutineV2> routine_;
+  std::unique_ptr<CpuCacheRoutine> routine_;
 };
 
-class CpuCacheRoutineV2AdapterTest : public CpuCacheRoutineV2TestBase {
+class CpuCacheRoutineAdapterTest : public CpuCacheRoutineTestBase {
  protected:
-  CpuCacheRoutineV2AdapterTest() = default;
-  CpuCacheRoutineV2AdapterTest(const CpuCacheRoutineV2AdapterTest&) = delete;
-  CpuCacheRoutineV2AdapterTest& operator=(const CpuCacheRoutineV2AdapterTest&) =
+  CpuCacheRoutineAdapterTest() = default;
+  CpuCacheRoutineAdapterTest(const CpuCacheRoutineAdapterTest&) = delete;
+  CpuCacheRoutineAdapterTest& operator=(const CpuCacheRoutineAdapterTest&) =
       delete;
 
   void SetUp() {
-    CpuCacheRoutineV2TestBase::SetUp();
+    CpuCacheRoutineTestBase::SetUp();
     routine_adapter_ = std::make_unique<RoutineAdapter>(
         mojom::RoutineArgument::Tag::kCpuCache);
     routine_adapter_->SetupAdapter(
@@ -157,7 +156,7 @@ class CpuCacheRoutineV2AdapterTest : public CpuCacheRoutineV2TestBase {
 };
 
 // Test that the CPU cache routine can run successfully.
-TEST_F(CpuCacheRoutineV2Test, RoutineSuccess) {
+TEST_F(CpuCacheRoutineTest, RoutineSuccess) {
   SetExecutorReturnCode(EXIT_SUCCESS);
 
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
@@ -167,7 +166,7 @@ TEST_F(CpuCacheRoutineV2Test, RoutineSuccess) {
 }
 
 // Test that we can run a routine successfully.
-TEST_F(CpuCacheRoutineV2AdapterTest, RoutineSuccess) {
+TEST_F(CpuCacheRoutineAdapterTest, RoutineSuccess) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   SetExecutorReturnCode(EXIT_SUCCESS);
 
@@ -181,13 +180,13 @@ TEST_F(CpuCacheRoutineV2AdapterTest, RoutineSuccess) {
 }
 
 // Test that the CPU cache routine handles the parsing error.
-TEST_F(CpuCacheRoutineV2Test, RoutineParseError) {
+TEST_F(CpuCacheRoutineTest, RoutineParseError) {
   SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
   RunRoutineAndWaitForException();
 }
 
 // Test that the CPU cache routine handles the parsing error.
-TEST_F(CpuCacheRoutineV2AdapterTest, RoutineParseError) {
+TEST_F(CpuCacheRoutineAdapterTest, RoutineParseError) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
 
@@ -200,7 +199,7 @@ TEST_F(CpuCacheRoutineV2AdapterTest, RoutineParseError) {
 }
 
 // Test that the CPU cache routine handles when there is less than 628MB memory
-TEST_F(CpuCacheRoutineV2Test, RoutineNotEnoughMemory) {
+TEST_F(CpuCacheRoutineTest, RoutineNotEnoughMemory) {
   // MemAvailable less than 628 MB.
   SetMockMemoryInfo(
       "MemTotal:        3906320 kB\n"
@@ -210,7 +209,7 @@ TEST_F(CpuCacheRoutineV2Test, RoutineNotEnoughMemory) {
 }
 
 // Test that the CPU cache routine handles when there is less than 628MB memory
-TEST_F(CpuCacheRoutineV2AdapterTest, RoutineNotEnoughMemory) {
+TEST_F(CpuCacheRoutineAdapterTest, RoutineNotEnoughMemory) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   // MemAvailable less than 628 MB.
   SetMockMemoryInfo(
@@ -226,32 +225,32 @@ TEST_F(CpuCacheRoutineV2AdapterTest, RoutineNotEnoughMemory) {
             mojom::DiagnosticRoutineStatusEnum::kError);
 }
 
-TEST_F(CpuCacheRoutineV2Test, DefaultTestSeconds) {
+TEST_F(CpuCacheRoutineTest, DefaultTestSeconds) {
   SetExecutorReturnCode(EXIT_SUCCESS);
   RunRoutineAndWaitForExit();
   EXPECT_EQ(received_test_seconds_, 60);
 }
 
-TEST_F(CpuCacheRoutineV2Test, CustomTestSeconds) {
+TEST_F(CpuCacheRoutineTest, CustomTestSeconds) {
   SetExecutorReturnCode(EXIT_SUCCESS);
-  routine_ = std::make_unique<CpuCacheRoutineV2>(
+  routine_ = std::make_unique<CpuCacheRoutine>(
       &mock_context_, mojom::CpuCacheRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(20)));
   RunRoutineAndWaitForExit();
   EXPECT_EQ(received_test_seconds_, 20);
 }
 
-TEST_F(CpuCacheRoutineV2Test, InvalidTestSecondsFallbackToDefaultOfOneMinute) {
+TEST_F(CpuCacheRoutineTest, InvalidTestSecondsFallbackToDefaultOfOneMinute) {
   SetExecutorReturnCode(EXIT_SUCCESS);
-  routine_ = std::make_unique<CpuCacheRoutineV2>(
+  routine_ = std::make_unique<CpuCacheRoutine>(
       &mock_context_,
       mojom::CpuCacheRoutineArgument::New(/*exec_duration=*/base::Seconds(0)));
   RunRoutineAndWaitForExit();
   EXPECT_EQ(received_test_seconds_, 60);
 }
 
-TEST_F(CpuCacheRoutineV2Test, IncrementalProgress) {
-  routine_ = std::make_unique<CpuCacheRoutineV2>(
+TEST_F(CpuCacheRoutineTest, IncrementalProgress) {
+  routine_ = std::make_unique<CpuCacheRoutine>(
       &mock_context_, mojom::CpuCacheRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   routine_->SetOnExceptionCallback(
@@ -279,7 +278,7 @@ TEST_F(CpuCacheRoutineV2Test, IncrementalProgress) {
   EXPECT_TRUE(observer.state_->state_union->is_finished());
 }
 
-TEST_F(CpuCacheRoutineV2AdapterTest, IncrementalProgress) {
+TEST_F(CpuCacheRoutineAdapterTest, IncrementalProgress) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   routine_adapter_ =
       std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kCpuCache);
@@ -318,7 +317,7 @@ TEST_F(CpuCacheRoutineV2AdapterTest, IncrementalProgress) {
 
 // Test that the CPU cache routine will raise error if the executor
 // disconnects.
-TEST_F(CpuCacheRoutineV2Test, ExecutorDisconnectBeforeFinishedError) {
+TEST_F(CpuCacheRoutineTest, ExecutorDisconnectBeforeFinishedError) {
   base::RunLoop run_loop;
   routine_->SetOnExceptionCallback(
       base::IgnoreArgs<uint32_t, const std::string&>(run_loop.QuitClosure()));
@@ -329,7 +328,7 @@ TEST_F(CpuCacheRoutineV2Test, ExecutorDisconnectBeforeFinishedError) {
 
 // Test that the CPU cache routine will raise error if the executor
 // disconnects.
-TEST_F(CpuCacheRoutineV2AdapterTest, ExecutorDisconnectBeforeFinishedError) {
+TEST_F(CpuCacheRoutineAdapterTest, ExecutorDisconnectBeforeFinishedError) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   routine_adapter_->Start();
   FlushAdapter();

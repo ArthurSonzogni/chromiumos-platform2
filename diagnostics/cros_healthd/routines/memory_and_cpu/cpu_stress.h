@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CPU_CACHE_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CPU_CACHE_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CPU_STRESS_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CPU_STRESS_H_
 
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
@@ -19,16 +19,16 @@
 
 namespace diagnostics {
 
-// The cpu cache routine checks that the device's cpu cache system is working
+// The cpu stress routine checks that the device's cpu system is working
 // correctly.
-class CpuCacheRoutineV2 final : public BaseRoutineControl {
+class CpuStressRoutine final : public BaseRoutineControl {
  public:
-  explicit CpuCacheRoutineV2(
+  explicit CpuStressRoutine(
       Context* context,
-      const ash::cros_healthd::mojom::CpuCacheRoutineArgumentPtr& arg);
-  CpuCacheRoutineV2(const CpuCacheRoutineV2&) = delete;
-  CpuCacheRoutineV2& operator=(const CpuCacheRoutineV2&) = delete;
-  ~CpuCacheRoutineV2() override;
+      const ash::cros_healthd::mojom::CpuStressRoutineArgumentPtr& arg);
+  CpuStressRoutine(const CpuStressRoutine&) = delete;
+  CpuStressRoutine& operator=(const CpuStressRoutine&) = delete;
+  ~CpuStressRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
@@ -59,9 +59,9 @@ class CpuCacheRoutineV2 final : public BaseRoutineControl {
   base::DefaultTickClock tick_clock_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<CpuCacheRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<CpuStressRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CPU_CACHE_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CPU_STRESS_H_

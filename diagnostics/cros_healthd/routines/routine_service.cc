@@ -12,11 +12,11 @@
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/led/led_lit_up_v2.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache_v2.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_v2.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
@@ -52,20 +52,20 @@ std::unique_ptr<BaseRoutineControl> RoutineService::CreateRoutineControl(
     mojo::PendingReceiver<mojom::RoutineControl>& routine_receiver) {
   switch (routine_arg->which()) {
     case mojom::RoutineArgument::Tag::kPrimeSearch:
-      return std::make_unique<PrimeSearchRoutineV2>(
+      return std::make_unique<PrimeSearchRoutine>(
           context_, routine_arg->get_prime_search());
     case mojom::RoutineArgument::Tag::kFloatingPoint:
       return std::make_unique<FloatingPointRoutineV2>(
           context_, routine_arg->get_floating_point());
     case mojom::RoutineArgument::Tag::kMemory:
-      return std::make_unique<MemoryRoutineV2>(context_,
-                                               routine_arg->get_memory());
+      return std::make_unique<MemoryRoutine>(context_,
+                                             routine_arg->get_memory());
     case mojom::RoutineArgument::Tag::kAudioDriver:
       return std::make_unique<AudioDriverRoutine>(
           context_, routine_arg->get_audio_driver());
     case mojom::RoutineArgument::Tag::kCpuStress:
-      return std::make_unique<CpuStressRoutineV2>(
-          context_, routine_arg->get_cpu_stress());
+      return std::make_unique<CpuStressRoutine>(context_,
+                                                routine_arg->get_cpu_stress());
     case mojom::RoutineArgument::Tag::kUfsLifetime:
       return std::make_unique<UfsLifetimeRoutine>(
           context_, routine_arg->get_ufs_lifetime());
@@ -82,8 +82,8 @@ std::unique_ptr<BaseRoutineControl> RoutineService::CreateRoutineControl(
       return nullptr;
     }
     case mojom::RoutineArgument::Tag::kCpuCache:
-      return std::make_unique<CpuCacheRoutineV2>(context_,
-                                                 routine_arg->get_cpu_cache());
+      return std::make_unique<CpuCacheRoutine>(context_,
+                                               routine_arg->get_cpu_cache());
     case mojom::RoutineArgument::Tag::kVolumeButton:
       return std::make_unique<VolumeButtonRoutine>(
           context_, routine_arg->get_volume_button());

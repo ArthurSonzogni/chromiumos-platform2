@@ -360,7 +360,7 @@ void Executor::RunIw(IwCommand cmd,
                     /*combine_stdout_and_stderr=*/false);
 }
 
-void Executor::RunMemtesterV2(
+void Executor::RunMemtester(
     uint32_t test_mem_kib,
     mojo::PendingReceiver<mojom::ProcessControl> receiver) {
   // Run with test_mem_kib memory and run for 1 loop.

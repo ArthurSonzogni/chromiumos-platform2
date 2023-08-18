@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -22,7 +22,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
-CpuStressRoutineV2::CpuStressRoutineV2(
+CpuStressRoutine::CpuStressRoutine(
     Context* context, const mojom::CpuStressRoutineArgumentPtr& arg)
     : context_(context) {
   exec_duration_ = arg->exec_duration.value_or(kDefaultCpuStressRuntime);
@@ -35,16 +35,16 @@ CpuStressRoutineV2::CpuStressRoutineV2(
   CHECK(context_);
 }
 
-CpuStressRoutineV2::~CpuStressRoutineV2() = default;
+CpuStressRoutine::~CpuStressRoutine() = default;
 
-void CpuStressRoutineV2::OnStart() {
+void CpuStressRoutine::OnStart() {
   SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                   "Waiting for memory and CPU resource");
   context_->memory_cpu_resource_queue()->Enqueue(
-      base::BindOnce(&CpuStressRoutineV2::Run, weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&CpuStressRoutine::Run, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void CpuStressRoutineV2::Run(
+void CpuStressRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
   auto memory_info = MemoryInfo::ParseFrom(context_->root_dir());
   if (!memory_info.has_value()) {
@@ -76,28 +76,28 @@ void CpuStressRoutineV2::Run(
       std::move(notify_resource_queue_finished));
 
   scoped_process_control_->GetReturnCode(mojo::WrapCallbackWithDropHandler(
-      base::BindOnce(&CpuStressRoutineV2::HandleGetReturnCode,
+      base::BindOnce(&CpuStressRoutine::HandleGetReturnCode,
                      weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&CpuStressRoutineV2::RaiseException,
+      base::BindOnce(&CpuStressRoutine::RaiseException,
                      weak_ptr_factory_.GetWeakPtr(),
                      "process control disconnected before routine finished")));
 
   start_ticks_ = tick_clock_.NowTicks();
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&CpuStressRoutineV2::UpdatePercentage,
+      base::BindOnce(&CpuStressRoutine::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
       exec_duration_ / 100);
 }
 
-void CpuStressRoutineV2::HandleGetReturnCode(int return_code) {
+void CpuStressRoutine::HandleGetReturnCode(int return_code) {
   scoped_process_control_.Reset();
   bool passed = return_code == EXIT_SUCCESS;
   SetFinishedState(passed, mojom::RoutineDetail::NewCpuStress(
                                mojom::CpuStressRoutineDetail::New()));
 }
 
-void CpuStressRoutineV2::UpdatePercentage() {
+void CpuStressRoutine::UpdatePercentage() {
   uint32_t percentage = static_cast<uint32_t>(
       100.0 * (tick_clock_.NowTicks() - start_ticks_) / exec_duration_);
   if (percentage > state()->percentage && percentage < 100) {
@@ -107,7 +107,7 @@ void CpuStressRoutineV2::UpdatePercentage() {
   if (state()->percentage < 99) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&CpuStressRoutineV2::UpdatePercentage,
+        base::BindOnce(&CpuStressRoutine::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),
         exec_duration_ / 100);
   }

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -22,8 +22,8 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
-CpuCacheRoutineV2::CpuCacheRoutineV2(
-    Context* context, const mojom::CpuCacheRoutineArgumentPtr& arg)
+CpuCacheRoutine::CpuCacheRoutine(Context* context,
+                                 const mojom::CpuCacheRoutineArgumentPtr& arg)
     : context_(context) {
   exec_duration_ = arg->exec_duration.value_or(kDefaultCpuStressRuntime);
 
@@ -35,16 +35,16 @@ CpuCacheRoutineV2::CpuCacheRoutineV2(
   CHECK(context_);
 }
 
-CpuCacheRoutineV2::~CpuCacheRoutineV2() = default;
+CpuCacheRoutine::~CpuCacheRoutine() = default;
 
-void CpuCacheRoutineV2::OnStart() {
+void CpuCacheRoutine::OnStart() {
   SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                   "Waiting for memory and CPU resource");
   context_->memory_cpu_resource_queue()->Enqueue(
-      base::BindOnce(&CpuCacheRoutineV2::Run, weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&CpuCacheRoutine::Run, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void CpuCacheRoutineV2::Run(
+void CpuCacheRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
   auto memory_info = MemoryInfo::ParseFrom(context_->root_dir());
   if (!memory_info.has_value()) {
@@ -76,28 +76,28 @@ void CpuCacheRoutineV2::Run(
       std::move(notify_resource_queue_finished));
 
   scoped_process_control_->GetReturnCode(mojo::WrapCallbackWithDropHandler(
-      base::BindOnce(&CpuCacheRoutineV2::HandleGetReturnCode,
+      base::BindOnce(&CpuCacheRoutine::HandleGetReturnCode,
                      weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&CpuCacheRoutineV2::RaiseException,
+      base::BindOnce(&CpuCacheRoutine::RaiseException,
                      weak_ptr_factory_.GetWeakPtr(),
                      "process control disconnected before routine finished")));
 
   start_ticks_ = tick_clock_.NowTicks();
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&CpuCacheRoutineV2::UpdatePercentage,
+      base::BindOnce(&CpuCacheRoutine::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
       exec_duration_ / 100);
 }
 
-void CpuCacheRoutineV2::HandleGetReturnCode(int return_code) {
+void CpuCacheRoutine::HandleGetReturnCode(int return_code) {
   scoped_process_control_.Reset();
   bool passed = return_code == EXIT_SUCCESS;
   SetFinishedState(passed, mojom::RoutineDetail::NewCpuCache(
                                mojom::CpuCacheRoutineDetail::New()));
 }
 
-void CpuCacheRoutineV2::UpdatePercentage() {
+void CpuCacheRoutine::UpdatePercentage() {
   uint32_t percentage = static_cast<uint32_t>(
       100.0 * (tick_clock_.NowTicks() - start_ticks_) / exec_duration_);
   if (percentage > state()->percentage && percentage < 100) {
@@ -107,7 +107,7 @@ void CpuCacheRoutineV2::UpdatePercentage() {
   if (state()->percentage < 99) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&CpuCacheRoutineV2::UpdatePercentage,
+        base::BindOnce(&CpuCacheRoutine::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),
         exec_duration_ / 100);
   }

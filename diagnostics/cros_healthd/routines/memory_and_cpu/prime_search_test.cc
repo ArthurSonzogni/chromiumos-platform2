@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
 
 #include <memory>
 #include <string>
@@ -31,11 +31,11 @@ namespace mojom = ash::cros_healthd::mojom;
 
 using ::testing::_;
 
-class PrimeSearchRoutineV2TestBase : public testing::Test {
+class PrimeSearchRoutineTestBase : public testing::Test {
  protected:
-  PrimeSearchRoutineV2TestBase() = default;
-  PrimeSearchRoutineV2TestBase(const PrimeSearchRoutineV2TestBase&) = delete;
-  PrimeSearchRoutineV2TestBase& operator=(const PrimeSearchRoutineV2TestBase&) =
+  PrimeSearchRoutineTestBase() = default;
+  PrimeSearchRoutineTestBase(const PrimeSearchRoutineTestBase&) = delete;
+  PrimeSearchRoutineTestBase& operator=(const PrimeSearchRoutineTestBase&) =
       delete;
 
   void SetUp() override {
@@ -67,15 +67,15 @@ class PrimeSearchRoutineV2TestBase : public testing::Test {
   Executor::RunPrimeSearchCallback received_callback_;
 };
 
-class PrimeSearchRoutineV2Test : public PrimeSearchRoutineV2TestBase {
+class PrimeSearchRoutineTest : public PrimeSearchRoutineTestBase {
  protected:
-  PrimeSearchRoutineV2Test() = default;
-  PrimeSearchRoutineV2Test(const PrimeSearchRoutineV2Test&) = delete;
-  PrimeSearchRoutineV2Test& operator=(const PrimeSearchRoutineV2Test&) = delete;
+  PrimeSearchRoutineTest() = default;
+  PrimeSearchRoutineTest(const PrimeSearchRoutineTest&) = delete;
+  PrimeSearchRoutineTest& operator=(const PrimeSearchRoutineTest&) = delete;
 
   void SetUp() {
-    PrimeSearchRoutineV2TestBase::SetUp();
-    routine_ = std::make_unique<PrimeSearchRoutineV2>(
+    PrimeSearchRoutineTestBase::SetUp();
+    routine_ = std::make_unique<PrimeSearchRoutine>(
         &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                             /*length_seconds=*/std::nullopt));
   }
@@ -103,19 +103,18 @@ class PrimeSearchRoutineV2Test : public PrimeSearchRoutineV2TestBase {
     run_loop.Run();
   }
 
-  std::unique_ptr<PrimeSearchRoutineV2> routine_;
+  std::unique_ptr<PrimeSearchRoutine> routine_;
 };
 
-class PrimeSearchRoutineV2AdapterTest : public PrimeSearchRoutineV2TestBase {
+class PrimeSearchRoutineAdapterTest : public PrimeSearchRoutineTestBase {
  protected:
-  PrimeSearchRoutineV2AdapterTest() = default;
-  PrimeSearchRoutineV2AdapterTest(const PrimeSearchRoutineV2AdapterTest&) =
-      delete;
-  PrimeSearchRoutineV2AdapterTest& operator=(
-      const PrimeSearchRoutineV2AdapterTest&) = delete;
+  PrimeSearchRoutineAdapterTest() = default;
+  PrimeSearchRoutineAdapterTest(const PrimeSearchRoutineAdapterTest&) = delete;
+  PrimeSearchRoutineAdapterTest& operator=(
+      const PrimeSearchRoutineAdapterTest&) = delete;
 
   void SetUp() {
-    PrimeSearchRoutineV2TestBase::SetUp();
+    PrimeSearchRoutineTestBase::SetUp();
     routine_adapter_ = std::make_unique<RoutineAdapter>(
         mojom::RoutineArgument::Tag::kPrimeSearch);
     routine_adapter_->SetupAdapter(
@@ -151,7 +150,7 @@ class PrimeSearchRoutineV2AdapterTest : public PrimeSearchRoutineV2TestBase {
 };
 
 // Test that the routine can run successfully.
-TEST_F(PrimeSearchRoutineV2Test, RoutineSuccess) {
+TEST_F(PrimeSearchRoutineTest, RoutineSuccess) {
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit(true);
   EXPECT_EQ(result->percentage, 100);
   EXPECT_TRUE(result->state_union->is_finished());
@@ -159,7 +158,7 @@ TEST_F(PrimeSearchRoutineV2Test, RoutineSuccess) {
 }
 
 // Test that the routine can run successfully through adapter.
-TEST_F(PrimeSearchRoutineV2AdapterTest, RoutineSuccess) {
+TEST_F(PrimeSearchRoutineAdapterTest, RoutineSuccess) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
 
   routine_adapter_->Start();
@@ -175,7 +174,7 @@ TEST_F(PrimeSearchRoutineV2AdapterTest, RoutineSuccess) {
 }
 
 // Test that the routine can fail successfully.
-TEST_F(PrimeSearchRoutineV2Test, RoutineFailure) {
+TEST_F(PrimeSearchRoutineTest, RoutineFailure) {
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit(false);
   EXPECT_EQ(result->percentage, 100);
   EXPECT_TRUE(result->state_union->is_finished());
@@ -183,7 +182,7 @@ TEST_F(PrimeSearchRoutineV2Test, RoutineFailure) {
 }
 
 // Test that the routine can fail successfully through adapter.
-TEST_F(PrimeSearchRoutineV2AdapterTest, RoutineFailure) {
+TEST_F(PrimeSearchRoutineAdapterTest, RoutineFailure) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
 
   routine_adapter_->Start();
@@ -199,14 +198,14 @@ TEST_F(PrimeSearchRoutineV2AdapterTest, RoutineFailure) {
 }
 
 // Test that the routine defaults to 60 seconds if no duration isprovided.
-TEST_F(PrimeSearchRoutineV2Test, DefaultTestSeconds) {
+TEST_F(PrimeSearchRoutineTest, DefaultTestSeconds) {
   RunRoutineAndWaitForExit(true);
   EXPECT_EQ(received_exec_duration_, base::Seconds(60));
 }
 
 // Test that the routine can run with custom time.
-TEST_F(PrimeSearchRoutineV2Test, CustomTestSeconds) {
-  routine_ = std::make_unique<PrimeSearchRoutineV2>(
+TEST_F(PrimeSearchRoutineTest, CustomTestSeconds) {
+  routine_ = std::make_unique<PrimeSearchRoutine>(
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(20)));
   RunRoutineAndWaitForExit(true);
@@ -215,8 +214,8 @@ TEST_F(PrimeSearchRoutineV2Test, CustomTestSeconds) {
 
 // Test that the routine defaults to minimum running time (1 second) if invalid
 // duration is provided.
-TEST_F(PrimeSearchRoutineV2Test, InvalidTestSecondsFallbackToMinimumDefault) {
-  routine_ = std::make_unique<PrimeSearchRoutineV2>(
+TEST_F(PrimeSearchRoutineTest, InvalidTestSecondsFallbackToMinimumDefault) {
+  routine_ = std::make_unique<PrimeSearchRoutine>(
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(0)));
   RunRoutineAndWaitForExit(true);
@@ -224,8 +223,8 @@ TEST_F(PrimeSearchRoutineV2Test, InvalidTestSecondsFallbackToMinimumDefault) {
 }
 
 // Test that the routine have the correct default search paramater.
-TEST_F(PrimeSearchRoutineV2Test, DefaultPrimeSearchParameter) {
-  routine_ = std::make_unique<PrimeSearchRoutineV2>(
+TEST_F(PrimeSearchRoutineTest, DefaultPrimeSearchParameter) {
+  routine_ = std::make_unique<PrimeSearchRoutine>(
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   RunRoutineAndWaitForExit(true);
@@ -233,10 +232,10 @@ TEST_F(PrimeSearchRoutineV2Test, DefaultPrimeSearchParameter) {
 }
 
 // Test that the routine can customize search paramater.
-TEST_F(PrimeSearchRoutineV2Test, CustomizePrimeSearchParameter) {
+TEST_F(PrimeSearchRoutineTest, CustomizePrimeSearchParameter) {
   mock_context_.fake_cros_config()->SetString(
       "/cros-healthd/routines/prime-search", "max-num", "1000");
-  routine_ = std::make_unique<PrimeSearchRoutineV2>(
+  routine_ = std::make_unique<PrimeSearchRoutine>(
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   RunRoutineAndWaitForExit(true);
@@ -244,10 +243,10 @@ TEST_F(PrimeSearchRoutineV2Test, CustomizePrimeSearchParameter) {
 }
 
 // Test that the routine can default to minimum for invalid search paramater.
-TEST_F(PrimeSearchRoutineV2Test, InvalidPrimeSearchParameter) {
+TEST_F(PrimeSearchRoutineTest, InvalidPrimeSearchParameter) {
   mock_context_.fake_cros_config()->SetString(
       "/cros-healthd/routines/prime-search", "max-num", "0");
-  routine_ = std::make_unique<PrimeSearchRoutineV2>(
+  routine_ = std::make_unique<PrimeSearchRoutine>(
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   RunRoutineAndWaitForExit(true);
@@ -255,8 +254,8 @@ TEST_F(PrimeSearchRoutineV2Test, InvalidPrimeSearchParameter) {
 }
 
 // Test that the routine can report progress correctly.
-TEST_F(PrimeSearchRoutineV2Test, IncrementalProgress) {
-  routine_ = std::make_unique<PrimeSearchRoutineV2>(
+TEST_F(PrimeSearchRoutineTest, IncrementalProgress) {
+  routine_ = std::make_unique<PrimeSearchRoutine>(
       &mock_context_, mojom::PrimeSearchRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   routine_->SetOnExceptionCallback(
@@ -286,7 +285,7 @@ TEST_F(PrimeSearchRoutineV2Test, IncrementalProgress) {
 
 // Test that the routine can report progress correctly through
 // adapter.
-TEST_F(PrimeSearchRoutineV2AdapterTest, IncrementalProgress) {
+TEST_F(PrimeSearchRoutineAdapterTest, IncrementalProgress) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   routine_adapter_ = std::make_unique<RoutineAdapter>(
       mojom::RoutineArgument::Tag::kPrimeSearch);

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress.h"
 
 #include <memory>
 #include <string>
@@ -31,12 +31,11 @@ namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::WithArgs;
 
-class CpuStressRoutineV2TestBase : public BaseFileTest {
+class CpuStressRoutineTestBase : public BaseFileTest {
  protected:
-  CpuStressRoutineV2TestBase() = default;
-  CpuStressRoutineV2TestBase(const CpuStressRoutineV2TestBase&) = delete;
-  CpuStressRoutineV2TestBase& operator=(const CpuStressRoutineV2TestBase&) =
-      delete;
+  CpuStressRoutineTestBase() = default;
+  CpuStressRoutineTestBase(const CpuStressRoutineTestBase&) = delete;
+  CpuStressRoutineTestBase& operator=(const CpuStressRoutineTestBase&) = delete;
 
   void SetUp() override {
     SetTestRoot(mock_context_.root_dir());
@@ -76,15 +75,15 @@ class CpuStressRoutineV2TestBase : public BaseFileTest {
   int received_test_seconds_ = -1;
 };
 
-class CpuStressRoutineV2Test : public CpuStressRoutineV2TestBase {
+class CpuStressRoutineTest : public CpuStressRoutineTestBase {
  protected:
-  CpuStressRoutineV2Test() = default;
-  CpuStressRoutineV2Test(const CpuStressRoutineV2Test&) = delete;
-  CpuStressRoutineV2Test& operator=(const CpuStressRoutineV2Test&) = delete;
+  CpuStressRoutineTest() = default;
+  CpuStressRoutineTest(const CpuStressRoutineTest&) = delete;
+  CpuStressRoutineTest& operator=(const CpuStressRoutineTest&) = delete;
 
   void SetUp() {
-    CpuStressRoutineV2TestBase::SetUp();
-    routine_ = std::make_unique<CpuStressRoutineV2>(
+    CpuStressRoutineTestBase::SetUp();
+    routine_ = std::make_unique<CpuStressRoutine>(
         &mock_context_,
         mojom::CpuStressRoutineArgument::New(/*length_seconds=*/std::nullopt));
   }
@@ -111,18 +110,18 @@ class CpuStressRoutineV2Test : public CpuStressRoutineV2TestBase {
     run_loop.Run();
   }
 
-  std::unique_ptr<CpuStressRoutineV2> routine_;
+  std::unique_ptr<CpuStressRoutine> routine_;
 };
 
-class CpuStressRoutineV2AdapterTest : public CpuStressRoutineV2TestBase {
+class CpuStressRoutineAdapterTest : public CpuStressRoutineTestBase {
  protected:
-  CpuStressRoutineV2AdapterTest() = default;
-  CpuStressRoutineV2AdapterTest(const CpuStressRoutineV2AdapterTest&) = delete;
-  CpuStressRoutineV2AdapterTest& operator=(
-      const CpuStressRoutineV2AdapterTest&) = delete;
+  CpuStressRoutineAdapterTest() = default;
+  CpuStressRoutineAdapterTest(const CpuStressRoutineAdapterTest&) = delete;
+  CpuStressRoutineAdapterTest& operator=(const CpuStressRoutineAdapterTest&) =
+      delete;
 
   void SetUp() {
-    CpuStressRoutineV2TestBase::SetUp();
+    CpuStressRoutineTestBase::SetUp();
     routine_adapter_ = std::make_unique<RoutineAdapter>(
         mojom::RoutineArgument::Tag::kCpuStress);
     routine_adapter_->SetupAdapter(
@@ -158,7 +157,7 @@ class CpuStressRoutineV2AdapterTest : public CpuStressRoutineV2TestBase {
 };
 
 // Test that the CPU stress routine can run successfully.
-TEST_F(CpuStressRoutineV2Test, RoutineSuccess) {
+TEST_F(CpuStressRoutineTest, RoutineSuccess) {
   SetExecutorReturnCode(EXIT_SUCCESS);
 
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
@@ -168,7 +167,7 @@ TEST_F(CpuStressRoutineV2Test, RoutineSuccess) {
 }
 
 // Test that we can run a routine successfully.
-TEST_F(CpuStressRoutineV2AdapterTest, RoutineSuccess) {
+TEST_F(CpuStressRoutineAdapterTest, RoutineSuccess) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   SetExecutorReturnCode(EXIT_SUCCESS);
 
@@ -182,13 +181,13 @@ TEST_F(CpuStressRoutineV2AdapterTest, RoutineSuccess) {
 }
 
 // Test that the CPU stress routine handles the parsing error.
-TEST_F(CpuStressRoutineV2Test, RoutineParseError) {
+TEST_F(CpuStressRoutineTest, RoutineParseError) {
   SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
   RunRoutineAndWaitForException();
 }
 
 // Test that the CPU stress routine handles the parsing error.
-TEST_F(CpuStressRoutineV2AdapterTest, RoutineParseError) {
+TEST_F(CpuStressRoutineAdapterTest, RoutineParseError) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
 
@@ -201,7 +200,7 @@ TEST_F(CpuStressRoutineV2AdapterTest, RoutineParseError) {
 }
 
 // Test that the CPU stress routine handles when there is less than 628MB memory
-TEST_F(CpuStressRoutineV2Test, RoutineNotEnoughMemory) {
+TEST_F(CpuStressRoutineTest, RoutineNotEnoughMemory) {
   // MemAvailable less than 628 MB.
   SetMockMemoryInfo(
       "MemTotal:        3906320 kB\n"
@@ -211,7 +210,7 @@ TEST_F(CpuStressRoutineV2Test, RoutineNotEnoughMemory) {
 }
 
 // Test that the CPU Stress routine handles when there is less than 628MB memory
-TEST_F(CpuStressRoutineV2AdapterTest, RoutineNotEnoughMemory) {
+TEST_F(CpuStressRoutineAdapterTest, RoutineNotEnoughMemory) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   // MemAvailable less than 628 MB.
   SetMockMemoryInfo(
@@ -227,32 +226,32 @@ TEST_F(CpuStressRoutineV2AdapterTest, RoutineNotEnoughMemory) {
             mojom::DiagnosticRoutineStatusEnum::kError);
 }
 
-TEST_F(CpuStressRoutineV2Test, DefaultTestSeconds) {
+TEST_F(CpuStressRoutineTest, DefaultTestSeconds) {
   SetExecutorReturnCode(EXIT_SUCCESS);
   RunRoutineAndWaitForExit();
   EXPECT_EQ(received_test_seconds_, 60);
 }
 
-TEST_F(CpuStressRoutineV2Test, CustomTestSeconds) {
+TEST_F(CpuStressRoutineTest, CustomTestSeconds) {
   SetExecutorReturnCode(EXIT_SUCCESS);
-  routine_ = std::make_unique<CpuStressRoutineV2>(
+  routine_ = std::make_unique<CpuStressRoutine>(
       &mock_context_, mojom::CpuStressRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(20)));
   RunRoutineAndWaitForExit();
   EXPECT_EQ(received_test_seconds_, 20);
 }
 
-TEST_F(CpuStressRoutineV2Test, InvalidTestSecondsFallbackToDefaultOfOneMinute) {
+TEST_F(CpuStressRoutineTest, InvalidTestSecondsFallbackToDefaultOfOneMinute) {
   SetExecutorReturnCode(EXIT_SUCCESS);
-  routine_ = std::make_unique<CpuStressRoutineV2>(
+  routine_ = std::make_unique<CpuStressRoutine>(
       &mock_context_,
       mojom::CpuStressRoutineArgument::New(/*exec_duration=*/base::Seconds(0)));
   RunRoutineAndWaitForExit();
   EXPECT_EQ(received_test_seconds_, 60);
 }
 
-TEST_F(CpuStressRoutineV2Test, IncrementalProgress) {
-  routine_ = std::make_unique<CpuStressRoutineV2>(
+TEST_F(CpuStressRoutineTest, IncrementalProgress) {
+  routine_ = std::make_unique<CpuStressRoutine>(
       &mock_context_, mojom::CpuStressRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   routine_->SetOnExceptionCallback(
@@ -282,7 +281,7 @@ TEST_F(CpuStressRoutineV2Test, IncrementalProgress) {
   EXPECT_TRUE(observer.state_->state_union->is_finished());
 }
 
-TEST_F(CpuStressRoutineV2AdapterTest, IncrementalProgress) {
+TEST_F(CpuStressRoutineAdapterTest, IncrementalProgress) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   routine_adapter_ =
       std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kCpuStress);
@@ -321,7 +320,7 @@ TEST_F(CpuStressRoutineV2AdapterTest, IncrementalProgress) {
 
 // Test that the CPU stress routine will raise error if the executor
 // disconnects.
-TEST_F(CpuStressRoutineV2Test, ExecutorDisconnectBeforeFinishedError) {
+TEST_F(CpuStressRoutineTest, ExecutorDisconnectBeforeFinishedError) {
   base::RunLoop run_loop;
   routine_->SetOnExceptionCallback(
       base::IgnoreArgs<uint32_t, const std::string&>(run_loop.QuitClosure()));
@@ -332,7 +331,7 @@ TEST_F(CpuStressRoutineV2Test, ExecutorDisconnectBeforeFinishedError) {
 
 // Test that the CPU stress routine will raise error if the executor
 // disconnects.
-TEST_F(CpuStressRoutineV2AdapterTest, ExecutorDisconnectBeforeFinishedError) {
+TEST_F(CpuStressRoutineAdapterTest, ExecutorDisconnectBeforeFinishedError) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   routine_adapter_->Start();
   FlushAdapter();

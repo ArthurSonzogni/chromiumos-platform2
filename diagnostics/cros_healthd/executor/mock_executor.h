@@ -39,7 +39,7 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               (IwCommand, const std::string&, RunIwCallback),
               (override));
   MOCK_METHOD(void,
-              RunMemtesterV2,
+              RunMemtester,
               (uint32_t test_mem_kib,
                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                    receiver),

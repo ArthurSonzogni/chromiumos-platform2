@@ -224,7 +224,7 @@ interface Executor {
   //                    greater than zero.
   // * |receiver| - The receiver which will be ound to a Process Control class
   //                that will manage the memtester binary's lifetime.
-  RunMemtesterV2(uint32 test_mem_kib, pending_receiver<ProcessControl> receiver);
+  RunMemtester(uint32 test_mem_kib, pending_receiver<ProcessControl> receiver);
 
   // Reads the I/O file of each process in the array and returns a map of the
   // raw, trimmed contents with no parsing.

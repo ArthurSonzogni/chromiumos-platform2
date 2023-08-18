@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
 
 #include <cstdint>
 #include <utility>
@@ -25,7 +25,7 @@ const uint64_t kPrimeSearchDefaultMaxNum = 1000000;
 
 }  // namespace
 
-PrimeSearchRoutineV2::PrimeSearchRoutineV2(
+PrimeSearchRoutine::PrimeSearchRoutine(
     Context* context,
     const ash::cros_healthd::mojom::PrimeSearchRoutineArgumentPtr& arg)
     : context_(context) {
@@ -60,23 +60,23 @@ PrimeSearchRoutineV2::PrimeSearchRoutineV2(
   CHECK(max_num_ > 1) << "Routine max num must be larger than 1";
 }
 
-PrimeSearchRoutineV2::~PrimeSearchRoutineV2() = default;
+PrimeSearchRoutine::~PrimeSearchRoutine() = default;
 
-void PrimeSearchRoutineV2::OnStart() {
+void PrimeSearchRoutine::OnStart() {
   SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                   "Waiting for memory and CPU resource");
-  context_->memory_cpu_resource_queue()->Enqueue(base::BindOnce(
-      &PrimeSearchRoutineV2::Run, weak_ptr_factory_.GetWeakPtr()));
+  context_->memory_cpu_resource_queue()->Enqueue(
+      base::BindOnce(&PrimeSearchRoutine::Run, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void PrimeSearchRoutineV2::Run(
+void PrimeSearchRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
   SetRunningState();
 
   context_->executor()->RunPrimeSearch(
       exec_duration_, max_num_,
       scoped_process_control_.BindNewPipeAndPassReceiver(),
-      base::BindOnce(&PrimeSearchRoutineV2::OnFinished,
+      base::BindOnce(&PrimeSearchRoutine::OnFinished,
                      weak_ptr_factory_.GetWeakPtr()));
   scoped_process_control_.AddOnTerminateCallback(
       std::move(notify_resource_queue_finished));
@@ -84,18 +84,18 @@ void PrimeSearchRoutineV2::Run(
   start_ticks_ = tick_clock_.NowTicks();
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&PrimeSearchRoutineV2::UpdatePercentage,
+      base::BindOnce(&PrimeSearchRoutine::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
       exec_duration_ / 100);
 }
 
-void PrimeSearchRoutineV2::OnFinished(bool passed) {
+void PrimeSearchRoutine::OnFinished(bool passed) {
   scoped_process_control_.Reset();
   SetFinishedState(passed, mojom::RoutineDetail::NewPrimeSearch(
                                mojom::PrimeSearchRoutineDetail::New()));
 }
 
-void PrimeSearchRoutineV2::UpdatePercentage() {
+void PrimeSearchRoutine::UpdatePercentage() {
   uint32_t percentage = static_cast<uint32_t>(
       100.0 * (tick_clock_.NowTicks() - start_ticks_) / exec_duration_);
   if (percentage > state()->percentage && percentage < 100) {
@@ -105,7 +105,7 @@ void PrimeSearchRoutineV2::UpdatePercentage() {
   if (state()->percentage < 99) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&PrimeSearchRoutineV2::UpdatePercentage,
+        base::BindOnce(&PrimeSearchRoutine::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),
         exec_duration_ / 100);
   }

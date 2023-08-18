@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -210,22 +210,22 @@ SubtestProgressInfo SubtestEnumToProgressInfo(
 
 }  // namespace
 
-MemoryRoutineV2::MemoryRoutineV2(Context* context,
-                                 const mojom::MemoryRoutineArgumentPtr& arg)
+MemoryRoutine::MemoryRoutine(Context* context,
+                             const mojom::MemoryRoutineArgumentPtr& arg)
     : context_(context), max_testing_mem_kib_(arg->max_testing_mem_kib) {
   DCHECK(context_);
 }
 
-MemoryRoutineV2::~MemoryRoutineV2() = default;
+MemoryRoutine::~MemoryRoutine() = default;
 
-void MemoryRoutineV2::OnStart() {
+void MemoryRoutine::OnStart() {
   SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                   "Waiting for memory and CPU resource");
   context_->memory_cpu_resource_queue()->Enqueue(
-      base::BindOnce(&MemoryRoutineV2::Run, weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&MemoryRoutine::Run, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void MemoryRoutineV2::Run(
+void MemoryRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
   auto memory_info = MemoryInfo::ParseFrom(context_->root_dir());
   if (!memory_info.has_value()) {
@@ -252,30 +252,29 @@ void MemoryRoutineV2::Run(
   testing_mem_kib = std::max(testing_mem_kib, kMemoryRoutineMinimumRequireKiB);
 
   SetRunningState();
-  context_->executor()->RunMemtesterV2(
+  context_->executor()->RunMemtester(
       testing_mem_kib, scoped_process_control_.BindNewPipeAndPassReceiver());
   scoped_process_control_.AddOnTerminateCallback(
       std::move(notify_resource_queue_finished));
 
-  CallbackBarrier barrier{
-      base::BindOnce(&MemoryRoutineV2::DetermineRoutineResult,
-                     weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&MemoryRoutineV2::RaiseException,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     "Error in calling memtester")};
+  CallbackBarrier barrier{base::BindOnce(&MemoryRoutine::DetermineRoutineResult,
+                                         weak_ptr_factory_.GetWeakPtr()),
+                          base::BindOnce(&MemoryRoutine::RaiseException,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         "Error in calling memtester")};
 
   scoped_process_control_->GetStdout(barrier.Depend(base::BindOnce(
-      &MemoryRoutineV2::SetUpStdout, weak_ptr_factory_.GetWeakPtr())));
+      &MemoryRoutine::SetUpStdout, weak_ptr_factory_.GetWeakPtr())));
 
   scoped_process_control_->GetReturnCode(barrier.Depend(base::BindOnce(
-      &MemoryRoutineV2::HandleGetReturnCode, weak_ptr_factory_.GetWeakPtr())));
+      &MemoryRoutine::HandleGetReturnCode, weak_ptr_factory_.GetWeakPtr())));
 }
 
-void MemoryRoutineV2::HandleGetReturnCode(int return_code) {
+void MemoryRoutine::HandleGetReturnCode(int return_code) {
   memtester_return_code_ = return_code;
 }
 
-void MemoryRoutineV2::ReadNewMemtesterResult() {
+void MemoryRoutine::ReadNewMemtesterResult() {
   // Read and parse the new output.
   std::string output;
   char buf[kBufSize];
@@ -318,7 +317,7 @@ void MemoryRoutineV2::ReadNewMemtesterResult() {
   }
 }
 
-std::optional<int8_t> MemoryRoutineV2::CalculatePercentage() {
+std::optional<int8_t> MemoryRoutine::CalculatePercentage() {
   std::string subtest_name;
   if (parsed_memtester_result_.empty() ||
       parsed_memtester_result_.back().empty()) {
@@ -359,7 +358,7 @@ std::optional<int8_t> MemoryRoutineV2::CalculatePercentage() {
   return progress_info.cumulative_percentage;
 }
 
-void MemoryRoutineV2::UpdatePercentage() {
+void MemoryRoutine::UpdatePercentage() {
   // Read the new output and update the percentage if applicable.
   ReadNewMemtesterResult();
 
@@ -373,13 +372,13 @@ void MemoryRoutineV2::UpdatePercentage() {
   if (state()->percentage < 99) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&MemoryRoutineV2::UpdatePercentage,
+        base::BindOnce(&MemoryRoutine::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),
         kMemoryRoutineUpdatePeriod);
   }
 }
 
-void MemoryRoutineV2::SetUpStdout(mojo::ScopedHandle handle) {
+void MemoryRoutine::SetUpStdout(mojo::ScopedHandle handle) {
   base::ScopedPlatformFile stdout_fd =
       mojo_utils::UnwrapMojoHandle(std::move(handle));
   if (!stdout_fd.is_valid()) {
@@ -391,13 +390,13 @@ void MemoryRoutineV2::SetUpStdout(mojo::ScopedHandle handle) {
   parsed_memtester_result_ = {{""}};
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&MemoryRoutineV2::UpdatePercentage,
+      base::BindOnce(&MemoryRoutine::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
       kMemoryRoutineUpdatePeriod);
 }
 
 // Parses memtester output and return memtester details.
-mojom::MemoryRoutineDetailPtr MemoryRoutineV2::ParseMemtesterResult() {
+mojom::MemoryRoutineDetailPtr MemoryRoutine::ParseMemtesterResult() {
   ReadNewMemtesterResult();
   // The following regexes are pre-compiled for better performance.
   RE2 bytes_tested_regex(kMemtesterBytesTestedRegex);
@@ -436,7 +435,7 @@ mojom::MemoryRoutineDetailPtr MemoryRoutineV2::ParseMemtesterResult() {
   return detail;
 }
 
-void MemoryRoutineV2::DetermineRoutineResult() {
+void MemoryRoutine::DetermineRoutineResult() {
   scoped_process_control_.Reset();
 
   // A return code of 1 may be given in two scenarios. Both scenarios should

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_MEMORY_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_MEMORY_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_MEMORY_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_MEMORY_H_
 
 #include <memory>
 #include <optional>
@@ -30,14 +30,14 @@ namespace diagnostics {
 inline constexpr base::TimeDelta kMemoryRoutineUpdatePeriod = base::Seconds(1);
 
 // The memory routine checks that the device's memory is working correctly.
-class MemoryRoutineV2 final : public BaseRoutineControl {
+class MemoryRoutine final : public BaseRoutineControl {
  public:
-  explicit MemoryRoutineV2(
+  explicit MemoryRoutine(
       Context* context,
       const ash::cros_healthd::mojom::MemoryRoutineArgumentPtr& arg);
-  MemoryRoutineV2(const MemoryRoutineV2&) = delete;
-  MemoryRoutineV2& operator=(const MemoryRoutineV2&) = delete;
-  ~MemoryRoutineV2() override;
+  MemoryRoutine(const MemoryRoutine&) = delete;
+  MemoryRoutine& operator=(const MemoryRoutine&) = delete;
+  ~MemoryRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
@@ -91,9 +91,9 @@ class MemoryRoutineV2 final : public BaseRoutineControl {
   std::optional<uint32_t> max_testing_mem_kib_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<MemoryRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<MemoryRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_MEMORY_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_MEMORY_H_
