@@ -64,10 +64,10 @@ class Middleware {
     if constexpr (SubClassHelper<decltype(Func)>::type == CallType::kSync) {
       // Calling sync backend function.
       auto task = base::BindOnce(
-          &Middleware::DoSyncBackendCall<Func, decltype(ForwareParameter(
+          &Middleware::DoSyncBackendCall<Func, decltype(ForwardParameter(
                                                    std::declval<Args>()))...>,
           middleware_derivative_.middleware,
-          ForwareParameter(std::forward<Args>(args))...);
+          ForwardParameter(std::forward<Args>(args))...);
       return RunBlockingTask(std::move(task));
     } else if constexpr (SubClassHelper<decltype(Func)>::type ==
                          CallType::kAsync) {
@@ -90,10 +90,10 @@ class Middleware {
                                    base::Unretained(&event)));
 
       base::OnceClosure task = base::BindOnce(
-          &Middleware::DoAsyncBackendCall<Func, decltype(ForwareParameter(
+          &Middleware::DoAsyncBackendCall<Func, decltype(ForwardParameter(
                                                     std::declval<Args>()))...>,
           middleware_derivative_.middleware, std::move(callback),
-          ForwareParameter(std::forward<Args>(args))...);
+          ForwardParameter(std::forward<Args>(args))...);
 
       middleware_derivative_.task_runner->PostTask(FROM_HERE, std::move(task));
       event.Wait();
@@ -111,10 +111,10 @@ class Middleware {
     SubClassCallback<decltype(Func)> reply = std::move(callback);
     reply = base::BindPostTask(GetReplyRunner(), std::move(reply));
     base::OnceClosure task = base::BindOnce(
-        &Middleware::CallAsyncInternal<Func, decltype(ForwareParameter(
+        &Middleware::CallAsyncInternal<Func, decltype(ForwardParameter(
                                                  std::declval<Args>()))...>,
         middleware_derivative_.middleware, std::move(reply),
-        ForwareParameter(std::forward<Args>(args))...);
+        ForwardParameter(std::forward<Args>(args))...);
     middleware_derivative_.task_runner->PostTask(FROM_HERE, std::move(task));
   }
 
@@ -208,23 +208,35 @@ class Middleware {
 
   // The custom parameter forwarding rules.
   template <typename T>
-  static T ForwareParameter(T&& t) {
+  static T ForwardParameter(T&& t) {
     // The rvalue should still be rvalue, because we have the ownership.
     return t;
   }
 
   template <typename T>
-  static const T& ForwareParameter(T& t) {
+  static const T& ForwardParameter(T& t) {
     // Add const for normal reference, because we don't have the ownership.
     // base::BindOnce will copy const reference parameter when binding.
     return t;
   }
 
   template <typename T>
-  static const T& ForwareParameter(const T& t) {
+  static const T& ForwardParameter(const T& t) {
     // The const reference would still be const reference.
     // base::BindOnce will copy const reference parameter when binding.
     return t;
+  }
+
+  template <typename T>
+  static const T* ForwardParameter(const T* t) {
+    static_assert(always_false_v<T>, "Pointer cannot be safely forward!");
+    return nullptr;
+  }
+
+  template <typename T>
+  static T* ForwardParameter(T* t) {
+    static_assert(always_false_v<T>, "Pointer cannot be safely forward!");
+    return nullptr;
   }
 
   // Get the quick result that is not related to the function itself.
@@ -369,13 +381,13 @@ class Middleware {
     if constexpr (SubClassHelper<decltype(Func)>::type == CallType::kSync) {
       // Calling sync backend function.
       std::move(callback).Run(DoSyncBackendCall<Func, Args...>(
-          std::move(middleware), ForwareParameter(std::move(args))...));
+          std::move(middleware), ForwardParameter(std::move(args))...));
     } else if constexpr (SubClassHelper<decltype(Func)>::type ==
                          CallType::kAsync) {
       // Calling async backend function.
       Middleware::DoAsyncBackendCall<Func, Args...>(
           std::move(middleware), std::move(callback),
-          ForwareParameter(std::move(args))...);
+          ForwardParameter(std::move(args))...);
     } else {
       static_assert(always_false_v<decltype(Func)>, "Unsupported function!");
     }
