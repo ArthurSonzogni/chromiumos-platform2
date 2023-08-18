@@ -38,6 +38,7 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/types/manager.h"
+#include "cryptohome/auth_input_utils.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
@@ -69,12 +70,14 @@ namespace cryptohome {
 namespace {
 
 using ::testing::_;
+using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Optional;
 using ::testing::Return;
 using ::testing::UnorderedElementsAre;
+using ::testing::VariantWith;
 
 using base::test::TaskEnvironment;
 using base::test::TestFuture;
@@ -662,9 +665,6 @@ TEST_F(AuthSessionTestWithKeysetManagement,
             ASSERT_THAT(error, IsOk());
             VaultKeyset vk;
             vk.Initialize(&platform_, &crypto_);
-            KeyData key_data;
-            key_data.set_label(kDefaultLabel);
-            vk.SetKeyData(key_data);
             vk.CreateFromFileSystemKeyset(file_system_keyset_);
             ASSERT_THAT(vk.EncryptEx(*key_blobs, *auth_block_state), IsOk());
             ASSERT_TRUE(vk.Save(
@@ -887,6 +887,117 @@ TEST_F(AuthSessionTestWithKeysetManagement,
     EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               AttemptAuthWithPinFactor(auth_session, kPinLabel, kPin));
   }
+}
+
+// Test that we can authenticate an old-style kiosk VK, and migrate it to USS
+// correctly. These old VKs show up as password VKs and so we need the
+// authenticate to successfully convert it to a kiosk based on the input.
+TEST_F(AuthSessionTestWithKeysetManagement, AuthenticatePasswordVkToKioskUss) {
+  // Setup
+  // Setup legacy kiosk VaultKeyset to test USS migration.
+  SetUpHwsecAuthenticationMocks();
+  user_data_auth::AuthInput proto;
+  proto.mutable_kiosk_input();
+  AuthFactorMetadata auth_factor_metadata;
+  std::optional<AuthInput> auth_input = CreateAuthInput(
+      &platform_, proto, users_[0].username, users_[0].obfuscated,
+      /*locked_to_single_user=*/true,
+      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt,
+      auth_factor_metadata);
+  auth_block_utility_.CreateKeyBlobsWithAuthBlock(
+      AuthBlockType::kTpmEcc, auth_input.value(),
+      base::BindLambdaForTesting(
+          [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+              std::unique_ptr<AuthBlockState> auth_block_state) {
+            ASSERT_THAT(error, IsOk());
+            VaultKeyset vk;
+            vk.Initialize(&platform_, &crypto_);
+            vk.CreateFromFileSystemKeyset(file_system_keyset_);
+            ASSERT_THAT(vk.EncryptEx(*key_blobs, *auth_block_state), IsOk());
+            ASSERT_TRUE(vk.Save(
+                users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
+          }));
+  AuthSession auth_session = StartAuthSession();
+  ASSERT_EQ(auth_session.auth_factor_map().Find(kDefaultLabel)->storage_type(),
+            AuthFactorStorageType::kVaultKeyset);
+
+  // Test that authenticating the legacy kiosk migrates VaultKeyset to
+  // UserSecretStash as a kKiosk type.
+  std::vector<std::string> auth_factor_labels{kDefaultLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_kiosk_input();
+  AuthenticateTestFuture authenticate_future;
+  auth_session.AuthenticateAuthFactor(
+      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
+      authenticate_future.GetCallback());
+  auto& [action, status] = authenticate_future.Get();
+  EXPECT_THAT(status, IsOk());
+  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
+
+  ASSERT_EQ(auth_session.auth_factor_map().Find(kDefaultLabel)->storage_type(),
+            AuthFactorStorageType::kUserSecretStash);
+
+  // Verify.
+  ASSERT_TRUE(auth_session.has_user_secret_stash());
+  ASSERT_THAT(auth_session.auth_factor_map().size(), Eq(1));
+  AuthFactorMap::ValueView stored_auth_factor =
+      *auth_session.auth_factor_map().begin();
+  const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
+  EXPECT_THAT(stored_auth_factor.storage_type(),
+              Eq(AuthFactorStorageType::kUserSecretStash));
+  EXPECT_THAT(auth_factor.type(), Eq(AuthFactorType::kKiosk));
+  EXPECT_THAT(auth_factor.metadata().metadata,
+              VariantWith<auth_factor::KioskMetadata>(_));
+}
+
+// Test if AuthenticateAuthFactor authenticates existing credentials for a
+// user with VK and resaves it.
+TEST_F(AuthSessionTestWithKeysetManagement,
+       AuthenticateAuthFactorExistingVKAndResaves) {
+  // Setup
+  // Setup legacy VaultKeyset with no chaps key so that AuthenticateAuthFactor
+  // generates a chaps key and saves it before migrating to USS.
+  SetUpHwsecAuthenticationMocks();
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(kPassword),
+      .locked_to_single_user = std::nullopt,
+      .username = users_[0].username,
+      .obfuscated_username = users_[0].obfuscated,
+  };
+  VaultKeyset vk;
+  auth_block_utility_.CreateKeyBlobsWithAuthBlock(
+      AuthBlockType::kTpmEcc, auth_input,
+      base::BindLambdaForTesting(
+          [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+              std::unique_ptr<AuthBlockState> auth_block_state) {
+            ASSERT_THAT(error, IsOk());
+            vk.Initialize(&platform_, &crypto_);
+            KeyData key_data;
+            key_data.set_label(kDefaultLabel);
+            vk.SetKeyData(key_data);
+            vk.CreateFromFileSystemKeyset(file_system_keyset_);
+            ASSERT_THAT(vk.EncryptEx(*key_blobs, *auth_block_state), IsOk());
+            vk.ClearWrappedChapsKey();
+            ASSERT_TRUE(vk.Save(
+                users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
+          }));
+
+  AuthSession auth_session = StartAuthSession();
+  ASSERT_EQ(auth_session.auth_factor_map().Find(kDefaultLabel)->storage_type(),
+            AuthFactorStorageType::kVaultKeyset);
+  ASSERT_FALSE(vk.HasWrappedChapsKey());
+
+  // Test that authenticating the VaultKeyset with missing chaps key still
+  // migrates to UserSecretStash after regenerating the chaps key. Note
+  // AuthenticateAuthFactor() returning success shows that chaps key has been
+  // generated on VK and resaved. Otherwise USS creation during migration would
+  // fail.
+  AuthenticatePasswordFactor(auth_session, kDefaultLabel, kPassword);
+  ASSERT_EQ(auth_session.auth_factor_map().Find(kDefaultLabel)->storage_type(),
+            AuthFactorStorageType::kUserSecretStash);
+
+  // Verify that migrator created the user_secret_stash and uss_main_key.
+  ASSERT_TRUE(auth_session.has_user_secret_stash());
 }
 
 // Test that a VaultKeyset without KeyData migration succeeds during login.

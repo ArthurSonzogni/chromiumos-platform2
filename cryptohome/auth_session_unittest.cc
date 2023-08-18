@@ -69,7 +69,6 @@
 #include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 namespace {
@@ -113,7 +112,6 @@ using AuthenticateTestFuture =
 constexpr char kFakeLabel[] = "test_label";
 constexpr char kFakeOtherLabel[] = "test_other_label";
 constexpr char kFakePinLabel[] = "test_pin_label";
-constexpr char kLegacyLabel[] = "legacy-0";
 constexpr char kRecoveryLabel[] = "recovery";
 constexpr char kFakeFingerprintLabel[] = "test_fp_label";
 constexpr char kFakeSecondFingerprintLabel[] = "test_second_fp_label";
@@ -147,24 +145,6 @@ brillo::SecureBlob GetFakeDerivedSecret(const brillo::SecureBlob& blob) {
 template <typename StateType>
 Matcher<const AuthBlockState&> AuthBlockStateTypeIs() {
   return Field(&AuthBlockState::state, VariantWith<StateType>(_));
-}
-
-std::unique_ptr<VaultKeyset> CreatePasswordVaultKeyset(
-    const std::string& label) {
-  SerializedVaultKeyset serialized_vk;
-  serialized_vk.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
-                          SerializedVaultKeyset::SCRYPT_DERIVED |
-                          SerializedVaultKeyset::PCR_BOUND |
-                          SerializedVaultKeyset::ECC);
-  serialized_vk.set_password_rounds(1);
-  serialized_vk.set_tpm_key("tpm-key");
-  serialized_vk.set_extended_tpm_key("tpm-extended-key");
-  serialized_vk.set_vkk_iv("iv");
-  serialized_vk.mutable_key_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
-  serialized_vk.mutable_key_data()->set_label(label);
-  auto vk = std::make_unique<VaultKeyset>();
-  vk->InitializeFromSerialized(serialized_vk);
-  return vk;
 }
 
 AuthSession::AuthenticateAuthFactorRequest ToAuthenticateRequest(
@@ -239,7 +219,7 @@ class AfMapBuilder {
     return *this;
   }
 
-  AuthFactorStorageType storage_type_ = AuthFactorStorageType::kVaultKeyset;
+  AuthFactorStorageType storage_type_ = AuthFactorStorageType::kUserSecretStash;
 
   AuthFactorMap map_;
 };
@@ -275,70 +255,9 @@ class AuthSessionTest : public ::testing::Test {
     crypto_.Init();
   }
 
-  void TearDown() override {
-    SetUserSecretStashExperimentForTesting(std::nullopt);
-  }
-
  protected:
   // Fake username to be used in this test suite.
   const Username kFakeUsername{"test_username"};
-
-  user_data_auth::CryptohomeErrorCode AuthenticateAuthFactorVK(
-      const std::string& label,
-      const std::string& passkey,
-      AuthSession& auth_session) {
-    // Used to mock out keyset factories with something that returns a
-    // vanilla keyset with the supplied label.
-    auto make_vk_with_label = [label](auto...) {
-      auto vk = std::make_unique<VaultKeyset>();
-      vk->SetKeyDataLabel(label);
-      vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
-                   SerializedVaultKeyset::PCR_BOUND);
-      TpmBoundToPcrAuthBlockState state;
-      state.tpm_key = brillo::SecureBlob("");
-      state.extended_tpm_key = brillo::SecureBlob("");
-      vk->SetTpmBoundToPcrState(state);
-      return vk;
-    };
-
-    EXPECT_CALL(keyset_management_, GetVaultKeyset(_, label))
-        .WillRepeatedly(make_vk_with_label);
-    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-        .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-    EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
-        .WillRepeatedly(make_vk_with_label);
-
-    EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(keyset_management_, AddResetSeedIfMissing(_))
-        .WillRepeatedly(Return(false));
-
-    EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-        .WillRepeatedly([](AuthBlockType auth_block_type,
-                           const AuthInput& auth_input,
-                           const AuthBlockState& auth_state,
-                           AuthBlock::DeriveCallback derive_callback) {
-          std::move(derive_callback)
-              .Run(OkStatus<CryptohomeCryptoError>(),
-                   std::make_unique<KeyBlobs>(), std::nullopt);
-        });
-
-    std::vector<std::string> auth_factor_labels{label};
-    user_data_auth::AuthInput auth_input_proto;
-    auth_input_proto.mutable_password_input()->set_secret(passkey);
-
-    AuthenticateTestFuture authenticate_future;
-    auth_session.AuthenticateAuthFactor(
-        ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-        authenticate_future.GetCallback());
-
-    auto& [unused_action, status] = authenticate_future.Get();
-    if (status.ok()) {
-      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-    }
-    return status->local_legacy_error().value();
-  }
-
   // Get a UserSession for the given user, creating a minimal stub one if
   // necessary.
   UserSession* FindOrCreateUserSession(const Username& username) {
@@ -572,78 +491,6 @@ TEST_F(AuthSessionTest, TokenFromAllZeroesString) {
   EXPECT_EQ(deserialized_token, std::nullopt);
 }
 
-// Test that AuthenticateAuthFactor succeeds and doesn't use the credential
-// verifier in the `AuthIntent::kDecrypt` scenario.
-TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
-  // Add the user session. It will have no verifiers.
-  auto user_session = std::make_unique<MockUserSession>();
-  EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
-
-  // Create an AuthSession with a fake factor.
-  AuthSession auth_session(
-      {.username = kFakeUsername,
-       .is_ephemeral_user = false,
-       .intent = AuthIntent::kDecrypt,
-       .auth_factor_status_update_timer =
-           std::make_unique<base::WallClockTimer>(),
-       .user_exists = true,
-       .auth_factor_map =
-           AfMapBuilder().AddPassword<void>(kFakeLabel).Consume()},
-      backing_apis_);
-  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
-
-  // Set up VaultKeyset authentication mock.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillRepeatedly([](auto...) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
-                     SerializedVaultKeyset::PCR_BOUND);
-        TpmBoundToPcrAuthBlockState state;
-        state.tpm_key = brillo::SecureBlob("");
-        state.extended_tpm_key = brillo::SecureBlob("");
-        vk->SetTpmBoundToPcrState(state);
-        return vk;
-      });
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-      .WillOnce([](AuthBlockType, const AuthInput&, const AuthBlockState&,
-                   AuthBlock::DeriveCallback derive_callback) {
-        std::move(derive_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(),
-                 std::make_unique<KeyBlobs>(), std::nullopt);
-      });
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
-      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
-                   const std::optional<std::string>& label) {
-        KeyData key_data;
-        key_data.set_label(*label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
-      });
-
-  // Test.
-  std::vector<std::string> auth_factor_labels{kFakeLabel};
-  user_data_auth::AuthInput auth_input_proto;
-  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
-  AuthenticateTestFuture authenticate_future;
-  auth_session.AuthenticateAuthFactor(
-      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
-
-  // Verify.
-  auto& [action, status] = authenticate_future.Get();
-  EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-}
-
 // Test if AuthSession reports the correct attributes on an already-existing
 // ephemeral user.
 TEST_F(AuthSessionTest, ExistingEphemeralUser) {
@@ -664,354 +511,6 @@ TEST_F(AuthSessionTest, ExistingEphemeralUser) {
 
   // Verify.
   EXPECT_TRUE(auth_session->user_exists());
-}
-
-// Test that the UserSecretStash isn't created by default when a new user is
-// created.
-TEST_F(AuthSessionTest, NoUssByDefault) {
-  // Setup.
-  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-  SetUserSecretStashExperimentForTesting(false);
-  // Setting the expectation that the user does not exist.
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
-  std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
-      kFakeUsername, flags, AuthIntent::kDecrypt, backing_apis_);
-
-  // Test.
-  EXPECT_FALSE(auth_session->has_user_secret_stash());
-  EXPECT_TRUE(auth_session->OnUserCreated().ok());
-
-  // Verify.
-  EXPECT_FALSE(auth_session->has_user_secret_stash());
-}
-
-// Test if AuthenticateAuthFactor authenticates existing credentials for a
-// user with VK.
-TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
-  // Setup AuthSession.
-  auto no_uss = DisableUssExperiment();
-  AuthSession auth_session(
-      {.username = kFakeUsername,
-       .is_ephemeral_user = false,
-       .intent = AuthIntent::kDecrypt,
-       .auth_factor_status_update_timer =
-           std::make_unique<base::WallClockTimer>(),
-       .user_exists = true,
-       .auth_factor_map =
-           AfMapBuilder()
-               .AddPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume()},
-      backing_apis_);
-  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  EXPECT_TRUE(auth_session.user_exists());
-
-  // Test
-  // Calling AuthenticateAuthFactor.
-  EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
-  EXPECT_THAT(user_session->GetCredentialVerifiers(),
-              UnorderedElementsAre(
-                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
-}
-
-// Test if AuthenticateAuthFactor authenticates existing credentials for a
-// user with VK and resaves it.
-TEST_F(AuthSessionTest,
-       AuthenticateAuthFactorExistingVKUserAndResaveForUpdate) {
-  // Setup AuthSession.
-  auto no_uss = DisableUssExperiment();
-  AuthSession auth_session(
-      {.username = kFakeUsername,
-       .is_ephemeral_user = false,
-       .intent = AuthIntent::kDecrypt,
-       .auth_factor_status_update_timer =
-           std::make_unique<base::WallClockTimer>(),
-       .user_exists = true,
-       .auth_factor_map =
-           AfMapBuilder()
-               .AddPassword<TpmNotBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume()},
-      backing_apis_);
-  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  EXPECT_TRUE(auth_session.user_exists());
-
-  // Test
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillRepeatedly([](auto...) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyDataLabel(kFakeLabel);
-        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
-        TpmNotBoundToPcrAuthBlockState state;
-        state.tpm_key = brillo::SecureBlob("");
-        vk->SetTpmNotBoundToPcrState(state);
-        return vk;
-      });
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
-      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
-                   const std::optional<std::string>& label) {
-        KeyData key_data;
-        key_data.set_label(*label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
-      });
-
-  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_)).WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
-      .WillOnce(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(keyset_management_, ReSaveKeyset(_, _, _));
-
-  auto key_blobs = std::make_unique<KeyBlobs>();
-  auto auth_block_state2 = std::make_unique<AuthBlockState>();
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
-      .WillOnce([&key_blobs, &auth_block_state2](
-                    AuthBlockType auth_block_type, const AuthInput& auth_input,
-                    AuthBlock::CreateCallback create_callback) {
-        std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
-                 std::move(auth_block_state2));
-      });
-
-  auto key_blobs2 = std::make_unique<KeyBlobs>();
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-      .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
-                              const AuthInput& auth_input,
-                              const AuthBlockState& auth_state,
-                              AuthBlock::DeriveCallback derive_callback) {
-        std::move(derive_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2),
-                 std::nullopt);
-      });
-
-  // Calling AuthenticateAuthFactor.
-  AuthenticateTestFuture authenticate_future;
-  std::vector<std::string> auth_factor_labels{kFakeLabel};
-  user_data_auth::AuthInput auth_input_proto;
-  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
-  auth_session.AuthenticateAuthFactor(
-      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
-
-  // Verify.
-  auto& [action, status] = authenticate_future.Get();
-  EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
-  EXPECT_THAT(user_session->GetCredentialVerifiers(),
-              UnorderedElementsAre(
-                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
-}
-
-// Test if AuthenticateAuthFactor authenticates existing credentials for a
-// user with VK and resaves it.
-TEST_F(AuthSessionTest,
-       AuthenticateAuthFactorExistingVKUserAndResaveForResetSeed) {
-  // Setup AuthSession.
-  auto no_uss = DisableUssExperiment();
-  AuthSession auth_session(
-      {.username = kFakeUsername,
-       .is_ephemeral_user = false,
-       .intent = AuthIntent::kDecrypt,
-       .auth_factor_status_update_timer =
-           std::make_unique<base::WallClockTimer>(),
-       .user_exists = true,
-       .auth_factor_map =
-           AfMapBuilder()
-               .AddPassword<TpmNotBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume()},
-      backing_apis_);
-  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  EXPECT_TRUE(auth_session.user_exists());
-
-  // Test
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillRepeatedly([](auto...) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyDataLabel(kFakeLabel);
-        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
-        TpmNotBoundToPcrAuthBlockState state;
-        state.tpm_key = brillo::SecureBlob("");
-        vk->SetTpmNotBoundToPcrState(state);
-        return vk;
-      });
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
-      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
-                   const std::optional<std::string>& label) {
-        KeyData key_data;
-        key_data.set_label(*label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
-      });
-
-  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
-      .WillOnce(Return(false));
-  EXPECT_CALL(keyset_management_, AddResetSeedIfMissing(_))
-      .WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
-      .WillOnce(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(keyset_management_, ReSaveKeyset(_, _, _));
-
-  auto key_blobs = std::make_unique<KeyBlobs>();
-  auto auth_block_state2 = std::make_unique<AuthBlockState>();
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
-      .WillOnce([&key_blobs, &auth_block_state2](
-                    AuthBlockType auth_block_type, const AuthInput& auth_input,
-                    AuthBlock::CreateCallback create_callback) {
-        std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
-                 std::move(auth_block_state2));
-      });
-
-  auto key_blobs2 = std::make_unique<KeyBlobs>();
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-      .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
-                              const AuthInput& auth_input,
-                              const AuthBlockState& auth_state,
-                              AuthBlock::DeriveCallback derive_callback) {
-        std::move(derive_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2),
-                 std::nullopt);
-      });
-
-  // Calling AuthenticateAuthFactor.
-  AuthenticateTestFuture authenticate_future;
-  std::vector<std::string> auth_factor_labels{kFakeLabel};
-  user_data_auth::AuthInput auth_input_proto;
-  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
-  auth_session.AuthenticateAuthFactor(
-      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
-
-  // Verify.
-  auto& [action, status] = authenticate_future.Get();
-  EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
-  EXPECT_THAT(user_session->GetCredentialVerifiers(),
-              UnorderedElementsAre(
-                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
-}
-
-// Test that AuthenticateAuthFactor doesn't add reset seed to LECredentials.
-TEST_F(AuthSessionTest,
-       AuthenticateAuthFactorNotAddingResetSeedToPINVaultKeyset) {
-  // Setup AuthSession.
-  AuthSession auth_session(
-      {.username = kFakeUsername,
-       .is_ephemeral_user = false,
-       .intent = AuthIntent::kDecrypt,
-       .auth_factor_status_update_timer =
-           std::make_unique<base::WallClockTimer>(),
-       .user_exists = true,
-       .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume()},
-      backing_apis_);
-  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  EXPECT_TRUE(auth_session.user_exists());
-
-  // Test
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakePinLabel))
-      .WillRepeatedly([](auto...) {
-        auto vk = std::make_unique<VaultKeyset>();
-        KeyData key_data;
-        key_data.set_label(kFakePinLabel);
-        key_data.mutable_policy()->set_low_entropy_credential(true);
-        vk->SetKeyData(key_data);
-        vk->SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
-        PinWeaverAuthBlockState state;
-        state.le_label = 0x12345678;
-        vk->SetPinWeaverState(state);
-        return vk;
-      });
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-      .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
-      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
-                   const std::optional<std::string>& label) {
-        KeyData key_data;
-        key_data.set_label(*label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
-      });
-
-  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
-      .WillOnce(Return(false));
-  EXPECT_CALL(keyset_management_, AddResetSeedIfMissing(_))
-      .WillOnce(Return(false));
-
-  auto key_blobs2 = std::make_unique<KeyBlobs>();
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-      .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
-                              const AuthInput& auth_input,
-                              const AuthBlockState& auth_state,
-                              AuthBlock::DeriveCallback derive_callback) {
-        std::move(derive_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2),
-                 std::nullopt);
-      });
-
-  // Calling AuthenticateAuthFactor.
-  AuthenticateTestFuture authenticate_future;
-  std::vector<std::string> auth_factor_labels{kFakePinLabel};
-  user_data_auth::AuthInput auth_input_proto;
-  auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
-  auth_session.AuthenticateAuthFactor(
-      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
-
-  // Verify.
-  auto& [action, status] = authenticate_future.Get();
-  EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 }
 
 // Test that AuthenticateAuthFactor returns an error when supplied label and
@@ -1054,185 +553,6 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
   EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
   EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-}
-
-// Test if AddAuthFactor correctly adds initial VaultKeyset password AuthFactor
-// for a new user.
-TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
-  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
-  // We need to use a real AuthBlockUtilityImpl for this test.
-  FakeFeaturesForTesting features;
-  AuthBlockUtilityImpl real_auth_block_utility(
-      &keyset_management_, &crypto_, &platform_, &features.async,
-      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
-  auto test_backing_apis = backing_apis_;
-  test_backing_apis.auth_block_utility = &real_auth_block_utility;
-
-  AuthSession auth_session({.username = kFakeUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = false,
-                            .auth_factor_map = AuthFactorMap()},
-                           test_backing_apis);
-
-  // Setting the expectation that the user does not exist.
-  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  EXPECT_FALSE(auth_session.user_exists());
-
-  // Creating the user.
-  EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-  EXPECT_TRUE(auth_session.user_exists());
-
-  user_data_auth::AddAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.mutable_auth_factor()->set_type(
-      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  request.mutable_auth_factor()->set_label(kFakeLabel);
-  request.mutable_auth_factor()->mutable_password_metadata();
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _, _, _, _, _, _))
-      .WillOnce(
-          [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
-            auto vk = std::make_unique<VaultKeyset>();
-            vk->SetKeyData(key_data);
-            return vk;
-          });
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillOnce([](const ObfuscatedUsername&, const std::string&) {
-        return CreatePasswordVaultKeyset(kFakeLabel);
-      });
-
-  // Test.
-  TestFuture<CryptohomeStatus> add_future;
-  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
-                                                  add_future.GetCallback());
-
-  // Verify.
-  EXPECT_THAT(add_future.Get(), IsOk());
-
-  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
-  EXPECT_THAT(user_session->GetCredentialVerifiers(),
-              UnorderedElementsAre(
-                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
-}
-
-// Test that AddAuthFactor can add multiple VaultKeyset-AuthFactor. The first
-// one is added as initial factor, the second is added as the second password
-// factor, and the third one as added as a PIN factor.
-TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
-  // Setup.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
-  AuthSession auth_session({.username = kFakeUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = false,
-                            .auth_factor_map = AuthFactorMap()},
-                           backing_apis_);
-
-  // Setting the expectation that the user does not exist.
-  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  EXPECT_FALSE(auth_session.user_exists());
-
-  // Creating the user.
-  EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-  EXPECT_TRUE(auth_session.user_exists());
-
-  user_data_auth::AddAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.mutable_auth_factor()->set_type(
-      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  request.mutable_auth_factor()->set_label(kFakeLabel);
-  request.mutable_auth_factor()->mutable_password_metadata();
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-
-  // SelectAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
-  // called for each of the key addition operations below.
-  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
-      .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
-      .WillRepeatedly([](AuthBlockType auth_block_type,
-                         const AuthInput& auth_input,
-                         AuthBlock::CreateCallback create_callback) {
-        std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(),
-                 std::make_unique<KeyBlobs>(),
-                 std::make_unique<AuthBlockState>());
-      });
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _, _, _, _, _, _))
-      .WillOnce(
-          [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
-            auto vk = std::make_unique<VaultKeyset>();
-            vk->SetKeyData(key_data);
-            return vk;
-          });
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
-      .WillRepeatedly([](const ObfuscatedUsername&, const std::string& label) {
-        return CreatePasswordVaultKeyset(label);
-      });
-
-  // Test.
-  TestFuture<CryptohomeStatus> add_future;
-  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
-                                                  add_future.GetCallback());
-
-  // Verify.
-  EXPECT_THAT(add_future.Get(), IsOk());
-
-  // Test adding new password AuthFactor
-  user_data_auth::AddAuthFactorRequest request2;
-  request2.set_auth_session_id(auth_session.serialized_token());
-  request2.mutable_auth_factor()->set_type(
-      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  request2.mutable_auth_factor()->set_label(kFakeOtherLabel);
-  request2.mutable_auth_factor()->mutable_password_metadata();
-  request2.mutable_auth_input()->mutable_password_input()->set_secret(
-      kFakeOtherPass);
-
-  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _, _, _, _, _));
-
-  // Test.
-  TestFuture<CryptohomeStatus> add_future2;
-  auth_session.GetAuthForDecrypt()->AddAuthFactor(request2,
-                                                  add_future2.GetCallback());
-
-  // Verify.
-  ASSERT_THAT(add_future2.Get(), IsOk());
-  // There should be credential verifiers for both passwords.
-  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
-  EXPECT_THAT(
-      user_session->GetCredentialVerifiers(),
-      UnorderedElementsAre(
-          IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass),
-          IsVerifierPtrWithLabelAndPassword(kFakeOtherLabel, kFakeOtherPass)));
-
-  // TODO(b:223222440) Add test to for adding a PIN after reset secret
-  // generation function is updated.
 }
 
 // Test that AddAuthFactor succeeds for an ephemeral user and creates a
@@ -1367,92 +687,8 @@ TEST_F(AuthSessionTest, AddSecondPasswordFactorToEphemeral) {
           IsVerifierPtrWithLabelAndPassword(kFakeOtherLabel, kFakeOtherPass)));
 }
 
-// UpdateAuthFactor request success when updating authenticated password VK.
-TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
-  // Setup.
-  auto no_uss = DisableUssExperiment();
-  AuthSession auth_session(
-      {.username = kFakeUsername,
-       .is_ephemeral_user = false,
-       .intent = AuthIntent::kDecrypt,
-       .auth_factor_status_update_timer =
-           std::make_unique<base::WallClockTimer>(),
-       .user_exists = true,
-       .auth_factor_map =
-           AfMapBuilder()
-               .AddPassword<TpmBoundToPcrAuthBlockState>(kFakeLabel)
-               .Consume()},
-      backing_apis_);
-  AuthBlockState auth_block_state = auth_session.auth_factor_map()
-                                        .Find(kFakeLabel)
-                                        ->auth_factor()
-                                        .auth_block_state();
-  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  EXPECT_TRUE(auth_session.user_exists());
-
-  // Creating the user.
-  EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-  EXPECT_TRUE(auth_session.user_exists());
-
-  // SelectAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
-  // called for the key update operations below.
-  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
-      .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
-      .WillRepeatedly([&](AuthBlockType auth_block_type,
-                          const AuthInput& auth_input,
-                          AuthBlock::CreateCallback create_callback) {
-        std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(),
-                 std::make_unique<KeyBlobs>(),
-                 std::make_unique<AuthBlockState>(auth_block_state));
-      });
-  EXPECT_CALL(keyset_management_, UpdateKeysetWithKeyBlobs(_, _, _, _, _, _));
-
-  // Set a valid |vault_keyset_| to update.
-  KeyData key_data;
-  key_data.set_label(kFakeLabel);
-  auto vk = std::make_unique<VaultKeyset>();
-  vk->Initialize(&platform_, &crypto_);
-  vk->SetKeyData(key_data);
-  vk->CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
-  vk->SetAuthBlockState(auth_block_state);
-  auth_session.set_vault_keyset_for_testing(std::move(vk));
-
-  user_data_auth::UpdateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  request.mutable_auth_factor()->set_type(
-      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  request.mutable_auth_factor()->set_label(kFakeLabel);
-  request.mutable_auth_factor()->mutable_password_metadata();
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-
-  TestFuture<CryptohomeStatus> update_future;
-  auth_session.GetAuthForDecrypt()->UpdateAuthFactor(
-      request, update_future.GetCallback());
-
-  // Verify.
-  ASSERT_THAT(update_future.Get(), IsOk());
-
-  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
-  EXPECT_THAT(user_session->GetCredentialVerifiers(),
-              UnorderedElementsAre(
-                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
-}
-
 // UpdateAuthFactor fails if label doesn't exist.
-TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
+TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchInAFMap) {
   // Setup.
   AuthSession auth_session(
       {.username = kFakeUsername,
@@ -1504,8 +740,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
 }
 
-// UpdateAuthFactor fails if label doesn't exist in the existing keysets.
-TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
+// UpdateAuthFactor fails if label doesn't exist in the existing factors.
+TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundInAFMap) {
   // Setup.
   AuthSession auth_session(
       {.username = kFakeUsername,
@@ -1557,188 +793,10 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
 }
 
-// Test that AuthenticateAuthFactor succeeds in the `AuthIntent::kWebAuthn`
-// scenario.
-TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
-  // Setup.
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
-  // Add the user session. Expect that no verification calls are made.
-  auto user_session = std::make_unique<MockUserSession>();
-  EXPECT_CALL(*user_session, PrepareWebAuthnSecret(_, _));
-  EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
-  // Create an AuthSession with a fake factor.
-  auto no_uss = DisableUssExperiment();
-  AuthSession auth_session(
-      {.username = kFakeUsername,
-       .is_ephemeral_user = false,
-       .intent = AuthIntent::kWebAuthn,
-       .auth_factor_status_update_timer =
-           std::make_unique<base::WallClockTimer>(),
-       .user_exists = true,
-       .auth_factor_map =
-           AfMapBuilder().AddPassword<void>(kFakeLabel).Consume()},
-      backing_apis_);
-  // Set up VaultKeyset authentication mock.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillRepeatedly([](auto...) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
-                     SerializedVaultKeyset::PCR_BOUND);
-        TpmBoundToPcrAuthBlockState state;
-        state.tpm_key = brillo::SecureBlob("");
-        state.extended_tpm_key = brillo::SecureBlob("");
-        vk->SetTpmBoundToPcrState(state);
-        return vk;
-      });
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-      .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
-      .WillOnce([](AuthBlockType, const AuthInput&, const AuthBlockState&,
-                   AuthBlock::DeriveCallback derive_callback) {
-        std::move(derive_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(),
-                 std::make_unique<KeyBlobs>(), std::nullopt);
-      });
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
-      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
-                   const std::optional<std::string>& label) {
-        KeyData key_data;
-        key_data.set_label(*label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
-      });
-
-  // Test.
-  AuthenticateTestFuture authenticate_future;
-  std::vector<std::string> auth_factor_labels{kFakeLabel};
-  user_data_auth::AuthInput auth_input_proto;
-  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
-  auth_session.AuthenticateAuthFactor(
-      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
-
-  // Verify.
-  auto& [action, status] = authenticate_future.Get();
-  EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly,
-                           AuthIntent::kWebAuthn));
-}
-
-// Test that AuthFactor map is updated after successful RemoveAuthFactor and
-// not updated after unsuccessful RemoveAuthFactor.
-TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
-  // Setup.
-
-  // Prepare the AuthFactor.
-  AuthBlockState auth_block_state;
-  auth_block_state.state = TpmBoundToPcrAuthBlockState();
-  AuthFactorMap auth_factor_map;
-  auth_factor_map.Add(AuthFactor(AuthFactorType::kPassword, kFakeLabel,
-                                 AuthFactorMetadata(), auth_block_state),
-                      AuthFactorStorageType::kVaultKeyset);
-  auth_factor_map.Add(AuthFactor(AuthFactorType::kPassword, kFakeOtherLabel,
-                                 AuthFactorMetadata(), auth_block_state),
-                      AuthFactorStorageType::kVaultKeyset);
-
-  // Create AuthSession.
-  auto no_uss = DisableUssExperiment();
-  AuthSession auth_session({.username = kFakeUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map)},
-                           backing_apis_);
-  EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  EXPECT_TRUE(auth_session.user_exists());
-
-  EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  // Test that RemoveAuthFactor success removes the factor from the map.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeOtherLabel))
-      .WillRepeatedly([](auto...) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyDataLabel(kFakeOtherLabel);
-        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
-                     SerializedVaultKeyset::PCR_BOUND);
-        TpmBoundToPcrAuthBlockState state;
-        state.tpm_key = brillo::SecureBlob("");
-        state.extended_tpm_key = brillo::SecureBlob("");
-        vk->SetTpmBoundToPcrState(state);
-        return vk;
-      });
-  user_data_auth::RemoveAuthFactorRequest remove_request;
-  remove_request.set_auth_session_id(auth_session.serialized_token());
-  remove_request.set_auth_factor_label(kFakeOtherLabel);
-  TestFuture<CryptohomeStatus> remove_future;
-  auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
-      remove_request, remove_future.GetCallback());
-
-  // Verify that AuthFactor is removed and the Authentication doesn't succeed
-  // with the removed factor.
-  ASSERT_THAT(remove_future.Get(), IsOk());
-  EXPECT_EQ(AuthenticateAuthFactorVK(kFakeOtherLabel, kFakePass, auth_session),
-            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-
-  // Test that RemoveAuthFactor failure doesn't remove the factor from the map.
-  user_data_auth::RemoveAuthFactorRequest remove_request2;
-  remove_request2.set_auth_session_id(auth_session.serialized_token());
-  remove_request2.set_auth_factor_label(kFakeLabel);
-
-  TestFuture<CryptohomeStatus> remove_future2;
-  auth_session.GetAuthForDecrypt()->RemoveAuthFactor(
-      remove_request2, remove_future2.GetCallback());
-
-  // Verify that AuthFactor is not removed and the Authentication doesn't
-  // succeed with the removed factor.
-  ASSERT_THAT(remove_future2.Get(), NotOk());
-  EXPECT_EQ(remove_future2.Get()->local_legacy_error().value(),
-            user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
-  EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_THAT(auth_session.GetAuthForDecrypt(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), NotNull());
-  EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
-}
-
-// A variant of the auth session test that has the UserSecretStash experiment
-// enabled.
-class AuthSessionWithUssExperimentTest : public AuthSessionTest {
+// A variant of the auth session test that tests AuthFactor APIs with the
+// UserSecretStash.
+class AuthSessionWithUssTest : public AuthSessionTest {
  protected:
-  AuthSessionWithUssExperimentTest() {
-    SetUserSecretStashExperimentForTesting(/*enabled=*/true);
-  }
-
-  ~AuthSessionWithUssExperimentTest() override {
-    // Reset this global variable to avoid affecting unrelated test cases.
-    SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
-  }
-
   struct ReplyToVerifyKey {
     void operator()(const Username& account_id,
                     const structure::ChallengePublicKeyInfo& public_key_info,
@@ -1760,7 +818,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
             CryptoError::CE_OTHER_CRYPTO));
       }
     }
-
     bool is_key_valid = false;
   };
 
@@ -2108,9 +1165,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
   }
 };
 
-// Test that the UserSecretStash is created on the user creation, in case the
-// UserSecretStash experiment is on.
-TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
+// Test that the UserSecretStash is created on the user creation.
+TEST_F(AuthSessionWithUssTest, UssCreation) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -2132,7 +1188,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
 }
 
 // Test that no UserSecretStash is created for an ephemeral user.
-TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
+TEST_F(AuthSessionWithUssTest, NoUssForEphemeral) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = true,
@@ -2150,9 +1206,8 @@ TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
   EXPECT_FALSE(auth_session.has_user_secret_stash());
 }
 
-// Test that a new auth factor can be added to the newly created user, in case
-// the UserSecretStash experiment is on.
-TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
+// Test that a new auth factor can be added to the newly created user.
+TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaUss) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -2167,7 +1222,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 
   // Test.
-  // Setting the expectation that the auth block utility will create key blobs.
+  // Setting the expectation that the auth block utility will create key
+  // blobs.
   EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_,
@@ -2210,9 +1266,45 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
   EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
 }
 
+// TODO(betuls) : migrate to uss test
+// Test that AuthenticateAuthFactor succeeds in the `AuthIntent::kWebAuthn`
+// scenario.
+TEST_F(AuthSessionWithUssTest, AuthenticateAuthFactorWebAuthnIntent) {
+  // Setup.
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kWebAuthn,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+            AddPasswordAuthFactor(kFakeLabel, kFakePass,
+                                  /*first_factor=*/true, auth_session));
+  // Add the user session. Expect that no verification calls are made.
+  auto user_session = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session, PrepareWebAuthnSecret(_, _));
+  EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
+  // Calling AuthenticateAuthFactor.
+  EXPECT_EQ(
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+      AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session));
+
+  // Verify.
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly,
+                           AuthIntent::kWebAuthn));
+}
+
 // Test that a new auth factor can be added to the newly created user using
 // asynchronous key creation.
-TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
+TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaAsyncUss) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -2275,8 +1367,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
 }
 
 // Test the new auth factor failure path when asynchronous key creation fails.
-TEST_F(AuthSessionWithUssExperimentTest,
-       AddPasswordAuthFactorViaAsyncUssFails) {
+TEST_F(AuthSessionWithUssTest, AddPasswordAuthFactorViaAsyncUssFails) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -2338,7 +1429,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
 // Test the new auth factor failure path when asynchronous key creation succeeds
 // but when writing to USS fails.
-TEST_F(AuthSessionWithUssExperimentTest,
+TEST_F(AuthSessionWithUssTest,
        AddPasswordAuthFactorViaAsyncUssFailsOnWriteFailure) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
@@ -2407,7 +1498,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
 // Test that a new auth factor and a pin can be added to the newly created user,
 // in case the UserSecretStash experiment is on.
-TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
+TEST_F(AuthSessionWithUssTest, AddPasswordAndPinAuthFactorViaUss) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -2499,8 +1590,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
 }
 
 // Test that an existing user with an existing password auth factor can be
-// authenticated, in case the UserSecretStash experiment is on.
-TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
+// authenticated.
+TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
       SanitizeUserName(kFakeUsername);
@@ -2553,7 +1644,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
-  // Setting the expectation that the auth block utility will derive key blobs.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
@@ -2599,8 +1691,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
 
 // Test that an existing user with an existing password auth factor can be
 // authenticated, using asynchronous key derivation.
-TEST_F(AuthSessionWithUssExperimentTest,
-       AuthenticatePasswordAuthFactorViaAsyncUss) {
+TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
       SanitizeUserName(kFakeUsername);
@@ -2653,7 +1744,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
-  // Setting the expectation that the auth block utility will derive key blobs.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
@@ -2698,10 +1790,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-// Test then failure path with an existing user with an existing password auth
-// factor when the asynchronous derivation fails.
-TEST_F(AuthSessionWithUssExperimentTest,
-       AuthenticatePasswordAuthFactorViaAsyncUssFails) {
+// Test then failure path with an existing user with an existing password
+// auth factor when the asynchronous derivation fails.
+TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUssFails) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
       SanitizeUserName(kFakeUsername);
@@ -2754,7 +1845,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
-  // Setting the expectation that the auth block utility will derive key blobs.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
@@ -2798,8 +1890,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
 }
 
 // Test that an existing user with an existing pin auth factor can be
-// authenticated, in case the UserSecretStash experiment is on.
-TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
+// authenticated.
+TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUss) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
       SanitizeUserName(kFakeUsername);
@@ -2852,7 +1944,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
-  // Setting the expectation that the auth block utility will derive key blobs.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
@@ -2893,8 +1986,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
 
 // Test that an existing user with an existing pin auth factor can be
 // authenticated and then re-created if the derive suggests it.
-TEST_F(AuthSessionWithUssExperimentTest,
-       AuthenticatePinAuthFactorViaUssWithRecreate) {
+TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUssWithRecreate) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
       SanitizeUserName(kFakeUsername);
@@ -2947,8 +2039,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
-  // Setting the expectation that the auth block utility will derive key blobs,
-  // and then that there will be additional calls to re-create them.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs, and then that there will be additional calls to re-create
+  // them.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
@@ -2971,7 +2064,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
               CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _))
       .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                    AuthBlock::CreateCallback create_callback) {
-        // Make an arbitrary auth block state type can be used in this test.
+        // Make an arbitrary auth block state type can be used in this
+        // test.
         auto key_blobs = std::make_unique<KeyBlobs>();
         key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
         auto auth_block_state = std::make_unique<AuthBlockState>();
@@ -3005,7 +2099,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
 // Test that an existing user with an existing pin auth factor can be
 // authenticated and then re-created if the derive suggests it. This test
 // verifies that the authenticate still works even if the re-create fails.
-TEST_F(AuthSessionWithUssExperimentTest,
+TEST_F(AuthSessionWithUssTest,
        AuthenticatePinAuthFactorViaUssWithRecreateThatFails) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
@@ -3059,8 +2153,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
-  // Setting the expectation that the auth block utility will derive key blobs,
-  // and then that there will be additional calls to re-create them.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs, and then that there will be additional calls to re-create
+  // them.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
@@ -3107,8 +2202,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 }
 
-// Test that if a user gets locked out, the AuthFactorStatusUpdate timer is set
-// and called periodically.
+// Test that if a user gets locked out, the AuthFactorStatusUpdate timer
+// is set and called periodically.
 TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
@@ -3167,7 +2262,8 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   auth_session.SetAuthFactorStatusUpdateCallback(base::BindRepeating(
       [](user_data_auth::AuthFactorWithStatus, const std::string&) {}));
   // Test.
-  // Setting the expectation that the auth block utility will derive key blobs.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
@@ -3191,8 +2287,8 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   // Calling AuthenticateAuthFactor.
   std::vector<std::string> auth_factor_labels{kFakePinLabel};
   user_data_auth::AuthInput auth_input_proto;
-  // The wrong pin needs to be sent multiple times. |wrong_pin| is set to be
-  // different than |kFakePin|.
+  // The wrong pin needs to be sent multiple times. |wrong_pin| is set to
+  // be different than |kFakePin|.
   std::string wrong_pin = "232323";
   auth_input_proto.mutable_pin_input()->set_secret(wrong_pin);
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds(_))
@@ -3204,13 +2300,13 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   auto& [action, status] = authenticate_future.Get();
   EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
   EXPECT_THAT(status, NotOk());
-  // As currently the user is locked out until they log in via password, the
-  // delay policy does not matter, but once the passwordless policy is set, this
-  // timing should change to reflect that.
+  // As currently the user is locked out until they log in via password,
+  // the delay policy does not matter, but once the passwordless policy is
+  // set, this timing should change to reflect that.
   task_environment_.FastForwardBy(base::Seconds(30));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
+TEST_F(AuthSessionWithUssTest, AddCryptohomeRecoveryAuthFactor) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3223,7 +2319,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_TRUE(auth_session.has_user_secret_stash());
-  // Setting the expectation that the auth block utility will create key blobs.
+  // Setting the expectation that the auth block utility will create key
+  // blobs.
   EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kCryptohomeRecovery));
   EXPECT_CALL(
@@ -3231,7 +2328,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
       CreateKeyBlobsWithAuthBlock(AuthBlockType::kCryptohomeRecovery, _, _))
       .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                    AuthBlock::CreateCallback create_callback) {
-        // Make an arbitrary auth block state type can be used in this test.
+        // Make an arbitrary auth block state type can be used in this
+        // test.
         auto key_blobs = std::make_unique<KeyBlobs>();
         key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
         auto auth_block_state = std::make_unique<AuthBlockState>();
@@ -3267,8 +2365,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       AuthenticateCryptohomeRecoveryAuthFactor) {
+TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
       SanitizeUserName(kFakeUsername);
@@ -3321,8 +2418,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
-  // Setting the expectation that the auth block utility will generate recovery
-  // request.
+  // Setting the expectation that the auth block utility will generate
+  // recovery request.
   EXPECT_CALL(auth_block_utility_, GenerateRecoveryRequest(_, _, _, _, _, _, _))
       .WillOnce([](const ObfuscatedUsername& obfuscated_username,
                    const cryptorecovery::RequestMetadata& request_metadata,
@@ -3355,7 +2452,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   // Test.
-  // Setting the expectation that the auth block utility will derive key blobs.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<CryptohomeRecoveryAuthBlockState>()))
@@ -3404,9 +2502,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
 }
 
 // Test scenario where we add a Smart Card/Challenge Response credential,
-// and go through the authentication flow twice. On the second authentication,
-// AuthSession should use the lightweight verify check.
-TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
+// and go through the authentication flow twice. On the second
+// authentication, AuthSession should use the lightweight verify check.
+TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
   // Setup.
   brillo::Blob public_key_spki_der = brillo::BlobFromString("public_key");
   const ObfuscatedUsername obfuscated_username =
@@ -3467,7 +2565,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
   EXPECT_THAT(auth_session.GetAuthForWebAuthn(), IsNull());
 
   // Test.
-  // Setting the expectation that the auth block utility will derive key blobs.
+  // Setting the expectation that the auth block utility will derive key
+  // blobs.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<ChallengeCredentialAuthBlockState>()))
@@ -3540,9 +2639,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
               UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
 
-// Test that AuthenticateAuthFactor succeeds for the `AuthIntent::kVerifyOnly`
-// scenario, using a credential verifier.
-TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
+// Test that AuthenticateAuthFactor succeeds for the
+// `AuthIntent::kVerifyOnly` scenario, using a credential verifier.
+TEST_F(AuthSessionWithUssTest, LightweightPasswordAuthentication) {
   // Setup.
   // Add the user session along with a verifier that's configured to pass.
   auto user_session = std::make_unique<MockUserSession>();
@@ -3554,8 +2653,9 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
   EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
   user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
-  // Create an AuthSession with a fake factor. No authentication mocks are set
-  // up, because the lightweight authentication should be used in the test.
+  // Create an AuthSession with a fake factor. No authentication mocks are
+  // set up, because the lightweight authentication should be used in the
+  // test.
   AuthSession auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
@@ -3586,7 +2686,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
 
 // Test that if there is a credential to reset, after a lightweight auth,
 // a post action requesting repeating full auth should be returned.
-TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordPostAction) {
+TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
       SanitizeUserName(kFakeUsername);
@@ -3598,7 +2698,8 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordPostAction) {
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  // Add a rate-limiter so that later on a reset is needed after full auth.
+  // Add a rate-limiter so that later on a reset is needed after full
+  // auth.
   EXPECT_TRUE(uss->InitializeFingerprintRateLimiterId(kFakeRateLimiterLabel));
   std::optional<brillo::SecureBlob> uss_main_key =
       UserSecretStash::CreateRandomMainKey();
@@ -3695,11 +2796,12 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordPostAction) {
   EXPECT_EQ(second_action.action_type, AuthSession::PostAuthActionType::kNone);
 }
 
-// Test that AuthenticateAuthFactor succeeds for the `AuthIntent::kVerifyOnly`
-// scenario, using the legacy fingerprint.
-TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
+// Test that AuthenticateAuthFactor succeeds for the
+// `AuthIntent::kVerifyOnly` scenario, using the legacy fingerprint.
+TEST_F(AuthSessionWithUssTest, LightweightFingerprintAuthentication) {
   // Setup.
-  // Add the user session. Configure the credential verifier mock to succeed.
+  // Add the user session. Configure the credential verifier mock to
+  // succeed.
   auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, VerifyUser(SanitizeUserName(kFakeUsername)))
       .WillOnce(Return(true));
@@ -3708,8 +2810,9 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
   EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
   user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
-  // Create an AuthSession with no factors. No authentication mocks are set
-  // up, because the lightweight authentication should be used in the test.
+  // Create an AuthSession with no factors. No authentication mocks are
+  // set up, because the lightweight authentication should be used in the
+  // test.
   AuthSession auth_session(
       AuthSession::Params{.username = kFakeUsername,
                           .is_ephemeral_user = false,
@@ -3736,10 +2839,11 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
               UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
 
-// Test that PrepareAuthFactor succeeds for fingerprint with the purpose of
-// authentication.
-TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
-  // Add the user session. Configure the credential verifier mock to succeed.
+// Test that PrepareAuthFactor succeeds for fingerprint with the purpose
+// of authentication.
+TEST_F(AuthSessionWithUssTest, PrepareLegacyFingerprintAuth) {
+  // Add the user session. Configure the credential verifier mock to
+  // succeed.
   auto user_session = std::make_unique<MockUserSession>();
   auto auth_session = std::make_unique<AuthSession>(
       AuthSession::Params{.username = kFakeUsername,
@@ -3768,9 +2872,10 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
 }
 
 // Test that PrepareAuthFactor succeeded for password.
-TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordFailure) {
+TEST_F(AuthSessionWithUssTest, PreparePasswordFailure) {
   // Setup.
-  // Add the user session. Configure the credential verifier mock to succeed.
+  // Add the user session. Configure the credential verifier mock to
+  // succeed.
   auto user_session = std::make_unique<MockUserSession>();
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3794,9 +2899,10 @@ TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordFailure) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, TerminateAuthFactorBadTypeFailure) {
+TEST_F(AuthSessionWithUssTest, TerminateAuthFactorBadTypeFailure) {
   // Setup.
-  // Add the user session. Configure the credential verifier mock to succeed.
+  // Add the user session. Configure the credential verifier mock to
+  // succeed.
   auto user_session = std::make_unique<MockUserSession>();
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3819,10 +2925,10 @@ TEST_F(AuthSessionWithUssExperimentTest, TerminateAuthFactorBadTypeFailure) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       TerminateAuthFactorInactiveFactorFailure) {
+TEST_F(AuthSessionWithUssTest, TerminateAuthFactorInactiveFactorFailure) {
   // Setup.
-  // Add the user session. Configure the credential verifier mock to succeed.
+  // Add the user session. Configure the credential verifier mock to
+  // succeed.
   auto user_session = std::make_unique<MockUserSession>();
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3845,10 +2951,10 @@ TEST_F(AuthSessionWithUssExperimentTest,
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       TerminateAuthFactorLegacyFingerprintSuccess) {
+TEST_F(AuthSessionWithUssTest, TerminateAuthFactorLegacyFingerprintSuccess) {
   // Setup.
-  // Add the user session. Configure the credential verifier mock to succeed.
+  // Add the user session. Configure the credential verifier mock to
+  // succeed.
   auto user_session = std::make_unique<MockUserSession>();
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3881,7 +2987,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   ASSERT_THAT(terminate_future.Get(), IsOk());
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
+TEST_F(AuthSessionWithUssTest, RemoveAuthFactor) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -3898,8 +3004,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass,
+                                /*first_factor=*/true, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3961,8 +3067,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       RemoveAuthFactorPartialRemoveIsStillOk) {
+TEST_F(AuthSessionWithUssTest, RemoveAuthFactorPartialRemoveIsStillOk) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4052,8 +3157,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       RemoveAuthFactorRemovesCredentialVerifier) {
+TEST_F(AuthSessionWithUssTest, RemoveAuthFactorRemovesCredentialVerifier) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4070,8 +3174,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass,
+                                /*first_factor=*/true, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   error = AddPasswordAuthFactor(kFakeOtherLabel, kFakeOtherPass,
                                 /*first_factor=*/false, auth_session);
@@ -4141,7 +3245,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
 }
 
 // The test adds, removes and adds the same auth factor again.
-TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
+TEST_F(AuthSessionWithUssTest, RemoveAndReAddAuthFactor) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4158,8 +3262,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass,
+                                /*first_factor=*/true, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -4186,7 +3290,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
+TEST_F(AuthSessionWithUssTest, RemoveAuthFactorFailsForLastFactor) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4204,8 +3308,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
-                                auth_session);
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass,
+                                /*first_factor=*/true, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -4230,7 +3334,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactor) {
   // Setup.
   std::string new_pass = "update fake pass";
 
@@ -4299,7 +3403,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
 
 // Test that AddauthFactor successfully adds a PIN factor on a
 // session that was authenticated via a recovery factor.
-TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
+TEST_F(AuthSessionWithUssTest, AddPinAfterRecoveryAuth) {
   // Setup.
   {
     // Obtain AuthSession for user setup.
@@ -4365,7 +3469,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
 
 // Test that UpdateAuthFactor successfully updates a password factor on a
 // session that was authenticated via a recovery factor.
-TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
+TEST_F(AuthSessionWithUssTest, UpdatePasswordAfterRecoveryAuth) {
   // Setup.
   constexpr char kNewFakePass[] = "new fake pass";
   {
@@ -4429,7 +3533,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactorFailsForWrongLabel) {
   // Setup.
   AuthSession auth_session(
       AuthSession::Params{.username = kFakeUsername,
@@ -4481,7 +3585,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactorFailsForWrongType) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4529,8 +3633,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       UpdateAuthFactorFailsWhenLabelDoesntExist) {
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactorFailsWhenLabelDoesntExist) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4579,11 +3682,10 @@ TEST_F(AuthSessionWithUssExperimentTest,
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-// Test that `UpdateAuthFactor` fails when the auth block derivation fails (but
-// doesn't crash).
-TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
+// Test that `UpdateAuthFactor` fails when the auth block derivation fails
+// (but doesn't crash).
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactorFailsInAuthBlock) {
   // Setup.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
@@ -4592,44 +3694,19 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
                             .user_exists = false,
                             .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
-  // Creating the user.
+
+  // Creating the user and add the auth factor.
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
-  // Adding the password VK.
-  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
-      .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
-      .WillOnce([](auto, auto, AuthBlock::CreateCallback create_callback) {
-        // Make an arbitrary auth block state type can be used in this test.
-        auto key_blobs = std::make_unique<KeyBlobs>();
-        auto auth_block_state = std::make_unique<AuthBlockState>();
-        auth_block_state->state = TpmBoundToPcrAuthBlockState();
-        std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
-                 std::move(auth_block_state));
-      })
-      .RetiresOnSaturation();
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _, _, _, _, _, _))
-      .WillOnce(
-          [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
-            auto vk = std::make_unique<VaultKeyset>();
-            vk->SetKeyData(key_data);
-            return vk;
-          });
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillOnce(
-          [](auto, auto) { return CreatePasswordVaultKeyset(kFakeLabel); });
-  user_data_auth::AddAuthFactorRequest add_request;
-  add_request.mutable_auth_factor()->set_type(
-      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  add_request.mutable_auth_factor()->set_label(kFakeLabel);
-  add_request.mutable_auth_factor()->mutable_password_metadata();
-  add_request.mutable_auth_input()->mutable_password_input()->set_secret(
-      kFakePass);
-  add_request.set_auth_session_id(auth_session.serialized_token());
-  TestFuture<CryptohomeStatus> add_future;
-  auth_session.GetAuthForDecrypt()->AddAuthFactor(add_request,
-                                                  add_future.GetCallback());
-  EXPECT_THAT(add_future.Get(), IsOk());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Calling AddAuthFactor.
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
   // Setting the expectations for the new auth block creation. The mock is set
   // to fail.
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
@@ -4663,7 +3740,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
   EXPECT_THAT(update_future.Get(), NotOk());
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorMetadataSuccess) {
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataSuccess) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4716,8 +3793,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorMetadataSuccess) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       UpdateAuthFactorMetadataEmptyLabelFailure) {
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataEmptyLabelFailure) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4751,8 +3827,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       UpdateAuthFactorMetadataWrongLabelFailure) {
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataWrongLabelFailure) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4786,8 +3861,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       UpdateAuthFactorMetadataLongNameFailure) {
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataLongNameFailure) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4824,8 +3898,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(AuthSessionWithUssExperimentTest,
-       UpdateAuthFactorMetadataWrongTypeFailure) {
+TEST_F(AuthSessionWithUssTest, UpdateAuthFactorMetadataWrongTypeFailure) {
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
@@ -4861,7 +3934,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
 // Test that AuthenticateAuthFactor succeeds for the `AuthIntent::kWebAuthn`
 // scenario, using the legacy fingerprint.
-TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
+TEST_F(AuthSessionWithUssTest, FingerprintAuthenticationForWebAuthn) {
   // Setup.
   // Add the user session. Configure the credential verifier mock to succeed.
   auto user_session = std::make_unique<MockUserSession>();
@@ -4899,101 +3972,8 @@ TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
       UnorderedElementsAre(AuthIntent::kVerifyOnly, AuthIntent::kWebAuthn));
 }
 
-// Test that we can authenticate a old-style kiosk VK, and migrate it to USS
-// correctly. These old VKs show up as password VKs and so we need the
-// authenticate to successfully convert it to a kiosk based on the input.
-TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
-  // Setup.
-  // Create a factor containing a password that will become a kiosk factor.
-  AuthFactorMap auth_factor_map;
-  auth_factor_map.Add(
-      AuthFactor(
-          AuthFactorType::kPassword, kLegacyLabel,
-          AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
-          AuthBlockState()),
-      AuthFactorStorageType::kVaultKeyset);
-  // Start a session with this single factor and USS migration enabled.
-  AuthSession auth_session({.username = kFakeUsername,
-                            .is_ephemeral_user = false,
-                            .intent = AuthIntent::kDecrypt,
-                            .auth_factor_status_update_timer =
-                                std::make_unique<base::WallClockTimer>(),
-                            .user_exists = true,
-                            .auth_factor_map = std::move(auth_factor_map)},
-                           backing_apis_);
-  // Helpers to make keysets and keyblobs in the test.
-  auto make_vk = [this]() {
-    auto vk = std::make_unique<VaultKeyset>();
-    vk->Initialize(backing_apis_.platform, backing_apis_.crypto);
-    vk->SetLegacyIndex(0);
-    vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
-    TpmNotBoundToPcrAuthBlockState state;
-    state.tpm_key = brillo::SecureBlob(32, 'T');
-    vk->SetTpmNotBoundToPcrState(state);
-    return vk;
-  };
-  auto make_key_blobs = []() {
-    auto key_blobs = std::make_unique<KeyBlobs>();
-    key_blobs->vkk_key = brillo::SecureBlob(32, 'J');
-    return key_blobs;
-  };
-  // Called within the converter_.PopulateKeyDataForVK(). We return an empty VK
-  // with no KeyData, like a legacy kiosk VK would have. We also have to fake
-  // out the actual authentication calls. Since the point here is to test the
-  // migration, not the authentication itself, we just respond with "yes, all
-  // good" everywhere.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kLegacyLabel))
-      .WillRepeatedly([&](auto...) { return make_vk(); });
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-      .WillRepeatedly(Return(AuthBlockType::kScrypt));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kScrypt, _, _, _))
-      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
-                    const AuthBlockState& auth_state,
-                    AuthBlock::DeriveCallback derive_callback) {
-        std::move(derive_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), make_key_blobs(),
-                 std::nullopt);
-      });
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
-      .WillOnce([&](auto...) { return make_vk(); });
-  EXPECT_CALL(keyset_management_, RemoveKeysetFile(_))
-      .WillOnce(Return(OkStatus<CryptohomeError>()));
-  // These calls will happen during the migration.
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
-      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
-                    AuthBlock::CreateCallback create_callback) {
-        std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), make_key_blobs(),
-                 std::make_unique<AuthBlockState>());
-      });
-
-  // Test.
-  std::vector<std::string> auth_factor_labels{kLegacyLabel};
-  user_data_auth::AuthInput auth_input_proto;
-  auth_input_proto.mutable_kiosk_input();
-  AuthenticateTestFuture authenticate_future;
-  auth_session.AuthenticateAuthFactor(
-      ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
-
-  // Verify.
-  auto& [action, status] = authenticate_future.Get();
-  EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
-  ASSERT_THAT(auth_session.auth_factor_map().size(), Eq(1));
-  AuthFactorMap::ValueView stored_auth_factor =
-      *auth_session.auth_factor_map().begin();
-  const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
-  EXPECT_THAT(stored_auth_factor.storage_type(),
-              Eq(AuthFactorStorageType::kUserSecretStash));
-  EXPECT_THAT(auth_factor.type(), Eq(AuthFactorType::kKiosk));
-  EXPECT_THAT(auth_factor.metadata().metadata,
-              VariantWith<auth_factor::KioskMetadata>(_));
-}
-
 // Test that PrepareAuthFactor succeeds for fingerprint with the purpose of add.
-TEST_F(AuthSessionWithUssExperimentTest, PrepareFingerprintAdd) {
+TEST_F(AuthSessionWithUssTest, PrepareFingerprintAdd) {
   auto mock_le_manager = std::make_unique<MockLECredentialManager>();
   MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
   crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
@@ -5056,7 +4036,7 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareFingerprintAdd) {
 }
 
 // Test adding two fingerprint auth factors and authenticating them.
-TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
+TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   const brillo::SecureBlob kFakeAuthPin(32, 1), kFakeAuthSecret(32, 2);
   auto mock_le_manager = std::make_unique<MockLECredentialManager>();
   MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
@@ -5205,7 +4185,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
   EXPECT_THAT(decrypt_session.authorized_intents(), IsEmpty());
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactor) {
+TEST_F(AuthSessionWithUssTest, RelabelAuthFactor) {
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
@@ -5245,7 +4225,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactor) {
                   kFakeOtherLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorWithBadInputs) {
+TEST_F(AuthSessionWithUssTest, RelabelAuthFactorWithBadInputs) {
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
@@ -5345,7 +4325,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorWithBadInputs) {
   }
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorWithFileFailure) {
+TEST_F(AuthSessionWithUssTest, RelabelAuthFactorWithFileFailure) {
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
@@ -5403,7 +4383,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorWithFileFailure) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorEphemeral) {
+TEST_F(AuthSessionWithUssTest, RelabelAuthFactorEphemeral) {
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = true,
                             .intent = AuthIntent::kDecrypt,
@@ -5446,7 +4426,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorEphemeral) {
                   kFakeOtherLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactor) {
+TEST_F(AuthSessionWithUssTest, ReplaceAuthFactor) {
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
@@ -5510,7 +4490,7 @@ TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactor) {
                   kFakeOtherLabel, kFakeOtherPass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorWithBadInputs) {
+TEST_F(AuthSessionWithUssTest, ReplaceAuthFactorWithBadInputs) {
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
@@ -5611,7 +4591,7 @@ TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorWithBadInputs) {
   }
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorWithFailedAdd) {
+TEST_F(AuthSessionWithUssTest, ReplaceAuthFactorWithFailedAdd) {
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
@@ -5695,7 +4675,7 @@ TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorWithFailedAdd) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorWithFileFailure) {
+TEST_F(AuthSessionWithUssTest, ReplaceAuthFactorWithFileFailure) {
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
@@ -5796,7 +4776,7 @@ TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorWithFileFailure) {
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
-TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorEphemeral) {
+TEST_F(AuthSessionWithUssTest, ReplaceAuthFactorEphemeral) {
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = true,
                             .intent = AuthIntent::kDecrypt,
