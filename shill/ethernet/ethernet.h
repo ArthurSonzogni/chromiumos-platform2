@@ -31,7 +31,6 @@ class CertificateFile;
 class EapListener;
 class EthernetEapProvider;
 class EthernetProvider;
-class Sockets;
 class StoreInterface;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
@@ -105,7 +104,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   friend class EthernetServiceTest;  // For weak_ptr_factory_.
 
   FRIEND_TEST(EthernetProviderTest, MultipleServices);
-  FRIEND_TEST(EthernetTest, RunEthtoolCmd);
+  FRIEND_TEST(EthernetTest, RunEthtoolCmdSuccess);
+  FRIEND_TEST(EthernetTest, RunEthtoolCmdFail);
 
   // Return a pointer to the EthernetProvider for Ethernet devices.
   EthernetProvider* GetProvider();
@@ -220,8 +220,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // at a time.
   base::CancelableOnceClosure try_eap_authentication_callback_;
 
-  net_base::Socket::SocketFactory socket_factory_ =
-      net_base::Socket::GetDefaultFactory();
+  std::unique_ptr<net_base::SocketFactory> socket_factory_ =
+      std::make_unique<net_base::SocketFactory>();
 
   std::string permanent_mac_address_;
 

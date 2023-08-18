@@ -43,6 +43,10 @@ class EapListenerTest : public testing::Test {
   void SetUp() override {
     listener_.set_request_received_callback(base::BindRepeating(
         &EapListenerTest::ReceiveCallback, base::Unretained(this)));
+
+    auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
+    socket_factory_ = socket_factory.get();
+    listener_.socket_factory_ = std::move(socket_factory);
   }
 
   void TearDown() override { listener_.Stop(); }
@@ -51,11 +55,6 @@ class EapListenerTest : public testing::Test {
                                          int flags,
                                          struct sockaddr* src_addr,
                                          socklen_t* addrlen);
-
-  // Set the socket factory method into |listener_|.
-  // |method| is a lambda function that creates a net_base::MockSocket.
-  void SetSocketFactory(
-      std::function<std::unique_ptr<net_base::MockSocket>()> method);
 
   MOCK_METHOD(void, ReceiveCallback, ());
 
@@ -87,26 +86,12 @@ class EapListenerTest : public testing::Test {
 
   MockIOHandlerFactory io_handler_factory_;
   EapListener listener_;
+  net_base::MockSocketFactory* socket_factory_;  // Owned by |listener_|.
 
   // Tests can assign this in order to set the data isreturned in our
   // mock implementation of Sockets::RecvFrom().
   std::vector<uint8_t> recvfrom_reply_data_;
 };
-
-void EapListenerTest::SetSocketFactory(
-    std::function<std::unique_ptr<net_base::MockSocket>()> method) {
-  listener_.socket_factory_ = base::BindRepeating(
-      [](std::function<std::unique_ptr<net_base::MockSocket>()> method,
-         int domain, int type,
-         int protocol) -> std::unique_ptr<net_base::Socket> {
-        EXPECT_EQ(domain, PF_PACKET);
-        EXPECT_EQ(type, SOCK_DGRAM | SOCK_CLOEXEC);
-        EXPECT_EQ(protocol, htons(ETH_P_PAE));
-
-        return method();
-      },
-      std::move(method));
-}
 
 std::optional<size_t> EapListenerTest::SimulateRecvFrom(
     base::span<uint8_t> buf,
@@ -128,15 +113,17 @@ MATCHER_P(IsEapLinkAddress, interface_index, "") {
 }
 
 void EapListenerTest::StartListener() {
-  SetSocketFactory([]() {
-    auto socket = std::make_unique<net_base::MockSocket>();
-    EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(true));
-    EXPECT_CALL(*socket,
-                Bind(IsEapLinkAddress(kInterfaceIndex), sizeof(sockaddr_ll)))
-        .WillOnce(Return(true));
+  EXPECT_CALL(*socket_factory_,
+              Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, SetNonBlocking()).WillOnce(Return(true));
+        EXPECT_CALL(*socket, Bind(IsEapLinkAddress(kInterfaceIndex),
+                                  sizeof(sockaddr_ll)))
+            .WillOnce(Return(true));
 
-    return socket;
-  });
+        return socket;
+      });
 
   int socket_fd;
   EXPECT_CALL(io_handler_factory_,
@@ -158,7 +145,7 @@ TEST_F(EapListenerTest, SocketOpenFail) {
                        HasSubstr("Could not create EAP listener socket")))
       .Times(1);
 
-  SetSocketFactory([]() { return nullptr; });
+  EXPECT_CALL(*socket_factory_, Create).WillOnce(Return(nullptr));
   EXPECT_EQ(CreateSocket(), nullptr);
 }
 
@@ -168,11 +155,13 @@ TEST_F(EapListenerTest, SocketNonBlockingFail) {
                        HasSubstr("Could not set socket to be non-blocking")))
       .Times(1);
 
-  SetSocketFactory([]() {
-    auto socket = std::make_unique<net_base::MockSocket>();
-    EXPECT_CALL(*socket, SetNonBlocking).WillOnce(Return(false));
-    return socket;
-  });
+  EXPECT_CALL(*socket_factory_,
+              Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, SetNonBlocking).WillOnce(Return(false));
+        return socket;
+      });
 
   EXPECT_EQ(CreateSocket(), nullptr);
 }
@@ -183,12 +172,14 @@ TEST_F(EapListenerTest, SocketBindFail) {
                        HasSubstr("Could not bind socket to interface")))
       .Times(1);
 
-  SetSocketFactory([]() {
-    auto socket = std::make_unique<net_base::MockSocket>();
-    EXPECT_CALL(*socket, SetNonBlocking).WillOnce(Return(true));
-    EXPECT_CALL(*socket, Bind).WillOnce(Return(false));
-    return socket;
-  });
+  EXPECT_CALL(*socket_factory_,
+              Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, SetNonBlocking).WillOnce(Return(true));
+        EXPECT_CALL(*socket, Bind).WillOnce(Return(false));
+        return socket;
+      });
 
   EXPECT_EQ(CreateSocket(), nullptr);
 }

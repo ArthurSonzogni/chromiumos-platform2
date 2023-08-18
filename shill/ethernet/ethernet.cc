@@ -923,7 +923,7 @@ void Ethernet::UpdateLinkSpeed() {
 
 bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
   auto socket =
-      socket_factory_.Run(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
+      socket_factory_->Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
   if (!socket) {
     return false;
   }

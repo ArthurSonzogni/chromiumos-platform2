@@ -56,8 +56,8 @@ void EapListener::Stop() {
 }
 
 std::unique_ptr<net_base::Socket> EapListener::CreateSocket() {
-  auto socket = socket_factory_.Run(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
-                                    htons(ETH_P_PAE));
+  auto socket = socket_factory_->Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
+                                        htons(ETH_P_PAE));
   if (!socket) {
     PLOG(ERROR) << LoggingTag() << ": Could not create EAP listener socket";
     return nullptr;

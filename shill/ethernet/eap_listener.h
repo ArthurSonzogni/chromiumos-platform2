@@ -16,7 +16,6 @@ namespace shill {
 class IOHandler;
 class IOHandlerFactory;
 class ScopedSocketCloser;
-class Sockets;
 
 // Listens for EAP packets on |interface_index| and invokes a
 // callback when a request frame arrives.
@@ -70,9 +69,9 @@ class EapListener {
   // Callback handle to invoke when an EAP request is received.
   EapRequestReceivedCallback request_received_callback_;
 
-  // The factory method to create |socket_|.
-  net_base::Socket::SocketFactory socket_factory_ =
-      net_base::Socket::GetDefaultFactory();
+  // Used to create |socket_|.
+  std::unique_ptr<net_base::SocketFactory> socket_factory_ =
+      std::make_unique<net_base::SocketFactory>();
 
   // Receive socket configured to receive PAE (Port Access Entity) packets.
   std::unique_ptr<net_base::Socket> socket_;

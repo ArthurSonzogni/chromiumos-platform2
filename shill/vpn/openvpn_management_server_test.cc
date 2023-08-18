@@ -47,30 +47,13 @@ class OpenVPNManagementServerTest : public testing::Test {
         driver_(&manager_, &process_manager_),
         server_(&driver_) {
     server_.io_handler_factory_ = &io_handler_factory_;
+
+    auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
+    socket_factory_ = socket_factory.get();
+    server_.socket_factory_ = std::move(socket_factory);
   }
 
   ~OpenVPNManagementServerTest() override = default;
-
-  // Set the socket factory method into |server_|.
-  // |method| is a lambda function that creates a net_base::MockSocket.
-  void SetSocketFactory(
-      int expected_domain,
-      int expected_type,
-      int expected_protocol,
-      std::function<std::unique_ptr<net_base::MockSocket>()> method) {
-    server_.socket_factory_ = base::BindRepeating(
-        [](int expected_domain, int expected_type, int expected_protocol,
-           std::function<std::unique_ptr<net_base::MockSocket>()> method,
-           int domain, int type,
-           int protocol) -> std::unique_ptr<net_base::Socket> {
-          EXPECT_EQ(domain, expected_domain);
-          EXPECT_EQ(type, expected_type);
-          EXPECT_EQ(protocol, expected_protocol);
-
-          return method();
-        },
-        expected_domain, expected_type, expected_protocol, std::move(method));
-  }
 
  protected:
   void SetSocket(std::unique_ptr<net_base::MockSocket> socket) {
@@ -179,6 +162,7 @@ class OpenVPNManagementServerTest : public testing::Test {
   MockOpenVPNDriver driver_;
   MockIOHandlerFactory io_handler_factory_;
   OpenVPNManagementServer server_;  // Destroy before anything it references.
+  net_base::MockSocketFactory* socket_factory_;  // Owned by |server_|.
 };
 
 TEST_F(OpenVPNManagementServerTest, StartStarted) {
@@ -187,20 +171,24 @@ TEST_F(OpenVPNManagementServerTest, StartStarted) {
 }
 
 TEST_F(OpenVPNManagementServerTest, StartSocketFail) {
-  SetSocketFactory(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP,
-                   []() { return nullptr; });
+  EXPECT_CALL(*socket_factory_,
+              Create(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP))
+      .WillOnce(Return(nullptr));
+
   EXPECT_FALSE(server_.Start(nullptr));
   EXPECT_FALSE(server_.IsStarted());
 }
 
 TEST_F(OpenVPNManagementServerTest, StartGetSockNameFail) {
-  SetSocketFactory(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP, []() {
-    auto socket = std::make_unique<net_base::MockSocket>();
-    EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
-    EXPECT_CALL(*socket, Listen(1)).WillOnce(Return(true));
-    EXPECT_CALL(*socket, GetSockName).WillOnce(Return(false));
-    return socket;
-  });
+  EXPECT_CALL(*socket_factory_,
+              Create(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
+        EXPECT_CALL(*socket, Listen(1)).WillOnce(Return(true));
+        EXPECT_CALL(*socket, GetSockName).WillOnce(Return(false));
+        return socket;
+      });
 
   EXPECT_FALSE(server_.Start(nullptr));
   EXPECT_FALSE(server_.IsStarted());
@@ -211,13 +199,15 @@ TEST_F(OpenVPNManagementServerTest, Start) {
   driver_.args()->Set<std::string>(kOpenVPNStaticChallengeProperty,
                                    kStaticChallenge);
 
-  SetSocketFactory(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP, []() {
-    auto socket = std::make_unique<net_base::MockSocket>();
-    EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
-    EXPECT_CALL(*socket, Listen(1)).WillOnce(Return(true));
-    EXPECT_CALL(*socket, GetSockName).WillOnce(Return(true));
-    return socket;
-  });
+  EXPECT_CALL(*socket_factory_,
+              Create(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
+        EXPECT_CALL(*socket, Listen(1)).WillOnce(Return(true));
+        EXPECT_CALL(*socket, GetSockName).WillOnce(Return(true));
+        return socket;
+      });
 
   int socket_fd;
   EXPECT_CALL(io_handler_factory_,

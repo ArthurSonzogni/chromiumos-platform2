@@ -25,12 +25,12 @@ bool Icmp::Start(const net_base::IPAddress& destination, int interface_index) {
   std::unique_ptr<net_base::Socket> socket;
   switch (destination.GetFamily()) {
     case net_base::IPFamily::kIPv4:
-      socket =
-          socket_factory_.Run(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP);
+      socket = socket_factory_->Create(AF_INET, SOCK_RAW | SOCK_CLOEXEC,
+                                       IPPROTO_ICMP);
       break;
     case net_base::IPFamily::kIPv6:
-      socket = socket_factory_.Run(AF_INET6, SOCK_RAW | SOCK_CLOEXEC,
-                                   IPPROTO_ICMPV6);
+      socket = socket_factory_->Create(AF_INET6, SOCK_RAW | SOCK_CLOEXEC,
+                                       IPPROTO_ICMPV6);
       break;
   }
 

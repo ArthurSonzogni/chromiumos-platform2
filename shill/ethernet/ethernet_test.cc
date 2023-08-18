@@ -128,6 +128,19 @@ class EthernetTest : public testing::Test {
 
     ON_CALL(*mock_service_, technology())
         .WillByDefault(Return(Technology::kEthernet));
+
+    auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
+    socket_factory_ = socket_factory.get();
+    ethernet_->socket_factory_ = std::move(socket_factory);
+
+    // We do not care about Sockets at most of test cases.
+    // In order to let RunEthtoolCmd() succeed we need to return a positive
+    // number for Ioctl
+    ON_CALL(*socket_factory_, Create).WillByDefault([&]() {
+      auto socket = std::make_unique<net_base::MockSocket>();
+      ON_CALL(*socket, Ioctl(SIOCETHTOOL, _)).WillByDefault(Return(1));
+      return socket;
+    });
   }
 
   void TearDown() override {
@@ -135,22 +148,6 @@ class EthernetTest : public testing::Test {
     ethernet_->eap_listener_.reset();
     ethernet_->GetPrimaryNetwork()->set_dhcp_provider_for_testing(nullptr);
     Mock::VerifyAndClearExpectations(&manager_);
-  }
-
-  void SetSocketFactoryWithIoctlResult(std::optional<int> ioctl_result) {
-    ethernet_->socket_factory_ = base::BindRepeating(
-        [](std::optional<int> ioctl_result, int domain, int type,
-           int protocol) -> std::unique_ptr<net_base::Socket> {
-          EXPECT_EQ(domain, PF_INET);
-          EXPECT_EQ(type, SOCK_DGRAM | SOCK_CLOEXEC);
-          EXPECT_EQ(protocol, IPPROTO_IP);
-
-          auto socket = std::make_unique<net_base::MockSocket>();
-          EXPECT_CALL(*socket, Ioctl(SIOCETHTOOL, _))
-              .WillOnce(Return(ioctl_result));
-          return socket;
-        },
-        ioctl_result);
   }
 
   MOCK_METHOD(void, ErrorCallback, (const Error& error));
@@ -178,10 +175,6 @@ class EthernetTest : public testing::Test {
 
   const PropertyStore& GetStore() { return ethernet_->store(); }
   void StartEthernet() {
-    // We do not care about Sockets call but they are used in Ethernet::Start
-    // to get ethernet driver name.
-    SetSocketFactoryWithIoctlResult(1);
-
     EXPECT_CALL(ethernet_provider_, CreateService(_))
         .WillOnce(Return(mock_service_));
     EXPECT_CALL(ethernet_provider_, RegisterService(Eq(mock_service_)));
@@ -277,6 +270,7 @@ class EthernetTest : public testing::Test {
 
   // Owned by Ethernet instance, but tracked here for expectations.
   MockEapListener* eap_listener_;
+  net_base::MockSocketFactory* socket_factory_;
 
   scoped_refptr<MockService> mock_eap_service_;
   std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
@@ -324,8 +318,6 @@ TEST_F(EthernetTest, LinkEvent) {
   EXPECT_CALL(manager_, UpdateService(IsRefPtrTo(mock_service_)));
   EXPECT_CALL(*mock_service_, OnVisibilityChanged());
   EXPECT_CALL(*eap_listener_, Start());
-
-  SetSocketFactoryWithIoctlResult(0);
 
   ethernet_->LinkEvent(IFF_LOWER_UP, 0);
   EXPECT_TRUE(GetLinkUp());
@@ -684,11 +676,6 @@ TEST_F(EthernetTest, SetMacAddressServiceStorageIdentifierChange) {
 }
 
 TEST_F(EthernetTest, UpdateLinkSpeed) {
-  // We do not care about Sockets call but they are used in UpdateLinkSpeed()
-  // In order to let RunEthtoolCmd() succeed we need to return a positive number
-  // for Ioctl
-  SetSocketFactoryWithIoctlResult(1);
-
   EXPECT_CALL(*mock_service_, SetUplinkSpeedKbps(_));
 
   SelectService(mock_service_);
@@ -702,7 +689,7 @@ TEST_F(EthernetTest, UpdateLinkSpeedNoSelectedService) {
   UpdateLinkSpeed();
 }
 
-TEST_F(EthernetTest, RunEthtoolCmd) {
+TEST_F(EthernetTest, RunEthtoolCmdSuccess) {
   struct ethtool_cmd ecmd;
   struct ifreq ifr;
 
@@ -710,10 +697,32 @@ TEST_F(EthernetTest, RunEthtoolCmd) {
   ecmd.cmd = ETHTOOL_GSET;
   ifr.ifr_data = &ecmd;
 
-  SetSocketFactoryWithIoctlResult(0);
+  EXPECT_CALL(*socket_factory_,
+              Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, Ioctl(SIOCETHTOOL, _)).WillOnce(Return(1));
+        return socket;
+      });
   EXPECT_TRUE(ethernet_->RunEthtoolCmd(&ifr));
+}
 
-  SetSocketFactoryWithIoctlResult(std::nullopt);
+TEST_F(EthernetTest, RunEthtoolCmdFail) {
+  struct ethtool_cmd ecmd;
+  struct ifreq ifr;
+
+  memset(&ecmd, 0, sizeof(ecmd));
+  ecmd.cmd = ETHTOOL_GSET;
+  ifr.ifr_data = &ecmd;
+
+  EXPECT_CALL(*socket_factory_,
+              Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, Ioctl(SIOCETHTOOL, _))
+            .WillOnce(Return(std::nullopt));
+        return socket;
+      });
   EXPECT_FALSE(ethernet_->RunEthtoolCmd(&ifr));
 }
 

@@ -56,74 +56,75 @@ MATCHER_P(IsNetlinkAddr, groups, "") {
          socket_address->nl_groups == groups;
 }
 
-TEST(Socket, CreateNetlink) {
-  auto socket_factory = base::BindRepeating(
-      [](int family, uint32_t groups, int domain, int type,
-         int protocol) -> std::unique_ptr<Socket> {
-        EXPECT_EQ(domain, PF_NETLINK);
-        EXPECT_EQ(type, SOCK_DGRAM | SOCK_CLOEXEC);
-        EXPECT_EQ(protocol, family);
+// Mock Create() method only to verify the behavior of CreateNetlink().
+class MockSocketFactory : public SocketFactory {
+ public:
+  MockSocketFactory() = default;
+  ~MockSocketFactory() override = default;
 
+  MOCK_METHOD(std::unique_ptr<Socket>,
+              Create,
+              (int domain, int type, int protocol),
+              (override));
+};
+
+TEST(SocketFactory, CreateNetlinkSuccess) {
+  MockSocketFactory socket_factory;
+  EXPECT_CALL(socket_factory,
+              Create(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, netlink_family))
+      .WillOnce([]() {
         auto socket = std::make_unique<MockSocket>();
         EXPECT_CALL(*socket,
-                    SetReceiveBuffer(Socket::kNetlinkReceiveBufferSize))
+                    SetReceiveBuffer(SocketFactory::kNetlinkReceiveBufferSize))
             .WillOnce(Return(true));
-        EXPECT_CALL(*socket,
-                    Bind(IsNetlinkAddr(groups), sizeof(struct sockaddr_nl)))
+        EXPECT_CALL(*socket, Bind(IsNetlinkAddr(netlink_groups_mask),
+                                  sizeof(struct sockaddr_nl)))
             .WillOnce(Return(true));
-        return socket;
-      },
-      netlink_family, netlink_groups_mask);
-
-  EXPECT_NE(Socket::CreateNetlink(socket_factory, netlink_family,
-                                  netlink_groups_mask),
-            nullptr);
-}
-
-TEST(SocketCreateNetlink, NotSetReceiveBuffer) {
-  auto socket_factory = base::BindRepeating(
-      [](int family, uint32_t groups, int domain, int type,
-         int protocol) -> std::unique_ptr<Socket> {
-        auto socket = std::make_unique<MockSocket>();
-        EXPECT_CALL(*socket,
-                    SetReceiveBuffer(Socket::kNetlinkReceiveBufferSize))
-            .Times(0);
-        EXPECT_CALL(*socket,
-                    Bind(IsNetlinkAddr(groups), sizeof(struct sockaddr_nl)))
-            .WillOnce(Return(true));
-        return socket;
-      },
-      netlink_family, netlink_groups_mask);
-
-  EXPECT_NE(Socket::CreateNetlink(socket_factory, netlink_family,
-                                  netlink_groups_mask, false),
-            nullptr);
-}
-
-TEST(SocketCreateNetlink, SocketFail) {
-  auto socket_factory = base::BindRepeating(
-      [](int domain, int type, int protocol) -> std::unique_ptr<Socket> {
-        return nullptr;
-      });
-
-  EXPECT_EQ(Socket::CreateNetlink(socket_factory, netlink_family,
-                                  netlink_groups_mask),
-            nullptr);
-}
-
-TEST(SocketCreateNetlink, BindFail) {
-  auto socket_factory = base::BindRepeating(
-      [](int domain, int type, int protocol) -> std::unique_ptr<Socket> {
-        auto socket = std::make_unique<MockSocket>();
-        EXPECT_CALL(*socket,
-                    SetReceiveBuffer(Socket::kNetlinkReceiveBufferSize))
-            .WillOnce(Return(true));
-        EXPECT_CALL(*socket, Bind).WillOnce(Return(false));
         return socket;
       });
 
-  EXPECT_EQ(Socket::CreateNetlink(socket_factory, netlink_family,
-                                  netlink_groups_mask),
+  EXPECT_NE(socket_factory.CreateNetlink(netlink_family, netlink_groups_mask),
+            nullptr);
+}
+
+TEST(SocketFactory, CreateNetlinkNotSetReceiveBuffer) {
+  MockSocketFactory socket_factory;
+  EXPECT_CALL(socket_factory, Create).WillOnce([]() {
+    auto socket = std::make_unique<MockSocket>();
+    EXPECT_CALL(*socket,
+                SetReceiveBuffer(SocketFactory::kNetlinkReceiveBufferSize))
+        .Times(0);
+    EXPECT_CALL(*socket, Bind(IsNetlinkAddr(netlink_groups_mask),
+                              sizeof(struct sockaddr_nl)))
+        .WillOnce(Return(true));
+    return socket;
+  });
+
+  EXPECT_NE(socket_factory.CreateNetlink(netlink_family, netlink_groups_mask,
+                                         std::nullopt),
+            nullptr);
+}
+
+TEST(SocketFactory, CreateNetlinkSocketFail) {
+  MockSocketFactory socket_factory;
+  EXPECT_CALL(socket_factory, Create).WillOnce(Return(nullptr));
+
+  EXPECT_EQ(socket_factory.CreateNetlink(netlink_family, netlink_groups_mask),
+            nullptr);
+}
+
+TEST(SocketFactory, CreateNetlinkBindFail) {
+  MockSocketFactory socket_factory;
+  EXPECT_CALL(socket_factory, Create).WillOnce([]() {
+    auto socket = std::make_unique<MockSocket>();
+    EXPECT_CALL(*socket,
+                SetReceiveBuffer(SocketFactory::kNetlinkReceiveBufferSize))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*socket, Bind).WillOnce(Return(false));
+    return socket;
+  });
+
+  EXPECT_EQ(socket_factory.CreateNetlink(netlink_family, netlink_groups_mask),
             nullptr);
 }
 

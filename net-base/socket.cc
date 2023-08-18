@@ -32,55 +32,12 @@ std::optional<size_t> ToOptionalSizeT(ssize_t size) {
 }  // namespace
 
 // static
-Socket::SocketFactory Socket::GetDefaultFactory() {
-  return base::BindRepeating(&Socket::Create);
-}
-
-// static
-std::unique_ptr<Socket> Socket::Create(int domain, int type, int protocol) {
-  return CreateFromFd(base::ScopedFD(socket(domain, type, protocol)));
-}
-
-// static
 std::unique_ptr<Socket> Socket::CreateFromFd(base::ScopedFD fd) {
   if (!fd.is_valid()) {
     return nullptr;
   }
 
   return std::unique_ptr<Socket>(new Socket(std::move(fd)));
-}
-
-// static
-std::unique_ptr<Socket> Socket::CreateNetlink(SocketFactory socket_factory,
-                                              int netlink_family,
-                                              uint32_t netlink_groups_mask,
-                                              bool set_receive_buffer) {
-  auto socket =
-      socket_factory.Run(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, netlink_family);
-  if (!socket) {
-    PLOG(ERROR) << "Failed to open netlink socket for family "
-                << netlink_family;
-    return nullptr;
-  }
-
-  if (set_receive_buffer) {
-    if (!socket->SetReceiveBuffer(kNetlinkReceiveBufferSize)) {
-      PLOG(WARNING) << "Failed to increase receive buffer size to "
-                    << kNetlinkReceiveBufferSize << "b";
-    }
-  }
-
-  struct sockaddr_nl addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.nl_family = AF_NETLINK;
-  addr.nl_groups = netlink_groups_mask;
-
-  if (!socket->Bind(reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr))) {
-    PLOG(ERROR) << "Netlink socket bind failed for family " << netlink_family;
-    return nullptr;
-  }
-
-  return socket;
 }
 
 Socket::Socket(base::ScopedFD fd) : fd_(std::move(fd)) {
@@ -167,6 +124,43 @@ bool Socket::SetReceiveBuffer(int size) const {
   // Note: kernel will set buffer to 2*size to allow for struct skbuff overhead
   return setsockopt(fd_.get(), SOL_SOCKET, SO_RCVBUFFORCE, &size,
                     sizeof(size)) == 0;
+}
+
+std::unique_ptr<Socket> SocketFactory::Create(int domain,
+                                              int type,
+                                              int protocol) {
+  return Socket::CreateFromFd(base::ScopedFD(socket(domain, type, protocol)));
+}
+
+std::unique_ptr<Socket> SocketFactory::CreateNetlink(
+    int netlink_family,
+    uint32_t netlink_groups_mask,
+    std::optional<int> receive_buffer_size) {
+  auto socket = Create(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, netlink_family);
+  if (!socket) {
+    PLOG(ERROR) << "Failed to open netlink socket for family "
+                << netlink_family;
+    return nullptr;
+  }
+
+  if (receive_buffer_size) {
+    if (!socket->SetReceiveBuffer(*receive_buffer_size)) {
+      PLOG(WARNING) << "Failed to increase receive buffer size to "
+                    << SocketFactory::kNetlinkReceiveBufferSize << "b";
+    }
+  }
+
+  struct sockaddr_nl addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.nl_family = AF_NETLINK;
+  addr.nl_groups = netlink_groups_mask;
+
+  if (!socket->Bind(reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr))) {
+    PLOG(ERROR) << "Netlink socket bind failed for family " << netlink_family;
+    return nullptr;
+  }
+
+  return socket;
 }
 
 }  // namespace net_base

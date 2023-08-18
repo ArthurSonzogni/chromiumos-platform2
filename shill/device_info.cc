@@ -867,7 +867,7 @@ std::optional<net_base::MacAddress> DeviceInfo::GetMacAddressFromKernel(
   }
 
   std::unique_ptr<net_base::Socket> socket =
-      socket_factory_.Run(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+      socket_factory_->Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
   if (!socket) {
     PLOG(ERROR) << __func__ << ": Unable to open socket";
     return std::nullopt;

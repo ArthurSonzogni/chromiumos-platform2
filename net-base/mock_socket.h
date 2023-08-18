@@ -59,6 +59,22 @@ class NET_BASE_EXPORT MockSocket : public Socket {
   MOCK_METHOD(bool, SetReceiveBuffer, (int size), (const, override));
 };
 
-}  // namespace net_base
+class NET_BASE_EXPORT MockSocketFactory : public SocketFactory {
+ public:
+  MockSocketFactory();
+  ~MockSocketFactory() override;
 
+  MOCK_METHOD(std::unique_ptr<Socket>,
+              Create,
+              (int domain, int type, int protocol),
+              (override));
+  MOCK_METHOD(std::unique_ptr<Socket>,
+              CreateNetlink,
+              (int netlink_family,
+               uint32_t netlink_groups_mask,
+               std::optional<int> receive_buffer_size),
+              (override));
+};
+
+}  // namespace net_base
 #endif  // NET_BASE_MOCK_SOCKET_H_

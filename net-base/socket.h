@@ -22,41 +22,9 @@ namespace net_base {
 // the standard POSIX and Linux socket operations.
 class NET_BASE_EXPORT Socket {
  public:
-  // Keep this large enough to avoid overflows on IPv6 SNM routing update
-  // spikes.
-  static constexpr int kNetlinkReceiveBufferSize = 512 * 1024;
-
-  // The signature of Socket::Create() method and its binding. It's used
-  // for injecting the MockSocket::Create() method at testing.
-  //
-  // The common pattern is like:
-  //
-  //   net_base::Socket::SocketFactory socket_factory_ =
-  //       net_base::Socket::GetDefaultFactory();
-  using SocketFactory = base::RepeatingCallback<std::unique_ptr<Socket>(
-      int domain, int type, int protocol)>;
-  static SocketFactory GetDefaultFactory();
-
-  // Creates the socket instance. Delegates to socket(...) method.
-  // On failure, returns nullptr and the errno is set. The caller should use
-  // PLOG() to print errno.
-  static std::unique_ptr<Socket> Create(int domain, int type, int protocol);
-
   // Creates the socket instance with the socket descriptor. Returns nullptr if
   // |fd| is invalid.
   static std::unique_ptr<Socket> CreateFromFd(base::ScopedFD fd);
-
-  // Creates the socket instance and binds to netlink. Sets the received buffer
-  // size to kNetlinkReceiveBufferSize if |set_receive_buffer| is set.
-  // Returns nullptr on failure.
-  //
-  // Note: setting the received buffer size requires CAP_NET_ADMIN. So
-  // |set_receive_buffer| should set to false when the process doesn't have
-  // CAP_NET_ADMIN.
-  static std::unique_ptr<Socket> CreateNetlink(SocketFactory socket_factory,
-                                               int netlink_family,
-                                               uint32_t netlink_groups_mask,
-                                               bool set_receive_buffer = true);
 
   virtual ~Socket();
 
@@ -131,6 +99,34 @@ class NET_BASE_EXPORT Socket {
   // The socket file descriptor. It's always valid during the lifetime of the
   // Socket instance.
   base::ScopedFD fd_;
+};
+
+// Creates the Socket instance. It's used for injecting MockSocketFactory at
+// testing to create the mock Socket instance.
+class NET_BASE_EXPORT SocketFactory {
+ public:
+  // Keep this large enough to avoid overflows on IPv6 SNM routing update
+  // spikes.
+  static constexpr int kNetlinkReceiveBufferSize = 512 * 1024;
+
+  SocketFactory() = default;
+  virtual ~SocketFactory() = default;
+
+  // Creates the socket instance. Delegates to socket(...) method.
+  // On failure, returns nullptr and the errno is set. The caller should use
+  // PLOG() to print errno.
+  virtual std::unique_ptr<Socket> Create(int domain, int type, int protocol);
+
+  // Creates the socket instance and binds to netlink. Sets the received buffer
+  // size to |receive_buffer_size| if it is set.
+  // Returns nullptr on failure.
+  //
+  // Note: setting the received buffer size above rmem_max requires
+  // CAP_NET_ADMIN.
+  virtual std::unique_ptr<Socket> CreateNetlink(
+      int netlink_family,
+      uint32_t netlink_groups_mask,
+      std::optional<int> receive_buffer_size = kNetlinkReceiveBufferSize);
 };
 
 }  // namespace net_base

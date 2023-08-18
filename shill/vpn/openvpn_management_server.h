@@ -144,8 +144,8 @@ class OpenVPNManagementServer {
 
   OpenVPNDriver* driver_;
 
-  net_base::Socket::SocketFactory socket_factory_ =
-      net_base::Socket::GetDefaultFactory();
+  std::unique_ptr<net_base::SocketFactory> socket_factory_ =
+      std::make_unique<net_base::SocketFactory>();
   std::unique_ptr<net_base::Socket> socket_;
 
   IOHandlerFactory* io_handler_factory_;

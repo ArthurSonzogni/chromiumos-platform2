@@ -15,4 +15,7 @@ MockSocket::MockSocket()
 MockSocket::MockSocket(base::ScopedFD fd) : Socket(std::move(fd)) {}
 MockSocket::~MockSocket() = default;
 
+MockSocketFactory::MockSocketFactory() = default;
+MockSocketFactory::~MockSocketFactory() = default;
+
 }  // namespace net_base

@@ -52,7 +52,7 @@ bool OpenVPNManagementServer::Start(
   }
 
   auto socket =
-      socket_factory_.Run(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+      socket_factory_->Create(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
   if (!socket) {
     PLOG(ERROR) << "Unable to create management server socket.";
     return false;
