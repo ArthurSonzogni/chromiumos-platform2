@@ -24,33 +24,44 @@ ChallengeStatus PairManager::PairChallenge(FirmwareUpdaterInterface* fw_updater,
   // Generate Challenge request.
   PairChallengeRequest request;
   uint8_t private_key[X25519_PRIVATE_KEY_LEN];
-  GenerateChallenge(&request, private_key);
-  std::string request_payload(reinterpret_cast<const char*>(&request),
-                              sizeof(request));
-
-  // Send the request to the hammer.
   PairChallengeResponse response;
-  if (!fw_updater->SendSubcommandReceiveResponse(
-          UpdateExtraCommand::kPairChallenge, request_payload,
-          reinterpret_cast<void*>(&response), sizeof(response))) {
-    if (response.status ==
-        static_cast<uint8_t>(EcResponseStatus::kUnavailable)) {
-      LOG(ERROR) << "Need to inject the entropy.";
-      // Because we will inject entropy and try to pair again, we don't send
-      // kPairChallengeFailed signal here.
-      return ChallengeStatus::kNeedInjectEntropy;
+
+  // base may be removed then re-attached during pair challenging, retry the
+  // pair challenge to reduce false alarms.
+  bool pair_result = false;
+  for (int i = 0; i < 3; i++) {
+    GenerateChallenge(&request, private_key);
+    std::string request_payload(reinterpret_cast<const char*>(&request),
+                                sizeof(request));
+    // Send the request to the hammer.
+    if (!fw_updater->SendSubcommandReceiveResponse(
+            UpdateExtraCommand::kPairChallenge, request_payload,
+            reinterpret_cast<void*>(&response), sizeof(response))) {
+      if (response.status ==
+          static_cast<uint8_t>(EcResponseStatus::kUnavailable)) {
+        LOG(ERROR) << "Need to inject the entropy.";
+        // Because we will inject entropy and try to pair again, we don't send
+        // kPairChallengeFailed signal here.
+        return ChallengeStatus::kNeedInjectEntropy;
+      }
+      // If the base is disconnected, then do not send DBus message.
+      // There is a short delay between device disconnected and kernel react to
+      // it. Add a short delay before check.
+      constexpr int kernel_delay_ms = 100;
+      base::PlatformThread::Sleep(base::Milliseconds(kernel_delay_ms));
+      if (!fw_updater->UsbSysfsExists()) {
+        LOG(ERROR) << "USB device is disconnected.";
+        return ChallengeStatus::kConnectionError;
+      }
+      LOG(ERROR) << "Unknown error! The status of response: "
+                 << static_cast<int>(response.status);
+    } else {
+      pair_result = true;
+      break;
     }
-    // If the base is disconnected, then do not send DBus message.
-    // There is a short delay between device disconnected and kernel react to
-    // it. Add a short delay before check.
-    constexpr int kernel_delay_ms = 100;
-    base::PlatformThread::Sleep(base::Milliseconds(kernel_delay_ms));
-    if (!fw_updater->UsbSysfsExists()) {
-      LOG(ERROR) << "USB device is disconnected.";
-      return ChallengeStatus::kConnectionError;
-    }
-    LOG(ERROR) << "Unknown error! The status of response: "
-               << static_cast<int>(response.status);
+  }
+
+  if (!pair_result) {
     dbus_wrapper->SendSignal(kPairChallengeFailedSignal);
     return ChallengeStatus::kUnknownError;
   }
