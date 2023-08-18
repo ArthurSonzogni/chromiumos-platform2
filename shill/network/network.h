@@ -184,16 +184,11 @@ class Network {
   void RegisterEventHandler(EventHandler* handler);
   void UnregisterEventHandler(EventHandler* handler);
 
-  // Sets IPv4 properties specific to technology. Currently this is used by
+  // Sets network config specific to technology. Currently this is used by
   // cellular and VPN.
-  mockable void set_link_protocol_ipv4_properties(
-      std::unique_ptr<IPConfig::Properties> props) {
-    link_protocol_ipv4_properties_ = std::move(props);
-  }
-
-  void set_link_protocol_ipv6_properties(
-      std::unique_ptr<IPConfig::Properties> props) {
-    link_protocol_ipv6_properties_ = std::move(props);
+  mockable void set_link_local_protocol_network_config(
+      std::unique_ptr<NetworkConfig> config) {
+    link_local_protocol_network_config_ = std::move(config);
   }
 
   int interface_index() const { return interface_index_; }
@@ -486,14 +481,9 @@ class Network {
 
   base::RepeatingClosure current_ipconfig_change_handler_;
 
-  // The technology-specific IPv4 config properties. Currently only used by
-  // cellular and VPN. Assume that when this field is not empty, it must have
-  // valid values to set up the connection (e.g., at least address and prefix
-  // len).
-  std::unique_ptr<IPConfig::Properties> link_protocol_ipv4_properties_;
-
-  // The technology-specific IPv6 config properties.
-  std::unique_ptr<IPConfig::Properties> link_protocol_ipv6_properties_;
+  // The technology-specific network configuration. Currently only used by
+  // cellular and VPN.
+  std::unique_ptr<NetworkConfig> link_local_protocol_network_config_;
 
   // The static NetworkConfig from the associated Service.
   NetworkConfig static_network_config_;

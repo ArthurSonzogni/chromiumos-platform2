@@ -224,54 +224,69 @@ NetworkConfig IPConfig::Properties::ToNetworkConfig(
 }
 
 void IPConfig::Properties::UpdateFromNetworkConfig(
-    const NetworkConfig& network_config, bool force_overwrite) {
+    const NetworkConfig& network_config,
+    bool force_overwrite,
+    net_base::IPFamily family) {
   if (!address_family) {
     // In situations where no address is supplied (bad or missing DHCP config)
     // supply an address family ourselves.
-    address_family = net_base::IPFamily::kIPv4;
+    address_family = family;
+  }
+  if (address_family != family) {
+    LOG(DFATAL) << "The IPConfig object is not for " << family << ", but for "
+                << address_family.value();
+    return;
   }
   if (method.empty()) {
     // When it's empty, it means there is no other IPConfig provider now (e.g.,
     // DHCP). A StaticIPParameters object is only for IPv4.
-    method = kTypeIPv4;
+    method =
+        address_family == net_base::IPFamily::kIPv6 ? kTypeIPv6 : kTypeIPv4;
   }
-
-  if (address_family != net_base::IPFamily::kIPv4) {
-    LOG(DFATAL) << "The IPConfig object is not for IPv4, but for "
-                << address_family.value();
-    return;
+  if (family == net_base::IPFamily::kIPv4) {
+    if (network_config.ipv4_address) {
+      address = network_config.ipv4_address->address().ToString();
+      subnet_prefix = network_config.ipv4_address->prefix_length();
+    }
+    if (network_config.ipv4_gateway) {
+      gateway = network_config.ipv4_gateway->ToString();
+    }
+    if (network_config.ipv4_broadcast) {
+      broadcast_address = network_config.ipv4_broadcast->ToString();
+    }
+    if (force_overwrite || !network_config.ipv4_default_route) {
+      default_route = network_config.ipv4_default_route;
+    }
+    if (force_overwrite || network_config.ipv6_blackhole_route) {
+      blackhole_ipv6 = network_config.ipv6_blackhole_route;
+    }
   }
-
-  if (network_config.ipv4_address) {
-    address = network_config.ipv4_address->address().ToString();
-    subnet_prefix = network_config.ipv4_address->prefix_length();
-  }
-  if (network_config.ipv4_gateway) {
-    gateway = network_config.ipv4_gateway->ToString();
-  }
-  if (network_config.ipv4_broadcast) {
-    broadcast_address = network_config.ipv4_broadcast->ToString();
-  }
-  if (force_overwrite || !network_config.ipv4_default_route) {
-    default_route = network_config.ipv4_default_route;
-  }
-  if (force_overwrite || network_config.ipv6_blackhole_route) {
-    blackhole_ipv6 = network_config.ipv6_blackhole_route;
+  if (family == net_base::IPFamily::kIPv6) {
+    if (!network_config.ipv6_addresses.empty()) {
+      // IPConfig only supports one address.
+      address = network_config.ipv6_addresses[0].address().ToString();
+      subnet_prefix = network_config.ipv6_addresses[0].prefix_length();
+    }
+    if (network_config.ipv6_gateway) {
+      gateway = network_config.ipv6_gateway->ToString();
+    }
   }
 
   if (force_overwrite || !network_config.included_route_prefixes.empty()) {
     inclusion_list = {};
-    std::transform(network_config.included_route_prefixes.begin(),
-                   network_config.included_route_prefixes.end(),
-                   std::back_inserter(inclusion_list),
-                   [](net_base::IPCIDR cidr) { return cidr.ToString(); });
+    for (const auto& item : network_config.included_route_prefixes) {
+      if (item.GetFamily() == family) {
+        inclusion_list.push_back(item.ToString());
+      }
+    }
   }
   if (force_overwrite || !network_config.excluded_route_prefixes.empty()) {
     exclusion_list = {};
-    std::transform(network_config.excluded_route_prefixes.begin(),
-                   network_config.excluded_route_prefixes.end(),
-                   std::back_inserter(exclusion_list),
-                   [](net_base::IPCIDR cidr) { return cidr.ToString(); });
+    for (const auto& item : network_config.excluded_route_prefixes) {
+      if (item.GetFamily() == family) {
+        exclusion_list.push_back(item.ToString());
+      }
+    }
   }
 
   if (network_config.mtu) {
@@ -280,16 +295,18 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
 
   if (force_overwrite || !network_config.dns_servers.empty()) {
     dns_servers = {};
-    std::transform(network_config.dns_servers.begin(),
-                   network_config.dns_servers.end(),
-                   std::back_inserter(dns_servers),
-                   [](net_base::IPAddress dns) { return dns.ToString(); });
+    for (const auto& item : network_config.dns_servers) {
+      if (item.GetFamily() == family) {
+        dns_servers.push_back(item.ToString());
+      }
+    }
   }
   if (force_overwrite || !network_config.dns_search_domains.empty()) {
     domain_search = network_config.dns_search_domains;
   }
 
-  if (force_overwrite || !network_config.rfc3442_routes.empty()) {
+  if (family == net_base::IPFamily::kIPv4 &&
+      (force_overwrite || !network_config.rfc3442_routes.empty())) {
     dhcp_classless_static_routes = {};
     std::transform(
         network_config.rfc3442_routes.begin(),
@@ -350,8 +367,9 @@ const RpcIdentifier& IPConfig::GetRpcIdentifier() const {
 }
 
 void IPConfig::ApplyNetworkConfig(const NetworkConfig& config,
-                                  bool force_overwrite) {
-  properties_.UpdateFromNetworkConfig(config, force_overwrite);
+                                  bool force_overwrite,
+                                  net_base::IPFamily family) {
+  properties_.UpdateFromNetworkConfig(config, force_overwrite, family);
   EmitChanges();
 }
 

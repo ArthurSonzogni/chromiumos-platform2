@@ -41,8 +41,8 @@ class MockNetwork : public Network {
   MOCK_METHOD(bool, HasInternetConnectivity, (), (const, override));
 
   MOCK_METHOD(void,
-              set_link_protocol_ipv4_properties,
-              (std::unique_ptr<IPConfig::Properties>),
+              set_link_local_protocol_network_config,
+              (std::unique_ptr<NetworkConfig>),
               (override));
 
   MOCK_METHOD(void,

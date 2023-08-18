@@ -48,12 +48,14 @@ class IPConfig {
     static NetworkConfig ToNetworkConfig(const Properties* ipv4_prop,
                                          const Properties* ipv6_prop);
 
-    // Applies all non-empty properties in |network_config| to this object. This
-    // function assumes that |this| is an IPv4 config. When |force_overwrite| is
-    // false, field will be kept unchanged if the corresponding field in
-    // |network_config| is empty.
-    void UpdateFromNetworkConfig(const NetworkConfig& network_config,
-                                 bool force_overwrite);
+    // Applies all non-empty properties in |network_config| of |family| to this
+    // object. The |address_family| on |this| must be either empty or the same
+    // as |family|". When |force_overwrite| is false, field will be kept
+    // unchanged if the corresponding field in |network_config| is empty.
+    void UpdateFromNetworkConfig(
+        const NetworkConfig& network_config,
+        bool force_overwrite,
+        net_base::IPFamily family = net_base::IPFamily::kIPv4);
 
     std::optional<net_base::IPFamily> address_family = std::nullopt;
     std::string address;
@@ -135,7 +137,10 @@ class IPConfig {
   // When |force_overwrite| is false, field will be kept unchanged if the
   // corresponding field in |network_config| is empty. This is used in scenarios
   // such as combining IP address from static IP config with DNS from DHCP.
-  void ApplyNetworkConfig(const NetworkConfig& config, bool force_overwrite);
+  void ApplyNetworkConfig(
+      const NetworkConfig& config,
+      bool force_overwrite,
+      net_base::IPFamily family = net_base::IPFamily::kIPv4);
 
  protected:
   mockable const Properties& properties() const { return properties_; }

@@ -417,8 +417,9 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
       .WillOnce(Return(true));
   auto link_protocol_properties = std::make_unique<IPConfig::Properties>();
   link_protocol_properties->address = "2001:db8:abcd::1234";
-  network_->set_link_protocol_ipv6_properties(
-      std::move(link_protocol_properties));
+  network_->set_link_local_protocol_network_config(
+      std::make_unique<NetworkConfig>(IPConfig::Properties::ToNetworkConfig(
+          nullptr, link_protocol_properties.get())));
   network_->Start(Network::StartOptions{});
 }
 
@@ -1172,13 +1173,14 @@ class NetworkStartTest : public NetworkTest {
     if (test_opts.static_ipv4) {
       ConfigureStaticIPv4Config();
     }
-    if (test_opts.link_protocol_ipv4) {
-      network_->set_link_protocol_ipv4_properties(
-          std::make_unique<IPConfig::Properties>(ipv4_link_protocol_props_));
-    }
-    if (test_opts.link_protocol_ipv6) {
-      network_->set_link_protocol_ipv6_properties(
-          std::make_unique<IPConfig::Properties>(ipv6_link_protocol_props_));
+    if (test_opts.link_protocol_ipv4 || test_opts.link_protocol_ipv6) {
+      IPConfig::Properties* ipv6 =
+          test_opts.link_protocol_ipv6 ? &ipv6_link_protocol_props_ : nullptr;
+      IPConfig::Properties* ipv4 =
+          test_opts.link_protocol_ipv4 ? &ipv4_link_protocol_props_ : nullptr;
+      auto network_config = IPConfig::Properties::ToNetworkConfig(ipv4, ipv6);
+      network_->set_link_local_protocol_network_config(
+          std::make_unique<NetworkConfig>(std::move(network_config)));
     }
     Network::StartOptions start_opts{
         .dhcp = test_opts.dhcp ? std::make_optional(DHCPProvider::Options{})

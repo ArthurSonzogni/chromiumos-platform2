@@ -2093,8 +2093,11 @@ TEST_F(CellularTest, DefaultLinkUpStatic) {
   device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
   device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
                                    Cellular::LinkState::kDown);
-  EXPECT_CALL(*default_pdn_,
-              set_link_protocol_ipv4_properties(Pointee(ipconfig_properties)));
+
+  EXPECT_CALL(*default_pdn_, set_link_local_protocol_network_config(Pointee(
+                                 Eq(IPConfig::Properties::ToNetworkConfig(
+                                     &ipconfig_properties, nullptr)))));
+
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Eq(std::nullopt))));
 
@@ -2144,8 +2147,10 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
   default_pdn_ = network.get();
   device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
                                    Cellular::LinkState::kDown);
-  EXPECT_CALL(*default_pdn_,
-              set_link_protocol_ipv4_properties(Pointee(ipconfig_properties)));
+
+  EXPECT_CALL(*default_pdn_, set_link_local_protocol_network_config(Pointee(
+                                 Eq(IPConfig::Properties::ToNetworkConfig(
+                                     &ipconfig_properties, nullptr)))));
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Eq(std::nullopt))));
 

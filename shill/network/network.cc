@@ -121,13 +121,15 @@ void Network::Start(const Network::StartOptions& opts) {
         base::BindRepeating(&Network::OnUpdateFromSLAAC, AsWeakPtr()));
     slaac_controller_->Start(opts.link_local_address);
     ipv6_started = true;
-  } else if (link_protocol_ipv6_properties_ &&
-             !link_protocol_ipv6_properties_->address.empty()) {
+  } else if (link_local_protocol_network_config_ &&
+             !link_local_protocol_network_config_->ipv6_addresses.empty()) {
     proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
                         ProcFsStub::kIPFlagDisableIPv6, "0");
     set_ip6config(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
-    ip6config_->set_properties(*link_protocol_ipv6_properties_);
+    ip6config_->ApplyNetworkConfig(*link_local_protocol_network_config_,
+                                   /*force_overwrite=*/true,
+                                   net_base::IPFamily::kIPv6);
     dispatcher_->PostTask(FROM_HERE,
                           base::BindOnce(&Network::SetupConnection, AsWeakPtr(),
                                          ip6config_.get()));
@@ -150,16 +152,20 @@ void Network::Start(const Network::StartOptions& opts) {
     set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
                                             IPConfig::kTypeDHCP));
     dhcp_started = dhcp_controller_->RequestIP();
-  } else if (link_protocol_ipv4_properties_) {
+  } else if (link_local_protocol_network_config_ &&
+             link_local_protocol_network_config_->ipv4_address) {
     set_ipconfig(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
-    ipconfig_->set_properties(*link_protocol_ipv4_properties_);
+    ipconfig_->ApplyNetworkConfig(*link_local_protocol_network_config_,
+                                  /*force_overwrite=*/true);
   } else {
     // This could happen on IPv6-only networks.
     DCHECK(ipv6_started);
   }
 
-  if (link_protocol_ipv4_properties_ || static_network_config_.ipv4_address) {
+  if ((link_local_protocol_network_config_ &&
+       link_local_protocol_network_config_->ipv4_address) ||
+      static_network_config_.ipv4_address) {
     // If the parameters contain an IP address, apply them now and bring the
     // interface up.  When DHCP information arrives, it will supplement the
     // static information.
@@ -180,13 +186,9 @@ void Network::Start(const Network::StartOptions& opts) {
   if (static_network_config_.ipv4_address.has_value()) {
     LOG(INFO) << *this << ": has IPv4 static config " << static_network_config_;
   }
-  if (link_protocol_ipv4_properties_) {
-    LOG(INFO) << *this << ": has IPv4 link properties "
-              << *link_protocol_ipv4_properties_;
-  }
-  if (link_protocol_ipv6_properties_) {
-    LOG(INFO) << *this << ": has IPv6 link properties "
-              << *link_protocol_ipv6_properties_;
+  if (link_local_protocol_network_config_) {
+    LOG(INFO) << *this << ": has link local layer protocol config "
+              << *link_local_protocol_network_config_;
   }
 }
 
@@ -277,7 +279,6 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   if (ipconfig()) {
     set_ipconfig(nullptr);
-    link_protocol_ipv4_properties_ = {};
     ipconfig_changed = true;
   }
   if (slaac_controller_) {
@@ -286,9 +287,9 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   if (ip6config()) {
     set_ip6config(nullptr);
-    link_protocol_ipv6_properties_ = {};
     ipconfig_changed = true;
   }
+  link_local_protocol_network_config_ = nullptr;
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {
     for (auto* ev : event_handlers_) {
@@ -600,9 +601,21 @@ void Network::OnIPv6AddressChanged() {
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
   properties.dns_servers = ip6config()->properties().dns_servers;
-  if (link_protocol_ipv6_properties_ &&
-      !link_protocol_ipv6_properties_->dns_servers.empty()) {
-    properties.dns_servers = link_protocol_ipv6_properties_->dns_servers;
+  // Use DNS server from link local protocol if available. Relevant in certain
+  // celluar use case that IP address is from SLAAC but DNS is from bearer.
+  // TODO(b/269401899): Have a centralized MergeNetworkConfig() for network
+  // config from different sources.
+  if (link_local_protocol_network_config_ &&
+      !link_local_protocol_network_config_->dns_servers.empty()) {
+    std::vector<std::string> ipv6_dns;
+    for (const auto& item : link_local_protocol_network_config_->dns_servers) {
+      if (item.GetFamily() == net_base::IPFamily::kIPv6) {
+        ipv6_dns.push_back(item.ToString());
+      }
+    }
+    if (!ipv6_dns.empty()) {
+      properties.dns_servers = ipv6_dns;
+    }
   }
   ip6config()->set_properties(properties);
   for (auto* ev : event_handlers_) {
@@ -733,37 +746,37 @@ NetworkConfig Network::GetNetworkConfig() const {
 
 std::vector<net_base::IPCIDR> Network::GetAddresses() const {
   std::vector<net_base::IPCIDR> result;
+  // Addresses are returned in the order of IPv4 -> IPv6 to ensure
+  // backward-compatibility that callers can use result[0] to match legacy
+  // local() result.
+  if (ipconfig() && !ipconfig()->properties().address.empty() &&
+      ipconfig()->properties().subnet_prefix > 0) {
+    auto addr = net_base::IPCIDR::CreateFromStringAndPrefix(
+        ipconfig()->properties().address,
+        ipconfig()->properties().subnet_prefix);
+    if (!addr) {
+      LOG(ERROR) << "Invalid IP address: " << ipconfig()->properties().address
+                 << "/" << ipconfig()->properties().subnet_prefix;
+
+    } else {
+      result.push_back(*addr);
+    }
+  }
+  // link_local_protocol_network_config_->ipv4_address should already be
+  // reflected in ipconfig_.
+  if (link_local_protocol_network_config_ &&
+      !link_local_protocol_network_config_->ipv6_addresses.empty()) {
+    std::transform(
+        link_local_protocol_network_config_->ipv6_addresses.begin(),
+        link_local_protocol_network_config_->ipv6_addresses.end(),
+        std::back_inserter(result),
+        [](const net_base::IPv6CIDR& v6) { return net_base::IPCIDR(v6); });
+  }
   if (slaac_controller_) {
     for (const auto& slaac_addr : slaac_controller_->GetAddresses()) {
       result.emplace_back(slaac_addr);
     }
   }
-
-  // Addresses are returned in the order of IPv4 -> IPv6 to ensure
-  // backward-compatibility that callers can use result[0] to match legacy
-  // local() result.
-  const auto insert_addr = [&result](const std::string& addr_str, int prefix) {
-    auto addr = net_base::IPCIDR::CreateFromStringAndPrefix(addr_str, prefix);
-    if (!addr) {
-      LOG(ERROR) << "Invalid IP address: " << addr_str << "/" << prefix;
-      return;
-    }
-    result.insert(result.begin(), std::move(*addr));
-  };
-
-  if (link_protocol_ipv6_properties_ &&
-      !link_protocol_ipv6_properties_->address.empty() &&
-      link_protocol_ipv6_properties_->subnet_prefix > 0) {
-    insert_addr(link_protocol_ipv6_properties_->address,
-                link_protocol_ipv6_properties_->subnet_prefix);
-  }
-
-  if (ipconfig() && !ipconfig()->properties().address.empty() &&
-      ipconfig()->properties().subnet_prefix > 0) {
-    insert_addr(ipconfig()->properties().address,
-                ipconfig()->properties().subnet_prefix);
-  }
-  // link_protocol_ipv4_properties_ should already be reflected in ipconfig_.
   return result;
 }
 

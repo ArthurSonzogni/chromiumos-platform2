@@ -61,10 +61,12 @@ void VirtualDevice::Stop(EnabledStateChangedCallback callback) {
 void VirtualDevice::UpdateIPConfig(
     std::unique_ptr<IPConfig::Properties> ipv4_properties,
     std::unique_ptr<IPConfig::Properties> ipv6_properties) {
-  GetPrimaryNetwork()->set_link_protocol_ipv4_properties(
-      std::move(ipv4_properties));
-  GetPrimaryNetwork()->set_link_protocol_ipv6_properties(
-      std::move(ipv6_properties));
+  // TODO(b/269401899): VPNDriver to use NetworkConfig instead of
+  // IPConfig::Properties internally.
+  auto network_config = IPConfig::Properties::ToNetworkConfig(
+      ipv4_properties.get(), ipv6_properties.get());
+  GetPrimaryNetwork()->set_link_local_protocol_network_config(
+      std::make_unique<NetworkConfig>(std::move(network_config)));
   GetPrimaryNetwork()->Start(Network::StartOptions{
       .dhcp = std::nullopt,
       .accept_ra = false,

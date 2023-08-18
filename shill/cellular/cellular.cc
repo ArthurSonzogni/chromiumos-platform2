@@ -62,6 +62,7 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
+#include "shill/network/network_config.h"
 #include "shill/ppp_daemon.h"
 #include "shill/profile.h"
 #include "shill/service.h"
@@ -3623,13 +3624,14 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
 }
 
 void Cellular::NetworkInfo::Start() {
-  if (ipv6_props_) {
-    network_->set_link_protocol_ipv6_properties(
-        std::make_unique<IPConfig::Properties>(ipv6_props_.value()));
-  }
-  if (ipv4_props_) {
-    network_->set_link_protocol_ipv4_properties(
-        std::make_unique<IPConfig::Properties>(ipv4_props_.value()));
+  // TODO(b/269401899): Use NetworkConfig in NetworkInfo instead of ipv6_props_
+  // and ipv4_props_.
+  if (ipv6_props_ || ipv4_props_) {
+    IPConfig::Properties* ipv6 = ipv6_props_ ? &*ipv6_props_ : nullptr;
+    IPConfig::Properties* ipv4 = ipv4_props_ ? &*ipv4_props_ : nullptr;
+    auto network_config = IPConfig::Properties::ToNetworkConfig(ipv4, ipv6);
+    network_->set_link_local_protocol_network_config(
+        std::make_unique<NetworkConfig>(std::move(network_config)));
   }
   network_->Start(start_opts_);
 }
