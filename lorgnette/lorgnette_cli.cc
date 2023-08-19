@@ -606,6 +606,7 @@ int main(int argc, char** argv) {
     for (int i = 0; i < scanners.size(); i++) {
       std::cout << scanners[i] << std::endl;
     }
+    return 0;
 
   } else if (command == "discover") {
     std::cout << "Discovering scanners: " << std::endl;
