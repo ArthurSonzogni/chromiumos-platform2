@@ -392,7 +392,6 @@ class Cellular : public Device,
     return connect_pending_iccid_;
   }
 
-  // Property setters. TODO(b/176904580): Rename SetFoo and alphabetize.
   void SetScanningSupported(bool scanning_supported);
   void SetEquipmentId(const std::string& equipment_id);
   void SetEsn(const std::string& esn);
@@ -543,7 +542,6 @@ class Cellular : public Device,
   void CreateCapability();
   void DestroyCapability();
 
-  // TODO(b/173635024): Fix order of cellular.h and .cc methods.
   void StartModem(EnabledStateChangedCallback callback);
   void StartModemCallback(EnabledStateChangedCallback callback,
                           const Error& error);

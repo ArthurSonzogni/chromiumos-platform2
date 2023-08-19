@@ -2683,7 +2683,6 @@ void Cellular::RegisterProperties() {
   store->RegisterConstString(kPrimaryMultiplexedInterfaceProperty,
                              &primary_multiplexed_interface_);
 
-  // TODO(pprabhu): Decide whether these need their own custom setters.
   HelpRegisterConstDerivedString(kTechnologyFamilyProperty,
                                  &Cellular::GetTechnologyFamily);
   HelpRegisterConstDerivedString(kDeviceIdProperty, &Cellular::GetDeviceId);
