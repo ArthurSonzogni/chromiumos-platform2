@@ -82,8 +82,6 @@ class MobileOperatorInfo {
   // file(s). Files included earlier will take precedence over later additions.
   void ClearDatabasePaths();
   void AddDatabasePath(const base::FilePath& absolute_path);
-  // TODO(b/267804414): make this private when the bug is fixed.
-  void AddDefaultDatabasePaths();
 
   std::string GetLogPrefix(const char* func) const;
   bool Init();
@@ -194,6 +192,8 @@ class MobileOperatorInfo {
   // Query whether a mobile network operator has been successfully
   // determined.
   bool IsMobileVirtualNetworkOperatorKnown() const;
+
+  void AddDefaultDatabasePaths();
 
   // ///////////////////////////////////////////////////////////////////////////
   // Data.
