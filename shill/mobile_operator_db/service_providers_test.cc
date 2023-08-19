@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <re2/re2.h>
 
+#include "base/containers/contains.h"
 #include "shill/metrics.h"
 #include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 #include "shill/protobuf_lite_streams.h"
@@ -373,6 +374,36 @@ TEST_F(ServiceProvidersTest, CheckForUnusedApns) {
   for (auto mvno_mno_pair : mvnos_) {
     auto mvno = mvno_mno_pair.first;
     check_for_unused_apns("MVNO", mvno->data());
+  }
+}
+
+TEST_F(ServiceProvidersTest, CheckThatDunAsDefaultHasRequiredApn) {
+  // If `use_dun_apn_as_default` is set, a DUN APN has to be marked as
+  // `is_required_by_carrier_spec`, otherwise there will be no DUN APN when
+  // CustomApnList is used.
+  auto check_dun_apn = [](const std::string& mno_mvno,
+                          const ::shill::mobile_operator_db::Data& data) {
+    if (!data.use_dun_apn_as_default())
+      return;
+    for (int i = 0; i < data.mobile_apn_size(); i++) {
+      auto mobile_apn = &data.mobile_apn()[i];
+      if (base::Contains(mobile_apn->type(),
+                         shill::mobile_operator_db::MobileAPN_ApnType_DUN) &&
+          mobile_apn->is_required_by_carrier_spec())
+        return;
+    }
+    // No match found.
+    ASSERT_TRUE(false)
+        << mno_mvno << " with uuid: " << data.uuid()
+        << " uses use_dun_apn_as_default without a required DUN APN";
+  };
+
+  for (const auto& mno : database_->mno()) {
+    check_dun_apn("MNO", mno.data());
+  }
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    check_dun_apn("MVNO", mvno->data());
   }
 }
 
