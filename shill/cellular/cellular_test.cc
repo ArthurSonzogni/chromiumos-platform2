@@ -2646,11 +2646,12 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   service->SetLastGoodApn(Stringmap());
   default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
-  // TODO(b/267804414): Include the fallback APN when the
-  // |modb_required_apn_exists| is true.
-  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  ASSERT_EQ(attach_apn_try_list.size(), 4);
   // Modem APNs are not excluded
-  EXPECT_EQ(attach_apn_try_list[0], apn_required);
+  EXPECT_EQ(attach_apn_try_list[0], apn_modem);
+  EXPECT_EQ(attach_apn_try_list[1], apn_required);
+  EXPECT_EQ(attach_apn_try_list[2], attach_empty_apn);
+  EXPECT_EQ(attach_apn_try_list[3], apn_modem);
   ASSERT_EQ(default_apn_try_list.size(), 4);
   EXPECT_EQ(default_apn_try_list[0], apn_modem);
   EXPECT_EQ(default_apn_try_list[1], apn_modb);
@@ -2747,11 +2748,12 @@ TEST_F(CellularTest, BuildApnTryListSetCustomApnList) {
   service->SetLastGoodApn(Stringmap());
   default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
-  // TODO(b/267804414): Include the fallback APN when the
-  // |modb_required_apn_exists| is true.
-  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  ASSERT_EQ(attach_apn_try_list.size(), 4);
   // Modem APNs are not excluded
-  EXPECT_EQ(attach_apn_try_list[0], apn_required);
+  EXPECT_EQ(attach_apn_try_list[0], apn_modem);
+  EXPECT_EQ(attach_apn_try_list[1], apn_required);
+  EXPECT_EQ(attach_apn_try_list[2], attach_empty_apn);
+  EXPECT_EQ(attach_apn_try_list[3], apn_modem);
   // CustomApnList has exclusive priority if no required APNs exist.
   ASSERT_EQ(default_apn_try_list.size(), 3);
   EXPECT_EQ(default_apn_try_list[0], apnQ);
@@ -2855,8 +2857,9 @@ TEST_F(CellularTest, BuildTetheringApnTryList) {
   device_->SetApnList(apn_list);
 
   dun_apn_try_list = device_->BuildTetheringApnTryList();
-  ASSERT_EQ(dun_apn_try_list.size(), 1);
-  EXPECT_EQ(dun_apn_try_list[0], apn_modb);
+  ASSERT_EQ(dun_apn_try_list.size(), 2);
+  EXPECT_EQ(dun_apn_try_list[0], apn_modem);
+  EXPECT_EQ(dun_apn_try_list[1], apn_modb);
 }
 
 TEST_F(CellularTest, CompareApns) {

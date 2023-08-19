@@ -2913,11 +2913,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   }
   // Ensure all Modem APNs are added before MODB APNs.
   for (auto apn : apn_list_) {
-    // TODO(b/267804414): Include modem APNs when the
-    // |modb_required_apn_exists| is true. We need to exclude them for now to
-    // enforce a DUN APN until multiple APNs are supported.
-    if (!ApnList::IsApnType(apn, apn_type) ||
-        (modb_required_apn_exists && !IsRequiredByCarrierApn(apn)))
+    if (!ApnList::IsApnType(apn, apn_type))
       continue;
     DCHECK(base::Contains(apn, kApnSourceProperty));
     // Verify all APNs are either from the Modem or MODB.
@@ -2960,11 +2956,8 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
     }
   }
   // Add fallback empty APN as a last try for Default and Attach
-  // TODO(b/267804414): Include the fallback APN when the
-  // |modb_required_apn_exists| is true. We need to exclude it for now to
-  // enforce a DUN APN until multiple APNs are supported.
-  if (!modb_required_apn_exists && (apn_type == ApnList::ApnType::kDefault ||
-                                    apn_type == ApnList::ApnType::kAttach)) {
+  if (apn_type == ApnList::ApnType::kDefault ||
+      apn_type == ApnList::ApnType::kAttach) {
     Stringmap empty_apn = BuildFallbackEmptyApn(apn_type);
     apn_try_list.push_back(empty_apn);
     bool is_same_as_last_good_apn =
