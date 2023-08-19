@@ -101,7 +101,7 @@ std::optional<GscToolOutput> GetDeviceInfoFromGSC() {
   for (const auto& arg : args) {
     process.AddArg(arg);
   }
-  process.RedirectOutput(output_path.value().c_str());
+  process.RedirectOutput(output_path);
 
   if (!process.Start()) {
     LOG(ERROR) << "Failed to start gsctool process";

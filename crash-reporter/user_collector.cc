@@ -506,7 +506,7 @@ bool UserCollector::RunCoreToMinidump(const FilePath& core_path,
                                       const FilePath& temp_directory) {
   FilePath output_path = temp_directory.Append("output");
   brillo::ProcessImpl core2md;
-  core2md.RedirectOutput(output_path.value());
+  core2md.RedirectOutput(output_path);
   core2md.AddArg(kCoreToMinidumpConverterPath);
   core2md.AddArg(core_path.value());
   core2md.AddArg(procfs_directory.value());

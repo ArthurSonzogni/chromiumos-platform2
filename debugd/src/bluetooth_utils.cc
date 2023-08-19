@@ -77,7 +77,7 @@ void GetBluetoothBqr() {
   sp.AddArg(kBtmonCommand);
   sp.AddArg("--analyze");
   sp.AddArg(btsnoop_outfile);
-  sp.RedirectUsingFile(STDOUT_FILENO, std::string(report_file));
+  sp.RedirectUsingFile(STDOUT_FILENO, base::FilePath(report_file));
   ret = sp.Run();
   if (ret) {
     PLOG(WARNING) << "Failed to btmon analyze " << btsnoop_outfile

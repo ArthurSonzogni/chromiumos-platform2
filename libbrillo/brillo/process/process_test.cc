@@ -110,7 +110,7 @@ class ProcessTest : public ::testing::Test {
  public:
   void SetUp() {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    output_file_ = temp_dir_.GetPath().Append("fork_out").value();
+    output_file_ = temp_dir_.GetPath().Append("fork_out");
     process_.RedirectOutput(output_file_);
     ClearLog();
   }
@@ -127,7 +127,7 @@ class ProcessTest : public ::testing::Test {
 
   ProcessImpl process_;
   std::vector<const char*> args_;
-  std::string output_file_;
+  base::FilePath output_file_;
   base::ScopedTempDir temp_dir_;
 };
 
@@ -135,7 +135,7 @@ TEST_F(ProcessTest, Basic) {
   process_.AddArg(kBinEcho);
   process_.AddArg("hello world");
   EXPECT_EQ(0, process_.Run());
-  ExpectFileEquals("hello world\n", output_file_.c_str());
+  ExpectFileEquals("hello world\n", output_file_.value().c_str());
   EXPECT_EQ("", GetLog());
 }
 
@@ -143,38 +143,38 @@ TEST_F(ProcessTest, AddStringOption) {
   process_.AddArg(kBinEcho);
   process_.AddStringOption("--hello", "world");
   EXPECT_EQ(0, process_.Run());
-  ExpectFileEquals("--hello world\n", output_file_.c_str());
+  ExpectFileEquals("--hello world\n", output_file_.value().c_str());
 }
 
 TEST_F(ProcessTest, AddIntValue) {
   process_.AddArg(kBinEcho);
   process_.AddIntOption("--answer", 42);
   EXPECT_EQ(0, process_.Run());
-  ExpectFileEquals("--answer 42\n", output_file_.c_str());
+  ExpectFileEquals("--answer 42\n", output_file_.value().c_str());
 }
 
 TEST_F(ProcessTest, NonZeroReturnValue) {
   process_.AddArg(kBinFalse);
   EXPECT_EQ(1, process_.Run());
-  ExpectFileEquals("", output_file_.c_str());
+  ExpectFileEquals("", output_file_.value().c_str());
   EXPECT_EQ("", GetLog());
 }
 
 TEST_F(ProcessTest, RedirectInputDevNull) {
   process_.AddArg(kBinCat);
-  process_.RedirectInput("/dev/null");
+  process_.RedirectInput(base::FilePath("/dev/null"));
   EXPECT_EQ(0, process_.Run());
 }
 
 TEST_F(ProcessTest, BadInputFile) {
   process_.AddArg(kBinCat);
-  process_.RedirectInput("/bad/path");
+  process_.RedirectInput(base::FilePath("/bad/path"));
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
 }
 
 TEST_F(ProcessTest, BadOutputFile) {
   process_.AddArg(kBinEcho);
-  process_.RedirectOutput("/bad/path");
+  process_.RedirectOutput(base::FilePath("/bad/path"));
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
 }
 
@@ -189,7 +189,7 @@ void ProcessTest::CheckStderrCaptured() {
   process_.AddArg("-c");
   process_.AddArg("echo errormessage 1>&2 && exit 1");
   EXPECT_EQ(1, process_.Run());
-  EXPECT_TRUE(base::ReadFileToString(FilePath(output_file_), &contents));
+  EXPECT_TRUE(base::ReadFileToString(output_file_, &contents));
   EXPECT_NE(std::string::npos, contents.find("errormessage"));
   EXPECT_EQ("", GetLog());
 }
@@ -260,7 +260,7 @@ FilePath ProcessTest::GetFdPath(int fd) {
 
 TEST_F(ProcessTest, RedirectStderrUsingPipe) {
   std::string contents;
-  process_.RedirectOutput("");
+  process_.RedirectOutput(base::FilePath(""));
   process_.AddArg(kBinSh);
   process_.AddArg("-c");
   process_.AddArg("echo errormessage >&2 && exit 1");
@@ -279,7 +279,7 @@ TEST_F(ProcessTest, RedirectStderrUsingPipe) {
 TEST_F(ProcessTest, RedirectStderrUsingPipeWhenPreviouslyClosed) {
   int saved_stderr = dup(STDERR_FILENO);
   close(STDERR_FILENO);
-  process_.RedirectOutput("");
+  process_.RedirectOutput(base::FilePath(""));
   process_.AddArg(kBinCp);
   process_.RedirectUsingPipe(STDERR_FILENO, false);
   EXPECT_FALSE(process_.Start());
@@ -289,7 +289,7 @@ TEST_F(ProcessTest, RedirectStderrUsingPipeWhenPreviouslyClosed) {
 
 TEST_F(ProcessTest, RedirectStdoutUsingPipe) {
   std::string contents;
-  process_.RedirectOutput("");
+  process_.RedirectOutput(base::FilePath(""));
   process_.AddArg(kBinEcho);
   process_.AddArg("hello world\n");
   process_.RedirectUsingPipe(STDOUT_FILENO, false);
@@ -316,7 +316,7 @@ TEST_F(ProcessTest, RedirectStdinUsingPipe) {
   EXPECT_TRUE(base::WriteFile(GetFdPath(write_fd), kMessage, strlen(kMessage)));
   close(write_fd);
   EXPECT_EQ(0, process_.Wait());
-  ExpectFileEquals(kMessage, output_file_.c_str());
+  ExpectFileEquals(kMessage, output_file_.value().c_str());
 }
 
 TEST_F(ProcessTest, WithSameUid) {
@@ -339,7 +339,7 @@ TEST_F(ProcessTest, WithIllegalUid) {
   process_.SetUid(0);
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
   std::string contents;
-  EXPECT_TRUE(base::ReadFileToString(FilePath(output_file_), &contents));
+  EXPECT_TRUE(base::ReadFileToString(output_file_, &contents));
   EXPECT_NE(std::string::npos, contents.find("Unable to set UID to 0: "));
 }
 
@@ -349,7 +349,7 @@ TEST_F(ProcessTest, WithIllegalGid) {
   process_.SetGid(0);
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
   std::string contents;
-  EXPECT_TRUE(base::ReadFileToString(FilePath(output_file_), &contents));
+  EXPECT_TRUE(base::ReadFileToString(output_file_, &contents));
   EXPECT_NE(std::string::npos, contents.find("Unable to set GID to 0: "));
 }
 
@@ -388,9 +388,9 @@ TEST_F(ProcessTest, ProcessExists) {
 
 TEST_F(ProcessTest, ResetPidByFile) {
   FilePath pid_path = temp_dir_.GetPath().Append("pid");
-  EXPECT_FALSE(process_.ResetPidByFile(pid_path.value()));
+  EXPECT_FALSE(process_.ResetPidByFile(pid_path));
   EXPECT_TRUE(base::WriteFile(pid_path, "456\n", 4));
-  EXPECT_TRUE(process_.ResetPidByFile(pid_path.value()));
+  EXPECT_TRUE(process_.ResetPidByFile(pid_path));
   EXPECT_EQ(456, process_.pid());
   // The purpose of this unit test is to check if Process::ResetPidByFile() can
   // properly read a pid from a file. We don't really want to kill the process

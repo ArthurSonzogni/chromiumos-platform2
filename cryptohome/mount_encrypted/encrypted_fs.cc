@@ -169,7 +169,7 @@ void Dumpe2fs(const base::FilePath& device_path) {
   dumpe2fs.AddArg("/sbin/dumpe2fs");
   dumpe2fs.AddArg("-fh");
   dumpe2fs.AddArg(device_path.value());
-  dumpe2fs.RedirectOutput(kDumpe2fsLogPath);
+  dumpe2fs.RedirectOutput(base::FilePath(kDumpe2fsLogPath));
 
   dumpe2fs.Run();
 }

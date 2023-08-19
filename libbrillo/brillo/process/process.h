@@ -54,10 +54,12 @@ class BRILLO_EXPORT Process {
 
   // Redirects to read stdin from |input_file|. |input_file| must not be
   // a symlink.
+  virtual void RedirectInput(const base::FilePath& input_file) = 0;
   virtual void RedirectInput(const std::string& input_file) = 0;
 
   // Redirects stderr and stdout to |output_file|. |output_file| must not be
   // a symlink.
+  virtual void RedirectOutput(const base::FilePath& output_file) = 0;
   virtual void RedirectOutput(const std::string& output_file) = 0;
 
   // Redirect stderr and stdout to memfd, use |combine| to combine stderr and
@@ -67,7 +69,7 @@ class BRILLO_EXPORT Process {
   // Indicates we want to redirect |child_fd| in the child process's
   // file table to |output_file|.
   virtual void RedirectUsingFile(int child_fd,
-                                 const std::string& output_file) = 0;
+                                 const base::FilePath& output_file) = 0;
 
   // Indicates we want to redirect |child_fd| in the child process's
   // file table to a memfd.
@@ -111,7 +113,7 @@ class BRILLO_EXPORT Process {
   // Apply a syscall filter to the process using the policy file at |path|.
   // NOTE: supporting this sandboxing feature is optional (provide no-op
   // implementation if your Process implementation does not support this).
-  virtual void ApplySyscallFilter(const std::string& path) = 0;
+  virtual void ApplySyscallFilter(const base::FilePath& path) = 0;
 
   // Enter new PID namespace when this process is run.
   // NOTE: supporting this sandboxing feature is optional (provide no-op
@@ -177,7 +179,7 @@ class BRILLO_EXPORT Process {
 
   // Same as Reset but reads the pid from |pid_file|.  Returns false
   // only when the file cannot be read/parsed.
-  virtual bool ResetPidByFile(const std::string& pid_file) = 0;
+  virtual bool ResetPidByFile(const base::FilePath& pid_file) = 0;
 
   // Releases the process so that on destruction, the process is not killed.
   virtual pid_t Release() = 0;
@@ -197,10 +199,13 @@ class BRILLO_EXPORT ProcessImpl : public Process {
 
   virtual void AddArg(const std::string& arg);
   virtual void RedirectDevNull(int child_fd);
+  virtual void RedirectInput(const base::FilePath& input_file);
   virtual void RedirectInput(const std::string& input_file);
+  virtual void RedirectOutput(const base::FilePath& output_file);
   virtual void RedirectOutput(const std::string& output_file);
   virtual void RedirectOutputToMemory(bool combine);
-  virtual void RedirectUsingFile(int child_fd, const std::string& output_file);
+  virtual void RedirectUsingFile(int child_fd,
+                                 const base::FilePath& output_file);
   virtual void RedirectUsingMemory(int child_fd);
   virtual void RedirectUsingPipe(int child_fd, bool is_input);
   virtual void BindFd(int parent_fd, int child_fd);
@@ -209,7 +214,7 @@ class BRILLO_EXPORT ProcessImpl : public Process {
   virtual void SetGid(gid_t gid);
   virtual void SetPgid(pid_t pgid);
   virtual void SetCapabilities(uint64_t capmask);
-  virtual void ApplySyscallFilter(const std::string& path);
+  virtual void ApplySyscallFilter(const base::FilePath& path);
   virtual void EnterNewPidNamespace();
   virtual void SetInheritParentSignalMask(bool inherit);
   virtual void SetPreExecCallback(PreExecCallback cb);
@@ -223,7 +228,7 @@ class BRILLO_EXPORT ProcessImpl : public Process {
   virtual pid_t pid() const;
   virtual bool Kill(int signal, int timeout);
   virtual void Reset(pid_t pid);
-  virtual bool ResetPidByFile(const std::string& pid_file);
+  virtual bool ResetPidByFile(const base::FilePath& pid_file);
   virtual pid_t Release();
 
  protected:
@@ -253,14 +258,13 @@ class BRILLO_EXPORT ProcessImpl : public Process {
     StandardFileDescriptorInfo()
         : parent_fd_(-1),
           type_(FileDescriptorRedirectType::kIgnore),
-          filename_("") {}
+          filename_(base::FilePath("")) {}
     // (Optional) Parent file descriptor, only exists for kMemory.
     int parent_fd_;
     // File descriptor redirect type.
     FileDescriptorRedirectType type_;
     // (Optional) Filename if the type is kFile.
-    // TODO(sarthakkukreti): Switch to using base::FilePath.
-    std::string filename_;
+    base::FilePath filename_;
   };
 
   void UpdatePid(pid_t new_pid);

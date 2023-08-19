@@ -1275,7 +1275,7 @@ bool CrashCollector::GetMultipleLogContents(
     brillo::ProcessImpl diag_process;
     diag_process.AddArg(kShellPath);
     diag_process.AddStringOption("-c", command);
-    diag_process.RedirectOutput(raw_output_file.value());
+    diag_process.RedirectOutput(raw_output_file);
 
     const int result = diag_process.Run();
 

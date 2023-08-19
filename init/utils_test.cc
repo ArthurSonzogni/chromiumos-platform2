@@ -110,7 +110,7 @@ class CgptTest : public testing::Test {
     brillo::ProcessImpl sfdisk;
     sfdisk.AddArg("/sbin/sfdisk");
     sfdisk.AddArg(test_image_path_.value());
-    sfdisk.RedirectInput(sfdisk_input_path.value());
+    sfdisk.RedirectInput(sfdisk_input_path);
     ASSERT_EQ(sfdisk.Run(), 0);
   }
 

@@ -40,9 +40,10 @@ namespace {
 
 // This process is used to open a file and dup2() into a file descriptor in the
 // child process after fork().
-void OpenFileAndDup2Fd(const std::string& filename, int fd) {
-  int output_handle = HANDLE_EINTR(
-      open(filename.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW, 0666));
+void OpenFileAndDup2Fd(const base::FilePath& filename, int fd) {
+  int output_handle =
+      HANDLE_EINTR(open(filename.value().c_str(),
+                        O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW, 0666));
   if (output_handle < 0) {
     PLOG(ERROR) << "Could not create " << filename;
     // Avoid exit() to avoid atexit handlers from parent.
@@ -86,17 +87,25 @@ void ProcessImpl::AddArg(const std::string& arg) {
 }
 
 void ProcessImpl::RedirectDevNull(int child_fd) {
-  RedirectUsingFile(child_fd, "/dev/null");
+  RedirectUsingFile(child_fd, base::FilePath("/dev/null"));
 }
 
-void ProcessImpl::RedirectInput(const std::string& input_file) {
+void ProcessImpl::RedirectInput(const base::FilePath& input_file) {
   stdin_.type_ = FileDescriptorRedirectType::kFile;
   stdin_.filename_ = input_file;
 }
 
-void ProcessImpl::RedirectOutput(const std::string& output_file) {
+void ProcessImpl::RedirectInput(const std::string& input_file) {
+  RedirectInput(base::FilePath(input_file));
+}
+
+void ProcessImpl::RedirectOutput(const base::FilePath& output_file) {
   RedirectUsingFile(STDOUT_FILENO, output_file);
   RedirectUsingFile(STDERR_FILENO, output_file);
+}
+
+void ProcessImpl::RedirectOutput(const std::string& output_file) {
+  RedirectOutput(base::FilePath(output_file));
 }
 
 void ProcessImpl::RedirectOutputToMemory(bool combine) {
@@ -110,7 +119,7 @@ void ProcessImpl::RedirectOutputToMemory(bool combine) {
 }
 
 void ProcessImpl::RedirectUsingFile(int child_fd,
-                                    const std::string& output_file) {
+                                    const base::FilePath& output_file) {
   switch (child_fd) {
     case STDOUT_FILENO:
       stdout_.type_ = FileDescriptorRedirectType::kFile;
@@ -198,7 +207,7 @@ void ProcessImpl::SetCapabilities(uint64_t /*capmask*/) {
   return;
 }
 
-void ProcessImpl::ApplySyscallFilter(const std::string& /*path*/) {
+void ProcessImpl::ApplySyscallFilter(const base::FilePath& /*path*/) {
   // No-op, since ProcessImpl does not support sandboxing.
   return;
 }
@@ -401,8 +410,8 @@ bool ProcessImpl::Start() {
 
     if (stdin_.type_ == FileDescriptorRedirectType::kFile &&
         !stdin_.filename_.empty()) {
-      int input_handle = HANDLE_EINTR(
-          open(stdin_.filename_.c_str(), O_RDONLY | O_NOFOLLOW | O_NOCTTY));
+      int input_handle = HANDLE_EINTR(open(stdin_.filename_.value().c_str(),
+                                           O_RDONLY | O_NOFOLLOW | O_NOCTTY));
       if (input_handle < 0) {
         PLOG(ERROR) << "Could not open " << stdin_.filename_;
         // Avoid exit() to avoid atexit handlers from parent.
@@ -582,9 +591,9 @@ void ProcessImpl::Reset(pid_t new_pid) {
   UpdatePid(new_pid);
 }
 
-bool ProcessImpl::ResetPidByFile(const std::string& pid_file) {
+bool ProcessImpl::ResetPidByFile(const base::FilePath& pid_file) {
   std::string contents;
-  if (!base::ReadFileToString(base::FilePath(pid_file), &contents)) {
+  if (!base::ReadFileToString(pid_file, &contents)) {
     LOG(ERROR) << "Could not read pid file" << pid_file;
     return false;
   }

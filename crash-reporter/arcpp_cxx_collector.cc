@@ -422,7 +422,7 @@ bool GetAbiMigrationState(std::string* state) {
     LOG(ERROR) << "Fail to create tmp file to receive result from getprop cmd.";
     return false;
   }
-  androidsh.RedirectOutput(temp_file.value());
+  androidsh.RedirectOutput(temp_file);
   int result = androidsh.Run();
   if (result == 0) {
     if (!base::ReadFileToString(temp_file, state)) {

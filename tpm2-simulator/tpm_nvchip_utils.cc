@@ -44,7 +44,7 @@ bool Tune2Fs(const base::FilePath& file, const std::vector<std::string>& opts) {
   tune_process.SetCloseUnusedFileDescriptors(true);
 
   // Avoid polluting the parent process' stdout.
-  tune_process.RedirectOutput("/dev/null");
+  tune_process.RedirectOutput(base::FilePath("/dev/null"));
 
   int rc = tune_process.Run();
   if (rc != 0) {
@@ -67,7 +67,7 @@ bool FormatExt4(const base::FilePath& file) {
   format_process.SetCloseUnusedFileDescriptors(true);
 
   // Avoid polluting the parent process' stdout.
-  format_process.RedirectOutput("/dev/null");
+  format_process.RedirectOutput(base::FilePath("/dev/null"));
 
   int rc = format_process.Run();
   if (rc != 0) {
@@ -97,7 +97,7 @@ bool MountLoopbackFile(const base::FilePath& file,
   mount_process.SetCloseUnusedFileDescriptors(true);
 
   // Avoid polluting the parent process' stdout.
-  mount_process.RedirectOutput("/dev/null");
+  mount_process.RedirectOutput(base::FilePath("/dev/null"));
 
   int rc = mount_process.Run();
   if (rc != 0) {
@@ -131,7 +131,7 @@ bool IncreaseNVChipSize(const base::FilePath& chip_path, size_t size) {
   e2fsck_process.AddArg("-f");
   e2fsck_process.AddArg(chip_path.value());
   e2fsck_process.SetCloseUnusedFileDescriptors(true);
-  e2fsck_process.RedirectOutput("/dev/null");
+  e2fsck_process.RedirectOutput(base::FilePath("/dev/null"));
   // Ignore the result of e2fsck.
   e2fsck_process.Run();
 
@@ -140,7 +140,7 @@ bool IncreaseNVChipSize(const base::FilePath& chip_path, size_t size) {
   resize2fs_process.AddArg("-f");
   resize2fs_process.AddArg(chip_path.value());
   resize2fs_process.SetCloseUnusedFileDescriptors(true);
-  resize2fs_process.RedirectOutput("/dev/null");
+  resize2fs_process.RedirectOutput(base::FilePath("/dev/null"));
   if (resize2fs_process.Run() != 0) {
     LOG(ERROR) << "Failed to resize2fs the NVChip.";
     return false;

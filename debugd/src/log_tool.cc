@@ -1052,7 +1052,7 @@ bool Log::StartToGetLogData(std::unique_ptr<SandboxedProcess>& child_proc,
 
   child_proc->AddArg(kShell);
   child_proc->AddStringOption("-c", data_);
-  child_proc->RedirectOutput(output_file_name.value());
+  child_proc->RedirectOutput(output_file_name);
 
   return child_proc->Start();
 }

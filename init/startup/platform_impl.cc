@@ -196,7 +196,7 @@ bool Platform::RunHiberman(const base::FilePath& output_file) {
   hiberman.AddArg("/usr/sbin/hiberman");
   hiberman.AddArg("resume-init");
   hiberman.AddArg("-v");
-  hiberman.RedirectOutput(output_file.value());
+  hiberman.RedirectOutput(output_file);
   int ret = hiberman.Run();
   if (ret != 0) {
     PLOG(WARNING) << "hiberman failed with code " << ret;

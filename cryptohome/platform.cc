@@ -1121,7 +1121,7 @@ bool Platform::ReportFilesystemDetails(const FilePath& filesystem,
     return false;
   }
 
-  process.RedirectOutput(logfile.value());
+  process.RedirectOutput(logfile);
   process.AddArg(kPathTune2fs);
   process.AddArg("-l");
   process.AddArg(device);
@@ -1334,7 +1334,7 @@ bool Platform::FormatExt4(const base::FilePath& file,
   format_process.SetCloseUnusedFileDescriptors(true);
 
   // Avoid polluting the parent process' stdout.
-  format_process.RedirectOutput("/dev/null");
+  format_process.RedirectOutput(base::FilePath("/dev/null"));
 
   int rc = format_process.Run();
   if (rc != 0) {
@@ -1364,7 +1364,7 @@ bool Platform::Tune2Fs(const base::FilePath& file,
   tune_process.SetCloseUnusedFileDescriptors(true);
 
   // Avoid polluting the parent process' stdout.
-  tune_process.RedirectOutput("/dev/null");
+  tune_process.RedirectOutput(base::FilePath("/dev/null"));
 
   int rc = tune_process.Run();
   if (rc != 0) {

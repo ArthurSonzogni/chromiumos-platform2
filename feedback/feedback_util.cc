@@ -37,7 +37,7 @@ bool ZipString(const base::FilePath& filename,
   brillo::ProcessImpl zipprocess;
   zipprocess.AddArg(kZipProcess);
   zipprocess.AddArg(filename.value());
-  zipprocess.RedirectOutput(temp_path.value());
+  zipprocess.RedirectOutput(temp_path);
   bool succeeded = base::CreateTemporaryFile(&zip_file) && !zipprocess.Run() &&
                    base::ReadFileToString(zip_file, compressed_logs);
 
