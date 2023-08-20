@@ -7,12 +7,15 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/time/time.h>
 #include <brillo/file_utils.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "machine-id-regen/timestamp.h"
 
+using ::testing::_;
 using ::testing::Return;
 
 namespace machineidregen {
@@ -79,6 +82,53 @@ TEST_F(TimestampTest, Update) {
 
   EXPECT_EQ(true, timestamp_->update(base::Seconds(10301)));
   EXPECT_EQ(base::Seconds(10301), timestamp_->get_last_update());
+}
+
+namespace {
+
+constexpr char kAvahiServiceName[] = "org.freedesktop.Avahi";
+constexpr char kTestError[] = "test error";
+constexpr char kTestMachineId[] = "1234";
+
+class SendMachineIdToAvahiTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    dbus::Bus::Options opts;
+    opts.bus_type = dbus::Bus::SYSTEM;
+    mock_bus_ = base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options());
+    mock_avahi_proxy_ = base::MakeRefCounted<dbus::MockObjectProxy>(
+        mock_bus_.get(), kAvahiServiceName, dbus::ObjectPath("/"));
+  }
+
+  void TearDown() override {
+    mock_avahi_proxy_ = nullptr;
+    mock_bus_ = nullptr;
+  }
+
+ protected:
+  scoped_refptr<dbus::MockBus> mock_bus_;
+  scoped_refptr<dbus::MockObjectProxy> mock_avahi_proxy_;
+};
+
+}  // namespace
+
+// Test send_machine_id_to_avahi.
+TEST_F(SendMachineIdToAvahiTest, ApiTest) {
+  EXPECT_CALL(*mock_bus_.get(),
+              GetObjectProxy(kAvahiServiceName, dbus::ObjectPath("/")))
+      .WillOnce(Return(nullptr));
+  EXPECT_EQ(false, send_machine_id_to_avahi(mock_bus_, "1234"));
+
+  EXPECT_CALL(*mock_bus_.get(),
+              GetObjectProxy(kAvahiServiceName, dbus::ObjectPath("/")))
+      .WillRepeatedly(Return(mock_avahi_proxy_.get()));
+  EXPECT_CALL(*mock_avahi_proxy_.get(), CallMethodAndBlock(_, _))
+      .WillOnce(Return(base::unexpected(dbus::Error(kTestError, kTestError))));
+  EXPECT_EQ(false, send_machine_id_to_avahi(mock_bus_, kTestMachineId));
+
+  EXPECT_CALL(*mock_avahi_proxy_.get(), CallMethodAndBlock(_, _))
+      .WillOnce(Return(dbus::Response::CreateEmpty()));
+  EXPECT_EQ(true, send_machine_id_to_avahi(mock_bus_, kTestMachineId));
 }
 
 }  // namespace machineidregen

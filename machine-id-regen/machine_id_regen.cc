@@ -27,7 +27,7 @@
 #include <brillo/dbus/dbus_signal.h>
 #include <brillo/errors/error.h>
 #include <brillo/syslog_logging.h>
-#include <dbus/bus.h>
+#include <dbus/error.h>
 #include <sys/stat.h>
 #include <sys/file.h>
 
@@ -101,7 +101,7 @@ std::string generate_machine_id() {
 namespace machineidregen {
 
 bool send_machine_id_to_avahi(scoped_refptr<dbus::Bus> bus,
-                              std::string machine_id) {
+                              const std::string& machine_id) {
   dbus::ObjectProxy* proxy =
       bus->GetObjectProxy(kAvahiServiceName, dbus::ObjectPath("/"));
   if (!proxy) {
@@ -114,10 +114,10 @@ bool send_machine_id_to_avahi(scoped_refptr<dbus::Bus> bus,
   std::vector<std::string> args_keyvals;
   args_keyvals.emplace_back(machine_id);
   writer.AppendArrayOfStrings(args_keyvals);
-  dbus::ScopedDBusError error;
 
-  proxy->CallMethodAndBlockWithErrorDetails(&method_call, 10000, &error);
-  if (error.is_set()) {
+  auto result = proxy->CallMethodAndBlock(&method_call, 10000);
+  if (!result.has_value()) {
+    dbus::Error error = std::move(result.error());
     std::string error_name = error.name();
     LOG(WARNING) << kAvahiMethodName << " finished with " << error_name
                  << " error.";

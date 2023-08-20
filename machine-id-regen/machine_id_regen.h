@@ -11,11 +11,14 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <dbus/bus.h>
 #include <brillo/file_utils.h>
 #include <metrics/metrics_library.h>
 
 namespace machineidregen {
 
+bool send_machine_id_to_avahi(scoped_refptr<dbus::Bus> bus,
+                              const std::string& machine_id);
 bool regen_machine_id(const base::FilePath& state_dir,
                       const base::FilePath& machine_id_file,
                       const std::string& reason,
