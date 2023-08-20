@@ -110,8 +110,8 @@ std::string DecodeConnectionType(int type) {
   return kConnectionTypes[type];
 }
 
-// TODO(adokar): change type to std::optional<int> when available.
-int ConvertDayOfWeekStringToInt(const std::string& day_of_week_str) {
+std::optional<int> ConvertDayOfWeekStringToInt(
+    const std::string& day_of_week_str) {
   if (day_of_week_str == "Sunday")
     return 0;
   if (day_of_week_str == "Monday")
@@ -126,7 +126,7 @@ int ConvertDayOfWeekStringToInt(const std::string& day_of_week_str) {
     return 5;
   if (day_of_week_str == "Saturday")
     return 6;
-  return -1;
+  return std::nullopt;
 }
 
 bool DecodeWeeklyTimeFromValue(const base::Value::Dict& dict_value,
@@ -137,11 +137,14 @@ bool DecodeWeeklyTimeFromValue(const base::Value::Dict& dict_value,
     LOG(ERROR) << "Day of the week is absent.";
     return false;
   }
-  *day_of_week_out = ConvertDayOfWeekStringToInt(*day_of_week_str);
-  if (*day_of_week_out == -1) {
+
+  std::optional<int> day_of_week =
+      ConvertDayOfWeekStringToInt(*day_of_week_str);
+  if (!day_of_week.has_value()) {
     LOG(ERROR) << "Undefined day of the week: " << *day_of_week_str;
     return false;
   }
+  *day_of_week_out = *day_of_week;
 
   const std::optional<int> hours = dict_value.FindInt("hours");
   if (!hours.has_value() || hours < 0 || hours > 23) {
