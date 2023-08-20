@@ -5,9 +5,7 @@
 #ifndef VM_TOOLS_CONCIERGE_PLUGIN_VM_CONFIG_H_
 #define VM_TOOLS_CONCIERGE_PLUGIN_VM_CONFIG_H_
 
-namespace vm_tools {
-namespace concierge {
-namespace pvm {
+namespace vm_tools::concierge::pvm {
 
 // Path to the Parallels binaries and other assets.
 constexpr char kApplicationDir[] =
@@ -60,8 +58,6 @@ constexpr char kStatefulDir[] = "/pvm";
 
 }  // namespace plugin
 
-}  // namespace pvm
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge::pvm
 
 #endif  // VM_TOOLS_CONCIERGE_PLUGIN_VM_CONFIG_H_

@@ -20,8 +20,7 @@
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 namespace {
 
@@ -379,5 +378,4 @@ bool Service::RenamePluginVm(const std::string& owner_id,
   return true;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

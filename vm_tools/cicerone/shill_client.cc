@@ -15,8 +15,7 @@
 
 using org::chromium::flimflam::ManagerProxy;
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 ShillClient::ShillClient(scoped_refptr<dbus::Bus> bus)
     : bus_(bus),
@@ -83,5 +82,4 @@ void ShillClient::RegisterDefaultServiceChangedHandler(
   default_service_changed_callback_ = std::move(callback);
 }
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone

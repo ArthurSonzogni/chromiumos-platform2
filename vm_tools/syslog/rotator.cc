@@ -13,8 +13,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 
 // Creating a new log file for Forwarder is handled outside this code.
 
@@ -101,5 +100,4 @@ void Rotator::RotateLogFiles(const base::FilePath& root_path, int max_index) {
   }
 }
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog

@@ -14,8 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <shill/dbus-proxies.h>
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 // Listens for shill signals over D-Bus in order to identify network changes.
 class ShillClient final {
@@ -44,7 +43,6 @@ class ShillClient final {
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 };
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
 
 #endif  // VM_TOOLS_CICERONE_SHILL_CLIENT_H_

@@ -22,8 +22,7 @@
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_util.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // Maximum number of extra disks to be mounted inside the VM.
 constexpr int kMaxExtraDisks = 10;
@@ -155,7 +154,6 @@ bool CheckVmNameAndOwner(const _RequestProto& request,
   return true;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_SERVICE_COMMON_H_

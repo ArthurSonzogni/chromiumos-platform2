@@ -11,8 +11,7 @@
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 
 // Responsible for collecting log records from the VM, scrubbing them,
 // and then forwarding them to the host syslog daemon.
@@ -36,7 +35,6 @@ class Forwarder {
   bool is_socket_destination_;
 };
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog
 
 #endif  //  VM_TOOLS_SYSLOG_FORWARDER_H_

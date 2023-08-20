@@ -12,8 +12,7 @@
 
 #include <base/files/file_path.h>
 
-namespace vm_tools {
-namespace pstore_dump {
+namespace vm_tools::pstore_dump {
 
 // From fs/pstore/ram_core.c
 /**
@@ -42,7 +41,6 @@ bool GetPersistentRamBufferContent(const persistent_ram_buffer* buf,
 bool HandlePstore(const base::FilePath& path);
 bool HandlePstoreDmesg(const base::FilePath& path);
 
-}  // namespace pstore_dump
-}  // namespace vm_tools
+}  // namespace vm_tools::pstore_dump
 
 #endif  // VM_TOOLS_PSTORE_DUMP_PERSISTENT_RAM_BUFFER_H_

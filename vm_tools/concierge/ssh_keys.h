@@ -7,8 +7,7 @@
 
 #include <string>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // Gets the public key for the host (Chrome OS) for usage in the authorized
 // hosts file in a container. If the key does not exist yet it will be generated
@@ -42,7 +41,6 @@ std::string GetGuestSshPrivateKey(const std::string& cryptohome_id,
 bool EraseGuestSshKeys(const std::string& cryptohome_id,
                        const std::string& vm_name);
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_SSH_KEYS_H_

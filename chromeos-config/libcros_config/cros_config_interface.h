@@ -14,10 +14,10 @@ namespace brillo {
 // Interface definition for accessing the Chrome OS model configuration.
 class CrosConfigInterface {
  public:
-  CrosConfigInterface() {}
+  CrosConfigInterface() = default;
   CrosConfigInterface(const CrosConfigInterface&) = delete;
   CrosConfigInterface& operator=(const CrosConfigInterface&) = delete;
-  virtual ~CrosConfigInterface() {}
+  virtual ~CrosConfigInterface() = default;
 
   // Obtain a config property.
   // This returns a property for the current board model.

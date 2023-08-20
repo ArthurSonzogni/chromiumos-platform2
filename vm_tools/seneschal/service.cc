@@ -21,6 +21,7 @@
 #include <linux/vm_sockets.h>  // needs to come after sys/socket.h
 
 #include <algorithm>
+#include <ranges>
 #include <string>
 #include <utility>
 #include <vector>
@@ -52,8 +53,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace seneschal {
+namespace vm_tools::seneschal {
 namespace {
 // Path to the runtime directory where we will create server jails.
 constexpr char kRuntimeDir[] = "/run/seneschal";
@@ -217,8 +217,8 @@ Service::ServerInfo::~ServerInfo() {
   }
 
   // Now unmount everything in reverse order.
-  for (auto iter = mounts.rbegin(), end = mounts.rend(); iter != end; ++iter) {
-    if (umount(iter->c_str()) != 0) {
+  for (auto& mount : std::ranges::reverse_view(mounts)) {
+    if (umount(mount.c_str()) != 0) {
       PLOG(ERROR) << "Unable to unmount path; not deleting runtime directory";
       root_dir_.Take();
       return;
@@ -238,9 +238,7 @@ std::unique_ptr<Service> Service::Create(base::OnceClosure quit_closure) {
 }
 
 Service::Service(base::OnceClosure quit_closure)
-    : next_server_handle_(1),
-      quit_closure_(std::move(quit_closure)),
-      weak_factory_(this) {}
+    : quit_closure_(std::move(quit_closure)), weak_factory_(this) {}
 
 bool Service::Init() {
   // Set up the dbus service.
@@ -1143,24 +1141,23 @@ std::unique_ptr<dbus::Response> Service::UnsharePath(
   }
 
   // In reverse order, unmount paths.
-  for (auto iter = mount_points.rbegin(), end = mount_points.rend();
-       iter != end; ++iter) {
-    if (umount(iter->value().c_str()) != 0) {
+  for (auto& mount_point : std::ranges::reverse_view(mount_points)) {
+    if (umount(mount_point.value().c_str()) != 0) {
       // When MyFiles is shared, its MyFiles/Downloads mount propagates. It
       // seems that the kernel does not allow us to unmount MyFiles/Downloads
       // with EINVAL, and then also fails to unmount MyFiles with EBUSY even
       // when no files are open.
       if (errno == EINVAL && dst == my_files &&
-          iter->value() == my_files_downloads.value()) {
+          mount_point.value() == my_files_downloads.value()) {
         // Ignore EINVAL when unsharing MyFiles and MyFiles/Downloads fails.
         PLOG(WARNING)
             << "Unmount MyFiles/Downloads failed with EINVAL, ignoring";
         continue;
-      } else if (errno == EBUSY && iter->value() == my_files.value()) {
+      } else if (errno == EBUSY && mount_point.value() == my_files.value()) {
         // If/when unmount MyFiles fails with EBUSY, we retry with MNT_DETACH.
         PLOG(WARNING)
             << "Unmount MyFiles failed with EBUSY, attempting MNT_DETACH";
-        if (umount2(iter->value().c_str(), MNT_DETACH) == 0) {
+        if (umount2(mount_point.value().c_str(), MNT_DETACH) == 0) {
           continue;
         }
       }
@@ -1199,5 +1196,4 @@ void Service::KillServer(uint32_t handle) {
   // We reap the child process through the normal sigchld handling mechanism.
 }
 
-}  // namespace seneschal
-}  // namespace vm_tools
+}  // namespace vm_tools::seneschal

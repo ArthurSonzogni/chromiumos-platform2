@@ -14,8 +14,7 @@
 
 #include "vm_tools/common/naming.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 std::optional<base::FilePath> GetFilePathFromName(
     const std::string& cryptohome_id,
@@ -175,5 +174,4 @@ std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
   return start_vm_request_pflash_path;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

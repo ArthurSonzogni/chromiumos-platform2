@@ -11,8 +11,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 grpc::Status StartupListenerImpl::VmReady(grpc::ServerContext* ctx,
                                           const vm_tools::EmptyMessage* request,
@@ -63,5 +62,4 @@ void StartupListenerImpl::RemovePendingVm(uint32_t cid) {
   pending_vms_.erase(cid);
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

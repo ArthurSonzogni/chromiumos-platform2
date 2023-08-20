@@ -9,8 +9,7 @@
 
 #include <base/files/scoped_file.h>
 
-namespace vm_tools {
-namespace vsh {
+namespace vm_tools::vsh {
 
 // ScopedTermios is a helper class for managing termios settings,
 // namely raw/canonical mode. When an instance of this class goes
@@ -40,11 +39,10 @@ class ScopedTermios {
 
  private:
   base::ScopedFD tty_fd_;
-  bool has_termios_;
+  bool has_termios_ = false;
   struct termios saved_termios_;
 };
 
-}  // namespace vsh
-}  // namespace vm_tools
+}  // namespace vm_tools::vsh
 
 #endif  // VM_TOOLS_VSH_SCOPED_TERMIOS_H_

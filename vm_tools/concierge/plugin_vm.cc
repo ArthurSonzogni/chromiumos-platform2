@@ -36,8 +36,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 namespace {
 
 // How long we give VM to suspend.
@@ -601,8 +600,7 @@ PluginVm::PluginVm(Config config)
       iso_dir_(std::move(config.iso_dir)),
       bus_(std::move(config.bus)),
       vm_permission_service_proxy_(config.vm_permission_service_proxy),
-      vmplugin_service_proxy_(config.vmplugin_service_proxy),
-      usb_last_handle_(0) {
+      vmplugin_service_proxy_(config.vmplugin_service_proxy) {
   CHECK(vm_permission_service_proxy_);
   CHECK(vmplugin_service_proxy_);
   CHECK(base::DirectoryExists(iso_dir_));
@@ -736,5 +734,4 @@ bool PluginVm::Start(base::FilePath stateful_dir,
   return true;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

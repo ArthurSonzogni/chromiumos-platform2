@@ -16,8 +16,7 @@
 #include <vm_applications/apps.pb.h>
 #include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 class Service;
 
@@ -106,7 +105,6 @@ class TremplinListenerImpl final
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
 
 #endif  // VM_TOOLS_CICERONE_TREMPLIN_LISTENER_IMPL_H_

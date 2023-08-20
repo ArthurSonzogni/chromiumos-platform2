@@ -21,9 +21,7 @@ namespace base {
 class FilePath;
 }  // namespace base
 
-namespace vm_tools {
-namespace concierge {
-namespace pci_utils {
+namespace vm_tools::concierge::pci_utils {
 
 enum class PciDeviceType : uint8_t {
   // Discrete GPU.
@@ -62,8 +60,6 @@ bool IsDGpuPassthroughDevice(const base::FilePath& pci_device);
 
 std::vector<base::FilePath> GetPciDevicesList(PciDeviceType device_type);
 
-}  // namespace pci_utils
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge::pci_utils
 
 #endif  // VM_TOOLS_CONCIERGE_PCI_UTILS_H_

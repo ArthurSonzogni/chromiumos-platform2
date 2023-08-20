@@ -82,8 +82,7 @@ bool CheckForMockCrashReporterConsent() {
 
 }  // namespace
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 CrashListenerImpl::CrashListenerImpl(
     base::WeakPtr<vm_tools::cicerone::Service> service)
@@ -322,5 +321,4 @@ void CrashListenerImpl::GetVmStoppingOnDBusThread(const uint32_t cid,
   event->Signal();
 }
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone

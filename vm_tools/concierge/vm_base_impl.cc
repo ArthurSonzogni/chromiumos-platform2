@@ -16,8 +16,7 @@
 #include "vm_tools/concierge/crosvm_control.h"
 #include "vm_tools/concierge/vm_util.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 VmBaseImpl::VmBaseImpl(Config config)
     : network_client_(std::move(config.network_client)),
@@ -177,5 +176,4 @@ void VmBaseImpl::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
   response.set_failure_reason("Unsupported by target VM");
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

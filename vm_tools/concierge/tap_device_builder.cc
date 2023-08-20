@@ -20,8 +20,7 @@
 #include <brillo/userdb_utils.h>
 #include <chromeos/constants/vm_tools.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 namespace {
 
 // Path to the tun device.
@@ -90,5 +89,4 @@ base::ScopedFD OpenTapDevice(const std::string& ifname_in,
   return dev;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

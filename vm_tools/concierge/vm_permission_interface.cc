@@ -19,9 +19,7 @@
 
 #include "vm_tools/concierge/vm_permission_interface.h"
 
-namespace vm_tools {
-namespace concierge {
-namespace vm_permission {
+namespace vm_tools::concierge::vm_permission {
 
 namespace {
 
@@ -206,6 +204,4 @@ bool IsCameraEnabled(scoped_refptr<dbus::Bus> bus,
   return QueryVmPermission(std::move(bus), proxy, vm_token,
                            vm_permission_service::Permission::CAMERA);
 }
-}  // namespace vm_permission
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge::vm_permission

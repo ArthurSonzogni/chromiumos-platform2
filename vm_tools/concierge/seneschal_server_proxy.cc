@@ -12,8 +12,7 @@
 #include <dbus/object_path.h>
 #include <seneschal/proto_bindings/seneschal_service.pb.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // static
 std::unique_ptr<SeneschalServerProxy>
@@ -145,5 +144,4 @@ SeneschalServerProxy::~SeneschalServerProxy() {
   }
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

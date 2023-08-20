@@ -31,14 +31,12 @@ constexpr base::TimeDelta kOpenRateWindow = base::Seconds(15);
 constexpr uint32_t kOpenRateLimit = 10;
 }  // namespace
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 ContainerListenerImpl::ContainerListenerImpl(
     base::WeakPtr<vm_tools::cicerone::Service> service)
     : service_(service),
       task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
-      open_count_(0),
       open_rate_window_start_(base::TimeTicks::Now()) {}
 
 void ContainerListenerImpl::OverridePeerAddressForTesting(
@@ -815,5 +813,4 @@ grpc::Status ContainerListenerImpl::UnmountShaderCache(
   return grpc::Status(grpc::INTERNAL, error);
 }
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone

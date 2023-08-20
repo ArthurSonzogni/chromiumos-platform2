@@ -28,10 +28,7 @@
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
-namespace vm_tools {
-namespace concierge {
-namespace pvm {
-namespace helper {
+namespace vm_tools::concierge::pvm::helper {
 namespace {
 
 // Minimal set of devices needed by the helpers.
@@ -387,7 +384,4 @@ bool ToggleSharedProfile(scoped_refptr<dbus::Bus> bus,
   return true;
 }
 
-}  // namespace helper
-}  // namespace pvm
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge::pvm::helper

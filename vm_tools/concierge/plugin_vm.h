@@ -31,8 +31,7 @@
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // The CPU cgroup where all the PluginVm crosvm processes (other than vcpu)
 // should belong to.
@@ -173,7 +172,7 @@ class PluginVm final : public VmBaseImpl {
 
   // Monotonically increasing handle (port) number for USB devices passed
   // to the Plugin VM.
-  uint32_t usb_last_handle_;
+  uint32_t usb_last_handle_ = 0;
 
   // Outstanding control requests waiting to be transmitted to plugin.
   std::deque<std::pair<UsbCtrlRequest, base::ScopedFD>> usb_req_waiting_xmit_;
@@ -190,7 +189,6 @@ class PluginVm final : public VmBaseImpl {
       usb_vm_write_watcher_;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_PLUGIN_VM_H_

@@ -12,8 +12,7 @@
 
 #include "vm_tools/concierge/vm_util.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // Used to check for, and if needed enable, the conditions required for
 // untrusted VMs.
@@ -73,7 +72,6 @@ bool IsUntrustedVM(bool run_as_untrusted,
                    bool has_custom_kernel_params,
                    KernelVersionAndMajorRevision host_kernel_version);
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_UNTRUSTED_VM_UTILS_H_

@@ -15,14 +15,11 @@ namespace dbus {
 class Bus;
 }  // namespace dbus
 
-namespace org {
-namespace chromium {
+namespace org::chromium {
 class DlcServiceInterfaceProxyInterface;
 }
-}  // namespace org
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 class DlcHelper {
  public:
@@ -51,7 +48,6 @@ class DlcHelper {
       dlcservice_handle_;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_DLC_HELPER_H_

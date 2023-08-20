@@ -7,8 +7,7 @@
 
 #include <stdint.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 enum UsbRequestType : uint32_t {
   ATTACH_DEVICE,
@@ -40,7 +39,6 @@ struct UsbCtrlResponse {
   uint8_t _padding[32 - 4 - 4 - 4];
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_PLUGIN_VM_USB_H_

@@ -21,8 +21,7 @@
 
 #include "vm_tools/concierge/byte_unit.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 namespace {
 // LMKD's minfree level for killing the lowest priority apps. See
@@ -40,7 +39,6 @@ BalanceAvailableBalloonPolicy::BalanceAvailableBalloonPolicy(
     const std::string& vm)
     : critical_host_available_(critical_host_available),
       guest_available_bias_(guest_available_bias),
-      max_balloon_actual_(0),
       critical_guest_available_(MiB(400)) {
   LOG(INFO) << "BalloonInit: { "
             << "\"type\": \"BalanceAvailableBalloonPolicy\","
@@ -334,11 +332,10 @@ bool LimitCacheBalloonPolicy::DeflateBalloonToSaveProcess(
   // Determine if the kill request is within the limits
 
   uint64_t balloon_limit_for_priority = current_balloon_size_;
-  for (size_t i = 0; i < kDeflationLimitCount; i++) {
-    if (proc_oom_score <= balloon_deflation_limits_[i].oom_score_adj) {
-      balloon_limit_for_priority =
-          std::min(balloon_limit_for_priority,
-                   balloon_deflation_limits_[i].min_balloon_size);
+  for (auto& balloon_deflation_limit : balloon_deflation_limits_) {
+    if (proc_oom_score <= balloon_deflation_limit.oom_score_adj) {
+      balloon_limit_for_priority = std::min(
+          balloon_limit_for_priority, balloon_deflation_limit.min_balloon_size);
     }
   }
 
@@ -487,5 +484,4 @@ BalloonWorkingSet SumWorkingSets(const BalloonWorkingSet& lhs,
   return {ffi, 0};
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

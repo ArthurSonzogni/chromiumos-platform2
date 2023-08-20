@@ -49,8 +49,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 namespace {
 
 // Features to enable.
@@ -115,7 +114,6 @@ TerminaVm::TerminaVm(Config config)
       features_(config.features),
       stateful_device_(config.stateful_device),
       stateful_size_(config.stateful_size),
-      stateful_resize_type_(DiskResizeType::NONE),
       log_path_(std::move(config.log_path)),
       id_(config.id),
       bus_(config.bus),
@@ -1092,5 +1090,4 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   return vm;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

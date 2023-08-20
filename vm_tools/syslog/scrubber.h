@@ -9,8 +9,7 @@
 
 #include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 
 // Parses |severity| and returns a string that can be used as a valid PRI part
 // of a syslog message.
@@ -28,7 +27,6 @@ std::string ParseProtoTimestamp(const vm_tools::Timestamp& timestamp);
 // converted to "#007".
 std::string ScrubProtoContent(const std::string& content);
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog
 
 #endif  // VM_TOOLS_SYSLOG_SCRUBBER_H_

@@ -33,8 +33,7 @@
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 class ScopedWlSocket;
 
@@ -310,7 +309,7 @@ class TerminaVm final : public VmBaseImpl {
 
   // Type of disk resize currently in progress.
   // If this is NONE, then no resize is in progress right now.
-  enum DiskResizeType stateful_resize_type_;
+  enum DiskResizeType stateful_resize_type_ = DiskResizeType::NONE;
 
   // Status of the current resize operation (or most recent resize operation,
   // if no resize is currently in progress).
@@ -343,7 +342,6 @@ class TerminaVm final : public VmBaseImpl {
   std::unique_ptr<ScopedWlSocket> socket_;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_TERMINA_VM_H_

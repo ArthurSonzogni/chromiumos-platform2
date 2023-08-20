@@ -17,10 +17,7 @@ namespace dbus {
 class ObjectProxy;
 };  // namespace dbus
 
-namespace vm_tools {
-namespace concierge {
-namespace pvm {
-namespace helper {
+namespace vm_tools::concierge::pvm::helper {
 
 bool CreateVm(const VmId& vm_id, std::vector<std::string> params);
 bool DeleteVm(const VmId& vm_id);
@@ -43,9 +40,6 @@ bool ToggleSharedProfile(scoped_refptr<dbus::Bus> bus,
                          std::vector<std::string> params,
                          std::string* failure_message);
 
-}  // namespace helper
-}  // namespace pvm
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge::pvm::helper
 
 #endif  // VM_TOOLS_CONCIERGE_PLUGIN_VM_HELPER_H_

@@ -6,8 +6,8 @@
 #define VM_TOOLS_CONCIERGE_IF_METHOD_EXISTS_H_
 
 #include <type_traits>
-namespace vm_tools {
-namespace concierge {
+
+namespace vm_tools::concierge {
 
 // Check if a method exists within a class. The default template evaluates to
 // false but when &T::method can compile, the value |CONDITION_NAME<class>| will
@@ -25,7 +25,6 @@ METHOD_EXISTS_HELPER(&T::vm_name, kHasVmName);
 METHOD_EXISTS_HELPER(&T::failure_reason, kHasFailureReason);
 METHOD_EXISTS_HELPER(&T::reason, kHasReason);
 #undef METHOD_EXISTS_HELPER
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_IF_METHOD_EXISTS_H_

@@ -14,8 +14,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 namespace {
 
 // Everything is logged with the LOG_USER facility.
@@ -104,5 +103,4 @@ string ScrubProtoContent(const string& content) {
   return result;
 }
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog

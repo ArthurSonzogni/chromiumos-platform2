@@ -20,8 +20,7 @@
 
 #include "vm_tools/vsh/scoped_termios.h"
 
-namespace vm_tools {
-namespace vsh {
+namespace vm_tools::vsh {
 
 // VshForwarder encapsulates a vsh forwarder session.
 // This class is not thread-safe.
@@ -63,18 +62,17 @@ class VshForwarder {
   base::ScopedFD ptm_fd_;
   base::ScopedFD sock_fd_;
   bool inherit_env_;
-  bool interactive_;
+  bool interactive_ = true;
 
   brillo::AsynchronousSignalHandler signal_handler_;
 
   pid_t target_pid_;
-  bool exit_pending_;
+  bool exit_pending_ = false;
   int exit_code_;
   const std::string default_user_;
   const bool allow_to_switch_user_;
 };
 
-}  // namespace vsh
-}  // namespace vm_tools
+}  // namespace vm_tools::vsh
 
 #endif  // VM_TOOLS_VSH_VSH_FORWARDER_H_

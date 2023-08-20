@@ -19,8 +19,7 @@
 
 #include "vm_tools/vsh/scoped_termios.h"
 
-namespace vm_tools {
-namespace vsh {
+namespace vm_tools::vsh {
 
 // VshClient encapsulates a vsh client session.
 class VshClient {
@@ -66,7 +65,7 @@ class VshClient {
   void CancelStdinTask();
 
   base::ScopedFD sock_fd_;
-  int32_t container_shell_pid_;
+  int32_t container_shell_pid_ = 0;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> sock_watcher_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> stdin_watcher_;
 
@@ -82,7 +81,6 @@ class VshClient {
   int exit_code_;
 };
 
-}  // namespace vsh
-}  // namespace vm_tools
+}  // namespace vm_tools::vsh
 
 #endif  // VM_TOOLS_VSH_VSH_CLIENT_H_

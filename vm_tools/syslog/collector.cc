@@ -42,8 +42,7 @@ using std::string;
 
 namespace pb = google::protobuf;
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 namespace {
 
 // Maximum size the buffer can reach before logs are immediately flushed.
@@ -221,5 +220,4 @@ bool Collector::ReadOneSyslogRecord() {
   return true;
 }
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog

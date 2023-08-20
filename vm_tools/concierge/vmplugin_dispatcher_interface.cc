@@ -23,10 +23,7 @@
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
-namespace vm_tools {
-namespace concierge {
-namespace pvm {
-namespace dispatcher {
+namespace vm_tools::concierge::pvm::dispatcher {
 namespace {
 
 constexpr base::TimeDelta kVmShutdownTimeout = base::Minutes(2);
@@ -403,7 +400,4 @@ bool ParseVmToolsChangedSignal(dbus::Signal* signal,
   return true;
 }
 
-}  // namespace dispatcher
-}  // namespace pvm
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge::pvm::dispatcher

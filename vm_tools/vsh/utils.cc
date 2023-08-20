@@ -20,8 +20,7 @@
 
 using google::protobuf::MessageLite;
 
-namespace vm_tools {
-namespace vsh {
+namespace vm_tools::vsh {
 namespace {
 
 bool SendAllBytes(int sockfd, const uint8_t* buf, uint32_t buf_size) {
@@ -160,5 +159,4 @@ bool WriteKernelLogToFd(int fd,
   return ret == count;
 }
 
-}  // namespace vsh
-}  // namespace vm_tools
+}  // namespace vm_tools::vsh

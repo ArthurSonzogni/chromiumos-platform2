@@ -29,8 +29,7 @@ namespace patchpanel {
 class Client;
 }
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // See VmBaseImpl.Info.vm_memory_id
 typedef uint32_t VmMemoryId;
@@ -286,7 +285,6 @@ class VmBaseImpl {
   bool suspended_ = false;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_VM_BASE_IMPL_H_

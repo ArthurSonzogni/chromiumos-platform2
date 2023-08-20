@@ -17,8 +17,7 @@
 #include <dbus/object_proxy.h>
 #include <gtest/gtest_prod.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // Provides a proxy connection to the power manager dbus service.
 class PowerManagerClient final {
@@ -47,9 +46,9 @@ class PowerManagerClient final {
                              bool success);
 
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* power_manager_proxy_;  // owned by |bus_|
+  dbus::ObjectProxy* power_manager_proxy_ = nullptr;  // owned by |bus_|
 
-  int32_t delay_id_;
+  int32_t delay_id_ = -1;
   int32_t current_suspend_id_;
 
   base::RepeatingClosure suspend_imminent_cb_;
@@ -65,7 +64,6 @@ class PowerManagerClient final {
   FRIEND_TEST(PowerManagerClientTest, NameOwnerChanged);
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_POWER_MANAGER_CLIENT_H_

@@ -18,8 +18,7 @@
 
 #include "vm_tools/syslog/collector.h"
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 
 class LogPipeManager;
 
@@ -65,7 +64,6 @@ class HostCollector : public Collector {
   base::WeakPtrFactory<Collector> weak_factory_;
 };
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog
 
 #endif  // VM_TOOLS_SYSLOG_HOST_COLLECTOR_H_

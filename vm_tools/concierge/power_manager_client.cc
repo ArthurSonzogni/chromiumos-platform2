@@ -14,8 +14,7 @@
 #include <dbus/object_path.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 namespace {
 // How long powerd should wait for us to report suspend readiness.
 constexpr base::TimeDelta kSuspendDelayTimeout = base::Seconds(5);
@@ -27,8 +26,7 @@ constexpr int32_t kNoSuspendId = -1;
 
 PowerManagerClient::PowerManagerClient(scoped_refptr<dbus::Bus> bus)
     : bus_(bus),
-      power_manager_proxy_(nullptr),
-      delay_id_(-1),
+
       current_suspend_id_(kNoSuspendId) {
   power_manager_proxy_ = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
@@ -192,5 +190,4 @@ void PowerManagerClient::HandleSignalConnected(
                  << interface_name;
   }
 }
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

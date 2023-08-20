@@ -45,8 +45,7 @@
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/cicerone/virtual_machine.h"
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 // VM Container Service responsible for responding to DBus method calls for
 // interacting with VM containers.
@@ -931,7 +930,6 @@ class Service final {
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 };
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
 
 #endif  // VM_TOOLS_CICERONE_SERVICE_H_

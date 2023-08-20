@@ -21,8 +21,7 @@
 
 #include "vm_tools/cicerone/container.h"
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 class OsRelease;
 
@@ -419,7 +418,7 @@ class VirtualMachine {
   // Set if |tremplin_stub_| is actually a mock object set for testing. In this
   // case, we don't try to connect to tremplin even if ConnectTremplin is called
   // for some reason.
-  bool using_mock_tremplin_stub_;
+  bool using_mock_tremplin_stub_ = false;
 
   // True if the VM is expected to shutdown soon.
   bool is_stopping_ = false;
@@ -427,7 +426,6 @@ class VirtualMachine {
   base::WeakPtrFactory<VirtualMachine> weak_ptr_factory_;
 };
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
 
 #endif  // VM_TOOLS_CICERONE_VIRTUAL_MACHINE_H_

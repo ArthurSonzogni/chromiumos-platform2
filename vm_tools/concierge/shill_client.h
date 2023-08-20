@@ -14,8 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <shill/dbus-proxies.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // Listens for shill signals over D-Bus in order to identify when DNS
 // nameservers or search domains change.
@@ -69,7 +68,6 @@ class ShillClient final {
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_SHILL_CLIENT_H_

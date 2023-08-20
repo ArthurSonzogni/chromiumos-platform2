@@ -49,8 +49,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace vsh {
+namespace vm_tools::vsh {
 
 // Pick a default exit status that will make it obvious if the remote end
 // exited abnormally.
@@ -87,7 +86,6 @@ VshClient::VshClient(base::ScopedFD sock_fd,
                      base::ScopedFD stdout_fd,
                      base::ScopedFD stderr_fd)
     : sock_fd_(std::move(sock_fd)),
-      container_shell_pid_(0),
       stdout_fd_(std::move(stdout_fd)),
       stderr_fd_(std::move(stderr_fd)),
       exit_code_(kDefaultExitCode) {}
@@ -404,5 +402,4 @@ int VshClient::exit_code() const {
   return exit_code_;
 }
 
-}  // namespace vsh
-}  // namespace vm_tools
+}  // namespace vm_tools::vsh

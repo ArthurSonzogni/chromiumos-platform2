@@ -19,8 +19,7 @@
 
 namespace pb = google::protobuf;
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 
 HostCollector::HostCollector(scoped_refptr<dbus::Bus> bus,
                              int64_t cid,
@@ -115,5 +114,4 @@ bool HostCollector::SendUserLogs() {
   return status.ok();
 }
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog

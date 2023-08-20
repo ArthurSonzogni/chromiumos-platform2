@@ -15,8 +15,7 @@
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // Listens for VMs to announce that they are ready before signaling the
 // WaitableEvent associated with that VM.
@@ -54,7 +53,6 @@ class StartupListenerImpl final : public vm_tools::StartupListener::Service {
   base::Lock vm_lock_;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_STARTUP_LISTENER_IMPL_H_

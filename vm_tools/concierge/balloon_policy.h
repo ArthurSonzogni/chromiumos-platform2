@@ -13,8 +13,7 @@
 
 #include "vm_tools/concierge/byte_unit.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 struct BalloonStats {
   BalloonStatsFfi stats_ffi;
@@ -87,7 +86,7 @@ static constexpr int32_t kPlatformPerceptibleMaxOmmScoreAdjValue = 250;
 
 class BalloonPolicyInterface {
  public:
-  virtual ~BalloonPolicyInterface() {}
+  virtual ~BalloonPolicyInterface() = default;
 
   // Calculates the amount of memory to be shifted between a VM and the host.
   // Positive value means that the policy wants to move that amount of memory
@@ -143,7 +142,7 @@ class BalanceAvailableBalloonPolicy : public BalloonPolicyInterface {
   const int64_t guest_available_bias_;
 
   // The max actual balloon size observed.
-  int64_t max_balloon_actual_;
+  int64_t max_balloon_actual_ = 0;
 
   // This is a guessed value of guest's critical available
   // size. If free memory is smaller than this, guest memory
@@ -271,7 +270,6 @@ uint64_t ZoneLowSumFromZoneInfo(const std::string& zoneinfo);
 // reclaiming memory, or Android's LMKD is close to killing Apps.
 std::optional<ZoneInfoStats> ParseZoneInfoStats(const std::string& zoneinfo);
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_BALLOON_POLICY_H_

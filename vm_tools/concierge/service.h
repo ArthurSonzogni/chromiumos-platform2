@@ -55,8 +55,7 @@
 #include "vm_tools/concierge/vmm_swap_tbw_policy.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 class DlcHelper;
 
@@ -68,7 +67,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM.
   static std::unique_ptr<Service> Create(base::OnceClosure quit_closure);
-  ~Service();
+  ~Service() override;
 
  private:
   // Describes GPU shader cache paths.
@@ -511,12 +510,12 @@ class Service final : public org::chromium::VmConciergeInterface,
   // List of currently executing operations to import/export disk images.
   struct DiskOpInfo {
     std::unique_ptr<DiskImageOperation> op;
-    bool canceled;
+    bool canceled = false;
     base::TimeTicks last_report_time;
 
     explicit DiskOpInfo(std::unique_ptr<DiskImageOperation> disk_op)
         : op(std::move(disk_op)),
-          canceled(false),
+
           last_report_time(base::TimeTicks::Now()) {}
   };
   std::list<DiskOpInfo> disk_image_ops_;
@@ -549,7 +548,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_SERVICE_H_

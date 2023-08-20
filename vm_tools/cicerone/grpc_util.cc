@@ -6,13 +6,11 @@
 
 #include <grpcpp/grpcpp.h>
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 gpr_timespec ToGprDeadline(int64_t seconds) {
   return gpr_time_add(gpr_now(GPR_CLOCK_MONOTONIC),
                       gpr_time_from_seconds(seconds, GPR_TIMESPAN));
 }
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone

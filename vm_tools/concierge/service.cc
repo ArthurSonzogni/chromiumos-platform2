@@ -32,6 +32,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -117,8 +118,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 namespace {
 
@@ -686,7 +686,8 @@ uint64_t CalculateDesiredDiskSize(base::FilePath disk_location,
 // not sparse and its size was specified by the user.
 bool IsDiskPreallocatedWithUserChosenSize(const std::string& disk_path) {
   return getxattr(disk_path.c_str(),
-                  kDiskImagePreallocatedWithUserChosenSizeXattr, NULL, 0) >= 0;
+                  kDiskImagePreallocatedWithUserChosenSizeXattr, nullptr,
+                  0) >= 0;
 }
 
 // Mark a non-sparse disk with an xattr indicating its size has been chosen by
@@ -4573,9 +4574,9 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
     }
   }
 
-  for (auto it = paths.rbegin(); it != paths.rend(); it++) {
+  for (auto& path : std::ranges::reverse_view(paths)) {
     std::string file_contents;
-    if (!base::ReadFileToString(*it, &file_contents)) {
+    if (!base::ReadFileToString(path, &file_contents)) {
       continue;
     }
 
@@ -4746,5 +4747,4 @@ void Service::OnStatefulDiskSpaceUpdate(
     iter.second->HandleStatefulUpdate(update);
   }
 }
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

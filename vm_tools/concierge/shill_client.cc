@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/shill_client.h"
 
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -19,8 +20,7 @@
 using org::chromium::flimflam::IPConfigProxy;
 using org::chromium::flimflam::ServiceProxy;
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 ShillClient::ShillClient(scoped_refptr<dbus::Bus> bus)
     : bus_(bus),
@@ -134,7 +134,7 @@ void ShillClient::OnManagerPropertyChange(const std::string& property_name,
   if (default_service_proxy_) {
     default_service_proxy_->ReleaseObjectProxy(base::BindOnce([]() {}));
   }
-  default_service_proxy_.reset(new ServiceProxy(bus_, service_path));
+  default_service_proxy_ = std::make_unique<ServiceProxy>(bus_, service_path);
   default_service_proxy_->RegisterPropertyChangedSignalHandler(
       base::BindRepeating(&ShillClient::OnServicePropertyChange,
                           weak_factory_.GetWeakPtr()),
@@ -273,5 +273,4 @@ void ShillClient::RegisterDefaultServiceChangedHandler(
   default_service_changed_callback_ = std::move(callback);
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

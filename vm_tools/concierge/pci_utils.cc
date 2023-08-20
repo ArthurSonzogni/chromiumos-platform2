@@ -33,8 +33,7 @@
 
 #include "vm_tools/concierge/crosvm_control.h"
 
-namespace vm_tools::concierge {
-namespace pci_utils {
+namespace vm_tools::concierge::pci_utils {
 
 // Name of the file within the PCI device directory which contains a device's
 // vendor ID.
@@ -211,5 +210,4 @@ std::vector<base::FilePath> GetPciDevicesList(PciDeviceType device_type) {
   return pci_devices_info;
 }
 
-}  // namespace pci_utils
-}  // namespace vm_tools::concierge
+}  // namespace vm_tools::concierge::pci_utils

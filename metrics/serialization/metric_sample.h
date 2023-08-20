@@ -28,7 +28,7 @@ class MetricSample {
 
   // Constructs an invalid sample. Use the factory functions below to create
   // samples carrying actual data.
-  MetricSample() {}
+  MetricSample() = default;
   ~MetricSample() = default;
 
   // Allow copy and move construction. Assignment is not available because all

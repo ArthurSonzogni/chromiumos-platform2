@@ -7,8 +7,7 @@
 
 #include <grpcpp/grpcpp.h>
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 // How long to wait before timing out on regular RPCs.
 constexpr int64_t kDefaultTimeoutSeconds = 60;
@@ -22,7 +21,6 @@ constexpr int64_t kLongOperationTimeoutSeconds = 120;
 
 gpr_timespec ToGprDeadline(int64_t seconds);
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
 
 #endif  // VM_TOOLS_CICERONE_GRPC_UTIL_H_

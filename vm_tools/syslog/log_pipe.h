@@ -76,7 +76,7 @@ class LogPipeManager final : public LogCollector::Service {
   LogPipeManager(const LogPipeManager&) = delete;
   LogPipeManager& operator=(const LogPipeManager&) = delete;
 
-  ~LogPipeManager();
+  ~LogPipeManager() override;
 
   bool Init(base::ScopedFD syslog_fd, bool only_forward_to_syslog);
 

@@ -17,8 +17,7 @@
 
 #include "vm_tools/common/naming.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 namespace {
 // Daemon store base path.
@@ -227,5 +226,4 @@ bool EraseGuestSshKeys(const std::string& cryptohome_id,
   return rv;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

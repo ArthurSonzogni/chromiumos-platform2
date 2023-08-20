@@ -11,8 +11,7 @@
 
 #include <base/files/scoped_file.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // Opens and configures a tap device.  If the returned ScopedFD is valid then
 // the device has been properly configured.
@@ -21,7 +20,6 @@ base::ScopedFD OpenTapDevice(const std::string& ifname_in,
                              bool vnet_hdr,
                              std::string* ifname_out);
 
-}  //  namespace concierge
-}  //  namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_TAP_DEVICE_BUILDER_H_

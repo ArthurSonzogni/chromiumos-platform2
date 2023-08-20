@@ -24,8 +24,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 Forwarder::Forwarder(base::ScopedFD destination, bool is_socket_destination)
     : destination_(std::move(destination)),
       is_socket_destination_(is_socket_destination) {}
@@ -125,5 +124,4 @@ grpc::Status Forwarder::ForwardLogs(int64_t cid,
   return grpc::Status::OK;
 }
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog

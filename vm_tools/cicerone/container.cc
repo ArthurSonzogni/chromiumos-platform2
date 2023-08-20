@@ -24,8 +24,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 // static
 bool Container::wait_for_channel_ = true;
@@ -425,5 +424,4 @@ int32_t Container::GetVshSession(int32_t host_vsh_pid) {
   return it != vsh_pids_.end() ? it->second : 0;
 }
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone

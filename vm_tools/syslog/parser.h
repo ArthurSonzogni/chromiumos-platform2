@@ -10,8 +10,7 @@
 #include <base/time/time.h>
 #include <vm_protos/proto_bindings/vm_host.pb.h>
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 
 // Parse the priority value out of a syslog record.  If successful, stores the
 // LogSeverity in |severity| and returns the number of bytes consumed from
@@ -30,7 +29,6 @@ bool ParseSyslogRecord(const char* buf,
                        size_t len,
                        vm_tools::LogRecord* record);
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog
 
 #endif  // VM_TOOLS_SYSLOG_PARSER_H_

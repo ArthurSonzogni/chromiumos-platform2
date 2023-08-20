@@ -21,8 +21,7 @@
 
 #include "vm_tools/concierge/vm_util.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 namespace {
 
@@ -208,5 +207,4 @@ bool IsUntrustedVM(bool run_as_untrusted,
   return false;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

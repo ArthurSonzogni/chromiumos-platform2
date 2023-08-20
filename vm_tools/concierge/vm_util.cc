@@ -314,7 +314,7 @@ bool CheckProcessExists(pid_t pid) {
     return false;
 
   // Try to reap child process in case it just exited.
-  waitpid(pid, NULL, WNOHANG);
+  waitpid(pid, nullptr, WNOHANG);
 
   // kill() with a signal value of 0 is explicitly documented as a way to
   // check for the existence of a process.
@@ -694,7 +694,7 @@ SharedDataParam CreateFontsSharedDataParam() {
                          .posix_acl = true};
 }
 
-void ArcVmCPUTopology::CreateAffinity(void) {
+void ArcVmCPUTopology::CreateAffinity() {
   std::vector<std::string> cpu_list;
   std::vector<std::string> affinities;
 
@@ -876,7 +876,7 @@ void ArcVmCPUTopology::CreateAffinity(void) {
 }
 
 // Creates CPU grouping by cpu_capacity.
-void ArcVmCPUTopology::CreateTopology(void) {
+void ArcVmCPUTopology::CreateTopology() {
   for (uint32_t cpu = 0; cpu < num_cpus_; cpu++) {
     auto capacity = GetCpuCapacity(cpu);
     auto package = GetCpuPackageId(cpu);

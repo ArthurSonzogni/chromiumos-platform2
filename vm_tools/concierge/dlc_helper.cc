@@ -17,8 +17,7 @@
 // Needs to be included after dlcservice.pb.h
 #include <dlcservice/dbus-proxies.h>  // NOLINT (build/include_alpha)
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 DlcHelper::DlcHelper(
     std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface> handle)
@@ -56,5 +55,4 @@ std::optional<std::string> DlcHelper::GetRootPath(const std::string& dlc_id,
   return state.root_path();
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

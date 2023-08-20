@@ -16,8 +16,7 @@
 #include <base/files/memory_mapped_file.h>
 #include <base/logging.h>
 
-namespace vm_tools {
-namespace pstore_dump {
+namespace vm_tools::pstore_dump {
 
 namespace {
 
@@ -165,5 +164,4 @@ bool HandlePstoreDmesg(const base::FilePath& path) {
   return true;
 }
 
-}  // namespace pstore_dump
-}  // namespace vm_tools
+}  // namespace vm_tools::pstore_dump

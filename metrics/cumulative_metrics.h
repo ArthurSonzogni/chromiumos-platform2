@@ -98,7 +98,7 @@ class CumulativeMetrics {
   CumulativeMetrics(const CumulativeMetrics&) = delete;
   CumulativeMetrics& operator=(const CumulativeMetrics&) = delete;
 
-  virtual ~CumulativeMetrics() {}
+  virtual ~CumulativeMetrics() = default;
 
   // Calls |update_callback_|.
   // This is automatically called every |update_period_seconds_| of active time,

@@ -32,8 +32,7 @@
 #include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
 #include "vm_tools/concierge/vmm_swap_metrics.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 namespace {
 
@@ -239,10 +238,10 @@ bool BoostArcVmCgroups(double boost_value) {
   const base::FilePath arcvm_cgroup = base::FilePath(kArcvmCpuCgroup);
   const base::FilePath arcvm_vcpu_cgroup = base::FilePath(kArcvmVcpuCpuCgroup);
 
-  if (!UpdateCpuLatencySensitive(arcvm_cgroup, 1))
+  if (!UpdateCpuLatencySensitive(arcvm_cgroup, true))
     ret = false;
 
-  if (!UpdateCpuLatencySensitive(arcvm_vcpu_cgroup, 1))
+  if (!UpdateCpuLatencySensitive(arcvm_vcpu_cgroup, true))
     ret = false;
 
   if (!UpdateCpuUclampMin(arcvm_cgroup, boost_value))
@@ -673,5 +672,4 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
   return response;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

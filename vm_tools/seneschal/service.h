@@ -21,8 +21,7 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
-namespace vm_tools {
-namespace seneschal {
+namespace vm_tools::seneschal {
 
 class Service final {
  public:
@@ -91,7 +90,7 @@ class Service final {
 
   // The currently active 9p servers.
   std::map<uint32_t, ServerInfo> servers_;
-  uint32_t next_server_handle_;
+  uint32_t next_server_handle_ = 1;
 
   // File descriptor on which we will watch for signals.
   base::ScopedFD signal_fd_;
@@ -107,7 +106,6 @@ class Service final {
   base::WeakPtrFactory<Service> weak_factory_;
 };
 
-}  // namespace seneschal
-}  // namespace vm_tools
+}  // namespace vm_tools::seneschal
 
 #endif  // VM_TOOLS_SENESCHAL_SERVICE_H_

@@ -17,8 +17,7 @@
 #include <dbus/vm_concierge/dbus-constants.h>
 #include <vm_concierge/concierge_service.pb.h>
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 // chromeos_metrics::CumulativeMetrics constants:
 constexpr base::TimeDelta kDailyUpdatePeriod = base::Minutes(5);
@@ -362,5 +361,4 @@ void GuestMetrics::ReportDailyMetrics(chromeos_metrics::CumulativeMetrics* cm) {
   }
 }
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone

@@ -19,8 +19,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 namespace {
 
 // Converts a priority level into a severity level.
@@ -137,5 +136,4 @@ bool ParseSyslogRecord(const char* buf,
   return true;
 }
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog

@@ -18,8 +18,7 @@
 #include <metrics/metrics_library.h>
 #include <base/time/time.h>
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -119,7 +118,6 @@ class GuestMetrics {
   base::WeakPtrFactory<GuestMetrics> weak_ptr_factory_;
 };
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
 
 #endif  // VM_TOOLS_CICERONE_GUEST_METRICS_H_

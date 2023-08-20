@@ -52,8 +52,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace vsh {
+namespace vm_tools::vsh {
 
 std::unique_ptr<VshForwarder> VshForwarder::Create(base::ScopedFD sock_fd,
                                                    bool inherit_env,
@@ -76,8 +75,6 @@ VshForwarder::VshForwarder(base::ScopedFD sock_fd,
                            bool allow_to_switch_user)
     : sock_fd_(std::move(sock_fd)),
       inherit_env_(inherit_env),
-      interactive_(true),
-      exit_pending_(false),
       default_user_(std::move(default_user)),
       allow_to_switch_user_(allow_to_switch_user) {}
 
@@ -673,5 +670,4 @@ void VshForwarder::SendExitMessage() {
   Shutdown();
 }
 
-}  // namespace vsh
-}  // namespace vm_tools
+}  // namespace vm_tools::vsh

@@ -34,8 +34,7 @@
 #include "vm_tools/common/naming.h"
 #include "vm_tools/syslog/rotator.h"
 
-namespace vm_tools {
-namespace syslog {
+namespace vm_tools::syslog {
 
 namespace {
 // Cryptohome root base path.
@@ -166,7 +165,7 @@ bool LogPipeManager::Init(base::ScopedFD syslog_fd,
   }
 
   if (syslog_fd.is_valid()) {
-    syslog_forwarder_.reset(new Forwarder(std::move(syslog_fd), true));
+    syslog_forwarder_ = std::make_unique<Forwarder>(std::move(syslog_fd), true);
     only_forward_to_syslog_ = only_forward_to_syslog;
   } else {
     if (only_forward_to_syslog) {
@@ -384,5 +383,4 @@ void LogPipeManager::RotateLogs() {
   }
 }
 
-}  // namespace syslog
-}  // namespace vm_tools
+}  // namespace vm_tools::syslog

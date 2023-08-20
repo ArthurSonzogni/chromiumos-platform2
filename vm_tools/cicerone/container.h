@@ -16,8 +16,7 @@
 #include <net-base/ipv4_address.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 class VirtualMachine;
 
@@ -160,7 +159,6 @@ class Container {
   static bool wait_for_channel_;
 };
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
 
 #endif  // VM_TOOLS_CICERONE_CONTAINER_H_

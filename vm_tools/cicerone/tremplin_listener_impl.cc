@@ -21,8 +21,7 @@
 
 #include "vm_tools/cicerone/service.h"
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 TremplinListenerImpl::TremplinListenerImpl(
     base::WeakPtr<vm_tools::cicerone::Service> service)
@@ -500,5 +499,4 @@ uint32_t TremplinListenerImpl::ExtractCidFromPeerAddress(
   return cid;
 }
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone

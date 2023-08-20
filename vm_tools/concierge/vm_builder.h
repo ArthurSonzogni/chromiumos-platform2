@@ -18,8 +18,7 @@
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_util.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 class VmBuilder {
  public:
@@ -179,7 +178,6 @@ class VmBuilder {
   base::StringPairs custom_params_;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_VM_BUILDER_H_

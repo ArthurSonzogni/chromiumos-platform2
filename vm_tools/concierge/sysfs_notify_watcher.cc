@@ -15,7 +15,7 @@ namespace vm_tools::concierge {
 std::unique_ptr<SysfsNotifyWatcher> SysfsNotifyWatcher::Create(
     int fd, const SysfsNotifyCallback& callback) {
   std::unique_ptr<SysfsNotifyWatcher> watcher =
-      base::WrapUnique(new SysfsNotifyWatcherImpl(fd, callback));
+      std::make_unique<SysfsNotifyWatcherImpl>(fd, callback);
 
   if (!watcher->StartWatching()) {
     return {};

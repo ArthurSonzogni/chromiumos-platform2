@@ -52,8 +52,7 @@
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vmm_swap_metrics.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 namespace {
 
 // Name of the control socket used for controlling crosvm.
@@ -1558,5 +1557,4 @@ std::vector<std::string> ArcVm::GetKernelParams(
   return params;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

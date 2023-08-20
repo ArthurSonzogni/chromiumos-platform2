@@ -38,8 +38,7 @@
 #include "vm_tools/concierge/vmm_swap_usage_policy.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // Disk index of the /data disk. It is the 4th disk in request.disks().
 constexpr unsigned int kDataDiskIndex = 3;
@@ -330,7 +329,6 @@ class ArcVm final : public VmBaseImpl {
   base::WeakPtrFactory<ArcVm> weak_ptr_factory_;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_ARC_VM_H_

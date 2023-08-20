@@ -19,8 +19,7 @@
 
 #include <google/protobuf/message_lite.h>
 
-namespace vm_tools {
-namespace vsh {
+namespace vm_tools::vsh {
 
 // Path to the /dev node for the controlling terminal.
 constexpr char kDevTtyPath[] = "/dev/tty";
@@ -54,7 +53,6 @@ bool WriteKernelLogToFd(int fd,
                         const std::string& message,
                         size_t message_start);
 
-}  // namespace vsh
-}  // namespace vm_tools
+}  // namespace vm_tools::vsh
 
 #endif  // VM_TOOLS_VSH_UTILS_H_

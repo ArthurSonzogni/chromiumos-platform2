@@ -122,7 +122,7 @@ class MetricsLibraryInterface {
                                      int num_samples) = 0;
 
   virtual void SetOutputFile(const std::string& output_file) = 0;
-  virtual ~MetricsLibraryInterface() {}
+  virtual ~MetricsLibraryInterface() = default;
 };
 
 // Library used to send metrics to Chrome/UMA. The thread-safety of Send*

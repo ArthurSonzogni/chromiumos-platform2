@@ -33,15 +33,11 @@ constexpr gid_t kPluginVmGid = 20128;
 
 }  // namespace
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 DiskImageOperation::DiskImageOperation(const VmId vm_id)
     : uuid_(base::Uuid::GenerateRandomV4().AsLowercaseString()),
-      vm_id_(std::move(vm_id)),
-      status_(DISK_STATUS_FAILED),
-      source_size_(0),
-      processed_size_(0) {
+      vm_id_(std::move(vm_id)) {
   CHECK(base::Uuid::ParseCaseInsensitive(uuid_).is_valid());
 }
 
@@ -218,7 +214,7 @@ VmExportOperation::VmExportOperation(const VmId vm_id,
       src_image_path_(std::move(disk_path)),
       out_fd_(std::move(out_fd)),
       out_digest_fd_(std::move(out_digest_fd)),
-      copying_data_(false),
+
       out_fmt_(std::move(out_fmt)),
       sha256_(crypto::SecureHash::Create(crypto::SecureHash::SHA256)) {
   base::File::Info info;
@@ -383,7 +379,7 @@ bool VmExportOperation::ExecuteIo(uint64_t io_limit) {
 
       const char* c_path = archive_entry_pathname(entry);
       if (!c_path || c_path[0] == '\0') {
-        MarkFailed("archive entry read from disk has empty file name", NULL);
+        MarkFailed("archive entry read from disk has empty file name", nullptr);
         break;
       }
 
@@ -399,7 +395,7 @@ bool VmExportOperation::ExecuteIo(uint64_t io_limit) {
         // and replace it with <vm_name>.pvm prefix.
         base::FilePath dest_path(vm_id().name() + ".pvm");
         if (!src_image_path_.AppendRelativePath(path, &dest_path)) {
-          MarkFailed("failed to transform archive entry name", NULL);
+          MarkFailed("failed to transform archive entry name", nullptr);
           break;
         }
         archive_entry_set_pathname(entry, dest_path.value().c_str());
@@ -526,8 +522,7 @@ PluginVmImportOperation::PluginVmImportOperation(
       dest_image_path_(std::move(disk_path)),
       bus_(std::move(bus)),
       vmplugin_service_proxy_(vmplugin_service_proxy),
-      in_fd_(std::move(in_fd)),
-      copying_data_(false) {
+      in_fd_(std::move(in_fd)) {
   set_source_size(source_size);
 }
 
@@ -643,7 +638,7 @@ bool PluginVmImportOperation::ExecuteIo(uint64_t io_limit) {
 
       const char* c_path = archive_entry_pathname(entry);
       if (!c_path || c_path[0] == '\0') {
-        MarkFailed("archive entry has empty file name", NULL);
+        MarkFailed("archive entry has empty file name", nullptr);
         break;
       }
 
@@ -651,7 +646,7 @@ bool PluginVmImportOperation::ExecuteIo(uint64_t io_limit) {
       if (path.empty() || path.IsAbsolute() || path.ReferencesParent()) {
         MarkFailed(
             "archive entry has invalid/absolute/referencing parent file name",
-            NULL);
+            nullptr);
         break;
       }
 
@@ -761,20 +756,20 @@ void PluginVmImportOperation::Finalize() {
   out_.reset();
   // Make sure resulting image is accessible by the dispatcher process.
   if (chown(output_dir_.GetPath().value().c_str(), -1, kPluginVmGid) < 0) {
-    MarkFailed("failed to change group of the destination directory", NULL);
+    MarkFailed("failed to change group of the destination directory", nullptr);
     return;
   }
   // We are setting setgid bit on the directory to make sure any new files
   // created by the plugin will be created with "pluginvm" group ownership.
   if (chmod(output_dir_.GetPath().value().c_str(), 02770) < 0) {
     MarkFailed("failed to change permissions of the destination directory",
-               NULL);
+               nullptr);
     return;
   }
   // Drop the ".tmp" suffix from the directory so that we recognize
   // it as a valid Plugin VM image.
   if (!base::Move(output_dir_.GetPath(), dest_image_path_)) {
-    MarkFailed("Unable to rename resulting image directory", NULL);
+    MarkFailed("Unable to rename resulting image directory", nullptr);
     return;
   }
   // Tell it not to try cleaning up as we are committed to using the
@@ -783,7 +778,7 @@ void PluginVmImportOperation::Finalize() {
 
   if (!pvm::dispatcher::RegisterVm(bus_, vmplugin_service_proxy_, vm_id(),
                                    dest_image_path_)) {
-    MarkFailed("Unable to register imported VM image", NULL);
+    MarkFailed("Unable to register imported VM image", nullptr);
     DeletePathRecursively(dest_image_path_);
     return;
   }
@@ -843,5 +838,4 @@ bool VmResizeOperation::ExecuteIo(uint64_t io_limit) {
 
 void VmResizeOperation::Finalize() {}
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

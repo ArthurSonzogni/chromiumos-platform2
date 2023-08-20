@@ -15,8 +15,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 namespace {
 // The path to the file where we store the next cid to be used.
 const char kNextCidPath[] = "/run/vm/next_cid";
@@ -115,5 +114,4 @@ uint32_t VsockCidPool::Allocate() {
   return cid;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

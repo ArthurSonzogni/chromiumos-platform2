@@ -16,8 +16,7 @@
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 class Service;
 
@@ -154,11 +153,10 @@ class ContainerListenerImpl final
   // We rate limit the requests to open a window/tab in Chrome to prevent an
   // accidental DOS of Chrome from a bad script in Linux. We use a fixed window
   // rate control algorithm to do this.
-  uint32_t open_count_;
+  uint32_t open_count_ = 0;
   base::TimeTicks open_rate_window_start_;
 };
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
 
 #endif  // VM_TOOLS_CICERONE_CONTAINER_LISTENER_IMPL_H_

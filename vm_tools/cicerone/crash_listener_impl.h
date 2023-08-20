@@ -17,8 +17,7 @@
 
 #include "metrics/metrics_library.h"
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 class Service;
 class VirtualMachine;
@@ -74,7 +73,6 @@ class CrashListenerImpl : public CrashListener::Service {
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
 
 #endif  // VM_TOOLS_CICERONE_CRASH_LISTENER_IMPL_H_

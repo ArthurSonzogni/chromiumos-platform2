@@ -19,8 +19,7 @@
 #include "vm_tools/concierge/pci_utils.h"
 #include "vm_tools/concierge/vm_util.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 namespace {
 // Path to the default wayland socket.
 constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
@@ -602,5 +601,4 @@ base::StringPairs VmBuilder::BuildRunParams() const {
   return args;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

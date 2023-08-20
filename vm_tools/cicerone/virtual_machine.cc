@@ -27,8 +27,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 namespace {
 
 // Default name to use for a container.
@@ -52,7 +51,6 @@ VirtualMachine::VirtualMachine(uint32_t cid, pid_t pid, std::string vm_token)
       pid_(pid),
       vm_token_(std::move(vm_token)),
       vm_type_(DetermineTypeFromCidAndToken(cid, vm_token_)),
-      using_mock_tremplin_stub_(false),
       weak_ptr_factory_(this) {
   // CID-less VMs must also be containerless.
   DCHECK(vsock_cid_ != 0 || IsContainerless());
@@ -237,9 +235,9 @@ Container* VirtualMachine::GetPendingContainerForToken(
 
 Container* VirtualMachine::GetContainerForName(
     const std::string& container_name) {
-  for (auto iter = containers_.begin(); iter != containers_.end(); ++iter) {
-    if (iter->second->name() == container_name) {
-      return iter->second.get();
+  for (auto& container : containers_) {
+    if (container.second->name() == container_name) {
+      return container.second.get();
     }
   }
   return nullptr;
@@ -1113,5 +1111,4 @@ bool VirtualMachine::GetTremplinDebugInfo(std::string* out) {
   return true;
 }
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone

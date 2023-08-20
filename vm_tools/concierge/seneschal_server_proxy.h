@@ -15,8 +15,7 @@
 #include <dbus/object_proxy.h>
 #include <seneschal/proto_bindings/seneschal_service.pb.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 // Represents a running shared directory server.
 class SeneschalServerProxy final {
@@ -60,7 +59,6 @@ class SeneschalServerProxy final {
   uint32_t handle_;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_SENESCHAL_SERVER_PROXY_H_

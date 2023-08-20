@@ -23,8 +23,7 @@
 
 #include "vm_tools/common/vm_id.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace vm_tools::concierge {
 
 class Service;
 
@@ -71,16 +70,16 @@ class DiskImageOperation {
   const VmId vm_id_;
 
   // Status of the operation.
-  DiskImageStatus status_;
+  DiskImageStatus status_ = DISK_STATUS_FAILED;
 
   // Failure reason, if any, to be communicated to the callers.
   std::string failure_reason_;
 
   // Size of the source of disk operation (bytes).
-  uint64_t source_size_;
+  uint64_t source_size_ = 0;
 
   // Number of bytes consumed from the source.
-  uint64_t processed_size_;
+  uint64_t processed_size_ = 0;
 };
 
 class PluginVmCreateOperation : public DiskImageOperation {
@@ -190,7 +189,7 @@ class VmExportOperation : public DiskImageOperation {
   // We are in a middle of copying an archive entry. Copying of one archive
   // entry may span several Run() invocations, depending on the size of the
   // entry.
-  bool copying_data_;
+  bool copying_data_ = false;
 
   // If true, disk image is a directory potentially containing multiple files.
   // If false, disk image is a single file.
@@ -259,7 +258,7 @@ class PluginVmImportOperation : public DiskImageOperation {
   // We are in a middle of copying an archive entry. Copying of one archive
   // entry may span several Run() invocations, depending on the size of the
   // entry.
-  bool copying_data_;
+  bool copying_data_ = false;
 
   // Destination directory object.
   base::ScopedTempDir output_dir_;
@@ -318,7 +317,6 @@ class VmResizeOperation : public DiskImageOperation {
   uint64_t target_size_;
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_DISK_IMAGE_H_

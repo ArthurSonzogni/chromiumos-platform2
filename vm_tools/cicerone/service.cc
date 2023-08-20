@@ -48,8 +48,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace cicerone {
+namespace vm_tools::cicerone {
 
 namespace {
 
@@ -2799,9 +2798,8 @@ std::unique_ptr<dbus::Response> Service::SetTimezone(
                                  container_names, &results, &error_msg);
     if (success) {
       response.set_successes(response.successes() + results.successes);
-      for (int i = 0; i < results.failure_reasons.size(); i++) {
-        response.add_failure_reasons("VM " + vm_name + ": " +
-                                     results.failure_reasons[i]);
+      for (const auto& failure_reason : results.failure_reasons) {
+        response.add_failure_reasons("VM " + vm_name + ": " + failure_reason);
       }
     } else {
       response.add_failure_reasons("Setting timezone failed entirely for VM " +
@@ -4240,8 +4238,8 @@ void Service::OnLocaltimeFileChanged(const base::FilePath& path, bool error) {
         vm.second->SetTimezone(system_timezone_name.value(), posix_tz_string,
                                container_names, &results, &error_msg);
     if (success) {
-      for (int i = 0; i < results.failure_reasons.size(); i++) {
-        LOG(ERROR) << "VM " << vm_name << ": " << results.failure_reasons[i];
+      for (const auto& failure_reason : results.failure_reasons) {
+        LOG(ERROR) << "VM " << vm_name << ": " << failure_reason;
       }
     } else {
       LOG(ERROR) << "Setting timezone failed entirely for VM " << vm_name
@@ -4274,5 +4272,4 @@ VirtualMachine* Service::FindVm(const std::string& owner_id,
   return nullptr;
 }
 
-}  // namespace cicerone
-}  // namespace vm_tools
+}  // namespace vm_tools::cicerone
