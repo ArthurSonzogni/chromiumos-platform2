@@ -52,6 +52,11 @@ class DBusAdaptor : public org::chromium::MissivedAdaptor,
           ConfirmRecordUploadResponse>> out_response,
       const ConfirmRecordUploadRequest& in_request) override;
 
+  void UpdateConfigInMissive(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          UpdateConfigInMissiveResponse>> out_response,
+      const UpdateConfigInMissiveRequest& in_request) override;
+
   void UpdateEncryptionKey(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           UpdateEncryptionKeyResponse>> out_response,

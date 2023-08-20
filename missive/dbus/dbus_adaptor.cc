@@ -124,6 +124,20 @@ void DBusAdaptor::ConfirmRecordUpload(
   missive_->ConfirmRecordUpload(in_request, std::move(out_response));
 }
 
+void DBusAdaptor::UpdateConfigInMissive(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        UpdateConfigInMissiveResponse>> out_response,
+    const UpdateConfigInMissiveRequest& in_request) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  UpdateConfigInMissiveResponse response_body;
+  if (!daemon_is_ready_) {
+    out_response->Return(
+        RespondDaemonNotReady<UpdateConfigInMissiveResponse>());
+    return;
+  }
+  missive_->UpdateConfigInMissive(in_request, std::move(out_response));
+}
+
 void DBusAdaptor::UpdateEncryptionKey(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         UpdateEncryptionKeyResponse>> out_response,

@@ -97,6 +97,12 @@ class MissiveImpl : public MissiveService {
           brillo::dbus_utils::DBusMethodResponse<ConfirmRecordUploadResponse>>
           out_response) override;
 
+  void UpdateConfigInMissive(
+      const UpdateConfigInMissiveRequest& in_request,
+      std::unique_ptr<
+          brillo::dbus_utils::DBusMethodResponse<UpdateConfigInMissiveResponse>>
+          out_response) override;
+
   void UpdateEncryptionKey(
       const UpdateEncryptionKeyRequest& in_request,
       std::unique_ptr<

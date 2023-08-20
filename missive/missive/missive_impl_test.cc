@@ -446,6 +446,27 @@ TEST_F(MissiveImplTest, DisabledReportingTest) {
                                Property(&Status::error_message,
                                         StrEq("Reporting is disabled")))));
   }
+
+  {
+    UpdateConfigInMissiveRequest request;
+    request.mutable_list_of_blocked_destinations()->add_destinations(
+        Destination::CRD_EVENTS);
+    request.mutable_list_of_blocked_destinations()->add_destinations(
+        Destination::PERIPHERAL_EVENTS);
+
+    auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+        UpdateConfigInMissiveResponse>>();
+    test::TestEvent<const UpdateConfigInMissiveResponse&> response_event;
+    response->set_return_callback(response_event.cb());
+    missive_->UpdateConfigInMissive(request, std::move(response));
+    const auto& response_result = response_event.ref_result();
+    EXPECT_THAT(response_result,
+                Property(&UpdateConfigInMissiveResponse::status,
+                         AllOf(Property(&StatusProto::code,
+                                        Eq(error::FAILED_PRECONDITION)),
+                               Property(&StatusProto::error_message,
+                                        StrEq("Reporting is disabled")))));
+  }
 }
 
 TEST_F(MissiveImplTest, DynamicParametersUpdateTest) {

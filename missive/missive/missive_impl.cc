@@ -457,6 +457,29 @@ void MissiveImpl::ConfirmRecordUpload(
   out_response->Return(response_body);
 }
 
+void MissiveImpl::UpdateConfigInMissive(
+    const UpdateConfigInMissiveRequest& in_request,
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<UpdateConfigInMissiveResponse>>
+        out_response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!is_enabled_) {
+    out_response->Return(
+        RespondMissiveDisabled<UpdateConfigInMissiveResponse>());
+    return;
+  }
+  UpdateConfigInMissiveResponse response_body;
+  if (!in_request.has_list_of_blocked_destinations()) {
+    auto status = response_body.mutable_status();
+    status->set_code(error::INVALID_ARGUMENT);
+    status->set_error_message("Request had no ListOfBlockedDestinations");
+    out_response->Return(response_body);
+    return;
+  }
+  // Do nothing in the mean time.
+  out_response->Return(response_body);
+}
+
 void MissiveImpl::UpdateEncryptionKey(
     const UpdateEncryptionKeyRequest& in_request,
     std::unique_ptr<

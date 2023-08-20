@@ -51,6 +51,21 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
+    <method name="UpdateConfigInMissive">
+      <tp:docstring>
+        Sent by Chrome to update the list of blocked destinations and other
+        data from the configuration file fetched from the server.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::reporting::UpdateConfigInMissiveRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::reporting::UpdateConfigInMissiveResponse" />
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
     <method name="UpdateEncryptionKey">
       <tp:docstring>
         Sent by Chrome to update the Missive Daemon Encryption Key.

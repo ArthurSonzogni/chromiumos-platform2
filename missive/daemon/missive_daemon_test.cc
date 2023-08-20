@@ -78,6 +78,12 @@ class MockMissive : public MissiveService {
                    ConfirmRecordUploadResponse>> out_response),
               (override));
   MOCK_METHOD(void,
+              UpdateConfigInMissive,
+              (const UpdateConfigInMissiveRequest& in_request,
+               std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                   UpdateConfigInMissiveResponse>> out_response),
+              (override));
+  MOCK_METHOD(void,
               UpdateEncryptionKey,
               (const UpdateEncryptionKeyRequest& in_request,
                std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

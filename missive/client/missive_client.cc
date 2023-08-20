@@ -73,6 +73,14 @@ class MissiveClientImpl : public MissiveClient {
     client_.MaybeMakeCall(std::move(delegate));
   }
 
+  void UpdateConfigInMissive(
+      const ListOfBlockedDestinations& destinations) override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(origin_checker_);
+    auto delegate =
+        std::make_unique<UpdateConfigInMissiveDelegate>(destinations, this);
+    client_.MaybeMakeCall(std::move(delegate));
+  }
+
   void UpdateEncryptionKey(
       const SignedEncryptionInfo& encryption_info) override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(origin_checker_);
@@ -236,6 +244,23 @@ class MissiveClientImpl : public MissiveClient {
 
    private:
     FlushPriorityRequest request_;
+  };
+
+  class UpdateConfigInMissiveDelegate : public DBusDelegate {
+   public:
+    UpdateConfigInMissiveDelegate(const ListOfBlockedDestinations& destinations,
+                                  MissiveClientImpl* owner)
+        : DBusDelegate(
+              missive::kUpdateConfigInMissive, owner, base::DoNothing()) {
+      *request_.mutable_list_of_blocked_destinations() = destinations;
+    }
+
+    bool WriteRequest(dbus::MessageWriter* writer) override {
+      return writer->AppendProtoAsArrayOfBytes(request_);
+    }
+
+   private:
+    UpdateConfigInMissiveRequest request_;
   };
 
   class UpdateEncryptionKeyDelegate : public DBusDelegate {
