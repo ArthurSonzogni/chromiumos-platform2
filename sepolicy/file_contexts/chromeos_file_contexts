@@ -187,7 +187,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/chromeos-postinst     u:object_r:cros_chromeos_postinst_exec:s0
 /usr/sbin/chromeos-trim         u:object_r:cros_chromeos_trim_exec:s0
 /usr/sbin/conntrackd            u:object_r:cros_conntrackd_exec:s0
-/usr/sbin/cros-machine-id-regen u:object_r:cros_machine_id_regen_exec:s0
 /usr/sbin/crosdns               u:object_r:cros_crosdns_exec:s0
 /usr/sbin/cryptohomed           u:object_r:cros_cryptohomed_exec:s0
 /usr/sbin/cryptohome-namespace-mounter u:object_r:cros_cryptohome_namespace_mounter_exec:s0
@@ -207,6 +206,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/is_running_from_installer u:object_r:cros_is_running_from_installer_exec:s0
 /usr/sbin/jetstream-update-stats u:object_r:cros_jetstream_update_stats_exec:s0
 /usr/sbin/lvmd                  u:object_r:cros_lvmd_exec:s0
+/usr/sbin/machine-id-regen      u:object_r:cros_machine_id_regen_exec:s0
 /usr/sbin/mimo-monitor          u:object_r:cros_mimo_monitor_exec:s0
 /usr/sbin/mtpd                  u:object_r:cros_mtpd_exec:s0
 /usr/sbin/oobe_config_restore   u:object_r:cros_oobe_config_restore_exec:s0
