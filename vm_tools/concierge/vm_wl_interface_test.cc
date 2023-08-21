@@ -53,14 +53,12 @@ class VmWlInterfaceTest : public testing::Test {
 
 TEST_F(VmWlInterfaceTest, FailureReturnsNullptr) {
   EXPECT_CALL(*mock_proxy_.get(),
-              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
-                                                 A<int>(), A<dbus::Error*>()))
+              CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
       .WillOnce(testing::Invoke([](dbus::MethodCall* method_call,
-                                   int timeout_ms, dbus::Error* error) {
+                                   int timeout_ms) {
         EXPECT_EQ(method_call->GetMember(),
                   wl::kVmWlServiveListenOnSocketMethod);
-        *error = dbus::Error(DBUS_ERROR_FAILED, "test error");
-        return nullptr;
+        return base::unexpected(dbus::Error(DBUS_ERROR_FAILED, "test error"));
       }));
 
   VmId id("test_owner_id", "test_vm_name");
@@ -71,14 +69,13 @@ TEST_F(VmWlInterfaceTest, FailureReturnsNullptr) {
 
 TEST_F(VmWlInterfaceTest, SuccessfulCreateAndDestroy) {
   EXPECT_CALL(*mock_proxy_.get(),
-              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
-                                                 A<int>(), A<dbus::Error*>()))
-      .WillOnce(testing::Invoke([](dbus::MethodCall* method_call,
-                                   int timeout_ms, dbus::Error* error) {
-        EXPECT_EQ(method_call->GetMember(),
-                  wl::kVmWlServiveListenOnSocketMethod);
-        return dbus::Response::CreateEmpty();
-      }));
+              CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
+      .WillOnce(
+          testing::Invoke([](dbus::MethodCall* method_call, int timeout_ms) {
+            EXPECT_EQ(method_call->GetMember(),
+                      wl::kVmWlServiveListenOnSocketMethod);
+            return base::ok(dbus::Response::CreateEmpty());
+          }));
 
   VmId id("test_owner_id", "test_vm_name");
 

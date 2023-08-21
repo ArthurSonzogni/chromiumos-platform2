@@ -88,17 +88,15 @@ class DBusMethodInvokerTest : public testing::Test {
                 GetObjectProxy(kTestServiceName, dbus::ObjectPath(kTestPath)))
         .WillRepeatedly(Return(mock_object_proxy_.get()));
     int def_timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-    EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlockWithErrorDetails(
-                                         An<dbus::MethodCall*>(),
-                                         def_timeout_ms, An<dbus::Error*>()))
+    EXPECT_CALL(*mock_object_proxy_,
+                CallMethodAndBlock(An<dbus::MethodCall*>(), def_timeout_ms))
         .WillRepeatedly(Invoke(this, &DBusMethodInvokerTest::CreateResponse));
   }
 
   void TearDown() override { bus_ = nullptr; }
 
-  std::unique_ptr<Response> CreateResponse(dbus::MethodCall* method_call,
-                                           int /* timeout_ms */,
-                                           dbus::Error* dbus_error) {
+  base::expected<std::unique_ptr<Response>, dbus::Error> CreateResponse(
+      dbus::MethodCall* method_call, int /* timeout_ms */) {
     if (method_call->GetInterface() == kTestInterface) {
       if (method_call->GetMember() == kTestMethod1) {
         MessageReader reader(method_call);
@@ -109,12 +107,11 @@ class DBusMethodInvokerTest : public testing::Test {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
           writer.AppendString(std::to_string(v1 + v2));
-          return response;
+          return base::ok(std::move(response));
         }
       } else if (method_call->GetMember() == kTestMethod2) {
         method_call->SetSerial(123);
-        *dbus_error = dbus::Error("org.MyError", "My error message");
-        return std::unique_ptr<dbus::Response>();
+        return base::unexpected(dbus::Error("org.MyError", "My error message"));
       } else if (method_call->GetMember() == kTestMethod3) {
         MessageReader reader(method_call);
         dbus_utils_test::TestMessage msg;
@@ -122,7 +119,7 @@ class DBusMethodInvokerTest : public testing::Test {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
           AppendValueToWriter(&writer, msg);
-          return response;
+          return base::ok(std::move(response));
         }
       } else if (method_call->GetMember() == kTestMethod4) {
         method_call->SetSerial(123);
@@ -132,13 +129,13 @@ class DBusMethodInvokerTest : public testing::Test {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
           writer.AppendFileDescriptor(fd.get());
-          return response;
+          return base::ok(std::move(response));
         }
       }
     }
 
     LOG(ERROR) << "Unexpected method call: " << method_call->ToString();
-    return std::unique_ptr<dbus::Response>();
+    return base::unexpected(dbus::Error());
   }
 
   std::string CallTestMethod(int v1, int v2) {

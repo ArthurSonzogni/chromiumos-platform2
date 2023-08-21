@@ -79,24 +79,19 @@ TEST_F(CrosECUtilTest, ModeEntrySupported) {
 
   // Mock the method calls from the object proxy.
   EXPECT_CALL(*mock_object_proxy,
-              CallMethodAndBlockWithErrorDetails(IsMethod("EcGetInventory"),
-                                                 A<int>(), A<dbus::Error*>()))
-      .WillOnce(Invoke(
-          [](dbus::MethodCall* method_call, int timeout, dbus::Error* error) {
-            return RespondWithString(method_call, kSampleInventoryInput1);
-          }))
-      .WillOnce(Invoke(
-          [](dbus::MethodCall* method_call, int timeout, dbus::Error* error) {
-            return RespondWithString(method_call, kSampleInventoryInput2);
-          }))
-      .WillOnce(Invoke(
-          [](dbus::MethodCall* method_call, int timeout, dbus::Error* error) {
-            return RespondWithString(method_call, kSampleInventoryInput3);
-          }))
-      .WillOnce(Invoke(
-          [](dbus::MethodCall* method_call, int timeout, dbus::Error* error) {
-            return RespondWithString(method_call, kSampleInventoryInput4);
-          }));
+              CallMethodAndBlock(IsMethod("EcGetInventory"), A<int>()))
+      .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout) {
+        return base::ok(RespondWithString(method_call, kSampleInventoryInput1));
+      }))
+      .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout) {
+        return base::ok(RespondWithString(method_call, kSampleInventoryInput2));
+      }))
+      .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout) {
+        return base::ok(RespondWithString(method_call, kSampleInventoryInput3));
+      }))
+      .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout) {
+        return base::ok(RespondWithString(method_call, kSampleInventoryInput4));
+      }));
   auto util = std::make_unique<CrosECUtil>(bus);
   EXPECT_FALSE(util->ModeEntrySupported());
   EXPECT_FALSE(util->ModeEntrySupported());

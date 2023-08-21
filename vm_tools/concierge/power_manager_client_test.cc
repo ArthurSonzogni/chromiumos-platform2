@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <utility>
 
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -55,7 +56,7 @@ class PowerManagerClientTest : public ::testing::Test {
 
     // Sets an expectation that the mock proxy's CallMethodAndBlock() will use
     // CreateMockProxyResponse() to return responses.
-    EXPECT_CALL(*power_manager_proxy_.get(), CallMethodAndBlockDeprecated(_, _))
+    EXPECT_CALL(*power_manager_proxy_.get(), CallMethodAndBlock(_, _))
         .WillRepeatedly(
             Invoke(this, &PowerManagerClientTest::CreateMockProxyResponse));
 
@@ -73,11 +74,11 @@ class PowerManagerClientTest : public ::testing::Test {
   }
 
  protected:
-  std::unique_ptr<dbus::Response> CreateMockProxyResponse(
-      dbus::MethodCall* method_call, int timeout_ms) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error>
+  CreateMockProxyResponse(dbus::MethodCall* method_call, int timeout_ms) {
     if (method_call->GetInterface() != power_manager::kPowerManagerInterface) {
       LOG(ERROR) << "Unexpected method call: " << method_call->ToString();
-      return std::unique_ptr<dbus::Response>();
+      return base::unexpected(dbus::Error());
     }
 
     std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
@@ -95,7 +96,7 @@ class PowerManagerClientTest : public ::testing::Test {
       power_manager::SuspendReadinessInfo info;
       if (!dbus::MessageReader(method_call).PopArrayOfBytesAsProto(&info)) {
         LOG(ERROR) << "Failed to decode SuspendReadinessInfo";
-        return std::unique_ptr<dbus::Response>();
+        return base::unexpected(dbus::Error());
       }
 
       reported_delay_id_ = info.delay_id();
@@ -105,7 +106,7 @@ class PowerManagerClientTest : public ::testing::Test {
       unregistered_ = true;
     }
 
-    return response;
+    return base::ok(std::move(response));
   }
 
   base::test::TaskEnvironment task_environment_;

@@ -41,11 +41,10 @@ class FakeObjectProxy : public dbus::ObjectProxy {
       int timeout_ms,
       dbus::ObjectProxy::ResponseCallback callback,
       dbus::ObjectProxy::ErrorCallback error_callback) override {
-    dbus::Error error;
-    std::unique_ptr<dbus::Response> response =
-        CallMethodAndBlockWithErrorDetails(method_call, timeout_ms, &error);
-    if (response) {
-      std::move(callback).Run(response.get());
+    base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
+        CallMethodAndBlock(method_call, timeout_ms);
+    if (response.has_value() && response.value()) {
+      std::move(callback).Run(response.value().get());
     } else {
       method_call->SetSerial(1);
       std::unique_ptr<dbus::ErrorResponse> error_response =
@@ -55,16 +54,15 @@ class FakeObjectProxy : public dbus::ObjectProxy {
     }
   }
 
-  std::unique_ptr<dbus::Response> CallMethodAndBlockWithErrorDetails(
-      dbus::MethodCall* method_call,
-      int /* timeout_ms */,
-      dbus::Error* error) override {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error>
+  CallMethodAndBlock(dbus::MethodCall* method_call,
+                     int /* timeout_ms */) override {
     dbus::MessageReader reader(method_call);
     trunks::SendCommandRequest command_proto;
     brillo::dbus_utils::PopValueFromReader(&reader, &command_proto);
     last_command_ = command_proto.command();
     if (next_response_.empty()) {
-      return std::unique_ptr<dbus::Response>();
+      return base::unexpected(dbus::Error());
     }
     std::unique_ptr<dbus::Response> dbus_response =
         dbus::Response::CreateEmpty();
@@ -72,7 +70,7 @@ class FakeObjectProxy : public dbus::ObjectProxy {
     trunks::SendCommandResponse response_proto;
     response_proto.set_response(next_response_);
     brillo::dbus_utils::AppendValueToWriter(&writer, response_proto);
-    return dbus_response;
+    return base::ok(std::move(dbus_response));
   }
 
   std::string next_response_;

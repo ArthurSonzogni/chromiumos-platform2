@@ -106,10 +106,9 @@ inline std::unique_ptr<::dbus::Response> CallMethodAndBlockWithTimeout(
   // Add method arguments to the message buffer.
   ::dbus::MessageWriter writer(&method_call);
   WriteDBusArgs(&writer, args...);
-  ::dbus::Error dbus_error;
-  auto response = object->CallMethodAndBlockWithErrorDetails(
-      &method_call, timeout_ms, &dbus_error);
-  if (!response) {
+  auto response = object->CallMethodAndBlock(&method_call, timeout_ms);
+  if (!response.has_value()) {
+    ::dbus::Error dbus_error = std::move(response.error());
     if (dbus_error.IsValid()) {
       Error::AddToPrintf(
           error, FROM_HERE, errors::dbus::kDomain, dbus_error.name(),
@@ -121,8 +120,9 @@ inline std::unique_ptr<::dbus::Response> CallMethodAndBlockWithTimeout(
                          "Failed to call D-Bus method: %s.%s",
                          interface_name.c_str(), method_name.c_str());
     }
+    return nullptr;
   }
-  return response;
+  return std::move(response.value());
 }
 
 // Same as CallMethodAndBlockWithTimeout() but uses a default timeout value.

@@ -71,12 +71,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Mock the method calls from the object proxy.
   EXPECT_CALL(*mock_object_proxy,
-              CallMethodAndBlockWithErrorDetails(IsMethod("EcGetInventory"),
-                                                 A<int>(), A<dbus::Error*>()))
-      .WillOnce(Invoke(
-          [&](dbus::MethodCall* method_call, int timeout, dbus::Error* error) {
-            return RespondWithString(method_call, resp_str);
-          }));
+              CallMethodAndBlock(IsMethod("EcGetInventory"), A<int>()))
+      .WillOnce(Invoke([&](dbus::MethodCall* method_call, int timeout) {
+        return base::ok(RespondWithString(method_call, resp_str));
+      }));
 
   auto util = std::make_unique<typecd::CrosECUtil>(bus);
   util->ModeEntrySupported();

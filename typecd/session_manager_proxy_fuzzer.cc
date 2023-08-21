@@ -73,18 +73,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       .WillOnce(testing::Return(mock_object_proxy.get()));
 
   // Mock the method calls from the object proxy.
-  EXPECT_CALL(*mock_object_proxy, CallMethodAndBlockWithErrorDetails(
-                                      IsMethod("IsGuestSessionActive"),
-                                      A<int>(), A<dbus::Error*>()))
-      .WillOnce(Invoke([&](dbus::MethodCall* method_call, int timeout,
-                           dbus::Error* error) {
+  EXPECT_CALL(*mock_object_proxy,
+              CallMethodAndBlock(IsMethod("IsGuestSessionActive"), A<int>()))
+      .WillOnce(Invoke([&](dbus::MethodCall* method_call, int timeout) {
         // We can set an arbitrary serial number.
         method_call->SetSerial(123);
         std::unique_ptr<dbus::Response> response =
             dbus::Response::FromMethodCall(method_call);
         dbus::MessageWriter writer(response.get());
         writer.AppendBool(data_provider.ConsumeBool());
-        return response;
+        return base::ok(std::move(response));
       }));
 
   auto fuzzer = typecd::SessionManagerProxyFuzzer(bus);

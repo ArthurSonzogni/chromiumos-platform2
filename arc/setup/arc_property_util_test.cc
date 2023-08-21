@@ -556,9 +556,8 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
   client_info.set_model(kModel);
   writer.AppendProtoAsArrayOfBytes(client_info);
   EXPECT_CALL(*cdm_factory_daemon_object_proxy_,
-              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
-                                                 A<int>(), A<dbus::Error*>()))
-      .WillOnce(Return(ByMove(std::move(response))));
+              CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
+      .WillOnce(Return(ByMove(base::ok(std::move(response)))));
 
   const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
   EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, true, false,
@@ -606,9 +605,8 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
 
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
   EXPECT_CALL(*cdm_factory_daemon_object_proxy_,
-              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
-                                                 A<int>(), A<dbus::Error*>()))
-      .WillOnce(Return(ByMove(std::move(response))));
+              CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
+      .WillOnce(Return(ByMove(base::ok(std::move(response)))));
 
   const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
   EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, true, false,

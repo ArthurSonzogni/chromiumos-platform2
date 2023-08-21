@@ -110,10 +110,9 @@ TResponse ParseResponse(const ByteArray& response_blob) {
 }
 
 // Stub RetrievePrimarySession Session Manager method.
-std::unique_ptr<dbus::Response> StubRetrievePrimarySession(
-    dbus::MethodCall* method_call,
-    int /* timeout_ms */,
-    dbus::Error* /* error */) {
+base::expected<std::unique_ptr<dbus::Response>, dbus::Error>
+StubRetrievePrimarySession(dbus::MethodCall* method_call,
+                           int /* timeout_ms */) {
   // Respond with username = kUser and sanitized_username = kUserHash.
   method_call->SetSerial(kDBusSerial);
   auto response = dbus::Response::FromMethodCall(method_call);
@@ -283,8 +282,7 @@ TEST_F(KerberosAdaptorTest, RetrievesPrimarySession) {
                              A<const ObjectPath&>()))
       .WillOnce(Return(mock_session_manager_proxy.get()));
   EXPECT_CALL(*mock_session_manager_proxy,
-              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
-                                                 A<int>(), A<dbus::Error*>()))
+              CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
       .WillOnce(Invoke(&StubRetrievePrimarySession));
 
   // Recreate an adaptor, but don't call set_storage_dir_for_testing().
