@@ -37,6 +37,7 @@ executable("arcvm_data_migrator") {
   sources = [ "data_migrator.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "bin"
+  cflags_cc = [ "-Wthread-safety" ]
   deps = [
     ":data_migrator_adaptors",
     ":libarcvm_data_migrator",

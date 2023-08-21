@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <brillo/blkdev_utils/loop_device.h>
@@ -49,19 +50,16 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
  public:
   explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus)
       : org::chromium::ArcVmDataMigratorAdaptor(this),
+        migration_stopped_condition_(&active_migration_helper_lock_),
         dbus_object_(nullptr, bus, GetObjectPath()) {
     exported_object_ =
         bus->GetExportedObject(dbus::ObjectPath(kArcVmDataMigratorServicePath));
   }
 
   ~DBusAdaptor() override {
-    {
-      // Cancel migration so that it doesn't block the destruction.
-      base::AutoLock lock(migration_helper_lock_);
-      if (migration_helper_) {
-        migration_helper_->Cancel();
-      }
-    }
+    // Cancel migration so that it doesn't block the destruction.
+    // Wait until the migration is stopped before cleaning up the mount point.
+    MaybeCancelMigrationAndWait();
     CleanupMount();
   }
 
@@ -246,22 +244,28 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     ArcVmDataMigrationHelperDelegate delegate(source_dir, &metrics_);
     constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
 
+    cryptohome::data_migrator::MigrationHelper migration_helper(
+        &platform_, &delegate, source_dir,
+        base::FilePath(kDestinationMountPoint), status_files_dir,
+        kMaxChunkSize);
+
     {
-      base::AutoLock lock(migration_helper_lock_);
-      migration_helper_ =
-          std::make_unique<cryptohome::data_migrator::MigrationHelper>(
-              &platform_, &delegate, source_dir,
-              base::FilePath(kDestinationMountPoint), status_files_dir,
-              kMaxChunkSize);
+      base::AutoLock lock(active_migration_helper_lock_);
+      if (is_migration_cancelled_) {
+        return;
+      }
+      CHECK(!active_migration_helper_);
+      active_migration_helper_ = &migration_helper;
     }
 
     // Unretained is safe to use here because this method (DBusAdaptor::Migrate)
     // runs on |migration_thread_| which is joined on the destruction on |this|.
-    bool success = migration_helper_->Migrate(base::BindRepeating(
+    bool success = migration_helper.Migrate(base::BindRepeating(
         &DBusAdaptor::MigrationHelperCallback, base::Unretained(this)));
     {
-      base::AutoLock lock(migration_helper_lock_);
-      migration_helper_.reset();
+      base::AutoLock lock(active_migration_helper_lock_);
+      active_migration_helper_ = nullptr;
+      migration_stopped_condition_.Signal();
     }
 
     DataMigrationProgress progress;
@@ -295,6 +299,17 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     exported_object_->SendSignal(&signal);
   }
 
+  void MaybeCancelMigrationAndWait() {
+    base::AutoLock lock(active_migration_helper_lock_);
+    is_migration_cancelled_ = true;
+    while (active_migration_helper_) {
+      active_migration_helper_->Cancel();
+      LOG(INFO) << "Waiting for the migration to stop.";
+      migration_stopped_condition_.Wait();
+      LOG(INFO) << "Migration stopped.";
+    }
+  }
+
   void CleanupMount() {
     if (mounted_) {
       PLOG_IF(ERROR, umount(kDestinationMountPoint))
@@ -315,9 +330,13 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager_;
 
   std::unique_ptr<base::Thread> migration_thread_;
-  std::unique_ptr<cryptohome::data_migrator::MigrationHelper> migration_helper_;
+  cryptohome::data_migrator::MigrationHelper* active_migration_helper_
+      GUARDED_BY(active_migration_helper_lock_) = nullptr;
+  bool is_migration_cancelled_ GUARDED_BY(active_migration_helper_lock_) =
+      false;
   Platform platform_;
-  base::Lock migration_helper_lock_;
+  base::Lock active_migration_helper_lock_;
+  base::ConditionVariable migration_stopped_condition_;
 
   ArcVmDataMigratorMetrics metrics_;
 
