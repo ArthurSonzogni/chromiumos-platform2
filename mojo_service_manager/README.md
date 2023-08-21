@@ -1,6 +1,6 @@
 # Mojo Service Manager
 
-The mojo service manager provides interface for services to register and to
+The mojo service manager provides interfaces for services to register and to
 request mojo interfaces. It makes the sharing of mojo interfaces across
 processes easy.
 
@@ -11,7 +11,7 @@ processes easy.
 
 **TL;DR, it is a service which can simplify the bootstrap process of mojo.**
 
-For detail design, see
+For detailed design, see
 [go/cros-mojo-service-manager](http://go/cros-mojo-service-manager)
 (Googlers only).
 
@@ -98,7 +98,7 @@ This means we can have a processes level and mojo interfaces level ACL.
 The lifetime of a process using mojo is decoupled from ash-chrome.
 
 Before the service manager, ash-chrome was the mojo broker process which helps
-other processes to bootstrap. All the mojo connection should be shutdown after
+other processes to bootstrap. All the mojo connections should be shut down after
 the broker is gone. Since ash-chrome restarts between user sessions, mojo
 connections between processes couldn't outlive the current user session.
 
@@ -111,7 +111,7 @@ For the usage in chromium repo, see [chromium's document](https://chromium.googl
 
 ### Bootstrap
 
-To use service manager, a process needs to bootstrap the mojo and obtains the
+To use service manager, a process needs to bootstrap the mojo and obtain the
 service manager mojo interface.
 
 *   ChromiumOS services
@@ -127,7 +127,7 @@ service manager mojo interface.
 
 *   ARCVM
 
-    TODO: Add this after finish the discussion.
+    TODO: Add this after finishing the discussion.
 
 ### Register and Request Services
 
@@ -140,9 +140,9 @@ First of all, we need to have a policy file:
 ```jsonc
 // Start with an array of policies.
 [
-  // A policy must contains an identity and at least one of "own" or "request".
+  // A policy must contain an identity and at least one of "own" or "request".
   {
-    // Identity is a string represent a selinux security context.
+    // Identity is a string representing a SELinux security context.
     "identity": "u:r:cros_foo:s0",
     // "own" is an array of the service name which can be registered by this
     // identity.
@@ -161,7 +161,7 @@ Rules of the policy file:
 
 *   Install into `/etc/mojo/service_manager/policy/` or
     `/usr/local/etc/mojo/service_manager/policy/`. The latter is for policy
-    files used only in test image.
+    files used only in test images.
 *   Service name should match `[A-Za-z0-9]+`.
 *   Each service should have its own policy file, which lists the owner and all
     the requesters.
@@ -169,9 +169,9 @@ Rules of the policy file:
 *   If there is a parse error in a policy file, the whole file is ignored.
 *   On DUT, use `mojo_service_manager --check_policy` to verify the installed
     policy files.
-*   To add a new selinux security context, see [Writing SELinux policy for a daemon](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/security/selinux.md#writing-selinux-policy-for-a-daemon).
-*   The selinux domain doesn't need to be enforcing to use service manager. The
-    service manager only use it as the identity.
+*   To add a new SELinux security context, see [Writing SELinux policy for a daemon](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/security/selinux.md#writing-selinux-policy-for-a-daemon).
+*   The SELinux domain doesn't need to be enforcing to use service manager. The
+    service manager only uses it as the identity.
 
 Assume that we have a Foo mojo interface:
 
