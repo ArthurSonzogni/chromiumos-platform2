@@ -14,6 +14,10 @@
 #include <gtest/gtest.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
+#include "lorgnette/constants.h"
+#include "lorgnette/libsane_wrapper.h"
+#include "lorgnette/libsane_wrapper_fake.h"
+#include "lorgnette/libsane_wrapper_impl.h"
 #include "lorgnette/manager.h"
 #include "lorgnette/test_util.h"
 
@@ -24,7 +28,8 @@ namespace lorgnette {
 class SaneDeviceImplTest : public testing::Test {
  protected:
   void SetUp() override {
-    client_ = SaneClientImpl::Create();
+    libsane_ = LibsaneWrapperImpl::Create();
+    client_ = SaneClientImpl::Create(libsane_.get());
     device_ = client_->ConnectToDevice(nullptr, nullptr, "test");
     EXPECT_TRUE(device_);
   }
@@ -33,6 +38,7 @@ class SaneDeviceImplTest : public testing::Test {
     dynamic_cast<SaneDeviceImpl*>(device_.get())->LoadOptions(nullptr);
   }
 
+  std::unique_ptr<LibsaneWrapper> libsane_;
   std::unique_ptr<SaneClient> client_;
   std::unique_ptr<SaneDevice> device_;
 };
@@ -223,6 +229,31 @@ TEST_F(SaneDeviceImplTest, RunScan) {
   } while (status == SANE_STATUS_GOOD && read != 0);
   EXPECT_EQ(read, 0);
   EXPECT_EQ(status, SANE_STATUS_EOF);
+}
+
+// Subclass of SaneDeviceImpl that gives public access to some of the private
+// methods for testing.
+class SaneDeviceImplPeer : public SaneDeviceImpl {
+ public:
+  SaneDeviceImplPeer(LibsaneWrapper* libsane,
+                     SANE_Handle handle,
+                     const std::string& name,
+                     std::shared_ptr<DeviceSet> open_devices)
+      : SaneDeviceImpl(libsane, handle, name, open_devices) {}
+
+  using SaneDeviceImpl::LoadOptions;
+};
+
+TEST(SaneDeviceImplFakeSaneTest, LoadOptionsNoOptionZero) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+  EXPECT_FALSE(device.LoadOptions(&error));
+  EXPECT_TRUE(error->HasError(kDbusDomain, kManagerServiceError));
 }
 
 class SaneClientTest : public testing::Test {

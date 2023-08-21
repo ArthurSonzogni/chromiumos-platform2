@@ -17,6 +17,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "lorgnette/dbus_service_adaptor.h"
+#include "lorgnette/libsane_wrapper_impl.h"
 #include "lorgnette/sane_client.h"
 #include "lorgnette/sane_client_impl.h"
 #include "lorgnette/usb/libusb_wrapper.h"
@@ -59,7 +60,8 @@ int Daemon::OnInit() {
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  sane_client_ = SaneClientImpl::Create();
+  libsane_ = LibsaneWrapperImpl::Create();
+  sane_client_ = SaneClientImpl::Create(libsane_.get());
   libusb_ = LibusbWrapperImpl::Create();
   auto manager =
       std::make_unique<Manager>(base::BindRepeating(&Daemon::PostponeShutdown,

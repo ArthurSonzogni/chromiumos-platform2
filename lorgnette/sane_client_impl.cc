@@ -49,26 +49,27 @@ ColorMode ColorModeFromSaneString(const std::string& mode) {
 }  // namespace
 
 // static
-std::unique_ptr<SaneClientImpl> SaneClientImpl::Create() {
-  SANE_Status status = sane_init(nullptr, nullptr);
+std::unique_ptr<SaneClientImpl> SaneClientImpl::Create(
+    LibsaneWrapper* libsane) {
+  SANE_Status status = libsane->sane_init(nullptr, nullptr);
   if (status != SANE_STATUS_GOOD) {
     LOG(ERROR) << "Unable to initialize SANE";
     return nullptr;
   }
 
   // Cannot use make_unique() with a private constructor.
-  return std::unique_ptr<SaneClientImpl>(new SaneClientImpl());
+  return std::unique_ptr<SaneClientImpl>(new SaneClientImpl(libsane));
 }
 
 SaneClientImpl::~SaneClientImpl() {
-  sane_exit();
+  libsane_->sane_exit();
 }
 
 std::optional<std::vector<ScannerInfo>> SaneClientImpl::ListDevices(
     brillo::ErrorPtr* error) {
   base::AutoLock auto_lock(lock_);
   const SANE_Device** device_list;
-  SANE_Status status = sane_get_devices(&device_list, SANE_FALSE);
+  SANE_Status status = libsane_->sane_get_devices(&device_list, SANE_FALSE);
   if (status != SANE_STATUS_GOOD) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "Unable to get device list from SANE");
@@ -109,8 +110,8 @@ std::optional<std::vector<ScannerInfo>> SaneClientImpl::DeviceListToScannerInfo(
   return scanners;
 }
 
-SaneClientImpl::SaneClientImpl()
-    : open_devices_(std::make_shared<DeviceSet>()) {}
+SaneClientImpl::SaneClientImpl(LibsaneWrapper* libsane)
+    : libsane_(libsane), open_devices_(std::make_shared<DeviceSet>()) {}
 
 std::unique_ptr<SaneDevice> SaneClientImpl::ConnectToDeviceInternal(
     brillo::ErrorPtr* error,
@@ -128,7 +129,7 @@ std::unique_ptr<SaneDevice> SaneClientImpl::ConnectToDeviceInternal(
       return nullptr;
     }
 
-    SANE_Status status = sane_open(device_name.c_str(), &handle);
+    SANE_Status status = libsane_->sane_open(device_name.c_str(), &handle);
     if (status != SANE_STATUS_GOOD) {
       brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
                                  kManagerServiceError,
@@ -145,7 +146,7 @@ std::unique_ptr<SaneDevice> SaneClientImpl::ConnectToDeviceInternal(
 
   // Cannot use make_unique() with a private constructor.
   auto device = std::unique_ptr<SaneDeviceImpl>(
-      new SaneDeviceImpl(handle, device_name, open_devices_));
+      new SaneDeviceImpl(libsane_, handle, device_name, open_devices_));
   device->LoadOptions(error);
   return device;
 }
@@ -153,7 +154,7 @@ std::unique_ptr<SaneDevice> SaneClientImpl::ConnectToDeviceInternal(
 SaneDeviceImpl::~SaneDeviceImpl() {
   if (handle_) {
     // If a scan is running, this will call sane_cancel() first.
-    sane_close(handle_);
+    libsane_->sane_close(handle_);
   }
   base::AutoLock auto_lock(open_devices_->first);
   open_devices_->second.erase(name_);
@@ -391,7 +392,7 @@ SANE_Status SaneDeviceImpl::StartScan(brillo::ErrorPtr* error) {
     return SANE_STATUS_DEVICE_BUSY;
   }
 
-  SANE_Status status = sane_start(handle_);
+  SANE_Status status = libsane_->sane_start(handle_);
   if (status == SANE_STATUS_GOOD) {
     scan_running_ = true;
   }
@@ -408,7 +409,7 @@ std::optional<ScanParameters> SaneDeviceImpl::GetScanParameters(
   }
 
   SANE_Parameters params;
-  SANE_Status status = sane_get_parameters(handle_, &params);
+  SANE_Status status = libsane_->sane_get_parameters(handle_, &params);
   if (status != SANE_STATUS_GOOD) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
@@ -459,7 +460,7 @@ SANE_Status SaneDeviceImpl::ReadScanData(brillo::ErrorPtr* error,
     return SANE_STATUS_INVAL;
   }
   SANE_Int read = 0;
-  SANE_Status status = sane_read(handle_, buf, count, &read);
+  SANE_Status status = libsane_->sane_read(handle_, buf, count, &read);
   // The SANE API requires that a non GOOD status will return 0 bytes read.
   *read_out = read;
   if (status != SANE_STATUS_GOOD) {
@@ -476,24 +477,30 @@ bool SaneDeviceImpl::CancelScan(brillo::ErrorPtr* error) {
   }
 
   scan_running_ = false;
-  sane_cancel(handle_);
+  libsane_->sane_cancel(handle_);
   return true;
 }
 
-SaneDeviceImpl::SaneDeviceImpl(SANE_Handle handle,
+SaneDeviceImpl::SaneDeviceImpl(LibsaneWrapper* libsane,
+                               SANE_Handle handle,
                                const std::string& name,
                                std::shared_ptr<DeviceSet> open_devices)
-    : handle_(handle),
+    : libsane_(libsane),
+      handle_(handle),
       name_(name),
       open_devices_(open_devices),
-      scan_running_(false) {}
+      scan_running_(false) {
+  CHECK(libsane);
+  CHECK(open_devices);
+}
 
 bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
   LOG(INFO) << "Loading device options";
   // First we get option descriptor 0, which contains the total count of
   // options. We don't strictly need the descriptor, but it's "Good form" to
   // do so according to 'scanimage'.
-  const SANE_Option_Descriptor* desc = sane_get_option_descriptor(handle_, 0);
+  const SANE_Option_Descriptor* desc =
+      libsane_->sane_get_option_descriptor(handle_, 0);
   if (!desc) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "Unable to get option count for device");
@@ -501,8 +508,8 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
   }
 
   SANE_Int num_options = 0;
-  SANE_Status status = sane_control_option(handle_, 0, SANE_ACTION_GET_VALUE,
-                                           &num_options, nullptr);
+  SANE_Status status = libsane_->sane_control_option(
+      handle_, 0, SANE_ACTION_GET_VALUE, &num_options, nullptr);
   if (status != SANE_STATUS_GOOD) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "Unable to get option count for device");
@@ -521,7 +528,8 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
   options_.clear();
   // Start at 1, since we've already checked option 0 above.
   for (int i = 1; i < num_options; i++) {
-    const SANE_Option_Descriptor* opt = sane_get_option_descriptor(handle_, i);
+    const SANE_Option_Descriptor* opt =
+        libsane_->sane_get_option_descriptor(handle_, i);
     if (!opt) {
       brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
                                  kManagerServiceError,
@@ -560,7 +568,7 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
 
     if (option_name.has_value()) {
       SaneOption sane_option(*opt, i);
-      SANE_Status status = sane_control_option(
+      SANE_Status status = libsane_->sane_control_option(
           handle_, i, SANE_ACTION_GET_VALUE, sane_option.GetPointer(), NULL);
       if (status != SANE_STATUS_GOOD) {
         brillo::Error::AddToPrintf(
@@ -580,9 +588,9 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
 bool SaneDeviceImpl::UpdateDeviceOption(brillo::ErrorPtr* error,
                                         SaneOption* option) {
   SANE_Int result_flags;
-  SANE_Status status =
-      sane_control_option(handle_, option->GetIndex(), SANE_ACTION_SET_VALUE,
-                          option->GetPointer(), &result_flags);
+  SANE_Status status = libsane_->sane_control_option(
+      handle_, option->GetIndex(), SANE_ACTION_SET_VALUE, option->GetPointer(),
+      &result_flags);
   if (status != SANE_STATUS_GOOD) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "Unable to set " + option->GetName() + " to " +

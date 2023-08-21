@@ -19,6 +19,7 @@
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <sane/sane.h>
 
+#include "lorgnette/libsane_wrapper.h"
 #include "lorgnette/sane_client.h"
 #include "lorgnette/sane_constraint.h"
 #include "lorgnette/sane_option.h"
@@ -29,7 +30,7 @@ using DeviceSet = std::pair<base::Lock, std::unordered_set<std::string>>;
 
 class SaneClientImpl : public SaneClient {
  public:
-  static std::unique_ptr<SaneClientImpl> Create();
+  static std::unique_ptr<SaneClientImpl> Create(LibsaneWrapper* libsane);
   ~SaneClientImpl();
 
   std::optional<std::vector<ScannerInfo>> ListDevices(
@@ -45,8 +46,9 @@ class SaneClientImpl : public SaneClient {
       const std::string& device_name) override;
 
  private:
-  SaneClientImpl();
+  explicit SaneClientImpl(LibsaneWrapper* libsane);
 
+  LibsaneWrapper* libsane_;  // Not owned.
   base::Lock lock_;
   std::shared_ptr<DeviceSet> open_devices_;
 };
@@ -81,6 +83,7 @@ class SaneDeviceImpl : public SaneDevice {
 
  private:
   friend class SaneDeviceImplTest;
+  friend class SaneDeviceImplPeer;
 
   enum ScanOption {
     kResolution,
@@ -95,7 +98,8 @@ class SaneDeviceImpl : public SaneDevice {
     kPageHeight,
   };
 
-  SaneDeviceImpl(SANE_Handle handle,
+  SaneDeviceImpl(LibsaneWrapper* libsane,
+                 SANE_Handle handle,
                  const std::string& name,
                  std::shared_ptr<DeviceSet> open_devices);
   bool LoadOptions(brillo::ErrorPtr* error);
@@ -119,6 +123,7 @@ class SaneDeviceImpl : public SaneDevice {
   std::optional<OptionRange> GetXRange(brillo::ErrorPtr* error);
   std::optional<OptionRange> GetYRange(brillo::ErrorPtr* error);
 
+  LibsaneWrapper* libsane_;  // Not owned.
   SANE_Handle handle_;
   std::string name_;
   std::shared_ptr<DeviceSet> open_devices_;
