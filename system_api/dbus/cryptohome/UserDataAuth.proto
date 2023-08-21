@@ -305,6 +305,21 @@ message EvictDeviceKeyRequest {
   bytes auth_session_id = 1;
 }
 
+message RestoreDeviceKeyRequest {
+  // The id of a running AuthSession, which also identifies the user whose
+  // encrypted device is restored.
+  bytes auth_session_id = 1;
+}
+
+message RestoreDeviceKeyReply {
+  // Indicates an error if |error| is not empty.
+  CryptohomeErrorCode error = 1;
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
+}
+
 // Input parameters to Unmount()
 // Currently we only support unmounting all mounted cryptohomes but in the
 // future we may implement per-user unmount, at which point we can extend this
