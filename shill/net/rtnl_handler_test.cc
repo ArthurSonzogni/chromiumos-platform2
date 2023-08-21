@@ -5,6 +5,8 @@
 #include "shill/net/rtnl_handler.h"
 
 #include <limits>
+#include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -20,10 +22,10 @@
 #include <base/test/task_environment.h>
 #include <net-base/byte_utils.h>
 #include <net-base/mac_address.h>
+#include <net-base/mock_socket.h>
 
 #include "shill/mock_log.h"
 #include "shill/net/mock_io_handler_factory.h"
-#include "shill/net/mock_sockets.h"
 #include "shill/net/rtnl_message.h"
 
 using testing::_;
@@ -32,6 +34,7 @@ using testing::AtLeast;
 using testing::DoAll;
 using testing::ElementsAre;
 using testing::HasSubstr;
+using testing::Invoke;
 using testing::Return;
 using testing::ReturnArg;
 using testing::StrictMock;
@@ -44,8 +47,8 @@ namespace {
 const int kTestInterfaceIndex = 4;
 
 ACTION(SetInterfaceIndex) {
-  if (arg2) {
-    reinterpret_cast<struct ifreq*>(arg2)->ifr_ifindex = kTestInterfaceIndex;
+  if (arg1) {
+    reinterpret_cast<struct ifreq*>(arg1)->ifr_ifindex = kTestInterfaceIndex;
   }
 }
 
@@ -58,21 +61,32 @@ std::unique_ptr<RTNLMessage> CreateFakeMessage() {
       RTNLMessage::kTypeLink, RTNLMessage::kModeGet, 0, 0, 0, 0, AF_UNSPEC);
 }
 
+std::optional<size_t> SimulateSend(base::span<const uint8_t> buf, int flags) {
+  return buf.size();
+}
+
 }  // namespace
 
 class RTNLHandlerTest : public Test {
  public:
   RTNLHandlerTest()
-      : sockets_(new StrictMock<MockSockets>()),
-        callback_(base::BindRepeating(&RTNLHandlerTest::HandlerCallback,
+      : callback_(base::BindRepeating(&RTNLHandlerTest::HandlerCallback,
                                       base::Unretained(this))) {}
 
   void SetUp() override {
     RTNLHandler::GetInstance()->io_handler_factory_ = &io_handler_factory_;
-    RTNLHandler::GetInstance()->sockets_.reset(sockets_);
+
+    auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
+    socket_factory_ = socket_factory.get();
+    RTNLHandler::GetInstance()->socket_factory_ = std::move(socket_factory);
   }
 
   void TearDown() override { RTNLHandler::GetInstance()->Stop(); }
+
+  net_base::MockSocket* GetMockSocket() {
+    return reinterpret_cast<net_base::MockSocket*>(
+        RTNLHandler::GetInstance()->rtnl_socket_.get());
+  }
 
   uint32_t GetRequestSequence() {
     return RTNLHandler::GetInstance()->request_sequence_;
@@ -137,7 +151,7 @@ class RTNLHandlerTest : public Test {
   void StopRTNLHandler();
   void ReturnError(uint32_t sequence, int error_number);
 
-  MockSockets* sockets_;
+  net_base::MockSocketFactory* socket_factory_;  // Owned by RTNLHandler
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
   base::RepeatingCallback<void(const RTNLMessage&)> callback_;
 
@@ -151,21 +165,25 @@ const int RTNLHandlerTest::kTestDeviceIndex = 123456;
 const char RTNLHandlerTest::kTestDeviceName[] = "test-device";
 
 void RTNLHandlerTest::StartRTNLHandler() {
-  EXPECT_CALL(*sockets_,
-              Socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_ROUTE))
-      .WillOnce(Return(kTestSocket));
-  EXPECT_CALL(*sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
-      .WillOnce(Return(0));
-  EXPECT_CALL(*sockets_, SetReceiveBuffer(kTestSocket, _))
-      .Times(AtLeast(1))
-      .WillRepeatedly(Return(0));
-  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(kTestSocket, _, _));
+  int socket_fd = -1;
+  EXPECT_CALL(*socket_factory_, CreateNetlink(NETLINK_ROUTE, _, _))
+      .WillOnce([&]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        socket_fd = socket->Get();
+        return socket;
+      });
+
+  int fd_to_handler = -2;
+  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(_, _, _))
+      .WillOnce(DoAll(testing::SaveArg<0>(&fd_to_handler), Return(nullptr)));
   RTNLHandler::GetInstance()->Start(0);
+
+  EXPECT_EQ(socket_fd, fd_to_handler);
 }
 
 void RTNLHandlerTest::StopRTNLHandler() {
-  EXPECT_CALL(*sockets_, Close(kTestSocket)).WillOnce(Return(0));
   RTNLHandler::GetInstance()->Stop();
+  EXPECT_EQ(GetMockSocket(), nullptr);
 }
 
 void RTNLHandlerTest::AddLink() {
@@ -229,18 +247,33 @@ TEST_F(RTNLHandlerTest, GetInterfaceName) {
     std::string name(sizeof(ifr.ifr_name), 'x');
     EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex(name));
   }
+}
 
-  const int kTestSocket = 123;
-  EXPECT_CALL(*sockets_, Socket(PF_INET, _, 0))
-      .Times(3)
-      .WillOnce(Return(-1))
-      .WillRepeatedly(Return(kTestSocket));
-  EXPECT_CALL(*sockets_, Ioctl(kTestSocket, SIOCGIFINDEX, _))
-      .WillOnce(Return(-1))
-      .WillOnce(DoAll(SetInterfaceIndex(), Return(0)));
-  EXPECT_CALL(*sockets_, Close(kTestSocket)).Times(2).WillRepeatedly(Return(0));
+TEST_F(RTNLHandlerTest, GetInterfaceNameFailToCreateSocket) {
+  EXPECT_CALL(*socket_factory_, Create(PF_INET, _, 0))
+      .WillOnce(Return(nullptr));
+
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex("eth0"));
+}
+
+TEST_F(RTNLHandlerTest, GetInterfaceNameFailToIoctl) {
+  EXPECT_CALL(*socket_factory_, Create(PF_INET, _, 0)).WillOnce([]() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, Ioctl(SIOCGIFINDEX, _)).WillOnce(Return(std::nullopt));
+    return socket;
+  });
+
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex("wlan0"));
+}
+
+TEST_F(RTNLHandlerTest, GetInterfaceNameSuccess) {
+  EXPECT_CALL(*socket_factory_, Create(PF_INET, _, 0)).WillOnce([]() {
+    auto socket = std::make_unique<net_base::MockSocket>();
+    EXPECT_CALL(*socket, Ioctl(SIOCGIFINDEX, _))
+        .WillOnce(DoAll(SetInterfaceIndex(), Return(0)));
+    return socket;
+  });
+
   EXPECT_EQ(kTestInterfaceIndex,
             RTNLHandler::GetInstance()->GetInterfaceIndex("usb0"));
 }
@@ -261,9 +294,10 @@ TEST_F(RTNLHandlerTest, IsSequenceInErrorMaskWindow) {
 
 TEST_F(RTNLHandlerTest, SendMessageReturnsErrorAndAdvancesSequenceNumber) {
   StartRTNLHandler();
+
   const uint32_t kSequenceNumber = 123;
   SetRequestSequence(kSequenceNumber);
-  EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(Return(-1));
+  EXPECT_CALL(*GetMockSocket(), Send(_, 0)).WillOnce(Return(std::nullopt));
   uint32_t seq = 0;
   EXPECT_FALSE(
       RTNLHandler::GetInstance()->SendMessage(CreateFakeMessage(), &seq));
@@ -280,7 +314,9 @@ TEST_F(RTNLHandlerTest, SendMessageWithEmptyMask) {
   const uint32_t kSequenceNumber = 123;
   SetRequestSequence(kSequenceNumber);
   SetErrorMask(kSequenceNumber, {1, 2, 3});
-  EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
+  EXPECT_CALL(*GetMockSocket(), Send(_, 0))
+      .WillOnce(testing::Invoke(SimulateSend));
+
   uint32_t seq;
   EXPECT_TRUE(SendMessageWithErrorMask(CreateFakeMessage(), {}, &seq));
   EXPECT_EQ(seq, kSequenceNumber);
@@ -293,7 +329,8 @@ TEST_F(RTNLHandlerTest, SendMessageWithErrorMask) {
   StartRTNLHandler();
   const uint32_t kSequenceNumber = 123;
   SetRequestSequence(kSequenceNumber);
-  EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
+  EXPECT_CALL(*GetMockSocket(), Send(_, 0))
+      .WillOnce(testing::Invoke(SimulateSend));
   uint32_t seq;
   EXPECT_TRUE(SendMessageWithErrorMask(CreateFakeMessage(), {1, 2, 3}, &seq));
   EXPECT_EQ(seq, kSequenceNumber);
@@ -307,6 +344,10 @@ TEST_F(RTNLHandlerTest, SendMessageWithErrorMask) {
 }
 
 TEST_F(RTNLHandlerTest, SendMessageInferredErrorMasks) {
+  StartRTNLHandler();
+  EXPECT_CALL(*GetMockSocket(), Send(_, 0))
+      .WillRepeatedly(testing::Invoke(SimulateSend));
+
   struct {
     RTNLMessage::Type type;
     RTNLMessage::Mode mode;
@@ -319,7 +360,6 @@ TEST_F(RTNLHandlerTest, SendMessageInferredErrorMasks) {
        RTNLMessage::kModeDelete,
        {ESRCH, ENODEV, EADDRNOTAVAIL}}};
   const uint32_t kSequenceNumber = 123;
-  EXPECT_CALL(*sockets_, Send(_, _, _, 0)).WillRepeatedly(ReturnArg<2>());
   for (const auto& expectation : expectations) {
     SetRequestSequence(kSequenceNumber);
     auto message = std::make_unique<RTNLMessage>(
@@ -334,7 +374,8 @@ TEST_F(RTNLHandlerTest, MaskedError) {
   StartRTNLHandler();
   const uint32_t kSequenceNumber = 123;
   SetRequestSequence(kSequenceNumber);
-  EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
+  EXPECT_CALL(*GetMockSocket(), Send(_, 0))
+      .WillOnce(testing::Invoke(SimulateSend));
   uint32_t seq;
   EXPECT_TRUE(SendMessageWithErrorMask(CreateFakeMessage(), {1, 2, 3}, &seq));
   EXPECT_EQ(seq, kSequenceNumber);
@@ -535,7 +576,8 @@ TEST_F(RTNLHandlerTest, SetInterfaceMac) {
   constexpr uint32_t kSequenceNumber = 123456;
   constexpr int32_t kErrorNumber = 115;
   SetRequestSequence(kSequenceNumber);
-  EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
+  EXPECT_CALL(*GetMockSocket(), Send(_, 0))
+      .WillOnce(testing::Invoke(SimulateSend));
 
   base::test::TestFuture<int32_t> error_future;
 
@@ -559,11 +601,10 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
   SetRequestSequence(kSequenceNumber);
 
   std::vector<uint8_t> msg_bytes;
-  EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0))
-      .WillOnce([&](int, const void* buf, size_t len, int flags) {
-        msg_bytes = {reinterpret_cast<const uint8_t*>(buf),
-                     reinterpret_cast<const uint8_t*>(buf) + len};
-        return len;
+  EXPECT_CALL(*GetMockSocket(), Send(_, 0))
+      .WillOnce([&](base::span<const uint8_t> buf, int flags) {
+        msg_bytes = {std::begin(buf), std::end(buf)};
+        return buf.size();
       });
 
   base::test::TestFuture<int32_t> error_future;

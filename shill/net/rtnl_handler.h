@@ -21,6 +21,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/socket.h>
 
 #include "shill/net/io_handler_factory.h"
 #include "shill/net/rtnl_listener.h"
@@ -64,9 +65,6 @@ class SHILL_EXPORT RTNLHandler {
   // function will create an IOHandler and add it to the current message
   // loop.
   virtual void Start(uint32_t netlink_groups_mask);
-
-  // Set the receiver queue buffer size of RTNL socket to |bytes|.
-  void SetReceiverBufferSize(int bytes);
 
   // Add an RTNL event listener to the list of entities that will
   // be notified of RTNL events.
@@ -220,10 +218,11 @@ class SHILL_EXPORT RTNLHandler {
   std::unique_ptr<RTNLMessage> PopStoredRequest(uint32_t seq);
   uint32_t CalculateStoredRequestWindowSize();
 
-  std::unique_ptr<Sockets> sockets_;
+  std::unique_ptr<net_base::SocketFactory> socket_factory_ =
+      std::make_unique<net_base::SocketFactory>();
   bool in_request_;
 
-  int rtnl_socket_;
+  std::unique_ptr<net_base::Socket> rtnl_socket_;
   uint32_t netlink_groups_mask_;
   uint32_t request_flags_;
   uint32_t request_sequence_;

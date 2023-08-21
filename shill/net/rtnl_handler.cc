@@ -30,8 +30,6 @@
 
 #include "shill/net/io_handler.h"
 #include "shill/net/io_handler_factory_container.h"
-#include "shill/net/netlink_fd.h"
-#include "shill/net/sockets.h"
 
 namespace shill {
 
@@ -55,9 +53,7 @@ constexpr int kReceiveBufferBytes = 3 * 1024 * 1024;
 }  // namespace
 
 RTNLHandler::RTNLHandler()
-    : sockets_(new Sockets()),
-      in_request_(false),
-      rtnl_socket_(Sockets::kInvalidFileDescriptor),
+    : in_request_(false),
       netlink_groups_mask_(0),
       request_flags_(0),
       request_sequence_(0),
@@ -79,19 +75,19 @@ RTNLHandler* RTNLHandler::GetInstance() {
 
 void RTNLHandler::Start(uint32_t netlink_groups_mask) {
   netlink_groups_mask_ = netlink_groups_mask;
-  if (rtnl_socket_ != Sockets::kInvalidFileDescriptor)
-    return;
-
-  rtnl_socket_ =
-      OpenNetlinkSocketFD(sockets_.get(), NETLINK_ROUTE, netlink_groups_mask_);
-  if (rtnl_socket_ < 0) {
+  if (rtnl_socket_ != nullptr) {
     return;
   }
 
-  SetReceiverBufferSize(kReceiveBufferBytes);
+  rtnl_socket_ = socket_factory_->CreateNetlink(
+      NETLINK_ROUTE, netlink_groups_mask_, kReceiveBufferBytes);
+  if (rtnl_socket_ == nullptr) {
+    PLOG(ERROR) << __func__ << " failed to create netlink socket.";
+    return;
+  }
 
   rtnl_handler_.reset(io_handler_factory_->CreateIOInputHandler(
-      rtnl_socket_,
+      rtnl_socket_->Get(),
       base::BindRepeating(&RTNLHandler::ParseRTNL, base::Unretained(this)),
       base::BindRepeating(&RTNLHandler::OnReadError, base::Unretained(this))));
 
@@ -99,22 +95,9 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
   VLOG(2) << "RTNLHandler started";
 }
 
-void RTNLHandler::SetReceiverBufferSize(int bytes) {
-  CHECK(rtnl_socket_ != Sockets::kInvalidFileDescriptor)
-      << "Invalid socket descriptor: " << rtnl_socket_;
-
-  if (sockets_->SetReceiveBuffer(rtnl_socket_, bytes) < 0)
-    PLOG(WARNING) << "Failed to increase receive buffer size to " << bytes
-                  << "b";
-}
-
 void RTNLHandler::Stop() {
   rtnl_handler_.reset();
-  // Close the socket if it is currently open.
-  if (rtnl_socket_ != Sockets::kInvalidFileDescriptor) {
-    sockets_->Close(rtnl_socket_);
-    rtnl_socket_ = Sockets::kInvalidFileDescriptor;
-  }
+  rtnl_socket_.reset();
   in_request_ = false;
   request_flags_ = 0;
   request_sequence_ = 0;
@@ -138,7 +121,7 @@ void RTNLHandler::RemoveListener(RTNLListener* to_remove) {
 void RTNLHandler::SetInterfaceFlags(int interface_index,
                                     unsigned int flags,
                                     unsigned int change) {
-  if (rtnl_socket_ == Sockets::kInvalidFileDescriptor) {
+  if (rtnl_socket_ == nullptr) {
     LOG(ERROR) << __func__
                << " called while not started.  "
                   "Assuming we are in unit tests.";
@@ -197,7 +180,7 @@ void RTNLHandler::SetInterfaceMac(int interface_index,
 }
 
 void RTNLHandler::RequestDump(uint32_t request_flags) {
-  if (rtnl_socket_ == Sockets::kInvalidFileDescriptor) {
+  if (rtnl_socket_ == nullptr) {
     LOG(ERROR) << __func__
                << " called while not started.  "
                   "Assuming we are in unit tests.";
@@ -456,15 +439,14 @@ int RTNLHandler::GetInterfaceIndex(const std::string& interface_name) {
                << " >= " << sizeof(ifr.ifr_name);
     return -1;
   }
-  int socket = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-  if (socket < 0) {
+  auto socket = socket_factory_->Create(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+  if (socket == nullptr) {
     PLOG(ERROR) << "Unable to open INET socket";
     return -1;
   }
-  ScopedSocketCloser socket_closer(sockets_.get(), socket);
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, interface_name.c_str(), sizeof(ifr.ifr_name));
-  if (sockets_->Ioctl(socket, SIOCGIFINDEX, &ifr) < 0) {
+  if (!socket->Ioctl(SIOCGIFINDEX, &ifr).has_value()) {
     PLOG(ERROR) << "SIOCGIFINDEX error for " << interface_name;
     return -1;
   }
@@ -535,7 +517,7 @@ bool RTNLHandler::SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
 
   request_sequence_++;
 
-  if (sockets_->Send(rtnl_socket_, &msgdata.front(), msgdata.size(), 0) < 0) {
+  if (!rtnl_socket_->Send(msgdata, 0).has_value()) {
     PLOG(ERROR) << "RTNL send failed";
     return false;
   }

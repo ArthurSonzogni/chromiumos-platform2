@@ -90,12 +90,13 @@ class NetworkApplier {
   // there are any classless static routes configured in DHCPv4, passing
   // destinations of those routes as |rfc3442_dsts| will create routing rules
   // that force per-interface table for those destinations.
-  void ApplyRoutingPolicy(int interface_index,
-                          const std::string& interface_name,
-                          Technology technology,
-                          NetworkPriority priority,
-                          const std::vector<net_base::IPCIDR>& all_addresses,
-                          const std::vector<net_base::IPv4CIDR>& rfc3442_dsts);
+  mockable void ApplyRoutingPolicy(
+      int interface_index,
+      const std::string& interface_name,
+      Technology technology,
+      NetworkPriority priority,
+      const std::vector<net_base::IPCIDR>& all_addresses,
+      const std::vector<net_base::IPv4CIDR>& rfc3442_dsts);
 
   mockable void ApplyMTU(int interface_index, int mtu);
 

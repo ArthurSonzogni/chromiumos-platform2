@@ -5,6 +5,7 @@
 #ifndef SHILL_NETWORK_MOCK_NETWORK_APPLIER_H_
 #define SHILL_NETWORK_MOCK_NETWORK_APPLIER_H_
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -41,6 +42,16 @@ class MockNetworkApplier : public NetworkApplier {
                const std::vector<net_base::IPCIDR>&,
                (const std::vector<
                    std::pair<net_base::IPv4CIDR, net_base::IPv4Address>>&)),
+              (override));
+
+  MOCK_METHOD(void,
+              ApplyRoutingPolicy,
+              (int interface_index,
+               const std::string& interface_name,
+               Technology technology,
+               NetworkPriority priority,
+               const std::vector<net_base::IPCIDR>& all_addresses,
+               const std::vector<net_base::IPv4CIDR>& rfc3442_dsts),
               (override));
 };
 

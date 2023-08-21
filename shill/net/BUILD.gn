@@ -203,6 +203,7 @@ if (use.test) {
       ":libshill-net",
       ":net_test_support",
       "//common-mk/testrunner",
+      "//net-base:net_base_test_support",
     ]
   }
 }
