@@ -127,7 +127,7 @@ class SaneDeviceImpl : public SaneDevice {
   SANE_Handle handle_;
   std::string name_;
   std::shared_ptr<DeviceSet> open_devices_;
-  std::unordered_map<ScanOption, SaneOption> options_;
+  std::unordered_map<ScanOption, SaneOption> known_options_;
   // This is true if we are currently acquiring an image frame (i.e. page) from
   // SANE. Once we've reached EOF for a frame, this will be false until
   // another call is made to StartScan().
