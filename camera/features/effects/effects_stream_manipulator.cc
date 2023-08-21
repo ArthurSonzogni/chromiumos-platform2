@@ -449,8 +449,15 @@ void EffectsStreamManipulatorImpl::ShutdownOnGlThread() {
 EffectsStreamManipulatorImpl::StreamContext*
 EffectsStreamManipulatorImpl::GetStreamContext(
     const camera3_stream_t* stream) const {
+  // If |stream| is used for a blob stream, returns StreamContext for that blob
+  // stream.
   for (auto& s : stream_contexts_) {
-    if (s->original_stream == stream || s->yuv_stream_for_blob == stream) {
+    if (s->yuv_stream_for_blob == stream) {
+      return s.get();
+    }
+  }
+  for (auto& s : stream_contexts_) {
+    if (s->original_stream == stream) {
       return s.get();
     }
   }
