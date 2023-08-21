@@ -4,6 +4,8 @@
 
 #include "machine-id-regen/machine_id_regen.h"
 
+#include <memory>
+
 #include <base/files/scoped_temp_dir.h>
 #include <base/time/time.h>
 #include <brillo/file_utils.h>
@@ -26,7 +28,8 @@ class TimestampTest : public ::testing::Test {
  public:
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    timestamp_ = new Timestamp(temp_dir_.GetPath().Append("tmp_timestamp"));
+    timestamp_ = std::make_unique<Timestamp>(
+        temp_dir_.GetPath().Append("tmp_timestamp"));
   }
 
   void TearDown() override { ASSERT_TRUE(temp_dir_.Delete()); }
@@ -34,7 +37,7 @@ class TimestampTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
 
  protected:
-  Timestamp* timestamp_;
+  std::unique_ptr<Timestamp> timestamp_;
 };
 
 }  // namespace
