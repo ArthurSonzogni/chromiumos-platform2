@@ -108,7 +108,8 @@ const char* MissiveArgs::kLegacyStorageEnabledDefault = []() {
 
 MissiveArgs::MissiveArgs(feature::PlatformFeaturesInterface* feature_lib)
     : feature_lib_(feature_lib),
-      features_to_load_({&kCollectorFeature, &kStorageFeature}) {
+      features_to_load_(
+          {&kCollectorFeature, &kStorageFeature, &kConfigFileFeature}) {
   CHECK(feature_lib_);
   feature_lib_->GetParamsAndEnabled(
       features_to_load_, base::BindPostTaskToCurrentDefault(base::BindOnce(
@@ -252,6 +253,23 @@ void MissiveArgs::UpdateParameters(
                            signature_verification_dev_enabled,
                            kSignatureVerificationDevEnabledDefault);
   }
+  {
+    std::string blocking_destinations_enabled;
+    std::string blocking_metrics_enabled;
+    auto it = result.find(kCollectorFeature.name);
+    if (it != result.end() && it->second.enabled) {
+      blocking_destinations_enabled = FindValueOrEmpty(
+          kBlockingDestinationsEnabledParameter, it->second.params);
+      blocking_metrics_enabled =
+          FindValueOrEmpty(kBlockingMetricsEnabledParameter, it->second.params);
+    }
+    config_file_parameters_.blocking_destinations_enabled = BoolParameterValue(
+        kBlockingDestinationsEnabledParameter, blocking_destinations_enabled,
+        kBlockingDestinationsEnabledDefault);
+    config_file_parameters_.blocking_metrics_enabled = BoolParameterValue(
+        kBlockingMetricsEnabledParameter, blocking_metrics_enabled,
+        kBlockingMetricsEnabledDefault);
+  }
 }
 
 void MissiveArgs::GetCollectionParameters(
@@ -281,6 +299,20 @@ void MissiveArgs::GetStorageParameters(
   std::move(result_cb).Run(storage_parameters_);  // Making a copy
 }
 
+void MissiveArgs::GetConfigFileParameters(
+    base::OnceCallback<void(StatusOr<ConfigFileParameters>)> result_cb) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!responded_) {
+    // No response yet, delay.
+    delayed_response_cbs_.emplace_back(
+        base::BindOnce(&MissiveArgs::GetConfigFileParameters,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(result_cb)));
+    return;
+  }
+  // Response is there, return a copy.
+  std::move(result_cb).Run(config_file_parameters_);  // Making a copy
+}
+
 void MissiveArgs::OnCollectionParametersUpdate(
     base::RepeatingCallback<void(CollectionParameters)> update_cb,
     base::OnceClosure done_cb) {
@@ -305,6 +337,21 @@ void MissiveArgs::OnStorageParametersUpdate(
          base::RepeatingCallback<void(StorageParameters)> update_cb) {
         DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
         update_cb.Run(self->storage_parameters_);  // Making a copy.
+      },
+      weak_ptr_factory_.GetWeakPtr(), update_cb);
+  update_cbs_.push_back(cb);
+  std::move(done_cb).Run();
+}
+
+void MissiveArgs::OnConfigFileParametersUpdate(
+    base::RepeatingCallback<void(ConfigFileParameters)> update_cb,
+    base::OnceClosure done_cb) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto cb = base::BindRepeating(
+      [](base::WeakPtr<MissiveArgs> self,
+         base::RepeatingCallback<void(ConfigFileParameters)> update_cb) {
+        DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+        update_cb.Run(self->config_file_parameters_);  // Making a copy.
       },
       weak_ptr_factory_.GetWeakPtr(), update_cb);
   update_cbs_.push_back(cb);

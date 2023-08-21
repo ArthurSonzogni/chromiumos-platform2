@@ -72,6 +72,8 @@ TEST_F(MissiveArgsTest, DefaultCollectionValues) {
   fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
                                      false);
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  fake_platform_features->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                     false);
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       fake_platform_features.get());
@@ -184,6 +186,8 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
       dbus_test_environment_.mock_bus().get());
   fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name, true);
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  fake_platform_features->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                     false);
   auto* const fake_platform_features_ptr = fake_platform_features.get();
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
@@ -255,6 +259,8 @@ TEST_F(MissiveArgsTest, DefaultStorageValues) {
   fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
                                      false);
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  fake_platform_features->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                     false);
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       fake_platform_features.get());
@@ -357,6 +363,8 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
                                      false);
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, true);
+  fake_platform_features->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                     false);
   auto* const fake_platform_features_ptr = fake_platform_features.get();
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
@@ -417,6 +425,138 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
     EXPECT_TRUE(storage.controlled_degradation);
     EXPECT_THAT(storage.legacy_storage_enabled, StrEq("SECURITY,IMMEDIATE"));
     EXPECT_TRUE(storage.signature_verification_dev_enabled);
+  }
+}
+
+TEST_F(MissiveArgsTest, DefaultConfigFileValues) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
+                                     false);
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  fake_platform_features->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                     false);
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      fake_platform_features.get());
+
+  test::TestEvent<StatusOr<MissiveArgs::ConfigFileParameters>> get_config_file;
+  args.AsyncCall(&MissiveArgs::GetConfigFileParameters)
+      .WithArgs(get_config_file.cb());
+  const auto& config_file = get_config_file.result();
+  ASSERT_OK(config_file) << config_file.status();
+  EXPECT_THAT(config_file.ValueOrDie().blocking_destinations_enabled,
+              Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
+  EXPECT_THAT(config_file.ValueOrDie().blocking_metrics_enabled,
+              Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
+}
+
+TEST_F(MissiveArgsTest, ExplicitConfigFileValues) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
+                                     false);
+  fake_platform_features->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                     true);
+  fake_platform_features->SetParam(
+      MissiveArgs::kConfigFileFeature.name,
+      MissiveArgs::kBlockingDestinationsEnabledParameter, "False");
+  fake_platform_features->SetParam(
+      MissiveArgs::kConfigFileFeature.name,
+      MissiveArgs::kBlockingMetricsEnabledParameter, "False");
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      fake_platform_features.get());
+
+  test::TestEvent<StatusOr<MissiveArgs::ConfigFileParameters>> get_config_file;
+  args.AsyncCall(&MissiveArgs::GetConfigFileParameters)
+      .WithArgs(get_config_file.cb());
+  const auto& config_file = get_config_file.result();
+  ASSERT_OK(config_file) << config_file.status();
+  EXPECT_FALSE(config_file.ValueOrDie().blocking_destinations_enabled);
+  EXPECT_FALSE(config_file.ValueOrDie().blocking_metrics_enabled);
+}
+
+TEST_F(MissiveArgsTest, BadConfigFileValues) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                     true);
+  fake_platform_features->SetParam(
+      MissiveArgs::kConfigFileFeature.name,
+      MissiveArgs::kBlockingDestinationsEnabledParameter, "Unknown");
+  fake_platform_features->SetParam(
+      MissiveArgs::kConfigFileFeature.name,
+      MissiveArgs::kBlockingMetricsEnabledParameter, "Nothing");
+
+  fake_platform_features->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                     false);
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      fake_platform_features.get());
+
+  test::TestEvent<StatusOr<MissiveArgs::ConfigFileParameters>> get_config_file;
+  args.AsyncCall(&MissiveArgs::GetConfigFileParameters)
+      .WithArgs(get_config_file.cb());
+  const auto& config_file = get_config_file.result();
+  ASSERT_OK(config_file) << config_file.status();
+  EXPECT_THAT(config_file.ValueOrDie().blocking_destinations_enabled,
+              Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
+  EXPECT_THAT(config_file.ValueOrDie().blocking_metrics_enabled,
+              Eq(MissiveArgs::kBlockingMetricsEnabledDefault));
+}
+
+TEST_F(MissiveArgsTest, ListeningForConfigFileValuesUpdate) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
+                                     false);
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  fake_platform_features->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                     true);
+  auto* const fake_platform_features_ptr = fake_platform_features.get();
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      fake_platform_features.get());
+
+  // Get initial results
+  test::TestEvent<StatusOr<MissiveArgs::ConfigFileParameters>> get_config_file;
+  args.AsyncCall(&MissiveArgs::GetConfigFileParameters)
+      .WithArgs(get_config_file.cb());
+  {
+    const auto& config_file = get_config_file.result();
+    ASSERT_OK(config_file) << config_file.status();
+    EXPECT_THAT(config_file.ValueOrDie().blocking_destinations_enabled,
+                Eq(MissiveArgs::kBlockingDestinationsEnabledDefault));
+    EXPECT_THAT(config_file.ValueOrDie().blocking_metrics_enabled,
+                Eq(MissiveArgs::kBlockingMetricsEnabledDefault));
+  }
+
+  // Register update callback.
+  test::TestEvent<MissiveArgs::ConfigFileParameters> update_config_file;
+  {
+    test::TestCallbackAutoWaiter waiter;
+    args.AsyncCall(&MissiveArgs::OnConfigFileParametersUpdate)
+        .WithArgs(update_config_file.repeating_cb(),
+                  base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
+                                 base::Unretained(&waiter)));
+  }
+
+  // Change parameters.
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kConfigFileFeature.name,
+      MissiveArgs::kBlockingDestinationsEnabledParameter, "False");
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kConfigFileFeature.name,
+      MissiveArgs::kBlockingMetricsEnabledParameter, "False");
+
+  // Fetch the updated feature flag values.
+  fake_platform_features_ptr->TriggerRefetchSignal();
+
+  {
+    const auto& config_file = update_config_file.result();
+    EXPECT_FALSE(config_file.blocking_destinations_enabled);
+    EXPECT_FALSE(config_file.blocking_metrics_enabled);
   }
 }
 }  // namespace reporting

@@ -71,6 +71,20 @@ class MissiveArgs {
         kSignatureVerificationDevEnabledDefault;
   };
 
+  // Configuration file feature parameters:
+  static constexpr bool kBlockingDestinationsEnabledDefault = false;
+  static constexpr char kBlockingDestinationsEnabledParameter[] =
+      "blocking_destinations_enabled";
+  static constexpr bool kBlockingMetricsEnabledDefault = false;
+  static constexpr char kBlockingMetricsEnabledParameter[] =
+      "blocking_metrics_enabled";
+  static constexpr VariationsFeature kConfigFileFeature{
+      "CrOSMissiveConfigurationFile", FEATURE_DISABLED_BY_DEFAULT};
+  struct ConfigFileParameters {
+    bool blocking_destinations_enabled = kBlockingDestinationsEnabledDefault;
+    bool blocking_metrics_enabled = kBlockingMetricsEnabledDefault;
+  };
+
   explicit MissiveArgs(feature::PlatformFeaturesInterface* feature_lib);
   MissiveArgs(const MissiveArgs&) = delete;
   MissiveArgs& operator=(const MissiveArgs&) = delete;
@@ -82,6 +96,8 @@ class MissiveArgs {
       base::OnceCallback<void(StatusOr<CollectionParameters>)> result_cb);
   void GetStorageParameters(
       base::OnceCallback<void(StatusOr<StorageParameters>)> result_cb);
+  void GetConfigFileParameters(
+      base::OnceCallback<void(StatusOr<ConfigFileParameters>)> result_cb);
 
   // Registers a repeatable callback to be invoked every time the listener
   // notifies about possible update. `done_cb` is called once `update_cb`
@@ -91,6 +107,9 @@ class MissiveArgs {
       base::OnceClosure done_cb);
   void OnStorageParametersUpdate(
       base::RepeatingCallback<void(StorageParameters)> update_cb,
+      base::OnceClosure done_cb);
+  void OnConfigFileParametersUpdate(
+      base::RepeatingCallback<void(ConfigFileParameters)> update_cb,
       base::OnceClosure done_cb);
 
  private:
@@ -112,6 +131,8 @@ class MissiveArgs {
   CollectionParameters collection_parameters_
       GUARDED_BY_CONTEXT(sequence_checker_);
   StorageParameters storage_parameters_ GUARDED_BY_CONTEXT(sequence_checker_);
+  ConfigFileParameters config_file_parameters_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // `Get...Parameters` calls made before `OnParamResult` will be delayed and
   // responded after it.
