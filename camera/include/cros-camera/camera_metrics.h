@@ -244,7 +244,8 @@ class CROS_CAMERA_EXPORT CameraMetrics {
   // Records auto-framing median zoom ratio per session.
   virtual void SendAutoFramingMedianZoomRatio(int zoom_ratio_tenths) = 0;
 
-  // Records auto-framing average zoom ratio per session.
+  // Records whether there's an error that can compromise the auto-framing
+  // feature.
   virtual void SendAutoFramingError(AutoFramingError error) = 0;
 
   // *** Effects metrics ***
