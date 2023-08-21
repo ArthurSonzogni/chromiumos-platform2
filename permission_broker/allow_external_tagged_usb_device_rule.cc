@@ -18,11 +18,11 @@
 namespace permission_broker {
 
 CrosUsbLocationProperty AncestorsLocation(udev_device* device) {
-  udev_device* ancestor = udev_device_get_parent(device);
   bool internal_ancestors = false;
   bool external_ancestors = false;
 
-  while (ancestor != nullptr) {
+  for (udev_device* ancestor = udev_device_get_parent(device);
+       ancestor != nullptr; ancestor = udev_device_get_parent(ancestor)) {
     const char* subsystem = udev_device_get_subsystem(ancestor);
     if (strcmp(subsystem, "usb")) {
       break;
@@ -40,7 +40,6 @@ CrosUsbLocationProperty AncestorsLocation(udev_device* device) {
       // positives?
       internal_ancestors = true;
     }
-    ancestor = udev_device_get_parent(ancestor);
   }
 
   if (internal_ancestors)
