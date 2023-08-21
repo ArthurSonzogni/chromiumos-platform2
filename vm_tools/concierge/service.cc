@@ -2912,9 +2912,11 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
         std::make_move_iterator(request.mutable_params()->begin()),
         std::make_move_iterator(request.mutable_params()->end()));
 
-    auto op = PluginVmCreateOperation::Create(
-        std::move(in_fd), iso_dir, request.source_size(),
-        VmId(request.cryptohome_id(), request.vm_name()), std::move(params));
+    std::unique_ptr<PluginVmCreateOperation> op =
+        PluginVmCreateOperation::Create(
+            std::move(in_fd), iso_dir, request.source_size(),
+            VmId(request.cryptohome_id(), request.vm_name()),
+            std::move(params));
 
     response.set_disk_path(disk_path.value());
     response.set_status(op->status());
@@ -2923,7 +2925,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
 
     if (op->status() == DISK_STATUS_IN_PROGRESS) {
       std::string uuid = op->uuid();
-      disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
+      disk_image_ops_.emplace_back(std::move(op));
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE,
           base::BindOnce(&Service::RunDiskImageOperation,
@@ -3197,7 +3199,7 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
 
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     std::string uuid = op->uuid();
-    disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
+    disk_image_ops_.emplace_back(std::move(op));
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Service::RunDiskImageOperation,
@@ -3405,7 +3407,7 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
 
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     std::string uuid = op->uuid();
-    disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
+    disk_image_ops_.emplace_back(std::move(op));
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Service::RunDiskImageOperation,
@@ -3460,7 +3462,7 @@ ImportDiskImageResponse Service::ImportDiskImage(
 
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     std::string uuid = op->uuid();
-    disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
+    disk_image_ops_.emplace_back(std::move(op));
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Service::RunDiskImageOperation,
