@@ -913,11 +913,11 @@ TEST(DatapathTest, StartRoutingNamespace) {
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
   nsinfo.peer_ifname = "veth0";
-  nsinfo.peer_subnet = std::make_unique<Subnet>(
+  nsinfo.peer_ipv4_subnet = std::make_unique<Subnet>(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
       base::DoNothing());
-  nsinfo.host_cidr = *nsinfo.peer_subnet->CIDRAtOffset(1);
-  nsinfo.peer_cidr = *nsinfo.peer_subnet->CIDRAtOffset(2);
+  nsinfo.host_ipv4_cidr = *nsinfo.peer_ipv4_subnet->CIDRAtOffset(1);
+  nsinfo.peer_ipv4_cidr = *nsinfo.peer_ipv4_subnet->CIDRAtOffset(2);
   nsinfo.static_ipv6_config = std::nullopt;
   nsinfo.peer_mac_addr = peer_mac;
   nsinfo.host_mac_addr = host_mac;
@@ -949,7 +949,7 @@ TEST(DatapathTest, StopRoutingNamespace) {
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
   nsinfo.peer_ifname = "veth0";
-  nsinfo.peer_subnet = std::make_unique<Subnet>(
+  nsinfo.peer_ipv4_subnet = std::make_unique<Subnet>(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
       base::DoNothing());
   Datapath datapath(runner, firewall, &system);
@@ -1011,11 +1011,11 @@ TEST(DatapathTest, StartRoutingNamespace_StaticIPv6) {
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
   nsinfo.peer_ifname = "veth0";
-  nsinfo.peer_subnet = std::make_unique<Subnet>(
+  nsinfo.peer_ipv4_subnet = std::make_unique<Subnet>(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
       base::DoNothing());
-  nsinfo.host_cidr = *nsinfo.peer_subnet->CIDRAtOffset(1);
-  nsinfo.peer_cidr = *nsinfo.peer_subnet->CIDRAtOffset(2);
+  nsinfo.host_ipv4_cidr = *nsinfo.peer_ipv4_subnet->CIDRAtOffset(1);
+  nsinfo.peer_ipv4_cidr = *nsinfo.peer_ipv4_subnet->CIDRAtOffset(2);
   nsinfo.static_ipv6_config = {
       .host_cidr = *IPv6CIDR::CreateFromCIDRString("fd11::1/64"),
       .peer_cidr = *IPv6CIDR::CreateFromCIDRString("fd11::2/64")};
@@ -1049,7 +1049,7 @@ TEST(DatapathTest, StopRoutingNamespace_StaticIPv6) {
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
   nsinfo.peer_ifname = "veth0";
-  nsinfo.peer_subnet = std::make_unique<Subnet>(
+  nsinfo.peer_ipv4_subnet = std::make_unique<Subnet>(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
       base::DoNothing());
   nsinfo.static_ipv6_config = {
@@ -1190,7 +1190,7 @@ TEST(DatapathTest, StartRoutingNewNamespace) {
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
   nsinfo.peer_ifname = "veth0";
-  nsinfo.peer_subnet = std::make_unique<Subnet>(
+  nsinfo.peer_ipv4_subnet = std::make_unique<Subnet>(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
       base::DoNothing());
   nsinfo.peer_mac_addr = mac;

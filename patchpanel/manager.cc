@@ -775,17 +775,18 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     current_outbound_device = shill_client_->default_physical_device();
   }
 
-  std::unique_ptr<Subnet> subnet =
+  std::unique_ptr<Subnet> ipv4_subnet =
       addr_mgr_.AllocateIPv4Subnet(AddressManager::GuestType::kNetns);
-  if (!subnet) {
+  if (!ipv4_subnet) {
     LOG(ERROR) << "Exhausted IPv4 subnet space";
     return response;
   }
 
-  const auto host_cidr = subnet->CIDRAtOffset(1);
-  const auto peer_cidr = subnet->CIDRAtOffset(2);
-  if (!host_cidr || !peer_cidr) {
-    LOG(ERROR) << "Failed to create CIDR from subnet: " << subnet->base_cidr();
+  const auto host_ipv4_cidr = ipv4_subnet->CIDRAtOffset(1);
+  const auto peer_ipv4_cidr = ipv4_subnet->CIDRAtOffset(2);
+  if (!host_ipv4_cidr || !peer_ipv4_cidr) {
+    LOG(ERROR) << "Failed to create CIDR from subnet: "
+               << ipv4_subnet->base_cidr();
     return response;
   }
 
@@ -806,9 +807,9 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   nsinfo.route_on_vpn = request.route_on_vpn();
   nsinfo.host_ifname = "arc_ns" + ifname_id;
   nsinfo.peer_ifname = "veth" + ifname_id;
-  nsinfo.peer_subnet = std::move(subnet);
-  nsinfo.host_cidr = *host_cidr;
-  nsinfo.peer_cidr = *peer_cidr;
+  nsinfo.peer_ipv4_subnet = std::move(ipv4_subnet);
+  nsinfo.host_ipv4_cidr = *host_ipv4_cidr;
+  nsinfo.peer_ipv4_cidr = *peer_ipv4_cidr;
   nsinfo.host_mac_addr = addr_mgr_.GenerateMacAddress();
   nsinfo.peer_mac_addr = addr_mgr_.GenerateMacAddress();
   if (nsinfo.host_mac_addr == nsinfo.peer_mac_addr) {
@@ -839,12 +840,12 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   }
 
   response.set_peer_ifname(nsinfo.peer_ifname);
-  response.set_peer_ipv4_address(peer_cidr->address().ToInAddr().s_addr);
+  response.set_peer_ipv4_address(peer_ipv4_cidr->address().ToInAddr().s_addr);
   response.set_host_ifname(nsinfo.host_ifname);
-  response.set_host_ipv4_address(host_cidr->address().ToInAddr().s_addr);
+  response.set_host_ipv4_address(host_ipv4_cidr->address().ToInAddr().s_addr);
   response.set_netns_name(nsinfo.netns_name);
   auto* response_subnet = response.mutable_ipv4_subnet();
-  FillSubnetProto(*nsinfo.peer_subnet, response_subnet);
+  FillSubnetProto(*nsinfo.peer_ipv4_subnet, response_subnet);
 
   LOG(INFO) << "Connected network namespace " << nsinfo;
 

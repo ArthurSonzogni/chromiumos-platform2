@@ -119,7 +119,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   nsinfo.route_on_vpn = route_on_vpn;
   nsinfo.host_ifname = ifname2;
   nsinfo.peer_ifname = ifname3;
-  nsinfo.peer_subnet = std::make_unique<Subnet>(cidr, base::DoNothing());
+  nsinfo.peer_ipv4_subnet = std::make_unique<Subnet>(cidr, base::DoNothing());
   nsinfo.peer_mac_addr = mac;
 
   ShillClient::Device shill_device;

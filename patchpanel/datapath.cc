@@ -929,7 +929,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
 
   if (!ConnectVethPair(
           nsinfo.pid, nsinfo.netns_name, nsinfo.host_ifname, nsinfo.peer_ifname,
-          nsinfo.peer_mac_addr, nsinfo.peer_cidr,
+          nsinfo.peer_mac_addr, nsinfo.peer_ipv4_cidr,
           nsinfo.static_ipv6_config
               ? std::make_optional(nsinfo.static_ipv6_config->peer_cidr)
               : std::nullopt,
@@ -942,7 +942,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   if (!ConfigureInterface(
-          nsinfo.host_ifname, nsinfo.host_mac_addr, nsinfo.host_cidr,
+          nsinfo.host_ifname, nsinfo.host_mac_addr, nsinfo.host_ipv4_cidr,
           nsinfo.static_ipv6_config
               ? std::make_optional(nsinfo.static_ipv6_config->host_cidr)
               : std::nullopt,
@@ -963,7 +963,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
       return false;
     }
 
-    if (!AddIPv4Route(nsinfo.host_cidr.address(), /*subnet_cidr=*/{})) {
+    if (!AddIPv4Route(nsinfo.host_ipv4_cidr.address(), /*subnet_cidr=*/{})) {
       LOG(ERROR) << "Failed to add default /0 route to " << nsinfo.host_ifname
                  << " inside namespace pid " << nsinfo.pid;
       RemoveInterface(nsinfo.host_ifname);
@@ -1005,8 +1005,8 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
                                nsinfo.static_ipv6_config.has_value());
   } else {
     StartRoutingDeviceAsUser(
-        nsinfo.host_ifname, nsinfo.source, nsinfo.host_cidr.address(),
-        nsinfo.peer_cidr.address(),
+        nsinfo.host_ifname, nsinfo.source, nsinfo.host_ipv4_cidr.address(),
+        nsinfo.peer_ipv4_cidr.address(),
         nsinfo.static_ipv6_config
             ? std::make_optional(nsinfo.static_ipv6_config->host_cidr.address())
             : std::nullopt,
@@ -2172,7 +2172,7 @@ bool Datapath::AddIPv4Route(const IPv4Address& gateway_addr,
   SetSockaddrIn(&route.rt_dst, subnet_cidr.GetPrefixCIDR().address());
   SetSockaddrIn(&route.rt_genmask, subnet_cidr.ToNetmask());
   route.rt_flags = RTF_UP | RTF_GATEWAY;
-  return ModifyRtentry(SIOCADDRT, &route);
+  return ModifyIPv4Rtentry(SIOCADDRT, &route);
 }
 
 bool Datapath::DeleteIPv4Route(const IPv4Address& gateway_addr,
@@ -2183,7 +2183,7 @@ bool Datapath::DeleteIPv4Route(const IPv4Address& gateway_addr,
   SetSockaddrIn(&route.rt_dst, subnet_cidr.GetPrefixCIDR().address());
   SetSockaddrIn(&route.rt_genmask, subnet_cidr.ToNetmask());
   route.rt_flags = RTF_UP | RTF_GATEWAY;
-  return ModifyRtentry(SIOCDELRT, &route);
+  return ModifyIPv4Rtentry(SIOCDELRT, &route);
 }
 
 bool Datapath::AddIPv6Route(const IPv6Address& gateway_addr,
@@ -2208,7 +2208,7 @@ bool Datapath::DeleteIPv6Route(const IPv6Address& gateway_addr,
   return ModifyIPv6Rtentry(SIOCDELRT, &route);
 }
 
-bool Datapath::ModifyRtentry(ioctl_req_t op, struct rtentry* route) {
+bool Datapath::ModifyIPv4Rtentry(ioctl_req_t op, struct rtentry* route) {
   DCHECK(route);
   if (op != SIOCADDRT && op != SIOCDELRT) {
     LOG(ERROR) << "Invalid operation " << op << " for rtentry " << *route;
@@ -2471,7 +2471,12 @@ std::ostream& operator<<(std::ostream& stream,
   stream << ", route_on_vpn: " << nsinfo.route_on_vpn
          << ", host_ifname: " << nsinfo.host_ifname
          << ", peer_ifname: " << nsinfo.peer_ifname
-         << ", peer_subnet: " << nsinfo.peer_subnet->base_cidr() << '}';
+         << ", peer_ipv4_subnet: " << nsinfo.peer_ipv4_subnet->base_cidr();
+  if (nsinfo.static_ipv6_config.has_value()) {
+    stream << ", static_ipv6_subnet: "
+           << nsinfo.static_ipv6_config->host_cidr.GetPrefixCIDR();
+  }
+  stream << '}';
   return stream;
 }
 

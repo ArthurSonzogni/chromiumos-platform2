@@ -82,11 +82,11 @@ struct ConnectedNamespace {
   // Name of the "remote" veth interface moved into the client namespace.
   std::string peer_ifname;
   // IPv4 subnet assigned to the client namespace.
-  std::unique_ptr<Subnet> peer_subnet;
+  std::unique_ptr<Subnet> peer_ipv4_subnet;
   // IPv4 CIDR of the "local" veth interface visible on the host namespace.
-  net_base::IPv4CIDR host_cidr;
+  net_base::IPv4CIDR host_ipv4_cidr;
   // IPv4 CIDR of the "remote" veth interface.
-  net_base::IPv4CIDR peer_cidr;
+  net_base::IPv4CIDR peer_ipv4_cidr;
   // Static IPv6 addresses allocated for ConnectNamespace. Only valid if NAT66
   // is used.
   std::optional<StaticIPv6Config> static_ipv6_config;
@@ -556,7 +556,7 @@ class Datapath {
                                    Iptables::Command command,
                                    const std::string& uid,
                                    bool log_failures = true);
-  bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);
+  bool ModifyIPv4Rtentry(ioctl_req_t op, struct rtentry* route);
   bool ModifyIPv6Rtentry(ioctl_req_t op, struct in6_rtmsg* route);
 
   // Installs the static rules inside the qos_detect chain.
