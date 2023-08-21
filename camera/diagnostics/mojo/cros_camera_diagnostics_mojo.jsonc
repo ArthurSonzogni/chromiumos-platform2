@@ -22,5 +22,13 @@
     // "request" is an array of the service name which can be requested by this
     // identity.
     "request": [ "CrosCameraDiagnostics" ]
+  },
+  {
+    // Camera service can request this service.
+    "identity": "u:r:cros_camera_service:s0",
+
+    // "request" is an array of the service name which can be requested by this
+    // identity.
+    "request": [ "CrosCameraDiagnostics" ]
   }
 ]
