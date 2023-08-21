@@ -4,6 +4,8 @@
 
 #include "debugd/src/session_manager_proxy.h"
 
+#include <memory>
+
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -113,8 +115,10 @@ void SessionManagerProxy::EnableChromeRemoteDebuggingInternal() {
   writer.AppendBool(true);  // force_restart
   writer.AppendArrayOfStrings({"--remote-debugging-port=9222"});
   writer.AppendArrayOfStrings({});  // extra_environment_variables
-  if (proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
+      proxy_->CallMethodAndBlock(&method_call,
+                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (response.has_value() && response.value()) {
     is_chrome_remote_debugging_enabled_ = true;
   } else {
     LOG(ERROR) << "Failed to enable Chrome remote debugging";

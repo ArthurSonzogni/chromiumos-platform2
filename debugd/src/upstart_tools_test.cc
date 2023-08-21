@@ -88,8 +88,8 @@ TEST_F(UpstartToolsTest, TestIsJobRunning) {
       dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
   dbus::MethodCall method_call("com.ubuntu.Upstart0_6.Job", "GetInstance");
   EXPECT_CALL(*job_object_proxy_,
-              CallMethodAndBlockDeprecated(IsMethod("GetInstance"), _))
-      .WillOnce(Return(ByMove(std::move(job_response))));
+              CallMethodAndBlock(IsMethod("GetInstance"), _))
+      .WillOnce(Return(ByMove(base::ok(std::move(job_response)))));
   brillo::ErrorPtr error;
   bool result = upstart_tools()->IsJobRunning("fakejob", &error);
   EXPECT_EQ(error, nullptr);
@@ -105,9 +105,8 @@ TEST_F(UpstartToolsTest, TestRestartJob) {
   dbus::MessageWriter response_writer(job_response.get());
   response_writer.AppendObjectPath(
       dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
-  EXPECT_CALL(*job_object_proxy_,
-              CallMethodAndBlockDeprecated(IsMethod("Restart"), _))
-      .WillOnce(Return(ByMove(std::move(job_response))));
+  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlock(IsMethod("Restart"), _))
+      .WillOnce(Return(ByMove(base::ok(std::move(job_response)))));
   brillo::ErrorPtr error;
   bool result = upstart_tools()->RestartJob("fakejob", &error);
   EXPECT_EQ(error, nullptr);
@@ -123,7 +122,7 @@ TEST_F(UpstartToolsTest, TestStopJob) {
   dbus::MessageWriter response_writer(job_response.get());
   response_writer.AppendObjectPath(
       dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
-  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlock(_, _))
       .WillRepeatedly(Invoke(this, &UpstartToolsTest::CreateMockResponse));
   brillo::ErrorPtr error;
   bool result = upstart_tools()->StopJob("fakejob", &error);
@@ -140,7 +139,7 @@ TEST_F(UpstartToolsTest, TestStartJob) {
   dbus::MessageWriter response_writer(job_response.get());
   response_writer.AppendObjectPath(
       dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
-  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlock(_, _))
       .WillRepeatedly(Invoke(this, &UpstartToolsTest::CreateMockResponse));
   brillo::ErrorPtr error;
   bool result = upstart_tools()->StartJob("fakejob", &error);

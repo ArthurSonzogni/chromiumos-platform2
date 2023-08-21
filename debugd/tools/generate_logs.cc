@@ -94,10 +94,9 @@ int main(int argc, char* argv[]) {
 
   // Wait for the response and process the result.
   LOG(INFO) << "Gathering logs, please wait";
-  std::unique_ptr<dbus::Response> response(
-      debugd_proxy->CallMethodAndBlockDeprecated(&method_call,
-                                                 FLAGS_timeout_ms));
-  CHECK(response) << debugd::kDumpDebugLogs << " failed";
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      debugd_proxy->CallMethodAndBlock(&method_call, FLAGS_timeout_ms));
+  CHECK(response.has_value()) << debugd::kDumpDebugLogs << " failed";
   LOG(INFO) << "Logs saved to " << output.value();
 
   return EXIT_SUCCESS;

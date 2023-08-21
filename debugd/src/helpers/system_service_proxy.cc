@@ -4,6 +4,7 @@
 
 #include "debugd/src/helpers/system_service_proxy.h"
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -50,10 +51,10 @@ std::unique_ptr<dbus::Response> SystemServiceProxy::CallMethodAndGetResponse(
     const dbus::ObjectPath& object_path, dbus::MethodCall* method_call) {
   dbus::ObjectProxy* object_proxy =
       bus_->GetObjectProxy(service_name_, object_path);
-  std::unique_ptr<dbus::Response> response =
-      object_proxy->CallMethodAndBlockDeprecated(
-          method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  return response;
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
+      object_proxy->CallMethodAndBlock(method_call,
+                                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  return std::move(response).value_or(nullptr);
 }
 
 std::optional<base::Value> SystemServiceProxy::CallMethodAndGetResponseAsValue(
