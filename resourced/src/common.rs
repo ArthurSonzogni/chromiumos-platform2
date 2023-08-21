@@ -26,6 +26,7 @@ use crate::gpu_freq_scaling::intel_device;
 use crate::cgroup_x86_64::{media_dynamic_cgroup, MediaDynamicCgroupAction};
 
 use crate::cpu_utils::{hotplug_cpus, HotplugCpuAction};
+use crate::memory;
 
 // Paths for RPS up/down threshold relative to rootdir.
 const DEVICE_RPS_PATH_UP: &str = "sys/class/drm/card0/gt/gt0/rps_up_threshold_pct";
@@ -150,7 +151,7 @@ pub fn set_game_mode(
             }
         }
         // Tuning Transparent huge pages.
-        if let Err(e) = set_tph(THPMode::Always) {
+        if let Err(e) = set_thp(THPMode::Always) {
             warn! {"Failed to tune TPH: {:?}", e};
         }
 
@@ -180,7 +181,7 @@ pub fn set_game_mode(
             }
         }
 
-        if let Err(e) = set_tph(THPMode::Default) {
+        if let Err(e) = set_thp(THPMode::Default) {
             warn! {"Failed to set TPH to default: {:?}", e};
         }
 
@@ -469,11 +470,25 @@ fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
     gpu_config.set_rtc_audio_active(mode == RTCAudioActive::Active)
 }
 
-fn set_tph(mode: THPMode) -> Result<()> {
-    const TPH_MODE_PATH: &str = "/sys/kernel/mm/transparent_hugepage/enabled";
-    match mode {
-        THPMode::Default => std::fs::write(TPH_MODE_PATH, "madvise")?,
-        THPMode::Always => std::fs::write(TPH_MODE_PATH, "always")?,
+// Enable THP tuning for devices with total memory > 4GB.
+fn set_thp(mode: THPMode) -> Result<()> {
+    const THP_MODE_PATH: &str = "/sys/kernel/mm/transparent_hugepage/enabled";
+    let path = Path::new(THP_MODE_PATH);
+    if path.exists() {
+        static ENABLE_THP: Lazy<bool> = Lazy::new(|| match memory::get_meminfo() {
+            Ok(meminfo) => meminfo.total > 5 * 1024 * 1024,
+            Err(e) => {
+                warn! {"Failed to validate device memory: {:?}", e};
+                false
+            }
+        });
+
+        if *ENABLE_THP {
+            match mode {
+                THPMode::Default => std::fs::write(THP_MODE_PATH, "madvise")?,
+                THPMode::Always => std::fs::write(THP_MODE_PATH, "always")?,
+            }
+        }
     }
     Ok(())
 }

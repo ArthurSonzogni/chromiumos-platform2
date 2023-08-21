@@ -129,8 +129,8 @@ fn get_psi_memory_pressure_10_seconds() -> Result<f64> {
 
 /// Struct to hold parsed /proc/meminfo data, only contains used fields.
 #[derive(Default)]
-struct MemInfo {
-    total: u64,
+pub struct MemInfo {
+    pub total: u64,
     free: u64,
     active_anon: u64,
     inactive_anon: u64,
@@ -178,7 +178,7 @@ fn parse_meminfo<R: BufRead>(reader: R) -> Result<MemInfo> {
 }
 
 /// Return MemInfo object containing /proc/meminfo data.
-fn get_meminfo() -> Result<MemInfo> {
+pub fn get_meminfo() -> Result<MemInfo> {
     let reader = File::open(Path::new("/proc/meminfo"))
         .map(BufReader::new)
         .context("Couldn't read /proc/meminfo")?;
