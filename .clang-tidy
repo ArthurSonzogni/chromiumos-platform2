@@ -1,7 +1,7 @@
 ---
   # NOTE: This is intended to stay mostly in sync with Chromium's global clang-tidy file at:
   # https://source.chromium.org/chromium/chromium/src/+/main:.clang-tidy
-
+  # TODO(b/296805310): readd modernize-use-emplace once its bugs are worked out.
   Checks:          '-*,
                     bugprone-argument-comment,
                     bugprone-assert-side-effect,
@@ -25,7 +25,6 @@
                     modernize-shrink-to-fit,
                     modernize-use-bool-literals,
                     modernize-use-default-member-init,
-                    modernize-use-emplace,
                     modernize-use-equals-default,
                     modernize-use-equals-delete,
                     modernize-use-noexcept,
@@ -49,6 +48,7 @@
     # This relaxes modernize-use-emplace in some cases; we might want to make it
     # more aggressive in the future. See discussion on
     # https://groups.google.com/a/chromium.org/g/cxx/c/noMMTNYiM0w .
-    - key:          modernize-use-emplace.IgnoreImplicitConstructors
-      value:        1
+    # TODO(b/296805310): readd modernize-use-emplace once its bugs are worked out.
+    #- key:          modernize-use-emplace.IgnoreImplicitConstructors
+    #  value:        1
 ...
