@@ -44,6 +44,8 @@ PACKAGES=(
   python3-gi gir1.2-gtk-3.0 gir1.2-gtk-4.0 libegl1
   python3-pyqt5 qtwayland5 python3-pyqt6 qt6-wayland
   python3-tk
+  # for bruschetta.AppEmacs
+  emacs
 )
 DATA_ROOT="/tmp/data"
 
