@@ -247,6 +247,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "start_auth_session_with_status_update",
                                     "fetch_status_update",
                                     "update_auth_factor",
+                                    "relabel_auth_factor",
                                     "remove_auth_factor",
                                     "list_auth_factors",
                                     "get_auth_session_status",
@@ -306,6 +307,7 @@ enum ActionEnum {
   ACTION_START_AUTH_SESSION_WITH_STATUS_UPDATE,
   ACTION_FETCH_STATUS_UPDATE,
   ACTION_UPDATE_AUTH_FACTOR,
+  ACTION_RELABEL_AUTH_FACTOR,
   ACTION_REMOVE_AUTH_FACTOR,
   ACTION_LIST_AUTH_FACTORS,
   ACTION_GET_AUTH_SESSION_STATUS,
@@ -2655,6 +2657,49 @@ int main(int argc, char** argv) {
     }
 
     printer.PrintHumanOutput("AuthFactor updated.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_RELABEL_AUTH_FACTOR],
+                     action.c_str())) {
+    user_data_auth::RelabelAuthFactorRequest req;
+    user_data_auth::RelabelAuthFactorReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+    std::string old_label = cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
+    if (old_label.empty()) {
+      printer.PrintHumanOutput("No old auth factor label specified.\n");
+      return 1;
+    }
+    req.set_auth_factor_label(std::move(old_label));
+    std::string new_label =
+        cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch);
+    if (new_label.empty()) {
+      printer.PrintHumanOutput("No new auth factor label specified.\n");
+      return 1;
+    }
+    req.set_new_auth_factor_label(std::move(new_label));
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to Relabel AuthFactor";
+    if (!userdataauth_proxy.RelabelAuthFactor(req, &reply, &error,
+                                              timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "RelabelAuthFactor call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    printer.PrintReplyProtobuf(reply);
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput("Failed to relabel AuthFactor.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printer.PrintHumanOutput("AuthFactor relabelled.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE_AUTH_FACTOR],
                      action.c_str())) {
     user_data_auth::RemoveAuthFactorRequest req;
