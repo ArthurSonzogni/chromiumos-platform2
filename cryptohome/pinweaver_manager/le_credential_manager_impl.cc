@@ -301,7 +301,8 @@ int LECredentialManagerImpl::GetWrongAuthAttempts(uint64_t label) {
     return -1;
   }
 
-  hwsec::StatusOr<int> result = pinweaver_->GetWrongAuthAttempts(orig_cred);
+  hwsec::StatusOr<uint32_t> result =
+      pinweaver_->GetWrongAuthAttempts(orig_cred);
   if (!result.ok()) {
     LOG(ERROR) << "Failed to get wrong auth attempts: "
                << std::move(result).status();

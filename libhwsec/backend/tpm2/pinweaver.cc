@@ -366,7 +366,7 @@ PinWeaverTpm2::ReplayLogOperation(const brillo::Blob& log_entry_root,
   };
 }
 
-StatusOr<int> PinWeaverTpm2::GetWrongAuthAttempts(
+StatusOr<uint32_t> PinWeaverTpm2::GetWrongAuthAttempts(
     const brillo::Blob& cred_metadata) {
   // The assumption is that leaf_public_data_t structure will have the existing
   // part immutable in the future.

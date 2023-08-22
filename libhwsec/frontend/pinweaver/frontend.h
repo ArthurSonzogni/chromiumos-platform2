@@ -144,7 +144,7 @@ class PinWeaverFrontend : public Frontend {
 
   // Looks into the metadata and retrieves the number of wrong authentication
   // attempts.
-  virtual StatusOr<int> GetWrongAuthAttempts(
+  virtual StatusOr<uint32_t> GetWrongAuthAttempts(
       const brillo::Blob& cred_metadata) const = 0;
 
   // Looks into the metadata and retrieves the delay schedule.

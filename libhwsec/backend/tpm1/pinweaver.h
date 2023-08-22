@@ -52,7 +52,7 @@ class PinWeaverTpm1 : public PinWeaver {
       const brillo::Blob& log_entry_root,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata) override;
-  StatusOr<int> GetWrongAuthAttempts(
+  StatusOr<uint32_t> GetWrongAuthAttempts(
       const brillo::Blob& cred_metadata) override;
   StatusOr<DelaySchedule> GetDelaySchedule(
       const brillo::Blob& cred_metadata) override;

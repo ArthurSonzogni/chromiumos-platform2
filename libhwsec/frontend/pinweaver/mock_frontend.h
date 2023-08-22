@@ -69,7 +69,7 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
                const std::vector<brillo::Blob>& h_aux,
                const brillo::Blob& orig_cred_metadata),
               (const override));
-  MOCK_METHOD(StatusOr<int>,
+  MOCK_METHOD(StatusOr<uint32_t>,
               GetWrongAuthAttempts,
               (const brillo::Blob& cred_metadata),
               (const override));

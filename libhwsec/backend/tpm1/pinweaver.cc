@@ -77,7 +77,7 @@ PinWeaverTpm1::ReplayLogOperation(const brillo::Blob& log_entry_root,
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
 
-StatusOr<int> PinWeaverTpm1::GetWrongAuthAttempts(
+StatusOr<uint32_t> PinWeaverTpm1::GetWrongAuthAttempts(
     const brillo::Blob& cred_metadata) {
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }

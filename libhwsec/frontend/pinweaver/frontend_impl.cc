@@ -91,7 +91,7 @@ StatusOr<ReplayLogOperationResult> PinWeaverFrontendImpl::ReplayLogOperation(
       log_entry_root, h_aux, orig_cred_metadata);
 }
 
-StatusOr<int> PinWeaverFrontendImpl::GetWrongAuthAttempts(
+StatusOr<uint32_t> PinWeaverFrontendImpl::GetWrongAuthAttempts(
     const brillo::Blob& cred_metadata) const {
   return middleware_.CallSync<&Backend::PinWeaver::GetWrongAuthAttempts>(
       cred_metadata);
