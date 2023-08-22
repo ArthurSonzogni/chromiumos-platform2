@@ -20,6 +20,9 @@ class TraceProcessorEnv:
     # Local directory hosting the camera metrics definitions.
     METRICS_DIR = "metrics"
 
+    # Archive of protofiles under METRICS_DIR
+    PROTO_ARCHIVE = "protos.tar.gz"
+
     # Path to the built-in trace processors.
     TRACE_PROCESSOR_IN_SDK = "/usr/bin/trace_processor_shell"
     TRACE_PROCESSOR_ON_DUT = "/usr/local/bin/trace_processor_shell"
@@ -38,8 +41,28 @@ class TraceProcessorEnv:
             raise RuntimeError("Unable to locate trace processor")
 
         self.metrics_dir = os.path.realpath(
-            os.path.join(os.path.dirname(__file__), "..", self.METRICS_DIR)
+            os.path.join(
+                os.path.dirname(__file__), "..", TraceProcessorEnv.METRICS_DIR
+            )
         )
+
+        if utils.is_on_dut():
+            self.proto_archive = os.path.join(
+                self.metrics_dir, TraceProcessorEnv.PROTO_ARCHIVE
+            )
+            if os.path.exists(self.proto_archive):
+                subprocess.run(
+                    [
+                        "tar",
+                        "-xzf",
+                        self.proto_archive,
+                        "--directory",
+                        self.metrics_dir,
+                    ],
+                    check=True,
+                )
+            else:
+                raise RuntimeError("Unable to find proto files")
 
     def run(self, args):
         """Runs the trace processor."""
@@ -51,6 +74,8 @@ class TraceProcessorEnv:
             "--dev",
             "--run-metrics",
             args.metrics,
+            "--metrics-output",
+            args.metrics_output,
             args.input_file,
         ]
         if args.interactive:
@@ -65,6 +90,9 @@ class TraceProcessorEnv:
         )
         if not args.interactive:
             logging.info("Computed metrics:\n\n%s", output.stdout)
+        if args.output_file:
+            with open(args.output_file, "w", encoding="utf-8") as f:
+                f.write(output.stdout)
 
     def list_metrics(self):
         """Lists the camera metrics defined in the camera metrics dir."""
@@ -150,6 +178,19 @@ def set_up_subcommand_parser(subparsers):
             "Enters the interactive mode of the trace processor; used mainly "
             "for development and debugging metrics SQL definitions"
         ),
+    )
+    report_parser.add_argument(
+        "--metrics_output",
+        type=str,
+        default="text",
+        choices=["binary", "text", "json"],
+        help="The metrics output format of the trace processor",
+    )
+    report_parser.add_argument(
+        "--output_file",
+        type=str,
+        default="",
+        help="Path the computed metrics will be written to",
     )
 
 

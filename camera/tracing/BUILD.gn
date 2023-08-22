@@ -1,0 +1,46 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [
+    ":install_tracing_bin",
+    ":install_tracing_protos",
+    ":install_tracing_sql",
+  ]
+}
+
+install_config("install_tracing_bin") {
+  sources = [
+    "bin/__init__.py",
+    "bin/record.py",
+    "bin/report.py",
+    "bin/trace.py",
+    "bin/utils.py",
+  ]
+  install_path = "/usr/local/share/camera/tracing/bin"
+  type = "executable"
+}
+
+install_config("install_tracing_sql") {
+  sources = [ "metrics/sql" ]
+  recursive = true
+  install_path = "/usr/local/share/camera/tracing/metrics"
+}
+
+action("install_tracing_protos") {
+  sources = [ "metrics/protos" ]
+  script = "//common-mk/file_generator_wrapper.py"
+  outputs = [ "${target_gen_dir}/protos.tar.gz" ]
+  args = [
+    rebase_path("archive_proto.sh"),
+    rebase_path("metrics"),
+    "protos",
+    "${target_gen_dir}/protos.tar.gz",
+  ]
+  install_configs = [
+    {
+      path = "/usr/local/share/camera/tracing/metrics"
+    },
+  ]
+}
