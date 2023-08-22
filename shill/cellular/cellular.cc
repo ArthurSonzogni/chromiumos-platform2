@@ -3296,24 +3296,31 @@ void Cellular::UpdateHomeProvider() {
   SLOG(2) << LoggingTag() << ": " << __func__;
 
   Stringmap home_provider;
-  auto AssingIfNotEmpty = [&](const std::string& key,
+  auto AssignIfNotEmpty = [&](const std::string& key,
                               const std::string& value) {
     if (!value.empty())
       home_provider[key] = value;
   };
+
   if (mobile_operator_info_->IsMobileNetworkOperatorKnown()) {
-    AssingIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->mccmnc());
-    AssingIfNotEmpty(kOperatorNameKey, mobile_operator_info_->operator_name());
-    AssingIfNotEmpty(kOperatorCountryKey, mobile_operator_info_->country());
-    AssingIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->uuid());
+    AssignIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->mccmnc());
+    AssignIfNotEmpty(kOperatorNameKey, mobile_operator_info_->operator_name());
+    AssignIfNotEmpty(kOperatorCountryKey, mobile_operator_info_->country());
+    AssignIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->uuid());
   } else if (mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
     SLOG(2) << "Serving provider proxying in for home provider.";
-    AssingIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->serving_mccmnc());
-    AssingIfNotEmpty(kOperatorNameKey,
+    AssignIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->serving_mccmnc());
+    AssignIfNotEmpty(kOperatorNameKey,
                      mobile_operator_info_->serving_operator_name());
-    AssingIfNotEmpty(kOperatorCountryKey,
+    AssignIfNotEmpty(kOperatorCountryKey,
                      mobile_operator_info_->serving_country());
-    AssingIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->serving_uuid());
+    AssignIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->serving_uuid());
+  } else {
+    SLOG(2) << "Home and Serving provider are unknown, so using default info.";
+    AssignIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->mccmnc());
+    AssignIfNotEmpty(kOperatorNameKey, mobile_operator_info_->operator_name());
+    AssignIfNotEmpty(kOperatorCountryKey, mobile_operator_info_->country());
+    AssignIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->uuid());
   }
   if (home_provider != home_provider_) {
     home_provider_ = home_provider;
@@ -3342,23 +3349,23 @@ void Cellular::UpdateServingOperator() {
   }
 
   Stringmap serving_operator;
-  auto AssingIfNotEmpty = [&](const std::string& key,
+  auto AssignIfNotEmpty = [&](const std::string& key,
                               const std::string& value) {
     if (!value.empty())
       serving_operator[key] = value;
   };
   if (mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
-    AssingIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->serving_mccmnc());
-    AssingIfNotEmpty(kOperatorNameKey,
+    AssignIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->serving_mccmnc());
+    AssignIfNotEmpty(kOperatorNameKey,
                      mobile_operator_info_->serving_operator_name());
-    AssingIfNotEmpty(kOperatorCountryKey,
+    AssignIfNotEmpty(kOperatorCountryKey,
                      mobile_operator_info_->serving_country());
-    AssingIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->serving_uuid());
-  } else if (mobile_operator_info_->IsMobileNetworkOperatorKnown()) {
-    AssingIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->mccmnc());
-    AssingIfNotEmpty(kOperatorNameKey, mobile_operator_info_->operator_name());
-    AssingIfNotEmpty(kOperatorCountryKey, mobile_operator_info_->country());
-    AssingIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->uuid());
+    AssignIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->serving_uuid());
+  } else {
+    AssignIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->mccmnc());
+    AssignIfNotEmpty(kOperatorNameKey, mobile_operator_info_->operator_name());
+    AssignIfNotEmpty(kOperatorCountryKey, mobile_operator_info_->country());
+    AssignIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->uuid());
   }
 
   service()->SetServingOperator(serving_operator);
@@ -3388,10 +3395,10 @@ void Cellular::OnOperatorChanged() {
     capability_->UpdateServiceOLP();
   }
 
+  UpdateHomeProvider();
+  UpdateServingOperator();
   if (mobile_operator_info_->IsMobileNetworkOperatorKnown() ||
       mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
-    UpdateHomeProvider();
-    UpdateServingOperator();
     ResetCarrierEntitlement();
   }
 }

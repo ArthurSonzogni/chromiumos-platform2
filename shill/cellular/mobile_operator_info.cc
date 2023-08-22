@@ -177,14 +177,11 @@ MobileOperatorInfo::olp_list() const {
 }
 
 std::string MobileOperatorInfo::friendly_operator_name(bool is_roaming) const {
-  std::string operator_name;
-  std::string mccmnc;
+  std::string operator_name = home_->operator_name();
+  std::string mccmnc = home_->mccmnc();
   if (IsServingMobileNetworkOperatorKnown()) {
     operator_name = serving_->operator_name();
     mccmnc = serving_->mccmnc();
-  } else if (IsMobileNetworkOperatorKnown()) {
-    operator_name = home_->operator_name();
-    mccmnc = home_->mccmnc();
   }
 
   std::string service_name;

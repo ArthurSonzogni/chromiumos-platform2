@@ -266,12 +266,10 @@ TEST_F(MobileOperatorInfoMainTest, FriendlyOperatorNameKnownOperatorName) {
   // Roaming
   EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown())
       .WillOnce(Return(false));
-  EXPECT_CALL(*home_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
   EXPECT_EQ(operator_info_->friendly_operator_name(true), "home");
   // Not roaming
   EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown())
       .WillOnce(Return(false));
-  EXPECT_CALL(*home_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
   EXPECT_EQ(operator_info_->friendly_operator_name(false), "home");
 }
 
@@ -298,12 +296,10 @@ TEST_F(MobileOperatorInfoMainTest, FriendlyOperatorNameUnknownOperatorName) {
   // Roaming
   EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown())
       .WillOnce(Return(false));
-  EXPECT_CALL(*home_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
   EXPECT_EQ(operator_info_->friendly_operator_name(true), "cellular_002002");
   // Not roaming
   EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown())
       .WillOnce(Return(false));
-  EXPECT_CALL(*home_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
   EXPECT_EQ(operator_info_->friendly_operator_name(false), "cellular_002002");
 }
 
