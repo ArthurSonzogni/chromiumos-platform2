@@ -33,6 +33,7 @@ executable("arc-keymasterd") {
     "libmojo",
   ]
   deps = [
+    ":install_dbus_service",
     ":keymaster_mojo_bindings",
     ":libarckeymaster_context",
     ":libkeymaster",
@@ -235,4 +236,10 @@ if (use.fuzzer) {
       ":libkeymaster",
     ]
   }
+}
+
+# Install dbus service file.
+install_config("install_dbus_service") {
+  sources = [ "dbus_permissions/org.chromium.ArcKeymaster.service" ]
+  install_path = "/usr/share/dbus-1/system-services"
 }
