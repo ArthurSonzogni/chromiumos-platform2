@@ -5,6 +5,7 @@
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::vec::Vec;
 
 use anyhow::{bail, Context, Result};
 use glob::glob;
@@ -163,14 +164,27 @@ fn write_to_cpu_policy_patterns(pattern: &str, new_value: &str) -> Result<()> {
     }
 
     for entry in entries {
-        let path = entry?;
+        let policy_path = entry?;
+        let mut affected_cpus_path = policy_path.to_path_buf();
+        affected_cpus_path.set_file_name("affected_cpus");
+        // Skip the policy update if there are no CPUs can be affected by policy.
+        // Otherwise, write to the scaling governor may cause error.
+        if affected_cpus_path.exists() {
+            if let Ok(affected_cpus) = read_to_string(affected_cpus_path) {
+                if affected_cpus.trim_end_matches('\n').is_empty() {
+                    applied = true;
+                    continue;
+                }
+            }
+        }
+
         // Allow read fail due to CPU may be offlined.
-        if let Ok(current_value) = read_to_string(&path) {
+        if let Ok(current_value) = read_to_string(&policy_path) {
             if current_value.trim_end_matches('\n') != new_value {
-                std::fs::write(&path, new_value).with_context(|| {
+                std::fs::write(&policy_path, new_value).with_context(|| {
                     format!(
                         "Failed to set attribute to {}, new value: {}",
-                        path.display(),
+                        policy_path.display(),
                         new_value
                     )
                 })?;
@@ -656,26 +670,40 @@ mod tests {
     const ONDEMAND_DIRECTORY: &str = "ondemand";
     const POWERSAVE_BIAS_FILENAME: &str = "powersave_bias";
     const SAMPLING_RATE_FILENAME: &str = "sampling_rate";
+    const AFFECTED_CPUS_NAME: &str = "affected_cpus";
+    const AFFECTED_CPU_NONE: &str = "";
+    const AFFECTED_CPU0: &str = "0";
+    const AFFECTED_CPU1: &str = "1";
 
+    struct PolicyConfigs<'a >{
+        policy_path: &'a str,
+        governor: &'a config::Governor,
+        affected_cpus: &'a str,
+    }
     // Instead of returning an error, crash/assert immediately in a test utility function makes it
     // easier to debug an unittest.
-    fn write_per_policy_scaling_governor(root: &Path, governor: config::Governor) {
-        for policy in TEST_CPUFREQ_POLICIES {
-            let policy_path = root.join(policy);
+    fn write_per_policy_scaling_governor(root: &Path, policies: Vec<PolicyConfigs>) {
+        for policy in policies {
+            let policy_path = root.join(policy.policy_path);
             fs::create_dir_all(&policy_path).unwrap();
             std::fs::write(
                 policy_path.join(SCALING_GOVERNOR_FILENAME),
-                governor.to_name().to_string() + "\n",
+                policy.governor.to_name().to_string() + "\n",
+            )
+            .unwrap();
+            std::fs::write(
+                policy_path.join(AFFECTED_CPUS_NAME),
+                policy.affected_cpus.to_owned() + "\n",
             )
             .unwrap();
         }
     }
 
-    fn check_per_policy_scaling_governor(root: &Path, expected: config::Governor) {
-        for policy in TEST_CPUFREQ_POLICIES {
+    fn check_per_policy_scaling_governor(root: &Path, expected: Vec<config::Governor>) {
+        for (i, policy) in TEST_CPUFREQ_POLICIES.iter().enumerate() {
             let governor_path = root.join(policy).join(SCALING_GOVERNOR_FILENAME);
             let scaling_governor = std::fs::read_to_string(governor_path).unwrap();
-            assert_eq!(scaling_governor.trim_end_matches('\n'), expected.to_name());
+            assert_eq!(scaling_governor.trim_end_matches('\n'), expected[i].to_name());
         }
     }
 
@@ -726,11 +754,12 @@ mod tests {
         }
     }
 
-    fn write_epp(root: &Path, value: &str) -> Result<()> {
+    fn write_epp(root: &Path, value: &str, affected_cpus: &str) -> Result<()> {
         let policy_path = root.join("sys/devices/system/cpu/cpufreq/policy0");
         fs::create_dir_all(&policy_path)?;
 
         std::fs::write(policy_path.join("energy_performance_preference"), value)?;
+        std::fs::write(policy_path.join("affected_cpus"), affected_cpus)?;
 
         Ok(())
     }
@@ -1050,17 +1079,40 @@ mod tests {
                 BatterySaverMode::Active,
                 "balance_power",
                 config::Governor::Conservative,
+                AFFECTED_CPU0, // policy0 affected_cpus
+                AFFECTED_CPU1, // policy1 affected_cpus
             ),
             (
                 BatterySaverMode::Inactive,
                 "balance_performance",
                 config::Governor::Schedutil,
+                AFFECTED_CPU0, // policy0 affected_cpus
+                AFFECTED_CPU1, // policy1 affected_cpus
             ),
+            (
+                BatterySaverMode::Active,
+                "balance_power",
+                config::Governor::Conservative,
+                AFFECTED_CPU_NONE,  // policy0 affected_cpus, which has no affected cpus
+                AFFECTED_CPU1, // policy1 affected_cpus
+            )
         ];
 
         // Test device without EPP path
-        write_per_policy_scaling_governor(root, config::Governor::Performance);
         for test in tests {
+            let orig_governor = config::Governor::Performance;
+            let policy0 = PolicyConfigs{
+                policy_path: TEST_CPUFREQ_POLICIES[0],
+                governor: &orig_governor,
+                affected_cpus: test.3,
+            };
+            let policy1 = PolicyConfigs{
+                policy_path: TEST_CPUFREQ_POLICIES[1],
+                governor: &orig_governor,
+                affected_cpus: test.4,
+            };
+            let policies = vec![policy0, policy1];
+            write_per_policy_scaling_governor(root, policies);
             manager.update_power_preferences(
                 common::RTCAudioActive::Inactive,
                 common::FullscreenVideo::Inactive,
@@ -1069,12 +1121,17 @@ mod tests {
                 test.0,
             )?;
 
-            check_per_policy_scaling_governor(root, test.2);
+            let mut expected_governors = vec![test.2, test.2];
+            if test.3.is_empty() {
+                expected_governors[0] = orig_governor;
+            }
+            check_per_policy_scaling_governor(root, expected_governors);
         }
 
         // Test device with EPP path
-        write_epp(root, "balance_performance")?;
+        let orig_epp = "balance_performance";
         for test in tests {
+            write_epp(root, orig_epp, test.3)?;
             manager.update_power_preferences(
                 common::RTCAudioActive::Inactive,
                 common::FullscreenVideo::Inactive,
@@ -1084,7 +1141,11 @@ mod tests {
             )?;
 
             let epp = read_epp(root)?;
-            assert_eq!(epp, test.1);
+            let mut expected_epp = test.1;
+            if test.3.is_empty() {
+                expected_epp = orig_epp;
+            }
+            assert_eq!(epp, expected_epp);
         }
 
         Ok(())
@@ -1095,7 +1156,7 @@ mod tests {
     fn test_power_update_power_preferences_epp() -> Result<()> {
         let root = tempdir()?;
 
-        write_epp(root.path(), "balance_performance")?;
+        write_epp(root.path(), "balance_performance", AFFECTED_CPU0)?;
 
         let tests = [
             (
@@ -1310,7 +1371,6 @@ mod tests {
             config_provider,
             power_source_provider,
         };
-
         manager.update_power_preferences(
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Inactive,
@@ -1342,7 +1402,18 @@ mod tests {
             powersave_bias: INIT_POWERSAVE_BIAS,
             sampling_rate: Some(INIT_SAMPLING_RATE),
         };
-        write_per_policy_scaling_governor(root, ondemand);
+        let policy0 = PolicyConfigs{
+            policy_path: TEST_CPUFREQ_POLICIES[0],
+            governor: &ondemand,
+            affected_cpus: "0",
+        };
+        let policy1 = PolicyConfigs{
+            policy_path: TEST_CPUFREQ_POLICIES[1],
+            governor: &ondemand,
+            affected_cpus: "1",
+        };
+        let policies = vec![policy0, policy1];
+        write_per_policy_scaling_governor(root, policies);
         write_per_policy_powersave_bias(root, INIT_POWERSAVE_BIAS);
         write_per_policy_sampling_rate(root, INIT_SAMPLING_RATE);
 
@@ -1368,7 +1439,6 @@ mod tests {
             config_provider,
             power_source_provider,
         };
-
         manager.update_power_preferences(
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Inactive,
@@ -1376,7 +1446,7 @@ mod tests {
             common::VmBootMode::Inactive,
             common::BatterySaverMode::Inactive,
         )?;
-        check_per_policy_scaling_governor(root, ondemand);
+        check_per_policy_scaling_governor(root, vec![ondemand, ondemand]);
         check_per_policy_powersave_bias(root, CONFIG_POWERSAVE_BIAS);
         check_per_policy_sampling_rate(root, CONFIG_SAMPLING_RATE);
         Ok(())
@@ -1413,7 +1483,18 @@ mod tests {
             powersave_bias: INIT_POWERSAVE_BIAS,
             sampling_rate: Some(INIT_SAMPLING_RATE),
         };
-        write_per_policy_scaling_governor(root, ondemand);
+        let policy0 = PolicyConfigs {
+            policy_path: TEST_CPUFREQ_POLICIES[0],
+            governor: &ondemand,
+            affected_cpus: AFFECTED_CPU0,
+        };
+        let policy1 = PolicyConfigs {
+            policy_path: TEST_CPUFREQ_POLICIES[1],
+            governor: &ondemand,
+            affected_cpus: AFFECTED_CPU1,
+        };
+        let policies = vec![policy0, policy1];
+        write_per_policy_scaling_governor(root, policies);
 
         let governors = [
             config::Governor::Conservative,
@@ -1450,7 +1531,7 @@ mod tests {
                 common::BatterySaverMode::Inactive,
             )?;
 
-            check_per_policy_scaling_governor(root, governor);
+            check_per_policy_scaling_governor(root, vec![governor, governor]);
         }
 
         Ok(())
