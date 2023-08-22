@@ -172,18 +172,18 @@ bool DevModeUnblockBroker::IsDevModeBlockedInFwmp() {
            "when calling InstallAttributes method ";
     return false;
   }
-  std::unique_ptr<dbus::Response> response(
-      fwmp_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  if (!response) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      fwmp_proxy_->CallMethodAndBlock(&method_call,
+                                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  if (!response.has_value()) {
     LOG(ERROR) << "Error contacting Cryptohomed to get FWMP.";
     return false;
   }
-  if (!response.get()) {
+  if (!response.value()) {
     LOG(ERROR) << "Cannot retrieve FWMP.";
     return false;
   }
-  dbus::MessageReader reader(response.get());
+  dbus::MessageReader reader(response.value().get());
   if (!reader.PopArrayOfBytesAsProto(&reply)) {
     LOG(ERROR) << "Failed to parse GetFirmwareManagementParameters"
                   " response message from cryptohomed";

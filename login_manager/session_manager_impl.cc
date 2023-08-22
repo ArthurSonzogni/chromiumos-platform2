@@ -1968,11 +1968,11 @@ void SessionManagerImpl::BackupArcBugReport(const std::string& account_id) {
 
   writer.AppendString(account_id);
 
-  std::unique_ptr<dbus::Response> response(
-      debugd_proxy_->CallMethodAndBlockDeprecated(
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      debugd_proxy_->CallMethodAndBlock(
           &method_call, kBackupArcBugReportTimeout.InMilliseconds()));
 
-  if (!response) {
+  if (!response.has_value() || !response.value()) {
     LOG(ERROR) << "Error contacting debugd to back up ARC bug report.";
   }
 }
@@ -1985,11 +1985,11 @@ void SessionManagerImpl::DeleteArcBugReportBackup(
 
   writer.AppendString(account_id);
 
-  std::unique_ptr<dbus::Response> response(
-      debugd_proxy_->CallMethodAndBlockDeprecated(
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      debugd_proxy_->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
 
-  if (!response) {
+  if (!response.has_value() || !response.value()) {
     LOG(ERROR) << "Error contacting debugd to delete ARC bug report backup.";
   }
 }

@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/time/time.h"
@@ -13,6 +14,7 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/types/expected.h>
 #include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -35,8 +37,10 @@ std::unique_ptr<dbus::Response> CallEnvironmentMethod(
   dbus::MessageWriter writer(&method_call);
   writer.AppendArrayOfStrings(args_keyvals);
 
-  return proxy->CallMethodAndBlockDeprecated(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      proxy->CallMethodAndBlock(&method_call,
+                                dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  return std::move(response).value_or(nullptr);
 }
 
 std::unique_ptr<dbus::Response> SetEnvironment(

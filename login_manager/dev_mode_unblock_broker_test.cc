@@ -8,13 +8,13 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/types/expected.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
-#include <utility>
 
 #include "login_manager/fake_crossystem.h"
 #include "login_manager/mock_system_utils.h"
@@ -85,9 +85,9 @@ class DevModeUnblockBrokerTest : public ::testing::Test {
 
   // Returns a response for the given method call. Used to implement
   // CallMethodAndBlock() for |mock_proxy_|.
-  std::unique_ptr<dbus::Response> CreateMockProxyResponse(
-      dbus::MethodCall* method_call, int timeout_ms) {
-    return dbus::Response::CreateEmpty();
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error>
+  CreateMockProxyResponse(dbus::MethodCall* method_call, int timeout_ms) {
+    return base::ok(dbus::Response::CreateEmpty());
   }
 
   void StoreDoWaitForServiceToBeAvailable(
@@ -194,7 +194,7 @@ TEST_F(DevModeUnblockBrokerTest, DetectUnBlockedDevMode) {
   EXPECT_CALL(*fwmp_proxy_, DoWaitForServiceToBeAvailable(_))
       .WillOnce(Invoke(
           this, &DevModeUnblockBrokerTest::StoreDoWaitForServiceToBeAvailable));
-  EXPECT_CALL(*fwmp_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*fwmp_proxy_, CallMethodAndBlock(_, _))
       .WillRepeatedly(
           Invoke(this, &DevModeUnblockBrokerTest::CreateMockProxyResponse));
   crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
@@ -281,7 +281,7 @@ TEST_F(DevModeUnblockBrokerTest, VerifyRestartInterrupted) {
   EXPECT_CALL(*fwmp_proxy_, DoWaitForServiceToBeAvailable(_))
       .WillRepeatedly(Invoke(
           this, &DevModeUnblockBrokerTest::StoreDoWaitForServiceToBeAvailable));
-  EXPECT_CALL(*fwmp_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*fwmp_proxy_, CallMethodAndBlock(_, _))
       .WillRepeatedly(
           Invoke(this, &DevModeUnblockBrokerTest::CreateMockProxyResponse));
   dbus::ObjectProxy::ResponseCallback fwmp_removal_callback;

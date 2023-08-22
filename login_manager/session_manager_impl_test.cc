@@ -431,7 +431,7 @@ class SessionManagerImplTest : public ::testing::Test,
     impl_->SetLoginScreenStorageForTesting(std::make_unique<LoginScreenStorage>(
         login_screen_storage_path_, std::move(shared_memory_util)));
 
-    EXPECT_CALL(*debugd_proxy_, CallMethodAndBlockDeprecated(_, _))
+    EXPECT_CALL(*debugd_proxy_, CallMethodAndBlock(_, _))
         .WillRepeatedly(
             Invoke(this, &SessionManagerImplTest::CreateMockProxyResponse));
 
@@ -1032,9 +1032,9 @@ class SessionManagerImplTest : public ::testing::Test,
  private:
   // Returns a response for the given method call. Used to implement
   // CallMethodAndBlock() for |mock_proxy_|.
-  std::unique_ptr<dbus::Response> CreateMockProxyResponse(
-      dbus::MethodCall* method_call, int timeout_ms) {
-    return dbus::Response::CreateEmpty();
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error>
+  CreateMockProxyResponse(dbus::MethodCall* method_call, int timeout_ms) {
+    return base::ok(dbus::Response::CreateEmpty());
   }
 
   void ExpectSessionBoilerplate(const string& account_id_string,
@@ -2374,11 +2374,11 @@ TEST_F(SessionManagerImplTest, StopArcInstance_BackupsArcBugReport) {
                                   ArcContainerStopReason::USER_REQUEST)))
       .Times(1);
 
-  EXPECT_CALL(*debugd_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*debugd_proxy_, CallMethodAndBlock(_, _))
       .WillOnce(WithArg<0>(Invoke([](dbus::MethodCall* method_call) {
         EXPECT_EQ(method_call->GetInterface(), debugd::kDebugdInterface);
         EXPECT_EQ(method_call->GetMember(), debugd::kBackupArcBugReport);
-        return dbus::Response::CreateEmpty();
+        return base::ok(dbus::Response::CreateEmpty());
       })));
 
   brillo::ErrorPtr error;
@@ -2539,11 +2539,11 @@ TEST_F(SessionManagerImplTest,
   EXPECT_CALL(*arc_sideload_status_, IsAdbSideloadAllowed())
       .WillRepeatedly(Return(false));
 
-  EXPECT_CALL(*debugd_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*debugd_proxy_, CallMethodAndBlock(_, _))
       .WillOnce(WithArg<0>(Invoke([](dbus::MethodCall* method_call) {
         EXPECT_EQ(method_call->GetInterface(), debugd::kDebugdInterface);
         EXPECT_EQ(method_call->GetMember(), debugd::kBackupArcBugReport);
-        return dbus::Response::CreateEmpty();
+        return base::ok(dbus::Response::CreateEmpty());
       })));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
