@@ -1610,7 +1610,7 @@ timeout. Otherwise, the routine fails.
 Parameters:
 -   `--length_seconds` - Number of seconds to listen for the power button
     events. Range: [1, 600].
-    Type: `uint32_t`. Default: `0`.
+    Type: `uint32_t`. Default: `10`.
 
 To run the power button routine that listens to events for 10 seconds.
 

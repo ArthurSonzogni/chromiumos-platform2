@@ -771,7 +771,7 @@ int BluetoothPairingMain(int argc, char** argv) {
 }
 
 int PowerButtonMain(int argc, char** argv) {
-  DEFINE_uint32(length_seconds, 0,
+  DEFINE_uint32(length_seconds, 10,
                 "Number of seconds to listen for the power button events. "
                 "Range: [1, 600].");
 
