@@ -15,6 +15,8 @@
 #include <base/containers/flat_map.h>
 #include <cros-camera/gcam_ae.h>
 
+#include "features/gcam_ae/ae_info.h"
+
 namespace cros {
 
 // GcamAeDeviceAdapterIpu6 is the AE pipeline specilization for Intel IPU6/EP
@@ -25,7 +27,8 @@ class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
 
   // GcamAeDeviceAdapter implementations.
   ~GcamAeDeviceAdapterIpu6() override = default;
-  bool WriteRequestParameters(Camera3CaptureDescriptor* request) override;
+  bool WriteRequestParameters(Camera3CaptureDescriptor* request,
+                              const AeFrameInfo& frame_info) override;
   bool SetExposureTargetVendorTag(Camera3CaptureDescriptor* request,
                                   float exposure_target) override;
   bool ExtractAeStats(Camera3CaptureDescriptor* result,

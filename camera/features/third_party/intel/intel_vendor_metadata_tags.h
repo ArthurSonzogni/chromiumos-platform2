@@ -1,7 +1,7 @@
 // NOLINT(build/header_guard)
 /*
  * Copyright (C) 2012 The Android Open Source Project
- * Copyright (C) 2021 Intel Corporation
+ * Copyright (C) 2021-2023 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,6 +59,8 @@ typedef enum vendor_metadata_tag {
   INTEL_VENDOR_CAMERA_POWER_MODE,                   // enum         | public
   INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET,        // int64        | public
   INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET_RANGE,  // int64[]      | public
+  INTEL_VENDOR_CAMERA_RAW_DATA_OUTPUT,              // enum         | public
+  INTEL_VENDOR_CAMERA_HDR_RATIO,                    // float        | public
   INTEL_VENDOR_CAMERA_END,
 } vendor_metadata_tag_t;
 
@@ -89,3 +91,9 @@ typedef enum vendor_metadata_enum_intel_vendor_camera_power_mode {
   INTEL_VENDOR_CAMERA_POWER_MODE_LOW_POWER,
   INTEL_VENDOR_CAMERA_POWER_MODE_HIGH_QUALITY,
 } vendor_metadata_enum_intel_vendor_camera_power_mode_t;
+
+// INTEL_VENDOR_CAMERA_RAW_DATA_OUTPUT
+typedef enum vendor_metadata_enum_intel_vendor_camera_raw_data_output {
+  INTEL_VENDOR_CAMERA_RAW_DATA_OUTPUT_OFF,
+  INTEL_VENDOR_CAMERA_RAW_DATA_OUTPUT_ON,
+} vendor_metadata_enum_intel_vendor_camera_raw_data_output_t;

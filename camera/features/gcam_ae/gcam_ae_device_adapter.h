@@ -28,7 +28,8 @@ class GcamAeDeviceAdapter {
 
   // Called by GcamAeController to allow the adapter to set device specific
   // control metadata (e.g. vendor tags) for each capture request.
-  virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request);
+  virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request,
+                                      const AeFrameInfo& frame_info);
 
   // Called by GcamAeController to set the exposure target through vendor tag.
   // Returns true if the camera HAL accepts the exposure target vendor tag and

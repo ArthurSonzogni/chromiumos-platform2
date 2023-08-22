@@ -14,6 +14,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
+#include "features/gcam_ae/ae_info.h"
 #include "features/third_party/intel/intel_vendor_metadata_tags.h"
 
 namespace cros {
@@ -30,13 +31,20 @@ GcamAeDeviceAdapterIpu6::GcamAeDeviceAdapterIpu6()
     : gcam_ae_(GcamAe::CreateInstance()) {}
 
 bool GcamAeDeviceAdapterIpu6::WriteRequestParameters(
-    Camera3CaptureDescriptor* request) {
+    Camera3CaptureDescriptor* request, const AeFrameInfo& frame_info) {
   std::array<uint8_t, 1> rgbs_grid_enable = {
       INTEL_VENDOR_CAMERA_CALLBACK_RGBS_TRUE};
   if (!request->UpdateMetadata<uint8_t>(INTEL_VENDOR_CAMERA_CALLBACK_RGBS,
                                         rgbs_grid_enable)) {
     LOGF(ERROR) << "Cannot enable INTEL_VENDOR_CAMERA_CALLBACK_RGBS in "
                    "request metadta";
+    return false;
+  }
+  std::array<float, 1> hdr_ratio = {frame_info.target_hdr_ratio};
+  if (!request->UpdateMetadata<float>(INTEL_VENDOR_CAMERA_HDR_RATIO,
+                                      hdr_ratio)) {
+    LOGF(ERROR)
+        << "Cannot set INTEL_VENDOR_CAMERA_HDR_RATIO in request metadta";
     return false;
   }
   return true;

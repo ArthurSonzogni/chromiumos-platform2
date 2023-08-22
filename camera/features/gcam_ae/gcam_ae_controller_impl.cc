@@ -513,7 +513,7 @@ void GcamAeControllerImpl::SetRequestAeParameters(
     return;
   }
 
-  if (!ae_device_adapter_->WriteRequestParameters(request)) {
+  if (!ae_device_adapter_->WriteRequestParameters(request, *frame_info)) {
     LOGFID(ERROR, request->frame_number()) << "Cannot set request parameters";
     return;
   }

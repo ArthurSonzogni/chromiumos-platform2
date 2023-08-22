@@ -6,6 +6,7 @@
 
 #include "features/gcam_ae/gcam_ae_device_adapter.h"
 
+#include "features/gcam_ae/ae_info.h"
 #if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL
 #include "features/gcam_ae/gcam_ae_device_adapter_ipu6.h"
 #endif
@@ -22,7 +23,7 @@ std::unique_ptr<GcamAeDeviceAdapter> GcamAeDeviceAdapter::CreateInstance() {
 }
 
 bool GcamAeDeviceAdapter::WriteRequestParameters(
-    Camera3CaptureDescriptor* request) {
+    Camera3CaptureDescriptor* request, const AeFrameInfo& frame_info) {
   return true;
 }
 
