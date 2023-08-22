@@ -242,7 +242,7 @@ bool DevicePolicyService::Initialize() {
   return key_success;
 }
 
-bool DevicePolicyService::Store(const PolicyNamespace& ns,
+void DevicePolicyService::Store(const PolicyNamespace& ns,
                                 const std::vector<uint8_t>& policy_blob,
                                 int key_flags,
                                 Completion completion) {
@@ -261,8 +261,7 @@ bool DevicePolicyService::Store(const PolicyNamespace& ns,
     // object so that its state change is cleaner.
     settings_.reset();
   }
-  return PolicyService::Store(ns, policy_blob, key_flags,
-                              std::move(completion));
+  PolicyService::Store(ns, policy_blob, key_flags, std::move(completion));
 }
 
 std::vector<std::string> DevicePolicyService::GetFeatureFlags() {

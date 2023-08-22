@@ -40,7 +40,7 @@ class UserPolicyService : public PolicyService {
   // this override allows storage of policy blobs that indiciate the user is
   // unmanaged even if they are unsigned. If a non-signed blob gets installed,
   // we also clear the signing key.
-  bool Store(const PolicyNamespace& ns,
+  void Store(const PolicyNamespace& ns,
              const std::vector<uint8_t>& policy_blob,
              int key_flags,
              Completion completion) override;

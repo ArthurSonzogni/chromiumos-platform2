@@ -124,10 +124,9 @@ TEST_F(UserPolicyServiceTest, StoreSignedPolicy) {
   EXPECT_CALL(*key_, Verify(_, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
-  EXPECT_TRUE(
-      service_->Store(MakeChromePolicyNamespace(),
-                      SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  PolicyService::KEY_NONE,
+                  MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
 }
 
@@ -138,10 +137,9 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
   EXPECT_CALL(*key_, Verify(_, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
-  EXPECT_TRUE(
-      service_->Store(MakeChromePolicyNamespace(),
-                      SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  PolicyService::KEY_NONE,
+                  MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
 }
 
@@ -161,10 +159,9 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
   EXPECT_CALL(*key_, Persist()).InSequence(s2).WillOnce(Return(true));
 
   EXPECT_FALSE(base::PathExists(key_copy_file_));
-  EXPECT_TRUE(
-      service_->Store(MakeChromePolicyNamespace(),
-                      SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  PolicyService::KEY_NONE,
+                  MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
 
   EXPECT_TRUE(base::PathExists(key_copy_file_));
@@ -182,10 +179,9 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
 
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
 
-  EXPECT_TRUE(
-      service_->Store(MakeChromePolicyNamespace(),
-                      SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  PolicyService::KEY_NONE,
+                  MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(key_copy_file_));
 }
@@ -196,10 +192,9 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
   InSequence s;
   EXPECT_CALL(*key_, Verify(_, _, _)).WillOnce(Return(false));
 
-  EXPECT_FALSE(
-      service_->Store(MakeChromePolicyNamespace(),
-                      SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      MockPolicyService::CreateExpectFailureCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  PolicyService::KEY_NONE,
+                  MockPolicyService::CreateExpectFailureCallback());
 
   fake_loop_.Run();
 }
@@ -243,10 +238,9 @@ TEST_F(UserPolicyServiceTest, PersistPolicyMultipleNamespaces) {
   EXPECT_CALL(*key_, Verify(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_)));
   EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
-  EXPECT_TRUE(
-      service_->Store(MakeChromePolicyNamespace(),
-                      SerializeAsBlob(policy_proto_), PolicyService::KEY_NONE,
-                      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  PolicyService::KEY_NONE,
+                  MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
   testing::Mock::VerifyAndClearExpectations(&key_);
   testing::Mock::VerifyAndClearExpectations(store_);
@@ -255,10 +249,10 @@ TEST_F(UserPolicyServiceTest, PersistPolicyMultipleNamespaces) {
   EXPECT_CALL(*key_, Verify(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(*extension_store, Set(ProtoEq(extension_policy_proto)));
   EXPECT_CALL(*extension_store, Persist()).WillOnce(Return(true));
-  EXPECT_TRUE(service_->Store(
-      MakeExtensionPolicyNamespace(), SerializeAsBlob(extension_policy_proto),
-      PolicyService::KEY_NONE,
-      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeExtensionPolicyNamespace(),
+                  SerializeAsBlob(extension_policy_proto),
+                  PolicyService::KEY_NONE,
+                  MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
 }
 

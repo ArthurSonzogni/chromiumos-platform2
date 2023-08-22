@@ -849,8 +849,7 @@ class SessionManagerImplTest : public ::testing::Test,
                          const std::vector<uint8_t>& policy_blob,
                          int flags) {
     EXPECT_CALL(*service,
-                Store(MakeChromePolicyNamespace(), policy_blob, flags, _))
-        .WillOnce(Return(true));
+                Store(MakeChromePolicyNamespace(), policy_blob, flags, _));
   }
 
   void ExpectNoStorePolicy(MockDevicePolicyService* service) {
@@ -1619,8 +1618,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SessionStarted) {
   EXPECT_CALL(
       *user_policy_services_[kSaneEmail],
       Store(MakeChromePolicyNamespace(), policy_blob,
-            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _))
-      .WillOnce(Return(true));
+            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _));
 
   ResponseCapturer capturer;
   impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),
@@ -1637,8 +1635,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   EXPECT_CALL(
       *user_policy_services_[kSaneEmail],
       Store(MakeChromePolicyNamespace(), policy_blob,
-            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _))
-      .WillOnce(Return(true));
+            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _));
 
   {
     ResponseCapturer capturer;
@@ -1667,8 +1664,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   EXPECT_CALL(
       *user_policy_services_[kEmail2],
       Store(MakeChromePolicyNamespace(), policy_blob,
-            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _))
-      .WillOnce(Return(true));
+            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _));
   {
     ResponseCapturer capturer;
     impl_->StorePolicyEx(capturer.CreateMethodResponse<>(),

@@ -57,7 +57,7 @@ void UserPolicyService::PersistKeyCopy() {
   }
 }
 
-bool UserPolicyService::Store(const PolicyNamespace& ns,
+void UserPolicyService::Store(const PolicyNamespace& ns,
                               const std::vector<uint8_t>& policy_blob,
                               int key_flags,
                               Completion completion) {
@@ -69,7 +69,7 @@ bool UserPolicyService::Store(const PolicyNamespace& ns,
     std::move(completion)
         .Run(CREATE_ERROR_AND_LOG(dbus_error::kSigDecodeFail,
                                   "Unable to parse policy protobuf."));
-    return false;
+    return;
   }
 
   // Allow to switch to unmanaged state even if no signature is present.
@@ -83,11 +83,10 @@ bool UserPolicyService::Store(const PolicyNamespace& ns,
 
     GetOrCreateStore(ns)->Set(policy);
     PersistPolicy(ns, std::move(completion));
-    return true;
+    return;
   }
 
-  return PolicyService::StorePolicy(ns, policy, key_flags,
-                                    std::move(completion));
+  PolicyService::StorePolicy(ns, policy, key_flags, std::move(completion));
 }
 
 void UserPolicyService::OnKeyPersisted(bool status) {

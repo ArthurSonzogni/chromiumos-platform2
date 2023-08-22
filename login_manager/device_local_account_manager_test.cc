@@ -109,9 +109,9 @@ TEST_F(DeviceLocalAccountManagerTest, GetPolicyServiceSucceeds) {
   ASSERT_TRUE(service);
 
   // Also check  if policy is stored at the proper path.
-  ASSERT_TRUE(service->Store(MakeChromePolicyNamespace(), GetTestPolicyBlob(),
-                             PolicyService::KEY_NONE,
-                             MockPolicyService::CreateExpectSuccessCallback()));
+  service->Store(MakeChromePolicyNamespace(), GetTestPolicyBlob(),
+                 PolicyService::KEY_NONE,
+                 MockPolicyService::CreateExpectSuccessCallback());
   fake_loop_.Run();
   EXPECT_TRUE(base::PathExists(fake_account_policy_path_));
 }

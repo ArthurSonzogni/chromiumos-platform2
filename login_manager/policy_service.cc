@@ -72,7 +72,7 @@ PolicyService::PolicyService(const base::FilePath& policy_dir,
 
 PolicyService::~PolicyService() = default;
 
-bool PolicyService::Store(const PolicyNamespace& ns,
+void PolicyService::Store(const PolicyNamespace& ns,
                           const std::vector<uint8_t>& policy_blob,
                           int key_flags,
                           Completion completion) {
@@ -82,10 +82,10 @@ bool PolicyService::Store(const PolicyNamespace& ns,
     std::move(completion)
         .Run(CREATE_ERROR_AND_LOG(dbus_error::kSigDecodeFail,
                                   "Unable to parse policy protobuf."));
-    return false;
+    return;
   }
 
-  return StorePolicy(ns, policy, key_flags, std::move(completion));
+  StorePolicy(ns, policy, key_flags, std::move(completion));
 }
 
 bool PolicyService::Retrieve(const PolicyNamespace& ns,
@@ -125,7 +125,7 @@ void PolicyService::SetStoreForTesting(const PolicyNamespace& ns,
   policy_stores_[ns] = std::move(store);
 }
 
-bool PolicyService::StorePolicy(const PolicyNamespace& ns,
+void PolicyService::StorePolicy(const PolicyNamespace& ns,
                                 const em::PolicyFetchResponse& policy,
                                 int key_flags,
                                 Completion completion) {
@@ -156,7 +156,7 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
       std::move(completion)
           .Run(CREATE_ERROR_AND_LOG(dbus_error::kPubkeySetIllegal,
                                     "Failed to install policy key!"));
-      return false;
+      return;
     }
 
     // If here, need to persist the key just loaded into memory to disk.
@@ -170,12 +170,11 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
     std::move(completion)
         .Run(CREATE_ERROR_AND_LOG(dbus_error::kVerifyFail,
                                   "Signature could not be verified."));
-    return false;
+    return;
   }
 
   GetOrCreateStore(ns)->Set(policy);
   PersistPolicy(ns, std::move(completion));
-  return true;
 }
 
 void PolicyService::OnKeyPersisted(bool status) {

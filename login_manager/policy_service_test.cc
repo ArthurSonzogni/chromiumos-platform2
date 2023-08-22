@@ -121,9 +121,8 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(*store_, Set(_)).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
 
-    EXPECT_FALSE(service_->Store(
-        MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), flags,
-        MockPolicyService::CreateExpectFailureCallback()));
+    service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                    flags, MockPolicyService::CreateExpectFailureCallback());
     fake_loop_.Run();
   }
 
@@ -171,9 +170,9 @@ TEST_F(PolicyServiceTest, Store) {
   ExpectVerifyAndSetPolicy(&s2);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(
-      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
-      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  kAllKeyFlags,
+                  MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
@@ -233,9 +232,9 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(
-      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
-      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  kAllKeyFlags,
+                  MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
@@ -254,10 +253,9 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(
-      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
-      PolicyService::KEY_CLOBBER,
-      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  PolicyService::KEY_CLOBBER,
+                  MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
@@ -273,9 +271,9 @@ TEST_F(PolicyServiceTest, StoreNewKeySame) {
   ExpectVerifyAndSetPolicy(&s3);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(
-      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
-      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  kAllKeyFlags,
+                  MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
@@ -304,9 +302,9 @@ TEST_F(PolicyServiceTest, StoreRotation) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(
-      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_), kAllKeyFlags,
-      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  kAllKeyFlags,
+                  MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
@@ -325,10 +323,9 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(
-      MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
-      PolicyService::KEY_CLOBBER,
-      MockPolicyService::CreateExpectSuccessCallback()));
+  service_->Store(MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
+                  PolicyService::KEY_CLOBBER,
+                  MockPolicyService::CreateExpectSuccessCallback());
 
   fake_loop_.Run();
 }
@@ -435,9 +432,8 @@ class PolicyServiceNamespaceTest : public testing::Test {
   void StorePolicy(const std::string& policy_value, const PolicyNamespace& ns) {
     const std::vector<uint8_t> policy_blob = PolicyValueToBlob(policy_value);
     EXPECT_CALL(key_, Verify(_, _, _)).WillRepeatedly(Return(true));
-    EXPECT_TRUE(
-        service_->Store(ns, policy_blob, PolicyService::KEY_NONE,
-                        MockPolicyService::CreateExpectSuccessCallback()));
+    service_->Store(ns, policy_blob, PolicyService::KEY_NONE,
+                    MockPolicyService::CreateExpectSuccessCallback());
   }
 
   // Retrieves the policy value from namespace |ns|. Returns an empty string on

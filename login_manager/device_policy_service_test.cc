@@ -213,9 +213,9 @@ class DevicePolicyServiceTest : public ::testing::Test {
     EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
     EXPECT_CALL(*store, Set(_)).Times(AnyNumber());
     EXPECT_CALL(*store, Get()).WillRepeatedly(ReturnRef(policy_proto));
-    EXPECT_TRUE(service_->Store(ns, SerializeAsBlob(policy_proto),
-                                PolicyService::KEY_CLOBBER,
-                                MockPolicyService::CreateDoNothing()));
+    service_->Store(ns, SerializeAsBlob(policy_proto),
+                    PolicyService::KEY_CLOBBER,
+                    MockPolicyService::CreateDoNothing());
   }
 
   bool UpdateSystemSettings(DevicePolicyService* service) {

@@ -30,7 +30,7 @@ class MockDevicePolicyService : public DevicePolicyService {
   ~MockDevicePolicyService() override;
 
   MOCK_METHOD(
-      bool,
+      void,
       Store,
       (const PolicyNamespace&, const std::vector<uint8_t>&, int, Completion),
       (override));

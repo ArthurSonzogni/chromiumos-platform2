@@ -94,9 +94,8 @@ class PolicyService {
   // parameter determines what to do with a new key present in the policy,
   // see KeyInstallFlags for possible values.
   //
-  // Returns false on immediate errors. Otherwise, returns true and reports the
-  // status of the operation through |completion|.
-  virtual bool Store(const PolicyNamespace& ns,
+  // Reports the status of the operation through |completion|.
+  virtual void Store(const PolicyNamespace& ns,
                      const std::vector<uint8_t>& policy_blob,
                      int key_flags,
                      Completion completion);
@@ -137,7 +136,7 @@ class PolicyService {
   // Store a policy blob under the namespace |ns|. This does the heavy lifting
   // for Store(), making the signature checks, taking care of key changes and
   // persisting policy and key data to disk.
-  bool StorePolicy(const PolicyNamespace& ns,
+  void StorePolicy(const PolicyNamespace& ns,
                    const enterprise_management::PolicyFetchResponse& policy,
                    int key_flags,
                    Completion completion);

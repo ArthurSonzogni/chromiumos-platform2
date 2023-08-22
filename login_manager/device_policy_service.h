@@ -126,7 +126,7 @@ class DevicePolicyService : public PolicyService {
       enterprise_management::PolicyFetchRequest::SignatureType signature_type);
 
   // PolicyService:
-  bool Store(const PolicyNamespace& ns,
+  void Store(const PolicyNamespace& ns,
              const std::vector<uint8_t>& policy_blob,
              int key_flags,
              Completion completion) override;
