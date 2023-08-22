@@ -26,10 +26,10 @@ class MockNetlinkSocket : public NetlinkSocket {
 
   uint32_t GetLastSequenceNumber() const { return sequence_number_; }
 
-  MOCK_METHOD(bool, Init, (), (override));
   MOCK_METHOD(int, file_descriptor, (), (const, override));
   MOCK_METHOD(bool, SendMessage, (base::span<const uint8_t>), (override));
   MOCK_METHOD(bool, SubscribeToEvents, (uint32_t), (override));
+  MOCK_METHOD(int, WaitForRead, (struct timeval*), (const, override));
   MOCK_METHOD(bool, RecvMessage, (std::vector<uint8_t>*), (override));
 };
 

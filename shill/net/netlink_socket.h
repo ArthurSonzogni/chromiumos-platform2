@@ -32,12 +32,11 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/socket.h>
 
 #include "shill/net/shill_export.h"
 
 namespace shill {
-
-class Sockets;
 
 // Provides an abstraction to a netlink socket.  See
 // http://www.infradead.org/~tgr/libnl/doc/core.html#core_netlink_fundamentals
@@ -45,17 +44,21 @@ class Sockets;
 // this document discusses libnl -- something not used by this code).
 class SHILL_EXPORT NetlinkSocket {
  public:
-  NetlinkSocket();
+  // Creates a NetlinkSocket instance, using the net_base::SocketFactory.
+  static std::unique_ptr<NetlinkSocket> Create();
+
+  // Creates a NetlinkSocket instance with injecting the customized
+  // net_base::SocketFactory for testing.
+  static std::unique_ptr<NetlinkSocket> CreateWithSocketFactory(
+      std::unique_ptr<net_base::SocketFactory> socket_factory);
+
   NetlinkSocket(const NetlinkSocket&) = delete;
   NetlinkSocket& operator=(const NetlinkSocket&) = delete;
 
   virtual ~NetlinkSocket();
 
-  // Non-trivial initialization.
-  virtual bool Init();
-
   // Returns the file descriptor used by the socket.
-  virtual int file_descriptor() const { return file_descriptor_; }
+  virtual int file_descriptor() const { return socket_->Get(); }
 
   // Get the next message sequence number for this socket.
   // |GetSequenceNumber| won't return zero because that is the 'broadcast'
@@ -73,18 +76,27 @@ class SHILL_EXPORT NetlinkSocket {
   // Subscribes to netlink broadcast events.
   virtual bool SubscribeToEvents(uint32_t group_id);
 
-  virtual const Sockets* sockets() const { return sockets_.get(); }
+  // Delegates to select() to wait for the socket ready to read with timeout.
+  // Returns 1 if successful.
+  // Returns 0 if timeout.
+  // Returns -1 if error occurs, and errno is set. The caller should use PLOG to
+  // print errno.
+  virtual int WaitForRead(struct timeval* timeout) const;
+
+  // Sets the value of |sequence_number_| for testing.
+  void set_sequence_number_for_test(uint32_t sequence_number) {
+    sequence_number_ = sequence_number;
+  }
 
  protected:
-  uint32_t sequence_number_;
+  explicit NetlinkSocket(std::unique_ptr<net_base::Socket> socket);
+
+  uint32_t sequence_number_ = 0;
 
  private:
-  friend class NetlinkManagerTest;
-  friend class NetlinkSocketTest;
-  FRIEND_TEST(NetlinkSocketTest, SequenceNumberTest);
-
-  std::unique_ptr<Sockets> sockets_;
-  int file_descriptor_;
+  // The netlink socket. It's always valid during the lifetime of NetlinkSocket
+  // instance.
+  std::unique_ptr<net_base::Socket> socket_;
 };
 
 }  // namespace shill

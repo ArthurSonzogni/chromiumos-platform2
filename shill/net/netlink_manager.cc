@@ -14,11 +14,12 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
+#include <memory>
+
 #include "shill/net/attribute_list.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/net/sockets.h"
 
 namespace shill {
 
@@ -282,13 +283,9 @@ bool NetlinkManager::Init() {
       ControlNetlinkMessage::kMessageType,
       base::BindRepeating(&ControlNetlinkMessage::CreateMessage));
   if (!sock_) {
-    sock_.reset(new NetlinkSocket);
+    sock_ = NetlinkSocket::Create();
     if (!sock_) {
-      LOG(ERROR) << "No memory";
-      return false;
-    }
-
-    if (!sock_->Init()) {
+      LOG(ERROR) << "Failed to create netlink socket";
       return false;
     }
   }
@@ -296,18 +293,19 @@ bool NetlinkManager::Init() {
 }
 
 void NetlinkManager::Start() {
+  if (!sock_) {
+    LOG(ERROR) << "The netlink socket hasn't been initialized";
+    return;
+  }
+
   // Create an IO handler for receiving messages on the netlink socket.
   // IO handler will be installed to the current message loop.
   dispatcher_handler_.reset(io_handler_factory_->CreateIOInputHandler(
-      file_descriptor(),
+      sock_->file_descriptor(),
       base::BindRepeating(&NetlinkManager::OnRawNlMessageReceived,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindRepeating(&NetlinkManager::OnReadError,
                           weak_ptr_factory_.GetWeakPtr())));
-}
-
-int NetlinkManager::file_descriptor() const {
-  return (sock_ ? sock_->file_descriptor() : Sockets::kInvalidFileDescriptor);
 }
 
 uint16_t NetlinkManager::GetFamily(
@@ -351,18 +349,9 @@ uint16_t NetlinkManager::GetFamily(
 
   do {
     // Wait with timeout for a message from the netlink socket.
-    fd_set read_fds;
-    FD_ZERO(&read_fds);
-
-    int socket = file_descriptor();
-    if (socket >= FD_SETSIZE)
-      LOG(FATAL) << "Invalid file_descriptor.";
-    FD_SET(socket, &read_fds);
-
     struct timeval wait_duration;
     timersub(&end_time, &now, &wait_duration);
-    int result = sock_->sockets()->Select(file_descriptor() + 1, &read_fds,
-                                          nullptr, nullptr, &wait_duration);
+    const int result = sock_->WaitForRead(&wait_duration);
     if (result < 0) {
       PLOG(ERROR) << "Select failed";
       return NetlinkMessage::kIllegalMessageType;

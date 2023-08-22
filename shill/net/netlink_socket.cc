@@ -8,41 +8,38 @@
 #include <linux/netlink.h>
 #include <sys/socket.h>
 
-#include <base/logging.h>
+#include <memory>
+#include <utility>
 
-#include "shill/net/netlink_fd.h"
+#include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+
 #include "shill/net/netlink_message.h"
-#include "shill/net/sockets.h"
 
 // This is from a version of linux/socket.h that we don't have.
 #define SOL_NETLINK 270
 
 namespace shill {
 
-NetlinkSocket::NetlinkSocket()
-    : sequence_number_(0), file_descriptor_(Sockets::kInvalidFileDescriptor) {}
-
-NetlinkSocket::~NetlinkSocket() {
-  if (sockets_ && (file_descriptor_ >= 0)) {
-    sockets_->Close(file_descriptor_);
-  }
+std::unique_ptr<NetlinkSocket> NetlinkSocket::Create() {
+  return CreateWithSocketFactory(std::make_unique<net_base::SocketFactory>());
 }
 
-bool NetlinkSocket::Init() {
-  // Allows for a test to set |sockets_| before calling |Init|.
-  if (sockets_) {
-    LOG(INFO) << "|sockets_| already has a value -- this must be a test.";
-  } else {
-    sockets_.reset(new Sockets);
+std::unique_ptr<NetlinkSocket> NetlinkSocket::CreateWithSocketFactory(
+    std::unique_ptr<net_base::SocketFactory> socket_factory) {
+  std::unique_ptr<net_base::Socket> socket =
+      socket_factory->CreateNetlink(NETLINK_GENERIC, 0);
+  if (socket == nullptr) {
+    PLOG(ERROR) << "Failed to create AF_NETLINK socket";
+    return nullptr;
   }
 
-  file_descriptor_ = OpenNetlinkSocketFD(sockets_.get(), NETLINK_GENERIC, 0);
-  if (file_descriptor_ == Sockets::kInvalidFileDescriptor)
-    return false;
-
-  VLOG(2) << "Netlink socket started";
-  return true;
+  return std::unique_ptr<NetlinkSocket>(new NetlinkSocket(std::move(socket)));
 }
+
+NetlinkSocket::NetlinkSocket(std::unique_ptr<net_base::Socket> socket)
+    : socket_(std::move(socket)) {}
+NetlinkSocket::~NetlinkSocket() = default;
 
 bool NetlinkSocket::RecvMessage(std::vector<uint8_t>* message) {
   if (!message) {
@@ -53,20 +50,16 @@ bool NetlinkSocket::RecvMessage(std::vector<uint8_t>* message) {
   // Determine the amount of data currently waiting.
   const size_t kFakeReadByteCount = 1;
   std::vector<uint8_t> fake_read(kFakeReadByteCount);
-  ssize_t result;
-  result =
-      sockets_->RecvFrom(file_descriptor_, fake_read.data(), fake_read.size(),
-                         MSG_TRUNC | MSG_PEEK, nullptr, nullptr);
-  if (result < 0) {
+  const std::optional<size_t> result =
+      socket_->RecvFrom(fake_read, MSG_TRUNC | MSG_PEEK, nullptr, nullptr);
+  if (!result.has_value()) {
     PLOG(ERROR) << "Socket recvfrom failed.";
     return false;
   }
 
   // Read the data that was waiting when we did our previous read.
-  message->resize(result, 0);
-  result = sockets_->RecvFrom(file_descriptor_, message->data(),
-                              message->size(), 0, nullptr, nullptr);
-  if (result < 0) {
+  message->resize(*result, 0);
+  if (!socket_->RecvFrom(*message, 0, nullptr, nullptr).has_value()) {
     PLOG(ERROR) << "Second socket recvfrom failed.";
     return false;
   }
@@ -74,14 +67,13 @@ bool NetlinkSocket::RecvMessage(std::vector<uint8_t>* message) {
 }
 
 bool NetlinkSocket::SendMessage(base::span<const uint8_t> out_msg) {
-  ssize_t result =
-      sockets_->Send(file_descriptor(), out_msg.data(), out_msg.size(), 0);
+  const std::optional<size_t> result = socket_->Send(out_msg, 0);
   if (!result) {
     PLOG(ERROR) << "Send failed.";
     return false;
   }
-  if (result != static_cast<ssize_t>(out_msg.size())) {
-    LOG(ERROR) << "Only sent " << result << " bytes out of " << out_msg.size()
+  if (*result != out_msg.size()) {
+    LOG(ERROR) << "Only sent " << *result << " bytes out of " << out_msg.size()
                << ".";
     return false;
   }
@@ -90,7 +82,7 @@ bool NetlinkSocket::SendMessage(base::span<const uint8_t> out_msg) {
 }
 
 bool NetlinkSocket::SubscribeToEvents(uint32_t group_id) {
-  int err = setsockopt(file_descriptor_, SOL_NETLINK, NETLINK_ADD_MEMBERSHIP,
+  int err = setsockopt(socket_->Get(), SOL_NETLINK, NETLINK_ADD_MEMBERSHIP,
                        &group_id, sizeof(group_id));
   if (err < 0) {
     PLOG(ERROR) << "setsockopt didn't work.";
@@ -99,9 +91,23 @@ bool NetlinkSocket::SubscribeToEvents(uint32_t group_id) {
   return true;
 }
 
+int NetlinkSocket::WaitForRead(struct timeval* timeout) const {
+  fd_set read_fds;
+  FD_ZERO(&read_fds);
+  if (socket_->Get() >= FD_SETSIZE) {
+    LOG(ERROR) << "Invalid file_descriptor: " << socket_->Get();
+    return -1;
+  }
+  FD_SET(socket_->Get(), &read_fds);
+
+  return HANDLE_EINTR(
+      select(socket_->Get() + 1, &read_fds, nullptr, nullptr, timeout));
+}
+
 uint32_t NetlinkSocket::GetSequenceNumber() {
-  if (++sequence_number_ == NetlinkMessage::kBroadcastSequenceNumber)
+  if (++sequence_number_ == NetlinkMessage::kBroadcastSequenceNumber) {
     ++sequence_number_;
+  }
   return sequence_number_;
 }
 

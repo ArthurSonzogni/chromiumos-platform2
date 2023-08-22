@@ -331,9 +331,6 @@ class SHILL_EXPORT NetlinkManager {
       base::Milliseconds(300);
   static const int kMaxNlMessageRetries;
 
-  // Returns the file descriptor of socket used to read wifi data.
-  int file_descriptor() const;
-
   // MessageLoop calls this when data is available on our socket.  This
   // method passes each, individual, message in the input to
   // |OnNlMessageReceived|.  Each part of a multipart message gets handled,

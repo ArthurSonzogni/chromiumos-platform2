@@ -4,10 +4,14 @@
 
 #include "shill/net/mock_netlink_socket.h"
 
+#include <memory>
+
+#include <net-base/mock_socket.h>
+
 namespace shill {
 
-MockNetlinkSocket::MockNetlinkSocket() = default;
-
+MockNetlinkSocket::MockNetlinkSocket()
+    : NetlinkSocket(std::make_unique<net_base::MockSocket>()) {}
 MockNetlinkSocket::~MockNetlinkSocket() = default;
 
 }  // namespace shill

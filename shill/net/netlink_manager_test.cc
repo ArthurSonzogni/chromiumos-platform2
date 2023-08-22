@@ -26,7 +26,6 @@
 #include "shill/net/io_handler.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_netlink_socket.h"
-#include "shill/net/mock_sockets.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
@@ -95,9 +94,7 @@ class NetlinkManagerTest : public Test {
  public:
   NetlinkManagerTest()
       : netlink_manager_(NetlinkManager::GetInstance()),
-        netlink_socket_(new MockNetlinkSocket()),
-        sockets_(new MockSockets),
-        saved_sequence_number_(0) {
+        netlink_socket_(new MockNetlinkSocket()) {
     EXPECT_NE(nullptr, netlink_manager_);
     netlink_manager_->message_types_[Nl80211Message::kMessageTypeString]
         .family_id = kNl80211FamilyId;
@@ -113,13 +110,12 @@ class NetlinkManagerTest : public Test {
     netlink_manager_->message_factory_.AddFactoryMethod(
         kNl80211FamilyId, base::BindRepeating(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
-    netlink_socket_->sockets_.reset(sockets_);       // Passes ownership.
     netlink_manager_->sock_.reset(netlink_socket_);  // Passes ownership.
     netlink_manager_->io_handler_factory_ = &io_handler_factory_;
     EXPECT_TRUE(netlink_manager_->Init());
   }
 
-  ~NetlinkManagerTest() {
+  ~NetlinkManagerTest() override {
     // NetlinkManager is a singleton, so reset its state for the next test.
     netlink_manager_->Reset(true);
   }
@@ -254,10 +250,9 @@ class NetlinkManagerTest : public Test {
 
   NetlinkManager* netlink_manager_;
   MockNetlinkSocket* netlink_socket_;  // Owned by |netlink_manager_|.
-  MockSockets* sockets_;               // Owned by |netlink_socket_|.
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
   std::vector<uint8_t> saved_message_;
-  uint32_t saved_sequence_number_;
+  uint32_t saved_sequence_number_ = 0;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
 };
@@ -345,7 +340,7 @@ TEST_F(NetlinkManagerTest, GetFamily) {
   EXPECT_CALL(*netlink_socket_, SendMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
-  EXPECT_CALL(*sockets_, Select(_, _, _, _, _)).WillOnce(Return(1));
+  EXPECT_CALL(*netlink_socket_, WaitForRead).WillOnce(Return(1));
   EXPECT_CALL(*netlink_socket_, RecvMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
   NetlinkMessageFactory::FactoryMethod null_factory;
@@ -374,7 +369,7 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
   EXPECT_CALL(*netlink_socket_, SendMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
-  EXPECT_CALL(*sockets_, Select(_, _, _, _, _)).WillRepeatedly(Return(1));
+  EXPECT_CALL(*netlink_socket_, WaitForRead).WillRepeatedly(Return(1));
   EXPECT_CALL(*netlink_socket_, RecvMessage(_))
       .WillOnce(Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage))
       .WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
@@ -401,7 +396,7 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
           kStartSeconds + NetlinkManager::kMaximumNewFamilyWaitSeconds + 1,
           NetlinkManager::kMaximumNewFamilyWaitMicroSeconds)));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
-  EXPECT_CALL(*sockets_, Select(_, _, _, _, _)).WillRepeatedly(Return(1));
+  EXPECT_CALL(*netlink_socket_, WaitForRead).WillRepeatedly(Return(1));
   EXPECT_CALL(*netlink_socket_, RecvMessage(_))
       .WillRepeatedly(
           Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage));
