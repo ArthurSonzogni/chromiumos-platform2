@@ -36,6 +36,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <base/values.h>
+#include <brillo/files/file_util.h>
 
 #undef Status
 #include <absl/status/status.h>
@@ -111,7 +112,7 @@ void DeleteEffectsMarkerFile() {
   if (!base::PathExists(kEffectsRunningMarker))
     return;
 
-  if (!base::DeleteFile(kEffectsRunningMarker)) {
+  if (!brillo::DeleteFile(kEffectsRunningMarker)) {
     LOGF(WARNING) << "Couldn't delete effects marker file";
   }
 }
