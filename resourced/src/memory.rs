@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -13,6 +13,16 @@ use once_cell::sync::Lazy;
 
 use crate::common;
 
+// Critical margin is 5.2% of total memory, moderate margin is 40% of total
+// memory. See also /usr/share/cros/init/swap.sh on DUT. BPS are basis points.
+const CRITICAL_MARGIN_BPS: u64 = 520;
+const MODERATE_MARGIN_BPS: u64 = 4000;
+
+// Memory config paths.
+const RESOURCED_CONFIG_DIR: &str = "run/resourced";
+const MARGINS_FILENAME: &str = "margins_kb";
+
+// The available memory for background components is discounted by 300 MiB.
 const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
 
 /// calculate_reserved_free_kb() calculates the reserved free memory in KiB from
@@ -315,24 +325,23 @@ fn get_memory_margins_kb_from_bps(critical_bps: u64, moderate_bps: u64) -> Memor
 }
 
 fn get_default_memory_margins_kb_impl() -> MemoryMarginsKb {
-    // TODO(vovoy): Use a regular config file instead of sysfs file.
-    let margin_path = "/sys/kernel/mm/chromeos-low_mem/margin";
-    match File::open(Path::new(margin_path)).map(BufReader::new) {
+    let margin_path = Path::new("/")
+        .join(RESOURCED_CONFIG_DIR)
+        .join(MARGINS_FILENAME);
+    match File::open(&margin_path).map(BufReader::new) {
         Ok(reader) => match parse_margins(reader) {
             Ok(margins) => {
                 return MemoryMarginsKb {
-                    critical: margins[0] * 1024,
-                    moderate: margins[1] * 1024,
+                    critical: margins[0],
+                    moderate: margins[1],
                 }
             }
-            Err(e) => error!("Couldn't parse {}: {}", margin_path, e),
+            Err(e) => error!("Couldn't parse {}: {:#}", &margin_path.display(), e),
         },
-        Err(e) => error!("Couldn't read {}: {}", margin_path, e),
+        Err(e) => error!("Couldn't read {}: {:#}", &margin_path.display(), e),
     }
 
-    // Critical margin is 5.2% of total memory, moderate margin is 40% of total
-    // memory. See also /usr/share/cros/init/swap.sh on DUT.
-    get_memory_margins_kb_from_bps(520, 4000)
+    get_memory_margins_kb_from_bps(CRITICAL_MARGIN_BPS, MODERATE_MARGIN_BPS)
 }
 
 pub fn get_memory_margins_kb() -> (u64, u64) {
@@ -459,9 +468,54 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
     })
 }
 
+pub fn init_memory_configs() -> Result<()> {
+    init_memory_configs_impl(Path::new("/"))
+}
+
+/// Initialize the margins file if it doesn't exist.
+/// These files are used as the default values.
+fn init_memory_configs_impl(root: &Path) -> Result<()> {
+    // Checks the config directory.
+    let config_path = root.join(RESOURCED_CONFIG_DIR);
+    if !config_path.exists() {
+        bail!(
+            "The config directory {} doesn't exist.",
+            config_path.display()
+        );
+    } else if !config_path.is_dir() {
+        bail!(
+            "The config directory {} is not a directory.",
+            config_path.display()
+        );
+    }
+
+    // Creates the memory margins config file.
+    let margins_path = config_path.join(MARGINS_FILENAME);
+    if !margins_path.exists() {
+        let mut margins = File::create(margins_path)?;
+
+        let default_margins =
+            get_memory_margins_kb_from_bps(CRITICAL_MARGIN_BPS, MODERATE_MARGIN_BPS);
+        margins.write_all(
+            format!("{} {}", default_margins.critical, default_margins.moderate).as_bytes(),
+        )?;
+    } else if !margins_path.is_file() {
+        bail!(
+            "The margins path {} is not a regular file.",
+            margins_path.display()
+        );
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use std::fs::OpenOptions;
+
+    use tempfile::tempdir;
 
     #[test]
     fn test_calculate_reserved_free_kb() {
@@ -642,5 +696,53 @@ full avg10=29.29 avg60=19.01 avg300=5.44 total=17589167"#;
         );
         assert_eq!(critical, 125000 /* 125mb */);
         assert_eq!(moderate, 734000 /* 734mb */);
+    }
+
+    #[test]
+    fn test_init_memory_configs_not_dir() {
+        let root = tempdir().unwrap();
+        std::fs::create_dir(root.path().join("run")).unwrap();
+        // Touches /run/resourced.
+        OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(root.path().join(RESOURCED_CONFIG_DIR))
+            .unwrap();
+        // Returns error when /run/resourced is not a directory.
+        assert!(init_memory_configs_impl(root.path()).is_err());
+    }
+
+    #[test]
+    fn test_init_memory_configs_create_margins() {
+        let root = tempdir().unwrap();
+        std::fs::create_dir_all(root.path().join(RESOURCED_CONFIG_DIR)).unwrap();
+        // Checks that config dir already exists. Creates the margins file.
+        assert!(init_memory_configs_impl(root.path()).is_ok());
+    }
+
+    #[test]
+    fn test_init_memory_configs_margins_exist() {
+        let root = tempdir().unwrap();
+        std::fs::create_dir_all(root.path().join(RESOURCED_CONFIG_DIR)).unwrap();
+        let mut margins = File::create(
+            root.path()
+                .join(RESOURCED_CONFIG_DIR)
+                .join(MARGINS_FILENAME),
+        )
+        .unwrap();
+        margins.write_all("100 1000".as_bytes()).unwrap();
+        assert!(init_memory_configs_impl(root.path()).is_ok());
+    }
+
+    #[test]
+    fn test_init_memory_configs_margins_is_dir() {
+        let root = tempdir().unwrap();
+        std::fs::create_dir_all(
+            root.path()
+                .join(RESOURCED_CONFIG_DIR)
+                .join(MARGINS_FILENAME),
+        )
+        .unwrap();
+        assert!(init_memory_configs_impl(root.path()).is_err());
     }
 }

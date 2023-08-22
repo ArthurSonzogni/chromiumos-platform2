@@ -493,6 +493,7 @@ has_arc(`
 /run/pvm/opt                    u:object_r:cros_run_pvm_opt:s0
 /run/pvm/opt/pita               u:object_r:cros_run_pvm_opt_pita:s0
 /run/rgbkbd(/.*)?               u:object_r:cros_run_rgbkbd:s0
+/run/resourced                  u:object_r:cros_run_resourced:s0
 /run/rsyslogd                   u:object_r:cros_run_rsyslogd:s0
 /run/seneschal                  u:object_r:cros_run_seneschal:s0
 /run/shill                      u:object_r:cros_run_shill:s0

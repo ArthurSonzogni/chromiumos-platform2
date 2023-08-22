@@ -568,6 +568,7 @@ type cros_run_perfetto, file_type, cros_file_type, cros_run_file_type;
 type cros_run_power_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_pvm, file_type, cros_file_type, cros_run_file_type;
 type cros_run_rgbkbd, file_type, cros_file_type, cros_run_file_type;
+type cros_run_resourced, file_type, cros_file_type, cros_run_file_type;
 type cros_run_rsyslogd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_secagentd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_seneschal, file_type, cros_file_type, cros_run_file_type;

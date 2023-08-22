@@ -44,6 +44,8 @@ fn main() -> Result<()> {
         bail!("Failed to initiailize syslog: {}", e);
     }
 
+    memory::init_memory_configs()?;
+
     info!("Starting resourced");
 
     if let Err(err) = feature::init() {
