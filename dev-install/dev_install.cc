@@ -307,9 +307,8 @@ void DevInstall::InitializeBinhost() {
 std::string DevInstall::DetectCompression(const base::FilePath& pkg) {
   char bytes[4];
   if (ReadFile(pkg, bytes, sizeof(bytes)) == -1) {
-    // TODO(vapier): Switch this to zstd by 2022 Q4.
-    PLOG(WARNING) << "Unable to detect compression; assuming bzip2";
-    return kBzip2Cmd;
+    PLOG(WARNING) << "Unable to detect compression; assuming zstd";
+    return kZstdCmd;
   }
 
   if (memcmp(bytes, kZstdMagic, sizeof(kZstdMagic)) == 0) {
@@ -317,9 +316,8 @@ std::string DevInstall::DetectCompression(const base::FilePath& pkg) {
   } else if (memcmp(bytes, kBzip2Magic, sizeof(kBzip2Magic)) == 0) {
     return kBzip2Cmd;
   } else {
-    // TODO(vapier): Switch this to zstd by 2022 Q4.
-    LOG(WARNING) << "Unknown magic signature; assuming bzip2";
-    return kBzip2Cmd;
+    LOG(WARNING) << "Unknown magic signature; assuming zstd";
+    return kZstdCmd;
   }
 }
 
