@@ -6,6 +6,7 @@ After=opt-google-cros\x2dcontainers.mount
 [Service]
 Environment="PATH=/opt/google/cros-containers/bin:${PATH}"
 ExecStart=/opt/google/cros-containers/bin/maitred
+StandardOutput=journal+console
 
 [Install]
 WantedBy=basic.target
