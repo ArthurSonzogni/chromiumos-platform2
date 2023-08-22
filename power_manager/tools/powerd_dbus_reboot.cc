@@ -51,10 +51,11 @@ int main(int argc, char* argv[]) {
                                power_manager::kRequestRestartMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(FLAGS_request_reason);
-  std::unique_ptr<dbus::Response> response(
-      powerd_proxy->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  CHECK(response) << power_manager::kRequestRestartMethod << " failed";
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      powerd_proxy->CallMethodAndBlock(&method_call,
+                                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  CHECK(response.has_value() && response.value())
+      << power_manager::kRequestRestartMethod << " failed";
 
   return 0;
 }

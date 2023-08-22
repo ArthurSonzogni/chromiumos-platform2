@@ -166,8 +166,9 @@ std::unique_ptr<dbus::Response> DBusWrapper::CallMethodSync(
               method_call->ToString(), "timeout_ms", timeout.InMilliseconds());
   DCHECK(proxy);
   DCHECK(method_call);
-  return std::unique_ptr<dbus::Response>(proxy->CallMethodAndBlockDeprecated(
-      method_call, timeout.InMilliseconds()));
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      proxy->CallMethodAndBlock(method_call, timeout.InMilliseconds()));
+  return std::move(response).value_or(nullptr);
 }
 
 void DBusWrapper::CallMethodAsync(

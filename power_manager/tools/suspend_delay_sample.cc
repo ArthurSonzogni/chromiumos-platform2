@@ -39,15 +39,15 @@ bool CallMethod(dbus::ObjectProxy* powerd_proxy,
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(request);
 
-  std::unique_ptr<dbus::Response> response(
-      powerd_proxy->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  if (!response)
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      powerd_proxy->CallMethodAndBlock(&method_call,
+                                       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  if (!response.has_value() || !response.value())
     return false;
   if (!reply_out)
     return true;
 
-  dbus::MessageReader reader(response.get());
+  dbus::MessageReader reader(response.value().get());
   CHECK(reader.PopArrayOfBytesAsProto(reply_out))
       << "Unable to parse response from call to " << method_name;
   return true;
