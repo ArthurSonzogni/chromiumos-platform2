@@ -2885,6 +2885,9 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   // Add custom APNs(from UI or Admin)
   if (!modb_required_apn_exists && service_) {
     if (service_->custom_apn_list().has_value()) {
+      // The LastGoodAPN is no longer used in the try list when the APN Revamp
+      // is enabled.
+      add_last_good_apn = false;
       custom_apn_list = &service_->custom_apn_list().value();
       for (const auto& custom_apn : *custom_apn_list) {
         if (ApnList::IsApnType(custom_apn, apn_type))
@@ -2905,8 +2908,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
       SLOG(3) << LoggingTag() << ": " << __func__
               << ": Adding User Specified APN: "
               << GetPrintableApnStringmap(apn_try_list.back());
-      if (custom_apn_list ||
-          (last_good_apn_info &&
+      if ((last_good_apn_info &&
            CompareApns(*last_good_apn_info, apn_try_list.back()))) {
         add_last_good_apn = false;
       }
