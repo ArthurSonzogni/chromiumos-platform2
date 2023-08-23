@@ -486,6 +486,7 @@ In the tables below,
 | firmware | [firmware](#firmware) |  | False |  | False |  |
 | firmware-signing | [firmware-signing](#firmware_signing) |  | False |  | True |  |
 | hardware-properties | [hardware-properties](#hardware_properties) |  | False |  | False | Contains boolean flags or enums for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. If a value is an enum and is not specified for a specific model, it will default to "none". All properties must be booleans or enums. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
+| hdmi-cec | [hdmi-cec](#hdmi_cec) |  | False |  | False | Configurable parameters for HDMI-CEC. |
 | hps | [hps](#hps) |  | False |  | False | Contains details about the model's hps (go/cros-hps) implementation. |
 | hwid-override | string | ```[A-Z0-9]+(-[A-Z]{4})?( [0-9A-F]+(-[0-9A-F]+)*)? ([A-Z2-7]{4}(-[A-Z2-7]{4})*\|[A-Z2-7][2-9][A-Z2-7](-[A-Z2-7][2-9][A-Z2-7])*)``` | False |  | False | Override the HWID reported by crossystem.  This property should only be used for devices supporting non-ChromeOS firmware, where we don't have the ability to set the HWID in GBB.  |
 | identity | [identity](#identity) |  | False |  | False | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. |
@@ -836,6 +837,12 @@ In the tables below,
 | recovery-input | string |  | False |  | False | Denotes the input method for entering device recovery. |
 | storage-type | string |  | False |  | False | Type of the fixed storage device. |
 | stylus-category | string |  | False |  | False | Denotes the category of stylus this device contains. |
+
+### hdmi-cec
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| power-off-displays-on-shutdown | boolean |  | False |  | False | Automatically power off all connected displays on shutdown. |
+| power-on-displays-on-boot | boolean |  | False |  | False | Automatically power on all connected displays on boot. |
 
 ### hps
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

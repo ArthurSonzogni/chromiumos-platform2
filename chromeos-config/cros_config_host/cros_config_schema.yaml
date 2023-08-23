@@ -705,6 +705,18 @@ properties:
                     - flags
                     additionalProperties: false
               additionalProperties: false
+            hdmi-cec:
+              type: object
+              description: Configurable parameters for HDMI-CEC.
+              properties:
+                power-on-displays-on-boot:
+                  description: Automatically power on all connected displays
+                    on boot.
+                  type: boolean
+                power-off-displays-on-shutdown:
+                  description: Automatically power off all connected displays
+                    on shutdown.
+                  type: boolean
             dgpu:
               type: object
               description: Contains details about the model's dgpu implementation.

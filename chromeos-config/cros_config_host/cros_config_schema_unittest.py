@@ -812,6 +812,45 @@ chromeos:
                 re.compile(".*feature-device-type absent identity.*"),
             )
 
+    def testHdmiCecValid(self):
+        config = {
+            "chromeos": {
+                "configs": [
+                    {
+                        "identity": {"platform-name": "foo", "sku-id": 1},
+                        "hardware-properties": {"has-hdmi": True},
+                        "hdmi-cec": {
+                            "power-off-displays-on-shutdown": True,
+                            "power-on-displays-on-boot": True,
+                        },
+                    },
+                ],
+            },
+        }
+        cros_config_schema.ValidateConfig(json.dumps(config))
+
+    def testHdmiCecInvalid(self):
+        config = {
+            "chromeos": {
+                "configs": [
+                    {
+                        "identity": {"platform-name": "foo", "sku-id": 1},
+                        "hardware-properties": {},
+                        "hdmi-cec": {
+                            "power-off-displays-on-shutdown": True,
+                            "power-on-displays-on-boot": True,
+                        },
+                    },
+                ],
+            },
+        }
+        try:
+            cros_config_schema.ValidateConfig(json.dumps(config))
+        except cros_config_schema.ValidationError as err:
+            self.assertIn("hdmi-cec is present but", err.__str__())
+        else:
+            self.fail("ValidationError not raised")
+
 
 class FilterBuildElements(cros_test_lib.TestCase):
     def testBasicFilterBuildElements(self):

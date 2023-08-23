@@ -1725,6 +1725,18 @@ def _build_detachable_base(form_factor, detachable_base):
     return result
 
 
+def _build_hdmi_cec(hw_features):
+    if not hw_features.hdmi.HasField("cec"):
+        return None
+
+    cec = hw_features.hdmi.cec
+
+    return {
+        "power-on-displays-on-boot": cec.power_on_displays_on_boot,
+        "power-off-displays-on-shutdown": cec.power_off_displays_on_shutdown,
+    }
+
+
 def _build_hardware_properties(hw_features):
     if not hw_features.HasField("form_factor"):
         return None
@@ -2856,6 +2868,7 @@ def _transform_build_config(config, config_files, whitelabel):
         result,
         "detachable-base",
     )
+    _upsert(_build_hdmi_cec(hw_features), result, "hdmi-cec")
 
     return result
 

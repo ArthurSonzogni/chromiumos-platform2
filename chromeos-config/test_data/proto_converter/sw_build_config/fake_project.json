@@ -449,6 +449,7 @@
           "has-base-accelerometer": true,
           "has-base-gyroscope": true,
           "has-base-magnetometer": true,
+          "has-hdmi": true,
           "has-sd-reader": true,
           "has-side-volume-button": true,
           "has-touchscreen": true,
@@ -456,6 +457,10 @@
           "recovery-input": "POWER_BUTTON",
           "storage-type": "EMMC",
           "stylus-category": "internal"
+        },
+        "hdmi-cec": {
+          "power-off-displays-on-shutdown": false,
+          "power-on-displays-on-boot": true
         },
         "identity": {
           "frid": "Google_Fake_0Db_1Custom_2Cameras",
@@ -1526,6 +1531,10 @@
           "recovery-input": "KEYBOARD",
           "storage-type": "EMMC",
           "stylus-category": "internal"
+        },
+        "hdmi-cec": {
+          "power-off-displays-on-shutdown": true,
+          "power-on-displays-on-boot": true
         },
         "identity": {
           "frid": "Google_Fake",

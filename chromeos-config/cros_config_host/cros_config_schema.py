@@ -896,6 +896,25 @@ def _ValidateFeatureDeviceTypeIdentities(json_config):
             )
 
 
+def _ValidateHdmiCec(json_config):
+    """Validate /hdmi-cec.
+
+       If /hdmi-cec is present, then /hardware-properties/has-hdmi must
+       be True.
+
+    Args:
+        json_config: The transformed config to be validated.
+    """
+    for config in json_config["chromeos"]["configs"]:
+        if config.get("hdmi-cec") and not config.get(
+            "hardware-properties", {}
+        ).get("has-hdmi"):
+            raise ValidationError(
+                "/hdmi-cec is present but "
+                "/hardware-properties/has-hdmi is not True"
+            )
+
+
 def ValidateConfig(config):
     """Validates a transformed cros config for general business rules.
 
@@ -912,6 +931,7 @@ def ValidateConfig(config):
     _ValidateConsistentFingerprintFirmwareROVersion(json_config)
     _ValidateConsistentSideVolumeButton(json_config)
     _ValidateFeatureDeviceTypeIdentities(json_config)
+    _ValidateHdmiCec(json_config)
 
 
 def MergeConfigs(configs):
