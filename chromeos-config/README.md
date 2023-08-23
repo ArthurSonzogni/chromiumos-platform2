@@ -2174,7 +2174,7 @@ used to compare the values from firmware.  Strings are compared
 
 | Property (from `/identity`) | x86 file                                   | ARM file                                                        |
 |-----------------------------|--------------------------------------------|-----------------------------------------------------------------|
-| `frid`                      | `/sys/devices/platform/GGL0001:00/FRID` or `/sys/devices/platform/GOOG0016:00/FRID` | `/proc/device-tree/firmware/chromeos/readonly-firmware-version` |
+| `frid`                      | `/sys/devices/platform/chromeos_acpi/FRID` or `/sys/devices/platform/GGL0001:00/FRID` or `/sys/devices/platform/GOOG0016:00/FRID` | `/proc/device-tree/firmware/chromeos/readonly-firmware-version` |
 | `sku-id`                    | `/sys/class/dmi/id/product_sku`            | `/proc/device-tree/firmware/coreboot/sku-id`                    |
 | `customization-id`          | `/sys/firmware/vpd/ro/customization_id`    | `/sys/firmware/vpd/ro/customization_id`                         |
 | `custom-label-tag`          | `/sys/firmware/vpd/ro/custom_label_tag`    | `/sys/firmware/vpd/ro/custom_label_tag`                         |
