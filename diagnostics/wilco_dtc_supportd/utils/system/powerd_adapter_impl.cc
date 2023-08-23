@@ -107,16 +107,16 @@ std::optional<power_manager::PowerSupplyProperties>
 PowerdAdapterImpl::GetPowerSupplyProperties() {
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                power_manager::kGetPowerSupplyPropertiesMethod);
-  auto response = bus_proxy_->CallMethodAndBlockDeprecated(
+  auto response = bus_proxy_->CallMethodAndBlock(
       &method_call, kPowerManagerDBusTimeout.InMilliseconds());
 
-  if (!response) {
+  if (!response.has_value() || !response.value()) {
     LOG(ERROR) << "Failed to call powerd D-Bus method: "
                << power_manager::kGetPowerSupplyPropertiesMethod;
     return std::nullopt;
   }
 
-  dbus::MessageReader reader(response.get());
+  dbus::MessageReader reader(response.value().get());
   power_manager::PowerSupplyProperties power_supply_proto;
   if (!reader.PopArrayOfBytesAsProto(&power_supply_proto)) {
     LOG(ERROR) << "Could not successfully read PowerSupplyProperties protobuf";

@@ -7,6 +7,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 
 #include <base/check.h>
 #include <base/functional/callback.h>
@@ -166,13 +167,13 @@ class BasePowerdAdapterImplTest : public ::testing::Test {
 
 TEST_F(BasePowerdAdapterImplTest, PowerSupplySuccess) {
   power_manager::PowerSupplyProperties power_supply_proto;
-  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlock(_, _))
       .WillOnce([&power_supply_proto](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> power_manager_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter power_manager_writer(power_manager_response.get());
         power_manager_writer.AppendProtoAsArrayOfBytes(power_supply_proto);
-        return power_manager_response;
+        return base::ok(std::move(power_manager_response));
       });
 
   auto response = powerd_adapter()->GetPowerSupplyProperties();
@@ -185,17 +186,20 @@ TEST_F(BasePowerdAdapterImplTest, PowerSupplySuccess) {
 
 TEST_F(BasePowerdAdapterImplTest, PowerSupplyFail) {
   power_manager::PowerSupplyProperties power_supply_proto;
-  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlockDeprecated(_, _))
-      .WillOnce([](dbus::MethodCall*, int) { return nullptr; });
+  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlock(_, _))
+      .WillOnce([](dbus::MethodCall*, int) {
+        return base::unexpected(dbus::Error());
+      });
 
   ASSERT_EQ(powerd_adapter()->GetPowerSupplyProperties(), std::nullopt);
 }
 
 TEST_F(BasePowerdAdapterImplTest, PowerSupplyParseError) {
   power_manager::PowerSupplyProperties power_supply_proto;
-  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlockDeprecated(_, _))
-      .WillOnce(
-          [](dbus::MethodCall*, int) { return dbus::Response::CreateEmpty(); });
+  EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlock(_, _))
+      .WillOnce([](dbus::MethodCall*, int) {
+        return base::ok(dbus::Response::CreateEmpty());
+      });
 
   ASSERT_EQ(powerd_adapter()->GetPowerSupplyProperties(), std::nullopt);
 }
