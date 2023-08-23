@@ -40,9 +40,15 @@ class UefiDelegate {
   // Get the user ID and group ID for fwupd.
   virtual std::optional<UserAndGroup> GetFwupdUserAndGroup() const = 0;
 
-  // Mount the filesystem that provides access to UEFI
-  // variables. Returns true on success.
-  virtual bool MountEfivarfs() = 0;
+  // Mount the filesystem that provides access to UEFI variables.
+  //
+  // The UEFI variables are mounted at /sys/firmware/efi/efivars.
+  // This is a efivarfs filesystem, so it doesn't have unix permissions.
+  // The files need to be writable by fwupd, so mount options are used
+  // to set the user and group of all files to fwupd.
+  //
+  // Returns true on success.
+  virtual bool MountEfivarfs(const UserAndGroup& fwupd) = 0;
 
   // Make a UEFI variable writable by the fwupd service. This applies
   // two changes to the variable:
@@ -54,12 +60,10 @@ class UefiDelegate {
   //    unexpected things if variables it expects go missing. We need to
   //    relax this restriction for UEFI variables that fwupd will
   //    modify.
-  // 2. The file's owner and group are changed to fwupd.
   //
   // Returns true on success.
-  virtual bool MakeUefiVarWritableByFwupd(const std::string& vendor,
-                                          const std::string& name,
-                                          const UserAndGroup& fwupd) = 0;
+  virtual bool MakeUefiVarMutable(const std::string& vendor,
+                                  const std::string& name) = 0;
 
   // Make the EFI System Resource Table (ESRT) readable by the fwupd
   // service.
