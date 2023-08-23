@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include <base/strings/stringprintf.h>
+#include <base/types/cxx23_to_underlying.h>
 #include <gtest/gtest.h>
 
 namespace patchpanel {
@@ -122,6 +123,7 @@ TEST_F(RoutingServiceTest, FwmarkAndMaskConstants) {
   EXPECT_EQ("0x00008000", kFwmarkRouteOnVpn.ToString());
   EXPECT_EQ("0x00004000", kFwmarkBypassVpn.ToString());
   EXPECT_EQ("0x00002000", kFwmarkForwardedSourcesMask.ToString());
+  EXPECT_EQ("0x000000e0", kFwmarkQoSCategoryMask.ToString());
 
   EXPECT_EQ(0x00003f00, kFwmarkAllSourcesMask.Value());
   EXPECT_EQ(0xffff0000, kFwmarkRoutingMask.Value());
@@ -130,6 +132,7 @@ TEST_F(RoutingServiceTest, FwmarkAndMaskConstants) {
   EXPECT_EQ(0x00008000, kFwmarkRouteOnVpn.Value());
   EXPECT_EQ(0x00004000, kFwmarkBypassVpn.Value());
   EXPECT_EQ(0x00002000, kFwmarkForwardedSourcesMask.Value());
+  EXPECT_EQ(0x000000e0, kFwmarkQoSCategoryMask.Value());
 }
 
 TEST_F(RoutingServiceTest, FwmarkSources) {
@@ -172,6 +175,24 @@ TEST_F(RoutingServiceTest, FwmarkSources) {
   for (auto ts : kForwardedSources) {
     EXPECT_EQ("0x00000000",
               (Fwmark::FromSource(ts) & ~kFwmarkAllSourcesMask).ToString());
+  }
+}
+
+TEST_F(RoutingServiceTest, FwmarkQoSCategories) {
+  constexpr QoSCategory kAllCategories[] = {
+      QoSCategory::kDefault, QoSCategory::kRealTimeInteractive,
+      QoSCategory::kMultimediaConferencing, QoSCategory::kNetworkControl,
+      QoSCategory::kWebRTC};
+  // The offset of the qos fields defined in Fwmark.
+  constexpr auto kOffset = 5;
+
+  for (const auto category : kAllCategories) {
+    uint32_t category_int = base::to_underlying(category);
+    EXPECT_EQ(category_int, Fwmark::FromQoSCategory(category).qos_category);
+    EXPECT_EQ(category_int << kOffset,
+              Fwmark::FromQoSCategory(category).Value());
+    EXPECT_EQ(hex(category_int << kOffset),
+              Fwmark::FromQoSCategory(category).ToString());
   }
 }
 

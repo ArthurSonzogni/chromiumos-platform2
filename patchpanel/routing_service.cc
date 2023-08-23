@@ -11,6 +11,9 @@
 
 namespace patchpanel {
 
+// Make sure that the compiler is not doing padding.
+static_assert(sizeof(Fwmark) == sizeof(uint32_t));
+
 RoutingService::RoutingService() {}
 
 int RoutingService::GetSockopt(

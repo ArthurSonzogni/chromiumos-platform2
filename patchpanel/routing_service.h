@@ -16,6 +16,7 @@
 #include <string>
 
 #include <base/strings/stringprintf.h>
+#include <base/types/cxx23_to_underlying.h>
 
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
@@ -68,6 +69,26 @@ enum TrafficSource {
   kArcVpn = 0x24,
 };
 
+// QoSCategory in fwmark indicates the inferred result from each QoS detector
+// (e.g., WebRTC detector, ARC connection monitor). The final QoS decision
+// (e.g., the DSCP value used in WiFi QoS) will be decided by QoSService.
+// Currently 3 bits are used for encoding QoSCategory in a fwmark.
+enum class QoSCategory : uint8_t {
+  // Either unknown or uninteresting in terms of QoS.
+  kDefault = 0,
+
+  // The QoS category specified via the patchpanel API. Note that currently that
+  // API will only be used by ARC++ connection monitor.
+  kRealTimeInteractive = 1,
+  kMultimediaConferencing = 2,
+
+  // Network control traffics, e.g., TCP handshake packets, DNS packets.
+  kNetworkControl = 3,
+
+  // WebRTC traffic detected by the WebRTC detector.
+  kWebRTC = 4,
+};
+
 const std::string& TrafficSourceName(TrafficSource source);
 
 // A representation of how fwmark bits are split and used for tagging and
@@ -75,7 +96,7 @@ const std::string& TrafficSourceName(TrafficSource source);
 //    0                   1                   2                   3
 //    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 //   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-//   |        routing table id       |VPN|source enum|   reserved  |*|
+//   |        routing table id       |VPN|source enum| QoS | rsvd. |*|
 //   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //
 // routing table id (16bits): the routing table id of a physical device managed
@@ -84,7 +105,8 @@ const std::string& TrafficSourceName(TrafficSource source);
 //              or bypass VPN routing.
 // source enum(6bits): policy bits controlled by patchpanel for grouping
 //                     originated traffic by domain.
-// reserved(7bits): no usage at the moment.
+// QoS (3bits): the QoS category of the packet, used by QoSService.
+// reserved(4bits): no usage at the moment.
 // legacy SNAT(1bit): legacy bit used for setting up SNAT for ARC, Crostini, and
 //                    Parallels VMs with iptables MASQUERADE.
 //
@@ -95,10 +117,15 @@ const std::string& TrafficSourceName(TrafficSource source);
 // through pointers. In practice client code should not rely on a specific
 // memory representation and should instead use ToString() and Value().
 union Fwmark {
+  // Note that the memory layout of bit-field is implementation-defined. Since
+  // the definition below does not straddle bytes, we should be able to get a
+  // consistent behavior across platforms.
   struct {
     // The LSB is currently only used for applying IPv4 SNAT to egress traffic
     // from ARC and other VMs; indicated by a value of 1.
-    uint8_t legacy;
+    uint8_t legacy : 5;
+    // The QoS category for the packet. Used by QoS service.
+    uint8_t qos_category : 3;
     // The 3rd byte is used to store the intent and policy to be applied to the
     // traffic. The first 2 bits are used for host processes to select a VPN
     // routing intent via patchpanel SetVpnIntent API. The next 6 bits of are
@@ -111,19 +138,25 @@ union Fwmark {
   // The raw memory representation of this fwmark as a uint32_t.
   uint32_t fwmark;
 
-  // Returns a String representation of this Fwmark. This should
-  std::string ToString() const {
-    return base::StringPrintf("0x%04x%02x%02x", rt_table_id, policy, legacy);
-  }
+  // Returns a String representation of this Fwmark.
+  std::string ToString() const { return base::StringPrintf("0x%08x", Value()); }
 
   // Returns the logical uint32_t value of this Fwmark.
-  uint32_t Value() const {
+  constexpr uint32_t Value() const {
     return static_cast<uint32_t>(rt_table_id) << 16 |
-           static_cast<uint32_t>(policy) << 8 | static_cast<uint32_t>(legacy);
+           static_cast<uint32_t>(policy) << 8 |
+           static_cast<uint32_t>(qos_category) << 5 |
+           static_cast<uint32_t>(legacy);
   }
 
   constexpr TrafficSource Source() {
     return static_cast<TrafficSource>(policy & 0x3f);
+  }
+
+  // Note: naming it as QoSCategory() will hide the definition of the enum,
+  // which incurs a compile error.
+  constexpr QoSCategory GetQoSCategory() {
+    return static_cast<QoSCategory>(qos_category);
   }
 
   constexpr bool operator==(Fwmark that) const { return fwmark == that.fwmark; }
@@ -138,19 +171,29 @@ union Fwmark {
 
   constexpr Fwmark operator~() const { return {.fwmark = ~fwmark}; }
 
-  static Fwmark FromSource(TrafficSource source) {
-    return {
-        .policy = static_cast<uint8_t>(source), .legacy = 0, .rt_table_id = 0};
+  static constexpr Fwmark FromSource(TrafficSource source) {
+    return {.legacy = 0,
+            .qos_category = 0,
+            .policy = static_cast<uint8_t>(source),
+            .rt_table_id = 0};
   }
 
-  static std::optional<Fwmark> FromIfIndex(int ifindex) {
+  static constexpr std::optional<Fwmark> FromIfIndex(int ifindex) {
     int table_id = ifindex + kInterfaceTableIdIncrement;
     if (ifindex < 0 || table_id > INT16_MAX) {
       return std::nullopt;
     }
-    return {{.policy = 0,
-             .legacy = 0,
+    return {{.legacy = 0,
+             .qos_category = 0,
+             .policy = 0,
              .rt_table_id = static_cast<uint16_t>(table_id)}};
+  }
+
+  static constexpr Fwmark FromQoSCategory(QoSCategory category) {
+    return {.legacy = 0,
+            .qos_category = base::to_underlying(category),
+            .policy = 0,
+            .rt_table_id = 0};
   }
 };
 
@@ -245,6 +288,8 @@ constexpr const Fwmark kFwmarkPolicyMask = {.policy = 0xff};
 // Both the mask and fwmark values for legacy SNAT rules used for ARC and other
 // containers.
 constexpr const Fwmark kFwmarkLegacySNAT = {.legacy = 0x1};
+// Constant fmwark value for mask for the QoS category bits.
+constexpr const Fwmark kFwmarkQoSCategoryMask = {.qos_category = 0x7};
 
 // Service implementing routing features of patchpanel.
 // TODO(hugobenichi) Explain how this coordinates with shill's RoutingTable.
