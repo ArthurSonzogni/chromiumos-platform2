@@ -111,6 +111,7 @@ enum CryptohomeErrorCode {
   // precedence and be returned.
   CRYPTOHOME_ERROR_CREDENTIAL_EXPIRED = 60;
   CRYPTOHOME_RELABEL_CREDENTIALS_FAILED = 61;
+  CRYPTOHOME_REPLACE_CREDENTIALS_FAILED = 62;
   // Note: After adding new fields to this enum, the new enum should be added
   // to ash/components/login/auth/auth_session_authenticator.cc's
   // AuthSessionAuthenticator::ProcessCryptohomeError() so that Chromium
@@ -1315,6 +1316,35 @@ message RelabelAuthFactorReply {
   // AuthFactorWithStatus returns newly updated auth factor. This will only be
   // set if the relabel operation succeeds.
   AuthFactorWithStatus relabelled_auth_factor = 3;
+}
+
+// ReplaceAuthFactor will remove an existing auth factor and add a new one to
+// replace it. The new factor must have a different label from the original.
+// The end result of this operation is similar to doing an Add+Remove of an auth
+// factor but executed atomically so that you should never end up with two or
+// zero auth factors afterwards.
+message ReplaceAuthFactorRequest {
+  // AuthFactor cannot be replaced without an active and authenticated
+  // AuthSession running. This id would be used to associate the AuthFactor to
+  // an AuthSession.
+  bytes auth_session_id = 1;
+  // Label to identify the existing AuthFactor to be replaced.
+  string auth_factor_label = 2;
+  // The AuthFactor that we will replace the existing AuthFactor with. The full
+  // structure should be populated with factor specific data and metadata.
+  AuthFactor auth_factor = 3;
+  // In some cases, such as password, the secret would be user supplied. In
+  // those cases the secret can be passed here.
+  AuthInput auth_input = 4;
+}
+
+message ReplaceAuthFactorReply {
+  CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
+
+  // When successful, this field will be set populated with factor and status
+  // information for the replacement auth factor.
+  AuthFactorWithStatus replacement_auth_factor = 3;
 }
 
 // RemoveAuthFactorRequest is built when a user is trying to

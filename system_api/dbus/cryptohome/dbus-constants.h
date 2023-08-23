@@ -57,6 +57,7 @@ inline constexpr char kAuthenticateAuthFactor[] = "AuthenticateAuthFactor";
 inline constexpr char kUpdateAuthFactor[] = "UpdateAuthFactor";
 inline constexpr char kUpdateAuthFactorMetadata[] = "UpdateAuthFactorMetadata";
 inline constexpr char kRelabelAuthFactor[] = "RelabelAuthFactor";
+inline constexpr char kReplaceAuthFactor[] = "ReplaceAuthFactor";
 inline constexpr char kRemoveAuthFactor[] = "RemoveAuthFactor";
 inline constexpr char kListAuthFactors[] = "ListAuthFactors";
 inline constexpr char kGetAuthFactorExtendedInfo[] =
