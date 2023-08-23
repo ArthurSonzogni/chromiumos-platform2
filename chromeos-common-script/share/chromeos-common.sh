@@ -359,9 +359,6 @@ get_fixed_dst_drive() {
      "SATA")
        exp_rootdev_type="ATA"
        ;;
-     "BRIDGED_EMMC")
-       exp_rootdev_type="NVME"
-       ;;
     esac
     # No " here, the variable may contain wildcards.
     for rootdev in ${DEFAULT_ROOTDEV}; do
