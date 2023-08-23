@@ -137,7 +137,6 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
           observer,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver) override;
-
   void RunFloatingPoint(
       base::TimeDelta exec_duration,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
