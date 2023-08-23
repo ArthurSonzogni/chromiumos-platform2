@@ -1015,7 +1015,9 @@ void Cellular::HandleNewRegistrationState() {
       // Already registered
       break;
   }
-
+  if (service_) {
+    service_->ResetAutoConnectCooldownTime();
+  }
   UpdateServices();
 }
 
