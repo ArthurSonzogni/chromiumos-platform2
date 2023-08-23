@@ -34,16 +34,16 @@ bool HardwareVerifierClientImpl::GetHardwareVerificationResult(
       hardware_verifier::kHardwareVerifierInterfaceName,
       hardware_verifier::kVerifyComponentsMethod);
 
-  std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!response.get()) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
+      proxy_->CallMethodAndBlock(&method_call,
+                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!response.has_value() || !response.value()) {
     LOG(ERROR) << "Failed to call hardware_verifier D-Bus service";
     return false;
   }
 
   hardware_verifier::VerifyComponentsReply reply;
-  dbus::MessageReader reader(response.get());
+  dbus::MessageReader reader(response.value().get());
   if (!reader.PopArrayOfBytesAsProto(&reply)) {
     LOG(ERROR) << "Failed to decode hardware_verifier protobuf response";
     return false;

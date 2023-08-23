@@ -29,11 +29,11 @@ bool PowerManagerClientImpl::Restart() {
   writer.AppendInt32(power_manager::REQUEST_RESTART_OTHER);
   writer.AppendString("rmad request restart");
 
-  std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
+      proxy_->CallMethodAndBlock(&method_call,
+                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 
-  if (!response.get()) {
+  if (!response.has_value() || !response.value()) {
     LOG(ERROR) << "Failed to call powerd service";
     return false;
   }
@@ -47,11 +47,11 @@ bool PowerManagerClientImpl::Shutdown() {
   writer.AppendInt32(power_manager::REQUEST_SHUTDOWN_OTHER);
   writer.AppendString("rmad request shutdown");
 
-  std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
+      proxy_->CallMethodAndBlock(&method_call,
+                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 
-  if (!response.get()) {
+  if (!response.has_value() || !response.value()) {
     LOG(ERROR) << "Failed to call powerd service";
     return false;
   }
