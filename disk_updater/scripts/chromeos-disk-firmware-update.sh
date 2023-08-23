@@ -377,7 +377,7 @@ disk_ata_power_cycle() {
   while [ "${old_pwr_cycle_count}" -eq "${new_pwr_cycle_count}" ] && \
         [ "${tries}" -gt 0 ]; do
      : $(( tries -= 1 ))
-     "${FLAGS_pwr_suspend}" --wakeup_timeout=4 --timeout=10
+     "${FLAGS_pwr_suspend}" --suspend_for_sec=4 --timeout=10
      new_pwr_cycle_count="$(disk_ata_power_cnt "${device}")"
   done
   if [ "${old_pwr_cycle_count}" -eq "${new_pwr_cycle_count}" ]; then
