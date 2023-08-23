@@ -17,6 +17,14 @@
 
 namespace hwsec_foundation {
 
+namespace {
+
+const char* as_non_null(const char* ptr) {
+  return ptr == nullptr ? "&nullptr" : ptr;
+}
+
+}  // namespace
+
 size_t GetAesBlockSize() {
   return EVP_CIPHER_block_size(EVP_aes_256_cbc());
 }
@@ -353,9 +361,9 @@ bool AesDecryptSpecifyBlockMode(const brillo::SecureBlob& encrypted,
     ERR_load_crypto_strings();
 
     LOG(ERROR) << "DecryptFinal Error: " << err << ": "
-               << ERR_lib_error_string(err) << ", "
-               << ERR_func_error_string(err) << ", "
-               << ERR_reason_error_string(err);
+               << as_non_null(ERR_lib_error_string(err)) << ", "
+               << as_non_null(ERR_func_error_string(err)) << ", "
+               << as_non_null(ERR_reason_error_string(err));
 
     return false;
   }
