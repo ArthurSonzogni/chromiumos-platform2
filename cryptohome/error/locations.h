@@ -1449,6 +1449,54 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionInvalidNewLabelInRelabelAuthFactorEphemeral = 2136,
   /* ./auth_session.cc */
   kLocAuthSessionNewLabelAlreadyExistsInRelabelAuthFactorEphemeral = 2137,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInReplaceAuthFactor = 2138,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUnauthedInReplaceAuthFactor = 2139,
+  /* ./userdataauth.cc */
+  kLocCouldntLoadUserPolicyFileInReplaceAuthFactor = 2140,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoOldLabelInReplaceAuthFactor = 2141,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorNotFoundInReplaceAuthFactor = 2142,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorIsVaultKeysetInReplaceAuthFactor = 2143,
+  /* ./auth_session.cc */
+  kLocAuthSessionInvalidNewLabelInReplaceAuthFactor = 2144,
+  /* ./auth_session.cc */
+  kLocAuthSessionNewLabelAlreadyExistsInReplaceAuthFactor = 2145,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorNotFoundInReplaceAuthFactorEphemeral = 2146,
+  /* ./auth_session.cc */
+  kLocAuthSessionInvalidNewLabelInReplaceAuthFactorEphemeral = 2147,
+  /* ./auth_session.cc */
+  kLocAuthSessionNewLabelAlreadyExistsInReplaceAuthFactorEphemeral = 2148,
+  /* ./auth_session.cc */
+  kLocAuthSessionUnknownFactorInReplaceAuthFactorEphemeral = 2149,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoInputInReplaceAuthFactorEphemeral = 2150,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoReplacementInReplaceAuthFactorEphemeral = 2151,
+  /* ./auth_session.cc */
+  kLocAuthSessionUnknownFactorInReplaceAuthFactor = 2152,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoInputInReplaceAuthFactor = 2153,
+  /* ./auth_session.cc */
+  kLocAuthSessionInvalidBlockTypeInReplaceAuthFactor = 2154,
+  /* ./auth_session.cc */
+  kLocAuthSessionNullParamInReplaceAfIntoUss = 2155,
+  /* ./auth_session.cc */
+  kLocAuthSessionCreateFailedInReplaceAfIntoUss = 2156,
+  /* ./auth_session.cc */
+  kLocAuthSessionAddToUssFailedInReplaceAfIntoUss = 2157,
+  /* ./auth_session.cc */
+  kLocAuthSessionRemoveFromUssFailedInReplaceAfIntoUss = 2158,
+  /* ./auth_session.cc */
+  kLocAuthSessionEncryptFailedInReplaceAfIntoUss = 2159,
+  /* ./auth_session.cc */
+  kLocAuthSessionPersistFactorFailedInReplaceAfIntoUss = 2160,
+  /* ./auth_session.cc */
+  kLocAuthSessionPersistUssFailedInReplaceAfIntoUss = 2161,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

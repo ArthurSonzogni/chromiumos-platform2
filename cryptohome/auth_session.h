@@ -41,6 +41,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
@@ -302,16 +303,44 @@ class AuthSession final {
         const user_data_auth::RelabelAuthFactorRequest& request,
         StatusCallback on_done);
 
+    // Replace an auth factor as specified by the given request.
+    void ReplaceAuthFactor(
+        const user_data_auth::ReplaceAuthFactorRequest& request,
+        StatusCallback on_done);
+
     // Remove an auth factor specified by the given request.
     void RemoveAuthFactor(
         const user_data_auth::RemoveAuthFactorRequest& request,
         StatusCallback on_done);
 
    private:
-    // Special case for relabel of an ephemeral user.
+    // Special case for relabel of an ephemeral user's factor.
     void RelabelAuthFactorEphemeral(
         const user_data_auth::RelabelAuthFactorRequest& request,
         StatusCallback on_done);
+
+    // Special case for replace of an ephemeral user's factor.
+    void ReplaceAuthFactorEphemeral(
+        const user_data_auth::ReplaceAuthFactorRequest& request,
+        StatusCallback on_done);
+
+    // After successful creation of a replacement factor, swap it into USS as a
+    // replacement for the old factor. Designed to be bindable into an
+    // AuthBlock::CreateCallback.
+    void ReplaceAuthFactorIntoUss(
+        AuthFactor original_auth_factor,
+        AuthInput auth_input,
+        AuthFactorType auth_factor_type,
+        std::string auth_factor_label,
+        AuthFactorMetadata auth_factor_metadata,
+        std::unique_ptr<AuthSessionPerformanceTimer> perf_timer,
+        StatusCallback on_done,
+        CryptohomeStatus error,
+        std::unique_ptr<KeyBlobs> key_blobs,
+        std::unique_ptr<AuthBlockState> auth_block_state);
+
+    // The last member, to invalidate weak references first on destruction.
+    base::WeakPtrFactory<AuthForDecrypt> weak_factory_{this};
   };
   friend class AuthForDecrypt;
   AuthForDecrypt* GetAuthForDecrypt();
@@ -871,7 +900,7 @@ class AuthSession final {
   std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;
 
-  // Should be the last member.
+  // The last member, to invalidate weak references first on destruction.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
 };
 

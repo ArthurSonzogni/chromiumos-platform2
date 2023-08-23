@@ -248,6 +248,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "fetch_status_update",
                                     "update_auth_factor",
                                     "relabel_auth_factor",
+                                    "replace_auth_factor",
                                     "remove_auth_factor",
                                     "list_auth_factors",
                                     "get_auth_session_status",
@@ -308,6 +309,7 @@ enum ActionEnum {
   ACTION_FETCH_STATUS_UPDATE,
   ACTION_UPDATE_AUTH_FACTOR,
   ACTION_RELABEL_AUTH_FACTOR,
+  ACTION_REPLACE_AUTH_FACTOR,
   ACTION_REMOVE_AUTH_FACTOR,
   ACTION_LIST_AUTH_FACTORS,
   ACTION_GET_AUTH_SESSION_STATUS,
@@ -575,10 +577,13 @@ int StartAuthSession(org::chromium::UserDataAuthInterfaceProxy* proxy,
   return 0;
 }
 
+// Build up an auth factor from switches. The caller must specify what switch to
+// use for the label as different commands require different switches.
 bool BuildAuthFactor(Printer& printer,
                      base::CommandLine* cl,
+                     const std::string& label_switch,
                      user_data_auth::AuthFactor* auth_factor) {
-  std::string label = cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
+  std::string label = cl->GetSwitchValueASCII(label_switch);
   if (label.empty()) {
     printer.PrintHumanOutput("No auth factor label specified\n");
     return false;
@@ -977,7 +982,8 @@ int DoAddAuthFactor(
     return 1;
   base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
   req.set_auth_session_id(auth_session_id);
-  if (!BuildAuthFactor(printer, cl, req.mutable_auth_factor()) ||
+  if (!BuildAuthFactor(printer, cl, switches::kKeyLabelSwitch,
+                       req.mutable_auth_factor()) ||
       !BuildAuthInput(printer, cl, &misc_proxy, req.mutable_auth_input())) {
     return 1;
   }
@@ -2628,7 +2634,8 @@ int main(int argc, char** argv) {
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
-    if (!BuildAuthFactor(printer, cl, req.mutable_auth_factor()) ||
+    if (!BuildAuthFactor(printer, cl, switches::kKeyLabelSwitch,
+                         req.mutable_auth_factor()) ||
         !BuildAuthInput(printer, cl, &misc_proxy, req.mutable_auth_input())) {
       return 1;
     }
@@ -2700,6 +2707,47 @@ int main(int argc, char** argv) {
     }
 
     printer.PrintHumanOutput("AuthFactor relabelled.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_REPLACE_AUTH_FACTOR],
+                     action.c_str())) {
+    user_data_auth::ReplaceAuthFactorRequest req;
+    user_data_auth::ReplaceAuthFactorReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+    std::string old_label = cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
+    if (old_label.empty()) {
+      printer.PrintHumanOutput("No old auth factor label specified.\n");
+      return 1;
+    }
+    req.set_auth_factor_label(old_label);
+    if (!BuildAuthFactor(printer, cl, switches::kNewKeyLabelSwitch,
+                         req.mutable_auth_factor()) ||
+        !BuildAuthInput(printer, cl, &misc_proxy, req.mutable_auth_input())) {
+      return 1;
+    }
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to Replace AuthFactor";
+    if (!userdataauth_proxy.ReplaceAuthFactor(req, &reply, &error,
+                                              timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "ReplaceAuthFactor call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    printer.PrintReplyProtobuf(reply);
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput("Failed to replace AuthFactor.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printer.PrintHumanOutput("AuthFactor updated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE_AUTH_FACTOR],
                      action.c_str())) {
     user_data_auth::RemoveAuthFactorRequest req;

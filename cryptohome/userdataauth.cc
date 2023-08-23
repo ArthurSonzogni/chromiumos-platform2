@@ -209,6 +209,31 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
   return auth_factor_with_status;
 }
 
+// Overload that takes a reply type and returns the mutable AuthFactor message
+// from it. Basically just calls mutable_X for whatever field "X" is the
+// AuthFactorWithStatus from the reply. There must be an overload for a type to
+// work with ReplyWithAuthFactorStatus.
+user_data_auth::AuthFactorWithStatus* MutableAuthFactorForReplyType(
+    user_data_auth::AddAuthFactorReply& reply) {
+  return reply.mutable_added_auth_factor();
+}
+user_data_auth::AuthFactorWithStatus* MutableAuthFactorForReplyType(
+    user_data_auth::UpdateAuthFactorReply& reply) {
+  return reply.mutable_updated_auth_factor();
+}
+user_data_auth::AuthFactorWithStatus* MutableAuthFactorForReplyType(
+    user_data_auth::UpdateAuthFactorMetadataReply& reply) {
+  return reply.mutable_updated_auth_factor();
+}
+user_data_auth::AuthFactorWithStatus* MutableAuthFactorForReplyType(
+    user_data_auth::RelabelAuthFactorReply& reply) {
+  return reply.mutable_relabelled_auth_factor();
+}
+user_data_auth::AuthFactorWithStatus* MutableAuthFactorForReplyType(
+    user_data_auth::ReplaceAuthFactorReply& reply) {
+  return reply.mutable_replacement_auth_factor();
+}
+
 // Wrapper function for the ReplyWithError for AddAuthFactorReply,
 // UpdateAuthFactorMetadata and UpdateAuthFactorWithReply.
 template <typename ReplyType>
@@ -226,14 +251,7 @@ void ReplyWithAuthFactorStatus(
     return;
   }
 
-  // These should be active and we expect these to be set always. Static assert
-  // is required as this function should only used for these specific replies.
-  static_assert(
-      std::is_same_v<ReplyType, user_data_auth::AddAuthFactorReply> ||
-      std::is_same_v<ReplyType, user_data_auth::UpdateAuthFactorReply> ||
-      std::is_same_v<ReplyType,
-                     user_data_auth::UpdateAuthFactorMetadataReply> ||
-      std::is_same_v<ReplyType, user_data_auth::RelabelAuthFactorReply>);
+  // These should be active and we expect these to be set always.
   CHECK(auth_session);
   CHECK(auth_factor_driver_manager);
 
@@ -261,25 +279,7 @@ void ReplyWithAuthFactorStatus(
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
   }
-
-  // If is needed here because there are different names for the same Proto type
-  // across three calls.
-  if constexpr (std::is_same_v<ReplyType, user_data_auth::AddAuthFactorReply>) {
-    *reply.mutable_added_auth_factor() =
-        std::move(auth_factor_with_status.value());
-  } else if constexpr (std::is_same_v<ReplyType,
-                                      user_data_auth::UpdateAuthFactorReply> ||
-                       std::is_same_v<
-                           ReplyType,
-                           user_data_auth::UpdateAuthFactorMetadataReply>) {
-    *reply.mutable_updated_auth_factor() =
-        std::move(auth_factor_with_status.value());
-  } else if constexpr (std::is_same_v<ReplyType,
-                                      user_data_auth::RelabelAuthFactorReply>) {
-    *reply.mutable_relabelled_auth_factor() =
-        std::move(auth_factor_with_status.value());
-  }
-
+  *MutableAuthFactorForReplyType(reply) = std::move(*auth_factor_with_status);
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
 }
 
@@ -3247,6 +3247,58 @@ void UserDataAuth::RelabelAuthFactor(
           &auth_session, *user_policy_file, auth_factor_driver_manager_,
           sessions_->Find(auth_session.username()),
           request.new_auth_factor_label(), std::move(on_done)));
+}
+
+void UserDataAuth::ReplaceAuthFactor(
+    user_data_auth::ReplaceAuthFactorRequest request,
+    base::OnceCallback<void(const user_data_auth::ReplaceAuthFactorReply&)>
+        on_done) {
+  AssertOnMountThread();
+  user_data_auth::ReplaceAuthFactorReply reply;
+
+  // Find the auth session.
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  if (!auth_session_status.ok()) {
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthNoAuthSessionInReplaceAuthFactor))
+                       .Wrap(std::move(auth_session_status).err_status()));
+    return;
+  }
+  AuthSession& auth_session = **auth_session_status;
+  auto* session_decrypt = auth_session.GetAuthForDecrypt();
+  if (!session_decrypt) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUnauthedInReplaceAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+    return;
+  }
+
+  // Load the user policy, also needed for the final result.
+  auto user_policy_file =
+      LoadUserPolicyFile(auth_session.obfuscated_username());
+  if (!user_policy_file.ok()) {
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocCouldntLoadUserPolicyFileInReplaceAuthFactor))
+                       .Wrap(std::move(user_policy_file).err_status()));
+    return;
+  }
+
+  // Execute the actual relabel.
+  session_decrypt->ReplaceAuthFactor(
+      request,
+      base::BindOnce(
+          &ReplyWithAuthFactorStatus<user_data_auth::ReplaceAuthFactorReply>,
+          &auth_session, *user_policy_file, auth_factor_driver_manager_,
+          sessions_->Find(auth_session.username()),
+          request.auth_factor().label(), std::move(on_done)));
 }
 
 void UserDataAuth::RemoveAuthFactor(

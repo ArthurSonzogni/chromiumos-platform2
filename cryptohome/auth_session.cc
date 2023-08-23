@@ -2352,6 +2352,131 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
+void AuthSession::AuthForDecrypt::ReplaceAuthFactor(
+    const user_data_auth::ReplaceAuthFactorRequest& request,
+    StatusCallback on_done) {
+  // For ephemeral users we can do a replace in-memory using only the verifiers.
+  if (session_->is_ephemeral_user_) {
+    ReplaceAuthFactorEphemeral(request, std::move(on_done));
+    return;
+  }
+
+  // Report timer for how long ReplaceAuthFactor takes.
+  auto perf_timer = std::make_unique<AuthSessionPerformanceTimer>(
+      kAuthSessionReplaceAuthFactorTimer);
+
+  // Get the existing auth factor and make sure it's not a vault keyset.
+  if (request.auth_factor_label().empty()) {
+    LOG(ERROR) << "AuthSession: Old auth factor label is empty.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoOldLabelInReplaceAuthFactor),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  std::optional<AuthFactor> original_auth_factor;
+  {
+    std::optional<AuthFactorMap::ValueView> stored_auth_factor =
+        session_->auth_factor_map_.Find(request.auth_factor_label());
+    if (!stored_auth_factor) {
+      LOG(ERROR) << "AuthSession: Key to update not found: "
+                 << request.auth_factor_label();
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInReplaceAuthFactor),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+      return;
+    }
+    if (stored_auth_factor->storage_type() ==
+        AuthFactorStorageType::kVaultKeyset) {
+      LOG(ERROR) << "AuthSession: Vault keyset factors cannot be replaced: "
+                 << request.auth_factor_label();
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthSessionFactorIsVaultKeysetInReplaceAuthFactor),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
+      return;
+    }
+    original_auth_factor = stored_auth_factor->auth_factor();
+  }
+
+  // Check that the new label is valid and does not already exist.
+  if (!IsValidAuthFactorLabel(request.auth_factor().label())) {
+    LOG(ERROR) << "AuthSession: New auth factor label is not valid: "
+               << request.auth_factor().label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidNewLabelInReplaceAuthFactor),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  if (session_->auth_factor_map_.Find(request.auth_factor().label())) {
+    LOG(ERROR) << "AuthSession: New auth factor label already exists: "
+               << request.auth_factor().label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionNewLabelAlreadyExistsInReplaceAuthFactor),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  // Construct the auth factor properties for the replacement.
+  AuthFactorType auth_factor_type;
+  std::string auth_factor_label;
+  AuthFactorMetadata auth_factor_metadata;
+  if (!AuthFactorPropertiesFromProto(request.auth_factor(),
+                                     *session_->features_, auth_factor_type,
+                                     auth_factor_label, auth_factor_metadata)) {
+    LOG(ERROR)
+        << "AuthSession: Failed to parse updated auth factor parameters.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionUnknownFactorInReplaceAuthFactor),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  AuthFactorDriver& factor_driver =
+      session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
+
+  // Construct an auth factor input for the replacement.
+  CryptohomeStatusOr<AuthInput> auth_input = session_->CreateAuthInputForAdding(
+      request.auth_input(), auth_factor_type, auth_factor_metadata);
+  if (!auth_input.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputInReplaceAuthFactor))
+            .Wrap(std::move(auth_input).err_status()));
+    return;
+  }
+
+  // Determine the auth block type to use.
+  CryptoStatusOr<AuthBlockType> auth_block_type =
+      session_->auth_block_utility_->SelectAuthBlockTypeForCreation(
+          factor_driver.block_types());
+  if (!auth_block_type.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionInvalidBlockTypeInReplaceAuthFactor),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+            .Wrap(std::move(auth_block_type).status()));
+    return;
+  }
+
+  // Move onto key blob creation for the replacement.
+  auto create_callback = base::BindOnce(
+      &AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss,
+      weak_factory_.GetWeakPtr(), std::move(*original_auth_factor), *auth_input,
+      auth_factor_type, std::move(auth_factor_label),
+      std::move(auth_factor_metadata), std::move(perf_timer),
+      std::move(on_done));
+  session_->auth_block_utility_->CreateKeyBlobsWithAuthBlock(
+      *auth_block_type, *auth_input, std::move(create_callback));
+}
+
 void AuthSession::AuthForDecrypt::RelabelAuthFactorEphemeral(
     const user_data_auth::RelabelAuthFactorRequest& request,
     StatusCallback on_done) {
@@ -2398,6 +2523,242 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactorEphemeral(
   LOG(INFO) << "AuthSession: relabelled credential verifier from "
             << request.auth_factor_label() << " to "
             << request.new_auth_factor_label();
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
+}
+
+void AuthSession::AuthForDecrypt::ReplaceAuthFactorEphemeral(
+    const user_data_auth::ReplaceAuthFactorRequest& request,
+    StatusCallback on_done) {
+  // Check that there is a verifier with the existing label.
+  if (!session_->verifier_forwarder_.HasVerifier(request.auth_factor_label())) {
+    LOG(ERROR) << "AuthSession: Key to update not found: "
+               << request.auth_factor_label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionFactorNotFoundInReplaceAuthFactorEphemeral),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    return;
+  }
+
+  // Check that the new label is valid and does not already exist.
+  if (!IsValidAuthFactorLabel(request.auth_factor().label())) {
+    LOG(ERROR) << "AuthSession: New auth factor label is not valid: "
+               << request.auth_factor().label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionInvalidNewLabelInReplaceAuthFactorEphemeral),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  if (session_->verifier_forwarder_.HasVerifier(
+          request.auth_factor().label())) {
+    LOG(ERROR) << "AuthSession: New auth factor label already exists: "
+               << request.auth_factor().label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionNewLabelAlreadyExistsInReplaceAuthFactorEphemeral),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  // Construct the auth factor properties for the replacement.
+  AuthFactorType auth_factor_type;
+  std::string auth_factor_label;
+  AuthFactorMetadata auth_factor_metadata;
+  if (!AuthFactorPropertiesFromProto(request.auth_factor(),
+                                     *session_->features_, auth_factor_type,
+                                     auth_factor_label, auth_factor_metadata)) {
+    LOG(ERROR)
+        << "AuthSession: Failed to parse updated auth factor parameters.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionUnknownFactorInReplaceAuthFactorEphemeral),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  AuthFactorDriver& factor_driver =
+      session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
+
+  // Construct an auth factor input for the replacement.
+  CryptohomeStatusOr<AuthInput> auth_input = session_->CreateAuthInputForAdding(
+      request.auth_input(), auth_factor_type, auth_factor_metadata);
+  if (!auth_input.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionNoInputInReplaceAuthFactorEphemeral))
+            .Wrap(std::move(auth_input).err_status()));
+    return;
+  }
+
+  // Create the replacement verifier.
+  auto replacement_verifier =
+      factor_driver.CreateCredentialVerifier(auth_factor_label, *auth_input);
+  if (!replacement_verifier) {
+    LOG(ERROR) << "AuthSession: Unable to create replacement verifier.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionNoReplacementInReplaceAuthFactorEphemeral),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_REPLACE_CREDENTIALS_FAILED));
+    return;
+  }
+
+  // Release, rename and re-add the existing verifier.
+  // Release the existing verifier and add the replacement.
+  session_->verifier_forwarder_.ReleaseVerifier(request.auth_factor_label());
+  session_->verifier_forwarder_.AddVerifier(std::move(replacement_verifier));
+  LOG(INFO) << "AuthSession: replaced credential verifier from "
+            << request.auth_factor_label() << " with "
+            << request.auth_factor().label();
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
+}
+
+void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
+    AuthFactor original_auth_factor,
+    AuthInput auth_input,
+    AuthFactorType auth_factor_type,
+    std::string auth_factor_label,
+    AuthFactorMetadata auth_factor_metadata,
+    std::unique_ptr<AuthSessionPerformanceTimer> perf_timer,
+    StatusCallback on_done,
+    CryptohomeStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::unique_ptr<AuthBlockState> auth_block_state) {
+  // Fail the operation if the Create operation failed or provided no results.
+  if (!error.ok() || !key_blobs || !auth_block_state) {
+    if (error.ok()) {
+      error = MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInReplaceAfIntoUss),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          CryptoError::CE_OTHER_CRYPTO,
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+    }
+    LOG(ERROR) << "KeyBlob creation failed before persisting USS and "
+                  "auth factor with label: "
+               << auth_factor_label;
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateFailedInReplaceAfIntoUss),
+            user_data_auth::CRYPTOHOME_REPLACE_CREDENTIALS_FAILED)
+            .Wrap(std::move(error)));
+    return;
+  }
+  auto replacement_auth_factor =
+      std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
+                                   auth_factor_metadata, *auth_block_state);
+
+  // Set up the cleanup operations.
+  // 1. Restore the in-memory USS to its current state. This will run only if
+  // the replacement fails and will be cancelled on success.
+  // 2. Remove one of the auth factors. This will start out configured to remove
+  // the replacement factor, but once the replacement is complete this will be
+  // switched to clean up the old factor instead.
+  auto uss_snapshot = session_->user_secret_stash_->TakeSnapshot();
+  absl::Cleanup revert_uss = [this, &uss_snapshot]() {
+    session_->user_secret_stash_->RestoreSnapshot(std::move(uss_snapshot));
+  };
+  AuthFactor* factor_to_remove = replacement_auth_factor.get();
+  absl::Cleanup remove_leftover_factor = [this, &factor_to_remove]() {
+    // Note that this runs after the operation (on_done) has completed
+    // (successfully or not) and so the remove operation just takes a do-nothing
+    // callback and we ignore any resulting errors since there's nothing we can
+    // do about them at this point.
+    session_->auth_factor_manager_->RemoveAuthFactor(
+        session_->obfuscated_username_, *factor_to_remove,
+        session_->auth_block_utility_, base::DoNothing());
+  };
+
+  // Add the new factor into the USS and remove the old one.
+  if (CryptohomeStatus status = session_->AddAuthFactorToUssInMemory(
+          *replacement_auth_factor, *key_blobs,
+          OverwriteExistingKeyBlock::kDisabled);
+      !status.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionAddToUssFailedInReplaceAfIntoUss),
+            user_data_auth::CRYPTOHOME_REPLACE_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
+  }
+  if (CryptohomeStatus status = session_->RemoveAuthFactorFromUssInMemory(
+          original_auth_factor.label());
+      !status.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionRemoveFromUssFailedInReplaceAfIntoUss),
+            user_data_auth::CRYPTOHOME_REPLACE_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
+  }
+
+  // Encrypt the updated USS.
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
+      session_->user_secret_stash_->GetEncryptedContainer(
+          *session_->user_secret_stash_main_key_);
+  if (!encrypted_uss_container.ok()) {
+    LOG(ERROR) << "Failed to encrypt user secret stash after auth factor "
+                  "creation with label: "
+               << auth_factor_label;
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInReplaceAfIntoUss),
+            user_data_auth::CRYPTOHOME_REPLACE_CREDENTIALS_FAILED)
+            .Wrap(std::move(encrypted_uss_container).err_status()));
+    return;
+  }
+
+  // Persist the new factor files out.
+  if (CryptohomeStatus status =
+          session_->auth_factor_manager_->SaveAuthFactorFile(
+              session_->obfuscated_username_, *replacement_auth_factor);
+      !status.ok()) {
+    LOG(ERROR) << "Failed to persist replacement auth factor: "
+               << auth_factor_label;
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionPersistFactorFailedInReplaceAfIntoUss),
+            user_data_auth::CRYPTOHOME_REPLACE_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
+  }
+
+  // Write out the new USS with the new factor added and the original one
+  // removed. If this succeeds the then Replace operation is committed and the
+  // overall operation is "complete" once we do all the in-memory swaps.
+  if (CryptohomeStatus status = session_->uss_storage_->Persist(
+          *encrypted_uss_container, session_->obfuscated_username_);
+      !status.ok()) {
+    LOG(ERROR) << "Failed to persist user secret stash after the creation of "
+                  "auth factor with label: "
+               << auth_factor_label;
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionPersistUssFailedInReplaceAfIntoUss),
+            user_data_auth::CRYPTOHOME_REPLACE_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
+  }
+  ReportTimerDuration(perf_timer.get());
+  factor_to_remove = &original_auth_factor;
+  std::move(revert_uss).Cancel();
+  session_->verifier_forwarder_.ReleaseVerifier(original_auth_factor.label());
+  session_->AddCredentialVerifier(auth_factor_type, auth_factor_label,
+                                  auth_input);
+  session_->auth_factor_map_.Remove(original_auth_factor.label());
+  session_->auth_factor_map_.Add(std::move(replacement_auth_factor),
+                                 AuthFactorStorageType::kUserSecretStash);
+  LOG(INFO) << "AuthSession: replaced auth factor "
+            << original_auth_factor.label() << " with new auth factor "
+            << auth_factor_label;
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 

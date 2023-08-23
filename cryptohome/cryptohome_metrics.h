@@ -114,6 +114,7 @@ enum TimerType {
   kSELinuxRelabelTimer = 21,
   kStoreUserPolicyTimer = 22,
   kLoadUserPolicyTimer = 23,
+  kAuthSessionReplaceAuthFactorTimer = 24,
   kNumTimerTypes  // For the number of timer types.
 };
 

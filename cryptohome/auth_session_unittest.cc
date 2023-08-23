@@ -5472,4 +5472,407 @@ TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorEphemeral) {
                   kFakeOtherLabel, kFakePass)));
 }
 
+TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactor) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  // Add the initial auth factor.
+  user_data_auth::CryptohomeErrorCode error = AddPasswordAuthFactor(
+      kFakeLabel, kFakePass, /*first_factor=*/true, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+
+  // Calling ReplaceAuthFactor.
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
+      .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
+      .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                   AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key =
+            GetFakeDerivedSecret(auth_input.user_input.value());
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = TpmBoundToPcrAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+      });
+  user_data_auth::ReplaceAuthFactorRequest replace_request;
+  replace_request.set_auth_session_id(auth_session.serialized_token());
+  replace_request.set_auth_factor_label(kFakeLabel);
+  replace_request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  replace_request.mutable_auth_factor()->set_label(kFakeOtherLabel);
+  replace_request.mutable_auth_factor()->mutable_password_metadata();
+  replace_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakeOtherPass);
+  TestFuture<CryptohomeStatus> replace_future;
+  auth_session.GetAuthForDecrypt()->ReplaceAuthFactor(
+      replace_request, replace_future.GetCallback());
+  EXPECT_THAT(replace_future.Get(), IsOk());
+
+  // Calling AuthenticateAuthFactor works with the new label.
+  error = AuthenticatePasswordAuthFactor(kFakeOtherLabel, kFakeOtherPass,
+                                         auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // The replace should be reflected in the session verifiers.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(),
+              UnorderedElementsAre(IsVerifierPtrWithLabelAndPassword(
+                  kFakeOtherLabel, kFakeOtherPass)));
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorWithBadInputs) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Add a couple of auth factors.
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  error = AddPinAuthFactor(kFakePin, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+
+  // Standard request parts. All the various tests mess around with the labels.
+  user_data_auth::ReplaceAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request.mutable_auth_factor()->mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakeOtherPass);
+
+  // Trying to replace an empty label.
+  {
+    request.set_auth_factor_label("");
+    request.mutable_auth_factor()->set_label(kFakeOtherLabel);
+
+    TestFuture<CryptohomeStatus> future;
+    auth_session.GetAuthForDecrypt()->ReplaceAuthFactor(request,
+                                                        future.GetCallback());
+    ASSERT_THAT(future.Get(), NotOk());
+    EXPECT_THAT(future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+
+  // Trying to replace to an empty label.
+  {
+    request.set_auth_factor_label(kFakeLabel);
+    request.mutable_auth_factor()->set_label("");
+
+    TestFuture<CryptohomeStatus> future;
+    auth_session.GetAuthForDecrypt()->ReplaceAuthFactor(request,
+                                                        future.GetCallback());
+    ASSERT_THAT(future.Get(), NotOk());
+    EXPECT_THAT(future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+
+  // Trying to replace a factor that doesn't exist.
+  {
+    request.set_auth_factor_label(std::string(kFakeLabel) + "DoesNotExist");
+    request.mutable_auth_factor()->set_label(kFakeOtherLabel);
+
+    TestFuture<CryptohomeStatus> future;
+    auth_session.GetAuthForDecrypt()->ReplaceAuthFactor(request,
+                                                        future.GetCallback());
+    ASSERT_THAT(future.Get(), NotOk());
+    EXPECT_THAT(future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+  }
+
+  // Trying to replace a factor to a label that already exists.
+  {
+    request.set_auth_factor_label(kFakeLabel);
+    request.mutable_auth_factor()->set_label(kFakePinLabel);
+
+    TestFuture<CryptohomeStatus> future;
+    auth_session.GetAuthForDecrypt()->ReplaceAuthFactor(request,
+                                                        future.GetCallback());
+    ASSERT_THAT(future.Get(), NotOk());
+    EXPECT_THAT(future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+
+  // Trying to replace a factor to itself.
+  {
+    request.set_auth_factor_label(kFakeLabel);
+    request.mutable_auth_factor()->set_label(kFakeLabel);
+
+    TestFuture<CryptohomeStatus> future;
+    auth_session.GetAuthForDecrypt()->ReplaceAuthFactor(request,
+                                                        future.GetCallback());
+    ASSERT_THAT(future.Get(), NotOk());
+    EXPECT_THAT(future.Get()->local_legacy_error(),
+                Optional(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorWithFailedAdd) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  // Add the initial auth factor.
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
+      .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
+      .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                   AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key =
+            GetFakeDerivedSecret(auth_input.user_input.value());
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = TpmBoundToPcrAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+      });
+  user_data_auth::AddAuthFactorRequest add_request;
+  add_request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& request_factor =
+      *add_request.mutable_auth_factor();
+  request_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request_factor.set_label(kFakeLabel);
+  request_factor.mutable_password_metadata();
+  add_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakePass);
+  TestFuture<CryptohomeStatus> add_future;
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(add_request,
+                                                  add_future.GetCallback());
+  EXPECT_THAT(add_future.Get(), IsOk());
+
+  // Test.
+
+  // Calling ReplaceAuthFactor. Have the key blob creation fail.
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
+      .WillOnce([](auto, auto, AuthBlock::CreateCallback create_callback) {
+        std::move(create_callback)
+            .Run(MakeStatus<CryptohomeCryptoError>(
+                     kErrorLocationForTestingAuthSession,
+                     error::ErrorActionSet(
+                         {error::PossibleAction::kDevCheckUnexpectedState}),
+                     CryptoError::CE_OTHER_CRYPTO),
+                 nullptr, nullptr);
+      });
+  user_data_auth::ReplaceAuthFactorRequest replace_request;
+  replace_request.set_auth_session_id(auth_session.serialized_token());
+  replace_request.set_auth_factor_label(kFakeLabel);
+  replace_request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  replace_request.mutable_auth_factor()->set_label(kFakeOtherLabel);
+  replace_request.mutable_auth_factor()->mutable_password_metadata();
+  replace_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakeOtherPass);
+  TestFuture<CryptohomeStatus> replace_future;
+  auth_session.GetAuthForDecrypt()->ReplaceAuthFactor(
+      replace_request, replace_future.GetCallback());
+  EXPECT_THAT(replace_future.Get(), NotOk());
+
+  // Calling AuthenticateAuthFactor still works with the old label.
+  user_data_auth::CryptohomeErrorCode error =
+      AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // The replace should not show up in the session verifiers.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(),
+              UnorderedElementsAre(
+                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorWithFileFailure) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  // Add the initial auth factor.
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
+      .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
+      .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                   AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key =
+            GetFakeDerivedSecret(auth_input.user_input.value());
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = TpmBoundToPcrAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+      });
+  user_data_auth::AddAuthFactorRequest add_request;
+  add_request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& request_factor =
+      *add_request.mutable_auth_factor();
+  request_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request_factor.set_label(kFakeLabel);
+  request_factor.mutable_password_metadata();
+  add_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakePass);
+  TestFuture<CryptohomeStatus> add_future;
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(add_request,
+                                                  add_future.GetCallback());
+  EXPECT_THAT(add_future.Get(), IsOk());
+
+  // Test.
+
+  // Disable the writing of the USS file. The replace should fail and we should
+  // still be able to use the old name.
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(_, _, _))
+      .WillRepeatedly(DoDefault());
+  EXPECT_CALL(platform_,
+              WriteFileAtomicDurable(
+                  UserSecretStashPath(SanitizeUserName(kFakeUsername),
+                                      kUserSecretStashDefaultSlot),
+                  _, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(false));
+
+  // Calling ReplaceAuthFactor. The key blob creation will succeed but adding
+  // the new factor into USS will not.
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
+      .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                   AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key =
+            GetFakeDerivedSecret(auth_input.user_input.value());
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = TpmBoundToPcrAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+      });
+  user_data_auth::ReplaceAuthFactorRequest replace_request;
+  replace_request.set_auth_session_id(auth_session.serialized_token());
+  replace_request.set_auth_factor_label(kFakeLabel);
+  replace_request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  replace_request.mutable_auth_factor()->set_label(kFakeOtherLabel);
+  replace_request.mutable_auth_factor()->mutable_password_metadata();
+  replace_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakeOtherPass);
+  TestFuture<CryptohomeStatus> replace_future;
+  auth_session.GetAuthForDecrypt()->ReplaceAuthFactor(
+      replace_request, replace_future.GetCallback());
+  EXPECT_THAT(replace_future.Get(), NotOk());
+
+  // Calling AuthenticateAuthFactor still works with the old label.
+  user_data_auth::CryptohomeErrorCode error =
+      AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // The replace should not show up in the session verifiers.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(),
+              UnorderedElementsAre(
+                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, ReplaceAuthFactorEphemeral) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = true,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_FALSE(auth_session.has_user_secret_stash());
+
+  // Add the initial auth factor.
+  user_data_auth::AddAuthFactorRequest add_request;
+  add_request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& request_factor =
+      *add_request.mutable_auth_factor();
+  request_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request_factor.set_label(kFakeLabel);
+  request_factor.mutable_password_metadata();
+  add_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakePass);
+  TestFuture<CryptohomeStatus> add_future;
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(add_request,
+                                                  add_future.GetCallback());
+  EXPECT_THAT(add_future.Get(), IsOk());
+
+  // Test.
+
+  // Calling ReplaceAuthFactor.
+  user_data_auth::ReplaceAuthFactorRequest replace_request;
+  replace_request.set_auth_session_id(auth_session.serialized_token());
+  replace_request.set_auth_factor_label(kFakeLabel);
+  replace_request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  replace_request.mutable_auth_factor()->set_label(kFakeOtherLabel);
+  replace_request.mutable_auth_factor()->mutable_password_metadata();
+  replace_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakeOtherPass);
+  TestFuture<CryptohomeStatus> replace_future;
+  auth_session.GetAuthForDecrypt()->ReplaceAuthFactor(
+      replace_request, replace_future.GetCallback());
+  EXPECT_THAT(replace_future.Get(), IsOk());
+
+  // The relabel should be reflected in the session verifiers.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(),
+              UnorderedElementsAre(IsVerifierPtrWithLabelAndPassword(
+                  kFakeOtherLabel, kFakeOtherPass)));
+}
+
 }  // namespace cryptohome

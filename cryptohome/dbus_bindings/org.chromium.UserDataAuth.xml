@@ -404,6 +404,20 @@ do.
       </arg>
     </method>
 
+    <!-- Replaces an existing auth factor with a new one, for a user -->
+    <method name="ReplaceAuthFactor">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::ReplaceAuthFactorRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::ReplaceAuthFactorReply"/>
+      </arg>
+    </method>
+
     <!-- Removes an auth factor for a user. -->
     <method name="RemoveAuthFactor">
       <annotation name="org.chromium.DBus.Method.Kind"

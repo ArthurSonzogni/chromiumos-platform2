@@ -659,6 +659,11 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::RelabelAuthFactorReply&)>
           on_done);
 
+  void ReplaceAuthFactor(
+      user_data_auth::ReplaceAuthFactorRequest request,
+      base::OnceCallback<void(const user_data_auth::ReplaceAuthFactorReply&)>
+          on_done);
+
   void RemoveAuthFactor(
       user_data_auth::RemoveAuthFactorRequest request,
       base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
