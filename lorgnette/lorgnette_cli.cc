@@ -29,6 +29,7 @@
 #include <re2/re2.h>
 
 #include "lorgnette/cli/discovery_handler.h"
+#include "lorgnette/cli/print_config.h"
 #include "lorgnette/cli/scan_handler.h"
 #include "lorgnette/dbus-proxies.h"
 #include "lorgnette/guess_source.h"
@@ -132,11 +133,6 @@ std::optional<lorgnette::ScannerConfig> GetScannerConfig(
   }
 
   return open_response.config();
-}
-
-void PrintScannerConfig(const lorgnette::ScannerConfig& config) {
-  std::cout << "--- Scanner Config --- " << std::endl;
-  // TODO(bmgordon): Print the config once parsing is working.
 }
 
 // RoundThousandth will round the input number at the thousandth place
@@ -494,6 +490,12 @@ int main(int argc, char** argv) {
   // Cancel Scan options
   DEFINE_string(uuid, "", "UUID of the scan job to cancel.");
 
+  // show_config options
+  DEFINE_bool(show_inactive, false,
+              "Show inactive options in scanner config output.");
+  DEFINE_bool(show_advanced, false,
+              "Show advanced options in scanner config output.");
+
   // General scanner operations options.
   DEFINE_string(scanner, "",
                 "Name of the scanner whose capabilities are requested.");
@@ -667,7 +669,8 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    PrintScannerConfig(config.value());
+    lorgnette::cli::PrintScannerConfig(config.value(), FLAGS_show_inactive,
+                                       FLAGS_show_advanced, std::cout);
     return 0;
   }
 

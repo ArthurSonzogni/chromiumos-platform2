@@ -17,7 +17,10 @@ group("all") {
     "//lorgnette/tmpfiles.d",
   ]
   if (use.test) {
-    deps += [ ":lorgnette_unittest" ]
+    deps += [
+      ":lorgnette_cli_unittest",
+      ":lorgnette_unittest",
+    ]
   }
 }
 
@@ -100,16 +103,25 @@ executable("lorgnette") {
   deps = [ ":liblorgnette" ]
 }
 
-executable("lorgnette_cli") {
+static_library("liblorgnette_cli") {
   sources = [
     "cli/async_handler.cc",
     "cli/discovery_handler.cc",
+    "cli/print_config.cc",
     "cli/scan_handler.cc",
     "guess_source.cc",
-    "lorgnette_cli.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":lorgnette-proxies" ]
+  deps = [ ":lorgnette-adaptors" ]
+}
+
+executable("lorgnette_cli") {
+  sources = [ "lorgnette_cli.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":liblorgnette_cli",
+    ":lorgnette-proxies",
+  ]
 }
 
 install_config("install_dbus_config") {
@@ -167,5 +179,20 @@ if (use.test) {
       ":liblorgnette",
       "//common-mk/testrunner:testrunner",
     ]
+    run_test = true
+  }
+
+  executable("lorgnette_cli_unittest") {
+    sources = [ "cli/print_config_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":liblorgnette_config_test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":liblorgnette_cli",
+      "//common-mk/testrunner:testrunner",
+    ]
+    run_test = true
   }
 }
