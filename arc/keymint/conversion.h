@@ -21,6 +21,9 @@ keymaster_tag_t ConvertEnum(arc::mojom::keymint::Tag tag);
 
 keymaster_purpose_t ConvertEnum(arc::mojom::keymint::KeyPurpose key_purpose);
 
+keymaster_key_param_t ConvertEnum(
+    const arc::mojom::keymint::KeyParameterPtr& param);
+
 template <typename T, typename OutIter>
 inline OutIter copy_bytes_to_iterator(const T& value, OutIter dest) {
   const uint8_t* value_ptr = reinterpret_cast<const uint8_t*>(&value);
@@ -38,6 +41,9 @@ std::vector<std::vector<uint8_t>> ConvertFromKeymasterMessage(
 
 std::vector<::arc::mojom::keymint::KeyParameterPtr> ConvertFromKeymasterMessage(
     const keymaster_key_param_set_t& set);
+
+::arc::mojom::keymint::KeyParameterValuePtr
+ConvertEnumParamFromKeymasterMessage(const keymaster_key_param_t& param);
 
 void ConvertToKeymasterMessage(const std::vector<uint8_t>& data,
                                ::keymaster::Buffer* out);

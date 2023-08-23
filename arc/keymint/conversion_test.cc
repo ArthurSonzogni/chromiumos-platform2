@@ -58,13 +58,14 @@ constexpr uint64_t fakeTimeStamp = 4349843232312345627;
   }
   if (!(b[0]->value->is_bool_value() && b[1]->value->is_integer() &&
         b[2]->value->is_long_integer() && b[3]->value->is_date_time() &&
-        b[4]->value->is_blob())) {
+        b[4]->value->is_blob() && b[5]->value->is_algorithm())) {
     return ::testing::AssertionFailure() << "Incorrect union value type";
   }
   if (!(a[0].boolean == b[0]->value->get_bool_value() &&
         a[1].integer == b[1]->value->get_integer() &&
         a[2].long_integer == b[2]->value->get_long_integer() &&
-        a[3].date_time == b[3]->value->get_date_time())) {
+        a[3].date_time == b[3]->value->get_date_time()) &&
+      a[5].enumerated == static_cast<uint32_t>(b[5]->value->get_algorithm())) {
     return ::testing::AssertionFailure() << "Values differ";
   }
   return VerifyVectorUint8(a[4].blob.data, a[4].blob.data_length,
@@ -72,18 +73,16 @@ constexpr uint64_t fakeTimeStamp = 4349843232312345627;
 }
 
 std::vector<arc::mojom::keymint::KeyParameterPtr> KeyParameterVector() {
-  std::vector<arc::mojom::keymint::KeyParameterPtr> parameters(5);
+  std::vector<arc::mojom::keymint::KeyParameterPtr> parameters(6);
   // bool
   auto paramBool = arc::mojom::keymint::KeyParameterValue::NewBoolValue(true);
   parameters[0] = arc::mojom::keymint::KeyParameter::New(
       static_cast<arc::mojom::keymint::Tag>(KM_TAG_CALLER_NONCE),
       std::move(paramBool));
-  // enum, enum_rep, int, int_rep
-  auto paramInt = arc::mojom::keymint::KeyParameterValue::NewInteger(
-      KM_ALGORITHM_TRIPLE_DES);
+  // int, int_rep
+  auto paramInt = arc::mojom::keymint::KeyParameterValue::NewInteger(128);
   parameters[1] = arc::mojom::keymint::KeyParameter::New(
-      static_cast<arc::mojom::keymint::Tag>(KM_TAG_ALGORITHM),
-      std::move(paramInt));
+      arc::mojom::keymint::Tag::KEY_SIZE, std::move(paramInt));
   // long
   auto paramLong =
       arc::mojom::keymint::KeyParameterValue::NewLongInteger(65537);
@@ -101,6 +100,11 @@ std::vector<arc::mojom::keymint::KeyParameterPtr> KeyParameterVector() {
   parameters[4] = arc::mojom::keymint::KeyParameter::New(
       static_cast<arc::mojom::keymint::Tag>(KM_TAG_APPLICATION_DATA),
       std::move(paramBlob));
+  // enum, enum_rep
+  auto paramAlgo = arc::mojom::keymint::KeyParameterValue::NewAlgorithm(
+      arc::mojom::keymint::Algorithm::TRIPLE_DES);
+  parameters[5] = arc::mojom::keymint::KeyParameter::New(
+      arc::mojom::keymint::Tag::ALGORITHM, std::move(paramAlgo));
   return parameters;
 }
 
@@ -328,14 +332,16 @@ TEST(ConvertFromKeymasterMessage, KeyParameterVector) {
   // Prepare.
   ::keymaster::AuthorizationSet input;
   input.push_back(keymaster_param_bool(KM_TAG_EARLY_BOOT_ONLY));  // bool
-  input.push_back(keymaster_param_enum(
-      KM_TAG_ALGORITHM,
-      KM_ALGORITHM_TRIPLE_DES));  // enum, enum_rep, int, int_rep
+  input.push_back(keymaster_param_int(KM_TAG_KEY_SIZE,
+                                      128));  // int, int_rep
   input.push_back(keymaster_param_long(KM_TAG_USER_SECURE_ID, 65537));  // long
   input.push_back(
       keymaster_param_date(KM_TAG_USAGE_EXPIRE_DATETIME, 1507));  // date
   input.push_back(keymaster_param_blob(KM_TAG_APPLICATION_DATA, kBlob1.data(),
                                        kBlob1.size()));  // bignum, bytes
+  input.push_back(
+      keymaster_param_enum(KM_TAG_ALGORITHM,
+                           KM_ALGORITHM_TRIPLE_DES));  // enum, enum_rep
 
   // Convert.
   std::vector<arc::mojom::keymint::KeyParameterPtr> output =

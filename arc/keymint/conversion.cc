@@ -22,12 +22,7 @@ class KmParamSet {
       switch (keymaster_tag_get_type(tag)) {
         case KM_ENUM:
         case KM_ENUM_REP:
-          if (data[i]->value->is_integer()) {
-            param_set_.params[i] =
-                keymaster_param_enum(tag, data[i]->value->get_integer());
-          } else {
-            param_set_.params[i].tag = KM_TAG_INVALID;
-          }
+          param_set_.params[i] = ConvertEnum(data[i]);
           break;
         case KM_UINT:
         case KM_UINT_REP:
@@ -140,12 +135,125 @@ keymaster_tag_t ConvertEnum(arc::mojom::keymint::Tag tag) {
   return static_cast<keymaster_tag_t>(tag);
 }
 
+arc::mojom::keymint::Tag ConvertKeymasterTag(keymaster_tag_t tag) {
+  return static_cast<arc::mojom::keymint::Tag>(tag);
+}
+
 keymaster_key_format_t ConvertEnum(arc::mojom::keymint::KeyFormat key_format) {
   return static_cast<keymaster_key_format_t>(key_format);
 }
 
 keymaster_purpose_t ConvertEnum(arc::mojom::keymint::KeyPurpose key_purpose) {
   return static_cast<keymaster_purpose_t>(key_purpose);
+}
+
+keymaster_key_param_t kInvalidKeyParam{.tag = KM_TAG_INVALID, .integer = 0};
+
+keymaster_key_param_t ConvertEnum(
+    const arc::mojom::keymint::KeyParameterPtr& param) {
+  if (param.is_null() || param->value.is_null()) {
+    return kInvalidKeyParam;
+  }
+
+  keymaster_tag_t tag = ConvertEnum(param->tag);
+  switch (tag) {
+    case KM_TAG_PURPOSE:
+      if (param->value->is_key_purpose() &&
+          param->value->get_key_purpose() !=
+              arc::mojom::keymint::KeyPurpose::UNKNOWN) {
+        return keymaster_param_enum(
+            tag, static_cast<uint32_t>(param->value->get_key_purpose()));
+      } else {
+        return kInvalidKeyParam;
+      }
+      break;
+
+    case KM_TAG_ALGORITHM:
+      if (param->value->is_algorithm() &&
+          param->value->get_algorithm() !=
+              arc::mojom::keymint::Algorithm::UNKNOWN) {
+        return keymaster_param_enum(
+            tag, static_cast<uint32_t>(param->value->get_algorithm()));
+      } else {
+        return kInvalidKeyParam;
+      }
+      break;
+
+    case KM_TAG_BLOCK_MODE:
+      if (param->value->is_block_mode() &&
+          param->value->get_block_mode() !=
+              arc::mojom::keymint::BlockMode::UNKNOWN) {
+        return keymaster_param_enum(
+            tag, static_cast<uint32_t>(param->value->get_block_mode()));
+      } else {
+        return kInvalidKeyParam;
+      }
+      break;
+
+    case KM_TAG_DIGEST:
+    case KM_TAG_RSA_OAEP_MGF_DIGEST:
+      if (param->value->is_digest() &&
+          param->value->get_digest() != arc::mojom::keymint::Digest::UNKNOWN) {
+        return keymaster_param_enum(
+            tag, static_cast<uint32_t>(param->value->get_digest()));
+      } else {
+        return kInvalidKeyParam;
+      }
+      break;
+
+    case KM_TAG_PADDING:
+      if (param->value->is_padding_mode() &&
+          param->value->get_padding_mode() !=
+              arc::mojom::keymint::PaddingMode::UNKNOWN) {
+        return keymaster_param_enum(
+            tag, static_cast<uint32_t>(param->value->get_padding_mode()));
+      } else {
+        return kInvalidKeyParam;
+      }
+      break;
+
+    case KM_TAG_EC_CURVE:
+      if (param->value->is_ec_curve() &&
+          param->value->get_ec_curve() !=
+              arc::mojom::keymint::EcCurve::UNKNOWN) {
+        return keymaster_param_enum(
+            tag, static_cast<uint32_t>(param->value->get_ec_curve()));
+      } else {
+        return kInvalidKeyParam;
+      }
+      break;
+
+    case KM_TAG_USER_AUTH_TYPE:
+      if (param->value->is_hardware_authenticator_type() &&
+          param->value->get_hardware_authenticator_type() !=
+              arc::mojom::keymint::HardwareAuthenticatorType::UNKNOWN) {
+        return keymaster_param_enum(
+            tag, static_cast<uint32_t>(
+                     param->value->get_hardware_authenticator_type()));
+      } else {
+        return kInvalidKeyParam;
+      }
+      break;
+
+    case KM_TAG_ORIGIN:
+      if (param->value->is_origin() &&
+          param->value->get_origin() !=
+              arc::mojom::keymint::KeyOrigin::UNKNOWN) {
+        return keymaster_param_enum(
+            tag, static_cast<uint32_t>(param->value->get_origin()));
+      } else {
+        return kInvalidKeyParam;
+      }
+      break;
+    // The 2 Cases below are unused.
+    case KM_TAG_BLOB_USAGE_REQUIREMENTS:
+    case KM_TAG_KDF:
+
+    default:
+      CHECK(false) << "Unknown or unused enum tag: Something is broken";
+      LOG(ERROR) << "Unknown or unused enum tag: " << tag;
+      return kInvalidKeyParam;
+  }
 }
 
 std::vector<uint8_t> ConvertFromKeymasterMessage(const uint8_t* data,
@@ -159,6 +267,68 @@ std::vector<std::vector<uint8_t>> ConvertFromKeymasterMessage(
   for (size_t i = 0; i < cert.entry_count; ++i) {
     const auto& entry = cert.entries[i];
     out[i] = ConvertFromKeymasterMessage(entry.data, entry.data_length);
+  }
+  return out;
+}
+
+arc::mojom::keymint::KeyParameterValuePtr ConvertEnumParamFromKeymasterMessage(
+    const keymaster_key_param_t& param) {
+  keymaster_tag_t tag = param.tag;
+  keymaster_tag_type_t tag_type = keymaster_tag_get_type(tag);
+
+  arc::mojom::keymint::KeyParameterValuePtr out;
+  if (tag_type != KM_ENUM && tag_type != KM_ENUM_REP) {
+    LOG(ERROR) << "Mismatched Tag type received. Expected ENUM or ENUM_REP";
+    return arc::mojom::keymint::KeyParameterValue::NewInvalid(
+        static_cast<uint32_t>(param.enumerated));
+  }
+
+  switch (tag) {
+    case KM_TAG_PURPOSE:
+      out = arc::mojom::keymint::KeyParameterValue::NewKeyPurpose(
+          static_cast<arc::mojom::keymint::KeyPurpose>(param.enumerated));
+      break;
+    case KM_TAG_ALGORITHM:
+      out = arc::mojom::keymint::KeyParameterValue::NewAlgorithm(
+          static_cast<arc::mojom::keymint::Algorithm>(param.enumerated));
+      break;
+    case KM_TAG_BLOCK_MODE:
+      out = arc::mojom::keymint::KeyParameterValue::NewBlockMode(
+          static_cast<arc::mojom::keymint::BlockMode>(param.enumerated));
+      break;
+    case KM_TAG_DIGEST:
+    case KM_TAG_RSA_OAEP_MGF_DIGEST:
+      out = arc::mojom::keymint::KeyParameterValue::NewDigest(
+          static_cast<arc::mojom::keymint::Digest>(param.enumerated));
+      break;
+    case KM_TAG_PADDING:
+      out = arc::mojom::keymint::KeyParameterValue::NewPaddingMode(
+          static_cast<arc::mojom::keymint::PaddingMode>(param.enumerated));
+      break;
+    case KM_TAG_EC_CURVE:
+      out = arc::mojom::keymint::KeyParameterValue::NewEcCurve(
+          static_cast<arc::mojom::keymint::EcCurve>(param.enumerated));
+      break;
+    case KM_TAG_USER_AUTH_TYPE:
+      out =
+          arc::mojom::keymint::KeyParameterValue::NewHardwareAuthenticatorType(
+              static_cast<arc::mojom::keymint::HardwareAuthenticatorType>(
+                  param.enumerated));
+      break;
+    case KM_TAG_ORIGIN:
+      out = arc::mojom::keymint::KeyParameterValue::NewOrigin(
+          static_cast<arc::mojom::keymint::KeyOrigin>(param.enumerated));
+      break;
+
+    // The 2 Cases below are unused.
+    case KM_TAG_BLOB_USAGE_REQUIREMENTS:
+    case KM_TAG_KDF:
+
+    default:
+      CHECK(false) << "Unknown or unused enum tag: Something is broken";
+      LOG(ERROR) << "Unknown or unused enum tag: " << tag;
+      out = arc::mojom::keymint::KeyParameterValue::NewInvalid(
+          static_cast<uint32_t>(param.enumerated));
   }
   return out;
 }
@@ -178,8 +348,7 @@ std::vector<arc::mojom::keymint::KeyParameterPtr> ConvertFromKeymasterMessage(
     switch (keymaster_tag_get_type(tag)) {
       case KM_ENUM:
       case KM_ENUM_REP:
-        param = arc::mojom::keymint::KeyParameterValue::NewInteger(
-            params[i].enumerated);
+        param = ConvertEnumParamFromKeymasterMessage(params[i]);
         break;
       case KM_UINT:
       case KM_UINT_REP:
