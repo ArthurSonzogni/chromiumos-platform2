@@ -266,6 +266,9 @@ void Camera3DeviceImpl::InitializeOnThread(Camera3Module* cam_module,
         Camera3DeviceImpl::RequestStreamBuffersForwarder;
     Camera3DeviceImpl::return_stream_buffers =
         Camera3DeviceImpl::ReturnStreamBuffersForwarder;
+  } else {
+    Camera3DeviceImpl::request_stream_buffers = nullptr;
+    Camera3DeviceImpl::return_stream_buffers = nullptr;
   }
   *result = dev_connector_->Initialize(this, cam_info.device_version);
   if (*result) {

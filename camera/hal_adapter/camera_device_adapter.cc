@@ -206,6 +206,9 @@ CameraDeviceAdapter::CameraDeviceAdapter(
   if (IsBufferManagementSupported()) {
     camera3_callback_ops_t::request_stream_buffers = RequestStreamBuffers;
     camera3_callback_ops_t::return_stream_buffers = ReturnStreamBuffers;
+  } else {
+    camera3_callback_ops_t::request_stream_buffers = nullptr;
+    camera3_callback_ops_t::return_stream_buffers = nullptr;
   }
 
   std::optional<int32_t> partial_result_count =

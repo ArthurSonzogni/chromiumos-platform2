@@ -315,6 +315,12 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
                   << ", format: " << buffer->stream->format;
       return -EINVAL;
     }
+    // TODO(b/226688669): Remove this check after the buffer management APIs are
+    // enabled.
+    if (*buffer->buffer == nullptr) {
+      LOGF(ERROR) << "Buffer handles are not attached to the request";
+      return -EINVAL;
+    }
   }
 
   // We cannot use |request| after this function returns. So we have to copy
