@@ -130,15 +130,16 @@ void VafConnection::InitializeOnIpcThread(bool* init_success) {
 
   dbus::MethodCall method_call(libvda::kLibvdaServiceInterface,
                                libvda::kProvideMojoConnectionMethod);
-  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlockDeprecated(
-      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  if (!response.get()) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      proxy->CallMethodAndBlock(&method_call,
+                                dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  if (!response.has_value() || !response.value()) {
     DLOG(ERROR) << "Unable to get response from method call "
                 << libvda::kProvideMojoConnectionMethod;
     return;
   }
 
-  dbus::MessageReader reader(response.get());
+  dbus::MessageReader reader(response.value().get());
 
   // Read the mojo pipe FD.
   base::ScopedFD fd;

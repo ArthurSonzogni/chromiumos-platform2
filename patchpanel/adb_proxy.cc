@@ -302,10 +302,10 @@ void AdbProxy::CheckAdbSideloadingStatus(int num_try) {
       dbus::ObjectPath(login_manager::kSessionManagerServicePath));
   dbus::MethodCall method_call(login_manager::kSessionManagerInterface,
                                login_manager::kSessionManagerQueryAdbSideload);
-  std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDbusTimeoutMs);
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
 
-  if (!dbus_response) {
+  if (!dbus_response.has_value() || !dbus_response.value()) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&AdbProxy::CheckAdbSideloadingStatus,
@@ -314,7 +314,7 @@ void AdbProxy::CheckAdbSideloadingStatus(int num_try) {
     return;
   }
 
-  dbus::MessageReader reader(dbus_response.get());
+  dbus::MessageReader reader(dbus_response.value().get());
   reader.PopBool(&adb_sideloading_enabled_);
   if (!adb_sideloading_enabled_) {
     LOG(INFO) << "Chrome OS is not in developer mode and ADB sideloading is "
