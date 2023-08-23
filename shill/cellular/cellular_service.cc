@@ -911,15 +911,19 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
     cellular_->ConfigureAttachApn();
     return true;
   }
-  if (!IsConnected()) {
-    return true;
+
+  if (IsConnected()) {
+    Disconnect(error, __func__);
+    if (!error->IsSuccess()) {
+      return false;
+    }
+    Connect(error, __func__);
+    return error->IsSuccess();
   }
-  Disconnect(error, __func__);
-  if (!error->IsSuccess()) {
-    return false;
-  }
-  Connect(error, __func__);
-  return error->IsSuccess();
+  ResetAutoConnectCooldownTime();
+  // UpdateService to trigger AutoConnect if necessary.
+  manager()->UpdateService(this);
+  return true;
 }
 
 Stringmap* CellularService::GetLastConnectedDefaultApn() {
@@ -975,15 +979,19 @@ bool CellularService::SetCustomApnList(const Stringmaps& value, Error* error) {
     cellular_->ConfigureAttachApn();
     return true;
   }
-  if (!IsConnected()) {
-    return true;
+
+  if (IsConnected()) {
+    Disconnect(error, __func__);
+    if (!error->IsSuccess()) {
+      return false;
+    }
+    Connect(error, __func__);
+    return error->IsSuccess();
   }
-  Disconnect(error, __func__);
-  if (!error->IsSuccess()) {
-    return false;
-  }
-  Connect(error, __func__);
-  return error->IsSuccess();
+  ResetAutoConnectCooldownTime();
+  // UpdateService to trigger AutoConnect if necessary.
+  manager()->UpdateService(this);
+  return true;
 }
 
 void CellularService::ClearCustomApnList(Error* error) {
