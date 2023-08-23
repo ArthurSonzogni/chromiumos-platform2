@@ -43,16 +43,16 @@ bool RetrieveSanitizedPrimaryUsername(std::string* out_sanitized_username) {
   dbus::MethodCall method_call(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerRetrievePrimarySession);
-  std::unique_ptr<dbus::Response> response =
-      session_manager_proxy->CallMethodAndBlockDeprecated(
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
+      session_manager_proxy->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!response.get()) {
+  if (!response.has_value() || !response.value()) {
     LOG(ERROR) << "Cannot retrieve username for primary session.";
     bus->ShutdownAndBlock();
     return false;
   }
 
-  dbus::MessageReader response_reader(response.get());
+  dbus::MessageReader response_reader(response.value().get());
   std::string username;
   if (!response_reader.PopString(&username)) {
     LOG(ERROR) << "Primary session username bad format.";

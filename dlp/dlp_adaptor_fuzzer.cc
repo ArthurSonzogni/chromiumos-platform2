@@ -43,8 +43,7 @@ DEFINE_PROTO_FUZZER(const dlp::DlpFuzzer& input) {
   adaptor->SetFanotifyWatcherStartedForTesting(true);
 
   EXPECT_CALL(*helper.mock_session_manager_proxy(),
-              CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
-                                                 A<int>(), A<dbus::Error*>()))
+              CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
       .WillRepeatedly(::testing::ReturnNull());
 
   adaptor->SetDlpFilesPolicy(
