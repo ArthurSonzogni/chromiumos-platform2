@@ -304,17 +304,35 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
                              const base::FilePath& vendor_image_path,
                              const std::string& cache_partition);
 
+// A string managed either by Rust or by a C++ std::string. The destructor will
+// free the string the right way depending on who owns it.
+class ManagedString {
+ public:
+  explicit ManagedString(char* rust_ptr);
+  explicit ManagedString(std::string cc_str);
+  ~ManagedString();
+
+  std::string_view value() const;
+
+  ManagedString(const ManagedString&) = delete;
+  ManagedString& operator=(const ManagedString&) = delete;
+
+ private:
+  char* const rust_ptr_;
+  const std::string cc_str_;
+};
+
 // Filters camera profiles in |media_profile_xml| with the settings in
 // |camera_test_config| and returns the filtered content.
-std::optional<std::string> FilterMediaProfile(
-    const base::FilePath& media_profile_xml,
-    const base::FilePath& camera_test_config);
+ManagedString FilterMediaProfile(const base::FilePath& media_profile_xml,
+                                 const base::FilePath& camera_test_config);
 
 // Append Features coming from the libsegmentation library that Android must be
 // aware of.
-std::optional<std::string> AppendFeatureManagement(
+ManagedString AppendFeatureManagement(
     const base::FilePath& hardware_profile_xml,
     segmentation::FeatureManagement& feature_management);
+
 }  // namespace arc
 
 #endif  // ARC_SETUP_ARC_SETUP_UTIL_H_

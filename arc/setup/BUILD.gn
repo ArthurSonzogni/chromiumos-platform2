@@ -50,7 +50,6 @@ pkg_config("target_defaults_pkg_deps") {
     "libsegmentation",
     "libselinux",
     "libuser_data_auth-client",
-    "libxml-2.0",
     "re2",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -120,7 +119,10 @@ libarc_setup_sources = [
 static_library("libarc_setup_static") {
   sources = libarc_setup_sources
   configs += [ ":target_defaults" ]
-  libs = [ "bootstat" ]
+  libs = [
+    "arc_setup_rs",
+    "bootstat",
+  ]
   deps = [ "xml:libandroidxml" ]
 }
 
@@ -132,7 +134,10 @@ shared_library("libarc_setup") {
     "USE_ARC_HW_OEMCRYPTO=${use.arc_hw_oemcrypto}",
   ]
   configs += [ ":target_defaults" ]
-  libs = [ "bootstat" ]
+  libs = [
+    "arc_setup_rs",
+    "bootstat",
+  ]
   deps = [ "xml:libandroidxml" ]
 }
 

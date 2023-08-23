@@ -1058,11 +1058,10 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
   }
 
   if (base::PathExists(media_profile_xml)) {
-    std::optional<std::string> content =
+    ManagedString content =
         FilterMediaProfile(media_profile_xml, arc_paths_->camera_test_config);
-    EXIT_IF(!content);
 
-    if (content->size() > 0) {
+    if (content.value().size() > 0) {
       const base::FilePath new_media_profile_xml =
           base::FilePath(oem_mount_directory)
               .Append("etc")
@@ -1077,7 +1076,7 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
                                            0644 /*permissions*/,
                                            kHostArcCameraUid, kHostArcCameraGid)
                                  .first);
-      EXIT_IF(!base::WriteFileDescriptor(dest_fd.get(), *content));
+      EXIT_IF(!base::WriteFileDescriptor(dest_fd.get(), content.value()));
     }
   }
   base::FilePath hardware_features_xml =
@@ -1091,9 +1090,8 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
           .Append(arc_paths_->platform_xml_file_relative);
 
   segmentation::FeatureManagement feature_management;
-  std::optional<std::string> content =
+  ManagedString content =
       AppendFeatureManagement(hardware_features_xml, feature_management);
-  EXIT_IF(!content);
 
   brillo::SafeFD dest_parent(
       brillo::SafeFD::Root()
@@ -1104,7 +1102,7 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
                              .MakeFile(platform_xml_file.BaseName(),
                                        0644 /*permissions*/, kRootUid, kRootGid)
                              .first);
-  EXIT_IF(!base::WriteFileDescriptor(dest_fd.get(), *content));
+  EXIT_IF(!base::WriteFileDescriptor(dest_fd.get(), content.value()));
 
   // TODO(chromium:1083652) Remove dynamic shell scripts once all overlays
   // are migrated to static XML config.

@@ -1,0 +1,17 @@
+[package]
+name = "arc-setup-rs"
+version = "0.1.0"
+authors = ["The ChromiumOS Authors"]
+edition = "2021"
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "*"
+quick-xml = "0.30.0"
+
+[build-dependencies]
+anyhow = "*"
+cbindgen = "0.24.3"

@@ -4,6 +4,8 @@
 
 #include "arc/setup/arc_setup_util.h"
 
+#include <arc-setup/arc-setup-rs.h>
+
 #include <fcntl.h>
 #include <limits.h>
 #include <linux/loop.h>
@@ -57,8 +59,6 @@
 #include <brillo/files/safe_fd.h>
 #include <crypto/sha2.h>
 #include <libsegmentation/feature_management.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
 #include <vboot/crossystem.h>
 
 #include "arc/setup/xml/android_xml_util.h"
@@ -1116,30 +1116,45 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
   return WriteToFile(fstab_path, 0644, firstStageFstabTemplate);
 }
 
-std::optional<std::string> FilterMediaProfile(
-    const base::FilePath& media_profile_xml,
-    const base::FilePath& camera_test_config) {
+ManagedString::ManagedString(char* rust_ptr) : rust_ptr_(rust_ptr) {
+  CHECK(rust_ptr_);
+}
+
+ManagedString::ManagedString(std::string cc_str)
+    : rust_ptr_(nullptr), cc_str_(std::move(cc_str)) {}
+
+std::string_view ManagedString::value() const {
+  return rust_ptr_ ? std::string_view(rust_ptr_) : std::string_view(cc_str_);
+}
+
+ManagedString::~ManagedString() {
+  if (rust_ptr_) {
+    free_rs_string(rust_ptr_);
+  }
+}
+
+ManagedString FilterMediaProfile(const base::FilePath& media_profile_xml,
+                                 const base::FilePath& camera_test_config) {
   std::string content;
   if (!base::ReadFileToString(media_profile_xml, &content)) {
-    LOG(ERROR) << "Failed to read media profile from "
+    LOG(FATAL) << "Failed to read media profile from "
                << media_profile_xml.value();
-    return std::nullopt;
   }
 
   if (!base::PathExists(camera_test_config)) {
     // Don't filter if we cannot find the test config.
-    return content;
+    return ManagedString(std::move(content));
   }
   std::string json_str;
   if (!base::ReadFileToString(camera_test_config, &json_str)) {
     LOG(ERROR) << "Failed to read camera test config from "
                << camera_test_config.value();
-    return content;
+    return ManagedString(std::move(content));
   }
   auto config = base::JSONReader::ReadAndReturnValueWithError(json_str);
   if (!config.has_value() || !config->is_dict()) {
     LOG(ERROR) << "Failed to parse camera test config content: " << json_str;
-    return content;
+    return ManagedString(std::move(content));
   }
   const auto& config_dict = config->GetDict();
 
@@ -1148,142 +1163,30 @@ std::optional<std::string> FilterMediaProfile(
   bool enable_back_camera =
       config_dict.FindBool(kEnableBackCamera).value_or(true);
   if (enable_front_camera && enable_back_camera) {
-    return content;
+    return ManagedString(std::move(content));
   }
   if (!enable_front_camera && !enable_back_camera) {
     // All built-in cameras are filtered out. No need of media profile xml.
-    return "";
+    return ManagedString(std::string());
   }
 
-  LIBXML_TEST_VERSION
-  xmlDocPtr doc;
-
-  auto result = [&doc, &content, enable_front_camera,
-                 enable_back_camera]() -> std::optional<std::string> {
-    // XML_PARSE_NOBLANKS is not set to keep indent.
-    doc = xmlReadMemory(content.c_str(), content.size(), nullptr, nullptr, 0);
-    if (doc == nullptr) {
-      LOG(ERROR) << "Failed to parse media profile content:\n" << content;
-      return std::nullopt;
-    }
-
-    xmlNodePtr settings = xmlDocGetRootElement(doc);
-    if (settings == nullptr) {
-      LOG(ERROR) << "No root element node found in media profile content:\n"
-                 << content;
-      return std::nullopt;
-    }
-    if (std::string(reinterpret_cast<const char*>(settings->name)) !=
-        "MediaSettings") {
-      LOG(ERROR) << "Failed to find media settings in media profile content:\n"
-                 << content;
-      return std::nullopt;
-    }
-
-    std::vector<xmlNodePtr> camera_profiles;
-    for (xmlNodePtr cur = xmlFirstElementChild(settings); cur != nullptr;
-         cur = xmlNextElementSibling(cur)) {
-      if (std::string("CamcorderProfiles") !=
-          reinterpret_cast<const char*>(cur->name)) {
-        continue;
-      }
-      camera_profiles.push_back(cur);
-    }
-
-    switch (camera_profiles.size()) {
-      case 0:
-        LOG(ERROR) << "No camera profile found in media profile content:\n"
-                   << content;
-        return std::nullopt;
-      case 1:
-        // The original content of media profile may already be filtered by test
-        // code[1]. Here we ensure there's always have at least one camera to be
-        // tested is available after applying all filtering.  TODO(b/187239915):
-        // Remove filter in test code and unify filter logic here.
-        // [1]
-        // https://source.corp.google.com/chromeos_public/src/third_party/labpack/files/server/cros/camerabox_utils.py;rcl=d30bb56fe7ae9c39b122a28f1d5d2b64f928555c;l=106
-        return content;
-      case 2:
-        break;
-      default:
-        NOTREACHED() << "Found more than 2 camera profiles";
-        return std::nullopt;
-    }
-
-    xmlNodePtr front_camera_profile = nullptr;
-    xmlNodePtr back_camera_profile = nullptr;
-    for (xmlNodePtr profile : camera_profiles) {
-      auto* xml_camera_prop =
-          xmlGetProp(profile, reinterpret_cast<const xmlChar*>("cameraId"));
-      if (!xml_camera_prop) {
-        LOG(ERROR) << "Unable to get camera property.";
-        return std::nullopt;
-      }
-      auto* cameraId = reinterpret_cast<const char*>(xml_camera_prop);
-      if (std::string("0") == cameraId) {
-        CHECK(back_camera_profile == nullptr)
-            << "Duplicate back facing profile";
-        back_camera_profile = profile;
-      } else if (std::string("1") == cameraId) {
-        CHECK(front_camera_profile == nullptr)
-            << "Duplicate front facing profile";
-        front_camera_profile = profile;
-      } else {
-        LOG(ERROR) << "Unknown cameraId \"" << cameraId
-                   << "\" in media profile content:\n"
-                   << content;
-        xmlFree(xml_camera_prop);
-        return std::nullopt;
-      }
-      xmlFree(xml_camera_prop);
-    }
-
-    if (enable_front_camera) {
-      // After deleting the profile, the camera id of left profile should start
-      // from 0.
-      xmlSetProp(front_camera_profile,
-                 reinterpret_cast<const xmlChar*>("cameraId"),
-                 reinterpret_cast<const xmlChar*>("0"));
-    } else {
-      xmlUnlinkNode(front_camera_profile);
-      xmlFreeNode(front_camera_profile);
-    }
-
-    if (enable_back_camera) {
-      // After deleting the profile, the camera id of left profile should start
-      // from 0.
-      xmlSetProp(back_camera_profile,
-                 reinterpret_cast<const xmlChar*>("cameraId"),
-                 reinterpret_cast<const xmlChar*>("0"));
-    } else {
-      xmlUnlinkNode(back_camera_profile);
-      xmlFreeNode(back_camera_profile);
-    }
-
-    // Dump results.
-    xmlChar* buf = nullptr;
-    int size = 0;
-    xmlDocDumpFormatMemory(doc, &buf, &size, /* format */ 1);
-    CHECK(buf != nullptr) << "Failed to dump filtered xml result";
-    std::string xml_result(reinterpret_cast<const char*>(buf), size);
-    xmlFree(buf);
-    return xml_result;
-  }();
-  xmlFreeDoc(doc);
-  xmlCleanupParser();
-
-  return result;
+  bool is_error;
+  char* new_xml = filter_camera_config(content.c_str(), enable_front_camera,
+                                       enable_back_camera, &is_error);
+  if (is_error) {
+    LOG(FATAL) << "could not filter camera config: " << new_xml;
+  }
+  return ManagedString(new_xml);
 }
 
-std::optional<std::string> AppendFeatureManagement(
+ManagedString AppendFeatureManagement(
     const base::FilePath& hardware_profile_xml,
     segmentation::FeatureManagement& feature_management) {
   // Open the file
   std::string content;
   if (!base::ReadFileToString(hardware_profile_xml, &content)) {
-    LOG(ERROR) << "Failed to read media profile from "
+    LOG(FATAL) << "Failed to read media profile from "
                << hardware_profile_xml.value();
-    return std::nullopt;
   }
 
   // Get the list of features to enable.
@@ -1291,73 +1194,22 @@ std::optional<std::string> AppendFeatureManagement(
       feature_management.ListFeatures(segmentation::USAGE_ANDROID);
   if (features.size() == 0) {
     // Nothing to add.
-    return content;
+    return ManagedString(std::move(content));
   }
 
-  // Interpret the XML file
-  LIBXML_TEST_VERSION
-  xmlDocPtr doc;
+  std::vector<const char*> features_array;
+  for (const auto& feature : features) {
+    features_array.push_back(feature.c_str());
+  }
+  features_array.push_back(nullptr);
 
-  auto result = [&doc, &content, &features]() -> std::optional<std::string> {
-    // XML_PARSE_NOBLANKS is not set to keep indent.
-    doc = xmlReadMemory(content.c_str(), content.size(), nullptr, nullptr, 0);
-    if (doc == nullptr) {
-      LOG(ERROR) << "Failed to parse hardware profile content:\n" << content;
-      return std::nullopt;
-    }
-
-    xmlNodePtr permissions = xmlDocGetRootElement(doc);
-    if (permissions == nullptr) {
-      LOG(ERROR) << "No root element node found in hardware profile content:\n"
-                 << content;
-      return std::nullopt;
-    }
-    if (std::string(reinterpret_cast<const char*>(permissions->name)) !=
-        "permissions") {
-      LOG(ERROR) << "Failed to find permissions settings in hardware profile "
-                    "content:\n"
-                 << content;
-      return std::nullopt;
-    }
-
-    for (auto feature : features) {
-      xmlNodePtr feature_node = xmlNewDocNode(
-          doc, nullptr, reinterpret_cast<const xmlChar*>("feature"), nullptr);
-      if (!feature_node) {
-        LOG(ERROR) << "Unable to allocate a node to hardware profile content:\n"
-                   << content;
-        return std::nullopt;
-      }
-      if (xmlAddChild(permissions, feature_node) == nullptr) {
-        LOG(ERROR) << "Unable to add a node to hardware profile content:\n"
-                   << content;
-        xmlFreeNode(feature_node);
-        return std::nullopt;
-      }
-      if (xmlNewProp(feature_node, reinterpret_cast<const xmlChar*>("name"),
-                     reinterpret_cast<const xmlChar*>(
-                         base::StrCat(
-                             {"org.chromium.arc.feature_management.", feature})
-                             .c_str())) == nullptr) {
-        LOG(ERROR) << "Unable to add feature " << feature
-                   << "hardware profile content:\n"
-                   << content;
-        return std::nullopt;
-      }
-    }
-
-    // Dump results.
-    xmlChar* buf = nullptr;
-    int size = 0;
-    xmlDocDumpFormatMemory(doc, &buf, &size, /* format */ 1);
-    CHECK(buf != nullptr) << "Failed to dump filtered xml result";
-    std::string xml_result(reinterpret_cast<const char*>(buf), size);
-    xmlFree(buf);
-    return xml_result;
-  }();
-  xmlFreeDoc(doc);
-  xmlCleanupParser();
-
-  return result;
+  bool is_error;
+  char* new_xml = append_feature_management(content.c_str(),
+                                            features_array.data(), &is_error);
+  if (is_error) {
+    LOG(FATAL) << "could not append feature management: " << new_xml;
+  }
+  return ManagedString(new_xml);
 }
+
 }  // namespace arc

@@ -1326,16 +1326,16 @@ TEST_P(FilterMediaProfileTest, All) {
       WriteToFile(media_profile, 0755, GetParam().media_profile_content));
 
   auto result = FilterMediaProfile(media_profile, test_config);
-  ASSERT_TRUE(result);
 
-  auto remove_space = [](const std::string& s) {
+  auto remove_space = [](std::string_view s) {
     return base::JoinString(
         base::SplitStringPiece(s, " \t\n", base::TRIM_WHITESPACE,
                                base::SPLIT_WANT_NONEMPTY),
         "");
   };
 
-  ASSERT_EQ(remove_space(GetParam().result_content), remove_space(*result));
+  ASSERT_EQ(remove_space(GetParam().result_content),
+            remove_space(result.value()));
 }
 
 INSTANTIATE_TEST_SUITE_P(All,
@@ -1361,15 +1361,15 @@ TEST_P(AppendFeatureManagementTest, All) {
   }
   auto result =
       AppendFeatureManagement(hardware_property_file, feature_management);
-  ASSERT_TRUE(result);
-  auto remove_space = [](const std::string& s) {
+  auto remove_space = [](std::string_view s) {
     return base::JoinString(
         base::SplitStringPiece(s, " \t\n", base::TRIM_WHITESPACE,
                                base::SPLIT_WANT_NONEMPTY),
         "");
   };
 
-  ASSERT_EQ(remove_space(GetParam().result_content), remove_space(*result));
+  ASSERT_EQ(remove_space(GetParam().result_content),
+            remove_space(result.value()));
 }
 
 INSTANTIATE_TEST_SUITE_P(All,
