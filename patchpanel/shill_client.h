@@ -114,6 +114,9 @@ class ShillClient {
     // Return if the device is connected by checking if IPv4 or IPv6 address is
     // available.
     bool IsConnected() const;
+
+    // Return if the device has no IPv4 address and has an IPv6 address.
+    bool IsIPv6Only() const;
   };
 
   // Client callback for learning when shill default logical and physical

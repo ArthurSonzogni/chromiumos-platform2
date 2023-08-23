@@ -289,6 +289,7 @@ if (use.test) {
     sources = [
       "address_manager_test.cc",
       "arc_service_test.cc",
+      "clat_service_test.cc",
       "counters_service_test.cc",
       "crostini_service_test.cc",
       "datapath_test.cc",
