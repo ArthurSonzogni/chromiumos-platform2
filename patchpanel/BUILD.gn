@@ -144,6 +144,7 @@ static_library("libpatchpanel") {
     "patchpanel_adaptor.cc",
     "patchpanel_daemon.cc",
     "proto_utils.cc",
+    "qos_service.cc",
     "routing_service.cc",
     "rtnl_client.cc",
     "scoped_ns.cc",

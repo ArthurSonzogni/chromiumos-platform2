@@ -39,6 +39,8 @@
 
 namespace patchpanel {
 
+class QoSService;
+
 // The core implementation of the patchpanel daemon.
 class Manager {
  public:
@@ -279,6 +281,8 @@ class Manager {
   std::unique_ptr<MulticastCountersService> multicast_counters_svc_;
   // L2 neighbor monitor service.
   std::unique_ptr<NetworkMonitorService> network_monitor_svc_;
+  // QoS service.
+  std::unique_ptr<QoSService> qos_svc_;
 
   // The DHCP server controllers, keyed by its downstream interface.
   std::map<std::string, std::unique_ptr<DHCPServerController>>

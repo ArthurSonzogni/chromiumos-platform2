@@ -20,6 +20,7 @@
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/proto_utils.h"
+#include "patchpanel/qos_service.h"
 #include "patchpanel/scoped_ns.h"
 
 namespace patchpanel {
@@ -65,6 +66,8 @@ Manager::Manager(const base::FilePath& cmd_path,
   multicast_counters_svc_->Start();
   multicast_metrics_->Start(MulticastMetrics::Type::kTotal);
 
+  qos_svc_ = std::make_unique<QoSService>(datapath_.get());
+
   shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
       &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
   shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
@@ -108,6 +111,10 @@ Manager::~Manager() {
   cros_svc_.reset();
   arc_svc_.reset();
   clat_svc_.reset();
+
+  // Explicitly reset QoSService before Datapath::Stop() since the former one
+  // depends on Datapath.
+  qos_svc_.reset();
 
   // Tear down any remaining active lifeline file descriptors.
   std::vector<int> lifeline_fds;
