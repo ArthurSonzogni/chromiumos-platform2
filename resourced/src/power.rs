@@ -675,7 +675,7 @@ mod tests {
     const AFFECTED_CPU0: &str = "0";
     const AFFECTED_CPU1: &str = "1";
 
-    struct PolicyConfigs<'a >{
+    struct PolicyConfigs<'a> {
         policy_path: &'a str,
         governor: &'a config::Governor,
         affected_cpus: &'a str,
@@ -703,7 +703,10 @@ mod tests {
         for (i, policy) in TEST_CPUFREQ_POLICIES.iter().enumerate() {
             let governor_path = root.join(policy).join(SCALING_GOVERNOR_FILENAME);
             let scaling_governor = std::fs::read_to_string(governor_path).unwrap();
-            assert_eq!(scaling_governor.trim_end_matches('\n'), expected[i].to_name());
+            assert_eq!(
+                scaling_governor.trim_end_matches('\n'),
+                expected[i].to_name()
+            );
         }
     }
 
@@ -1093,20 +1096,20 @@ mod tests {
                 BatterySaverMode::Active,
                 "balance_power",
                 config::Governor::Conservative,
-                AFFECTED_CPU_NONE,  // policy0 affected_cpus, which has no affected cpus
-                AFFECTED_CPU1, // policy1 affected_cpus
-            )
+                AFFECTED_CPU_NONE, // policy0 affected_cpus, which has no affected cpus
+                AFFECTED_CPU1,     // policy1 affected_cpus
+            ),
         ];
 
         // Test device without EPP path
         for test in tests {
             let orig_governor = config::Governor::Performance;
-            let policy0 = PolicyConfigs{
+            let policy0 = PolicyConfigs {
                 policy_path: TEST_CPUFREQ_POLICIES[0],
                 governor: &orig_governor,
                 affected_cpus: test.3,
             };
-            let policy1 = PolicyConfigs{
+            let policy1 = PolicyConfigs {
                 policy_path: TEST_CPUFREQ_POLICIES[1],
                 governor: &orig_governor,
                 affected_cpus: test.4,
@@ -1402,12 +1405,12 @@ mod tests {
             powersave_bias: INIT_POWERSAVE_BIAS,
             sampling_rate: Some(INIT_SAMPLING_RATE),
         };
-        let policy0 = PolicyConfigs{
+        let policy0 = PolicyConfigs {
             policy_path: TEST_CPUFREQ_POLICIES[0],
             governor: &ondemand,
             affected_cpus: "0",
         };
-        let policy1 = PolicyConfigs{
+        let policy1 = PolicyConfigs {
             policy_path: TEST_CPUFREQ_POLICIES[1],
             governor: &ondemand,
             affected_cpus: "1",
