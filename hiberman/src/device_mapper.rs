@@ -68,7 +68,7 @@ impl DeviceMapper {
     /// Resume a suspended DM device.
     pub fn resume_device(name: &str) -> Result<()> {
         Self::run_dmsetup(["resume", name])
-            .context(format!("Failed to suspend DM device '{name}'"))?;
+            .context(format!("Failed to resume DM device '{name}'"))?;
         Ok(())
     }
 
