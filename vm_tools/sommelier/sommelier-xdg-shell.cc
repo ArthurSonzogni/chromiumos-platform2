@@ -181,7 +181,7 @@ static void sl_xdg_toplevel_show_window_menu(struct wl_client* client,
   // Figure out why this was.
   xdg_toplevel_shim()->show_window_menu(
       host->proxy, host_seat ? host_seat->proxy : nullptr, serial, x, y);
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_xdg_toplevel_set_app_id(struct wl_client* client,
                                        struct wl_resource* resource,
@@ -309,7 +309,7 @@ static void sl_xdg_surface_get_popup(struct wl_client* client,
 
   xdg_popup_shim()->add_listener(host_xdg_popup->proxy, &sl_xdg_popup_listener,
                                  host_xdg_popup);
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_xdg_surface_set_window_geometry(struct wl_client* client,
                                                struct wl_resource* resource,

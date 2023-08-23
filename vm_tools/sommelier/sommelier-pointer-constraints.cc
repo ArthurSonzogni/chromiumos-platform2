@@ -134,7 +134,7 @@ static void sl_pointer_constraints_lock_pointer(struct wl_client* client,
   zwp_locked_pointer_v1_add_listener(locked_pointer_host->proxy,
                                      &sl_locked_pointer_listener,
                                      locked_pointer_host);
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_pointer_constraints_confine_pointer(struct wl_client* client,
                                                    struct wl_resource* resource,
@@ -170,7 +170,7 @@ static void sl_pointer_constraints_confine_pointer(struct wl_client* client,
   zwp_confined_pointer_v1_add_listener(confined_pointer_host->proxy,
                                        &sl_confined_pointer_listener,
                                        confined_pointer_host);
-}  // NOLINT(whitespace/indent)
+}
 
 static struct zwp_pointer_constraints_v1_interface
     sl_pointer_constraints_implementation = {

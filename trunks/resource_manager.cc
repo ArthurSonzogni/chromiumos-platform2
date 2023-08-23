@@ -22,7 +22,7 @@
 
 #define IS_TPM_CC_VENDOR_CMD(c)            \
   (((c) == TPM_CC_VENDOR_SPECIFIC_MASK) || \
-   ((c) == TPM_CC_CR50_EXTENSION_COMMAND))  // NOLINT(whitespace/indent)
+   ((c) == TPM_CC_CR50_EXTENSION_COMMAND))
 
 #define IS_TPM2_STD_CMD(x) \
   ((x) >= trunks::TPM_CC_FIRST && (x) <= trunks::TPM_CC_LAST)

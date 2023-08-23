@@ -85,7 +85,7 @@ static void sl_host_shell_get_shell_surface(
   wl_shell_surface_add_listener(host_shell_surface->proxy,
                                 &sl_shell_surface_listener, host_shell_surface);
   host_surface->has_role = 1;
-}  // NOLINT(whitespace/indent)
+}
 
 static const struct wl_shell_interface sl_shell_implementation = {
     sl_host_shell_get_shell_surface};

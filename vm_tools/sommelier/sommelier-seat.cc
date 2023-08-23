@@ -71,7 +71,7 @@ static void sl_host_pointer_set_cursor(struct wl_client* client,
 
   wl_pointer_set_cursor(host->proxy, serial,
                         host_surface ? host_surface->proxy : nullptr, hsx, hsy);
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_host_pointer_release(struct wl_client* client,
                                     struct wl_resource* resource) {
@@ -146,7 +146,7 @@ static void sl_pointer_enter(void* data,
   if (host->focus_resource)
     sl_set_last_event_serial(host->focus_resource, serial);
   host->seat->last_serial = serial;
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_pointer_leave(void* data,
                              struct wl_pointer* pointer,
@@ -370,7 +370,7 @@ static void sl_keyboard_enter(void* data,
   sl_keyboard_set_focus(host, serial, host_surface, keys);
 
   host->seat->last_serial = serial;
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_keyboard_leave(void* data,
                               struct wl_keyboard* keyboard,
@@ -579,7 +579,7 @@ static void sl_host_touch_down(void* data,
   if (host->focus_resource)
     sl_set_last_event_serial(host->focus_resource, serial);
   host->seat->last_serial = serial;
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_host_touch_up(void* data,
                              struct wl_touch* touch,

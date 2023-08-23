@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"          // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
@@ -45,7 +45,7 @@ static void sl_gtk_surface_set_dbus_properties(
                    host->aura_shell->ctx->vm_id, application_id);
 
   zaura_surface_set_application_id(host->proxy, application_id_str);
-}  // NOLINT(whitespace/indent)
+}
 
 static const struct gtk_surface1_interface sl_gtk_surface_implementation = {
     sl_gtk_surface_set_dbus_properties, /*set_modal=*/DoNothing,

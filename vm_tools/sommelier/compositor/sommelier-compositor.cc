@@ -372,7 +372,7 @@ static void sl_host_surface_attach(struct wl_client* client,
       break;
     }
   }
-}  // NOLINT(whitespace/indent)
+}
 
 // Return the scale and offset from surface coordinates to buffer pixel
 // coordinates, taking the viewport into account (if any).

@@ -127,7 +127,7 @@ static void sl_relative_pointer_manager_get_relative_pointer(
   zwp_relative_pointer_v1_add_listener(relative_pointer_host->proxy,
                                        &sl_relative_pointer_listener,
                                        relative_pointer_host);
-}  // NOLINT(whitespace/indent)
+}
 
 static struct zwp_relative_pointer_manager_v1_interface
     sl_relative_pointer_manager_implementation = {

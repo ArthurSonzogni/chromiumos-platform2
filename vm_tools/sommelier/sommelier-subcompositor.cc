@@ -87,7 +87,7 @@ static void sl_subcompositor_get_subsurface(
       host->proxy, host_surface->proxy, host_parent->proxy);
   wl_subsurface_set_user_data(host_subsurface->proxy, host_subsurface);
   host_surface->has_role = 1;
-}  // NOLINT(whitespace/indent)
+}
 
 static const struct wl_subcompositor_interface sl_subcompositor_implementation =
     {sl_subcompositor_destroy, sl_subcompositor_get_subsurface};

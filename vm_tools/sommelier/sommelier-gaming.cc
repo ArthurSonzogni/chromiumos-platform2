@@ -676,7 +676,7 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
       host_gamepad->name, host_gamepad->bus, host_gamepad->vendor_id,
       host_gamepad->product_id, host_gamepad->version,
       (host_gamepad->input_mapping) ? host_gamepad->input_mapping->id : "none");
-}  // NOLINT(whitespace/indent), lint bug b/173143790
+}
 
 // Note: not currently implemented by Exo.
 static void sl_internal_gaming_seat_gamepad_added(

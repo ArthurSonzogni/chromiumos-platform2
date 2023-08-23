@@ -338,7 +338,7 @@ struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
   host_buffer->is_drm = is_drm;
 
   return host_buffer;
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_internal_data_offer_destroy(struct sl_data_offer* host) {
   TRACE_EVENT("other", "sl_internal_data_offer_destroy");

@@ -351,12 +351,12 @@ static void sl_data_device_start_drag(struct wl_client* client,
                             host_source ? host_source->proxy : nullptr,
                             host_origin ? host_origin->proxy : nullptr,
                             host_icon ? host_icon->proxy : nullptr, serial);
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_data_device_release(struct wl_client* client,
                                    struct wl_resource* resource) {
   wl_resource_destroy(resource);
-}  // NOLINT(whitespace/indent)
+}
 
 static const struct wl_data_device_interface sl_data_device_implementation = {
     sl_data_device_start_drag,
@@ -405,7 +405,7 @@ static void sl_data_device_enter(void* data,
 
   wl_data_device_send_enter(host->resource, serial, host_surface->resource, ix,
                             iy, host_data_offer->resource);
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_data_device_leave(void* data,
                                  struct wl_data_device* data_device) {
@@ -512,7 +512,7 @@ static void sl_data_device_manager_get_data_device(
       wl_data_device_manager_get_data_device(host->proxy, host_seat->proxy);
   wl_data_device_add_listener(host_data_device->proxy, &sl_data_device_listener,
                               host_data_device);
-}  // NOLINT(whitespace/indent)
+}
 
 static const struct wl_data_device_manager_interface
     sl_data_device_manager_implementation = {

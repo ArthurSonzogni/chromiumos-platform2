@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"            // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
 #include "weak-resource-ptr.h"    // NOLINT(build/include_directory)
 
@@ -497,7 +497,7 @@ static void sl_text_input_extension_get_extended_text_input(
   zcr_extended_text_input_v1_add_listener(extended_text_input_host->proxy,
                                           &sl_extended_text_input_listener,
                                           extended_text_input_host);
-}  // NOLINT(whitespace/indent)
+}
 
 static void sl_destroy_host_text_input_extension(struct wl_resource* resource) {
   struct sl_host_text_input_extension* host =
@@ -627,7 +627,7 @@ static void sl_text_input_crostini_manager_get_text_input_crostini(
   wl_resource_set_implementation(
       text_input_crostini_resource, &sl_text_input_crostini_implementation,
       host_text_input, sl_destroy_host_text_input_crostini);
-}  // NOLINT(whitespace/indent)
+}
 
 static struct zcr_text_input_crostini_manager_v1_interface
     sl_text_input_crostini_manager_implementation = {
