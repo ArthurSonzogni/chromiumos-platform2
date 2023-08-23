@@ -35,9 +35,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libglib_bridge",
     "libmetrics",
-    "openssl",
     "protobuf-lite",
-    "re2",
     "system_api",
   ]
   if (use.qrtr) {
