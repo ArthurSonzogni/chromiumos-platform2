@@ -5,6 +5,7 @@
 #ifndef MINIOS_DRAW_UTILS_H_
 #define MINIOS_DRAW_UTILS_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -156,6 +157,9 @@ class DrawUtils : public DrawInterface {
   FRIEND_TEST(DrawUtilsTest, GetFreconConstNoInt);
   FRIEND_TEST(DrawUtilsTest, GetFreconConstNoFile);
   FRIEND_TEST(DrawUtilsTestMocks, ShowFooter);
+  FRIEND_TEST(DrawUtilsTestMocks, ShowInvalidVersion);
+  FRIEND_TEST(DrawUtilsTestMocks, ShowLeftToRightVersion);
+  FRIEND_TEST(DrawUtilsTestMocks, ShowRightToLeftVersion);
 
   // Shows a progress bar (box of a predetermined location) at the given offset
   // with the given size. Color should be given as a hex string. Acts as a No-op
@@ -202,6 +206,9 @@ class DrawUtils : public DrawInterface {
   // Get hardware Id from crossystem. Set hwid to `CHROMEBOOK` as default.
   void ReadHardwareId();
 
+  // Show minios version in UI.
+  void ShowVersion();
+
   ProcessManagerInterface* process_manager_;
 
   // Timer for animating the indeterminate progress bar.
@@ -246,6 +253,9 @@ class DrawUtils : public DrawInterface {
 
   // Whether the device has a detachable keyboard.
   bool is_detachable_{false};
+
+  // The version parsed from cmdline, nullopt on failure.
+  std::optional<std::string> minios_version_;
 };
 
 }  // namespace minios

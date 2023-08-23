@@ -12,6 +12,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "minios/utils.h"
+
 namespace minios {
 
 // Dropdown Menu Colors.
@@ -72,6 +74,7 @@ bool DrawUtils::Init() {
   }
   GetFreconConstants();
   InitIndeterminateProgressBar();
+  minios_version_ = GetMiniOSVersion();
   return true;
 }
 
@@ -573,12 +576,14 @@ void DrawUtils::LocaleChange(int selected_locale) {
   ReadDimensionConstants();
   ClearScreen();
   ShowFooter();
+  ShowVersion();
 }
 
 void DrawUtils::MessageBaseScreen() {
   ClearMainArea();
   ShowLanguageMenu(false);
   ShowFooter();
+  ShowVersion();
 }
 
 void DrawUtils::ReadDimensionConstants() {
@@ -755,6 +760,18 @@ void DrawUtils::ReadHardwareId() {
       output, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   hwid_ = hwid_parts[0];
   return;
+}
+
+void DrawUtils::ShowVersion() {
+  if (!minios_version_ || minios_version_->empty()) {
+    return;
+  }
+  // Same Y offset as the language select drop down.
+  const int kVersionInfoY = -frecon_canvas_size_ / 2 + 40;
+  // As far to the right (or left if `IsLocaleRightToLeft`) as possible.
+  int kVersionInfoX = IsLocaleRightToLeft() ? -(frecon_canvas_size_ / 2)
+                                            : (frecon_canvas_size_ / 2);
+  ShowText(minios_version_.value(), kVersionInfoX, kVersionInfoY, "grey");
 }
 
 }  // namespace minios
