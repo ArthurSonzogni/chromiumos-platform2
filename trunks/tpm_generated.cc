@@ -7505,50 +7505,6 @@ TPM2B_SENSITIVE Make_TPM2B_SENSITIVE(const TPMT_SENSITIVE& inner) {
   return tpm2b;
 }
 
-TPM_RC Serialize__PRIVATE(const _PRIVATE& value, std::string* buffer) {
-  TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(3) << __func__;
-
-  result = Serialize_TPM2B_DIGEST(value.integrity_outer, buffer);
-  if (result) {
-    return result;
-  }
-
-  result = Serialize_TPM2B_DIGEST(value.integrity_inner, buffer);
-  if (result) {
-    return result;
-  }
-
-  result = Serialize_TPMT_SENSITIVE(value.sensitive, buffer);
-  if (result) {
-    return result;
-  }
-  return result;
-}
-
-TPM_RC Parse__PRIVATE(std::string* buffer,
-                      _PRIVATE* value,
-                      std::string* value_bytes) {
-  TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(3) << __func__;
-
-  result = Parse_TPM2B_DIGEST(buffer, &value->integrity_outer, value_bytes);
-  if (result) {
-    return result;
-  }
-
-  result = Parse_TPM2B_DIGEST(buffer, &value->integrity_inner, value_bytes);
-  if (result) {
-    return result;
-  }
-
-  result = Parse_TPMT_SENSITIVE(buffer, &value->sensitive, value_bytes);
-  if (result) {
-    return result;
-  }
-  return result;
-}
-
 TPM_RC Serialize_TPM2B_PRIVATE(const TPM2B_PRIVATE& value,
                                std::string* buffer) {
   TPM_RC result = TPM_RC_SUCCESS;
@@ -7607,40 +7563,6 @@ std::string StringFrom_TPM2B_PRIVATE(const TPM2B_PRIVATE& tpm2b) {
   CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
-}
-
-TPM_RC Serialize__ID_OBJECT(const _ID_OBJECT& value, std::string* buffer) {
-  TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(3) << __func__;
-
-  result = Serialize_TPM2B_DIGEST(value.integrity_hmac, buffer);
-  if (result) {
-    return result;
-  }
-
-  result = Serialize_TPM2B_DIGEST(value.enc_identity, buffer);
-  if (result) {
-    return result;
-  }
-  return result;
-}
-
-TPM_RC Parse__ID_OBJECT(std::string* buffer,
-                        _ID_OBJECT* value,
-                        std::string* value_bytes) {
-  TPM_RC result = TPM_RC_SUCCESS;
-  VLOG(3) << __func__;
-
-  result = Parse_TPM2B_DIGEST(buffer, &value->integrity_hmac, value_bytes);
-  if (result) {
-    return result;
-  }
-
-  result = Parse_TPM2B_DIGEST(buffer, &value->enc_identity, value_bytes);
-  if (result) {
-    return result;
-  }
-  return result;
 }
 
 TPM_RC Serialize_TPM2B_ID_OBJECT(const TPM2B_ID_OBJECT& value,

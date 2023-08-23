@@ -1579,25 +1579,14 @@ struct TPM2B_SENSITIVE {
   TPMT_SENSITIVE sensitive_area = {};
 };
 
-struct _PRIVATE {
-  TPM2B_DIGEST integrity_outer = {};
-  TPM2B_DIGEST integrity_inner = {};
-  TPMT_SENSITIVE sensitive = {};
-};
-
 struct TPM2B_PRIVATE {
   UINT16 size = {};
-  BYTE buffer[sizeof(_PRIVATE)] = {};
-};
-
-struct _ID_OBJECT {
-  TPM2B_DIGEST integrity_hmac = {};
-  TPM2B_DIGEST enc_identity = {};
+  BYTE buffer[MAX_DIGEST_BUFFER] = {};
 };
 
 struct TPM2B_ID_OBJECT {
   UINT16 size = {};
-  BYTE credential[sizeof(_ID_OBJECT)] = {};
+  BYTE credential[MAX_DIGEST_BUFFER] = {};
 };
 
 struct TPMS_NV_PUBLIC {
@@ -3066,13 +3055,6 @@ TRUNKS_EXPORT TPM_RC Parse_TPM2B_SENSITIVE(std::string* buffer,
 
 TRUNKS_EXPORT TPM2B_SENSITIVE Make_TPM2B_SENSITIVE(const TPMT_SENSITIVE& inner);
 
-TRUNKS_EXPORT TPM_RC Serialize__PRIVATE(const _PRIVATE& value,
-                                        std::string* buffer);
-
-TRUNKS_EXPORT TPM_RC Parse__PRIVATE(std::string* buffer,
-                                    _PRIVATE* value,
-                                    std::string* value_bytes);
-
 TRUNKS_EXPORT TPM_RC Serialize_TPM2B_PRIVATE(const TPM2B_PRIVATE& value,
                                              std::string* buffer);
 
@@ -3082,13 +3064,6 @@ TRUNKS_EXPORT TPM_RC Parse_TPM2B_PRIVATE(std::string* buffer,
 
 TRUNKS_EXPORT TPM2B_PRIVATE Make_TPM2B_PRIVATE(const std::string& bytes);
 TRUNKS_EXPORT std::string StringFrom_TPM2B_PRIVATE(const TPM2B_PRIVATE& tpm2b);
-
-TRUNKS_EXPORT TPM_RC Serialize__ID_OBJECT(const _ID_OBJECT& value,
-                                          std::string* buffer);
-
-TRUNKS_EXPORT TPM_RC Parse__ID_OBJECT(std::string* buffer,
-                                      _ID_OBJECT* value,
-                                      std::string* value_bytes);
 
 TRUNKS_EXPORT TPM_RC Serialize_TPM2B_ID_OBJECT(const TPM2B_ID_OBJECT& value,
                                                std::string* buffer);
