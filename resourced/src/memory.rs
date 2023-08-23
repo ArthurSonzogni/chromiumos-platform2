@@ -15,12 +15,16 @@ use crate::common;
 
 // Critical margin is 5.2% of total memory, moderate margin is 40% of total
 // memory. See also /usr/share/cros/init/swap.sh on DUT. BPS are basis points.
-const CRITICAL_MARGIN_BPS: u64 = 520;
-const MODERATE_MARGIN_BPS: u64 = 4000;
+const DEFAULT_CRITICAL_MARGIN_BPS: u64 = 520;
+const DEFAULT_MODERATE_MARGIN_BPS: u64 = 4000;
+
+// A quarter of swap free is counted as available memory.
+const DEFAULT_RAM_SWAP_WEIGHT: u64 = 4;
 
 // Memory config paths.
 const RESOURCED_CONFIG_DIR: &str = "run/resourced";
 const MARGINS_FILENAME: &str = "margins_kb";
+const RAM_SWAP_WEIGHT_FILENAME: &str = "ram_swap_weight";
 
 // The available memory for background components is discounted by 300 MiB.
 const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
@@ -230,9 +234,13 @@ fn get_memory_parameters() -> MemoryParameters {
     });
     let min_filelist: u64 =
         common::read_file_to_u64("/proc/sys/vm/min_filelist_kbytes").unwrap_or(0);
-    // TODO(vovoy): Use a regular config file instead of sysfs file.
     static RAM_SWAP_WEIGHT: Lazy<u64> = Lazy::new(|| {
-        common::read_file_to_u64("/sys/kernel/mm/chromeos-low_mem/ram_vs_swap_weight").unwrap_or(0)
+        common::read_file_to_u64(
+            Path::new("/")
+                .join(RESOURCED_CONFIG_DIR)
+                .join(RAM_SWAP_WEIGHT_FILENAME),
+        )
+        .unwrap_or(DEFAULT_RAM_SWAP_WEIGHT)
     });
     MemoryParameters {
         reserved_free: *RESERVED_FREE,
@@ -341,7 +349,7 @@ fn get_default_memory_margins_kb_impl() -> MemoryMarginsKb {
         Err(e) => error!("Couldn't read {}: {:#}", &margin_path.display(), e),
     }
 
-    get_memory_margins_kb_from_bps(CRITICAL_MARGIN_BPS, MODERATE_MARGIN_BPS)
+    get_memory_margins_kb_from_bps(DEFAULT_CRITICAL_MARGIN_BPS, DEFAULT_MODERATE_MARGIN_BPS)
 }
 
 pub fn get_memory_margins_kb() -> (u64, u64) {
@@ -492,17 +500,32 @@ fn init_memory_configs_impl(root: &Path) -> Result<()> {
     // Creates the memory margins config file.
     let margins_path = config_path.join(MARGINS_FILENAME);
     if !margins_path.exists() {
-        let mut margins = File::create(margins_path)?;
+        let mut margins_file = File::create(margins_path)?;
 
-        let default_margins =
-            get_memory_margins_kb_from_bps(CRITICAL_MARGIN_BPS, MODERATE_MARGIN_BPS);
-        margins.write_all(
+        let default_margins = get_memory_margins_kb_from_bps(
+            DEFAULT_CRITICAL_MARGIN_BPS,
+            DEFAULT_MODERATE_MARGIN_BPS,
+        );
+        margins_file.write_all(
             format!("{} {}", default_margins.critical, default_margins.moderate).as_bytes(),
         )?;
     } else if !margins_path.is_file() {
         bail!(
             "The margins path {} is not a regular file.",
             margins_path.display()
+        );
+    }
+
+    // Creates the memory ram_swap_weight config file.
+    let ram_swap_weight_path = config_path.join(RAM_SWAP_WEIGHT_FILENAME);
+    if !ram_swap_weight_path.exists() {
+        let mut ram_swap_weight_file = File::create(ram_swap_weight_path)?;
+
+        ram_swap_weight_file.write_all(DEFAULT_RAM_SWAP_WEIGHT.to_string().as_bytes())?;
+    } else if !ram_swap_weight_path.is_file() {
+        bail!(
+            "The ram swap weight path {} is not a regular file.",
+            ram_swap_weight_path.display()
         );
     }
 
@@ -724,13 +747,13 @@ full avg10=29.29 avg60=19.01 avg300=5.44 total=17589167"#;
     fn test_init_memory_configs_margins_exist() {
         let root = tempdir().unwrap();
         std::fs::create_dir_all(root.path().join(RESOURCED_CONFIG_DIR)).unwrap();
-        let mut margins = File::create(
+        let mut margins_file = File::create(
             root.path()
                 .join(RESOURCED_CONFIG_DIR)
                 .join(MARGINS_FILENAME),
         )
         .unwrap();
-        margins.write_all("100 1000".as_bytes()).unwrap();
+        margins_file.write_all("100 1000".as_bytes()).unwrap();
         assert!(init_memory_configs_impl(root.path()).is_ok());
     }
 
@@ -741,6 +764,32 @@ full avg10=29.29 avg60=19.01 avg300=5.44 total=17589167"#;
             root.path()
                 .join(RESOURCED_CONFIG_DIR)
                 .join(MARGINS_FILENAME),
+        )
+        .unwrap();
+        assert!(init_memory_configs_impl(root.path()).is_err());
+    }
+
+    #[test]
+    fn test_init_memory_configs_ram_swap_weight_exists() {
+        let root = tempdir().unwrap();
+        std::fs::create_dir_all(root.path().join(RESOURCED_CONFIG_DIR)).unwrap();
+        let mut ram_swap_weight_file = File::create(
+            root.path()
+                .join(RESOURCED_CONFIG_DIR)
+                .join(RAM_SWAP_WEIGHT_FILENAME),
+        )
+        .unwrap();
+        ram_swap_weight_file.write_all("2".as_bytes()).unwrap();
+        assert!(init_memory_configs_impl(root.path()).is_ok());
+    }
+
+    #[test]
+    fn test_init_memory_configs_ram_swap_weight_is_dir() {
+        let root = tempdir().unwrap();
+        std::fs::create_dir_all(
+            root.path()
+                .join(RESOURCED_CONFIG_DIR)
+                .join(RAM_SWAP_WEIGHT_FILENAME),
         )
         .unwrap();
         assert!(init_memory_configs_impl(root.path()).is_err());
