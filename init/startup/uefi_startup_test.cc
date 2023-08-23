@@ -49,12 +49,10 @@ class MockUefiDelegate : public UefiDelegate {
               GetFwupdUserAndGroup,
               (),
               (const, override));
-  MOCK_METHOD(bool, MountEfivarfs, (), (override));
+  MOCK_METHOD(bool, MountEfivarfs, (const UserAndGroup& fwupd), (override));
   MOCK_METHOD(bool,
-              MakeUefiVarWritableByFwupd,
-              (const std::string& vendor,
-               const std::string& name,
-               const UserAndGroup& fwupd),
+              MakeUefiVarMutable,
+              (const std::string& vendor, const std::string& name),
               (override));
   MOCK_METHOD(void,
               MakeEsrtReadableByFwupd,
@@ -75,10 +73,11 @@ TEST(UefiStartup, UefiEnabled) {
   EXPECT_CALL(mock_uefi_delegate, IsUefiEnabled()).WillOnce(Return(true));
   EXPECT_CALL(mock_uefi_delegate, GetFwupdUserAndGroup())
       .WillOnce(Return(fwupd));
-  EXPECT_CALL(mock_uefi_delegate, MountEfivarfs()).WillOnce(Return(true));
-  EXPECT_CALL(
-      mock_uefi_delegate,
-      MakeUefiVarWritableByFwupd(kEfiImageSecurityDatabaseGuid, "dbx", fwupd))
+  EXPECT_CALL(mock_uefi_delegate,
+              MountEfivarfs(UefiDelegate::UserAndGroup{1, 2}))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_uefi_delegate,
+              MakeUefiVarMutable(kEfiImageSecurityDatabaseGuid, "dbx"))
       .WillOnce(Return(true));
   EXPECT_CALL(mock_uefi_delegate, MakeEsrtReadableByFwupd(fwupd));
   EXPECT_CALL(mock_uefi_delegate,
@@ -135,11 +134,13 @@ TEST_F(UefiDelegateTest, MountEfivarfs) {
   const base::FilePath efivars_dir = root_dir_.Append(kEfivarsDir);
   ASSERT_TRUE(base::CreateDirectory(efivars_dir));
 
-  EXPECT_CALL(mock_platform_, Mount(kFsTypeEfivarfs, efivars_dir,
-                                    kFsTypeEfivarfs, kCommonMountFlags, ""))
+  EXPECT_CALL(mock_platform_,
+              Mount(kFsTypeEfivarfs, efivars_dir, kFsTypeEfivarfs,
+                    kCommonMountFlags, "uid=123,gid=456"))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(uefi_delegate_->MountEfivarfs());
+  EXPECT_TRUE(
+      uefi_delegate_->MountEfivarfs(UefiDelegate::UserAndGroup{123, 456}));
 }
 
 // Test modifying a UEFI var.
@@ -156,11 +157,9 @@ TEST_F(UefiDelegateTest, ModifyVar) {
 
   EXPECT_CALL(mock_platform_, Ioctl(_, FS_IOC_GETFLAGS, _)).WillOnce(Return(0));
   EXPECT_CALL(mock_platform_, Ioctl(_, FS_IOC_SETFLAGS, _)).WillOnce(Return(0));
-  EXPECT_CALL(mock_platform_, Fchown(_, 123, 456)).WillOnce(Return(true));
 
-  EXPECT_TRUE(uefi_delegate_->MakeUefiVarWritableByFwupd(
-      "1a2a2d4e-6e6a-468f-944c-c00d14d92c1e", "myvar",
-      UefiDelegate::UserAndGroup{123, 456}));
+  EXPECT_TRUE(uefi_delegate_->MakeUefiVarMutable(
+      "1a2a2d4e-6e6a-468f-944c-c00d14d92c1e", "myvar"));
 }
 
 // Test modifying a UEFI var that doesn't exist.
@@ -172,9 +171,8 @@ TEST_F(UefiDelegateTest, ModifyInvalidVar) {
   EXPECT_CALL(mock_platform_, Open(var_path, O_RDONLY | O_CLOEXEC))
       .WillOnce(OpenImpl);
 
-  EXPECT_FALSE(uefi_delegate_->MakeUefiVarWritableByFwupd(
-      "1a2a2d4e-6e6a-468f-944c-c00d14d92c1e", "myvar",
-      UefiDelegate::UserAndGroup{123, 456}));
+  EXPECT_FALSE(uefi_delegate_->MakeUefiVarMutable(
+      "1a2a2d4e-6e6a-468f-944c-c00d14d92c1e", "myvar"));
 }
 
 // Test making the ESRT readable by fwupd.
