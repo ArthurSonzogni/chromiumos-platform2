@@ -1,0 +1,46 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":fbpreprocessord",
+    ":install_init",
+    ":install_tmpfiles_config",
+    ":libfbpreprocessord",
+  ]
+}
+
+pkg_config("target_defaults") {
+  defines = []
+
+  # NOSORT
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+static_library("libfbpreprocessord") {
+  sources = [ "fbpreprocessor_daemon.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
+executable("fbpreprocessord") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+  deps = [ ":libfbpreprocessord" ]
+}
+
+install_config("install_init") {
+  sources = [ "init/fbpreprocessord.conf" ]
+  install_path = "upstart"
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/fbpreprocessord.conf" ]
+  install_path = "tmpfilesd"
+}

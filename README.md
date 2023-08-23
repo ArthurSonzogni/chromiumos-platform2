@@ -63,6 +63,7 @@ copies.
 | [dns-proxy](./dns-proxy/) | DNS Proxy daemon |
 | [easy-unlock](./easy-unlock/) | Daemon for handling Easy Unlock requests (e.g. unlocking Chromebooks with an Android device) |
 | [faced](./faced/) | Face Authentication Daemon |
+| [fbpreprocessor](./fbpreprocessor/) | Debug file preprocessing for feedback reports |
 | [feature_usage](./feature_usage/) | Library to provide a unified approach to report feature usage events |
 | [featured](./featured/) | Feature daemon for enabling and managing platform features |
 | [federated](./federated/) | Federated computation service (Federated Analytics & Federated Learning) |
