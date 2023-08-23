@@ -1414,7 +1414,13 @@ void Cellular::Connect(CellularService* service, Error* error) {
 
   // Build default APN list, guaranteed to never be empty.
   std::deque<Stringmap> apn_try_list = BuildDefaultApnTryList();
-  CHECK(!apn_try_list.empty());
+  if (apn_try_list.empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidApn,
+                          "Connect Failed: No APNs provided.");
+    NotifyCellularConnectionResult(*error, service->iccid(),
+                                   service->is_in_user_connect(), apn_type);
+    return;
+  }
 
   OnConnecting();
   capability_->Connect(
