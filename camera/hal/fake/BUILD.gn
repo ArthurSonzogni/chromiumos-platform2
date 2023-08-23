@@ -13,7 +13,6 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
-    "absl",
     "libcros_camera_android_deps",
     "libyuv",
   ]

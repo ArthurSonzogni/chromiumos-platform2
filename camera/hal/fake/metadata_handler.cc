@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <limits>
-#include <utility>
 #include <vector>
 
 #include <base/containers/fixed_flat_set.h>
@@ -118,9 +117,9 @@ std::vector<int32_t> GetDefaultFpsRangeForVideo(const CameraSpec& spec) {
 
 }  // namespace
 
-absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
-                                 android::CameraMetadata* request_metadata,
-                                 const CameraSpec& spec) {
+bool FillDefaultMetadata(android::CameraMetadata* static_metadata,
+                         android::CameraMetadata* request_metadata,
+                         const CameraSpec& spec) {
   MetadataUpdater update_static(static_metadata);
   MetadataUpdater update_request(request_metadata);
 
@@ -407,13 +406,10 @@ absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
   update_static(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS,
                 std::vector<int32_t>(result_tags.begin(), result_tags.end()));
 
-  return update_static.ok() && update_request.ok()
-             ? absl::OkStatus()
-             : absl::InternalError("metadata update");
+  return update_static.ok() && update_request.ok();
 }
 
-absl::Status FillResultMetadata(android::CameraMetadata* metadata,
-                                uint64_t timestamp) {
+bool FillResultMetadata(android::CameraMetadata* metadata, uint64_t timestamp) {
   MetadataUpdater update(metadata);
 
   update(ANDROID_CONTROL_AE_STATE, ANDROID_CONTROL_AE_STATE_CONVERGED);
@@ -424,8 +420,7 @@ absl::Status FillResultMetadata(android::CameraMetadata* metadata,
   update(ANDROID_REQUEST_PIPELINE_DEPTH, uint8_t{2});
   update(ANDROID_SENSOR_TIMESTAMP, static_cast<int64_t>(timestamp));
 
-  return update.ok() ? absl::OkStatus()
-                     : absl::InternalError("metadata update");
+  return update.ok();
 }
 
 MetadataHandler::MetadataHandler(
@@ -449,7 +444,7 @@ const camera_metadata_t* MetadataHandler::GetDefaultRequestSettings(
 android::CameraMetadata MetadataHandler::CreateDefaultRequestSettings(
     int template_type) {
   android::CameraMetadata metadata = request_template_;
-  absl::Status ret;
+  bool ret;
   switch (template_type) {
     case CAMERA3_TEMPLATE_PREVIEW:
       ret = FillDefaultPreviewSettings(&metadata);
@@ -473,73 +468,67 @@ android::CameraMetadata MetadataHandler::CreateDefaultRequestSettings(
       LOGF(ERROR) << "Invalid template request type: " << template_type;
       return android::CameraMetadata();
   }
-  if (!ret.ok()) {
-    LOGF(ERROR) << "CreateDefaultRequestSettings failed: " << ret;
+  if (!ret) {
+    LOGF(ERROR) << "CreateDefaultRequestSettings failed";
     return android::CameraMetadata();
   }
   return metadata;
 }
 
-absl::Status MetadataHandler::FillDefaultPreviewSettings(
+bool MetadataHandler::FillDefaultPreviewSettings(
     android::CameraMetadata* metadata) {
   MetadataUpdater update(metadata);
 
   update(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, GetDefaultFpsRange(spec_));
 
-  return update.ok() ? absl::OkStatus()
-                     : absl::InternalError("metadata update");
+  return update.ok();
 }
 
-absl::Status MetadataHandler::FillDefaultStillCaptureSettings(
+bool MetadataHandler::FillDefaultStillCaptureSettings(
     android::CameraMetadata* metadata) {
   MetadataUpdater update(metadata);
 
   update(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, GetDefaultFpsRange(spec_));
 
-  return update.ok() ? absl::OkStatus()
-                     : absl::InternalError("metadata update");
+  return update.ok();
 }
 
-absl::Status MetadataHandler::FillDefaultVideoRecordSettings(
+bool MetadataHandler::FillDefaultVideoRecordSettings(
     android::CameraMetadata* metadata) {
   MetadataUpdater update(metadata);
 
   update(ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
          GetDefaultFpsRangeForVideo(spec_));
 
-  return update.ok() ? absl::OkStatus()
-                     : absl::InternalError("metadata update");
+  return update.ok();
 }
 
-absl::Status MetadataHandler::FillDefaultVideoSnapshotSettings(
+bool MetadataHandler::FillDefaultVideoSnapshotSettings(
     android::CameraMetadata* metadata) {
   MetadataUpdater update(metadata);
 
   update(ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
          GetDefaultFpsRangeForVideo(spec_));
 
-  return update.ok() ? absl::OkStatus()
-                     : absl::InternalError("metadata update");
+  return update.ok();
 }
 
-absl::Status MetadataHandler::FillDefaultZeroShutterLagSettings(
+bool MetadataHandler::FillDefaultZeroShutterLagSettings(
     android::CameraMetadata* metadata) {
   MetadataUpdater update(metadata);
 
   update(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, GetDefaultFpsRange(spec_));
 
-  return update.ok() ? absl::OkStatus()
-                     : absl::InternalError("metadata update");
+  return update.ok();
 }
 
-absl::Status MetadataHandler::FillDefaultManualSettings(
+bool MetadataHandler::FillDefaultManualSettings(
     android::CameraMetadata* metadata) {
   MetadataUpdater update(metadata);
 
   update(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, GetDefaultFpsRange(spec_));
 
-  return update.ok() ? absl::OkStatus()
-                     : absl::InternalError("metadata update");
+  return update.ok();
 }
 
 }  // namespace cros

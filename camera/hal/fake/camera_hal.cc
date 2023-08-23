@@ -223,7 +223,7 @@ bool CameraHal::SetUpCamera(int id, const CameraSpec& spec) {
 
   android::CameraMetadata static_metadata, request_template;
 
-  if (!FillDefaultMetadata(&static_metadata, &request_template, spec).ok()) {
+  if (!FillDefaultMetadata(&static_metadata, &request_template, spec)) {
     return false;
   }
 

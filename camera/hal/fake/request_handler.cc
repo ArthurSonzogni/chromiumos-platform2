@@ -126,7 +126,7 @@ void RequestHandler::HandleRequest(std::unique_ptr<CaptureRequest> request) {
   }
 
   android::CameraMetadata result_metadata = request_metadata;
-  CHECK(FillResultMetadata(&result_metadata, current_timestamp).ok());
+  CHECK(FillResultMetadata(&result_metadata, current_timestamp));
 
   last_response_timestamp_ = current_timestamp;
   NotifyShutter(frame_number, current_timestamp);
@@ -156,22 +156,21 @@ bool RequestHandler::FillResultBuffer(camera3_stream_buffer_t& buffer) {
 }
 
 void RequestHandler::StreamOn(const std::vector<camera3_stream_t*>& streams,
-                              base::OnceCallback<void(absl::Status)> callback) {
+                              base::OnceCallback<void(bool)> callback) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
-  auto ret = StreamOnImpl(streams);
+  bool ret = StreamOnImpl(streams);
   std::move(callback).Run(ret);
 }
 
-void RequestHandler::StreamOff(
-    base::OnceCallback<void(absl::Status)> callback) {
+void RequestHandler::StreamOff(base::OnceCallback<void(bool)> callback) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
-  auto ret = StreamOffImpl();
+  bool ret = StreamOffImpl();
   std::move(callback).Run(ret);
 }
 
-absl::Status RequestHandler::StreamOnImpl(
+bool RequestHandler::StreamOnImpl(
     const std::vector<camera3_stream_t*>& streams) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
@@ -182,21 +181,21 @@ absl::Status RequestHandler::StreamOnImpl(
 
     auto fake_stream = FakeStream::Create(size, spec_.frames);
     if (fake_stream == nullptr) {
-      return absl::InternalError("error initializing fake stream");
+      return false;
     }
 
     fake_streams_.emplace(stream, std::move(fake_stream));
   }
 
-  return absl::OkStatus();
+  return true;
 }
 
-absl::Status RequestHandler::StreamOffImpl() {
+bool RequestHandler::StreamOffImpl() {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
   fake_streams_.clear();
 
-  return absl::OkStatus();
+  return true;
 }
 
 void RequestHandler::FlushDone(base::OnceCallback<void()> callback) {

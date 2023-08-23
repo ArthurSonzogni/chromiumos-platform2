@@ -12,7 +12,6 @@
 #include "hal/fake/metadata_handler.h"
 #include "hal/fake/request_handler.h"
 
-#include <absl/status/status.h>
 #include <base/containers/flat_map.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
@@ -73,7 +72,7 @@ class CameraClient {
 
  private:
   // Start |request_thread_| and streaming.
-  absl::Status StreamOn(const std::vector<camera3_stream_t*>& streams);
+  bool StreamOn(const std::vector<camera3_stream_t*>& streams);
 
   // Stop streaming and |request_thread_|.
   void StreamOff();

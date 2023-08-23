@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include <absl/cleanup/cleanup.h>
 #include <base/containers/contains.h>
 #include <linux/videodev2.h>
 #include <sync/sync.h>
@@ -106,9 +105,9 @@ int CameraClient::ConfigureStreams(
     }
   }
 
-  auto ret = StreamOn(streams);
-  if (!ret.ok()) {
-    return absl::IsInvalidArgument(ret) ? -EINVAL : -ENODEV;
+  bool ret = StreamOn(streams);
+  if (!ret) {
+    return -ENODEV;
   }
 
   for (auto stream : streams) {
@@ -120,14 +119,13 @@ int CameraClient::ConfigureStreams(
   return 0;
 }
 
-absl::Status CameraClient::StreamOn(
-    const std::vector<camera3_stream_t*>& streams) {
+bool CameraClient::StreamOn(const std::vector<camera3_stream_t*>& streams) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(ops_sequence_checker_);
 
   if (request_handler_ == nullptr) {
     if (!request_thread_.Start()) {
       LOGFID(ERROR, id_) << "Request thread failed to start";
-      return absl::InternalError("Failed to start request thread");
+      return false;
     }
     request_task_runner_ = request_thread_.task_runner();
 
@@ -135,7 +133,7 @@ absl::Status CameraClient::StreamOn(
         id_, callback_ops_, static_metadata_, request_task_runner_, spec_);
   }
 
-  auto future = cros::Future<absl::Status>::Create(nullptr);
+  auto future = cros::Future<bool>::Create(nullptr);
   request_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&RequestHandler::StreamOn,
@@ -148,14 +146,14 @@ void CameraClient::StreamOff() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(ops_sequence_checker_);
 
   if (request_handler_) {
-    auto future = cros::Future<absl::Status>::Create(nullptr);
+    auto future = cros::Future<bool>::Create(nullptr);
     request_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&RequestHandler::StreamOff,
                                   base::Unretained(request_handler_.get()),
                                   cros::GetFutureCallback(future)));
-    absl::Status ret = future->Get();
-    if (!ret.ok()) {
-      LOGFID(ERROR, id_) << "StreamOff failed: " << ret;
+    bool ret = future->Get();
+    if (!ret) {
+      LOGFID(ERROR, id_) << "StreamOff failed";
     }
 
     request_thread_.Stop();

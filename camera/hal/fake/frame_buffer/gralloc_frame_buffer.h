@@ -8,7 +8,6 @@
 
 #include <memory>
 
-#include <absl/status/statusor.h>
 #include <base/sequence_checker.h>
 
 #include "cros-camera/camera_buffer_manager.h"

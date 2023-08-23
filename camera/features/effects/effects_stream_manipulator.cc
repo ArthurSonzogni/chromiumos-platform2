@@ -38,9 +38,6 @@
 #include <base/values.h>
 #include <brillo/files/file_util.h>
 
-#undef Status
-#include <absl/status/status.h>
-
 #include "camera/features/effects/tracing.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "common/camera_buffer_pool.h"

@@ -9,7 +9,6 @@
 #include <memory>
 #include <vector>
 
-#include <absl/status/status.h>
 #include <base/containers/flat_map.h>
 #include <base/task/sequenced_task_runner.h>
 #include <camera/camera_metadata.h>
@@ -39,19 +38,19 @@ class RequestHandler {
   // Handle flush request. This function can be called on any thread.
   void HandleFlush(base::OnceCallback<void()> callback);
 
-  // Start streaming and calls callback with resulting status.
+  // Start streaming and calls callback with whether the operation succeed.
   void StreamOn(const std::vector<camera3_stream_t*>& streams,
-                base::OnceCallback<void(absl::Status)> callback);
+                base::OnceCallback<void(bool)> callback);
 
-  // Stop streaming and calls callback with resulting status.
-  void StreamOff(base::OnceCallback<void(absl::Status)> callback);
+  // Stop streaming and calls callback with whether the operation succeed.
+  void StreamOff(base::OnceCallback<void(bool)> callback);
 
  private:
   // Start streaming implementation.
-  absl::Status StreamOnImpl(const std::vector<camera3_stream_t*>& streams);
+  bool StreamOnImpl(const std::vector<camera3_stream_t*>& streams);
 
   // Stop streaming implementation.
-  absl::Status StreamOffImpl();
+  bool StreamOffImpl();
 
   // Do not wait buffer sync for aborted requests.
   void AbortGrallocBufferSync(CaptureRequest& request);

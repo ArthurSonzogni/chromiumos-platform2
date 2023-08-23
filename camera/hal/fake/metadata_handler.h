@@ -6,8 +6,6 @@
 #ifndef CAMERA_HAL_FAKE_METADATA_HANDLER_H_
 #define CAMERA_HAL_FAKE_METADATA_HANDLER_H_
 
-#include <absl/status/status.h>
-#include <absl/status/statusor.h>
 #include <camera/camera_metadata.h>
 
 #include "hal/fake/hal_spec.h"
@@ -23,12 +21,11 @@ constexpr android_pixel_format_t kSupportedHalFormats[] = {
     HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
 };
 
-absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
-                                 android::CameraMetadata* request_metadata,
-                                 const CameraSpec& spec);
+bool FillDefaultMetadata(android::CameraMetadata* static_metadata,
+                         android::CameraMetadata* request_metadata,
+                         const CameraSpec& spec);
 
-absl::Status FillResultMetadata(android::CameraMetadata* metadata,
-                                uint64_t timestamp);
+bool FillResultMetadata(android::CameraMetadata* metadata, uint64_t timestamp);
 
 // MetadataHandler is used for saving metadata states of CameraClient.
 class MetadataHandler {
@@ -41,21 +38,17 @@ class MetadataHandler {
  private:
   android::CameraMetadata CreateDefaultRequestSettings(int template_type);
 
-  absl::Status FillDefaultPreviewSettings(android::CameraMetadata* metadata);
+  bool FillDefaultPreviewSettings(android::CameraMetadata* metadata);
 
-  absl::Status FillDefaultStillCaptureSettings(
-      android::CameraMetadata* metadata);
+  bool FillDefaultStillCaptureSettings(android::CameraMetadata* metadata);
 
-  absl::Status FillDefaultVideoRecordSettings(
-      android::CameraMetadata* metadata);
+  bool FillDefaultVideoRecordSettings(android::CameraMetadata* metadata);
 
-  absl::Status FillDefaultVideoSnapshotSettings(
-      android::CameraMetadata* metadata);
+  bool FillDefaultVideoSnapshotSettings(android::CameraMetadata* metadata);
 
-  absl::Status FillDefaultZeroShutterLagSettings(
-      android::CameraMetadata* metadata);
+  bool FillDefaultZeroShutterLagSettings(android::CameraMetadata* metadata);
 
-  absl::Status FillDefaultManualSettings(android::CameraMetadata* metadata);
+  bool FillDefaultManualSettings(android::CameraMetadata* metadata);
 
   const android::CameraMetadata& request_template_;
 
