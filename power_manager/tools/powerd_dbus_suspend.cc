@@ -159,9 +159,9 @@ int main(int argc, char* argv[]) {
                 "Wakeup count to pass to powerd or -1ULL if "
                 "unset.");
   DEFINE_int32(wakeup_timeout, 0,
-               "Sets an RTC alarm immediately that fires after the given "
-               "interval. This ensures that device resumes while testing "
-               "remotely.");
+               "[Deprecated: use --suspend_for_sec instead] Sets an RTC alarm "
+               "immediately that fires after the given interval. This ensures "
+               "that device resumes while testing remotely.");
   DEFINE_int32(suspend_for_sec, 0,
                "Ask powerd to suspend the device for this many seconds. powerd "
                "then sets an alarm just before going to suspend.");
