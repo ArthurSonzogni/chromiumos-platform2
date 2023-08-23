@@ -67,7 +67,8 @@ TEST_F(InputFetcherTest, FetchTouchscreenDevices) {
   expected_device->has_stylus_garage_switch = true;
 
   auto result = FetchInput();
-  EXPECT_EQ(result->get_input_info()->touchscreen_devices.size(), 1);
+  ASSERT_TRUE(result->is_input_info());
+  ASSERT_EQ(result->get_input_info()->touchscreen_devices.size(), 1);
   EXPECT_EQ(result->get_input_info()->touchscreen_devices[0], expected_device);
 }
 
@@ -76,6 +77,7 @@ TEST_F(InputFetcherTest, FetchTouchpadLibraryName) {
       "FakeTouchpadLibraryName";
 
   auto result = FetchInput();
+  ASSERT_TRUE(result->is_input_info());
   EXPECT_EQ(result->get_input_info()->touchpad_library_name,
             "FakeTouchpadLibraryName");
 }
@@ -85,6 +87,7 @@ TEST_F(InputFetcherTest, FetchFailed) {
   fake_chromium_data_collector().receiver().reset();
 
   auto result = FetchInput();
+  ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kServiceUnavailable);
 }
 
