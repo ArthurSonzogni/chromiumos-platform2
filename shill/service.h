@@ -155,6 +155,7 @@ class Service : public base::RefCounted<Service> {
     // switches to a different network. These errors are generally ignored by
     // the client (i.e. Chrome).
     kFailureDisconnect,
+    kFailureSimCarrierLocked,
     kFailureMax
   };
   enum ConnectState {

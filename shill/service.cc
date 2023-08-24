@@ -1337,6 +1337,8 @@ const char* Service::ConnectFailureToString(ConnectFailure failure) {
       return kErrorPppAuthFailed;
     case kFailureSimLocked:
       return kErrorSimLocked;
+    case kFailureSimCarrierLocked:
+      return kErrorSimCarrierLocked;
     case kFailureNotRegistered:
       return kErrorNotRegistered;
     case kFailureUnknown:
@@ -1439,6 +1441,8 @@ Metrics::NetworkServiceError Service::ConnectFailureToMetricsEnum(
       return Metrics::kNetworkServiceErrorPPPAuth;
     case Service::kFailureSimLocked:
       return Metrics::kNetworkServiceErrorSimLocked;
+    case Service::kFailureSimCarrierLocked:
+      return Metrics::kNetworkServiceErrorSimCarrierLocked;
     case Service::kFailureNotRegistered:
       return Metrics::kNetworkServiceErrorNotRegistered;
     case Service::kFailurePinMissing:

@@ -2510,8 +2510,14 @@ void Cellular::ConnectToPending() {
   }
 
   if (modem_state_ == kModemStateLocked) {
-    LOG(WARNING) << LoggingTag() << ": " << __func__ << ": Modem locked";
-    ConnectToPendingFailed(Service::kFailureSimLocked);
+    // Check the lock type and set the failure appropriately
+    KeyValueStore sim_lock_status = GetSimLockStatus(nullptr);
+    std::string lock_type =
+        sim_lock_status.Get<std::string>(kSIMLockTypeProperty);
+    if (lock_type == kSIMLockNetworkPin)
+      ConnectToPendingFailed(Service::kFailureSimCarrierLocked);
+    else
+      ConnectToPendingFailed(Service::kFailureSimLocked);
     return;
   }
 
