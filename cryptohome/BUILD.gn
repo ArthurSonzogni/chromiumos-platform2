@@ -63,6 +63,13 @@ config("local_print_proto_include") {
   include_dirs = [ "${target_gen_dir}/.." ]
 }
 
+# We invoke systemd-tmpfiles explicitly from the upstart config
+# since it needs to run when /sys/fs/cgroup is available.
+install_config("install_tmpfilesd") {
+  sources = [ "tmpfiles.d/cryptohome_freezer.conf" ]
+  install_path = "/usr/lib/tmpfiles.d/on-demand"
+}
+
 action("print_proto_library") {
   dbus_proto_path = "${sysroot}/usr/include/chromeos/dbus/cryptohome"
   script = "../libhwsec-foundation/utility/proto_print.py"
