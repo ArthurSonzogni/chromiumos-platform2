@@ -22,3 +22,11 @@ ClientAliveInterval 60
 ClientAliveCountMax 720
 # Ignore temporary network outages.
 TCPKeepAlive no
+
+# TODO(b/296125036) Support clients which require ssh-rsa.
+# Some ssh clients do not support stronger non-SHA1-based schemes, so we
+# have to allow ssh-rsa to avoid breaking some of the labs and testing
+# infrastructure. Once those are moved over to ssh clients that support
+# schemes like rsa-sha2-256 or stronger.
+HostKeyAlgorithms +ssh-rsa
+PubkeyAcceptedAlgorithms +ssh-rsa
