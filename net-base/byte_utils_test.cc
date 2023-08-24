@@ -33,6 +33,40 @@ TEST(Bytes, ConvertBetweenStruct) {
   EXPECT_EQ(converted.y, foo.y);
 }
 
+TEST(Bytes, AsBytes) {
+  struct Foo {
+    char a;
+    char b;
+    char c;
+  };
+  const Foo foo{'a', 'b', 'c'};
+
+  base::span<const uint8_t> span = AsBytes(foo);
+  EXPECT_EQ(span.size(), 3);
+  EXPECT_EQ(span[0], 'a');
+  EXPECT_EQ(span[1], 'b');
+  EXPECT_EQ(span[2], 'c');
+}
+
+TEST(Bytes, AsMutBytes) {
+  struct Foo {
+    char a;
+    char b;
+    char c;
+  };
+  Foo foo;
+
+  base::span<uint8_t> span = AsMutBytes(foo);
+  EXPECT_EQ(span.size(), 3);
+  span[0] = 'a';
+  span[1] = 'b';
+  span[2] = 'c';
+
+  EXPECT_EQ(foo.a, 'a');
+  EXPECT_EQ(foo.b, 'b');
+  EXPECT_EQ(foo.c, 'c');
+}
+
 TEST(Bytes, StringToCStringBytes) {
   EXPECT_EQ(StringToCStringBytes("abc"),
             (std::vector<uint8_t>{'a', 'b', 'c', '\0'}));

@@ -41,6 +41,22 @@ std::optional<T> FromBytes(base::span<const uint8_t> bytes) {
   return val;
 }
 
+// Gets the view of immutable byte buffer in host order from an immutable plain
+// old data (e.g. uint32_t, struct).
+template <typename T>
+base::span<const uint8_t> AsBytes(const T& val) {
+  static_assert(std::is_pod<T>::value);
+  return {reinterpret_cast<const uint8_t*>(&val), sizeof(val)};
+}
+
+// Gets the view of the mutable byte buffer in host order from a mutable plain
+// old data (e.g. uint32_t, struct).
+template <typename T>
+base::span<uint8_t> AsMutBytes(T& val) {
+  static_assert(std::is_pod<T>::value);
+  return {reinterpret_cast<uint8_t*>(&val), sizeof(val)};
+}
+
 // Converts a string to a byte buffer with the trailing null character. If the
 // null character exists inside the string, then only the characters before the
 // null character will be copied to the buffer. e.g.

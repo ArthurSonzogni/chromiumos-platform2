@@ -14,6 +14,7 @@
 #include <base/compiler_specific.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <net-base/byte_utils.h>
 
 #include "shill/ethernet/eap_protocol.h"
 #include "shill/logging.h"
@@ -92,7 +93,7 @@ void EapListener::ReceiveRequest(int fd) {
   memset(&remote_address, 0, sizeof(remote_address));
   socklen_t socklen = sizeof(remote_address);
   const auto result = socket_->RecvFrom(
-      {reinterpret_cast<uint8_t*>(&payload), sizeof(payload)}, 0,
+      net_base::byte_utils::AsMutBytes(payload), 0,
       reinterpret_cast<struct sockaddr*>(&remote_address), &socklen);
   if (!result) {
     PLOG(ERROR) << LoggingTag() << ": Socket recvfrom failed";

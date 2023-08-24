@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/numerics/safe_conversions.h>
+#include <net-base/byte_utils.h>
 
 namespace {
 
@@ -93,9 +94,7 @@ bool NetlinkSockDiag::DestroySockets(uint8_t protocol,
     VLOG(1) << "Destroying socket (" << family << ", " << protocol << ")";
     request.header.nlmsg_seq = ++sequence_number_;
     request.req_opts.id = sockid;
-    if (socket_->Send(
-            {reinterpret_cast<const uint8_t*>(&request), sizeof(request)}, 0) <
-        0) {
+    if (socket_->Send(net_base::byte_utils::AsBytes(request), 0) < 0) {
       PLOG(ERROR) << "Failed to write request to netlink socket";
       return false;
     }
@@ -110,9 +109,7 @@ bool NetlinkSockDiag::GetSockets(
   CHECK(out_socks);
   SockDiagRequest request =
       CreateDumpRequest(family, protocol, ++sequence_number_);
-  if (socket_->Send(
-          {reinterpret_cast<const uint8_t*>(&request), sizeof(request)}, 0) <
-      0) {
+  if (socket_->Send(net_base::byte_utils::AsBytes(request), 0) < 0) {
     PLOG(ERROR) << "Failed to write sock_diag request to netlink socket "
                 << "(family: " << family << ", protocol: " << protocol << ")";
     return false;
