@@ -70,5 +70,11 @@ TEST_F(CredentialVerifierTest, AuthFactorMetadata) {
       pin_verifier_.auth_factor_metadata().metadata));
 }
 
+TEST_F(CredentialVerifierTest, AuthFactorChangeLabel) {
+  EXPECT_EQ(pw_verifier_.auth_factor_label(), "password");
+  pw_verifier_.ChangeLabel("pass");
+  EXPECT_EQ(pw_verifier_.auth_factor_label(), "pass");
+}
+
 }  // namespace
 }  // namespace cryptohome

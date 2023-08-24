@@ -306,6 +306,12 @@ class AuthSession final {
     void RemoveAuthFactor(
         const user_data_auth::RemoveAuthFactorRequest& request,
         StatusCallback on_done);
+
+   private:
+    // Special case for relabel of an ephemeral user.
+    void RelabelAuthFactorEphemeral(
+        const user_data_auth::RelabelAuthFactorRequest& request,
+        StatusCallback on_done);
   };
   friend class AuthForDecrypt;
   AuthForDecrypt* GetAuthForDecrypt();

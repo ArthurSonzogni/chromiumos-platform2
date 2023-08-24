@@ -54,9 +54,12 @@ class CredentialVerifier {
   virtual void Verify(const AuthInput& input,
                       StatusCallback callback) const = 0;
 
+  // Changes the label of a credential verifier.
+  void ChangeLabel(std::string label) { auth_factor_label_ = std::move(label); }
+
  private:
   const AuthFactorType auth_factor_type_;
-  const std::string auth_factor_label_;
+  std::string auth_factor_label_;
   const AuthFactorMetadata auth_factor_metadata_;
 };
 

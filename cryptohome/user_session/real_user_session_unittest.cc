@@ -56,6 +56,7 @@ using ::testing::IsFalse;
 using ::testing::IsNull;
 using ::testing::IsTrue;
 using ::testing::NiceMock;
+using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::UnorderedElementsAre;
@@ -497,8 +498,8 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveCredentialVerifiers) {
   EXPECT_THAT(session.FindCredentialVerifier(AuthFactorType::kPassword),
               IsNull());
 
-  // If we remove a verifier it should disappear.
-  session.RemoveCredentialVerifier("a1");
+  // If we release a verifier it should disappear.
+  session.ReleaseCredentialVerifier("a1");
   EXPECT_THAT(session.GetCredentialVerifiers(),
               UnorderedElementsAre(ptr2, ptr3));
   EXPECT_THAT(session.HasCredentialVerifier("a1"), IsFalse());
@@ -538,7 +539,8 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveLabellessCredentialVerifiers) {
               UnorderedElementsAre(ptr1, ptr2, ptr3));
 
   // Trying to remove the verifier by removing a blank label should do nothing.
-  session.RemoveCredentialVerifier("");
+  auto blank_verifier = session.ReleaseCredentialVerifier("");
+  EXPECT_THAT(blank_verifier, IsNull());
   EXPECT_THAT(session.HasCredentialVerifier(AuthFactorType::kPassword),
               IsTrue());
   EXPECT_THAT(session.FindCredentialVerifier(AuthFactorType::kPassword),
@@ -547,7 +549,9 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveLabellessCredentialVerifiers) {
               UnorderedElementsAre(ptr1, ptr2, ptr3));
 
   // But if we remove the verifier by type it should disappear.
-  session.RemoveCredentialVerifier(AuthFactorType::kPassword);
+  auto typed_verifier =
+      session.ReleaseCredentialVerifier(AuthFactorType::kPassword);
+  EXPECT_THAT(typed_verifier, NotNull());
   EXPECT_THAT(session.GetCredentialVerifiers(),
               UnorderedElementsAre(ptr1, ptr2));
   EXPECT_THAT(session.HasCredentialVerifier(AuthFactorType::kPassword),

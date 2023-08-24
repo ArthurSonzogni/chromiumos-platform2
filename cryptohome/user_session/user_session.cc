@@ -70,14 +70,26 @@ std::vector<const CredentialVerifier*> UserSession::GetCredentialVerifiers()
   return verifiers;
 }
 
-void UserSession::RemoveCredentialVerifier(const std::string& key_label) {
-  // Remove the matching credential verifier, if it exists.
-  label_to_credential_verifier_.erase(key_label);
+std::unique_ptr<CredentialVerifier> UserSession::ReleaseCredentialVerifier(
+    const std::string& key_label) {
+  auto iter = label_to_credential_verifier_.find(key_label);
+  if (iter != label_to_credential_verifier_.end()) {
+    auto verifier = std::move(iter->second);
+    label_to_credential_verifier_.erase(iter);
+    return verifier;
+  }
+  return nullptr;
 }
 
-void UserSession::RemoveCredentialVerifier(AuthFactorType type) {
-  // Remove the matching credential verifier, if it exists.
-  type_to_credential_verifier_.erase(type);
+std::unique_ptr<CredentialVerifier> UserSession::ReleaseCredentialVerifier(
+    AuthFactorType type) {
+  auto iter = type_to_credential_verifier_.find(type);
+  if (iter != type_to_credential_verifier_.end()) {
+    auto verifier = std::move(iter->second);
+    type_to_credential_verifier_.erase(iter);
+    return verifier;
+  }
+  return nullptr;
 }
 
 }  // namespace cryptohome

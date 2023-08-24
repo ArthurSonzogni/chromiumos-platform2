@@ -129,10 +129,12 @@ class UserSession {
   // Returns all the credential verifiers for this session.
   std::vector<const CredentialVerifier*> GetCredentialVerifiers() const;
 
-  // Removes the credential_verifier with the given label or type, and possibly
-  // the key data as well if it has the same label.
-  void RemoveCredentialVerifier(const std::string& key_label);
-  void RemoveCredentialVerifier(AuthFactorType type);
+  // Releases and returns ownership of the credential verifier if it exists.
+  // Will return null if there is no verifier with the given label or type.
+  std::unique_ptr<CredentialVerifier> ReleaseCredentialVerifier(
+      const std::string& key_label);
+  std::unique_ptr<CredentialVerifier> ReleaseCredentialVerifier(
+      AuthFactorType type);
 
  private:
   // Storage for CredentialVerifiers associated with the session.

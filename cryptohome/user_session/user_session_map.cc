@@ -75,25 +75,40 @@ void UserSessionMap::VerifierForwarder::AddVerifier(
              forwarding_destination_);
 }
 
-void UserSessionMap::VerifierForwarder::RemoveVerifier(
-    const std::string& label) {
-  std::visit(base::Overloaded{[&](UserSession* session) {
-                                session->RemoveCredentialVerifier(label);
-                              },
-                              [&](VerifierStorage& storage) {
-                                storage.by_label.erase(label);
-                              }},
-             forwarding_destination_);
+std::unique_ptr<CredentialVerifier>
+UserSessionMap::VerifierForwarder::ReleaseVerifier(const std::string& label) {
+  return std::visit(
+      base::Overloaded{[&](UserSession* session) {
+                         return session->ReleaseCredentialVerifier(label);
+                       },
+                       [&](VerifierStorage& storage) {
+                         auto iter = storage.by_label.find(label);
+                         if (iter != storage.by_label.end()) {
+                           auto verifier = std::move(iter->second);
+                           storage.by_label.erase(iter);
+                           return verifier;
+                         }
+                         return std::unique_ptr<CredentialVerifier>();
+                       }},
+      forwarding_destination_);
 }
 
-void UserSessionMap::VerifierForwarder::RemoveVerifier(AuthFactorType type) {
-  std::visit(base::Overloaded{[&](UserSession* session) {
-                                session->RemoveCredentialVerifier(type);
-                              },
-                              [&](VerifierStorage& storage) {
-                                storage.by_type.erase(type);
-                              }},
-             forwarding_destination_);
+std::unique_ptr<CredentialVerifier>
+UserSessionMap::VerifierForwarder::ReleaseVerifier(AuthFactorType type) {
+  return std::visit(
+      base::Overloaded{[&](UserSession* session) {
+                         return session->ReleaseCredentialVerifier(type);
+                       },
+                       [&](VerifierStorage& storage) {
+                         auto iter = storage.by_type.find(type);
+                         if (iter != storage.by_type.end()) {
+                           auto verifier = std::move(iter->second);
+                           storage.by_type.erase(iter);
+                           return verifier;
+                         }
+                         return std::unique_ptr<CredentialVerifier>();
+                       }},
+      forwarding_destination_);
 }
 
 void UserSessionMap::VerifierForwarder::Resolve(UserSession* session) {

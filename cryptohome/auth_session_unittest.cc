@@ -5263,6 +5263,12 @@ TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactor) {
   error =
       AuthenticatePasswordAuthFactor(kFakeOtherLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // The relabel should also be reflected in the session verifiers.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(),
+              UnorderedElementsAre(IsVerifierPtrWithLabelAndPassword(
+                  kFakeOtherLabel, kFakePass)));
 }
 
 TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorWithBadInputs) {
@@ -5415,6 +5421,55 @@ TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorWithFileFailure) {
   // Calling AuthenticateAuthFactor works with the old label.
   error = AuthenticatePasswordAuthFactor(kFakeLabel, kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // The session verifiers should still be under the old label.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(),
+              UnorderedElementsAre(
+                  IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, RelabelAuthFactorEphemeral) {
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = true,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+                           backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_FALSE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Add the initial auth factor.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& request_factor = *request.mutable_auth_factor();
+  request_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request_factor.set_label(kFakeLabel);
+  request_factor.mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+  TestFuture<CryptohomeStatus> add_future;
+  auth_session.GetAuthForDecrypt()->AddAuthFactor(request,
+                                                  add_future.GetCallback());
+  EXPECT_THAT(add_future.Get(), IsOk());
+
+  // Test.
+
+  // Calling RelabelAuthFactor.
+  error = RelabelAuthFactor(kFakeLabel, kFakeOtherLabel, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // The relabel should be reflected in the session verifiers.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(),
+              UnorderedElementsAre(IsVerifierPtrWithLabelAndPassword(
+                  kFakeOtherLabel, kFakePass)));
 }
 
 }  // namespace cryptohome

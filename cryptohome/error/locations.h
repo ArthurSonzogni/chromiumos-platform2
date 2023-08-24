@@ -1443,6 +1443,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionEncryptFailedInRelabelAuthFactor = 2133,
   /* ./auth_session.cc */
   kLocAuthSessionPersistUssFailedInRelabelAuthFactor = 2134,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorNotFoundInRelabelAuthFactorEphemeral = 2135,
+  /* ./auth_session.cc */
+  kLocAuthSessionInvalidNewLabelInRelabelAuthFactorEphemeral = 2136,
+  /* ./auth_session.cc */
+  kLocAuthSessionNewLabelAlreadyExistsInRelabelAuthFactorEphemeral = 2137,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

@@ -100,9 +100,10 @@ class UserSessionMap final {
     // Add a new credential verifier using the verifier's label.
     void AddVerifier(std::unique_ptr<CredentialVerifier> verifier);
 
-    // Remove the credential verifier with the given label or type.
-    void RemoveVerifier(const std::string& label);
-    void RemoveVerifier(AuthFactorType type);
+    // Release the credential verifier with the given label or type.
+    std::unique_ptr<CredentialVerifier> ReleaseVerifier(
+        const std::string& label);
+    std::unique_ptr<CredentialVerifier> ReleaseVerifier(AuthFactorType type);
 
     // Point the forwarder at a UserSession, resolving all outstanding verifier
     // registrations to it.

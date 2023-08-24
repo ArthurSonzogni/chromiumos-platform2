@@ -1642,7 +1642,7 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
 
   // Remove the AuthFactor from the map.
   session_->auth_factor_map_.Remove(auth_factor_label);
-  session_->verifier_forwarder_.RemoveVerifier(auth_factor_label);
+  session_->verifier_forwarder_.ReleaseVerifier(auth_factor_label);
 
   // Report time taken for a successful remove.
   ReportTimerDuration(kAuthSessionRemoveAuthFactorVKTimer, remove_timer_start,
@@ -1720,7 +1720,7 @@ void AuthSession::ClearAuthFactorInMemoryObjects(
 
   // Remove the AuthFactor from the map.
   auth_factor_map_.Remove(auth_factor_label);
-  verifier_forwarder_.RemoveVerifier(auth_factor_label);
+  verifier_forwarder_.ReleaseVerifier(auth_factor_label);
   ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer, remove_timer_start,
                       "" /*append_string*/);
   std::move(on_done).Run(OkStatus<CryptohomeError>());
@@ -2192,6 +2192,12 @@ void AuthSession::UpdateAuthFactorMetadata(
 void AuthSession::AuthForDecrypt::RelabelAuthFactor(
     const user_data_auth::RelabelAuthFactorRequest& request,
     StatusCallback on_done) {
+  // For ephemeral users we can do a relabel in-memory using only the verifiers.
+  if (session_->is_ephemeral_user_) {
+    RelabelAuthFactorEphemeral(request, std::move(on_done));
+    return;
+  }
+
   // Get the existing auth factor and make sure it's not a vault keyset.
   if (request.auth_factor_label().empty()) {
     LOG(ERROR) << "AuthSession: Old auth factor label is empty.";
@@ -2326,8 +2332,12 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
   }
   std::move(delete_new_aff).Cancel();
   std::move(revert_uss).Cancel();
+  if (auto verifier = session_->verifier_forwarder_.ReleaseVerifier(
+          old_auth_factor->label())) {
+    verifier->ChangeLabel(new_auth_factor->label());
+    session_->verifier_forwarder_.AddVerifier(std::move(verifier));
+  }
   session_->auth_factor_map_.Remove(old_auth_factor->label());
-  session_->verifier_forwarder_.RemoveVerifier(old_auth_factor->label());
   session_->auth_factor_map_.Add(std::move(new_auth_factor),
                                  AuthFactorStorageType::kUserSecretStash);
   LOG(INFO) << "AuthSession: relabelled auth factor "
@@ -2346,6 +2356,55 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
                << request.auth_factor_label() << ": " << status;
   }
 
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
+}
+
+void AuthSession::AuthForDecrypt::RelabelAuthFactorEphemeral(
+    const user_data_auth::RelabelAuthFactorRequest& request,
+    StatusCallback on_done) {
+  // Check that there is a verifier with the existing label.
+  if (!session_->verifier_forwarder_.HasVerifier(request.auth_factor_label())) {
+    LOG(ERROR) << "AuthSession: Key to update not found: "
+               << request.auth_factor_label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionFactorNotFoundInRelabelAuthFactorEphemeral),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    return;
+  }
+
+  // Check that the new label is valid and does not already exist.
+  if (!IsValidAuthFactorLabel(request.new_auth_factor_label())) {
+    LOG(ERROR) << "AuthSession: New auth factor label is not valid: "
+               << request.new_auth_factor_label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionInvalidNewLabelInRelabelAuthFactorEphemeral),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  if (session_->verifier_forwarder_.HasVerifier(
+          request.new_auth_factor_label())) {
+    LOG(ERROR) << "AuthSession: New auth factor label already exists: "
+               << request.new_auth_factor_label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionNewLabelAlreadyExistsInRelabelAuthFactorEphemeral),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  // Release, rename and re-add the existing verifier.
+  auto verifier = session_->verifier_forwarder_.ReleaseVerifier(
+      request.auth_factor_label());
+  verifier->ChangeLabel(request.new_auth_factor_label());
+  session_->verifier_forwarder_.AddVerifier(std::move(verifier));
+  LOG(INFO) << "AuthSession: relabelled credential verifier from "
+            << request.auth_factor_label() << " to "
+            << request.new_auth_factor_label();
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
@@ -2470,7 +2529,7 @@ void AuthSession::TerminateAuthFactor(
   // removal even if termination fails.
   CryptohomeStatus status = iter->second->Terminate();
   active_auth_factor_tokens_.erase(iter);
-  verifier_forwarder_.RemoveVerifier(*auth_factor_type);
+  verifier_forwarder_.ReleaseVerifier(*auth_factor_type);
   std::move(on_done).Run(std::move(status));
 }
 
@@ -2830,7 +2889,7 @@ CredentialVerifier* AuthSession::AddCredentialVerifier(
     verifier_forwarder_.AddVerifier(std::move(new_verifier));
     return return_ptr;
   }
-  verifier_forwarder_.RemoveVerifier(auth_factor_label);
+  verifier_forwarder_.ReleaseVerifier(auth_factor_label);
   return nullptr;
 }
 
