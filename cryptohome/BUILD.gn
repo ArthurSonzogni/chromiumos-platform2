@@ -17,6 +17,7 @@ group("all") {
     ":cryptohomed",
     ":encrypted-reboot-vault",
     ":homedirs_initializer",
+    ":install_tmpfilesd",
     ":lockbox-cache",
     ":mount-encrypted",
     ":mount_encrypted_lib",
