@@ -7,6 +7,7 @@ import("//common-mk/proto_library.gni")
 import("//secagentd/tools/bpf_gen.gni")
 group("all") {
   deps = [
+    ":install_freezer_tmpfilesd",
     ":install_minijail_conf",
     ":install_rsyslog_conf",
     ":install_tmpfiles_conf",
@@ -121,6 +122,13 @@ executable("secagentd") {
 install_config("install_upstart_conf") {
   sources = [ "init/secagentd.conf" ]
   install_path = "/etc/init"
+}
+
+# We invoke systemd-tmpfiles explicitly from the upstart config
+# since it needs to run when /sys/fs/cgroup is available.
+install_config("install_freezer_tmpfilesd") {
+  sources = [ "tmpfiles.d/secagentd_freezer.conf" ]
+  install_path = "/usr/lib/tmpfiles.d/on-demand"
 }
 
 # Install Minijail configuration.
