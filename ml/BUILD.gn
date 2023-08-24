@@ -340,6 +340,9 @@ if (use.test) {
       "USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION=" +
           "${ondevice_image_content_annotation_enabled}",
     ]
+    if (!use.asan) {
+      defines += [ "USE_ONDEVICE_SPEECH=${use.ondevice_speech}" ]
+    }
     deps = [
       ":ml_assist_ranker_proto",
       ":ml_common",
@@ -356,7 +359,6 @@ if (use.test) {
         "soda_proto_mojom_conversion_test.cc",
         "soda_test.cc",
       ]
-      defines += [ "USE_ONDEVICE_SPEECH" ]
     }
     if (ondevice_image_content_annotation_enabled) {
       sources += [ "image_content_annotation_test.cc" ]
