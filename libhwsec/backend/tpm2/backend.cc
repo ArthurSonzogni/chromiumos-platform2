@@ -5,12 +5,15 @@
 #include <memory>
 #include <utility>
 
+#include "base/files/file_path.h"
+
 #include "libhwsec/backend/tpm2/backend.h"
 
 namespace hwsec {
 
 BackendTpm2::BackendTpm2(Proxy& proxy,
-                         MiddlewareDerivative middleware_derivative)
+                         MiddlewareDerivative middleware_derivative,
+                         const base::FilePath& pw_hash_tree_dir)
     : proxy_(proxy),
       tpm_manager_(proxy_.GetTpmManager()),
       tpm_nvram_(proxy_.GetTpmNvram()),
@@ -32,6 +35,7 @@ BackendTpm2::BackendTpm2(Proxy& proxy,
       signing_(context_, config_, key_management_),
       random_(context_),
       pinweaver_(context_, config_),
+      le_cred_manager_(pinweaver_, pw_hash_tree_dir),
       vendor_(context_, tpm_manager_),
       recovery_crypto_(context_, config_, key_management_, session_management_),
       u2f_(context_),

@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "libhwsec/backend/tpm2/backend.h"
@@ -23,8 +24,10 @@ BackendTpm2TestBase::~BackendTpm2TestBase() = default;
 
 void BackendTpm2TestBase::SetUp() {
   proxy_ = std::make_unique<ProxyForTest>();
-
-  auto backend = std::make_unique<BackendTpm2>(*proxy_, MiddlewareDerivative{});
+  base::ScopedTempDir tmp_dir_;
+  CHECK(tmp_dir_.CreateUniqueTempDir());
+  auto backend = std::make_unique<BackendTpm2>(*proxy_, MiddlewareDerivative{},
+                                               tmp_dir_.GetPath());
   backend_ = backend.get();
 
   middleware_owner_ = std::make_unique<MiddlewareOwner>(

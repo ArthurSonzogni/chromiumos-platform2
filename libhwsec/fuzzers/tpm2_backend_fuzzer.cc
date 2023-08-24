@@ -9,6 +9,7 @@
 #include <tuple>
 
 #include <base/command_line.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
@@ -472,7 +473,10 @@ void RunNthCommandList(size_t n,
 
 void FuzzMain(FuzzedDataProvider& data_provider) {
   Tpm2BackendFuzzerProxy proxy(data_provider);
-  auto backend = std::make_unique<BackendTpm2>(proxy, MiddlewareDerivative{});
+  base::ScopedTempDir tmp_dir_;
+  CHECK(tmp_dir_.CreateUniqueTempDir());
+  auto backend = std::make_unique<BackendTpm2>(proxy, MiddlewareDerivative{},
+                                               tmp_dir_.GetPath());
   BackendTpm2* backend_ptr = backend.get();
   auto middleware_owner = std::make_unique<MiddlewareOwner>(
       std::move(backend), ThreadingMode::kCurrentThread);

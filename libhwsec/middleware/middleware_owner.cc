@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
+#include "base/files/file_path.h"
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/proxy_impl.h"
@@ -28,6 +29,11 @@
 
 namespace {
 constexpr char kThreadName[] = "libhwsec_thread";
+
+// Location where we store the Low Entropy (LE) credential manager related
+// state.
+[[maybe_unused]] constexpr char kSignInHashTreeDir[] =
+    "/home/.shadow/low_entropy_creds";
 
 scoped_refptr<base::TaskRunner> GetCurrentTaskRunnerOrNullptr() {
   return base::SequencedTaskRunner::HasCurrentDefault()
@@ -115,7 +121,8 @@ void MiddlewareOwner::InitBackend() {
       return;
     }
     proxy_ = std::move(proxy);
-    backend_ = std::make_unique<BackendTpm2>(*proxy_, Derive());
+    backend_ = std::make_unique<BackendTpm2>(
+        *proxy_, Derive(), base::FilePath(kSignInHashTreeDir));
   });
   OTHER_TPM_SECTION({
     LOG(ERROR) << "Calling on unsupported TPM platform.";

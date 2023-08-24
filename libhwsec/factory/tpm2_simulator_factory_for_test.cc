@@ -17,7 +17,10 @@ namespace {
 
 std::unique_ptr<MiddlewareOwner> GetAndInitMiddlewareOwner(
     ThreadingMode mode, Proxy& proxy, MockBackend*& mock_backend_ptr) {
-  auto backend = std::make_unique<BackendTpm2>(proxy, MiddlewareDerivative{});
+  base::ScopedTempDir tmp_dir_;
+  CHECK(tmp_dir_.CreateUniqueTempDir());
+  auto backend = std::make_unique<BackendTpm2>(proxy, MiddlewareDerivative{},
+                                               tmp_dir_.GetPath());
   BackendTpm2* backend_ptr = backend.get();
   auto mock_backend = std::make_unique<MockBackend>(std::move(backend));
   mock_backend_ptr = mock_backend.get();

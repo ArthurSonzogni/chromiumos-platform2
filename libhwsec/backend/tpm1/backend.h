@@ -9,6 +9,7 @@
 #include <optional>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/pinweaver_manager/pinweaver_manager_impl.h"
 #include "libhwsec/backend/tpm1/attestation.h"
 #include "libhwsec/backend/tpm1/config.h"
 #include "libhwsec/backend/tpm1/da_mitigation.h"
@@ -85,6 +86,9 @@ class BackendTpm1 : public Backend {
   Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return &pinweaver_; }
+  LECredentialManager* GetLECredentialManager() override {
+    return &le_cred_manager_;
+  }
   Vendor* GetVendor() override { return &vendor_; }
   RecoveryCrypto* GetRecoveryCrypto() override { return &recovery_crypto_; }
   U2f* GetU2f() override { return &u2f_; }
@@ -115,6 +119,7 @@ class BackendTpm1 : public Backend {
   EncryptionTpm1 encryption_;
   SigningTpm1 signing_;
   PinWeaverTpm1 pinweaver_;
+  LECredentialManagerImpl le_cred_manager_;
   VendorTpm1 vendor_;
   RecoveryCryptoTpm1 recovery_crypto_;
   U2fTpm1 u2f_;
