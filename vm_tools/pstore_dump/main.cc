@@ -41,8 +41,10 @@ bool RetrieveSanitizedPrimaryUsername(std::string* out_sanitized_username) {
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerRetrievePrimarySession);
   std::unique_ptr<dbus::Response> response =
-      session_manager_proxy->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      session_manager_proxy
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!response.get()) {
     LOG(ERROR) << "Cannot retrieve username for primary session.";
     bus->ShutdownAndBlock();

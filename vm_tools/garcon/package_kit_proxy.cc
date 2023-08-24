@@ -208,16 +208,21 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
     dbus::MethodCall method_call(kPackageKitInterface,
                                  kCreateTransactionMethod);
     dbus::MessageWriter writer(&method_call);
-    std::unique_ptr<dbus::Response> dbus_response =
-        packagekit_service_proxy_->CallMethodAndBlockWithErrorDetails(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
-    if (!dbus_response) {
+    base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+        packagekit_service_proxy_->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response.has_value()) {
+      dbus_error_ = std::move(dbus_response.error());
       GeneralErrorInternal("Failure calling CreateTransaction");
+      return;
+    }
+    if (!dbus_response.value()) {
+      GeneralErrorInternal("Failure getting non-null response.");
       return;
     }
     // CreateTransaction returns the object path for the transaction session we
     // have created.
-    dbus::MessageReader reader(dbus_response.get());
+    dbus::MessageReader reader(dbus_response.value().get());
     if (!reader.PopObjectPath(&transaction_path_)) {
       GeneralErrorInternal(
           "Failure reading object path from transaction result");
@@ -234,15 +239,15 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
     // of this yet, but it seems like a good idea to set it if it does occur.
     // Set locale with UTF-8 to support unicode in control files.  This is
     // what 'pkcon get-details-local <file>' does.
-    dbus::Error error;
     dbus::MethodCall sethints_call(kPackageKitTransactionInterface,
                                    kSetHintsMethod);
     dbus::MessageWriter sethints_writer(&sethints_call);
     sethints_writer.AppendArrayOfStrings(
         {"locale=en_US.UTF-8", "interactive=false"});
-    dbus_response = transaction_proxy_->CallMethodAndBlockWithErrorDetails(
-        &sethints_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
-    if (!dbus_response) {
+    dbus_response = transaction_proxy_->CallMethodAndBlock(
+        &sethints_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response.has_value()) {
+      dbus::Error error = std::move(dbus_response.error());
       // Don't propagate a failure, this was just a hint.
       LOG(WARNING) << "Failure calling SetHints - " << error.name() << ": "
                    << error.message();
@@ -541,10 +546,14 @@ class GetDetailsTransaction : public PackageKitTransaction {
     dbus::MessageWriter writer(&method_call);
     writer.AppendArrayOfStrings({value});
 
-    std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlockWithErrorDetails(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
-    return !!dbus_response;
+    base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response.has_value()) {
+      dbus_error_ = std::move(dbus_response.error());
+      return false;
+    }
+    return !!dbus_response.value();
   }
 
   void ErrorReceived(uint32_t error_code, const std::string& details) override {
@@ -616,10 +625,14 @@ class SearchFilesTransaction : public PackageKitTransaction {
     // packages.
     writer.AppendUint64(kPackageKitFilterInstalled);
     writer.AppendArrayOfStrings({file_path_.value()});
-    std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlockWithErrorDetails(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
-    return !!dbus_response;
+    base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response.has_value()) {
+      dbus_error_ = std::move(dbus_response.error());
+      return false;
+    }
+    return !!dbus_response.value();
   }
 
   void GeneralError(const std::string& details) override {
@@ -738,10 +751,14 @@ class InstallTransaction : public PackageKitTransaction {
     writer.AppendUint64(0);  // Allow installing untrusted files.
     writer.AppendArrayOfStrings({value});
 
-    std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlockWithErrorDetails(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
-    return !!dbus_response;
+    base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response.has_value()) {
+      dbus_error_ = std::move(dbus_response.error());
+      return false;
+    }
+    return !!dbus_response.value();
   }
 
   void ErrorReceived(uint32_t error_code, const std::string& details) override {
@@ -851,10 +868,14 @@ class UninstallPackagesTransaction : public PackageKitTransaction {
     // don't want to rely on the user knowing they need to run special cleanup
     // commands.
     writer.AppendBool(true);
-    std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlockWithErrorDetails(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
-    return !!dbus_response;
+    base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response.has_value()) {
+      dbus_error_ = std::move(dbus_response.error());
+      return false;
+    }
+    return !!dbus_response.value();
   }
 
   void GeneralError(const std::string& details) override {
@@ -952,10 +973,14 @@ class UpdatePackagesTransaction : public PackageKitTransaction {
     dbus::MessageWriter writer(&method_call);
     writer.AppendUint64(0);  // No transaction flag.
     writer.AppendArrayOfStrings(package_ids_);
-    std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlockWithErrorDetails(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
-    return !!dbus_response;
+    base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response.has_value()) {
+      dbus_error_ = std::move(dbus_response.error());
+      return false;
+    }
+    return !!dbus_response.value();
   }
 
   void ErrorReceived(uint32_t error_code, const std::string& details) override {
@@ -1001,10 +1026,14 @@ class GetUpdatesTransaction : public PackageKitTransaction {
     dbus::MessageWriter writer(&method_call);
     // Set the filter to installed packages.
     writer.AppendUint64(kPackageKitFilterInstalled);
-    std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlockWithErrorDetails(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
-    return !!dbus_response;
+    base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response.has_value()) {
+      dbus_error_ = std::move(dbus_response.error());
+      return false;
+    }
+    return !!dbus_response.value();
   }
 
   void ErrorReceived(uint32_t error_code, const std::string& details) override {
@@ -1135,10 +1164,14 @@ class ResolveTransaction : public PackageKitTransaction {
     dbus::MessageWriter writer(&method_call);
     writer.AppendUint64(kPackageKitFilterNone);
     writer.AppendArrayOfStrings({package_name_});
-    std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlockWithErrorDetails(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
-    return !!dbus_response;
+    base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    if (!dbus_response.has_value()) {
+      dbus_error_ = std::move(dbus_response.error());
+      return false;
+    }
+    return !!dbus_response.value();
   }
 
   void GeneralError(const std::string& details) override {

@@ -595,8 +595,10 @@ class Service final {
         method_name);
     dbus::MessageWriter(&method_call).AppendProtoAsArrayOfBytes(*input_proto);
     std::unique_ptr<dbus::Response> dbus_response =
-        vm_disk_management_service_proxy_->CallMethodAndBlockDeprecated(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+        vm_disk_management_service_proxy_
+            ->CallMethodAndBlock(&method_call,
+                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+            .value_or(nullptr);
     if (!dbus_response) {
       LOG(ERROR) << input_proto->GetTypeName() + " call failed";
       return false;

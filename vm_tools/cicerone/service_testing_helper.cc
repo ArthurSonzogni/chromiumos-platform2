@@ -99,8 +99,8 @@ void CheckContainerStartedSignalForPluginVm(dbus::Signal* signal) {
   CheckContainerStartedSignal(signal, "penguin");
 }
 
-std::unique_ptr<dbus::Response> CheckSetHostnameIpMappingMethod(
-    dbus::MethodCall* method_call, int timeout_ms) {
+base::expected<std::unique_ptr<dbus::Response>, dbus::Error>
+CheckSetHostnameIpMappingMethod(dbus::MethodCall* method_call, int timeout_ms) {
   CHECK_EQ(method_call->GetMessageType(), dbus::Message::MESSAGE_METHOD_CALL);
   CHECK_EQ(method_call->GetInterface(), crosdns::kCrosDnsInterfaceName);
   CHECK_EQ(method_call->GetMember(), crosdns::kSetHostnameIpMappingMethod);
@@ -119,7 +119,7 @@ std::unique_ptr<dbus::Response> CheckSetHostnameIpMappingMethod(
 
   // MockObjectProxy will take ownership of the created Response object. See
   // comments in MockObjectProxy.
-  return dbus::Response::CreateEmpty();
+  return base::ok(dbus::Response::CreateEmpty());
 }
 
 }  // namespace
@@ -201,11 +201,7 @@ void ServiceTestingHelper::ExpectNoDBusMessages() {
         mock_concierge_service_proxy_, mock_vm_sk_forwarding_service_proxy_,
         mock_vm_disk_management_service_proxy_}) {
     EXPECT_CALL(*object_proxy,
-                CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
-                                                   A<int>(), A<dbus::Error*>()))
-        .Times(0);
-    EXPECT_CALL(*object_proxy,
-                CallMethodAndBlockDeprecated(A<dbus::MethodCall*>(), A<int>()))
+                CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
         .Times(0);
     EXPECT_CALL(*object_proxy,
                 DoCallMethod(A<dbus::MethodCall*>(), A<int>(),
@@ -430,7 +426,7 @@ void ServiceTestingHelper::SetUpDefaultVmAndContainer() {
               SendSignal(HasMethodName(kContainerStartedSignal)))
       .WillOnce(Invoke(&CheckContainerStartedSignalForDefaultVm));
   EXPECT_CALL(*mock_crosdns_service_proxy_,
-              CallMethodAndBlockDeprecated(
+              CallMethodAndBlock(
                   HasMethodName(crosdns::kSetHostnameIpMappingMethod), _))
       .WillOnce(Invoke(&CheckSetHostnameIpMappingMethod));
 

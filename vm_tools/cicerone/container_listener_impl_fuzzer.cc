@@ -27,10 +27,9 @@ namespace {
 using ::testing::_;
 using ::testing::A;
 using ::testing::AnyNumber;
+using ::testing::ByMove;
 using ::testing::DoAll;
-using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
-using ::testing::ReturnNull;
 using ::testing::SetArgPointee;
 using ::vm_tools::cicerone::ContainerListenerImpl;
 using ::vm_tools::cicerone::CrashListenerImpl;
@@ -58,20 +57,13 @@ void SetUpMockObjectProxy(
     dbus::MockObjectProxy* mock_object_proxy) {
   if (action.return_dbus_response()) {
     EXPECT_CALL(*mock_object_proxy,
-                CallMethodAndBlockDeprecated(A<dbus::MethodCall*>(), A<int>()))
-        .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
-    EXPECT_CALL(*mock_object_proxy,
-                CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
-                                                   A<int>(), A<dbus::Error*>()))
-        .WillRepeatedly(InvokeWithoutArgs(&dbus::Response::CreateEmpty));
+                CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
+        .WillRepeatedly(
+            Return(ByMove(base::ok(dbus::Response::CreateEmpty()))));
   } else {
     EXPECT_CALL(*mock_object_proxy,
-                CallMethodAndBlockDeprecated(A<dbus::MethodCall*>(), A<int>()))
-        .WillRepeatedly(ReturnNull());
-    EXPECT_CALL(*mock_object_proxy,
-                CallMethodAndBlockWithErrorDetails(A<dbus::MethodCall*>(),
-                                                   A<int>(), A<dbus::Error*>()))
-        .WillRepeatedly(ReturnNull());
+                CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
+        .WillRepeatedly(Return(ByMove(base::unexpected(dbus::Error()))));
   }
 }
 

@@ -136,7 +136,8 @@ int CreateLxdContainer(dbus::ObjectProxy* proxy,
                          base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -213,7 +214,8 @@ int StartLxdContainer(dbus::ObjectProxy* proxy,
                          base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -281,7 +283,8 @@ int SetTimezone(dbus::ObjectProxy* proxy, const string& timezone_name) {
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -330,7 +333,8 @@ int GetLxdContainerUsername(dbus::ObjectProxy* proxy,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -378,7 +382,8 @@ int SetUpLxdContainerUser(dbus::ObjectProxy* proxy,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -437,7 +442,8 @@ int LaunchApplication(dbus::ObjectProxy* proxy,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -508,7 +514,8 @@ int GetIcon(dbus::ObjectProxy* proxy,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -547,7 +554,8 @@ int GetInfo(dbus::ObjectProxy* proxy) {
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -592,7 +600,8 @@ int GetLinuxPackageInfo(dbus::ObjectProxy* proxy,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -688,7 +697,8 @@ int InstallLinuxPackage(dbus::ObjectProxy* proxy,
                          base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -795,7 +805,8 @@ int UninstallApplication(dbus::ObjectProxy* proxy,
                          base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;
@@ -902,7 +913,8 @@ int ApplyAnsiblePlaybook(dbus::ObjectProxy* proxy,
       base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlockDeprecated(&method_call, kDefaultTimeoutMs);
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to cicerone service";
     return -1;

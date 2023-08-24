@@ -964,8 +964,10 @@ void Service::SendListeningPorts() {
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      chunneld_service_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      chunneld_service_proxy_
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!dbus_response) {
     // If there's some issue with the chunneld service, don't make that
     // propagate to a higher level failure and just log it. We have logic for
@@ -1091,8 +1093,10 @@ void Service::UpdateApplicationList(const std::string& container_token,
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
-      vm_applications_service_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      vm_applications_service_proxy_
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to crostini app registry";
   } else {
@@ -1155,8 +1159,10 @@ void Service::OpenUrl(const std::string& container_token,
     writer.AppendString(url);
   }
   std::unique_ptr<dbus::Response> dbus_response =
-      url_handler_service_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      url_handler_service_proxy_
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to Chrome for OpenUrl";
   } else {
@@ -1212,8 +1218,10 @@ void Service::SelectFile(const std::string& container_token,
                                base::BindOnce(&OnFileSelected, files, event));
 
   std::unique_ptr<dbus::Response> dbus_response =
-      vm_applications_service_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      vm_applications_service_proxy_
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to Chrome for SelectFile";
     select_file_dialogs_.erase(select_file_token);
@@ -1284,8 +1292,10 @@ void Service::OpenTerminal(const std::string& container_token,
   dbus::MessageWriter(&method_call)
       .AppendProtoAsArrayOfBytes(std::move(terminal_params));
   std::unique_ptr<dbus::Response> dbus_response =
-      vm_applications_service_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      vm_applications_service_proxy_
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to Chrome for OpenTerminal";
   } else {
@@ -1323,8 +1333,10 @@ void Service::ForwardSecurityKeyMessage(
   dbus::MessageWriter(&method_call)
       .AppendProtoAsArrayOfBytes(std::move(security_key_message));
   std::unique_ptr<dbus::Response> dbus_response =
-      vm_sk_forwarding_service_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      vm_sk_forwarding_service_proxy_
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to Chrome for "
                << "ForwardSecurityKeyMessage";
@@ -1372,8 +1384,10 @@ void Service::UpdateMimeTypes(const std::string& container_token,
   dbus::MessageWriter(&method_call)
       .AppendProtoAsArrayOfBytes(std::move(mime_types));
   std::unique_ptr<dbus::Response> dbus_response =
-      vm_applications_service_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      vm_applications_service_proxy_
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to Chrome for UpdateMimeTypes";
   } else {
@@ -4101,8 +4115,10 @@ void Service::RegisterHostname(const std::string& hostname,
   writer.AppendString(ip);
   writer.AppendString("");
   std::unique_ptr<dbus::Response> dbus_response =
-      crosdns_service_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      crosdns_service_proxy_
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!dbus_response) {
     // If there's some issue with the resolver service, don't make that
     // propagate to a higher level failure and just log it. We have logic for
@@ -4165,8 +4181,10 @@ void Service::UnregisterHostname(const std::string& hostname) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(hostname);
   std::unique_ptr<dbus::Response> dbus_response =
-      crosdns_service_proxy_->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      crosdns_service_proxy_
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!dbus_response) {
     // If there's some issue with the resolver service, don't make that
     // propagate to a higher level failure and just log it. We have logic for

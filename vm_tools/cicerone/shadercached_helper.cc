@@ -101,14 +101,23 @@ void ShadercachedHelper::InstallShaderCache(
   shader_request.set_vm_owner_id(owner_id);
   shadercached_writer.AppendProtoAsArrayOfBytes(shader_request);
 
-  dbus::Error error;
-  std::unique_ptr<dbus::Response> dbus_response =
-      shadercached_proxy->CallMethodAndBlockWithErrorDetails(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
-  if (!dbus_response) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+      shadercached_proxy->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    dbus::Error error = std::move(dbus_response.error());
     *error_out =
         base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
                            error.name().c_str(), error.message().c_str());
+    if (request->wait()) {
+      mount_callbacks_.erase(condition);
+    }
+    event->Signal();
+    return;
+  }
+
+  if (!dbus_response.value()) {
+    *error_out = "Failed to get non-null response.";
     if (request->wait()) {
       mount_callbacks_.erase(condition);
     }
@@ -125,7 +134,7 @@ void ShadercachedHelper::InstallShaderCache(
   }
 
   shadercached::InstallResponse response;
-  auto reader = dbus::MessageReader(dbus_response.get());
+  auto reader = dbus::MessageReader(dbus_response.value().get());
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     *error_out = "Failed to parse InstallResponse";
     event->Signal();
@@ -161,14 +170,20 @@ void ShadercachedHelper::UninstallShaderCache(
   shader_request.set_steam_app_id(request->steam_app_id());
   shadercached_writer.AppendProtoAsArrayOfBytes(shader_request);
 
-  dbus::Error error;
-  std::unique_ptr<dbus::Response> dbus_response =
-      shadercached_proxy_->CallMethodAndBlockWithErrorDetails(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
-  if (!dbus_response) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+      shadercached_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    dbus::Error error = std::move(dbus_response.error());
     *error_out =
         base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
                            error.name().c_str(), error.message().c_str());
+    event->Signal();
+    return;
+  }
+
+  if (!dbus_response.value()) {
+    *error_out = "Failed to get non-null response.";
     event->Signal();
     return;
   }
@@ -216,14 +231,23 @@ void ShadercachedHelper::UnmountShaderCache(
   shader_request.set_vm_owner_id(owner_id);
   shadercached_writer.AppendProtoAsArrayOfBytes(shader_request);
 
-  dbus::Error error;
-  std::unique_ptr<dbus::Response> dbus_response =
-      shadercached_proxy->CallMethodAndBlockWithErrorDetails(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
-  if (!dbus_response) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response =
+      shadercached_proxy->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response.has_value()) {
+    dbus::Error error = std::move(dbus_response.error());
     *error_out =
         base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
                            error.name().c_str(), error.message().c_str());
+    if (request->wait()) {
+      mount_callbacks_.erase(condition);
+    }
+    event->Signal();
+    return;
+  }
+
+  if (!dbus_response.value()) {
+    *error_out = "Failed to get non-null response.";
     if (request->wait()) {
       mount_callbacks_.erase(condition);
     }
