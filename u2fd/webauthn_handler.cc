@@ -322,8 +322,8 @@ CancelWebAuthnFlowResponse WebAuthnHandler::Cancel(
   dbus::MethodCall call(chromeos::kUserAuthenticationServiceInterface,
                         chromeos::kUserAuthenticationServiceCancelMethod);
   std::unique_ptr<dbus::Response> cancel_ui_resp =
-      auth_dialog_dbus_proxy_->CallMethodAndBlockDeprecated(
-          &call, kCancelUVFlowTimeoutMs);
+      auth_dialog_dbus_proxy_->CallMethodAndBlock(&call, kCancelUVFlowTimeoutMs)
+          .value_or(nullptr);
 
   if (!cancel_ui_resp) {
     LOG(ERROR) << "Failed to dismiss WebAuthn user verification UI.";
@@ -1220,8 +1220,10 @@ bool WebAuthnHandler::HasFingerprint(const std::string& sanitized_user) {
   method_writer.AppendString(sanitized_user);
 
   std::unique_ptr<dbus::Response> response =
-      biod_proxy->CallMethodAndBlockDeprecated(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      biod_proxy
+          ->CallMethodAndBlock(&method_call,
+                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
   if (!response) {
     LOG(ERROR)
         << "Cannot check fingerprint availability: no response from biod.";

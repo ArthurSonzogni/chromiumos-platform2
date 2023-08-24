@@ -176,10 +176,10 @@ class WebAuthnFuzzer : public brillo::Daemon {
               std::move(*callback).Run(mock_auth_dialog_response_.get());
             });
 
-    EXPECT_CALL(*mock_auth_dialog_proxy_, CallMethodAndBlockDeprecated(_, _))
+    EXPECT_CALL(*mock_auth_dialog_proxy_, CallMethodAndBlock(_, _))
         .WillRepeatedly([this](Unused, Unused) {
           GenerateMockAuthDialogResponse();
-          return std::move(mock_auth_dialog_response_);
+          return base::ok(std::move(mock_auth_dialog_response_));
         });
   }
 
