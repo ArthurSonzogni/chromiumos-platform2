@@ -16,13 +16,13 @@
 # flow, where a capture would be rejected if it contributed too little
 # coverage.
 #
-# Fingers:         6
+# Fingers:         4
 # Enrollment:      20
 # Template Update: 20
 # Verification:    80
 #
-# Capture 6 different fingers per participant.
-FINGER_COUNT=6
+# Capture 4 different fingers per participant.
+FINGER_COUNT=4
 # Capture 20 enrollment samples per finger.
 ENROLLMENT_COUNT=20
 # Capture 20 template update samples + the 80 verification samples per finger.
