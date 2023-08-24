@@ -42,9 +42,9 @@ bool DBusFeedbackServiceInterface::SendFeedback(
                            dbus::ObjectPath(feedback::kFeedbackServicePath));
 
   std::unique_ptr<dbus::Response> response =
-      object->CallMethodAndBlockDeprecated(
-          &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (response.get() == nullptr) {
+      object->CallMethodAndBlock(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
+          .value_or(nullptr);
+  if (!response) {
     std::move(callback).Run(false);
     return true;
   }
