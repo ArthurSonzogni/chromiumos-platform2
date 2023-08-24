@@ -7,15 +7,9 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [
-    ":ml_cmdline",
-    ":ml_service",
-  ]
+  deps = [ ":ml_service" ]
   if (use.test) {
-    deps += [
-      ":ml_cmdline_test",
-      ":ml_service_test",
-    ]
+    deps += [ ":ml_service_test" ]
   }
   if (use.fuzzer) {
     deps += [
@@ -282,11 +276,6 @@ shared_library("libml_for_benchmark") {
   deps = [ ":ml_mojo_bindings_lib" ]
 }
 
-static_library("ml_cmdline_common") {
-  sources = [ "simple.cc" ]
-  deps = [ ":ml_common" ]
-}
-
 executable("ml_service") {
   sources = [ "main.cc" ]
   include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
@@ -294,13 +283,6 @@ executable("ml_service") {
     ":ml_common",
     "//ml/dbus_service:core",
   ]
-}
-
-executable("ml_cmdline") {
-  sources = [ "command_line.cc" ]
-  include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
-  install_path = "bin"
-  deps = [ ":ml_cmdline_common" ]
 }
 
 if (use.test) {
@@ -368,16 +350,6 @@ if (use.test) {
       sources += [ "benchmark_test.cc" ]
       deps += [ ":libml_for_benchmark" ]
     }
-  }
-  executable("ml_cmdline_test") {
-    sources = [
-      "simple_test.cc",
-      "testrunner.cc",
-    ]
-    configs += [ "//common-mk:test" ]
-    include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
-    run_test = true
-    deps = [ ":ml_cmdline_common" ]
   }
 }
 

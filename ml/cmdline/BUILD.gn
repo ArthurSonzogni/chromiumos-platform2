@@ -1,0 +1,37 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [ ":ml_cmdline" ]
+  if (use.test) {
+    deps += [ ":ml_cmdline_test" ]
+  }
+}
+
+static_library("ml_cmdline_common") {
+  sources = [ "../simple.cc" ]
+  deps = [ "..:ml_common" ]
+
+  # TODO(b:261604868): ml_common is unnecessarily big dep here. Split it out.
+}
+
+executable("ml_cmdline") {
+  sources = [ "../command_line.cc" ]
+  include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
+  install_path = "bin"
+  deps = [ ":ml_cmdline_common" ]
+}
+
+if (use.test) {
+  executable("ml_cmdline_test") {
+    sources = [
+      "../simple_test.cc",
+      "../testrunner.cc",
+    ]
+    configs += [ "//common-mk:test" ]
+    include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
+    run_test = true
+    deps = [ ":ml_cmdline_common" ]
+  }
+}
