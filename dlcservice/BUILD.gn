@@ -119,7 +119,10 @@ static_library("libdlcservice_utils") {
 # DLC verify related files.
 static_library("libdlcverify") {
   configs += [ ":target_defaults" ]
-  deps = [ ":libdlcservice_utils" ]
+  deps = [
+    ":libdlcservice-metadata",
+    ":libdlcservice_utils",
+  ]
 }
 
 # DLC service related files.
