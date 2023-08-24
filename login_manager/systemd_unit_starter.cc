@@ -108,10 +108,16 @@ SystemdUnitStarter::TriggerImpulseWithTimeoutAndError(
                                     : timeout.InMilliseconds();
   std::unique_ptr<dbus::Response> response;
   switch (mode) {
-    case TriggerMode::SYNC:
-      response = systemd_dbus_proxy_->CallMethodAndBlockWithErrorDetails(
-          &method_call, timeout_ms, error);
+    case TriggerMode::SYNC: {
+      base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+          systemd_dbus_proxy_->CallMethodAndBlock(&method_call, timeout_ms));
+      if (!response.has_value()) {
+        *error = std::move(response.error());
+        return nullptr;
+      }
+      response = std::move(response.value());
       break;
+    }
     case TriggerMode::ASYNC:
       // TODO(vsomani): replace with CallMethodWithErrorResponse when needed.
       systemd_dbus_proxy_->CallMethod(&method_call, timeout_ms,

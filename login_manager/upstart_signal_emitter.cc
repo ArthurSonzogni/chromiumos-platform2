@@ -5,6 +5,7 @@
 #include "login_manager/upstart_signal_emitter.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/logging.h>
@@ -58,8 +59,13 @@ UpstartSignalEmitter::TriggerImpulseWithTimeoutAndError(
   writer.AppendBool(mode == TriggerMode::SYNC);
   int timeout_ms = timeout.is_min() ? dbus::ObjectProxy::TIMEOUT_USE_DEFAULT
                                     : timeout.InMilliseconds();
-  return upstart_dbus_proxy_->CallMethodAndBlockWithErrorDetails(
-      &method_call, timeout_ms, error);
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
+      upstart_dbus_proxy_->CallMethodAndBlock(&method_call, timeout_ms));
+  if (!response.has_value()) {
+    *error = std::move(response.error());
+    return nullptr;
+  }
+  return std::move(response.value());
 }
 
 }  // namespace login_manager
