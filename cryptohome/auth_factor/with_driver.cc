@@ -18,6 +18,8 @@
 
 namespace cryptohome {
 
+namespace {
+
 bool IntentInUserPolicyIntents(
     const AuthIntent& intent,
     std::vector<::cryptohome::enumeration::SerializedAuthIntent> auth_intents) {
@@ -28,35 +30,29 @@ bool IntentInUserPolicyIntents(
   }
   return false;
 }
+}  // namespace
 
-// Checks if the intent is enabled based on the driver and the user policy.
-bool IsIntentEnabled(
+bool IsIntentEnabledBasedOnPolicy(
     const AuthFactorDriver& driver,
     const AuthIntent& intent,
-    const std::optional<SerializedUserAuthFactorTypePolicy>& user_policy) {
-  // If the intent is NotConfigurable, the intent is considered enabled.
-  // Otherwise, the intent is enabled if it is enabled by default and the user
-  // policy has not explicitly disabled it, or if it is disabled by default but
-  // the user policy has explicitly enabled it.
+    const SerializedUserAuthFactorTypePolicy& user_policy) {
   switch (driver.GetIntentConfigurability(intent)) {
     case AuthFactorDriver::IntentConfigurability::kNotConfigurable:
       return true;
     case AuthFactorDriver::IntentConfigurability::kEnabledByDefault:
-      return !user_policy.has_value() ||
-             !IntentInUserPolicyIntents(intent, user_policy->disabled_intents);
+      return !IntentInUserPolicyIntents(intent, user_policy.disabled_intents);
     case AuthFactorDriver::IntentConfigurability::kDisabledByDefault:
-      return user_policy.has_value() &&
-             IntentInUserPolicyIntents(intent, user_policy->enabled_intents);
+      return IntentInUserPolicyIntents(intent, user_policy.enabled_intents);
     default:
       return false;
   }
 }
 
-base::flat_set<AuthIntent> GetFullAuthSupportedIntents(
+base::flat_set<AuthIntent> GetFullAuthAvailableIntents(
     const ObfuscatedUsername& username,
     const AuthFactor& auth_factor,
     AuthFactorDriverManager& driver_manager,
-    const std::optional<SerializedUserAuthFactorTypePolicy>& user_policy) {
+    const SerializedUserAuthFactorTypePolicy& user_policy) {
   AuthFactorDriver& driver = driver_manager.GetDriver(auth_factor.type());
 
   // If the hardware support for this factor is not available no intents are
@@ -92,7 +88,7 @@ base::flat_set<AuthIntent> GetFullAuthSupportedIntents(
   for (AuthIntent intent : kAllAuthIntents) {
     if (driver.IsLightAuthSupported(intent) ||
         driver.IsFullAuthSupported(intent)) {
-      if (IsIntentEnabled(driver, intent, user_policy)) {
+      if (IsIntentEnabledBasedOnPolicy(driver, intent, user_policy)) {
         supported_intents.insert(intent);
       }
     }
@@ -100,11 +96,11 @@ base::flat_set<AuthIntent> GetFullAuthSupportedIntents(
   return supported_intents;
 }
 
-base::flat_set<AuthIntent> GetLightAuthSupportedIntents(
+base::flat_set<AuthIntent> GetLightAuthAvailableIntents(
     const ObfuscatedUsername& username,
     const AuthFactorType& auth_factor_type,
     AuthFactorDriverManager& driver_manager,
-    const std::optional<SerializedUserAuthFactorTypePolicy>& user_policy) {
+    const SerializedUserAuthFactorTypePolicy& user_policy) {
   AuthFactorDriver& driver = driver_manager.GetDriver(auth_factor_type);
 
   // If the hardware support for this factor is not available no intents are
@@ -121,7 +117,38 @@ base::flat_set<AuthIntent> GetLightAuthSupportedIntents(
   base::flat_set<AuthIntent> supported_intents;
   for (AuthIntent intent : kAllAuthIntents) {
     if (driver.IsLightAuthSupported(intent)) {
-      if (IsIntentEnabled(driver, intent, user_policy)) {
+      if (IsIntentEnabledBasedOnPolicy(driver, intent, user_policy)) {
+        supported_intents.insert(intent);
+      }
+    }
+  }
+  return supported_intents;
+}
+
+base::flat_set<AuthIntent> GetSupportedIntents(
+    const ObfuscatedUsername& username,
+    const AuthFactorType& auth_factor_type,
+    AuthFactorDriverManager& driver_manager,
+    const SerializedUserAuthFactorTypePolicy& user_policy,
+    bool only_light_auth) {
+  AuthFactorDriver& driver = driver_manager.GetDriver(auth_factor_type);
+
+  // If the hardware support for this factor is not available no intents are
+  // available.
+  if (!driver.IsSupportedByHardware()) {
+    return {};
+  }
+
+  // Note that for factors that support verification, we don't do expiration or
+  // delay because those are generally incompatible with verification.
+
+  // Check all of the intents against lightweight auth. Technically we could
+  // probably just look at verify-only but we leave this up to the driver.
+  base::flat_set<AuthIntent> supported_intents;
+  for (AuthIntent intent : kAllAuthIntents) {
+    if (driver.IsLightAuthSupported(intent) ||
+        (!only_light_auth && driver.IsFullAuthSupported(intent))) {
+      if (IsIntentEnabledBasedOnPolicy(driver, intent, user_policy)) {
         supported_intents.insert(intent);
       }
     }

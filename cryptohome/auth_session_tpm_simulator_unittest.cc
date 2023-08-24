@@ -35,7 +35,9 @@
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
+#include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/types/manager.h"
+#include "cryptohome/auth_input_utils.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/crypto.h"
@@ -119,7 +121,13 @@ CryptohomeStatus RunAuthenticateAuthFactor(
       .auth_input_proto = request.auth_input(),
       .flags = {.force_full_auth = AuthSession::ForceFullAuthFlag::kNone},
   };
-  auth_session.AuthenticateAuthFactor(auth_request, future.GetCallback());
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(request.auth_input())),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auth_session.AuthenticateAuthFactor(auth_request, auth_factor_type_policy,
+                                      future.GetCallback());
   return std::get<1>(future.Take());
 }
 

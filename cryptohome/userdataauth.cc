@@ -130,14 +130,16 @@ void ReplyWithStatus(InUseAuthSession unused_auth_session,
 }
 
 // This function returns the AuthFactorPolicy from the UserPolicy. It will
-// return std::nullopt if the user policy doesn't exist, or if the
+// return an empty policy if the user policy doesn't exist, or if the
 // auth_factor_type doesn't exist in the user policy.
-std::optional<SerializedUserAuthFactorTypePolicy>
-GetAuthFactorPolicyFromUserPolicy(
+SerializedUserAuthFactorTypePolicy GetAuthFactorPolicyFromUserPolicy(
     const std::optional<SerializedUserPolicy>& user_policy,
     AuthFactorType auth_factor_type) {
   if (!user_policy.has_value()) {
-    return std::nullopt;
+    return SerializedUserAuthFactorTypePolicy(
+        {.type = *SerializeAuthFactorType(auth_factor_type),
+         .enabled_intents = {},
+         .disabled_intents = {}});
   }
   for (auto policy : user_policy->auth_factor_type_policy) {
     if (policy.type != std::nullopt &&
@@ -145,7 +147,75 @@ GetAuthFactorPolicyFromUserPolicy(
       return policy;
     }
   }
-  return std::nullopt;
+  return SerializedUserAuthFactorTypePolicy(
+      {.type = *SerializeAuthFactorType(auth_factor_type),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+}
+
+// This function sets the auth intents for auth factor type. As long as an
+// intent is supported it should be included in the maximal set. The minimal set
+// only includes supported non-configurable intents. If a policy has been set
+// for the auth factor type, the set policy should be used as the "current" set,
+// otherwise supported intents that are enabled are considered the "current"
+// set.
+void SetAuthIntentsForAuthFactorType(
+    const AuthFactorType& type,
+    const AuthFactorDriver& factor_driver,
+    std::optional<SerializedUserAuthFactorTypePolicy> type_policy,
+    bool is_persistent_user,
+    bool is_ephemeral_user,
+    user_data_auth::AuthIntentsForAuthFactorType* intents_for_type) {
+  intents_for_type->set_type(AuthFactorTypeToProto(type));
+
+  for (AuthIntent intent : kAllAuthIntents) {
+    // Determine if this intent can be used with this factor type for this
+    // user. The check depends on the user type as full auth is only available
+    // for persistent users.
+    bool intent_is_supported;
+    if (is_persistent_user) {
+      intent_is_supported = factor_driver.IsFullAuthSupported(intent) ||
+                            factor_driver.IsLightAuthSupported(intent);
+    } else if (is_ephemeral_user) {
+      intent_is_supported = factor_driver.IsLightAuthSupported(intent);
+    } else {
+      intent_is_supported = false;
+    }
+    // If the intent is supported, determine which of the "current, min, max"
+    // sets it belongs in based on the configuration.
+    if (intent_is_supported) {
+      user_data_auth::AuthIntent proto_intent = AuthIntentToProto(intent);
+      // The maximum contains all supported intents, always add to it.
+      intents_for_type->add_maximum(proto_intent);
+      // The minimum contains only the non-configurable supported intents.
+      AuthFactorDriver::IntentConfigurability intent_configurability =
+          factor_driver.GetIntentConfigurability(intent);
+      if (intent_configurability ==
+          AuthFactorDriver::IntentConfigurability::kNotConfigurable) {
+        intents_for_type->add_minimum(proto_intent);
+        // If an intent is not configurable and is supported it should be
+        // included in the current set of intents regardless of a new type
+        // policy being applied or not.
+        intents_for_type->add_current(proto_intent);
+      }
+      // Unless there is a policy set for the user, the current set contains
+      // supported intents which are enabled by default as well as
+      // notconfigurable ones.
+      if (!type_policy.has_value() &&
+          intent_configurability ==
+              AuthFactorDriver::IntentConfigurability::kEnabledByDefault) {
+        intents_for_type->add_current(proto_intent);
+      }
+    }
+  }
+  // if there is a policy in place for this auth factor type, use the policy as
+  // the "current" intent.
+  if (type_policy.has_value()) {
+    for (auto intent : type_policy->enabled_intents) {
+      intents_for_type->add_current(
+          AuthIntentToProto(DeserializeAuthIntent(intent)));
+    }
+  }
 }
 
 // Builder function for AuthFactorWithStatus. This function takes into account
@@ -166,7 +236,7 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
   user_data_auth::AuthFactorWithStatus auth_factor_with_status;
   *auth_factor_with_status.mutable_auth_factor() =
       std::move(*auth_factor_proto);
-  auto supported_intents = GetFullAuthSupportedIntents(
+  auto supported_intents = GetFullAuthAvailableIntents(
       username, auth_factor, *auth_factor_driver_manager,
       GetAuthFactorPolicyFromUserPolicy(user_policy_file->GetUserPolicy(),
                                         auth_factor.type()));
@@ -201,10 +271,11 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
   }
   user_data_auth::AuthFactorWithStatus auth_factor_with_status;
   *auth_factor_with_status.mutable_auth_factor() = std::move(*proto_factor);
-  auto supported_intents = GetLightAuthSupportedIntents(
+  auto supported_intents = GetSupportedIntents(
       username, verifier->auth_factor_type(), *auth_factor_driver_manager,
       GetAuthFactorPolicyFromUserPolicy(user_policy_file->GetUserPolicy(),
-                                        verifier->auth_factor_type()));
+                                        verifier->auth_factor_type()),
+      /*light_auth_only=*/true);
   for (const auto& auth_intent : supported_intents) {
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
@@ -354,6 +425,7 @@ void ReplyWithAuthenticationResult(
 
 void HandleAuthenticationResult(
     InUseAuthSession auth_session,
+    const SerializedUserAuthFactorTypePolicy& user_policy,
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done,
     const AuthSession::PostAuthAction& post_auth_action,
@@ -371,7 +443,7 @@ void HandleAuthenticationResult(
       }
       AuthSession* auth_session_ptr = auth_session.Get();
       auth_session_ptr->AuthenticateAuthFactor(
-          post_auth_action.repeat_request.value(),
+          post_auth_action.repeat_request.value(), user_policy,
           // Currently there are no scenarios where a repeated auth will specify
           // a non-null action. Keep the logic simple here instead of recursing.
           base::BindOnce(
@@ -2264,8 +2336,7 @@ void UserDataAuth::StartAuthSession(
 
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       auth_session_manager_->CreateAuthSession(
-          GetAccountId(request.account_id()), request.flags(),
-          auth_intent.value());
+          GetAccountId(request.account_id()), request.flags(), *auth_intent);
   if (!auth_session_status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -2331,7 +2402,7 @@ void UserDataAuth::StartAuthSession(
                                 PossibleAction::kReboot})));
         return;
       }
-      auto user_policy = user_policy_file_status.value()->GetUserPolicy();
+      auto user_policy = (*user_policy_file_status)->GetUserPolicy();
       if (!user_policy.has_value()) {
         ReplyWithError(
             std::move(on_done), reply,
@@ -2341,7 +2412,7 @@ void UserDataAuth::StartAuthSession(
                                 PossibleAction::kReboot})));
         return;
       }
-      auto supported_intents = GetFullAuthSupportedIntents(
+      auto supported_intents = GetFullAuthAvailableIntents(
           auth_session->obfuscated_username(), auth_factor,
           *auth_factor_driver_manager_,
           GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()));
@@ -2355,7 +2426,7 @@ void UserDataAuth::StartAuthSession(
         auth_factor_with_status.add_available_for_intents(
             AuthIntentToProto(auth_intent));
         if (requested_intent && auth_intent == requested_intent) {
-          *reply.add_auth_factors() = std::move(proto_factor.value());
+          *reply.add_auth_factors() = std::move(*proto_factor);
         }
       }
       auto delay = factor_driver.GetFactorDelay(
@@ -3084,6 +3155,35 @@ void UserDataAuth::AuthenticateAuthFactor(
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
+  auto user_policy_file_status =
+      LoadUserPolicyFile(auth_session->obfuscated_username());
+  if (!user_policy_file_status.ok()) {
+    ReplyWithError(
+        std::move(on_done_wrapped_with_signal_cb), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocCouldntLoadUserPolicyFileInAuthenticateAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot})));
+    return;
+  }
+  std::optional<AuthFactorType> auth_factor_type =
+      DetermineFactorTypeFromAuthInput(request.auth_input());
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy;
+  if (!auth_factor_type.has_value()) {
+    ReplyWithError(
+        std::move(on_done_wrapped_with_signal_cb), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthAuthFactorNotFoundInAuthenticateAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  } else {
+    auth_factor_type_policy = GetAuthFactorPolicyFromUserPolicy(
+        (*user_policy_file_status)->GetUserPolicy(), *auth_factor_type);
+  }
 
   std::vector<std::string> auth_factor_labels;
   if (!request.auth_factor_label().empty()) {
@@ -3104,8 +3204,9 @@ void UserDataAuth::AuthenticateAuthFactor(
 
   AuthSession* auth_session_ptr = auth_session.Get();
   auth_session_ptr->AuthenticateAuthFactor(
-      authenticate_auth_factor_request,
+      authenticate_auth_factor_request, auth_factor_type_policy,
       base::BindOnce(&HandleAuthenticationResult, std::move(auth_session),
+                     std::move(auth_factor_type_policy),
                      std::move(on_done_wrapped_with_signal_cb)));
 }
 
@@ -3426,11 +3527,11 @@ void UserDataAuth::ListAuthFactors(
     for (AuthFactorMap::ValueView item : auth_factor_map) {
       if (IsPublicType(item.auth_factor().type())) {
         auto auth_factor_with_status = GetAuthFactorWithStatus(
-            obfuscated_username, user_policy_file_status.value(),
+            obfuscated_username, *user_policy_file_status,
             auth_factor_driver_manager_, item.auth_factor());
         if (auth_factor_with_status.has_value()) {
           *reply.add_configured_auth_factors_with_status() =
-              std::move(auth_factor_with_status.value());
+              std::move(*auth_factor_with_status);
         }
       }
     }
@@ -3486,11 +3587,11 @@ void UserDataAuth::ListAuthFactors(
            user_session->GetCredentialVerifiers()) {
         if (IsPublicType(verifier->auth_factor_type())) {
           auto auth_factor_with_status = GetAuthFactorWithStatus(
-              obfuscated_username, user_policy_file_status.value(),
+              obfuscated_username, *user_policy_file_status,
               auth_factor_driver_manager_, verifier);
           if (auth_factor_with_status.has_value()) {
             *reply.add_configured_auth_factors_with_status() =
-                std::move(auth_factor_with_status.value());
+                std::move(*auth_factor_with_status);
           }
         }
       }
@@ -3515,45 +3616,24 @@ void UserDataAuth::ListAuthFactors(
   // For every supported auth factor type the user has, report the available
   // auth intents.
   for (AuthFactorType type : supported_auth_factors) {
-    user_data_auth::AuthIntentsForAuthFactorType* intents_for_type =
-        reply.add_auth_intents_for_types();
-    intents_for_type->set_type(AuthFactorTypeToProto(type));
     const AuthFactorDriver& factor_driver =
         auth_factor_driver_manager_->GetDriver(type);
-    for (AuthIntent intent : kAllAuthIntents) {
-      // Determine if this intent can be used with this factor type for this
-      // user. The check depends on the user type as full auth is only available
-      // for persistent users.
-      bool intent_is_supported;
-      if (is_persistent_user) {
-        intent_is_supported = factor_driver.IsFullAuthSupported(intent) ||
-                              factor_driver.IsLightAuthSupported(intent);
-      } else if (is_ephemeral_user) {
-        intent_is_supported = factor_driver.IsLightAuthSupported(intent);
-      } else {
-        intent_is_supported = false;
-      }
-      // If the intent is supported, determine which of the "current, min, max"
-      // sets it belongs in based on the configuration.
-      if (intent_is_supported) {
-        user_data_auth::AuthIntent proto_intent = AuthIntentToProto(intent);
-        // The maximum contains all supported intents, always add to it.
-        intents_for_type->add_maximum(proto_intent);
-        // The minimum contains only the non-configurable supported intents.
-        AuthFactorDriver::IntentConfigurability intent_configurability =
-            factor_driver.GetIntentConfigurability(intent);
-        if (intent_configurability ==
-            AuthFactorDriver::IntentConfigurability::kNotConfigurable) {
-          intents_for_type->add_minimum(proto_intent);
-        }
-        // The current set contains supported intents which are enabled.
-        // TODO(b/281878872): Update this to check the actual current setting
-        // for this intent rather than just using the default.
-        if (intent_configurability !=
-            AuthFactorDriver::IntentConfigurability::kDisabledByDefault) {
-          intents_for_type->add_current(proto_intent);
-        }
-      }
+    auto type_policy = GetAuthFactorPolicyFromUserPolicy(
+        (*user_policy_file_status)->GetUserPolicy(), type);
+    // Proto AuthIntentsForAuthFactorType assumes nothing is enabled if the type
+    // policy is empty, but here the emptiness is just an indication of no
+    // change to the default policy.
+    if (type_policy.enabled_intents.empty() &&
+        type_policy.disabled_intents.empty()) {
+      SetAuthIntentsForAuthFactorType(type, factor_driver, std::nullopt,
+                                      /*is_persistent_user=*/is_persistent_user,
+                                      /*is_ephemeral_user=*/is_ephemeral_user,
+                                      reply.add_auth_intents_for_types());
+    } else {
+      SetAuthIntentsForAuthFactorType(type, factor_driver, type_policy,
+                                      /*is_persistent_user=*/is_persistent_user,
+                                      /*is_ephemeral_user=*/is_ephemeral_user,
+                                      reply.add_auth_intents_for_types());
     }
   }
 
@@ -3567,6 +3647,135 @@ void UserDataAuth::ListAuthFactors(
   }
 
   // Successfully completed, send the response with OK.
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+}
+
+void UserDataAuth::ModifyAuthFactorIntents(
+    user_data_auth::ModifyAuthFactorIntentsRequest request,
+    base::OnceCallback<
+        void(const user_data_auth::ModifyAuthFactorIntentsReply&)> on_done) {
+  AssertOnMountThread();
+  user_data_auth::ModifyAuthFactorIntentsReply reply;
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  std::optional<AuthFactorType> type = AuthFactorTypeFromProto(request.type());
+  if (!type.has_value()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthFactorTypeNotFoundInModifyAuthFactorIntents),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  if (!auth_session_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoAuthSessionInModifyAuthFactorIntents))
+            .Wrap(std::move(auth_session_status).err_status()));
+    return;
+  }
+  auto user_policy_file_status =
+      LoadUserPolicyFile(auth_session_status.value()->obfuscated_username());
+  if (!user_policy_file_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocCouldntLoadUserPolicyFileInModifyAuthFactorIntents))
+            .Wrap(std::move(user_policy_file_status).err_status()));
+    return;
+  }
+  SerializedUserAuthFactorTypePolicy new_auth_factor_policy;
+  std::set<AuthIntent> intents_for_auth_factor;
+  for (int i = 0; i < request.intents_size(); i++) {
+    auto auth_intent_from_proto = AuthIntentFromProto(request.intents(i));
+    if (!auth_intent_from_proto.has_value()) {
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocCouldntConvertToAuthIntentInModifyAuthFactorIntents),
+              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                              PossibleAction::kReboot}),
+              user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+      return;
+    }
+    intents_for_auth_factor.insert(*auth_intent_from_proto);
+  }
+  new_auth_factor_policy.type = SerializeAuthFactorType(*type);
+  const AuthFactorDriver& driver =
+      auth_factor_driver_manager_->GetDriver(*type);
+  bool is_ephemeral_user = auth_session_status.value()->ephemeral_user();
+
+  // Any intent that is enabled should be both supported by the hardware and be
+  // configurable.
+  if (driver.IsSupportedByHardware()) {
+    for (auto intent : intents_for_auth_factor) {
+      if (driver.GetIntentConfigurability(intent) ==
+          AuthFactorDriver::IntentConfigurability::kNotConfigurable) {
+        continue;
+      }
+      if (is_ephemeral_user) {
+        if (!driver.IsLightAuthSupported(intent)) {
+          continue;
+        }
+      } else {
+        if (!driver.IsLightAuthSupported(intent) &&
+            !driver.IsFullAuthSupported(intent)) {
+          continue;
+        }
+      }
+      new_auth_factor_policy.enabled_intents.push_back(
+          SerializeAuthIntent(intent));
+    }
+    for (AuthIntent intent : kAllAuthIntents) {
+      // If the policy has not enabled a configurable intent explicitly, it
+      // should be listed as disabled.
+      if (intents_for_auth_factor.find(intent) ==
+              intents_for_auth_factor.end() &&
+          driver.GetIntentConfigurability(intent) !=
+              AuthFactorDriver::IntentConfigurability::kNotConfigurable) {
+        new_auth_factor_policy.disabled_intents.push_back(
+            SerializeAuthIntent(intent));
+      }
+    }
+  }
+  std::optional<SerializedUserPolicy> user_policy =
+      (*user_policy_file_status)->GetUserPolicy();
+  SerializedUserPolicy new_policy;
+  new_policy.auth_factor_type_policy.push_back(new_auth_factor_policy);
+  // The new user policy should include the policy for all of the auth factors
+  // except for the updated auth factor. The last policy for this auth factor
+  // should be entirely discarded as the modify doesn't update the policy and
+  // rather replaces it.
+  if (user_policy.has_value()) {
+    for (auto policy : user_policy->auth_factor_type_policy) {
+      if (policy.type.has_value() &&
+          *policy.type != SerializeAuthFactorType(*type)) {
+        new_policy.auth_factor_type_policy.push_back(policy);
+      }
+    }
+  }
+  (*user_policy_file_status)->UpdateUserPolicy(new_policy);
+  CryptohomeStatus user_policy_store_status =
+      (*user_policy_file_status)->StoreInFile();
+  if (!user_policy_store_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocCouldntStoreUserPolicyFileInModifyAuthFactorIntents))
+            .Wrap(std::move(user_policy_store_status).err_status()));
+    return;
+  }
+  SetAuthIntentsForAuthFactorType(*type, driver, new_auth_factor_policy,
+                                  /*is_persistent_user=*/!is_ephemeral_user,
+                                  /*is_ephemeral_user=*/is_ephemeral_user,
+                                  reply.mutable_auth_intents());
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 

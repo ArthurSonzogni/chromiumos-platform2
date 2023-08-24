@@ -5056,6 +5056,17 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return reply_future.Get();
   }
 
+  std::optional<user_data_auth::ModifyAuthFactorIntentsReply>
+  ModifyAuthFactorIntentsSync(
+      const user_data_auth::ModifyAuthFactorIntentsRequest& in_request) {
+    TestFuture<user_data_auth::ModifyAuthFactorIntentsReply> reply_future;
+    userdataauth_->ModifyAuthFactorIntents(
+        in_request, reply_future.GetCallback<
+                        const user_data_auth::ModifyAuthFactorIntentsReply&>());
+    RunUntilIdle();
+    return reply_future.Get();
+  }
+
   std::optional<user_data_auth::PrepareEphemeralVaultReply>
   PrepareEphemeralVaultSync(
       const user_data_auth::PrepareEphemeralVaultRequest& in_request) {
@@ -5380,6 +5391,55 @@ TEST_F(UserDataAuthApiTest, CreatePeristentUserAlreadyExist) {
       HasPossibleActions(std::set(
           {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
            user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT})));
+}
+
+// This is designed to check if modifying auth factor intents results in
+// enabling/disabling a configurable intent. And also that non-configurable
+// intents are not configured.
+TEST_F(UserDataAuthApiTest, ModifyAuthFactorIntents) {
+  // Setup auth session.
+  auto mock_processor =
+      std::make_unique<NiceMock<MockBiometricsCommandProcessor>>();
+  MockBiometricsCommandProcessor* bio_command_processor_ = mock_processor.get();
+  EXPECT_CALL(*bio_command_processor_, SetEnrollScanDoneCallback(_));
+  EXPECT_CALL(*bio_command_processor_, SetAuthScanDoneCallback(_));
+  EXPECT_CALL(*bio_command_processor_, SetSessionFailedCallback(_));
+  bio_service_ = std::make_unique<BiometricsAuthBlockService>(
+      std::move(mock_processor),
+      /*enroll_signal_sender=*/base::DoNothing(),
+      /*auth_signal_sender=*/base::DoNothing());
+  userdataauth_->set_biometrics_service(bio_service_.get());
+  userdataauth_->set_crypto(&crypto_);
+  userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
+  ASSERT_TRUE(CreateTestUser());
+  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  // CreateModifyAuthFactorIntentRequest
+  user_data_auth::ModifyAuthFactorIntentsRequest modify_req;
+  modify_req.set_auth_session_id(session_id.value());
+  modify_req.set_type(
+      user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_FINGERPRINT);
+  // This would both test that Decrypt is enabled and that webauthn is not
+  // disabled.
+  modify_req.add_intents(user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
+  modify_req.add_intents(user_data_auth::AuthIntent::AUTH_INTENT_VERIFY_ONLY);
+  EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(true));
+  std::optional<user_data_auth::ModifyAuthFactorIntentsReply> modify_reply =
+      ModifyAuthFactorIntentsSync(modify_req);
+  EXPECT_TRUE(modify_reply.has_value());
+  EXPECT_THAT(modify_reply->auth_intents().type(),
+              user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_FINGERPRINT);
+  EXPECT_THAT(modify_reply->auth_intents().current(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
+                                   user_data_auth::AUTH_INTENT_DECRYPT,
+                                   user_data_auth::AUTH_INTENT_WEBAUTHN));
+  EXPECT_THAT(modify_reply->auth_intents().minimum(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_WEBAUTHN));
+  EXPECT_THAT(modify_reply->auth_intents().maximum(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY,
+                                   user_data_auth::AUTH_INTENT_DECRYPT,
+                                   user_data_auth::AUTH_INTENT_WEBAUTHN));
 }
 
 // This is designed to trigger FailureReason::COULD_NOT_MOUNT_CRYPTOHOME on

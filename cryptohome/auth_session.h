@@ -42,6 +42,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/user_policy.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
@@ -246,8 +247,10 @@ class AuthSession final {
   // AuthSession via an auth factor. It may be called multiple times depending
   // on errors or various steps involved in multi-factor authentication.
   // Note: only USS users are supported currently.
-  void AuthenticateAuthFactor(const AuthenticateAuthFactorRequest& request,
-                              AuthenticateAuthFactorCallback callback);
+  void AuthenticateAuthFactor(
+      const AuthenticateAuthFactorRequest& request,
+      const SerializedUserAuthFactorTypePolicy& user_policy,
+      AuthenticateAuthFactorCallback callback);
 
   // PrepareUserForRemoval is called to perform the necessary steps before
   // removing a user, like preparing each auth factor for removal.
@@ -452,7 +455,9 @@ class AuthSession final {
 
   // Sets the auth session as fully authenticated by the given factor type. What
   // specific intents the session is authorized for depends on the factor type.
-  void SetAuthorizedForFullAuthIntents(AuthFactorType auth_factor_type);
+  void SetAuthorizedForFullAuthIntents(
+      AuthFactorType auth_factor_type,
+      const SerializedUserAuthFactorTypePolicy& user_policy);
 
   // Converts the D-Bus AuthInput proto into the C++ struct. Returns nullopt on
   // failure.
@@ -662,6 +667,7 @@ class AuthSession final {
       const AuthInput& auth_input,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
+      const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done,
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
@@ -704,6 +710,7 @@ class AuthSession final {
       const AuthInput& auth_input,
       const AuthFactorMetadata& metadata,
       const AuthFactorMap::ValueView& stored_auth_factor,
+      const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done);
 
   // Authenticates the user using USS with the |auth_factor_label|, |auth_input|
@@ -714,6 +721,7 @@ class AuthSession final {
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       const AuthFactor& auth_factor,
+      const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done);
 
   // Authenticates the user using VaultKeysets with the given |auth_input|.
@@ -724,12 +732,14 @@ class AuthSession final {
       const AuthFactorMetadata& metadata,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
+      const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done);
 
   // Authenticates the user using the selected |auth_factor|. Used when the
   // auth factor type takes multiple labels during authentication, and used as
   // the callback for AuthBlockUtility::SelectAuthFactorWithAuthBlock.
   void AuthenticateViaSelectedAuthFactor(
+      const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
@@ -750,6 +760,7 @@ class AuthSession final {
       const AuthFactorMetadata& metadata,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
+      const SerializedUserAuthFactorTypePolicy& user_policy,
       StatusCallback on_done,
       CryptohomeStatus error,
       std::unique_ptr<KeyBlobs> key_blobs,

@@ -43,6 +43,8 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/flatbuffer.h"
+#include "cryptohome/auth_input_utils.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier_test_utils.h"
@@ -75,6 +77,8 @@ namespace {
 
 using base::test::TestFuture;
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::enumeration::SerializedAuthFactorType;
+using cryptohome::enumeration::SerializedAuthIntent;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
@@ -539,9 +543,14 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   std::vector<std::string> auth_factor_labels{kFakePinLabel};
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_password_input()->set_secret(kFakePin);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -930,10 +939,15 @@ class AuthSessionWithUssTest : public AuthSessionTest {
     auth_input_proto.mutable_cryptohome_recovery_input()
         ->mutable_recovery_response();
     AuthenticateTestFuture authenticate_future;
+    SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+        {.type = *SerializeAuthFactorType(
+             *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+         .enabled_intents = {},
+         .disabled_intents = {}});
     // Authenticate using recovery.
     auth_session.AuthenticateAuthFactor(
         ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-        authenticate_future.GetCallback());
+        auth_factor_type_policy, authenticate_future.GetCallback());
     // Verify.
     auto& [unused_action, status] = authenticate_future.Get();
     if (status.ok() || !status->local_legacy_error().has_value()) {
@@ -968,9 +982,14 @@ class AuthSessionWithUssTest : public AuthSessionTest {
     std::vector<std::string> auth_factor_labels{label};
     user_data_auth::AuthInput auth_input_proto;
     auth_input_proto.mutable_password_input()->set_secret(password);
+    SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+        {.type = *SerializeAuthFactorType(
+             *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+         .enabled_intents = {},
+         .disabled_intents = {}});
     auth_session.AuthenticateAuthFactor(
         ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-        authenticate_future.GetCallback());
+        auth_factor_type_policy, authenticate_future.GetCallback());
 
     // Verify.
     auto& [unused_action, status] = authenticate_future.Get();
@@ -1667,9 +1686,14 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
   std::vector<std::string> auth_factor_labels{kFakeLabel};
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_password_input()->set_secret(kFakePass);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -1768,9 +1792,14 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_password_input()->set_secret(kFakePass);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -1874,9 +1903,14 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUssFails) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_password_input()->set_secret(kFakePass);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -1967,9 +2001,14 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUss) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -2079,9 +2118,14 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUssWithRecreate) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -2185,9 +2229,14 @@ TEST_F(AuthSessionWithUssTest,
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -2294,9 +2343,14 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds(_))
       .WillRepeatedly([](auto) { return UINT32_MAX; });
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
   auto& [action, status] = authenticate_future.Get();
   EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
   EXPECT_THAT(status, NotOk());
@@ -2481,9 +2535,14 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
   auth_input_proto.mutable_cryptohome_recovery_input()
       ->mutable_recovery_response();
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -2593,9 +2652,14 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
   auth_input_proto.mutable_smart_card_input()
       ->set_key_delegate_dbus_service_name("test_cc_dbus");
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -2632,9 +2696,14 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
 
   // Call AuthenticateAuthFactor again.
   AuthenticateTestFuture verify_authenticate_future;
+  auth_factor_type_policy = SerializedUserAuthFactorTypePolicy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   verify_auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      verify_authenticate_future.GetCallback());
+      auth_factor_type_policy, verify_authenticate_future.GetCallback());
   EXPECT_THAT(verify_auth_session.authorized_intents(),
               UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
@@ -2672,9 +2741,14 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordAuthentication) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_password_input()->set_secret(kFakePass);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -2773,9 +2847,14 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_password_input()->set_secret(kFakePass);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -2790,6 +2869,7 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
   // Test and verify with repeat request.
   AuthenticateTestFuture second_authenticate_future;
   auth_session.AuthenticateAuthFactor(action.repeat_request.value(),
+                                      auth_factor_type_policy,
                                       second_authenticate_future.GetCallback());
   auto& [second_action, second_status] = second_authenticate_future.Get();
   EXPECT_THAT(second_status, IsOk());
@@ -2827,8 +2907,12 @@ TEST_F(AuthSessionWithUssTest, LightweightFingerprintAuthentication) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_legacy_fingerprint_input();
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializedAuthFactorType::kLegacyFingerprint,
+       .enabled_intents = {SerializedAuthIntent::kVerifyOnly},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
-      ToAuthenticateRequest({}, auth_input_proto),
+      ToAuthenticateRequest({}, auth_input_proto), auth_factor_type_policy,
       authenticate_future.GetCallback());
 
   // Verify.
@@ -3050,9 +3134,14 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactor) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -3140,9 +3229,14 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorPartialRemoveIsStillOk) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -3228,9 +3322,14 @@ TEST_F(AuthSessionWithUssTest, RemoveAuthFactorRemovesCredentialVerifier) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_password_input()->set_secret(kFakeOtherPass);
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      authenticate_future.GetCallback());
+      auth_factor_type_policy, authenticate_future.GetCallback());
 
   // Verify.
   auto& [action, status] = authenticate_future.Get();
@@ -3959,8 +4058,13 @@ TEST_F(AuthSessionWithUssTest, FingerprintAuthenticationForWebAuthn) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_legacy_fingerprint_input();
   AuthenticateTestFuture authenticate_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   auth_session.AuthenticateAuthFactor(
-      ToAuthenticateRequest({}, auth_input_proto),
+      ToAuthenticateRequest({}, auth_input_proto), auth_factor_type_policy,
       authenticate_future.GetCallback());
 
   // Verify.
@@ -4079,9 +4183,10 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
       .WillRepeatedly(Return(AuthBlockType::kFingerprint));
   EXPECT_CALL(auth_block_utility_, SelectAuthFactorWithAuthBlock(
                                        AuthBlockType::kFingerprint, _, _, _))
-      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
-                    std::vector<AuthFactor> auth_factors,
-                    AuthBlock::SelectFactorCallback select_callback) {
+      .WillRepeatedly([&](AuthBlockType auth_block_type,
+                          const AuthInput& auth_input,
+                          std::vector<AuthFactor> auth_factors,
+                          AuthBlock::SelectFactorCallback select_callback) {
         ASSERT_TRUE(auth_input.rate_limiter_label.has_value());
         EXPECT_EQ(auth_input.rate_limiter_label.value(), kFakeRateLimiterLabel);
         EXPECT_EQ(auth_factors.size(), 2);
@@ -4101,9 +4206,10 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
       });
   EXPECT_CALL(auth_block_utility_,
               DeriveKeyBlobsWithAuthBlock(AuthBlockType::kFingerprint, _, _, _))
-      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
-                    const AuthBlockState& auth_state,
-                    AuthBlock::DeriveCallback derive_callback) {
+      .WillRepeatedly([&](AuthBlockType auth_block_type,
+                          const AuthInput& auth_input,
+                          const AuthBlockState& auth_state,
+                          AuthBlock::DeriveCallback derive_callback) {
         ASSERT_TRUE(auth_input.user_input.has_value());
         ASSERT_TRUE(auth_input.fingerprint_auth_input.has_value());
         ASSERT_TRUE(auth_input.fingerprint_auth_input->auth_secret.has_value());
@@ -4125,13 +4231,17 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   // Set expectations that fingerprint credential leaves with non-zero wrong
   // auth attempts will be reset after a successful authentication.
   EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeFpLabel))
-      .WillOnce(Return(1));
+      .Times(2)
+      .WillRepeatedly(Return(1));
   EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeSecondFpLabel))
-      .WillOnce(Return(0));
-  EXPECT_CALL(*mock_le_manager_ptr, ResetCredential(kFakeRateLimiterLabel, _,
-                                                    /*strong_reset=*/true));
-  EXPECT_CALL(*mock_le_manager_ptr, ResetCredential(kFakeFpLabel, _,
-                                                    /*strong_reset=*/false));
+      .Times(2)
+      .WillRepeatedly(Return(0));
+  EXPECT_CALL(*mock_le_manager_ptr,
+              ResetCredential(kFakeRateLimiterLabel, _, /*strong_reset=*/true))
+      .Times(2);
+  EXPECT_CALL(*mock_le_manager_ptr,
+              ResetCredential(kFakeFpLabel, _, /*strong_reset=*/false))
+      .Times(2);
   EXPECT_CALL(*mock_le_manager_ptr, ResetCredential(kFakeSecondFpLabel, _, _))
       .Times(0);
 
@@ -4153,10 +4263,17 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
                               .Consume()},
       backing_apis_);
   AuthenticateTestFuture verify_future;
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = *SerializeAuthFactorType(
+           *DetermineFactorTypeFromAuthInput(auth_input_proto)),
+       .enabled_intents = {},
+       .disabled_intents = {}});
   verify_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      verify_future.GetCallback());
-  AuthSession decrypt_session(
+      auth_factor_type_policy, verify_future.GetCallback());
+  AuthenticateTestFuture decrypt_future_without_policy,
+      decrypt_future_with_policy;
+  AuthSession decrypt_session1(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
@@ -4168,21 +4285,44 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
                               .AddCopiesFromMap(auth_session.auth_factor_map())
                               .Consume()},
       backing_apis_);
-  AuthenticateTestFuture decrypt_future;
-  decrypt_session.AuthenticateAuthFactor(
+  decrypt_session1.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
-      decrypt_future.GetCallback());
-
+      auth_factor_type_policy, decrypt_future_without_policy.GetCallback());
+  AuthSession decrypt_session2(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
+       .user_exists = true,
+       .auth_factor_map = AfMapBuilder()
+                              .WithUss()
+                              .AddCopiesFromMap(auth_session.auth_factor_map())
+                              .Consume()},
+      backing_apis_);
+  SerializedUserAuthFactorTypePolicy user_policy(
+      {.type = SerializedAuthFactorType::kFingerprint,
+       .enabled_intents = {SerializedAuthIntent::kDecrypt},
+       .disabled_intents = {}});
+  decrypt_session2.AuthenticateAuthFactor(
+      ToAuthenticateRequest(auth_factor_labels, auth_input_proto), user_policy,
+      decrypt_future_with_policy.GetCallback());
   // Verify.
   auto [action, status] = verify_future.Take();
   EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
   EXPECT_THAT(status, IsOk());
   EXPECT_THAT(verify_session.authorized_intents(),
               UnorderedElementsAre(AuthIntent::kVerifyOnly));
-  std::tie(action, status) = decrypt_future.Take();
+  std::tie(action, status) = decrypt_future_without_policy.Take();
   EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
   EXPECT_THAT(status, NotOk());
-  EXPECT_THAT(decrypt_session.authorized_intents(), IsEmpty());
+  EXPECT_THAT(decrypt_session1.authorized_intents(), IsEmpty());
+  std::tie(action, status) = decrypt_future_with_policy.Take();
+  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
+  EXPECT_THAT(status, IsOk());
+  EXPECT_THAT(
+      decrypt_session2.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 }
 
 TEST_F(AuthSessionWithUssTest, RelabelAuthFactor) {

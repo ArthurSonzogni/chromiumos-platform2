@@ -1303,6 +1303,22 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCouldntLoadUserPolicyFileInUpdateAuthFactorMetadata = 738,
   /* ./userdataauth.cc */
   kLocCouldntLoadUserPolicyFileInListAuthFactors = 739,
+  /* ./userdataauth.cc */
+  kLocAuthFactorTypeNotFoundInModifyAuthFactorIntents = 740,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInModifyAuthFactorIntents = 741,
+  /* ./userdataauth.cc */
+  kLocCouldntLoadUserPolicyFileInModifyAuthFactorIntents = 742,
+  /* ./userdataauth.cc */
+  kLocCouldntConvertToAuthIntentInModifyAuthFactorIntents = 743,
+  /* ./userdataauth.cc */
+  kLocCouldntStoreUserPolicyFileInModifyAuthFactorIntents = 744,
+  /* ./userdataauth.cc */
+  kLocCouldntLoadUserPolicyFileInAuthenticateAuthFactor = 745,
+  /* =Obsolete= */
+  kLocCouldntGetFactorTypeFromAuthInputInAuthenticateAuthFactor = 746,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthAuthFactorNotFoundInAuthenticateAuthFactor = 747,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.

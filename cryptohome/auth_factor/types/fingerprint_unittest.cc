@@ -440,28 +440,5 @@ TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {
   EXPECT_THAT(verifier, IsNull());
 }
 
-// Verify that the decrypt flag file works correct. When this feature is removed
-// this test should be removed along with the flag file mocks in
-// manager_unittest.cc.
-TEST_F(FingerprintDriverTest, IsFullAuthDecryptUsesFlagFile) {
-  FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
-  AuthFactorDriver& driver = fp_driver;
-
-  EXPECT_CALL(platform_, FileExists(base::FilePath(
-                             "/var/lib/cryptohome/fingerprint_decrypt_enable")))
-      .WillOnce(Return(false));
-  EXPECT_THAT(driver.IsFullAuthSupported(AuthIntent::kDecrypt), IsFalse());
-  EXPECT_THAT(driver.IsFullAuthSupported(AuthIntent::kVerifyOnly), IsTrue());
-
-  EXPECT_CALL(platform_, FileExists(base::FilePath(
-                             "/var/lib/cryptohome/fingerprint_decrypt_enable")))
-      .WillOnce(Return(true));
-  EXPECT_THAT(driver.IsFullAuthSupported(AuthIntent::kDecrypt), IsTrue());
-  EXPECT_THAT(driver.IsFullAuthSupported(AuthIntent::kVerifyOnly), IsTrue());
-}
-
 }  // namespace
 }  // namespace cryptohome

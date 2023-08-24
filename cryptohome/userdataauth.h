@@ -674,6 +674,11 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::ListAuthFactorsReply&)>
           on_done);
 
+  void ModifyAuthFactorIntents(
+      user_data_auth::ModifyAuthFactorIntentsRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::ModifyAuthFactorIntentsReply&)> on_done);
+
   void GetAuthFactorExtendedInfo(
       user_data_auth::GetAuthFactorExtendedInfoRequest request,
       base::OnceCallback<

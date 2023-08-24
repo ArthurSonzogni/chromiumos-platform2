@@ -51,8 +51,7 @@ class FingerprintAuthFactorDriver final
       Crypto* crypto,
       AsyncInitPtr<BiometricsAuthBlockService> bio_service,
       UserMetadataReader* user_metadata_reader)
-      : platform_(platform),
-        crypto_(crypto),
+      : crypto_(crypto),
         bio_service_(bio_service),
         user_metadata_reader_(user_metadata_reader) {}
 
@@ -83,7 +82,6 @@ class FingerprintAuthFactorDriver final
       const auth_factor::CommonMetadata& common,
       const auth_factor::FingerprintMetadata& typed_metadata) const override;
 
-  Platform* platform_;
   Crypto* crypto_;
   AsyncInitPtr<BiometricsAuthBlockService> bio_service_;
   UserMetadataReader* user_metadata_reader_;

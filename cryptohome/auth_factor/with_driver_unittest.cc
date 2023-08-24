@@ -19,6 +19,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_intent.h"
@@ -121,8 +122,12 @@ TEST_F(AuthFactorWithDriverTest, PasswordSupportsAllIntents) {
       CreateFactor(AuthFactorType::kPassword, auth_factor::PasswordMetadata(),
                    TpmEccAuthBlockState());
 
-  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, password_factor,
-                                             manager_, std::nullopt);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializeAuthFactorType(password_factor.type()).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, password_factor,
+                                             manager_, auth_factor_type_policy);
 
   EXPECT_THAT(intents, UnorderedElementsAreArray(kAllAuthIntents));
 }
@@ -133,8 +138,12 @@ TEST_F(AuthFactorWithDriverTest, PinNoIntentsWithNoHardware) {
                    PinWeaverAuthBlockState{.le_label = kLeLabel});
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(false));
 
-  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, pin_factor,
-                                             manager_, std::nullopt);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializeAuthFactorType(pin_factor.type()).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, pin_factor,
+                                             manager_, auth_factor_type_policy);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -148,8 +157,12 @@ TEST_F(AuthFactorWithDriverTest, PinNoIntentsWithDelay) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
 
-  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, pin_factor,
-                                             manager_, std::nullopt);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializeAuthFactorType(pin_factor.type()).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, pin_factor,
+                                             manager_, auth_factor_type_policy);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -163,8 +176,12 @@ TEST_F(AuthFactorWithDriverTest, PinSupportAllIntentsWhenUnlocked) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, pin_factor,
-                                             manager_, std::nullopt);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializeAuthFactorType(pin_factor.type()).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, pin_factor,
+                                             manager_, auth_factor_type_policy);
 
   EXPECT_THAT(intents, UnorderedElementsAreArray(kAllAuthIntents));
 }
@@ -175,8 +192,12 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithNoHardware) {
                                       FingerprintAuthBlockState{});
   EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(false));
 
-  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, fp_factor,
-                                             manager_, std::nullopt);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializeAuthFactorType(fp_factor.type()).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
+                                             manager_, auth_factor_type_policy);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -195,8 +216,12 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWhenExpired) {
   EXPECT_CALL(*le_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, fp_factor,
-                                             manager_, std::nullopt);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializeAuthFactorType(fp_factor.type()).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
+                                             manager_, auth_factor_type_policy);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -217,8 +242,12 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
 
-  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, fp_factor,
-                                             manager_, std::nullopt);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializeAuthFactorType(fp_factor.type()).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
+                                             manager_, auth_factor_type_policy);
 
   EXPECT_THAT(intents, IsEmpty());
 }
@@ -239,8 +268,12 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  auto intents = GetFullAuthSupportedIntents(kObfuscatedUser, fp_factor,
-                                             manager_, std::nullopt);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializeAuthFactorType(fp_factor.type()).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
+                                             manager_, auth_factor_type_policy);
 
   EXPECT_THAT(intents, UnorderedElementsAre(AuthIntent::kVerifyOnly,
                                             AuthIntent::kWebAuthn));
@@ -250,8 +283,13 @@ TEST_F(AuthFactorWithDriverTest, PasswordVerifierSupportsVerifyOnly) {
   std::unique_ptr<CredentialVerifier> verifier =
       ScryptVerifier::Create(kLabel, brillo::SecureBlob("password"));
 
-  auto intents = GetLightAuthSupportedIntents(
-      kObfuscatedUser, verifier->auth_factor_type(), manager_, std::nullopt);
+  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
+      {.type = SerializeAuthFactorType(verifier->auth_factor_type()).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+  auto intents = GetSupportedIntents(
+      kObfuscatedUser, verifier->auth_factor_type(), manager_,
+      auth_factor_type_policy, /*light_auth_only=*/true);
 
   EXPECT_THAT(intents, UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }

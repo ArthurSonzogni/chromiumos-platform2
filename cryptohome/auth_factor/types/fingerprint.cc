@@ -38,7 +38,6 @@ using ::cryptohome::error::PossibleAction;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 
-constexpr char kEnableDecryptFilename[] = "fingerprint_decrypt_enable";
 constexpr uint8_t kFingerprintAuthChannel = 0;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 constexpr size_t kResetSecretSize = 32;
@@ -117,11 +116,6 @@ void FingerprintAuthFactorDriver::PrepareForAuthenticate(
 
 bool FingerprintAuthFactorDriver::IsFullAuthSupported(
     AuthIntent auth_intent) const {
-  // Support decrypt only if it is explicitly enabled.
-  if (auth_intent == AuthIntent::kDecrypt) {
-    return DoesFlagFileExist(kEnableDecryptFilename, platform_);
-  }
-  // All other intents are always supported.
   return true;
 }
 

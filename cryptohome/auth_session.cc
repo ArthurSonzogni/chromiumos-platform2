@@ -338,12 +338,14 @@ WrapCallbackWithMetricsReporting(
                         auth_factor_type, std::move(bucket_name));
 }
 
-std::optional<SerializedUserAuthFactorTypePolicy>
-GetAuthFactorPolicyFromUserPolicy(
+SerializedUserAuthFactorTypePolicy GetAuthFactorPolicyFromUserPolicy(
     const std::optional<SerializedUserPolicy>& user_policy,
     AuthFactorType auth_factor_type) {
   if (!user_policy.has_value()) {
-    return std::nullopt;
+    return SerializedUserAuthFactorTypePolicy(
+        {.type = SerializeAuthFactorType(auth_factor_type).value(),
+         .enabled_intents = {},
+         .disabled_intents = {}});
   }
   for (auto policy : user_policy->auth_factor_type_policy) {
     if (policy.type != std::nullopt &&
@@ -351,7 +353,10 @@ GetAuthFactorPolicyFromUserPolicy(
       return policy;
     }
   }
-  return std::nullopt;
+  return SerializedUserAuthFactorTypePolicy(
+      {.type = SerializeAuthFactorType(auth_factor_type).value(),
+       .enabled_intents = {},
+       .disabled_intents = {}});
 }
 
 }  // namespace
@@ -529,13 +534,16 @@ void AuthSession::SetAuthorizedForIntents(
 }
 
 void AuthSession::SetAuthorizedForFullAuthIntents(
-    AuthFactorType auth_factor_type) {
+    AuthFactorType auth_factor_type,
+    const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy) {
   // Determine what intents are allowed for this factor type under full auth.
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
   std::vector<AuthIntent> authorized_for;
   for (AuthIntent intent : {AuthIntent::kDecrypt, AuthIntent::kVerifyOnly}) {
-    if (factor_driver.IsFullAuthSupported(intent)) {
+    if (factor_driver.IsFullAuthSupported(intent) &&
+        IsIntentEnabledBasedOnPolicy(factor_driver, intent,
+                                     auth_factor_type_user_policy)) {
       authorized_for.push_back(intent);
     }
   }
@@ -578,7 +586,7 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
     user_data_auth::AuthFactorWithStatus auth_factor_with_status;
     *auth_factor_with_status.mutable_auth_factor() =
         std::move(*auth_factor_proto);
-    base::flat_set<AuthIntent> supported_intents = GetFullAuthSupportedIntents(
+    base::flat_set<AuthIntent> supported_intents = GetFullAuthAvailableIntents(
         obfuscated_username_, auth_factor, *auth_factor_driver_manager_,
         GetAuthFactorPolicyFromUserPolicy(user_policy, auth_factor.type()));
 
@@ -846,6 +854,7 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
     const AuthInput& auth_input,
     const AuthFactorMetadata& metadata,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
+    const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done) {
   // Identify the key via `key_label` instead of `key_data_.label()`, as the
   // latter can be empty for legacy keysets.
@@ -891,7 +900,8 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
   AuthBlock::DeriveCallback derive_callback = base::BindOnce(
       &AuthSession::LoadVaultKeysetAndFsKeys, weak_factory_.GetWeakPtr(),
       request_auth_factor_type, auth_input, *auth_block_type, metadata,
-      std::move(auth_session_performance_timer), std::move(on_done));
+      std::move(auth_session_performance_timer),
+      std::move(auth_factor_type_user_policy), std::move(on_done));
 
   auth_block_utility_->DeriveKeyBlobsWithAuthBlock(
       *auth_block_type, auth_input, auth_state, std::move(derive_callback));
@@ -903,6 +913,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     AuthBlockType auth_block_type,
     const AuthFactorMetadata& metadata,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
+    const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done,
     CryptohomeStatus status,
     std::unique_ptr<KeyBlobs> key_blobs,
@@ -986,7 +997,8 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   }
 
   // Flip the status on the successful authentication.
-  SetAuthorizedForFullAuthIntents(request_auth_factor_type);
+  SetAuthorizedForFullAuthIntents(request_auth_factor_type,
+                                  auth_factor_type_user_policy);
 
   // Set the credential verifier for this credential.
   AddCredentialVerifier(request_auth_factor_type, vault_keyset_->GetLabel(),
@@ -1189,6 +1201,7 @@ bool AuthSession::MigrateResetSecretToUss() {
 
 void AuthSession::AuthenticateAuthFactor(
     const AuthenticateAuthFactorRequest& request,
+    const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     AuthenticateAuthFactorCallback callback) {
   const std::vector<std::string>& auth_factor_labels =
       request.auth_factor_labels;
@@ -1252,6 +1265,8 @@ void AuthSession::AuthenticateAuthFactor(
       // A CredentialVerifier must exist if there is no label and the verifier
       // will be used for authentication.
       if (!verifier || !factor_driver.IsLightAuthSupported(auth_intent_) ||
+          !IsIntentEnabledBasedOnPolicy(factor_driver, auth_intent_,
+                                        auth_factor_type_user_policy) ||
           request.flags.force_full_auth == ForceFullAuthFlag::kForce) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionVerifierNotValidInAuthAuthFactor),
@@ -1303,6 +1318,8 @@ void AuthSession::AuthenticateAuthFactor(
       // Attempt lightweight authentication via a credential verifier if
       // suitable.
       if (verifier && factor_driver.IsLightAuthSupported(auth_intent_) &&
+          IsIntentEnabledBasedOnPolicy(factor_driver, auth_intent_,
+                                       auth_factor_type_user_policy) &&
           request.flags.force_full_auth != ForceFullAuthFlag::kForce) {
         CryptohomeStatusOr<AuthInput> auth_input =
             CreateAuthInputForAuthentication(auth_input_proto,
@@ -1325,7 +1342,9 @@ void AuthSession::AuthenticateAuthFactor(
 
       // If we get here, we need to use full authentication. Make sure that it
       // is supported for this type of auth factor and intent.
-      if (!factor_driver.IsFullAuthSupported(auth_intent_)) {
+      if (!factor_driver.IsFullAuthSupported(auth_intent_) ||
+          !IsIntentEnabledBasedOnPolicy(factor_driver, auth_intent_,
+                                        auth_factor_type_user_policy)) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionSingleLabelFullAuthNotSupportedAuthAuthFactor),
@@ -1398,10 +1417,10 @@ void AuthSession::AuthenticateAuthFactor(
                 .Wrap(std::move(auth_input).err_status()));
         return;
       }
-      AuthenticateViaSingleFactor(*request_auth_factor_type,
-                                  stored_auth_factor->auth_factor().label(),
-                                  std::move(*auth_input), metadata,
-                                  *stored_auth_factor, std::move(on_done));
+      AuthenticateViaSingleFactor(
+          *request_auth_factor_type, stored_auth_factor->auth_factor().label(),
+          std::move(*auth_input), metadata, *stored_auth_factor,
+          std::move(auth_factor_type_user_policy), std::move(on_done));
       return;
     }
     case AuthFactorLabelArity::kMultiple: {
@@ -1419,7 +1438,9 @@ void AuthSession::AuthenticateAuthFactor(
 
       // If we get here, we need to use full authentication. Make sure that it
       // is supported for this type of auth factor and intent.
-      if (!factor_driver.IsFullAuthSupported(auth_intent_)) {
+      if (!factor_driver.IsFullAuthSupported(auth_intent_) ||
+          !IsIntentEnabledBasedOnPolicy(factor_driver, auth_intent_,
+                                        auth_factor_type_user_policy)) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionMultiLabelFullAuthNotSupportedAuthAuthFactor),
@@ -1519,7 +1540,6 @@ void AuthSession::AuthenticateAuthFactor(
 
         auth_factors.push_back(stored_auth_factor->auth_factor());
       }
-
       // auth_block_type is guaranteed to be non-null because we've checked
       // auth_factor_labels's length above, and auth_block_type must be set in
       // the first iteration of the loop.
@@ -1544,7 +1564,9 @@ void AuthSession::AuthenticateAuthFactor(
       auth_block_utility_->SelectAuthFactorWithAuthBlock(
           auth_block_type.value(), auth_input.value(), std::move(auth_factors),
           base::BindOnce(&AuthSession::AuthenticateViaSelectedAuthFactor,
-                         weak_factory_.GetWeakPtr(), std::move(on_done),
+                         weak_factory_.GetWeakPtr(),
+                         std::move(auth_factor_type_user_policy),
+                         std::move(on_done),
                          std::move(auth_session_performance_timer)));
       return;
     }
@@ -3806,6 +3828,7 @@ void AuthSession::AuthenticateViaUserSecretStash(
     const AuthInput auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     const AuthFactor& auth_factor,
+    const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done) {
   // Determine the auth block type to use.
   // TODO(b/223207622): This step is the same for both USS and VaultKeyset other
@@ -3831,7 +3854,8 @@ void AuthSession::AuthenticateViaUserSecretStash(
   auto derive_callback = base::BindOnce(
       &AuthSession::LoadUSSMainKeyAndFsKeyset, weak_factory_.GetWeakPtr(),
       auth_factor.type(), auth_factor_label, auth_input,
-      std::move(auth_session_performance_timer), std::move(on_done));
+      std::move(auth_session_performance_timer), auth_factor_type_user_policy,
+      std::move(on_done));
   auth_block_utility_->DeriveKeyBlobsWithAuthBlock(
       *auth_block_type, auth_input, auth_factor.auth_block_state(),
       std::move(derive_callback));
@@ -3843,6 +3867,7 @@ void AuthSession::AuthenticateViaSingleFactor(
     const AuthInput& auth_input,
     const AuthFactorMetadata& metadata,
     const AuthFactorMap::ValueView& stored_auth_factor,
+    const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done) {
   // If this auth factor comes from USS, run the USS flow.
   if (stored_auth_factor.storage_type() ==
@@ -3856,6 +3881,7 @@ void AuthSession::AuthenticateViaSingleFactor(
     AuthenticateViaUserSecretStash(auth_factor_label, auth_input,
                                    std::move(auth_session_performance_timer),
                                    stored_auth_factor.auth_factor(),
+                                   auth_factor_type_user_policy,
                                    std::move(on_done));
     return;
   }
@@ -3884,10 +3910,12 @@ void AuthSession::AuthenticateViaSingleFactor(
   // the auth factor type.
   AuthenticateViaVaultKeysetAndMigrateToUss(
       request_auth_factor_type, auth_factor_label, auth_input, metadata,
-      std::move(auth_session_performance_timer), std::move(on_done));
+      std::move(auth_session_performance_timer), auth_factor_type_user_policy,
+      std::move(on_done));
 }
 
 void AuthSession::AuthenticateViaSelectedAuthFactor(
+    const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     CryptohomeStatus callback_error,
@@ -3911,9 +3939,10 @@ void AuthSession::AuthenticateViaSelectedAuthFactor(
     return;
   }
 
-  AuthenticateViaUserSecretStash(auth_factor->label(), auth_input.value(),
-                                 std::move(auth_session_performance_timer),
-                                 auth_factor.value(), std::move(on_done));
+  AuthenticateViaUserSecretStash(
+      auth_factor->label(), auth_input.value(),
+      std::move(auth_session_performance_timer), auth_factor.value(),
+      auth_factor_type_user_policy, std::move(on_done));
 }
 
 void AuthSession::LoadUSSMainKeyAndFsKeyset(
@@ -3921,6 +3950,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     const std::string& auth_factor_label,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
+    const SerializedUserAuthFactorTypePolicy& auth_factor_type_user_policy,
     StatusCallback on_done,
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
@@ -4024,7 +4054,8 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   // Flip the status on the successful authentication.
-  SetAuthorizedForFullAuthIntents(auth_factor_type);
+  SetAuthorizedForFullAuthIntents(auth_factor_type,
+                                  auth_factor_type_user_policy);
 
   // Set the credential verifier for this credential.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
