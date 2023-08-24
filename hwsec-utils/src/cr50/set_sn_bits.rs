@@ -92,7 +92,7 @@ pub fn cr50_check_sn_bits(
     })?;
     if is_rmaed(rma_sn_bits) {
         report_device_has_been_rmaed(dry_run)
-    } else if rma_sn_bits.sn_bits == [0x00_u8; 12] {
+    } else if rma_sn_bits.sn_bits == [0xff_u8; 12] {
         Ok(())
     } else if rma_sn_bits.sn_bits != sn_bits {
         eprintln!(
@@ -256,7 +256,7 @@ mod tests {
             .add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
                 sn_data_version: [0x12, 0x34, 0x56],
                 rma_status: 0xff,
-                sn_bits: [0x00; 12],
+                sn_bits: [0xff; 12],
             });
 
         let result = cr50_check_sn_bits(
