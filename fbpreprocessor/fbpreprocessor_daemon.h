@@ -5,7 +5,12 @@
 #ifndef FBPREPROCESSOR_FBPREPROCESSOR_DAEMON_H_
 #define FBPREPROCESSOR_FBPREPROCESSOR_DAEMON_H_
 
+#include <memory>
+
 #include <brillo/daemons/daemon.h>
+#include <dbus/bus.h>
+
+#include "fbpreprocessor/manager.h"
 
 namespace fbpreprocessor {
 
@@ -14,6 +19,11 @@ class FbPreprocessorDaemon : public brillo::Daemon {
   FbPreprocessorDaemon();
   FbPreprocessorDaemon(const FbPreprocessorDaemon&) = delete;
   FbPreprocessorDaemon& operator=(const FbPreprocessorDaemon&) = delete;
+
+ private:
+  scoped_refptr<dbus::Bus> bus_;
+
+  std::unique_ptr<Manager> manager_;
 };
 
 }  // namespace fbpreprocessor
