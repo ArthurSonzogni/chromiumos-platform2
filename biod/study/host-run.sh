@@ -20,7 +20,7 @@ LOG_DIR=
 FPSTUDY_VIRTENV=/tmp/virtualenv-study
 
 # Check for required commands.
-CMDS_REQUIRED=( pip3 virtualenv )
+CMDS_REQUIRED=( virtualenv )
 if ! which "${CMDS_REQUIRED[@]}" >/dev/null 2>&1; then
   echo "Error - Missing one or more required commands: ${CMDS_REQUIRED[*]}" >&2
   exit 1
