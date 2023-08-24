@@ -556,8 +556,13 @@ base::StringPairs VmBuilder::BuildRunParams() const {
       args.emplace_back("--vfio", std::move(dgpu_pt_arg));
     }
 
-    args.emplace_back("--s2idle", "");
-    args.emplace_back("--ac-adapter", "");
+    // TODO(b/297293470): These options appear to break borealis'
+    // suspend+resume. The below disables them if there are no dgpu devices but
+    // they will probably still be broken with dgpu.
+    if (!dgpu_devices.empty()) {
+      args.emplace_back("--s2idle", "");
+      args.emplace_back("--ac-adapter", "");
+    }
   }
 
   if (enable_software_tpm_)
