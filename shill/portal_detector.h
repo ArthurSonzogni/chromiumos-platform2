@@ -22,7 +22,6 @@
 
 #include "shill/http_request.h"
 #include "shill/http_url.h"
-#include "shill/net/sockets.h"
 
 namespace shill {
 

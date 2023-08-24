@@ -39,11 +39,9 @@ install_config("install_headers") {
     "mock_netlink_socket.h",
     "mock_process_manager.h",
     "mock_rtnl_handler.h",
-    "mock_sockets.h",
     "mock_time.h",
     "ndisc.h",
     "netlink_attribute.h",
-    "netlink_fd.h",
     "netlink_manager.h",
     "netlink_message.h",
     "netlink_message_matchers.h",
@@ -59,7 +57,6 @@ install_config("install_headers") {
     "rtnl_message.h",
     "shill_export.h",
     "shill_time.h",
-    "sockets.h",
   ]
   install_path = "/usr/include/shill/net"
 }
@@ -100,7 +97,6 @@ shared_library("libshill-net") {
     "io_input_handler.cc",
     "io_ready_handler.cc",
     "netlink_attribute.cc",
-    "netlink_fd.cc",
     "netlink_manager.cc",
     "netlink_message.cc",
     "netlink_packet.cc",
@@ -113,7 +109,6 @@ shared_library("libshill-net") {
     "rtnl_listener.cc",
     "rtnl_message.cc",
     "shill_time.cc",
-    "sockets.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":${target_name}_deps" ]
@@ -158,7 +153,6 @@ if (use.test) {
       "mock_netlink_socket.cc",
       "mock_process_manager.cc",
       "mock_rtnl_handler.cc",
-      "mock_sockets.cc",
       "mock_time.cc",
     ]
     configs += [

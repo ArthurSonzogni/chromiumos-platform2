@@ -21,7 +21,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/http_url.h"
 #include "shill/logging.h"
-#include "shill/net/sockets.h"
 
 namespace {
 

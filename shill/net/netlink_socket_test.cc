@@ -18,7 +18,6 @@
 #include <net-base/byte_utils.h>
 #include <net-base/mock_socket.h>
 
-#include "shill/net/netlink_fd.h"
 #include "shill/net/netlink_message.h"
 
 using testing::_;
@@ -32,9 +31,7 @@ class NetlinkSocketTest : public Test {
  public:
   void SetUp() override {
     auto mock_socket_factory = std::make_unique<net_base::MockSocketFactory>();
-    EXPECT_CALL(*mock_socket_factory,
-                CreateNetlink(NETLINK_GENERIC, 0,
-                              std::make_optional(kNetlinkReceiveBufferSize)))
+    EXPECT_CALL(*mock_socket_factory, CreateNetlink(NETLINK_GENERIC, 0, _))
         .WillOnce([&]() {
           auto socket = std::make_unique<net_base::MockSocket>();
           mock_socket_ = socket.get();
@@ -81,9 +78,7 @@ MATCHER_P(SpanEq, value, "") {
 
 TEST_F(NetlinkSocketTest, InitBrokenSocketTest) {
   auto mock_socket_factory = std::make_unique<net_base::MockSocketFactory>();
-  EXPECT_CALL(*mock_socket_factory,
-              CreateNetlink(NETLINK_GENERIC, 0,
-                            std::make_optional(kNetlinkReceiveBufferSize)))
+  EXPECT_CALL(*mock_socket_factory, CreateNetlink(NETLINK_GENERIC, 0, _))
       .WillOnce(Return(nullptr));
 
   auto netlink_socket =
