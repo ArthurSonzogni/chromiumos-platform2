@@ -56,6 +56,7 @@ class SessionStateManager : public SessionStateManagerInterface {
 
   void AddObserver(Observer* observer) override;
   void RemoveObserver(Observer* observer) override;
+  bool RefreshPrimaryUser();
 
  private:
   void OnSessionStateChanged(dbus::Signal* signal);
@@ -69,7 +70,9 @@ class SessionStateManager : public SessionStateManagerInterface {
   // Updates primary user internally.
   bool UpdatePrimaryUser();
 
-  bool RefreshPrimaryUser();
+  // Create directories in the daemon-store where the input and output files
+  // will live.
+  bool CreateUserDirectories();
 
   void OnSignalConnected(const std::string& interface_name,
                          const std::string& signal_name,

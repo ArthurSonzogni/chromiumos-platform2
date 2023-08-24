@@ -9,22 +9,28 @@
 
 #include <dbus/bus.h>
 
-#include "fbpreprocessor/session_state_manager.h"
-
 namespace fbpreprocessor {
+
+class PseudonymizationManager;
+class SessionStateManager;
 
 class Manager {
  public:
   explicit Manager(dbus::Bus* bus);
-  ~Manager() = default;
+  ~Manager();
 
   SessionStateManager* session_state_manager() const {
     return session_state_manager_.get();
   }
 
+  PseudonymizationManager* pseudonymization_manager() const {
+    return pseudonymization_manager_.get();
+  }
+
  private:
   scoped_refptr<dbus::Bus> bus_;
 
+  std::unique_ptr<PseudonymizationManager> pseudonymization_manager_;
   std::unique_ptr<SessionStateManager> session_state_manager_;
 };
 

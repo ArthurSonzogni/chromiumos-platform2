@@ -27,6 +27,7 @@ static_library("libfbpreprocessord") {
   sources = [
     "fbpreprocessor_daemon.cc",
     "manager.cc",
+    "pseudonymization_manager.cc",
     "session_state_manager.cc",
   ]
   configs += [ ":target_defaults" ]

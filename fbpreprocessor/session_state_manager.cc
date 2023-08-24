@@ -9,6 +9,9 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/types/expected.h>
@@ -17,6 +20,8 @@
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+
+#include "fbpreprocessor/storage.h"
 
 namespace fbpreprocessor {
 
@@ -139,6 +144,10 @@ bool SessionStateManager::UpdatePrimaryUser() {
   primary_user_hash_.assign(primary_user->second);
   LOG(INFO) << "Primary user updated.";
 
+  if (!CreateUserDirectories()) {
+    LOG(ERROR) << "Failed to create input/output directories.";
+  }
+
   return true;
 }
 
@@ -161,6 +170,31 @@ bool SessionStateManager::RefreshPrimaryUser() {
   return update_result;
 }
 
+bool SessionStateManager::CreateUserDirectories() {
+  bool success = true;
+  if (primary_user_hash_.empty()) {
+    LOG(ERROR) << "Can't create input/output directories without daemon store.";
+    return false;
+  }
+  base::FilePath root_dir =
+      base::FilePath(kDaemonStorageRoot).Append(primary_user_hash_);
+  base::File::Error error;
+  if (!base::CreateDirectoryAndGetError(root_dir.Append(kInputDirectory),
+                                        &error)) {
+    LOG(ERROR) << "Failed to create input directory: "
+               << base::File::ErrorToString(error);
+    success = false;
+  }
+  if (!base::CreateDirectoryAndGetError(root_dir.Append(kProcessedDirectory),
+                                        &error)) {
+    LOG(ERROR) << "Failed to create output directory: "
+               << base::File::ErrorToString(error);
+    success = false;
+  }
+
+  return success;
+}
+
 void SessionStateManager::OnSignalConnected(const std::string& interface_name,
                                             const std::string& signal_name,
                                             bool success) {
@@ -170,9 +204,6 @@ void SessionStateManager::OnSignalConnected(const std::string& interface_name,
   if (success) {
     LOG(INFO) << "Connected to signal " << signal_name << " of interface "
               << interface_name;
-    // Refresh primary user. If the primary user is available then notify the
-    // observers that a user is logged in.
-    RefreshPrimaryUser();
   }
 }
 
