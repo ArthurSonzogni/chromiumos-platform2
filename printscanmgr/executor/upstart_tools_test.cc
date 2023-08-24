@@ -54,15 +54,15 @@ class UpstartToolsTest : public testing::Test {
   }
 
   // Creates a response for CallMethodAndBlock Calls.
-  std::unique_ptr<dbus::Response> CreateMockResponse(
-      dbus::MethodCall* method_call, int timeout_ms) {
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error>
+  CreateMockResponse(dbus::MethodCall* method_call, int timeout_ms) {
     std::unique_ptr<dbus::Response> job_response =
         dbus::Response::CreateEmpty();
     dbus::MessageWriter response_writer(job_response.get());
     response_writer.AppendObjectPath(
         dbus::ObjectPath("/com/ubuntu/Upstart/jobs/cupsd"));
 
-    return job_response;
+    return base::ok(std::move(job_response));
   }
 
   void SetUp() override {
@@ -92,8 +92,8 @@ TEST_F(UpstartToolsTest, TestIsJobRunning) {
       dbus::ObjectPath("/com/ubuntu/Upstart/jobs/cupsd"));
   dbus::MethodCall method_call("com.ubuntu.Upstart0_6.Job", "GetInstance");
   EXPECT_CALL(*job_object_proxy_,
-              CallMethodAndBlockDeprecated(IsMethod("GetInstance"), _))
-      .WillOnce(Return(ByMove(std::move(job_response))));
+              CallMethodAndBlock(IsMethod("GetInstance"), _))
+      .WillOnce(Return(ByMove(base::ok(std::move(job_response)))));
   std::string error;
   bool result =
       upstart_tools()->IsJobRunning(mojom::UpstartJob::kCupsd, &error);
@@ -110,7 +110,7 @@ TEST_F(UpstartToolsTest, TestRestartJob) {
   dbus::MessageWriter response_writer(job_response.get());
   response_writer.AppendObjectPath(
       dbus::ObjectPath("/com/ubuntu/Upstart/jobs/cupsd"));
-  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlockDeprecated(_, _))
+  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlock(_, _))
       .WillRepeatedly(Invoke(this, &UpstartToolsTest::CreateMockResponse));
   std::string error;
   bool result = upstart_tools()->RestartJob(mojom::UpstartJob::kCupsd, &error);
