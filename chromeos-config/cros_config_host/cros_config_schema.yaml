@@ -382,6 +382,22 @@ typeDefs:
                 type: object
               power:
                 type: object
+      cpu-offline:
+        type: object
+        description: The policy to offline CPUs to reduce power consumption. Mainly used by
+          battery-saver mode (battery-saver-power-preferences). Empty by default and CPU
+          won't be offlined.
+        oneOf:
+          - properties:
+              small-core:
+                type: object
+                description: Offline small cores.
+              smt:
+                type: object
+                description: Offline Simultaneous Multithreading (SMT).
+              half:
+                type: object
+                description: Offline half of the cores.
   resourced_power_source_preferences: &resourced_power_source_preferences
     description: Defines settings that configure resourced based on power source.
       https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto
@@ -393,6 +409,7 @@ typeDefs:
       vm-boot-power-preferences: *resourced_power_preferences
       borealis-gaming-power-preferences: *resourced_power_preferences
       arcvm-gaming-power-preferences: *resourced_power_preferences
+      battery-saver-power-preferences: *resourced_power_preferences
 type: object
 properties:
   chromeos:

@@ -1040,6 +1040,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | arcvm-gaming-power-preferences | [arcvm-gaming-power-preferences](#arcvm_gaming_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| battery-saver-power-preferences | [battery-saver-power-preferences](#battery_saver_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
 | borealis-gaming-power-preferences | [borealis-gaming-power-preferences](#borealis_gaming_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
 | default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
 | fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
@@ -1049,8 +1050,119 @@ In the tables below,
 ### arcvm-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### battery-saver-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| epp | [epp](#epp) |  | False |  | False |  |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1120,8 +1232,28 @@ In the tables below,
 ### borealis-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1191,8 +1323,28 @@ In the tables below,
 ### default-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1262,8 +1414,28 @@ In the tables below,
 ### fullscreen-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1333,8 +1505,28 @@ In the tables below,
 ### vm-boot-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1404,8 +1596,28 @@ In the tables below,
 ### web-rtc-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1476,6 +1688,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | arcvm-gaming-power-preferences | [arcvm-gaming-power-preferences](#arcvm_gaming_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
+| battery-saver-power-preferences | [battery-saver-power-preferences](#battery_saver_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
 | borealis-gaming-power-preferences | [borealis-gaming-power-preferences](#borealis_gaming_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
 | default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
 | fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For config details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md; For governor (CPUfreq scaling governor) and epp (Energy-Performance Preference), see https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html |
@@ -1485,8 +1698,119 @@ In the tables below,
 ### arcvm-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### epp
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| balance-performance | [balance-performance](#balance_performance) |  | False | GROUP(0) | False |  |
+| balance-power | [balance-power](#balance_power) |  | False | GROUP(0) | False |  |
+| default | [default](#default) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| power | [power](#power) |  | False | GROUP(0) | False |  |
+
+### balance-performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### balance-power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### default
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### power
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| conservative | [conservative](#conservative) |  | False | GROUP(0) | False |  |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+| performance | [performance](#performance) |  | False | GROUP(0) | False |  |
+| powersave | [powersave](#powersave) |  | False | GROUP(0) | False |  |
+| schedutil | [schedutil](#schedutil) |  | False | GROUP(0) | False |  |
+| userspace | [userspace](#userspace) |  | False | GROUP(0) | False |  |
+
+### conservative
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+| sampling-rate-ms | integer |  | False |  | False |  |
+
+### performance
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### powersave
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### schedutil
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### userspace
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### battery-saver-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| epp | [epp](#epp) |  | False |  | False |  |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1556,8 +1880,28 @@ In the tables below,
 ### borealis-gaming-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1627,8 +1971,28 @@ In the tables below,
 ### default-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1698,8 +2062,28 @@ In the tables below,
 ### fullscreen-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1769,8 +2153,28 @@ In the tables below,
 ### vm-boot-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1840,8 +2244,28 @@ In the tables below,
 ### web-rtc-power-preferences
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
+
+### cpu-offline
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| half | [half](#half) |  | False | GROUP(0) | False | Offline half of the cores. |
+| small-core | [small-core](#small_core) |  | False | GROUP(0) | False | Offline small cores. |
+| smt | [smt](#smt) |  | False | GROUP(0) | False | Offline Simultaneous Multithreading (SMT). |
+
+### half
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### small-core
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+
+### smt
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 
 ### epp
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

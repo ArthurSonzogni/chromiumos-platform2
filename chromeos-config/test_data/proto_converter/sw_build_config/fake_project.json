@@ -1028,6 +1028,17 @@
                 }
               }
             },
+            "battery-saver-power-preferences": {
+              "cpu-offline": {
+                "smt": {}
+              },
+              "epp": {
+                "balance-power": {}
+              },
+              "governor": {
+                "powersave": {}
+              }
+            },
             "borealis-gaming-power-preferences": {
               "epp": {
                 "balance-performance": {}
@@ -1088,6 +1099,17 @@
               },
               "governor": {
                 "conservative": {}
+              }
+            },
+            "battery-saver-power-preferences": {
+              "cpu-offline": {
+                "half": {}
+              },
+              "epp": {
+                "balance-power": {}
+              },
+              "governor": {
+                "powersave": {}
               }
             },
             "borealis-gaming-power-preferences": {
