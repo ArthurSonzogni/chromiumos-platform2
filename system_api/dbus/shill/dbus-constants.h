@@ -552,6 +552,7 @@ constexpr char kNetworkIdProperty[] = "network_id";
 // Flimflam SIMLock status types.
 constexpr char kSIMLockPin[] = "sim-pin";
 constexpr char kSIMLockPuk[] = "sim-puk";
+constexpr char kSIMLockNetworkPin[] = "network-pin";
 
 // APN info property names.
 constexpr char kApnProperty[] = "apn";
@@ -756,6 +757,7 @@ constexpr char kErrorOutOfRange[] = "out-of-range";
 constexpr char kErrorPinMissing[] = "pin-missing";
 constexpr char kErrorPppAuthFailed[] = "ppp-auth-failed";
 constexpr char kErrorSimLocked[] = "sim-locked";
+constexpr char kErrorSimCarrierLocked[] = "sim-carrier-locked";
 constexpr char kErrorNotRegistered[] = "not-registered";
 constexpr char kErrorTooManySTAs[] = "too-many-stas";
 constexpr char kErrorDisconnect[] = "disconnect-failure";
