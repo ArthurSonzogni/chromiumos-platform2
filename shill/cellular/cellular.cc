@@ -11,7 +11,6 @@
 #include <memory>
 #include <optional>
 #include <set>
-#include <tuple>
 #include <utility>
 
 #include <base/check.h>
@@ -63,7 +62,6 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/net/sockets.h"
 #include "shill/ppp_daemon.h"
 #include "shill/profile.h"
 #include "shill/service.h"
@@ -234,7 +232,7 @@ std::string Cellular::GetStateString(State state) {
     default:
       NOTREACHED();
   }
-  return base::StringPrintf("CellularStateUnknown-%d", state);
+  return base::StringPrintf("CellularStateUnknown-%d", static_cast<int>(state));
 }
 
 // static
@@ -309,7 +307,7 @@ Cellular::Cellular(Manager* manager,
   RegisterProperties();
   mobile_operator_info_->Init();
 
-  socket_destroyer_ = NetlinkSockDiag::Create(std::make_unique<Sockets>());
+  socket_destroyer_ = NetlinkSockDiag::Create();
   if (!socket_destroyer_) {
     LOG(WARNING) << LoggingTag() << ": Socket destroyer failed to initialize; "
                  << "IPv6 will be unavailable.";
@@ -2036,9 +2034,9 @@ void Cellular::StopLinkListener() {
 
 void Cellular::StartLinkListener() {
   SLOG(2) << LoggingTag() << ": Started RTNL listener";
-  link_listener_.reset(new RTNLListener(
+  link_listener_ = std::make_unique<RTNLListener>(
       RTNLHandler::kRequestLink,
-      base::BindRepeating(&Cellular::LinkMsgHandler, base::Unretained(this))));
+      base::BindRepeating(&Cellular::LinkMsgHandler, base::Unretained(this)));
   rtnl_handler()->RequestDump(RTNLHandler::kRequestLink);
 }
 

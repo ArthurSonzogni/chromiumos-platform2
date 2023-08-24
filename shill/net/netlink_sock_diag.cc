@@ -8,15 +8,13 @@
 #include <linux/sock_diag.h>
 #include <sys/socket.h>
 
-#include <string>
+#include <memory>
 #include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/numerics/safe_conversions.h>
-
-#include "shill/net/netlink_fd.h"
 
 namespace {
 
@@ -57,28 +55,22 @@ SockDiagRequest CreateDestroyRequest(uint8_t family, uint8_t protocol) {
 
 namespace shill {
 
-NetlinkSockDiag::NetlinkSockDiag(std::unique_ptr<Sockets> sockets,
-                                 int file_descriptor)
-    : sockets_(std::move(sockets)),
-      file_descriptor_(file_descriptor),
-      sequence_number_(0) {}
-
 // static
-std::unique_ptr<NetlinkSockDiag> NetlinkSockDiag::Create(
-    std::unique_ptr<Sockets> sockets) {
-  int file_descriptor =
-      OpenNetlinkSocketFD(sockets.get(), NETLINK_SOCK_DIAG, 0);
-  if (file_descriptor == Sockets::kInvalidFileDescriptor)
+std::unique_ptr<NetlinkSockDiag> NetlinkSockDiag::Create() {
+  std::unique_ptr<net_base::Socket> socket =
+      net_base::SocketFactory().CreateNetlink(NETLINK_SOCK_DIAG, 0);
+  if (socket == nullptr) {
     return nullptr;
+  }
 
   VLOG(2) << "Netlink sock_diag socket started";
-  return base::WrapUnique(
-      new NetlinkSockDiag(std::move(sockets), file_descriptor));
+  return base::WrapUnique(new NetlinkSockDiag(std::move(socket)));
 }
 
-NetlinkSockDiag::~NetlinkSockDiag() {
-  sockets_->Close(file_descriptor_);
-}
+NetlinkSockDiag::NetlinkSockDiag(std::unique_ptr<net_base::Socket> socket)
+    : socket_(std::move(socket)), sequence_number_(0) {}
+
+NetlinkSockDiag::~NetlinkSockDiag() = default;
 
 bool NetlinkSockDiag::DestroySockets(uint8_t protocol,
                                      const net_base::IPAddress& saddr) {
@@ -101,8 +93,9 @@ bool NetlinkSockDiag::DestroySockets(uint8_t protocol,
     VLOG(1) << "Destroying socket (" << family << ", " << protocol << ")";
     request.header.nlmsg_seq = ++sequence_number_;
     request.req_opts.id = sockid;
-    if (sockets_->Send(file_descriptor_, static_cast<void*>(&request),
-                       sizeof(request), 0) < 0) {
+    if (socket_->Send(
+            {reinterpret_cast<const uint8_t*>(&request), sizeof(request)}, 0) <
+        0) {
       PLOG(ERROR) << "Failed to write request to netlink socket";
       return false;
     }
@@ -117,8 +110,9 @@ bool NetlinkSockDiag::GetSockets(
   CHECK(out_socks);
   SockDiagRequest request =
       CreateDumpRequest(family, protocol, ++sequence_number_);
-  if (sockets_->Send(file_descriptor_, static_cast<void*>(&request),
-                     sizeof(request), 0) < 0) {
+  if (socket_->Send(
+          {reinterpret_cast<const uint8_t*>(&request), sizeof(request)}, 0) <
+      0) {
     PLOG(ERROR) << "Failed to write sock_diag request to netlink socket "
                 << "(family: " << family << ", protocol: " << protocol << ")";
     return false;
@@ -129,22 +123,20 @@ bool NetlinkSockDiag::GetSockets(
 
 bool NetlinkSockDiag::ReadDumpContents(
     std::vector<struct inet_diag_sockid>* out_socks) {
-  char buf[8192];
+  uint8_t buf[8192];
 
   out_socks->clear();
 
   for (;;) {
-    ssize_t bytes_read = sockets_->RecvFrom(file_descriptor_, buf, sizeof(buf),
-                                            0, nullptr, nullptr);
-    if (bytes_read < 0) {
+    std::optional<size_t> bytes_read =
+        socket_->RecvFrom(buf, 0, nullptr, nullptr);
+    if (!bytes_read) {
       PLOG(ERROR) << "Failed to read from netlink socket";
       return false;
     }
 
-    size_t unsigned_bytes = base::checked_cast<size_t>(bytes_read);
-
     for (nlmsghdr* nlh = reinterpret_cast<nlmsghdr*>(buf);
-         NLMSG_OK(nlh, unsigned_bytes); nlh = NLMSG_NEXT(nlh, unsigned_bytes)) {
+         NLMSG_OK(nlh, *bytes_read); nlh = NLMSG_NEXT(nlh, *bytes_read)) {
       switch (nlh->nlmsg_type) {
         case NLMSG_DONE:
           return true;

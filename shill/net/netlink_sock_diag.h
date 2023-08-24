@@ -12,10 +12,9 @@
 #include <vector>
 
 #include <net-base/ip_address.h>
+#include <net-base/socket.h>
 
-#include "shill/net/netlink_fd.h"
 #include "shill/net/shill_export.h"
-#include "shill/net/sockets.h"
 
 namespace shill {
 
@@ -28,9 +27,11 @@ namespace shill {
 // support for SOCK_DESTROY.
 class SHILL_EXPORT NetlinkSockDiag {
  public:
-  static std::unique_ptr<NetlinkSockDiag> Create(
-      std::unique_ptr<Sockets> sockets);
+  static std::unique_ptr<NetlinkSockDiag> Create();
   virtual ~NetlinkSockDiag();
+
+  NetlinkSockDiag(const NetlinkSockDiag&) = delete;
+  NetlinkSockDiag& operator=(const NetlinkSockDiag&) = delete;
 
   // Send SOCK_DESTROY for each socket matching the |protocol| and |saddr|
   // given. This interrupts all blocking socket operations on those sockets
@@ -40,9 +41,7 @@ class SHILL_EXPORT NetlinkSockDiag {
 
  private:
   // Hidden; use the static Create function above.
-  NetlinkSockDiag(std::unique_ptr<Sockets> sockets, int file_descriptor);
-  NetlinkSockDiag(const NetlinkSockDiag&) = delete;
-  NetlinkSockDiag& operator=(const NetlinkSockDiag&) = delete;
+  explicit NetlinkSockDiag(std::unique_ptr<net_base::Socket> socket);
 
   // Get a list of sockets matching the family and protocol.
   bool GetSockets(uint8_t family,
@@ -52,8 +51,7 @@ class SHILL_EXPORT NetlinkSockDiag {
   // Read the socket dump from the netlink socket.
   bool ReadDumpContents(std::vector<struct inet_diag_sockid>* out_socks);
 
-  std::unique_ptr<Sockets> sockets_;
-  int file_descriptor_;
+  std::unique_ptr<net_base::Socket> socket_;
   int sequence_number_;
 };
 
