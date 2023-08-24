@@ -74,10 +74,11 @@ if (($programname == 'charon') or \
 if $programname == 'bluetoothd' then -/var/log/bluetooth.log
 if $programname == 'btmanagerd' then -/var/log/bluetooth.log
 if $programname == 'btadapterd' then -/var/log/bluetooth.log
-# Log non-debug level Bluetooth logs to /var/log/messages too
+# Log non-debug level bluez logs to /var/log/messages too
 if $programname == 'bluetoothd' and $syslogseverity >= '7' then stop
-if $programname == 'btmanagerd' and $syslogseverity >= '7' then stop
-if $programname == 'btadapterd' and $syslogseverity >= '7' then stop
+# Log non-info level Floss logs to /var/log/messages too.
+if $programname == 'btmanagerd' and $syslogseverity >= '6' then stop
+if $programname == 'btadapterd' and $syslogseverity >= '6' then stop
 
 # Keep Upstart logs in /var/log/upstart.log
 # Since these go through the kernel ring buffer, the $programname is 'kernel'.
