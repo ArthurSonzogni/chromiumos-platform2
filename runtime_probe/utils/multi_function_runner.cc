@@ -41,7 +41,7 @@ void MultiFunctionRunner::Run(
       functions_.size(),
       base::BindOnce(&CollectProbeResults, std::move(callback)));
   for (auto& function : functions_)
-    function->EvalAsync(barrier_callback);
+    function->Eval(barrier_callback);
 }
 
 bool MultiFunctionRunner::IsValid() const {

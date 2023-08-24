@@ -76,7 +76,7 @@ TEST_F(GpuFunctionTest, ProbeGpu) {
                                    {"subsystem_device", "0xcdef"},
                                });
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
@@ -121,7 +121,7 @@ TEST_F(GpuFunctionTest, NonGpu) {
                                    {"subsystem_device", "0xcdef"},
                                });
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
   )JSON");
@@ -156,7 +156,7 @@ TEST_F(GpuFunctionTest, MissField) {
                                    {"subsystem_vendor", "0x90ab"},
                                });
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
   )JSON");
@@ -175,7 +175,7 @@ TEST_F(GpuFunctionTest, MinigbmIsDGPU) {
   SetPciDeviceDrm("0000:04:00.0", "renderD128");
   probe_function->fake_gbm_dev_type_flags_ = GBM_DEV_TYPE_FLAG_DISCRETE;
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
@@ -201,7 +201,7 @@ TEST_F(GpuFunctionTest, MinigbmIsIGPU) {
   SetPciDeviceDrm("0000:04:00.0", "renderD128");
   probe_function->fake_gbm_dev_type_flags_ = 0;
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
   )JSON");

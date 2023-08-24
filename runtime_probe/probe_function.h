@@ -16,8 +16,9 @@
 
 #include <base/functional/callback.h>
 #include <base/json/json_writer.h>
-#include <base/values.h>
+#include <base/notreached.h>
 #include <base/strings/string_util.h>
+#include <base/values.h>
 
 namespace runtime_probe {
 
@@ -97,17 +98,10 @@ class ProbeFunction {
   ProbeFunction& operator=(const ProbeFunction&) = delete;
   virtual ~ProbeFunction();
 
-  // Evaluates this probe function. Returns a list of base::Value. For the probe
-  // function that requests sandboxing, see |PrivilegedProbeFunction|.
-  //
-  // TODO(b/295421415): Migrate all sync calls to async call.
-  virtual DataType Eval() const { return EvalImpl(); }
-
-  // Asynchronously evaluates this probe function, then pass the result to the
-  // callback function.
-  virtual void EvalAsync(base::OnceCallback<void(DataType)> callback) const {
-    std::move(callback).Run(Eval());
-  }
+  // Evaluates this probe function. The callback will get a list of base::Value.
+  // For the probe function that requests sandboxing, see
+  // |PrivilegedProbeFunction|.
+  virtual void Eval(base::OnceCallback<void(DataType)> callback) const;
 
   // This is for helper to evaluate the probe function. Helper is designed for
   // portion that need extended sandbox. See |PrivilegedProbeFunction| for more
@@ -138,7 +132,12 @@ class ProbeFunction {
 
   // Implement this method to provide the probing. The output should be a list
   // of base::Value.
-  virtual DataType EvalImpl() const = 0;
+  virtual DataType EvalImpl() const;
+
+  // Asynchronously implementation of the probe function. if the probe function
+  // involve asynchronous call, this method should be override. Either
+  // |EvalImpl| or |EvalAsyncImpl| should be implemented for any probe function.
+  virtual void EvalAsyncImpl(base::OnceCallback<void(DataType)> callback) const;
 
   // Implement this to verify the parsed arguments or do other set up which
   // based on arguments (e.g. create other probe functions with the arguments).
@@ -174,7 +173,7 @@ class PrivilegedProbeFunction : public ProbeFunction {
 
  public:
   // ProbeFunction overrides.
-  DataType Eval() const final;
+  void Eval(base::OnceCallback<void(DataType)> callback) const final;
   int EvalInHelper(std::string* output) const final;
 
  protected:

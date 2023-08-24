@@ -81,7 +81,8 @@ TEST_F(EcI2cFunctionTest, ProbeSucceed) {
   EXPECT_CALL(*probe_function, GetI2cReadCommand)
       .WillOnce(Return(ByMove(std::move(cmd))));
 
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     [
       {
         "data": 42
@@ -111,7 +112,8 @@ TEST_F(EcI2cFunctionTest, Probe16bitDataSucceed) {
   EXPECT_CALL(*probe_function, GetI2cReadCommand)
       .WillOnce(Return(ByMove(std::move(cmd))));
 
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     [
       {
         "data": 4200
@@ -153,7 +155,8 @@ TEST_F(EcI2cFunctionTest, EcFailed) {
   EXPECT_CALL(*probe_function, GetI2cReadCommand)
       .WillOnce(Return(ByMove(std::move(cmd))));
 
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     []
   )JSON"));
 }
@@ -178,7 +181,8 @@ TEST_F(EcI2cFunctionTest, EcI2cFailed) {
   EXPECT_CALL(*probe_function, GetI2cReadCommand)
       .WillOnce(Return(ByMove(std::move(cmd))));
 
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     []
   )JSON"));
 }

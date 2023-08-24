@@ -23,7 +23,7 @@ TEST_F(AudioCodecTest, Succeed) {
   )JSON");
 
   auto probe_function = CreateProbeFunction<AudioCodecFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -38,7 +38,7 @@ TEST_F(AudioCodecTest, SucceedPreKernel4_4) {
   )JSON");
 
   auto probe_function = CreateProbeFunction<AudioCodecFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -48,7 +48,7 @@ TEST_F(AudioCodecTest, NoCodecFile) {
   )JSON");
 
   auto probe_function = CreateProbeFunction<AudioCodecFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -59,7 +59,7 @@ TEST_F(AudioCodecTest, IgnoreInvalidCodec) {
   )JSON");
 
   auto probe_function = CreateProbeFunction<AudioCodecFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 

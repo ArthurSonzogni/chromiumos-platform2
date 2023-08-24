@@ -44,7 +44,7 @@ class ProbeStatement {
   //
   // When evaluating a ProbeStatement, the ProbeFunction defined by "eval" will
   // be called.  The results will be filtered / processed by "keys" and "expect"
-  // rules.  See ProbeStatement::Eval() for more details.
+  // rules.  See ProbeStatement::Eval for more details.
  public:
   virtual ~ProbeStatement() = default;
 

@@ -5,15 +5,12 @@
 #ifndef RUNTIME_PROBE_FUNCTIONS_GENERIC_STORAGE_H_
 #define RUNTIME_PROBE_FUNCTIONS_GENERIC_STORAGE_H_
 
-#include <memory>
+#include <utility>
 
-#include <base/values.h>
+#include <base/functional/callback.h>
 
-#include "runtime_probe/functions/ata_storage.h"
-#include "runtime_probe/functions/mmc_storage.h"
-#include "runtime_probe/functions/nvme_storage.h"
-#include "runtime_probe/functions/ufs_storage.h"
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/utils/multi_function_runner.h"
 
 namespace runtime_probe {
 
@@ -24,14 +21,15 @@ class GenericStorageFunction : public ProbeFunction {
   NAME_PROBE_FUNCTION("generic_storage");
 
  private:
+ private:
   // ProbeFunction overrides.
   bool PostParseArguments() override;
-  DataType EvalImpl() const override;
+  void EvalAsyncImpl(
+      base::OnceCallback<void(DataType)> callback) const override {
+    runner_.Run(std::move(callback));
+  }
 
-  std::unique_ptr<AtaStorageFunction> ata_prober_;
-  std::unique_ptr<MmcStorageFunction> mmc_prober_;
-  std::unique_ptr<NvmeStorageFunction> nvme_prober_;
-  std::unique_ptr<UfsStorageFunction> ufs_prober_;
+  MultiFunctionRunner runner_;
 };
 
 }  // namespace runtime_probe

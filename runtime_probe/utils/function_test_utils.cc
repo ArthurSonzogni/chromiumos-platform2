@@ -42,4 +42,10 @@ void BaseFunctionTest::ExpectUnorderedListEqual(const base::Value::List& result,
   EXPECT_THAT(result, ::testing::UnorderedElementsAreArray(ans_matcher_list));
 }
 
+ProbeFunction::DataType EvalProbeFunction(ProbeFunction* probe_function) {
+  base::test::TestFuture<ProbeFunction::DataType> future;
+  probe_function->Eval(future.GetCallback());
+  return future.Get().Clone();
+}
+
 }  // namespace runtime_probe

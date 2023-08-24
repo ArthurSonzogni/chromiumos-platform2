@@ -41,7 +41,7 @@ class MockProbeStatement : public ProbeStatement {
 class ComponentCategoryTest : public ::testing::Test {
  protected:
   // Set a mocked probe statement that would return |eval_result| on
-  // calling ProbeStatement::Eval(), and return |information| on calling
+  // calling ProbeStatement::Eval, and return |information| on calling
   // ProbeStatement::GetInformation() for |component_category|.
   void SetComponent(
       ComponentCategory& component_category,

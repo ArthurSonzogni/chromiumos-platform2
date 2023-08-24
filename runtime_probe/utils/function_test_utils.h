@@ -8,9 +8,10 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/json/json_reader.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/values.h>
 
 #include "runtime_probe/probe_function.h"
@@ -39,6 +40,7 @@ class BaseFunctionTest : public BaseFileTest {
   ContextMockImpl* mock_context() { return &mock_context_; }
 
  private:
+  base::test::SingleThreadTaskEnvironment task_environment_;
   ::testing::NiceMock<ContextMockImpl> mock_context_;
 };
 
@@ -67,6 +69,9 @@ std::unique_ptr<ProbeFunctionType> CreateFakeProbeFunction(
   probe_function->fake_result_ = std::move(res->GetList());
   return probe_function;
 }
+
+// Get the result that the callback receives.
+ProbeFunction::DataType EvalProbeFunction(ProbeFunction* probe_function);
 
 }  // namespace runtime_probe
 

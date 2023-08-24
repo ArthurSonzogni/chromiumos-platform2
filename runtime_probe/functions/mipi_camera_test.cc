@@ -75,7 +75,7 @@ TEST_F(MipiCameraFunctionTest, ProbeMipiCamera) {
                                    "/sys/devices/XXX/v4l-subdev0"),
   };
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     [{
       "bus_type": "mipi",
@@ -100,7 +100,7 @@ TEST_F(MipiCameraFunctionTest, GetDeviceConfigFailed) {
   // Fail to get device config.
   probe_function->fake_cameras_ = std::nullopt;
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
   )JSON");
@@ -113,7 +113,7 @@ TEST_F(MipiCameraFunctionTest, NoCamera) {
   // Get empty camera list.
   probe_function->fake_cameras_ = std::vector<cros::PlatformCameraInfo>{};
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
   )JSON");

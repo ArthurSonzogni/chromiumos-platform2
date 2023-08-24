@@ -51,7 +51,7 @@ class MmcHostFunctionTest : public BaseFunctionTest {
 TEST_F(MmcHostFunctionTest, ProbeMmcHost) {
   SetMmcHost();
 
-  auto result = probe_function_->Eval();
+  auto result = EvalProbeFunction(probe_function_.get());
   EXPECT_EQ(result.size(), 1);
   EXPECT_TRUE(result[0].GetDict().FindString("path"));
   EXPECT_TRUE(result[0].GetDict().FindString("bus_type"));
@@ -60,7 +60,7 @@ TEST_F(MmcHostFunctionTest, ProbeMmcHost) {
 TEST_F(MmcHostFunctionTest, NoMmcDeviceAttached) {
   SetMmcHost();
 
-  auto result = probe_function_->Eval();
+  auto result = EvalProbeFunction(probe_function_.get());
   EXPECT_EQ(result.size(), 1);
   EXPECT_THAT(result[0].GetDict().FindString("is_emmc_attached"),
               Pointee(Eq("0")));
@@ -72,7 +72,7 @@ TEST_F(MmcHostFunctionTest, EmmcDeviceAttached) {
                   {"/sys/bus/mmc/devices", kFakeMmcName});
   SetFile({mmc_host_dev, kFakeMmcName, "type"}, "MMC");
 
-  auto result = probe_function_->Eval();
+  auto result = EvalProbeFunction(probe_function_.get());
   EXPECT_EQ(result.size(), 1);
   EXPECT_THAT(result[0].GetDict().FindString("is_emmc_attached"),
               Pointee(Eq("1")));
@@ -84,7 +84,7 @@ TEST_F(MmcHostFunctionTest, SDCardDeviceAttached) {
                   {"/sys/bus/mmc/devices", kFakeMmcName});
   SetFile({mmc_host_dev, kFakeMmcName, "type"}, "SD");
 
-  auto result = probe_function_->Eval();
+  auto result = EvalProbeFunction(probe_function_.get());
   EXPECT_EQ(result.size(), 1);
   EXPECT_THAT(result[0].GetDict().FindString("is_emmc_attached"),
               Pointee(Eq("0")));
@@ -96,7 +96,7 @@ TEST_F(MmcHostFunctionTest, UnknownDeviceAttached) {
                   {"/sys/bus/mmc/devices", kFakeMmcName});
   UnsetPath({mmc_host_dev, kFakeMmcName, "type"});
 
-  auto result = probe_function_->Eval();
+  auto result = EvalProbeFunction(probe_function_.get());
   EXPECT_EQ(result.size(), 1);
   EXPECT_THAT(result[0].GetDict().FindString("is_emmc_attached"),
               Pointee(Eq("0")));
@@ -121,7 +121,7 @@ TEST_F(MmcHostFunctionTest, FilterIsEmmcAttached) {
   // Probe all
   {
     probe_function_ = CreateProbeFunction<MmcHostFunction>();
-    auto result = probe_function_->Eval();
+    auto result = EvalProbeFunction(probe_function_.get());
     EXPECT_EQ(result.size(), 2);
   }
 
@@ -129,7 +129,7 @@ TEST_F(MmcHostFunctionTest, FilterIsEmmcAttached) {
   {
     probe_function_ = CreateProbeFunction<MmcHostFunction>(
         MakeMmcHostArg({{"is_emmc_attached", true}}));
-    auto result = probe_function_->Eval();
+    auto result = EvalProbeFunction(probe_function_.get());
     EXPECT_EQ(result.size(), 1);
     EXPECT_THAT(result[0].GetDict().FindString("is_emmc_attached"),
                 Pointee(Eq("1")));
@@ -141,7 +141,7 @@ TEST_F(MmcHostFunctionTest, FilterIsEmmcAttached) {
   {
     probe_function_ = CreateProbeFunction<MmcHostFunction>(
         MakeMmcHostArg({{"is_emmc_attached", false}}));
-    auto result = probe_function_->Eval();
+    auto result = EvalProbeFunction(probe_function_.get());
     EXPECT_EQ(result.size(), 1);
     EXPECT_THAT(result[0].GetDict().FindString("is_emmc_attached"),
                 Pointee(Eq("0")));

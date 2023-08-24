@@ -13,8 +13,8 @@ Files `sandbox/generic_battery.args` and
 `/etc/runtime_probe/sandbox/` in the rootfs.
 
 When evaluating a probe config, the probe config might want to probe battery by
-using `generic_battery` probe function.  In this case, `GenericBattery::Eval()`
-will be called.  The `GenericBattery::Eval()` function calls
+using `generic_battery` probe function.  In this case, `GenericBattery::Eval`
+will be called.  The `GenericBattery::Eval` function calls
 `GenericBattery::InvokeHelper()` (which is inherited from `ProbeFunction` base
 class).  The helper function invokes a DBus call, calling method
 `EvaluateProbeFunction` of `debugd`.  The function will start a sandboxed

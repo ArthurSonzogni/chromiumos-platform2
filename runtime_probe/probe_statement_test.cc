@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 
+#include <base/functional/callback.h>
 #include <base/json/json_reader.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
@@ -26,8 +27,7 @@ class MockProbeFunction : public ProbeFunction {
 
  public:
   NAME_PROBE_FUNCTION("mock_function");
-  MOCK_METHOD(DataType, Eval, (), (const, override));
-  DataType EvalImpl() const override { return {}; }
+  MOCK_METHOD(DataType, EvalImpl, (), (const, override));
 };
 
 class ProbeStatementTest : public testing::Test {
@@ -91,7 +91,8 @@ TEST_F(ProbeStatementTest, Eval) {
                            ->GetList());
 
   auto probe_function = std::make_unique<MockProbeFunction>();
-  EXPECT_CALL(*probe_function, Eval()).WillOnce(Return(ByMove(ans.Clone())));
+  EXPECT_CALL(*probe_function, EvalImpl())
+      .WillOnce(Return(ByMove(ans.Clone())));
 
   probe_statement->SetProbeFunctionForTesting(std::move(probe_function));
 
@@ -120,7 +121,7 @@ TEST_F(ProbeStatementTest, EvalWithFilteredKeys) {
                                    ->GetList());
 
   auto probe_function = std::make_unique<MockProbeFunction>();
-  EXPECT_CALL(*probe_function, Eval())
+  EXPECT_CALL(*probe_function, EvalImpl())
       .WillOnce(Return(ByMove(std::move(eval_result))));
 
   probe_statement->SetProbeFunctionForTesting(std::move(probe_function));
@@ -158,7 +159,7 @@ TEST_F(ProbeStatementTest, EvalWithExpectValue) {
                                    ->GetList());
 
   auto probe_function = std::make_unique<MockProbeFunction>();
-  EXPECT_CALL(*probe_function, Eval())
+  EXPECT_CALL(*probe_function, EvalImpl())
       .WillOnce(Return(ByMove(std::move(eval_result))));
 
   auto expect_value = base::JSONReader::Read(R"([

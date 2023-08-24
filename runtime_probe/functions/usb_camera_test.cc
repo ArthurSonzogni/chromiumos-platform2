@@ -75,7 +75,7 @@ TEST_F(UsbCameraFunctionTest, ProbeUsbCamera) {
   probe_function->fake_cap_ = {.capabilities = V4L2_CAP_DEVICE_CAPS,
                                .device_caps = V4L2_CAP_VIDEO_CAPTURE};
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
 
   auto ans = CreateProbeResultFromJson(
       base::StringPrintf(R"JSON(
@@ -117,7 +117,7 @@ TEST_F(UsbCameraFunctionTest, NoRequiredFields) {
   probe_function->fake_cap_ = {.capabilities = V4L2_CAP_DEVICE_CAPS,
                                .device_caps = V4L2_CAP_VIDEO_CAPTURE};
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   // Only contain results that meet the required fields.
   auto ans = CreateProbeResultFromJson(
       base::StringPrintf(R"JSON(
@@ -141,7 +141,7 @@ TEST_F(UsbCameraFunctionTest, QueryCapFailed) {
 
   probe_function->fake_cap_ = std::nullopt;
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
   )JSON");
@@ -158,7 +158,7 @@ TEST_F(UsbCameraFunctionTest, InvalidCap) {
       .capabilities = V4L2_CAP_DEVICE_CAPS,
       .device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_OUTPUT};
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
   )JSON");
@@ -173,7 +173,7 @@ TEST_F(UsbCameraFunctionTest, NoSysfsData) {
   probe_function->fake_cap_ = {.capabilities = V4L2_CAP_DEVICE_CAPS,
                                .device_caps = V4L2_CAP_VIDEO_CAPTURE};
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
   )JSON");

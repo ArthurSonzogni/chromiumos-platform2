@@ -5,13 +5,12 @@
 #ifndef RUNTIME_PROBE_FUNCTIONS_GENERIC_CAMERA_H_
 #define RUNTIME_PROBE_FUNCTIONS_GENERIC_CAMERA_H_
 
-#include <memory>
+#include <utility>
 
-#include <base/values.h>
+#include <base/functional/callback.h>
 
-#include "runtime_probe/functions/mipi_camera.h"
-#include "runtime_probe/functions/usb_camera.h"
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/utils/multi_function_runner.h"
 
 namespace runtime_probe {
 
@@ -24,20 +23,12 @@ class GenericCameraFunction : public ProbeFunction {
  private:
   // ProbeFunction overrides.
   bool PostParseArguments() override;
-  DataType EvalImpl() const override;
-
-  std::unique_ptr<UsbCameraFunction> usb_prober_;
-  std::unique_ptr<MipiCameraFunction> mipi_prober_;
-
-  // For mocking.
-  virtual std::unique_ptr<UsbCameraFunction> GetUsbProber(
-      const base::Value::Dict& dict_value) {
-    return CreateProbeFunction<UsbCameraFunction>(dict_value);
+  void EvalAsyncImpl(
+      base::OnceCallback<void(DataType)> callback) const override {
+    runner_.Run(std::move(callback));
   }
-  virtual std::unique_ptr<MipiCameraFunction> GetMipiProber(
-      const base::Value::Dict& dict_value) {
-    return CreateProbeFunction<MipiCameraFunction>(dict_value);
-  }
+
+  MultiFunctionRunner runner_;
 };
 
 }  // namespace runtime_probe

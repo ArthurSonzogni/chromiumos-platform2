@@ -40,7 +40,7 @@ class EdidFunctionTest : public BaseFunctionTest {
 
 TEST_F(EdidFunctionTest, ProbeEdid) {
   auto probe_function = CreateProbeFunction<EdidFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {

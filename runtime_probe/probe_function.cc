@@ -68,6 +68,10 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
       registered_functions_[function_name](kwargs.GetDict()));
 }
 
+void ProbeFunction::Eval(base::OnceCallback<void(DataType)> callback) const {
+  EvalAsyncImpl(std::move(callback));
+}
+
 int ProbeFunction::EvalInHelper(std::string* /*output*/) const {
   LOG(ERROR) << "Probe function \"" << GetFunctionName()
              << "\" cannot be invoked in helper.";
@@ -104,6 +108,16 @@ bool ProbeFunction::ParseArguments(const base::Value::Dict& arguments) {
     }
   }
   return success ? PostParseArguments() : false;
+}
+
+DataType ProbeFunction::EvalImpl() const {
+  NOTREACHED_NORETURN()
+      << "Either |EvalImpl| or |EvalAsyncImpl| should be implemented.";
+}
+
+void ProbeFunction::EvalAsyncImpl(
+    base::OnceCallback<void(DataType)> callback) const {
+  std::move(callback).Run(EvalImpl());
 }
 
 bool PrivilegedProbeFunction::InvokeHelper(std::string* result) const {
@@ -143,21 +157,24 @@ int PrivilegedProbeFunction::EvalInHelper(std::string* output) const {
   return -1;
 }
 
-PrivilegedProbeFunction::DataType PrivilegedProbeFunction::Eval() const {
+void PrivilegedProbeFunction::Eval(
+    base::OnceCallback<void(DataType)> callback) const {
   auto json_output = InvokeHelperToJSON();
   if (!json_output) {
-    return {};
+    std::move(callback).Run({});
+    return;
   }
   if (!json_output->is_list()) {
     LOG(ERROR) << "Failed to parse json output as list.";
     VLOG(3) << "InvokeHelper output:\n" << *json_output;
-    return {};
+    std::move(callback).Run({});
+    return;
   }
 
   DataType result = std::move(json_output->GetList());
   PostHelperEvalImpl(&result);
   VLOG(3) << GetFunctionName() << " Eval output:\n" << result;
-  return result;
+  std::move(callback).Run(std::move(result));
 }
 
 }  // namespace runtime_probe

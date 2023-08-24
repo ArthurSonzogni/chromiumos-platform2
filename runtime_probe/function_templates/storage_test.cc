@@ -73,7 +73,7 @@ TEST_F(StorageFunctionTest, ProbeStorage) {
       "field_5": "value_5"
   })");
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(base::StringPrintf(
       R"JSON(
     [
@@ -111,7 +111,7 @@ TEST_F(StorageFunctionTest, RemovableStorage) {
       "field_1": "value_1"
   })");
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   // Removable storage device will not be probed.
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
@@ -130,7 +130,7 @@ TEST_F(StorageFunctionTest, NoRemovableProperty) {
       "field_1": "value_1"
   })");
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   // Storage devices without removable property will not be probed.
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
@@ -149,7 +149,7 @@ TEST_F(StorageFunctionTest, LoopbackDevice) {
       "field_1": "value_1"
   })");
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   // Loopback device will not be probed.
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
@@ -168,7 +168,7 @@ TEST_F(StorageFunctionTest, DmVerityDevice) {
       "field_1": "value_1"
   })");
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   // dm-verity device will not be probed.
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
@@ -190,7 +190,7 @@ TEST_F(StorageFunctionTest, NoSysfsResult) {
       "field_1": "value_1"
   })");
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   // Only contain results with sysfs probe result.
   auto ans = CreateProbeResultFromJson(base::StringPrintf(
       R"JSON(
@@ -218,7 +218,7 @@ TEST_F(StorageFunctionTest, NoSectorCount) {
       "field_1": "value_1"
   })");
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   // For results without sector count, get -1 for sectors and size.
   auto ans = CreateProbeResultFromJson(base::StringPrintf(
       R"JSON(
@@ -247,7 +247,7 @@ TEST_F(StorageFunctionTest, InvalidSectorCount) {
       "field_1": "value_1"
   })");
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   // For results with invalid sector count, get -1 for sectors and size.
   auto ans = CreateProbeResultFromJson(base::StringPrintf(
       R"JSON(

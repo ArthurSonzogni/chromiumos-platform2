@@ -124,9 +124,9 @@ void ProbeStatement::Eval(
   std::optional<base::Value> expect_value;
   if (expect_value_.has_value())
     expect_value = expect_value_.value().Clone();
-  probe_function_->EvalAsync(base::BindOnce(&OnProbeFunctionEvalCompleted,
-                                            std::move(callback), key_,
-                                            std::move(expect_value)));
+  probe_function_->Eval(base::BindOnce(&OnProbeFunctionEvalCompleted,
+                                       std::move(callback), key_,
+                                       std::move(expect_value)));
 }
 
 }  // namespace runtime_probe

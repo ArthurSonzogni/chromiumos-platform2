@@ -48,7 +48,7 @@ class MockComponentCategory : public ComponentCategory {
 class ProbeConfigTest : public ::testing::Test {
  protected:
   // Set a mocked category that would return |category_eval_result| on
-  // calling ComponentCategory::Eval() for |probe_config|.
+  // calling ComponentCategory::Eval for |probe_config|.
   void SetProbeConfigCategory(ProbeConfig& probe_config,
                               const std::string& category_name,
                               const std::string& category_eval_result) {

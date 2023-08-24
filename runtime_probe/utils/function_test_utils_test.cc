@@ -44,7 +44,7 @@ TEST_F(FuntionTestUtilsTest, CreateFakeProbeFunction) {
       dynamic_cast<FakeProbeFunction<MockProbeFunction>*>(probe_function.get()),
       nullptr);
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   auto ans = CreateProbeResultFromJson(probe_result);
 
   EXPECT_EQ(result, ans);

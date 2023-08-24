@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -16,8 +15,8 @@
 #include <gtest/gtest.h>
 
 #include "runtime_probe/functions/sequence.h"
-#include "runtime_probe/functions/shell.h"
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {
 
@@ -26,8 +25,7 @@ typedef ProbeFunction::DataType DataType;
 class MockProbeFunction : public ProbeFunction {
  public:
   NAME_PROBE_FUNCTION("mock_function");
-  MOCK_METHOD(DataType, Eval, (), (const, override));
-  DataType EvalImpl() const override { return {}; }
+  MOCK_METHOD(DataType, EvalImpl, (), (const, override));
 };
 
 TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
@@ -41,7 +39,7 @@ TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
   val.Append(std::move(a));
   val.Append(std::move(b));
 
-  EXPECT_CALL(*mock_probe_function_1, Eval())
+  EXPECT_CALL(*mock_probe_function_1, EvalImpl())
       .WillOnce(testing::Return(testing::ByMove(std::move(val))));
 
   auto mock_probe_function_2 = std::make_unique<MockProbeFunction>();
@@ -52,7 +50,7 @@ TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
   sequence.functions_.push_back(std::move(mock_probe_function_1));
   sequence.functions_.push_back(std::move(mock_probe_function_2));
 
-  DataType results = sequence.Eval();
+  DataType results = EvalProbeFunction(&sequence);
 
   std::stringstream stream;
   for (auto& result : results) {
@@ -72,7 +70,7 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
   DataType val_a;
   val_a.Append(std::move(a));
 
-  EXPECT_CALL(*mock_probe_function_1, Eval())
+  EXPECT_CALL(*mock_probe_function_1, EvalImpl())
       .WillOnce(testing::Return(testing::ByMove(std::move(val_a))));
 
   auto mock_probe_function_2 = std::make_unique<MockProbeFunction>();
@@ -82,20 +80,19 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
   DataType val_b;
   val_b.Append(std::move(b));
 
-  EXPECT_CALL(*mock_probe_function_2, Eval())
+  EXPECT_CALL(*mock_probe_function_2, EvalImpl())
       .WillOnce(testing::Return(testing::ByMove(std::move(val_b))));
 
   SequenceFunction sequence{};
   sequence.functions_.push_back(std::move(mock_probe_function_1));
   sequence.functions_.push_back(std::move(mock_probe_function_2));
 
-  DataType results = sequence.Eval();
+  DataType results = EvalProbeFunction(&sequence);
 
   std::stringstream stream;
   for (auto& result : results) {
     stream << result;
   }
-  // The `results` should be empty.
   ASSERT_EQ(results.size(), 1) << "unexpected results: " << stream.str();
 
   std::set<std::string> result_keys;

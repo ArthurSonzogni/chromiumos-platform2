@@ -61,7 +61,6 @@ if (use.test) {
       "ec_i2c_test.cc",
       "edid_test.cc",
       "generic_battery_test.cc",
-      "generic_camera_test.cc",
       "gpu_test.cc",
       "input_device_test.cc",
       "memory_test.cc",

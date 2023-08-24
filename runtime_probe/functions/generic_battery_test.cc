@@ -83,7 +83,7 @@ TEST_F(GenericBatteryTest, Succeed) {
     EXPECT_CALL(*debugd, BatteryFirmware("info", _, _, _))
         .WillOnce(DoAll(SetArgPointee<1>(kEctoolBatteryOutput), Return(true)));
     auto probe_function = CreateProbeFunction<GenericBattery>();
-    auto result = probe_function->Eval();
+    auto result = EvalProbeFunction(probe_function.get());
     EXPECT_EQ(result, ans);
   }
 }
@@ -109,7 +109,7 @@ TEST_F(GenericBatteryTest, CallEctoolFailed) {
                          GetPathUnderRoot(bat0_path).value().c_str()));
 
   auto probe_function = CreateProbeFunction<GenericBattery>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -134,7 +134,7 @@ TEST_F(GenericBatteryTest, ParseEctoolBatteryFailed) {
                          GetPathUnderRoot(bat0_path).value().c_str()));
 
   auto probe_function = CreateProbeFunction<GenericBattery>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 

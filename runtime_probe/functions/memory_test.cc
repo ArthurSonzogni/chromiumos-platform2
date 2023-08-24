@@ -133,7 +133,7 @@ TEST_F(MemoryTest, ProbeMemory) {
           .value());
 
   auto probe_function = CreateProbeFunction<MemoryFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -167,7 +167,7 @@ TEST_F(MemoryTest, ProbeKbMemory) {
           .value());
 
   auto probe_function = CreateProbeFunction<MemoryFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -177,7 +177,7 @@ TEST_F(MemoryTest, NoDmiData) {
   )JSON");
 
   auto probe_function = CreateProbeFunction<MemoryFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -216,7 +216,7 @@ TEST_F(MemoryTest, InvalidDmiData) {
           .value());
 
   auto probe_function = CreateProbeFunction<MemoryFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 

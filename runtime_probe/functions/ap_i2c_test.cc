@@ -42,7 +42,8 @@ TEST_F(ApI2cFunctionTest, ProbeSucceed) {
         return 0;
       });
 
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     [
       {
         "data": 42
@@ -64,7 +65,8 @@ TEST_F(ApI2cFunctionTest, InvalidArgument) {
   auto probe_function =
       CreateProbeFunction<ApI2cFunction>(probe_statement->GetDict());
 
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     []
   )JSON"));
 }
@@ -82,7 +84,8 @@ TEST_F(ApI2cFunctionTest, OpenI2cFileFailed) {
       CreateProbeFunction<ApI2cFunction>(probe_statement->GetDict());
 
   // File "/dev/i2c-1" doesn't exist.
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     []
   )JSON"));
 }
@@ -103,7 +106,8 @@ TEST_F(ApI2cFunctionTest, SetChipAddrFailed) {
   auto syscaller = mock_context()->mock_syscaller();
   EXPECT_CALL(*syscaller, Ioctl(_, I2C_SLAVE_FORCE, 2)).WillOnce(Return(-1));
 
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     []
   )JSON"));
 }
@@ -125,7 +129,8 @@ TEST_F(ApI2cFunctionTest, ReadI2cDataFailed) {
   EXPECT_CALL(*syscaller, Ioctl(_, I2C_SLAVE_FORCE, 2)).WillOnce(Return(0));
   EXPECT_CALL(*syscaller, Ioctl(_, I2C_SMBUS, A<void*>())).WillOnce(Return(-1));
 
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     []
   )JSON"));
 }

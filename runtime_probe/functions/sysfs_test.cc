@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "runtime_probe/functions/sysfs.h"
+#include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {
 
@@ -51,7 +52,7 @@ TEST(SysfsFunctionTest, TestRead) {
   ASSERT_TRUE(f) << "Loaded function is not a SysfsFunction";
   f->MockSysfsPathForTesting(temp_dir.GetPath());
 
-  auto results = f->Eval();
+  auto results = EvalProbeFunction(f);
   ASSERT_EQ(results.size(), 2);
 
   for (auto& result : results) {
@@ -88,7 +89,7 @@ TEST(SysfsFunctionTest, TestRead) {
   ASSERT_TRUE(f_abs) << "Loaded function is not a SysfsFunction";
   f_abs->MockSysfsPathForTesting(temp_dir.GetPath());
 
-  auto results_abs = f_abs->Eval();
+  auto results_abs = EvalProbeFunction(f_abs);
   ASSERT_EQ(results_abs.size(), 0);
 }
 

@@ -68,7 +68,7 @@ TEST_F(NetworkFunctionTest, ProbeNetwork) {
   SetNetworkDevice("wlan0", shill::kTypeWifi);
   auto probe_function = CreateProbeFunction<NetworkFunction>();
 
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result.size(), 1);
   EXPECT_TRUE(result[0].GetDict().FindString("path"));
   EXPECT_TRUE(result[0].GetDict().FindString("bus_type"));
@@ -84,7 +84,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
   // Probe all.
   {
     auto probe_function = CreateProbeFunction<NetworkFunction>();
-    auto result = probe_function->Eval();
+    auto result = EvalProbeFunction(probe_function.get());
     std::set<std::string> result_types;
     for (const auto& each_result : result) {
       auto* type = each_result.GetDict().FindString("type");
@@ -99,7 +99,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
     base::Value::Dict arg;
     arg.Set("device_type", expected_type);
     auto probe_function = CreateProbeFunction<NetworkFunction>(arg);
-    auto result = probe_function->Eval();
+    auto result = EvalProbeFunction(probe_function.get());
     EXPECT_EQ(result.size(), 1);
     EXPECT_THAT(result[0].GetDict().FindString("type"),
                 Pointee(Eq(expected_type)));
@@ -113,7 +113,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
     auto probe_function = CreateProbeFunction<MockNetworkFunction>();
     EXPECT_CALL(*probe_function, GetNetworkType())
         .WillOnce(Return(std::nullopt));
-    auto result = probe_function->Eval();
+    auto result = EvalProbeFunction(probe_function.get());
     std::set<std::string> result_types;
     for (const auto& each_result : result) {
       auto* type = each_result.GetDict().FindString("type");
@@ -128,7 +128,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
     auto probe_function = CreateProbeFunction<MockNetworkFunction>();
     EXPECT_CALL(*probe_function, GetNetworkType())
         .WillOnce(Return(expected_type));
-    auto result = probe_function->Eval();
+    auto result = EvalProbeFunction(probe_function.get());
     EXPECT_EQ(result.size(), 1);
     EXPECT_THAT(result[0].GetDict().FindString("type"),
                 Pointee(Eq(expected_type)));

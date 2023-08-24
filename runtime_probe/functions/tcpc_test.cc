@@ -77,7 +77,8 @@ TEST_F(TcpcFunctionTest, ProbeTcpc) {
   EXPECT_CALL(*probe_function, GetPdChipInfoCommandV0(2))
       .WillOnce(Return(ByMove(std::move(cmd2))));
 
-  EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
+  EXPECT_EQ(EvalProbeFunction(probe_function.get()),
+            CreateProbeResultFromJson(R"JSON(
     [
       {
         "device_id": "0x1",

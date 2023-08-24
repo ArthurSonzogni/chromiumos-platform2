@@ -85,7 +85,7 @@ B: ABS=0)";
           .value());
 
   auto probe_function = CreateProbeFunction<InputDeviceFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -121,7 +121,7 @@ B: ABS=)" +
           .value());
 
   auto probe_function = CreateProbeFunction<InputDeviceFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -157,7 +157,7 @@ B: ABS=0)";
           .value());
 
   auto probe_function = CreateProbeFunction<InputDeviceFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -192,7 +192,7 @@ B: SW=14)";
                   .value());
 
   auto probe_function = CreateProbeFunction<InputDeviceFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -250,7 +250,7 @@ B: ABS=)" +
           .value());
 
   auto probe_function = CreateProbeFunction<InputDeviceFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -299,7 +299,7 @@ B: ABS=)" +
           .value());
 
   auto probe_function = CreateProbeFunction<InputDeviceFunction>(arg);
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -352,7 +352,7 @@ B: ABS=)" +
           .value());
 
   auto probe_function = CreateProbeFunction<InputDeviceFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
@@ -362,7 +362,7 @@ TEST_F(InputDeviceFunctionTest, ProcfsNotExist) {
   )JSON");
 
   auto probe_function = CreateProbeFunction<InputDeviceFunction>();
-  auto result = probe_function->Eval();
+  auto result = EvalProbeFunction(probe_function.get());
   EXPECT_EQ(result, ans);
 }
 
