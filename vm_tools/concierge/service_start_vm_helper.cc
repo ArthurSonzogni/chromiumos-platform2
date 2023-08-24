@@ -24,7 +24,7 @@ apps::VmType ClassifyVm(const StartVmRequest& request) {
       std::any_of(request.fds().begin(), request.fds().end(),
                   [](int type) { return type == StartVmRequest::BIOS; });
   if (request.vm_type() == VmInfo::BRUSCHETTA || has_bios_fd ||
-      request.vm().dlc_id() == kBruschettaBiosDlcId)
+      request.vm().dlc_id() == "edk2-ovmf-dlc" || request.name() == "bru")
     return apps::VmType::BRUSCHETTA;
   return apps::VmType::UNKNOWN;
 }

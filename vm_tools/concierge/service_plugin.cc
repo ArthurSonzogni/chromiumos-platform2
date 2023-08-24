@@ -285,7 +285,8 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
   }
   response.set_success(true);
 
-  NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, info.pid, std::move(vm_token));
+  NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, info.pid, std::move(vm_token),
+                            apps::VmType::PLUGIN_VM);
 
   vms_[vm_id] = std::move(vm);
 

@@ -2188,7 +2188,11 @@ StartVmResponse Service::StartVmInternal(
   // Notify cicerone that we have started a VM.
   // We must notify cicerone now before calling StartTermina, but we will only
   // send the VmStartedSignal on success.
-  NotifyCiceroneOfVmStarted(vm_id, vm->cid(), vm->GetInfo().pid, vm_token);
+  {
+    auto vm_info = vm->GetInfo();
+    NotifyCiceroneOfVmStarted(vm_id, vm->cid(), vm_info.pid, vm_token,
+                              vm_info.type);
+  }
 
   vm_tools::StartTerminaResponse::MountResult mount_result =
       vm_tools::StartTerminaResponse::UNKNOWN;
@@ -3990,7 +3994,8 @@ void Service::OnDefaultNetworkServiceChanged() {
 void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
                                         uint32_t cid,
                                         pid_t pid,
-                                        std::string vm_token) {
+                                        std::string vm_token,
+                                        vm_tools::apps::VmType vm_type) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStartedMethod);
@@ -4001,6 +4006,7 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
   request.set_cid(cid);
   request.set_vm_token(std::move(vm_token));
   request.set_pid(pid);
+  request.set_vm_type(vm_type);
   writer.AppendProtoAsArrayOfBytes(request);
   if (!brillo::dbus_utils::CallDBusMethod(
           bus_, cicerone_service_proxy_, &method_call,

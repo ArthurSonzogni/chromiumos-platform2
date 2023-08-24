@@ -77,6 +77,7 @@ group("all") {
     ":system_api-u2f-protos",
     ":system_api-update_engine-goprotos",
     ":system_api-update_engine-protos",
+    ":system_api-vm_applications-goprotos",
     ":system_api-vm_applications-protos",
     ":system_api-vm_cicerone-goprotos",
     ":system_api-vm_cicerone-protos",
@@ -461,6 +462,12 @@ proto_library("system_api-vm_applications-protos") {
   sources = [ "${proto_in_dir}/vm_applications/apps.proto" ]
   standalone = true
   install_package = true
+}
+
+goproto_library("system_api-vm_applications-goprotos") {
+  proto_in_dir = "dbus"
+  proto_out_dir = "go/src/"
+  sources = [ "${proto_in_dir}/vm_applications/apps.proto" ]
 }
 
 proto_library("system_api-vm_sk_forwarding-protos") {

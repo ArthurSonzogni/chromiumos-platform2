@@ -32,13 +32,16 @@ fn main() {
         // Make this work when typing "cargo build" in platform2/vm_tools/chunnel.
         Err(_) => PathBuf::from("../../../system_api"),
     };
+    let dbus_dir = proto_root.join("dbus");
+    let applications_dir = proto_root.join("dbus/vm_applications");
     let chunneld_dir = proto_root.join("dbus/chunneld");
     let cicerone_dir = proto_root.join("dbus/vm_cicerone");
     let input_files = [
+        applications_dir.join("apps.proto"),
         chunneld_dir.join("chunneld_service.proto"),
         cicerone_dir.join("cicerone_service.proto"),
     ];
-    let include_dirs = [chunneld_dir, cicerone_dir];
+    let include_dirs = [dbus_dir, chunneld_dir, cicerone_dir];
 
     protobuf_codegen::Codegen::new()
         .out_dir(out_dir.as_os_str().to_str().unwrap())

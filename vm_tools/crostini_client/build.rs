@@ -134,6 +134,7 @@ const APIS: &[SystemApiDbus] = &[
     SystemApiDbus::constants("dbus/permission_broker"),
     // service_constants.h is the only header file needed that isn't called dbus_constants.h.
     SystemApiDbus::constants("dbus/service_constants.h"),
+    SystemApiDbus::new("dbus/vm_applications", "apps.proto"),
     SystemApiDbus::new("dbus/vm_concierge", "concierge_service.proto"),
     SystemApiDbus::new("dbus/vm_cicerone", "cicerone_service.proto"),
     SystemApiDbus::new("dbus/dlcservice", "dlcservice.proto"),
@@ -165,7 +166,11 @@ fn main() {
         // Some APIs have no .proto file that needs parsing.
         if let Some(input_path) = api.get_input_path(&system_api_root) {
             generator.input(&input_path);
-            generator.include(api.get_include_path(&system_api_root));
+            // dbus/vm_applications/apps.proto needs to be an input,
+            // but its parent directory can't be in the include paths.
+            if api.path != "dbus/vm_applications" {
+                generator.include(api.get_include_path(&system_api_root));
+            }
             input_paths.push(input_path);
         }
         api.parse_constants(&system_api_root, &mut constants);

@@ -308,7 +308,8 @@ class Service final : public org::chromium::VmConciergeInterface,
   void NotifyCiceroneOfVmStarted(const VmId& vm_id,
                                  uint32_t vsock_cid,
                                  pid_t pid,
-                                 std::string vm_token);
+                                 std::string vm_token,
+                                 vm_tools::apps::VmType vm_type);
   void HandleVmStarted(const VmId& vm_id,
                        apps::VmType classification,
                        const vm_tools::concierge::VmInfo& vm_info,
