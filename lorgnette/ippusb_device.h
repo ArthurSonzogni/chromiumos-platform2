@@ -10,11 +10,14 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 #include <libusb.h>
 
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 namespace lorgnette {
+
+extern const base::TimeDelta kSocketCreationTimeout;
 
 // Convert an ippusb backend name to a real backend string, e.g.
 // ippusb:escl:Device:1234_5678/eSCL/ to
@@ -22,8 +25,10 @@ namespace lorgnette {
 // a matching ippusb_bridge socket in |socket_dir|, but does not make a
 // connection to the bridge.  Return std::nullopt if the device can't be found
 // or an error occurs waiting for the socket.
-std::optional<std::string> BackendForDevice(const std::string& device_name,
-                                            base::FilePath socket_dir);
+std::optional<std::string> BackendForDevice(
+    const std::string& device_name,
+    base::FilePath socket_dir,
+    base::TimeDelta timeout = kSocketCreationTimeout);
 
 // Get a list of potential eSCL-over-USB devices attached to the system.  Each
 // returned device will be a printer that claims to support IPP-USB, but they

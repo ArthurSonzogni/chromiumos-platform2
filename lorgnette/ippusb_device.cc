@@ -26,9 +26,10 @@
 
 namespace lorgnette {
 
+const base::TimeDelta kSocketCreationTimeout = base::Seconds(3);
+
 namespace {
 
-const base::TimeDelta kSocketCreationTimeout = base::Seconds(3);
 const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 const uint8_t kIppUsbInterfaceProtocol = 0x04;
 
@@ -169,7 +170,8 @@ std::optional<ScannerInfo> CheckUsbDevice(libusb_device* device) {
 }  // namespace
 
 std::optional<std::string> BackendForDevice(const std::string& device_name,
-                                            base::FilePath socket_dir) {
+                                            base::FilePath socket_dir,
+                                            base::TimeDelta timeout) {
   LOG(INFO) << "Finding real backend for device: " << device_name;
   std::string protocol, name, vid, pid, path;
   if (!RE2::FullMatch(
@@ -181,7 +183,7 @@ std::optional<std::string> BackendForDevice(const std::string& device_name,
 
   std::string socket =
       base::StringPrintf("%s-%s.sock", vid.c_str(), pid.c_str());
-  if (!WaitForSocket(socket_dir, socket, kSocketCreationTimeout)) {
+  if (!WaitForSocket(socket_dir, socket, timeout)) {
     return std::nullopt;
   }
 

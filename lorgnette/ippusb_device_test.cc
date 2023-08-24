@@ -16,19 +16,22 @@ namespace lorgnette {
 
 TEST(IppUsbDeviceLookup, NoBackendForNonIppUsb) {
   std::optional<std::string> backend =
-      BackendForDevice("notippusb:device_string", base::FilePath("/no/dir"));
+      BackendForDevice("notippusb:device_string", base::FilePath("/no/dir"),
+                       base::Milliseconds(10));
   EXPECT_FALSE(backend.has_value());
 }
 
 TEST(IppUsbDeviceLookup, NoBackendForBadFormat) {
   std::optional<std::string> backend =
-      BackendForDevice("ippusb:not_an_escl_string", base::FilePath("/no/dir"));
+      BackendForDevice("ippusb:not_an_escl_string", base::FilePath("/no/dir"),
+                       base::Milliseconds(10));
   EXPECT_FALSE(backend.has_value());
 }
 
 TEST(IppUsbDeviceLookup, NoBackendForMissingFile) {
-  std::optional<std::string> backend = BackendForDevice(
-      "ippusb:escl:Test:1234_5678/eSCL/", base::FilePath("/no/dir"));
+  std::optional<std::string> backend =
+      BackendForDevice("ippusb:escl:Test:1234_5678/eSCL/",
+                       base::FilePath("/no/dir"), base::Milliseconds(10));
   EXPECT_FALSE(backend.has_value());
 }
 
@@ -39,7 +42,8 @@ TEST(IppUsbDeviceLookup, UpdatedBackend) {
   base::File socket_file(socket_path,
                          base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   std::optional<std::string> backend =
-      BackendForDevice("ippusb:escl:Test:1234_5678/eSCL/", temp_dir.GetPath());
+      BackendForDevice("ippusb:escl:Test:1234_5678/eSCL/", temp_dir.GetPath(),
+                       base::Milliseconds(10));
   EXPECT_TRUE(backend.has_value());
   EXPECT_EQ(*backend, "airscan:escl:Test:unix://1234-5678.sock/eSCL/");
 }
