@@ -914,10 +914,6 @@ TEST_P(StorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
   // TO-DO cleanup this test, build a test that actually deletes files.
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
-  // Write records on a certain priority StorageQueue
-  WriteStringOrDie(FAST_BATCH, kData[0]);
-  WriteStringOrDie(FAST_BATCH, kData[1]);
-
   // Reserve the remaining space to have none available and trigger Records
   // Shedding
   const uint64_t temp_used = options_.disk_space_resource()->GetUsed();
@@ -936,6 +932,100 @@ TEST_P(StorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
 
   // Discard the space reserved
   options_.disk_space_resource()->Discard(to_reserve);
+}
+
+// Test even single writable file allows degradation.
+TEST_P(StorageDegradationTest, WriteAttemptWithSingleFileShedding) {
+  CreateTestStorageOrDie(BuildTestStorageOptions());
+
+  // Write records on a certain priority StorageQueue
+  WriteStringOrDie(MANUAL_BATCH, kData[0]);
+  WriteStringOrDie(MANUAL_BATCH, kData[1]);
+
+  // Reserve the remaining space to have none available and trigger Records
+  // Shedding
+  const uint64_t temp_used = options_.disk_space_resource()->GetUsed();
+  const uint64_t temp_total = options_.disk_space_resource()->GetTotal();
+  const uint64_t to_reserve = temp_total - temp_used;
+  options_.disk_space_resource()->Reserve(to_reserve);
+
+  // Write records on a higher priority queue to see if records shedding has any
+  // effect.
+  if (is_degradation_enabled()) {
+    LOG(ERROR) << "Feature Enabled >> RecordSheddingSuccessTest";
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), Gt(0)))
+        .WillOnce(Return(true));
+    // Write and expect immediate upload.
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                return TestUploader::SetUp(IMMEDIATE, &waiter, this)
+                    .Required(0, kData[2])
+                    .Complete();
+              }))
+          .RetiresOnSaturation();
+      SetExpectedUploadsCount();
+      WriteStringOrDie(IMMEDIATE, kData[2]);
+    }
+
+    // Discard the space reserved
+    options_.disk_space_resource()->Discard(to_reserve);
+
+    // Check that MANUAL_BATCH is partially lost.
+    // Add one more record, otherwise upload could be skipped.
+    WriteStringOrDie(MANUAL_BATCH, kData[2]);
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
+                    .PossibleGap(0, 1)  // Always lost.
+                    .PossibleGap(1, 1)  // May be lost.
+                    .Possible(1, kData[1])
+                    .Required(2, kData[2])
+                    .Complete();
+              }))
+          .RetiresOnSaturation();
+      SetExpectedUploadsCount();
+      FlushOrDie(MANUAL_BATCH);
+    }
+
+  } else {
+    LOG(ERROR) << "Feature Disabled >> RecordSheddingSuccessTest";
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), _))
+        .Times(0);
+    const Status write_result = WriteString(IMMEDIATE, kData[2]);
+    ASSERT_FALSE(write_result.ok());
+
+    // Discard the space reserved
+    options_.disk_space_resource()->Discard(to_reserve);
+
+    // Check that MANUAL_BATCH is intact.
+    {
+      test::TestCallbackAutoWaiter waiter;
+      EXPECT_CALL(set_mock_uploader_expectations_,
+                  Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+          .WillOnce(
+              Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+                return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
+                    .Required(0, kData[0])
+                    .Required(1, kData[1])
+                    .Complete();
+              }))
+          .RetiresOnSaturation();
+      SetExpectedUploadsCount();
+      FlushOrDie(MANUAL_BATCH);
+    }
+  }
 }
 
 // Test Available files to delete in multiple queues when one is insufficient.

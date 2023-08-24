@@ -5,7 +5,6 @@
 #include "missive/storage/storage_queue.h"
 
 #include <algorithm>
-#include <cmath>
 #include <cstring>
 #include <iterator>
 #include <limits>
@@ -96,6 +95,12 @@ constexpr size_t FRAME_SIZE = 16u;
 // Helper functions for FRAME_SIZE alignment support.
 size_t RoundUpToFrameSize(size_t size) {
   return (size + FRAME_SIZE - 1) / FRAME_SIZE * FRAME_SIZE;
+}
+
+// Helper function is a substitute for std::ceil(value/scale) for integers (used
+// by UMA).
+int UmaCeil(uint64_t value, uint64_t scale) {
+  return static_cast<int>((value + scale - 1) / scale);
 }
 
 // Internal structure of the record header. Must fit in FRAME_SIZE.
@@ -1159,9 +1164,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       if (status.ok() && storage_queue_) {
         const auto res = analytics::Metrics::SendSparseToUMA(
             base::StrCat({kUploadToStorageRatePrefix, storage_queue_->uma_id_}),
-            static_cast<int>(
-                std::ceil(total_upload_size_ * 100uL  // per-cent
-                          / std::max(total_files_size_, total_upload_size_))));
+            UmaCeil(total_upload_size_ * 100uL,  // per-cent
+                    std::max(total_files_size_, total_upload_size_)));
         LOG_IF(ERROR, !res)
             << "Send upload statistics UMA failure, ID="
             << storage_queue_->uma_id_ << " " << total_upload_size_
@@ -2125,34 +2129,39 @@ void StorageQueue::ShedOriginalQueueRecords(
 
 bool StorageQueue::ShedFiles(size_t space_to_recover) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
-  if (!active_read_operations_ && options_.can_shed_records() &&
-      files_.size() > 1  // At least one file must remain after shedding.
-  ) {
-    uint64_t total_shed_size = 0u;
-    base::ScopedClosureRunner report(base::BindOnce(
-        [](const uint64_t* total_shed_size) {
-          const auto res = analytics::Metrics::SendSparseToUMA(
-              /*name=*/kStorageDegradationAmount,
-              static_cast<int>(std::ceil(*total_shed_size / 1024u)));  // In KiB
-          LOG_IF(ERROR, !res)
-              << "Send degradation UMA failure, " << kStorageDegradationAmount
-              << " " << *total_shed_size;
-        },
-        base::Unretained(&total_shed_size)));
-    do {
-      // Delete the first file and discard reserved space.
-      files_.begin()->second->Close();
-      total_shed_size += files_.begin()->second->size();
-      files_.begin()->second->DeleteWarnIfFailed();
-      files_.erase(files_.begin());
-      // Reset first available seq_id to the file that became the first.
-      first_sequencing_id_ = files_.begin()->first;
-      // Check if now there is enough space available.
-      if (space_to_recover + options_.disk_space_resource()->GetUsed() <
-          options_.disk_space_resource()->GetTotal()) {
-        return true;
-      }
-    } while (files_.size() > 1);  // At least one file must remain.
+  if (!active_read_operations_ && options_.can_shed_records()) {
+    // If there is only one file and it is non-empty, close and add a new one.
+    // This way we will be able to shed the current file.
+    const auto switch_status = SwitchLastFileIfNotEmpty();
+    LOG_IF(WARNING, !switch_status.ok())
+        << "Failed to switch during degradation: " << switch_status;
+    if (files_.size() > 1) {  // At least one file must remain after shedding.
+      uint64_t total_shed_size = 0u;
+      base::ScopedClosureRunner report(base::BindOnce(
+          [](const uint64_t* total_shed_size) {
+            const auto res = analytics::Metrics::SendSparseToUMA(
+                /*name=*/kStorageDegradationAmount,
+                UmaCeil(*total_shed_size, 1024u));  // In KiB
+            LOG_IF(ERROR, !res)
+                << "Send degradation UMA failure, " << kStorageDegradationAmount
+                << " " << *total_shed_size;
+          },
+          base::Unretained(&total_shed_size)));
+      do {
+        // Delete the first file and discard reserved space.
+        files_.begin()->second->Close();
+        total_shed_size += files_.begin()->second->size();
+        files_.begin()->second->DeleteWarnIfFailed();
+        files_.erase(files_.begin());
+        // Reset first available seq_id to the file that became the first.
+        first_sequencing_id_ = files_.begin()->first;
+        // Check if now there is enough space available.
+        if (space_to_recover + options_.disk_space_resource()->GetUsed() <
+            options_.disk_space_resource()->GetTotal()) {
+          return true;
+        }
+      } while (files_.size() > 1);  // At least one file must remain.
+    }
   }
   return false;
 }
