@@ -28,8 +28,12 @@
 #include "lorgnette/usb/usb_device_fake.h"
 
 using ::testing::_;
+using ::testing::Each;
 using ::testing::ElementsAre;
 using ::testing::Not;
+using ::testing::Pointee;
+using ::testing::Property;
+using ::testing::UnorderedElementsAre;
 
 namespace lorgnette {
 
@@ -340,13 +344,15 @@ TEST(DeviceTrackerTest, DISABLED_CompleteDiscoverySession) {
   run_loop.Run();
 
   EXPECT_THAT(closed_sessions, ElementsAre(response.session_id()));
-  ASSERT_EQ(scanners.size(), 2);
-  auto& scanner = *scanners.begin();
-  auto& second_scanner = *(++scanners.begin());
-  EXPECT_EQ(scanner->manufacturer(), "GoogleTest");
-  EXPECT_EQ(scanner->model(), "eSCL Scanner 3000");
-  EXPECT_EQ(second_scanner->manufacturer(), "GoogleTest");
-  EXPECT_EQ(second_scanner->model(), "SANE Scanner 4000");
+  EXPECT_THAT(
+      scanners,
+      Each(Pointee(Property(&ScannerInfo::manufacturer, "GoogleTest"))));
+  EXPECT_THAT(
+      scanners,
+      UnorderedElementsAre(
+          Pointee(Property("model", &ScannerInfo::model, "eSCL Scanner 3000")),
+          Pointee(
+              Property("model", &ScannerInfo::model, "SANE Scanner 4000"))));
 }
 
 TEST(DeviceTrackerTest, OpenScannerEmptyDevice) {
