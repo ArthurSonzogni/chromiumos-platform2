@@ -71,7 +71,7 @@ void AuthStackManagerProxyBase::StartEnrollSession(
 void AuthStackManagerProxyBase::EndEnrollSession() {
   dbus::MethodCall end_call(biod::kEnrollSessionInterface,
                             biod::kEnrollSessionCancelMethod);
-  biod_enroll_session_->CallMethodAndBlockDeprecated(&end_call, kDbusTimeoutMs);
+  (void)biod_enroll_session_->CallMethodAndBlock(&end_call, kDbusTimeoutMs);
 }
 
 void AuthStackManagerProxyBase::CreateCredential(
@@ -105,7 +105,7 @@ void AuthStackManagerProxyBase::StartAuthSession(
 void AuthStackManagerProxyBase::EndAuthSession() {
   dbus::MethodCall end_call(biod::kAuthSessionInterface,
                             biod::kAuthSessionEndMethod);
-  biod_auth_session_->CallMethodAndBlockDeprecated(&end_call, kDbusTimeoutMs);
+  (void)biod_auth_session_->CallMethodAndBlock(&end_call, kDbusTimeoutMs);
 }
 
 void AuthStackManagerProxyBase::AuthenticateCredential(

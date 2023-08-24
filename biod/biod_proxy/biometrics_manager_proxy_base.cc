@@ -104,8 +104,8 @@ bool BiometricsManagerProxyBase::StartAuthSession() {
                                biod::kBiometricsManagerStartAuthSessionMethod);
 
   std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlockDeprecated(&method_call,
-                                           dbus_constants::kDbusTimeoutMs);
+      proxy_->CallMethodAndBlock(&method_call, dbus_constants::kDbusTimeoutMs)
+          .value_or(nullptr);
 
   biod_auth_session_ = HandleAuthSessionResponse(response.get());
   return biod_auth_session_ != nullptr;
@@ -133,8 +133,8 @@ void BiometricsManagerProxyBase::EndAuthSession() {
   LOG(INFO) << "Ending biometric authentication";
   dbus::MethodCall end_call(biod::kAuthSessionInterface,
                             biod::kAuthSessionEndMethod);
-  biod_auth_session_->CallMethodAndBlockDeprecated(
-      &end_call, dbus_constants::kDbusTimeoutMs);
+  (void)biod_auth_session_->CallMethodAndBlock(&end_call,
+                                               dbus_constants::kDbusTimeoutMs);
 }
 
 void BiometricsManagerProxyBase::OnFinish(bool success) {

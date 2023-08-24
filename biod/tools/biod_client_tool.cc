@@ -86,15 +86,23 @@ class RecordProxy {
                                  biod::kRecordSetLabelMethod);
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(label);
-    return !!proxy_->CallMethodAndBlockDeprecated(
-        &method_call, biod::dbus_constants::kDbusTimeoutMs);
+    std::unique_ptr<dbus::Response> response =
+        proxy_
+            ->CallMethodAndBlock(&method_call,
+                                 biod::dbus_constants::kDbusTimeoutMs)
+            .value_or(nullptr);
+    return !!response;
   }
 
   bool Remove() {
     dbus::MethodCall method_call(biod::kRecordInterface,
                                  biod::kRecordRemoveMethod);
-    return !!proxy_->CallMethodAndBlockDeprecated(
-        &method_call, biod::dbus_constants::kDbusTimeoutMs);
+    std::unique_ptr<dbus::Response> response =
+        proxy_
+            ->CallMethodAndBlock(&method_call,
+                                 biod::dbus_constants::kDbusTimeoutMs)
+            .value_or(nullptr);
+    return !!response;
   }
 
  private:
@@ -105,8 +113,10 @@ class RecordProxy {
     method_writer.AppendString(biod::kRecordInterface);
     method_writer.AppendString(biod::kRecordLabelProperty);
     std::unique_ptr<dbus::Response> response =
-        proxy_->CallMethodAndBlockDeprecated(
-            &method_call, biod::dbus_constants::kDbusTimeoutMs);
+        proxy_
+            ->CallMethodAndBlock(&method_call,
+                                 biod::dbus_constants::kDbusTimeoutMs)
+            .value_or(nullptr);
     CHECK(response);
 
     dbus::MessageReader response_reader(response.get());
@@ -148,8 +158,10 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
     method_writer.AppendString(label);
 
     std::unique_ptr<dbus::Response> response =
-        proxy_->CallMethodAndBlockDeprecated(
-            &method_call, biod::dbus_constants::kDbusTimeoutMs);
+        proxy_
+            ->CallMethodAndBlock(&method_call,
+                                 biod::dbus_constants::kDbusTimeoutMs)
+            .value_or(nullptr);
     if (!response)
       return nullptr;
 
@@ -165,8 +177,12 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
     dbus::MethodCall method_call(
         biod::kBiometricsManagerInterface,
         biod::kBiometricsManagerDestroyAllRecordsMethod);
-    return !!proxy_->CallMethodAndBlockDeprecated(
-        &method_call, biod::dbus_constants::kDbusTimeoutMs);
+    std::unique_ptr<dbus::Response> response =
+        proxy_
+            ->CallMethodAndBlock(&method_call,
+                                 biod::dbus_constants::kDbusTimeoutMs)
+            .value_or(nullptr);
+    return !!response;
   }
 
   std::vector<RecordProxy> GetRecordsForUser(const std::string& user_id) const {
@@ -177,8 +193,10 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
     method_writer.AppendString(user_id);
 
     std::unique_ptr<dbus::Response> response =
-        proxy_->CallMethodAndBlockDeprecated(
-            &method_call, biod::dbus_constants::kDbusTimeoutMs);
+        proxy_
+            ->CallMethodAndBlock(&method_call,
+                                 biod::dbus_constants::kDbusTimeoutMs)
+            .value_or(nullptr);
 
     std::vector<RecordProxy> records;
     if (!response)
@@ -344,8 +362,10 @@ class BiodProxy {
                                         dbus::kObjectManagerGetManagedObjects);
 
     std::unique_ptr<dbus::Response> objects_msg =
-        proxy_->CallMethodAndBlockDeprecated(
-            &get_objects_method, biod::dbus_constants::kDbusTimeoutMs);
+        proxy_
+            ->CallMethodAndBlock(&get_objects_method,
+                                 biod::dbus_constants::kDbusTimeoutMs)
+            .value_or(nullptr);
     CHECK(objects_msg) << "Failed to retrieve biometrics managers.";
 
     dbus::MessageReader reader(objects_msg.get());
@@ -454,7 +474,7 @@ int DoEnroll(base::WeakPtr<BiometricsManagerProxy> biometrics_manager,
     LOG(INFO) << "Ending biometric enrollment";
     dbus::MethodCall cancel_call(biod::kEnrollSessionInterface,
                                  biod::kEnrollSessionCancelMethod);
-    enroll_session_object->CallMethodAndBlockDeprecated(
+    (void)enroll_session_object->CallMethodAndBlock(
         &cancel_call, biod::dbus_constants::kDbusTimeoutMs);
   }
 

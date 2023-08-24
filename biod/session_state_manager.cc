@@ -63,7 +63,6 @@ bool SessionStateManager::RefreshPrimaryUser() {
 }
 
 std::optional<std::string> SessionStateManager::RetrievePrimaryUser() {
-  dbus::Error error;
   std::string sanitized_username;
 
   dbus::MethodCall method_call(
@@ -72,16 +71,24 @@ std::optional<std::string> SessionStateManager::RetrievePrimaryUser() {
 
   base::Time start_time = base::Time::Now();
 
-  std::unique_ptr<dbus::Response> response =
-      session_manager_proxy_->CallMethodAndBlockWithErrorDetails(
-          &method_call, dbus_constants::kDbusTimeoutMs, &error);
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response_result =
+      session_manager_proxy_->CallMethodAndBlock(
+          &method_call, dbus_constants::kDbusTimeoutMs);
 
   // Record RetrievePrimarySession duration.
   base::TimeDelta call_duration = base::Time::Now() - start_time;
   biod_metrics_->SendSessionRetrievePrimarySessionDuration(
       call_duration.InMilliseconds());
 
-  if (error.IsValid()) {
+  if (!response_result.has_value()) {
+    dbus::Error error = std::move(response_result.error());
+    if (!error.IsValid()) {
+      LOG(ERROR) << "Get invalid error when calling "
+                 << login_manager::kSessionManagerRetrievePrimarySession
+                 << " from " << login_manager::kSessionManagerInterface
+                 << " interface.";
+      return std::nullopt;
+    }
     std::string error_name = error.name();
     LOG(ERROR) << "Calling "
                << login_manager::kSessionManagerRetrievePrimarySession
@@ -105,6 +112,7 @@ std::optional<std::string> SessionStateManager::RetrievePrimaryUser() {
     return std::nullopt;
   }
 
+  std::unique_ptr<dbus::Response> response = std::move(response_result.value());
   if (!response.get()) {
     biod_metrics_->SendSessionRetrievePrimarySessionResult(
         RetrievePrimarySessionResult::kErrorResponseMissing);
