@@ -96,6 +96,9 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   NotifySocketConnectionEventResponse NotifySocketConnectionEvent(
       const NotifySocketConnectionEventRequest& request) override;
 
+  SetFeatureFlagResponse SetFeatureFlag(
+      const SetFeatureFlagRequest& request) override;
+
   // Implements Manager::ClientNotifier, which are mapping to the exported D-Bus
   // signals.
   void OnNetworkDeviceChanged(NetworkDevice* virtual_device,

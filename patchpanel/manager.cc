@@ -1273,4 +1273,22 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
 
 void Manager::NotifySocketConnectionEvent(
     const NotifySocketConnectionEventRequest& request) {}
+
+void Manager::SetFeatureFlag(
+    patchpanel::SetFeatureFlagRequest::FeatureFlag flag, bool enabled) {
+  switch (flag) {
+    case patchpanel::SetFeatureFlagRequest::FeatureFlag::
+        SetFeatureFlagRequest_FeatureFlag_WIFI_QOS:
+      if (enabled) {
+        qos_svc_->Enable();
+      } else {
+        qos_svc_->Disable();
+      }
+      break;
+    default:
+      LOG(ERROR) << __func__ << "Unknown feature flag: " << flag;
+      return;
+  }
+}
+
 }  // namespace patchpanel

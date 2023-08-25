@@ -384,6 +384,12 @@ PatchpanelAdaptor::NotifySocketConnectionEvent(
   return {};
 }
 
+SetFeatureFlagResponse PatchpanelAdaptor::SetFeatureFlag(
+    const SetFeatureFlagRequest& request) {
+  manager_->SetFeatureFlag(request.flag(), request.enabled());
+  return {};
+}
+
 void PatchpanelAdaptor::OnNetworkDeviceChanged(
     NetworkDevice* virtual_device, NetworkDeviceChangedSignal::Event event) {
   NetworkDeviceChangedSignal signal;

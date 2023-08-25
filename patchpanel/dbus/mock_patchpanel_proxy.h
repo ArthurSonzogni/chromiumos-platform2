@@ -397,6 +397,23 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
        int),
       (override));
 
+  MOCK_METHOD(bool,
+              SetFeatureFlag,
+              (const patchpanel::SetFeatureFlagRequest&,
+               patchpanel::SetFeatureFlagResponse*,
+               brillo::ErrorPtr*,
+               int),
+              (override));
+
+  MOCK_METHOD(void,
+              SetFeatureFlagAsync,
+              (const patchpanel::SetFeatureFlagRequest&,
+               base::OnceCallback<void(
+                   const patchpanel::SetFeatureFlagResponse& /*response*/)>,
+               base::OnceCallback<void(brillo::Error*)>,
+               int),
+              (override));
+
   MOCK_METHOD(void,
               RegisterNetworkDeviceChangedSignalHandler,
               (const base::RepeatingCallback<

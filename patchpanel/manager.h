@@ -167,6 +167,10 @@ class Manager {
   void NotifySocketConnectionEvent(
       const NotifySocketConnectionEventRequest& request);
 
+  // Set feature enabled flag.
+  void SetFeatureFlag(patchpanel::SetFeatureFlagRequest::FeatureFlag flag,
+                      bool enabled);
+
  private:
   friend class ManagerTest;
 

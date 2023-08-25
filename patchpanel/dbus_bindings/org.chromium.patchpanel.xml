@@ -305,6 +305,18 @@
       </arg>
     </method>
 
+    <method name="SetFeatureFlag">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::SetFeatureFlagRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::SetFeatureFlagResponse" />
+      </arg>
+    </method>
+
     <!-- Exported signals. -->
     <signal name="NetworkDeviceChanged">
       <arg name="payload" type="ay" direction="out">

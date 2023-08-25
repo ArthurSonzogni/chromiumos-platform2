@@ -878,3 +878,16 @@ message NotifySocketConnectionEventRequest {
 
 // Response to a NotifySocketConnectionEvent call.
 message NotifySocketConnectionEventResponse {}
+
+// Set feature enabled finch feature in patchpanel.
+message SetFeatureFlagRequest {
+  enum FeatureFlag {
+    WIFI_QOS = 0;
+  };
+
+  FeatureFlag flag = 1;
+  bool enabled = 2;
+}
+
+// Response to a SetFeatureFlag call.
+message SetFeatureFlagResponse {}
