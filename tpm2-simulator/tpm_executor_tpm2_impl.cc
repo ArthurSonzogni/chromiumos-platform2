@@ -24,6 +24,7 @@ TpmExecutorTpm2Impl::TpmExecutorTpm2Impl() {
 }
 
 void TpmExecutorTpm2Impl::InitializeVTPM() {
+  tpm2::GlobalStateCleanup();
   // Initialize TPM.
   tpm2::_plat__Signal_PowerOn();
   /*

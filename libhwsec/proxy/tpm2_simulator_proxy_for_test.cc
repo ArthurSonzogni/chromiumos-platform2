@@ -81,11 +81,7 @@ namespace hwsec {
 
 Tpm2SimulatorProxyForTest::Tpm2SimulatorProxyForTest() = default;
 
-Tpm2SimulatorProxyForTest::~Tpm2SimulatorProxyForTest() {
-  if (initialized_) {
-    low_level_factory_->GetTpmUtility()->Shutdown();
-  }
-}
+Tpm2SimulatorProxyForTest::~Tpm2SimulatorProxyForTest() = default;
 
 bool Tpm2SimulatorProxyForTest::Init() {
   if (initialized_) {
