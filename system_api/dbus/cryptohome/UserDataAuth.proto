@@ -1596,3 +1596,8 @@ message AuthenticateAuthFactorCompletedFailure {
   CryptohomeErrorCode error = 1;
   CryptohomeErrorInfo error_info = 2;
 }
+
+// The message sent in signal EvictedKeyRestoreSignal
+message EvictedKeyRestored {
+  bool done = 1;
+}
