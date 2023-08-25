@@ -2613,6 +2613,8 @@ ServiceRefPtr Manager::GetFirstEthernetService() {
 
 std::map<std::string, std::vector<GeolocationInfo>>
 Manager::GetNetworksForGeolocation() const {
+  base::Time oldest_timestamp = base::Time::Max();
+  base::Time newest_timestamp = base::Time::Min();
   std::map<std::string, std::vector<GeolocationInfo>> geolocation_infos;
   for (const auto& entry : device_geolocation_info_) {
     const DeviceConstRefPtr& device = entry.first;
@@ -2621,6 +2623,8 @@ Manager::GetNetworksForGeolocation() const {
     if (device->technology() == Technology::kWiFi) {
       network_geolocation_info =
           &geolocation_infos[kGeoWifiAccessPointsProperty];
+      GeolocationInfoAgeRange(device_info, &oldest_timestamp,
+                              &newest_timestamp);
     } else if (device->technology() == Technology::kCellular) {
       network_geolocation_info = &geolocation_infos[kGeoCellTowersProperty];
     } else {
@@ -2640,6 +2644,10 @@ Manager::GetNetworksForGeolocation() const {
   } else {
     LOG(INFO) << "The size of the WiFi AP list is "
               << geolocation_infos[kGeoWifiAccessPointsProperty].size();
+    if (!oldest_timestamp.is_inf() && !newest_timestamp.is_inf()) {
+      LOG(INFO) << "The oldest endpoint was seen at " << oldest_timestamp
+                << ", the newest endpoint was seen at " << newest_timestamp;
+    }
     for (auto geoinfo : geolocation_infos[kGeoWifiAccessPointsProperty]) {
       SLOG(4) << GeolocationInfoToString(geoinfo);
     }

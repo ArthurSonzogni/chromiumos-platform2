@@ -68,8 +68,6 @@ bool IsGeolocationInfoOlderThan(const GeolocationInfo& geoinfo,
 void GeolocationInfoAgeRange(const std::vector<GeolocationInfo>& geoinfos,
                              base::Time* oldest_timestamp,
                              base::Time* newest_timestamp) {
-  *oldest_timestamp = base::Time::Max();
-  *newest_timestamp = base::Time::Min();
   for (const auto& geoinfo : geoinfos) {
     int64_t last_seen;
     auto it = geoinfo.find(kLastSeenKey);

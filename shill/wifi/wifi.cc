@@ -2781,16 +2781,17 @@ void WiFi::UpdateGeolocationObjects(
       update_num++;
     }
   }
-  LOG(INFO) << "Geolocation cache input size: " << old_size
-            << ", output size: " << geolocation_infos->size()
-            << ", carried over: " << carry_num << ", updated: " << update_num
-            << ", evicted: " << evict_num;
-  base::Time oldest_timestamp, newest_timestamp;
+  SLOG(2) << "Geolocation cache input size: " << old_size
+          << ", output size: " << geolocation_infos->size()
+          << ", carried over: " << carry_num << ", updated: " << update_num
+          << ", evicted: " << evict_num;
+  base::Time oldest_timestamp = base::Time::Max();
+  base::Time newest_timestamp = base::Time::Min();
   GeolocationInfoAgeRange(*geolocation_infos, &oldest_timestamp,
                           &newest_timestamp);
   if (!oldest_timestamp.is_inf() && !newest_timestamp.is_inf()) {
-    LOG(INFO) << "The oldest endpoint was seen at " << oldest_timestamp
-              << ", the newest endpoint was seen at " << newest_timestamp;
+    SLOG(2) << "The oldest endpoint was seen at " << oldest_timestamp
+            << ", the newest endpoint was seen at " << newest_timestamp;
   }
 }
 

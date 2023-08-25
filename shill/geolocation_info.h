@@ -25,7 +25,8 @@ GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info);
 bool IsGeolocationInfoOlderThan(const GeolocationInfo& geoinfo,
                                 base::TimeDelta expiration);
 
-// Return the timestamps of the oldest and newest endpoints.
+// Populate |oldest_timestamp| and |newest_timestamp| with the last seen time of
+// the oldest and newest endpoints in |geoinfos|, respectively.
 void GeolocationInfoAgeRange(const std::vector<GeolocationInfo>& geoinfos,
                              base::Time* oldest_timestamp,
                              base::Time* newest_timestamp);
