@@ -19,105 +19,104 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-using CredentialTreeResult = LECredentialManagerFrontend::CredentialTreeResult;
-using DelaySchedule = LECredentialManagerFrontend::DelaySchedule;
+using CredentialTreeResult = PinWeaverManagerFrontend::CredentialTreeResult;
+using DelaySchedule = PinWeaverManagerFrontend::DelaySchedule;
 using PinWeaverEccPoint = Backend::PinWeaver::PinWeaverEccPoint;
-using CheckCredentialReply = LECredentialManager::CheckCredentialReply;
-using StartBiometricsAuthReply = LECredentialManager::StartBiometricsAuthReply;
-using ResetType = LECredentialManager::ResetType;
+using CheckCredentialReply = PinWeaverManager::CheckCredentialReply;
+using StartBiometricsAuthReply = PinWeaverManager::StartBiometricsAuthReply;
+using ResetType = PinWeaverManager::ResetType;
 
-StatusOr<bool> LECredentialManagerFrontendImpl::IsEnabled() const {
+StatusOr<bool> PinWeaverManagerFrontendImpl::IsEnabled() const {
   return middleware_.CallSync<&Backend::PinWeaver::IsEnabled>();
 }
 
-StatusOr<uint8_t> LECredentialManagerFrontendImpl::GetVersion() const {
+StatusOr<uint8_t> PinWeaverManagerFrontendImpl::GetVersion() const {
   return middleware_.CallSync<&Backend::PinWeaver::GetVersion>();
 }
 
-StatusOr<uint64_t> LECredentialManagerFrontendImpl::InsertCredential(
+StatusOr<uint64_t> PinWeaverManagerFrontendImpl::InsertCredential(
     const std::vector<OperationPolicySetting>& policies,
     const brillo::SecureBlob& le_secret,
     const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
     const DelaySchedule& delay_schedule,
     std::optional<uint32_t> expiration_delay) const {
-  return middleware_.CallSync<&Backend::LECredentialManager::InsertCredential>(
+  return middleware_.CallSync<&Backend::PinWeaverManager::InsertCredential>(
       policies, le_secret, he_secret, reset_secret, delay_schedule,
       expiration_delay);
 }
 
-StatusOr<CheckCredentialReply> LECredentialManagerFrontendImpl::CheckCredential(
+StatusOr<CheckCredentialReply> PinWeaverManagerFrontendImpl::CheckCredential(
     const uint64_t label, const brillo::SecureBlob& le_secret) const {
-  return middleware_.CallSync<&Backend::LECredentialManager::CheckCredential>(
+  return middleware_.CallSync<&Backend::PinWeaverManager::CheckCredential>(
       label, le_secret);
 }
 
-Status LECredentialManagerFrontendImpl::RemoveCredential(
+Status PinWeaverManagerFrontendImpl::RemoveCredential(
     const uint64_t label) const {
-  return middleware_.CallSync<&Backend::LECredentialManager::RemoveCredential>(
+  return middleware_.CallSync<&Backend::PinWeaverManager::RemoveCredential>(
       label);
 }
 
-Status LECredentialManagerFrontendImpl::ResetCredential(
+Status PinWeaverManagerFrontendImpl::ResetCredential(
     const uint64_t label,
     const brillo::SecureBlob& reset_secret,
     ResetType reset_type) const {
-  return middleware_.CallSync<&Backend::LECredentialManager::ResetCredential>(
+  return middleware_.CallSync<&Backend::PinWeaverManager::ResetCredential>(
       label, reset_secret, reset_type);
 }
 
-StatusOr<uint32_t> LECredentialManagerFrontendImpl::GetWrongAuthAttempts(
+StatusOr<uint32_t> PinWeaverManagerFrontendImpl::GetWrongAuthAttempts(
     const uint64_t label) const {
-  return middleware_
-      .CallSync<&Backend::LECredentialManager::GetWrongAuthAttempts>(label);
-}
-
-StatusOr<DelaySchedule> LECredentialManagerFrontendImpl::GetDelaySchedule(
-    const uint64_t label) const {
-  return middleware_.CallSync<&Backend::LECredentialManager::GetDelaySchedule>(
+  return middleware_.CallSync<&Backend::PinWeaverManager::GetWrongAuthAttempts>(
       label);
 }
 
-StatusOr<uint32_t> LECredentialManagerFrontendImpl::GetDelayInSeconds(
+StatusOr<DelaySchedule> PinWeaverManagerFrontendImpl::GetDelaySchedule(
     const uint64_t label) const {
-  return middleware_.CallSync<&Backend::LECredentialManager::GetDelayInSeconds>(
+  return middleware_.CallSync<&Backend::PinWeaverManager::GetDelaySchedule>(
+      label);
+}
+
+StatusOr<uint32_t> PinWeaverManagerFrontendImpl::GetDelayInSeconds(
+    const uint64_t label) const {
+  return middleware_.CallSync<&Backend::PinWeaverManager::GetDelayInSeconds>(
       label);
 }
 
 StatusOr<std::optional<uint32_t>>
-LECredentialManagerFrontendImpl::GetExpirationInSeconds(
+PinWeaverManagerFrontendImpl::GetExpirationInSeconds(
     const uint64_t label) const {
   return middleware_
-      .CallSync<&Backend::LECredentialManager::GetExpirationInSeconds>(label);
+      .CallSync<&Backend::PinWeaverManager::GetExpirationInSeconds>(label);
 }
 
-StatusOr<PinWeaverEccPoint> LECredentialManagerFrontendImpl::GeneratePk(
+StatusOr<PinWeaverEccPoint> PinWeaverManagerFrontendImpl::GeneratePk(
     uint8_t auth_channel, const PinWeaverEccPoint& client_public_key) const {
   return middleware_.CallSync<&Backend::PinWeaver::GeneratePk>(
       auth_channel, client_public_key);
 }
 
-StatusOr<uint64_t> LECredentialManagerFrontendImpl::InsertRateLimiter(
+StatusOr<uint64_t> PinWeaverManagerFrontendImpl::InsertRateLimiter(
     uint8_t auth_channel,
     const std::vector<OperationPolicySetting>& policies,
     const brillo::SecureBlob& reset_secret,
     const DelaySchedule& delay_schedule,
     std::optional<uint32_t> expiration_delay) const {
-  return middleware_.CallSync<&Backend::LECredentialManager::InsertRateLimiter>(
+  return middleware_.CallSync<&Backend::PinWeaverManager::InsertRateLimiter>(
       auth_channel, policies, reset_secret, delay_schedule, expiration_delay);
 }
 
 StatusOr<StartBiometricsAuthReply>
-LECredentialManagerFrontendImpl::StartBiometricsAuth(
+PinWeaverManagerFrontendImpl::StartBiometricsAuth(
     uint8_t auth_channel,
     const uint64_t label,
     const brillo::Blob& client_nonce) const {
-  return middleware_
-      .CallSync<&Backend::LECredentialManager::StartBiometricsAuth>(
-          auth_channel, label, client_nonce);
+  return middleware_.CallSync<&Backend::PinWeaverManager::StartBiometricsAuth>(
+      auth_channel, label, client_nonce);
 }
 
-Status LECredentialManagerFrontendImpl::BlockGeneratePk() const {
+Status PinWeaverManagerFrontendImpl::BlockGeneratePk() const {
   return middleware_.CallSync<&Backend::PinWeaver::BlockGeneratePk>();
 }
 

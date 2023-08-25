@@ -18,11 +18,11 @@
 
 namespace hwsec {
 
-class LECredentialManagerFrontendImpl : public LECredentialManagerFrontend,
-                                        public FrontendImpl {
+class PinWeaverManagerFrontendImpl : public PinWeaverManagerFrontend,
+                                     public FrontendImpl {
  public:
   using FrontendImpl::FrontendImpl;
-  ~LECredentialManagerFrontendImpl() override = default;
+  ~PinWeaverManagerFrontendImpl() override = default;
 
   StatusOr<bool> IsEnabled() const override;
   StatusOr<uint8_t> GetVersion() const override;

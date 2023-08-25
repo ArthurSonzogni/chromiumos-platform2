@@ -44,10 +44,9 @@ std::unique_ptr<const PinWeaverFrontend> FactoryImpl::GetPinWeaverFrontend() {
   return std::make_unique<PinWeaverFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<const LECredentialManagerFrontend>
-FactoryImpl::GetLECredentialManagerFrontend() {
-  return std::make_unique<LECredentialManagerFrontendImpl>(
-      middleware_.Derive());
+std::unique_ptr<const PinWeaverManagerFrontend>
+FactoryImpl::GetPinWeaverManagerFrontend() {
+  return std::make_unique<PinWeaverManagerFrontendImpl>(middleware_.Derive());
 }
 
 std::unique_ptr<const RecoveryCryptoFrontend>

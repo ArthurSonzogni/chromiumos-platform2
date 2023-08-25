@@ -19,19 +19,18 @@
 
 namespace hwsec {
 
-class LECredentialManagerFrontend : public Frontend {
+class PinWeaverManagerFrontend : public Frontend {
  public:
   using CredentialTreeResult = PinWeaver::CredentialTreeResult;
   using GetLogResult = PinWeaver::GetLogResult;
   using ReplayLogOperationResult = PinWeaver::ReplayLogOperationResult;
   using DelaySchedule = PinWeaver::DelaySchedule;
   using PinWeaverEccPoint = PinWeaver::PinWeaverEccPoint;
-  using CheckCredentialReply = LECredentialManager::CheckCredentialReply;
-  using StartBiometricsAuthReply =
-      LECredentialManager::StartBiometricsAuthReply;
-  using ResetType = LECredentialManager::ResetType;
+  using CheckCredentialReply = PinWeaverManager::CheckCredentialReply;
+  using StartBiometricsAuthReply = PinWeaverManager::StartBiometricsAuthReply;
+  using ResetType = PinWeaverManager::ResetType;
 
-  ~LECredentialManagerFrontend() override = default;
+  ~PinWeaverManagerFrontend() override = default;
 
   // Is the pinweaver enabled or not.
   virtual StatusOr<bool> IsEnabled() const = 0;

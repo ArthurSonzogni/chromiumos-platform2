@@ -59,7 +59,7 @@ class Backend {
   using Config = ::hwsec::Config;
   using Random = ::hwsec::Random;
   using PinWeaver = ::hwsec::PinWeaver;
-  using LECredentialManager = ::hwsec::LECredentialManager;
+  using PinWeaverManager = ::hwsec::PinWeaverManager;
   using Vendor = ::hwsec::Vendor;
   using RecoveryCrypto = ::hwsec::RecoveryCrypto;
   using U2f = ::hwsec::U2f;
@@ -99,8 +99,8 @@ class Backend {
       return GetRandom();
     else if constexpr (std::is_same_v<SubClass, PinWeaver>)
       return GetPinWeaver();
-    else if constexpr (std::is_same_v<SubClass, LECredentialManager>)
-      return GetLECredentialManager();
+    else if constexpr (std::is_same_v<SubClass, PinWeaverManager>)
+      return GetPinWeaverManager();
     else if constexpr (std::is_same_v<SubClass, Vendor>)
       return GetVendor();
     else if constexpr (std::is_same_v<SubClass, RecoveryCrypto>)
@@ -129,7 +129,7 @@ class Backend {
   virtual Config* GetConfig() = 0;
   virtual Random* GetRandom() = 0;
   virtual PinWeaver* GetPinWeaver() = 0;
-  virtual LECredentialManager* GetLECredentialManager() = 0;
+  virtual PinWeaverManager* GetPinWeaverManager() = 0;
   virtual Vendor* GetVendor() = 0;
   virtual RecoveryCrypto* GetRecoveryCrypto() = 0;
   virtual U2f* GetU2f() = 0;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Functional tests for LECredentialManager + SignInHashTree.
+// Functional tests for PinWeaverManager + SignInHashTree.
 #include <iterator>  // For std::begin()/std::end().
 #include <map>
 #include <memory>
@@ -89,11 +89,11 @@ constexpr char kClientEccPointYHex[] =
 
 namespace hwsec {
 
-using ResetType = LECredentialManager::ResetType;
+using ResetType = PinWeaverManager::ResetType;
 
-class LECredentialManagerImplTest : public ::testing::Test {
+class PinWeaverManagerImplTest : public ::testing::Test {
  public:
-  LECredentialManagerImplTest()
+  PinWeaverManagerImplTest()
       : kLeSecret1(std::begin(kLeSecret1Array), std::end(kLeSecret1Array)),
         kLeSecret2(std::begin(kLeSecret2Array), std::end(kLeSecret2Array)),
         kHeSecret1(std::begin(kHeSecret1Array), std::end(kHeSecret1Array)),
@@ -120,8 +120,8 @@ class LECredentialManagerImplTest : public ::testing::Test {
         std::move(backend), ThreadingMode::kCurrentThread);
 
     backend_->set_middleware_derivative_for_test(middleware_owner_->Derive());
-    le_mgr_.reset();
-    le_mgr_ = std::make_unique<LECredentialManagerFrontendImpl>(
+    pinweaver_manager_.reset();
+    pinweaver_manager_ = std::make_unique<PinWeaverManagerFrontendImpl>(
         middleware_owner_->Derive());
   }
 
@@ -138,7 +138,7 @@ class LECredentialManagerImplTest : public ::testing::Test {
         {kLEMaxIncorrectAttempt, UINT32_MAX},
     };
 
-    uint64_t label = le_mgr_
+    uint64_t label = pinweaver_manager_
                          ->InsertCredential(
                              std::vector<hwsec::OperationPolicySetting>(),
                              kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
@@ -148,7 +148,7 @@ class LECredentialManagerImplTest : public ::testing::Test {
     brillo::SecureBlob he_secret;
     brillo::SecureBlob reset_secret;
     for (int i = 0; i < kLEMaxIncorrectAttempt; i++) {
-      EXPECT_THAT(le_mgr_->CheckCredential(label, kHeSecret1),
+      EXPECT_THAT(pinweaver_manager_->CheckCredential(label, kHeSecret1),
                   NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
     }
     return label;
@@ -219,7 +219,7 @@ class LECredentialManagerImplTest : public ::testing::Test {
     };
 
     uint64_t label =
-        le_mgr_
+        pinweaver_manager_
             ->InsertRateLimiter(auth_channel,
                                 std::vector<hwsec::OperationPolicySetting>(),
                                 kResetSecret1, delay_sched,
@@ -228,9 +228,9 @@ class LECredentialManagerImplTest : public ::testing::Test {
             .value();
 
     for (int i = 0; i < kLEMaxIncorrectAttempt; i++) {
-      EXPECT_THAT(
-          le_mgr_->StartBiometricsAuth(auth_channel, label, kClientNonce),
-          IsOk());
+      EXPECT_THAT(pinweaver_manager_->StartBiometricsAuth(auth_channel, label,
+                                                          kClientNonce),
+                  IsOk());
     }
     return label;
   }
@@ -241,7 +241,7 @@ class LECredentialManagerImplTest : public ::testing::Test {
   std::unique_ptr<Tpm2SimulatorProxyForTest> proxy_;
   std::unique_ptr<MiddlewareOwner> middleware_owner_;
   BackendTpm2* backend_;
-  std::unique_ptr<LECredentialManagerFrontend> le_mgr_;
+  std::unique_ptr<PinWeaverManagerFrontend> pinweaver_manager_;
   const brillo::SecureBlob kLeSecret1;
   const brillo::SecureBlob kLeSecret2;
   const brillo::SecureBlob kHeSecret1;
@@ -252,46 +252,46 @@ class LECredentialManagerImplTest : public ::testing::Test {
 // Basic check: Insert 2 labels, then verify we can retrieve them correctly.
 // Here, we don't bother with specifying a delay schedule, we just want
 // to check whether a simple Insert and Check works.
-TEST_F(LECredentialManagerImplTest, BasicInsertAndCheck) {
+TEST_F(PinWeaverManagerImplTest, BasicInsertAndCheck) {
   std::map<uint32_t, uint32_t> delay_sched = {
       {kLEMaxIncorrectAttempt, UINT32_MAX},
   };
 
   uint64_t label1 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
                              kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
                              /*expiration_delay=*/std::nullopt)
           .AssertOk()
           .value();
   uint64_t label2 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
                              kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
                              /*expiration_delay=*/std::nullopt)
           .AssertOk()
           .value();
 
-  auto result = le_mgr_->CheckCredential(label1, kLeSecret1);
+  auto result = pinweaver_manager_->CheckCredential(label1, kLeSecret1);
   ASSERT_OK(result);
   EXPECT_EQ(result->he_secret, kHeSecret1);
-  EXPECT_THAT(le_mgr_->CheckCredential(label2, kLeSecret1),
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label2, kLeSecret1),
               NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
-  result = le_mgr_->CheckCredential(label2, kLeSecret2);
+  result = pinweaver_manager_->CheckCredential(label2, kLeSecret2);
   ASSERT_OK(result);
   EXPECT_EQ(result->he_secret, kHeSecret1);
 }
 
 // Basic check: Insert 2 rate-limiters, then verify we can retrieve them
 // correctly.
-TEST_F(LECredentialManagerImplTest, BiometricsBasicInsertAndCheck) {
+TEST_F(PinWeaverManagerImplTest, BiometricsBasicInsertAndCheck) {
   constexpr uint8_t kWrongAuthChannel = 1;
   std::map<uint32_t, uint32_t> delay_sched = {
       {kLEMaxIncorrectAttempt, UINT32_MAX},
   };
   GeneratePk(kAuthChannel);
   uint64_t label1 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertRateLimiter(kAuthChannel,
                               std::vector<hwsec::OperationPolicySetting>(),
                               kResetSecret1, delay_sched,
@@ -299,19 +299,19 @@ TEST_F(LECredentialManagerImplTest, BiometricsBasicInsertAndCheck) {
           .AssertOk()
           .value();
   uint64_t label2 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertRateLimiter(kAuthChannel,
                               std::vector<hwsec::OperationPolicySetting>(),
                               kResetSecret1, delay_sched,
                               /*expiration_delay=*/std::nullopt)
           .AssertOk()
           .value();
-  auto reply1 =
-      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce);
+  auto reply1 = pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                                        kClientNonce);
   ASSERT_OK(reply1);
 
-  auto reply2 =
-      le_mgr_->StartBiometricsAuth(kAuthChannel, label2, kClientNonce);
+  auto reply2 = pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label2,
+                                                        kClientNonce);
   ASSERT_OK(reply2);
   // Server should return different values every time.
   EXPECT_NE(reply1->server_nonce, reply2->server_nonce);
@@ -320,44 +320,46 @@ TEST_F(LECredentialManagerImplTest, BiometricsBasicInsertAndCheck) {
 
   // Incorrect auth channel passed should result in INVALID_LE_SECRET.
   GeneratePk(kWrongAuthChannel);
-  EXPECT_THAT(
-      le_mgr_->StartBiometricsAuth(kWrongAuthChannel, label1, kClientNonce),
-      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+  EXPECT_THAT(pinweaver_manager_->StartBiometricsAuth(kWrongAuthChannel, label1,
+                                                      kClientNonce),
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
 }
 
 // Verify invalid secrets and getting locked out due to too many attempts.
-TEST_F(LECredentialManagerImplTest, LockedOutSecret) {
+TEST_F(PinWeaverManagerImplTest, LockedOutSecret) {
   uint64_t label1 = CreateLockedOutCredential();
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
 
   EXPECT_THAT(
-      le_mgr_->CheckCredential(label1, kLeSecret1),
+      pinweaver_manager_->CheckCredential(label1, kLeSecret1),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
   EXPECT_THAT(
-      le_mgr_->CheckCredential(label1, kLeSecret1),
+      pinweaver_manager_->CheckCredential(label1, kLeSecret1),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 }
 
 // Verify getting locked out due to too many attempts for biometrics
 // rate-limiters.
-TEST_F(LECredentialManagerImplTest, BiometricsLockedOutRateLimiter) {
+TEST_F(PinWeaverManagerImplTest, BiometricsLockedOutRateLimiter) {
   const brillo::Blob kClientNonce(std::begin(kClientNonceArray),
                                   std::end(kClientNonceArray));
 
   GeneratePk(kAuthChannel);
   uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
   EXPECT_THAT(
-      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+      pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                              kClientNonce),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
   EXPECT_THAT(
-      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+      pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                              kClientNonce),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 }
 
@@ -366,12 +368,12 @@ TEST_F(LECredentialManagerImplTest, BiometricsLockedOutRateLimiter) {
 
 // Insert a label. Then ensure that a CheckCredential on another non-existent
 // label fails.
-TEST_F(LECredentialManagerImplTest, InvalidLabelCheck) {
+TEST_F(PinWeaverManagerImplTest, InvalidLabelCheck) {
   std::map<uint32_t, uint32_t> delay_sched = {
       {kLEMaxIncorrectAttempt, UINT32_MAX},
   };
   uint64_t label1 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
                              kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
                              /*expiration_delay=*/std::nullopt)
@@ -381,73 +383,73 @@ TEST_F(LECredentialManagerImplTest, InvalidLabelCheck) {
   uint64_t invalid_label = ~label1;
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  EXPECT_THAT(le_mgr_->CheckCredential(invalid_label, kLeSecret1),
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(invalid_label, kLeSecret1),
               NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
   // Next check a valid, but absent label.
   invalid_label = label1 ^ 0x1;
-  EXPECT_THAT(le_mgr_->CheckCredential(invalid_label, kLeSecret1),
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(invalid_label, kLeSecret1),
               NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
 }
 
 // Insert a credential and then remove it.
 // Check that a subsequent CheckCredential on that label fails.
-TEST_F(LECredentialManagerImplTest, BasicInsertRemove) {
+TEST_F(PinWeaverManagerImplTest, BasicInsertRemove) {
   std::map<uint32_t, uint32_t> delay_sched = {
       {kLEMaxIncorrectAttempt, UINT32_MAX},
   };
   uint64_t label1 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
                              kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
                              /*expiration_delay=*/std::nullopt)
           .AssertOk()
           .value();
-  ASSERT_THAT(le_mgr_->RemoveCredential(label1), IsOk());
-  EXPECT_THAT(le_mgr_->CheckCredential(label1, kLeSecret1),
+  ASSERT_THAT(pinweaver_manager_->RemoveCredential(label1), IsOk());
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label1, kLeSecret1),
               NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
 }
 
 // Check that a reset unlocks a locked out credential.
-TEST_F(LECredentialManagerImplTest, ResetSecret) {
+TEST_F(PinWeaverManagerImplTest, ResetSecret) {
   uint64_t label1 = CreateLockedOutCredential();
 
   // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
   // is stored.
   ASSERT_THAT(
-      le_mgr_->CheckCredential(label1, kLeSecret1),
+      pinweaver_manager_->CheckCredential(label1, kLeSecret1),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 
-  EXPECT_THAT(le_mgr_->ResetCredential(label1, kResetSecret1,
-                                       ResetType::kWrongAttempts),
+  EXPECT_THAT(pinweaver_manager_->ResetCredential(label1, kResetSecret1,
+                                                  ResetType::kWrongAttempts),
               IsOk());
 
   // Make sure we can Check successfully, post reset.
-  auto result = le_mgr_->CheckCredential(label1, kLeSecret1);
+  auto result = pinweaver_manager_->CheckCredential(label1, kLeSecret1);
   ASSERT_OK(result);
   EXPECT_EQ(result->he_secret, kHeSecret1);
 }
 
 // Check that an invalid reset doesn't unlock a locked credential.
-TEST_F(LECredentialManagerImplTest, ResetSecretNegative) {
+TEST_F(PinWeaverManagerImplTest, ResetSecretNegative) {
   uint64_t label1 = CreateLockedOutCredential();
   // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
   // is stored.
   ASSERT_THAT(
-      le_mgr_->CheckCredential(label1, kLeSecret1),
+      pinweaver_manager_->CheckCredential(label1, kLeSecret1),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 
-  EXPECT_THAT(
-      le_mgr_->ResetCredential(label1, kLeSecret1, ResetType::kWrongAttempts),
-      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+  EXPECT_THAT(pinweaver_manager_->ResetCredential(label1, kLeSecret1,
+                                                  ResetType::kWrongAttempts),
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
 
   // Make sure that Check still fails.
   EXPECT_THAT(
-      le_mgr_->CheckCredential(label1, kLeSecret1),
+      pinweaver_manager_->CheckCredential(label1, kLeSecret1),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 }
 
 // Check that a reset unlocks a locked out rate-limiter.
-TEST_F(LECredentialManagerImplTest, BiometricsResetSecret) {
+TEST_F(PinWeaverManagerImplTest, BiometricsResetSecret) {
   const brillo::Blob kClientNonce(std::begin(kClientNonceArray),
                                   std::end(kClientNonceArray));
   GeneratePk(kAuthChannel);
@@ -456,20 +458,22 @@ TEST_F(LECredentialManagerImplTest, BiometricsResetSecret) {
   // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
   // is stored.
   ASSERT_THAT(
-      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+      pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                              kClientNonce),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 
-  EXPECT_THAT(le_mgr_->ResetCredential(label1, kResetSecret1,
-                                       ResetType::kWrongAttempts),
+  EXPECT_THAT(pinweaver_manager_->ResetCredential(label1, kResetSecret1,
+                                                  ResetType::kWrongAttempts),
               IsOk());
 
   // Make sure we can Check successfully, post reset.
-  EXPECT_THAT(le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+  EXPECT_THAT(pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                                      kClientNonce),
               IsOk());
 }
 
 // Check that an invalid reset doesn't unlock a locked rate-limiter.
-TEST_F(LECredentialManagerImplTest, BiometricsResetSecretNegative) {
+TEST_F(PinWeaverManagerImplTest, BiometricsResetSecretNegative) {
   const brillo::Blob kClientNonce(std::begin(kClientNonceArray),
                                   std::end(kClientNonceArray));
   GeneratePk(kAuthChannel);
@@ -478,71 +482,75 @@ TEST_F(LECredentialManagerImplTest, BiometricsResetSecretNegative) {
   // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
   // is stored.
   ASSERT_THAT(
-      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+      pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                              kClientNonce),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 
-  EXPECT_THAT(
-      le_mgr_->ResetCredential(label1, kLeSecret1, ResetType::kWrongAttempts),
-      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+  EXPECT_THAT(pinweaver_manager_->ResetCredential(label1, kLeSecret1,
+                                                  ResetType::kWrongAttempts),
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
 
   // Make sure that StartBiometricsAuth still fails.
   EXPECT_THAT(
-      le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+      pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                              kClientNonce),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
 }
 
-TEST_F(LECredentialManagerImplTest, CheckCredentialExpirations) {
+TEST_F(PinWeaverManagerImplTest, CheckCredentialExpirations) {
   std::map<uint32_t, uint32_t> delay_sched = {
       {kLEMaxIncorrectAttempt, UINT32_MAX},
   };
 
   // Insert the secrets with no expiration.
   uint64_t label1 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
                              kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
                              /*expiration_delay=*/std::nullopt)
           .AssertOk()
           .value();
-  EXPECT_THAT(le_mgr_->GetExpirationInSeconds(label1),
+  EXPECT_THAT(pinweaver_manager_->GetExpirationInSeconds(label1),
               IsOkAndHolds(std::nullopt));
 
   // Another way to insert never-expiring secrets, with expiration_delay of 0.
   uint64_t label2 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
                              kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
                              /*expiration_delay=*/0)
           .AssertOk()
           .value();
-  EXPECT_THAT(le_mgr_->GetExpirationInSeconds(label2),
+  EXPECT_THAT(pinweaver_manager_->GetExpirationInSeconds(label2),
               IsOkAndHolds(std::nullopt));
 
   // Non-zero expiration_delay would leads to non-empty response.
   uint64_t label3 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
                              kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
                              /*expiration_delay=*/1)
           .AssertOk()
           .value();
-  EXPECT_THAT(le_mgr_->GetExpirationInSeconds(label3), IsOkAnd(Ge(0)));
+  EXPECT_THAT(pinweaver_manager_->GetExpirationInSeconds(label3),
+              IsOkAnd(Ge(0)));
 }
 
-TEST_F(LECredentialManagerImplTest, GetDelaySchedule) {
+TEST_F(PinWeaverManagerImplTest, GetDelaySchedule) {
   std::map<uint32_t, uint32_t> delay_sched = {
       {kLEMaxIncorrectAttempt, UINT32_MAX},
   };
 
   // We should be able to read the delay schedule back out.
   uint64_t label1 =
-      le_mgr_
+      pinweaver_manager_
           ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
                              kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
                              /*expiration_delay=*/std::nullopt)
           .AssertOk()
           .value();
-  EXPECT_THAT(le_mgr_->GetDelaySchedule(label1), IsOkAndHolds(delay_sched));
+  EXPECT_THAT(pinweaver_manager_->GetDelaySchedule(label1),
+              IsOkAndHolds(delay_sched));
 }
 
 }  // namespace hwsec

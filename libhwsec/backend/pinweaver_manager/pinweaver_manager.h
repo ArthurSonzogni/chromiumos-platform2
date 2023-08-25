@@ -17,7 +17,7 @@ namespace hwsec {
 
 // This is a pure virtual interface providing all the public methods necessary
 // to work with pinweaver's credential functionality.
-class LECredentialManager {
+class PinWeaverManager {
  public:
   using DelaySchedule = std::map<uint32_t, uint32_t>;
 
@@ -41,7 +41,7 @@ class LECredentialManager {
   // If an operation return this struct, the tree should be updated to
   // |new_root|, otherwise the tree would out of sync.
 
-  virtual ~LECredentialManager() = default;
+  virtual ~PinWeaverManager() = default;
 
   // Inserts an LE credential into the system.
   //

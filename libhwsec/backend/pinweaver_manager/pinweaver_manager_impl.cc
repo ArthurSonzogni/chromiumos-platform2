@@ -39,7 +39,7 @@ namespace hwsec {
 
 using PinWeaverErrorCode = PinWeaver::CredentialTreeResult::ErrorCode;
 
-Status LECredentialManagerImpl::StateIsReady() {
+Status PinWeaverManagerImpl::StateIsReady() {
   if (is_initialized_) {
     if (!hash_tree_->IsValid()) {
       return MakeStatus<TPMError>("Invalid hash tree",
@@ -68,7 +68,7 @@ Status LECredentialManagerImpl::StateIsReady() {
       std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel, basedir_);
   if (!hash_tree_->IsValid()) {
     return MakeStatus<TPMError>(
-        "Failed to initialize LE credential manager:"
+        "Failed to initialize pinweaver credential manager:"
         "invalid hash tree",
         TPMRetryAction::kNoRetry);
   }
@@ -90,12 +90,12 @@ Status LECredentialManagerImpl::StateIsReady() {
   return OkStatus();
 }
 
-StatusOr<uint64_t> LECredentialManagerImpl::InsertCredential(
+StatusOr<uint64_t> PinWeaverManagerImpl::InsertCredential(
     const std::vector<hwsec::OperationPolicySetting>& policies,
     const brillo::SecureBlob& le_secret,
     const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
-    const LECredentialManager::DelaySchedule& delay_sched,
+    const PinWeaverManager::DelaySchedule& delay_sched,
     std::optional<uint32_t> expiration_delay) {
   RETURN_IF_ERROR(StateIsReady());
   return InsertLeaf(std::nullopt, policies, &le_secret, &he_secret,
@@ -103,9 +103,9 @@ StatusOr<uint64_t> LECredentialManagerImpl::InsertCredential(
                     /*is_rate_limiter=*/false);
 }
 
-StatusOr<LECredentialManagerImpl::CheckCredentialReply>
-LECredentialManagerImpl::CheckCredential(uint64_t label,
-                                         const brillo::SecureBlob& le_secret) {
+StatusOr<PinWeaverManagerImpl::CheckCredentialReply>
+PinWeaverManagerImpl::CheckCredential(uint64_t label,
+                                      const brillo::SecureBlob& le_secret) {
   RETURN_IF_ERROR(StateIsReady());
 
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
@@ -133,13 +133,13 @@ LECredentialManagerImpl::CheckCredential(uint64_t label,
   }
 
   RETURN_IF_ERROR(MakeStatus<PinWeaverError>(result.error));
-  return LECredentialManager::CheckCredentialReply{
+  return PinWeaverManager::CheckCredentialReply{
       .he_secret = result.he_secret.value(),
       .reset_secret = result.reset_secret.value(),
   };
 }
 
-Status LECredentialManagerImpl::ResetCredential(
+Status PinWeaverManagerImpl::ResetCredential(
     uint64_t label,
     const brillo::SecureBlob& reset_secret,
     ResetType reset_type) {
@@ -173,7 +173,7 @@ Status LECredentialManagerImpl::ResetCredential(
   return MakeStatus<PinWeaverError>(result.error);
 }
 
-Status LECredentialManagerImpl::RemoveCredential(uint64_t label) {
+Status PinWeaverManagerImpl::RemoveCredential(uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
   brillo::Blob orig_cred, orig_mac;
@@ -192,8 +192,7 @@ Status LECredentialManagerImpl::RemoveCredential(uint64_t label) {
   return OkStatus();
 }
 
-StatusOr<uint32_t> LECredentialManagerImpl::GetWrongAuthAttempts(
-    uint64_t label) {
+StatusOr<uint32_t> PinWeaverManagerImpl::GetWrongAuthAttempts(uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
 
@@ -206,27 +205,27 @@ StatusOr<uint32_t> LECredentialManagerImpl::GetWrongAuthAttempts(
   return pinweaver_.GetWrongAuthAttempts(orig_cred);
 }
 
-StatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(uint64_t label) {
+StatusOr<uint32_t> PinWeaverManagerImpl::GetDelayInSeconds(uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
   ASSIGN_OR_RETURN(const brillo::Blob& metadata, GetCredentialMetadata(label));
   return pinweaver_.GetDelayInSeconds(metadata);
 }
 
-StatusOr<std::optional<uint32_t>>
-LECredentialManagerImpl::GetExpirationInSeconds(uint64_t label) {
+StatusOr<std::optional<uint32_t>> PinWeaverManagerImpl::GetExpirationInSeconds(
+    uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
   ASSIGN_OR_RETURN(const brillo::Blob& metadata, GetCredentialMetadata(label));
   return pinweaver_.GetExpirationInSeconds(metadata);
 }
 
-StatusOr<LECredentialManagerImpl::DelaySchedule>
-LECredentialManagerImpl::GetDelaySchedule(uint64_t label) {
+StatusOr<PinWeaverManagerImpl::DelaySchedule>
+PinWeaverManagerImpl::GetDelaySchedule(uint64_t label) {
   RETURN_IF_ERROR(StateIsReady());
   ASSIGN_OR_RETURN(const brillo::Blob& metadata, GetCredentialMetadata(label));
   return pinweaver_.GetDelaySchedule(metadata);
 }
 
-StatusOr<uint64_t> LECredentialManagerImpl::InsertRateLimiter(
+StatusOr<uint64_t> PinWeaverManagerImpl::InsertRateLimiter(
     uint8_t auth_channel,
     const std::vector<hwsec::OperationPolicySetting>& policies,
     const brillo::SecureBlob& reset_secret,
@@ -238,10 +237,10 @@ StatusOr<uint64_t> LECredentialManagerImpl::InsertRateLimiter(
                     /*is_rate_limiter=*/true);
 }
 
-StatusOr<LECredentialManagerImpl::StartBiometricsAuthReply>
-LECredentialManagerImpl::StartBiometricsAuth(uint8_t auth_channel,
-                                             uint64_t label,
-                                             const brillo::Blob& client_nonce) {
+StatusOr<PinWeaverManagerImpl::StartBiometricsAuthReply>
+PinWeaverManagerImpl::StartBiometricsAuth(uint8_t auth_channel,
+                                          uint64_t label,
+                                          const brillo::Blob& client_nonce) {
   RETURN_IF_ERROR(StateIsReady());
 
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
@@ -275,7 +274,7 @@ LECredentialManagerImpl::StartBiometricsAuth(uint8_t auth_channel,
                                 TPMRetryAction::kNoRetry);
   }
 
-  LECredentialManager::StartBiometricsAuthReply reply{
+  PinWeaverManager::StartBiometricsAuthReply reply{
       .server_nonce = std::move(result.server_nonce.value()),
       .iv = std::move(result.iv.value()),
       .encrypted_he_secret = std::move(result.encrypted_he_secret.value()),
@@ -284,7 +283,7 @@ LECredentialManagerImpl::StartBiometricsAuth(uint8_t auth_channel,
   return reply;
 }
 
-StatusOr<brillo::Blob> LECredentialManagerImpl::GetCredentialMetadata(
+StatusOr<brillo::Blob> PinWeaverManagerImpl::GetCredentialMetadata(
     uint64_t label) {
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
 
@@ -303,7 +302,7 @@ StatusOr<brillo::Blob> LECredentialManagerImpl::GetCredentialMetadata(
   return orig_cred;
 }
 
-StatusOr<uint64_t> LECredentialManagerImpl::InsertLeaf(
+StatusOr<uint64_t> PinWeaverManagerImpl::InsertLeaf(
     std::optional<uint8_t> auth_channel,
     const std::vector<hwsec::OperationPolicySetting>& policies,
     const brillo::SecureBlob* le_secret,
@@ -341,7 +340,7 @@ StatusOr<uint64_t> LECredentialManagerImpl::InsertLeaf(
   return label.value();
 }
 
-Status LECredentialManagerImpl::RetrieveLabelInfo(
+Status PinWeaverManagerImpl::RetrieveLabelInfo(
     const SignInHashTree::Label& label,
     std::vector<brillo::Blob>& h_aux,
     brillo::Blob& cred_metadata,
@@ -365,7 +364,7 @@ Status LECredentialManagerImpl::RetrieveLabelInfo(
   return OkStatus();
 }
 
-StatusOr<std::vector<brillo::Blob>> LECredentialManagerImpl::GetAuxHashes(
+StatusOr<std::vector<brillo::Blob>> PinWeaverManagerImpl::GetAuxHashes(
     const SignInHashTree::Label& label) {
   std::vector<SignInHashTree::Label> aux_labels =
       hash_tree_->GetAuxiliaryLabels(label);
@@ -393,11 +392,10 @@ StatusOr<std::vector<brillo::Blob>> LECredentialManagerImpl::GetAuxHashes(
   return h_aux;
 }
 
-Status LECredentialManagerImpl::UpdateHashTree(
-    const SignInHashTree::Label& label,
-    const brillo::Blob* cred_metadata,
-    const brillo::Blob* mac,
-    UpdateHashTreeType update_type) {
+Status PinWeaverManagerImpl::UpdateHashTree(const SignInHashTree::Label& label,
+                                            const brillo::Blob* cred_metadata,
+                                            const brillo::Blob* mac,
+                                            UpdateHashTreeType update_type) {
   // Store the new credential meta data and MAC in case the backend performed a
   // state change. Note that this might also be needed for some failure cases.
   if (update_type == UpdateHashTreeType::kRemoveLeaf) {
@@ -421,11 +419,11 @@ Status LECredentialManagerImpl::UpdateHashTree(
     case UpdateHashTreeType::kReplayInsertLeaf:
     case UpdateHashTreeType::kUpdateLeaf:
     case UpdateHashTreeType::kRemoveLeaf:
-      // This is an un-salvageable state. We can't make LE updates anymore,
-      // since the disk state can't be updated. We block further LE operations
-      // until at least the next boot. The hope is that on reboot, the disk
-      // operations start working. In that case, we will be able to replay this
-      // operation from the TPM log.
+      // This is an un-salvageable state. We can't make pinweaver updates
+      // anymore, since the disk state can't be updated. We block further
+      // pinweaver operations until at least the next boot. The hope is that on
+      // reboot, the disk operations start working. In that case, we will be
+      // able to replay this operation from the TPM log.
       is_locked_ = true;
       return MakeStatus<TPMError>(
           "Failed to update credential in disk hash tree for label: " +
@@ -440,8 +438,8 @@ Status LECredentialManagerImpl::UpdateHashTree(
           pinweaver_.RemoveCredential(label.value(), h_aux, *mac);
       if (!remove_result.ok()) {
         // The attempt to undo the PinWeaver side operation has also failed,
-        // Can't do much else now. We block further LE operations until at least
-        // the next boot.
+        // Can't do much else now. We block further pinweaver operations until
+        // at least the next boot.
         is_locked_ = true;
         return MakeStatus<TPMError>(
                    "Failed to rewind aborted InsertCredential in PinWeaver, "

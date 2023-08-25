@@ -55,7 +55,7 @@ class MockBackend : public Backend {
     testing::NiceMock<MockConfig> config;
     testing::NiceMock<MockRandom> random;
     testing::NiceMock<MockPinWeaver> pinweaver;
-    testing::NiceMock<MockLECredentialManager> le_credential_manager;
+    testing::NiceMock<MockPinWeaverManager> pinweaver_manager;
     testing::NiceMock<MockVendor> vendor;
     testing::NiceMock<MockRecoveryCrypto> recovery_crypto;
     testing::NiceMock<MockU2f> u2f;
@@ -95,8 +95,8 @@ class MockBackend : public Backend {
                 testing::NiceMock<MockRandom>(default_backend_->Get<Random>()),
             .pinweaver = testing::NiceMock<MockPinWeaver>(
                 default_backend_->Get<PinWeaver>()),
-            .le_credential_manager = testing::NiceMock<MockLECredentialManager>(
-                default_backend_->Get<LECredentialManager>()),
+            .pinweaver_manager = testing::NiceMock<MockPinWeaverManager>(
+                default_backend_->Get<PinWeaverManager>()),
             .vendor =
                 testing::NiceMock<MockVendor>(default_backend_->Get<Vendor>()),
             .recovery_crypto = testing::NiceMock<MockRecoveryCrypto>(
@@ -133,8 +133,8 @@ class MockBackend : public Backend {
   Config* GetConfig() override { return &mock_data_.config; }
   Random* GetRandom() override { return &mock_data_.random; }
   PinWeaver* GetPinWeaver() override { return &mock_data_.pinweaver; }
-  LECredentialManager* GetLECredentialManager() override {
-    return &mock_data_.le_credential_manager;
+  PinWeaverManager* GetPinWeaverManager() override {
+    return &mock_data_.pinweaver_manager;
   }
   Vendor* GetVendor() override { return &mock_data_.vendor; }
   RecoveryCrypto* GetRecoveryCrypto() override {

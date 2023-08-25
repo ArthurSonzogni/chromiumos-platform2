@@ -30,7 +30,7 @@ namespace hwsec {
 //
 // It also contains a pointer to a TPM object which will be able to invoke the
 // necessary commands on the TPM side, for verification.
-class LECredentialManagerImpl : public LECredentialManager {
+class PinWeaverManagerImpl : public PinWeaverManager {
  public:
   enum class UpdateHashTreeType : uint8_t {
     kInsertLeaf,
@@ -40,11 +40,10 @@ class LECredentialManagerImpl : public LECredentialManager {
     kMaxValue = kReplayInsertLeaf,
   };
 
-  LECredentialManagerImpl(PinWeaver& pinweaver,
-                          const base::FilePath& le_basedir)
+  PinWeaverManagerImpl(PinWeaver& pinweaver, const base::FilePath& le_basedir)
       : pinweaver_(pinweaver), basedir_(le_basedir) {}
 
-  virtual ~LECredentialManagerImpl() {}
+  virtual ~PinWeaverManagerImpl() {}
 
   StatusOr<uint64_t> InsertCredential(
       const std::vector<hwsec::OperationPolicySetting>& policies,
@@ -150,7 +149,7 @@ class LECredentialManagerImpl : public LECredentialManager {
   // This is used in a situation where an operation succeeds on the TPM,
   // but its on-disk counterpart fails. In this case, the mitigation strategy
   // is as follows:
-  // - Prevent any further LE operations, to prevent disk and TPM from
+  // - Prevent any further pinweaver operations, to prevent disk and TPM from
   // going further out of state, till next reboot.
   // - Hope that on reboot, the problems causing disk failure don't recur,
   // and the TPM replay log will enable the disk state to get in sync with
@@ -164,7 +163,7 @@ class LECredentialManagerImpl : public LECredentialManager {
   brillo::Blob root_hash_;
   // Reference of an implementation of the pinweaver operations.
   PinWeaver& pinweaver_;
-  // Directory where all LE Credential related data is stored.
+  // Directory where all pinweaver credential related data is stored.
   base::FilePath basedir_;
   std::unique_ptr<SignInHashTree> hash_tree_;
 };

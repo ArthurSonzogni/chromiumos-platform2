@@ -65,7 +65,7 @@ class BackendTpm2 : public Backend {
   ConfigTpm2& GetConfigTpm2() { return config_; }
   RandomTpm2& GetRandomTpm2() { return random_; }
   PinWeaverTpm2& GetPinWeaverTpm2() { return pinweaver_; }
-  LECredentialManager& GetLECredentialManagerTpm2() { return le_cred_manager_; }
+  PinWeaverManager& GetPinWeaverManagerTpm2() { return pinweaver_manager_; }
   VendorTpm2& GetVendorTpm2() { return vendor_; }
   RecoveryCryptoTpm2& GetRecoveryCryptoTpm2() { return recovery_crypto_; }
   U2fTpm2& GetU2fTpm2() { return u2f_; }
@@ -98,8 +98,8 @@ class BackendTpm2 : public Backend {
   Config* GetConfig() override { return &config_; }
   Random* GetRandom() override { return &random_; }
   PinWeaver* GetPinWeaver() override { return &pinweaver_; }
-  LECredentialManager* GetLECredentialManager() override {
-    return &le_cred_manager_;
+  PinWeaverManager* GetPinWeaverManager() override {
+    return &pinweaver_manager_;
   }
   Vendor* GetVendor() override { return &vendor_; }
   RecoveryCrypto* GetRecoveryCrypto() override { return &recovery_crypto_; }
@@ -132,7 +132,7 @@ class BackendTpm2 : public Backend {
   SigningTpm2 signing_;
   RandomTpm2 random_;
   PinWeaverTpm2 pinweaver_;
-  LECredentialManagerImpl le_cred_manager_;
+  PinWeaverManagerImpl pinweaver_manager_;
   VendorTpm2 vendor_;
   RecoveryCryptoTpm2 recovery_crypto_;
   U2fTpm2 u2f_;

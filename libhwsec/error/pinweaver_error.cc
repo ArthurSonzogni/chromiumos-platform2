@@ -11,7 +11,7 @@ namespace {
 
 using PinWeaverErrorCode = hwsec::PinWeaverError::PinWeaverErrorCode;
 
-const char* PinweaverManagerStatusString(PinWeaverErrorCode error_code) {
+const char* PinWeaverManagerStatusString(PinWeaverErrorCode error_code) {
   switch (error_code) {
     case PinWeaverErrorCode::kSuccess:
       return "kSuccess";
@@ -32,10 +32,10 @@ const char* PinweaverManagerStatusString(PinWeaverErrorCode error_code) {
   }
 }
 
-std::string FormatPinweaverManagerStatus(PinWeaverErrorCode result) {
+std::string FormatPinWeaverManagerStatus(PinWeaverErrorCode result) {
   return base::StringPrintf("Pinweaver Manager Error Code %d (%s)",
                             static_cast<int>(result),
-                            PinweaverManagerStatusString(result));
+                            PinWeaverManagerStatusString(result));
 }
 
 }  // namespace
@@ -43,7 +43,7 @@ std::string FormatPinweaverManagerStatus(PinWeaverErrorCode result) {
 namespace hwsec {
 
 PinWeaverError::PinWeaverError(PinWeaverErrorCode error_code)
-    : TPMErrorBase(FormatPinweaverManagerStatus(error_code)),
+    : TPMErrorBase(FormatPinWeaverManagerStatus(error_code)),
       error_code_(error_code) {}
 
 TPMRetryAction PinWeaverError::ToTPMRetryAction() const {

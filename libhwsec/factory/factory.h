@@ -34,8 +34,8 @@ class Factory {
   virtual ~Factory() = default;
   virtual std::unique_ptr<const CryptohomeFrontend> GetCryptohomeFrontend() = 0;
   virtual std::unique_ptr<const PinWeaverFrontend> GetPinWeaverFrontend() = 0;
-  virtual std::unique_ptr<const LECredentialManagerFrontend>
-  GetLECredentialManagerFrontend() = 0;
+  virtual std::unique_ptr<const PinWeaverManagerFrontend>
+  GetPinWeaverManagerFrontend() = 0;
   virtual std::unique_ptr<const RecoveryCryptoFrontend>
   GetRecoveryCryptoFrontend() = 0;
   virtual std::unique_ptr<const ClientFrontend> GetClientFrontend() = 0;

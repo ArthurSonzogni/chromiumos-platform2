@@ -14,10 +14,10 @@
 namespace hwsec {
 
 template <>
-struct FuzzedObject<LECredentialManager::CheckCredentialReply> {
-  LECredentialManager::CheckCredentialReply operator()(
+struct FuzzedObject<PinWeaverManager::CheckCredentialReply> {
+  PinWeaverManager::CheckCredentialReply operator()(
       FuzzedDataProvider& provider) const {
-    return LECredentialManager::CheckCredentialReply{
+    return PinWeaverManager::CheckCredentialReply{
         .he_secret = FuzzedObject<brillo::SecureBlob>()(provider),
         .reset_secret = FuzzedObject<brillo::SecureBlob>()(provider),
     };
@@ -25,10 +25,10 @@ struct FuzzedObject<LECredentialManager::CheckCredentialReply> {
 };
 
 template <>
-struct FuzzedObject<LECredentialManager::StartBiometricsAuthReply> {
-  LECredentialManager::StartBiometricsAuthReply operator()(
+struct FuzzedObject<PinWeaverManager::StartBiometricsAuthReply> {
+  PinWeaverManager::StartBiometricsAuthReply operator()(
       FuzzedDataProvider& provider) const {
-    return LECredentialManager::StartBiometricsAuthReply{
+    return PinWeaverManager::StartBiometricsAuthReply{
         .server_nonce = FuzzedObject<brillo::Blob>()(provider),
         .iv = FuzzedObject<brillo::Blob>()(provider),
         .encrypted_he_secret = FuzzedObject<brillo::Blob>()(provider),

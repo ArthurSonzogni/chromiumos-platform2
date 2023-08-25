@@ -17,11 +17,11 @@
 
 namespace hwsec {
 
-class MockLECredentialManagerFrontend : public MockFrontend,
-                                        public LECredentialManagerFrontend {
+class MockPinWeaverManagerFrontend : public MockFrontend,
+                                     public PinWeaverManagerFrontend {
  public:
-  MockLECredentialManagerFrontend() = default;
-  ~MockLECredentialManagerFrontend() override = default;
+  MockPinWeaverManagerFrontend() = default;
+  ~MockPinWeaverManagerFrontend() override = default;
 
   MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (const override));
   MOCK_METHOD(StatusOr<uint8_t>, GetVersion, (), (const override));

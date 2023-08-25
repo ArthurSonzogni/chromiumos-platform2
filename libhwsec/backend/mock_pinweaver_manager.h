@@ -15,42 +15,36 @@
 
 namespace hwsec {
 
-class MockLECredentialManager : public LECredentialManager {
+class MockPinWeaverManager : public PinWeaverManager {
  public:
-  MockLECredentialManager() = default;
-  explicit MockLECredentialManager(LECredentialManager* on_call)
-      : default_(on_call) {
+  MockPinWeaverManager() = default;
+  explicit MockPinWeaverManager(PinWeaverManager* on_call) : default_(on_call) {
     using testing::Invoke;
     if (!default_)
       return;
     ON_CALL(*this, InsertCredential)
-        .WillByDefault(
-            Invoke(default_, &LECredentialManager::InsertCredential));
+        .WillByDefault(Invoke(default_, &PinWeaverManager::InsertCredential));
     ON_CALL(*this, CheckCredential)
-        .WillByDefault(Invoke(default_, &LECredentialManager::CheckCredential));
+        .WillByDefault(Invoke(default_, &PinWeaverManager::CheckCredential));
     ON_CALL(*this, RemoveCredential)
-        .WillByDefault(
-            Invoke(default_, &LECredentialManager::RemoveCredential));
+        .WillByDefault(Invoke(default_, &PinWeaverManager::RemoveCredential));
     ON_CALL(*this, ResetCredential)
-        .WillByDefault(Invoke(default_, &LECredentialManager::ResetCredential));
+        .WillByDefault(Invoke(default_, &PinWeaverManager::ResetCredential));
     ON_CALL(*this, GetWrongAuthAttempts)
         .WillByDefault(
-            Invoke(default_, &LECredentialManager::GetWrongAuthAttempts));
+            Invoke(default_, &PinWeaverManager::GetWrongAuthAttempts));
     ON_CALL(*this, GetDelaySchedule)
-        .WillByDefault(
-            Invoke(default_, &LECredentialManager::GetDelaySchedule));
+        .WillByDefault(Invoke(default_, &PinWeaverManager::GetDelaySchedule));
     ON_CALL(*this, GetDelayInSeconds)
-        .WillByDefault(
-            Invoke(default_, &LECredentialManager::GetDelayInSeconds));
+        .WillByDefault(Invoke(default_, &PinWeaverManager::GetDelayInSeconds));
     ON_CALL(*this, GetExpirationInSeconds)
         .WillByDefault(
-            Invoke(default_, &LECredentialManager::GetExpirationInSeconds));
+            Invoke(default_, &PinWeaverManager::GetExpirationInSeconds));
     ON_CALL(*this, InsertRateLimiter)
-        .WillByDefault(
-            Invoke(default_, &LECredentialManager::InsertRateLimiter));
+        .WillByDefault(Invoke(default_, &PinWeaverManager::InsertRateLimiter));
     ON_CALL(*this, StartBiometricsAuth)
         .WillByDefault(
-            Invoke(default_, &LECredentialManager::StartBiometricsAuth));
+            Invoke(default_, &PinWeaverManager::StartBiometricsAuth));
   }
 
   MOCK_METHOD(StatusOr<uint64_t>,
@@ -105,7 +99,7 @@ class MockLECredentialManager : public LECredentialManager {
               (override));
 
  private:
-  LECredentialManager* default_;
+  PinWeaverManager* default_;
 };
 
 }  // namespace hwsec
