@@ -280,6 +280,9 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual, "mangle -L skip_apply_vpn_mark -w"},
       {IpFamily::kDual, "mangle -F skip_apply_vpn_mark -w"},
       {IpFamily::kDual, "mangle -X skip_apply_vpn_mark -w"},
+      {IpFamily::kDual, "mangle -L qos_apply_dscp -w"},
+      {IpFamily::kDual, "mangle -F qos_apply_dscp -w"},
+      {IpFamily::kDual, "mangle -X qos_apply_dscp -w"},
       {IpFamily::kIPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IpFamily::kIPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IpFamily::kIPv4, "filter -X drop_guest_ipv4_prefix -w"},
@@ -500,6 +503,20 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual, "filter -N egress_port_firewall -w"},
       {IpFamily::kDual, "filter -A OUTPUT -j egress_port_firewall -w"},
       {IpFamily::kDual, "filter -N accept_downstream_network -w"},
+      // Asserts for QoS apply DSCP chain.
+      {IpFamily::kDual, "mangle -N qos_apply_dscp -w"},
+      {IpFamily::kDual,
+       "mangle -A qos_apply_dscp -m mark --mark 0x00000020/0x000000e0 -j DSCP "
+       "--set-dscp 32 -w"},
+      {IpFamily::kDual,
+       "mangle -A qos_apply_dscp -m mark --mark 0x00000040/0x000000e0 -j DSCP "
+       "--set-dscp 34 -w"},
+      {IpFamily::kDual,
+       "mangle -A qos_apply_dscp -m mark --mark 0x00000060/0x000000e0 -j DSCP "
+       "--set-dscp 48 -w"},
+      {IpFamily::kDual,
+       "mangle -A qos_apply_dscp -m mark --mark 0x00000080/0x000000e0 -j DSCP "
+       "--set-dscp 34 -w"},
   };
   for (const auto& c : iptables_commands) {
     Verify_iptables(*runner, c.family, c.args);
@@ -540,6 +557,9 @@ TEST(DatapathTest, Stop) {
       {IpFamily::kDual, "mangle -L skip_apply_vpn_mark -w"},
       {IpFamily::kDual, "mangle -F skip_apply_vpn_mark -w"},
       {IpFamily::kDual, "mangle -X skip_apply_vpn_mark -w"},
+      {IpFamily::kDual, "mangle -L qos_apply_dscp -w"},
+      {IpFamily::kDual, "mangle -F qos_apply_dscp -w"},
+      {IpFamily::kDual, "mangle -X qos_apply_dscp -w"},
       {IpFamily::kIPv4, "filter -L drop_guest_ipv4_prefix -w"},
       {IpFamily::kIPv4, "filter -F drop_guest_ipv4_prefix -w"},
       {IpFamily::kIPv4, "filter -X drop_guest_ipv4_prefix -w"},

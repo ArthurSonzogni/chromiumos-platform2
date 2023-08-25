@@ -516,6 +516,9 @@ class Datapath {
                                    bool log_failures = true);
   bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);
 
+  // Installs the static rules inside the qos_apply_dscp chain.
+  void SetupQoSApplyDSCPChain();
+
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
   std::unique_ptr<Firewall> firewall_;
   // Owned by Manager

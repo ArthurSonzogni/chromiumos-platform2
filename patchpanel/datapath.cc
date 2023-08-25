@@ -104,6 +104,11 @@ constexpr char kRedirectUserDnsChain[] = "redirect_user_dns";
 constexpr char kSNATChromeDnsChain[] = "snat_chrome_dns";
 constexpr char kSNATUserDnsChain[] = "snat_user_dns";
 
+// Chains for QoS.
+// mangle POSTROUTING chain for applying DSCP fields based on fwmarks for egress
+// traffic.
+constexpr char kQoSApplyDSCPChain[] = "qos_apply_dscp";
+
 // Maximum length of an iptables chain name.
 constexpr int kIptablesMaxChainLength = 28;
 
@@ -147,6 +152,14 @@ std::string AutoDNATTargetChainName(AutoDNATTarget auto_dnat_target) {
 // pertaining to the downstream interface |int_ifname|.
 std::string PreroutingSubChainName(const std::string& int_ifname) {
   return "PREROUTING_" + int_ifname;
+}
+
+// Returns the "mark/mask" string for `category` which can be used as an
+// argument to call iptables, e.g., "0x00000040/0x000000e0".
+std::string QoSFwmarkWithMask(QoSCategory category) {
+  auto mark = Fwmark::FromQoSCategory(category);
+  return base::StrCat(
+      {mark.ToString(), "/", kFwmarkQoSCategoryMask.ToString()});
 }
 
 }  // namespace
@@ -210,6 +223,9 @@ void Datapath::Start() {
       // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
       // traffic that should be routed through a VPN.
       {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain},
+      // Set up a mangle chain used in POSTROUTING for applying DSCP values for
+      // QoS. QoSService controls when to add the jump rules to this chain.
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain},
       // Set up nat chains for redirecting egress DNS queries to the DNS proxy
       // instances.
       {IpFamily::kDual, Iptables::Table::kNat, kRedirectDefaultDnsChain},
@@ -478,6 +494,8 @@ void Datapath::Start() {
                  << " packets in OUTPUT";
     }
   }
+
+  SetupQoSApplyDSCPChain();
 }
 
 void Datapath::Stop() {
@@ -559,6 +577,7 @@ void Datapath::ResetIptables() {
        true},
       {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain, true},
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain, true},
       {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain,
        true},
       {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestInvalidIpv4Chain,
@@ -2230,6 +2249,26 @@ bool Datapath::ModifyPortRule(
     default:
       LOG(ERROR) << "Unknown operation " << request.op();
       return false;
+  }
+}
+
+void Datapath::SetupQoSApplyDSCPChain() {
+  // From QoS categories to DSCP values. See go/cros-qos-dscp-classes-1p for the
+  // mapping.
+  constexpr struct {
+    QoSCategory category;
+    std::string_view dscp;
+  } kDSCPApplyRules[] = {
+      {QoSCategory::kRealTimeInteractive, "32"},
+      {QoSCategory::kMultimediaConferencing, "34"},
+      {QoSCategory::kNetworkControl, "48"},
+      {QoSCategory::kWebRTC, "34"},
+  };
+  for (const auto& rule : kDSCPApplyRules) {
+    ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                   Iptables::Command::kA, kQoSApplyDSCPChain,
+                   {"-m", "mark", "--mark", QoSFwmarkWithMask(rule.category),
+                    "-j", "DSCP", "--set-dscp", std::string(rule.dscp), "-w"});
   }
 }
 
