@@ -3346,18 +3346,11 @@ void UserDataAuth::ListAuthFactors(
   if (is_persistent_user) {
     // Load the USS so that we can use it to check the validity of any auth
     // factors being loaded.
-    UserSecretStash::Container uss_container;
     std::set<std::string_view> uss_labels;
-    if (auto uss_blob = uss_storage_->LoadPersisted(obfuscated_username);
-        uss_blob.ok()) {
-      if (auto loaded_container =
-              UserSecretStash::Container::FromBlob(*uss_blob);
-          loaded_container.ok()) {
-        uss_container = std::move(*loaded_container);
-      }
-    }
-    for (const auto& [label, unused] : uss_container.wrapped_key_blocks) {
-      uss_labels.insert(label);
+    auto encrypted_uss =
+        EncryptedUss::FromStorage(obfuscated_username, *uss_storage_);
+    if (encrypted_uss.ok()) {
+      uss_labels = encrypted_uss->WrappedMainKeyIds();
     }
 
     // Prepare the response for configured AuthFactors (with status) with all of

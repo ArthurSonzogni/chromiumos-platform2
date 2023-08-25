@@ -819,21 +819,21 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUSSNoFNEKSigInGetFSKeyFromPayload = 496,
   /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoChapsKeyInGetFSKeyFromPayload = 497,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSDeserializeFailedInGetContainerFromFB = 498,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSNoAlgInGetContainerFromFB = 499,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSUnknownAlgInGetContainerFromFB = 500,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSNoCiphertextInGetContainerFromFB = 501,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSNoIVInGetContainerFromFB = 502,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSIVWrongSizeInGetContainerFromFB = 503,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSNoGCMTagInGetContainerFromFB = 504,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSTagWrongSizeInGetContainerFromFB = 505,
   /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSEmptyWrappingIDInUnwrapMKFromBlocks = 506,
@@ -1591,7 +1591,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNoVkInAddKeyset = 2728,
   /* ./auth_factor/auth_factor_manager.cc */
   kLocAuthFactorManagerEmptyReadInLoad = 2729,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSEmptySerializedInGetContainerFromFB = 2730,
   /* =Obsolete= */
   kLocAuthSessionDeleteOldBackupFailedInUpdateWithUSS = 2731,
@@ -1875,8 +1875,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionLabelLookupUnimplemented = 3523,
   /* ./userdataauth.cc */
   kLocUserDataMalformedRequestInAuthAuthFactor = 3524,
-  /* ./user_secret_stash/user_secret_stash.cc */
-  kLocUSSDeserializeFailedInGeUserMetadata = 3525,
+  /* =Obsolete= */
+  kLocUSSDeserializeFailedInGetUserMetadata = 3525,
   /* =Obsolete= */
   kLocUSSGetUserMetadataFailedInFromEncContainer = 3526,
   /* =Obsolete= */

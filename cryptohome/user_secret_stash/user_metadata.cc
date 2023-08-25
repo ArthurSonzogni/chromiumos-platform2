@@ -8,6 +8,7 @@
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
+#include "cryptohome/user_secret_stash/encrypted.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 
 namespace cryptohome {
@@ -17,9 +18,9 @@ UserMetadataReader::UserMetadataReader(UssStorage* storage)
 
 CryptohomeStatusOr<UserMetadata> UserMetadataReader::Load(
     const ObfuscatedUsername& username) {
-  ASSIGN_OR_RETURN(brillo::Blob encrypted_uss,
-                   storage_->LoadPersisted(username));
-  return UserSecretStash::GetUserMetadata(encrypted_uss);
+  ASSIGN_OR_RETURN(EncryptedUss uss,
+                   EncryptedUss::FromStorage(username, *storage_));
+  return uss.user_metadata();
 }
 
 }  // namespace cryptohome

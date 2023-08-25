@@ -72,6 +72,7 @@
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_policy_file.h"
+#include "cryptohome/user_secret_stash/encrypted.h"
 #include "cryptohome/user_secret_stash/migrator.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
@@ -376,19 +377,11 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   if (persistent_user_exists) {
     // Load the USS so that we can use it to check the validity of any auth
     // factors being loaded.
-    UserSecretStash::Container uss_container;
     std::set<std::string_view> uss_labels;
-    if (auto uss_blob = backing_apis.user_secret_stash_storage->LoadPersisted(
-            obfuscated_username);
-        uss_blob.ok()) {
-      if (auto loaded_container =
-              UserSecretStash::Container::FromBlob(*uss_blob);
-          loaded_container.ok()) {
-        uss_container = std::move(*loaded_container);
-      }
-    }
-    for (const auto& [label, unused] : uss_container.wrapped_key_blocks) {
-      uss_labels.insert(label);
+    auto encrypted_uss = EncryptedUss::FromStorage(
+        obfuscated_username, *backing_apis.user_secret_stash_storage);
+    if (encrypted_uss.ok()) {
+      uss_labels = encrypted_uss->WrappedMainKeyIds();
     }
 
     // Load all of the auth factors.

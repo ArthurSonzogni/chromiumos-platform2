@@ -422,21 +422,6 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithUserMetadata) {
   EXPECT_EQ(stash2.value()->GetFingerprintRateLimiterId(), fake_fp_rlimiter_id);
 }
 
-TEST_F(UserSecretStashTest, ReadUserMetadataFromEncryptedUSS) {
-  uint64_t fake_fp_rlimiter_id = 123;
-  ASSERT_TRUE(stash_->InitializeFingerprintRateLimiterId(fake_fp_rlimiter_id));
-
-  CryptohomeStatusOr<brillo::Blob> uss_container =
-      stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_TRUE(uss_container.ok());
-  CryptohomeStatusOr<UserMetadata> user_metadata =
-      UserSecretStash::GetUserMetadata(uss_container.value());
-  ASSERT_TRUE(user_metadata.ok());
-
-  EXPECT_EQ(user_metadata.value().fingerprint_rate_limiter_id,
-            fake_fp_rlimiter_id);
-}
-
 TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithNoFingerprintRateLimiter) {
   CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
