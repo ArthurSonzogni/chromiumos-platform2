@@ -37,3 +37,6 @@ bind: 1
 sendto: 1
 futex: 1
 brk: 1
+ioctl: arg1 == TCGETS || arg1 == FIONREAD
+poll: 1
+recvfrom: 1
