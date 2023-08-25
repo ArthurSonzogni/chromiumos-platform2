@@ -34,8 +34,6 @@ class MountEncryptedMetrics {
 
   void ReportEncryptionKeyStatus(EncryptionKey::EncryptionKeyStatus status);
 
-  void ReportTimeToTakeTpmOwnership(base::TimeDelta elapsed_time);
-
  private:
   explicit MountEncryptedMetrics(const std::string& output_file);
 

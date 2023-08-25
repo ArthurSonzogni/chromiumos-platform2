@@ -368,14 +368,11 @@ result_code Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
       return rc;
     }
 
-    const base::TimeTicks take_ownerhip_start_time = base::TimeTicks::Now();
     rc = tpm_->TakeOwnership();
     if (rc != RESULT_SUCCESS) {
       LOG(ERROR) << "Failed to ensure TPM ownership.";
       return rc;
     }
-    MountEncryptedMetrics::Get()->ReportTimeToTakeTpmOwnership(
-        base::TimeTicks::Now() - take_ownerhip_start_time);
   } else {
     const base::FilePath tpm_owned_path =
         rootdir_.AppendASCII(paths::cryptohome::kTpmOwned);

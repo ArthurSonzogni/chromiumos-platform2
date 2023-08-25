@@ -16,12 +16,6 @@ constexpr char kSystemKeyStatus[] = "Platform.MountEncrypted.SystemKeyStatus";
 constexpr char kEncryptionKeyStatus[] =
     "Platform.MountEncrypted.EncryptionKeyStatus";
 
-constexpr char kTimeToTakeTpmOwnership[] =
-    "Platform.MountEncrypted.TimeToTakeTpmOwnership";
-constexpr base::TimeDelta kTimeToTakeTpmOwnershipMin = base::Milliseconds(1);
-constexpr base::TimeDelta kTimeToTakeTpmOwnershipMax = base::Minutes(5);
-constexpr int kTimeToTakeTpmOwnershipNumBuckets = 50;
-
 }  // namespace
 
 MountEncryptedMetrics::MountEncryptedMetrics(const std::string& output_file) {
@@ -59,15 +53,6 @@ void MountEncryptedMetrics::ReportEncryptionKeyStatus(
   metrics_library_.SendEnumToUMA(
       kEncryptionKeyStatus, static_cast<int>(status),
       static_cast<int>(EncryptionKey::EncryptionKeyStatus::kCount));
-}
-
-void MountEncryptedMetrics::ReportTimeToTakeTpmOwnership(
-    base::TimeDelta elapsed_time) {
-  metrics_library_.SendToUMA(kTimeToTakeTpmOwnership,
-                             elapsed_time.InMilliseconds(),
-                             kTimeToTakeTpmOwnershipMin.InMilliseconds(),
-                             kTimeToTakeTpmOwnershipMax.InMilliseconds(),
-                             kTimeToTakeTpmOwnershipNumBuckets);
 }
 
 }  // namespace mount_encrypted
