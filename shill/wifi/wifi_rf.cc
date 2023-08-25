@@ -55,6 +55,17 @@ bool IsWiFiLimitedFreq(uint32_t freq) {
     return true;
   }
 
+  if (freq > 5815) {
+    // Wi-Fi use of U-NII-4 channels (5850MHz - 5925MHz) has been approved by
+    // FCC and ETSI in late 2020.
+    // https://www.fcc.gov/document/fcc-modernizes-59-ghz-band-improve-wi-fi-and-automotive-safety-0
+    // Some device cannot detect these channels due to old hardware. Mask them
+    // out to avoid compatibility issues. Also mask channel 165 (5815MHz -
+    // 5835MHz) out as 40MHz or 80MHz channel width with channel 165 as primary
+    // channel also extends to the U-NII-4 bands.
+    return true;
+  }
+
   return false;
 }
 
