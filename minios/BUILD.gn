@@ -40,6 +40,7 @@ generate_dbus_proxies("minios_proxies") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "blkid",
     "libbrillo",
     "libchrome",
     "libmetrics",
@@ -55,6 +56,7 @@ pkg_config("target_defaults") {
 
 static_library("libminios") {
   sources = [
+    "blkid_wrapper.cc",
     "cgpt_util.cc",
     "daemon.cc",
     "dbus_adaptors/dbus_adaptor.cc",
@@ -109,6 +111,7 @@ if (use.test) {
   }
   executable("minios_test") {
     sources = [
+      "blkid_wrapper_test.cc",
       "cgpt_util_test.cc",
       "dbus_adaptors/dbus_adaptor_test.cc",
       "disk_util_test.cc",
