@@ -25,6 +25,13 @@ namespace power_manager::policy {
 constexpr base::TimeDelta
     SuspendDelayController::kDefaultMaxSuspendDelayTimeout;
 
+SuspendInternalDelay::SuspendInternalDelay(const std::string& description)
+    : description_(description), weak_ptr_factory_(this) {}
+
+std::string SuspendInternalDelay::Description() const {
+  return description_;
+}
+
 SuspendDelayController::SuspendDelayController(
     int initial_delay_id,
     const std::string& description,
@@ -36,7 +43,7 @@ SuspendDelayController::SuspendDelayController(
 }
 
 bool SuspendDelayController::ReadyForSuspend() const {
-  return delay_ids_being_waited_on_.empty() &&
+  return delay_ids_being_waited_on_.empty() && internal_delays_.empty() &&
          !min_delay_expiration_timer_.IsRunning();
 }
 
@@ -137,6 +144,24 @@ void SuspendDelayController::HandleDBusClientDisconnected(
   }
 }
 
+bool SuspendDelayController::AddSuspendInternalDelay(
+    const SuspendInternalDelay* delay) {
+  if (suspend_readiness_notified_) {
+    LOG(ERROR) << "Ignoring suspend internal delay, " << delay->Description()
+               << ", that was added after suspend readiness for suspend id "
+               << current_suspend_id_;
+    return false;
+  }
+  internal_delays_.insert(delay);
+  return true;
+}
+
+void SuspendDelayController::RemoveSuspendInternalDelay(
+    const SuspendInternalDelay* delay) {
+  internal_delays_.erase(delay);
+  NotifyIfReadyForSuspend();
+}
+
 void SuspendDelayController::PrepareForSuspend(int suspend_id,
                                                bool in_dark_resume) {
   current_suspend_id_ = suspend_id;
@@ -152,7 +177,8 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id,
             << delay_ids_being_waited_on_.size() << " pending delay(s) and "
             << old_count << " outstanding delay(s) from previous request";
 
-  const bool waiting = !delay_ids_being_waited_on_.empty();
+  const bool waiting =
+      !delay_ids_being_waited_on_.empty() || !internal_delays_.empty();
 
   if (in_dark_resume) {
     min_delay_expiration_timer_.Start(
@@ -182,6 +208,8 @@ void SuspendDelayController::FinishSuspend(int suspend_id) {
   max_delay_expiration_timer_.Stop();
   min_delay_expiration_timer_.Stop();
   delay_ids_being_waited_on_.clear();
+  internal_delays_.clear();
+  suspend_readiness_notified_ = false;
 }
 
 std::string SuspendDelayController::GetLogDescription() const {
@@ -209,8 +237,11 @@ void SuspendDelayController::RemoveDelayFromWaitList(int delay_id) {
     return;
 
   delay_ids_being_waited_on_.erase(delay_id);
-  if (delay_ids_being_waited_on_.empty() &&
-      !min_delay_expiration_timer_.IsRunning()) {
+  NotifyIfReadyForSuspend();
+}
+
+void SuspendDelayController::NotifyIfReadyForSuspend() {
+  if (ReadyForSuspend()) {
     max_delay_expiration_timer_.Stop();
     PostNotifyObserversTask(current_suspend_id_);
   }
@@ -226,25 +257,35 @@ void SuspendDelayController::OnMaxDelayExpiration() {
     tardy_delays += base::NumberToString(delay_id) + " (" + delay.dbus_client +
                     ": " + delay.description + ")";
   }
+  std::string tardy_internal_delays;
+  for (const auto* delay : internal_delays_) {
+    if (!tardy_internal_delays.empty())
+      tardy_internal_delays += ", ";
+    tardy_internal_delays += delay->Description();
+  }
   LOG(WARNING) << "Timed out while waiting for " << GetLogDescription()
                << " request " << current_suspend_id_
                << " readiness confirmation for "
                << delay_ids_being_waited_on_.size()
-               << " delay(s): " << tardy_delays;
+               << " delay(s): " << tardy_delays << " and "
+               << internal_delays_.size()
+               << " internal delay(s): " << tardy_internal_delays;
 
   delay_ids_being_waited_on_.clear();
+  internal_delays_.clear();
   PostNotifyObserversTask(current_suspend_id_);
 }
 
 void SuspendDelayController::OnMinDelayExpiration() {
   TRACE_EVENT("power", "SuspendDelayController::OnMinDelayExpiration");
-  if (delay_ids_being_waited_on_.empty()) {
+  if (delay_ids_being_waited_on_.empty() && internal_delays_.empty()) {
     max_delay_expiration_timer_.Stop();
     PostNotifyObserversTask(current_suspend_id_);
   }
 }
 
 void SuspendDelayController::PostNotifyObserversTask(int suspend_id) {
+  suspend_readiness_notified_ = true;
   notify_observers_timer_.Start(
       FROM_HERE, base::TimeDelta(),
       base::BindOnce(&SuspendDelayController::NotifyObservers,

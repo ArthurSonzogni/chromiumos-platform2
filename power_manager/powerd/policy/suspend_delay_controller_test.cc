@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 
+#include <memory>
+
 #include <base/compiler_specific.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -385,6 +387,64 @@ TEST_F(SuspendDelayControllerTest, DarkResumeSingleDelay) {
   HandleSuspendReadiness(delay_id, kSuspendId, kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+}
+
+// Test that SuspendInternalDelays successfully delay suspend readiness.
+TEST_F(SuspendDelayControllerTest, SuspendInternalDelays) {
+  auto internal_delay1 = std::make_unique<SuspendInternalDelay>("desc1");
+  auto internal_delay2 = std::make_unique<SuspendInternalDelay>("desc2");
+
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+
+  int kSuspendId = 5;
+  EXPECT_TRUE(controller_.AddSuspendInternalDelay(internal_delay1.get()));
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
+  controller_.RemoveSuspendInternalDelay(internal_delay1.get());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+  controller_.FinishSuspend(kSuspendId);
+
+  kSuspendId = 6;
+  EXPECT_TRUE(controller_.AddSuspendInternalDelay(internal_delay1.get()));
+  EXPECT_TRUE(controller_.AddSuspendInternalDelay(internal_delay2.get()));
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
+  controller_.RemoveSuspendInternalDelay(internal_delay1.get());
+  EXPECT_FALSE(controller_.ReadyForSuspend());
+  controller_.RemoveSuspendInternalDelay(internal_delay2.get());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+}
+
+// Test that a late addition of an internal delay is correctly ignored.
+TEST_F(SuspendDelayControllerTest, LateSuspendInternalDelay) {
+  auto internal_delay = std::make_unique<SuspendInternalDelay>("desc");
+
+  int kSuspendId = 5;
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+  EXPECT_FALSE(controller_.AddSuspendInternalDelay(internal_delay.get()));
+}
+
+// Test that SuspendInternalDelays from prior suspends are ignored.
+TEST_F(SuspendDelayControllerTest, StaleSuspendInternalDelay) {
+  auto internal_delay = std::make_unique<SuspendInternalDelay>("desc");
+
+  EXPECT_TRUE(controller_.AddSuspendInternalDelay(internal_delay.get()));
+
+  int kSuspendId = 5;
+  controller_.PrepareForSuspend(kSuspendId, false);
+  EXPECT_FALSE(controller_.ReadyForSuspend());
+  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
+  EXPECT_TRUE(controller_.ReadyForSuspend());
+
+  kSuspendId = 6;
+  controller_.PrepareForSuspend(kSuspendId, false);
   EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
