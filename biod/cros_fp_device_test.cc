@@ -9,6 +9,7 @@
 #include <libec/ec_usb_endpoint.h>
 #include <libec/fingerprint/fp_info_command.h>
 #include <libec/fingerprint/fp_template_command.h>
+#include <libec/fingerprint/fp_unlock_template_command.h>
 #include <libec/mock_ec_command_factory.h>
 
 #include "biod/cros_fp_device.h"
@@ -28,6 +29,7 @@ using ec::FpReadMatchSecretWithPubkeyCommand;
 using ec::FpSensorErrors;
 using ec::FpSetNonceContextCommand;
 using ec::FpTemplateCommand;
+using ec::FpUnlockTemplateCommand;
 using testing::An;
 using testing::NiceMock;
 using testing::Return;
@@ -340,6 +342,15 @@ class CrosFpDevice_UploadTemplate : public testing::Test {
     MOCK_METHOD(uint32_t, Result, (), (override, const));
   };
 
+  class MockFpUnlockTemplateCommand : public FpUnlockTemplateCommand {
+   public:
+    MockFpUnlockTemplateCommand() {
+      ON_CALL(*this, Run).WillByDefault(Return(true));
+    }
+    MOCK_METHOD(bool, Run, (int fd), (override));
+    MOCK_METHOD(uint32_t, Result, (), (override, const));
+  };
+
   metrics::MockBiodMetrics mock_biod_metrics_;
   ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
   std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
@@ -374,19 +385,48 @@ TEST_F(CrosFpDevice_UploadTemplate, RunFailure) {
   EXPECT_FALSE(mock_cros_fp_device_->UploadTemplate(templ));
 }
 
-TEST_F(CrosFpDevice_UploadTemplate, CommandFailure) {
-  std::vector<uint8_t> templ;
+TEST_F(CrosFpDevice_UploadTemplate, UnlockNoOp) {
+  EXPECT_TRUE(mock_cros_fp_device_->UnlockTemplates(0));
+}
 
-  EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
-      .WillOnce([](std::vector<uint8_t> tmpl, uint16_t max_write_size) {
-        auto cmd = std::make_unique<NiceMock<MockFpTemplateCommand>>(
-            tmpl, max_write_size);
+TEST_F(CrosFpDevice_UploadTemplate, UnlockSuccess) {
+  constexpr uint16_t kFingerNum = 3;
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpUnlockTemplateCommand)
+      .WillOnce([kFingerNum](uint16_t finger_num) {
+        EXPECT_EQ(finger_num, kFingerNum);
+        return std::make_unique<NiceMock<MockFpUnlockTemplateCommand>>();
+      });
+
+  EXPECT_TRUE(mock_cros_fp_device_->UnlockTemplates(kFingerNum));
+}
+
+TEST_F(CrosFpDevice_UploadTemplate, UnlockRunFailure) {
+  constexpr uint16_t kFingerNum = 3;
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpUnlockTemplateCommand)
+      .WillOnce([kFingerNum](uint16_t finger_num) {
+        EXPECT_EQ(finger_num, kFingerNum);
+        auto cmd = std::make_unique<NiceMock<MockFpUnlockTemplateCommand>>();
+        EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
+        return cmd;
+      });
+
+  EXPECT_FALSE(mock_cros_fp_device_->UnlockTemplates(kFingerNum));
+}
+
+TEST_F(CrosFpDevice_UploadTemplate, UnlockCommandFailure) {
+  constexpr uint16_t kFingerNum = 3;
+
+  EXPECT_CALL(*mock_ec_command_factory_, FpUnlockTemplateCommand)
+      .WillOnce([kFingerNum](uint16_t finger_num) {
+        EXPECT_EQ(finger_num, kFingerNum);
+        auto cmd = std::make_unique<NiceMock<MockFpUnlockTemplateCommand>>();
         EXPECT_CALL(*cmd, Result).WillRepeatedly(Return(EC_RES_ERROR));
         return cmd;
       });
 
-  EXPECT_CALL(mock_biod_metrics_, SendUploadTemplateResult(EC_RES_ERROR));
-  EXPECT_FALSE(mock_cros_fp_device_->UploadTemplate(templ));
+  EXPECT_FALSE(mock_cros_fp_device_->UnlockTemplates(kFingerNum));
 }
 
 class CrosFpDevice_HwErrors : public testing::Test {

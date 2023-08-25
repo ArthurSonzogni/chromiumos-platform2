@@ -35,6 +35,7 @@ class MockCrosFpDevice : public ec::CrosFpDeviceInterface {
               (size_t idx, const VendorTemplate& tmpl),
               (override));
   MOCK_METHOD(bool, ReloadTemplates, (size_t num), (override));
+  MOCK_METHOD(bool, UnlockTemplates, (size_t num), (override));
   MOCK_METHOD(bool, SetContext, (std::string user_id), (override));
   MOCK_METHOD(bool,
               SetNonceContext,

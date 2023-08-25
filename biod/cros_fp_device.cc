@@ -649,6 +649,28 @@ bool CrosFpDevice::ReloadTemplates(size_t num) {
   return true;
 }
 
+bool CrosFpDevice::UnlockTemplates(size_t num) {
+  if (num == 0) {
+    // Nothing needs to be done to unlock 0 templates.
+    return true;
+  }
+
+  auto fp_unlock_template_cmd =
+      ec_command_factory_->FpUnlockTemplateCommand(static_cast<uint16_t>(num));
+
+  if (!fp_unlock_template_cmd->Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to run FP_UNLOCK_TEMPLATE command";
+    return false;
+  }
+
+  if (fp_unlock_template_cmd->Result() != EC_RES_SUCCESS) {
+    LOG(ERROR) << "FP_UNLOCK_TEMPLATE command failed";
+    return false;
+  }
+
+  return true;
+}
+
 bool CrosFpDevice::UploadTemplate(const VendorTemplate& tmpl) {
   auto fp_template_cmd =
       ec_command_factory_->FpTemplateCommand(tmpl, ec_protocol_info_.max_write);

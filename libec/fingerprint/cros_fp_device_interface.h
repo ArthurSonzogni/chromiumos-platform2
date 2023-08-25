@@ -85,6 +85,7 @@ class CrosFpDeviceInterface {
   // Load the first |num| templates from the preloaded template slots into
   // actual template slots.
   virtual bool ReloadTemplates(size_t num) = 0;
+  virtual bool UnlockTemplates(size_t num) = 0;
   virtual bool SetContext(std::string user_id) = 0;
   // Set the nonce context by providing nonce and user_id of the context.
   virtual bool SetNonceContext(const brillo::Blob& nonce,
