@@ -52,6 +52,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               FpTemplateCommand,
               (std::vector<uint8_t> tmpl, uint16_t max_write_size),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::FpUnlockTemplateCommand>,
+              FpUnlockTemplateCommand,
+              (uint16_t finger_num),
+              (override));
   MOCK_METHOD(std::unique_ptr<ec::ChargeControlSetCommand>,
               ChargeControlSetCommand,
               (uint32_t mode, uint8_t lower, uint8_t upper),

@@ -52,6 +52,11 @@ std::unique_ptr<ec::FpTemplateCommand> EcCommandFactory::FpTemplateCommand(
   return FpTemplateCommand::Create(std::move(tmpl), max_write_size);
 }
 
+std::unique_ptr<ec::FpUnlockTemplateCommand>
+EcCommandFactory::FpUnlockTemplateCommand(uint16_t finger_num) {
+  return FpUnlockTemplateCommand::Create(finger_num);
+}
+
 std::unique_ptr<ec::ChargeControlSetCommand>
 EcCommandFactory::ChargeControlSetCommand(uint32_t mode,
                                           uint8_t lower,

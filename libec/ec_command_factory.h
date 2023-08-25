@@ -26,6 +26,7 @@
 #include "libec/fingerprint/fp_seed_command.h"
 #include "libec/fingerprint/fp_set_nonce_context_command.h"
 #include "libec/fingerprint/fp_template_command.h"
+#include "libec/fingerprint/fp_unlock_template_command.h"
 #include "libec/flash_protect_command.h"
 #include "libec/led_control_command.h"
 
@@ -77,6 +78,13 @@ class EcCommandFactoryInterface {
       std::vector<uint8_t> tmpl, uint16_t max_write_size) = 0;
   static_assert(
       std::is_base_of<EcCommandInterface, ec::FpTemplateCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
+  virtual std::unique_ptr<ec::FpUnlockTemplateCommand> FpUnlockTemplateCommand(
+      uint16_t finger_num) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::FpUnlockTemplateCommand>::value,
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
@@ -205,6 +213,9 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
 
   std::unique_ptr<ec::FpTemplateCommand> FpTemplateCommand(
       std::vector<uint8_t> tmpl, uint16_t max_write_size) override;
+
+  std::unique_ptr<ec::FpUnlockTemplateCommand> FpUnlockTemplateCommand(
+      uint16_t finger_num) override;
 
   std::unique_ptr<ec::ChargeControlSetCommand> ChargeControlSetCommand(
       uint32_t mode, uint8_t lower, uint8_t upper) override;
