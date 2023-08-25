@@ -210,5 +210,32 @@ TEST_F(DBusServiceAdaptorTest, CloseScanner) {
   EXPECT_THAT(response, EqualsProto(CloseScannerResponse()));
 }
 
+TEST_F(DBusServiceAdaptorTest, SetOptions) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
+  SetOptionsRequest request;
+  // TODO(b/274860786): Implement check for real behavior once implemented.
+  SetOptionsResponse response = dbus_service.SetOptions(request);
+  EXPECT_THAT(response, EqualsProto(SetOptionsResponse()));
+}
+
+TEST_F(DBusServiceAdaptorTest, StartPreparedScan) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
+  StartPreparedScanRequest request;
+  // TODO(b/297443322): Implement check for real behavior once implemented.
+  StartPreparedScanResponse response = dbus_service.StartPreparedScan(request);
+  EXPECT_THAT(response, EqualsProto(StartPreparedScanResponse()));
+}
+
+TEST_F(DBusServiceAdaptorTest, ReadScanData) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
+  ReadScanDataRequest request;
+  // TODO(b/297443322): Implement check for real behavior once implemented.
+  ReadScanDataResponse response = dbus_service.ReadScanData(request);
+  EXPECT_THAT(response, EqualsProto(ReadScanDataResponse()));
+}
+
 }  // namespace
 }  // namespace lorgnette

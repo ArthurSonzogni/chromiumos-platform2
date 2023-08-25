@@ -60,6 +60,11 @@ class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
   OpenScannerResponse OpenScanner(const OpenScannerRequest& request) override;
   CloseScannerResponse CloseScanner(
       const CloseScannerRequest& request) override;
+  SetOptionsResponse SetOptions(const SetOptionsRequest& request) override;
+  StartPreparedScanResponse StartPreparedScan(
+      const StartPreparedScanRequest& request) override;
+  ReadScanDataResponse ReadScanData(
+      const ReadScanDataRequest& request) override;
 
  private:
   SEQUENCE_CHECKER(sequence_checker_);

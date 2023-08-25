@@ -160,4 +160,28 @@ CloseScannerResponse DBusServiceAdaptor::CloseScanner(
   return device_tracker_->CloseScanner(request);
 }
 
+SetOptionsResponse DBusServiceAdaptor::SetOptions(
+    const SetOptionsRequest& request) {
+  ScopeLogger scope("DBusServiceAdaptor::SetOptions");
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // TODO(b/274860786): Implement SetOptions.
+  return {};
+}
+
+StartPreparedScanResponse DBusServiceAdaptor::StartPreparedScan(
+    const StartPreparedScanRequest& request) {
+  ScopeLogger scope("DBusServiceAdaptor::StartPreparedScan");
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // TODO(b/297443322): Implement StartPreparedScan.
+  return {};
+}
+
+ReadScanDataResponse DBusServiceAdaptor::ReadScanData(
+    const ReadScanDataRequest& request) {
+  ScopeLogger scope("DBusServiceAdaptor::ReadScanData");
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  // TODO(b/297443322): Implement ReadScanData.
+  return {};
+}
+
 }  // namespace lorgnette

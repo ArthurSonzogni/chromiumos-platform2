@@ -72,6 +72,51 @@
                     value="::lorgnette::CloseScannerResponse" />
       </arg>
     </method>
+    <method name="SetOptions">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <tp:docstring>
+        Sets SANE options for the specified scanner.  The scanner must have been
+        previously opened with OpenScanner.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::SetOptionsRequest" />
+        <tp:docstring>
+          Serialized SetOptionsRequest proto specifying the scanner handle and
+          options to set.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::SetOptionsResponse" />
+        <tp:docstring>
+          Serialized SetOptionsResponse proto.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="StartPreparedScan">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <tp:docstring>
+        Starts a scan using the currently configured options.  Options should
+        be set with SetOptions first if needed.  If the result is successful,
+        the caller can read scanned data with ReadScanData.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::StartPreparedScanRequest" />
+        <tp:docstring>
+          Serialized StartPreparedScanRequest proto specifying the scanner
+          handle and desired image format.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::StartPreparedScanResponse" />
+        <tp:docstring>
+          Serialized StartPreparedScanResponse proto.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="StartScan">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
       <tp:docstring>
@@ -90,6 +135,26 @@
       <arg name="start_scan_response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="::lorgnette::StartScanResponse" />
+      </arg>
+    </method>
+    <method name="ReadScanData">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <tp:docstring>
+        Reads the next chunk of data from an in-progress scan job.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::ReadScanDataRequest" />
+        <tp:docstring>
+          Serialized ReadScanDataRequest proto specifying the scan job to read.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::ReadScanDataResponse" />
+        <tp:docstring>
+          Serialized ReadScanDataResponse proto.
+        </tp:docstring>
       </arg>
     </method>
     <method name="GetNextImage">
