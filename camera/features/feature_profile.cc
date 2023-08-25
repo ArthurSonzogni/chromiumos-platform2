@@ -31,6 +31,10 @@ constexpr char kKeyEnableOn[] = "enable_on";
 constexpr char kKeyModuleId[] = "module_id";
 constexpr char kKeySensorId[] = "sensor_id";
 
+// For now just '*' for a simple wildcard. If we need more complex string
+// matching then we should use re2 library.
+constexpr char kModelNameWildcard[] = "*";
+
 std::optional<FeatureProfile::FeatureType> GetFeatureType(
     const std::string& feature_key) {
   if (feature_key == "auto_framing") {
@@ -194,9 +198,14 @@ void FeatureProfile::OnOptionsUpdated(const base::Value::Dict& json_values) {
   const base::Value::Dict* feature_profile =
       json_values.FindDict(device_metadata_->model_name);
   if (feature_profile == nullptr) {
-    LOGF(INFO) << "Cannot find feature profile as dict for device model "
-               << std::quoted(device_metadata_->model_name);
-    return;
+    feature_profile = json_values.FindDict(kModelNameWildcard);
+    if (feature_profile != nullptr) {
+      LOGF(INFO) << "Using default '*' feature profile";
+    } else {
+      LOGF(INFO) << "Cannot find feature profile as dict for device model "
+                 << std::quoted(device_metadata_->model_name);
+      return;
+    }
   }
 
   // Extract "feature_set" info from the feature profile.

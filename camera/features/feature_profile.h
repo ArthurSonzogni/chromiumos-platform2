@@ -39,7 +39,10 @@ namespace cros {
 //   ...
 // }
 //
-// <model>: String of device model name, e.g. "redrix".
+// <model>: String of device model name, e.g. "redrix", or "*" as a wildcard to
+//          match all models. Precedence is given to exact model matches, i.e.
+//          if both "foo" and "*" are specified, model "foo" will use the
+//          settings in "foo" and other models will use "*".
 // <feature_type>: String for the type of the feature, e.g. "face_detection"
 //                 or "hdrnet".
 // <config_file_path>: String specifying the path to the feature config file.

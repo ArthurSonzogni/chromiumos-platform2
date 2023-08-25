@@ -174,6 +174,65 @@ TEST(FeatureProfile, ModuleAndSensorIdTest) {
   }
 }
 
+TEST(FeatureProfile, ModelWildcardTest) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
+  std::string profile = R"({
+    "*": {
+      "feature_set": [ {
+        "type": "hdrnet",
+        "config_file_path": "/etc/camera/hdrnet_config_default.json"
+      }, {
+        "type": "gcam_ae",
+        "config_file_path": "/etc/camera/gcam_ae_config_default.json"
+      } ]
+    },
+    "acme": {
+      "feature_set": [ {
+        "type": "hdrnet",
+        "config_file_path": "/etc/camera/hdrnet_config.json"
+      }, {
+        "type": "gcam_ae",
+        "config_file_path": "/etc/camera/gcam_ae_config.json"
+      }, {
+        "type": "auto_framing",
+        "config_file_path": "/etc/camera/auto_framing.json"
+      } ]
+    }
+  })";
+
+  // The exact model name match should take precedence.
+  {
+    FeatureProfile::DeviceMetadata metadata = {
+        .model_name = "acme",
+    };
+
+    FeatureProfile p(CreateFakeFeatureProfile(profile), metadata);
+    EXPECT_TRUE(p.IsEnabled(FeatureProfile::FeatureType::kHdrnet));
+    EXPECT_EQ(p.GetConfigFilePath(FeatureProfile::FeatureType::kHdrnet),
+              base::FilePath("/etc/camera/hdrnet_config.json"));
+    EXPECT_TRUE(p.IsEnabled(FeatureProfile::FeatureType::kGcamAe));
+    EXPECT_EQ(p.GetConfigFilePath(FeatureProfile::FeatureType::kGcamAe),
+              base::FilePath("/etc/camera/gcam_ae_config.json"));
+    EXPECT_TRUE(p.IsEnabled(FeatureProfile::FeatureType::kAutoFraming));
+  }
+
+  // Use the default settings if there's no model-specific feature profile set.
+  {
+    FeatureProfile::DeviceMetadata metadata = {
+        .model_name = "foo",
+    };
+
+    FeatureProfile p(CreateFakeFeatureProfile(profile), metadata);
+    EXPECT_TRUE(p.IsEnabled(FeatureProfile::FeatureType::kHdrnet));
+    EXPECT_EQ(p.GetConfigFilePath(FeatureProfile::FeatureType::kHdrnet),
+              base::FilePath("/etc/camera/hdrnet_config_default.json"));
+    EXPECT_TRUE(p.IsEnabled(FeatureProfile::FeatureType::kGcamAe));
+    EXPECT_EQ(p.GetConfigFilePath(FeatureProfile::FeatureType::kGcamAe),
+              base::FilePath("/etc/camera/gcam_ae_config_default.json"));
+    EXPECT_FALSE(p.IsEnabled(FeatureProfile::FeatureType::kAutoFraming));
+  }
+}
 }  // namespace cros
 
 int main(int argc, char** argv) {
