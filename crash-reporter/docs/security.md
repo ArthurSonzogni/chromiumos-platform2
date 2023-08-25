@@ -200,6 +200,10 @@ The scenario is as follows:
 *   User creates a valid crash report (e.g. visit `chrome://crash`).
 *   User edits the `.meta` file created under their chronos-owned
     `/home/chronos/<user_hash>/crash/` spool directory.
+    NOTE: `/home/chronos/<user_hash>/crash/` is no longer used and the relevant
+    directory is now the daemon-store path, either
+    `/run/daemon-store/crash/<user_hash>/` or `/home/root/<user_hash>/crash/`.
+    Both refer to the same directory.
 *   Add a line starting with `upload_` and followed by a sed script.
     e.g. `/p;s^.*^setsid${IFS}bash${IFS}<a-shell-script>${IFS}\&^ep;/=1`.
 *   crash_sender (as root) parses that `.meta` file.
