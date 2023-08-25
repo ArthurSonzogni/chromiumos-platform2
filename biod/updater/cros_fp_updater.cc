@@ -39,7 +39,7 @@ namespace {
 
 constexpr base::TimeDelta kBootSplashScreenLaunchTimeout = base::Seconds(10);
 
-constexpr char kFlashromPath[] = "/usr/sbin/flashrom";
+constexpr char kCrOSECLegacyDrvPath[] = "/opt/sbin/crosec-legacy-drv";
 constexpr char kRebootFile[] = "/tmp/force_reboot_after_fw_update";
 
 bool UpdateImage(const biod::CrosFpDeviceUpdate& ec_dev,
@@ -152,7 +152,8 @@ bool CrosFpDeviceUpdate::Flash(const CrosFpFirmware& fw,
 
   LOG(INFO) << "Flashing " << image_str << " of FPMCU.";
 
-  base::CommandLine cmd{base::FilePath(kFlashromPath)};
+  // TODO: b/138782393 - Replace subprocessing with libec ASAP!
+  base::CommandLine cmd{base::FilePath(kCrOSECLegacyDrvPath)};
   cmd.AppendSwitch("noverify-all");
   cmd.AppendSwitchASCII("programmer", "ec:type=fp");
   cmd.AppendSwitchASCII("image", "EC_" + image_str);
