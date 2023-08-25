@@ -203,6 +203,20 @@ constexpr int kMinEffectsFrameIntervalUs = 0;
 constexpr int kMaxEffectsFrameIntervalUs = 250'000;
 constexpr int kEffectsFrameIntervalBuckets = 100;
 
+// *** Portrait Mode metrics ***
+constexpr char kCameraPortraitModeNumStillShotsTaken[] =
+    "ChromeOS.Camera.PortraitMode.NumStillShotsTaken";
+
+// 0ms -> 2000ms
+constexpr char kCameraPortraitModeAvgLatency[] =
+    "ChromeOS.Camera.PortraitMode.AverageLatency";
+constexpr int kMinPortraitModeLatencyUs = 0;
+constexpr int kMaxPortraitModeLatencyUs = 2'000'000;
+constexpr int kPortraitModeLatencyBuckets = 100;
+
+constexpr char kCameraPortraitModeError[] =
+    "ChromeOS.Camera.PortraitMode.Error";
+
 const char* CameraEffectToString(CameraEffect effect) {
   switch (effect) {
     case CameraEffect::kNone:
@@ -546,6 +560,24 @@ void CameraMetricsImpl::SendEffectsNumStillShotsTaken(int num_shots) {
   metrics_lib_->SendToUMA(kCameraEffectsNumStillShotsTaken, num_shots,
                           kMinNumShotsTaken, kMaxNumShotsTaken,
                           kNumShotsTakenBuckets);
+}
+
+void CameraMetricsImpl::SendPortraitModeNumStillShotsTaken(int num_shots) {
+  metrics_lib_->SendToUMA(kCameraPortraitModeNumStillShotsTaken, num_shots,
+                          kMinNumShotsTaken, kMaxNumShotsTaken,
+                          kNumShotsTakenBuckets);
+}
+
+void CameraMetricsImpl::SendPortraitModeProcessAvgLatency(
+    base::TimeDelta latency) {
+  metrics_lib_->SendToUMA(kCameraPortraitModeAvgLatency,
+                          latency.InMicroseconds(), kMinPortraitModeLatencyUs,
+                          kMaxPortraitModeLatencyUs,
+                          kPortraitModeLatencyBuckets);
+}
+
+void CameraMetricsImpl::SendPortraitModeError(PortraitModeError error) {
+  metrics_lib_->SendEnumToUMA(kCameraPortraitModeError, error);
 }
 
 }  // namespace cros

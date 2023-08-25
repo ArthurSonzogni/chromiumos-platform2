@@ -13,9 +13,12 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/flat_map.h>
+
 #include "common/camera_buffer_pool.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/still_capture_processor.h"
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "features/portrait_mode/portrait_mode_effect.h"
 #include "hardware/camera3.h"
@@ -60,11 +63,21 @@ class PortraitModeStreamManipulator : public StreamManipulator {
     uint32_t orientation = 0;
     bool metadata_received = false;
     bool has_pending_blob = false;
+    // Will be set to `true` if a human face is detected.
+    bool has_portrait_result = false;
     bool has_updated_metadata = false;
     std::optional<CameraBufferPool::Buffer> still_yuv_buffer;
     std::optional<SegmentationResult> segmentation_result;
     // Holds the last partial result if it comes before the buffer returns.
     std::optional<Camera3CaptureDescriptor> pending_result_;
+  };
+
+  struct Metrics {
+    int num_still_shot_taken = 0;
+    int num_portrait_shot_success = 0;
+    base::TimeTicks last_process_time_start;
+    base::TimeDelta accumulated_process_latency = base::Seconds(0);
+    base::flat_map<PortraitModeError, int> errors;
   };
 
   bool InitializeOnThread(const camera_metadata_t* static_info,
@@ -74,9 +87,9 @@ class PortraitModeStreamManipulator : public StreamManipulator {
   bool OnConfiguredStreamsOnThread(Camera3StreamConfiguration* stream_config);
   bool ProcessCaptureRequestOnThread(Camera3CaptureDescriptor* request);
   bool ProcessCaptureResultOnThread(Camera3CaptureDescriptor result);
-
   void ReturnStillCaptureResultOnThread(Camera3CaptureDescriptor result);
   void ResetOnThread();
+  void UploadMetricsOnThread();
 
   bool IsPortraitModeStream(const camera3_stream_t* stream,
                             const StreamEffectMap* stream_effects_map);
@@ -88,6 +101,7 @@ class PortraitModeStreamManipulator : public StreamManipulator {
 
   CameraMojoChannelManagerToken* mojo_manager_token_;
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
+  std::unique_ptr<CameraMetrics> camera_metrics_;
   StreamManipulator::Callbacks callbacks_;
   uint32_t partial_result_count_ = 0;
 
@@ -113,6 +127,7 @@ class PortraitModeStreamManipulator : public StreamManipulator {
   std::map<uint32_t, std::unique_ptr<CaptureContext>> capture_contexts_;
 
   CameraThread thread_;
+  Metrics metrics_;
 };
 
 }  // namespace cros

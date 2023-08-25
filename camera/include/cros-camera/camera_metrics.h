@@ -20,20 +20,24 @@ enum class JpegProcessType { kDecode, kEncode };
 
 enum class JpegProcessMethod { kHardware, kSoftware };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class FaceAeFunction {
   // Doesn't support ROI control.
-  kUnsupported,
+  kUnsupported = 0,
   // Supports ROI control, but doesn't enable face AE.
-  kNotEnabled,
+  kNotEnabled = 1,
   // Supports ROI control and enabled face AE.
-  kEnabled,
+  kEnabled = 2,
   // Supports ROI control and enabled face AE from app, but forcedly disabled by
   // user.
-  kForceDisabled,
+  kForceDisabled = 3,
   // For SendEnumToUMA() usage.
   kMaxValue = kForceDisabled,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class HdrnetStreamConfiguration {
   kSingleYuvStream = 0,
   kSingleYuvStreamWithBlob = 1,
@@ -44,22 +48,30 @@ enum class HdrnetStreamConfiguration {
   kMaxValue = kMultipleYuvStreamsOfDifferentAspectRatioWithBlob,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class HdrnetStreamType {
   // HDRnet stream for YUV output.
-  kYuv,
+  kYuv = 0,
   // HDRnet stream for BLOB output.
-  kBlob
+  kBlob = 1,
+  kMaxValue = kBlob,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class HdrnetProcessingType {
   // Pre-processing of input YUV into linear RGB domain.
-  kPreprocessing,
+  kPreprocessing = 0,
   // Main HDRnet inferencing and rendering.
-  kRgbPipeline,
+  kRgbPipeline = 1,
   // Post-processing of HDRnet RGB output to final YUV output(s).
-  kPostprocessing,
+  kPostprocessing = 2,
+  kMaxValue = kPostprocessing,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class HdrnetError {
   kNoError = 0,
   // Error during HDRnet stream manipulator initialization.
@@ -79,6 +91,8 @@ enum class HdrnetError {
   kMaxValue = kCameraHal3Error,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class AutoFramingError {
   kNoError = 0,
   // Error in auto-framing stream manipulator initialization.
@@ -98,6 +112,8 @@ enum class AutoFramingError {
   kMaxValue = kPipelineOutputError,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class CameraEffect {
   kNone = 0,  // Not used, but kept for consistency
   kBlur = 1,
@@ -106,14 +122,18 @@ enum class CameraEffect {
   kMaxValue = kBlurAndRelight,
 };
 
-// Could use HdrnetStreamType here but that wouldn't
-// read very well.
+// Could use HdrnetStreamType here but that wouldn't read very well.
+//
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class CameraEffectStreamType {
   kYuv = 0,
   kBlob = 1,  // Also JPEG
   kMaxValue = kBlob,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class CameraEffectError {
   kNoError = 0,
   // Error during EffectsStreamManipulator GPU initialization.
@@ -135,6 +155,21 @@ enum class CameraEffectError {
   // Effects pipeline rendering failed.
   kPipelineFailed = 9,
   kMaxValue = kPipelineFailed,
+};
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class PortraitModeError {
+  kNoError = 0,
+  // Error in Portrait Mode stream manipulator initialization.
+  kInitializationError = 1,
+  // Error in Portrait Mode stream manipulator configuration.
+  kConfigurationError = 2,
+  // Error in Portrait Mode stream manipulator processing requests.
+  kProcessRequestError = 3,
+  // Error in Portrait Mode stream manipulator processing results.
+  kProcessResultError = 4,
+  kMaxValue = kProcessResultError,
 };
 
 class CROS_CAMERA_EXPORT CameraMetrics {
@@ -295,6 +330,22 @@ class CROS_CAMERA_EXPORT CameraMetrics {
   // Records the number of EffectsStreamManipulator-rendered still capture shots
   // taken in a session.
   virtual void SendEffectsNumStillShotsTaken(int num_shots) = 0;
+
+  // *** Portrait Mode metrics ***
+
+  // Records the number of still capture shots taken in Portrait Mode per
+  // session.
+  virtual void SendPortraitModeNumStillShotsTaken(int num_shots) = 0;
+
+  // Records the average processing latency of the
+  // PortraitModeStreamManipulator::ProcessCaptureResult() method per session.
+  // This method only takes into account the processing time for successful
+  // portrait photos (human face detected).
+  virtual void SendPortraitModeProcessAvgLatency(base::TimeDelta latency) = 0;
+
+  // Records whether there's an error that can compromise the
+  // Portrait Mode feature.
+  virtual void SendPortraitModeError(PortraitModeError error) = 0;
 };
 
 }  // namespace cros

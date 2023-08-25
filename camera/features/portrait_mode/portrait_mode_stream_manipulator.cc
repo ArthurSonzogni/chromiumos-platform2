@@ -13,6 +13,7 @@
 #include "common/camera_buffer_handle.h"
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_metadata_utils.h"
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/common.h"
 #include "features/portrait_mode/tracing.h"
 
@@ -38,11 +39,16 @@ PortraitModeStreamManipulator::PortraitModeStreamManipulator(
     std::unique_ptr<StillCaptureProcessor> still_capture_processor)
     : mojo_manager_token_(mojo_manager_token),
       still_capture_processor_(std::move(still_capture_processor)),
+      camera_metrics_(CameraMetrics::New()),
       thread_("PortraitModeThread") {
   CHECK(thread_.Start());
 }
 
 PortraitModeStreamManipulator::~PortraitModeStreamManipulator() {
+  thread_.PostTaskSync(
+      FROM_HERE,
+      base::BindOnce(&PortraitModeStreamManipulator::UploadMetricsOnThread,
+                     base::Unretained(this)));
   thread_.Stop();
 }
 
@@ -163,6 +169,7 @@ bool PortraitModeStreamManipulator::InitializeOnThread(
   portrait_mode_ = std::make_unique<PortraitModeEffect>();
   if (portrait_mode_->Initialize(mojo_manager_token_) != 0) {
     LOGF(ERROR) << "Failed to initialize Portrait Mode effect";
+    ++metrics_.errors[PortraitModeError::kInitializationError];
     return false;
   }
 
@@ -227,6 +234,7 @@ bool PortraitModeStreamManipulator::ConfigureStreamsOnThread(
 
   if (!stream_config->SetStreams(hal_streams)) {
     LOGF(ERROR) << "Failed to manipulate stream config";
+    ++metrics_.errors[PortraitModeError::kConfigurationError];
     return false;
   }
 
@@ -274,6 +282,7 @@ bool PortraitModeStreamManipulator::OnConfiguredStreamsOnThread(
   // Restore client config.
   if (!stream_config->SetStreams(client_streams_)) {
     LOGF(ERROR) << "Failed to recover stream config";
+    ++metrics_.errors[PortraitModeError::kConfigurationError];
     return false;
   }
 
@@ -304,8 +313,11 @@ bool PortraitModeStreamManipulator::ProcessCaptureRequestOnThread(
     }
   }
 
+  ++metrics_.num_still_shot_taken;
+
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
   if (!ctx) {
+    ++metrics_.errors[PortraitModeError::kProcessRequestError];
     return false;
   }
 
@@ -334,6 +346,7 @@ bool PortraitModeStreamManipulator::ProcessCaptureRequestOnThread(
     if (!ctx->still_yuv_buffer) {
       LOGF(ERROR) << "Failed to allocate YUV buffer for frame "
                   << request->frame_number();
+      ++metrics_.errors[PortraitModeError::kProcessRequestError];
       return false;
     }
     request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
@@ -414,17 +427,22 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
   }
 
   // Portrait Mode processing.
+  // The client will only submit one request at a time, and will not send
+  // another request until it receives the result. We assume that we only
+  // process one request of portrait mode at a time.
   if (ctx->has_pending_blob && still_yuv_buffer) {
     if (still_yuv_buffer->status() != CAMERA3_BUFFER_STATUS_OK) {
       VLOGF(1) << "Received still YUV buffer with error in result "
                << result.frame_number();
       return false;
     }
+    metrics_.last_process_time_start = base::TimeTicks::Now();
     SegmentationResult seg_result = SegmentationResult::kUnknown;
     if (portrait_mode_->ProcessRequest(*still_yuv_buffer->buffer(),
                                        ctx->orientation, &seg_result,
                                        *ctx->still_yuv_buffer->handle()) != 0) {
       LOGF(ERROR) << "Failed to apply Portrait Mode effect";
+      ++metrics_.errors[PortraitModeError::kProcessResultError];
       return false;
     }
     still_capture_processor_->QueuePendingYuvImage(
@@ -445,7 +463,9 @@ bool PortraitModeStreamManipulator::ProcessCaptureResultOnThread(
       LOGF(ERROR) << "Cannot update kPortraitModeSegmentationResultVendorKey "
                      "in result "
                   << res->frame_number();
+      ++metrics_.errors[PortraitModeError::kProcessResultError];
     }
+    ctx->has_portrait_result = seg_result == SegmentationResult::kSuccess;
     if (ctx->pending_result_) {
       callbacks_.result_callback.Run(std::move(ctx->pending_result_.value()));
       ctx->pending_result_.reset();
@@ -490,6 +510,11 @@ void PortraitModeStreamManipulator::ReturnStillCaptureResultOnThread(
 
   CaptureContext* ctx = GetCaptureContext(result.frame_number());
   DCHECK_NE(ctx, nullptr);
+  if (ctx->has_portrait_result) {
+    ++metrics_.num_portrait_shot_success;
+    metrics_.accumulated_process_latency +=
+        base::TimeTicks::Now() - metrics_.last_process_time_start;
+  }
   ctx->still_yuv_buffer = std::nullopt;
   ctx->has_pending_blob = false;
   if (ctx->num_pending_buffers == 0 && ctx->metadata_received &&
@@ -514,6 +539,48 @@ void PortraitModeStreamManipulator::ResetOnThread() {
   still_yuv_stream_.reset();
   still_yuv_buffer_pool_.reset();
   capture_contexts_.clear();
+}
+
+void PortraitModeStreamManipulator::UploadMetricsOnThread() {
+  CHECK(thread_.IsCurrentThread());
+
+  // Skip sessions if the portrait mode is not enabled in that session.
+  if (!portrait_mode_config_) {
+    return;
+  }
+
+  VLOGF(2) << "Metrics:"
+           << " num_still_shot_taken=" << metrics_.num_still_shot_taken
+           << " num_portrait_shot_success="
+           << metrics_.num_portrait_shot_success
+           << " accumulated_process_latency="
+           << metrics_.accumulated_process_latency;
+  camera_metrics_->SendPortraitModeNumStillShotsTaken(
+      metrics_.num_still_shot_taken);
+
+  if (metrics_.num_portrait_shot_success > 0) {
+    const base::TimeDelta avg_process_latency =
+        metrics_.accumulated_process_latency /
+        metrics_.num_portrait_shot_success;
+    VLOGF(2) << "Average process latency: " << avg_process_latency;
+    camera_metrics_->SendPortraitModeProcessAvgLatency(avg_process_latency);
+  }
+
+  bool has_error = false;
+  for (auto [error, count] : metrics_.errors) {
+    if (count > 0) {
+      // Only report each error once per session.
+      LOGF(ERROR) << "There were " << count << " occurrences of error "
+                  << static_cast<int>(error);
+      camera_metrics_->SendPortraitModeError(error);
+      has_error = true;
+    }
+  }
+  if (!has_error) {
+    camera_metrics_->SendPortraitModeError(PortraitModeError::kNoError);
+  }
+
+  metrics_ = PortraitModeStreamManipulator::Metrics();
 }
 
 bool PortraitModeStreamManipulator::IsPortraitModeStream(

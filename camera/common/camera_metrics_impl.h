@@ -81,6 +81,10 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendEffectsError(CameraEffectError error) override;
   void SendEffectsNumStillShotsTaken(int num_shots) override;
 
+  void SendPortraitModeNumStillShotsTaken(int num_shots) override;
+  void SendPortraitModeProcessAvgLatency(base::TimeDelta latency) override;
+  void SendPortraitModeError(PortraitModeError error) override;
+
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 };

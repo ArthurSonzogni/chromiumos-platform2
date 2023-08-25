@@ -25,5 +25,6 @@ source_set("portrait_mode") {
   deps = [
     "//camera/common:camera_gpu_algorithm",
     "//camera/common:libcros_camera_mojom",
+    "//camera/common:mojo_base",
   ]
 }
