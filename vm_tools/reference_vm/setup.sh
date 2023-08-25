@@ -8,6 +8,7 @@
 #
 set -eux -o pipefail
 
+CODIUM_VERSION="1.81.1.23222"
 CROS_PACKAGES=(
   cros-garcon
   cros-sommelier
@@ -186,6 +187,10 @@ EOF
     -e 's/(DisableAutomaticCrosPackageUpdates=)false/\1true/' \
     -e 's/(DisableAutomaticSecurityUpdates=)false/\1true/' \
     /home/chronos/.config/cros-garcon.conf
+
+  curl -L -o /tmp/codium.deb \
+    "https://github.com/VSCodium/vscodium/releases/download/${CODIUM_VERSION}/codium_${CODIUM_VERSION}_amd64.deb"
+  apt-get install -y /tmp/codium.deb
 
   # TODO(b/271522474): leave networking to NM
   ln -sf /run/resolv.conf /etc/resolv.conf
