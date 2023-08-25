@@ -8,7 +8,6 @@
 #include <gtest/gtest.h>
 #include <libec/ec_usb_endpoint.h>
 #include <libec/fingerprint/fp_info_command.h>
-#include <libec/fingerprint/fp_preload_template_command.h>
 #include <libec/fingerprint/fp_template_command.h>
 #include <libec/mock_ec_command_factory.h>
 
@@ -25,7 +24,6 @@ using ec::FpMode;
 using ec::FpPairingKeyKeygenCommand;
 using ec::FpPairingKeyLoadCommand;
 using ec::FpPairingKeyWrapCommand;
-using ec::FpPreloadTemplateCommand;
 using ec::FpReadMatchSecretWithPubkeyCommand;
 using ec::FpSensorErrors;
 using ec::FpSetNonceContextCommand;
@@ -342,19 +340,6 @@ class CrosFpDevice_UploadTemplate : public testing::Test {
     MOCK_METHOD(uint32_t, Result, (), (override, const));
   };
 
-  class MockFpPreloadTemplateCommand : public FpPreloadTemplateCommand {
-   public:
-    MockFpPreloadTemplateCommand(uint16_t fgr,
-                                 std::vector<uint8_t> tmpl,
-                                 uint16_t max_write_size)
-        : FpPreloadTemplateCommand(fgr, tmpl, max_write_size) {
-      ON_CALL(*this, Run).WillByDefault(Return(true));
-      ON_CALL(*this, Result).WillByDefault(Return(EC_RES_SUCCESS));
-    }
-    MOCK_METHOD(bool, Run, (int fd), (override));
-    MOCK_METHOD(uint32_t, Result, (), (override, const));
-  };
-
   metrics::MockBiodMetrics mock_biod_metrics_;
   ec::MockEcCommandFactory* mock_ec_command_factory_ = nullptr;
   std::unique_ptr<CrosFpDevice> mock_cros_fp_device_;
@@ -402,75 +387,6 @@ TEST_F(CrosFpDevice_UploadTemplate, CommandFailure) {
 
   EXPECT_CALL(mock_biod_metrics_, SendUploadTemplateResult(EC_RES_ERROR));
   EXPECT_FALSE(mock_cros_fp_device_->UploadTemplate(templ));
-}
-
-TEST_F(CrosFpDevice_UploadTemplate, PreloadSuccess) {
-  constexpr size_t kFinger = 1;
-  std::vector<uint8_t> templ;
-
-  EXPECT_CALL(*mock_ec_command_factory_, FpPreloadTemplateCommand)
-      .WillOnce([kFinger](uint16_t fgr, std::vector<uint8_t> tmpl,
-                          uint16_t max_write_size) {
-        EXPECT_EQ(fgr, kFinger);
-        return std::make_unique<NiceMock<MockFpPreloadTemplateCommand>>(
-            fgr, tmpl, max_write_size);
-      });
-
-  EXPECT_TRUE(mock_cros_fp_device_->PreloadTemplate(kFinger, templ));
-}
-
-TEST_F(CrosFpDevice_UploadTemplate, PreloadRunFailure) {
-  constexpr size_t kFinger = 1;
-  std::vector<uint8_t> templ;
-
-  EXPECT_CALL(*mock_ec_command_factory_, FpPreloadTemplateCommand)
-      .WillOnce(
-          [](uint16_t fgr, std::vector<uint8_t> tmpl, uint16_t max_write_size) {
-            auto cmd = std::make_unique<NiceMock<MockFpPreloadTemplateCommand>>(
-                fgr, tmpl, max_write_size);
-            EXPECT_CALL(*cmd, Run).WillRepeatedly(Return(false));
-            return cmd;
-          });
-
-  EXPECT_FALSE(mock_cros_fp_device_->PreloadTemplate(kFinger, templ));
-}
-
-TEST_F(CrosFpDevice_UploadTemplate, PreloadCommandFailure) {
-  constexpr size_t kFinger = 1;
-  std::vector<uint8_t> templ;
-
-  EXPECT_CALL(*mock_ec_command_factory_, FpPreloadTemplateCommand)
-      .WillOnce(
-          [](uint16_t fgr, std::vector<uint8_t> tmpl, uint16_t max_write_size) {
-            auto cmd = std::make_unique<NiceMock<MockFpPreloadTemplateCommand>>(
-                fgr, tmpl, max_write_size);
-            EXPECT_CALL(*cmd, Result).WillRepeatedly(Return(EC_RES_ERROR));
-            return cmd;
-          });
-
-  EXPECT_FALSE(mock_cros_fp_device_->PreloadTemplate(kFinger, templ));
-}
-
-TEST_F(CrosFpDevice_UploadTemplate, ReloadSuccess) {
-  constexpr uint16_t kNumFingers = 3;
-
-  EXPECT_CALL(*mock_ec_command_factory_, FpPreloadTemplateCommand)
-      .Times(kNumFingers)
-      .WillRepeatedly(
-          [](uint16_t fgr, std::vector<uint8_t> tmpl, uint16_t max_write_size) {
-            EXPECT_TRUE(tmpl.empty());
-            return std::make_unique<NiceMock<MockFpPreloadTemplateCommand>>(
-                fgr, tmpl, max_write_size);
-          });
-  EXPECT_CALL(*mock_ec_command_factory_, FpTemplateCommand)
-      .Times(kNumFingers)
-      .WillRepeatedly([](std::vector<uint8_t> tmpl, uint16_t max_write_size) {
-        EXPECT_TRUE(tmpl.empty());
-        return std::make_unique<NiceMock<MockFpTemplateCommand>>(
-            tmpl, max_write_size);
-      });
-
-  EXPECT_TRUE(mock_cros_fp_device_->ReloadTemplates(kNumFingers));
 }
 
 class CrosFpDevice_HwErrors : public testing::Test {

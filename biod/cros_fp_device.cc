@@ -604,6 +604,9 @@ std::unique_ptr<VendorTemplate> CrosFpDevice::GetTemplate(int index) {
 bool CrosFpDevice::PreloadTemplate(size_t idx, const VendorTemplate& tmpl) {
   auto fp_preload_template_cmd = ec_command_factory_->FpPreloadTemplateCommand(
       static_cast<uint16_t>(idx), tmpl, ec_protocol_info_.max_write);
+  if (!fp_preload_template_cmd) {
+    return false;
+  }
 
   if (!fp_preload_template_cmd->Run(cros_fd_.get())) {
     LOG(ERROR) << "Failed to run FP_PRELOAD_TEMPLATE command";
