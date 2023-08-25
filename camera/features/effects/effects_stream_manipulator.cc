@@ -54,6 +54,7 @@
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 #include "ml_core/effects_pipeline.h"
+#include "ml_core/effects_pipeline_types.h"
 #include "ml_core/opencl_caching/constants.h"
 #include "ml_core/opencl_caching/utils.h"
 
@@ -164,6 +165,12 @@ EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
       .segmentation_model_type = static_cast<cros::SegmentationModelType>(
           effects_config->segmentation_model),
   };
+  // Resolve segmentation model from Auto (default) to HD (currently the only
+  // possible value set from Chrome) to avoid resetting the pipeline when the
+  // model changes from Auto to HD.
+  if (config.segmentation_model_type == SegmentationModelType::kAuto) {
+    config.segmentation_model_type = SegmentationModelType::kHd;
+  }
   if (effects_config->background_filepath) {
     base::FilePath path =
         base::FilePath("/run/camera/")
