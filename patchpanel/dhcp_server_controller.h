@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -124,7 +125,7 @@ class DHCPServerController {
   // Callback when the log from dnsmasq is available.
   void OnDnsmasqLogReady();
   // Handles the log from dnsmasq.
-  void HandleDnsmasqLog(const std::string& log);
+  void HandleDnsmasqLog(std::string_view log);
 
   // UMA metrics client.
   MetricsLibraryInterface* metrics_;
@@ -153,6 +154,9 @@ class DHCPServerController {
   std::unique_ptr<base::FileDescriptorWatcher::Controller> log_watcher_;
   // The client's host name, keyed by the MAC address.
   std::map<std::string, std::string> mac_addr_to_hostname_;
+  // The set of all the client's host name, i.e. the set of
+  // |mac_addr_to_hostname_|'s values.
+  std::set<std::string> hostname_set;
 
   base::WeakPtrFactory<DHCPServerController> weak_ptr_factory_{this};
 };

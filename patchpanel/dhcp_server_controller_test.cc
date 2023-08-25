@@ -313,8 +313,9 @@ TEST_F(DHCPServerControllerTest, GetClientHostname) {
   EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
   EXPECT_TRUE(dhcp_server_controller_->Start(config, base::DoNothing()));
 
-  base::WriteFileDescriptor(
-      write_fd(), "DHCPACK(ap0) 172.16.250.98 11:22:33:44:55:66 ChromeOS\n");
+  base::WriteFileDescriptor(write_fd(),
+                            "dnsmasq-dhcp[8201]: 2641710318 DHCPACK(ap0) "
+                            "172.16.250.98 11:22:33:44:55:66 ChromeOS\n");
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(dhcp_server_controller_->GetClientHostname("11:22:33:44:55:66"),

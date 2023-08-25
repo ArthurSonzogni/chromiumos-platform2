@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_tokenizer.h>
@@ -267,10 +268,7 @@ void DHCPServerController::OnDnsmasqLogReady() {
   }
 }
 
-void DHCPServerController::HandleDnsmasqLog(const std::string& log) {
-  // Redirect to syslog.
-  LOG(INFO) << log;
-
+void DHCPServerController::HandleDnsmasqLog(std::string_view log) {
   for (const auto& [msg, event] : kEventTable) {
     if (log.find(msg) != std::string::npos) {
       metrics_->SendEnumToUMA(dhcp_events_metric_name_, event);
@@ -278,14 +276,43 @@ void DHCPServerController::HandleDnsmasqLog(const std::string& log) {
     }
   }
 
-  if (log.find("DHCPACK") != std::string::npos) {
+  // The client hostname is considered PII. We should not print it in syslog.
+  // Before parsing the hostname by "DHCPACK" log, the hostname only appears
+  // with "client provides name: <hostname>". So the steps are:
+  // 1. Skip the log with "client provides name"
+  // 2. Get the hostname from the log: "DHCPACK"
+  // 3. Replace all the known hostnames to "<redacted>"
+  if (log.find("client provides name") != std::string::npos) {
+    return;
+  }
+
+  const size_t pos = log.find("DHCPACK");
+  if (pos != std::string::npos) {
     // The log format: DHCPACK(<iface>) <IP> <MAC address> [hostname]
-    const auto tokens =
-        base::SplitString(log, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
-                          base::SPLIT_WANT_NONEMPTY);
+    const std::vector<std::string_view> tokens =
+        base::SplitStringPiece(log.substr(pos), base::kWhitespaceASCII,
+                               base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     if (tokens.size() >= 4) {
-      mac_addr_to_hostname_[tokens[2]] = tokens[3];
+      // Handle the hostname with whitespace characters.
+      const std::string mac_addr(tokens[2]);
+      const std::string hostname(tokens[3]);
+      mac_addr_to_hostname_[mac_addr] = hostname;
+      hostname_set.insert(hostname);
     }
+  }
+
+  if (hostname_set.empty()) {
+    LOG(INFO) << log;
+  } else {
+    std::vector<std::string> tokens =
+        base::SplitString(log, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
+                          base::SPLIT_WANT_ALL);
+    for (auto& token : tokens) {
+      if (base::Contains(hostname_set, token)) {
+        token = "<redected>";
+      }
+    }
+    LOG(INFO) << base::JoinString(tokens, " ");
   }
 }
 
