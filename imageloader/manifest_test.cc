@@ -9,6 +9,13 @@
 
 namespace imageloader {
 
+TEST(ArtifactsMetaTest, Equality) {
+  EXPECT_EQ((ArtifactsMeta{}), (ArtifactsMeta{.valid = false}));
+  EXPECT_EQ((ArtifactsMeta{.valid = false, .uri = "foo"}),
+            (ArtifactsMeta{.uri = "foo"}));
+  EXPECT_NE((ArtifactsMeta{.uri = "foo"}), (ArtifactsMeta{.uri = "bar"}));
+}
+
 TEST(ManifestTest, ParseManifest) {
   const std::string fs_type = R"("ext4")";
   const std::string is_removable = "true";
@@ -34,6 +41,7 @@ TEST(ManifestTest, ParseManifest) {
   const std::string use_logical_volume = "true";
   const std::string scaled = "true";
   const std::string powerwash_safe = "true";
+  const std::string artifacts_meta = R"({"uri": "gs://some/path"})";
   const std::string manifest_raw = std::string() + R"(
     {
     "critical-update":)" + critical_update +
@@ -71,6 +79,8 @@ TEST(ManifestTest, ParseManifest) {
     "scaled":)" + scaled +
                                    R"(,
     "powerwash-safe":)" + powerwash_safe +
+                                   R"(,
+    "artifacts-meta":)" + artifacts_meta +
                                    R"(
     }
   )";
@@ -99,6 +109,8 @@ TEST(ManifestTest, ParseManifest) {
   EXPECT_TRUE(manifest.use_logical_volume());
   EXPECT_TRUE(manifest.scaled());
   EXPECT_TRUE(manifest.powerwash_safe());
+  EXPECT_EQ(manifest.artifacts_meta(),
+            (ArtifactsMeta{.valid = true, .uri = "gs://some/path"}));
 }
 
 TEST(ManifestTest, ParseManifestNoOptional) {
@@ -142,10 +154,37 @@ TEST(ManifestTest, ParseManifestNoOptional) {
   EXPECT_FALSE(manifest.use_logical_volume());
   EXPECT_FALSE(manifest.scaled());
   EXPECT_FALSE(manifest.powerwash_safe());
+  EXPECT_EQ(manifest.artifacts_meta(), (ArtifactsMeta{.valid = false}));
 
   // Sizes should default to 0.
   EXPECT_EQ(manifest.preallocated_size(), 0);
   EXPECT_EQ(manifest.size(), 0);
+}
+
+TEST(ManifestTest, BadArtifactsMeta) {
+  const std::string is_removable = "true";
+  const std::string table_sha256_hash =
+      R"("0E11DA3D7140C6B95496787F50D15152434EBA22B60443BFA7E054FF4C799276")";
+  const std::string version = R"("9824.0.4")";
+  const std::string manifest_version = "1";
+  const std::string bad_artifacts_meta = R"({"uri": 1})";
+  const std::string manifest_raw = std::string() + R"(
+    {
+    "is-removable":)" + is_removable +
+                                   R"(,
+    "table-sha256-hash":)" + table_sha256_hash +
+                                   R"(,
+    "version":)" + version + R"(,
+    "manifest-version":)" + manifest_version +
+                                   R"(,
+    "artifacts-meta":)" + bad_artifacts_meta +
+                                   R"(
+    }
+  )";
+  Manifest manifest;
+  // Parse the manifest raw string.
+  ASSERT_FALSE(manifest.ParseManifest(manifest_raw));
+  EXPECT_FALSE(manifest.artifacts_meta().valid);
 }
 
 TEST(ManifestTest, ParseManifestNoImageHash) {
@@ -301,7 +340,9 @@ TEST(ManifestTest, ParseManifestValueDict) {
           .Set("manifest-version", 1)
           .Set("use-logical-volume", true)
           .Set("scaled", true)
-          .Set("powerwash-safe", true);
+          .Set("powerwash-safe", true)
+          .Set("artifacts-meta",
+               base::Value::Dict().Set("uri", "gs://some/path"));
   Manifest manifest;
   // Parse the manifest dict.
   ASSERT_TRUE(manifest.ParseManifest(manifest_dict));
@@ -327,6 +368,8 @@ TEST(ManifestTest, ParseManifestValueDict) {
   EXPECT_TRUE(manifest.use_logical_volume());
   EXPECT_TRUE(manifest.scaled());
   EXPECT_TRUE(manifest.powerwash_safe());
+  EXPECT_EQ(manifest.artifacts_meta(),
+            (ArtifactsMeta{.valid = true, .uri = "gs://some/path"}));
 }
 
 TEST(ManifestTest, ManifestComparesEqual) {

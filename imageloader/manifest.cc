@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
 #include <optional>
 #include <utility>
 
@@ -50,6 +49,8 @@ constexpr char kDescription[] = "description";
 constexpr char kUseLogicalVolume[] = "use-logical-volume";
 constexpr char kScaled[] = "scaled";
 constexpr char kPowerwashSafe[] = "powerwash-safe";
+constexpr char kArtifactsMeta[] = "artifacts-meta";
+constexpr char kArtifactsMetaUriKey[] = "uri";
 
 bool GetSHA256FromString(const std::string& hash_str,
                          std::vector<uint8_t>* bytes) {
@@ -77,6 +78,31 @@ bool ParseMetadata(const base::Value& metadata,
     (*out_metadata)[item.first] = item.second.GetString();
   }
 
+  return true;
+}
+
+bool ParseArtifactsMeta(const base::Value& artifacts_meta,
+                        ArtifactsMeta* artifacts_meta_out) {
+  static const auto kInvalid = ArtifactsMeta{.valid = false};
+  auto* dict = artifacts_meta.GetIfDict();
+
+  if (!dict) {
+    *artifacts_meta_out = kInvalid;
+    return false;
+  }
+
+  for (const auto& item : *dict) {
+    if (item.first == kArtifactsMetaUriKey) {
+      auto* opt_uri = item.second.GetIfString();
+      if (!opt_uri) {
+        LOG(ERROR) << "Artifacts meta URI value is not a string.";
+        *artifacts_meta_out = kInvalid;
+        return false;
+      }
+      artifacts_meta_out->uri = *opt_uri;
+    }
+  }
+  artifacts_meta_out->valid = true;
   return true;
 }
 
@@ -111,7 +137,8 @@ bool Manifest::operator==(const Manifest& rhs) const {
       metadata() == rhs.metadata() &&
       use_logical_volume() == rhs.use_logical_volume() &&
       scaled() == rhs.scaled() &&
-      powerwash_safe() == rhs.powerwash_safe();
+      powerwash_safe() == rhs.powerwash_safe() &&
+      artifacts_meta() == rhs.artifacts_meta();
 }
 // clang-format on
 
@@ -273,6 +300,14 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
   if (metadata) {
     if (!ParseMetadata(*metadata, &metadata_)) {
       LOG(ERROR) << "Manifest metadata was malformed";
+      return false;
+    }
+  }
+
+  auto* artifacts_meta = manifest_dict.Find(kArtifactsMeta);
+  if (artifacts_meta) {
+    if (!ParseArtifactsMeta(*artifacts_meta, &artifacts_meta_)) {
+      LOG(ERROR) << "Failed to parse artifacts meta.";
       return false;
     }
   }

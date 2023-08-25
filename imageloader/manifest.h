@@ -17,6 +17,16 @@ namespace imageloader {
 // The supported file systems for images.
 enum class BRILLO_EXPORT FileSystem { kExt4, kSquashFS };
 
+// The artifacts meta(data) for DLC images.
+struct BRILLO_EXPORT ArtifactsMeta {
+  bool valid = false;
+  std::string uri;
+
+  auto operator<=>(const ArtifactsMeta&) const = default;
+};
+
+using ArtifactsMeta = struct ArtifactsMeta;
+
 // A class to parse and store imageloader.json manifest. See manifest.md.
 //
 // NOTE: For developers, remember to update manifest.md when adding/removing
@@ -67,6 +77,7 @@ class BRILLO_EXPORT Manifest {
   bool use_logical_volume() const { return use_logical_volume_; }
   bool scaled() const { return scaled_; }
   bool powerwash_safe() const { return powerwash_safe_; }
+  const ArtifactsMeta& artifacts_meta() const { return artifacts_meta_; }
 
  private:
   // Required manifest fields:
@@ -96,6 +107,9 @@ class BRILLO_EXPORT Manifest {
   bool use_logical_volume_ = false;
   bool scaled_ = false;
   bool powerwash_safe_ = false;
+  ArtifactsMeta artifacts_meta_{
+      .valid = false,
+  };
 };
 
 }  // namespace imageloader
