@@ -122,7 +122,9 @@ void MiddlewareOwner::InitBackend() {
     }
     proxy_ = std::move(proxy);
     backend_ = std::make_unique<BackendTpm2>(
-        *proxy_, Derive(), base::FilePath(kSignInHashTreeDir));
+        *proxy_, Derive(),
+        /* pw_hash_tree_dir */ base::FilePath(kSignInHashTreeDir),
+        /* metrics */ metrics_.get());
   });
   OTHER_TPM_SECTION({
     LOG(ERROR) << "Calling on unsupported TPM platform.";

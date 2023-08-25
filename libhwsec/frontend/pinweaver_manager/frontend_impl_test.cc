@@ -112,7 +112,8 @@ class PinWeaverManagerImplTest : public ::testing::Test {
 
   void InitLEManager() {
     auto backend = std::make_unique<BackendTpm2>(
-        *proxy_, MiddlewareDerivative{}, CredDirPath());
+        *proxy_, MiddlewareDerivative{}, /* pw_hash_tree_dir */ CredDirPath(),
+        /* metrics */ nullptr);
     backend_ = backend.get();
 
     middleware_owner_.reset();

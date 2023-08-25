@@ -10,7 +10,9 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
+#include "libhwsec/backend/pinweaver_manager/sync_hash_tree_types.h"
 #include "libhwsec/error/tpm_error.h"
+#include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 
 namespace {
@@ -52,6 +54,19 @@ bool TPMRetryHandler::FlushInvalidSessions(hwsec::Backend& backend) {
   }
   if (Status status = session_mgr->FlushInvalidSessions(); !status.ok()) {
     LOG(WARNING) << "Failed to flush invalid sessions: " << status.status();
+    return false;
+  }
+  return true;
+}
+
+bool TPMRetryHandler::SyncPinWeaverHashTree(hwsec::Backend& backend) {
+  auto* pinweaver_manager = backend.Get<Backend::PinWeaverManager>();
+  if (pinweaver_manager == nullptr) {
+    return false;
+  }
+  if (Status status = pinweaver_manager->SyncHashTree(); !status.ok()) {
+    LOG(WARNING) << "Failed to sync pinweaver hash tree: "
+                 << status.err_status();
     return false;
   }
   return true;

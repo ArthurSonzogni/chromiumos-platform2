@@ -12,11 +12,14 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <brillo/files/file_util.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "libhwsec/backend/pinweaver.h"
 #include "libhwsec/backend/pinweaver_manager/sign_in_hash_tree.h"
+#include "libhwsec/backend/pinweaver_manager/sync_hash_tree_types.h"
 #include "libhwsec/error/pinweaver_error.h"
 #include "libhwsec/error/tpm_error.h"
 #include "libhwsec/error/tpm_retry_action.h"
@@ -30,10 +33,11 @@ constexpr uint32_t kBitsPerLevel = 2;
 
 }  // namespace
 
-using hwsec_foundation::status::OkStatus;
 using CredentialTreeResult = hwsec::PinWeaver::CredentialTreeResult;
 using GetLogResult = hwsec::PinWeaver::GetLogResult;
+using hwsec_foundation::GetSecureRandom;
 using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
 
 namespace hwsec {
 
@@ -283,6 +287,62 @@ PinWeaverManagerImpl::StartBiometricsAuth(uint8_t auth_channel,
   return reply;
 }
 
+Status PinWeaverManagerImpl::SyncHashTree() {
+  if (Status status = StateIsReady(); !status.ok()) {
+    ReportSyncOutcome(SyncOutcome::kStateNotReady);
+    return MakeStatus<TPMError>(
+               "Attempted to SyncHashTree but state isn't ready")
+        .Wrap(std::move(status));
+  }
+
+  brillo::Blob disk_root_hash;
+  LOG(WARNING)
+      << "PinWeaver HashCache is stale; reconstruct the hash tree locally.";
+  hash_tree_->GenerateAndStoreHashCache();
+  hash_tree_->GetRootHash(disk_root_hash);
+
+  // If we don't have the root hash, get it by sending the PW GetLog command.
+  if (root_hash_.empty()) {
+    hwsec::StatusOr<GetLogResult> result = pinweaver_.GetLog(disk_root_hash);
+    if (!result.ok()) {
+      is_locked_ = true;
+      ReportSyncOutcome(SyncOutcome::kGetLogFailed);
+      return MakeStatus<TPMError>("Couldn't get pinweaver log from GSC")
+          .Wrap(std::move(result).err_status());
+    }
+    root_hash_ = result->root_hash;
+  }
+
+  if (disk_root_hash == root_hash_) {
+    ReportSyncOutcome(SyncOutcome::kSuccessAfterLocalReconstruct);
+    return OkStatus();
+  }
+
+  // Get the log again, since |disk_root_hash| may have changed.
+  std::vector<GetLogResult::LogEntry> log;
+  hwsec::StatusOr<GetLogResult> result = pinweaver_.GetLog(disk_root_hash);
+  if (!result.ok()) {
+    is_locked_ = true;
+    ReportSyncOutcome(SyncOutcome::kGetLogFailed);
+    return MakeStatus<TPMError>("Couldn't get pinweaver log from GSC")
+        .Wrap(std::move(result).err_status());
+  }
+  root_hash_ = result->root_hash;
+  log = std::move(result->log_entries);
+
+  LOG(WARNING) << "PinWeaver hash tree sync loss between OS and GSC, "
+                  "attempting log replay.";
+  ReportSyncOutcome(SyncOutcome::kLogReplay);
+
+  Status replay_result = ReplayLogEntries(log, disk_root_hash);
+  if (!replay_result.ok()) {
+    is_locked_ = true;
+    return MakeStatus<TPMError>("Replay log failed")
+        .Wrap(std::move(replay_result).err_status());
+  }
+  return OkStatus();
+}
+
 StatusOr<brillo::Blob> PinWeaverManagerImpl::GetCredentialMetadata(
     uint64_t label) {
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
@@ -455,6 +515,183 @@ Status PinWeaverManagerImpl::UpdateHashTree(const SignInHashTree::Label& label,
             TPMRetryAction::kReboot);
       }
   }
+}
+
+Status PinWeaverManagerImpl::ReplayInsert(const LogEntry& log_entry) {
+  const uint64_t& label = log_entry.label;
+  const brillo::Blob& mac = log_entry.mac;
+  LOG(INFO) << "Replaying insert for label " << label;
+
+  // Fill cred_metadata with some random data since LECredentialManager
+  // considers empty cred_metadata as a non-existent label.
+  brillo::Blob cred_metadata(mac.size());
+  GetSecureRandom(cred_metadata.data(), cred_metadata.size());
+  SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
+
+  RETURN_IF_ERROR(UpdateHashTree(label_obj, &cred_metadata, &mac,
+                                 UpdateHashTreeType::kReplayInsertLeaf))
+      .WithStatus<TPMError>(
+          "InsertCredentialReplay disk update failed, label: " +
+          std::to_string(label));
+  return MatchLogRootAfterReplayOperation(log_entry.root);
+}
+
+Status PinWeaverManagerImpl::ReplayCheck(const LogEntry& log_entry) {
+  const uint64_t& label = log_entry.label;
+  const brillo::Blob& log_root = log_entry.root;
+  LOG(INFO) << "Replaying check for label " << label;
+
+  SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+  RETURN_IF_ERROR(
+      RetrieveLabelInfo(label_obj, h_aux, orig_cred, orig_mac, metadata_lost));
+
+  ASSIGN_OR_RETURN(hwsec::StatusOr<PinWeaver::ReplayLogOperationResult> result,
+                   pinweaver_.ReplayLogOperation(log_root, h_aux, orig_cred),
+                   _.WithStatus<TPMError>(
+                       "Auth replay failed on pinweaver backend(GSC), label: " +
+                       std::to_string(label)));
+
+  // Store the new credential metadata and MAC.
+  if (!result->new_cred_metadata.empty() && !result->new_mac.empty()) {
+    RETURN_IF_ERROR(UpdateHashTree(label_obj, &result->new_cred_metadata,
+                                   &result->new_mac,
+                                   UpdateHashTreeType::kUpdateLeaf))
+        .WithStatus<TPMError>(
+            "Error in pinweaver auth replay disk hash tree update, label: " +
+            std::to_string(label));
+  }
+
+  return MatchLogRootAfterReplayOperation(log_root);
+}
+
+Status PinWeaverManagerImpl::ReplayResetTree() {
+  LOG(INFO) << "Replaying tree reset";
+
+  hash_tree_.reset();
+  if (!brillo::DeletePathRecursively(basedir_)) {
+    return MakeStatus<TPMError>("Failed to delete disk hash tree during replay",
+                                TPMRetryAction::kReboot);
+  }
+
+  auto new_hash_tree =
+      std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel, basedir_);
+  if (!new_hash_tree->IsValid()) {
+    return MakeStatus<TPMError>(
+        "Failed to initialize pinweaver credential manager:"
+        "invalid hash tree",
+        TPMRetryAction::kNoRetry);
+  }
+
+  hash_tree_ = std::move(new_hash_tree);
+  hash_tree_->GenerateAndStoreHashCache();
+  return OkStatus();
+}
+
+Status PinWeaverManagerImpl::ReplayRemove(const LogEntry& log_entry) {
+  const uint64_t& label = log_entry.label;
+  LOG(INFO) << "Replaying remove for label " << label;
+
+  SignInHashTree::Label label_obj(label, kLengthLabels, kBitsPerLevel);
+  brillo::Blob cred_metadata, mac;
+  RETURN_IF_ERROR(UpdateHashTree(label_obj, nullptr, nullptr,
+                                 UpdateHashTreeType::kRemoveLeaf))
+      .WithStatus<TPMError>("RemoveLabel Replay failed for label: " +
+                            std::to_string(label));
+  return MatchLogRootAfterReplayOperation(log_entry.root);
+}
+
+Status PinWeaverManagerImpl::MatchLogRootAfterReplayOperation(
+    const brillo::Blob& log_root) {
+  brillo::Blob cur_root_hash;
+  hash_tree_->GetRootHash(cur_root_hash);
+  if (cur_root_hash != log_root) {
+    return MakeStatus<TPMError>(
+        "Root hash doesn't match log root after replaying entry",
+        TPMRetryAction::kNoRetry);
+  }
+  return OkStatus();
+}
+
+Status PinWeaverManagerImpl::ReplayLogEntries(
+    const std::vector<GetLogResult::LogEntry>& log,
+    const brillo::Blob& disk_root_hash) {
+  // The log entries are in reverse chronological order. Because the log entries
+  // only store the root hash after the operation, the strategy here is:
+  // - Parse the logs in reverse.
+  // - First try to find a log entry which matches the on-disk root hash,
+  //   and start with the log entry following that. If you can't, then just
+  //   start from the earliest log.
+  // - For all other entries, simply attempt to replay the operation.
+  auto it = log.rbegin();
+  for (; it != log.rend(); ++it) {
+    const GetLogResult::LogEntry& log_entry = *it;
+    if (log_entry.root == disk_root_hash) {
+      // 1-based count, zero indicates no root hash match.
+      LOG(INFO) << "Starting replay at log entry #" << it - log.rbegin();
+      ++it;
+      break;
+    }
+  }
+
+  ReplayEntryType replay_type(ReplayEntryType::kNormal);
+  if (it == log.rend()) {
+    LOG(WARNING) << "No matching root hash, starting replay at oldest entry";
+    it = log.rbegin();
+    replay_type = ReplayEntryType::kMismatchedHash;
+  }
+
+  std::vector<uint64_t> inserted_leaves;
+  for (; it != log.rend(); ++it) {
+    const GetLogResult::LogEntry& log_entry = *it;
+    Status ret;
+    switch (log_entry.type) {
+      case GetLogResult::LogEntryType::kInsert:
+        ret = ReplayInsert(log_entry);
+        if (ret.ok()) {
+          inserted_leaves.push_back(log_entry.label);
+        }
+        break;
+      case GetLogResult::LogEntryType::kRemove:
+        ret = ReplayRemove(log_entry);
+        break;
+      case GetLogResult::LogEntryType::kCheck:
+        ret = ReplayCheck(log_entry);
+        break;
+      case GetLogResult::LogEntryType::kReset:
+        ret = ReplayResetTree();
+        break;
+      case GetLogResult::LogEntryType::kInvalid:
+        ReportLogReplayResult(replay_type, LogReplayResult::kInvalidLogEntry);
+        return MakeStatus<TPMError>("Invalid log entry from GSC",
+                                    TPMRetryAction::kNoRetry);
+    }
+    ReportReplayOperationResult(replay_type, log_entry.type, ret);
+    if (!ret.ok()) {
+      ReportLogReplayResult(replay_type, LogReplayResult::kOperationFailed);
+      return MakeStatus<TPMError>("Failure to replay pinweaver log entries")
+          .Wrap(std::move(ret));
+    }
+    // Update the replay_type for the following entry (if exists). Currently GSC
+    // only has two entries.
+    replay_type = ReplayEntryType::kSecondEntry;
+  }
+
+  // Remove any inserted leaves since they are unusable.
+  for (const auto& label : inserted_leaves) {
+    if (Status ret = RemoveCredential(label); !ret.ok()) {
+      ReportLogReplayResult(replay_type,
+                            LogReplayResult::kRemoveInsertedCredentialsError);
+      return MakeStatus<TPMError>("Failed to remove re-inserted label: " +
+                                  std::to_string(label))
+          .Wrap(std::move(ret));
+    }
+  }
+
+  ReportLogReplayResult(replay_type, LogReplayResult::kSuccess);
+  return OkStatus();
 }
 
 }  // namespace hwsec

@@ -26,8 +26,9 @@ void BackendTpm2TestBase::SetUp() {
   proxy_ = std::make_unique<ProxyForTest>();
   base::ScopedTempDir tmp_dir_;
   CHECK(tmp_dir_.CreateUniqueTempDir());
-  auto backend = std::make_unique<BackendTpm2>(*proxy_, MiddlewareDerivative{},
-                                               tmp_dir_.GetPath());
+  auto backend = std::make_unique<BackendTpm2>(
+      *proxy_, MiddlewareDerivative{},
+      /* pw_hash_tree_dir */ tmp_dir_.GetPath(), /* metrics */ nullptr);
   backend_ = backend.get();
 
   middleware_owner_ = std::make_unique<MiddlewareOwner>(

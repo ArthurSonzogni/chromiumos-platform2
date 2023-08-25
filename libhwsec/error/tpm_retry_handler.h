@@ -57,7 +57,9 @@ class TPMRetryHandler {
           ((retry |= ReloadObject(backend, args)), ...);
         }
         break;
-
+      case TPMRetryAction::kPinWeaverOutOfSync:
+        retry |= SyncPinWeaverHashTree(backend);
+        break;
       case TPMRetryAction::kCommunication:
         retry = true;
         break;
@@ -89,6 +91,8 @@ class TPMRetryHandler {
   bool ReloadObject(hwsec::Backend& backend, const Key& key);
 
   bool FlushInvalidSessions(hwsec::Backend& backend);
+
+  bool SyncPinWeaverHashTree(hwsec::Backend& backend);
 
   int remaining_try_count_;
   base::TimeDelta current_delay_;

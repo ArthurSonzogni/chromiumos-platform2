@@ -45,7 +45,8 @@ class BackendTpm2 : public Backend {
  public:
   BackendTpm2(Proxy& proxy,
               MiddlewareDerivative middleware_derivative,
-              const base::FilePath& pw_hash_tree_dir);
+              const base::FilePath& pw_hash_tree_dir,
+              Metrics* metrics);
 
   ~BackendTpm2() override;
 

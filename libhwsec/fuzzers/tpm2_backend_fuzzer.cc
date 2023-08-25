@@ -477,7 +477,7 @@ void FuzzMain(FuzzedDataProvider& data_provider) {
   base::ScopedTempDir tmp_dir_;
   CHECK(tmp_dir_.CreateUniqueTempDir());
   auto backend = std::make_unique<BackendTpm2>(proxy, MiddlewareDerivative{},
-                                               tmp_dir_.GetPath());
+                                               tmp_dir_.GetPath(), nullptr);
   BackendTpm2* backend_ptr = backend.get();
   auto middleware_owner = std::make_unique<MiddlewareOwner>(
       std::move(backend), ThreadingMode::kCurrentThread);

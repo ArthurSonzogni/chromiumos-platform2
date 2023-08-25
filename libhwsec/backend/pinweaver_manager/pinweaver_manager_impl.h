@@ -14,9 +14,11 @@
 
 #include "libhwsec/backend/pinweaver.h"
 #include "libhwsec/backend/pinweaver_manager/sign_in_hash_tree.h"
+#include "libhwsec/middleware/metrics.h"
 #include "libhwsec/status.h"
 
 using CredentialTreeResult = hwsec::PinWeaver::CredentialTreeResult;
+using LogEntry = hwsec::PinWeaver::GetLogResult::LogEntry;
 namespace hwsec {
 
 // Class containing all logic pertaining to management of Low Entropy(LE)
@@ -40,8 +42,10 @@ class PinWeaverManagerImpl : public PinWeaverManager {
     kMaxValue = kReplayInsertLeaf,
   };
 
-  PinWeaverManagerImpl(PinWeaver& pinweaver, const base::FilePath& le_basedir)
-      : pinweaver_(pinweaver), basedir_(le_basedir) {}
+  PinWeaverManagerImpl(PinWeaver& pinweaver,
+                       const base::FilePath& le_basedir,
+                       Metrics* metrics)
+      : pinweaver_(pinweaver), basedir_(le_basedir), metrics_(metrics) {}
 
   virtual ~PinWeaverManagerImpl() {}
 
@@ -82,6 +86,8 @@ class PinWeaverManagerImpl : public PinWeaverManager {
       uint8_t auth_channel,
       uint64_t label,
       const brillo::Blob& client_nonce) override;
+
+  Status SyncHashTree() override;
 
  private:
   // Performs checks to ensure the SignInHashTree is at good state. This
@@ -143,6 +149,67 @@ class PinWeaverManagerImpl : public PinWeaverManager {
                         const brillo::Blob* cred_metadata,
                         const brillo::Blob* mac,
                         UpdateHashTreeType update_type);
+  // Replays the InsertCredential operation using the information provided
+  // from the log entry from the LE credential backend.
+  // |label| denotes which label to perform the operation on,
+  // |log_root| is what the root hash should be after this operation is
+  // completed. It should directly be used from the log entry.
+  // |mac| is the MAC of the credential which has to be inserted.
+  //
+  // NOTE: A replayed insert is unusable and should be deleted after the replay
+  // is complete.
+  Status ReplayInsert(const LogEntry& log_entry);
+
+  // Replays the CheckCredential / ResetCredential operation using the
+  // information provided from the log entry from the LE credential
+  // backend.
+  // |label| denotes which credential label to perform the operation on.
+  // |log_root| is what the root hash should be after this operation is
+  // completed. It should directly be used from the log entry.
+  // |is_full_replay| is whether the log_replay is done with successfully
+  // locating the current root hash in the log entries, or done with replaying
+  // using all entries.
+  Status ReplayCheck(const LogEntry& log_entry);
+
+  // Resets the HashTree.
+  Status ReplayResetTree();
+
+  // Replays the RemoveCredential for |label| which is provided from
+  // the LE Backend Replay logs.
+  Status ReplayRemove(const LogEntry& log_entry);
+
+  // Check whether the current root hash in cache is same as |log_root|.
+  // This is expected to be called in replay operations (except
+  // ReplayResetRree).
+  Status MatchLogRootAfterReplayOperation(const brillo::Blob& log_root);
+
+  // Replays all the log operations provided in |log|, and makes the
+  // corresponding updates to the HashTree.
+  Status ReplayLogEntries(
+      const std::vector<PinWeaver::GetLogResult::LogEntry>& log,
+      const brillo::Blob& disk_root_hash);
+
+  void ReportSyncOutcome(SyncOutcome result) {
+    if (metrics_) {
+      metrics_->SendPinWeaverSyncOutcomeToUMA(result);
+    }
+  }
+
+  void ReportLogReplayResult(ReplayEntryType type, LogReplayResult result) {
+    if (metrics_) {
+      metrics_->SendPinWeaverLogReplayResultToUMA(type, result);
+    }
+  }
+
+  void ReportReplayOperationResult(
+      ReplayEntryType replay_type,
+      PinWeaver::GetLogResult::LogEntryType entry_type,
+      const Status& status) {
+    if (metrics_) {
+      metrics_->SendPinWeaverReplayOperationResultToUMA(replay_type, entry_type,
+                                                        status);
+    }
+  }
 
   // Last resort flag which prevents any further Low Entropy operations from
   // occurring, till the next time the class is instantiated.
@@ -165,6 +232,7 @@ class PinWeaverManagerImpl : public PinWeaverManager {
   PinWeaver& pinweaver_;
   // Directory where all pinweaver credential related data is stored.
   base::FilePath basedir_;
+  Metrics* metrics_;
   std::unique_ptr<SignInHashTree> hash_tree_;
 };
 

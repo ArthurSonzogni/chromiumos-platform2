@@ -10,6 +10,7 @@
 #include <optional>
 #include <vector>
 
+#include "libhwsec/backend/pinweaver_manager/sync_hash_tree_types.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
 
@@ -121,6 +122,15 @@ class PinWeaverManager {
       uint8_t auth_channel,
       uint64_t label,
       const brillo::Blob& client_nonce) = 0;
+
+  // Performs checks to ensure the SignInHashTree is in sync with the tree
+  // state in the PinWeaverManagerBackend. If there is an out-of-sync situation,
+  // this function also attempts to get the HashTree back in sync.
+  //
+  // Returns OkStatus on successful synchronization, and false on failure.
+  // On failure, |is_locked_| will be set to true, to prevent further
+  // operations during the class lifecycle.
+  virtual Status SyncHashTree() = 0;
 };
 
 };  // namespace hwsec

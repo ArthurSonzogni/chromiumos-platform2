@@ -7,10 +7,13 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include <metrics/metrics_library.h>
 
+#include "libhwsec/backend/pinweaver.h"
+#include "libhwsec/backend/pinweaver_manager/sync_hash_tree_types.h"
 #include "libhwsec/status.h"
 
 #ifndef BUILD_LIBHWSEC
@@ -18,6 +21,8 @@
 #endif
 
 namespace hwsec {
+
+using LogEntryType = PinWeaver::GetLogResult::LogEntryType;
 
 class Metrics : private MetricsLibrary {
  public:
@@ -30,6 +35,13 @@ class Metrics : private MetricsLibrary {
   Metrics(const Metrics&) = delete;
 
   bool SendFuncResultToUMA(const std::string& func_name, const Status& status);
+
+  bool SendPinWeaverSyncOutcomeToUMA(SyncOutcome result);
+  bool SendPinWeaverLogReplayResultToUMA(ReplayEntryType type,
+                                         LogReplayResult result);
+  bool SendPinWeaverReplayOperationResultToUMA(ReplayEntryType replay_type,
+                                               LogEntryType entry_type,
+                                               const Status& status);
 
  private:
   MetricsLibraryInterface* metrics_{this};

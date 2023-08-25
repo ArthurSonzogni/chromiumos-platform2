@@ -45,6 +45,8 @@ class MockPinWeaverManager : public PinWeaverManager {
     ON_CALL(*this, StartBiometricsAuth)
         .WillByDefault(
             Invoke(default_, &PinWeaverManager::StartBiometricsAuth));
+    ON_CALL(*this, SyncHashTree)
+        .WillByDefault(Invoke(default_, &PinWeaverManager::SyncHashTree));
   }
 
   MOCK_METHOD(StatusOr<uint64_t>,
@@ -97,6 +99,7 @@ class MockPinWeaverManager : public PinWeaverManager {
                uint64_t label,
                const brillo::Blob& client_nonce),
               (override));
+  MOCK_METHOD(Status, SyncHashTree, (), (override));
 
  private:
   PinWeaverManager* default_;
