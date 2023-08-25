@@ -59,6 +59,10 @@ used like this:
 
 ```
 precrosvm:/usr/local/bin/strace
+precrosvm:-T
+precrosvm:-ttt
+precrosvm:--decode-fds=path
+precrosvm:--decode-pids=comm
 precrosvm:-f
 precrosvm:-o
 precrosvm:/run/vm/crosvm_strace
