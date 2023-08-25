@@ -35,8 +35,12 @@ class CecServiceDBusAdaptor : public org::chromium::CecServiceAdaptor,
   // org::chromium::CecServiceInterface overrides; D-Bus methods.
   void GetTvsPowerStatus(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                              std::vector<int32_t>>> response) override;
-  bool SendStandByToAllDevices(brillo::ErrorPtr* error) override;
-  bool SendWakeUpToAllDevices(brillo::ErrorPtr* error) override;
+  void SendStandByToAllDevices(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
+      override;
+  void SendWakeUpToAllDevices(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
+      override;
 
  private:
   CecFdOpenerImpl cec_fd_opener_;

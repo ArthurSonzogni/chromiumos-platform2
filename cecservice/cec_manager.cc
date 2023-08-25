@@ -63,6 +63,13 @@ struct CecManager::TvsPowerStatusQuery {
   std::map<base::FilePath, TvPowerStatusResult> responses;
 };
 
+struct CecManager::PowerChangeRequest {
+  // Callback to invoke when messages have been sent to all devices.
+  PowerChangeSentCallback callback;
+  // Device nodes where messages have been sent so far.
+  std::map<base::FilePath, bool> sent;
+};
+
 CecManager::CecManager(const UdevFactory& udev_factory,
                        const CecDeviceFactory& cec_factory)
     : cec_factory_(cec_factory) {
@@ -100,17 +107,51 @@ void CecManager::GetTvsPowerStatus(GetTvsPowerStatusCallback callback) {
   }
 }
 
-void CecManager::SetWakeUp() {
-  VLOG(1) << "Received wake up request";
+CecManager::QueryId CecManager::CreatePowerChangeRequest(
+    PowerChangeSentCallback callback) {
+  PowerChangeRequest request{std::move(callback)};
+
   for (auto& kv : devices_) {
-    kv.second->SetWakeUp();
+    request.sent.insert(std::make_pair(kv.first, false));
+  }
+
+  QueryId id = next_power_change_id_++;
+  power_change_requests_.insert(std::make_pair(id, std::move(request)));
+
+  return id;
+}
+
+void CecManager::SetWakeUp(PowerChangeSentCallback callback) {
+  VLOG(1) << "Received wake up request";
+
+  if (devices_.empty()) {
+    std::move(callback).Run();
+    return;
+  }
+
+  auto id = CreatePowerChangeRequest(std::move(callback));
+
+  for (auto& kv : devices_) {
+    kv.second->SetWakeUp(base::BindOnce(&CecManager::OnPowerChangeSent,
+                                        weak_factory_.GetWeakPtr(), id,
+                                        kv.first));
   }
 }
 
-void CecManager::SetStandBy() {
+void CecManager::SetStandBy(PowerChangeSentCallback callback) {
   VLOG(1) << "Received standby request";
+
+  if (devices_.empty()) {
+    std::move(callback).Run();
+    return;
+  }
+
+  auto id = CreatePowerChangeRequest(std::move(callback));
+
   for (auto& kv : devices_) {
-    kv.second->SetStandBy();
+    kv.second->SetStandBy(base::BindOnce(&CecManager::OnPowerChangeSent,
+                                         weak_factory_.GetWeakPtr(), id,
+                                         kv.first));
   }
 }
 
@@ -147,6 +188,30 @@ bool CecManager::MaybeRespondToTvsPowerStatusQuery(TvsPowerStatusQuery& query) {
   return true;
 }
 
+void CecManager::OnPowerChangeSent(QueryId id, base::FilePath device_path) {
+  auto iterator = power_change_requests_.find(id);
+  CHECK(iterator != power_change_requests_.end());
+
+  PowerChangeRequest& request = iterator->second;
+  request.sent[device_path] = true;
+
+  if (MaybePowerChangeRequestComplete(request)) {
+    power_change_requests_.erase(iterator);
+  }
+}
+
+bool CecManager::MaybePowerChangeRequestComplete(PowerChangeRequest& request) {
+  for (auto& kv : request.sent) {
+    if (!kv.second) {
+      return false;
+    }
+  }
+
+  std::move(request.callback).Run();
+
+  return true;
+}
+
 void CecManager::OnDeviceAdded(const base::FilePath& device_path) {
   LOG(INFO) << "New device: " << device_path.value();
   AddNewDevice(device_path);
@@ -156,15 +221,27 @@ void CecManager::OnDeviceRemoved(const base::FilePath& device_path) {
   LOG(INFO) << "Removing device: " << device_path.value();
   devices_.erase(device_path);
 
-  auto iterator = tv_power_status_queries_.begin();
-  while (iterator != tv_power_status_queries_.end()) {
-    TvsPowerStatusQuery& query = iterator->second;
+  for (auto it = tv_power_status_queries_.begin();
+       it != tv_power_status_queries_.end();) {
+    TvsPowerStatusQuery& query = it->second;
     query.responses.erase(device_path);
 
     if (MaybeRespondToTvsPowerStatusQuery(query)) {
-      iterator = tv_power_status_queries_.erase(iterator);
+      it = tv_power_status_queries_.erase(it);
     } else {
-      ++iterator;
+      ++it;
+    }
+  }
+
+  for (auto it = power_change_requests_.begin();
+       it != power_change_requests_.end();) {
+    PowerChangeRequest& request = it->second;
+    request.sent.erase(device_path);
+
+    if (MaybePowerChangeRequestComplete(request)) {
+      it = power_change_requests_.erase(it);
+    } else {
+      ++it;
     }
   }
 }
@@ -180,6 +257,11 @@ void CecManager::EnumerateAndAddExistingDevices() {
 }
 
 void CecManager::AddNewDevice(const base::FilePath& path) {
+  if (devices_.find(path) != devices_.end()) {
+    LOG(INFO) << "Device already added, not adding again: " << path.value();
+    return;
+  }
+
   std::unique_ptr<CecDevice> device = cec_factory_.Create(path);
   if (device) {
     LOG(INFO) << "Added new device: " << path.value();

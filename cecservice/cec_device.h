@@ -23,15 +23,16 @@ namespace cecservice {
 class CecDevice {
  public:
   using GetTvPowerStatusCallback = base::OnceCallback<void(TvPowerStatus)>;
+  using PowerChangeSentCallback = base::OnceCallback<void()>;
 
   virtual ~CecDevice() = default;
 
   // Gets power state of TV.
   virtual void GetTvPowerStatus(GetTvPowerStatusCallback callback) = 0;
   // Sends stand by request to a TV.
-  virtual void SetStandBy() = 0;
+  virtual void SetStandBy(PowerChangeSentCallback callback) = 0;
   // Sends wake up (image view on + active source) messages.
-  virtual void SetWakeUp() = 0;
+  virtual void SetWakeUp(PowerChangeSentCallback callback) = 0;
 };
 
 // Actual implementation of CecDevice.
@@ -52,8 +53,8 @@ class CecDeviceImpl : public CecDevice {
 
   // CecDevice overrides:
   void GetTvPowerStatus(GetTvPowerStatusCallback callback) override;
-  void SetStandBy() override;
-  void SetWakeUp() override;
+  void SetStandBy(PowerChangeSentCallback callback) override;
+  void SetWakeUp(PowerChangeSentCallback callback) override;
 
  private:
   // Actual implementation.

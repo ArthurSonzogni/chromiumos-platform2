@@ -26,6 +26,7 @@ class CecManager {
  public:
   using GetTvsPowerStatusCallback =
       base::OnceCallback<void(const std::vector<TvPowerStatus>&)>;
+  using PowerChangeSentCallback = base::OnceCallback<void()>;
 
   CecManager(const UdevFactory& udev_factory,
              const CecDeviceFactory& cec_factory);
@@ -40,10 +41,10 @@ class CecManager {
 
   // Sends wake up (image view on + active source) request to all CEC-enabled
   // TVs.
-  void SetWakeUp();
+  void SetWakeUp(PowerChangeSentCallback callback);
 
   // Passes stand by command to all CEC-enabled TVs.
-  void SetStandBy();
+  void SetStandBy(PowerChangeSentCallback callback);
 
  private:
   // Ids for get tv power queries.
@@ -53,6 +54,8 @@ class CecManager {
   struct TvPowerStatusResult;
   // Ongoing power status query.
   struct TvsPowerStatusQuery;
+  // Ongoing power change request. Used for standby and wakeup requests.
+  struct PowerChangeRequest;
 
   // Callback for TV power status responses.
   void OnTvPowerResponse(QueryId id,
@@ -64,6 +67,17 @@ class CecManager {
   // all of the responses have been received and thus the query has not
   // completed yet.
   bool MaybeRespondToTvsPowerStatusQuery(TvsPowerStatusQuery& query);
+
+  // Create a new power change request and add it to power_change_requests_.
+  // Returns the request ID.
+  QueryId CreatePowerChangeRequest(PowerChangeSentCallback callback);
+
+  // Callback when a standby or wakeup message has been sent to a device.
+  void OnPowerChangeSent(QueryId id, base::FilePath device_path);
+
+  // If messages have been sent to all devices, run the callback and return
+  // true. Otherwise return false.
+  bool MaybePowerChangeRequestComplete(PowerChangeRequest& request);
 
   // Called when udev reports that new device has been added.
   void OnDeviceAdded(const base::FilePath& device_path);
@@ -83,8 +97,14 @@ class CecManager {
   // Id to be used for next query.
   QueryId next_query_id_ = 0;
 
+  // Id to be used for the next power change request.
+  QueryId next_power_change_id_ = 0;
+
   // Ongoing power status queries.
   std::map<QueryId, TvsPowerStatusQuery> tv_power_status_queries_;
+
+  // Ongoing power change requests.
+  std::map<QueryId, PowerChangeRequest> power_change_requests_;
 
   // List of currently opened CEC devices.
   std::map<base::FilePath, std::unique_ptr<CecDevice>> devices_;

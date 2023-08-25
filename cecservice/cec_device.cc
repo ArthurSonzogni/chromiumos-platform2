@@ -27,6 +27,10 @@ class StateBase;
 
 class CecDeviceImpl::Impl {
  public:
+  using MessageSentCallback = std::variant<std::monostate,
+                                           CecDevice::GetTvPowerStatusCallback,
+                                           CecDevice::PowerChangeSentCallback>;
+
   // Enum identifiying CEC device states.
   enum class State {
     kStart,  // State when no physical address is known, in this state we
@@ -36,6 +40,14 @@ class CecDeviceImpl::Impl {
     kProbingTvAddress,  // Obtaining logical address of the TV.
     kReady,     // All is set up, we are free to send any type of messages.
     kDisabled,  // Device is disabled due to previous errors.
+  };
+
+  struct CecTransmission {
+    // Message to be sent.
+    struct cec_msg message;
+
+    // Optional callback to run when the transmission completes.
+    MessageSentCallback callback;
   };
 
   Impl(std::unique_ptr<CecFd> fd, const base::FilePath& device_path);
@@ -48,27 +60,33 @@ class CecDeviceImpl::Impl {
 
   // Implementation of respective methods from CecDevice:
   void GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback callback);
-  void SetStandBy();
-  void SetWakeUp();
+  void SetStandBy(CecDevice::PowerChangeSentCallback callback);
+  void SetWakeUp(CecDevice::PowerChangeSentCallback callback);
 
   // Enters a given state.
   void EnterState(State state);
 
+  // Run the given callback if it's non-null.
+  void RunMessageSentCallback(MessageSentCallback callback,
+                              TvPowerStatus status);
+
   // Adds active source message to the queue.
-  void EnqueueActiveSourceMessage();
+  void EnqueueActiveSourceMessage(CecDevice::PowerChangeSentCallback callback);
 
   // Adds Image View On message to the queue.
   void EnqueueImageViewOnMessage();
 
   // Adds Stand By message to the queue.
-  void EnqueueStandByMessage();
+  void EnqueueStandByMessage(CecDevice::PowerChangeSentCallback callback);
 
   // Enqueues Get Power Status request.
   void EnqueueGetTvPowerStatusMessage(
       CecDevice::GetTvPowerStatusCallback callback);
 
   // Enqueues a message, returns true if the message was added to the queue.
-  bool EnqueueMessage(struct cec_msg msg);
+  // Optionally takes a callback to run when the transmission completes.
+  bool EnqueueMessage(struct cec_msg msg,
+                      MessageSentCallback callback = MessageSentCallback());
 
   // Flags that the we didn't manage to find a TV. Will make the object send
   // request to address 0.
@@ -109,16 +127,6 @@ class CecDeviceImpl::Impl {
   bool IsMessageDirectedToTv(const struct cec_msg& msg) const;
 
  private:
-  // Represents 'get TV power request' that either is to be sent or has been
-  // sent and awaits response.
-  struct RequestInFlight {
-    // The callback to invoke when the request completes.
-    CecDevice::GetTvPowerStatusCallback callback;
-
-    // Message id assigned by CEC API or 0 if the request has not been sent yet.
-    uint32_t sequence_id;
-  };
-
   // Schedules watching for write readiness on the fd (if demanded by the
   // current state).
   void RequestWriteWatch();
@@ -143,9 +151,11 @@ class CecDeviceImpl::Impl {
   // error occurred.
   bool ProcessWrite();
 
-  // Processes response received to get power status request. Returns false if
-  // the message is not a response to a previously sent request.
-  bool ProcessPowerStatusResponse(const struct cec_msg& msg);
+  // Processes response received to get power status request. Should only be
+  // called for messages which are part of a get power status request (i.e. have
+  // a non-null get power status callback).
+  void ProcessPowerStatusResponse(const struct cec_msg& msg,
+                                  CecDevice::GetTvPowerStatusCallback callback);
 
   // Handles responses to previously sent requests.
   void ProcessSentMessage(const struct cec_msg& msg);
@@ -166,8 +176,9 @@ class CecDeviceImpl::Impl {
   // Handles fd event.
   void OnFdEvent(CecFd::EventType event);
 
-  // Immediately responds to all currently ongoing queries.
-  void RespondToAllQueries(TvPowerStatus response);
+  // Clear all messages in the queue and the in flight list, running any
+  // callbacks.
+  void ClearMessages(TvPowerStatus response);
 
   // Disables device.
   void DisableDevice();
@@ -198,10 +209,11 @@ class CecDeviceImpl::Impl {
   uint8_t assummed_tv_logical_address_ = CEC_LOG_ADDR_TV;
 
   // Queue of messages we are about to send.
-  std::deque<struct cec_msg> message_queue_;
+  std::deque<CecTransmission> message_queue_;
 
-  // Queue of requests that are in flight.
-  std::list<RequestInFlight> requests_;
+  // Messages which have been sent and are awaiting response.
+  // Should have a non-zero sequence number.
+  std::list<CecTransmission> messages_in_flight_;
 
   // Flag indicating if we believe we are the active source.
   bool active_source_ = false;
@@ -268,9 +280,9 @@ class StateBase {
   // Called to learn if the state wants to write sth out on the fd.
   virtual bool NeedsWrite() = 0;
   // Called when Stand By request is made by a user.
-  virtual void SetStandBy() = 0;
+  virtual void SetStandBy(CecDevice::PowerChangeSentCallback callback) = 0;
   // Called when Stand By request is made by a user.
-  virtual void SetWakeUp() = 0;
+  virtual void SetWakeUp(CecDevice::PowerChangeSentCallback callback) = 0;
   // Called when a message is sent (or response received),
   // should return true if the message was handled by the state and false
   // otherwise.
@@ -299,8 +311,8 @@ class DisabledState : public StateBase {
   // StateBase overrides:
   void GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback callback) override;
   bool NeedsWrite() override;
-  void SetStandBy() override;
-  void SetWakeUp() override;
+  void SetStandBy(CecDevice::PowerChangeSentCallback callback) override;
+  void SetWakeUp(CecDevice::PowerChangeSentCallback callback) override;
   bool ProcessWrite() override;
 };
 
@@ -312,8 +324,8 @@ class StartState : public StateBase {
   // StateBase overrides:
   void GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback callback) override;
   bool NeedsWrite() override;
-  void SetStandBy() override;
-  void SetWakeUp() override;
+  void SetStandBy(CecDevice::PowerChangeSentCallback callback) override;
+  void SetWakeUp(CecDevice::PowerChangeSentCallback callback) override;
 };
 
 // The state where we don't have a logical address yet. All requests received
@@ -323,8 +335,8 @@ class NoLogicalAddressState : public StateBase {
   // StateBase overrides:
   void GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback callback) override;
   bool NeedsWrite() override;
-  void SetStandBy() override;
-  void SetWakeUp() override;
+  void SetStandBy(CecDevice::PowerChangeSentCallback callback) override;
+  void SetWakeUp(CecDevice::PowerChangeSentCallback callback) override;
 };
 
 // The state where we probe TV's address. All requests are being queued up.
@@ -334,8 +346,8 @@ class ProbingTvAddressState : public StateBase {
   void Enter() override;
   void GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback callback) override;
   bool NeedsWrite() override;
-  void SetStandBy() override;
-  void SetWakeUp() override;
+  void SetStandBy(CecDevice::PowerChangeSentCallback callback) override;
+  void SetWakeUp(CecDevice::PowerChangeSentCallback callback) override;
   bool ProcessResponse(const cec_msg& msg) override;
   bool ProcessWrite() override;
   void ProcessMessagesLostEvent() override;
@@ -366,16 +378,27 @@ class ReadyState : public StateBase {
   // StateBase overrides:
   void GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback callback) override;
   bool NeedsWrite() override;
-  void SetStandBy() override;
-  void SetWakeUp() override;
+  void SetStandBy(CecDevice::PowerChangeSentCallback callback) override;
+  void SetWakeUp(CecDevice::PowerChangeSentCallback callback) override;
   bool ProcessResponse(const cec_msg& msg) override;
   bool ProcessWrite() override;
 };
 
-void CecDeviceImpl::Impl::EnqueueActiveSourceMessage() {
+void CecDeviceImpl::Impl::RunMessageSentCallback(MessageSentCallback callback,
+                                                 TvPowerStatus status) {
+  if (auto* cb = std::get_if<CecDevice::GetTvPowerStatusCallback>(&callback)) {
+    std::move(*cb).Run(status);
+  } else if (auto* cb =
+                 std::get_if<CecDevice::PowerChangeSentCallback>(&callback)) {
+    std::move(*cb).Run();
+  }
+}
+
+void CecDeviceImpl::Impl::EnqueueActiveSourceMessage(
+    CecDevice::PowerChangeSentCallback callback) {
   struct cec_msg msg = CreateMessage(CEC_LOG_ADDR_BROADCAST);
   cec_msg_active_source(&msg, physical_address_);
-  EnqueueMessage(msg);
+  EnqueueMessage(msg, std::move(callback));
 }
 
 void CecDeviceImpl::Impl::EnqueueImageViewOnMessage() {
@@ -384,31 +407,31 @@ void CecDeviceImpl::Impl::EnqueueImageViewOnMessage() {
   EnqueueMessage(msg);
 }
 
-void CecDeviceImpl::Impl::EnqueueStandByMessage() {
+void CecDeviceImpl::Impl::EnqueueStandByMessage(
+    CecDevice::PowerChangeSentCallback callback) {
   struct cec_msg msg = CreateMessage(CEC_LOG_ADDR_TV);
   cec_msg_standby(&msg);
-  EnqueueMessage(msg);
+  EnqueueMessage(msg, std::move(callback));
 }
 
 void CecDeviceImpl::Impl::EnqueueGetTvPowerStatusMessage(
     CecDevice::GetTvPowerStatusCallback callback) {
   struct cec_msg msg = CreateMessage(CEC_LOG_ADDR_TV);
   cec_msg_give_device_power_status(&msg, 1);
-  if (EnqueueMessage(msg)) {
-    requests_.push_back({std::move(callback), 0});
-  } else {
-    std::move(callback).Run(kTvPowerStatusError);
-  }
+  EnqueueMessage(msg, std::move(callback));
 }
 
-bool CecDeviceImpl::Impl::EnqueueMessage(struct cec_msg msg) {
+bool CecDeviceImpl::Impl::EnqueueMessage(struct cec_msg msg,
+                                         MessageSentCallback callback) {
   if (message_queue_.size() < kCecDeviceMaxTxQueueSize) {
-    message_queue_.push_back(msg);
+    message_queue_.push_back({msg, std::move(callback)});
     return true;
   } else {
     LOG(ERROR) << base::StringPrintf(
         "Output queue size too large, message 0x%x not enqueued",
         cec_msg_opcode(&msg));
+    RunMessageSentCallback(std::move(callback), kTvPowerStatusError);
+
     return false;
   }
 }
@@ -432,12 +455,12 @@ void CecDeviceImpl::GetTvPowerStatus(
   impl_->GetTvPowerStatus(std::move(callback));
 }
 
-void CecDeviceImpl::SetStandBy() {
-  impl_->SetStandBy();
+void CecDeviceImpl::SetStandBy(CecDevice::PowerChangeSentCallback callback) {
+  impl_->SetStandBy(std::move(callback));
 }
 
-void CecDeviceImpl::SetWakeUp() {
-  impl_->SetWakeUp();
+void CecDeviceImpl::SetWakeUp(CecDevice::PowerChangeSentCallback callback) {
+  impl_->SetWakeUp(std::move(callback));
 }
 
 CecDeviceImpl::Impl::Impl(std::unique_ptr<CecFd> fd,
@@ -479,19 +502,21 @@ void CecDeviceImpl::Impl::GetTvPowerStatus(
   RequestWriteWatch();
 }
 
-void CecDeviceImpl::Impl::SetStandBy() {
+void CecDeviceImpl::Impl::SetStandBy(
+    CecDevice::PowerChangeSentCallback callback) {
   probe_tv_address_if_unknown_ = true;
 
   active_source_ = false;
-  state_->SetStandBy();
+  state_->SetStandBy(std::move(callback));
   RequestWriteWatch();
 }
 
-void CecDeviceImpl::Impl::SetWakeUp() {
+void CecDeviceImpl::Impl::SetWakeUp(
+    CecDevice::PowerChangeSentCallback callback) {
   probe_tv_address_if_unknown_ = true;
 
   active_source_ = true;
-  state_->SetWakeUp();
+  state_->SetWakeUp(std::move(callback));
   RequestWriteWatch();
 }
 
@@ -513,20 +538,13 @@ bool CecDeviceImpl::Impl::ProcessMessagesLostEvent(
 
   state_->ProcessMessagesLostEvent();
 
-  // Respond to all ongoing power status queries with an error.
-  std::list<RequestInFlight> ongoing;
-  std::list<RequestInFlight>::iterator i = requests_.begin();
-  while (i != requests_.end()) {
-    if (i->sequence_id != 0) {
-      ongoing.push_back(std::move(*i));
-      i = requests_.erase(i);
-    } else {
-      i++;
-    }
+  // Discard all messages in flight, responding to their callbacks with an
+  // error.
+  for (auto& entry : messages_in_flight_) {
+    RunMessageSentCallback(std::move(entry.callback), kTvPowerStatusError);
   }
-  for (auto& request : ongoing) {
-    std::move(request.callback).Run(kTvPowerStatusError);
-  }
+
+  messages_in_flight_.clear();
 
   return true;
 }
@@ -546,12 +564,10 @@ bool CecDeviceImpl::Impl::ProcessStateChangeEvent(
       static_cast<uint32_t>(logical_address_));
 
   if (physical_address_ == CEC_PHYS_ADDR_INVALID) {
-    message_queue_.clear();
+    ClearMessages(kTvPowerStatusAdapterNotConfigured);
 
     tv_logical_address_ = CEC_LOG_ADDR_INVALID;
     assummed_tv_logical_address_ = CEC_LOG_ADDR_TV;
-
-    RespondToAllQueries(kTvPowerStatusAdapterNotConfigured);
 
     EnterState(State::kStart);
   } else if (logical_address_ == CEC_LOG_ADDR_INVALID) {
@@ -605,7 +621,8 @@ bool CecDeviceImpl::Impl::MessagesInOutputQueue() const {
 bool CecDeviceImpl::Impl::SendNextPendingMessage() {
   CHECK(!message_queue_.empty());
 
-  struct cec_msg message = message_queue_.front();
+  CecTransmission& entry = message_queue_.front();
+  struct cec_msg message = entry.message;
   if (IsMessageDirectedToTv(message)) {
     uint8_t address = tv_logical_address_;
     if (address == CEC_LOG_ADDR_INVALID) {
@@ -623,19 +640,11 @@ bool CecDeviceImpl::Impl::SendNextPendingMessage() {
     return true;
   }
 
-  if (cec_msg_opcode(&message) == CEC_MSG_GIVE_DEVICE_POWER_STATUS) {
-    auto iterator = std::find_if(requests_.begin(), requests_.end(),
-                                 [](const RequestInFlight& request) {
-                                   return request.sequence_id == 0;
-                                 });
-    CHECK(iterator != requests_.end());
-
-    if (ret == CecFd::TransmitResult::kOk) {
-      iterator->sequence_id = message.sequence;
-    } else {
-      std::move(iterator->callback).Run(kTvPowerStatusError);
-      requests_.erase(iterator);
-    }
+  if (ret == CecFd::TransmitResult::kOk) {
+    // message.sequence was filled in by SendMessage() above.
+    messages_in_flight_.push_back({message, std::move(entry.callback)});
+  } else {
+    RunMessageSentCallback(std::move(entry.callback), kTvPowerStatusError);
   }
 
   message_queue_.pop_front();
@@ -643,16 +652,8 @@ bool CecDeviceImpl::Impl::SendNextPendingMessage() {
   return ret != CecFd::TransmitResult::kError;
 }
 
-bool CecDeviceImpl::Impl::ProcessPowerStatusResponse(
-    const struct cec_msg& msg) {
-  auto iterator = std::find_if(requests_.begin(), requests_.end(),
-                               [&](const RequestInFlight& request) {
-                                 return request.sequence_id == msg.sequence;
-                               });
-  if (iterator == requests_.end()) {
-    return false;
-  }
-
+void CecDeviceImpl::Impl::ProcessPowerStatusResponse(
+    const struct cec_msg& msg, CecDevice::GetTvPowerStatusCallback callback) {
   TvPowerStatus status;
   if (cec_msg_status_is_ok(&msg) &&
       cec_msg_opcode(&msg) == CEC_MSG_REPORT_POWER_STATUS) {
@@ -669,10 +670,7 @@ bool CecDeviceImpl::Impl::ProcessPowerStatusResponse(
     }
   }
 
-  std::move(iterator->callback).Run(status);
-  requests_.erase(iterator);
-
-  return true;
+  std::move(callback).Run(status);
 }
 
 void CecDeviceImpl::Impl::ProcessReportPhysicalAddress(
@@ -702,11 +700,27 @@ void CecDeviceImpl::Impl::SetAssumedTVAddress(uint8_t address) {
 }
 
 void CecDeviceImpl::Impl::ProcessSentMessage(const struct cec_msg& msg) {
-  if (state_->ProcessResponse(msg)) {
-    return;
+  // Find the message in messages_in_flight_ based on its sequence number.
+  auto iterator =
+      std::find_if(messages_in_flight_.begin(), messages_in_flight_.end(),
+                   [&](const CecTransmission& message) {
+                     return message.message.sequence == msg.sequence;
+                   });
+  // Not all messages end up in messages_in_flight_. E.g. direct calls to
+  // SendMessage(), message cleared in response to a message lost event.
+  if (iterator != messages_in_flight_.end()) {
+    // Run message sent callback.
+    if (auto* cb = std::get_if<CecDevice::GetTvPowerStatusCallback>(
+            &iterator->callback)) {
+      ProcessPowerStatusResponse(msg, std::move(*cb));
+    } else if (auto* cb = std::get_if<CecDevice::PowerChangeSentCallback>(
+                   &iterator->callback)) {
+      std::move(*cb).Run();
+    }
+    messages_in_flight_.erase(iterator);
   }
 
-  if (ProcessPowerStatusResponse(msg)) {
+  if (state_->ProcessResponse(msg)) {
     return;
   }
 
@@ -858,16 +872,19 @@ bool CecDeviceImpl::Impl::NeedsToQueryTvAddress() const {
   }
 
   CHECK(!message_queue_.empty());
-  return IsMessageDirectedToTv(message_queue_.front());
+  return IsMessageDirectedToTv(message_queue_.front().message);
 }
 
-void CecDeviceImpl::Impl::RespondToAllQueries(TvPowerStatus response) {
-  std::list<RequestInFlight> requests;
-  requests.swap(requests_);
-
-  for (auto& request : requests) {
-    std::move(request.callback).Run(response);
+void CecDeviceImpl::Impl::ClearMessages(TvPowerStatus response) {
+  for (auto& entry : message_queue_) {
+    RunMessageSentCallback(std::move(entry.callback), response);
   }
+  message_queue_.clear();
+
+  for (auto& entry : messages_in_flight_) {
+    RunMessageSentCallback(std::move(entry.callback), response);
+  }
+  messages_in_flight_.clear();
 }
 
 void CecDeviceImpl::Impl::EnterState(State state) {
@@ -882,8 +899,7 @@ void CecDeviceImpl::Impl::EnterState(State state) {
 
 void CecDeviceImpl::Impl::DisableDevice() {
   fd_.reset();
-  message_queue_.clear();
-  RespondToAllQueries(kTvPowerStatusError);
+  ClearMessages(kTvPowerStatusError);
   EnterState(State::kDisabled);
 }
 
@@ -918,16 +934,18 @@ bool DisabledState::NeedsWrite() {
   return false;
 }
 
-void DisabledState::SetStandBy() {
+void DisabledState::SetStandBy(CecDevice::PowerChangeSentCallback callback) {
   LOG(WARNING) << device_->GetDevicePathString()
                << ": device is disabled due to previous errors, ignoring "
                   "standby request";
+  std::move(callback).Run();
 }
 
-void DisabledState::SetWakeUp() {
+void DisabledState::SetWakeUp(CecDevice::PowerChangeSentCallback callback) {
   LOG(WARNING) << device_->GetDevicePathString()
                << ": device in disabled due to previous errors, ignoring wake "
                   "up request";
+  std::move(callback).Run();
 }
 
 bool DisabledState::ProcessWrite() {
@@ -945,20 +963,22 @@ bool StartState::NeedsWrite() {
   return false;
 }
 
-void StartState::SetStandBy() {
+void StartState::SetStandBy(CecDevice::PowerChangeSentCallback callback) {
   VLOG(1) << device_->GetDevicePathString()
           << ": ignoring standby request, we are not connected";
+  std::move(callback).Run();
 }
 
-void StartState::SetWakeUp() {
+void StartState::SetWakeUp(CecDevice::PowerChangeSentCallback callback) {
   struct cec_msg msg = CreateMessage(CEC_LOG_ADDR_TV);
   cec_msg_image_view_on(&msg);
   if (device_->SendMessage(&msg) != CecFd::TransmitResult::kOk) {
     VLOG(1) << device_->GetDevicePathString()
             << ": failed to send image view on message while in start "
                "state, we are not able to wake up this TV";
+    std::move(callback).Run();
   } else {
-    device_->EnqueueActiveSourceMessage();
+    device_->EnqueueActiveSourceMessage(std::move(callback));
   }
 }
 
@@ -971,13 +991,15 @@ bool NoLogicalAddressState::NeedsWrite() {
   return false;
 }
 
-void NoLogicalAddressState::SetStandBy() {
-  device_->EnqueueStandByMessage();
+void NoLogicalAddressState::SetStandBy(
+    CecDevice::PowerChangeSentCallback callback) {
+  device_->EnqueueStandByMessage(std::move(callback));
 }
 
-void NoLogicalAddressState::SetWakeUp() {
+void NoLogicalAddressState::SetWakeUp(
+    CecDevice::PowerChangeSentCallback callback) {
   device_->EnqueueImageViewOnMessage();
-  device_->EnqueueActiveSourceMessage();
+  device_->EnqueueActiveSourceMessage(std::move(callback));
 }
 
 void ProbingTvAddressState::Enter() {
@@ -1107,13 +1129,15 @@ void ProbingTvAddressState::GetTvPowerStatus(
   device_->EnqueueGetTvPowerStatusMessage(std::move(callback));
 }
 
-void ProbingTvAddressState::SetStandBy() {
-  device_->EnqueueStandByMessage();
+void ProbingTvAddressState::SetStandBy(
+    CecDevice::PowerChangeSentCallback callback) {
+  device_->EnqueueStandByMessage(std::move(callback));
 }
 
-void ProbingTvAddressState::SetWakeUp() {
+void ProbingTvAddressState::SetWakeUp(
+    CecDevice::PowerChangeSentCallback callback) {
   device_->EnqueueImageViewOnMessage();
-  device_->EnqueueActiveSourceMessage();
+  device_->EnqueueActiveSourceMessage(std::move(callback));
 }
 
 void ReadyState::GetTvPowerStatus(
@@ -1125,13 +1149,13 @@ bool ReadyState::NeedsWrite() {
   return device_->MessagesInOutputQueue();
 }
 
-void ReadyState::SetStandBy() {
-  device_->EnqueueStandByMessage();
+void ReadyState::SetStandBy(CecDevice::PowerChangeSentCallback callback) {
+  device_->EnqueueStandByMessage(std::move(callback));
 }
 
-void ReadyState::SetWakeUp() {
+void ReadyState::SetWakeUp(CecDevice::PowerChangeSentCallback callback) {
   device_->EnqueueImageViewOnMessage();
-  device_->EnqueueActiveSourceMessage();
+  device_->EnqueueActiveSourceMessage(std::move(callback));
 }
 
 bool ReadyState::ProcessResponse(const cec_msg& msg) {

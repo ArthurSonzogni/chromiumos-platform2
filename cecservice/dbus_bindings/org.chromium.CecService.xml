@@ -10,7 +10,7 @@
         This is not guaranteed to have any effect on the connected displays.
         Displays that do not support HDMI CEC will not be affected.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
     <method name="SendWakeUpToAllDevices">
       <tp:docstring>
@@ -20,7 +20,7 @@
         request) and announce this device as the active input source towards all
         HDMI CEC enabled displays connected.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
     <method name="GetTvsPowerStatus">
       <tp:docstring>

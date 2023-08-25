@@ -33,6 +33,9 @@ void Copy(std::vector<TvPowerStatus>* out,
           const std::vector<TvPowerStatus>& in) {
   *out = in;
 }
+void SetTrue(bool* out) {
+  *out = true;
+}
 }  // namespace
 
 class CecManagerTest : public ::testing::Test {
@@ -101,27 +104,21 @@ TEST_F(CecManagerTest, TestAddRemoveDevice) {
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(device_mock));
 }
 
-TEST_F(CecManagerTest, TestCommandForwarding) {
-  std::vector<base::FilePath> devices = {base::FilePath("/dev/cec0")};
+TEST_F(CecManagerTest, TestDontAddDeviceTwice) {
+  // Device is added via EnumerateAndAddExistingDevices()
   EXPECT_CALL(*udev_mock_, EnumerateDevices(_))
-      .WillOnce(DoAll(SetArgPointee<0>(devices), Return(true)));
-
-  CecDeviceMock* device_mock = nullptr;
+      .WillOnce(DoAll(SetArgPointee<0>(std::vector<base::FilePath>{
+                          base::FilePath("/dev/cec0")}),
+                      Return(true)));
   EXPECT_CALL(cec_factory_mock_, Create(base::FilePath("/dev/cec0")))
-      .WillOnce(Invoke([&](const base::FilePath&) {
-        auto mock = std::make_unique<CecDeviceMock>();
-        device_mock = mock.get();
-        return mock;
-      }));
-
+      .WillOnce(Return(ByMove(std::make_unique<CecDeviceMock>())));
   auto cec_manager =
       std::make_unique<CecManager>(udev_factory_mock_, cec_factory_mock_);
 
-  EXPECT_CALL(*device_mock, SetStandBy());
-  cec_manager->SetStandBy();
-
-  EXPECT_CALL(*device_mock, SetWakeUp());
-  cec_manager->SetWakeUp();
+  // Try to add the same device via the device added callback and check we don't
+  // create a new device.
+  EXPECT_CALL(cec_factory_mock_, Create(_)).Times(0);
+  device_added_callback_.Run(base::FilePath("/dev/cec0"));
 }
 
 TEST_F(CecManagerTest, TestPowerQuery) {
@@ -155,6 +152,98 @@ TEST_F(CecManagerTest, TestPowerQuery) {
   EXPECT_EQ(kTvPowerStatusToStandBy, result[0]);
 }
 
+TEST_F(CecManagerTest, TestWakeUp) {
+  std::vector<base::FilePath> devices = {base::FilePath("/dev/cec0"),
+                                         base::FilePath("/dev/cec1")};
+  EXPECT_CALL(*udev_mock_, EnumerateDevices(_))
+      .WillOnce(DoAll(SetArgPointee<0>(devices), Return(true)));
+
+  CecDeviceMock* device_mock_0 = nullptr;
+  EXPECT_CALL(cec_factory_mock_, Create(base::FilePath("/dev/cec0")))
+      .WillOnce(Invoke([&](const base::FilePath&) {
+        auto mock = std::make_unique<CecDeviceMock>();
+        device_mock_0 = mock.get();
+        return mock;
+      }));
+
+  CecDeviceMock* device_mock_1 = nullptr;
+  EXPECT_CALL(cec_factory_mock_, Create(base::FilePath("/dev/cec1")))
+      .WillOnce(Invoke([&](const base::FilePath&) {
+        auto mock = std::make_unique<CecDeviceMock>();
+        device_mock_1 = mock.get();
+        return mock;
+      }));
+
+  auto cec_manager =
+      std::make_unique<CecManager>(udev_factory_mock_, cec_factory_mock_);
+
+  CecDevice::PowerChangeSentCallback callback_0;
+  EXPECT_CALL(*device_mock_0, SetWakeUp(_)).WillOnce([&callback_0](auto&& cb) {
+    callback_0 = std::move(cb);
+  });
+  CecDevice::PowerChangeSentCallback callback_1;
+  EXPECT_CALL(*device_mock_1, SetWakeUp(_)).WillOnce([&callback_1](auto&& cb) {
+    callback_1 = std::move(cb);
+  });
+
+  bool callback_called = false;
+  cec_manager->SetWakeUp(base::BindOnce(SetTrue, &callback_called));
+
+  // First device responds - callback not called yet.
+  std::move(callback_0).Run();
+  EXPECT_FALSE(callback_called);
+
+  // Second device responds - callback is called.
+  std::move(callback_1).Run();
+  EXPECT_TRUE(callback_called);
+}
+
+TEST_F(CecManagerTest, TestStandBy) {
+  std::vector<base::FilePath> devices = {base::FilePath("/dev/cec0"),
+                                         base::FilePath("/dev/cec1")};
+  EXPECT_CALL(*udev_mock_, EnumerateDevices(_))
+      .WillOnce(DoAll(SetArgPointee<0>(devices), Return(true)));
+
+  CecDeviceMock* device_mock_0 = nullptr;
+  EXPECT_CALL(cec_factory_mock_, Create(base::FilePath("/dev/cec0")))
+      .WillOnce(Invoke([&](const base::FilePath&) {
+        auto mock = std::make_unique<CecDeviceMock>();
+        device_mock_0 = mock.get();
+        return mock;
+      }));
+
+  CecDeviceMock* device_mock_1 = nullptr;
+  EXPECT_CALL(cec_factory_mock_, Create(base::FilePath("/dev/cec1")))
+      .WillOnce(Invoke([&](const base::FilePath&) {
+        auto mock = std::make_unique<CecDeviceMock>();
+        device_mock_1 = mock.get();
+        return mock;
+      }));
+
+  auto cec_manager =
+      std::make_unique<CecManager>(udev_factory_mock_, cec_factory_mock_);
+
+  CecDevice::PowerChangeSentCallback callback_0;
+  EXPECT_CALL(*device_mock_0, SetStandBy(_)).WillOnce([&callback_0](auto&& cb) {
+    callback_0 = std::move(cb);
+  });
+  CecDevice::PowerChangeSentCallback callback_1;
+  EXPECT_CALL(*device_mock_1, SetStandBy(_)).WillOnce([&callback_1](auto&& cb) {
+    callback_1 = std::move(cb);
+  });
+
+  bool callback_called = false;
+  cec_manager->SetStandBy(base::BindOnce(SetTrue, &callback_called));
+
+  // First device responds - callback not called yet.
+  std::move(callback_0).Run();
+  EXPECT_FALSE(callback_called);
+
+  // Second device responds - callback is called.
+  std::move(callback_1).Run();
+  EXPECT_TRUE(callback_called);
+}
+
 TEST_F(CecManagerTest, TestDeviceRemovalWhileTvPowerQueryIsOngoing) {
   EXPECT_CALL(*udev_mock_, EnumerateDevices(_))
       .WillOnce(DoAll(SetArgPointee<0>(std::vector<base::FilePath>{
@@ -177,6 +266,46 @@ TEST_F(CecManagerTest, TestDeviceRemovalWhileTvPowerQueryIsOngoing) {
 
   // We should get an empty answer.
   EXPECT_EQ(0u, result.size());
+}
+
+TEST_F(CecManagerTest, TestDeviceRemovalDuringStandByRequest) {
+  EXPECT_CALL(*udev_mock_, EnumerateDevices(_))
+      .WillOnce(DoAll(SetArgPointee<0>(std::vector<base::FilePath>{
+                          base::FilePath("/dev/cec0")}),
+                      Return(true)));
+
+  EXPECT_CALL(cec_factory_mock_, Create(_))
+      .WillOnce(Return(ByMove(std::make_unique<NiceMock<CecDeviceMock>>())));
+
+  auto cec_manager =
+      std::make_unique<CecManager>(udev_factory_mock_, cec_factory_mock_);
+
+  bool callback_called = false;
+  cec_manager->SetStandBy(base::BindOnce(SetTrue, &callback_called));
+
+  // Remove the device - callback should be called.
+  device_removed_callback_.Run(base::FilePath("/dev/cec0"));
+  EXPECT_TRUE(callback_called);
+}
+
+TEST_F(CecManagerTest, TestDeviceRemovalDuringWakeUpRequest) {
+  EXPECT_CALL(*udev_mock_, EnumerateDevices(_))
+      .WillOnce(DoAll(SetArgPointee<0>(std::vector<base::FilePath>{
+                          base::FilePath("/dev/cec0")}),
+                      Return(true)));
+
+  EXPECT_CALL(cec_factory_mock_, Create(_))
+      .WillOnce(Return(ByMove(std::make_unique<NiceMock<CecDeviceMock>>())));
+
+  auto cec_manager =
+      std::make_unique<CecManager>(udev_factory_mock_, cec_factory_mock_);
+
+  bool callback_called = false;
+  cec_manager->SetWakeUp(base::BindOnce(SetTrue, &callback_called));
+
+  // Remove the device - callback should be called.
+  device_removed_callback_.Run(base::FilePath("/dev/cec0"));
+  EXPECT_TRUE(callback_called);
 }
 
 }  // namespace cecservice

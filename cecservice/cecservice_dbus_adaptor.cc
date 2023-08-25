@@ -24,6 +24,18 @@ void GetTvsPowerStatusCallback(
   std::copy(results.begin(), results.end(), std::back_inserter(return_value));
   response->Return(return_value);
 }
+
+void SendStandByToAllDevicesCallback(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  VLOG(1) << "Standby request complete";
+  response->Return();
+}
+
+void SendWakeUpToAllDevicesCallback(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  VLOG(1) << "Wakeup request complete";
+  response->Return();
+}
 }  // namespace
 
 CecServiceDBusAdaptor::CecServiceDBusAdaptor(scoped_refptr<dbus::Bus> bus)
@@ -40,14 +52,16 @@ void CecServiceDBusAdaptor::RegisterAsync(
   dbus_object_.RegisterAsync(std::move(cb));
 }
 
-bool CecServiceDBusAdaptor::SendStandByToAllDevices(brillo::ErrorPtr* error) {
-  cec_.SetStandBy();
-  return true;
+void CecServiceDBusAdaptor::SendStandByToAllDevices(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  cec_.SetStandBy(
+      base::BindOnce(&SendStandByToAllDevicesCallback, std::move(response)));
 }
 
-bool CecServiceDBusAdaptor::SendWakeUpToAllDevices(brillo::ErrorPtr* error) {
-  cec_.SetWakeUp();
-  return true;
+void CecServiceDBusAdaptor::SendWakeUpToAllDevices(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  cec_.SetWakeUp(
+      base::BindOnce(&SendWakeUpToAllDevicesCallback, std::move(response)));
 }
 
 void CecServiceDBusAdaptor::GetTvsPowerStatus(

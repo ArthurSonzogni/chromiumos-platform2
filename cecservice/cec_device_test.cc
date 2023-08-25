@@ -39,6 +39,9 @@ constexpr uint32_t kDefaultSentMessageId = 1;
 void Copy(TvPowerStatus* out, TvPowerStatus in) {
   *out = in;
 }
+void SetTrue(bool* out) {
+  *out = true;
+}
 }  // namespace
 
 class CecDeviceTest : public ::testing::Test {
@@ -209,7 +212,7 @@ void CecDeviceTest::SimulateProbingFailure() {
 void CecDeviceTest::SetActiveSource() {
   // To set the object as active source we will request wake up and let it
   // write image view on and active source messages (hence the 2 writes).
-  device_->SetWakeUp();
+  device_->SetWakeUp(base::DoNothing());
   event_callback_.Run(CecFd::EventType::kWrite);
   event_callback_.Run(CecFd::EventType::kWrite);
 }
@@ -282,7 +285,29 @@ TEST_F(CecDeviceTest, TestConnect) {
   // Test if we are truly connected. If we are, standby request should result
   // in write watch being requested.
   EXPECT_CALL(*cec_fd_mock_, WriteWatch());
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
+}
+
+TEST_F(CecDeviceTest, TestSetStandBy) {
+  Init();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  bool callback_called = false;
+  device_->SetStandBy(base::BindOnce(SetTrue, &callback_called));
+
+  // Trigger write of standby message.
+  CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
+
+  // Trigger send completion for standby message.
+  struct cec_msg msg;
+  cec_msg_init(&msg, kLogicalAddress, CEC_LOG_ADDR_TV);
+  cec_msg_standby(&msg);
+  msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_OK;
+  SendMessageToObject(msg);
+
+  // Check callback is called.
+  EXPECT_TRUE(callback_called);
 }
 
 TEST_F(CecDeviceTest, TestSendWakeUp) {
@@ -292,24 +317,54 @@ TEST_F(CecDeviceTest, TestSendWakeUp) {
   EXPECT_CALL(*cec_fd_mock_, WriteWatch())
       .Times(2)
       .WillRepeatedly(Return(true));
-  device_->SetWakeUp();
 
+  bool callback_called = false;
+  device_->SetWakeUp(base::BindOnce(SetTrue, &callback_called));
+
+  // Trigger write of image view on message.
   event_callback_.Run(CecFd::EventType::kWrite);
-
   EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
   EXPECT_EQ(CEC_LOG_ADDR_TV, cec_msg_destination(&sent_message_));
   EXPECT_EQ(CEC_MSG_IMAGE_VIEW_ON, cec_msg_opcode(&sent_message_));
 
+  // Trigger write of active source message.
+  EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
+      .WillOnce(Invoke([&](struct cec_msg* msg) {
+        msg->sequence = 2;
+        sent_message_ = *msg;
+        return CecFd::TransmitResult::kOk;
+      }));
   event_callback_.Run(CecFd::EventType::kWrite);
   EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
   EXPECT_EQ(CEC_LOG_ADDR_BROADCAST, cec_msg_destination(&sent_message_));
   EXPECT_EQ(CEC_MSG_ACTIVE_SOURCE, cec_msg_opcode(&sent_message_));
+
+  // Trigger send completion for image view on message.
+  struct cec_msg msg;
+  cec_msg_init(&msg, kLogicalAddress, CEC_LOG_ADDR_TV);
+  cec_msg_image_view_on(&msg);
+  msg.sequence = 1;
+  msg.tx_status = CEC_TX_STATUS_OK;
+  SendMessageToObject(msg);
+
+  // Check callback is not called yet.
+  EXPECT_FALSE(callback_called);
+
+  // Trigger send completion for active source message.
+  cec_msg_init(&msg, kLogicalAddress, CEC_LOG_ADDR_BROADCAST);
+  cec_msg_active_source(&msg, kPhysicalAddress);
+  msg.sequence = 2;
+  msg.tx_status = CEC_TX_STATUS_OK;
+  SendMessageToObject(msg);
+
+  // Check callback is called now.
+  EXPECT_TRUE(callback_called);
 }
 
 TEST_F(CecDeviceTest, TestSendWakeUpWhileDisconnected) {
   Init();
 
-  device_->SetWakeUp();
+  device_->SetWakeUp(base::DoNothing());
 
   EXPECT_EQ(CEC_LOG_ADDR_UNREGISTERED, cec_msg_initiator(&sent_message_));
   EXPECT_EQ(CEC_LOG_ADDR_TV, cec_msg_destination(&sent_message_));
@@ -336,7 +391,7 @@ TEST_F(CecDeviceTest, TestSendWakeUpWhileNoLogicalAddress) {
   // No logical address.
   SendStateUpdateEvent(kPhysicalAddress, 0);
 
-  device_->SetWakeUp();
+  device_->SetWakeUp(base::DoNothing());
 
   ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
@@ -356,14 +411,14 @@ TEST_F(CecDeviceTest, TestSendWakeUpWhileProbingTv) {
   Connect();
 
   // Put the device into TV address querying state.
-  device_->GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback());
+  device_->GetTvPowerStatus(base::DoNothing());
 
   // Transition the object to the TV probing state.
   event_callback_.Run(CecFd::EventType::kWrite);
   event_callback_.Run(CecFd::EventType::kWrite);
 
   // Request an wake up while in such state.
-  device_->SetWakeUp();
+  device_->SetWakeUp(base::DoNothing());
 
   // Provide the TV address.
   struct cec_msg msg;
@@ -585,7 +640,7 @@ TEST_F(CecDeviceTest, TestFailureToSetWriteWatchDisablesDevice) {
   EXPECT_CALL(*cec_fd_mock_, WriteWatch()).WillOnce(Return(false));
 
   // Set e.g. standby request, to make the device want to start writing.
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   // The FD should be destroyed at this point.
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
@@ -601,11 +656,15 @@ TEST_F(CecDeviceTest, TestFailureToSendMessageDisablesDevice) {
 
   EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
       .WillOnce(Return(CecFd::TransmitResult::kError));
-  device_->SetWakeUp();
+  bool callback_called = false;
+  device_->SetWakeUp(base::BindOnce(SetTrue, &callback_called));
   event_callback_.Run(CecFd::EventType::kWrite);
 
   // The FD should be destroyed at this point.
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
+
+  // The wakeup callback runs when the device is disabled.
+  EXPECT_TRUE(callback_called);
 }
 
 TEST_F(CecDeviceTest, TestErrorBusyRetries) {
@@ -620,7 +679,7 @@ TEST_F(CecDeviceTest, TestErrorBusyRetries) {
       .Times(2)
       .WillRepeatedly(DoAll(SaveArgPointee<0>(&sent_message_),
                             Return(CecFd::TransmitResult::kBusy)));
-  device_->SetWakeUp();
+  device_->SetWakeUp(base::DoNothing());
   event_callback_.Run(CecFd::EventType::kWrite);
 
   EXPECT_EQ(CEC_MSG_IMAGE_VIEW_ON, cec_msg_opcode(&sent_message_));
@@ -669,6 +728,30 @@ TEST_F(CecDeviceTest, TestGetTvStatusOnDisconnect) {
 
   SendStateUpdateEvent(CEC_PHYS_ADDR_INVALID, CEC_LOG_ADDR_INVALID);
   EXPECT_EQ(kTvPowerStatusAdapterNotConfigured, power_status);
+}
+
+TEST_F(CecDeviceTest, TestStandByOnDisconnect) {
+  Init();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  bool callback_called = false;
+  device_->SetStandBy(base::BindOnce(SetTrue, &callback_called));
+
+  // Callback is called when device disconnects.
+  SendStateUpdateEvent(CEC_PHYS_ADDR_INVALID, CEC_LOG_ADDR_INVALID);
+  EXPECT_TRUE(callback_called);
+}
+
+TEST_F(CecDeviceTest, TestWakeUpOnDisconnect) {
+  Init();
+  ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
+
+  bool callback_called = false;
+  device_->SetWakeUp(base::BindOnce(SetTrue, &callback_called));
+
+  // Callback is called when device disconnects.
+  SendStateUpdateEvent(CEC_PHYS_ADDR_INVALID, CEC_LOG_ADDR_INVALID);
+  EXPECT_TRUE(callback_called);
 }
 
 TEST_F(CecDeviceTest, TestGetTvStatusError) {
@@ -731,7 +814,7 @@ TEST_F(CecDeviceTest, TestMessageSendingWhenNoLogicalAddressIsConfigured) {
   SendStateUpdateEvent(kPhysicalAddress, 0);
 
   // Ask to send a standby request.
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   // Provide a logical address now.
   SendStateUpdateEvent(kPhysicalAddress, kLogicalAddressMask);
@@ -762,13 +845,22 @@ TEST_F(CecDeviceTest, TestMaxTxQueueSize) {
   TvPowerStatus power_status_error = kTvPowerStatusUnknown;
   device_->GetTvPowerStatus(base::BindOnce(Copy, &power_status_error));
   EXPECT_EQ(kTvPowerStatusError, power_status_error);
+
+  // Check the callback is called for standby and wakeup requests in this state.
+  bool callback_called = false;
+  device_->SetStandBy(base::BindOnce(SetTrue, &callback_called));
+  EXPECT_TRUE(callback_called);
+
+  callback_called = false;
+  device_->SetWakeUp(base::BindOnce(SetTrue, &callback_called));
+  EXPECT_TRUE(callback_called);
 }
 
 TEST_F(CecDeviceTest, TestTvProbingFirstProbeSuceedes) {
   Init();
   Connect();
 
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   event_callback_.Run(CecFd::EventType::kWrite);
   event_callback_.Run(CecFd::EventType::kWrite);
@@ -788,7 +880,7 @@ TEST_F(CecDeviceTest, TestTvProbingSecondProbeSuceeds) {
   Init();
   Connect();
 
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   // Two 'ticks' are needed for the the CecDevice to send an initial
   // 'give physical address' message.
@@ -818,7 +910,7 @@ TEST_F(CecDeviceTest, TestTvProbingBroadcastTerminatesProbing) {
   Init();
   Connect();
 
-  device_->SetWakeUp();
+  device_->SetWakeUp(base::DoNothing());
 
   // Two 'ticks' are needed for the the CecDevice to send an initial
   // 'give physical address' message.
@@ -843,7 +935,7 @@ TEST_F(CecDeviceTest, TestTvProbingFirstResponseFromWrongPhysicalAddress) {
   Init();
   Connect();
 
-  device_->SetWakeUp();
+  device_->SetWakeUp(base::DoNothing());
 
   // Two 'ticks' are needed for the the CecDevice to send an initial
   // 'give physical address' message.
@@ -867,7 +959,7 @@ TEST_F(CecDeviceTest, TestTvProbingAllRequestsFail) {
   Init();
   Connect();
 
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   SimulateProbingFailure();
 
@@ -878,7 +970,7 @@ TEST_F(CecDeviceTest, TestTvProbingAllSendsFail) {
   Init();
   Connect();
 
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   // Two 'ticks' are needed for the the CecDevice to send an initial
   // 'give physical address' message.
@@ -903,7 +995,7 @@ TEST_F(CecDeviceTest, TestTVProbingFailsButTxIsAckedByAddr0) {
   Init();
   Connect();
 
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   // Two 'ticks' are needed for the the CecDevice to send an initial
   // 'give physical address' message.
@@ -924,7 +1016,7 @@ TEST_F(CecDeviceTest, TestTVProbingFailsButTxIsAckedByAddr0) {
   CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
 
   // We will keep on probing.
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
   event_callback_.Run(CecFd::EventType::kWrite);
   CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
                           CEC_MSG_GIVE_PHYSICAL_ADDR);
@@ -934,7 +1026,7 @@ TEST_F(CecDeviceTest, TestTVProbingFailsButTxIsAckedByAddr14) {
   Init();
   Connect();
 
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   // Two 'ticks' are needed for the the CecDevice to send an initial
   // 'give physical address' message.
@@ -957,7 +1049,7 @@ TEST_F(CecDeviceTest, TestTVProbingFailsButTxIsAckedByAddr14) {
                           CEC_MSG_STANDBY);
 
   // We shall probe again.
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
   event_callback_.Run(CecFd::EventType::kWrite);
   CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_TV,
                           CEC_MSG_GIVE_PHYSICAL_ADDR);
@@ -967,7 +1059,8 @@ TEST_F(CecDeviceTest, TestTvProbingNonRecoverableErrorDisablesDevice) {
   Init();
   Connect();
 
-  device_->SetStandBy();
+  bool callback_called = false;
+  device_->SetStandBy(base::BindOnce(SetTrue, &callback_called));
   // Two 'ticks' are needed for the the CecDevice to send an initial
   // 'give physical address' message.
   event_callback_.Run(CecFd::EventType::kWrite);
@@ -979,13 +1072,15 @@ TEST_F(CecDeviceTest, TestTvProbingNonRecoverableErrorDisablesDevice) {
   // Verify that the fd has been destroyed at this point, i.e.
   // object has entered disabled state.
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
+  // Verify the standby callback is called when the device is disabled.
+  EXPECT_TRUE(callback_called);
 }
 
 TEST_F(CecDeviceTest, TestStandByRequestRetriggersProbing) {
   Init();
   Connect();
 
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   SimulateProbingFailure();
 
@@ -993,7 +1088,7 @@ TEST_F(CecDeviceTest, TestStandByRequestRetriggersProbing) {
   CheckTransmittedMessage(kLogicalAddress, CEC_LOG_ADDR_TV, CEC_MSG_STANDBY);
 
   // Another request, should trigger requery.
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   // First extra tick.
   event_callback_.Run(CecFd::EventType::kWrite);
@@ -1005,7 +1100,7 @@ TEST_F(CecDeviceTest, TestWakeUpTriggersProbing) {
   Init();
   Connect();
 
-  device_->SetWakeUp();
+  device_->SetWakeUp(base::DoNothing());
 
   SimulateProbingFailure();
 
@@ -1017,7 +1112,7 @@ TEST_F(CecDeviceTest, TestWakeUpTriggersProbing) {
                           CEC_MSG_ACTIVE_SOURCE);
 
   // Another request, should trigger requery.
-  device_->SetWakeUp();
+  device_->SetWakeUp(base::DoNothing());
 
   // Extra tick.
   event_callback_.Run(CecFd::EventType::kWrite);
@@ -1029,7 +1124,7 @@ TEST_F(CecDeviceTest, TestGivePowerStatusTriggersProbing) {
   Init();
   Connect();
 
-  device_->GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback());
+  device_->GetTvPowerStatus(base::DoNothing());
 
   SimulateProbingFailure();
 
@@ -1038,7 +1133,7 @@ TEST_F(CecDeviceTest, TestGivePowerStatusTriggersProbing) {
   event_callback_.Run(CecFd::EventType::kWrite);
 
   // Another request, should trigger requery.
-  device_->GetTvPowerStatus(CecDevice::GetTvPowerStatusCallback());
+  device_->GetTvPowerStatus(base::DoNothing());
 
   // Extra tick.
   event_callback_.Run(CecFd::EventType::kWrite);
@@ -1050,7 +1145,7 @@ TEST_F(CecDeviceTest, TestSendingToTVFailsReproesAddress) {
   Init();
   ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   struct cec_msg msg;
   cec_msg_init(&msg, kLogicalAddress, 0);
@@ -1060,7 +1155,7 @@ TEST_F(CecDeviceTest, TestSendingToTVFailsReproesAddress) {
   SendMessageToObject(msg);
 
   // We should start off by reprobing TV address.
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   // Two 'ticks' are needed for the the CecDevice to send an initial
   // 'give physical address' message.
@@ -1112,7 +1207,7 @@ TEST_F(CecDeviceTest, TestMessagesLostEventTerminatesTvProbing) {
   Init();
   Connect();
 
-  device_->SetStandBy();
+  device_->SetStandBy(base::DoNothing());
 
   // The device will start by probing TV address.
   // Provide the first 'write tick'.
