@@ -105,6 +105,9 @@ constexpr char kSNATChromeDnsChain[] = "snat_chrome_dns";
 constexpr char kSNATUserDnsChain[] = "snat_user_dns";
 
 // Chains for QoS.
+// mangle OUTPUT and PREROUTING chain for applying fwmarks on both ingress and
+// egress traffic for QoS.
+constexpr char kQoSDetectChain[] = "qos_detect";
 // mangle POSTROUTING chain for applying DSCP fields based on fwmarks for egress
 // traffic.
 constexpr char kQoSApplyDSCPChain[] = "qos_apply_dscp";
@@ -223,6 +226,10 @@ void Datapath::Start() {
       // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
       // traffic that should be routed through a VPN.
       {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain},
+      // Set up a mangle chain used in OUTPUT and PREROUTING for applying
+      // fwmarks for QoS. QoSService controls when to add the jump rules to this
+      // chain.
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain},
       // Set up a mangle chain used in POSTROUTING for applying DSCP values for
       // QoS. QoSService controls when to add the jump rules to this chain.
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain},
@@ -495,6 +502,7 @@ void Datapath::Start() {
     }
   }
 
+  SetupQoSDetectChain();
   SetupQoSApplyDSCPChain();
 }
 
@@ -577,6 +585,7 @@ void Datapath::ResetIptables() {
        true},
       {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain, true},
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain, true},
       {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain,
        true},
@@ -2250,6 +2259,36 @@ bool Datapath::ModifyPortRule(
       LOG(ERROR) << "Unknown operation " << request.op();
       return false;
   }
+}
+
+void Datapath::SetupQoSDetectChain() {
+  const auto install_rule = [this](const std::vector<std::string>& args) {
+    ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
+                   Iptables::Command::kA, kQoSDetectChain, args);
+  };
+
+  const std::string qos_mask = kFwmarkQoSCategoryMask.ToString();
+
+  // Skip QoS detection if DSCP value is already set.
+  install_rule({"-m", "dscp", "!", "--dscp", "0", "-j", "RETURN", "-w"});
+
+  // Restore the QoS bits from the conntrack mark to the fwmark of a packet.
+  // This is used by connections detected by ARC++ socket monitor and WebRTC
+  // detector. This will override the original fwmark on the packet (if the
+  // sender sets it) by intention.
+  install_rule({"-j", "CONNMARK", "--restore-mark", "--nfmask", qos_mask,
+                "--ctmask", qos_mask, "-w"});
+
+  // If the value restored from the conntrack mark is not 0, skip the following
+  // detection.
+  install_rule({"-m", "mark", "!", "--mark",
+                QoSFwmarkWithMask(QoSCategory::kDefault), "-j", "RETURN",
+                "-w"});
+
+  // TODO(b/296958857): Add rules for TCP handshakes.
+  // TODO(b/296958855): Add rules for ICMP.
+  // TODO(b/296958774): Add rules for DNS.
+  // TODO(b/296952085): Add rules for WebRTC detection.
 }
 
 void Datapath::SetupQoSApplyDSCPChain() {

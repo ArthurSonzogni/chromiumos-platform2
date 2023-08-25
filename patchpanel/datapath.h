@@ -516,6 +516,8 @@ class Datapath {
                                    bool log_failures = true);
   bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);
 
+  // Installs the static rules inside the qos_detect chain.
+  void SetupQoSDetectChain();
   // Installs the static rules inside the qos_apply_dscp chain.
   void SetupQoSApplyDSCPChain();
 
