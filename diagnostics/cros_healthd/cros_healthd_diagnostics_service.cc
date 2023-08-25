@@ -37,9 +37,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-using OnTerminalStatusCallback =
-    base::OnceCallback<void(mojom::DiagnosticRoutineStatusEnum)>;
-
 void SetErrorRoutineUpdate(const std::string& status_message,
                            mojom::RoutineUpdate* response) {
   auto noninteractive_update = mojom::NonInteractiveRoutineUpdate::New();
@@ -49,65 +46,6 @@ void SetErrorRoutineUpdate(const std::string& status_message,
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
           std::move(noninteractive_update));
   response->progress_percent = 0;
-}
-
-// Wrap |on_terminal_status_callback| as a StatusChangedCallback that invokes
-// |on_terminal_status_callback| with the first terminal routine status it
-// receives.
-//
-// An exception is the kCancelling status. We'll treat it as kCancelled since
-// |SubprocRoutine| might never turning into kCancelled status.
-//
-// Terminal status mean these enums
-// - kPassed
-// - kFailed
-// - kError
-// - kCancelled
-// - kFailedToStart
-// - kRemoved
-// - kUnsupported
-// - kNotRun
-DiagnosticRoutine::StatusChangedCallback
-WrapOnTerminalStatusCallbackAsStatusChangedCallback(
-    OnTerminalStatusCallback on_terminal_status_callback) {
-  return base::BindRepeating(
-      [](OnTerminalStatusCallback& on_terminal_status_cb,
-         mojom::DiagnosticRoutineStatusEnum new_status) {
-        std::optional<mojom::DiagnosticRoutineStatusEnum> status_to_report;
-        switch (new_status) {
-          // Non-terminal status.
-          case mojom::DiagnosticRoutineStatusEnum::kUnknown:
-          case mojom::DiagnosticRoutineStatusEnum::kReady:
-          case mojom::DiagnosticRoutineStatusEnum::kRunning:
-          case mojom::DiagnosticRoutineStatusEnum::kWaiting: {
-            status_to_report = std::nullopt;
-            break;
-          }
-          // A workaround for |SubprocRoutine|. The routine is supposed to be
-          // kCancelled eventually.
-          case mojom::DiagnosticRoutineStatusEnum::kCancelling: {
-            status_to_report = mojom::DiagnosticRoutineStatusEnum::kCancelled;
-            break;
-          }
-          // Terminal status.
-          case mojom::DiagnosticRoutineStatusEnum::kPassed:
-          case mojom::DiagnosticRoutineStatusEnum::kFailed:
-          case mojom::DiagnosticRoutineStatusEnum::kError:
-          case mojom::DiagnosticRoutineStatusEnum::kCancelled:
-          case mojom::DiagnosticRoutineStatusEnum::kFailedToStart:
-          case mojom::DiagnosticRoutineStatusEnum::kRemoved:
-          case mojom::DiagnosticRoutineStatusEnum::kUnsupported:
-          case mojom::DiagnosticRoutineStatusEnum::kNotRun: {
-            status_to_report = new_status;
-            break;
-          }
-        }
-        // |on_terminal_status_cb| will be null if it has already been called.
-        if (status_to_report && on_terminal_status_cb) {
-          std::move(on_terminal_status_cb).Run(status_to_report.value());
-        }
-      },
-      base::OwnedRef(std::move(on_terminal_status_callback)));
 }
 
 void SendResultToUMA(mojom::DiagnosticRoutineEnum routine,
@@ -611,8 +549,7 @@ void CrosHealthdDiagnosticsService::RunRoutine(
 
   // Send the result to UMA once the routine enters a terminal status.
   routine->RegisterStatusChangedCallback(
-      WrapOnTerminalStatusCallbackAsStatusChangedCallback(
-          base::BindOnce(&SendResultToUMA, routine_enum)));
+      InvokeOnTerminalStatus(base::BindOnce(&SendResultToUMA, routine_enum)));
 
   routine->Start();
   int32_t id = next_id_;

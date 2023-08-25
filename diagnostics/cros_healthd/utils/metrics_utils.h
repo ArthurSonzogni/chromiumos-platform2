@@ -7,6 +7,7 @@
 
 #include <set>
 
+#include <base/functional/callback_forward.h>
 #include <metrics/metrics_library.h>
 
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -71,6 +72,28 @@ enum class CrosHealthdEventCategory {
   // value is required when calling |SendEnumToUMA|.
   kMaxValue = kCrash,
 };
+
+// Wrap |on_terminal_status_cb| in a repeating callback that invokes
+// |on_terminal_status_cb| with the first terminal routine status it receives.
+//
+// An exception is the kCancelling status. We'll treat it as kCancelled since
+// |SubprocRoutine| might never turning into kCancelled status.
+//
+// Terminal status mean these enums
+// - kPassed
+// - kFailed
+// - kError
+// - kCancelled
+// - kFailedToStart
+// - kRemoved
+// - kUnsupported
+// - kNotRun
+base::RepeatingCallback<
+    void(ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum)>
+InvokeOnTerminalStatus(
+    base::OnceCallback<
+        void(ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum)>
+        on_terminal_status_cb);
 
 // Sends the telemetry result (e.g., success or error) to UMA for each category
 // in |requested_categories|.

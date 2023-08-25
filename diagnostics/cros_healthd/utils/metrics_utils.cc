@@ -7,7 +7,9 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <mojo/public/cpp/bindings/struct_ptr.h>
 
@@ -262,6 +264,46 @@ void SendOneTelemetryResultToUMA(MetricsLibraryInterface* metrics,
 }
 
 }  // namespace
+
+base::RepeatingCallback<void(mojom::DiagnosticRoutineStatusEnum)>
+InvokeOnTerminalStatus(
+    base::OnceCallback<void(mojom::DiagnosticRoutineStatusEnum)>
+        on_terminal_status_cb) {
+  return base::BindRepeating(
+      [](base::OnceCallback<void(mojom::DiagnosticRoutineStatusEnum)>& callback,
+         mojom::DiagnosticRoutineStatusEnum new_status) {
+        mojom::DiagnosticRoutineStatusEnum status_to_report;
+        switch (new_status) {
+          // Non-terminal status.
+          case mojom::DiagnosticRoutineStatusEnum::kUnknown:
+          case mojom::DiagnosticRoutineStatusEnum::kReady:
+          case mojom::DiagnosticRoutineStatusEnum::kRunning:
+          case mojom::DiagnosticRoutineStatusEnum::kWaiting:
+            return;
+          // A workaround for |SubprocRoutine|. The status will eventually be
+          // kCancelled but the status change might never be notified.
+          case mojom::DiagnosticRoutineStatusEnum::kCancelling:
+            status_to_report = mojom::DiagnosticRoutineStatusEnum::kCancelled;
+            break;
+          // Terminal status.
+          case mojom::DiagnosticRoutineStatusEnum::kPassed:
+          case mojom::DiagnosticRoutineStatusEnum::kFailed:
+          case mojom::DiagnosticRoutineStatusEnum::kError:
+          case mojom::DiagnosticRoutineStatusEnum::kCancelled:
+          case mojom::DiagnosticRoutineStatusEnum::kFailedToStart:
+          case mojom::DiagnosticRoutineStatusEnum::kRemoved:
+          case mojom::DiagnosticRoutineStatusEnum::kUnsupported:
+          case mojom::DiagnosticRoutineStatusEnum::kNotRun:
+            status_to_report = new_status;
+            break;
+        }
+        // |callback| will be null if it has already been called.
+        if (callback) {
+          std::move(callback).Run(status_to_report);
+        }
+      },
+      base::OwnedRef(std::move(on_terminal_status_cb)));
+}
 
 void SendTelemetryResultToUMA(
     MetricsLibraryInterface* metrics,

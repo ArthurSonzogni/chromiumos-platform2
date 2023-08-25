@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/bind.h>
+#include <base/test/mock_callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -21,6 +23,9 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
+using OnTerminalStatusCallback =
+    base::OnceCallback<void(mojom::DiagnosticRoutineStatusEnum)>;
 
 class MetricsUtilsTest : public ::testing::Test {
  protected:
@@ -47,6 +52,40 @@ class MetricsUtilsTest : public ::testing::Test {
 
   testing::StrictMock<MetricsLibraryMock> metrics_library_;
 };
+
+TEST_F(MetricsUtilsTest, InvokeOnTerminalStatusForTerminalStatus) {
+  base::MockCallback<OnTerminalStatusCallback> callback;
+  EXPECT_CALL(callback, Run(mojom::DiagnosticRoutineStatusEnum::kPassed))
+      .Times(1);
+  auto wrapped_callback = InvokeOnTerminalStatus(callback.Get());
+  wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kRunning);
+  wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kPassed);
+}
+
+TEST_F(MetricsUtilsTest, InvokeOnTerminalStatusForNonTerminalStatus) {
+  base::MockCallback<OnTerminalStatusCallback> callback;
+  EXPECT_CALL(callback, Run).Times(0);
+  auto wrapped_callback = InvokeOnTerminalStatus(callback.Get());
+  wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kWaiting);
+}
+
+TEST_F(MetricsUtilsTest, InvokeOnTerminalStatusWorkaroundForCancelling) {
+  base::MockCallback<OnTerminalStatusCallback> callback;
+  EXPECT_CALL(callback, Run(mojom::DiagnosticRoutineStatusEnum::kCancelled))
+      .Times(1);
+  auto wrapped_callback = InvokeOnTerminalStatus(callback.Get());
+  wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kCancelling);
+}
+
+// Passing in two terminal status should invoke the callback only once.
+TEST_F(MetricsUtilsTest, InvokeOnTerminalStatusOnlyOnce) {
+  base::MockCallback<OnTerminalStatusCallback> callback;
+  EXPECT_CALL(callback, Run(mojom::DiagnosticRoutineStatusEnum::kPassed))
+      .Times(1);
+  auto wrapped_callback = InvokeOnTerminalStatus(callback.Get());
+  wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kPassed);
+  wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kError);
+}
 
 TEST_F(MetricsUtilsTest, SendBatteryTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBattery,
