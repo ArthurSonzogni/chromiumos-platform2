@@ -96,6 +96,20 @@ TEST_F(ProtoUtilsTest, FillParallelsAllocationProto) {
             proto.ipv4_subnet().prefix_len());
 }
 
+TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
+  // TODO(b/279994478): Add kBruschettaVM at GuestType.
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kParallelsVM, 0);
+  // TODO(b/279994478): Add kBruschetta at VMType.
+  CrostiniService::CrostiniDevice parallels_device(
+      CrostiniService::VMType::kParallels, "vmtap1", {}, std::move(ipv4_subnet),
+      nullptr);
+
+  BruschettaVmStartupResponse proto;
+  FillBruschettaAllocationProto(parallels_device, &proto);
+  ASSERT_EQ("vmtap1", proto.tap_device_ifname());
+}
+
 TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   const uint32_t subnet_index = 0;
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);

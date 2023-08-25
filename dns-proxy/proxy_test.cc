@@ -102,7 +102,7 @@ class FakeShillClient : public shill::FakeClient {
 class FakePatchpanelClient : public patchpanel::FakeClient {
  public:
   FakePatchpanelClient() = default;
-  ~FakePatchpanelClient() = default;
+  ~FakePatchpanelClient() override = default;
 
   void SetConnectNamespaceResult(
       int fd, const patchpanel::Client::ConnectedNamespace& resp) {
@@ -151,7 +151,7 @@ class FakeSessionMonitor : public SessionMonitor {
 class MockPatchpanelClient : public patchpanel::Client {
  public:
   MockPatchpanelClient() = default;
-  ~MockPatchpanelClient() = default;
+  ~MockPatchpanelClient() override = default;
 
   MOCK_METHOD(void,
               RegisterOnAvailableCallback,
@@ -178,6 +178,11 @@ class MockPatchpanelClient : public patchpanel::Client {
               (uint64_t, int),
               (override));
   MOCK_METHOD(bool, NotifyParallelsVmShutdown, (uint64_t), (override));
+  MOCK_METHOD(std::optional<patchpanel::Client::BruschettaAllocation>,
+              NotifyBruschettaVmStartup,
+              (uint64_t),
+              (override));
+  MOCK_METHOD(bool, NotifyBruschettaVmShutdown, (uint64_t), (override));
   MOCK_METHOD(bool, DefaultVpnRouting, (const base::ScopedFD&), (override));
   MOCK_METHOD(bool, RouteOnVpn, (const base::ScopedFD&), (override));
   MOCK_METHOD(bool, BypassVpn, (const base::ScopedFD&), (override));
@@ -251,7 +256,7 @@ class MockResolver : public Resolver {
                  kRequestTimeout,
                  kRequestRetryDelay,
                  kRequestMaxRetry) {}
-  ~MockResolver() = default;
+  ~MockResolver() override = default;
 
   MOCK_METHOD(bool, ListenUDP, (struct sockaddr*), (override));
   MOCK_METHOD(bool, ListenTCP, (struct sockaddr*), (override));
@@ -292,7 +297,7 @@ class ProxyTest : public ::testing::Test {
         mock_proxy_(new dbus::MockObjectProxy(mock_bus_.get(),
                                               shill::kFlimflamServiceName,
                                               dbus::ObjectPath("/"))) {}
-  ~ProxyTest() { mock_bus_->ShutdownAndBlock(); }
+  ~ProxyTest() override { mock_bus_->ShutdownAndBlock(); }
 
   void SetUp() override {
     EXPECT_CALL(*mock_bus_, GetObjectProxy(_, _))
@@ -1614,7 +1619,8 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   proxy.doh_config_.set_nameservers(
       {net_base::IPv4Address(8, 8, 8, 8), net_base::IPv4Address(8, 8, 4, 4)},
       ipv6_dns_addresses);
-  proxy.device_.reset(new shill::Client::Device{});
+  proxy.device_ =
+      std::make_unique<shill::Client::Device>(shill::Client::Device{});
 
   auto dev =
       virtualdev(patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0");
@@ -1843,7 +1849,8 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
               std::move(client), ShillClient(), MessageDispatcher());
   proxy.ns_.peer_ifname = "";
 
-  proxy.device_.reset(new shill::Client::Device{});
+  proxy.device_ =
+      std::make_unique<shill::Client::Device>(shill::Client::Device{});
   proxy.lifeline_fds_.emplace(std::make_pair("arc_eth0", AF_INET6),
                               base::ScopedFD(make_fd()));
 

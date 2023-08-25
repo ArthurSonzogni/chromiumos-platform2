@@ -183,6 +183,35 @@ TEST_F(ClientTest, NotifyParallelsVmShutdown) {
   EXPECT_TRUE(result);
 }
 
+TEST_F(ClientTest, NotifyBruschettaVmStartup) {
+  const uint64_t id = 5;
+  const std::string tap_ifname = "vmtap2";
+
+  BruschettaVmStartupResponse response_proto;
+  response_proto.set_tap_device_ifname(tap_ifname);
+
+  EXPECT_CALL(*proxy_,
+              BruschettaVmStartup(Property(&BruschettaVmStartupRequest::id, id),
+                                  _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
+
+  auto result = client_->NotifyBruschettaVmStartup(id);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result->tap_device_ifname, tap_ifname);
+}
+
+TEST_F(ClientTest, NotifyBruschettaVmShutdown) {
+  const uint64_t id = 5;
+
+  EXPECT_CALL(*proxy_,
+              BruschettaVmShutdown(
+                  Property(&BruschettaVmShutdownRequest::id, id), _, _, _))
+      .WillOnce(Return(true));
+
+  const bool result = client_->NotifyBruschettaVmShutdown(id);
+  EXPECT_TRUE(result);
+}
+
 TEST_F(ClientTest, ConnectNamespace_Fail) {
   const pid_t invalid_pid = 3456;
   const std::string outbound_ifname = "";

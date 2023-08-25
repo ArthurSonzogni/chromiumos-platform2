@@ -4,8 +4,6 @@
 
 #include "patchpanel/proto_utils.h"
 
-#include <memory>
-
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
@@ -38,6 +36,12 @@ void FillParallelsAllocationProto(
   FillSubnetProto(parallels_device.vm_ipv4_subnet(),
                   output->mutable_ipv4_subnet());
   output->set_ipv4_address(parallels_device.vm_ipv4_address().ToByteString());
+}
+
+void FillBruschettaAllocationProto(
+    const CrostiniService::CrostiniDevice& Bruschetta_device,
+    BruschettaVmStartupResponse* output) {
+  output->set_tap_device_ifname(Bruschetta_device.tap_device_ifname());
 }
 
 void FillDeviceProto(const Device& virtual_device,

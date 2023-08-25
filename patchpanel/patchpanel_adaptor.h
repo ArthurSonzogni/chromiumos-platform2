@@ -6,9 +6,6 @@
 #define PATCHPANEL_PATCHPANEL_ADAPTOR_H_
 
 #include <memory>
-#include <set>
-#include <string>
-#include <utility>
 
 #include <metrics/metrics_library.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
@@ -73,6 +70,10 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
       const ParallelsVmShutdownRequest& request) override;
   ParallelsVmStartupResponse ParallelsVmStartup(
       const ParallelsVmStartupRequest& request) override;
+  BruschettaVmShutdownResponse BruschettaVmShutdown(
+      const BruschettaVmShutdownRequest& request) override;
+  BruschettaVmStartupResponse BruschettaVmStartup(
+      const BruschettaVmStartupRequest& request) override;
   SetDnsRedirectionRuleResponse SetDnsRedirectionRule(
       const SetDnsRedirectionRuleRequest& request,
       const base::ScopedFD& client_fd) override;

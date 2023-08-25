@@ -13,7 +13,6 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/crostini_service.h"
-#include "patchpanel/datapath.h"
 #include "patchpanel/device.h"
 #include "patchpanel/subnet.h"
 
@@ -30,6 +29,12 @@ void FillTerminaAllocationProto(
 void FillParallelsAllocationProto(
     const CrostiniService::CrostiniDevice& parallels_device,
     ParallelsVmStartupResponse* output);
+
+// Fills a protobuf BruschettaVmStartupResponse object with the given
+// |Bruschetta_device| Device.
+void FillBruschettaAllocationProto(
+    const CrostiniService::CrostiniDevice& Bruschetta_device,
+    BruschettaVmStartupResponse* output);
 
 // Fills a protobuf NetworkDevice object with the given |virtual_device| Device.
 void FillDeviceProto(const Device& virtual_device, NetworkDevice* output);

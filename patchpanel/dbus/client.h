@@ -25,11 +25,9 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
-namespace org {
-namespace chromium {
+namespace org::chromium {
 class PatchPanelProxyInterface;
-}  // namespace chromium
-}  // namespace org
+}  // namespace org::chromium
 
 namespace patchpanel {
 
@@ -211,9 +209,9 @@ class BRILLO_EXPORT Client {
     net_base::IPv4Address container_ipv4_address;
   };
 
-  // Contains the network IPv4 subnet assigned to a Parallels VM //and the name
+  // Contains the network IPv4 subnet assigned to a Parallels VM and the name
   // of the tap device created by patchpanel for the VM. See
-  // TerminaVmStartupResponse in patchpanel_service.proto.
+  // ParallelsVmStartupResponse in patchpanel_service.proto.
   struct ParallelsAllocation {
     // Tap device interface name created for the VM.
     std::string tap_device_ifname;
@@ -221,6 +219,14 @@ class BRILLO_EXPORT Client {
     net_base::IPv4CIDR parallels_ipv4_subnet;
     // The IPv4 address assigned to the VM, contained inside |ipv4_subnet|.
     net_base::IPv4Address parallels_ipv4_address;
+  };
+
+  // Contains the network IPv4 subnet assigned to a Bruschetta VM and the name
+  // of the tap device created by patchpanel for the VM. See
+  // BruschettaVmStartupResponse in patchpanel_service.proto.
+  struct BruschettaAllocation {
+    // Tap device interface name created for the VM.
+    std::string tap_device_ifname;
   };
 
   using GetTrafficCountersCallback =
@@ -280,6 +286,10 @@ class BRILLO_EXPORT Client {
   virtual std::optional<ParallelsAllocation> NotifyParallelsVmStartup(
       uint64_t vm_id, int subnet_index) = 0;
   virtual bool NotifyParallelsVmShutdown(uint64_t vm_id) = 0;
+
+  virtual std::optional<BruschettaAllocation> NotifyBruschettaVmStartup(
+      uint64_t vm_id) = 0;
+  virtual bool NotifyBruschettaVmShutdown(uint64_t vm_id) = 0;
 
   // Reset the VPN routing intent mark on a socket to the default policy for
   // the current uid. This is in general incorrect to call this method for

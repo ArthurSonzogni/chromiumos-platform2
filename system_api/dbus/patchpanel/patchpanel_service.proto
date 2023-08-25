@@ -222,6 +222,30 @@ message ParallelsVmShutdownRequest {
 // Intentionally empty response.
 message ParallelsVmShutdownResponse {}
 
+// Notification that a Bruschetta VM is starting up.
+message BruschettaVmStartupRequest {
+  // The unique ID of the VM.
+  uint64 id = 1;
+}
+
+// Information required by Concierge to continue the Bruschetta VM startup.
+message BruschettaVmStartupResponse {
+  // The TAP device to be used for the VM.
+  string tap_device_ifname = 1;
+};
+
+// Notification that the Bruschetta VM is shutting down.
+// This message must also be sent if the startup process fails so any
+// allocated resources, including the subnets, are properly freed.
+message BruschettaVmShutdownRequest {
+  // The unique ID of the Bruschetta VM; must match what was sent at startup.
+  // Required.
+  uint64 id = 1;
+}
+
+// Intentionally empty response.
+message BruschettaVmShutdownResponse {}
+
 // Request to set the VPN routing policy for a socket. The socket file
 // descriptor must be immediately appended to the DBUS message after the
 // serialized SetVpnIntentRequest message. The request must be sent before

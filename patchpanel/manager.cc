@@ -571,6 +571,16 @@ void Manager::ParallelsVmShutdown(uint64_t vm_id) {
   StopCrosVm(vm_id, GuestMessage::PARALLELS_VM);
 }
 
+const CrostiniService::CrostiniDevice* const Manager::BruschettaVmStartup(
+    uint64_t vm_id) {
+  // TODO(b/279994478): Implement this method.
+  return nullptr;
+}
+
+void Manager::BruschettaVmShutdown(uint64_t vm_id) {
+  // TODO(b/279994478): Implement this method.
+}
+
 bool Manager::SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
                            const base::ScopedFD& sockfd) {
   return routing_svc_->SetVpnFwmark(sockfd.get(), policy);

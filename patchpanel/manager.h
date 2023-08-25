@@ -10,7 +10,6 @@
 #include <optional>
 #include <set>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -26,7 +25,6 @@
 #include "patchpanel/datapath.h"
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/downstream_network_service.h"
-#include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/multicast_metrics.h"
@@ -99,6 +97,13 @@ class Manager {
 
   // Handles notification indicating a Parallels VM is spinning down.
   void ParallelsVmShutdown(uint64_t vm_id);
+
+  // Handles notification indicating a Bruschetta VM is booting up.
+  const CrostiniService::CrostiniDevice* const BruschettaVmStartup(
+      uint64_t vm_id);
+
+  // Handles notification indicating a Bruschetta VM is spinning down.
+  void BruschettaVmShutdown(uint64_t vm_id);
 
   // Sets a VPN intent fwmark on a socket.
   bool SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,

@@ -43,6 +43,10 @@ class BRILLO_EXPORT FakeClient : public Client {
       uint64_t vm_id, int subnet_index) override;
   bool NotifyParallelsVmShutdown(uint64_t vm_id) override;
 
+  std::optional<Client::BruschettaAllocation> NotifyBruschettaVmStartup(
+      uint64_t vm_id) override;
+  bool NotifyBruschettaVmShutdown(uint64_t vm_id) override;
+
   bool DefaultVpnRouting(const base::ScopedFD& socket) override;
 
   bool RouteOnVpn(const base::ScopedFD& socket) override;

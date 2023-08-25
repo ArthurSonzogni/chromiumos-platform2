@@ -5,7 +5,6 @@
 #include "patchpanel/dbus/client.h"
 
 #include <fcntl.h>
-#include <string.h>
 
 #include <algorithm>
 #include <optional>
@@ -284,6 +283,18 @@ std::optional<Client::ParallelsAllocation> ConvertParallelsAllocation(
   parallels_alloc.parallels_ipv4_address = *parallels_address;
   return parallels_alloc;
 }
+
+std::optional<Client::BruschettaAllocation> ConvertBruschettaAllocation(
+    const BruschettaVmStartupResponse& in) {
+  if (in.tap_device_ifname().empty()) {
+    return std::nullopt;
+  }
+
+  Client::BruschettaAllocation bruschetta_alloc;
+  bruschetta_alloc.tap_device_ifname = in.tap_device_ifname();
+  return bruschetta_alloc;
+}
+
 std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
     const NetworkClientInfo& in) {
   auto out = std::make_optional<Client::NetworkClientInfo>();
@@ -594,7 +605,7 @@ class ClientImpl : public Client {
   ClientImpl(const ClientImpl&) = delete;
   ClientImpl& operator=(const ClientImpl&) = delete;
 
-  ~ClientImpl();
+  ~ClientImpl() override;
 
   void RegisterOnAvailableCallback(
       base::RepeatingCallback<void(bool)> callback) override;
@@ -615,6 +626,10 @@ class ClientImpl : public Client {
   std::optional<ParallelsAllocation> NotifyParallelsVmStartup(
       uint64_t vm_id, int subnet_index) override;
   bool NotifyParallelsVmShutdown(uint64_t vm_id) override;
+
+  std::optional<BruschettaAllocation> NotifyBruschettaVmStartup(
+      uint64_t vm_id) override;
+  bool NotifyBruschettaVmShutdown(uint64_t vm_id) override;
 
   bool DefaultVpnRouting(const base::ScopedFD& socket) override;
 
@@ -948,6 +963,57 @@ bool ClientImpl::NotifyParallelsVmShutdown(uint64_t vm_id) {
       proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "ParallelsVM network shutdown failed: "
+               << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
+std::optional<Client::BruschettaAllocation>
+ClientImpl::NotifyBruschettaVmStartup(uint64_t vm_id) {
+  BruschettaVmStartupRequest request;
+  request.set_id(vm_id);
+
+  BruschettaVmStartupResponse response;
+  brillo::ErrorPtr error;
+  const bool result = RunOnDBusThreadSync(base::BindOnce(
+      [](PatchPanelProxyInterface* proxy,
+         const BruschettaVmStartupRequest& request,
+         BruschettaVmStartupResponse* response, brillo::ErrorPtr* error) {
+        return proxy->BruschettaVmStartup(request, response, error);
+      },
+      proxy_.get(), request, &response, &error));
+
+  if (!result) {
+    LOG(ERROR) << __func__ << "(vm_id: " << vm_id
+               << "): Bruschetta VM network startup failed: "
+               << error->GetMessage();
+    return std::nullopt;
+  }
+
+  const auto network_alloc = ConvertBruschettaAllocation(response);
+  if (!network_alloc) {
+    LOG(ERROR) << __func__ << "(vm_id: " << vm_id
+               << "): Failed to convert Bruschetta VM network configuration";
+  }
+  return network_alloc;
+}
+
+bool ClientImpl::NotifyBruschettaVmShutdown(uint64_t vm_id) {
+  BruschettaVmShutdownRequest request;
+  request.set_id(vm_id);
+
+  BruschettaVmShutdownResponse response;
+  brillo::ErrorPtr error;
+  const bool result = RunOnDBusThreadSync(base::BindOnce(
+      [](PatchPanelProxyInterface* proxy,
+         const BruschettaVmShutdownRequest& request,
+         BruschettaVmShutdownResponse* response, brillo::ErrorPtr* error) {
+        return proxy->BruschettaVmShutdown(request, response, error);
+      },
+      proxy_.get(), request, &response, &error));
+  if (!result) {
+    LOG(ERROR) << "BruschettaVM network shutdown failed: "
                << error->GetMessage();
     return false;
   }

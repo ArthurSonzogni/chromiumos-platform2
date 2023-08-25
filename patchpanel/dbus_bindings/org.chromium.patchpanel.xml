@@ -183,6 +183,30 @@
       </arg>
     </method>
 
+    <method name="BruschettaVmShutdown">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::BruschettaVmShutdownRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::BruschettaVmShutdownResponse" />
+      </arg>
+    </method>
+
+    <method name="BruschettaVmStartup">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::BruschettaVmStartupRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::BruschettaVmStartupResponse" />
+      </arg>
+    </method>
+
     <method name="SetDnsRedirectionRule">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">

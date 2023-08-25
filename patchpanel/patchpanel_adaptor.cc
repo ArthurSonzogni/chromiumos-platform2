@@ -4,6 +4,10 @@
 
 #include "patchpanel/patchpanel_adaptor.h"
 
+#include <set>
+#include <string>
+#include <utility>
+
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
 #include <shill/net/process_manager.h>
 
@@ -248,6 +252,35 @@ ParallelsVmStartupResponse PatchpanelAdaptor::ParallelsVmStartup(
   ParallelsVmStartupResponse response;
   FillParallelsAllocationProto(*parallels_device, &response);
   RecordDbusEvent(DbusUmaEvent::kParallelsVmStartupSuccess);
+  return response;
+}
+
+BruschettaVmShutdownResponse PatchpanelAdaptor::BruschettaVmShutdown(
+    const BruschettaVmShutdownRequest& request) {
+  LOG(INFO) << "Bruschetta VM shutting down";
+  RecordDbusEvent(DbusUmaEvent::kBruschettaVmShutdown);
+
+  manager_->BruschettaVmShutdown(request.id());
+
+  RecordDbusEvent(DbusUmaEvent::kBruschettaVmShutdownSuccess);
+  return {};
+}
+
+BruschettaVmStartupResponse PatchpanelAdaptor::BruschettaVmStartup(
+    const BruschettaVmStartupRequest& request) {
+  const uint64_t vm_id = request.id();
+  LOG(INFO) << __func__ << "(cid: " << vm_id << ")";
+  RecordDbusEvent(DbusUmaEvent::kBruschettaVmStartup);
+
+  const auto* const bruschetta_device = manager_->BruschettaVmStartup(vm_id);
+  if (!bruschetta_device) {
+    LOG(ERROR) << __func__ << "(cid: " << vm_id
+               << "): Failed to create virtual Device";
+    return {};
+  }
+  BruschettaVmStartupResponse response;
+  FillBruschettaAllocationProto(*bruschetta_device, &response);
+  RecordDbusEvent(DbusUmaEvent::kBruschettaVmStartupSuccess);
   return response;
 }
 

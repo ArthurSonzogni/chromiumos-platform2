@@ -49,6 +49,15 @@ bool FakeClient::NotifyParallelsVmShutdown(uint64_t vm_id) {
   return true;
 }
 
+std::optional<Client::BruschettaAllocation>
+FakeClient::NotifyBruschettaVmStartup(uint64_t vm_id) {
+  return std::nullopt;
+}
+
+bool FakeClient::NotifyBruschettaVmShutdown(uint64_t vm_id) {
+  return true;
+}
+
 bool FakeClient::DefaultVpnRouting(const base::ScopedFD& socket) {
   return true;
 }

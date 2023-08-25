@@ -90,6 +90,10 @@ enum class DbusUmaEvent {
   kCreateTetheredNetworkSuccess = 34,
   kGetDownstreamNetworkInfo = 35,
   kGetDownstreamNetworkInfoSuccess = 36,
+  kBruschettaVmStartup = 37,
+  kBruschettaVmStartupSuccess = 38,
+  kBruschettaVmShutdown = 39,
+  kBruschettaVmShutdownSuccess = 40,
 
   kMaxValue,
 };

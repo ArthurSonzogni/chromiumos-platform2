@@ -228,6 +228,38 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
               (override));
 
   MOCK_METHOD(bool,
+              BruschettaVmShutdown,
+              (const BruschettaVmShutdownRequest&,
+               BruschettaVmShutdownResponse*,
+               brillo::ErrorPtr*,
+               int),
+              (override));
+
+  MOCK_METHOD(void,
+              BruschettaVmShutdownAsync,
+              (const BruschettaVmShutdownRequest&,
+               base::OnceCallback<void(const BruschettaVmShutdownResponse&)>,
+               base::OnceCallback<void(brillo::Error*)>,
+               int),
+              (override));
+
+  MOCK_METHOD(bool,
+              BruschettaVmStartup,
+              (const BruschettaVmStartupRequest&,
+               BruschettaVmStartupResponse*,
+               brillo::ErrorPtr*,
+               int),
+              (override));
+
+  MOCK_METHOD(void,
+              BruschettaVmStartupAsync,
+              (const BruschettaVmStartupRequest&,
+               base::OnceCallback<void(const BruschettaVmStartupResponse&)>,
+               base::OnceCallback<void(brillo::Error*)>,
+               int),
+              (override));
+
+  MOCK_METHOD(bool,
               SetDnsRedirectionRule,
               (const SetDnsRedirectionRuleRequest&,
                const base::ScopedFD&,
