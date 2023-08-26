@@ -261,12 +261,22 @@ std::vector<uint8_t> ConvertFromKeymasterMessage(const uint8_t* data,
   return std::vector<uint8_t>(data, data + size);
 }
 
-std::vector<std::vector<uint8_t>> ConvertFromKeymasterMessage(
-    const keymaster_cert_chain_t& cert) {
-  std::vector<std::vector<uint8_t>> out(cert.entry_count);
-  for (size_t i = 0; i < cert.entry_count; ++i) {
-    const auto& entry = cert.entries[i];
-    out[i] = ConvertFromKeymasterMessage(entry.data, entry.data_length);
+std::vector<arc::mojom::keymint::CertificatePtr> ConvertFromKeymasterMessage(
+    const ::keymaster::CertificateChain& cert_chain) {
+  std::vector<arc::mojom::keymint::CertificatePtr> out;
+  if (cert_chain.entry_count == 0 || cert_chain.entries == nullptr) {
+    return out;
+  }
+
+  out.reserve(cert_chain.entry_count);
+
+  for (size_t i = 0; i < cert_chain.entry_count; ++i) {
+    const auto& entry = cert_chain.entries[i];
+    auto cert_vector =
+        ConvertFromKeymasterMessage(entry.data, entry.data_length);
+    auto mojo_cert =
+        arc::mojom::keymint::Certificate::New(std::move(cert_vector));
+    out.push_back(std::move(mojo_cert));
   }
   return out;
 }
@@ -677,8 +687,8 @@ arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeGenerateKeyResult(
   key_chars_array.push_back(std::move(softwareChars));
 
   // Create the Certificate Array.
-  // TODO(b/286944450): Add certificates for Attestation.
-  std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
+  std::vector<arc::mojom::keymint::CertificatePtr> cert_array =
+      ConvertFromKeymasterMessage(km_response.certificate_chain);
 
   auto key_result = arc::mojom::keymint::KeyCreationResult::New(
       std::move(key_blob), std::move(key_chars_array), std::move(cert_array));
@@ -714,8 +724,8 @@ arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeImportKeyResult(
   key_chars_array.push_back(std::move(softwareChars));
 
   // Create the Certificate Array.
-  // TODO(b/286944450): Add certificates for Attestation.
-  std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
+  std::vector<arc::mojom::keymint::CertificatePtr> cert_array =
+      ConvertFromKeymasterMessage(km_response.certificate_chain);
 
   auto key_creation_result = arc::mojom::keymint::KeyCreationResult::New(
       std::move(key_blob), std::move(key_chars_array), std::move(cert_array));
@@ -751,8 +761,8 @@ arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeImportWrappedKeyResult(
   key_chars_array.push_back(std::move(softwareChars));
 
   // Create the Certificate Array.
-  // TODO(b/286944450): Add certificates for Attestation.
-  std::vector<arc::mojom::keymint::CertificatePtr> cert_array;
+  std::vector<arc::mojom::keymint::CertificatePtr> cert_array =
+      ConvertFromKeymasterMessage(km_response.certificate_chain);
 
   auto key_creation_result = arc::mojom::keymint::KeyCreationResult::New(
       std::move(key_blob), std::move(key_chars_array), std::move(cert_array));

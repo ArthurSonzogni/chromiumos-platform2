@@ -36,7 +36,7 @@ std::vector<uint8_t> authToken2AidlVec(
 std::vector<uint8_t> ConvertFromKeymasterMessage(const uint8_t* data,
                                                  const size_t size);
 
-std::vector<std::vector<uint8_t>> ConvertFromKeymasterMessage(
+std::vector<arc::mojom::keymint::CertificatePtr> ConvertFromKeymasterMessage(
     const keymaster_cert_chain_t& cert);
 
 std::vector<::arc::mojom::keymint::KeyParameterPtr> ConvertFromKeymasterMessage(
