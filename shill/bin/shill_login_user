@@ -89,10 +89,6 @@ ln -s "${profile_dir}" "${profile_link_dir}" ||
   logger -t "${script_name}" \
     "Failed to create shill user cryptohome link ${profile_link_dir}"
 
-# We don't log here any more.
-# TODO(crbug.com/1076094): remove this after M-86.
-rm -rf "${profile_base}/shill_logs"
-
 # wait_for_shill_dbus_services polls for the org.chromium.flimflam
 # in the org.freedesktop.DBus.ListNames list that has all connected
 # names on the Bus.
