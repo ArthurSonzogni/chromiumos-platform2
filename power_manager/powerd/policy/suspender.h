@@ -240,20 +240,9 @@ class Suspender : public SuspendDelayObserver,
   // asynchronously. The system will automatically resume after |duration| if it
   // is non-zero.
   void RequestSuspend(SuspendImminent::Reason reason,
+                      std::optional<uint64_t> wakeup_count,
                       base::TimeDelta duration,
                       SuspendFlavor flavor);
-
-  // Like RequestSuspend(), but aborts the suspend attempt immediately if
-  // the current wakeup count reported by the kernel exceeds
-  // |wakeup_count|. Autotests can pass an external wakeup count to ensure
-  // that machines in the test cluster don't sleep indefinitely (see
-  // http://crbug.com/218175).
-  // TODO(chromeos-power): Delete this and add a std::optional<uint64_t> arg to
-  // RequestSuspend.
-  void RequestSuspendWithExternalWakeupCount(SuspendImminent::Reason reason,
-                                             uint64_t wakeup_count,
-                                             base::TimeDelta duration,
-                                             SuspendFlavor flavor);
 
   // Aborts an imminent resume from hibernation.
   void AbortResumeFromHibernate();

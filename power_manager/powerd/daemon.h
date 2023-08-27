@@ -330,12 +330,9 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // Shuts the system down immediately.
   void ShutDown(ShutdownMode mode, ShutdownReason reason);
 
-  // Starts the suspend process. If |use_external_wakeup_count| is true,
-  // passes |external_wakeup_count| to
-  // policy::Suspender::RequestSuspendWithExternalWakeupCount();
+  // Starts the suspend process.
   void Suspend(SuspendImminent::Reason reason,
-               bool use_external_wakeup_count,
-               uint64_t external_wakeup_count,
+               std::optional<uint64_t> external_wakeup_count,
                base::TimeDelta duration,
                SuspendFlavor flavor);
 

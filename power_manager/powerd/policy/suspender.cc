@@ -125,24 +125,17 @@ void Suspender::Init(
 }
 
 void Suspender::RequestSuspend(SuspendImminent::Reason reason,
+                               std::optional<uint64_t> wakeup_count,
                                base::TimeDelta duration,
                                SuspendFlavor flavor) {
   suspend_request_reason_ = reason;
-  suspend_request_supplied_wakeup_count_ = false;
-  suspend_request_wakeup_count_ = 0;
-  suspend_duration_ = duration;
-  suspend_request_flavor_ = flavor;
-  HandleEvent(Event::SUSPEND_REQUESTED);
-}
-
-void Suspender::RequestSuspendWithExternalWakeupCount(
-    SuspendImminent::Reason reason,
-    uint64_t wakeup_count,
-    base::TimeDelta duration,
-    SuspendFlavor flavor) {
-  suspend_request_reason_ = reason;
-  suspend_request_supplied_wakeup_count_ = true;
-  suspend_request_wakeup_count_ = wakeup_count;
+  if (wakeup_count.has_value()) {
+    suspend_request_supplied_wakeup_count_ = true;
+    suspend_request_wakeup_count_ = wakeup_count.value();
+  } else {
+    suspend_request_supplied_wakeup_count_ = false;
+    suspend_request_wakeup_count_ = 0;
+  }
   suspend_duration_ = duration;
   suspend_request_flavor_ = flavor;
   HandleEvent(Event::SUSPEND_REQUESTED);

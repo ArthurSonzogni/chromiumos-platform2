@@ -282,7 +282,7 @@ class Daemon::StateControllerDelegate
         suspend_reason = SuspendImminent_Reason_LID_CLOSED;
         break;
     }
-    daemon_->Suspend(suspend_reason, false, 0, base::TimeDelta(),
+    daemon_->Suspend(suspend_reason, std::nullopt, base::TimeDelta(),
                      SuspendFlavor::SUSPEND_DEFAULT);
   }
 
@@ -1592,9 +1592,11 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
   uint32_t suspend_flavor =
       static_cast<uint32_t>(SuspendFlavor::SUSPEND_DEFAULT);
   reader.PopUint32(&suspend_flavor);
-  Suspend(SuspendImminent_Reason_OTHER, got_external_wakeup_count,
-          external_wakeup_count, duration,
-          static_cast<SuspendFlavor>(suspend_flavor));
+  Suspend(SuspendImminent_Reason_OTHER,
+          got_external_wakeup_count
+              ? std::make_optional<uint64_t>(external_wakeup_count)
+              : std::nullopt,
+          duration, static_cast<SuspendFlavor>(suspend_flavor));
 
   return nullptr;
 }
@@ -1873,8 +1875,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
 }
 
 void Daemon::Suspend(SuspendImminent::Reason reason,
-                     bool use_external_wakeup_count,
-                     uint64_t external_wakeup_count,
+                     std::optional<uint64_t> external_wakeup_count,
                      base::TimeDelta duration,
                      SuspendFlavor flavor) {
   if (shutting_down_) {
@@ -1884,12 +1885,8 @@ void Daemon::Suspend(SuspendImminent::Reason reason,
 
   if (flavor == SuspendFlavor::RESUME_FROM_DISK_ABORT) {
     suspender_->AbortResumeFromHibernate();
-
-  } else if (use_external_wakeup_count) {
-    suspender_->RequestSuspendWithExternalWakeupCount(
-        reason, external_wakeup_count, duration, flavor);
   } else {
-    suspender_->RequestSuspend(reason, duration, flavor);
+    suspender_->RequestSuspend(reason, external_wakeup_count, duration, flavor);
   }
 }
 

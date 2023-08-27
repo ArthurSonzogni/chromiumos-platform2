@@ -322,8 +322,8 @@ TEST_F(SuspenderTest, SuspendResume) {
   // SuspendDelayController is ready.
   const uint64_t kWakeupCount = 452;
   delegate_.set_wakeup_count(kWakeupCount);
-  suspender_.RequestSuspend(SuspendImminent_Reason_IDLE, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_IDLE, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
   EXPECT_EQ(SuspendImminent_Reason_IDLE, GetSuspendImminentReason(0));
@@ -374,8 +374,8 @@ TEST_F(SuspenderTest, MissingWakeupCount) {
   Init();
 
   delegate_.set_report_success_for_read_wakeup_count(false);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(
@@ -389,15 +389,15 @@ TEST_F(SuspenderTest, MissingWakeupCount) {
 TEST_F(SuspenderTest, IgnoreDuplicateSuspendRequests) {
   Init();
 
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   const int orig_suspend_id = test_api_.suspend_id();
 
   // The suspend ID should be left unchanged after a second call to
   // RequestSuspend().
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_EQ(orig_suspend_id, test_api_.suspend_id());
 }
@@ -410,7 +410,7 @@ TEST_F(SuspenderTest, SuspendCancelDueToInputDeviceWakeEvent) {
   const uint64_t kOrigWakeupCount = 46;
   delegate_.set_wakeup_count(kOrigWakeupCount);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::CANCELED);
-  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED,
+  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED, std::nullopt,
                             base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
@@ -443,7 +443,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   const uint64_t kOrigWakeupCount = 46;
   delegate_.set_wakeup_count(kOrigWakeupCount);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED,
+  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED, std::nullopt,
                             base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
@@ -480,9 +480,8 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   // (http://crbug.com/384610). Also check that an external wakeup count passed
   // in the request gets ignored for the eventual retry.
   const uint64_t kExternalWakeupCount = 32542;
-  suspender_.RequestSuspendWithExternalWakeupCount(
-      SuspendImminent_Reason_IDLE, kExternalWakeupCount, base::TimeDelta(),
-      SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_IDLE, kExternalWakeupCount,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
@@ -501,8 +500,8 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   // Suspend successfully again and check that the number of attempts are
   // reported as 1 now.
   dbus_wrapper_.ClearSentSignals();
-  suspender_.RequestSuspend(SuspendImminent_Reason_IDLE, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_IDLE, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   const int new_suspend_id = test_api_.suspend_id();
   EXPECT_EQ(new_suspend_id, GetSuspendImminentId(0));
@@ -525,8 +524,8 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
   Init();
 
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
@@ -542,8 +541,8 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
 
   // Check that another suspend request doesn't reset the retry count
   // (http://crbug.com/384610).
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // After the last failed attempt, the system should shut down immediately.
@@ -560,8 +559,8 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedHibernateFailures) {
   Init();
 
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_TO_DISK);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_DISK);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
@@ -588,8 +587,8 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedHibernateFailures) {
 // suspended.
 TEST_F(SuspenderTest, ExplicitHibernateDoesntRequireMinSuspendTime) {
   Init();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_TO_DISK);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_DISK);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(
@@ -603,8 +602,8 @@ TEST_F(SuspenderTest, ExplicitHibernateDoesntRequireMinSuspendTime) {
 TEST_F(SuspenderTest, HibernateFeatureUnavailableDisablesExplicitRequest) {
   Init();
   configurator_stub_.force_hibernate_unavailable_for_testing();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_TO_DISK);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_DISK);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(
@@ -621,8 +620,8 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   Init();
 
   // User activity should cancel suspending.
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   EXPECT_TRUE(delegate_.suspend_announced());
@@ -641,8 +640,8 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
 
   // The lid being opened should also cancel.
   dbus_wrapper_.ClearSentSignals();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   suspender_.HandleLidOpened();
@@ -657,8 +656,8 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
 
   // A wake notification should also cancel.
   dbus_wrapper_.ClearSentSignals();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   suspender_.HandleWakeNotification();
@@ -673,8 +672,8 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
 
   // The request should also be canceled if the system starts shutting down.
   dbus_wrapper_.ClearSentSignals();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   suspender_.HandleShutdown();
@@ -688,8 +687,8 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Subsequent requests after shutdown has started should be ignored.
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
@@ -698,8 +697,8 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
 TEST_F(SuspenderTest, CancelAfterSuspend) {
   Init();
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -729,8 +728,8 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
 
   // Report user activity before powerd_suspend is executed and check that
   // Suspender still suspends when suspend readiness is announced.
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   suspender_.HandleUserActivity();
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -741,8 +740,8 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   // Report user activity after powerd_suspend fails and check that the
   // resuspend timer isn't stopped.
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::CANCELED);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
@@ -758,8 +757,8 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   // Report user activity after powerd_suspend fails when the system can safely
   // wake from dark resume and check that the suspend attempt is not aborted.
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::CANCELED);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
@@ -780,8 +779,8 @@ TEST_F(SuspenderTest, CancelForUserActivityWhileDocked) {
   delegate_.set_lid_closed(true);
   Init();
   suspender_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   EXPECT_TRUE(delegate_.suspend_announced());
@@ -800,16 +799,15 @@ TEST_F(SuspenderTest, CancelForUserActivityWhileDocked) {
 }
 
 // Tests that expected wakeup counts passed to
-// RequestSuspendWithExternalWakeupCount() are honored.
+// RequestSuspen() are honored.
 TEST_F(SuspenderTest, ExternalWakeupCount) {
   Init();
 
   // Pass a wakeup count less than the one that the delegate returns.
   const uint64_t kWakeupCount = 452;
   delegate_.set_wakeup_count(kWakeupCount);
-  suspender_.RequestSuspendWithExternalWakeupCount(
-      SuspendImminent_Reason_OTHER, kWakeupCount - 1, base::TimeDelta(),
-      SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kWakeupCount - 1,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
 
   // Make the delegate report that powerd_suspend reported a wakeup count
@@ -828,9 +826,8 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   // Send another suspend request with the current wakeup count. Report failure
   // and check that the suspend attempt is retried using the external wakeup
   // count.
-  suspender_.RequestSuspendWithExternalWakeupCount(
-      SuspendImminent_Reason_OTHER, kWakeupCount, base::TimeDelta(),
-      SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kWakeupCount,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -843,9 +840,8 @@ TEST_F(SuspenderTest, ExternalWakeupCount) {
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Now do a successful suspend and check that another retry isn't scheduled.
-  suspender_.RequestSuspendWithExternalWakeupCount(
-      SuspendImminent_Reason_OTHER, kWakeupCount, base::TimeDelta(),
-      SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kWakeupCount,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::SUCCESS);
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -864,13 +860,13 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
   // Instruct the delegate to send another suspend request when the current one
   // finishes.
   Init();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
   delegate_.set_completion_callback(base::BindRepeating(
       &Suspender::RequestSuspend, base::Unretained(&suspender_),
-      SuspendImminent_Reason_OTHER, base::TimeDelta(),
+      SuspendImminent_Reason_OTHER, std::nullopt, base::TimeDelta(),
       SuspendFlavor::SUSPEND_DEFAULT));
 
   // Check that the SuspendDone signal from the first request contains the first
@@ -902,8 +898,8 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
   // down.
   delegate_.set_shutdown_callback(base::BindRepeating(
       &Suspender::HandleShutdown, base::Unretained(&suspender_)));
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   shutdown_from_suspend_.set_action(
       policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN);
@@ -939,8 +935,8 @@ TEST_F(SuspenderTest, DarkResume) {
 
   const int kWakeupCount = 45;
   delegate_.set_wakeup_count(kWakeupCount);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   const int kSuspendId = test_api_.suspend_id();
   EXPECT_EQ(kSuspendId, GetSuspendImminentId(0));
@@ -971,8 +967,8 @@ TEST_F(SuspenderTest, DarkResume) {
 
 TEST_F(SuspenderTest, DarkResumeShutDown) {
   Init();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   shutdown_from_suspend_.set_action(
       policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN);
@@ -985,8 +981,8 @@ TEST_F(SuspenderTest, DarkResumeRetry) {
   Init();
   const uint64_t kOrigWakeupCount = 42;
   delegate_.set_wakeup_count(kOrigWakeupCount);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
 
   const uint64_t kDarkWakeupCount = 71;
@@ -1061,8 +1057,8 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
       &dark_resume_));
 
   // User activity should trigger the transition to fully resumed.
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
@@ -1083,8 +1079,8 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
 
   // Opening the lid should also trigger the transition.
   dbus_wrapper_.ClearSentSignals();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
@@ -1105,8 +1101,8 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
 
   // A wake notification should also trigger the transition.
   dbus_wrapper_.ClearSentSignals();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
@@ -1128,8 +1124,8 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   // Shutting down the system will also trigger the transition so that clients
   // can perform cleanup.
   dbus_wrapper_.ClearSentSignals();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
@@ -1163,8 +1159,8 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
       &dark_resume_));
 
   // Do the initial suspend.
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
@@ -1203,8 +1199,8 @@ TEST_F(SuspenderTest, GenerateDarkResumeMetricsOnlyIfEnabled) {
   Init();
 
   // Don't report metrics when dark resume is disabled.
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kPrepare, kSuspendAudio, kSuspend, kResumeAudio,
                         kUnprepare, nullptr),
@@ -1212,8 +1208,8 @@ TEST_F(SuspenderTest, GenerateDarkResumeMetricsOnlyIfEnabled) {
 
   // Report metrics when dark resume is enabled.
   dark_resume_.set_enabled(true);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kPrepare, kSuspendAudio, kSuspend, kResumeAudio,
                         kUnprepare, kGenerateDarkResumeMetrics, nullptr),
@@ -1225,8 +1221,8 @@ TEST_F(SuspenderTest, DarkResumeWakeDataNoDarkResume) {
   Init();
   dark_resume_.set_enabled(true);
 
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   const base::TimeDelta kSuspendDuration = base::Minutes(24);
   delegate_.set_suspend_advance_time(kSuspendDuration);
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -1240,8 +1236,8 @@ TEST_F(SuspenderTest, DarkResumeWakeDataOneDarkResume) {
   Init();
   dark_resume_.set_enabled(true);
 
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   dark_resume_.set_in_dark_resume(true);
   const base::TimeDelta kInitialSuspendDuration = base::Minutes(7);
   delegate_.set_suspend_advance_time(kInitialSuspendDuration);
@@ -1271,8 +1267,8 @@ TEST_F(SuspenderTest, DarkResumeWakeDataFailedResuspend) {
   Init();
   dark_resume_.set_enabled(true);
 
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   dark_resume_.set_in_dark_resume(true);
   const base::TimeDelta kInitialSuspendDuration = base::Minutes(7);
   delegate_.set_suspend_advance_time(kInitialSuspendDuration);
@@ -1314,8 +1310,8 @@ TEST_F(SuspenderTest, DarkResumeWakeDataFailedResuspend) {
 
 TEST_F(SuspenderTest, ReportInitialSuspendAttempts) {
   Init();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
 
   // Suspend successfully once and do a dark resume.
@@ -1354,9 +1350,8 @@ TEST_F(SuspenderTest, SuspendWakeupTimeout) {
   const uint64_t kWakeupCount = 452;
   delegate_.set_wakeup_count(kWakeupCount);
   const base::TimeDelta kDuration = base::Seconds(5);
-  suspender_.RequestSuspendWithExternalWakeupCount(
-      SuspendImminent_Reason_OTHER, kWakeupCount, kDuration,
-      SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kWakeupCount,
+                            kDuration, SuspendFlavor::SUSPEND_DEFAULT);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
   EXPECT_EQ(SuspendImminent_Reason_OTHER, GetSuspendImminentReason(0));
@@ -1391,8 +1386,8 @@ TEST_F(SuspenderTest, SuspendWakeupTimeoutNoWakeupCount) {
   Init();
 
   const base::TimeDelta kDuration = base::Seconds(5);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kDuration,
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            kDuration, SuspendFlavor::SUSPEND_DEFAULT);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
   EXPECT_EQ(SuspendImminent_Reason_OTHER, GetSuspendImminentReason(0));
@@ -1427,8 +1422,8 @@ TEST_F(SuspenderTest, SuspendWakeupTimoutRetryOnFailure) {
   delegate_.set_wakeup_count(kWakeupCount);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
   const base::TimeDelta kDuration = base::Seconds(7);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kDuration,
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            kDuration, SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
 
@@ -1455,8 +1450,8 @@ TEST_F(SuspenderTest, SuspendWakeupTimoutRetryOnFailure) {
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
   // Simulate another suspend request, validate empty duration passed in
-  suspender_.RequestSuspend(SuspendImminent_Reason_IDLE, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_IDLE, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(base::TimeDelta(), delegate_.suspend_duration());
 }
@@ -1464,8 +1459,8 @@ TEST_F(SuspenderTest, SuspendWakeupTimoutRetryOnFailure) {
 // Test that an explicit request for hibernate requests hibernation.
 TEST_F(SuspenderTest, ExplicitHibernate) {
   Init();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_TO_DISK);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_DISK);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(
@@ -1481,8 +1476,8 @@ TEST_F(SuspenderTest, ExplicitRamSuspendWithDarkHibernate) {
   Init();
   shutdown_from_suspend_.set_action(
       policy::ShutdownFromSuspendInterface::Action::HIBERNATE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_TO_RAM);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_RAM);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(
@@ -1497,8 +1492,8 @@ TEST_F(SuspenderTest, ShutdownFromSuspendHibernate) {
   Init();
   shutdown_from_suspend_.set_action(
       policy::ShutdownFromSuspendInterface::Action::HIBERNATE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
 
   // Make sure that HandleShutdown is called for hibernate, which is what
@@ -1521,7 +1516,8 @@ TEST_F(SuspenderTest, HibernateResumeAndAbort) {
   // SuspendDelayController is ready.
   const uint64_t kWakeupCount = 452;
   delegate_.set_wakeup_count(kWakeupCount);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(),
                             SuspendFlavor::RESUME_FROM_DISK_PREPARE);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
@@ -1564,7 +1560,8 @@ TEST_F(SuspenderTest, HibernateResumeAndAbort) {
 TEST_F(SuspenderTest, HibernateResumeThenSuspendIsIgnored) {
   Init();
 
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(),
                             SuspendFlavor::RESUME_FROM_DISK_PREPARE);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
@@ -1575,7 +1572,7 @@ TEST_F(SuspenderTest, HibernateResumeThenSuspendIsIgnored) {
   dbus_wrapper_.ClearSentSignals();
 
   // Now attempt a wild suspend request, which should get ignored.
-  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED,
+  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED, std::nullopt,
                             base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
 
   EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
@@ -1605,7 +1602,8 @@ TEST_F(SuspenderTest, HibernateResumeThenSuspendIsIgnored) {
 TEST_F(SuspenderTest, HibernateResumeIgnoresActivityEvents) {
   Init();
 
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(),
                             SuspendFlavor::RESUME_FROM_DISK_PREPARE);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
@@ -1643,8 +1641,8 @@ TEST_F(SuspenderTest, QuirksHandledCorrectly) {
   ASSERT_FALSE(delegate_.quirks_applied());
 
   const base::TimeDelta kDuration = base::Seconds(5);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kDuration,
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            kDuration, SuspendFlavor::SUSPEND_DEFAULT);
   const int suspend_id = test_api_.suspend_id();
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
@@ -1669,8 +1667,8 @@ TEST_F(SuspenderTest, QuirksHandledCorrectly) {
 // Tests that Power.SuspendDelay metric is sent to UMA from OnReadyForSuspend.
 TEST_F(SuspenderTest, SuspendDelayMetrics) {
   Init();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
-                            SuspendFlavor::SUSPEND_DEFAULT);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
 
   const int kSuspendDelaySecond = 3;
   test_api_.clock()->advance_current_boot_time_for_testing(
