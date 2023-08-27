@@ -414,19 +414,19 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
 }
 
 void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
-                                 const Device& virtual_device,
-                                 Device::ChangeEvent event) {
+                                 const ArcService::ArcDevice& arc_device,
+                                 ArcService::ArcDeviceEvent event) {
   // The legacy "arc0" Device is ignored for "NetworkDeviceChanged" signals
   // and is never included in multicast forwarding or GuestIPv6Service.
-  if (virtual_device.type() == Device::Type::kARC0) {
+  if (!arc_device.shill_device_ifname()) {
     return;
   }
   // b/273741099: For multiplexed Cellular interfaces, callers expect
   // patchpanel to advertise the ARC virtual device as associated with the
   // shill Device kInterfaceProperty value. This is handled in FillDeviceProto.
   auto* signal_device = new NetworkDevice();
-  FillDeviceProto(virtual_device, signal_device);
-  if (event == Device::ChangeEvent::kAdded) {
+  arc_device.ConvertToProto(signal_device);
+  if (event == ArcService::ArcDeviceEvent::kAdded) {
     // Only start forwarding multicast traffic if ARC is in an interactive
     // state.
     bool forward_multicast = is_arc_interactive_;
@@ -436,12 +436,12 @@ void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
         !android_wifi_multicast_lock_held_) {
       forward_multicast = false;
     }
-    StartForwarding(shill_device, virtual_device.host_ifname(),
+    StartForwarding(shill_device, arc_device.bridge_ifname(),
                     {.ipv6 = true, .multicast = forward_multicast});
     client_notifier_->OnNetworkDeviceChanged(
         signal_device, NetworkDeviceChangedSignal::DEVICE_ADDED);
-  } else if (event == Device::ChangeEvent::kRemoved) {
-    StopForwarding(shill_device, virtual_device.host_ifname());
+  } else if (event == ArcService::ArcDeviceEvent::kRemoved) {
+    StopForwarding(shill_device, arc_device.bridge_ifname());
     client_notifier_->OnNetworkDeviceChanged(
         signal_device, NetworkDeviceChangedSignal::DEVICE_REMOVED);
   }
@@ -558,7 +558,7 @@ GetDevicesResponse Manager::GetDevices() const {
 
   for (const auto* arc_device : arc_svc_->GetDevices()) {
     // The legacy "arc0" Device is never exposed in "GetDevices".
-    if (arc_device->type() == Device::Type::kARC0) {
+    if (!arc_device->shill_device_ifname()) {
       continue;
     }
     auto* dev = response.add_devices();
@@ -566,9 +566,9 @@ GetDevicesResponse Manager::GetDevices() const {
     // patchpanel to advertise the ARC virtual device as associated with the
     // shill Device kInterfaceProperty value. This is handled in
     // FillDeviceProto.
-    FillDeviceProto(*arc_device, dev);
-    FillDeviceDnsProxyProto(*arc_device, dev, dns_proxy_ipv4_addrs_,
-                            dns_proxy_ipv6_addrs_);
+    arc_device->ConvertToProto(dev);
+    FillArcDeviceDnsProxyProto(*arc_device, dev, dns_proxy_ipv4_addrs_,
+                               dns_proxy_ipv6_addrs_);
   }
 
   for (const auto* crostini_device : cros_svc_->GetDevices()) {
@@ -1203,21 +1203,27 @@ void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
   // Only start/stop forwarding when multicast allowed status changes to avoid
   // start/stop forwarding multiple times, also wifi multicast lock should
   // only affect multicast traffic on wireless device.
-  for (const auto* device : arc_svc_->GetDevices()) {
-    const auto& upstream_device = device->shill_device();
-    if (!upstream_device.has_value()) {
-      LOG(ERROR) << __func__ << ": no upstream defined for ARC Device "
-                 << *device;
+  for (const auto* arc_device : arc_svc_->GetDevices()) {
+    // The "arc0" ARC device is ignored.
+    if (!arc_device->shill_device_ifname()) {
       continue;
     }
-    if (upstream_device->type != ShillClient::Device::Type::kWifi) {
+    auto* upstream_shill_device =
+        shill_client_->GetDevice(*arc_device->shill_device_ifname());
+    if (!upstream_shill_device) {
+      LOG(ERROR) << __func__
+                 << ": no upstream shill Device found for ARC Device "
+                 << *arc_device;
+      continue;
+    }
+    if (upstream_shill_device->type != ShillClient::Device::Type::kWifi) {
       continue;
     }
     if (android_wifi_multicast_lock_held_) {
-      StartForwarding(*upstream_device, device->host_ifname(),
+      StartForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
                       ForwardingSet{.multicast = true});
     } else {
-      StopForwarding(*upstream_device, device->host_ifname(),
+      StopForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
                      ForwardingSet{.multicast = true});
     }
   }
@@ -1244,22 +1250,28 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
   // interfaces that are not wifi interface, and only disable wifi
   // interfaces when they were in enabled state (multicast lock held).
   is_arc_interactive_ = is_interactive;
-  for (const auto* device : arc_svc_->GetDevices()) {
-    const auto& upstream_device = device->shill_device();
-    if (!upstream_device.has_value()) {
-      LOG(ERROR) << __func__ << ": no upstream defined for ARC Device "
-                 << *device;
+  for (const auto* arc_device : arc_svc_->GetDevices()) {
+    // The "arc0" ARC device is ignored.
+    if (!arc_device->shill_device_ifname()) {
       continue;
     }
-    if (upstream_device->type == ShillClient::Device::Type::kWifi &&
+    auto* upstream_shill_device =
+        shill_client_->GetDevice(*arc_device->shill_device_ifname());
+    if (!upstream_shill_device) {
+      LOG(ERROR) << __func__
+                 << ": no upstream shill Device found for ARC Device "
+                 << *arc_device;
+      continue;
+    }
+    if (upstream_shill_device->type == ShillClient::Device::Type::kWifi &&
         !android_wifi_multicast_lock_held_) {
       continue;
     }
     if (is_arc_interactive_) {
-      StartForwarding(*upstream_device, device->host_ifname(),
+      StartForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
                       ForwardingSet{.multicast = true});
     } else {
-      StopForwarding(*upstream_device, device->host_ifname(),
+      StopForwarding(*upstream_shill_device, arc_device->bridge_ifname(),
                      ForwardingSet{.multicast = true});
     }
   }

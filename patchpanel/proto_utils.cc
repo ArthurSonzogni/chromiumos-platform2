@@ -105,16 +105,16 @@ void FillSubnetProto(const Subnet& virtual_subnet,
   FillSubnetProto(virtual_subnet.base_cidr(), output);
 }
 
-void FillDeviceDnsProxyProto(
-    const Device& virtual_device,
+void FillArcDeviceDnsProxyProto(
+    const ArcService::ArcDevice& arc_device,
     patchpanel::NetworkDevice* output,
     const std::map<std::string, net_base::IPv4Address>& ipv4_addrs,
     const std::map<std::string, net_base::IPv6Address>& ipv6_addrs) {
-  const auto& ipv4_it = ipv4_addrs.find(virtual_device.host_ifname());
+  const auto& ipv4_it = ipv4_addrs.find(arc_device.bridge_ifname());
   if (ipv4_it != ipv4_addrs.end()) {
     output->set_dns_proxy_ipv4_addr(ipv4_it->second.ToByteString());
   }
-  const auto& ipv6_it = ipv6_addrs.find(virtual_device.host_ifname());
+  const auto& ipv6_it = ipv6_addrs.find(arc_device.bridge_ifname());
   if (ipv6_it != ipv6_addrs.end()) {
     output->set_dns_proxy_ipv6_addr(ipv6_it->second.ToByteString());
   }

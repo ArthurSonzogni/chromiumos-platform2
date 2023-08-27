@@ -12,6 +12,7 @@
 #include <net-base/ipv6_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "patchpanel/arc_service.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/device.h"
 #include "patchpanel/subnet.h"
@@ -43,8 +44,8 @@ void FillDeviceProto(const Device& virtual_device, NetworkDevice* output);
 void FillSubnetProto(const net_base::IPv4CIDR& cidr, IPv4Subnet* output);
 void FillSubnetProto(const Subnet& virtual_subnet, IPv4Subnet* output);
 
-void FillDeviceDnsProxyProto(
-    const Device& virtual_device,
+void FillArcDeviceDnsProxyProto(
+    const ArcService::ArcDevice& arc_device,
     NetworkDevice* output,
     const std::map<std::string, net_base::IPv4Address>& ipv4_addrs,
     const std::map<std::string, net_base::IPv6Address>& ipv6_addrs);

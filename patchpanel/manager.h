@@ -200,8 +200,8 @@ class Manager {
   // Callbacks from |arc_svc_| and |cros_svc_| to notify Manager about new
   // or removed virtual Devices.
   void OnArcDeviceChanged(const ShillClient::Device& shill_device,
-                          const Device& virtual_device,
-                          Device::ChangeEvent event);
+                          const ArcService::ArcDevice& arc_device,
+                          ArcService::ArcDeviceEvent event);
   void OnCrostiniDeviceEvent(
       const CrostiniService::CrostiniDevice& virtual_device,
       CrostiniService::CrostiniDeviceEvent event);

@@ -91,28 +91,28 @@ class ArcServiceTest : public testing::Test {
     datapath_ = std::make_unique<MockDatapath>();
     addr_mgr_ = std::make_unique<AddressManager>();
     metrics_ = std::make_unique<MetricsLibraryMock>();
-    guest_devices_.clear();
+    guest_device_events_.clear();
     shill_devices_.clear();
   }
 
   std::unique_ptr<ArcService> NewService(ArcService::ArcType arc_type) {
     return std::make_unique<ArcService>(
         datapath_.get(), addr_mgr_.get(), arc_type, metrics_.get(),
-        base::BindRepeating(&ArcServiceTest::DeviceHandler,
+        base::BindRepeating(&ArcServiceTest::ArcDeviceEventHandler,
                             base::Unretained(this)));
   }
 
-  void DeviceHandler(const ShillClient::Device& shill_device,
-                     const Device& device,
-                     Device::ChangeEvent event) {
-    guest_devices_[device.host_ifname()] = event;
-    shill_devices_[device.host_ifname()] = shill_device;
+  void ArcDeviceEventHandler(const ShillClient::Device& shill_device,
+                             const ArcService::ArcDevice& arc_device,
+                             ArcService::ArcDeviceEvent event) {
+    guest_device_events_[arc_device.bridge_ifname()] = event;
+    shill_devices_[arc_device.bridge_ifname()] = shill_device;
   }
 
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<MetricsLibraryMock> metrics_;
-  std::map<std::string, Device::ChangeEvent> guest_devices_;
+  std::map<std::string, ArcService::ArcDeviceEvent> guest_device_events_;
   std::map<std::string, ShillClient::Device> shill_devices_;
 };
 
@@ -376,21 +376,25 @@ TEST_F(ArcServiceTest, ContainerImpl_GetDevices) {
   const auto devs = svc->GetDevices();
   EXPECT_EQ(devs.size(), 2);
 
-  const auto it1 = std::find_if(
-      devs.begin(), devs.end(),
-      [](const Device* dev) { return dev->shill_device()->ifname == "eth0"; });
+  const auto it1 = std::find_if(devs.begin(), devs.end(),
+                                [](const ArcService::ArcDevice* dev) {
+                                  return dev->shill_device_ifname() == "eth0";
+                                });
   ASSERT_NE(it1, devs.end());
-  EXPECT_EQ((*it1)->host_ifname(), "arc_eth0");
-  EXPECT_EQ((*it1)->guest_ifname(), "eth0");
-  EXPECT_EQ((*it1)->type(), Device::Type::kARCContainer);
+  EXPECT_EQ((*it1)->arc_device_ifname(), "vetheth0");
+  EXPECT_EQ((*it1)->bridge_ifname(), "arc_eth0");
+  EXPECT_EQ((*it1)->guest_device_ifname(), "eth0");
+  EXPECT_EQ((*it1)->type(), ArcService::ArcType::kContainer);
 
-  const auto it2 = std::find_if(
-      devs.begin(), devs.end(),
-      [](const Device* dev) { return dev->shill_device()->ifname == "wlan0"; });
+  const auto it2 = std::find_if(devs.begin(), devs.end(),
+                                [](const ArcService::ArcDevice* dev) {
+                                  return dev->shill_device_ifname() == "wlan0";
+                                });
   ASSERT_NE(it2, devs.end());
-  EXPECT_EQ((*it2)->host_ifname(), "arc_wlan0");
-  EXPECT_EQ((*it2)->guest_ifname(), "wlan0");
-  EXPECT_EQ((*it2)->type(), Device::Type::kARCContainer);
+  EXPECT_EQ((*it2)->arc_device_ifname(), "vethwlan0");
+  EXPECT_EQ((*it2)->bridge_ifname(), "arc_wlan0");
+  EXPECT_EQ((*it2)->guest_device_ifname(), "wlan0");
+  EXPECT_EQ((*it2)->type(), ArcService::ArcType::kContainer);
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
@@ -421,23 +425,24 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
 
   svc->AddDevice(eth_dev);
   svc->AddDevice(wlan_dev);
-  EXPECT_EQ(guest_devices_.size(), 2);
-  EXPECT_THAT(guest_devices_,
-              UnorderedElementsAre(
-                  Pair(StrEq("arc_eth0"), Device::ChangeEvent::kAdded),
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kAdded)));
-  guest_devices_.clear();
+  EXPECT_EQ(guest_device_events_.size(), 2);
+  EXPECT_THAT(
+      guest_device_events_,
+      UnorderedElementsAre(
+          Pair(StrEq("arc_eth0"), ArcService::ArcDeviceEvent::kAdded),
+          Pair(StrEq("arc_wlan0"), ArcService::ArcDeviceEvent::kAdded)));
+  guest_device_events_.clear();
 
   svc->RemoveDevice(wlan_dev);
-  EXPECT_THAT(guest_devices_,
-              UnorderedElementsAre(
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kRemoved)));
-  guest_devices_.clear();
+  EXPECT_THAT(guest_device_events_,
+              UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
+                                        ArcService::ArcDeviceEvent::kRemoved)));
+  guest_device_events_.clear();
 
   svc->AddDevice(wlan_dev);
-  EXPECT_THAT(guest_devices_,
-              UnorderedElementsAre(
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kAdded)));
+  EXPECT_THAT(guest_device_events_,
+              UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
+                                        ArcService::ArcDeviceEvent::kAdded)));
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
@@ -1085,29 +1090,35 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   const auto devs = svc->GetDevices();
   EXPECT_EQ(devs.size(), 3);
 
-  const auto it1 = std::find_if(
-      devs.begin(), devs.end(),
-      [](const Device* dev) { return dev->shill_device()->ifname == "eth0"; });
+  const auto it1 = std::find_if(devs.begin(), devs.end(),
+                                [](const ArcService::ArcDevice* dev) {
+                                  return dev->shill_device_ifname() == "eth0";
+                                });
   ASSERT_NE(it1, devs.end());
-  EXPECT_EQ((*it1)->host_ifname(), "arc_eth0");
-  EXPECT_EQ((*it1)->guest_ifname(), "eth1");
-  EXPECT_EQ((*it1)->type(), Device::Type::kARCVM);
+  EXPECT_EQ((*it1)->arc_device_ifname(), "vmtap1");
+  EXPECT_EQ((*it1)->bridge_ifname(), "arc_eth0");
+  EXPECT_EQ((*it1)->guest_device_ifname(), "eth1");
+  EXPECT_EQ((*it1)->type(), ArcService::ArcType::kVM);
 
-  const auto it2 = std::find_if(
-      devs.begin(), devs.end(),
-      [](const Device* dev) { return dev->shill_device()->ifname == "wlan0"; });
+  const auto it2 = std::find_if(devs.begin(), devs.end(),
+                                [](const ArcService::ArcDevice* dev) {
+                                  return dev->shill_device_ifname() == "wlan0";
+                                });
   ASSERT_NE(it2, devs.end());
-  EXPECT_EQ((*it2)->host_ifname(), "arc_wlan0");
-  EXPECT_EQ((*it2)->guest_ifname(), "eth3");
-  EXPECT_EQ((*it2)->type(), Device::Type::kARCVM);
+  EXPECT_EQ((*it2)->arc_device_ifname(), "vmtap3");
+  EXPECT_EQ((*it2)->bridge_ifname(), "arc_wlan0");
+  EXPECT_EQ((*it2)->guest_device_ifname(), "eth3");
+  EXPECT_EQ((*it2)->type(), ArcService::ArcType::kVM);
 
-  const auto it3 = std::find_if(
-      devs.begin(), devs.end(),
-      [](const Device* dev) { return dev->shill_device()->ifname == "eth1"; });
+  const auto it3 = std::find_if(devs.begin(), devs.end(),
+                                [](const ArcService::ArcDevice* dev) {
+                                  return dev->shill_device_ifname() == "eth1";
+                                });
   ASSERT_NE(it3, devs.end());
-  EXPECT_EQ((*it3)->host_ifname(), "arc_eth1");
-  EXPECT_EQ((*it3)->guest_ifname(), "eth2");
-  EXPECT_EQ((*it3)->type(), Device::Type::kARCVM);
+  EXPECT_EQ((*it3)->arc_device_ifname(), "vmtap2");
+  EXPECT_EQ((*it3)->bridge_ifname(), "arc_eth1");
+  EXPECT_EQ((*it3)->guest_device_ifname(), "eth2");
+  EXPECT_EQ((*it3)->type(), ArcService::ArcType::kVM);
 }
 
 TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
@@ -1138,23 +1149,24 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
 
   svc->AddDevice(eth_dev);
   svc->AddDevice(wlan_dev);
-  EXPECT_EQ(guest_devices_.size(), 2);
-  EXPECT_THAT(guest_devices_,
-              UnorderedElementsAre(
-                  Pair(StrEq("arc_eth0"), Device::ChangeEvent::kAdded),
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kAdded)));
-  guest_devices_.clear();
+  EXPECT_EQ(guest_device_events_.size(), 2);
+  EXPECT_THAT(
+      guest_device_events_,
+      UnorderedElementsAre(
+          Pair(StrEq("arc_eth0"), ArcService::ArcDeviceEvent::kAdded),
+          Pair(StrEq("arc_wlan0"), ArcService::ArcDeviceEvent::kAdded)));
+  guest_device_events_.clear();
 
   svc->RemoveDevice(wlan_dev);
-  EXPECT_THAT(guest_devices_,
-              UnorderedElementsAre(
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kRemoved)));
-  guest_devices_.clear();
+  EXPECT_THAT(guest_device_events_,
+              UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
+                                        ArcService::ArcDeviceEvent::kRemoved)));
+  guest_device_events_.clear();
 
   svc->AddDevice(wlan_dev);
-  EXPECT_THAT(guest_devices_,
-              UnorderedElementsAre(
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kAdded)));
+  EXPECT_THAT(guest_device_events_,
+              UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
+                                        ArcService::ArcDeviceEvent::kAdded)));
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 

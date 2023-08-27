@@ -384,14 +384,6 @@ bool ArcService::Start(uint32_t id) {
     Stop(id_);
   }
 
-  // The "arc0" virtual device is either attached on demand to host VPNs or is
-  // used to forward host traffic into an Android VPN. Therefore, |shill_device|
-  // is not meaningful for the "arc0" virtual device and is undefined.
-  arc0_device_ =
-      std::make_unique<Device>(Device::Type::kARC0,
-                               /*shill_device=*/std::nullopt, kArcbr0Ifname,
-                               kArc0Ifname, std::move(arc0_config_));
-
   std::string arc0_device_ifname;
   if (arc_type_ == ArcType::kVM) {
     // Allocate TAP devices for all configs.
@@ -414,7 +406,7 @@ bool ArcService::Start(uint32_t id) {
           kArcVmIfnamePrefix + std::to_string(arcvm_ifname_id);
       arcvm_ifname_id++;
     }
-    arc0_device_ifname = arc0_device_->config().tap_ifname();
+    arc0_device_ifname = arc0_config_->tap_ifname();
   } else {
     pid_t pid = static_cast<int>(id);
     if (pid < 0) {
@@ -439,8 +431,18 @@ bool ArcService::Start(uint32_t id) {
   }
   id_ = id;
 
-  StartArcDeviceDatapath(*arc0_device_, arc0_device_ifname);
-  LOG(INFO) << "Started ARC management Device " << *arc0_device_.get();
+  // The "arc0" virtual device is either attached on demand to host VPNs or is
+  // used to forward host traffic into an Android VPN. Therefore, |shill_device|
+  // is not meaningful for the "arc0" virtual device and is undefined.
+  auto device =
+      std::make_unique<Device>(Device::Type::kARC0,
+                               /*shill_device=*/std::nullopt, kArcbr0Ifname,
+                               kArc0Ifname, std::move(arc0_config_));
+  arc0_device_ = std::make_unique<ArcDevice>(
+      arc_type_, std::nullopt, arc0_device_ifname, std::move(device));
+
+  LOG(INFO) << "Starting ARC management Device " << *arc0_device_.get();
+  StartArcDeviceDatapath(*arc0_device_);
 
   // Start already known shill <-> ARC mapped devices.
   for (const auto& [_, shill_device] : shill_devices_)
@@ -486,7 +488,7 @@ void ArcService::Stop(uint32_t id) {
   }
   shill_devices_ = shill_devices;
 
-  StopArcDeviceDatapath(*arc0_device_, kVethArc0Ifname);
+  StopArcDeviceDatapath(*arc0_device_);
   LOG(INFO) << "Stopped ARC management Device " << *arc0_device_.get();
   arc0_config_ = arc0_device_->release_config();
   arc0_device_.reset();
@@ -555,55 +557,51 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     }
   }
 
+  std::string arc_device_ifname;
+  if (arc_type_ == ArcType::kVM) {
+    arc_device_ifname = config->tap_ifname();
+    if (arc_device_ifname.empty()) {
+      LOG(ERROR) << "No TAP device for " << shill_device;
+      return;
+    }
+  } else {
+    arc_device_ifname = ArcVethHostName(shill_device);
+  }
+
   auto device_type = arc_type_ == ArcType::kVM ? Device::Type::kARCVM
                                                : Device::Type::kARCContainer;
   auto device = std::make_unique<Device>(device_type, shill_device,
                                          ArcBridgeName(shill_device),
                                          guest_ifname, std::move(config));
-  LOG(INFO) << "Starting ARC Device " << *device;
+  auto arc_device = std::make_unique<ArcDevice>(
+      arc_type_, shill_device.shill_device_interface_property,
+      arc_device_ifname, std::move(device));
 
-  std::string virtual_device_ifname;
-  if (arc_type_ == ArcType::kVM) {
-    virtual_device_ifname = device->config().tap_ifname();
-    if (virtual_device_ifname.empty()) {
-      LOG(ERROR) << "No TAP device for " << *device;
-      return;
-    }
-  } else {
-    virtual_device_ifname = ArcVethHostName(shill_device);
-  }
+  LOG(INFO) << "Starting ARC Device " << *arc_device;
+  StartArcDeviceDatapath(*arc_device);
 
-  StartArcDeviceDatapath(*device, virtual_device_ifname);
-
-  arc_device_change_handler_.Run(shill_device, *device,
-                                 Device::ChangeEvent::kAdded);
-  devices_.emplace(shill_device.ifname, std::move(device));
+  arc_device_change_handler_.Run(shill_device, *arc_device,
+                                 ArcDeviceEvent::kAdded);
+  devices_.emplace(shill_device.ifname, std::move(arc_device));
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDeviceSuccess);
 }
 
 void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
+  if (IsStarted()) {
+    const auto it = devices_.find(shill_device.ifname);
+    if (it == devices_.end()) {
+      LOG(WARNING) << "Unknown shill Device " << shill_device;
+    } else {
+      auto* arc_device = it->second.get();
+      LOG(INFO) << "Removing ARC Device " << *arc_device;
+      arc_device_change_handler_.Run(shill_device, *arc_device,
+                                     ArcDeviceEvent::kRemoved);
+      StopArcDeviceDatapath(*arc_device);
+      ReleaseConfig(shill_device.type, arc_device->release_config());
+      devices_.erase(it);
+    }
+  }
   shill_devices_.erase(shill_device.ifname);
-  if (!IsStarted()) {
-    return;
-  }
-
-  const auto it = devices_.find(shill_device.ifname);
-  if (it == devices_.end()) {
-    LOG(WARNING) << "Unknown shill Device " << shill_device;
-    return;
-  }
-
-  const auto* device = it->second.get();
-  LOG(INFO) << "Removing ARC Device " << *device;
-
-  arc_device_change_handler_.Run(shill_device, *device,
-                                 Device::ChangeEvent::kRemoved);
-
-  StopArcDeviceDatapath(*device, ArcVethHostName(shill_device));
-  // Once the upstream shill Device is gone it may not be possible to retrieve
-  // the Device type from shill DBus interface by interface name.
-  ReleaseConfig(shill_device.type, it->second->release_config());
-  devices_.erase(it);
 }
 
 void ArcService::UpdateDeviceIPConfig(const ShillClient::Device& shill_device) {
@@ -619,12 +617,7 @@ void ArcService::UpdateDeviceIPConfig(const ShillClient::Device& shill_device) {
     // If ARC is not running, ARC devices are not created.
     return;
   }
-
-  auto new_device = std::make_unique<Device>(
-      arc_dev_it->second->type(), shill_device,
-      arc_dev_it->second->host_ifname(), arc_dev_it->second->guest_ifname(),
-      arc_dev_it->second->release_config());
-  arc_dev_it->second = std::move(new_device);
+  arc_dev_it->second->UpdateDeviceIPConfig(shill_device);
 }
 
 std::vector<const Device::Config*> ArcService::GetDeviceConfigs() const {
@@ -635,8 +628,8 @@ std::vector<const Device::Config*> ArcService::GetDeviceConfigs() const {
   return configs;
 }
 
-std::vector<const Device*> ArcService::GetDevices() const {
-  std::vector<const Device*> devices;
+std::vector<const ArcService::ArcDevice*> ArcService::GetDevices() const {
+  std::vector<const ArcDevice*> devices;
   for (const auto& [_, dev] : devices_) {
     devices.push_back(dev.get());
   }
@@ -678,8 +671,8 @@ std::ostream& operator<<(std::ostream& stream, ArcService::ArcType arc_type) {
   }
 }
 
-void ArcService::StartArcDeviceDatapath(const Device& arc_device,
-                                        const std::string& arc_device_ifname) {
+void ArcService::StartArcDeviceDatapath(
+    const ArcService::ArcDevice& arc_device) {
   // Only create the host virtual interface and guest virtual interface for the
   // container. The TAP devices are currently always created statically ahead of
   // time.
@@ -691,38 +684,43 @@ void ArcService::StartArcDeviceDatapath(const Device& arc_device,
       return;
     }
     const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-        arc_device.config().guest_ipv4_addr(), 30);
-    if (!datapath_->ConnectVethPair(pid, kArcNetnsName, arc_device_ifname,
-                                    arc_device.guest_ifname(),
-                                    arc_device.config().mac_addr(), guest_cidr,
-                                    /*remote_ipv6_cidr=*/std::nullopt,
-                                    /*remote_multicast_flag=*/false)) {
+        arc_device.arc_ipv4_address(), 30);
+    if (!datapath_->ConnectVethPair(
+            pid, kArcNetnsName, arc_device.arc_device_ifname(),
+            arc_device.guest_device_ifname(),
+            arc_device.arc_device_mac_address(), guest_cidr,
+            /*remote_ipv6_cidr=*/std::nullopt,
+            /*remote_multicast_flag=*/false)) {
       LOG(ERROR) << __func__ << "(" << arc_device
                  << "): Cannot create virtual ethernet pair";
       return;
     }
     // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
     if (!SetSysfsOwnerToAndroidRoot(
-            pid, "net/" + arc_device.guest_ifname() + "/mtu")) {
+            pid, "net/" + arc_device.guest_device_ifname() + "/mtu")) {
       RecordEvent(metrics_, ArcServiceUmaEvent::kSetVethMtuError);
     }
   }
 
   // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
   const auto bridge_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      arc_device.config().host_ipv4_addr(), 30);
+      arc_device.bridge_ipv4_address(), 30);
 
   // Create the associated bridge and link the host virtual device to the
   // bridge.
-  if (!datapath_->AddBridge(arc_device.host_ifname(), bridge_cidr)) {
+  if (!datapath_->AddBridge(arc_device.bridge_ifname(), bridge_cidr)) {
     LOG(ERROR) << __func__ << "(" << arc_device << "): Failed to setup bridge";
     return;
   }
 
-  if (!datapath_->AddToBridge(arc_device.host_ifname(), arc_device_ifname)) {
+  if (!datapath_->AddToBridge(arc_device.bridge_ifname(),
+                              arc_device.arc_device_ifname())) {
     LOG(ERROR) << __func__ << "(" << arc_device
-               << "): Failed to link bridge and ARC virtual interface "
-               << arc_device_ifname;
+               << "): Failed to link bridge and ARC virtual interface";
+    return;
+  }
+
+  if (!arc_device.shill_device_ifname()) {
     return;
   }
 
@@ -730,39 +728,49 @@ void ArcService::StartArcDeviceDatapath(const Device& arc_device,
   // Device. The iptables rules for arc0 are configured only when a VPN
   // connection exists and are triggered directly from Manager when the default
   // logical network switches to a VPN.
-  const auto& shill_device = arc_device.shill_device();
-  if (!shill_device) {
+  const auto shill_device_it =
+      shill_devices_.find(*arc_device.shill_device_ifname());
+  if (shill_device_it == shill_devices_.end()) {
+    LOG(ERROR) << __func__ << "(" << arc_device
+               << "): Failed to find shill Device";
     return;
   }
 
-  datapath_->StartRoutingDevice(*shill_device, arc_device.host_ifname(),
-                                TrafficSource::kArc);
-  datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kArc, *shill_device,
-                                arc_device.config().guest_ipv4_addr());
-  if (IsAdbAllowed(shill_device->type) &&
-      !datapath_->AddAdbPortAccessRule(shill_device->ifname)) {
+  datapath_->StartRoutingDevice(
+      shill_device_it->second, arc_device.bridge_ifname(), TrafficSource::kArc);
+  datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kArc, shill_device_it->second,
+                                arc_device.arc_ipv4_address());
+  if (IsAdbAllowed(shill_device_it->second.type) &&
+      !datapath_->AddAdbPortAccessRule(shill_device_it->second.ifname)) {
     LOG(ERROR) << __func__ << "(" << arc_device
                << "): Failed to add ADB port access rule";
   }
 }
 
-void ArcService::StopArcDeviceDatapath(const Device& arc_device,
-                                       const std::string& arc_device_ifname) {
-  const auto& shill_device = arc_device.shill_device();
-  if (shill_device) {
-    if (IsAdbAllowed(shill_device->type)) {
-      datapath_->DeleteAdbPortAccessRule(shill_device->ifname);
+void ArcService::StopArcDeviceDatapath(
+    const ArcService::ArcDevice& arc_device) {
+  if (arc_device.shill_device_ifname()) {
+    const auto shill_device_it =
+        shill_devices_.find(*arc_device.shill_device_ifname());
+    if (shill_device_it == shill_devices_.end()) {
+      LOG(ERROR) << __func__ << "(" << arc_device
+                 << "): Failed to find shill Device";
+    } else {
+      if (IsAdbAllowed(shill_device_it->second.type)) {
+        datapath_->DeleteAdbPortAccessRule(shill_device_it->second.ifname);
+      }
+      datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
+                                       shill_device_it->second,
+                                       arc_device.arc_ipv4_address());
+      datapath_->StopRoutingDevice(arc_device.bridge_ifname());
     }
-    datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, *shill_device,
-                                     arc_device.config().guest_ipv4_addr());
-    datapath_->StopRoutingDevice(arc_device.host_ifname());
   }
-  datapath_->RemoveBridge(arc_device.host_ifname());
+  datapath_->RemoveBridge(arc_device.bridge_ifname());
 
   // Only destroy the host virtual interface for the container. ARCVM TAP
   // devices are removed separately when ARC stops.
   if (arc_type_ == ArcType::kContainer) {
-    datapath_->RemoveInterface(arc_device_ifname);
+    datapath_->RemoveInterface(arc_device.arc_device_ifname());
   }
 }
 
