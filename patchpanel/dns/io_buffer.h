@@ -80,8 +80,6 @@ class BRILLO_EXPORT IOBuffer : public base::RefCountedThreadSafe<IOBuffer> {
  public:
   IOBuffer();
 
-  // TODO(eroman): Deprecated. Use the size_t flavor instead. crbug.com/488553
-  explicit IOBuffer(int buffer_size);
   explicit IOBuffer(size_t buffer_size);
 
   char* data() const { return data_; }
@@ -104,23 +102,18 @@ class BRILLO_EXPORT IOBuffer : public base::RefCountedThreadSafe<IOBuffer> {
 // argument to IO functions. Please keep using IOBuffer* for API declarations.
 class BRILLO_EXPORT IOBufferWithSize : public IOBuffer {
  public:
-  // TODO(eroman): Deprecated. Use the size_t flavor instead. crbug.com/488553
-  explicit IOBufferWithSize(int size);
   explicit IOBufferWithSize(size_t size);
 
-  int size() const { return size_; }
+  size_t size() const { return size_; }
 
  protected:
-  // TODO(eroman): Deprecated. Use the size_t flavor instead. crbug.com/488553
-  IOBufferWithSize(char* data, int size);
-
   // Purpose of this constructor is to give a subclass access to the base class
   // constructor IOBuffer(char*) thus allowing subclass to use underlying
   // memory it does not own.
   IOBufferWithSize(char* data, size_t size);
   ~IOBufferWithSize() override;
 
-  int size_;
+  size_t size_;
 };
 
 // This is a read only IOBuffer.  The data is stored in a string and
@@ -130,7 +123,7 @@ class BRILLO_EXPORT StringIOBuffer : public IOBuffer {
   explicit StringIOBuffer(const std::string& s);
   explicit StringIOBuffer(std::unique_ptr<std::string> s);
 
-  int size() const { return static_cast<int>(string_data_.size()); }
+  size_t size() const { return string_data_.size(); }
 
  private:
   ~StringIOBuffer() override;
@@ -157,32 +150,30 @@ class BRILLO_EXPORT StringIOBuffer : public IOBuffer {
 //
 class BRILLO_EXPORT DrainableIOBuffer : public IOBuffer {
  public:
-  // TODO(eroman): Deprecated. Use the size_t flavor instead. crbug.com/488553
-  DrainableIOBuffer(IOBuffer* base, int size);
   DrainableIOBuffer(IOBuffer* base, size_t size);
 
   // DidConsume() changes the |data_| pointer so that |data_| always points
   // to the first unconsumed byte.
-  void DidConsume(int bytes);
+  void DidConsume(size_t bytes);
 
   // Returns the number of unconsumed bytes.
-  int BytesRemaining() const;
+  size_t BytesRemaining() const;
 
   // Returns the number of consumed bytes.
-  int BytesConsumed() const;
+  size_t BytesConsumed() const;
 
   // Seeks to an arbitrary point in the buffer. The notion of bytes consumed
   // and remaining are updated appropriately.
-  void SetOffset(int bytes);
+  void SetOffset(size_t bytes);
 
-  int size() const { return size_; }
+  size_t size() const { return size_; }
 
  private:
   ~DrainableIOBuffer() override;
 
   scoped_refptr<IOBuffer> base_;
-  int size_;
-  int used_;
+  size_t size_;
+  size_t used_;
 };
 
 // This version provides a resizable buffer and a changeable offset.
@@ -207,22 +198,22 @@ class BRILLO_EXPORT GrowableIOBuffer : public IOBuffer {
   GrowableIOBuffer();
 
   // realloc memory to the specified capacity.
-  void SetCapacity(int capacity);
-  int capacity() { return capacity_; }
+  void SetCapacity(size_t capacity);
+  size_t capacity() { return capacity_; }
 
   // |offset| moves the |data_| pointer, allowing "seeking" in the data.
-  void set_offset(int offset);
-  int offset() { return offset_; }
+  void set_offset(size_t offset);
+  size_t offset() { return offset_; }
 
-  int RemainingCapacity();
+  size_t RemainingCapacity();
   char* StartOfBuffer();
 
  private:
   ~GrowableIOBuffer() override;
 
   std::unique_ptr<char, base::FreeDeleter> real_data_;
-  int capacity_;
-  int offset_;
+  size_t capacity_;
+  size_t offset_;
 };
 
 // This versions allows a pickle to be used as the storage for a write-style

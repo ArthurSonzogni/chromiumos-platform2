@@ -16,27 +16,13 @@ namespace patchpanel {
 
 namespace {
 
-// TODO(eroman): IOBuffer is being converted to require buffer sizes and offsets
-// be specified as "size_t" rather than "int" (crbug.com/488553). To facilitate
-// this move (since LOTS of code needs to be updated), both "size_t" and "int
-// are being accepted. When using "size_t" this function ensures that it can be
-// safely converted to an "int" without truncation.
 void AssertValidBufferSize(size_t size) {
   base::CheckedNumeric<int>(size).ValueOrDie();
-}
-
-void AssertValidBufferSize(int size) {
-  CHECK_GE(size, 0);
 }
 
 }  // namespace
 
 IOBuffer::IOBuffer() : data_(nullptr) {}
-
-IOBuffer::IOBuffer(int buffer_size) {
-  AssertValidBufferSize(buffer_size);
-  data_ = new char[static_cast<size_t>(buffer_size)];
-}
 
 IOBuffer::IOBuffer(size_t buffer_size) {
   AssertValidBufferSize(buffer_size);
@@ -50,23 +36,13 @@ IOBuffer::~IOBuffer() {
   data_ = nullptr;
 }
 
-IOBufferWithSize::IOBufferWithSize(int size) : IOBuffer(size), size_(size) {
-  AssertValidBufferSize(size);
-}
-
-IOBufferWithSize::IOBufferWithSize(size_t size)
-    : IOBuffer(size), size_(static_cast<int>(size)) {
+IOBufferWithSize::IOBufferWithSize(size_t size) : IOBuffer(size), size_(size) {
   // Note: Size check is done in superclass' constructor. This will check if
   // |size| was larger than INT_MAX.
 }
 
-IOBufferWithSize::IOBufferWithSize(char* data, int size)
-    : IOBuffer(data), size_(size) {
-  AssertValidBufferSize(size);
-}
-
 IOBufferWithSize::IOBufferWithSize(char* data, size_t size)
-    : IOBuffer(data), size_(static_cast<int>(size)) {
+    : IOBuffer(data), size_(size) {
   AssertValidBufferSize(size);
 }
 
@@ -91,33 +67,25 @@ StringIOBuffer::~StringIOBuffer() {
   data_ = nullptr;
 }
 
-DrainableIOBuffer::DrainableIOBuffer(IOBuffer* base, int size)
+DrainableIOBuffer::DrainableIOBuffer(IOBuffer* base, size_t size)
     : IOBuffer(base->data()), base_(base), size_(size), used_(0) {
   AssertValidBufferSize(size);
 }
 
-DrainableIOBuffer::DrainableIOBuffer(IOBuffer* base, size_t size)
-    : IOBuffer(base->data()),
-      base_(base),
-      size_(static_cast<int>(size)),
-      used_(0) {
-  AssertValidBufferSize(size);
-}
-
-void DrainableIOBuffer::DidConsume(int bytes) {
+void DrainableIOBuffer::DidConsume(size_t bytes) {
   SetOffset(used_ + bytes);
 }
 
-int DrainableIOBuffer::BytesRemaining() const {
+size_t DrainableIOBuffer::BytesRemaining() const {
   return size_ - used_;
 }
 
 // Returns the number of consumed bytes.
-int DrainableIOBuffer::BytesConsumed() const {
+size_t DrainableIOBuffer::BytesConsumed() const {
   return used_;
 }
 
-void DrainableIOBuffer::SetOffset(int bytes) {
+void DrainableIOBuffer::SetOffset(size_t bytes) {
   DCHECK_GE(bytes, 0);
   DCHECK_LE(bytes, size_);
   used_ = bytes;
@@ -131,11 +99,10 @@ DrainableIOBuffer::~DrainableIOBuffer() {
 
 GrowableIOBuffer::GrowableIOBuffer() : IOBuffer(), capacity_(0), offset_(0) {}
 
-void GrowableIOBuffer::SetCapacity(int capacity) {
+void GrowableIOBuffer::SetCapacity(size_t capacity) {
   DCHECK_GE(capacity, 0);
   // realloc will crash if it fails.
-  real_data_.reset(static_cast<char*>(
-      realloc(real_data_.release(), static_cast<size_t>(capacity))));
+  real_data_.reset(static_cast<char*>(realloc(real_data_.release(), capacity)));
   capacity_ = capacity;
   if (offset_ > capacity)
     set_offset(capacity);
@@ -143,14 +110,14 @@ void GrowableIOBuffer::SetCapacity(int capacity) {
     set_offset(offset_);  // The pointer may have changed.
 }
 
-void GrowableIOBuffer::set_offset(int offset) {
+void GrowableIOBuffer::set_offset(size_t offset) {
   DCHECK_GE(offset, 0);
   DCHECK_LE(offset, capacity_);
   offset_ = offset;
   data_ = real_data_.get() + offset;
 }
 
-int GrowableIOBuffer::RemainingCapacity() {
+size_t GrowableIOBuffer::RemainingCapacity() {
   return capacity_ - offset_;
 }
 
