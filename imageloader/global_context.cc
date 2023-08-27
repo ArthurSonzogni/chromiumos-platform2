@@ -26,8 +26,6 @@ void GlobalContext::SetAsCurrent() {
 }
 
 bool GlobalContext::IsOfficialBuild() const {
-  // TODO(ahassani): Save this value in an `std::optional` instance so we don't
-  // have to query this several times during the runtime.
   return VbGetSystemPropertyInt("debug_build") == 0;
 }
 
