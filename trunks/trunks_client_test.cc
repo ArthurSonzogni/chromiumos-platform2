@@ -1046,10 +1046,7 @@ bool TrunksClientTest::ManyKeysTest() {
       LOG(ERROR) << "Error signing with key " << i;
     }
   }
-  // TODO(emaxx): This needs to be replaced by base::RandomShuffle() introduced
-  // by https://crrev.com/c/1023495.
-  std::mt19937 urng(base::RandUint64());
-  std::shuffle(key_handles.begin(), key_handles.end(), urng);
+  base::RandomShuffle(key_handles.begin(), key_handles.end());
   for (size_t i = 0; i < kNumKeys; ++i) {
     const ScopedKeyHandle& key_handle = *key_handles[i];
     const std::string& public_key = public_key_map[key_handle.get()];
@@ -1087,10 +1084,7 @@ bool TrunksClientTest::ManySessionsTest() {
       LOG(ERROR) << "Error signing with hmac session " << i;
     }
   }
-  // TODO(emaxx): This needs to be replaced by base::RandomShuffle() introduced
-  // by https://crrev.com/c/1023495.
-  std::mt19937 urng(base::RandUint64());
-  std::shuffle(sessions.begin(), sessions.end(), urng);
+  base::RandomShuffle(sessions.begin(), sessions.end());
   for (size_t i = 0; i < kNumSessions; ++i) {
     if (!SignAndVerify(key_handle, public_key, sessions[i]->GetDelegate())) {
       LOG(ERROR) << "Error signing with shuffled hmac session " << i;
