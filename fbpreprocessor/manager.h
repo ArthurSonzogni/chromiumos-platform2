@@ -11,6 +11,7 @@
 
 namespace fbpreprocessor {
 
+class OutputManager;
 class PseudonymizationManager;
 class SessionStateManager;
 
@@ -27,11 +28,14 @@ class Manager {
     return pseudonymization_manager_.get();
   }
 
+  OutputManager* output_manager() const { return output_manager_.get(); }
+
  private:
   scoped_refptr<dbus::Bus> bus_;
 
   std::unique_ptr<PseudonymizationManager> pseudonymization_manager_;
   std::unique_ptr<SessionStateManager> session_state_manager_;
+  std::unique_ptr<OutputManager> output_manager_;
 };
 
 }  // namespace fbpreprocessor

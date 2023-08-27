@@ -14,6 +14,8 @@
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 
+#include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
 #include "fbpreprocessor/storage.h"
 
@@ -79,6 +81,9 @@ void PseudonymizationManager::OnPseudonymizationComplete(
     const base::FilePath& input, const base::FilePath& output, bool success) {
   LOG(INFO) << "Completed pseudonymization of " << input << " to " << output
             << (success ? " " : " un") << "successfully";
+  if (success) {
+    manager_->output_manager()->AddNewFile(output);
+  }
 }
 
 }  // namespace fbpreprocessor
