@@ -35,7 +35,6 @@ class BRILLO_EXPORT FileHasher {
         initialized_(false) {}
   virtual ~FileHasher();
 
-  // TODO(wad) add initialized_ variable to check.
   virtual bool Initialize();
   virtual bool Hash();
   virtual bool Store();
