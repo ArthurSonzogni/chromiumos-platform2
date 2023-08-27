@@ -69,7 +69,7 @@ class MockDrawInterface : public DrawInterface {
   MOCK_METHOD(int, GetSupportedLocalesSize, ());
   MOCK_METHOD(int, GetDefaultButtonWidth, ());
   MOCK_METHOD(int, GetFreconCanvasSize, ());
-  MOCK_METHOD(base::FilePath, GetScreenPath, ());
+  MOCK_METHOD(base::FilePath, GetScreensPath, ());
   MOCK_METHOD(bool, IsLocaleRightToLeft, ());
 };
 

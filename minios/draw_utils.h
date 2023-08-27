@@ -56,10 +56,7 @@ class DrawUtils : public DrawInterface {
 
   explicit DrawUtils(ProcessManagerInterface* process_manager)
       : process_manager_(process_manager),
-        screens_path_(root_.Append(kScreens)) {
-    // TODO(b/183791649): minios: Clean up. Replace screens_path_ with
-    // GetScreenPath.
-  }
+        screens_path_(root_.Append(kScreens)) {}
   ~DrawUtils() override = default;
   // Not copyable or movable.
   DrawUtils(const DrawUtils&) = delete;
@@ -128,7 +125,7 @@ class DrawUtils : public DrawInterface {
 
   int GetFreconCanvasSize() override { return frecon_canvas_size_; }
 
-  base::FilePath GetScreenPath() override { return screens_path_; }
+  base::FilePath GetScreensPath() override { return screens_path_; }
 
   // Override the root directory for testing. Default is '/'.
   void SetRootForTest(const std::string& test_root) {

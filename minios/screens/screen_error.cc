@@ -47,10 +47,10 @@ void ScreenError::Show() {
   std::string error_message = GetErrorMessage();
 
   base::FilePath error_path_title =
-      draw_utils_->GetScreenPath().Append("en-US").Append(
+      draw_utils_->GetScreensPath().Append("en-US").Append(
           "title_" + error_message + ".png");
   base::FilePath error_path_desc =
-      draw_utils_->GetScreenPath().Append("en-US").Append(
+      draw_utils_->GetScreensPath().Append("en-US").Append(
           "desc_" + error_message + ".png");
   if (!base::PathExists(error_path_title) ||
       !base::PathExists(error_path_desc)) {

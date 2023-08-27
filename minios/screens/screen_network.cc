@@ -319,7 +319,7 @@ void ScreenNetwork::GetPassword() {
 
   draw_utils_->ShowButton("Begin typing", kBtnY, false, kButtonWidth * 4, true);
   draw_utils_->ShowImage(
-      draw_utils_->GetScreenPath().Append("visibility_off.png"),
+      draw_utils_->GetScreensPath().Append("visibility_off.png"),
       -frecon_canvas_size / 2 + (kButtonWidth * 4) + 32, kBtnY);
 
   CHECK(!chosen_network_.ssid.empty()) << "Cannot connect to an empty network.";
@@ -344,7 +344,7 @@ void ScreenNetwork::GetPassword() {
     draw_utils_->ShowButton(input, kBtnY, false, kButtonWidth * 4, true);
     auto visibility =
         show_password ? "visibility_on.png" : "visibility_off.png";
-    draw_utils_->ShowImage(draw_utils_->GetScreenPath().Append(visibility),
+    draw_utils_->ShowImage(draw_utils_->GetScreensPath().Append(visibility),
                            -frecon_canvas_size / 2 + (kButtonWidth * 4) + 32,
                            kBtnY);
   } while (!enter);
@@ -361,7 +361,7 @@ void ScreenNetwork::ShowCollapsedNetworkDropDown(bool is_selected) {
   const int kArrowX = -frecon_canvas_size / 2 + 268;
   const int kTextX = -frecon_canvas_size / 2 + 100;
 
-  base::FilePath screens_path = draw_utils_->GetScreenPath();
+  base::FilePath screens_path = draw_utils_->GetScreensPath();
   // Currently using language and globe icons as placeholders.
   base::FilePath menu_background =
       is_selected ? screens_path.Append("language_menu_bg_focused.png")

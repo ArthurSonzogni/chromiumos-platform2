@@ -79,7 +79,7 @@ void ScreenLog::UpdateLogArea() {
   int lines_per_page =
       is_small_canvas ? kSmallLogLinesPerPage : kLogLinesPerPage;
   int char_per_line = is_small_canvas ? kSmallLogCharPerLine : kLogCharPerLine;
-  auto screen_path = draw_utils_->GetScreenPath();
+  auto screen_path = draw_utils_->GetScreensPath();
   auto image_path = is_small_canvas
                         ? screen_path.Append("log_area_border.png")
                         : screen_path.Append("log_area_border_large.png");

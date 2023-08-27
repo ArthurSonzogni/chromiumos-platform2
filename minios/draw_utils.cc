@@ -82,7 +82,7 @@ bool DrawUtils::ShowText(const std::string& text,
                          int glyph_offset_h,
                          int glyph_offset_v,
                          const std::string& color) {
-  base::FilePath glyph_dir = screens_path_.Append("glyphs").Append(color);
+  base::FilePath glyph_dir = GetScreensPath().Append("glyphs").Append(color);
   const int kTextStart = glyph_offset_h;
 
   for (const auto& chr : text) {
@@ -149,7 +149,7 @@ bool DrawUtils::ShowMessage(const std::string& message_token,
   // Determine the filename of the message resource. Fall back to en-US if
   // the localized version of the message is not available.
   base::FilePath message_file_path =
-      screens_path_.Append(locale_).Append(message_token + ".png");
+      GetScreensPath().Append(locale_).Append(message_token + ".png");
   if (!base::PathExists(message_file_path)) {
     if (locale_ == "en-US") {
       LOG(ERROR) << "Message " << message_token
@@ -159,7 +159,7 @@ bool DrawUtils::ShowMessage(const std::string& message_token,
     LOG(WARNING) << "Could not find " << message_token << " in " << locale_
                  << " trying default locale en-US.";
     message_file_path =
-        screens_path_.Append("en-US").Append(message_token + ".png");
+        GetScreensPath().Append("en-US").Append(message_token + ".png");
     if (!base::PathExists(message_file_path)) {
       LOG(ERROR) << "Message " << message_token << " not found in path "
                  << message_file_path;
@@ -335,10 +335,10 @@ void DrawUtils::ShowButton(const std::string& message_token,
   }
 
   if (is_selected) {
-    ShowImage(screens_path_.Append("btn_bg_left_focused.png"), left_padding_x,
-              offset_y);
-    ShowImage(screens_path_.Append("btn_bg_right_focused.png"), right_padding_x,
-              offset_y);
+    ShowImage(GetScreensPath().Append("btn_bg_left_focused.png"),
+              left_padding_x, offset_y);
+    ShowImage(GetScreensPath().Append("btn_bg_right_focused.png"),
+              right_padding_x, offset_y);
 
     ShowBox(kOffsetX, offset_y, inner_width, kButtonHeight, kMenuBlue);
     if (is_text) {
@@ -347,9 +347,9 @@ void DrawUtils::ShowButton(const std::string& message_token,
       ShowMessage(message_token + "_focused", kOffsetX, offset_y);
     }
   } else {
-    ShowImage(screens_path_.Append("btn_bg_left.png"), left_padding_x,
+    ShowImage(GetScreensPath().Append("btn_bg_left.png"), left_padding_x,
               offset_y);
-    ShowImage(screens_path_.Append("btn_bg_right.png"), right_padding_x,
+    ShowImage(GetScreensPath().Append("btn_bg_right.png"), right_padding_x,
               offset_y);
     ShowBox(kOffsetX, offset_y - (kButtonHeight / 2) + 1, inner_width, 1,
             kMenuButtonFrameGrey);
@@ -377,12 +377,13 @@ void DrawUtils::ShowStepper(const std::vector<std::string>& steps) {
                     (kSeparatorLength / 2);
 
   for (const auto& step : steps) {
-    base::FilePath stepper_image = screens_path_.Append("ic_" + step + ".png");
+    base::FilePath stepper_image =
+        GetScreensPath().Append("ic_" + step + ".png");
     if (!base::PathExists(stepper_image)) {
       // TODO(vyshu): Create a new generic icon to be used instead of done.
       LOG(WARNING) << "Stepper icon " << stepper_image
                    << " not found. Defaulting to the done icon.";
-      stepper_image = screens_path_.Append("ic_done.png");
+      stepper_image = GetScreensPath().Append("ic_done.png");
       if (!base::PathExists(stepper_image)) {
         LOG(ERROR) << "Could not find stepper icon done. Cannot show stepper.";
         return;
@@ -424,14 +425,15 @@ void DrawUtils::ShowLanguageDropdown(int current_index) {
     // This is the currently selected language. Show in blue.
     if (current_index == i) {
       ShowBox(kBackgroundX, offset_y, 720, 40, kMenuBlue);
-      ShowImage(screens_path_.Append(supported_locales_[i])
+      ShowImage(GetScreensPath()
+                    .Append(supported_locales_[i])
                     .Append("language_focused.png"),
                 lang_x, offset_y);
     } else {
       ShowBox(kBackgroundX, offset_y, 720, 40, kMenuDropdownFrameNavy);
       ShowBox(kBackgroundX, offset_y, 718, 38, kMenuDropdownBackgroundBlack);
       ShowImage(
-          screens_path_.Append(supported_locales_[i]).Append("language.png"),
+          GetScreensPath().Append(supported_locales_[i]).Append("language.png"),
           lang_x, offset_y);
     }
     offset_y += kItemHeight;
@@ -452,14 +454,14 @@ void DrawUtils::ShowLanguageMenu(bool is_selected) {
   const int kTextX = -frecon_canvas_size_ / 2 + 40 + language_width / 2;
 
   base::FilePath menu_background =
-      is_selected ? screens_path_.Append("language_menu_bg_focused.png")
-                  : screens_path_.Append("language_menu_bg.png");
+      is_selected ? GetScreensPath().Append("language_menu_bg_focused.png")
+                  : GetScreensPath().Append("language_menu_bg.png");
 
   ShowImage(menu_background, kBgX, kOffsetY);
-  ShowImage(screens_path_.Append("ic_language_filled-bg.png"), kGlobeX,
+  ShowImage(GetScreensPath().Append("ic_language_filled-bg.png"), kGlobeX,
             kOffsetY);
 
-  ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
+  ShowImage(GetScreensPath().Append("ic_dropdown.png"), kArrowX, kOffsetY);
   ShowMessage("language_folded", kTextX, kOffsetY);
 }
 
@@ -480,9 +482,9 @@ void DrawUtils::ShowAdvancedOptionsButtons(bool focused) {
     std::swap(left_padding_x, right_padding_x);
 
   if (focused) {
-    ShowImage(screens_path_.Append("adv_btn_bg_left.png"), left_padding_x,
+    ShowImage(GetScreensPath().Append("adv_btn_bg_left.png"), left_padding_x,
               kOffsetY);
-    ShowImage(screens_path_.Append("adv_btn_bg_right.png"), right_padding_x,
+    ShowImage(GetScreensPath().Append("adv_btn_bg_right.png"), right_padding_x,
               kOffsetY);
     // Box outline created when button is focused.
     ShowBox(kBtnCenter - 4, kOffsetY, kInnerWidth + 2, kButtonHeight,
@@ -492,7 +494,7 @@ void DrawUtils::ShowAdvancedOptionsButtons(bool focused) {
   }
 
   std::string power_icon = focused ? "power_focused.png" : "power.png";
-  ShowImage(screens_path_.Append(power_icon), -frecon_canvas_size_ / 2 + 10,
+  ShowImage(GetScreensPath().Append(power_icon), -frecon_canvas_size_ / 2 + 10,
             kOffsetY);
 
   std::string power_token = focused ? "btn_power_off_focused" : "btn_power_off";
@@ -503,7 +505,7 @@ void DrawUtils::ShowAdvancedOptionsButtons(bool focused) {
       IsLocaleRightToLeft() ? "ic_dropleft-blue" : "ic_dropright-blue";
   arrow = focused ? arrow.append("_focused.png") : arrow.append(".png");
 
-  ShowImage(screens_path_.Append(arrow),
+  ShowImage(GetScreensPath().Append(arrow),
             -frecon_canvas_size_ / 2 + 58 + power_btn_width, kOffsetY);
 }
 
@@ -548,16 +550,16 @@ void DrawUtils::ShowFooter() {
               kFooterY + kFooterLineHeight + 8);
 
   nav_btn_x += kEnterIconWidth / 2;
-  ShowImage(screens_path_.Append("nav-" + kNavKeyEnter + ".png"), nav_btn_x,
+  ShowImage(GetScreensPath().Append("nav-" + kNavKeyEnter + ".png"), nav_btn_x,
             kNavButtonY);
   nav_btn_x += kEnterIconWidth / 2 + kIconPadding + kUpDownIconWidth / 2;
-  ShowImage(screens_path_.Append("nav-" + kNavKeyUp + ".png"), nav_btn_x,
+  ShowImage(GetScreensPath().Append("nav-" + kNavKeyUp + ".png"), nav_btn_x,
             kNavButtonY);
   nav_btn_x += kIconPadding + kUpDownIconWidth;
-  ShowImage(screens_path_.Append("nav-" + kNavKeyDown + ".png"), nav_btn_x,
+  ShowImage(GetScreensPath().Append("nav-" + kNavKeyDown + ".png"), nav_btn_x,
             kNavButtonY);
 
-  ShowImage(screens_path_.Append("qr_code.png"), kQrCodeX, kQrCodeY);
+  ShowImage(GetScreensPath().Append("qr_code.png"), kQrCodeX, kQrCodeY);
   int hwid_len = hwid_.size();
   int hwid_x = kQrCodeX + (kQrCodeSize / 2) + 16 + 5;
   const int kHwidY = kFooterY + kFooterLineHeight;
@@ -588,7 +590,7 @@ void DrawUtils::MessageBaseScreen() {
 
 void DrawUtils::ReadDimensionConstants() {
   image_dimensions_.clear();
-  base::FilePath path = screens_path_.Append(locale_).Append("constants.sh");
+  base::FilePath path = GetScreensPath().Append(locale_).Append("constants.sh");
   std::string dimension_consts;
   if (!ReadFileToString(path, &dimension_consts)) {
     LOG(ERROR) << "Could not read constants.sh file for language " << locale_;
@@ -669,7 +671,7 @@ bool DrawUtils::ReadLangConstants() {
   lang_constants_.clear();
   supported_locales_.clear();
   // Read language widths from lang_constants.sh into memory.
-  auto lang_constants_path = screens_path_.Append("lang_constants.sh");
+  auto lang_constants_path = GetScreensPath().Append("lang_constants.sh");
   if (!base::PathExists(lang_constants_path)) {
     LOG(ERROR) << "Language constants path: " << lang_constants_path
                << " not found.";

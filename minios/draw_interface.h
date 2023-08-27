@@ -108,7 +108,7 @@ class DrawInterface {
   virtual int GetFreconCanvasSize() = 0;
 
   // Returns the screen assets path.
-  virtual base::FilePath GetScreenPath() = 0;
+  virtual base::FilePath GetScreensPath() = 0;
 
   // Returns whether the current locale is read from right to left.
   virtual bool IsLocaleRightToLeft() = 0;
