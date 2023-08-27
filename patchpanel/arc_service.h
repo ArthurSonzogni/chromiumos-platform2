@@ -8,17 +8,22 @@
 #include <deque>
 #include <map>
 #include <memory>
+#include <optional>
+#include <ostream>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/device.h"
+#include "patchpanel/mac_address_generator.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -36,6 +41,70 @@ class ArcService {
   enum class ArcType {
     kContainer,
     kVM,
+  };
+
+  // ArcService specific wrappers for Device. This class exposes setters
+  // tailored for ArcService needs and abstracting the internals of Device.
+  class ArcDevice {
+   public:
+    ArcDevice(ArcType type,
+              std::optional<std::string_view> shill_device_ifname,
+              std::string_view arc_device_ifname,
+              std::unique_ptr<Device> device);
+    ArcDevice(const ArcDevice&) = delete;
+    ArcDevice& operator=(const ArcDevice&) = delete;
+    ~ArcDevice();
+
+    // The type of this ARC device indicating it was created
+    ArcType type() const { return type_; }
+    // The interface name of the shill Device that this ARC device is bound to.
+    // This value is not defined for the "arc0" device used for VPN forwarding.
+    // b/273741099: this interface name reflects the kInterfaceProperty value of
+    // the shill Device to ensure that patchpanel can advertise it in its
+    // virtual NetworkDevice messages in the |phys_ifname| field. This allows
+    // ARC and dns-proxy to join shill Device information with patchpanel
+    // virtual NetworkDevice information without knowing explicitly about
+    // Cellular multiplexed interfaces.
+    const std::optional<std::string>& shill_device_ifname() const {
+      return shill_device_ifname_;
+    }
+    // The interface name of the virtual interface created on the host for this
+    // ARC device. For the container this corresponds to the half of the veth
+    // pair visible on the host. For ARC VM this corresponds to the tap device
+    // used by crosvm.
+    const std::string& arc_device_ifname() const { return arc_device_ifname_; }
+    // MAC address of the virtual interface created on the host for this ARC
+    // device.
+    MacAddress arc_device_mac_address() const;
+    // The name of the bridge created for this ARC device and to which the
+    // virtual interface is attached to on the host.
+    const std::string& bridge_ifname() const;
+    // The interface name of the virtual interface inside the ARC environment.
+    // For the container this corresponds to the other half of the veth pair.
+    // For ARC VM this corresponds to a virtio interface.
+    const std::string& guest_device_ifname() const;
+    // The static IPv4 subnet assigned to this ARC device.
+    const net_base::IPv4CIDR& arc_ipv4_subnet() const;
+    // The static IPv4 address assigned to the ARC virtual interface.
+    net_base::IPv4Address arc_ipv4_address() const;
+    // The static IPv4 address assigned to the bridge associated to this device.
+    // This corresponds to the next hop for the Android network associated to
+    // the ARC virtual interface.
+    net_base::IPv4Address bridge_ipv4_address() const;
+    // Converts this ArcDevice to a patchpanel proto NetworkDevice object
+    // passed as a pointer. It is necessary to support externally allocated
+    // objects to work well with probotuf repeated embedded message fields.
+    void ConvertToProto(NetworkDevice* output) const;
+    // Temporary function needed while migrating away from Device.
+    std::unique_ptr<Device::Config> release_config();
+    // Temporary function needed while migrating away from Device.
+    void UpdateDeviceIPConfig(const ShillClient::Device& shill_device);
+
+   private:
+    ArcType type_;
+    std::optional<std::string> shill_device_ifname_;
+    std::string arc_device_ifname_;
+    std::unique_ptr<Device> device_;
   };
 
   using ArcDeviceChangeHandler = base::RepeatingCallback<void(
@@ -140,6 +209,10 @@ class ArcService {
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};
 };
+
+std::ostream& operator<<(std::ostream& stream,
+                         const ArcService::ArcDevice& arc_device);
+std::ostream& operator<<(std::ostream& stream, ArcService::ArcType arc_type);
 
 }  // namespace patchpanel
 

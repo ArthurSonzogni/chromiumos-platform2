@@ -22,6 +22,7 @@
 #include <brillo/key_value_store.h>
 #include <chromeos/constants/vm_tools.h>
 #include <net-base/ipv4_address.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/address_manager.h"
@@ -31,6 +32,7 @@
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/patchpanel_daemon.h"
+#include "patchpanel/proto_utils.h"
 #include "patchpanel/scoped_ns.h"
 
 namespace patchpanel {
@@ -202,6 +204,73 @@ std::string PrefixIfname(base::StringPiece prefix, base::StringPiece ifname) {
   return n;
 }
 }  // namespace
+
+ArcService::ArcDevice::ArcDevice(
+    ArcType type,
+    std::optional<std::string_view> shill_device_ifname,
+    std::string_view arc_device_ifname,
+    std::unique_ptr<Device> device)
+    : type_(type),
+      shill_device_ifname_(shill_device_ifname),
+      arc_device_ifname_(arc_device_ifname),
+      device_(std::move(device)) {}
+
+ArcService::ArcDevice::~ArcDevice() {}
+
+const std::string& ArcService::ArcDevice::guest_device_ifname() const {
+  return device_->guest_ifname();
+}
+
+const std::string& ArcService::ArcDevice::bridge_ifname() const {
+  return device_->host_ifname();
+}
+
+const net_base::IPv4CIDR& ArcService::ArcDevice::arc_ipv4_subnet() const {
+  return device_->config().ipv4_subnet()->base_cidr();
+}
+
+net_base::IPv4Address ArcService::ArcDevice::arc_ipv4_address() const {
+  return device_->config().guest_ipv4_addr();
+}
+
+net_base::IPv4Address ArcService::ArcDevice::bridge_ipv4_address() const {
+  return device_->config().host_ipv4_addr();
+}
+
+MacAddress ArcService::ArcDevice::arc_device_mac_address() const {
+  return device_->config().mac_addr();
+}
+
+void ArcService::ArcDevice::ConvertToProto(NetworkDevice* output) const {
+  // By convention, |phys_ifname| is set to "arc0" for the "arc0" device used
+  // for VPN forwarding.
+  output->set_phys_ifname(shill_device_ifname().value_or(kArc0Ifname));
+  output->set_ifname(bridge_ifname());
+  output->set_guest_ifname(guest_device_ifname());
+  output->set_ipv4_addr(arc_ipv4_address().ToInAddr().s_addr);
+  output->set_host_ipv4_addr(bridge_ipv4_address().ToInAddr().s_addr);
+  switch (type()) {
+    case ArcType::kContainer:
+      output->set_guest_type(NetworkDevice::ARC);
+      break;
+    case ArcType::kVM:
+      output->set_guest_type(NetworkDevice::ARCVM);
+      break;
+  }
+  FillSubnetProto(arc_ipv4_subnet(), output->mutable_ipv4_subnet());
+}
+
+std::unique_ptr<Device::Config> ArcService::ArcDevice::release_config() {
+  return device_->release_config();
+}
+
+void ArcService::ArcDevice::UpdateDeviceIPConfig(
+    const ShillClient::Device& shill_device) {
+  auto new_device = std::make_unique<Device>(
+      device_->type(), shill_device, device_->host_ifname(),
+      device_->guest_ifname(), device_->release_config());
+  device_ = std::move(new_device);
+}
 
 ArcService::ArcService(Datapath* datapath,
                        AddressManager* addr_mgr,
@@ -664,6 +733,31 @@ std::string ArcService::ArcVethHostName(const ShillClient::Device& device) {
 // static
 std::string ArcService::ArcBridgeName(const ShillClient::Device& device) {
   return PrefixIfname("arc_", device.shill_device_interface_property);
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         const ArcService::ArcDevice& arc_device) {
+  stream << "{ type: " << arc_device.type()
+         << ", arc_device_ifname: " << arc_device.arc_device_ifname()
+         << ", arc_ipv4_addr: " << arc_device.arc_ipv4_address()
+         << ", arc_device_mac_addr: "
+         << MacAddressToString(arc_device.arc_device_mac_address())
+         << ", bridge_ifname: " << arc_device.bridge_ifname()
+         << ", bridge_ipv4_addr: " << arc_device.bridge_ipv4_address()
+         << ", guest_device_ifname: " << arc_device.guest_device_ifname();
+  if (arc_device.shill_device_ifname()) {
+    stream << ", shill_ifname: " << *arc_device.shill_device_ifname();
+  }
+  return stream << '}';
+}
+
+std::ostream& operator<<(std::ostream& stream, ArcService::ArcType arc_type) {
+  switch (arc_type) {
+    case ArcService::ArcType::kContainer:
+      return stream << "ARC Container";
+    case ArcService::ArcType::kVM:
+      return stream << "ARCVM";
+  }
 }
 
 }  // namespace patchpanel
