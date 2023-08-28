@@ -46,7 +46,9 @@ bool FakeCrosvmControl::SetBalloonSize(const std::string& socket_path,
   target_socket_path_ = socket_path;
   target_balloon_size_ = num_bytes;
   count_set_balloon_size_ += 1;
-  EXPECT_TRUE(set_balloon_result_latch_.TimedWait(base::Seconds(5)));
+  if (set_balloon_size_wait_for_result_) {
+    EXPECT_TRUE(set_balloon_result_latch_.TimedWait(base::Seconds(5)));
+  }
   return result_set_balloon_size_;
 }
 
@@ -109,6 +111,7 @@ bool FakeCrosvmControl::BalloonStats(const std::string& socket_path,
                                      std::optional<base::TimeDelta> timeout,
                                      struct BalloonStatsFfi* stats,
                                      uint64_t* actual) {
+  count_balloon_stats_++;
   target_socket_path_ = socket_path;
   *actual = actual_balloon_size_;
   *stats = balloon_stats_;

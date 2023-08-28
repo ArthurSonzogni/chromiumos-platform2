@@ -384,6 +384,7 @@ if (use.test) {
       "../concierge/metrics/duration_recorder_test.cc",
       "../concierge/mm/balloon_blocker_test.cc",
       "../concierge/mm/balloon_broker_test.cc",
+      "../concierge/mm/balloon_test.cc",
       "../concierge/mm/fake_balloon.cc",
       "../concierge/mm/fake_balloon_blocker.cc",
       "../concierge/mm/fake_kills_server.cc",

@@ -89,6 +89,7 @@ class FakeCrosvmControl : public CrosvmControl {
 
   std::string target_socket_path_ = "";
 
+  int count_balloon_stats_ = 0;
   int count_set_balloon_size_ = 0;
   int count_enable_vmm_swap_ = 0;
   int count_vmm_swap_out_ = 0;
@@ -96,6 +97,7 @@ class FakeCrosvmControl : public CrosvmControl {
   int count_disable_vmm_swap_ = 0;
   int count_disable_vmm_swap_fast_file_cleanup_ = 0;
 
+  bool set_balloon_size_wait_for_result_ = true;
   base::WaitableEvent set_balloon_result_latch_{
       base::WaitableEvent::ResetPolicy::AUTOMATIC,
   };
