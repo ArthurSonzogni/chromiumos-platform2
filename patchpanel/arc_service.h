@@ -25,6 +25,7 @@
 #include "patchpanel/device.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/shill_client.h"
+#include "patchpanel/subnet.h"
 
 namespace patchpanel {
 
@@ -43,14 +44,17 @@ class ArcService {
     kVM,
   };
 
-  // ArcService specific wrappers for Device. This class exposes setters
-  // tailored for ArcService needs and abstracting the internals of Device.
+  // Represents the virtual interface setup both on the host and inside ARC
+  // created for every host Network exposed to ARC.
   class ArcDevice {
    public:
     ArcDevice(ArcType type,
               std::optional<std::string_view> shill_device_ifname,
               std::string_view arc_device_ifname,
-              std::unique_ptr<Device> device);
+              const MacAddress& arc_device_mac_address,
+              const Subnet& arc_ipv4_subnet,
+              std::string_view bridge_ifname,
+              std::string_view guest_device_ifname);
     ArcDevice(const ArcDevice&) = delete;
     ArcDevice& operator=(const ArcDevice&) = delete;
     ~ArcDevice();
@@ -75,36 +79,47 @@ class ArcService {
     const std::string& arc_device_ifname() const { return arc_device_ifname_; }
     // MAC address of the virtual interface created on the host for this ARC
     // device.
-    MacAddress arc_device_mac_address() const;
+    const MacAddress& arc_device_mac_address() const {
+      return arc_device_mac_address_;
+    }
     // The name of the bridge created for this ARC device and to which the
     // virtual interface is attached to on the host.
-    const std::string& bridge_ifname() const;
+    const std::string& bridge_ifname() const { return bridge_ifname_; }
     // The interface name of the virtual interface inside the ARC environment.
     // For the container this corresponds to the other half of the veth pair.
     // For ARC VM this corresponds to a virtio interface.
-    const std::string& guest_device_ifname() const;
+    const std::string& guest_device_ifname() const {
+      return guest_device_ifname_;
+    }
     // The static IPv4 subnet assigned to this ARC device.
-    const net_base::IPv4CIDR& arc_ipv4_subnet() const;
+    const net_base::IPv4CIDR& arc_ipv4_subnet() const {
+      return arc_ipv4_subnet_;
+    }
     // The static IPv4 address assigned to the ARC virtual interface.
-    net_base::IPv4Address arc_ipv4_address() const;
+    const net_base::IPv4Address& arc_ipv4_address() const {
+      return arc_ipv4_address_;
+    }
     // The static IPv4 address assigned to the bridge associated to this device.
     // This corresponds to the next hop for the Android network associated to
     // the ARC virtual interface.
-    net_base::IPv4Address bridge_ipv4_address() const;
+    const net_base::IPv4Address& bridge_ipv4_address() const {
+      return bridge_ipv4_address_;
+    }
     // Converts this ArcDevice to a patchpanel proto NetworkDevice object
     // passed as a pointer. It is necessary to support externally allocated
     // objects to work well with probotuf repeated embedded message fields.
     void ConvertToProto(NetworkDevice* output) const;
-    // Temporary function needed while migrating away from Device.
-    std::unique_ptr<Device::Config> release_config();
-    // Temporary function needed while migrating away from Device.
-    void UpdateDeviceIPConfig(const ShillClient::Device& shill_device);
 
    private:
     ArcType type_;
     std::optional<std::string> shill_device_ifname_;
     std::string arc_device_ifname_;
-    std::unique_ptr<Device> device_;
+    MacAddress arc_device_mac_address_;
+    net_base::IPv4CIDR arc_ipv4_subnet_;
+    net_base::IPv4Address arc_ipv4_address_;
+    net_base::IPv4Address bridge_ipv4_address_;
+    std::string bridge_ifname_;
+    std::string guest_device_ifname_;
   };
 
   enum class ArcDeviceEvent {
@@ -206,18 +221,20 @@ class ArcService {
   std::map<ShillClient::Device::Type,
            std::deque<std::unique_ptr<Device::Config>>>
       available_configs_;
-  // The list of all ARC interface configurations. Also includes the ARC
-  // management interface arc0 for ARCVM.
+  // The list of all ARC static IPv4 and interface configurations. Also includes
+  // the ARC management interface arc0 for ARCVM.
   std::vector<Device::Config*> all_configs_;
+  // All ARC static IPv4 and interface configurations currently assigned to
+  // active ARC devices stored in |devices_|.
+  std::map<std::string, std::unique_ptr<Device::Config>> assigned_configs_;
   // The ARC Devices corresponding to the host upstream network interfaces,
   // keyed by upstream interface name.
   std::map<std::string, std::unique_ptr<ArcDevice>> devices_;
   // ARCVM hardcodes its interface name as eth%d (starting from 0). This is a
   // mapping of its TAP interface name to the interface name inside ARCVM.
   std::map<std::string, std::string> arcvm_guest_ifnames_;
-  // The IPv4 configuration for the "arc0" management Device. The configuration
-  // is only defined when |arc0_device_| is undefined, i.e when ARC is not
-  // running.
+  // The static IPv4 configuration for the "arc0" management Device. This
+  // configuration is always assigned if ARC is running.
   std::unique_ptr<Device::Config> arc0_config_;
   // The "arc0" management Device associated with the virtual interface arc0
   // used for legacy adb-over-tcp support and VPN forwarding. This ARC device is

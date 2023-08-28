@@ -202,37 +202,21 @@ ArcService::ArcDevice::ArcDevice(
     ArcType type,
     std::optional<std::string_view> shill_device_ifname,
     std::string_view arc_device_ifname,
-    std::unique_ptr<Device> device)
+    const MacAddress& arc_device_mac_address,
+    const Subnet& arc_ipv4_subnet,
+    std::string_view bridge_ifname,
+    std::string_view guest_device_ifname)
     : type_(type),
       shill_device_ifname_(shill_device_ifname),
       arc_device_ifname_(arc_device_ifname),
-      device_(std::move(device)) {}
+      arc_device_mac_address_(arc_device_mac_address),
+      arc_ipv4_subnet_(arc_ipv4_subnet.base_cidr()),
+      arc_ipv4_address_(arc_ipv4_subnet.CIDRAtOffset(2)->address()),
+      bridge_ipv4_address_(arc_ipv4_subnet.CIDRAtOffset(1)->address()),
+      bridge_ifname_(bridge_ifname),
+      guest_device_ifname_(guest_device_ifname) {}
 
 ArcService::ArcDevice::~ArcDevice() {}
-
-const std::string& ArcService::ArcDevice::guest_device_ifname() const {
-  return device_->guest_ifname();
-}
-
-const std::string& ArcService::ArcDevice::bridge_ifname() const {
-  return device_->host_ifname();
-}
-
-const net_base::IPv4CIDR& ArcService::ArcDevice::arc_ipv4_subnet() const {
-  return device_->config().ipv4_subnet()->base_cidr();
-}
-
-net_base::IPv4Address ArcService::ArcDevice::arc_ipv4_address() const {
-  return device_->config().guest_ipv4_addr();
-}
-
-net_base::IPv4Address ArcService::ArcDevice::bridge_ipv4_address() const {
-  return device_->config().host_ipv4_addr();
-}
-
-MacAddress ArcService::ArcDevice::arc_device_mac_address() const {
-  return device_->config().mac_addr();
-}
 
 void ArcService::ArcDevice::ConvertToProto(NetworkDevice* output) const {
   // By convention, |phys_ifname| is set to "arc0" for the "arc0" device used
@@ -251,18 +235,6 @@ void ArcService::ArcDevice::ConvertToProto(NetworkDevice* output) const {
       break;
   }
   FillSubnetProto(arc_ipv4_subnet(), output->mutable_ipv4_subnet());
-}
-
-std::unique_ptr<Device::Config> ArcService::ArcDevice::release_config() {
-  return device_->release_config();
-}
-
-void ArcService::ArcDevice::UpdateDeviceIPConfig(
-    const ShillClient::Device& shill_device) {
-  auto new_device = std::make_unique<Device>(
-      device_->type(), shill_device, device_->host_ifname(),
-      device_->guest_ifname(), device_->release_config());
-  device_ = std::move(new_device);
 }
 
 ArcService::ArcService(Datapath* datapath,
@@ -434,12 +406,10 @@ bool ArcService::Start(uint32_t id) {
   // The "arc0" virtual device is either attached on demand to host VPNs or is
   // used to forward host traffic into an Android VPN. Therefore, |shill_device|
   // is not meaningful for the "arc0" virtual device and is undefined.
-  auto device =
-      std::make_unique<Device>(Device::Type::kARC0,
-                               /*shill_device=*/std::nullopt, kArcbr0Ifname,
-                               kArc0Ifname, std::move(arc0_config_));
+  auto* arc0_subnet = arc0_config_->ipv4_subnet();
   arc0_device_ = std::make_unique<ArcDevice>(
-      arc_type_, std::nullopt, arc0_device_ifname, std::move(device));
+      arc_type_, std::nullopt, arc0_device_ifname, arc0_config_->mac_addr(),
+      *arc0_subnet, kArcbr0Ifname, kArc0Ifname);
 
   LOG(INFO) << "Starting ARC management Device " << *arc0_device_.get();
   StartArcDeviceDatapath(*arc0_device_);
@@ -490,7 +460,6 @@ void ArcService::Stop(uint32_t id) {
 
   StopArcDeviceDatapath(*arc0_device_);
   LOG(INFO) << "Stopped ARC management Device " << *arc0_device_.get();
-  arc0_config_ = arc0_device_->release_config();
   arc0_device_.reset();
 
   if (arc_type_ == ArcType::kVM) {
@@ -568,14 +537,11 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     arc_device_ifname = ArcVethHostName(shill_device);
   }
 
-  auto device_type = arc_type_ == ArcType::kVM ? Device::Type::kARCVM
-                                               : Device::Type::kARCContainer;
-  auto device = std::make_unique<Device>(device_type, shill_device,
-                                         ArcBridgeName(shill_device),
-                                         guest_ifname, std::move(config));
+  auto* arc_subnet = config->ipv4_subnet();
   auto arc_device = std::make_unique<ArcDevice>(
       arc_type_, shill_device.shill_device_interface_property,
-      arc_device_ifname, std::move(device));
+      arc_device_ifname, config->mac_addr(), *arc_subnet,
+      ArcBridgeName(shill_device), guest_ifname);
 
   LOG(INFO) << "Starting ARC Device " << *arc_device;
   StartArcDeviceDatapath(*arc_device);
@@ -583,6 +549,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   arc_device_change_handler_.Run(shill_device, *arc_device,
                                  ArcDeviceEvent::kAdded);
   devices_.emplace(shill_device.ifname, std::move(arc_device));
+  assigned_configs_.emplace(shill_device.ifname, std::move(config));
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDeviceSuccess);
 }
 
@@ -597,7 +564,14 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
       arc_device_change_handler_.Run(shill_device, *arc_device,
                                      ArcDeviceEvent::kRemoved);
       StopArcDeviceDatapath(*arc_device);
-      ReleaseConfig(shill_device.type, arc_device->release_config());
+      const auto config_it = assigned_configs_.find(shill_device.ifname);
+      if (config_it == assigned_configs_.end()) {
+        LOG(ERROR) << "No IPv4 configuration found for ARC Device "
+                   << *arc_device;
+      } else {
+        ReleaseConfig(shill_device.type, std::move(config_it->second));
+        assigned_configs_.erase(config_it);
+      }
       devices_.erase(it);
     }
   }
@@ -611,13 +585,6 @@ void ArcService::UpdateDeviceIPConfig(const ShillClient::Device& shill_device) {
     return;
   }
   shill_device_it->second = shill_device;
-
-  auto arc_dev_it = devices_.find(shill_device.ifname);
-  if (arc_dev_it == devices_.end()) {
-    // If ARC is not running, ARC devices are not created.
-    return;
-  }
-  arc_dev_it->second->UpdateDeviceIPConfig(shill_device);
 }
 
 std::vector<const Device::Config*> ArcService::GetDeviceConfigs() const {
