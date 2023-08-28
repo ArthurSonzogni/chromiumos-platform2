@@ -33,12 +33,29 @@ class PinWeaverManagerFrontendImpl : public PinWeaverManagerFrontend,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_schedule,
       std::optional<uint32_t> expiration_delay) const override;
+  void InsertCredentialAsync(
+      const std::vector<OperationPolicySetting>& policies,
+      const brillo::SecureBlob& le_secret,
+      const brillo::SecureBlob& he_secret,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_schedule,
+      std::optional<uint32_t> expiration_delay,
+      InsertCredentialCallback callback) const override;
   StatusOr<CheckCredentialReply> CheckCredential(
       const uint64_t label, const brillo::SecureBlob& le_secret) const override;
+  void CheckCredentialAsync(const uint64_t label,
+                            const brillo::SecureBlob& le_secret,
+                            CheckCredentialCallback callback) const override;
   Status RemoveCredential(const uint64_t label) const override;
+  void RemoveCredentialAsync(const uint64_t label,
+                             RemoveCredentialCallback callback) const override;
   Status ResetCredential(const uint64_t label,
                          const brillo::SecureBlob& reset_secret,
                          ResetType reset_type) const override;
+  void ResetCredentialAsync(const uint64_t label,
+                            const brillo::SecureBlob& reset_secret,
+                            ResetType reset_type,
+                            ResetCredentialCallback callback) const override;
   StatusOr<uint32_t> GetWrongAuthAttempts(const uint64_t label) const override;
   StatusOr<DelaySchedule> GetDelaySchedule(const uint64_t label) const override;
   StatusOr<uint32_t> GetDelayInSeconds(const uint64_t label) const override;
@@ -53,10 +70,22 @@ class PinWeaverManagerFrontendImpl : public PinWeaverManagerFrontend,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_schedule,
       std::optional<uint32_t> expiration_delay) const override;
+  void InsertRateLimiterAsync(
+      AuthChannel auth_channel,
+      const std::vector<OperationPolicySetting>& policies,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_schedule,
+      std::optional<uint32_t> expiration_delay,
+      InsertRateLimiterCallback callback) const override;
   StatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
       AuthChannel auth_channel,
       const uint64_t label,
       const brillo::Blob& client_nonce) const override;
+  void StartBiometricsAuthAsync(
+      AuthChannel auth_channel,
+      const uint64_t label,
+      const brillo::Blob& client_nonce,
+      StartBiometricsAuthCallback callback) const override;
   Status BlockGeneratePk() const override;
 };
 

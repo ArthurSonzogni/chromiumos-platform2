@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -46,10 +47,31 @@ StatusOr<uint64_t> PinWeaverManagerFrontendImpl::InsertCredential(
       expiration_delay);
 }
 
+void PinWeaverManagerFrontendImpl::InsertCredentialAsync(
+    const std::vector<OperationPolicySetting>& policies,
+    const brillo::SecureBlob& le_secret,
+    const brillo::SecureBlob& he_secret,
+    const brillo::SecureBlob& reset_secret,
+    const DelaySchedule& delay_schedule,
+    std::optional<uint32_t> expiration_delay,
+    InsertCredentialCallback callback) const {
+  return middleware_.CallAsync<&Backend::PinWeaverManager::InsertCredential>(
+      std::move(callback), policies, le_secret, he_secret, reset_secret,
+      delay_schedule, expiration_delay);
+}
+
 StatusOr<CheckCredentialReply> PinWeaverManagerFrontendImpl::CheckCredential(
     const uint64_t label, const brillo::SecureBlob& le_secret) const {
   return middleware_.CallSync<&Backend::PinWeaverManager::CheckCredential>(
       label, le_secret);
+}
+
+void PinWeaverManagerFrontendImpl::CheckCredentialAsync(
+    const uint64_t label,
+    const brillo::SecureBlob& le_secret,
+    CheckCredentialCallback callback) const {
+  return middleware_.CallAsync<&Backend::PinWeaverManager::CheckCredential>(
+      std::move(callback), label, le_secret);
 }
 
 Status PinWeaverManagerFrontendImpl::RemoveCredential(
@@ -58,12 +80,27 @@ Status PinWeaverManagerFrontendImpl::RemoveCredential(
       label);
 }
 
+void PinWeaverManagerFrontendImpl::RemoveCredentialAsync(
+    const uint64_t label, RemoveCredentialCallback callback) const {
+  return middleware_.CallAsync<&Backend::PinWeaverManager::RemoveCredential>(
+      std::move(callback), label);
+}
+
 Status PinWeaverManagerFrontendImpl::ResetCredential(
     const uint64_t label,
     const brillo::SecureBlob& reset_secret,
     ResetType reset_type) const {
   return middleware_.CallSync<&Backend::PinWeaverManager::ResetCredential>(
       label, reset_secret, reset_type);
+}
+
+void PinWeaverManagerFrontendImpl::ResetCredentialAsync(
+    const uint64_t label,
+    const brillo::SecureBlob& reset_secret,
+    ResetType reset_type,
+    ResetCredentialCallback callback) const {
+  return middleware_.CallAsync<&Backend::PinWeaverManager::ResetCredential>(
+      std::move(callback), label, reset_secret, reset_type);
 }
 
 StatusOr<uint32_t> PinWeaverManagerFrontendImpl::GetWrongAuthAttempts(
@@ -108,6 +145,18 @@ StatusOr<uint64_t> PinWeaverManagerFrontendImpl::InsertRateLimiter(
       auth_channel, policies, reset_secret, delay_schedule, expiration_delay);
 }
 
+void PinWeaverManagerFrontendImpl::InsertRateLimiterAsync(
+    AuthChannel auth_channel,
+    const std::vector<OperationPolicySetting>& policies,
+    const brillo::SecureBlob& reset_secret,
+    const DelaySchedule& delay_schedule,
+    std::optional<uint32_t> expiration_delay,
+    InsertRateLimiterCallback callback) const {
+  return middleware_.CallAsync<&Backend::PinWeaverManager::InsertRateLimiter>(
+      std::move(callback), auth_channel, policies, reset_secret, delay_schedule,
+      expiration_delay);
+}
+
 StatusOr<StartBiometricsAuthReply>
 PinWeaverManagerFrontendImpl::StartBiometricsAuth(
     AuthChannel auth_channel,
@@ -115,6 +164,15 @@ PinWeaverManagerFrontendImpl::StartBiometricsAuth(
     const brillo::Blob& client_nonce) const {
   return middleware_.CallSync<&Backend::PinWeaverManager::StartBiometricsAuth>(
       auth_channel, label, client_nonce);
+}
+
+void PinWeaverManagerFrontendImpl::StartBiometricsAuthAsync(
+    AuthChannel auth_channel,
+    const uint64_t label,
+    const brillo::Blob& client_nonce,
+    StartBiometricsAuthCallback callback) const {
+  return middleware_.CallAsync<&Backend::PinWeaverManager::StartBiometricsAuth>(
+      std::move(callback), auth_channel, label, client_nonce);
 }
 
 Status PinWeaverManagerFrontendImpl::BlockGeneratePk() const {

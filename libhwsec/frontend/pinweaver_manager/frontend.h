@@ -31,6 +31,16 @@ class PinWeaverManagerFrontend : public Frontend {
   using ResetType = PinWeaverManager::ResetType;
   using AuthChannel = PinWeaver::AuthChannel;
 
+  using InsertCredentialCallback = base::OnceCallback<void(StatusOr<uint64_t>)>;
+  using CheckCredentialCallback =
+      base::OnceCallback<void(StatusOr<CheckCredentialReply>)>;
+  using RemoveCredentialCallback = base::OnceCallback<void(Status)>;
+  using ResetCredentialCallback = base::OnceCallback<void(Status)>;
+  using InsertRateLimiterCallback =
+      base::OnceCallback<void(StatusOr<uint64_t>)>;
+  using StartBiometricsAuthCallback =
+      base::OnceCallback<void(StatusOr<StartBiometricsAuthReply>)>;
+
   ~PinWeaverManagerFrontend() override = default;
 
   // Is the pinweaver enabled or not.
@@ -58,6 +68,14 @@ class PinWeaverManagerFrontend : public Frontend {
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_schedule,
       std::optional<uint32_t> expiration_delay) const = 0;
+  virtual void InsertCredentialAsync(
+      const std::vector<OperationPolicySetting>& policies,
+      const brillo::SecureBlob& le_secret,
+      const brillo::SecureBlob& he_secret,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_schedule,
+      std::optional<uint32_t> expiration_delay,
+      InsertCredentialCallback callback) const = 0;
 
   // Tries to verify/authenticate a credential.
   //
@@ -67,9 +85,14 @@ class PinWeaverManagerFrontend : public Frontend {
   // credential and the reset secret.
   virtual StatusOr<CheckCredentialReply> CheckCredential(
       const uint64_t label, const brillo::SecureBlob& le_secret) const = 0;
+  virtual void CheckCredentialAsync(const uint64_t label,
+                                    const brillo::SecureBlob& le_secret,
+                                    CheckCredentialCallback callback) const = 0;
 
   // Removes the credential which has label |label|.
   virtual Status RemoveCredential(const uint64_t label) const = 0;
+  virtual void RemoveCredentialAsync(
+      const uint64_t label, RemoveCredentialCallback callback) const = 0;
 
   // Tries to reset a (potentially locked out) credential.
   //
@@ -79,6 +102,10 @@ class PinWeaverManagerFrontend : public Frontend {
   virtual Status ResetCredential(const uint64_t label,
                                  const brillo::SecureBlob& reset_secret,
                                  ResetType reset_type) const = 0;
+  virtual void ResetCredentialAsync(const uint64_t label,
+                                    const brillo::SecureBlob& reset_secret,
+                                    ResetType reset_type,
+                                    ResetCredentialCallback callback) const = 0;
 
   // Retrieves the number of wrong authentication attempts of a label.
   virtual StatusOr<uint32_t> GetWrongAuthAttempts(
@@ -125,6 +152,13 @@ class PinWeaverManagerFrontend : public Frontend {
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_schedule,
       std::optional<uint32_t> expiration_delay) const = 0;
+  virtual void InsertRateLimiterAsync(
+      AuthChannel auth_channel,
+      const std::vector<OperationPolicySetting>& policies,
+      const brillo::SecureBlob& reset_secret,
+      const DelaySchedule& delay_schedule,
+      std::optional<uint32_t> expiration_delay,
+      InsertRateLimiterCallback callback) const = 0;
 
   // Tries to start an authentication attempt with a rate-limiter bound to the
   // |auth_channel| auth channel.
@@ -140,6 +174,11 @@ class PinWeaverManagerFrontend : public Frontend {
       AuthChannel auth_channel,
       const uint64_t label,
       const brillo::Blob& client_nonce) const = 0;
+  virtual void StartBiometricsAuthAsync(
+      AuthChannel auth_channel,
+      const uint64_t label,
+      const brillo::Blob& client_nonce,
+      StartBiometricsAuthCallback callback) const = 0;
 
   // Blocks future establishments of the pairing secrets until the server
   // restarts.
