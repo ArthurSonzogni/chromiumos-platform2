@@ -1276,7 +1276,14 @@ void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
 }
 
 void Manager::NotifySocketConnectionEvent(
-    const NotifySocketConnectionEventRequest& request) {}
+    const NotifySocketConnectionEventRequest& request) {
+  if (!request.has_msg()) {
+    LOG(ERROR)
+        << ": no message attached in socket connection event notification.";
+    return;
+  }
+  qos_svc_->ProcessSocketConnectionEvent(request.msg());
+}
 
 void Manager::SetFeatureFlag(
     patchpanel::SetFeatureFlagRequest::FeatureFlag flag, bool enabled) {

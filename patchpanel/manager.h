@@ -162,8 +162,9 @@ class Manager {
   // interface.
   void NotifyAndroidWifiMulticastLockChange(bool is_held);
 
-  // Apply changes for QoS based on the socket connection event.
-  // TODO(b/292463531): Add implementation for this method.
+  // Apply changes based on the socket connection event.
+  // Currently this is only used for ARC socket connections and applies QoS
+  // setup and resets the QoS setup on connection closed.
   void NotifySocketConnectionEvent(
       const NotifySocketConnectionEventRequest& request);
 

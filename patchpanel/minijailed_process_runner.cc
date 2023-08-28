@@ -24,6 +24,7 @@ namespace {
 constexpr char kUnprivilegedUser[] = "nobody";
 constexpr uint64_t kModprobeCapMask = CAP_TO_MASK(CAP_SYS_MODULE);
 constexpr uint64_t kNetRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
+constexpr uint64_t kNetAdminCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
 constexpr uint64_t kNetRawAdminCapMask =
     CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
 
@@ -37,6 +38,7 @@ constexpr char kIpPath[] = "/bin/ip";
 constexpr char kIptablesPath[] = "/sbin/iptables";
 constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
 constexpr char kModprobePath[] = "/sbin/modprobe";
+constexpr char kConntrackPath[] = "/usr/sbin/conntrack";
 
 constexpr char kIptablesSeccompFilterPath[] =
     "/usr/share/policy/iptables-seccomp.policy";
@@ -253,6 +255,21 @@ int MinijailedProcessRunner::RunIpNetns(const std::vector<std::string>& argv,
   CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
   mj_->UseCapabilities(jail, kIpNetnsCapMask);
   return RunSyncDestroy(argv, mj_, jail, log_failures, nullptr);
+}
+
+int MinijailedProcessRunner::conntrack(std::string_view command,
+                                       const std::vector<std::string>& argv,
+                                       bool log_failures) {
+  std::vector<std::string> args = {std::string(kConntrackPath),
+                                   std::string(command)};
+  args.insert(args.end(), argv.begin(), argv.end());
+
+  // TODO(b/178980202): insert a seccomp filter right from the start for
+  // conntrack.
+  minijail* jail = mj_->New();
+  CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
+  mj_->UseCapabilities(jail, kNetAdminCapMask);
+  return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
 }  // namespace patchpanel

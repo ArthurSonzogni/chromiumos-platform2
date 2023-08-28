@@ -145,14 +145,6 @@ std::string PreroutingSubChainName(const std::string& int_ifname) {
   return "PREROUTING_" + int_ifname;
 }
 
-// Returns the "mark/mask" string for `category` which can be used as an
-// argument to call iptables, e.g., "0x00000040/0x000000e0".
-std::string QoSFwmarkWithMask(QoSCategory category) {
-  auto mark = Fwmark::FromQoSCategory(category);
-  return base::StrCat(
-      {mark.ToString(), "/", kFwmarkQoSCategoryMask.ToString()});
-}
-
 }  // namespace
 
 Datapath::Datapath(System* system)

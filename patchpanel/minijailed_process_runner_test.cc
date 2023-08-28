@@ -149,5 +149,28 @@ TEST(MinijailProcessRunnerTest, ip6tables) {
                                "chain", {"arg1", "arg2"}));
 }
 
+TEST(MinijailProcessRunnerTest, conntrack) {
+  brillo::MockMinijail mj;
+  auto system = new MockSystem();
+  MinijailedProcessRunner runner(&mj, std::unique_ptr<System>(system));
+
+  pid_t pid = 123;
+  EXPECT_CALL(mj, New());
+  EXPECT_CALL(mj, DropRoot(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(mj, UseCapabilities(_, _));
+  EXPECT_CALL(
+      mj, RunPipesAndDestroy(
+              _,
+              ElementsAre(StrEq("/usr/sbin/conntrack"), StrEq("-U"),
+                          StrEq("-p"), StrEq("TCP"), StrEq("-s"),
+                          StrEq("8.8.8.8"), StrEq("-m"), StrEq("1"), nullptr),
+              _, nullptr, nullptr, _))
+      .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
+  EXPECT_CALL(*system, WaitPid(pid, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
+
+  EXPECT_TRUE(
+      runner.conntrack("-U", {"-p", "TCP", "-s", "8.8.8.8", "-m", "1"}));
+}
 }  // namespace
 }  // namespace patchpanel

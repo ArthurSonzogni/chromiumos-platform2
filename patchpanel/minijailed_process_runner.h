@@ -82,6 +82,11 @@ class MinijailedProcessRunner {
   virtual int ip_netns_delete(const std::string& netns_name,
                               bool log_failures = true);
 
+  // Run conntrack command with given command option and |argv|.
+  virtual int conntrack(std::string_view command,
+                        const std::vector<std::string>& argv,
+                        bool log_failures = true);
+
  protected:
   // Runs a process (argv[0]) with optional arguments (argv[1]...)
   // in a minijail as an unprivileged user with CAP_NET_ADMIN and

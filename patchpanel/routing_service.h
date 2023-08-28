@@ -91,6 +91,10 @@ enum class QoSCategory : uint8_t {
 
 const std::string& TrafficSourceName(TrafficSource source);
 
+// Returns the "mark/mask" string for `category` which can be used as an
+// argument to call iptables, e.g., "0x00000040/0x000000e0".
+std::string QoSFwmarkWithMask(QoSCategory category);
+
 // A representation of how fwmark bits are split and used for tagging and
 // routing traffic. The 32 bits of the fwmark are currently organized as such:
 //    0                   1                   2                   3

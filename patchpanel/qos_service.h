@@ -5,15 +5,19 @@
 #ifndef PATCHPANEL_QOS_SERVICE_H_
 #define PATCHPANEL_QOS_SERVICE_H_
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <base/containers/flat_set.h>
 
+#include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
 
 class Datapath;
+class SocketConnectionEvent;
 
 // QoSService manages the network QoS feature (Quality of Service), which:
 // - Automatically classifies traffic into QoS categories;
@@ -38,6 +42,10 @@ class Datapath;
 class QoSService {
  public:
   explicit QoSService(Datapath* datapath);
+  // Provided for testing.
+  QoSService(Datapath* datapath,
+             std::unique_ptr<MinijailedProcessRunner> process_runner);
+
   ~QoSService();
 
   // QoSService is neither copyable nor movable.
@@ -55,6 +63,11 @@ class QoSService {
   void OnPhysicalDeviceAdded(const ShillClient::Device& device);
   void OnPhysicalDeviceRemoved(const ShillClient::Device& device);
 
+  // Process socket connection events from ARC App monitor and modify connmark
+  // based on socket information.
+  void ProcessSocketConnectionEvent(
+      const patchpanel::SocketConnectionEvent& msg);
+
  private:
   // QoS feature is disabled by default. This value can be changed in `Enable()`
   // and `Disable()`.
@@ -68,6 +81,7 @@ class QoSService {
   base::flat_set<std::string> interfaces_;
 
   Datapath* datapath_;
+  std::unique_ptr<MinijailedProcessRunner> process_runner_;
 };
 
 }  // namespace patchpanel

@@ -8,6 +8,7 @@
 #include <map>
 
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 
 namespace patchpanel {
 
@@ -69,6 +70,12 @@ bool RoutingService::SetVpnFwmark(
             << " mask=" << kFwmarkVpnMask.ToString()
             << " getsockopt SOL_SOCKET SO_MARK";
   return SetFwmark(sockfd, mark, kFwmarkVpnMask);
+}
+
+std::string QoSFwmarkWithMask(QoSCategory category) {
+  auto mark = Fwmark::FromQoSCategory(category);
+  return base::StrCat(
+      {mark.ToString(), "/", kFwmarkQoSCategoryMask.ToString()});
 }
 
 const std::string& TrafficSourceName(TrafficSource source) {
