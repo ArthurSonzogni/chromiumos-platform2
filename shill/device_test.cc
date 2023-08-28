@@ -4,11 +4,9 @@
 
 #include "shill/device.h"
 
-#include <ctype.h>
 #include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
 #include <sys/socket.h>
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -26,16 +24,12 @@
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/net/mock_time.h"
-#include "shill/net/ndisc.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
@@ -43,7 +37,6 @@
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
-#include "shill/tethering.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;

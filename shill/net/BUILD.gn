@@ -39,7 +39,6 @@ install_config("install_headers") {
     "mock_process_manager.h",
     "mock_rtnl_handler.h",
     "mock_time.h",
-    "ndisc.h",
     "netlink_attribute.h",
     "netlink_manager.h",
     "netlink_message.h",

@@ -28,11 +28,14 @@
 #include <base/strings/string_number_conversions.h>
 #include <net-base/byte_utils.h>
 
-#include "shill/net/ndisc.h"
-
 namespace shill {
 
 namespace {
+
+// Defined in the kernel at include/net/ndisc.h and not exposed in user space
+// headers. Neighbor Discovery user option type definition.
+#define ND_OPT_RDNSS 25 /* RFC 5006 */
+#define ND_OPT_DNSSL 31 /* RFC 6106 */
 
 using flag_info_t = std::pair<uint32_t, const char*>;
 
@@ -402,6 +405,15 @@ struct RTNLHeader {
     struct ndmsg ndm;
   };
 };
+
+// Neighbor Discovery user option header definition.
+struct NDUserOptionHeader {
+  NDUserOptionHeader() { memset(this, 0, sizeof(*this)); }
+  uint8_t type;
+  uint8_t length;
+  uint16_t reserved;
+  uint32_t lifetime;
+} __attribute__((__packed__));
 
 std::string RTNLMessage::NeighborStatus::ToString() const {
   return base::StringPrintf("NeighborStatus state %d flags %X type %d", state,

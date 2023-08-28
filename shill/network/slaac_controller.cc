@@ -10,15 +10,16 @@
 
 #include <algorithm>
 #include <memory>
-#include <utility>
 
 #include <base/logging.h>
 #include <net-base/ip_address.h>
 
-#include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
 
 namespace shill {
+
+// Infinity lifetime, defined in rfc8106, section-5.1.
+#define ND_OPT_LIFETIME_INFINITY 0xFFFFFFFF
 
 SLAACController::SLAACController(int interface_index,
                                  ProcFsStub* proc_fs,

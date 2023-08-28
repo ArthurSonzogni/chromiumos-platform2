@@ -20,7 +20,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mojom/mojo_service_provider.h"
-#include "shill/net/ndisc.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/process_manager.h"
@@ -31,6 +30,10 @@
 #include "shill/shill_config.h"
 
 namespace shill {
+
+// Netlink multicast group for neighbor discovery user option message.
+// The first valid index is defined as enum value 1, so we need to -1 offset.
+constexpr uint32_t RTMGRP_ND_USEROPT = 1 << (RTNLGRP_ND_USEROPT - 1);
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;

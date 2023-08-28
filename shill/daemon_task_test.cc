@@ -16,16 +16,13 @@
 #include <gtest/gtest.h>
 
 #include "shill/daemon_task.h"
-#include "shill/logging.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mojom/mock_mojo_service_provider.h"
-#include "shill/net/io_handler.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_process_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/net/ndisc.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_routing_policy_service.h"
@@ -41,6 +38,9 @@ using ::testing::Return;
 using ::testing::Test;
 
 namespace shill {
+
+// Netlink multicast group for neighbor discovery user option message.
+constexpr uint32_t RTMGRP_ND_USEROPT = 1 << (RTNLGRP_ND_USEROPT - 1);
 
 class DaemonTaskForTest : public DaemonTask {
  public:
