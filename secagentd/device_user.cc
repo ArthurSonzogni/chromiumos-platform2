@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "secagentd/device_user.h"
+#include <absl/functional/function_ref.h>
 
 #include <list>
 #include <string>
@@ -141,17 +142,19 @@ void DeviceUser::HandleRegistrationResult(const std::string& interface,
 }
 
 void DeviceUser::OnSessionStateChange(const std::string& state) {
-  for (auto cb : session_change_listeners_) {
-    cb.Run(state);
-  }
-
   if (state == kStarted) {
     UpdateDeviceId();
-    UpdateDeviceUser();
+    if (!UpdateDeviceUser()) {
+      return;
+    }
   } else if (state == kStopping) {
     device_user_ = "";
   } else if (state == kStopped) {
     device_user_ = "";
+  }
+
+  for (auto cb : session_change_listeners_) {
+    cb.Run(state);
   }
 }
 
@@ -177,7 +180,7 @@ void DeviceUser::UpdateDeviceId() {
   }
 }
 
-void DeviceUser::UpdateDeviceUser() {
+bool DeviceUser::UpdateDeviceUser() {
   // Check if guest session is active.
   bool is_guest = false;
   brillo::ErrorPtr error;
@@ -189,7 +192,7 @@ void DeviceUser::UpdateDeviceUser() {
                << error->GetMessage();
   } else if (is_guest) {
     device_user_ = "GuestUser";
-    return;
+    return true;
   }
 
   // Retrieve the device username.
@@ -200,7 +203,7 @@ void DeviceUser::UpdateDeviceUser() {
       error.get()) {
     device_user_ = "Unknown";
     LOG(ERROR) << "Failed to retrieve primary session " << error->GetMessage();
-    return;
+    return true;
   } else {
     // No active session.
     if (username.empty()) {
@@ -208,7 +211,7 @@ void DeviceUser::UpdateDeviceUser() {
       if (device_user_ != "Unknown") {
         device_user_ = "";
       }
-      return;
+      return true;
     }
 
     // Set the username for redaction.
@@ -218,7 +221,7 @@ void DeviceUser::UpdateDeviceUser() {
     }
 
     if (SetDeviceUserIfLocalAccount(username)) {
-      return;
+      return true;
     }
 
     // Check if username file exists in daemon-store.
@@ -235,7 +238,7 @@ void DeviceUser::UpdateDeviceUser() {
         LOG(ERROR) << "Failed to read username. Checking policy instead";
       } else {
         device_user_ = username;
-        return;
+        return true;
       }
     }
 
@@ -243,9 +246,10 @@ void DeviceUser::UpdateDeviceUser() {
     // ID to be added. Add a slight delay so the ID can appear.
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&DeviceUser::HandleUserPolicy,
+        base::BindOnce(&DeviceUser::HandleUserPolicyAndNotifyListeners,
                        weak_ptr_factory_.GetWeakPtr(), username, username_file),
         base::Seconds(2));
+    return false;
   }
 }
 
@@ -322,8 +326,8 @@ bool DeviceUser::SetDeviceUserIfLocalAccount(std::string& username) {
   return true;
 }
 
-void DeviceUser::HandleUserPolicy(std::string username,
-                                  base::FilePath username_file) {
+void DeviceUser::HandleUserPolicyAndNotifyListeners(
+    std::string username, base::FilePath username_file) {
   // Retrieve user policy information.
   auto response = RetrievePolicy(login_manager::ACCOUNT_TYPE_USER, username);
   if (!response.ok()) {
@@ -342,6 +346,11 @@ void DeviceUser::HandleUserPolicy(std::string username,
   if (!base::ImportantFileWriter::WriteFileAtomically(username_file,
                                                       device_user_)) {
     LOG(ERROR) << "Failed to write username to file";
+  }
+
+  // Notify listeners.
+  for (auto cb : session_change_listeners_) {
+    cb.Run(kStarted);
   }
 }
 

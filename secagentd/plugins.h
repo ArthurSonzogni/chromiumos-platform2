@@ -391,6 +391,7 @@ class AuthenticationPlugin : public PluginInterface {
           {user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT,
            AuthFactorType::Authentication_AuthenticationType_AUTH_FINGERPRINT},
       };
+  int64_t latest_successful_login_timestamp_{-1};
   bool is_active_{false};
 };
 

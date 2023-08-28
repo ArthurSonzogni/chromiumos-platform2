@@ -50,12 +50,15 @@ std::string GetBatchedEventKey(
   }
 }
 
-void SetTerminateTimestamp(pb::ProcessEventAtomicVariant* exec) {
+bool SetTerminateTimestamp(pb::ProcessEventAtomicVariant* exec) {
   if (exec->has_process_exec()) {
     exec->mutable_process_exec()->set_terminate_timestamp_us(
         base::Time::Now().ToJavaTime() *
         base::Time::kMicrosecondsPerMillisecond);
+    return true;
   }
+
+  return false;
 }
 
 }  // namespace

@@ -108,7 +108,7 @@ class DeviceUser : public DeviceUserInterface {
   // Updates the device id after a session change.
   void UpdateDeviceId();
   // Updates the user after a session change.
-  void UpdateDeviceUser();
+  bool UpdateDeviceUser();
   // Retrieves the policy for the given account type and id.
   absl::StatusOr<enterprise_management::PolicyData> RetrievePolicy(
       login_manager::PolicyAccountType account_type,
@@ -120,7 +120,9 @@ class DeviceUser : public DeviceUserInterface {
   bool SetDeviceUserIfLocalAccount(std::string& username);
   // Handles setting the device user after affiliation is checked and writing
   // the username to daemon-store.
-  void HandleUserPolicy(std::string username, base::FilePath username_file);
+  // Also notifies listeners that the user should have been updated.
+  void HandleUserPolicyAndNotifyListeners(std::string username,
+                                          base::FilePath username_file);
 
   base::WeakPtrFactory<DeviceUser> weak_ptr_factory_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>

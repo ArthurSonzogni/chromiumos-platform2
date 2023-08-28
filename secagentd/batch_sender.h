@@ -30,7 +30,7 @@ namespace secagentd {
 template <typename KeyType, typename XdrMessage, typename AtomicVariantMessage>
 class BatchSenderInterface {
  public:
-  using VisitCallback = base::OnceCallback<void(AtomicVariantMessage*)>;
+  using VisitCallback = base::OnceCallback<bool(AtomicVariantMessage*)>;
 
   virtual ~BatchSenderInterface() = default;
 
@@ -53,7 +53,7 @@ class BatchSender
  public:
   using KeyDerive =
       base::RepeatingCallback<KeyType(const AtomicVariantMessage&)>;
-  using VisitCallback = base::OnceCallback<void(AtomicVariantMessage*)>;
+  using VisitCallback = base::OnceCallback<bool(AtomicVariantMessage*)>;
 
   static constexpr size_t kMaxMessageSizeBytes = 8 * 1024 * 1024;
 
@@ -79,10 +79,14 @@ class BatchSender
     base::AutoLock lock(events_lock_);
     auto it = lookup_map_.find(std::make_pair(variant_type, key));
     if (it != lookup_map_.end()) {
-      events_byte_size_ -= it->second->ByteSizeLong();
-      std::move(cb).Run(it->second);
-      events_byte_size_ += it->second->ByteSizeLong();
-      return true;
+      auto original_proto_size = it->second->ByteSizeLong();
+      bool successful_visit = std::move(cb).Run(it->second);
+      if (successful_visit) {
+        events_byte_size_ -= original_proto_size;
+        events_byte_size_ += it->second->ByteSizeLong();
+      }
+
+      return successful_visit;
     }
     cb.Reset();
     return false;

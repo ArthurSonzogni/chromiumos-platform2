@@ -5,7 +5,6 @@
 #include "secagentd/batch_sender.h"
 
 #include <string>
-#include <variant>
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
@@ -237,6 +236,7 @@ TEST_F(BatchSenderTestFixture, TestVisit) {
     EXPECT_TRUE(process_event->has_process_terminate());
     EXPECT_EQ(key, process_event->process_terminate().process().process_uuid());
     cb1_run = true;
+    return true;
   });
   // Ask specifically for a terminate event and verify that Visit ignores the
   // exec event with the same key.
@@ -245,8 +245,10 @@ TEST_F(BatchSenderTestFixture, TestVisit) {
   EXPECT_TRUE(cb1_run);
 
   bool cb2_run = false;
-  auto cb2 = base::BindLambdaForTesting(
-      [&cb2_run](AVM* process_event) { cb2_run = true; });
+  auto cb2 = base::BindLambdaForTesting([&cb2_run](AVM* process_event) {
+    cb2_run = true;
+    return true;
+  });
   EXPECT_FALSE(batch_sender_->Visit(AVM::kProcessTerminate,
                                     "Key does not exist", std::move(cb2)));
   EXPECT_FALSE(cb2_run);
@@ -273,6 +275,7 @@ TEST_F(BatchSenderTestFixture, TestVisitMostRecent) {
       base::BindLambdaForTesting([](BatchSenderTestFixture::AVM* exec_event) {
         exec_event->mutable_process_exec()->set_terminate_timestamp_us(
             exec_event->process_exec().terminate_timestamp_us() + 1);
+        return true;
       });
   EXPECT_TRUE(batch_sender_->Visit(
       BatchSenderTestFixture::AVM::kProcessExec,

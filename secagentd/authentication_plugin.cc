@@ -28,6 +28,28 @@ namespace secagentd {
 
 namespace pb = cros_xdr::reporting;
 
+namespace {
+bool UpdateNumFailedAttempts(const int64_t latest_success,
+                             const AuthFactorType auth_factor_type,
+                             pb::AuthenticateEventAtomicVariant* event) {
+  // Check that timestamp is greater than the most recent
+  // success and auth
+  // factor matches. If so increment number of failed attempts
+  // by 1.
+  if ((event->has_common() &&
+       event->common().create_timestamp_us() > latest_success) &&
+      (event->has_failure() && event->failure().has_authentication() &&
+       event->failure().authentication().auth_factor_size() >= 1 &&
+       event->failure().authentication().auth_factor()[0] ==
+           auth_factor_type)) {
+    event->mutable_failure()->mutable_authentication()->set_num_failed_attempts(
+        event->failure().authentication().num_failed_attempts() + 1);
+    return true;
+  }
+  return false;
+}
+}  // namespace
+
 AuthenticationPlugin::AuthenticationPlugin(
     scoped_refptr<MessageSenderInterface> message_sender,
     scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
@@ -147,6 +169,7 @@ void AuthenticationPlugin::HandleScreenUnlock() {
   auto* authentication =
       screen_lock->mutable_unlock()->mutable_authentication();
   if (!FillAuthFactor(authentication)) {
+    authentication->clear_auth_factor();
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&AuthenticationPlugin::DelayedCheckForAuthSignal,
@@ -156,6 +179,8 @@ void AuthenticationPlugin::HandleScreenUnlock() {
     return;
   }
 
+  auth_factor_type_ =
+      AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
   EnqueueAuthenticationEvent(std::move(screen_lock));
 }
 
@@ -164,8 +189,11 @@ void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
   FillCommon(log_event.get());
 
   if (state == kStarted) {
+    latest_successful_login_timestamp_ =
+        log_event->common().create_timestamp_us();
     auto* authentication = log_event->mutable_logon()->mutable_authentication();
     if (!FillAuthFactor(authentication)) {
+      authentication->clear_auth_factor();
       base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&AuthenticationPlugin::DelayedCheckForAuthSignal,
@@ -174,6 +202,8 @@ void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
           kWaitForAuthFactorS);
       return;
     }
+    auth_factor_type_ =
+        AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
   } else if (state == kStopped) {
     log_event->mutable_logoff();
   } else {
@@ -193,29 +223,41 @@ void AuthenticationPlugin::HandleRegistrationResult(
 
 void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
     const user_data_auth::AuthenticateAuthFactorCompleted& completed) {
-  if (completed.has_success()) {
-    auto it = auth_factor_map_.find(completed.success().auth_factor_type());
-    if (it == auth_factor_map_.end()) {
-      LOG(ERROR) << "Unknown auth factor type "
-                 << completed.success().auth_factor_type();
-      auth_factor_type_ =
-          AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
-    } else {
-      auth_factor_type_ = it->second;
+  auto it = auth_factor_map_.find(completed.auth_factor_type());
+  if (it == auth_factor_map_.end()) {
+    LOG(ERROR) << "Unknown auth factor type " << completed.auth_factor_type();
+    auth_factor_type_ =
+        AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
+  } else {
+    auth_factor_type_ = it->second;
+  }
+
+  if (completed.has_error_info()) {
+    if (!batch_sender_->Visit(pb::AuthenticateEventAtomicVariant::kFailure,
+                              std::monostate(),
+                              base::BindOnce(&UpdateNumFailedAttempts,
+                                             latest_successful_login_timestamp_,
+                                             auth_factor_type_))) {
+      // Create new event if no matching failure event found and updated.
+      auto failure_event =
+          std::make_unique<pb::AuthenticateEventAtomicVariant>();
+      FillCommon(failure_event.get());
+
+      auto* authentication =
+          failure_event->mutable_failure()->mutable_authentication();
+      authentication->set_num_failed_attempts(1);
+      FillAuthFactor(authentication);
+
+      EnqueueAuthenticationEvent(std::move(failure_event));
     }
   }
 }
 
 bool AuthenticationPlugin::FillAuthFactor(pb::Authentication* proto) {
-  if (auth_factor_type_ !=
-      AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN) {
-    proto->add_auth_factor(auth_factor_type_);
-    auth_factor_type_ =
-        AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
-    return true;
-  }
+  proto->add_auth_factor(auth_factor_type_);
 
-  return false;
+  return auth_factor_type_ !=
+         AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
 }
 
 void AuthenticationPlugin::EnqueueAuthenticationEvent(
@@ -227,9 +269,10 @@ void AuthenticationPlugin::DelayedCheckForAuthSignal(
     std::unique_ptr<cros_xdr::reporting::AuthenticateEventAtomicVariant>
         xdr_proto,
     cros_xdr::reporting::Authentication* authentication) {
-  if (!FillAuthFactor(authentication)) {
-    authentication->add_auth_factor(
-        AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN);
+  if (FillAuthFactor(authentication)) {
+    // Clear auth factor after it has been set.
+    auth_factor_type_ =
+        AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
   }
   EnqueueAuthenticationEvent(std::move(xdr_proto));
 }
