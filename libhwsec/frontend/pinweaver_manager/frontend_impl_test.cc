@@ -40,6 +40,7 @@ using ::testing::Eq;
 using ::testing::Ge;
 
 constexpr int kLEMaxIncorrectAttempt = 5;
+constexpr int kFakeLogSize = 2;
 constexpr uint8_t kAuthChannel = 0;
 
 MATCHER_P(HasTPMRetryAction, matcher, "") {
@@ -237,7 +238,6 @@ class PinWeaverManagerImplTest : public ::testing::Test {
   }
 
  protected:
-  base::test::TaskEnvironment task_environment_;
   base::ScopedTempDir temp_dir_;
   std::unique_ptr<Tpm2SimulatorProxyForTest> proxy_;
   std::unique_ptr<MiddlewareOwner> middleware_owner_;
@@ -496,6 +496,404 @@ TEST_F(PinWeaverManagerImplTest, BiometricsResetSecretNegative) {
       pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
                                               kClientNonce),
       NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
+}
+
+// Initialize the PinWeaverManager and take a snapshot after 1 operation,
+// then perform an insert. Then, restore the snapshot (in effect "losing" the
+// last operation). The log functionality should restore the "lost" state.
+TEST_F(PinWeaverManagerImplTest, LogReplayLostInsert) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  uint64_t label1 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+
+  base::ScopedTempDir snapshot;
+  ASSERT_TRUE(snapshot.CreateUniqueTempDir());
+  ASSERT_TRUE(base::CopyDirectory(CredDirPath(), snapshot.GetPath(), true));
+
+  // Another Insert after taking the snapshot.
+  uint64_t label2 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+
+  RestoreSnapshot(snapshot.GetPath());
+  InitLEManager();
+
+  // The first attempt of PW commnend sended to TPM will fail due to
+  // out-of-sync hash tree. After receiving kPinWeaverOutOfSync, the
+  // RetryHandler attempted to perform ReplayLog and succeed.
+
+  // label2 does not exist after restoration since the log replay only
+  // confirms the tree root hash was correctly computed via logged operations.
+  // But the concrete data associated with the leaf insertion is not logged.
+  // So the inserted leaf is subsequently removed.
+  // As a result, the CheckCredential command failed at RetrieveLabelInfo and
+  // thus returned kSpaceNotFound.
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label2, kLeSecret1),
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
+
+  // Subsequent operation should work.
+  auto [he_secret, reset_secret] =
+      pinweaver_manager_->CheckCredential(label1, kLeSecret1)
+          .AssertOk()
+          .value();
+  EXPECT_EQ(he_secret, kHeSecret1);
+  EXPECT_EQ(reset_secret, kResetSecret1);
+}
+
+// Initialize the PinWeaverManager and take a snapshot after an operation,
+// then perform an insert and remove. Then, restore the snapshot
+// (in effect "losing" the last 2 operations). The log functionality
+// should restore the "lost" state.
+TEST_F(PinWeaverManagerImplTest, LogReplayLostInsertRemove) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  uint64_t label1 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Another Insert & Remove after taking the snapshot.
+  uint64_t label2 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  ASSERT_THAT(pinweaver_manager_->RemoveCredential(label1), IsOk());
+
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // The first attempt of PW command sended to TPM will fail due to
+  // out-of-sync hash tree. After receiving kPinWeaverOutOfSync, the
+  // RetryHandler attempted to perform ReplayLog and succeed.
+
+  // label1 should not exist after removal replay. As a result, the
+  // CheckCredential command failed at RetrieveLabelInfo and thus returned
+  // kSpaceNotFound.
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label1, kLeSecret1),
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
+
+  // label2 also does not exist since the insertion replay only
+  // confirms the insertion happened but the
+  // data associated with the leaf insertion is not logged and
+  // the leaf of label2 is removed after restoration.
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label2, kLeSecret1),
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
+
+  // Continue operating after the restore shall succeed.
+  uint64_t label3 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label3, kLeSecret1), IsOk());
+}
+
+// Initialize the PinWeaverManager and take a snapshot after 2 operations,
+// then perform |kLogSize| checks. Then, restore the snapshot (in effect
+// "losing" the last |kLogSize| operations). The log functionality should
+// restore the "lost" state.
+TEST_F(PinWeaverManagerImplTest, LogReplayLostChecks) {
+  // A special schedule that locks out the credential
+  // after |kFakeLogSize| failed checks.
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kFakeLogSize, UINT32_MAX},
+  };
+  uint64_t label1 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  uint64_t label2 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Perform incorrect checks to fill up the replay log
+  // and locks out the credential with label |label1|
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_THAT(pinweaver_manager_->CheckCredential(label1, kLeSecret2),
+                NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+  }
+
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // The first attempt of PW command sended to TPM will fail due to
+  // out-of-sync hash tree. After receiving kPinWeaverOutOfSync, the
+  // RetryHandler attempted to perform ReplayLog and succeed.
+
+  // failed credential checks are replayed and the credential
+  // with label |label1| remains locked-out.
+  EXPECT_THAT(
+      pinweaver_manager_->CheckCredential(label1, kLeSecret1),
+      NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kPinWeaverLockedOut))));
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label2, kLeSecret2), IsOk());
+}
+
+// Initialize the PinWeaverManager and take a snapshot after 2 operations,
+// then perform |kLogSize| inserts. Then, restore the snapshot (in effect
+// "losing" the last |kLogSize| operations). The log functionality should
+// restore the "lost" state.
+TEST_F(PinWeaverManagerImplTest, LogReplayLostInserts) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  uint64_t label1 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  uint64_t label2 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Perform inserts to fill up the replay log.
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_THAT(pinweaver_manager_->InsertCredential(
+                    std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
+                    kHeSecret1, kResetSecret1, delay_sched,
+                    /*expiration_delay=*/std::nullopt),
+                IsOk());
+  }
+
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // The first attempt of PW command sended to TPM will fail due to
+  // out-of-sync hash tree. After receiving kPinWeaverOutOfSync, the
+  // RetryHandler attempted to perform ReplayLog and succeed.
+  brillo::SecureBlob he_secret;
+  brillo::SecureBlob reset_secret;
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label1, kLeSecret1), IsOk());
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label2, kLeSecret2), IsOk());
+  EXPECT_THAT(pinweaver_manager_->InsertCredential(
+                  std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
+                  kHeSecret1, kResetSecret1, delay_sched,
+                  /*expiration_delay=*/std::nullopt),
+              IsOk());
+  EXPECT_THAT(pinweaver_manager_->RemoveCredential(label1), IsOk());
+}
+
+// Initialize the PinWeaverManager, insert 2 base credentials. Then, insert
+// |kLogSize| credentials. Then, take a snapshot, and then remove the
+// |kLogSize| credentials. Then, restore the snapshot (in effect "losing" the
+// last |kLogSize| operations). The log functionality should restore the "lost"
+// state.
+TEST_F(PinWeaverManagerImplTest, LogReplayLostRemoves) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  uint64_t label1 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret1, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  uint64_t label2 =
+      pinweaver_manager_
+          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
+                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                             /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+
+  // Perform |kLogSize| credential inserts.
+  std::vector<uint64_t> labels_to_remove;
+  uint64_t temp_label;
+  for (int i = 0; i < kFakeLogSize; i++) {
+    temp_label = pinweaver_manager_
+                     ->InsertCredential(
+                         std::vector<hwsec::OperationPolicySetting>(),
+                         kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
+                         /*expiration_delay=*/std::nullopt)
+                     .AssertOk()
+                     .value();
+    labels_to_remove.push_back(temp_label);
+  }
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Fill the replay log with |kLogSize| RemoveCredential operations.
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_THAT(pinweaver_manager_->RemoveCredential(labels_to_remove[i]),
+                IsOk());
+  }
+
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // The first attempt of PW command sended to TPM will fail due to
+  // out-of-sync hash tree. After receiving kPinWeaverOutOfSync, the
+  // RetryHandler attempted to perform ReplayLog and succeed.
+
+  // Verify that the removed credentials are actually gone.
+  brillo::SecureBlob he_secret;
+  brillo::SecureBlob reset_secret;
+  for (int i = 0; i < kFakeLogSize; i++) {
+    EXPECT_THAT(
+        pinweaver_manager_->CheckCredential(labels_to_remove[i], kLeSecret1),
+        NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
+  }
+
+  // Subsequent operations should work.
+  he_secret.clear();
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label1, kLeSecret1), IsOk());
+  EXPECT_THAT(pinweaver_manager_->CheckCredential(label2, kLeSecret2), IsOk());
+  EXPECT_THAT(pinweaver_manager_->InsertCredential(
+                  std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
+                  kHeSecret1, kResetSecret1, delay_sched,
+                  /*expiration_delay=*/std::nullopt),
+              IsOk());
+  EXPECT_THAT(pinweaver_manager_->RemoveCredential(label1), IsOk());
+}
+
+// Initialize the PinWeaverManager and take a snapshot after 2 operations,
+// then perform |kLogSize| inserts of rate-limiters. Then, restore the snapshot
+// (in effect "losing" the last |kLogSize| operations). The log functionality
+// should restore the "lost" state.
+TEST_F(PinWeaverManagerImplTest, BiometricsLogReplayLostInserts) {
+  GeneratePk(kAuthChannel);
+
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  uint64_t label1 =
+      pinweaver_manager_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  uint64_t label2 =
+      pinweaver_manager_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Perform inserts to fill up the replay log.
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_THAT(pinweaver_manager_->InsertRateLimiter(
+                    kAuthChannel, std::vector<hwsec::OperationPolicySetting>(),
+                    kResetSecret1, delay_sched,
+                    /*expiration_delay=*/std::nullopt),
+                IsOk());
+  }
+
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // The first attempt of PW command sended to TPM will fail due to
+  // out-of-sync hash tree. After receiving kPinWeaverOutOfSync, the
+  // RetryHandler attempted to perform ReplayLog and succeed.
+
+  // Subsequent operations should work.
+  ASSERT_THAT(pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                                      kClientNonce),
+              IsOk());
+  ASSERT_THAT(pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label2,
+                                                      kClientNonce),
+              IsOk());
+  EXPECT_THAT(pinweaver_manager_->InsertRateLimiter(
+                  kAuthChannel, std::vector<hwsec::OperationPolicySetting>(),
+                  kResetSecret1, delay_sched,
+                  /*expiration_delay=*/std::nullopt),
+              IsOk());
+  EXPECT_THAT(pinweaver_manager_->RemoveCredential(label1), IsOk());
+}
+
+// Initialize the PinWeaverManager and take a snapshot after 2 operations,
+// then perform |kLogSize| start auths of rate-limiters. Then, restore the
+// snapshot (in effect "losing" the last |kLogSize| operations). The log
+// functionality should restore the "lost" state.
+TEST_F(PinWeaverManagerImplTest, BiometricsLogReplayLostStartAuths) {
+  GeneratePk(kAuthChannel);
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+  uint64_t label1 =
+      pinweaver_manager_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+  uint64_t label2 =
+      pinweaver_manager_
+          ->InsertRateLimiter(kAuthChannel,
+                              std::vector<hwsec::OperationPolicySetting>(),
+                              kResetSecret1, delay_sched,
+                              /*expiration_delay=*/std::nullopt)
+          .AssertOk()
+          .value();
+
+  std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
+
+  // Perform start auths to fill up the replay log.
+  for (int i = 0; i < kFakeLogSize; i++) {
+    ASSERT_THAT(pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                                        kClientNonce),
+                IsOk());
+  }
+
+  RestoreSnapshot(snapshot->GetPath());
+  InitLEManager();
+
+  // The first attempt of PW command sended to TPM will fail due to
+  // out-of-sync hash tree. After receiving kPinWeaverOutOfSync, the
+  // RetryHandler attempted to perform ReplayLog and succeed.
+
+  // Subsequent operations should work.
+  ASSERT_THAT(pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label1,
+                                                      kClientNonce),
+              IsOk());
+  ASSERT_THAT(pinweaver_manager_->StartBiometricsAuth(kAuthChannel, label2,
+                                                      kClientNonce),
+              IsOk());
 }
 
 TEST_F(PinWeaverManagerImplTest, CheckCredentialExpirations) {
