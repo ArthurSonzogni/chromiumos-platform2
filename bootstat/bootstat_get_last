@@ -6,7 +6,16 @@
 # Converts a floating point number of seconds to a properly rounded
 # number of integer milliseconds.
 seconds_to_ms() {
-  echo "$1" | awk '{ print int($1 * 1000.0 + 0.5)}'
+  # Millisecond metrics are always reported as integers values.
+  #
+  # By default awk will print large numbers in exponential format which
+  # conflicts with shell arithmetic used in some scripts.
+  #
+  # awk is using 32-bit integers which is not enough for the millisecond
+  # calculation.
+  #
+  # This way we use a floating point format with 0 fractional numbers here.
+  echo "$1" | awk -v OFMT="%.0f" '{ print int($1 * 1000.0 + 0.5)}'
 }
 
 EVENT="$1"
@@ -51,6 +60,15 @@ while [ $# -gt 0 ]; do
   # the requested event doesn't exist.
   EVENTFILE="/run/bootstat/${TAG}-${EVENT}"
   if [ -f "${EVENTFILE}" ]; then
+    # For "time" measurement the result will have a value measured in seconds.
+    # Therefore we need a fractional part to report sub-second intervals. On
+    # the other hand, for "read-sectors" and "write-sectors" we always expect
+    # integer values. This is why we use "general" format for the result here.
+    #
+    # On the other hand, AWK will print large numbers in exponential format,
+    # which is not suitable for the shell arithmetic.
+    #
+    # TODO: fix this discrepancy.
     result="$(awk -v field="${FIELD}" -v before="${BEFORE}"            \
       '(!before || $field < before) {result=$field} END{print result}' \
       "${EVENTFILE}"
