@@ -365,6 +365,18 @@ class Datapath {
                           const std::string dns_ipv4_addr);
   bool RemoveRedirectDnsRule(const ShillClient::Device& shill_device);
 
+  // Enable (or disable) QoS detection (i.e., setting QoS-related bits in
+  // fwmark) by modifying the jump rules to the qos_detect chain. These two
+  // functions are called by QoSService.
+  virtual void EnableQoSDetection();
+  virtual void DisableQoSDetection();
+
+  // Enable (or disable) applying DSCP fields in egress packets for QoS, by
+  // modifying the jump rules to the qos_apply_dscp chain. These two functions
+  // are called by QoSService.
+  virtual void EnableQoSApplyingDSCP(std::string_view ifname);
+  virtual void DisableQoSApplyingDSCP(std::string_view ifname);
+
   // Returns true if the chain |name| exists in |table|.
   virtual bool CheckChain(IpFamily family,
                           Iptables::Table table,
@@ -520,6 +532,10 @@ class Datapath {
   void SetupQoSDetectChain();
   // Installs the static rules inside the qos_apply_dscp chain.
   void SetupQoSApplyDSCPChain();
+  // Changing jump rules to the above two chains.
+  void ModifyQoSDetectJumpRule(Iptables::Command command);
+  void ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
+                                  std::string_view ifname);
 
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
   std::unique_ptr<Firewall> firewall_;

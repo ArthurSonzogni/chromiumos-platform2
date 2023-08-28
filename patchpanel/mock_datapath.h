@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -123,6 +124,10 @@ class MockDatapath : public Datapath {
                const ShillClient::Device& shill_device,
                const net_base::IPv4Address& ipv4_addr),
               (override));
+  MOCK_METHOD(void, EnableQoSDetection, (), (override));
+  MOCK_METHOD(void, DisableQoSDetection, (), (override));
+  MOCK_METHOD(void, EnableQoSApplyingDSCP, (std::string_view), (override));
+  MOCK_METHOD(void, DisableQoSApplyingDSCP, (std::string_view), (override));
   MOCK_METHOD(bool,
               AddAdbPortAccessRule,
               (const std::string& ifname),

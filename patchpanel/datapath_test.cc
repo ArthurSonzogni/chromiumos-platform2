@@ -2153,4 +2153,56 @@ TEST(DatapathTest, ModifyPortRule) {
   Mock::VerifyAndClearExpectations(firewall);
 }
 
+TEST(DatapathTest, EnableQoSDetection) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -A OUTPUT -j qos_detect -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -A PREROUTING -j qos_detect -w");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.EnableQoSDetection();
+}
+
+TEST(DatapathTEST, DisableQoSDetection) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -D OUTPUT -j qos_detect -w");
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -D PREROUTING -j qos_detect -w");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.DisableQoSDetection();
+}
+
+TEST(DatapathTest, EnableQoSApplyingDSCP) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -A POSTROUTING -o wlan0 -j qos_apply_dscp -w");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.EnableQoSApplyingDSCP("wlan0");
+}
+
+TEST(DatapathTest, DisableQoSApplyingDSCP) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Verify_iptables(*runner, IpFamily::kDual,
+                  "mangle -D POSTROUTING -o wlan0 -j qos_apply_dscp -w");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.DisableQoSApplyingDSCP("wlan0");
+}
+
 }  // namespace patchpanel

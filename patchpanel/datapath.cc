@@ -2311,6 +2311,36 @@ void Datapath::SetupQoSApplyDSCPChain() {
   }
 }
 
+void Datapath::EnableQoSDetection() {
+  ModifyQoSDetectJumpRule(Iptables::Command::kA);
+}
+
+void Datapath::DisableQoSDetection() {
+  ModifyQoSDetectJumpRule(Iptables::Command::kD);
+}
+
+void Datapath::EnableQoSApplyingDSCP(std::string_view ifname) {
+  ModifyQoSApplyDSCPJumpRule(Iptables::Command::kA, ifname);
+}
+
+void Datapath::DisableQoSApplyingDSCP(std::string_view ifname) {
+  ModifyQoSApplyDSCPJumpRule(Iptables::Command::kD, ifname);
+}
+
+void Datapath::ModifyQoSDetectJumpRule(Iptables::Command command) {
+  for (const auto chain : {"OUTPUT", "PREROUTING"}) {
+    ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command, chain,
+                   {"-j", kQoSDetectChain, "-w"});
+  }
+}
+
+void Datapath::ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
+                                          std::string_view ifname) {
+  ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command,
+                 "POSTROUTING",
+                 {"-o", std::string(ifname), "-j", kQoSApplyDSCPChain, "-w"});
+}
+
 std::ostream& operator<<(std::ostream& stream,
                          const ConnectedNamespace& nsinfo) {
   stream << "{ pid: " << nsinfo.pid
