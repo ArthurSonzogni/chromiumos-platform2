@@ -273,6 +273,7 @@ void Manager::OnShillDevicesChanged(
     multicast_metrics_->OnPhysicalDeviceRemoved(device);
     counters_svc_->OnPhysicalDeviceRemoved(device.ifname);
     multicast_counters_svc_->OnPhysicalDeviceRemoved(device);
+    qos_svc_->OnPhysicalDeviceRemoved(device);
 
     // We have no good way to tell whether the removed Device was cellular now,
     // so we always call this. StopSourcePrefixEnforcement will find out by
@@ -283,6 +284,7 @@ void Manager::OnShillDevicesChanged(
   }
 
   for (const auto& device : added) {
+    qos_svc_->OnPhysicalDeviceAdded(device);
     counters_svc_->OnPhysicalDeviceAdded(device.ifname);
     multicast_counters_svc_->OnPhysicalDeviceAdded(device);
     multicast_metrics_->OnPhysicalDeviceAdded(device);

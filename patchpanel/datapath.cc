@@ -2320,10 +2320,12 @@ void Datapath::DisableQoSDetection() {
 }
 
 void Datapath::EnableQoSApplyingDSCP(std::string_view ifname) {
+  LOG(INFO) << "Enable QoS DSCP application on " << ifname;
   ModifyQoSApplyDSCPJumpRule(Iptables::Command::kA, ifname);
 }
 
 void Datapath::DisableQoSApplyingDSCP(std::string_view ifname) {
+  LOG(INFO) << "Disable QoS DSCP application on " << ifname;
   ModifyQoSApplyDSCPJumpRule(Iptables::Command::kD, ifname);
 }
 

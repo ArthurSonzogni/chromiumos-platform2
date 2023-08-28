@@ -306,6 +306,7 @@ if (use.test) {
       "net_util_test.cc",
       "network_monitor_service_test.cc",
       "proto_utils_test.cc",
+      "qos_service_test.cc",
       "routing_service_test.cc",
       "shill_client_test.cc",
       "socket_forwarder_test.cc",

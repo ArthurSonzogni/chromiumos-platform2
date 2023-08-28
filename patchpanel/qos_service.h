@@ -5,6 +5,12 @@
 #ifndef PATCHPANEL_QOS_SERVICE_H_
 #define PATCHPANEL_QOS_SERVICE_H_
 
+#include <string>
+
+#include <base/containers/flat_set.h>
+
+#include "patchpanel/shill_client.h"
+
 namespace patchpanel {
 
 class Datapath;
@@ -38,9 +44,29 @@ class QoSService {
   QoSService(const QoSService&) = delete;
   QoSService& operator=(const QoSService&) = delete;
 
-  // TODO(b/296951862): Add implementation.
+  // Enable or disable the QoS feature. Note that it will only affect new socket
+  // connections. The QoS treatment for the existing connections may or may not
+  // be changed.
+  void Enable();
+  void Disable();
+
+  // Listening to the shill Device change event for the per-interface setup.
+  // Currently this class only care about WiFi interfaces.
+  void OnPhysicalDeviceAdded(const ShillClient::Device& device);
+  void OnPhysicalDeviceRemoved(const ShillClient::Device& device);
 
  private:
+  // QoS feature is disabled by default. This value can be changed in `Enable()`
+  // and `Disable()`.
+  bool is_enabled_ = false;
+
+  // Tracks the existing interfaces which this service cares about (currently
+  // only WiFi interfaces). This class doesn't care about whether the interface
+  // is connected (i.e., ready for routing) or not. We need to track this to
+  // support the case that QoS feature is enabled after the WiFi interface
+  // appeared.
+  base::flat_set<std::string> interfaces_;
+
   Datapath* datapath_;
 };
 
