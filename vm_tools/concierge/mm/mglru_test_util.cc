@@ -4,7 +4,7 @@
 
 #include "vm_tools/concierge/mm/mglru_test_util.h"
 
-namespace vm_tools::concierge::mglru {
+namespace vm_tools::concierge::mm::mglru {
 
 void AddGeneration(MglruNode* node,
                    const uint32_t sequence_num,
@@ -41,4 +41,4 @@ testing::AssertionResult StatsEqual(const MglruStats& lhs,
   return testing::AssertionSuccess();
 }
 
-}  // namespace vm_tools::concierge::mglru
+}  // namespace vm_tools::concierge::mm::mglru

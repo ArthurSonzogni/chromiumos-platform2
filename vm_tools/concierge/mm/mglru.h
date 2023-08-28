@@ -12,7 +12,7 @@
 
 using vm_tools::vm_memory_management::MglruStats;
 
-namespace vm_tools::concierge::mglru {
+namespace vm_tools::concierge::mm::mglru {
 
 // Parses MglruStats from the contents of the MGLRU sysfs admin file
 // Usually: /sys/kernel/mm/lru_gen/admin.
@@ -25,6 +25,6 @@ std::optional<MglruStats> ParseStatsFromString(
 // result string.
 std::string StatsToString(const MglruStats& stats, const size_t page_size);
 
-}  // namespace vm_tools::concierge::mglru
+}  // namespace vm_tools::concierge::mm::mglru
 
 #endif  // VM_TOOLS_CONCIERGE_MM_MGLRU_H_

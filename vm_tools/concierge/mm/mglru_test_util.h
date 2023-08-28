@@ -13,7 +13,7 @@ using vm_tools::vm_memory_management::MglruGeneration;
 using vm_tools::vm_memory_management::MglruMemcg;
 using vm_tools::vm_memory_management::MglruNode;
 
-namespace vm_tools::concierge::mglru {
+namespace vm_tools::concierge::mm::mglru {
 
 void AddGeneration(MglruNode* node,
                    const uint32_t sequence_num,
@@ -28,6 +28,6 @@ MglruMemcg* AddMemcg(MglruStats* stats, const uint32_t id);
 testing::AssertionResult StatsEqual(const MglruStats& lhs,
                                     const MglruStats& rhs);
 
-}  // namespace vm_tools::concierge::mglru
+}  // namespace vm_tools::concierge::mm::mglru
 
 #endif  // VM_TOOLS_CONCIERGE_MM_MGLRU_TEST_UTIL_H_

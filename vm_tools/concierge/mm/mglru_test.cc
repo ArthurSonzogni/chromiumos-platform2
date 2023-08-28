@@ -14,7 +14,7 @@ using vm_tools::vm_memory_management::MglruGeneration;
 using vm_tools::vm_memory_management::MglruMemcg;
 using vm_tools::vm_memory_management::MglruNode;
 
-namespace vm_tools::concierge::mglru {
+namespace vm_tools::concierge::mm::mglru {
 namespace {
 
 const char simple_input[] =
@@ -231,4 +231,4 @@ TEST(MglruUtilTest, TestMultipleNewKernel) {
 }
 
 }  // namespace
-}  // namespace vm_tools::concierge::mglru
+}  // namespace vm_tools::concierge::mm::mglru

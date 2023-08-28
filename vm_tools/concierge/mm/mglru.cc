@@ -19,7 +19,7 @@ using vm_tools::vm_memory_management::MglruGeneration;
 using vm_tools::vm_memory_management::MglruMemcg;
 using vm_tools::vm_memory_management::MglruNode;
 
-namespace vm_tools::concierge::mglru {
+namespace vm_tools::concierge::mm::mglru {
 namespace {
 
 // Parses a single generation from the input line and returns it if successful.
@@ -222,4 +222,4 @@ std::string StatsToString(const MglruStats& stats, const size_t page_size) {
   return output.str();
 }
 
-}  // namespace vm_tools::concierge::mglru
+}  // namespace vm_tools::concierge::mm::mglru
