@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <fcntl.h>
 #include <memory>
 #include <optional>
 #include <string>
@@ -81,9 +82,8 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
       history_file_path_.DirName().Append(kOldHistoryFileName);
   if (base::PathExists(old_file_path)) {
     LOG(INFO) << "Old tbw history file is found. Recreate a new history file.";
-    base::File old_file = base::File(
-        old_file_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
-    base::SetCloseOnExec(old_file.GetPlatformFile());
+    base::File old_file =
+        base::File(open(old_file_path.value().c_str(), O_RDONLY | O_CLOEXEC));
     // Remove the old file whether it succeeds to load history or not.
     brillo::DeleteFile(old_file_path);
     if (old_file.IsValid()) {
@@ -94,23 +94,20 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
       }
     } else {
       LOG(ERROR) << "Failed to open old tbw history file: "
-                 << old_file.ErrorToString(old_file.error_details());
+                 << old_file.ErrorToString(base::File::GetLastFileError());
     }
   }
 
   base::File file =
-      base::File(path, base::File::FLAG_CREATE | base::File::FLAG_READ |
-                           base::File::FLAG_WRITE);
+      base::File(open(history_file_path_.value().c_str(),
+                      O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0600));
   if (file.IsValid()) {
-    LOG(INFO) << "Tbw history file is created at: " << path;
-    base::SetCloseOnExec(file.GetPlatformFile());
+    LOG(INFO) << "Tbw history file is created at: " << history_file_path_;
     history_file_ = std::move(file);
-  } else if (file.error_details() == base::File::FILE_ERROR_EXISTS) {
-    LOG(INFO) << "Load tbw history from: " << path;
-    file = base::File(history_file_path_, base::File::FLAG_OPEN |
-                                              base::File::FLAG_READ |
-                                              base::File::FLAG_WRITE);
-    base::SetCloseOnExec(file.GetPlatformFile());
+  } else if (base::File::GetLastFileError() == base::File::FILE_ERROR_EXISTS) {
+    LOG(INFO) << "Load tbw history from: " << history_file_path_;
+    file = base::File(
+        open(history_file_path_.value().c_str(), O_RDWR | O_CLOEXEC));
     if (LoadFromFile(file, now)) {
       history_file_ = std::move(file);
       // Resume reporting only when the previous tbw policy has started
@@ -130,7 +127,7 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
     }
   } else {
     LOG(ERROR) << "Failed to create tbw history file: "
-               << file.ErrorToString(file.error_details());
+               << file.ErrorToString(base::File::GetLastFileError());
   }
 
   // Add pessimistic entries as if there were max disk writes in last 28days.
@@ -356,10 +353,9 @@ bool VmmSwapTbwPolicy::RotateHistoryFile(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::FilePath tmp_file_path = history_file_path_.AddExtension("tmp");
 
-  history_file_ = base::File(tmp_file_path, base::File::FLAG_CREATE_ALWAYS |
-                                                base::File::FLAG_READ |
-                                                base::File::FLAG_WRITE);
-  base::SetCloseOnExec(history_file_->GetPlatformFile());
+  history_file_ =
+      base::File(open(tmp_file_path.value().c_str(),
+                      O_CREAT | O_TRUNC | O_RDWR | O_CLOEXEC, 0600));
   if (!history_file_->IsValid()) {
     LOG(ERROR) << "Failed to create new tbw history file: "
                << history_file_->ErrorToString(history_file_->error_details());

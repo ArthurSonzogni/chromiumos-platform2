@@ -5,6 +5,7 @@
 #include "vm_tools/concierge/vmm_swap_usage_policy.h"
 
 #include <algorithm>
+#include <fcntl.h>
 #include <iterator>
 #include <optional>
 #include <string>
@@ -41,30 +42,29 @@ bool VmmSwapUsagePolicy::Init(base::FilePath path, base::Time time) {
   history_file_path_ = path;
 
   base::File file =
-      base::File(path, base::File::FLAG_CREATE | base::File::FLAG_READ |
-                           base::File::FLAG_WRITE);
+      base::File(open(history_file_path_.value().c_str(),
+                      O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0600));
   if (file.IsValid()) {
-    LOG(INFO) << "Usage history file is created at: " << path;
-    base::SetCloseOnExec(file.GetPlatformFile());
+    LOG(INFO) << "Usage history file is created at: " << history_file_path_;
     history_file_ = std::move(file);
     return true;
   }
 
-  if (file.error_details() != base::File::FILE_ERROR_EXISTS) {
+  base::File::Error error = base::File::GetLastFileError();
+  if (error != base::File::FILE_ERROR_EXISTS) {
     LOG(ERROR) << "Failed to create usage history file: "
-               << file.ErrorToString(file.error_details());
+               << file.ErrorToString(error);
     return false;
   }
 
-  LOG(INFO) << "Load usage history from: " << path;
-  file = base::File(path, base::File::FLAG_OPEN | base::File::FLAG_READ |
-                              base::File::FLAG_WRITE);
+  LOG(INFO) << "Load usage history from: " << history_file_path_;
+  file =
+      base::File(open(history_file_path_.value().c_str(), O_RDWR | O_CLOEXEC));
   if (!file.IsValid()) {
     LOG(ERROR) << "Failed to open usage history file: "
-               << file.ErrorToString(file.error_details());
+               << file.ErrorToString(base::File::GetLastFileError());
     return false;
   }
-  base::SetCloseOnExec(file.GetPlatformFile());
 
   // Load entries in the file and move the file offset to the tail
   if (LoadFromFile(file, time)) {
@@ -346,16 +346,16 @@ bool VmmSwapUsagePolicy::RotateHistoryFile(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::FilePath tmp_file_path = history_file_path_.AddExtension("tmp");
 
-  history_file_ = base::File(tmp_file_path, base::File::FLAG_CREATE_ALWAYS |
-                                                base::File::FLAG_READ |
-                                                base::File::FLAG_WRITE);
+  history_file_ =
+      base::File(open(tmp_file_path.value().c_str(),
+                      O_CREAT | O_TRUNC | O_RDWR | O_CLOEXEC, 0600));
   if (!history_file_->IsValid()) {
+    history_file_ = base::File(base::File::GetLastFileError());
     LOG(ERROR) << "Failed to create new usage history file: "
                << history_file_->ErrorToString(history_file_->error_details());
     DeleteFile();
     return false;
   }
-  base::SetCloseOnExec(history_file_->GetPlatformFile());
   bool success = true;
 
   for (auto iter = usage_history_.Begin(); success && iter; ++iter) {
