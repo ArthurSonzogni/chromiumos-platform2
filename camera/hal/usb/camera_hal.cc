@@ -68,7 +68,8 @@ bool FillMetadata(const DeviceInfo& device_info,
   if (!device_info.usb_pid.empty()) {
     static_metadata->update(kVendorTagProductId, device_info.usb_pid);
   }
-  static_metadata->update(kVendorTagDevicePath, device_info.device_path);
+  static_metadata->update(kVendorTagDevicePath,
+                          device_info.device_path.value());
   static_metadata->update(kVendorTagModelName, V4L2CameraDevice::GetModelName(
                                                    device_info.device_path));
 
@@ -572,6 +573,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     return;
   }
 
+  const base::FilePath file_path(path);
   const char* vid = "";
   const char* pid = "";
   const char* bcdDevice = "";
@@ -626,7 +628,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     }
   }
 
-  if (!V4L2CameraDevice::IsCameraDevice(path)) {
+  if (!V4L2CameraDevice::IsCameraDevice(file_path)) {
     VLOGF(1) << path << " is not a camera device";
     return;
   }
@@ -658,7 +660,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
                << (is_external
                        ? "external"
                        : (info.is_detachable ? "detachable" : "built-in"))
-               << " camera device " << V4L2CameraDevice::GetModelName(path)
+               << " camera device " << V4L2CameraDevice::GetModelName(file_path)
                << ", vid:pid = " << vid << ":" << pid
                << ", bcdDevice = " << bcdDevice << " at " << path;
   }
@@ -667,18 +669,18 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     return;
   }
 
-  info.device_path = path;
+  info.device_path = file_path;
   info.usb_vid = vid;
   info.usb_pid = pid;
   info.is_vivid = is_vivid;
-  info.constant_framerate_unsupported |=
-      !V4L2CameraDevice::IsControlSupported(path, kControlExposureAutoPriority);
+  info.constant_framerate_unsupported |= !V4L2CameraDevice::IsControlSupported(
+      file_path, kControlExposureAutoPriority);
   ControlType control_roi_auto;
   RoiControlApi api;
   uint32_t max_roi_auto;
   info.region_of_interest_supported =
-      V4L2CameraDevice::IsRegionOfInterestSupported(path, &control_roi_auto,
-                                                    &api, &max_roi_auto);
+      V4L2CameraDevice::IsRegionOfInterestSupported(
+          file_path, &control_roi_auto, &api, &max_roi_auto);
 
   if (info.region_of_interest_supported) {
     if (!info.enable_face_detection) {
@@ -761,7 +763,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     num_builtin_cameras_++;
   }
 
-  path_to_id_[info.device_path] = info.camera_id;
+  path_to_id_[info.device_path.value()] = info.camera_id;
   device_infos_[info.camera_id] = info;
   static_metadata_android_[info.camera_id] =
       StaticMetadataForAndroid(static_metadata, info);

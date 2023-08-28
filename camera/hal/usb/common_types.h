@@ -26,9 +26,7 @@ namespace cros {
 struct DeviceInfo {
   int camera_id = -1;
 
-  // TODO(shik): Change this to base::FilePath.
-  // ex: /dev/video0
-  std::string device_path;
+  base::FilePath device_path;
 
   // Whether the device is an emulated vivid camera.
   bool is_vivid = false;

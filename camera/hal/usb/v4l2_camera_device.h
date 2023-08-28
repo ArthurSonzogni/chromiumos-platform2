@@ -98,7 +98,7 @@ class V4L2CameraDevice {
 
   // Connect camera device with |device_path|. Return 0 if device is opened
   // successfully. Otherwise, return -|errno|.
-  int Connect(const std::string& device_path);
+  int Connect(const base::FilePath& device_path);
 
   // Disconnect camera device. This function is a no-op if the camera device
   // is not connected. If the stream is on, this function will also stop the
@@ -162,8 +162,6 @@ class V4L2CameraDevice {
   // time. The unit of v4l2 is 100 microseconds.
   int SetExposureTimeHundredUs(uint32_t exposure_time);
 
-  // TODO(shik): Change the type of |device_path| to base::FilePath.
-
   // Whether the device supports updating frame rate.
   bool CanUpdateFrameRate();
 
@@ -198,19 +196,19 @@ class V4L2CameraDevice {
   // Get all supported formats of device by |device_path|. This function can be
   // called without calling Connect().
   static const SupportedFormats GetDeviceSupportedFormats(
-      const std::string& device_path);
+      const base::FilePath& device_path);
 
   // If the device supports manual focus distance, returns the focus distance
   // range to |focus_distance_range|.
-  static bool IsFocusDistanceSupported(const std::string& device_path,
+  static bool IsFocusDistanceSupported(const base::FilePath& device_path,
                                        ControlRange* focus_distance_range);
 
   // If the device supports manual exposure time, returns the exposure time
   // range to |exposure_time_range|.
-  static bool IsManualExposureTimeSupported(const std::string& device_path,
+  static bool IsManualExposureTimeSupported(const base::FilePath& device_path,
                                             ControlRange* exposure_time_range);
 
-  static bool IsCameraDevice(const std::string& device_path);
+  static bool IsCameraDevice(const base::FilePath& device_path);
 
   // Get clock type in UVC driver to report the same time base in user space.
   static clockid_t GetUvcClock();
@@ -219,32 +217,32 @@ class V4L2CameraDevice {
   static int GetUserSpaceTimestamp(timespec& ts);
 
   // Get the model name from |device_path|.
-  static std::string GetModelName(const std::string& device_path);
+  static std::string GetModelName(const base::FilePath& device_path);
 
   // Return true if control |type| is supported otherwise return false.
-  static bool IsControlSupported(const std::string& device_path,
+  static bool IsControlSupported(const base::FilePath& device_path,
                                  ControlType type);
 
   // Query control.
   // Return 0 if operation successfully. Otherwise, return |-errno|.
   // The control info is stored in |info|.
-  static int QueryControl(const std::string& device_path,
+  static int QueryControl(const base::FilePath& device_path,
                           ControlType type,
                           ControlInfo* info);
 
   // Return 0 if operation successfully. Otherwise, return |-errno|.
   // The returned value is stored in |value|.
-  static int GetControlValue(const std::string& device_path,
+  static int GetControlValue(const base::FilePath& device_path,
                              ControlType type,
                              int32_t* value);
 
   // Return 0 if operation successfully. Otherwise, return |-errno|.
-  static int SetControlValue(const std::string& device_path,
+  static int SetControlValue(const base::FilePath& device_path,
                              ControlType type,
                              int32_t value);
 
   // Return false if device doesn't support ROI controls.
-  static bool IsRegionOfInterestSupported(std::string device_path,
+  static bool IsRegionOfInterestSupported(base::FilePath device_path,
                                           ControlType* control_roi_auto,
                                           RoiControlApi* api,
                                           uint32_t* roi_flags);
@@ -275,7 +273,7 @@ class V4L2CameraDevice {
 
   // This is for suspend/resume feature. USB camera will be enumerated after
   // device resumed. But camera device may not be ready immediately.
-  static int RetryDeviceOpen(const std::string& device_path, int flags);
+  static int RetryDeviceOpen(const base::FilePath& device_path, int flags);
 
   // Get ROI information from camera;
   static bool GetRegionOfInterestInfo(int fd,

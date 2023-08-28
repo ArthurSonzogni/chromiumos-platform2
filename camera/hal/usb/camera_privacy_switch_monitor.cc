@@ -75,8 +75,8 @@ void CameraPrivacySwitchMonitor::RegisterCallback(
   }
 }
 
-void CameraPrivacySwitchMonitor::TrySubscribe(int camera_id,
-                                              const std::string& device_path) {
+void CameraPrivacySwitchMonitor::TrySubscribe(
+    int camera_id, const base::FilePath& device_path) {
   {
     base::AutoLock l(camera_id_lock_);
     if (subscribed_camera_id_to_fd_.find(camera_id) !=
@@ -87,7 +87,7 @@ void CameraPrivacySwitchMonitor::TrySubscribe(int camera_id,
   }
 
   base::ScopedFD device_fd(
-      TEMP_FAILURE_RETRY(open(device_path.c_str(), O_RDWR)));
+      TEMP_FAILURE_RETRY(open(device_path.value().c_str(), O_RDWR)));
   if (!device_fd.is_valid()) {
     LOGF(ERROR) << "Failed to open " << device_path;
     return;

@@ -288,7 +288,7 @@ V4L2CameraDevice::~V4L2CameraDevice() {
   device_fd_.reset();
 }
 
-int V4L2CameraDevice::Connect(const std::string& device_path) {
+int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
   VLOGF(1) << "Connecting device path: " << device_path;
   base::AutoLock l(lock_);
   if (device_fd_.is_valid()) {
@@ -1083,7 +1083,7 @@ int V4L2CameraDevice::SetPrivacySwitchState(bool on) {
 
 // static
 const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
-    const std::string& device_path) {
+    const base::FilePath& device_path) {
   VLOGF(1) << "Query supported formats for " << device_path;
 
   base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
@@ -1408,10 +1408,11 @@ bool V4L2CameraDevice::IsRegionOfInterestSupported(
 }
 
 // static
-bool V4L2CameraDevice::IsCameraDevice(const std::string& device_path) {
+bool V4L2CameraDevice::IsCameraDevice(const base::FilePath& device_path) {
   // RetryDeviceOpen() assumes the device is a camera and waits until the camera
   // is ready, so we use open() instead of RetryDeviceOpen() here.
-  base::ScopedFD fd(TEMP_FAILURE_RETRY(open(device_path.c_str(), O_RDONLY)));
+  base::ScopedFD fd(
+      TEMP_FAILURE_RETRY(open(device_path.value().c_str(), O_RDONLY)));
   if (!fd.is_valid()) {
     PLOGF(ERROR) << "Failed to open " << device_path;
     return false;
@@ -1443,10 +1444,10 @@ bool V4L2CameraDevice::IsCameraDevice(const std::string& device_path) {
 }
 
 // static
-std::string V4L2CameraDevice::GetModelName(const std::string& device_path) {
+std::string V4L2CameraDevice::GetModelName(const base::FilePath& device_path) {
   auto get_by_interface = [&](std::string* name) {
     base::FilePath real_path;
-    if (!base::NormalizeFilePath(base::FilePath(device_path), &real_path)) {
+    if (!base::NormalizeFilePath(device_path, &real_path)) {
       return false;
     }
     if (!base::MatchPattern(real_path.value(), "/dev/video*")) {
@@ -1487,14 +1488,14 @@ std::string V4L2CameraDevice::GetModelName(const std::string& device_path) {
 }
 
 // static
-bool V4L2CameraDevice::IsControlSupported(const std::string& device_path,
+bool V4L2CameraDevice::IsControlSupported(const base::FilePath& device_path,
                                           ControlType type) {
   ControlInfo info;
   return QueryControl(device_path, type, &info) == 0;
 }
 
 // static
-int V4L2CameraDevice::QueryControl(const std::string& device_path,
+int V4L2CameraDevice::QueryControl(const base::FilePath& device_path,
                                    ControlType type,
                                    ControlInfo* info) {
   base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
@@ -1524,7 +1525,7 @@ int V4L2CameraDevice::QueryControl(const std::string& device_path,
 }
 
 // static
-int V4L2CameraDevice::GetControlValue(const std::string& device_path,
+int V4L2CameraDevice::GetControlValue(const base::FilePath& device_path,
                                       ControlType type,
                                       int32_t* value) {
   base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
@@ -1538,7 +1539,7 @@ int V4L2CameraDevice::GetControlValue(const std::string& device_path,
 }
 
 // static
-int V4L2CameraDevice::SetControlValue(const std::string& device_path,
+int V4L2CameraDevice::SetControlValue(const base::FilePath& device_path,
                                       ControlType type,
                                       int32_t value) {
   base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
@@ -1553,7 +1554,7 @@ int V4L2CameraDevice::SetControlValue(const std::string& device_path,
 
 // static
 bool V4L2CameraDevice::IsRegionOfInterestSupported(
-    std::string device_path,
+    base::FilePath device_path,
     ControlType* control_roi_auto,
     RoiControlApi* api,
     uint32_t* max_roi_auto) {
@@ -1568,7 +1569,7 @@ bool V4L2CameraDevice::IsRegionOfInterestSupported(
 }
 
 // static
-int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
+int V4L2CameraDevice::RetryDeviceOpen(const base::FilePath& device_path,
                                       int flags) {
   constexpr base::TimeDelta kDeviceOpenTimeOut = base::Milliseconds(2000);
   constexpr base::TimeDelta kSleepTime = base::Milliseconds(100);
@@ -1576,7 +1577,7 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
   base::ElapsedTimer timer;
   base::TimeDelta elapsed_time = timer.Elapsed();
   while (elapsed_time < kDeviceOpenTimeOut) {
-    fd = TEMP_FAILURE_RETRY(open(device_path.c_str(), flags));
+    fd = TEMP_FAILURE_RETRY(open(device_path.value().c_str(), flags));
     if (fd != -1) {
       // Make sure ioctl is ok. Once ioctl failed, we have to re-open the
       // device.
@@ -1640,7 +1641,7 @@ int V4L2CameraDevice::GetUserSpaceTimestamp(timespec& ts) {
 
 // static
 bool V4L2CameraDevice::IsFocusDistanceSupported(
-    const std::string& device_path, ControlRange* focus_distance_range) {
+    const base::FilePath& device_path, ControlRange* focus_distance_range) {
   DCHECK(focus_distance_range != nullptr);
 
   if (!IsControlSupported(device_path, kControlFocusAuto))
@@ -1658,7 +1659,7 @@ bool V4L2CameraDevice::IsFocusDistanceSupported(
 
 // static
 bool V4L2CameraDevice::IsManualExposureTimeSupported(
-    const std::string& device_path, ControlRange* exposure_time_range) {
+    const base::FilePath& device_path, ControlRange* exposure_time_range) {
   ControlInfo info;
 
   DCHECK(exposure_time_range);

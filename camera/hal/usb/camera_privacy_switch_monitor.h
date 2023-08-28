@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/containers/flat_map.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/synchronization/lock.h>
@@ -35,7 +36,7 @@ class CameraPrivacySwitchMonitor {
 
   // Try to activate the event loop to subscribe the privacy event if it hasn't
   // been started by given |camera_id| and its corresponding |device_path|.
-  void TrySubscribe(int camera_id, const std::string& device_path);
+  void TrySubscribe(int camera_id, const base::FilePath& device_path);
 
   // Remove the |camera_id| from the subscription list.
   void Unsubscribe(int camera_id);
