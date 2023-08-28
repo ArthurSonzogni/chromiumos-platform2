@@ -362,6 +362,44 @@
       </summary>
     </metric>
   </event>
+
+  <event name="BluetoothMmcTranscodeRtt">
+    <summary>
+        Records statistics on the round-trip time for transcoding data using
+        MMC.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="MaximumRtt" type="int">
+      <summary>
+        Maximum rtt in microsecond.
+      </summary>
+    </metric>
+    <metric name="MeanRtt" type="double">
+      <summary>
+        Average rtt in microsecond.
+      </summary>
+    </metric>
+    <metric name="NumRequests" type="int">
+      <summary>
+        The number of transcoding requests in the session.
+      </summary>
+    </metric>
+    <metric name="CodecType" type="int">
+      <summary>
+        The codec type used in the session. The value corresponds to the field
+        number described by |ConfigParam| in |mmc_config.proto|.
+      </summary>
+    </metric>
+  </event>
 </project>
 
 <project name="BluetoothDevice">
