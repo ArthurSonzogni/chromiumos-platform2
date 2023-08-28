@@ -10,11 +10,12 @@
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/bus.h>
 
+#include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/manager.h"
 
 namespace fbpreprocessor {
 
-FbPreprocessorDaemon::FbPreprocessorDaemon() {
+FbPreprocessorDaemon::FbPreprocessorDaemon(const Configuration& config) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   bus_ = base::MakeRefCounted<dbus::Bus>(options);
@@ -22,7 +23,7 @@ FbPreprocessorDaemon::FbPreprocessorDaemon() {
     LOG(ERROR) << "Failed to connect to system D-Bus";
     return;
   }
-  manager_ = std::make_unique<Manager>(bus_.get());
+  manager_ = std::make_unique<Manager>(bus_.get(), config);
 }
 
 }  // namespace fbpreprocessor

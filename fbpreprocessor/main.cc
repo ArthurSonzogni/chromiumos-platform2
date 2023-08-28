@@ -9,10 +9,14 @@
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 
+#include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/fbpreprocessor_daemon.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_string(log_dir, "/var/log/", "Directory where logs are written.");
+  DEFINE_uint32(file_expiration,
+                fbpreprocessor::Configuration::kDefaultExpirationSeconds,
+                "Default expiration period of processed files, in seconds.");
 
   brillo::FlagHelper::Init(
       argc, argv, "fbpreprocessord, the debug data preprocessing daemon.");
@@ -28,7 +32,20 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << "Starting fbpreprocessord.";
 
-  fbpreprocessor::FbPreprocessorDaemon daemon;
+  fbpreprocessor::Configuration config;
+  int file_expiration = FLAGS_file_expiration;
+  // Don't make it possible to have an arbitrary long expiration period with a
+  // misconfigured command line.
+  if (file_expiration >
+      fbpreprocessor::Configuration::kDefaultExpirationSeconds) {
+    file_expiration = fbpreprocessor::Configuration::kDefaultExpirationSeconds;
+    LOG(ERROR) << "File expiration set to invalid " << FLAGS_file_expiration
+               << " seconds, resetting to " << file_expiration << " seconds.";
+  }
+  LOG(INFO) << "Default file expiration set to " << file_expiration << "s";
+  config.set_default_expirations_secs(file_expiration);
+
+  fbpreprocessor::FbPreprocessorDaemon daemon(config);
   int rc = daemon.Run();
   return rc == EX_UNAVAILABLE ? EX_OK : rc;
 }

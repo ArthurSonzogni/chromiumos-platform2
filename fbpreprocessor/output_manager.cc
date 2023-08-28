@@ -21,7 +21,10 @@
 
 namespace fbpreprocessor {
 
-OutputManager::OutputManager(Manager* manager) : manager_(manager) {
+OutputManager::OutputManager(Manager* manager)
+    : default_expiration_(
+          base::Seconds(manager->default_file_expiration_in_secs())),
+      manager_(manager) {
   manager_->session_state_manager()->AddObserver(this);
 }
 
@@ -59,7 +62,7 @@ void OutputManager::AddNewFile(const base::FilePath& path,
 }
 
 void OutputManager::AddNewFile(const base::FilePath& path) {
-  AddNewFile(path, kDefaultExpiration);
+  AddNewFile(path, default_expiration_);
 }
 
 void OutputManager::RestartExpirationTask(const base::Time& now) {

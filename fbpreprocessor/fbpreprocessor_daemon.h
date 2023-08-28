@@ -10,13 +10,14 @@
 #include <brillo/daemons/daemon.h>
 #include <dbus/bus.h>
 
+#include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/manager.h"
 
 namespace fbpreprocessor {
 
 class FbPreprocessorDaemon : public brillo::Daemon {
  public:
-  FbPreprocessorDaemon();
+  explicit FbPreprocessorDaemon(const Configuration& config);
   FbPreprocessorDaemon(const FbPreprocessorDaemon&) = delete;
   FbPreprocessorDaemon& operator=(const FbPreprocessorDaemon&) = delete;
 

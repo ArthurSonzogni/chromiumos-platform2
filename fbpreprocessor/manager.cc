@@ -8,13 +8,16 @@
 
 #include <dbus/bus.h>
 
+#include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/pseudonymization_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
 
 namespace fbpreprocessor {
 
-Manager::Manager(dbus::Bus* bus) : bus_(bus) {
+Manager::Manager(dbus::Bus* bus, const Configuration& config)
+    : bus_(bus),
+      default_file_expiration_in_secs_(config.default_expiration_secs()) {
   // SessionStateManager must be instantiated first since the other modules will
   // register as observers with the SessionStateManager::Observer interface.
   session_state_manager_ = std::make_unique<SessionStateManager>(bus_.get());

@@ -76,6 +76,8 @@ class OutputManager : public SessionStateManager::Observer {
 
   base::OneShotTimer expiration_timer_;
 
+  base::TimeDelta default_expiration_;
+
   base::FilePath user_root_dir_;
 
   Manager* manager_;
