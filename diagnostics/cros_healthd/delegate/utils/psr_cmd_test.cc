@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -44,7 +45,7 @@ class MockPsrCmd : public PsrCmd {
               Check,
               (FwCapsRequest & tx_buff, FwCapsResp& rx_buff),
               (override));
-  MOCK_METHOD(bool, CheckPlatformServiceRecord, (), (override));
+  MOCK_METHOD(std::optional<bool>, CheckPlatformServiceRecord, (), (override));
 };
 
 class PsrCmdTest : public testing::Test {

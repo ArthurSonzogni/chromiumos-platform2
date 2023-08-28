@@ -291,8 +291,10 @@ void State::SetError(mojom::ErrorType type, const std::string& message) {
 
 void State::HandlePsrInfo(mojom::PsrInfoPtr psr_info_ptr,
                           const std::optional<std::string>& err) {
-  if (err.has_value())
+  if (err.has_value()) {
     LOG(ERROR) << err.value();
+    return;
+  }
   info_->psr_info = std::move(psr_info_ptr);
 }
 

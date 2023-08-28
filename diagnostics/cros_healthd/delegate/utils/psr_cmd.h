@@ -9,6 +9,7 @@
 #include <linux/mei.h>
 #include <linux/uuid.h>
 #include <memory>
+#include <optional>
 #include <string>
 #include <sys/types.h>
 #include <utility>
@@ -232,7 +233,10 @@ class PsrCmdVirt {
   virtual CmdStatus Check(FwCapsRequest& tx_buff, FwCapsResp& rx_buff) {
     return kInvalidState;
   }
-  virtual bool CheckPlatformServiceRecord() { return false; }
+  // Checks PSR is supported or not. Returns std::nullopt if any error occurs.
+  virtual std::optional<bool> CheckPlatformServiceRecord() {
+    return std::nullopt;
+  }
   virtual std::string IdToHexString(uint8_t id[], int id_len) { return ""; }
 };
 
@@ -245,7 +249,7 @@ class PsrCmd : public PsrCmdVirt {
   virtual ~PsrCmd() = default;
 
   bool GetPlatformServiceRecord(PsrHeciResp& psr_blob);
-  bool CheckPlatformServiceRecord() override;
+  std::optional<bool> CheckPlatformServiceRecord() override;
   std::string IdToHexString(uint8_t id[], int id_len) override;
 
  private:

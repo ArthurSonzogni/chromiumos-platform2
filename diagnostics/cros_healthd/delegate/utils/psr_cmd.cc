@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <linux/mei.h>
 #include <memory>
+#include <optional>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/eventfd.h>
@@ -129,7 +130,7 @@ PsrCmd::CmdStatus PsrCmd::Check(FwCapsRequest& tx_buff, FwCapsResp& rx_buff) {
   return kSuccess;
 }
 
-bool PsrCmd::CheckPlatformServiceRecord() {
+std::optional<bool> PsrCmd::CheckPlatformServiceRecord() {
   FwCapsRequest request;
   FwCapsResp response;
 
@@ -148,10 +149,10 @@ bool PsrCmd::CheckPlatformServiceRecord() {
     int err = errno;
     LOG(ERROR) << "Buffer is too small while invokes MEI request: "
                << strerror(err);
-    return false;
+    return std::nullopt;
   } else if (status > kSuccess) {
     LOG(ERROR) << "Check PSR status error: " << status;
-    return false;
+    return std::nullopt;
   }
 
   // Check if PSR is supported.

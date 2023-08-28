@@ -368,13 +368,20 @@ void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {
 void DelegateImpl::GetPsr(GetPsrCallback callback) {
   auto result = mojom::PsrInfo::New();
 
+  // Treat a device that doesn't have /dev/mei0 as not supporting PSR.
   if (!base::PathExists(base::FilePath(psr::kCrosMeiPath))) {
     std::move(callback).Run(std::move(result), std::nullopt);
     return;
   }
 
   auto psr_cmd = psr::PsrCmd(psr::kCrosMeiPath);
-  if (!psr_cmd.CheckPlatformServiceRecord()) {
+  if (std::optional<bool> check_psr_result =
+          psr_cmd.CheckPlatformServiceRecord();
+      !check_psr_result.has_value()) {
+    std::move(callback).Run(std::move(result), "Check PSR is not working.");
+    return;
+  } else if (!check_psr_result.value()) {
+    // PSR is not supported.
     std::move(callback).Run(std::move(result), std::nullopt);
     return;
   }
