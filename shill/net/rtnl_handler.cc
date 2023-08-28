@@ -28,7 +28,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <net-base/byte_utils.h>
 
-#include "shill/net/io_handler.h"
 #include "shill/net/io_handler_factory_container.h"
 
 namespace shill {
@@ -249,9 +248,9 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   in_request_ = true;
 }
 
-void RTNLHandler::ParseRTNL(InputData* data) {
-  const unsigned char* buf = data->buf;
-  const unsigned char* end = buf + data->len;
+void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
+  const uint8_t* buf = data.data();
+  const uint8_t* end = buf + data.size();
 
   while (buf < end) {
     const struct nlmsghdr* hdr = reinterpret_cast<const struct nlmsghdr*>(buf);

@@ -147,11 +147,11 @@ void OpenVPNManagementServer::OnReady(int fd) {
   SendState("on");
 }
 
-void OpenVPNManagementServer::OnInput(InputData* data) {
-  SLOG(2) << __func__ << "(" << data->len << ")";
+void OpenVPNManagementServer::OnInput(base::span<const uint8_t> data) {
+  SLOG(2) << __func__ << "(" << data.size() << ")";
   const std::vector<std::string> messages = base::SplitString(
-      std::string(reinterpret_cast<const char*>(data->buf), data->len), "\n",
-      base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+      std::string(reinterpret_cast<const char*>(data.data()), data.size()),
+      "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   for (const auto& message : messages) {
     if (!IsStarted()) {
       break;

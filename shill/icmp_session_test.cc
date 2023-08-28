@@ -4,6 +4,7 @@
 
 #include "shill/icmp_session.h"
 
+#include <base/containers/span.h>
 #include <base/test/simple_test_tick_clock.h>
 #include <gtest/gtest.h>
 
@@ -128,7 +129,7 @@ class IcmpSessionTest : public Test {
     EXPECT_FALSE(icmp_session_.echo_reply_handler_);
   }
 
-  void OnEchoReplyReceived(InputData* data) {
+  void OnEchoReplyReceived(base::span<const uint8_t> data) {
     icmp_session_.OnEchoReplyReceived(data);
   }
 
@@ -242,10 +243,8 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   memcpy(buffer_1, kIpHeader, sizeof(kIpHeader));
   memcpy(buffer_1 + sizeof(kIpHeader), kIcmpEchoReply1,
          sizeof(kIcmpEchoReply1));
-  InputData data_1(reinterpret_cast<unsigned char*>(buffer_1),
-                   sizeof(buffer_1));
   EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  OnEchoReplyReceived(&data_1);
+  OnEchoReplyReceived(buffer_1);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply1_SeqNum));
 
@@ -279,11 +278,9 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   memcpy(buffer_2, kIpHeader, sizeof(kIpHeader));
   memcpy(buffer_2 + sizeof(kIpHeader), kIcmpEchoReply2,
          sizeof(kIcmpEchoReply2));
-  InputData data_2(reinterpret_cast<unsigned char*>(buffer_2),
-                   sizeof(buffer_2));
   EXPECT_CALL(*this, ResultCallback(_)).Times(0);
   EXPECT_CALL(*icmp_, Stop()).Times(0);
-  OnEchoReplyReceived(&data_2);
+  OnEchoReplyReceived(buffer_2);
   EXPECT_EQ(3, GetSeqNumToSentRecvTime()->size());
   EXPECT_EQ(2, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply2_SeqNum));
@@ -296,11 +293,9 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   memcpy(buffer_3, kIpHeader, sizeof(kIpHeader));
   memcpy(buffer_3 + sizeof(kIpHeader), kIcmpEchoReplyDifferentEchoID,
          sizeof(kIcmpEchoReplyDifferentEchoID));
-  InputData data_3(reinterpret_cast<unsigned char*>(buffer_3),
-                   sizeof(buffer_3));
   EXPECT_CALL(*this, ResultCallback(_)).Times(0);
   EXPECT_CALL(*icmp_, Stop()).Times(0);
-  OnEchoReplyReceived(&data_3);
+  OnEchoReplyReceived(buffer_3);
   EXPECT_EQ(3, GetSeqNumToSentRecvTime()->size());
   EXPECT_EQ(2, GetReceivedEchoReplySeqNumbers()->size());
 
@@ -311,11 +306,9 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   memcpy(buffer_4, kIpHeader, sizeof(kIpHeader));
   memcpy(buffer_4 + sizeof(kIpHeader), kIcmpEchoReply3,
          sizeof(kIcmpEchoReply3));
-  InputData data_4(reinterpret_cast<unsigned char*>(buffer_4),
-                   sizeof(buffer_4));
   EXPECT_CALL(*this, ResultCallback(expected_result));
   EXPECT_CALL(*icmp_, Stop());
-  OnEchoReplyReceived(&data_4);
+  OnEchoReplyReceived(buffer_4);
   EXPECT_EQ(3, GetSeqNumToSentRecvTime()->size());
   EXPECT_EQ(3, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply3_SeqNum));
@@ -339,10 +332,8 @@ TEST_F(IcmpSessionTest, ICMPv6) {
   // Receive a reply.
   uint8_t buffer_1[sizeof(kIcmpV6EchoReply1)];
   memcpy(buffer_1, kIcmpV6EchoReply1, sizeof(kIcmpV6EchoReply1));
-  InputData data_1(reinterpret_cast<unsigned char*>(buffer_1),
-                   sizeof(buffer_1));
   EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  OnEchoReplyReceived(&data_1);
+  OnEchoReplyReceived(buffer_1);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply1_SeqNum));
 
@@ -402,10 +393,8 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   memcpy(buffer_1, kIpHeader, sizeof(kIpHeader));
   memcpy(buffer_1 + sizeof(kIpHeader), kIcmpEchoReply1,
          sizeof(kIcmpEchoReply1));
-  InputData data_1(reinterpret_cast<unsigned char*>(buffer_1),
-                   sizeof(buffer_1));
   EXPECT_CALL(*this, ResultCallback(_)).Times(0);
-  OnEchoReplyReceived(&data_1);
+  OnEchoReplyReceived(buffer_1);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply1_SeqNum));
 

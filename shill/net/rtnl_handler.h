@@ -175,7 +175,7 @@ class SHILL_EXPORT RTNLHandler {
   // Send the next table-dump request to the kernel
   void NextRequest(uint32_t seq);
   // Parse an incoming rtnl message from the kernel
-  void ParseRTNL(InputData* data);
+  void ParseRTNL(base::span<const uint8_t> data);
 
   bool AddressRequest(int interface_index,
                       RTNLMessage::Mode mode,

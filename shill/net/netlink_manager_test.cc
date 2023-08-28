@@ -23,7 +23,6 @@
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
 
-#include "shill/net/io_handler.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_netlink_socket.h"
 #include "shill/net/mock_time.h"
@@ -1062,10 +1061,9 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
   MockHandlerNetlink message_handler;
   netlink_manager_->AddBroadcastHandler(message_handler.on_netlink_message());
 
-  std::vector<unsigned char> bad_len_message{0x01};  // len should be 32-bits
-  std::vector<unsigned char> bad_hdr_message{0x04, 0x00, 0x00,
-                                             0x00};  // only len
-  std::vector<unsigned char> bad_body_message{
+  std::vector<uint8_t> bad_len_message{0x01};  // len should be 32-bits
+  std::vector<uint8_t> bad_hdr_message{0x04, 0x00, 0x00, 0x00};  // only len
+  std::vector<uint8_t> bad_body_message{
       0x30, 0x00, 0x00, 0x00,  // length
       0x00, 0x00,              // type
       0x00, 0x00,              // flags
@@ -1076,12 +1074,11 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
 
   for (auto message : {bad_len_message, bad_hdr_message, bad_body_message}) {
     EXPECT_CALL(message_handler, OnNetlinkMessage(_)).Times(0);
-    InputData data(message.data(), message.size());
-    netlink_manager_->OnRawNlMessageReceived(&data);
+    netlink_manager_->OnRawNlMessageReceived(message);
     Mock::VerifyAndClearExpectations(&message_handler);
   }
 
-  std::vector<unsigned char> good_message{
+  std::vector<uint8_t> good_message{
       0x14, 0x00, 0x00, 0x00,  // length
       0x00, 0x00,              // type
       0x00, 0x00,              // flags
@@ -1093,17 +1090,15 @@ TEST_F(NetlinkManagerTest, OnInvalidRawNlMessageReceived) {
   for (auto bad_msg : {bad_len_message, bad_hdr_message, bad_body_message}) {
     // A good message followed by a bad message. This should yield one call
     // to |message_handler|, and one error message.
-    std::vector<unsigned char> two_messages(good_message.begin(),
-                                            good_message.end());
+    std::vector<uint8_t> two_messages(good_message.begin(), good_message.end());
     two_messages.insert(two_messages.end(), bad_msg.begin(), bad_msg.end());
     EXPECT_CALL(message_handler, OnNetlinkMessage(_)).Times(1);
-    InputData data(two_messages.data(), two_messages.size());
-    netlink_manager_->OnRawNlMessageReceived(&data);
+    netlink_manager_->OnRawNlMessageReceived(two_messages);
     Mock::VerifyAndClearExpectations(&message_handler);
   }
 
   EXPECT_CALL(message_handler, OnNetlinkMessage(_)).Times(0);
-  netlink_manager_->OnRawNlMessageReceived(nullptr);
+  netlink_manager_->OnRawNlMessageReceived({});
 }
 
 }  // namespace shill

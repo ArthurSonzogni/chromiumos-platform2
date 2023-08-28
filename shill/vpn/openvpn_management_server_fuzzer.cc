@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string_view>
-#include <vector>
 
 #include <base/check.h>
 #include <base/files/scoped_file.h>
@@ -14,7 +13,6 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <net-base/socket.h>
 
-#include "shill/net/io_handler.h"
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/openvpn_management_server.h"
 
@@ -61,12 +59,11 @@ class OpenVPNManagementServerFuzzer {
 
     // Send remaining data to test general entry point OnInput().
     auto data_vector = provider.ConsumeRemainingBytes<uint8_t>();
-    InputData input_data(data_vector.data(), data_vector.size());
     FakeOpenVPNDriver driver;
     OpenVPNManagementServer server(&driver);
     server.connected_socket_ = CreateFakeSocket();
     server.socket_ = CreateFakeSocket();
-    server.OnInput(&input_data);
+    server.OnInput(data_vector);
   }
 };
 

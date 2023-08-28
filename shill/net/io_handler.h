@@ -7,27 +7,20 @@
 
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/functional/callback.h>
 
 #include "shill/net/shill_export.h"
 
 namespace shill {
 
-struct SHILL_EXPORT InputData {
-  InputData() : buf(nullptr), len(0) {}
-  InputData(const unsigned char* in_buf, ssize_t in_len)
-      : buf(in_buf), len(in_len) {}
-
-  const unsigned char* buf;
-  ssize_t len;
-};
-
 class SHILL_EXPORT IOHandler {
  public:
   enum ReadyMode { kModeInput, kModeOutput };
 
   using ErrorCallback = base::RepeatingCallback<void(const std::string&)>;
-  using InputCallback = base::RepeatingCallback<void(InputData*)>;
+  using InputCallback =
+      base::RepeatingCallback<void(base::span<const uint8_t>)>;
   using ReadyCallback = base::RepeatingCallback<void(int)>;
 
   // Data buffer size in bytes.

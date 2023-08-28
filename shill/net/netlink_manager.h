@@ -79,7 +79,6 @@
 namespace shill {
 
 class ControlNetlinkMessage;
-struct InputData;
 class NetlinkPacket;
 class Nl80211Message;
 
@@ -335,7 +334,7 @@ class SHILL_EXPORT NetlinkManager {
   // method passes each, individual, message in the input to
   // |OnNlMessageReceived|.  Each part of a multipart message gets handled,
   // individually, by this method.
-  void OnRawNlMessageReceived(InputData* data);
+  void OnRawNlMessageReceived(base::span<const uint8_t> data);
 
   // This method processes a message from |OnRawNlMessageReceived| by passing
   // the message to either the NetlinkManager callback that matches the sequence

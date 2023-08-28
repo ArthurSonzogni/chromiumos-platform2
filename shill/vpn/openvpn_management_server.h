@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/socket.h>
 
@@ -16,7 +17,6 @@
 
 namespace shill {
 
-struct InputData;
 class IOHandler;
 class IOHandlerFactory;
 class OpenVPNDriver;
@@ -94,7 +94,7 @@ class OpenVPNManagementServer {
 
   // IO handler callbacks.
   void OnReady(int fd);
-  void OnInput(InputData* data);
+  void OnInput(base::span<const uint8_t> data);
   void OnInputError(const std::string& error_msg);
 
   void Send(const std::string& data);

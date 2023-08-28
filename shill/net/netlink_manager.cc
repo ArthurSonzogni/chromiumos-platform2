@@ -17,7 +17,6 @@
 #include <memory>
 
 #include "shill/net/attribute_list.h"
-#include "shill/net/io_handler.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 
@@ -365,8 +364,7 @@ uint16_t NetlinkManager::GetFamily(
     // Read and process any messages.
     std::vector<uint8_t> received;
     sock_->RecvMessage(&received);
-    InputData input_data(received.data(), received.size());
-    OnRawNlMessageReceived(&input_data);
+    OnRawNlMessageReceived(received);
     if (message_type.family_id != NetlinkMessage::kIllegalMessageType) {
       uint16_t family_id = message_type.family_id;
       if (family_id != NetlinkMessage::kIllegalMessageType) {
@@ -630,19 +628,14 @@ bool NetlinkManager::SubscribeToEvents(const std::string& family_id,
   return sock_->SubscribeToEvents(group_id);
 }
 
-void NetlinkManager::OnRawNlMessageReceived(InputData* data) {
-  if (!data) {
-    LOG(ERROR) << __func__ << "() called with null header.";
-    return;
-  }
-  const unsigned char* buf = data->buf;
-  const unsigned char* end = buf + data->len;
-  while (buf < end) {
-    NetlinkPacket packet({buf, end});
+void NetlinkManager::OnRawNlMessageReceived(base::span<const uint8_t> data) {
+  base::span<const uint8_t> remain_data = data;
+  while (!remain_data.empty()) {
+    NetlinkPacket packet(remain_data);
     if (!packet.IsValid()) {
       break;
     }
-    buf += packet.GetLength();
+    remain_data = remain_data.subspan(packet.GetLength());
     OnNlMessageReceived(&packet);
   }
 }

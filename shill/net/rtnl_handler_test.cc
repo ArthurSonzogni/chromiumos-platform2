@@ -192,17 +192,15 @@ void RTNLHandlerTest::AddLink() {
   message.SetAttribute(
       static_cast<uint16_t>(IFLA_IFNAME),
       net_base::byte_utils::StringToCStringBytes(kTestDeviceName));
-  const auto b = message.Encode();
-  InputData data(b.data(), b.size());
-  RTNLHandler::GetInstance()->ParseRTNL(&data);
+  const auto encoded = message.Encode();
+  RTNLHandler::GetInstance()->ParseRTNL(encoded);
 }
 
 void RTNLHandlerTest::AddNeighbor() {
   RTNLMessage message(RTNLMessage::kTypeNeighbor, RTNLMessage::kModeAdd, 0, 0,
                       0, kTestDeviceIndex, AF_INET);
   const auto encoded = message.Encode();
-  InputData data(encoded.data(), encoded.size());
-  RTNLHandler::GetInstance()->ParseRTNL(&data);
+  RTNLHandler::GetInstance()->ParseRTNL(encoded);
 }
 
 void RTNLHandlerTest::ReturnError(uint32_t sequence, int error_number) {
@@ -217,8 +215,7 @@ void RTNLHandlerTest::ReturnError(uint32_t sequence, int error_number) {
   errmsg.hdr.nlmsg_seq = sequence;
   errmsg.err.error = -error_number;
 
-  InputData data(reinterpret_cast<unsigned char*>(&errmsg), sizeof(errmsg));
-  RTNLHandler::GetInstance()->ParseRTNL(&data);
+  RTNLHandler::GetInstance()->ParseRTNL(net_base::byte_utils::AsBytes(errmsg));
 }
 
 TEST_F(RTNLHandlerTest, ListenersInvoked) {

@@ -7,6 +7,7 @@
 #include <string>
 #include <unistd.h>
 
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
@@ -35,15 +36,14 @@ void IOInputHandler::Stop() {
 }
 
 void IOInputHandler::OnReadable() {
-  unsigned char buf[IOHandler::kDataBufferSize];
+  uint8_t buf[IOHandler::kDataBufferSize];
   ssize_t len = read(fd_, buf, sizeof(buf));
   if (len < 0) {
     std::string condition = base::StringPrintf("File read error: %d", errno);
     LOG(ERROR) << condition;
     error_callback_.Run(condition);
   } else {
-    InputData input_data(buf, len);
-    input_callback_.Run(&input_data);
+    input_callback_.Run({buf, static_cast<size_t>(len)});
   }
 }
 

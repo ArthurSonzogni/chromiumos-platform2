@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
+#include <base/containers/span.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/default_tick_clock.h>
@@ -110,11 +111,11 @@ class IcmpSession {
   void TransmitEchoRequestTask();
 
   // Called when an ICMP packet is received.
-  void OnEchoReplyReceived(InputData* data);
+  void OnEchoReplyReceived(base::span<const uint8_t> message);
 
   // IPv4 and IPv6 packet parsers.
-  int OnV4EchoReplyReceived(InputData* data);
-  int OnV6EchoReplyReceived(InputData* data);
+  int OnV4EchoReplyReceived(base::span<const uint8_t> message);
+  int OnV6EchoReplyReceived(base::span<const uint8_t> message);
 
   // Helper function that generates the result of the current ICMP session.
   IcmpSessionResult GenerateIcmpResult();

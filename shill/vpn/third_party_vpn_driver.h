@@ -14,6 +14,7 @@
 #include <base/functional/callback.h>
 #include <gtest/gtest_prod.h>
 
+#include "base/containers/span.h"
 #include "shill/ipconfig.h"
 #include "shill/net/io_handler.h"
 #include "shill/vpn/vpn_driver.h"
@@ -200,7 +201,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   // These functions are called whe there is input and error in the tun
   // interface.
-  void OnInput(InputData* data);
+  void OnInput(base::span<const uint8_t> data);
   void OnInputError(const std::string& error);
 
   static const Property kProperties[];

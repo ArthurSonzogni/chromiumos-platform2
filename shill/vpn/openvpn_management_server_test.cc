@@ -7,8 +7,10 @@
 #include <netinet/in.h>
 
 #include <memory>
+#include <string_view>
 #include <utility>
 
+#include <base/containers/span.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <net-base/mock_socket.h>
@@ -109,16 +111,13 @@ class OpenVPNManagementServerTest : public testing::Test {
     ExpectSend(connected_socket, "signal SIGUSR1\n");
   }
 
-  InputData CreateInputDataFromString(const std::string& str) {
-    InputData data(
-        reinterpret_cast<unsigned char*>(const_cast<char*>(str.data())),
-        str.size());
-    return data;
+  base::span<const uint8_t> CreateSpanFromString(std::string_view str) {
+    return {reinterpret_cast<const uint8_t*>(str.data()), str.size()};
   }
 
   void SendSignal(const std::string& signal) { server_.SendSignal(signal); }
 
-  void OnInput(InputData* data) { server_.OnInput(data); }
+  void OnInput(base::span<const uint8_t> data) { server_.OnInput(data); }
 
   void ProcessMessage(const std::string& message) {
     server_.ProcessMessage(message);
@@ -278,12 +277,11 @@ TEST_F(OpenVPNManagementServerTest, OnReady) {
 
 TEST_F(OpenVPNManagementServerTest, OnInput) {
   {
-    std::string s;
-    InputData data = CreateInputDataFromString(s);
-    OnInput(&data);
+    const char data[] = "";
+    OnInput(CreateSpanFromString(data));
   }
   {
-    std::string s =
+    const char data[] =
         "foo\n"
         ">INFO:...\n"
         ">PASSWORD:Need 'Auth' SC:user/password/otp\n"
@@ -293,7 +291,6 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
         ">STATE:123,RECONNECTING,detail,...,...\n"
         ">HOLD:Waiting for hold release\n"
         "SUCCESS: Hold released.";
-    InputData data = CreateInputDataFromString(s);
 
     SetSocket(std::make_unique<net_base::MockSocket>());
     auto connected_socket = std::make_unique<net_base::MockSocket>();
@@ -305,16 +302,15 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
                                      StrEq(Service::kErrorDetailsNone)));
     EXPECT_CALL(driver_, OnReconnecting(_));
     EXPECT_FALSE(GetHoldWaiting());
-    OnInput(&data);
+    OnInput(CreateSpanFromString(data));
     EXPECT_TRUE(GetHoldWaiting());
   }
 }
 
 TEST_F(OpenVPNManagementServerTest, OnInputStop) {
-  std::string s =
+  const char data[] =
       ">PASSWORD:Verification Failed: .\n"
       ">STATE:123,RECONNECTING,detail,...,...";
-  InputData data = CreateInputDataFromString(s);
 
   SetSocket(std::make_unique<net_base::MockSocket>());
 
@@ -324,11 +320,11 @@ TEST_F(OpenVPNManagementServerTest, OnInputStop) {
       .WillOnce(Assign(&server_.socket_, nullptr));
   // The second message should not be processed.
   EXPECT_CALL(driver_, OnReconnecting(_)).Times(0);
-  OnInput(&data);
+  OnInput(CreateSpanFromString(data));
 }
 
 TEST_F(OpenVPNManagementServerTest, OnInputStatus) {
-  std::string s =
+  const char data[] =
       "OpenVPN STATISTICS\n"
       "Updated,Wed Nov  3 14:11:13 2021\n"
       "TUN/TAP read bytes,0\n"
@@ -338,10 +334,9 @@ TEST_F(OpenVPNManagementServerTest, OnInputStatus) {
       "Auth read bytes,0\n"
       "Data channel cipher,AES-256-GCM\n"
       "END";
-  InputData data = CreateInputDataFromString(s);
   SetSocket(std::make_unique<net_base::MockSocket>());
   EXPECT_CALL(driver_, ReportCipherMetrics("AES-256-GCM"));
-  OnInput(&data);
+  OnInput(CreateSpanFromString(data));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessMessage) {

@@ -155,10 +155,7 @@ void IcmpSession::TransmitEchoRequestTask() {
   }
 }
 
-int IcmpSession::OnV4EchoReplyReceived(InputData* data) {
-  DCHECK_GE(data->len, 0);
-  base::span<const uint8_t> message(data->buf, static_cast<size_t>(data->len));
-
+int IcmpSession::OnV4EchoReplyReceived(base::span<const uint8_t> message) {
   if (message.size() < sizeof(struct iphdr)) {
     LOG(WARNING) << "Received ICMP packet is too short to contain IP header";
     return -1;
@@ -197,9 +194,7 @@ int IcmpSession::OnV4EchoReplyReceived(InputData* data) {
   return received_icmp_header->un.echo.sequence;
 }
 
-int IcmpSession::OnV6EchoReplyReceived(InputData* data) {
-  DCHECK_GE(data->len, 0);
-  base::span<const uint8_t> message(data->buf, static_cast<size_t>(data->len));
+int IcmpSession::OnV6EchoReplyReceived(base::span<const uint8_t> message) {
   if (message.size() < sizeof(struct icmp6_hdr)) {
     LOG(WARNING)
         << "Received ICMP packet is too short to contain ICMPv6 header";
@@ -232,9 +227,7 @@ int IcmpSession::OnV6EchoReplyReceived(InputData* data) {
   return received_icmp_header->icmp6_seq;
 }
 
-void IcmpSession::OnEchoReplyReceived(InputData* data) {
-  DCHECK_GE(data->len, 0);
-
+void IcmpSession::OnEchoReplyReceived(base::span<const uint8_t> message) {
   const auto& destination = icmp_->destination();
   if (!destination) {
     LOG(WARNING) << "Failed to get ICMP destination";
@@ -244,10 +237,10 @@ void IcmpSession::OnEchoReplyReceived(InputData* data) {
   int received_seq_num = -1;
   switch (destination->GetFamily()) {
     case net_base::IPFamily::kIPv4:
-      received_seq_num = OnV4EchoReplyReceived(data);
+      received_seq_num = OnV4EchoReplyReceived(message);
       break;
     case net_base::IPFamily::kIPv6:
-      received_seq_num = OnV6EchoReplyReceived(data);
+      received_seq_num = OnV6EchoReplyReceived(message);
       break;
   }
 
