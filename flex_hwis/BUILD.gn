@@ -49,6 +49,7 @@ proto_library("hwis_data_proto") {
 
 static_library("libflex_hwis") {
   sources = [
+    "flex_hardware_cache.cc",
     "flex_hwis.cc",
     "flex_hwis_check.cc",
     "flex_hwis_mojo.cc",
@@ -142,7 +143,10 @@ if (use.test) {
   }
 
   executable("flex_hwis_test") {
-    sources = [ "flex_hwis_test.cc" ]
+    sources = [
+      "flex_hardware_cache_test.cc",
+      "flex_hwis_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":flex_hwis_test_config",

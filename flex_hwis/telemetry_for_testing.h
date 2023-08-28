@@ -19,8 +19,11 @@ inline constexpr ash::cros_healthd::mojom::BootMode kBootMode =
     ash::cros_healthd::mojom::BootMode::kCrosEfiSecure;
 inline constexpr bool kSystemUefi = true;
 inline constexpr bool kSystemSecureboot = true;
+inline constexpr char kSystemUefiStr[] = "true";
+inline constexpr char kSystemSecurebootStr[] = "true";
 inline constexpr char kCpuModelName[] = "Mock CPU Model";
 inline constexpr int kMemoryKib = 16131552;
+inline constexpr char kMemoryKibStr[] = "16131552";
 inline constexpr char kPciId[] = "pci:0bda:8153";
 inline constexpr char kSecondPciId[] = "pci:8086:2a43";
 inline constexpr char kUsbId[] = "usb:0bda:8153";
@@ -39,7 +42,9 @@ inline constexpr char kTouchpadDriverName[] = "hid-multitouch";
 inline constexpr int kTpmFamily = 0x322e3000;
 inline constexpr char kTpmFamilyStr[] = "2.0";
 inline constexpr int kTpmSpecLevel = 0;
+inline constexpr char kTpmSpecLevelStr[] = "0";
 inline constexpr int kTpmManufacturer = 0;
+inline constexpr char kTpmManufacturerStr[] = "0";
 inline constexpr char kTpmDidVid[] = "test";
 inline constexpr char kPciVendorName[] = "Mock PCI Vendor";
 inline constexpr char kUsbVendorName[] = "Mock USB Vendor";
@@ -50,7 +55,9 @@ inline constexpr int kSecondPciBusVendorId = 0x8086;
 inline constexpr int kSecondPciBusDeviceId = 0x2a43;
 inline constexpr char kPciBusDriver[] = "r8152";
 inline constexpr bool kTpmIsAllowed = true;
+inline constexpr char kTpmIsAllowedStr[] = "true";
 inline constexpr bool kTpmOwned = true;
+inline constexpr char kTpmOwnedStr[] = "true";
 
 namespace flex_hwis {
 namespace mojom = ::ash::cros_healthd::mojom;
