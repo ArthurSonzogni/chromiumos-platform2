@@ -100,3 +100,4 @@ mkdir: 1
 rmdir: 1
 exit: 1
 rt_sigreturn: 1
+gettimeofday: 1

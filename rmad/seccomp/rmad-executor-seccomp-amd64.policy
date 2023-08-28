@@ -80,3 +80,4 @@ mkdir: 1
 rmdir: 1
 unlink: 1
 sendfile: 1
+gettimeofday: 1
