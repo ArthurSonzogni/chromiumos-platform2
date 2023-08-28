@@ -9,6 +9,7 @@
 #include <dbus/bus.h>
 
 #include "fbpreprocessor/configuration.h"
+#include "fbpreprocessor/input_manager.h"
 #include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/pseudonymization_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
@@ -23,6 +24,7 @@ Manager::Manager(dbus::Bus* bus, const Configuration& config)
   session_state_manager_ = std::make_unique<SessionStateManager>(bus_.get());
   pseudonymization_manager_ = std::make_unique<PseudonymizationManager>(this);
   output_manager_ = std::make_unique<OutputManager>(this);
+  input_manager_ = std::make_unique<InputManager>(this, bus_.get());
 
   // Now that the daemon is fully initialized, notify everyone if a user was
   // logged in when the daemon started.

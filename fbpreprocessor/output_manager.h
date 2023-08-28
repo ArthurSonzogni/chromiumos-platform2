@@ -14,6 +14,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
+#include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/session_state_manager.h"
 
@@ -33,20 +34,20 @@ class OutputManager : public SessionStateManager::Observer {
 
   // Adds a new firmware dump to be managed by the lifecycle manager. It will
   // automatically be deleted after |expiration|.
-  void AddNewFile(const base::FilePath& path,
+  void AddNewFile(const FirmwareDump& fw_dump,
                   const base::TimeDelta& expiration);
 
-  void AddNewFile(const base::FilePath& path);
+  void AddNewFile(const FirmwareDump& fw_dump);
 
  private:
   class OutputFile {
    public:
-    explicit OutputFile(const base::FilePath& path,
+    explicit OutputFile(const FirmwareDump& fw_dump,
                         const base::Time& expiration)
-        : path_(path), expiration_(expiration) {}
+        : fw_dump_(fw_dump), expiration_(expiration) {}
     ~OutputFile() = default;
 
-    base::FilePath path() const { return path_; }
+    FirmwareDump fw_dump() const { return fw_dump_; }
     base::Time expiration() const { return expiration_; }
 
     bool operator<(const OutputFile& other) const {
@@ -54,7 +55,7 @@ class OutputManager : public SessionStateManager::Observer {
     }
 
    private:
-    base::FilePath path_;
+    FirmwareDump fw_dump_;
     base::Time expiration_;
   };
 
@@ -64,7 +65,7 @@ class OutputManager : public SessionStateManager::Observer {
   // |files_lock_|.
   void RestartExpirationTask(const base::Time& now);
 
-  void DeleteExpiredFiles();
+  void OnExpiredFile();
 
   void DeleteAllManagedFiles();
 

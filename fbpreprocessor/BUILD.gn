@@ -3,14 +3,19 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":fbpreprocessor-proto",
     ":fbpreprocessord",
     ":install_init",
     ":install_tmpfiles_config",
     ":libfbpreprocessord",
   ]
+  if (use.test) {
+    deps += [ ":fbpreprocessord_test_runner" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -20,18 +25,29 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "protobuf",
+    "system_api",
   ]
+}
+
+proto_library("fbpreprocessor-proto") {
+  proto_in_dir = "${sysroot}/usr/include/chromeos/dbus/fbpreprocessor"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/fbpreprocessor.proto" ]
 }
 
 static_library("libfbpreprocessord") {
   sources = [
     "fbpreprocessor_daemon.cc",
+    "firmware_dump.cc",
+    "input_manager.cc",
     "manager.cc",
     "output_manager.cc",
     "pseudonymization_manager.cc",
     "session_state_manager.cc",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ ":fbpreprocessor-proto" ]
 }
 
 executable("fbpreprocessord") {
@@ -49,4 +65,24 @@ install_config("install_init") {
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/fbpreprocessord.conf" ]
   install_path = "tmpfilesd"
+}
+
+if (use.test) {
+  pkg_config("libchrome_test_config") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+  executable("fbpreprocessord_test_runner") {
+    sources = [ "firmware_dump_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":libchrome_test_config",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
+      ":libfbpreprocessord",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [ "dbus-1" ]
+  }
 }

@@ -14,6 +14,8 @@
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 
+#include "fbpreprocessor/firmware_dump.h"
+#include "fbpreprocessor/input_manager.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
@@ -32,7 +34,7 @@ PseudonymizationManager::~PseudonymizationManager() {
 }
 
 void PseudonymizationManager::StartPseudonymization(
-    const base::FilePath& input) {
+    const FirmwareDump& fw_dump) {
   // For the MVP we're not pseudonymizing, so the pseudonymization operation
   // is merely a move which is ~immediate. No need to handle multiple concurrent
   // long-running operations for now.
@@ -40,13 +42,13 @@ void PseudonymizationManager::StartPseudonymization(
     LOG(ERROR) << "Can't start pseudonymization without output directory.";
     return;
   }
-  base::FilePath output =
-      user_root_dir_.Append(kProcessedDirectory).Append(input.BaseName());
+  FirmwareDump output(
+      user_root_dir_.Append(kProcessedDirectory).Append(fw_dump.BaseName()));
   if (base::SequencedTaskRunner::HasCurrentDefault()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&PseudonymizationManager::DoNoOpPseudonymization,
-                       weak_factory_.GetWeakPtr(), input, output));
+                       weak_factory_.GetWeakPtr(), fw_dump, output));
   } else {
     LOG(ERROR) << "No task runner.";
   }
@@ -67,10 +69,10 @@ void PseudonymizationManager::OnUserLoggedOut() {
 }
 
 void PseudonymizationManager::DoNoOpPseudonymization(
-    const base::FilePath& input, const base::FilePath& output) {
+    const FirmwareDump& input, const FirmwareDump& output) {
   bool success = true;
-  LOG(INFO) << "Pseudonymizing " << input << " to " << output;
-  if (!base::Move(input, output)) {
+  LOG(INFO) << "Pseudonymizing " << input;
+  if (!base::Move(input.DumpFile(), output.DumpFile())) {
     LOG(ERROR) << "Failed to move file to destination.";
     success = false;
   }
@@ -78,12 +80,14 @@ void PseudonymizationManager::DoNoOpPseudonymization(
 }
 
 void PseudonymizationManager::OnPseudonymizationComplete(
-    const base::FilePath& input, const base::FilePath& output, bool success) {
-  LOG(INFO) << "Completed pseudonymization of " << input << " to " << output
-            << (success ? " " : " un") << "successfully";
+    const FirmwareDump& input, const FirmwareDump& output, bool success) {
+  // TODO(b/307593542): remove filenames from logs.
+  LOG(INFO) << "Completed pseudonymization of " << input
+            << (success ? " " : " un") << "successfully.";
   if (success) {
     manager_->output_manager()->AddNewFile(output);
   }
+  manager_->input_manager()->DeleteFirmwareDump(input);
 }
 
 }  // namespace fbpreprocessor

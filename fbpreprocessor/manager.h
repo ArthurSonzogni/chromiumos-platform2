@@ -13,6 +13,7 @@
 
 namespace fbpreprocessor {
 
+class InputManager;
 class OutputManager;
 class PseudonymizationManager;
 class SessionStateManager;
@@ -32,6 +33,8 @@ class Manager {
 
   OutputManager* output_manager() const { return output_manager_.get(); }
 
+  InputManager* input_manager() const { return input_manager_.get(); }
+
   int default_file_expiration_in_secs() const {
     return default_file_expiration_in_secs_;
   }
@@ -42,8 +45,9 @@ class Manager {
   int default_file_expiration_in_secs_;
 
   std::unique_ptr<PseudonymizationManager> pseudonymization_manager_;
-  std::unique_ptr<SessionStateManager> session_state_manager_;
   std::unique_ptr<OutputManager> output_manager_;
+  std::unique_ptr<InputManager> input_manager_;
+  std::unique_ptr<SessionStateManager> session_state_manager_;
 };
 
 }  // namespace fbpreprocessor

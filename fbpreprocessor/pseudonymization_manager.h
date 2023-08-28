@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 
+#include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/session_state_manager.h"
 
@@ -22,17 +23,17 @@ class PseudonymizationManager : public SessionStateManager::Observer {
   PseudonymizationManager& operator=(const PseudonymizationManager&) = delete;
   ~PseudonymizationManager();
 
-  void StartPseudonymization(const base::FilePath& input);
+  void StartPseudonymization(const FirmwareDump& fw_dump);
 
   void OnUserLoggedIn(const std::string& user_dir) override;
   void OnUserLoggedOut() override;
 
  private:
-  void DoNoOpPseudonymization(const base::FilePath& input,
-                              const base::FilePath& output);
+  void DoNoOpPseudonymization(const FirmwareDump& input,
+                              const FirmwareDump& output);
 
-  void OnPseudonymizationComplete(const base::FilePath& input,
-                                  const base::FilePath& output,
+  void OnPseudonymizationComplete(const FirmwareDump& input,
+                                  const FirmwareDump& output,
                                   bool success);
 
   base::FilePath user_root_dir_;

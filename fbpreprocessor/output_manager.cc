@@ -8,6 +8,7 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
@@ -16,8 +17,15 @@
 #include <base/timer/timer.h>
 #include <brillo/files/file_util.h>
 
+#include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/storage.h"
+
+namespace {
+void DeleteFirmwareDump(const fbpreprocessor::FirmwareDump& fw_dump) {
+  fw_dump.Delete();
+}
+}  // namespace
 
 namespace fbpreprocessor {
 
@@ -49,20 +57,20 @@ void OutputManager::OnUserLoggedOut() {
   user_root_dir_.clear();
 }
 
-void OutputManager::AddNewFile(const base::FilePath& path,
+void OutputManager::AddNewFile(const FirmwareDump& fw_dump,
                                const base::TimeDelta& expiration) {
   // TODO(b/307593542): remove filenames from logs.
-  LOG(INFO) << "File " << path << " will expire in " << expiration;
+  LOG(INFO) << "File " << fw_dump << " will expire in " << expiration;
   base::Time now = base::Time::Now();
-  OutputFile file(path, now + expiration);
+  OutputFile file(fw_dump, now + expiration);
   files_lock_.Acquire();
   files_.insert(file);
   RestartExpirationTask(now);
   files_lock_.Release();
 }
 
-void OutputManager::AddNewFile(const base::FilePath& path) {
-  AddNewFile(path, default_expiration_);
+void OutputManager::AddNewFile(const FirmwareDump& fw_dump) {
+  AddNewFile(fw_dump, default_expiration_);
 }
 
 void OutputManager::RestartExpirationTask(const base::Time& now) {
@@ -76,21 +84,20 @@ void OutputManager::RestartExpirationTask(const base::Time& now) {
       delay = base::TimeDelta();
     }
     expiration_timer_.Start(FROM_HERE, delay,
-                            base::BindOnce(&OutputManager::DeleteExpiredFiles,
+                            base::BindOnce(&OutputManager::OnExpiredFile,
                                            weak_factory_.GetWeakPtr()));
   }
 }
 
-void OutputManager::DeleteExpiredFiles() {
+void OutputManager::OnExpiredFile() {
   files_lock_.Acquire();
   base::Time now = base::Time::Now();
   for (auto it = files_.begin(); it != files_.end();) {
     if (it->expiration() <= now) {
       // TODO(b/307593542): remove filenames from logs.
-      LOG(INFO) << "Deleting file " << it->path().BaseName();
-      if (!brillo::DeleteFile(it->path())) {
-        LOG(ERROR) << "Failed to delete file.";
-      }
+      LOG(INFO) << "Deleting file " << it->fw_dump();
+      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce(&DeleteFirmwareDump, it->fw_dump()));
       it = files_.erase(it);
     } else {
       ++it;
@@ -103,7 +110,7 @@ void OutputManager::DeleteExpiredFiles() {
 void OutputManager::DeleteAllManagedFiles() {
   files_lock_.Acquire();
   for (auto f : files_) {
-    if (!brillo::DeleteFile(f.path())) {
+    if (!f.fw_dump().Delete()) {
       LOG(ERROR) << "Failed to delete file.";
     }
   }
@@ -113,11 +120,12 @@ void OutputManager::DeleteAllManagedFiles() {
 
 void OutputManager::DeleteAllFiles() {
   DeleteAllManagedFiles();
-  base::FileEnumerator e(user_root_dir_.Append(kProcessedDirectory), false,
-                         base::FileEnumerator::FILES);
-  e.ForEach([](const base::FilePath& path) {
+  base::FileEnumerator files(user_root_dir_.Append(kProcessedDirectory),
+                             false /* recursive */,
+                             base::FileEnumerator::FILES);
+  files.ForEach([](const base::FilePath& path) {
     // TODO(b/307593542): remove filenames from logs.
-    LOG(INFO) << "Cleaning up file " << path;
+    LOG(INFO) << "Cleaning up file " << path.BaseName();
     if (!brillo::DeleteFile(path)) {
       LOG(ERROR) << "Failed to delete file.";
     }
