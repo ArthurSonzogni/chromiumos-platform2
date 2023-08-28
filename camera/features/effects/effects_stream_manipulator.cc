@@ -73,6 +73,8 @@ constexpr char kBlurEnabled[] = "blur_enabled";
 constexpr char kReplaceEnabled[] = "replace_enabled";
 constexpr char kRelightEnabled[] = "relight_enabled";
 constexpr char kSegmentationModelTypeKey[] = "segmentation_model_type";
+constexpr char kDefaultSegmentationModelTypeKey[] =
+    "default_segmentation_model_type";
 
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
 constexpr uint32_t kBufferUsage = GRALLOC_USAGE_HW_TEXTURE;
@@ -151,7 +153,9 @@ class RenderedImageObserver : public ProcessedFrameObserver {
       frame_processed_callback_;
 };
 
-EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
+EffectsConfig ConvertMojoConfig(
+    cros::mojom::EffectsConfigPtr effects_config,
+    SegmentationModelType default_segmentation_model_type) {
   // Note: We don't copy over the GPU api fields here, since we have no
   //       need to control them from Chrome at this stage. It will use
   //       the default from effects_pipeline_types.h
@@ -165,11 +169,14 @@ EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
       .segmentation_model_type = static_cast<cros::SegmentationModelType>(
           effects_config->segmentation_model),
   };
-  // Resolve segmentation model from Auto (default) to HD (currently the only
-  // possible value set from Chrome) to avoid resetting the pipeline when the
-  // model changes from Auto to HD.
-  if (config.segmentation_model_type == SegmentationModelType::kAuto) {
-    config.segmentation_model_type = SegmentationModelType::kHd;
+  // Resolve segmentation model from Auto or HD (default) to the system default.
+  // TODO(b/297450516): Fix mojo segmentation to be 'auto' by default.
+  // This is to avoid resetting the pipeline when the model changes from Auto to
+  // HD.
+  if (effects_config->segmentation_model == mojom::SegmentationModel::kAuto ||
+      effects_config->segmentation_model ==
+          mojom::SegmentationModel::kHighResolution) {
+    config.segmentation_model_type = default_segmentation_model_type;
   }
   if (effects_config->background_filepath) {
     base::FilePath path =
@@ -182,6 +189,23 @@ EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
     config.light_intensity = *effects_config->light_intensity;
   }
   return config;
+}
+
+bool ParseSegmentationModelType(const std::string& model,
+                                SegmentationModelType& output) {
+  if (model == "hd") {
+    output = SegmentationModelType::kHd;
+  } else if (model == "effnet256") {
+    output = SegmentationModelType::kEffnet256;
+  } else if (model == "effnet384") {
+    output = SegmentationModelType::kEffnet384;
+  } else if (model == "full") {
+    output = SegmentationModelType::kFull;
+  } else {
+    LOGF(WARNING) << "Unknown Segmentation Model Type: " << model;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
@@ -317,6 +341,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   base::FilePath config_file_path_;
   bool override_config_exists_ GUARDED_BY_CONTEXT(gl_thread_checker_) = false;
   RuntimeOptions* runtime_options_;
+  SegmentationModelType default_segmentation_model_type_
+      GUARDED_BY_CONTEXT(gl_thread_checker_) = SegmentationModelType::kHd;
   StreamManipulator::Callbacks callbacks_;
 
   // Maximum number of frames that can be queued into effects pipeline.
@@ -813,7 +839,8 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   if (!pipeline_)
     return true;
 
-  auto new_config = ConvertMojoConfig(runtime_options_->GetEffectsConfig());
+  auto new_config = ConvertMojoConfig(runtime_options_->GetEffectsConfig(),
+                                      default_segmentation_model_type_);
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
     // Ignore the mojo config if the override config file is being used. This is
@@ -1204,7 +1231,25 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
   LOGF(INFO) << "Reloadable Options update detected";
   CHECK(pipeline_);
 
+  std::string default_segmentation_model;
+  if (GetStringFromKey(json_values, kDefaultSegmentationModelTypeKey,
+                       &default_segmentation_model)) {
+    if (ParseSegmentationModelType(default_segmentation_model,
+                                   default_segmentation_model_type_)) {
+      LOG(INFO) << "Default segmentation model type set to "
+                << default_segmentation_model;
+    } else {
+      LOG(WARNING) << "Model type " << default_segmentation_model
+                   << " not recognized, keeping original default";
+    }
+  }
+
   override_config_exists_ = base::PathExists(kOverrideEffectsConfigFile);
+  // The code after this point is only relevant if there is an
+  // override file. Abort here so we don't set a 'default'
+  // effects config.
+  if (!override_config_exists_)
+    return;
 
   EffectsConfig new_config;
   std::string effect;
@@ -1292,20 +1337,10 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
   std::string segmentation_model_type;
   if (GetStringFromKey(json_values, kSegmentationModelTypeKey,
                        &segmentation_model_type)) {
-    if (segmentation_model_type == "hd") {
-      new_config.segmentation_model_type = SegmentationModelType::kHd;
-    } else if (segmentation_model_type == "effnet256") {
-      new_config.segmentation_model_type = SegmentationModelType::kEffnet256;
-    } else if (segmentation_model_type == "effnet384") {
-      new_config.segmentation_model_type = SegmentationModelType::kEffnet384;
-    } else if (segmentation_model_type == "full") {
-      new_config.segmentation_model_type = SegmentationModelType::kFull;
-    } else {
-      LOGF(WARNING) << "Unknown Segmentation Model Type: "
-                    << segmentation_model_type;
-      return;
+    if (ParseSegmentationModelType(segmentation_model_type,
+                                   new_config.segmentation_model_type)) {
+      LOGF(INFO) << "Segmentation Model Type: " << segmentation_model_type;
     }
-    LOGF(INFO) << "Segmentation Model Type: " << segmentation_model_type;
   }
 
   // Only apply the effect if something changed, as sometimes this function
