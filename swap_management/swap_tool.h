@@ -5,13 +5,16 @@
 #ifndef SWAP_MANAGEMENT_SWAP_TOOL_H_
 #define SWAP_MANAGEMENT_SWAP_TOOL_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/files/file_path.h>
 #include <brillo/errors/error.h>
+#include <chromeos/dbus/swap_management/dbus-constants.h>
 
 namespace swap_management {
 
@@ -73,15 +76,23 @@ class SwapTool {
   absl::Status SwapZramEnableWriteback(uint32_t size_mb);
   absl::Status SwapZramSetWritebackLimit(uint32_t num_pages);
   absl::Status SwapZramMarkIdle(uint32_t age_seconds);
-  absl::Status InitiateSwapZramWriteback(uint32_t mode);
+  absl::Status InitiateSwapZramWriteback(ZramWritebackMode mode);
 
   // MGLRU configuration.
   absl::Status MGLRUSetEnable(uint8_t value);
+
+  // Zram Recompression
+  absl::Status SwapZramSetRecompAlgorithms(
+      const std::vector<std::string>& algos);
+  absl::Status InitiateSwapZramRecompression(ZramRecompressionMode mode,
+                                             uint32_t threshold,
+                                             const std::string& algo);
 
  private:
   absl::StatusOr<bool> IsZramSwapOn();
   absl::StatusOr<uint64_t> GetMemTotal();
   absl::StatusOr<uint64_t> GetZramSize(uint64_t mem_total);
+  void SetRecompAlgo();
   absl::Status EnableZramSwapping();
 
   uint64_t wb_size_bytes_ = 0;

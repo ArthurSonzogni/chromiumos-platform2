@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "swap_management/swap_management_dbus_adaptor.h"
+#include "dbus/swap_management/dbus-constants.h"
 #include "swap_management/swap_tool_metrics.h"
 
 #include <memory>
@@ -127,7 +128,8 @@ bool SwapManagementDBusAdaptor::SwapZramSetWritebackLimit(
 
 bool SwapManagementDBusAdaptor::InitiateSwapZramWriteback(
     brillo::ErrorPtr* error, uint32_t mode) {
-  absl::Status status = swap_tool_->InitiateSwapZramWriteback(mode);
+  absl::Status status = swap_tool_->InitiateSwapZramWriteback(
+      static_cast<ZramWritebackMode>(mode));
   if (!status.ok()) {
     brillo::Error::AddTo(
         error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -150,4 +152,33 @@ bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
   return true;
 }
 
+bool SwapManagementDBusAdaptor::InitiateSwapZramRecompression(
+    brillo::ErrorPtr* error,
+    uint32_t mode,
+    uint32_t threshold,
+    const std::string& algo) {
+  absl::Status status = swap_tool_->InitiateSwapZramRecompression(
+      static_cast<ZramRecompressionMode>(mode), threshold, algo);
+  if (!status.ok()) {
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain,
+        "org.chromium.SwapManagement.error.SwapZramActivateRecompression",
+        status.ToString());
+    return false;
+  }
+  return true;
+}
+
+bool SwapManagementDBusAdaptor::SwapZramSetRecompAlgorithms(
+    brillo::ErrorPtr* error, const std::vector<std::string>& algos) {
+  absl::Status status = swap_tool_->SwapZramSetRecompAlgorithms(algos);
+  if (!status.ok()) {
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain,
+        "org.chromium.SwapManagement.error.SwapZramSetRecompAlgorithms",
+        status.ToString());
+    return false;
+  }
+  return true;
+}
 }  // namespace swap_management

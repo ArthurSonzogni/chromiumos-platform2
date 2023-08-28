@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "swap_management/swap_tool.h"
+#include "dbus/swap_management/dbus-constants.h"
 #include "swap_management/swap_tool_util.h"
 
 #include <utility>
@@ -197,6 +198,20 @@ TEST_F(SwapToolTest, SwapStartWithoutSwapEnabled) {
   EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
       .WillOnce(Return(absl::OkStatus()));
+  // SetRecompAlgo
+  EXPECT_CALL(mock_util_,
+              ReadFileToString(
+                  base::FilePath("/var/lib/swap/swap_recomp_algorithm"), _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>("deflate lre"), Return(absl::OkStatus())));
+  EXPECT_CALL(mock_util_,
+              WriteFile(base::FilePath("/sys/block/zram0/recomp_algorithm"),
+                        "algo=deflate priority=1"))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_,
+              WriteFile(base::FilePath("/sys/block/zram0/recomp_algorithm"),
+                        "algo=lre priority=2"))
+      .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
                                     kZramDisksize8G))
       .WillOnce(Return(absl::OkStatus()));
@@ -252,6 +267,11 @@ TEST_F(SwapToolTest, SwapStartWithEmptySwapZramSize) {
   EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
       .WillOnce(Return(absl::OkStatus()));
+  // SetRecompAlgo
+  EXPECT_CALL(mock_util_,
+              ReadFileToString(
+                  base::FilePath("/var/lib/swap/swap_recomp_algorithm"), _))
+      .WillOnce(DoAll(SetArgPointee<1>(""), Return(absl::OkStatus())));
   EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
                                     kZramDisksize8G))
       .WillOnce(Return(absl::OkStatus()));
@@ -432,6 +452,24 @@ TEST_F(SwapToolTest, SwapZramEnableWriteback) {
       .WillOnce(Return(absl::OkStatus()));
 
   EXPECT_THAT(swap_tool_->SwapZramEnableWriteback(128), absl::OkStatus());
+}
+
+TEST_F(SwapToolTest, ZramRecompression) {
+  // SwapZramSetRecompAlgorithms
+  EXPECT_CALL(mock_util_,
+              WriteFile(base::FilePath("/var/lib/swap/swap_recomp_algorithm"),
+                        "deflate lre"))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_THAT(swap_tool_->SwapZramSetRecompAlgorithms({"deflate", "lre"}),
+              absl::OkStatus());
+  // InitiateSwapZramRecompression
+  EXPECT_CALL(mock_util_,
+              WriteFile(base::FilePath("/sys/block/zram0/recompress"),
+                        "type=idle threshold=1000 algo=deflate"))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_THAT(swap_tool_->InitiateSwapZramRecompression(RECOMPRESSION_IDLE,
+                                                        1000, "deflate"),
+              absl::OkStatus());
 }
 
 }  // namespace swap_management

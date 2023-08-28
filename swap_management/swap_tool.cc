@@ -3,13 +3,14 @@
 // found in the LICENSE file.
 
 #include "swap_management/swap_tool.h"
-#include "swap_management/swap_tool_metrics.h"
 #include "swap_management/swap_tool_util.h"
 
 #include <cinttypes>
+#include <string>
 #include <utility>
 #include <vector>
 
+#include <absl/status/status.h>
 #include <base/files/dir_reader_posix.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
@@ -18,13 +19,14 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <chromeos/dbus/swap_management/dbus-constants.h>
 
 namespace swap_management {
 
 namespace {
 
 constexpr char kSwapSizeFile[] = "/var/lib/swap/swap_size";
+constexpr char kSwapRecompAlgorithmFile[] =
+    "/var/lib/swap/swap_recomp_algorithm";
 constexpr char kZramDeviceFile[] = "/dev/zram0";
 constexpr char kZramSysfsDir[] = "/sys/block/zram0";
 constexpr char kZramWritebackName[] = "zram-writeback";
@@ -228,6 +230,23 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSize(uint64_t mem_total) {
                  << " contains 0.";
 
   return requested_size_mib * 1024 * 1024;
+}
+
+// Program /sys/block/zram0/recomp_algorithm.
+// For the format of |kSwapRecompAlgorithmFile|, please refer to the
+// description in SwapZramSetRecompAlgorithms.
+void SwapTool::SetRecompAlgo() {
+  std::string buf;
+  absl::Status status = SwapToolUtil::Get()->ReadFileToString(
+      base::FilePath(kSwapRecompAlgorithmFile), &buf);
+  std::vector<std::string> algos = base::SplitString(
+      buf, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (uint8_t i = 0; i < algos.size(); i++) {
+    absl::Status status = SwapToolUtil::Get()->WriteFile(
+        base::FilePath("/sys/block/zram0/recomp_algorithm"),
+        "algo=" + algos[i] + " priority=" + std::to_string(i + 1));
+    LOG_IF(WARNING, !status.ok()) << status;
+  }
 }
 
 // Run swapon to enable zram swapping.
@@ -498,6 +517,9 @@ absl::Status SwapTool::SwapStart() {
   if (!SwapToolUtil::Get()->RunProcessHelper({"/sbin/modprobe", "zram"}).ok())
     LOG(WARNING) << "modprobe zram failed (compiled?)";
 
+  // Set zram recompress algorithm if user has config.
+  SetRecompAlgo();
+
   // Set zram disksize.
   LOG(INFO) << "setting zram size to " << *size_byte << " bytes";
   status = SwapToolUtil::Get()->WriteFile(
@@ -665,7 +687,7 @@ absl::Status SwapTool::SwapZramMarkIdle(uint32_t age_seconds) {
                                         std::to_string(age.InSeconds()));
 }
 
-absl::Status SwapTool::InitiateSwapZramWriteback(uint32_t mode) {
+absl::Status SwapTool::InitiateSwapZramWriteback(ZramWritebackMode mode) {
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("writeback");
   std::string mode_str;
   if (mode == WRITEBACK_IDLE) {
@@ -684,6 +706,52 @@ absl::Status SwapTool::InitiateSwapZramWriteback(uint32_t mode) {
 absl::Status SwapTool::MGLRUSetEnable(uint8_t value) {
   return SwapToolUtil::Get()->WriteFile(
       base::FilePath("/sys/kernel/mm/lru_gen/enabled"), std::to_string(value));
+}
+
+absl::Status SwapTool::InitiateSwapZramRecompression(ZramRecompressionMode mode,
+                                                     uint32_t threshold,
+                                                     const std::string& algo) {
+  base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("recompress");
+  std::stringstream ss;
+  if (mode == RECOMPRESSION_IDLE) {
+    ss << "type=idle";
+  } else if (mode == RECOMPRESSION_HUGE) {
+    ss << "type=huge";
+  } else if (mode == RECOMPRESSION_HUGE_IDLE) {
+    ss << "type=huge_idle";
+  } else if (mode != 0) {
+    // |mode| can be optional.
+    return absl::InvalidArgumentError("Invalid mode");
+  }
+
+  if (threshold != 0)
+    ss << " threshold=" << std::to_string(threshold);
+
+  // This specified algorithm has to be registered through
+  // SwapZramSetRecompAlgorithms first.
+  if (!algo.empty())
+    ss << " algo=" << algo;
+
+  return SwapToolUtil::Get()->WriteFile(filepath, ss.str());
+}
+
+absl::Status SwapTool::SwapZramSetRecompAlgorithms(
+    const std::vector<std::string>& algos) {
+  // We store |algos| in |kSwapRecompAlgorithmFile| in priority order, using
+  // space as delimiter: algo1 algo2 ... The next time SwapStart is executed,
+  // /sys/block/zram0/recomp_algorithm will be programmed with algo1 with
+  // priority 1, and algo2 with priority 2, etc.
+  absl::Status status = absl::OkStatus();
+
+  // With empty |algos|, we disable zram recompression by removing
+  // |kSwapRecompAlgorithmFile|
+  if (algos.empty())
+    return SwapToolUtil::Get()->DeleteFile(
+        base::FilePath(kSwapRecompAlgorithmFile));
+
+  const std::string joined = base::JoinString(algos, " ");
+  return SwapToolUtil::Get()->WriteFile(
+      base::FilePath(kSwapRecompAlgorithmFile), joined);
 }
 
 }  // namespace swap_management

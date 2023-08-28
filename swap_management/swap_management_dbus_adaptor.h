@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/dbus/exported_property_set.h>
@@ -41,6 +42,12 @@ class SwapManagementDBusAdaptor
   bool InitiateSwapZramWriteback(brillo::ErrorPtr* error,
                                  uint32_t mode) override;
   bool MGLRUSetEnable(brillo::ErrorPtr* error, uint8_t value) override;
+  bool InitiateSwapZramRecompression(brillo::ErrorPtr* error,
+                                     uint32_t mode,
+                                     uint32_t threshold,
+                                     const std::string& algo) override;
+  bool SwapZramSetRecompAlgorithms(
+      brillo::ErrorPtr* error, const std::vector<std::string>& algos) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
