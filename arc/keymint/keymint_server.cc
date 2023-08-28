@@ -473,7 +473,7 @@ void KeyMintServer::UpdateAad(arc::mojom::keymint::UpdateRequestPtr request,
                               UpdateAadCallback callback) {
   // Convert input |request| into |km_request|. All data is deep copied to avoid
   // use-after-free.
-  auto km_request = MakeUpdateOperationRequest(
+  auto km_request = MakeUpdateAadOperationRequest(
       request, backend_.keymint()->message_version());
 
   auto task_lambda = base::BindOnce(

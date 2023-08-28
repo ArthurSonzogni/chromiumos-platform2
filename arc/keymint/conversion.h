@@ -83,6 +83,11 @@ std::unique_ptr<::keymaster::UpdateOperationRequest> MakeUpdateOperationRequest(
     const arc::mojom::keymint::UpdateRequestPtr& request,
     const int32_t keymint_message_version);
 
+std::unique_ptr<::keymaster::UpdateOperationRequest>
+MakeUpdateAadOperationRequest(
+    const arc::mojom::keymint::UpdateRequestPtr& request,
+    const int32_t keymint_message_version);
+
 std::unique_ptr<::keymaster::BeginOperationRequest> MakeBeginOperationRequest(
     const arc::mojom::keymint::BeginRequestPtr& request,
     const int32_t keymint_message_version);
