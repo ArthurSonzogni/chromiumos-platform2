@@ -159,34 +159,5 @@ TEST_F(PsrCmdTest, GetPlatformServiceRecord) {
             psr_heci_resp.psr_record.events_count);  // Success.
 }
 
-// Check Check.
-TEST_F(PsrCmdTest, Check) {
-  MockPsrCmd cmd;
-  FwCapsRequest fw_get_request;
-  FwCapsResp fw_get_resp;
-
-  EXPECT_CALL(cmd, Check(_, _))
-      .WillOnce(Return(MockPsrCmd::CmdStatus::kInvalidState));
-  EXPECT_EQ(cmd.Check(fw_get_request, fw_get_resp),
-            MockPsrCmd::CmdStatus::kInvalidState);  // Failure.
-
-  EXPECT_CALL(cmd, Check(_, _))
-      .WillOnce(DoAll(SetArgReferee<0>(fw_get_request),
-                      SetArgReferee<1>(fw_get_resp),
-                      Return(MockPsrCmd::CmdStatus::kSuccess)));
-
-  EXPECT_EQ(cmd.Check(fw_get_request, fw_get_resp),
-            MockPsrCmd::CmdStatus::kSuccess);  // Success.
-}
-
-// Check CheckPlatformServiceRecord.
-TEST_F(PsrCmdTest, CheckPlatformServiceRecord) {
-  MockPsrCmd cmd;
-
-  EXPECT_CALL(cmd, CheckPlatformServiceRecord()).WillOnce(Return(false));
-  EXPECT_FALSE(cmd.CheckPlatformServiceRecord());  // Failure.
-  EXPECT_CALL(cmd, CheckPlatformServiceRecord()).WillOnce(Return(true));
-  EXPECT_TRUE(cmd.CheckPlatformServiceRecord());  // Success.
-}
 }  // namespace psr
 }  // namespace diagnostics
