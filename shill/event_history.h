@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_EVENT_HISTORY_H_
-#define SHILL_NET_EVENT_HISTORY_H_
+#ifndef SHILL_EVENT_HISTORY_H_
+#define SHILL_EVENT_HISTORY_H_
 
 #include <deque>
 #include <string>
@@ -85,4 +85,4 @@ class SHILL_EXPORT EventHistory {
 
 }  // namespace shill
 
-#endif  // SHILL_NET_EVENT_HISTORY_H_
+#endif  // SHILL_EVENT_HISTORY_H_

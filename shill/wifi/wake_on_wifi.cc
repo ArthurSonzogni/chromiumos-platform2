@@ -28,9 +28,9 @@
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/event_history.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/event_history.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/store/property_accessor.h"

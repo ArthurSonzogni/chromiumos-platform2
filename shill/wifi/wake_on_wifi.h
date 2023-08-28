@@ -24,8 +24,8 @@
 #include <brillo/timers/alarm_timer.h>
 
 #include "shill/callbacks.h"
+#include "shill/event_history.h"
 #include "shill/metrics.h"
-#include "shill/net/event_history.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/wake_on_wifi_interface.h"

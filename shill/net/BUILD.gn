@@ -26,7 +26,6 @@ install_config("install_headers") {
   sources = [
     "attribute_list.h",
     "control_netlink_attribute.h",
-    "event_history.h",
     "generic_netlink_message.h",
     "ieee80211.h",
     "io_handler.h",
@@ -89,7 +88,6 @@ shared_library("libshill-net") {
   sources = [
     "attribute_list.cc",
     "control_netlink_attribute.cc",
-    "event_history.cc",
     "generic_netlink_message.cc",
     "ieee80211.cc",
     "io_handler_factory.cc",
@@ -174,7 +172,6 @@ if (use.test) {
     sources = [
       "../mock_log.cc",
       "attribute_list_test.cc",
-      "event_history_test.cc",
       "netlink_attribute_test.cc",
       "netlink_manager_test.cc",
       "netlink_message_test.cc",
