@@ -23,3 +23,17 @@ sched_setattr: 1
 clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
+gettid: 1
+close: 1
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+munmap: 1
+newfstatat: 1
+fstatfs: 1
+rt_sigprocmask: 1
+rt_sigaction: 1
+faccessat: 1
+set_tid_address: 1
+set_robust_list: 1
+prlimit64: 1
+getrandom: arg2 in 0xfffffffd
