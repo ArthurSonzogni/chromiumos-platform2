@@ -2689,9 +2689,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorCheckSignal) {
       AuthenticateAuthFactor(request);
 
   // Verify
-  ASSERT_TRUE(result_proto.has_failure());
+  ASSERT_TRUE(result_proto.has_error_info());
   EXPECT_EQ(user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND,
-            result_proto.failure().error());
+            result_proto.error());
 }
 
 }  // namespace

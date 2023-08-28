@@ -3035,14 +3035,12 @@ void UserDataAuth::AuthenticateAuthFactor(
             user_data_auth::AuthenticateAuthFactorCompleted completed_proto;
 
             if (reply.has_error_info()) {
-              auto* failure_proto = completed_proto.mutable_failure();
-              failure_proto->set_error(reply.error());
-              auto* error_info = failure_proto->mutable_error_info();
+              completed_proto.set_error(reply.error());
+              auto* error_info = completed_proto.mutable_error_info();
               *error_info = reply.error_info();
-            } else {
-              auto* success_proto = completed_proto.mutable_success();
-              success_proto->set_auth_factor_type(auth_factor_type);
             }
+            completed_proto.set_auth_factor_type(auth_factor_type);
+
             if (!authenticate_auth_factor_result_callback.is_null()) {
               authenticate_auth_factor_result_callback.Run(completed_proto);
             }
