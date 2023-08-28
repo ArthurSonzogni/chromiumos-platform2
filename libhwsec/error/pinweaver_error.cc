@@ -27,8 +27,8 @@ const char* PinweaverManagerStatusString(PinWeaverErrorCode error_code) {
       return "kPolicyNotMatch";
     case PinWeaverErrorCode::kTooManyAttempts:
       return "kTooManyAttempts";
-    case PinWeaverErrorCode::kUnknown:
-      return "kUnknown";
+    case PinWeaverErrorCode::kOther:
+      return "kOther";
   }
 }
 
@@ -60,7 +60,7 @@ TPMRetryAction PinWeaverError::ToTPMRetryAction() const {
       return TPMRetryAction::kUserAuth;
     case PinWeaverErrorCode::kTooManyAttempts:
       return TPMRetryAction::kPinWeaverLockedOut;
-    case PinWeaverErrorCode::kUnknown:
+    case PinWeaverErrorCode::kOther:
       return TPMRetryAction::kNoRetry;
   }
 }

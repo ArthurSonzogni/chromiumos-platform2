@@ -21,6 +21,8 @@
 #define __aligned(x) __attribute((aligned(x)))
 #include <pinweaver/pinweaver_types.h>
 
+#include "libhwsec/backend/pinweaver.h"
+#include "libhwsec/error/pinweaver_error.h"
 #include "libhwsec/error/tpm2_error.h"
 
 using hwsec_foundation::status::MakeStatus;
@@ -74,17 +76,7 @@ ErrorCode ConvertPWStatus(uint32_t pinweaver_status) {
       return ErrorCode::kExpired;
   }
 
-  return ErrorCode::kUnknown;
-}
-
-Status ErrorCodeToStatus(ErrorCode err) {
-  if (err == ErrorCode::kSuccess) {
-    return OkStatus();
-  }
-  return MakeStatus<TPMError>(
-      base::StringPrintf("PinWeaver error 0x%x",
-                         static_cast<unsigned int>(err)),
-      TPMRetryAction::kNoRetry);
+  return ErrorCode::kOther;
 }
 
 std::vector<LogEntry> ConvertPinWeaverLog(
@@ -172,7 +164,8 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::Reset(
           &pinweaver_status, &root)))
       .WithStatus<TPMError>("Failed to reset tree in pinweaver");
 
-  RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
+  RETURN_IF_ERROR(
+      MakeStatus<PinWeaverError>(ConvertPWStatus(pinweaver_status)));
 
   return CredentialTreeResult{
       .error = ErrorCode::kSuccess,
@@ -217,7 +210,8 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertCredential(
           &root, &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to insert leaf in pinweaver");
 
-  RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
+  RETURN_IF_ERROR(
+      MakeStatus<PinWeaverError>(ConvertPWStatus(pinweaver_status)));
 
   return CredentialTreeResult{
       .error = ErrorCode::kSuccess,
@@ -277,7 +271,8 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::RemoveCredential(
           &pinweaver_status, &root)))
       .WithStatus<TPMError>("Failed to remove leaf in pinweaver");
 
-  RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
+  RETURN_IF_ERROR(
+      MakeStatus<PinWeaverError>(ConvertPWStatus(pinweaver_status)));
 
   return CredentialTreeResult{
       .error = ErrorCode::kSuccess,
@@ -334,7 +329,8 @@ StatusOr<PinWeaverTpm2::GetLogResult> PinWeaverTpm2::GetLog(
           &root, &log_ret)))
       .WithStatus<TPMError>("Failed to get pinweaver log");
 
-  RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
+  RETURN_IF_ERROR(
+      MakeStatus<PinWeaverError>(ConvertPWStatus(pinweaver_status)));
 
   return GetLogResult{
       .root_hash = brillo::BlobFromString(root),
@@ -361,7 +357,8 @@ PinWeaverTpm2::ReplayLogOperation(const brillo::Blob& log_entry_root,
           &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to replay log in pinweaver");
 
-  RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
+  RETURN_IF_ERROR(
+      MakeStatus<PinWeaverError>(ConvertPWStatus(pinweaver_status)));
 
   return ReplayLogOperationResult{
       .new_cred_metadata = brillo::BlobFromString(cred_metadata_string),
@@ -578,7 +575,8 @@ StatusOr<PinWeaverTpm2::PinWeaverEccPoint> PinWeaverTpm2::GeneratePk(
               &pinweaver_status, &root, &trunks_server_public_key)))
       .WithStatus<TPMError>("Failed to generate pk in pinweaver");
 
-  RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
+  RETURN_IF_ERROR(
+      MakeStatus<PinWeaverError>(ConvertPWStatus(pinweaver_status)));
 
   PinWeaverTpm2::PinWeaverEccPoint server_public_key;
   memcpy(server_public_key.x, trunks_server_public_key.x, 32);
@@ -624,7 +622,8 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertRateLimiter(
               &root, &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to insert rate-limiter in pinweaver");
 
-  RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
+  RETURN_IF_ERROR(
+      MakeStatus<PinWeaverError>(ConvertPWStatus(pinweaver_status)));
 
   return CredentialTreeResult{
       .error = ErrorCode::kSuccess,
@@ -764,7 +763,8 @@ PinWeaverTpm2::GetSystemTimestamp() {
           &timestamp.timer_value)))
       .WithStatus<TPMError>("Failed to get sysinfo in pinweaver");
 
-  RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
+  RETURN_IF_ERROR(
+      MakeStatus<PinWeaverError>(ConvertPWStatus(pinweaver_status)));
 
   return timestamp;
 }

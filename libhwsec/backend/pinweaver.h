@@ -47,8 +47,8 @@ class PinWeaver {
       // Failed since the credential has been locked out due to expiration time
       // reached.
       kExpired,
-      // Unknown error.
-      kUnknown,
+      // Other error.
+      kOther,
     };
 
     // Detail error code for more information.
