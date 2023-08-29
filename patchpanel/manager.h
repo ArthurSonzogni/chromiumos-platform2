@@ -171,6 +171,10 @@ class Manager {
   void SetFeatureFlag(patchpanel::SetFeatureFlagRequest::FeatureFlag flag,
                       bool enabled);
 
+  // Returns the CurHopLimit of upstream from sysctl minus 1.
+  static std::optional<int> CalculateDownstreamCurHopLimit(
+      System* system, const std::string& upstream_iface);
+
  private:
   friend class ManagerTest;
 

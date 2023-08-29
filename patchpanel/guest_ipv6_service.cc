@@ -135,7 +135,10 @@ void GuestIPv6Service::StartForwarding(
     const std::optional<int>& hop_limit,
     bool downlink_is_tethering) {
   LOG(INFO) << "Starting IPv6 forwarding between uplink: "
-            << upstream_shill_device << ", downlink: " << ifname_downlink;
+            << upstream_shill_device << ", downlink: " << ifname_downlink
+            << ", mtu: " << (mtu ? std::to_string(*mtu) : "default")
+            << ", hop_limit: "
+            << (hop_limit ? std::to_string(*hop_limit) : "default");
   const std::string& ifname_uplink = upstream_shill_device.ifname;
   int if_id_uplink = system_->IfNametoindex(ifname_uplink);
   if (if_id_uplink == 0) {

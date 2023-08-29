@@ -9,9 +9,11 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
 
 #include "patchpanel/address_manager.h"
@@ -1109,11 +1111,11 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
   // TODO(b/278966909): Prevents neighbor discovery between the downstream
   // network and other virtual guests and interfaces in the same upstream
   // group.
-  // TODO(b/289319209): Get the CurHopLimit from upstream, and pass the value-1
-  // to the downstream.
   if (info.enable_ipv6 && info.upstream_device) {
-    StartForwarding(*info.upstream_device, info.downstream_ifname,
-                    ForwardingSet{.ipv6 = true}, info.mtu, std::nullopt);
+    StartForwarding(
+        *info.upstream_device, info.downstream_ifname,
+        ForwardingSet{.ipv6 = true}, info.mtu,
+        CalculateDownstreamCurHopLimit(system_, info.upstream_device->ifname));
   }
 
   int fdkey = local_client_fd.release();
@@ -1291,6 +1293,26 @@ void Manager::SetFeatureFlag(
       LOG(ERROR) << __func__ << "Unknown feature flag: " << flag;
       return;
   }
+}
+
+std::optional<int> Manager::CalculateDownstreamCurHopLimit(
+    System* system, const std::string& upstream_iface) {
+  const std::string content =
+      system->SysNetGet(System::SysNet::kIPv6HopLimit, upstream_iface);
+  int value = 0;
+  if (!base::StringToInt(content, &value)) {
+    LOG(ERROR) << "Failed to convert `" << content << "` to int";
+    return std::nullopt;
+  }
+
+  // The CurHopLimit of downstream should be the value of upstream minus 1.
+  value -= 1;
+  if (value < 0 || value > 255) {
+    LOG(ERROR) << "The value of CurHopLimit is invalid: " << value;
+    return std::nullopt;
+  }
+
+  return value;
 }
 
 }  // namespace patchpanel

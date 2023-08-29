@@ -300,6 +300,7 @@ if (use.test) {
       "firewall_test.cc",
       "guest_ipv6_service_test.cc",
       "mac_address_generator_test.cc",
+      "manager_test.cc",
       "minijailed_process_runner_test.cc",
       "multicast_counters_service_test.cc",
       "multicast_metrics_test.cc",
