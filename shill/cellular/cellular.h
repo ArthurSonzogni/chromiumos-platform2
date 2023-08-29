@@ -115,7 +115,7 @@ class Cellular : public Device,
   static std::string GetModemStateString(ModemState modem_state);
 
   // Helper to build a fallback empty APN
-  static Stringmap BuildFallbackEmptyApn(ApnList::ApnType apn_type);
+  static std::deque<Stringmap> BuildFallbackEmptyApn(ApnList::ApnType apn_type);
 
   // |path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/freedesktop/ModemManager1/Modem/0"). |service| is the modem
