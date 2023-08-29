@@ -32,6 +32,8 @@
 #include "power_manager/powerd/system/mock_power_supply.h"
 #include "power_manager/powerd/testing/test_environment.h"
 
+using ::testing::_;
+
 namespace power_manager::policy {
 
 namespace {
@@ -1584,6 +1586,30 @@ TEST_F(AdaptiveChargingControllerTest, ChargeLimitAfterShutdown) {
   adaptive_charging_controller_.HandleShutdown();
   EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
             metrics::AdaptiveChargingState::SHUTDOWN);
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+}
+
+// Test that Charge Limit properly notifies the PowerSupply to properly display
+// the correct battery percentage.
+TEST_F(AdaptiveChargingControllerTest, ChargeLimitPowerSupplyState) {
+  EXPECT_CALL(power_supply_, SetChargeLimited(_)).Times(1);
+  InitChargeLimitPref();
+
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+
+  // Ensure that we clear the Charge Limit state for `power_supply_` on unplug.
+  // Otherwise, we may continue to display the hold percent for Charge Limit
+  // after discharging well below it.
+  EXPECT_CALL(power_supply_, ClearChargeLimited()).Times(1);
+  power_status_.external_power =
+      PowerSupplyProperties_ExternalPower_DISCONNECTED;
+  power_supply_.set_status(power_status_);
+  power_supply_.NotifyObservers();
+
+  // The state with `power_supply_` should be cleared to show the correct
+  // battery percentage, but the feature should still be enabled.
   EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
   EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
 }

@@ -1207,6 +1207,10 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
     } else if (last_external_power == PowerSupplyProperties_ExternalPower_AC) {
       StopAdaptiveCharging();
 
+      // Clear any display percentage override for `power_supply_` on unplug.
+      if (charge_limit_enabled_)
+        power_supply_->ClearChargeLimited();
+
       // Only generate metrics if Adaptive Charging started, and we're above
       // hold_percent_.
       if (started_ && AtHoldPercent(status.display_battery_percentage) &&
