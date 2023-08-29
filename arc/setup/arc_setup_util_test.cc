@@ -700,6 +700,28 @@ TEST(ArcSetupUtil, TestLaunchAndWait) {
   EXPECT_FALSE(LaunchAndWait({"/no_such_binary"}));
 }
 
+TEST(ArcSetupUtil, TestLaunchAndDoNotWait) {
+  base::ElapsedTimer timer;
+  // Check that LaunchAndDoNotWait does not wait until sleep returns.
+  EXPECT_TRUE(LaunchAndDoNotWait({"/usr/bin/sleep", "3"}));
+  EXPECT_LE(0, timer.Elapsed().InSeconds());
+}
+
+TEST(ArcSetupUtil, TestLaunchAndWaitWithExitCodeZero) {
+  base::ElapsedTimer timer;
+  int exit_code = -1;
+  // Check that LaunchAndReturnExitCode waits and returns the exit code.
+  EXPECT_TRUE(LaunchAndWait({"/usr/bin/sleep", "1"}, &exit_code));
+  EXPECT_LE(1, timer.Elapsed().InSeconds());
+  EXPECT_EQ(0, exit_code);
+}
+
+TEST(ArcSetupUtil, TestLaunchAndWaitWithExitCodeNonzero) {
+  int exit_code = -1;
+  EXPECT_TRUE(LaunchAndWait({"/no_such_binary"}, &exit_code));
+  EXPECT_EQ(127 /* command not found */, exit_code);
+}
+
 TEST(ArcSetupUtil, TestGenerateFakeSerialNumber) {
   // Check that the function always returns 20-character string.
   EXPECT_EQ(20U,

@@ -36,8 +36,8 @@ constexpr bool kUseHoudini64 = USE_HOUDINI64;
 constexpr bool kUseHoudini = USE_HOUDINI;
 constexpr bool kUseNdkTranslation = USE_NDK_TRANSLATION;
 
-// TODO: b/293906766 - Replace all occurrences of `kUnspecified` with specific
-// filesystem types and remove the enum value.
+// TODO(youkichihosoi): b/293906766 - Replace all occurrences of `kUnspecified`
+// with specific filesystem types and remove the enum value.
 enum class LoopMountFilesystemType {
   kUnspecified,
   kSquashFS,
@@ -181,6 +181,24 @@ bool WaitForPaths(std::initializer_list<base::FilePath> paths,
 // WARNING: *Never* execute /bin/[u]mount with LaunchAndWait which may take
 // ~200ms or more. Instead, use one of the mount/umount syscall wrappers above.
 bool LaunchAndWait(const std::vector<std::string>& argv);
+
+// Launches the command specified by |argv| and waits for the command to finish.
+// Returns true if the command finishes successfully. The exit code from the
+// command is stored in the exit_code pointer.
+//
+// WARNING: LaunchAndWait is *very* slow. Use this only when it's
+// unavoidable. One LaunchAndWait call will take at least ~40ms on
+// ARM Chromebooks because arc_setup is executed when the CPU is very busy and
+// fork/exec takes time.
+//
+// WARNING: *Never* execute /bin/[u]mount with LaunchAndWait which may
+// take ~200ms or more. Instead, use one of the mount/umount syscall wrappers
+// above.
+bool LaunchAndWait(const std::vector<std::string>& argv, int* exit_code);
+
+// Launches the command specified by |argv| and does not wait for the command
+// to finish. Returns true if the process is valid.
+bool LaunchAndDoNotWait(const std::vector<std::string>& argv);
 
 // Restores contexts of the |directories| and their contents recursively.
 // Returns true on success.

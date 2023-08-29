@@ -2066,6 +2066,7 @@ void ArcSetup::MaybeStartAdbdProxy(bool is_dev_mode,
 void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
                                      const std::string& serialnumber) {
   static constexpr char kCommand[] = "/system/bin/arcbootcontinue";
+  static const int need_restore_exit_code = 100;
 
   const bool mount_demo_apps =
       !config_.GetStringOrDie("DEMO_SESSION_APPS_PATH").empty();
@@ -2090,8 +2091,10 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
   // remove or reduce [u]mount operations from the container, especially from
   // its /init, and then to enforce it with SELinux.
   const std::string pid_str = config_.GetStringOrDie("CONTAINER_PID");
-  const std::vector<std::string> command_line = {
-      "/usr/bin/nsenter", "-t", pid_str,
+  const std::vector<std::string> command_line_base = {
+      "/usr/bin/nsenter",
+      "-t",
+      pid_str,
       "-m",  // enter mount namespace
       "-U",  // enter user namespace
       "-i",  // enter System V IPC namespace
@@ -2099,7 +2102,11 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       "-p",  // enter pid namespace
       "-r",  // set the root directory
       "-w",  // set the working directory
-      "--", kCommand, "--serialno", serialnumber, "--disable-boot-completed",
+      "--",
+      kCommand};
+
+  std::vector<std::string> initial_command = {
+      "--serialno", serialnumber, "--disable-boot-completed",
       config_.GetStringOrDie("DISABLE_BOOT_COMPLETED_BROADCAST"),
       "--container-boot-type", std::to_string(static_cast<int>(boot_type)),
       // When copy_packages_cache is set to "0" or "1", arccachesetup copies
@@ -2128,9 +2135,13 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       "--enable-arc-nearby-share",
       config_.GetStringOrDie("ENABLE_ARC_NEARBY_SHARE"),
       "--skip-tts-cache-setup", config_.GetStringOrDie("SKIP_TTS_CACHE_SETUP")};
+  initial_command.insert(initial_command.begin(), command_line_base.begin(),
+                         command_line_base.end());
 
   base::ElapsedTimer timer;
-  if (!LaunchAndWait(command_line)) {
+  int exit_code = -1;
+  const bool launch_result = LaunchAndWait(initial_command, &exit_code);
+  if (!launch_result) {
     auto elapsed = timer.Elapsed().InMillisecondsRoundedUp();
     // ContinueContainerBoot() failed. Try to find out why it failed and log
     // messages accordingly. If one of these functions calls exit(), it means
@@ -2147,6 +2158,29 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
                << "ms";
     exit(EXIT_FAILURE);
   }
+  if (exit_code == need_restore_exit_code) {
+    // arcbootcontinue found that SELinux context needs to be restored
+    LOG(INFO) << "Running " << kCommand << " --restore_selinux_data_context";
+    std::vector<std::string> restorecon_command = {
+        "--restore_selinux_data_context"};
+    restorecon_command.insert(restorecon_command.begin(),
+                              command_line_base.begin(),
+                              command_line_base.end());
+
+    const bool valid_process = LaunchAndDoNotWait(restorecon_command);
+    if (!valid_process) {
+      LOG(ERROR)
+          << "Launching " << kCommand
+          << " --restore_selinux_data_context resulted in an invalid process";
+      exit(EXIT_FAILURE);
+    }
+  } else if (exit_code) {
+    LOG(ERROR) << kCommand << " returned with nonzero exit_code <" << exit_code
+               << "> after " << timer.Elapsed().InMillisecondsRoundedUp()
+               << "ms";
+    exit(EXIT_FAILURE);
+  }
+
   LOG(INFO) << "Running " << kCommand << " took "
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
 

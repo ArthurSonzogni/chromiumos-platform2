@@ -640,6 +640,18 @@ bool LaunchAndWait(const std::vector<std::string>& argv) {
   return process.WaitForExit(&exit_code) && (exit_code == 0);
 }
 
+bool LaunchAndWait(const std::vector<std::string>& argv, int* exit_code) {
+  base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
+  if (!process.IsValid())
+    return false;
+  return process.WaitForExit(exit_code);
+}
+
+bool LaunchAndDoNotWait(const std::vector<std::string>& argv) {
+  base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
+  return process.IsValid();
+}
+
 bool RestoreconRecursively(const std::vector<base::FilePath>& directories) {
   return RestoreconInternal(directories, true /* is_recursive */);
 }
