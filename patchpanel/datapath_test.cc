@@ -515,6 +515,12 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual,
        "mangle -A qos_detect -m mark ! --mark 0x00000000/0x000000e0 -j RETURN "
        "-w"},
+      {IpFamily::kIPv4,
+       "mangle -A qos_detect -p icmp -j MARK --set-xmark 0x00000060/0x000000e0 "
+       "-w"},
+      {IpFamily::kIPv6,
+       "mangle -A qos_detect -p icmpv6 -j MARK --set-xmark "
+       "0x00000060/0x000000e0 -w"},
       // Asserts for QoS apply DSCP chain.
       {IpFamily::kDual, "mangle -N qos_apply_dscp -w"},
       {IpFamily::kDual,
