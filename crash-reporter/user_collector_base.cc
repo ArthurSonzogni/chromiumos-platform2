@@ -305,6 +305,17 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
     int signal,
     const base::TimeDelta& crash_time,
     bool* out_of_capacity) {
+#if USE_DIRENCRYPTION
+  // Join the session keyring, if one exists.
+  // Must be *before* we do anything wrt getting the directory, since if that
+  // fails we'll need to write a report to the directory.
+  //
+  // NOTE: In most cases, init will have already joined the keyring for us, so
+  // we won't need to do this. This is only necessary if we're invoked via
+  // usermode-helper (e.g. via core_pattern).
+  util::JoinSessionKeyring();
+#endif  // USE_DIRENCRYPTION
+
   FilePath crash_path;
   if (!GetCreatedCrashDirectory(pid, supplied_ruid, &crash_path,
                                 out_of_capacity)) {
@@ -326,11 +337,6 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
       GetCrashPath(crash_path, dump_basename, constants::kMinidumpExtension);
   FilePath log_path = GetCrashPath(crash_path, dump_basename, "log");
   FilePath proc_log_path = GetCrashPath(crash_path, dump_basename, "proclog");
-
-#if USE_DIRENCRYPTION
-  // Join the session keyring, if one exists.
-  util::JoinSessionKeyring();
-#endif  // USE_DIRENCRYPTION
 
   if (GetLogContents(FilePath(log_config_path_), exec, log_path)) {
     AddCrashMetaUploadFile("log", log_path.BaseName().value());
