@@ -12,6 +12,7 @@ env_logger = { version = "0.9", default-features = false }
 libc = "0.2.40"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 log = "0.4.1"
+nix = "0.26"
 protobuf = "3.2"
 syslog = "6.0.1"
 tempfile = "3.0"

@@ -39,7 +39,7 @@ use std::cmp::max;
 use std::fmt;
 use std::fs::{create_dir, File, OpenOptions};
 use std::io::prelude::*;
-use std::mem::{self, MaybeUninit};
+use std::mem::MaybeUninit;
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
@@ -412,10 +412,10 @@ impl Sample {
             self.uptime / 1000,
             self.uptime % 1000 / 10,
             self.sample_type,
-            self.info.0.loads[0],
-            self.info.0.freeram,
-            self.info.0.freeswap,
-            self.info.0.procs,
+            self.info.loads_1_minute,
+            self.info.freeram,
+            self.info.freeswap,
+            self.info.procs,
             self.runnables,
             self.available,
             self.vmstat_values[0],
@@ -428,36 +428,33 @@ impl Sample {
     }
 }
 
-#[derive(Copy, Clone)]
-struct Sysinfo(libc::sysinfo);
+#[derive(Copy, Clone, Default)]
+struct Sysinfo {
+    loads_1_minute: f64,
+    freeram: u64,
+    freeswap: u64,
+    procs: u16,
+}
 
-// Wrapper for sysinfo syscall.
 fn sysinfo() -> Result<Sysinfo> {
-    let mut info: Sysinfo = Default::default();
-    // sysinfo() is always safe when passed a valid pointer
-    match unsafe { libc::sysinfo(&mut info.0 as *mut libc::sysinfo) } {
-        0 => Ok(info),
-        _ => Err(format!("sysinfo: {}", strerror(errno())).into()),
-    }
+    let sysinfo_result = nix::sys::sysinfo::sysinfo()?;
+    Ok(Sysinfo {
+        loads_1_minute: sysinfo_result.load_average().0,
+        freeram: sysinfo_result.ram_unused(),
+        freeswap: sysinfo_result.swap_free(),
+        procs: sysinfo_result.process_count(),
+    })
 }
 
 impl Sysinfo {
-    // Fakes sysinfo system call, for testing.
+    // Fakes sysinfo for testing.
     fn fake_sysinfo() -> Result<Sysinfo> {
-        let mut info: Sysinfo = Default::default();
-        // Any numbers will do.
-        info.0.loads[0] = 5;
-        info.0.freeram = 42_000_000;
-        info.0.freeswap = 84_000_000;
-        info.0.procs = 1234;
-        Ok(info)
-    }
-}
-
-impl Default for Sysinfo {
-    fn default() -> Sysinfo {
-        // safe because sysinfo contains only numbers
-        unsafe { mem::zeroed() }
+        Ok(Sysinfo {
+            loads_1_minute: 5.0,
+            freeram: 42_000_000,
+            freeswap: 84_000_000,
+            procs: 1234,
+        })
     }
 }
 
