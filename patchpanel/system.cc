@@ -56,19 +56,19 @@ int System::Ioctl(int fd, ioctl_req_t request, const char* argp) {
 }
 
 int System::Ioctl(int fd, ioctl_req_t request, uint64_t arg) {
-  return Ioctl(fd, request, reinterpret_cast<const char*>(arg));
+  return ioctl(fd, request, arg);
 }
 
 int System::Ioctl(int fd, ioctl_req_t request, struct ifreq* ifr) {
-  return Ioctl(fd, request, reinterpret_cast<const char*>(ifr));
+  return ioctl(fd, request, ifr);
 }
 
 int System::Ioctl(int fd, ioctl_req_t request, struct rtentry* route) {
-  return Ioctl(fd, request, reinterpret_cast<const char*>(route));
+  return ioctl(fd, request, route);
 }
 
 int System::Ioctl(int fd, ioctl_req_t request, struct in6_rtmsg* route) {
-  return Ioctl(fd, request, reinterpret_cast<const char*>(route));
+  return ioctl(fd, request, route);
 }
 
 int System::SocketPair(int domain, int type, int protocol, int sv[2]) {

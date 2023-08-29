@@ -122,20 +122,6 @@ IpFamily ConvertIpFamily(net_base::IPFamily family) {
                                                : IpFamily::kIPv6;
 }
 
-// ioctl helper that manages the control fd creation and destruction.
-bool Ioctl(System* system, ioctl_req_t req, const char* arg) {
-  base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
-  if (!control_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to create control socket for ioctl request=" << req;
-    return false;
-  }
-  if (system->Ioctl(control_fd.get(), req, arg) != 0) {
-    PLOG(ERROR) << "ioctl request=" << req << " failed";
-    return false;
-  }
-  return true;
-}
-
 TrafficSource DownstreamNetworkInfoTrafficSource(
     const DownstreamNetworkInfo& info) {
   // TODO(b/257880335): define source for LocalOnlyNetwork.
@@ -659,7 +645,9 @@ bool Datapath::NetnsDeleteName(const std::string& netns_name) {
 }
 
 bool Datapath::AddBridge(const std::string& ifname, const IPv4CIDR& cidr) {
-  if (!Ioctl(system_, SIOCBRADDBR, ifname.c_str())) {
+  base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!control_fd.is_valid() ||
+      system_->Ioctl(control_fd.get(), SIOCBRADDBR, ifname.c_str()) != 0) {
     LOG(ERROR) << "Failed to create bridge " << ifname;
     return false;
   }
@@ -683,8 +671,12 @@ bool Datapath::AddBridge(const std::string& ifname, const IPv4CIDR& cidr) {
 
 void Datapath::RemoveBridge(const std::string& ifname) {
   process_runner_->ip("link", "set", {ifname, "down"});
-  if (!Ioctl(system_, SIOCBRDELBR, ifname.c_str()))
+
+  base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!control_fd.is_valid() ||
+      system_->Ioctl(control_fd.get(), SIOCBRDELBR, ifname.c_str()) != 0) {
     LOG(ERROR) << "Failed to destroy bridge " << ifname;
+  }
 }
 
 bool Datapath::AddToBridge(const std::string& br_ifname,
@@ -694,7 +686,9 @@ bool Datapath::AddToBridge(const std::string& br_ifname,
   strncpy(ifr.ifr_name, br_ifname.c_str(), sizeof(ifr.ifr_name));
   ifr.ifr_ifindex = system_->IfNametoindex(ifname);
 
-  if (!Ioctl(system_, SIOCBRADDIF, reinterpret_cast<const char*>(&ifr))) {
+  base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+  if (!control_fd.is_valid() ||
+      system_->Ioctl(control_fd.get(), SIOCBRADDIF, &ifr) != 0) {
     LOG(ERROR) << "Failed to add " << ifname << " to bridge " << br_ifname;
     return false;
   }
