@@ -56,12 +56,15 @@ class LibsaneWrapperFake : public LibsaneWrapper {
   // `value` will be set and retrieved through sane_control_option().
   void SetOptionValue(SANE_Handle handle, size_t field, void* value);
 
+  void SetSaneStartResult(SANE_Handle handle, SANE_Status result);
+
  protected:
   struct FakeScanner {
     std::string name;
     SANE_Handle handle;
     std::vector<SANE_Option_Descriptor> descriptors;
     std::vector<std::optional<void*>> values;
+    SANE_Status sane_start_result;
   };
 
   std::unordered_map<SANE_Handle, FakeScanner> scanners_;

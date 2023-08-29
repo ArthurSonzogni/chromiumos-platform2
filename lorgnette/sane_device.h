@@ -71,6 +71,14 @@ class SaneDevice {
 
   // MIME types for image formats that can be returned from this scanner.
   std::vector<std::string> GetSupportedFormats() const;
+  std::optional<std::string> GetCurrentJob() const;
+
+ protected:
+  void StartJob();
+  void EndJob();
+
+ private:
+  std::optional<std::string> current_job_;
 };
 
 }  // namespace lorgnette

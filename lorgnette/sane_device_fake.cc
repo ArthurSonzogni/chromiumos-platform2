@@ -22,7 +22,9 @@ SaneDeviceFake::SaneDeviceFake()
       color_mode_(MODE_COLOR),
       config_(ScannerConfig()),
       start_scan_result_(SANE_STATUS_GOOD),
+      call_start_job_(true),
       read_scan_data_result_(SANE_STATUS_GOOD),
+      cancel_scan_result_(true),
       scan_running_(false),
       cancelled_(false) {}
 
@@ -83,6 +85,9 @@ SANE_Status SaneDeviceFake::StartScan(brillo::ErrorPtr* error) {
     current_page_++;
     scan_data_offset_ = 0;
   } else {
+    if (call_start_job_) {
+      StartJob();
+    }
     scan_running_ = true;
     current_page_ = 0;
     cancelled_ = false;
@@ -114,6 +119,7 @@ SANE_Status SaneDeviceFake::ReadScanData(brillo::ErrorPtr* error,
 
   if (cancelled_) {
     scan_running_ = false;
+    EndJob();
     return SANE_STATUS_CANCELLED;
   }
 
@@ -125,6 +131,7 @@ SANE_Status SaneDeviceFake::ReadScanData(brillo::ErrorPtr* error,
 
   if (current_page_ >= scan_data_.size()) {
     scan_running_ = false;
+    EndJob();
     return SANE_STATUS_NO_DOCS;
   }
 
@@ -150,7 +157,27 @@ bool SaneDeviceFake::CancelScan(brillo::ErrorPtr* error) {
   }
 
   cancelled_ = true;
-  return true;
+  if (!cancel_scan_result_) {
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "Device cancel failed");
+  }
+  return cancel_scan_result_;
+}
+
+void SaneDeviceFake::SetCancelScanResult(bool result) {
+  cancel_scan_result_ = result;
+}
+
+void SaneDeviceFake::ClearScanJob() {
+  EndJob();
+  cancelled_ = false;
+  scan_running_ = false;
+  current_page_ = 0;
+  scan_data_offset_ = 0;
+}
+
+void SaneDeviceFake::SetCallStartJob(bool call) {
+  call_start_job_ = call;
 }
 
 std::optional<ScannerConfig> SaneDeviceFake::GetCurrentConfig(

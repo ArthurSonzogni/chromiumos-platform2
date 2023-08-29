@@ -321,6 +321,7 @@ SANE_Status SaneDeviceImpl::StartScan(brillo::ErrorPtr* error) {
   SANE_Status status = libsane_->sane_start(handle_);
   if (status == SANE_STATUS_GOOD) {
     scan_running_ = true;
+    StartJob();
   }
 
   return status;
@@ -404,6 +405,7 @@ bool SaneDeviceImpl::CancelScan(brillo::ErrorPtr* error) {
 
   scan_running_ = false;
   libsane_->sane_cancel(handle_);
+  EndJob();
   return true;
 }
 

@@ -59,6 +59,9 @@ class SaneDeviceFake : public SaneDevice {
   void SetScanParameters(const std::optional<ScanParameters>& params);
   void SetReadScanDataResult(SANE_Status result);
   void SetScanData(const std::vector<std::vector<uint8_t>>& scan_data);
+  void SetCancelScanResult(bool result);
+  void ClearScanJob();
+  void SetCallStartJob(bool call);
 
  private:
   int resolution_;
@@ -67,7 +70,9 @@ class SaneDeviceFake : public SaneDevice {
   std::optional<ScannerConfig> config_;
   std::optional<ValidOptionValues> values_;
   SANE_Status start_scan_result_;
+  bool call_start_job_;
   SANE_Status read_scan_data_result_;
+  bool cancel_scan_result_;
   bool scan_running_;
   bool cancelled_;
   std::optional<ScanParameters> params_;

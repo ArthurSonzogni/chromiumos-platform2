@@ -81,6 +81,14 @@ class MockDeviceTracker : public DeviceTracker {
               CloseScanner,
               (const CloseScannerRequest&),
               (override));
+  MOCK_METHOD(StartPreparedScanResponse,
+              StartPreparedScan,
+              (const StartPreparedScanRequest&),
+              (override));
+  MOCK_METHOD(CancelScanResponse,
+              CancelScan,
+              (const CancelScanRequest& cancel_scan_request),
+              (override));
 };
 
 class DBusServiceAdaptorTest : public ::testing::Test {
@@ -140,12 +148,25 @@ TEST_F(DBusServiceAdaptorTest, GetNextImage) {
   dbus_service.GetNextImage(std::move(response), request, std::move(out_fd));
 }
 
-TEST_F(DBusServiceAdaptorTest, CancelScan) {
+TEST_F(DBusServiceAdaptorTest, CancelScanWithoutJobHandle) {
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
                                          tracker_.get(), {});
   CancelScanRequest request;
+  EXPECT_CALL(*tracker_, CancelScan(EqualsProto(request))).Times(0);
   EXPECT_CALL(*manager_, CancelScan(EqualsProto(request)));
-  dbus_service.CancelScan(request);
+  CancelScanResponse response = dbus_service.CancelScan(request);
+  EXPECT_THAT(response, EqualsProto(CancelScanResponse()));
+}
+
+TEST_F(DBusServiceAdaptorTest, CancelScanByJobHandle) {
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
+                                         tracker_.get(), {});
+  CancelScanRequest request;
+  request.mutable_job_handle()->set_token("TestJobHandle");
+  EXPECT_CALL(*tracker_, CancelScan(EqualsProto(request)));
+  EXPECT_CALL(*manager_, CancelScan(EqualsProto(request))).Times(0);
+  CancelScanResponse response = dbus_service.CancelScan(request);
+  EXPECT_THAT(response, EqualsProto(CancelScanResponse()));
 }
 
 TEST_F(DBusServiceAdaptorTest, ToggleDebugging) {
@@ -223,7 +244,7 @@ TEST_F(DBusServiceAdaptorTest, StartPreparedScan) {
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
                                          tracker_.get(), {});
   StartPreparedScanRequest request;
-  // TODO(b/297443322): Implement check for real behavior once implemented.
+  EXPECT_CALL(*tracker_.get(), StartPreparedScan(EqualsProto(request)));
   StartPreparedScanResponse response = dbus_service.StartPreparedScan(request);
   EXPECT_THAT(response, EqualsProto(StartPreparedScanResponse()));
 }

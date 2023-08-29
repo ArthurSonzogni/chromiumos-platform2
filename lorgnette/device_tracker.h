@@ -102,6 +102,14 @@ class DeviceTracker {
   // Any in-progress jobs will be canceled and the handle is no longer valid.
   virtual CloseScannerResponse CloseScanner(const CloseScannerRequest& request);
 
+  // StartPreparedScan initiates a scan using the current option values.  Any
+  // previous in-progress jobs will be canceled.
+  virtual StartPreparedScanResponse StartPreparedScan(
+      const StartPreparedScanRequest& request);
+
+  // CancelScan cancels a scan that was previously started by StartPreparedScan.
+  virtual CancelScanResponse CancelScan(const CancelScanRequest& request);
+
  private:
   struct DiscoverySessionState {
     std::string client_id;
@@ -185,6 +193,10 @@ class DeviceTracker {
 
   // Mapping from scanner handles to open scanner state.
   base::flat_map<std::string, OpenScannerState> open_scanners_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Mapping from scan job handles to the associated scanner handle.
+  base::flat_map<std::string, std::string> active_jobs_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Keep as the last member variable.

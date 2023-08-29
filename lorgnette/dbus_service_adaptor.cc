@@ -117,7 +117,11 @@ CancelScanResponse DBusServiceAdaptor::CancelScan(
     const CancelScanRequest& request) {
   ScopeLogger scope("DBusServiceAdaptor::CancelScan");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return manager_->CancelScan(request);
+  if (request.has_job_handle()) {
+    return device_tracker_->CancelScan(request);
+  } else {
+    return manager_->CancelScan(request);
+  }
 }
 
 SetDebugConfigResponse DBusServiceAdaptor::SetDebugConfig(
@@ -172,8 +176,7 @@ StartPreparedScanResponse DBusServiceAdaptor::StartPreparedScan(
     const StartPreparedScanRequest& request) {
   ScopeLogger scope("DBusServiceAdaptor::StartPreparedScan");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // TODO(b/297443322): Implement StartPreparedScan.
-  return {};
+  return device_tracker_->StartPreparedScan(request);
 }
 
 ReadScanDataResponse DBusServiceAdaptor::ReadScanData(

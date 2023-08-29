@@ -548,4 +548,148 @@ CloseScannerResponse DeviceTracker::CloseScanner(
   return response;
 }
 
+StartPreparedScanResponse DeviceTracker::StartPreparedScan(
+    const StartPreparedScanRequest& request) {
+  LOG(INFO) << __func__
+            << ": Scan requested on device: " << request.scanner().token();
+
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  StartPreparedScanResponse response;
+  *response.mutable_scanner() = request.scanner();
+
+  if (!request.has_scanner() || request.scanner().token().empty()) {
+    LOG(ERROR) << __func__
+               << ": StartPreparedScanRequest is missing scanner handle";
+    response.set_result(OPERATION_RESULT_INVALID);
+    return response;
+  }
+  const std::string& handle = request.scanner().token();
+
+  if (!base::Contains(open_scanners_, handle)) {
+    LOG(WARNING) << __func__ << ": No open handle: " << handle;
+    response.set_result(OPERATION_RESULT_MISSING);
+    return response;
+  }
+  OpenScannerState& state = open_scanners_[handle];
+
+  if (request.image_format().empty() ||
+      !base::Contains(state.device->GetSupportedFormats(),
+                      request.image_format())) {
+    LOG(ERROR) << __func__ << ": Unsupported image format requested: "
+               << request.image_format();
+    response.set_result(OPERATION_RESULT_INVALID);
+    return response;
+  }
+
+  std::optional<std::string> job_id = state.device->GetCurrentJob();
+  if (job_id.has_value()) {
+    LOG(WARNING) << __func__ << ": Canceling existing job " << job_id.value();
+    brillo::ErrorPtr error;
+    if (!state.device->CancelScan(&error)) {
+      LOG(WARNING) << __func__ << ": Failed to cancel scan " << job_id.value()
+                   << ": " << error->GetMessage();
+      // Continue because starting a new scan may reset the backend's state.
+      // If it doesn't, we'll return an error from StartScan() later.
+    }
+    active_jobs_.erase(job_id.value());
+  }
+
+  brillo::ErrorPtr error;
+  SANE_Status status = state.device->StartScan(&error);
+  if (status != SANE_STATUS_GOOD) {
+    LOG(ERROR) << __func__ << ": Failed to start scan on device " << handle
+               << ": " << sane_strstatus(status);
+    response.set_result(ToOperationResult(status));
+    return response;
+  }
+
+  job_id = state.device->GetCurrentJob();
+  if (!job_id.has_value()) {
+    LOG(ERROR) << __func__ << ": Job was started, but no ID available";
+    response.set_result(OPERATION_RESULT_INTERNAL_ERROR);
+
+    // Try to cancel the scan since the user can't do anything with it.  We're
+    // already returning an error, so don't do anything with the result.
+    state.device->CancelScan(&error);
+
+    return response;
+  }
+  JobHandle job;
+  job.set_token(job_id.value());
+  active_jobs_[job_id.value()] = handle;
+
+  LOG(INFO) << __func__ << ": Started scan job " << job_id.value()
+            << " on device " << handle;
+  response.set_result(OPERATION_RESULT_SUCCESS);
+  *response.mutable_job_handle() = std::move(job);
+  return response;
+}
+
+CancelScanResponse DeviceTracker::CancelScan(const CancelScanRequest& request) {
+  CHECK(request.has_job_handle())
+      << "Manager::CancelScan must be used to cancel by UUID";
+
+  LOG(INFO) << __func__
+            << ": Cancel requested for job: " << request.job_handle().token();
+
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  CancelScanResponse response;
+  *response.mutable_job_handle() = request.job_handle();
+
+  if (request.job_handle().token().empty()) {
+    LOG(ERROR) << __func__ << ": CancelScanRequest is missing job handle";
+    response.set_result(OPERATION_RESULT_INVALID);
+    response.set_failure_reason("CancelScan request is missing job handle");
+    return response;
+  }
+  if (!request.scan_uuid().empty()) {
+    LOG(WARNING) << __func__
+                 << ": Request with job handle will ignore redundant UUID: "
+                 << request.scan_uuid();
+  }
+  const std::string& job_handle = request.job_handle().token();
+
+  if (!base::Contains(active_jobs_, job_handle)) {
+    LOG(ERROR) << __func__ << ": No job found for handle " << job_handle;
+    response.set_failure_reason("No scan job found for handle " + job_handle);
+    response.set_result(OperationResult::OPERATION_RESULT_INVALID);
+    return response;
+  }
+  const std::string& device_handle = active_jobs_[job_handle];
+
+  if (!base::Contains(open_scanners_, device_handle)) {
+    LOG(ERROR) << __func__ << ": No open scanner handle: " << device_handle;
+    response.set_failure_reason("No open scanner found for job handle " +
+                                job_handle);
+    response.set_result(OPERATION_RESULT_MISSING);
+    active_jobs_.erase(job_handle);
+    return response;
+  }
+  OpenScannerState& state = open_scanners_[device_handle];
+
+  if (state.device->GetCurrentJob() != job_handle) {
+    LOG(ERROR) << __func__ << ": Job is not currently active: " << job_handle;
+    response.set_failure_reason("Job has already been cancelled");
+    response.set_result(OPERATION_RESULT_CANCELLED);
+    active_jobs_.erase(job_handle);
+    return response;
+  }
+
+  brillo::ErrorPtr error;
+  if (!state.device->CancelScan(&error)) {
+    LOG(ERROR) << __func__ << ": Failed to cancel job: " << error->GetMessage();
+    response.set_failure_reason(error->GetMessage());
+    response.set_result(OPERATION_RESULT_INTERNAL_ERROR);
+    active_jobs_.erase(job_handle);
+    return response;
+  }
+
+  active_jobs_.erase(job_handle);
+  response.set_success(true);
+  response.set_result(OPERATION_RESULT_SUCCESS);
+  return response;
+}
+
 }  // namespace lorgnette

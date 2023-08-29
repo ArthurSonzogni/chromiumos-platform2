@@ -92,7 +92,12 @@ SANE_Status LibsaneWrapperFake::sane_get_parameters(SANE_Handle h,
 }
 
 SANE_Status LibsaneWrapperFake::sane_start(SANE_Handle h) {
-  return SANE_STATUS_IO_ERROR;
+  auto elem = scanners_.find(h);
+  if (elem == scanners_.end()) {
+    return SANE_STATUS_INVAL;
+  }
+  FakeScanner& scanner = elem->second;
+  return scanner.sane_start_result;
 }
 
 SANE_Status LibsaneWrapperFake::sane_read(SANE_Handle h,
@@ -108,8 +113,9 @@ SANE_Handle LibsaneWrapperFake::CreateScanner(const std::string& name) {
   static size_t scanner_id = 0;
   SANE_Handle h = reinterpret_cast<SANE_Handle>(++scanner_id);
   scanners_[h] = {
-      name,  // name
-      h,     // handle
+      .name = name,
+      .handle = h,
+      .sane_start_result = SANE_STATUS_IO_ERROR,
   };
   return h;
 }
@@ -133,6 +139,14 @@ void LibsaneWrapperFake::SetOptionValue(SANE_Handle handle,
   FakeScanner& scanner = elem->second;
   CHECK(field < scanner.values.size());
   scanner.values[field] = value;
+}
+
+void LibsaneWrapperFake::SetSaneStartResult(SANE_Handle handle,
+                                            SANE_Status result) {
+  auto elem = scanners_.find(handle);
+  CHECK(elem != scanners_.end());
+  FakeScanner& scanner = elem->second;
+  scanner.sane_start_result = result;
 }
 
 }  // namespace lorgnette
