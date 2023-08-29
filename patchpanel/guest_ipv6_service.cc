@@ -25,7 +25,6 @@
 #include <brillo/process/process.h>
 #include <net-base/ipv6_address.h>
 
-#include "patchpanel/ipc.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -58,12 +57,16 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
 bool CreateConfigFile(const std::string& ifname,
                       const net_base::IPv6CIDR& prefix,
                       const std::vector<std::string>& rdnss,
-                      const std::optional<int>& mtu) {
+                      const std::optional<int>& mtu,
+                      const std::optional<int>& hop_limit) {
   std::vector<std::string> lines;
   lines.push_back(base::StringPrintf("interface %s {", ifname.c_str()));
   lines.push_back("  AdvSendAdvert on;");
   if (mtu) {
     lines.push_back(base::StringPrintf("  AdvLinkMTU %d;", *mtu));
+  }
+  if (hop_limit) {
+    lines.push_back(base::StringPrintf("  AdvCurHopLimit %d;", *hop_limit));
   }
   lines.push_back(
       base::StringPrintf("  prefix %s {", prefix.ToString().c_str()));
@@ -129,6 +132,7 @@ void GuestIPv6Service::StartForwarding(
     const ShillClient::Device& upstream_shill_device,
     const std::string& ifname_downlink,
     const std::optional<int>& mtu,
+    const std::optional<int>& hop_limit,
     bool downlink_is_tethering) {
   LOG(INFO) << "Starting IPv6 forwarding between uplink: "
             << upstream_shill_device << ", downlink: " << ifname_downlink;
@@ -156,7 +160,7 @@ void GuestIPv6Service::StartForwarding(
              forward_method_override_.end()) {
     forward_method = forward_method_override_[ifname_uplink];
     forward_record_[ifname_uplink] = {
-        forward_method, {ifname_downlink}, std::nullopt};
+        forward_method, {ifname_downlink}, std::nullopt, std::nullopt};
   } else {
     forward_method = GetForwardMethodByDeviceType(upstream_shill_device.type);
 
@@ -166,12 +170,15 @@ void GuestIPv6Service::StartForwarding(
       return;
     }
     forward_record_[ifname_uplink] = {
-        forward_method, {ifname_downlink}, std::nullopt};
+        forward_method, {ifname_downlink}, std::nullopt, std::nullopt};
   }
 
-  // Set the MTU value to |forward_record_|.
+  // Set the MTU and CurHopLimit value to |forward_record_|.
   if (mtu && forward_record_[ifname_uplink].mtu != *mtu) {
     forward_record_[ifname_uplink].mtu = *mtu;
+  }
+  if (hop_limit && forward_record_[ifname_uplink].hop_limit != *hop_limit) {
+    forward_record_[ifname_uplink].hop_limit = *hop_limit;
   }
 
   if (!datapath_->MaskInterfaceFlags(ifname_uplink, IFF_ALLMULTI)) {
@@ -227,7 +234,8 @@ void GuestIPv6Service::StartForwarding(
   if (forward_method == ForwardMethod::kMethodRAServer) {
     if (!StartRAServer(ifname_downlink, IPAddressTo64BitPrefix(*uplink_ip),
                        uplink_dns_[ifname_uplink],
-                       forward_record_[ifname_uplink].mtu)) {
+                       forward_record_[ifname_uplink].mtu,
+                       forward_record_[ifname_uplink].hop_limit)) {
       LOG(WARNING) << "Failed to start RA server on downlink "
                    << ifname_downlink << " with uplink " << ifname_uplink
                    << " ip " << *uplink_ip;
@@ -411,7 +419,8 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
         }
 
         if (!StartRAServer(ifname_downlink, new_prefix, uplink_dns_[ifname],
-                           forward_record_[ifname].mtu)) {
+                           forward_record_[ifname].mtu,
+                           forward_record_[ifname].hop_limit)) {
           LOG(WARNING) << "Failed to start RA server on downlink "
                        << ifname_downlink << " with uplink " << ifname << " ip "
                        << new_uplink_ip;
@@ -459,8 +468,8 @@ void GuestIPv6Service::UpdateUplinkIPv6DNS(
       if (uplink_ip) {
         const auto prefix = IPAddressTo64BitPrefix(*uplink_ip);
         StopRAServer(ifname_downlink);
-        if (!StartRAServer(ifname_downlink, prefix, sorted_dns,
-                           it->second.mtu)) {
+        if (!StartRAServer(ifname_downlink, prefix, sorted_dns, it->second.mtu,
+                           it->second.hop_limit)) {
           LOG(WARNING) << "Failed to start RA server on downlink "
                        << ifname_downlink << " with uplink " << ifname << " ip "
                        << *uplink_ip;
@@ -493,10 +502,11 @@ void GuestIPv6Service::SetForwardMethod(
     // Need a copy here since StopUplink() will modify the record
     auto downlinks = it->second.downstream_ifnames;
     auto mtu = it->second.mtu;
+    auto hop_limit = it->second.hop_limit;
 
     StopUplink(upstream_shill_device);
     for (const auto& downlink : downlinks) {
-      StartForwarding(upstream_shill_device, downlink, mtu);
+      StartForwarding(upstream_shill_device, downlink, mtu, hop_limit);
     }
   }
 }
@@ -596,14 +606,16 @@ const std::set<std::string>& GuestIPv6Service::UplinkToDownlinks(
 bool GuestIPv6Service::StartRAServer(const std::string& ifname,
                                      const net_base::IPv6CIDR& prefix,
                                      const std::vector<std::string>& rdnss,
-                                     const std::optional<int>& mtu) {
+                                     const std::optional<int>& mtu,
+                                     const std::optional<int>& hop_limit) {
   base::FilePath run_path(kRadvdRunDir);
   if (!base::DirectoryExists(run_path)) {
     LOG(ERROR) << "Configuration directory " << kRadvdRunDir
                << " is not available.";
     return false;
   }
-  return CreateConfigFile(ifname, prefix, rdnss, mtu) && StartRadvd(ifname);
+  return CreateConfigFile(ifname, prefix, rdnss, mtu, hop_limit) &&
+         StartRadvd(ifname);
 }
 
 bool GuestIPv6Service::StopRAServer(const std::string& ifname) {

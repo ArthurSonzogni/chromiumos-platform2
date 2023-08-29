@@ -997,7 +997,7 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
 
 bool Manager::ValidateDownstreamNetworkRequest(
     const DownstreamNetworkInfo& info) {
-  // TODO(b/239559602) Validate the request and log any invalid argument:
+  // TODO(b/239559602): Validate the request and log any invalid argument:
   //    - |upstream_ifname| should be an active shill Device/Network,
   //    - |downstream_ifname| should not be a shill Device/Network already in
   //    use,
@@ -1046,7 +1046,7 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
     }
     auto dhcp_server_controller = std::make_unique<DHCPServerController>(
         metrics_, kTetheringDHCPServerUmaEventMetrics, info.downstream_ifname);
-    // TODO(b/274722417) Handle the DHCP server exits unexpectedly.
+    // TODO(b/274722417): Handle the DHCP server exits unexpectedly.
     if (!dhcp_server_controller->Start(*config, base::DoNothing())) {
       LOG(ERROR) << __func__ << " " << info << ": Failed to start DHCP server";
       return patchpanel::DownstreamNetworkResult::DHCP_SERVER_FAILURE;
@@ -1056,12 +1056,14 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
   }
 
   // Start IPv6 guest service on the downstream interface if IPv6 is enabled.
-  // TODO(b/278966909) Prevents neighbor discovery between the downstream
+  // TODO(b/278966909): Prevents neighbor discovery between the downstream
   // network and other virtual guests and interfaces in the same upstream
   // group.
+  // TODO(b/289319209): Get the CurHopLimit from upstream, and pass the value-1
+  // to the downstream.
   if (info.enable_ipv6 && info.upstream_device) {
     StartForwarding(*info.upstream_device, info.downstream_ifname,
-                    ForwardingSet{.ipv6 = true}, info.mtu);
+                    ForwardingSet{.ipv6 = true}, info.mtu, std::nullopt);
   }
 
   int fdkey = local_client_fd.release();
@@ -1079,12 +1081,13 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
 void Manager::StartForwarding(const ShillClient::Device& shill_device,
                               const std::string& ifname_virtual,
                               const ForwardingSet& fs,
-                              const std::optional<int>& mtu) {
+                              const std::optional<int>& mtu,
+                              const std::optional<int>& hop_limit) {
   if (shill_device.ifname.empty() || ifname_virtual.empty())
     return;
 
   if (fs.ipv6) {
-    ipv6_svc_->StartForwarding(shill_device, ifname_virtual, mtu);
+    ipv6_svc_->StartForwarding(shill_device, ifname_virtual, mtu, hop_limit);
   }
 
   if (fs.multicast && IsMulticastInterface(shill_device.ifname)) {

@@ -14,7 +14,6 @@
 #include <base/memory/weak_ptr.h>
 
 #include "patchpanel/datapath.h"
-#include "patchpanel/ipc.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subprocess_controller.h"
 
@@ -45,14 +44,17 @@ class GuestIPv6Service {
 
   // Starts forwarding from the upstream shill Device |upstream_shill_device| to
   // the downstream interface |ifname_downlink|. |mtu| is the MTU of the
-  // upstream. If |mtu| has value, then store it into |forward_record_|.
-  // Otherwise, use the value which is previously stored at |forward_record_|.
+  // upstream. |hop_limit| is the CurHopLimit for the downstream. If |mtu| and
+  // |hop_limit| have values, then store them into |forward_record_|. Otherwise,
+  // use the value which is previously stored at |forward_record_|.
   //
-  // Note: the MTU value is only used when the forwarding method is RA server.
-  // If there is no stored MTU value, RA server does not announce MTU value.
+  // Note: the MTU and CurHopLimit values are only used when the forwarding
+  // method is RA server. If there is no stored value, RA server does not
+  // announce them.
   void StartForwarding(const ShillClient::Device& upstream_shill_device,
                        const std::string& ifname_downlink,
                        const std::optional<int>& mtu = std::nullopt,
+                       const std::optional<int>& hop_limit = std::nullopt,
                        bool downlink_is_tethering = false);
 
   void StopForwarding(const ShillClient::Device& upstream_shill_device,
@@ -99,7 +101,8 @@ class GuestIPv6Service {
   virtual bool StartRAServer(const std::string& ifname,
                              const net_base::IPv6CIDR& prefix,
                              const std::vector<std::string>& rdnss,
-                             const std::optional<int>& mtu);
+                             const std::optional<int>& mtu,
+                             const std::optional<int>& hop_limit);
   virtual bool StopRAServer(const std::string& ifname);
 
   // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
@@ -111,6 +114,7 @@ class GuestIPv6Service {
     ForwardMethod method;
     std::set<std::string> downstream_ifnames;
     std::optional<int> mtu;
+    std::optional<int> hop_limit;
   };
 
   // Helper functions to find corresponding uplink interface for a downlink and

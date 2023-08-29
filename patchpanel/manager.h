@@ -220,7 +220,8 @@ class Manager {
                        const std::string& ifname_virtual,
                        const ForwardingSet& fs = {.ipv6 = true,
                                                   .multicast = true},
-                       const std::optional<int>& mtu = std::nullopt);
+                       const std::optional<int>& mtu = std::nullopt,
+                       const std::optional<int>& hop_limit = std::nullopt);
   void StopForwarding(const ShillClient::Device& shill_device,
                       const std::string& ifname_virtual,
                       const ForwardingSet& fs = {.ipv6 = true,

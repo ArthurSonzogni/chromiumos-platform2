@@ -28,16 +28,21 @@ class GuestIPv6ServiceUnderTest : public GuestIPv6Service {
   GuestIPv6ServiceUnderTest(Datapath* datapath, System* system)
       : GuestIPv6Service(nullptr, datapath, system) {}
 
-  MOCK_METHOD3(SendNDProxyControl,
-               void(NDProxyControlMessage::NDProxyRequestType type,
-                    int32_t if_id_primary,
-                    int32_t if_id_secondary));
-  MOCK_METHOD4(StartRAServer,
-               bool(const std::string& ifname,
-                    const net_base::IPv6CIDR& prefix,
-                    const std::vector<std::string>& rdnss,
-                    const std::optional<int>& mtu));
-  MOCK_METHOD1(StopRAServer, bool(const std::string& ifname));
+  MOCK_METHOD(void,
+              SendNDProxyControl,
+              (NDProxyControlMessage::NDProxyRequestType type,
+               int32_t if_id_primary,
+               int32_t if_id_secondary),
+              (override));
+  MOCK_METHOD(bool,
+              StartRAServer,
+              (const std::string& ifname,
+               const net_base::IPv6CIDR& prefix,
+               const std::vector<std::string>& rdnss,
+               const std::optional<int>& mtu,
+               const std::optional<int>& hop_limit),
+              (override));
+  MOCK_METHOD(bool, StopRAServer, (const std::string& ifname), (override));
 
   void FakeNDProxyNeighborDetectionSignal(
       int if_id, const net_base::IPv6Address& ip6addr) {
@@ -283,6 +288,7 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
 TEST_F(GuestIPv6ServiceTest, RAServer) {
   auto up1_dev = MakeFakeShillDevice("up1", 1);
   const std::optional<int> mtu = 1450;
+  const std::optional<int> hop_limit = 63;
   GuestIPv6ServiceUnderTest target(datapath_.get(), system_.get());
   ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
   ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
@@ -303,12 +309,12 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
                                  101, _));
-  target.StartForwarding(up1_dev, "down1", mtu);
+  target.StartForwarding(up1_dev, "down1", mtu, hop_limit);
 
   EXPECT_CALL(target, StartRAServer("down1",
                                     *net_base::IPv6CIDR::CreateFromCIDRString(
                                         "2001:db8:0:200::/64"),
-                                    std::vector<std::string>{}, mtu))
+                                    std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
   up1_dev.ipconfig.ipv6_cidr =
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
@@ -317,7 +323,7 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
   EXPECT_CALL(target, StartRAServer("down2",
                                     *net_base::IPv6CIDR::CreateFromCIDRString(
                                         "2001:db8:0:200::/64"),
-                                    std::vector<std::string>{}, mtu))
+                                    std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NS_NA, _, _))
@@ -325,8 +331,9 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
                                  102, _));
-  // The previously set MTU should be used when passing std::nullopt.
-  target.StartForwarding(up1_dev, "down2", std::nullopt);
+  // The previously set MTU and CurHopLimit should be used when passing
+  // std::nullopt.
+  target.StartForwarding(up1_dev, "down2", std::nullopt, std::nullopt);
 
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
@@ -345,6 +352,7 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
 TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
   auto up1_dev = MakeFakeShillDevice("up1", 1);
   const std::optional<int> mtu = 1450;
+  const std::optional<int> hop_limit = 63;
   GuestIPv6ServiceUnderTest target(datapath_.get(), system_.get());
   ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
   ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
@@ -352,12 +360,12 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
   target.SetForwardMethod(up1_dev,
                           GuestIPv6Service::ForwardMethod::kMethodRAServer);
 
-  target.StartForwarding(up1_dev, "down1", mtu);
+  target.StartForwarding(up1_dev, "down1", mtu, hop_limit);
 
   EXPECT_CALL(target, StartRAServer("down1",
                                     *net_base::IPv6CIDR::CreateFromCIDRString(
                                         "2001:db8:0:200::/64"),
-                                    std::vector<std::string>{}, mtu))
+                                    std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
   up1_dev.ipconfig.ipv6_cidr =
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
@@ -367,7 +375,7 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
   EXPECT_CALL(target, StartRAServer("down1",
                                     *net_base::IPv6CIDR::CreateFromCIDRString(
                                         "2001:db8:0:100::/64"),
-                                    std::vector<std::string>{}, mtu))
+                                    std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
   up1_dev.ipconfig.ipv6_cidr =
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64");
@@ -380,6 +388,7 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
 TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
   auto up1_dev = MakeFakeShillDevice("up1", 1);
   const std::optional<int> mtu = 1450;
+  const std::optional<int> hop_limit = 63;
   GuestIPv6ServiceUnderTest target(datapath_.get(), system_.get());
   ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
   ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
@@ -387,12 +396,12 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
   target.SetForwardMethod(up1_dev,
                           GuestIPv6Service::ForwardMethod::kMethodRAServer);
 
-  target.StartForwarding(up1_dev, "down1", mtu);
+  target.StartForwarding(up1_dev, "down1", mtu, hop_limit);
 
   EXPECT_CALL(target, StartRAServer("down1",
                                     *net_base::IPv6CIDR::CreateFromCIDRString(
                                         "2001:db8:0:200::/64"),
-                                    std::vector<std::string>{}, mtu))
+                                    std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
   up1_dev.ipconfig.ipv6_cidr =
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
@@ -406,7 +415,7 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
           "down1",
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::/64"),
           std::vector<std::string>{"2001:db8:0:cafe::2", "2001:db8:0:cafe::3"},
-          mtu))
+          mtu, hop_limit))
       .WillOnce(Return(true));
   up1_dev.ipconfig.ipv6_dns_addresses = {"2001:db8:0:cafe::2",
                                          "2001:db8:0:cafe::3"};
@@ -426,7 +435,7 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
       StartRAServer(
           "down1",
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::/64"),
-          std::vector<std::string>{"2001:db8:0:cafe::3"}, mtu))
+          std::vector<std::string>{"2001:db8:0:cafe::3"}, mtu, hop_limit))
       .WillOnce(Return(true));
   up1_dev.ipconfig.ipv6_dns_addresses = {"2001:db8:0:cafe::3"};
   target.UpdateUplinkIPv6DNS(up1_dev);
@@ -438,6 +447,7 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
 TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
   auto up1_dev = MakeFakeShillDevice("up1", 1);
   const std::optional<int> mtu = 1450;
+  const std::optional<int> hop_limit = 63;
   GuestIPv6ServiceUnderTest target(datapath_.get(), system_.get());
   ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
   ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
@@ -451,14 +461,14 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
       SendNDProxyControl(
           NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
           101));
-  target.StartForwarding(up1_dev, "down1", mtu);
+  target.StartForwarding(up1_dev, "down1", mtu, hop_limit);
 
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, 1, 101));
   EXPECT_CALL(target, StartRAServer("down1",
                                     *net_base::IPv6CIDR::CreateFromCIDRString(
                                         "2001:db8:0:200::/64"),
-                                    std::vector<std::string>{}, mtu))
+                                    std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
