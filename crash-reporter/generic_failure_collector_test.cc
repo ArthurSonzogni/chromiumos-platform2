@@ -208,6 +208,9 @@ INSTANTIATE_TEST_SUITE_P(
     GenericFailureCollectorCrashSeverityTest,
     testing::ValuesIn<test_util::ComputeCrashSeverityTestParams>({
         {"suspend-failure", CrashCollector::CrashSeverity::kWarning},
+        {"suspend-failure-executable",
+         CrashCollector::CrashSeverity::kUnspecified},
         {"service-failure", CrashCollector::CrashSeverity::kWarning},
+        {"service-failure-executable", CrashCollector::CrashSeverity::kWarning},
         {"another executable", CrashCollector::CrashSeverity::kUnspecified},
     }));

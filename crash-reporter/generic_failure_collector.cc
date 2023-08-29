@@ -110,7 +110,8 @@ CrashCollector::ComputedCrashSeverity GenericFailureCollector::ComputeSeverity(
       .product_group = Product::kPlatform,
   };
 
-  if ((exec_name == kSuspendFailure) || (exec_name == kServiceFailure)) {
+  if ((exec_name == kSuspendFailure) ||
+      base::StartsWith(exec_name, kServiceFailure)) {
     computed_severity.crash_severity = CrashSeverity::kWarning;
   }
 
