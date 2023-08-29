@@ -66,6 +66,7 @@ const base::FilePath kCameraIdsWithFallbackSolutionFilePath(
 constexpr char kSWPrivacySwitchOn[] = "on";
 constexpr char kSWPrivacySwitchOff[] = "off";
 
+const char kEffectsLibraryPath[] = "/usr/share/cros-camera/libfs";
 }  // namespace
 
 CameraHalAdapter::CameraHalAdapter(
@@ -131,22 +132,12 @@ bool CameraHalAdapter::Start() {
   }
 
   if (FeatureProfile().IsEnabled(FeatureProfile::FeatureType::kEffects)) {
-    LOGF(INFO) << "Effects are enabled, initiating DLC install.";
+    LOGF(INFO) << "Effects are enabled. Setting DLC root path.";
     effects_enabled_ = true;
-    dlc_client_ = DlcClient::Create(
-        base::BindOnce(
-            [](StreamManipulator::RuntimeOptions* options,
-               const base::FilePath& dlc_path) {
-              LOGF(INFO) << "DLC Completed (success): Setting DlcRootPath.";
-              options->SetDlcRootPath(dlc_path);
-            },
-            base::Unretained(&stream_manipulator_runtime_options_)),
-        base::BindOnce([](const std::string& error_msg) {
-          LOGF(ERROR) << "DLC Completed (failed):" << error_msg;
-        }));
-    dlc_client_->InstallDlc();
+    stream_manipulator_runtime_options_.SetDlcRootPath(
+        base::FilePath(kEffectsLibraryPath));
   } else {
-    LOGF(INFO) << "Effects are not enabled, DLC will not be installed.";
+    LOGF(INFO) << "Effects are not enabled, skipping DLC.";
   }
 
   auto future = cros::Future<bool>::Create(nullptr);

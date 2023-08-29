@@ -11,12 +11,12 @@
 #include <base/synchronization/waitable_event.h>
 #include <brillo/syslog_logging.h>
 
-#include "ml_core/dlc/dlc_loader.h"
 #include "ml_core/effects_pipeline.h"
 #include "ml_core/opencl_caching/utils.h"
 
 namespace {
 const char kForceEnableEffectsPath[] = "/run/camera/force_enable_effects";
+const char kEffectsLibraryPath[] = "/usr/share/cros-camera/libfs";
 base::WaitableEvent kEffectApplied;
 
 void SetEffectCallback(bool success) {
@@ -36,13 +36,6 @@ int main(int argc, char* argv[]) {
     return EX_OK;
   }
 
-  cros::DlcLoader dlc_loader;
-  dlc_loader.Run();
-  if (!dlc_loader.DlcLoaded()) {
-    LOG(ERROR) << "Couldn't install DLC. Exiting.";
-    return EX_SOFTWARE;
-  }
-
   base::ScopedTempDir new_cache_dir;
   if (!new_cache_dir.CreateUniqueTempDir()) {
     LOG(ERROR) << "ERROR: Unable to create temporary directory.";
@@ -50,8 +43,8 @@ int main(int argc, char* argv[]) {
   }
   base::FilePath cache_path(new_cache_dir.GetPath());
 
-  auto pipeline = cros::EffectsPipeline::Create(dlc_loader.GetDlcRootPath(),
-                                                nullptr, cache_path);
+  auto pipeline = cros::EffectsPipeline::Create(
+      base::FilePath(kEffectsLibraryPath), nullptr, cache_path);
 
   if (!pipeline) {
     LOG(ERROR) << "Couldn't create pipeline, Exiting.";
