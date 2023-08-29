@@ -79,7 +79,7 @@ class MissiveArgs {
   static constexpr char kBlockingMetricsEnabledParameter[] =
       "blocking_metrics_enabled";
   static constexpr VariationsFeature kConfigFileFeature{
-      "CrOSMissiveConfigurationFile", FEATURE_DISABLED_BY_DEFAULT};
+      "CrOSLateBootMissiveConfigurationFile", FEATURE_DISABLED_BY_DEFAULT};
   struct ConfigFileParameters {
     bool blocking_destinations_enabled = kBlockingDestinationsEnabledDefault;
     bool blocking_metrics_enabled = kBlockingMetricsEnabledDefault;
