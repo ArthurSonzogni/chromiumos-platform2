@@ -12,6 +12,7 @@
 #include <memory>
 
 #include <base/logging.h>
+#include <metrics/timer.h>
 #include <net-base/ip_address.h>
 
 #include "shill/net/rtnl_handler.h"
@@ -34,6 +35,9 @@ SLAACController::~SLAACController() = default;
 
 void SLAACController::Start(
     std::optional<net_base::IPv6Address> link_local_address) {
+  last_provision_timer_ = std::make_unique<chromeos_metrics::Timer>();
+  last_provision_timer_->Start();
+
   address_listener_ = std::make_unique<RTNLListener>(
       RTNLHandler::kRequestAddr,
       base::BindRepeating(&SLAACController::AddressMsgHandler,
@@ -84,6 +88,7 @@ void SLAACController::Stop() {
   StopRDNSSTimer();
   address_listener_.reset();
   rdnss_listener_.reset();
+  last_provision_timer_.reset();
 }
 
 void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
@@ -108,6 +113,12 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
     LOG(ERROR) << "Failed to create IPv6CIDR: address length="
                << addr_bytes.size() << ", prefix length=" << status.prefix_len;
     return;
+  }
+
+  // Only record the duration once. Note that Stop() has no effect if the timer
+  // has already stopped.
+  if (last_provision_timer_) {
+    last_provision_timer_->Stop();
   }
 
   const auto iter = std::find_if(
@@ -280,6 +291,28 @@ void SLAACController::SendRouterSolicitation() {
              reinterpret_cast<sockaddr*>(&dst_addr), sizeof(dst_addr)) < 0) {
     PLOG(WARNING) << "interface " << interface_index_ << ": Error sending RS.";
   }
+}
+
+std::optional<base::TimeDelta>
+SLAACController::GetAndResetLastProvisionDuration() {
+  if (!last_provision_timer_) {
+    return std::nullopt;
+  }
+
+  if (last_provision_timer_->HasStarted()) {
+    // The timer is still running, which means we haven't got any address.
+    return std::nullopt;
+  }
+
+  base::TimeDelta ret;
+  if (!last_provision_timer_->GetElapsedTime(&ret)) {
+    // The timer has not been started. This shouldn't happen since Start() is
+    // called right after the timer is created.
+    return std::nullopt;
+  }
+
+  last_provision_timer_.reset();
+  return ret;
 }
 
 }  // namespace shill

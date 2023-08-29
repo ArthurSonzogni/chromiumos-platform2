@@ -625,6 +625,13 @@ void Network::OnIPv6AddressChanged() {
   for (auto* ev : event_handlers_) {
     ev->OnIPv6ConfiguredWithSLAACAddress(interface_index_);
   }
+
+  std::optional<base::TimeDelta> slaac_duration =
+      slaac_controller_->GetAndResetLastProvisionDuration();
+  if (slaac_duration.has_value()) {
+    metrics_->SendToUMA(Metrics::kMetricSLAACProvisionDurationMillis,
+                        technology_, slaac_duration->InMilliseconds());
+  }
 }
 
 void Network::OnIPv6ConfigUpdated() {

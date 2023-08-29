@@ -11,6 +11,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <metrics/timer.h>
 #include <net-base/ipv6_address.h>
 
 #include "shill/event_dispatcher.h"
@@ -55,6 +56,12 @@ class SLAACController {
   // Get the IPv6 DNS server addresses received from RDNSS.
   mockable std::vector<net_base::IPv6Address> GetRDNSSAddresses() const;
 
+  // Returns the duration from Start() and the first time that this class gets
+  // the SLAAC address information from the kernel, and then resets the value
+  // (i.e., consumes the value). The next call to this function will return
+  // std::nullopt, unless the SLAACController is Start()-ed again.
+  std::optional<base::TimeDelta> GetAndResetLastProvisionDuration();
+
  private:
   // TODO(b/227563210): Refactor to remove friend declaration after moving all
   // SLAAC functionality from DeviceInfo and Network to SLAACController.
@@ -96,6 +103,10 @@ class SLAACController {
 
   // Callbacks registered by RegisterCallbacks().
   UpdateCallback update_callback_;
+
+  // The timer to measure the duration from the last Start() until we get the
+  // SLAAC address from the kernel for the first time.
+  std::unique_ptr<chromeos_metrics::Timer> last_provision_timer_;
 
   // Owned by Network
   ProcFsStub* proc_fs_;

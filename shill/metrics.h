@@ -1033,6 +1033,14 @@ class Metrics {
       .num_buckets = kTimerHistogramNumBuckets,
   };
 
+  static constexpr HistogramMetric<NameByTechnology>
+      kMetricSLAACProvisionDurationMillis = {
+          .n = NameByTechnology{"SLAACProvisionDurationMillis"},
+          .min = 1,
+          .max = 30000,  // 30 seconds
+          .num_buckets = kTimerHistogramNumBuckets,
+  };
+
   // Our disconnect enumeration values are 0 (System Disconnect) and
   // 1 (User Disconnect), see histograms.xml, but Chrome needs a minimum
   // enum value of 1 and the minimum number of buckets needs to be 3 (see
