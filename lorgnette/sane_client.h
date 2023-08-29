@@ -13,63 +13,11 @@
 
 #include <base/files/file_path.h>
 #include <brillo/errors/error.h>
-#include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <sane/sane.h>
 
+#include "lorgnette/sane_device.h"
+
 namespace lorgnette {
-
-struct ValidOptionValues {
-  std::vector<uint32_t> resolutions;
-  std::vector<DocumentSource> sources;
-  std::vector<std::string> color_modes;
-};
-
-enum FrameFormat {
-  kGrayscale,
-  kRGB,
-};
-
-struct ScanParameters {
-  FrameFormat format;
-  int bytes_per_line;
-  int pixels_per_line;
-  int lines;
-  int depth;
-};
-
-// This class represents an active connection to a scanning device.
-// At most 1 active connection to a particular device is allowed at once.
-// This class is thread-compatible, but not thread-safe.
-class SaneDevice {
- public:
-  virtual ~SaneDevice() {}
-
-  virtual std::optional<ValidOptionValues> GetValidOptionValues(
-      brillo::ErrorPtr* error) = 0;
-
-  virtual std::optional<int> GetScanResolution(brillo::ErrorPtr* error) = 0;
-  virtual bool SetScanResolution(brillo::ErrorPtr* error, int resolution) = 0;
-  virtual std::optional<std::string> GetDocumentSource(
-      brillo::ErrorPtr* error) = 0;
-  virtual bool SetDocumentSource(brillo::ErrorPtr* error,
-                                 const std::string& source_name) = 0;
-  virtual std::optional<ColorMode> GetColorMode(brillo::ErrorPtr* error) = 0;
-  virtual bool SetColorMode(brillo::ErrorPtr* error, ColorMode color_mode) = 0;
-  virtual bool SetScanRegion(brillo::ErrorPtr* error,
-                             const ScanRegion& region) = 0;
-  virtual std::optional<ScannerConfig> GetCurrentConfig(
-      brillo::ErrorPtr* error) = 0;
-  virtual SANE_Status StartScan(brillo::ErrorPtr* error) = 0;
-  virtual std::optional<ScanParameters> GetScanParameters(
-      brillo::ErrorPtr* error) = 0;
-  virtual SANE_Status ReadScanData(brillo::ErrorPtr* error,
-                                   uint8_t* buf,
-                                   size_t count,
-                                   size_t* read_out) = 0;
-
-  // This function is thread-safe.
-  virtual bool CancelScan(brillo::ErrorPtr* error) = 0;
-};
 
 // This class represents a connection to the scanner library SANE.  Once
 // created, it will initialize a connection to SANE, and it will disconnect

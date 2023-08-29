@@ -28,6 +28,7 @@
 
 #include "lorgnette/enums.h"
 #include "lorgnette/sane_client_fake.h"
+#include "lorgnette/sane_device_fake.h"
 #include "lorgnette/test_util.h"
 
 using brillo::dbus_utils::MockDBusMethodResponse;
