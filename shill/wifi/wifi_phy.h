@@ -33,11 +33,26 @@ struct ConcurrencyCombination {
 // the netlink command NL80211_CMD_NEW_WIPHY and ends with
 // NL80211_CMD_DEL_WIPHY.
 
-// TODO(b/244630773): Update WiFiPhy to store phy cabilities, and update the
+// TODO(b/244630773): Update WiFiPhy to store phy capabilities, and update the
 // documentation accordingly.
 
 class WiFiPhy {
  public:
+  // Concurrency support level.
+  enum class ConcurrencySupportLevel : char {
+    // Single mode means no concurrency.
+    SingleMode,
+    // Single-Channel Concurrency, able to handle multiple concurrent functions
+    // only on the same frequency.
+    SCC,
+    // Multi-Channel Concurrency, able to handle multiple concurrent functions
+    // on multiple frequencies of the same band.
+    MCC,
+    // Dual Band Simultaneous, able to handle multiple concurrent functions
+    // on multiple frequencies of two bands.
+    DBS,
+  };
+
   explicit WiFiPhy(uint32_t phy_index);
 
   virtual ~WiFiPhy();
@@ -87,13 +102,20 @@ class WiFiPhy {
   // Return true if the phy supports AP interface type, false otherwise.
   mockable bool SupportAPMode() const;
 
-  // Return true if the phy supports |iface_type1|/|iface_type2| concurrency,
-  // false otherwise.
-  bool SupportConcurrency(nl80211_iftype iface_type1,
-                          nl80211_iftype iface_type2) const;
+  // Helper functions to retrieve WiFiPhy capabilities.
+  // Return true if the phy supports P2P interface type, false otherwise.
+  mockable bool SupportP2PMode() const;
+
+  // Return number of channels the phy supports |iface_type1|/|iface_type2|
+  // concurrency, 0 for no concurrency.
+  uint32_t SupportConcurrency(nl80211_iftype iface_type1,
+                              nl80211_iftype iface_type2) const;
 
   // Return true if the phy supports AP/STA concurrency, false otherwise.
   mockable bool SupportAPSTAConcurrency() const;
+
+  // Return level of P2P/STA concurrency.
+  mockable ConcurrencySupportLevel P2PSTAConcurrency() const;
 
   // This structure keeps information about frequency reported in PHY dump.
   // |flags| is a bitmap with bits corresponding to NL80211_FREQUENCY_ATTR_*

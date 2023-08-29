@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <numeric>
 #include <utility>
 
@@ -221,8 +222,15 @@ bool WiFiPhy::SupportAPMode() const {
   return SupportsIftype(NL80211_IFTYPE_AP);
 }
 
-bool WiFiPhy::SupportConcurrency(nl80211_iftype iface_type1,
-                                 nl80211_iftype iface_type2) const {
+bool WiFiPhy::SupportP2PMode() const {
+  return SupportsIftype(NL80211_IFTYPE_P2P_GO) &&
+         SupportsIftype(NL80211_IFTYPE_P2P_CLIENT) &&
+         SupportsIftype(NL80211_IFTYPE_P2P_DEVICE);
+}
+
+uint32_t WiFiPhy::SupportConcurrency(nl80211_iftype iface_type1,
+                                     nl80211_iftype iface_type2) const {
+  uint32_t max_channels = 0;
   for (auto comb : concurrency_combs_) {
     if (comb.max_num < 2) {
       // Support less than 2 interfaces combination, skip this combination.
@@ -252,14 +260,31 @@ bool WiFiPhy::SupportConcurrency(nl80211_iftype iface_type1,
     if (support_type1 && support_type2) {
       // This combination already satisfies concurrency, skip checking the rest
       // combinations.
-      return true;
+      max_channels = std::max(max_channels, comb.num_channels);
     }
   }
-  return false;
+  return max_channels;
 }
 
 bool WiFiPhy::SupportAPSTAConcurrency() const {
-  return SupportConcurrency(NL80211_IFTYPE_AP, NL80211_IFTYPE_STATION);
+  return SupportConcurrency(NL80211_IFTYPE_AP, NL80211_IFTYPE_STATION) > 0;
+}
+
+WiFiPhy::ConcurrencySupportLevel WiFiPhy::P2PSTAConcurrency() const {
+  // For now, we assume we need both P2P-GO and -Client modes need
+  // to be concurrent with STA.
+  auto go_conc =
+      SupportConcurrency(NL80211_IFTYPE_P2P_GO, NL80211_IFTYPE_STATION);
+  auto client_conc =
+      SupportConcurrency(NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_STATION);
+  switch ((go_conc < client_conc) ? go_conc : client_conc) {
+    case 0:
+      return ConcurrencySupportLevel::SingleMode;
+    case 1:
+      return ConcurrencySupportLevel::SCC;
+    default:  // (2+)
+      return ConcurrencySupportLevel::MCC;
+  }
 }
 
 void WiFiPhy::DumpFrequencies() const {

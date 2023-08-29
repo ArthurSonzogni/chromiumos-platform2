@@ -433,7 +433,7 @@ const WiFiPhy::Frequencies kNewWiphyNlMsg_AllFrequencies = {
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message which includes the
 // attribute NL80211_ATTR_INTERFACE_COMBINATIONS. The combination in this
-// message supports single channel on a single interface. The full combintations
+// message supports single channel on a single interface. The full combinations
 // attribute of this message looks like this:
 //
 // valid interface combinations:
@@ -458,7 +458,7 @@ const uint8_t kNewSingleChannelNoAPSTAConcurrencyNlMsg[] = {
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message which includes the
 // attribute NL80211_ATTR_INTERFACE_COMBINATIONS. The combination in this
-// message supports single channel on a single interface. The full combintations
+// message supports single channel on a single interface. The full combinations
 // attribute of this message looks like this:
 //
 // valid interface combinations:
@@ -484,7 +484,7 @@ const uint8_t kNewSingleChannelConcurrencyNlMsg[] = {
 // Bytes representing a NL80211_CMD_NEW_WIPHY message which includes the
 // attribute NL80211_ATTR_INTERFACE_COMBINATIONS. The combination in this
 // message supports multiple channels on multiple interfaces. The full
-// combintations attribute of this message looks like this:
+// combinations attribute of this message looks like this:
 //
 // valid interface combinations:
 //     * #{ managed } <= 2, #{ AP, P2P-client, P2P-GO } <= 2, #{ P2P-device }
@@ -774,6 +774,8 @@ TEST_F(WiFiPhyTest, ParseInterfaceTypes) {
   EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_MESH_POINT));
   EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_OCB));
   EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_NAN));
+  EXPECT_TRUE(wifi_phy_.SupportAPMode());
+  EXPECT_TRUE(wifi_phy_.SupportP2PMode());
 }
 
 TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
@@ -802,6 +804,8 @@ TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
           .num_channels = 1}};
   AssertPhyConcurrencyIsEqualTo(SingleChannelNoAPSTAConcurrencyCombinations);
   AssertApStaConcurrency(false);
+  EXPECT_EQ(wifi_phy_.P2PSTAConcurrency(),
+            WiFiPhy::ConcurrencySupportLevel::SingleMode);
 }
 
 TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
@@ -828,6 +832,8 @@ TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
       .num_channels = 1}};
   AssertPhyConcurrencyIsEqualTo(SingleChannelConcurrencyCombinations);
   AssertApStaConcurrency(true);
+  EXPECT_EQ(wifi_phy_.P2PSTAConcurrency(),
+            WiFiPhy::ConcurrencySupportLevel::SCC);
 }
 
 TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
@@ -878,6 +884,8 @@ TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
   };
   AssertPhyConcurrencyIsEqualTo(MultiChannelConcurrencyCombinations);
   AssertApStaConcurrency(true);
+  EXPECT_EQ(wifi_phy_.P2PSTAConcurrency(),
+            WiFiPhy::ConcurrencySupportLevel::MCC);
 }
 
 TEST_F(WiFiPhyTest, SelectFrequency_Empty) {
