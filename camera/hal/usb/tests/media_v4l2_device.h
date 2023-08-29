@@ -78,6 +78,8 @@ class V4L2Device {
   bool OneCapture();
   bool QueryControl(uint32_t id, v4l2_queryctrl* ctrl);
   bool SetControl(uint32_t id, int32_t value);
+  bool GetRectControl(uint32_t id, v4l2_rect* rect, uint32_t which);
+  bool SetRectControl(uint32_t id, v4l2_rect* rect);
   bool ProbeCaps(v4l2_capability* cap, bool show_caps = false);
   bool GetCropCap(v4l2_cropcap* cropcap);
   bool GetCrop(v4l2_crop* crop);

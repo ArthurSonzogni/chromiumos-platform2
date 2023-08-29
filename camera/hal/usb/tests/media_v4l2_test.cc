@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <linux/uvcvideo.h>
 #include <linux/v4l2-controls.h>
 
 #include <algorithm>
@@ -26,6 +27,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libyuv.h>
+#include <linux/videodev2.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/device_config.h"
@@ -546,7 +548,28 @@ class V4L2Test : public ::testing::Test {
     return true;
   }
 
-  bool ExerciseROI() {
+  bool ValidateControl(uint32_t id, const char* control) {
+    v4l2_queryctrl query_ctrl;
+    if (!dev_.QueryControl(id, &query_ctrl)) {
+      LOGF(ERROR) << "Cannot query control name: " << control;
+      return false;
+    }
+    if (!dev_.SetControl(id, query_ctrl.maximum)) {
+      LOGF(ERROR) << "Cannot set " << control << " to maximum value";
+      return false;
+    }
+    if (!dev_.SetControl(id, query_ctrl.minimum)) {
+      LOGF(ERROR) << "Cannot set " << control << " to minimum value";
+      return false;
+    }
+    if (!dev_.SetControl(id, query_ctrl.default_value)) {
+      LOGF(ERROR) << "Cannot set " << control << " to default value";
+      return false;
+    }
+    return true;
+  }
+
+  bool ExerciseLegacyROI() {
     v4l2_selection selection;
     v4l2_selection selection_min;
     v4l2_selection selection_max;
@@ -670,6 +693,183 @@ class V4L2Test : public ::testing::Test {
       LOGF(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN changed after format change";
       return false;
     }
+
+    return true;
+  }
+
+  bool SupportGlobalROI() {
+    v4l2_queryctrl query_ctrl;
+    return dev_.QueryControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT, &query_ctrl);
+  }
+
+  bool ExerciseGlobalROI() {
+    v4l2_rect rect;
+    v4l2_rect rect_max;
+    v4l2_rect rect_min;
+
+    if (!dev_.GetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT, &rect_min,
+                             V4L2_CTRL_WHICH_MIN_VAL)) {
+      LOGF(ERROR) << "Cannot get min V4L2_CID_UVC_REGION_OF_INTEREST_RECT";
+      return false;
+    }
+
+    if (rect_min.width > kMaxMinRoiWidth ||
+        rect_min.height > kMaxMinRoiHeight) {
+      LOGF(ERROR) << "min ROI: " << rect_min.width << "x" << rect_min.height
+                  << " is too large.";
+      return false;
+    }
+    /* The minimum bounds defines the ROI minimum rectangle size. Only the width
+     * and height are meaningful. The left and top values are all 0s.
+     */
+    if (rect_min.left != 0 || rect_min.top != 0) {
+      LOGF(ERROR) << "min ROI(left, top):(" << rect_min.left << ","
+                  << rect_min.top << ") != (0,0).";
+      return false;
+    }
+    if (!dev_.GetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT, &rect_max,
+                             V4L2_CTRL_WHICH_MAX_VAL)) {
+      LOGF(ERROR) << "Cannot get max V4L2_CID_UVC_REGION_OF_INTEREST_RECT";
+      return false;
+    }
+    if (rect_max.width <= rect_min.width ||
+        rect_max.height <= rect_min.height) {
+      LOGF(ERROR) << "max roi: " << rect_max.width << "x" << rect_max.height
+                  << " is too small.";
+      return false;
+    }
+    SupportedFormat max_resolution = GetMaximumResolution();
+    if (rect_max.width < max_resolution.width ||
+        rect_max.height < max_resolution.height) {
+      LOGF(ERROR) << "max ROI: " << rect_max.width << "x" << rect_max.height
+                  << " is less than: " << max_resolution.width << "x"
+                  << max_resolution.height;
+      return false;
+    }
+    if (!dev_.GetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT, &rect,
+                             V4L2_CTRL_WHICH_DEF_VAL)) {
+      LOGF(ERROR) << "Cannot get def V4L2_CID_UVC_REGION_OF_INTEREST_RECT";
+      return false;
+    }
+    if (rect.width < rect_min.width || rect.height < rect_min.height) {
+      LOGF(ERROR) << "default roi: " << rect.width << "x" << rect.height
+                  << " is too small.";
+      return false;
+    }
+    if (rect.width > rect_max.width || rect.height > rect_max.height) {
+      LOGF(ERROR) << "default ROI: " << rect.width << "x" << rect.height
+                  << " is too large.";
+      return false;
+    }
+
+    v4l2_rect rect_set = {
+        .left = 10,
+        .top = 20,
+        .width = (rect_min.width + rect_max.width) / 2,
+        .height = (rect_min.height + rect_max.height) / 2,
+    };
+    if (!dev_.SetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT, &rect_set)) {
+      LOGF(ERROR) << "Cannot set ROI";
+      return false;
+    }
+
+    v4l2_rect rect_new;
+    if (!dev_.GetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT, &rect_new,
+                             V4L2_CTRL_WHICH_CUR_VAL)) {
+      LOGF(ERROR) << "Cannot get ROI";
+      return false;
+    }
+    if (!IsSameRect(rect_set, rect_new)) {
+      LOGF(ERROR) << "ROI set and get mismatch";
+      return false;
+    }
+
+    // ROI should remain unchanged after resolution change.
+    SupportedFormat format = max_resolution;
+    for (const SupportedFormat& fmt : GetSupportedFormats()) {
+      /* Picking a format that's different from the current/max resolution.
+       * We've seen some camera modules unexpectedly change the ROI with it.
+       */
+      if (fmt.width != max_resolution.width ||
+          fmt.height != max_resolution.height) {
+        format = fmt;
+        break;
+      }
+    }
+    ExerciseFormat(format.width, format.height, GetMaxFrameRate(format));
+
+    if (!dev_.GetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT, &rect_new,
+                             V4L2_CTRL_WHICH_CUR_VAL)) {
+      LOGF(ERROR) << "Cannot get ROI";
+      return false;
+    }
+    if (!IsSameRect(rect_new, rect_set)) {
+      LOGF(ERROR) << "ROI changed after format change";
+      return false;
+    }
+
+    if (!dev_.GetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT, &rect_new,
+                             V4L2_CTRL_WHICH_MAX_VAL)) {
+      LOGF(ERROR) << "Cannot get max ROI";
+      return false;
+    }
+    if (!IsSameRect(rect_new, rect_max)) {
+      LOGF(ERROR) << "max ROI changed after format change";
+      return false;
+    }
+
+    if (!dev_.GetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT, &rect_new,
+                             V4L2_CTRL_WHICH_MIN_VAL)) {
+      LOGF(ERROR) << "Cannot get min ROI";
+      return false;
+    }
+    if (!IsSameRect(rect_new, rect_min)) {
+      LOGF(ERROR) << "min ROI changed after format change";
+      return false;
+    }
+
+    return true;
+  }
+
+  bool SupportRelativeROI() {
+    v4l2_queryctrl ctrl;
+    return dev_.QueryControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE,
+                             &ctrl);
+  }
+
+  bool ExerciseRelativeROI() {
+    v4l2_rect rect;
+
+    if (!dev_.GetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE,
+                             &rect, V4L2_CTRL_WHICH_CUR_VAL)) {
+      LOGF(ERROR) << "Cannot get V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE";
+      return false;
+    }
+
+    if (!dev_.SetRectControl(V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE,
+                             &rect)) {
+      LOGF(ERROR) << "Cannot set V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE";
+      return false;
+    }
+
+    /* In the relative coordinate, the ROI may change when resolution changes.
+     * Therefore, we do not verify the ROI rect directly.
+     * Check it is still possible to set the auto control.
+     */
+    SupportedFormat max_resolution = GetMaximumResolution();
+    SupportedFormat format = max_resolution;
+    for (const SupportedFormat& fmt : GetSupportedFormats()) {
+      // Picking a format that's different from the current/max resolution.
+      // We've seen some camera modules unexpectedly change the ROI with it.
+      if (fmt.width != max_resolution.width ||
+          fmt.height != max_resolution.height) {
+        format = fmt;
+        break;
+      }
+    }
+    ExerciseFormat(format.width, format.height, GetMaxFrameRate(format));
+    if (!ValidateControl(V4L2_CID_UVC_REGION_OF_INTEREST_AUTO, "roi auto"))
+      return false;
 
     return true;
   }
@@ -849,11 +1049,24 @@ TEST_F(V4L2Test, SetControl) {
 }
 
 TEST_F(V4L2Test, SetROI) {
-  if (g_env->check_roi_control_) {
-    ExerciseControl(V4L2_CID_REGION_OF_INTEREST_AUTO, "roi auto");
-    ASSERT_TRUE(ExerciseROI());
-  } else {
+  if (!g_env->check_roi_control_)
     GTEST_SKIP() << "Skipped because enable_face_detection is not set";
+
+  if (ValidateControl(V4L2_CID_REGION_OF_INTEREST_AUTO, "roi auto")) {
+    LOGF(INFO) << "Testing legacy ROI";
+    ASSERT_TRUE(ExerciseLegacyROI());
+  } else if (SupportGlobalROI()) {
+    LOGF(INFO) << "Testing ROI with global coordinate";
+    ASSERT_TRUE(
+        ValidateControl(V4L2_CID_UVC_REGION_OF_INTEREST_AUTO, "roi auto"));
+    ASSERT_TRUE(ExerciseGlobalROI());
+  } else if (SupportRelativeROI()) {
+    LOGF(INFO) << "Testing ROI with relative coordinate";
+    ASSERT_TRUE(
+        ValidateControl(V4L2_CID_UVC_REGION_OF_INTEREST_AUTO, "roi auto"));
+    ASSERT_TRUE(ExerciseRelativeROI());
+  } else {
+    FAIL() << "Does not support ROI";
   }
 }
 

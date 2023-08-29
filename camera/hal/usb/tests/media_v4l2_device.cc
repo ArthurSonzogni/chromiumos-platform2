@@ -4,6 +4,7 @@
 
 #include "hal/usb/tests/media_v4l2_device.h"
 
+#include <linux/videodev2.h>
 #include <poll.h>
 #include <sys/stat.h>
 
@@ -937,6 +938,31 @@ bool V4L2Device::SetControl(uint32_t id, int32_t value) {
   control.value = value;
   if (-1 == DoIoctl(VIDIOC_S_CTRL, &control)) {
     PLOGF(ERROR) << base::StringPrintf("VIDIOC_S_CTRL failed");
+    return false;
+  }
+  return true;
+}
+
+bool V4L2Device::GetRectControl(uint32_t id, v4l2_rect* rect, uint32_t which) {
+  v4l2_ext_control control = {.id = id, .size = sizeof(v4l2_rect), .ptr = rect};
+
+  v4l2_ext_controls ext_controls = {
+      .which = which, .count = 1, .controls = &control};
+
+  if (-1 == DoIoctl(VIDIOC_G_EXT_CTRLS, &ext_controls)) {
+    PLOGF(ERROR) << base::StringPrintf("VIDIOC_G_EXT_CTRLS failed");
+    return false;
+  }
+  return true;
+}
+bool V4L2Device::SetRectControl(uint32_t id, v4l2_rect* rect) {
+  v4l2_ext_control control = {.id = id, .size = sizeof(v4l2_rect), .ptr = rect};
+
+  v4l2_ext_controls ext_controls = {
+      .which = V4L2_CTRL_WHICH_CUR_VAL, .count = 1, .controls = &control};
+
+  if (-1 == DoIoctl(VIDIOC_S_EXT_CTRLS, &ext_controls)) {
+    PLOGF(ERROR) << base::StringPrintf("VIDIOC_S_EXT_CTRLS failed");
     return false;
   }
   return true;
