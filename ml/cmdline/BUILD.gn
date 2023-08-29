@@ -12,8 +12,6 @@ group("all") {
 static_library("ml_cmdline_common") {
   sources = [ "../simple.cc" ]
   deps = [ "..:ml_common" ]
-
-  # TODO(b:261604868): ml_common is unnecessarily big dep here. Split it out.
 }
 
 executable("ml_cmdline") {
