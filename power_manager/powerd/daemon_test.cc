@@ -49,9 +49,9 @@
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/lockfile_checker_stub.h"
 #include "power_manager/powerd/system/machine_quirks_stub.h"
+#include "power_manager/powerd/system/mock_power_supply.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
-#include "power_manager/powerd/system/power_supply_stub.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
 #include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/suspend_freezer_stub.h"
@@ -117,7 +117,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         passed_input_watcher_(new system::InputWatcherStub()),
         passed_acpi_wakeup_helper_(new system::AcpiWakeupHelperStub()),
         passed_ec_helper_(new system::CrosEcHelperStub()),
-        passed_power_supply_(new system::PowerSupplyStub()),
+        passed_power_supply_(new system::MockPowerSupply()),
         passed_user_proximity_watcher_(new system::UserProximityWatcherStub()),
         passed_dark_resume_(new system::DarkResumeStub()),
         passed_audio_client_(new system::AudioClientStub()),
@@ -567,7 +567,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   std::unique_ptr<system::InputWatcherStub> passed_input_watcher_;
   std::unique_ptr<system::AcpiWakeupHelperStub> passed_acpi_wakeup_helper_;
   std::unique_ptr<system::CrosEcHelperStub> passed_ec_helper_;
-  std::unique_ptr<system::PowerSupplyStub> passed_power_supply_;
+  std::unique_ptr<system::MockPowerSupply> passed_power_supply_;
   std::unique_ptr<system::UserProximityWatcherStub>
       passed_user_proximity_watcher_;
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
@@ -607,7 +607,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   system::InputWatcherStub* input_watcher_;
   system::AcpiWakeupHelperStub* acpi_wakeup_helper_;
   system::CrosEcHelperStub* ec_helper_;
-  system::PowerSupplyStub* power_supply_;
+  system::MockPowerSupply* power_supply_;
   system::UserProximityWatcherStub* user_proximity_watcher_;
   system::DarkResumeStub* dark_resume_;
   system::AudioClientStub* audio_client_;

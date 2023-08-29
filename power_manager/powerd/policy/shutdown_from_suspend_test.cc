@@ -9,7 +9,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_main_loop_runner.h"
-#include "power_manager/powerd/system/power_supply_stub.h"
+#include "power_manager/powerd/system/mock_power_supply.h"
 #include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/wakeup_timer.h"
 #include "power_manager/powerd/testing/test_environment.h"
@@ -65,7 +65,7 @@ class ShutdownFromSuspendTest : public TestEnvironment {
 
   ShutdownFromSuspend shutdown_from_suspend_;
   FakePrefs prefs_;
-  system::PowerSupplyStub power_supply_;
+  system::MockPowerSupply power_supply_;
   system::SuspendConfiguratorStub configurator_stub_;
   TestMainLoopRunner runner_;
 };

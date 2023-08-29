@@ -29,7 +29,7 @@
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
-#include "power_manager/powerd/system/power_supply_stub.h"
+#include "power_manager/powerd/system/mock_power_supply.h"
 #include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::policy {
@@ -361,7 +361,7 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
   FakeDelegate delegate_;
   policy::BacklightControllerStub backlight_controller_;
   system::InputWatcherStub input_watcher_;
-  system::PowerSupplyStub power_supply_;
+  system::MockPowerSupply power_supply_;
   system::DBusWrapperStub dbus_wrapper_;
   FakePrefs prefs_;
   std::unique_ptr<feature::FakePlatformFeatures> platform_features_;

@@ -283,7 +283,7 @@ static_library("libsystem_stub") {
     "powerd/system/input_watcher_stub.cc",
     "powerd/system/lockfile_checker_stub.cc",
     "powerd/system/machine_quirks_stub.cc",
-    "powerd/system/power_supply_stub.cc",
+    "powerd/system/mock_power_supply.cc",
     "powerd/system/thermal/thermal_device_stub.cc",
     "powerd/system/udev_stub.cc",
     "powerd/system/user_proximity_watcher_stub.cc",
