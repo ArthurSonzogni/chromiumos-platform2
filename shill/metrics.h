@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/strings/string_piece_forward.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
@@ -2299,7 +2298,7 @@ class Metrics {
   MetricsLibrary metrics_library_;
   MetricsLibraryInterface* library_;
   // Randomly generated 32 bytes used as a salt to pseudonymize session tags.
-  base::StringPiece pseudo_tag_salt_;
+  std::string pseudo_tag_salt_;
   std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
   std::unique_ptr<chromeos_metrics::Timer>
       time_between_rekey_and_connection_failure_timer_;

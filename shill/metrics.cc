@@ -17,7 +17,6 @@
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece_forward.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -135,7 +134,7 @@ Metrics::Metrics()
       time_(Time::GetInstance()) {
   char salt[kPseudoTagSaltLen];
   crypto::RandBytes(salt, kPseudoTagSaltLen);
-  pseudo_tag_salt_ = base::StringPiece(salt, kPseudoTagSaltLen);
+  pseudo_tag_salt_ = std::string(salt, kPseudoTagSaltLen);
 }
 
 Metrics::~Metrics() = default;
