@@ -127,9 +127,13 @@ bool JpegReader::Initialize(brillo::ErrorPtr* error,
     cinfo_.Y_density = resolution.value();
   }
 
-  cinfo_.optimize_coding = TRUE;
+  cinfo_.optimize_coding = FALSE;
 
-  jpeg_set_quality(&cinfo_, 95, TRUE);
+  if (!resolution.has_value() || resolution.value() < 300) {
+    jpeg_set_quality(&cinfo_, 90, TRUE);
+  } else {
+    jpeg_set_quality(&cinfo_, 85, TRUE);
+  }
   jpeg_start_compress(&cinfo_, TRUE);
 
   initialized_ = true;
