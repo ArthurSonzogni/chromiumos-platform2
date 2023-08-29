@@ -113,6 +113,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->text_input_manager = nullptr;
   ctx->text_input_extension = nullptr;
   ctx->xdg_output_manager = nullptr;
+  ctx->fractional_scale_manager = nullptr;
 #ifdef GAMEPAD_SUPPORT
   ctx->gaming_input_manager = nullptr;
   ctx->gaming_seat = nullptr;

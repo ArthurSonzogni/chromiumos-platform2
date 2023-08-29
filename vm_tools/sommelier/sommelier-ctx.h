@@ -94,6 +94,7 @@ struct sl_context {
   struct sl_stylus_input_manager* stylus_input_manager;
   struct sl_relative_pointer_manager* relative_pointer_manager;
   struct sl_pointer_constraints* pointer_constraints;
+  struct sl_fractional_scale_manager* fractional_scale_manager;
   struct wl_list outputs;
   struct wl_list seats;
   std::unique_ptr<struct wl_event_source> display_event_source;

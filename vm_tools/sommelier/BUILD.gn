@@ -40,6 +40,7 @@ if (!defined(dark_frame_color)) {
 wayland_protocols = [
   "protocol/aura-shell.xml",
   "protocol/drm.xml",
+  "protocol/fractional-scale-v1.xml",
   "protocol/gaming-input-unstable-v2.xml",
   "protocol/gtk-shell.xml",
   "protocol/keyboard-extension-unstable-v1.xml",
@@ -107,6 +108,7 @@ static_library("libsommelier") {
     "sommelier-ctx.cc",
     "sommelier-data-device-manager.cc",
     "sommelier-display.cc",
+    "sommelier-fractional-scale.cc",
     "sommelier-global.cc",
     "sommelier-gtk-shell.cc",
     "sommelier-inpututils.cc",

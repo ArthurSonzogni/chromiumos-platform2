@@ -40,6 +40,7 @@
 
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "drm-server-protocol.h"         // NOLINT(build/include_directory)
+#include "fractional-scale-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #ifdef GAMEPAD_SUPPORT
 #include "gaming-input-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 #endif
@@ -774,6 +775,22 @@ void sl_registry_handler(void* data,
         static_cast<zxdg_output_manager_v1*>(wl_registry_bind(
             registry, id, &zxdg_output_manager_v1_interface, MIN(3, version)));
     ctx->xdg_output_manager = output_manager;
+  } else if (strcmp(interface, wp_fractional_scale_manager_v1_interface.name) ==
+             0) {
+    struct sl_fractional_scale_manager* fractional_scale_manager =
+        static_cast<sl_fractional_scale_manager*>(
+            malloc(sizeof(struct sl_fractional_scale_manager)));
+    assert(fractional_scale_manager);
+    fractional_scale_manager->ctx = ctx;
+    fractional_scale_manager->id = id;
+    fractional_scale_manager->host_fractional_scale_manager_global = nullptr;
+    fractional_scale_manager->internal =
+        static_cast<wp_fractional_scale_manager_v1*>(wl_registry_bind(
+            registry, id, &wp_fractional_scale_manager_v1_interface, 1));
+    assert(!ctx->fractional_scale_manager);
+    ctx->fractional_scale_manager = fractional_scale_manager;
+    fractional_scale_manager->host_fractional_scale_manager_global =
+        sl_fractional_scale_manager_global_create(ctx);
   }
 }
 

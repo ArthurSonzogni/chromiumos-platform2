@@ -53,6 +53,7 @@ struct sl_pointer_constraints;
 struct sl_window;
 struct sl_host_surface;
 struct sl_host_output;
+struct sl_fractional_scale_manager;
 struct zaura_shell;
 struct zcr_keyboard_extension_v1;
 struct zxdg_output_manager_v1;
@@ -135,6 +136,10 @@ struct sl_viewport {
   wl_fixed_t src_height;
   int32_t dst_width;
   int32_t dst_height;
+};
+
+struct sl_fractional_scale {
+  struct wl_list link;
 };
 
 struct sl_host_callback {
@@ -401,6 +406,13 @@ struct sl_linux_explicit_synchronization {
   struct zwp_linux_explicit_synchronization_v1* internal;
 };
 
+struct sl_fractional_scale_manager {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct sl_global* host_fractional_scale_manager_global;
+  struct wp_fractional_scale_manager_v1* internal;
+};
+
 struct sl_global {
   struct sl_context* ctx;
   const struct wl_interface* interface;
@@ -517,6 +529,9 @@ struct sl_global* sl_text_input_crostini_manager_global_create(
     struct sl_context* ctx);
 
 struct sl_global* sl_pointer_constraints_global_create(struct sl_context* ctx);
+
+struct sl_global* sl_fractional_scale_manager_global_create(
+    struct sl_context* ctx);
 
 void sl_set_display_implementation(struct sl_context* ctx,
                                    struct wl_client* client);
