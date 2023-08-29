@@ -71,7 +71,8 @@ class BRILLO_EXPORT AddressManager {
   // Gets randomized IPv6 address inside |subnet|. Caller is responsible to
   // handle possible duplicated addresses. This method guarantess that the base
   // address of |subnet| is not returned.
-  net_base::IPv6CIDR GetRandomizedIPv6Address(const net_base::IPv6CIDR& subnet);
+  static net_base::IPv6CIDR GetRandomizedIPv6Address(
+      const net_base::IPv6CIDR& subnet);
 
   // Generates IPv6 subnet of |prefix_length| inside |net_block|. This method
   // guarantees that the subnet address created is not equal to the base

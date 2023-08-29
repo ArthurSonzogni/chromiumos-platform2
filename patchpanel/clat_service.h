@@ -62,11 +62,10 @@ class ClatService {
  private:
   bool IsClatRunningDevice(const ShillClient::Device& shill_device);
 
+  std::optional<ShillClient::Device> clat_running_device_;
   // CLAT feature is disabled by default. This value can be changed in
   // `Enable()` and `Disable()`
   bool is_enabled_ = false;
-
-  std::optional<ShillClient::Device> clat_running_device_;
 };
 }  // namespace patchpanel
 

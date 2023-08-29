@@ -4,16 +4,101 @@
 
 #include "patchpanel/clat_service.h"
 
-#include <base/logging.h>
 #include <optional>
+#include <string>
+#include <vector>
 
-#include "base/check.h"
+#include <base/check.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
+#include <base/rand_util.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
+
+#include "patchpanel/address_manager.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
 
-// TODO(b/278970851): Do the actual implementation. ClatService class needs to
-// take a Datapath* argument in constructor.
+namespace {
+constexpr char kTaygaConfigFilePath[] = "/run/tayga/tayga.conf";
+// Proposd in RFC 6052.
+const net_base::IPv6CIDR kWellKnownNAT64Prefix =
+    *net_base::IPv6CIDR::CreateFromStringAndPrefix("64:ff9b::", 96);
+
+// Proposed in RFC 7335. This address is assigned to the tun device and used by
+// IPv4-only applications to communicate with external IPv4 hosts.
+constexpr net_base::IPv4Address kTunnelDeviceIPv4Address(192, 0, 0, 1);
+// Proposed in RFC 7335. This address is assigned to the TAYGA process and used
+// for emitting ICMPv4 errors back to the host.
+constexpr net_base::IPv4Address kTaygaIPv4Address(192, 0, 0, 2);
+
+constexpr char kTunnelDeviceIfName[] = "tun_nat64";
+
+constexpr char kTaygaConfigTemplate[] = R"(tun-device $1
+ipv4-addr $2
+prefix $3
+map $4 $5
+)";
+
+bool RemoveConfigFileIfExists(const base::FilePath& conf_file_path) {
+  if (!base::PathExists(conf_file_path)) {
+    return true;
+  }
+  if (!brillo::DeletePathRecursively(conf_file_path)) {
+    PLOG(ERROR) << "Failed to delete file " << conf_file_path;
+    return false;
+  }
+  return true;
+}
+
+// Creates a config file `/run/tayga/tayga.conf`. An old config file will be
+// overwritten by a new one.
+bool CreateConfigFile(const std::string& ifname,
+                      const net_base::IPv6Address& clat_ipv6_addr) {
+  const std::string contents = base::ReplaceStringPlaceholders(
+      kTaygaConfigTemplate,
+      {
+          /*$1=*/std::string(kTunnelDeviceIfName),
+          /*$2=*/kTaygaIPv4Address.ToString(),
+          /*$3=*/kWellKnownNAT64Prefix.ToString(),
+          /*$4=*/kTunnelDeviceIPv4Address.ToString(),
+          /*$5=*/clat_ipv6_addr.ToString(),
+      },
+      nullptr);
+
+  // TODO(b/278970851): Replace this logic with System::WriteConfigFile.
+  const base::FilePath& conf_file_path = base::FilePath(kTaygaConfigFilePath);
+  if (!base::WriteFile(conf_file_path, contents)) {
+    PLOG(ERROR) << "Failed to write config file of TAYGA";
+    return false;
+  }
+
+  if (chmod(conf_file_path.value().c_str(), S_IRUSR | S_IRGRP | S_IWUSR)) {
+    PLOG(ERROR) << "Failed to set permissions on " << conf_file_path;
+    RemoveConfigFileIfExists(conf_file_path);
+
+    return false;
+  }
+
+  if (chown(conf_file_path.value().c_str(), kPatchpaneldUid, kPatchpaneldGid) !=
+      0) {
+    PLOG(ERROR) << "Failed to change owner group of configuration file "
+                << conf_file_path;
+    RemoveConfigFileIfExists(conf_file_path);
+
+    return false;
+  }
+
+  return true;
+}
+
+}  // namespace
+
 ClatService::ClatService() = default;
 
 // TODO(b/278970851): Do the actual implementation
@@ -119,8 +204,26 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
     return;
   }
 
-  // TODO(b/278970851): Do the actual implementation
-  // Doing network configurations for CLAT and starting CLAT daemon.
+  if (!shill_device.ipconfig.ipv6_cidr) {
+    LOG(ERROR) << shill_device << " doesn't have"
+               << " an IPv6 address";
+    return;
+  }
+
+  const auto ipv6_cidr = AddressManager::GetRandomizedIPv6Address(
+      shill_device.ipconfig.ipv6_cidr->GetPrefixCIDR());
+  if (!CreateConfigFile(kTunnelDeviceIfName, ipv6_cidr.address())) {
+    LOG(ERROR) << "Failed to create " << kTaygaConfigFilePath;
+    return;
+  }
+
+  // TODO(b/278970851): Do the actual implementation to set up network
+  // configurations for CLAT:
+  // - Create the tun device
+  // - Add a route to the tun device
+  // - Start TAYGA process
+  // - Add ND proxy
+  // - Add default route in table 249
 }
 
 void ClatService::StopClat(bool clear_running_device) {
@@ -135,9 +238,15 @@ void ClatService::StopClat(bool clear_running_device) {
     return;
   }
 
-  // TODO(b/278970851): Do the actual implementation
-  // Cleaning up network configurations for CLAT.
+  // TODO(b/278970851): Do the actual implementation to clean up network
+  // configurations for CLAT:
+  // - Remove default route in table 249
+  // - Remove ND proxy
+  // - Kill TAYGA process
+  // - Remove a route to the tun device
+  // - Remove the tun device
 
+  RemoveConfigFileIfExists(base::FilePath(kTaygaConfigFilePath));
   if (clear_running_device) {
     clat_running_device_.reset();
   }
