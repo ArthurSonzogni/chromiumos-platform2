@@ -360,18 +360,22 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchState(
 
 mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
     mojom::EffectsConfigPtr config) {
+  bool dlc_available = stream_manipulator_runtime_options_.GetDlcRootPath() !=
+                       base::FilePath("");
+
   LOG(INFO) << "CameraHalAdapter::SetCameraEffect:"
             << " blur: " << config->blur_enabled
             << " relight: " << config->relight_enabled
             << " replace: " << config->replace_enabled
-            << " blur_level: " << config->blur_level;
+            << " blur_level: " << config->blur_level
+            << " effects_enabled: " << effects_enabled_
+            << " dlc_available: " << dlc_available;
 
   if (!effects_enabled_) {
     return mojom::SetEffectResult::kFeatureDisabled;
   }
 
-  if (stream_manipulator_runtime_options_.GetDlcRootPath() ==
-      base::FilePath("")) {
+  if (!dlc_available) {
     return mojom::SetEffectResult::kDlcUnavailable;
   }
 
