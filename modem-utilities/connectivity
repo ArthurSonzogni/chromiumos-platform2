@@ -46,7 +46,7 @@ get_flimflam_objects() {
 
   dbus_call "${OCF}" / "${OCF}.Manager.GetProperties" \
     | extract_dbus_match "${kind}" \
-    | grep "${filter}"
+    | grep -e "${filter}"
 }
 
 print_properties() {
