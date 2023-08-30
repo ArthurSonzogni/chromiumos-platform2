@@ -17,6 +17,7 @@ source_set("utils") {
     "edid.cc",
     "file_utils.cc",
     "input_device.cc",
+    "multi_function_runner.cc",
     "pipe_utils.cc",
     "type_utils.cc",
     "value_utils.cc",
@@ -39,6 +40,7 @@ if (use.test) {
       "file_test_utils_test.cc",
       "file_utils_test.cc",
       "function_test_utils_test.cc",
+      "multi_function_runner_test.cc",
       "pipe_utils_test.cc",
       "value_utils_test.cc",
     ]
