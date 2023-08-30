@@ -109,7 +109,8 @@ bool RmadInterfaceImpl::StoreStateHistory() {
 void RmadInterfaceImpl::InitializeExternalUtils(
     scoped_refptr<DaemonCallback> daemon_callback) {
   json_store_ = base::MakeRefCounted<JsonStore>(
-      base::FilePath(kDefaultJsonStoreFilePath), false);
+      base::FilePath(kDefaultUnencryptedRmaDirPath).Append(kJsonStoreFilePath),
+      false);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->RegisterStateHandlers(daemon_callback);
   runtime_probe_client_ =

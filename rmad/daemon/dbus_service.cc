@@ -57,7 +57,8 @@ DBusService::DBusService(mojo::PlatformChannelEndpoint endpoint,
                          RmadInterface* rmad_interface)
     : brillo::DBusServiceDaemon(kRmadServiceName),
       rmad_interface_(rmad_interface),
-      state_file_path_(kDefaultJsonStoreFilePath),
+      state_file_path_(base::FilePath(kDefaultUnencryptedRmaDirPath)
+                           .Append(kJsonStoreFilePath)),
       test_dir_path_(
           base::FilePath(kDefaultWorkingDirPath).Append(kTestDirPath)),
       is_external_utils_initialized_(false),

@@ -27,7 +27,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath),
-      unencrypted_preserve_path_(kDefaultUnencryptedPreservePath),
+      unencrypted_preserve_path_(kDefaultUnencryptedPreserveFilePath),
       locked_error_(RMAD_ERROR_NOT_SET) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());

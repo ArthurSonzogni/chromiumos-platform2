@@ -23,10 +23,13 @@ inline constexpr char kRmadInternalMojoPipeName[] = "rmad_internal";
 
 inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
 inline constexpr char kDefaultConfigDirPath[] = "/etc/rmad";
-inline constexpr char kDefaultJsonStoreFilePath[] =
-    "/mnt/stateful_partition/unencrypted/rma-data/state";
-inline constexpr char kDefaultUnencryptedPreservePath[] =
+inline constexpr char kDefaultUnencryptedPreserveFilePath[] =
     "/mnt/stateful_partition/unencrypted/preserve";
+
+// Files in unencrypted RMA directory.
+inline constexpr char kDefaultUnencryptedRmaDirPath[] =
+    "/mnt/stateful_partition/unencrypted/rma-data";
+inline constexpr char kJsonStoreFilePath[] = "state";
 
 // Files for testing purpose.
 inline constexpr char kTestDirPath[] = ".test";
