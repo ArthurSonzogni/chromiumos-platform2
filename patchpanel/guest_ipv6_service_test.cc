@@ -356,6 +356,7 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
   GuestIPv6ServiceUnderTest target(datapath_.get(), system_.get());
   ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
   ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
+  ON_CALL(*system_, IfIndextoname(101)).WillByDefault(Return("down1"));
 
   target.SetForwardMethod(up1_dev,
                           GuestIPv6Service::ForwardMethod::kMethodRAServer);
@@ -379,6 +380,26 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
       .WillOnce(Return(true));
   up1_dev.ipconfig.ipv6_cidr =
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64");
+  target.OnUplinkIPv6Changed(up1_dev);
+
+  // OnUplinkIPv6Changed should cause existing /128 routes to be updated.
+  EXPECT_CALL(
+      *datapath_,
+      AddIPv6HostRoute(
+          "down1",
+          *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::9999/128"),
+          net_base::IPv6Address::CreateFromString("2001:db8:0:100::abcd")));
+  target.FakeNDProxyNeighborDetectionSignal(
+      101, *net_base::IPv6Address::CreateFromString("2001:db8:0:100::9999"));
+
+  EXPECT_CALL(
+      *datapath_,
+      AddIPv6HostRoute(
+          "down1",
+          *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::9999/128"),
+          net_base::IPv6Address::CreateFromString("2001:db8:0:100::1234")));
+  up1_dev.ipconfig.ipv6_cidr =
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::1234/64");
   target.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));

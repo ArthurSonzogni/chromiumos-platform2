@@ -403,7 +403,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
       // route replace` so we don't need to remove the old one first.
       for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
         if (!datapath_->AddIPv6HostRoute(
-                ifname,
+                ifname_downlink,
                 *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip,
                                                                 128),
                 new_uplink_ip)) {
