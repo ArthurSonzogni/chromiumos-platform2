@@ -9,7 +9,9 @@
 
 namespace lorgnette {
 
-static const char* kDbusDomain = brillo::errors::dbus::kDomain;
+extern const char* kDbusDomain;
+extern const char kJpegMimeType[];
+extern const char kPngMimeType[];
 
 }  // namespace lorgnette
 

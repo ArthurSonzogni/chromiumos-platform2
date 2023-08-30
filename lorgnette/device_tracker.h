@@ -139,7 +139,7 @@ class DeviceTracker {
   void ProbeIPPUSBDevice(std::string session_id,
                          std::unique_ptr<UsbDevice> device);
   void EnumerateSANEDevices(std::string session_id);
-  void ProbeSANEDevice(std::string session_id, const ScannerInfo& scanner_info);
+  void ProbeSANEDevice(std::string session_id, ScannerInfo scanner_info);
   void SendEnumerationCompletedSignal(std::string session_id);
   void SendSessionEndingSignal(std::string session_id);
 

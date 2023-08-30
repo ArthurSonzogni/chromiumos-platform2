@@ -299,6 +299,10 @@ void DeviceTracker::ProbeIPPUSBDevice(std::string session_id,
     return;
   }
 
+  for (const std::string& format : sane_device->GetSupportedFormats()) {
+    *scanner_info->add_image_format() = format;
+  }
+
   // TODO(b/277049537): Fetch device UUID from the scanner.
 
   LOG(INFO) << __func__ << ": Device " << device->Description()
@@ -338,11 +342,11 @@ void DeviceTracker::EnumerateSANEDevices(std::string session_id) {
     return;
   }
 
-  for (const ScannerInfo& scanner_info : devices.value()) {
+  for (ScannerInfo& scanner_info : devices.value()) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&DeviceTracker::ProbeSANEDevice,
-                       weak_factory_.GetWeakPtr(), session_id, scanner_info));
+        FROM_HERE, base::BindOnce(&DeviceTracker::ProbeSANEDevice,
+                                  weak_factory_.GetWeakPtr(), session_id,
+                                  std::move(scanner_info)));
   }
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
@@ -351,7 +355,7 @@ void DeviceTracker::EnumerateSANEDevices(std::string session_id) {
 }
 
 void DeviceTracker::ProbeSANEDevice(std::string session_id,
-                                    const ScannerInfo& scanner_info) {
+                                    ScannerInfo scanner_info) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   auto maybe_session = GetSession(session_id);
@@ -375,6 +379,20 @@ void DeviceTracker::ProbeSANEDevice(std::string session_id,
                                known_bus_devs_)) {
       return;
     }
+  }
+
+  // Open the device so we can fetch supported image types.
+  brillo::ErrorPtr error;
+  SANE_Status status;
+  std::unique_ptr<SaneDevice> device =
+      sane_client_->ConnectToDevice(&error, &status, scanner_info.name());
+  if (!device) {
+    LOG(ERROR) << __func__ << ": Failed to open device " << scanner_info.name()
+               << ": " << error->GetMessage();
+    return;
+  }
+  for (const std::string& format : device->GetSupportedFormats()) {
+    *scanner_info.add_image_format() = format;
   }
 
   ScannerListChangedSignal signal;

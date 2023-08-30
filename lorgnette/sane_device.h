@@ -68,6 +68,9 @@ class SaneDevice {
 
   // This function is thread-safe.
   virtual bool CancelScan(brillo::ErrorPtr* error) = 0;
+
+  // MIME types for image formats that can be returned from this scanner.
+  std::vector<std::string> GetSupportedFormats() const;
 };
 
 }  // namespace lorgnette

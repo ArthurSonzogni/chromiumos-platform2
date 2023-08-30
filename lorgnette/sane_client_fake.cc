@@ -11,9 +11,8 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include "lorgnette/constants.h"
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
-
-static const char* kDbusDomain = brillo::errors::dbus::kDomain;
 
 namespace lorgnette {
 

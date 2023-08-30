@@ -293,11 +293,22 @@ TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   // Duplicates of eSCL over ippusb that are filtered out.
   sane_client->AddDevice("pixma:12344321_12AF", "GoogleTest",
                          "eSCL Scanner 3001", "eSCL");
+  auto pixma_scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("pixma:12344321_12AF",
+                                std::move(pixma_scanner));
   sane_client->AddDevice("epson2:libusb:001:001", "GoogleTest",
                          "eSCL Scanner 3002", "eSCL");
+  auto epson2_scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("epson2:libusb:001:001",
+                                std::move(epson2_scanner));
+
   // Unique device without ippusb support that is added during SANE probing.
   sane_client->AddDevice("epsonds:libusb:001:002", "GoogleTest",
                          "SANE Scanner 4000", "USB");
+  auto epsonds_scanner = std::make_unique<SaneDeviceFake>();
+  sane_client->SetDeviceForName("epsonds:libusb:001:002",
+                                std::move(epsonds_scanner));
+
   auto tracker =
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 

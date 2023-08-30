@@ -66,6 +66,7 @@ pkg_config("liblorgnette_config") {
 
 static_library("liblorgnette") {
   sources = [
+    "constants.cc",
     "daemon.cc",
     "dbus_service_adaptor.cc",
     "debug_log.cc",
@@ -84,6 +85,7 @@ static_library("liblorgnette") {
     "sane_client_fake.cc",
     "sane_client_impl.cc",
     "sane_constraint.cc",
+    "sane_device.cc",
     "sane_device_fake.cc",
     "sane_device_impl.cc",
     "sane_option.cc",

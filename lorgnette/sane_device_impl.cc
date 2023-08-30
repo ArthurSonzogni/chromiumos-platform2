@@ -15,10 +15,10 @@
 #include <sane/saneopts.h>
 #include <sane-airscan/airscan.h>
 
+#include "lorgnette/constants.h"
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 #include "lorgnette/guess_source.h"
 
-static const char* kDbusDomain = brillo::errors::dbus::kDomain;
 static const char* kRightJustification = "right";
 static const char* kCenterJustification = "center";
 

@@ -622,4 +622,17 @@ TEST(SaneDeviceImplFakeSaneTest, GetCurrentConfiguration) {
   EXPECT_EQ(config->option_groups(2).members_size(), 0);
 }
 
+TEST(SaneDeviceImplFakeSaneTest, SupportedFormatsIncludesInternalFormats) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_TRUE(base::Contains(device.GetSupportedFormats(), "image/jpeg"));
+  EXPECT_TRUE(base::Contains(device.GetSupportedFormats(), "image/png"));
+}
+
 }  // namespace lorgnette
