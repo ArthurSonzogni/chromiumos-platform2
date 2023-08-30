@@ -7,6 +7,7 @@ mod bindings {
 }
 
 use std::io::{Error, ErrorKind};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::bindings::*;
 
@@ -14,7 +15,18 @@ pub struct MetricsLibrary {
     handle: CMetricsLibrary,
 }
 
+// The thread safety issue with metrics library is that it is not safe to have
+// multiple threads with instances of metrics library calling Send*ToUMA at the
+// same time; under the hood it uses flock() to synchronize and that doesn't
+// handle multiple threads calling it at once.
+// Sending MetricsLibrary to another thread is safe as long as only 1 thread
+// calls MetricsLibrary functions at the same time. So MetricsLibrary is Send
+// but not Sync.
+// See also: https://doc.rust-lang.org/nomicon/send-and-sync.html
+unsafe impl Send for MetricsLibrary {}
+
 impl MetricsLibrary {
+    // Deprecated. It will be private when all the external references are removed.
     pub fn new() -> Result<Self, Error> {
         // Safety: Calls a C function.
         let handle = unsafe { CMetricsLibraryNew() };
@@ -22,6 +34,18 @@ impl MetricsLibrary {
             return Err(Error::new(ErrorKind::Other, "CMetricsLibraryNew failed"));
         }
         Ok(MetricsLibrary { handle })
+    }
+
+    // It's not safe to use MetricsLibrary in multiple thread at the same time.
+    // The user needs to lock the returned Mutex to use MetricsLibrary.
+    pub fn get() -> Option<Arc<Mutex<Self>>> {
+        static METRICS_LIBRARY: OnceLock<Option<Arc<Mutex<MetricsLibrary>>>> = OnceLock::new();
+        METRICS_LIBRARY
+            .get_or_init(|| match MetricsLibrary::new() {
+                Ok(metrics) => Some(Arc::new(Mutex::new(metrics))),
+                Err(_err) => None,
+            })
+            .clone()
     }
 
     pub fn send_to_uma(

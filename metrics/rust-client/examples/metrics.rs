@@ -14,13 +14,9 @@ fn print_result(name: &str, result: Result<(), Error>) {
 }
 
 fn main() {
-    let mut metrics = match MetricsLibrary::new() {
-        Ok(lib) => lib,
-        Err(e) => {
-            println!("MetricsLibrary::new() failed: {}", e);
-            return;
-        }
-    };
+    let metrics_mutex = MetricsLibrary::get().unwrap();
+
+    let mut metrics = metrics_mutex.lock().unwrap();
 
     print_result(
         "send_to_uma",
