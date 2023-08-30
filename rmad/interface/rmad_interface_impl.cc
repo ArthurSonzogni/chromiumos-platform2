@@ -77,6 +77,8 @@ RmadInterfaceImpl::RmadInterfaceImpl()
 
 RmadInterfaceImpl::RmadInterfaceImpl(
     scoped_refptr<JsonStore> json_store,
+    const base::FilePath& working_dir_path,
+    const base::FilePath& unencrypted_rma_dir_path,
     std::unique_ptr<StateHandlerManager> state_handler_manager,
     std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
     std::unique_ptr<ShillClient> shill_client,
@@ -87,6 +89,8 @@ RmadInterfaceImpl::RmadInterfaceImpl(
     std::unique_ptr<MetricsUtils> metrics_utils)
     : RmadInterface(),
       json_store_(json_store),
+      working_dir_path_(working_dir_path),
+      unencrypted_rma_dir_path_(unencrypted_rma_dir_path),
       state_handler_manager_(std::move(state_handler_manager)),
       runtime_probe_client_(std::move(runtime_probe_client)),
       shill_client_(std::move(shill_client)),
@@ -111,6 +115,8 @@ void RmadInterfaceImpl::InitializeExternalUtils(
   json_store_ = base::MakeRefCounted<JsonStore>(
       base::FilePath(kDefaultUnencryptedRmaDirPath).Append(kJsonStoreFilePath),
       false);
+  working_dir_path_ = base::FilePath(kDefaultWorkingDirPath);
+  unencrypted_rma_dir_path_ = base::FilePath(kDefaultUnencryptedRmaDirPath);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->RegisterStateHandlers(daemon_callback);
   runtime_probe_client_ =

@@ -348,12 +348,20 @@ class RmadInterfaceImplTest : public testing::Test {
   }
 
  protected:
-  void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    working_dir_path_ = temp_dir_.GetPath().Append("working_dir");
+    unencrypted_rma_dir_path_ = temp_dir_.GetPath().Append("rma-data");
+    ASSERT_TRUE(base::CreateDirectory(working_dir_path_));
+    ASSERT_TRUE(base::CreateDirectory(unencrypted_rma_dir_path_));
+  }
 
   RmadState welcome_proto_;
   RmadState components_repair_proto_;
   RmadState device_destination_proto_;
   base::ScopedTempDir temp_dir_;
+  base::FilePath working_dir_path_;
+  base::FilePath unencrypted_rma_dir_path_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
@@ -366,8 +374,9 @@ TEST_F(RmadInterfaceImplTest, Setup) {
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(true),
+      CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils({"waiting"}), CreateMetricsUtils(true));
@@ -394,8 +403,9 @@ TEST_F(RmadInterfaceImplTest, Setup_WaitForServices_Timeout) {
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(true),
+      CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils(std::vector<std::string>(10, "waiting")),
@@ -412,8 +422,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(true),
+      CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -440,8 +451,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -468,8 +480,9 @@ TEST_F(RmadInterfaceImplTest,
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -492,8 +505,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_PASS),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -517,8 +531,9 @@ TEST_F(RmadInterfaceImplTest,
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -543,8 +558,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -558,8 +574,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -583,8 +600,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -608,8 +626,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -633,8 +652,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -659,8 +679,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -683,8 +704,9 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -708,7 +730,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
@@ -731,8 +754,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -817,8 +841,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextStateAfterInterval) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -872,8 +897,9 @@ TEST_F(RmadInterfaceImplTest, TryTransitionNextState) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -896,7 +922,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManagerMissingHandler(json_store),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManagerMissingHandler(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
@@ -918,7 +945,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
@@ -945,7 +973,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_GetNextStateCaseFail) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManagerGetNextStateCaseFail(json_store),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManagerGetNextStateCaseFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
@@ -972,8 +1001,9 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1043,8 +1073,9 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1069,7 +1100,8 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManagerMissingHandler(json_store),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManagerMissingHandler(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
@@ -1096,7 +1128,8 @@ TEST_F(RmadInterfaceImplTest,
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
@@ -1122,8 +1155,9 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1151,8 +1185,9 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1180,8 +1215,9 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1211,8 +1247,9 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(),
       CreateCmdUtils({}, {"test_log"}), CreateMetricsUtils(true));
@@ -1252,8 +1289,9 @@ TEST_F(RmadInterfaceImplTest, SaveLog_Success) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(10), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1286,8 +1324,9 @@ TEST_F(RmadInterfaceImplTest, SaveLog_NoExternalDisk) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(0), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1314,8 +1353,9 @@ TEST_F(RmadInterfaceImplTest, SaveLog_NoValidPartition) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(3), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1346,8 +1386,9 @@ TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1380,8 +1421,9 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_Success) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(10), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1409,8 +1451,9 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_NoExternalDisk) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(0), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1436,8 +1479,9 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_NoValidPartition) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(3), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1463,8 +1507,9 @@ TEST_F(RmadInterfaceImplTest, GetInternalDiagnosticsApp) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
@@ -1486,8 +1531,9 @@ TEST_F(RmadInterfaceImplTest, GetInstalledDiagnosticsApp) {
   auto json_store =
       base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
-      json_store, CreateStateHandlerManager(json_store),
-      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
       CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));

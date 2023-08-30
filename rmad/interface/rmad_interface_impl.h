@@ -43,6 +43,8 @@ class RmadInterfaceImpl final : public RmadInterface {
   // |metrics_utils_|.
   explicit RmadInterfaceImpl(
       scoped_refptr<JsonStore> json_store,
+      const base::FilePath& working_dir_path,
+      const base::FilePath& unencrypted_rma_dir_path,
       std::unique_ptr<StateHandlerManager> state_handler_manager,
       std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
       std::unique_ptr<ShillClient> shill_client,
@@ -163,6 +165,8 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   // External utilities.
   scoped_refptr<JsonStore> json_store_;
+  base::FilePath working_dir_path_;
+  base::FilePath unencrypted_rma_dir_path_;
   std::unique_ptr<StateHandlerManager> state_handler_manager_;
   std::unique_ptr<RuntimeProbeClient> runtime_probe_client_;
   std::unique_ptr<ShillClient> shill_client_;
