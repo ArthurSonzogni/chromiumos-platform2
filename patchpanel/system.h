@@ -11,6 +11,7 @@
 #include <sys/types.h>
 
 #include <string>
+#include <string_view>
 
 #include <base/files/scoped_file.h>
 
@@ -54,6 +55,9 @@ class System {
     kIPv6Disable,
     // Used for modifying "net.ipv6.conf.all.proxy_ndp"
     kIPv6ProxyNDP,
+    // Used for modifying "net.ipv6.conf.%s.hop_limit", requires an interface
+    // argument
+    kIPv6HopLimit,
   };
 
   System() = default;
@@ -63,10 +67,17 @@ class System {
 
   virtual base::ScopedFD OpenTunDev();
 
-  // Write |content| to a "/proc/sys/net/" path as specified by |target|
+  // Writes |content| to a "/proc/sys/net/" path as specified by |target|.
   virtual bool SysNetSet(SysNet target,
-                         const std::string& content,
-                         const std::string& iface = "");
+                         std::string_view content,
+                         std::string_view iface = {});
+
+  // Reads the content from the "/proc/sys/net/" path as specified by |target|.
+  virtual std::string SysNetGet(SysNet target,
+                                std::string_view iface = {}) const;
+
+  // Returns the "/proc/sys/net/" path as specified by |target|,
+  std::string SysNetPath(SysNet target, std::string_view iface = {}) const;
 
   virtual int Ioctl(int fd, ioctl_req_t request, const char* argp);
   virtual int Ioctl(int fd, ioctl_req_t request, uint64_t arg);
@@ -83,7 +94,7 @@ class System {
   virtual int IfNametoindex(const char* ifname);
 
   // Overload that takes a constant reference to a c++ string.
-  virtual int IfNametoindex(const std::string& ifname);
+  virtual int IfNametoindex(std::string_view ifname);
 
   // Simple wrapper around if_indextoname which takes as an argument a signed
   // int instead of an unsigned int to avoid static casts.
@@ -93,7 +104,7 @@ class System {
   // error happens.
   virtual std::string IfIndextoname(int ifindex);
 
-  static bool Write(const std::string& path, const std::string& content);
+  static bool Write(std::string_view path, std::string_view content);
 };
 
 }  // namespace patchpanel

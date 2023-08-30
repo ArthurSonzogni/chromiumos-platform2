@@ -23,7 +23,7 @@ namespace patchpanel {
 class FakeSystem : public System {
  public:
   FakeSystem() = default;
-  ~FakeSystem() = default;
+  ~FakeSystem() override = default;
 
   // Capture Ioctls operations and arguments. Always succeeds.
   int Ioctl(int fd, ioctl_req_t request, const char* argp) override {
@@ -89,12 +89,16 @@ class FakeSystem : public System {
   }
 
   MOCK_METHOD(int, SocketPair, (int, int, int, int[2]), (override));
-  MOCK_METHOD3(SysNetSet,
-               bool(SysNet target,
-                    const std::string& content,
-                    const std::string& iface));
-  MOCK_METHOD1(IfNametoindex, int(const std::string& ifname));
-  MOCK_METHOD1(IfIndextoname, std::string(int ifindex));
+  MOCK_METHOD(bool,
+              SysNetSet,
+              (SysNet, std::string_view, std::string_view),
+              (override));
+  MOCK_METHOD(std::string,
+              SysNetGet,
+              (SysNet, std::string_view),
+              (const, override));
+  MOCK_METHOD(int, IfNametoindex, (std::string_view), (override));
+  MOCK_METHOD(std::string, IfIndextoname, (int), (override));
 
   std::vector<ioctl_req_t> ioctl_reqs;
   std::vector<std::pair<std::string, struct rtentry>> ioctl_rtentry_args;

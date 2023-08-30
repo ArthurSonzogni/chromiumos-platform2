@@ -11,42 +11,45 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 namespace patchpanel {
 
 namespace {
 
-// /proc/sys/ paths and fragments used for System::SysNetSet
+// /proc/sys/ paths used for System::SysNetSet() and System::SysNetGet().
 // Defines the local port range that is used by TCP and UDP traffic to choose
 // the local port (IPv4 and IPv6).
-constexpr const char kSysNetIPLocalPortRangePath[] =
+constexpr char kSysNetIPLocalPortRangePath[] =
     "/proc/sys/net/ipv4/ip_local_port_range";
 // Enables/Disables IPv4 forwarding between interfaces.
-constexpr const char kSysNetIPv4ForwardingPath[] =
-    "/proc/sys/net/ipv4/ip_forward";
+constexpr char kSysNetIPv4ForwardingPath[] = "/proc/sys/net/ipv4/ip_forward";
 // /proc/sys path for controlling connection tracking helper modules
-constexpr const char kSysNetConntrackHelperPath[] =
+constexpr char kSysNetConntrackHelperPath[] =
     "/proc/sys/net/netfilter/nf_conntrack_helper";
 // Enables/Disables IPv6.
-constexpr const char kSysNetDisableIPv6Path[] =
+constexpr char kSysNetDisableIPv6Path[] =
     "/proc/sys/net/ipv6/conf/all/disable_ipv6";
-// Prefix for IPv4 interface configuration.
-constexpr const char kSysNetIPv4ConfPrefix[] = "/proc/sys/net/ipv4/conf/";
-// Suffix for allowing localhost as a source or destination when routing IPv4.
-constexpr const char kSysNetIPv4RouteLocalnetSuffix[] = "/route_localnet";
+// Allow localhost as a source or destination when routing IPv4.
+constexpr char kSysNetIPv4RouteLocalnetPath[] =
+    "/proc/sys/net/ipv4/conf/%s/route_localnet";
 // Enables/Disables IPv6 forwarding between interfaces.
-constexpr const char kSysNetIPv6ForwardingPath[] =
+constexpr char kSysNetIPv6ForwardingPath[] =
     "/proc/sys/net/ipv6/conf/all/forwarding";
-// Prefix for IPv6 interface configuration.
-constexpr const char kSysNetIPv6ConfPrefix[] = "/proc/sys/net/ipv6/conf/";
-// Suffix for accepting Router Advertisements on an interface and
-// autoconfiguring it with IPv6 parameters.
-constexpr const char kSysNetIPv6AcceptRaSuffix[] = "/accept_ra";
+// Accept Router Advertisements on an interface and autoconfiguring it with IPv6
+// parameters.
+constexpr char kSysNetIPv6AcceptRaPath[] =
+    "/proc/sys/net/ipv6/conf/%s/accept_ra";
 // Enables/Disables IPv6 cross-inteface NDP response.
-constexpr const char kSysNetIPv6ProxyNDPPath[] =
+constexpr char kSysNetIPv6ProxyNDPPath[] =
     "/proc/sys/net/ipv6/conf/all/proxy_ndp";
+constexpr char kSysNetIPv6HopLimitPath[] =
+    "/proc/sys/net/ipv6/conf/%s/hop_limit";
 
 constexpr char kTunDev[] = "/dev/net/tun";
 }  // namespace
@@ -84,37 +87,66 @@ base::ScopedFD System::OpenTunDev() {
 }
 
 bool System::SysNetSet(SysNet target,
-                       const std::string& content,
-                       const std::string& iface) {
-  std::string path;
+                       std::string_view content,
+                       std::string_view iface) {
+  const std::string path = SysNetPath(target, iface);
+  if (path.empty()) {
+    return false;
+  }
+
+  return Write(path, content);
+}
+
+std::string System::SysNetGet(SysNet target, std::string_view iface) const {
+  const base::FilePath path(SysNetPath(target, iface));
+  if (path.empty()) {
+    return "";
+  }
+
+  std::string content;
+  if (!base::ReadFileToString(path, &content)) {
+    LOG(ERROR) << "Failed to read the content from " << path;
+    return "";
+  }
+
+  // The content may contain '\n' character at the end. Remove it.
+  content =
+      std::string(base::TrimWhitespaceASCII(content, base::TRIM_TRAILING));
+  return content;
+}
+
+std::string System::SysNetPath(SysNet target, std::string_view iface) const {
   switch (target) {
     case SysNet::kIPv4Forward:
-      return Write(kSysNetIPv4ForwardingPath, content);
+      return kSysNetIPv4ForwardingPath;
     case SysNet::kIPLocalPortRange:
-      return Write(kSysNetIPLocalPortRangePath, content);
+      return kSysNetIPLocalPortRangePath;
     case SysNet::kIPv4RouteLocalnet:
       if (iface.empty()) {
         LOG(ERROR) << "IPv4LocalPortRange requires a valid interface";
-        return false;
+        return "";
       }
-      return Write(
-          kSysNetIPv4ConfPrefix + iface + kSysNetIPv4RouteLocalnetSuffix,
-          content);
+      return base::StringPrintf(kSysNetIPv4RouteLocalnetPath, iface.data());
     case SysNet::kIPv6Forward:
-      return Write(kSysNetIPv6ForwardingPath, content);
+      return kSysNetIPv6ForwardingPath;
     case SysNet::kIPv6AcceptRA:
       if (iface.empty()) {
         LOG(ERROR) << "IPv6AcceptRA requires a valid interface";
-        return false;
+        return "";
       }
-      return Write(kSysNetIPv6ConfPrefix + iface + kSysNetIPv6AcceptRaSuffix,
-                   content);
+      return base::StringPrintf(kSysNetIPv6AcceptRaPath, iface.data());
     case SysNet::kConntrackHelper:
-      return Write(kSysNetConntrackHelperPath, content);
+      return kSysNetConntrackHelperPath;
     case SysNet::kIPv6Disable:
-      return Write(kSysNetDisableIPv6Path, content);
+      return kSysNetDisableIPv6Path;
     case SysNet::kIPv6ProxyNDP:
-      return Write(kSysNetIPv6ProxyNDPPath, content);
+      return kSysNetIPv6ProxyNDPPath;
+    case SysNet::kIPv6HopLimit:
+      if (iface.empty()) {
+        LOG(ERROR) << "IPv6HopLimit requires a valid interface";
+        return "";
+      }
+      return base::StringPrintf(kSysNetIPv6HopLimitPath, iface.data());
   }
 }
 
@@ -127,8 +159,8 @@ int System::IfNametoindex(const char* ifname) {
   return static_cast<int>(ifindex);
 }
 
-int System::IfNametoindex(const std::string& ifname) {
-  return IfNametoindex(ifname.c_str());
+int System::IfNametoindex(std::string_view ifname) {
+  return IfNametoindex(ifname.data());
 }
 
 char* System::IfIndextoname(int ifindex, char* ifname) {
@@ -146,14 +178,14 @@ std::string System::IfIndextoname(int ifindex) {
 }
 
 // static
-bool System::Write(const std::string& path, const std::string& content) {
-  base::ScopedFD fd(open(path.c_str(), O_WRONLY | O_TRUNC | O_CLOEXEC));
+bool System::Write(std::string_view path, std::string_view content) {
+  base::ScopedFD fd(open(path.data(), O_WRONLY | O_TRUNC | O_CLOEXEC));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Failed to open " << path;
     return false;
   }
 
-  if (write(fd.get(), content.c_str(), content.size()) != content.size()) {
+  if (write(fd.get(), content.data(), content.size()) != content.size()) {
     PLOG(ERROR) << "Failed to write \"" << content << "\" to " << path;
     return false;
   }

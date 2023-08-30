@@ -313,6 +313,7 @@ if (use.test) {
       "subnet_pool_test.cc",
       "subnet_test.cc",
       "subprocess_controller_test.cc",
+      "system_test.cc",
     ]
     configs += [
       "//common-mk:test",
