@@ -30,7 +30,9 @@ void DeviceManagementService::Initialize(
   install_attrs_ = std::make_unique<InstallAttributes>(&platform_, &hwsec_);
   // Initialize the install-time locked attributes since we can't do it prior
   // to ownership.
-  InitializeInstallAttributes();
+  hwsec_.RegisterOnReadyCallback(base::BindOnce(
+      &DeviceManagementService::InitializeInstallAttributesCallback,
+      base::Unretained(this)));
 }
 
 device_management::DeviceManagementErrorCode
@@ -168,10 +170,16 @@ void DeviceManagementService::DetectEnterpriseOwnership() {
   // calling SetEnterpriseOwned() with false.
 }
 
-void DeviceManagementService::InitializeInstallAttributes() {
+void DeviceManagementService::InitializeInstallAttributesCallback(
+    hwsec::Status status) {
   // Don't reinitialize when install attributes are valid or first install.
   if (install_attrs_->status() == InstallAttributes::Status::kValid ||
       install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
+    return;
+  }
+
+  if (!status.ok()) {
+    LOG(ERROR) << "InitializeInstallAttributesCallback failed: " << status;
     return;
   }
 

@@ -16,6 +16,7 @@
 
 #include <libhwsec/factory/factory.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/status.h>
 
 namespace device_management {
 class DeviceManagementService {
@@ -91,7 +92,7 @@ class DeviceManagementService {
 
   // Call this method to initialize the install attributes functionality. This
   // can only be called on origin thread.
-  void InitializeInstallAttributes();
+  void InitializeInstallAttributesCallback(hwsec::Status status);
 
   // Return true if this device is enterprise owned.
   bool IsEnterpriseOwned() { return enterprise_owned_; }
