@@ -208,7 +208,7 @@ fn update_cpu_smt_control(root: &Path, enable: bool) -> Result<()> {
     Ok(())
 }
 
-fn hotplug_cpus_impl(root: &Path, action: HotplugCpuAction) -> Result<()> {
+pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
     match action {
         HotplugCpuAction::OnlineAll => {
             let all_cores: String = get_cpuset_all_cpus(root)?;
@@ -242,11 +242,6 @@ fn hotplug_cpus_impl(root: &Path, action: HotplugCpuAction) -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn hotplug_cpus(action: HotplugCpuAction) -> Result<()> {
-    let root = Path::new("/");
-    hotplug_cpus_impl(root, action)
 }
 
 #[cfg(test)]
@@ -365,7 +360,7 @@ mod tests {
             }
 
             // Call function to test.
-            hotplug_cpus_impl(root.path(), *test.hotplug).unwrap();
+            hotplug_cpus(root.path(), *test.hotplug).unwrap();
 
             // Check result.
             if test.hotplug == &HotplugCpuAction::OfflineSMT {

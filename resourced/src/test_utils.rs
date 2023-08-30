@@ -28,7 +28,9 @@ pub(crate) mod tests {
     // Device path for GPU RPS path
     pub const GPU0_RPS_DEVICE_PATH: &str = "sys/class/drm/card0/gt/gt0";
 
-    pub struct MockPowerPreferencesManager {}
+    pub struct MockPowerPreferencesManager {
+        pub root: PathBuf,
+    }
     impl power::PowerPreferencesManager for MockPowerPreferencesManager {
         fn update_power_preferences(
             &self,
@@ -39,6 +41,9 @@ pub(crate) mod tests {
             _batterysaver: BatterySaverMode,
         ) -> Result<()> {
             Ok(())
+        }
+        fn get_root(&self) -> &Path {
+            self.root.as_path()
         }
     }
 

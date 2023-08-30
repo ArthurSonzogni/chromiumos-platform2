@@ -395,9 +395,15 @@ pub fn on_battery_saver_mode_change(
     }
 
     if mode == BatterySaverMode::Inactive {
-        hotplug_cpus(HotplugCpuAction::OnlineAll)?;
+        hotplug_cpus(
+            power_preference_manager.get_root(),
+            HotplugCpuAction::OnlineAll,
+        )?;
     } else {
-        hotplug_cpus(HotplugCpuAction::OfflineHalf)?;
+        hotplug_cpus(
+            power_preference_manager.get_root(),
+            HotplugCpuAction::OfflineHalf,
+        )?;
     }
 
     // Governor/EPP setting
@@ -499,7 +505,7 @@ mod tests {
     use crate::test_utils::tests::{
         set_intel_gpu_boost, set_intel_gpu_max, set_intel_gpu_min, setup_mock_cpu_dev_dirs,
         setup_mock_cpu_files, setup_mock_intel_gpu_dev_dirs, setup_mock_intel_gpu_files,
-        write_mock_cpuinfo,
+        test_write_cpuset_root_cpus, write_mock_cpuinfo,
     };
 
     use super::*;
@@ -577,7 +583,9 @@ mod tests {
         setup_mock_cpu_files(root).unwrap();
         setup_mock_intel_gpu_dev_dirs(root);
         setup_mock_intel_gpu_files(root);
-        let power_manager = MockPowerPreferencesManager {};
+        let power_manager = MockPowerPreferencesManager {
+            root: root.to_path_buf(),
+        };
         assert_eq!(get_game_mode().unwrap(), GameMode::Off);
         set_game_mode(&power_manager, GameMode::Borealis, root.to_path_buf()).unwrap();
         assert_eq!(get_game_mode().unwrap(), GameMode::Borealis);
@@ -587,7 +595,12 @@ mod tests {
 
     #[test]
     fn test_get_set_rtc_audio_active() {
-        let power_manager = MockPowerPreferencesManager {};
+        let tmp_root = tempdir().unwrap();
+        let root = tmp_root.path();
+        test_write_cpuset_root_cpus(root, "0-3");
+        let power_manager = MockPowerPreferencesManager {
+            root: root.to_path_buf(),
+        };
 
         assert_eq!(get_rtc_audio_active().unwrap(), RTCAudioActive::Inactive);
         set_rtc_audio_active(&power_manager, RTCAudioActive::Active).unwrap();
@@ -596,7 +609,12 @@ mod tests {
 
     #[test]
     fn test_get_set_fullscreen_video() {
-        let power_manager = MockPowerPreferencesManager {};
+        let tmp_root = tempdir().unwrap();
+        let root = tmp_root.path();
+        test_write_cpuset_root_cpus(root, "0-3");
+        let power_manager = MockPowerPreferencesManager {
+            root: root.to_path_buf(),
+        };
 
         assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Inactive);
         set_fullscreen_video(&power_manager, FullscreenVideo::Active).unwrap();

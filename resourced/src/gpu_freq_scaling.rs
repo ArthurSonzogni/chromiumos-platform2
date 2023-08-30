@@ -702,7 +702,9 @@ mod tests {
         const OP_LATCH_DELAY_MS: u64 = POLLING_DELAY_MS + 1;
         let tmp_root = tempdir().unwrap();
         let root = tmp_root.path();
-        let power_manager = MockPowerPreferencesManager {};
+        let power_manager = MockPowerPreferencesManager {
+            root: root.to_path_buf(),
+        };
         assert!(common::get_game_mode().unwrap() == common::GameMode::Off);
         common::set_game_mode(
             &power_manager,

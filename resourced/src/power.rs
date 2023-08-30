@@ -153,6 +153,7 @@ pub trait PowerPreferencesManager {
         vmboot: common::VmBootMode,
         batterysaver: common::BatterySaverMode,
     ) -> Result<()>;
+    fn get_root(&self) -> &Path;
 }
 
 fn write_to_cpu_policy_patterns(pattern: &str, new_value: &str) -> Result<()> {
@@ -418,6 +419,10 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         }
 
         Ok(())
+    }
+
+    fn get_root(&self) -> &Path {
+        self.root.as_path()
     }
 }
 
