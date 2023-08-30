@@ -55,6 +55,7 @@ create_dir_file(cros_cryptohomed, {
   cros_run_arcvm
   cros_run_lockbox
   cros_var_lib
+  cros_var_lib_device_management
 })
 
 r_dir_file(cros_cryptohomed, {
