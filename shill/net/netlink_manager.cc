@@ -15,6 +15,7 @@
 #include <base/time/time.h>
 
 #include <memory>
+#include <vector>
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/netlink_packet.h"
@@ -156,8 +157,6 @@ NetlinkManager::MessageType::MessageType()
 NetlinkManager::NetlinkManager()
     : weak_ptr_factory_(this),
       time_(Time::GetInstance()),
-      io_handler_factory_(
-          IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()),
       dump_pending_(false) {}
 
 NetlinkManager::~NetlinkManager() = default;
@@ -177,6 +176,7 @@ void NetlinkManager::Reset(bool full) {
   resend_dump_message_callback_.Cancel();
   dump_pending_ = false;
   if (full) {
+    sock_watcher_.reset();
     sock_.reset();
   }
 }
@@ -297,14 +297,23 @@ void NetlinkManager::Start() {
     return;
   }
 
-  // Create an IO handler for receiving messages on the netlink socket.
-  // IO handler will be installed to the current message loop.
-  dispatcher_handler_.reset(io_handler_factory_->CreateIOInputHandler(
+  // Create an watcher for receiving messages on the netlink socket.
+  sock_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       sock_->file_descriptor(),
-      base::BindRepeating(&NetlinkManager::OnRawNlMessageReceived,
-                          weak_ptr_factory_.GetWeakPtr()),
-      base::BindRepeating(&NetlinkManager::OnReadError,
-                          weak_ptr_factory_.GetWeakPtr())));
+      // base::Unretained() is safe because |sock_watcher_| is owned by |*this|.
+      base::BindRepeating(&NetlinkManager::OnReadable, base::Unretained(this)));
+  if (sock_watcher_ == nullptr) {
+    LOG(ERROR) << "Failed on watching the netlink socket";
+  }
+}
+
+void NetlinkManager::OnReadable() {
+  std::vector<uint8_t> message;
+  if (sock_->RecvMessage(&message)) {
+    OnRawNlMessageReceived(message);
+  } else {
+    PLOG(ERROR) << "NetlinkManager's netlink Socket read returns error";
+  }
 }
 
 uint16_t NetlinkManager::GetFamily(
@@ -785,14 +794,6 @@ void NetlinkManager::CallErrorHandler(uint32_t sequence_number,
     message_handlers_[sequence_number]->HandleError(type, netlink_message);
     message_handlers_.erase(sequence_number);
   }
-}
-
-void NetlinkManager::OnReadError(const std::string& error_msg) {
-  // TODO(wdg): When netlink_manager is used for scan, et al., this should
-  // either be LOG(FATAL) or the code should properly deal with errors,
-  // e.g., dropped messages due to the socket buffer being full.
-  LOG(ERROR) << "NetlinkManager's netlink Socket read returns error: "
-             << error_msg;
 }
 
 void NetlinkManager::ResendPendingDumpMessageAfterDelay() {

@@ -64,13 +64,13 @@
 
 #include <base/cancelable_callback.h>
 #include <base/containers/span.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/bind.h>
 #include <base/lazy_instance.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/net/generic_netlink_message.h"
-#include "shill/net/io_handler_factory_container.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/netlink_socket.h"
 #include "shill/net/shill_export.h"
@@ -330,6 +330,9 @@ class SHILL_EXPORT NetlinkManager {
       base::Milliseconds(300);
   static const int kMaxNlMessageRetries;
 
+  // Called by |sock_watcher_| when |sock_| is ready to read.
+  void OnReadable();
+
   // MessageLoop calls this when data is available on our socket.  This
   // method passes each, individual, message in the input to
   // |OnNlMessageReceived|.  Each part of a multipart message gets handled,
@@ -353,9 +356,6 @@ class SHILL_EXPORT NetlinkManager {
   void CallErrorHandler(uint32_t sequence_number,
                         AuxiliaryMessageType type,
                         const NetlinkMessage* netlink_message);
-
-  // Called by InputHandler on exceptional events.
-  void OnReadError(const std::string& error_msg);
 
   // Utility function that posts a task to the message loop to call
   // NetlinkManager::ResendPendingDumpMessage kNlMessageRetryDelay from now.
@@ -427,13 +427,15 @@ class SHILL_EXPORT NetlinkManager {
   base::WeakPtrFactory<NetlinkManager> weak_ptr_factory_;
   base::CancelableOnceClosure pending_dump_timeout_callback_;
   base::CancelableOnceClosure resend_dump_message_callback_;
-  std::unique_ptr<IOHandler> dispatcher_handler_;
 
   std::unique_ptr<NetlinkSocket> sock_;
+  // Watcher to wait for |sock_| ready to read. It should be destructed
+  // prior than |sock_|, so it's declared after |sock_|.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> sock_watcher_;
+
   std::map<const std::string, MessageType> message_types_;
   NetlinkMessageFactory message_factory_;
   Time* time_;
-  IOHandlerFactory* io_handler_factory_;
   bool dump_pending_;
 };
 

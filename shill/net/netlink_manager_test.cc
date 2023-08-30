@@ -110,7 +110,6 @@ class NetlinkManagerTest : public Test {
         kNl80211FamilyId, base::BindRepeating(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
     netlink_manager_->sock_.reset(netlink_socket_);  // Passes ownership.
-    netlink_manager_->io_handler_factory_ = &io_handler_factory_;
     EXPECT_TRUE(netlink_manager_->Init());
   }
 
@@ -249,10 +248,11 @@ class NetlinkManagerTest : public Test {
 
   NetlinkManager* netlink_manager_;
   MockNetlinkSocket* netlink_socket_;  // Owned by |netlink_manager_|.
-  StrictMock<MockIOHandlerFactory> io_handler_factory_;
   std::vector<uint8_t> saved_message_;
   uint32_t saved_sequence_number_ = 0;
   base::test::TaskEnvironment task_environment_{
+      // required by base::FileDescriptorWatcher.
+      base::test::TaskEnvironment::MainThreadType::IO,
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
 };
 
@@ -296,11 +296,6 @@ class TimeFunctor {
 };
 
 }  // namespace
-
-TEST_F(NetlinkManagerTest, Start) {
-  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(_, _, _));
-  netlink_manager_->Start();
-}
 
 TEST_F(NetlinkManagerTest, SubscribeToEvents) {
   // Family not registered.
