@@ -720,7 +720,7 @@ message StartPreparedScanResponse {
 
   // If result is OPERATION_RESULT_SUCCESS, a handle that can be used to read
   // scanned data or cancel the new scan job.
-  optional JobHandle job = 3;
+  optional JobHandle job_handle = 3;
 }
 
 // Input parameter for the ReadScanData d-bus method.
