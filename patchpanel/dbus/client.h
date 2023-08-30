@@ -227,6 +227,10 @@ class BRILLO_EXPORT Client {
   struct BruschettaAllocation {
     // Tap device interface name created for the VM.
     std::string tap_device_ifname;
+    // The /30 IPv4 subnet assigned to the VM.
+    net_base::IPv4CIDR bruschetta_ipv4_subnet;
+    // The IPv4 address assigned to the VM, contained inside |ipv4_subnet|.
+    net_base::IPv4Address bruschetta_ipv4_address;
   };
 
   using GetTrafficCountersCallback =

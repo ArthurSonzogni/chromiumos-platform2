@@ -186,9 +186,18 @@ TEST_F(ClientTest, NotifyParallelsVmShutdown) {
 TEST_F(ClientTest, NotifyBruschettaVmStartup) {
   const uint64_t id = 5;
   const std::string tap_ifname = "vmtap2";
+  const auto bruschetta_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
+  const auto bruschetta_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.93.2");
 
   BruschettaVmStartupResponse response_proto;
   response_proto.set_tap_device_ifname(tap_ifname);
+  auto* response_subnet = response_proto.mutable_ipv4_subnet();
+  response_subnet->set_addr(bruschetta_ipv4_subnet.address().ToByteString());
+  response_subnet->set_prefix_len(
+      static_cast<uint32_t>(bruschetta_ipv4_subnet.prefix_length()));
+  response_proto.set_ipv4_address(bruschetta_ipv4_address.ToByteString());
 
   EXPECT_CALL(*proxy_,
               BruschettaVmStartup(Property(&BruschettaVmStartupRequest::id, id),
@@ -198,6 +207,8 @@ TEST_F(ClientTest, NotifyBruschettaVmStartup) {
   auto result = client_->NotifyBruschettaVmStartup(id);
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->tap_device_ifname, tap_ifname);
+  EXPECT_EQ(result->bruschetta_ipv4_subnet, bruschetta_ipv4_subnet);
+  EXPECT_EQ(result->bruschetta_ipv4_address, bruschetta_ipv4_address);
 }
 
 TEST_F(ClientTest, NotifyBruschettaVmShutdown) {

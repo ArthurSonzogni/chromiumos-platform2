@@ -232,6 +232,13 @@ message BruschettaVmStartupRequest {
 message BruschettaVmStartupResponse {
   // The TAP device to be used for the VM.
   string tap_device_ifname = 1;
+
+  // The IPv4 subnet assigned to the VM.
+  IPv4Subnet ipv4_subnet = 2;
+
+  // The IPv4 address assigned to the VM, represented as 4 bytes in network
+  // order, contained inside |ipv4_subnet|.
+  bytes ipv4_address = 3;
 };
 
 // Notification that the Bruschetta VM is shutting down.

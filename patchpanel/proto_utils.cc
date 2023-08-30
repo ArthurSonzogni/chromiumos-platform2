@@ -39,9 +39,12 @@ void FillParallelsAllocationProto(
 }
 
 void FillBruschettaAllocationProto(
-    const CrostiniService::CrostiniDevice& Bruschetta_device,
+    const CrostiniService::CrostiniDevice& bruschetta_device,
     BruschettaVmStartupResponse* output) {
-  output->set_tap_device_ifname(Bruschetta_device.tap_device_ifname());
+  output->set_tap_device_ifname(bruschetta_device.tap_device_ifname());
+  FillSubnetProto(bruschetta_device.vm_ipv4_subnet(),
+                  output->mutable_ipv4_subnet());
+  output->set_ipv4_address(bruschetta_device.vm_ipv4_address().ToByteString());
 }
 
 void FillDeviceProto(const Device& virtual_device,

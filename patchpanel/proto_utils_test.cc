@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/functional/callback_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -97,17 +98,27 @@ TEST_F(ProtoUtilsTest, FillParallelsAllocationProto) {
 }
 
 TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
-  // TODO(b/279994478): Add kBruschettaVM at GuestType.
+  const auto bruschetta_ipv4_subnet =
+      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
+  const auto bruschetta_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.93.2");
   auto ipv4_subnet =
-      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kParallelsVM, 0);
+      std::make_unique<Subnet>(bruschetta_ipv4_subnet, base::DoNothing());
+
   // TODO(b/279994478): Add kBruschetta at VMType.
-  CrostiniService::CrostiniDevice parallels_device(
+  CrostiniService::CrostiniDevice bruschetta_device(
       CrostiniService::VMType::kParallels, "vmtap1", {}, std::move(ipv4_subnet),
       nullptr);
 
   BruschettaVmStartupResponse proto;
-  FillBruschettaAllocationProto(parallels_device, &proto);
+  FillBruschettaAllocationProto(bruschetta_device, &proto);
   ASSERT_EQ("vmtap1", proto.tap_device_ifname());
+  EXPECT_EQ(bruschetta_ipv4_address,
+            net_base::IPv4Address::CreateFromBytes(proto.ipv4_address()));
+  EXPECT_EQ(bruschetta_ipv4_subnet.address(),
+            net_base::IPv4Address::CreateFromBytes(proto.ipv4_subnet().addr()));
+  EXPECT_EQ(bruschetta_ipv4_subnet.prefix_length(),
+            proto.ipv4_subnet().prefix_len());
 }
 
 TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {

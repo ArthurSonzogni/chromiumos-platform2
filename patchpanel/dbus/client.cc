@@ -287,11 +287,29 @@ std::optional<Client::ParallelsAllocation> ConvertParallelsAllocation(
 std::optional<Client::BruschettaAllocation> ConvertBruschettaAllocation(
     const BruschettaVmStartupResponse& in) {
   if (in.tap_device_ifname().empty()) {
+    LOG(ERROR) << __func__ << ": No Bruschetta device interface found";
+    return std::nullopt;
+  }
+  if (!in.has_ipv4_subnet()) {
+    LOG(ERROR) << __func__ << ": No Bruschetta IPv4 subnet found";
+    return std::nullopt;
+  }
+  const auto bruschetta_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
+  const auto bruschetta_address =
+      net_base::IPv4Address::CreateFromBytes(in.ipv4_address());
+  if (!bruschetta_subnet) {
+    LOG(ERROR) << __func__ << ": Invalid Bruschetta IPv4 subnet";
+    return std::nullopt;
+  }
+  if (!bruschetta_address) {
+    LOG(ERROR) << __func__ << ": Invalid Bruschetta IPv4 address";
     return std::nullopt;
   }
 
   Client::BruschettaAllocation bruschetta_alloc;
   bruschetta_alloc.tap_device_ifname = in.tap_device_ifname();
+  bruschetta_alloc.bruschetta_ipv4_subnet = *bruschetta_subnet;
+  bruschetta_alloc.bruschetta_ipv4_address = *bruschetta_address;
   return bruschetta_alloc;
 }
 
