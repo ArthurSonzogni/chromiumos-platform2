@@ -74,8 +74,6 @@ class RTNLHandlerTest : public Test {
                                       base::Unretained(this))) {}
 
   void SetUp() override {
-    RTNLHandler::GetInstance()->io_handler_factory_ = &io_handler_factory_;
-
     auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
     socket_factory_ = socket_factory.get();
     RTNLHandler::GetInstance()->socket_factory_ = std::move(socket_factory);
@@ -152,11 +150,12 @@ class RTNLHandlerTest : public Test {
   void ReturnError(uint32_t sequence, int error_number);
 
   net_base::MockSocketFactory* socket_factory_;  // Owned by RTNLHandler
-  StrictMock<MockIOHandlerFactory> io_handler_factory_;
   base::RepeatingCallback<void(const RTNLMessage&)> callback_;
 
  private:
   base::test::TaskEnvironment task_environment_{
+      // required by base::FileDescriptorWatcher.
+      base::test::TaskEnvironment::MainThreadType::IO,
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
 };
 
@@ -165,20 +164,9 @@ const int RTNLHandlerTest::kTestDeviceIndex = 123456;
 const char RTNLHandlerTest::kTestDeviceName[] = "test-device";
 
 void RTNLHandlerTest::StartRTNLHandler() {
-  int socket_fd = -1;
   EXPECT_CALL(*socket_factory_, CreateNetlink(NETLINK_ROUTE, _, _))
-      .WillOnce([&]() {
-        auto socket = std::make_unique<net_base::MockSocket>();
-        socket_fd = socket->Get();
-        return socket;
-      });
-
-  int fd_to_handler = -2;
-  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(_, _, _))
-      .WillOnce(DoAll(testing::SaveArg<0>(&fd_to_handler), Return(nullptr)));
+      .WillOnce(Return(std::make_unique<net_base::MockSocket>()));
   RTNLHandler::GetInstance()->Start(0);
-
-  EXPECT_EQ(socket_fd, fd_to_handler);
 }
 
 void RTNLHandlerTest::StopRTNLHandler() {

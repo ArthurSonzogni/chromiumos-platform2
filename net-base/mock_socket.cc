@@ -8,10 +8,27 @@
 
 #include <utility>
 
-namespace net_base {
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
 
-MockSocket::MockSocket()
-    : Socket(base::ScopedFD(open("/dev/null", O_RDONLY))) {}
+namespace net_base {
+namespace {
+
+base::ScopedFD CreateFakeSocketFd() {
+  // Create a real file descriptor for MockSocket.
+  int sv[2];
+  if (socketpair(AF_UNIX, SOCK_RAW, 0, sv) != 0) {
+    PLOG(ERROR) << "Failed to create socket pair";
+    return {};
+  }
+
+  close(sv[1]);
+  return base::ScopedFD(sv[0]);
+}
+
+}  // namespace
+
+MockSocket::MockSocket() : Socket(CreateFakeSocketFd()) {}
 MockSocket::MockSocket(base::ScopedFD fd) : Socket(std::move(fd)) {}
 MockSocket::~MockSocket() = default;
 

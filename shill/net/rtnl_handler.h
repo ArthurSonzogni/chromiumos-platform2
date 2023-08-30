@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
@@ -23,7 +24,6 @@
 #include <net-base/mac_address.h>
 #include <net-base/socket.h>
 
-#include "shill/net/io_handler_factory.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/net/shill_export.h"
@@ -170,6 +170,9 @@ class SHILL_EXPORT RTNLHandler {
   // reset netlink socket, sequence number and create new socket.
   void ResetSocket();
 
+  // Called by the |socket_watcher_| when the |rtnl_socket_| is ready to read.
+  void OnReadable();
+
   // Dispatches an rtnl message to all listeners
   void DispatchEvent(int type, const RTNLMessage& msg);
   // Send the next table-dump request to the kernel
@@ -191,9 +194,6 @@ class SHILL_EXPORT RTNLHandler {
   bool SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
                                 const ErrorMask& error_mask,
                                 uint32_t* msg_seq);
-
-  // Called by the RTNL read handler on exceptional events.
-  void OnReadError(const std::string& error_msg);
 
   // Returns whether |sequence| lies within the current error mask window.
   bool IsSequenceInErrorMaskWindow(uint32_t sequence);
@@ -223,6 +223,10 @@ class SHILL_EXPORT RTNLHandler {
   bool in_request_;
 
   std::unique_ptr<net_base::Socket> rtnl_socket_;
+  // Watcher to wait for |rtnl_socket_| ready to read. It should be destructed
+  // prior than |rtnl_socket_|, so it's declared after |rtnl_socket_|.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
+
   uint32_t netlink_groups_mask_;
   uint32_t request_flags_;
   uint32_t request_sequence_;
@@ -233,8 +237,6 @@ class SHILL_EXPORT RTNLHandler {
   std::map<uint32_t, std::unique_ptr<RTNLMessage>> stored_requests_;
 
   base::ObserverList<RTNLListener> listeners_;
-  std::unique_ptr<IOHandler> rtnl_handler_;
-  IOHandlerFactory* io_handler_factory_;
   std::vector<ErrorMask> error_mask_window_;
 
   // Once |NLMSG_ERROR| message was received, appropriate response_callback

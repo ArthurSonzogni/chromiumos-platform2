@@ -19,6 +19,7 @@
 
 #include <limits>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
@@ -27,8 +28,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <net-base/byte_utils.h>
-
-#include "shill/net/io_handler_factory_container.h"
 
 namespace shill {
 
@@ -56,9 +55,7 @@ RTNLHandler::RTNLHandler()
       netlink_groups_mask_(0),
       request_flags_(0),
       request_sequence_(0),
-      last_dump_sequence_(0),
-      io_handler_factory_(
-          IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {
+      last_dump_sequence_(0) {
   error_mask_window_.resize(kErrorWindowSize);
   VLOG(2) << "RTNLHandler created";
 }
@@ -85,17 +82,20 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
     return;
   }
 
-  rtnl_handler_.reset(io_handler_factory_->CreateIOInputHandler(
+  socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       rtnl_socket_->Get(),
-      base::BindRepeating(&RTNLHandler::ParseRTNL, base::Unretained(this)),
-      base::BindRepeating(&RTNLHandler::OnReadError, base::Unretained(this))));
+      base::BindRepeating(&RTNLHandler::OnReadable, base::Unretained(this)));
+  if (socket_watcher_ == nullptr) {
+    LOG(ERROR) << "Failed on watching netlink socket.";
+    return;
+  }
 
   NextRequest(last_dump_sequence_);
   VLOG(2) << "RTNLHandler started";
 }
 
 void RTNLHandler::Stop() {
-  rtnl_handler_.reset();
+  socket_watcher_.reset();
   rtnl_socket_.reset();
   in_request_ = false;
   request_flags_ = 0;
@@ -105,6 +105,16 @@ void RTNLHandler::Stop() {
   oldest_request_sequence_ = 0;
 
   VLOG(2) << "RTNLHandler stopped";
+}
+
+void RTNLHandler::OnReadable() {
+  std::vector<uint8_t> message;
+  if (rtnl_socket_->RecvMessage(&message)) {
+    ParseRTNL(message);
+  } else {
+    PLOG(ERROR) << "RTNL Socket read returns error";
+    ResetSocket();
+  }
 }
 
 void RTNLHandler::AddListener(RTNLListener* to_add) {
@@ -525,11 +535,6 @@ bool RTNLHandler::SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
     *msg_seq = message->seq();
   StoreRequest(std::move(message));
   return true;
-}
-
-void RTNLHandler::OnReadError(const std::string& error_msg) {
-  LOG(ERROR) << "RTNL Socket read returns error: " << error_msg;
-  ResetSocket();
 }
 
 void RTNLHandler::ResetSocket() {
