@@ -99,6 +99,12 @@ class Server {
   // Removes the specified connection from the server.
   void RemoveConnection(int connection_id);
 
+  // Returns the ClientConnectionNotification for this server.
+  const ClientConnectionNotification& GetClientConnectionCallback();
+
+  // Returns the ClientDisconnectedNotification for this server.
+  const ClientDisconnectedNotification& GetClientDisconnectedCallback();
+
   // Performs the necessary actions for the received packet.
   virtual void HandlePacket(
       const Connection& connection,

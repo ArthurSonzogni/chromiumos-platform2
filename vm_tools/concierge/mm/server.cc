@@ -129,6 +129,16 @@ void Server::RemoveConnection(int connection_id) {
   connections_.erase(connection_id);
 }
 
+const Server::ClientConnectionNotification&
+Server::GetClientConnectionCallback() {
+  return client_connection_callback_;
+}
+
+const Server::ClientDisconnectedNotification&
+Server::GetClientDisconnectedCallback() {
+  return client_disconnected_callback_;
+}
+
 void Server::HandleAccept() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 

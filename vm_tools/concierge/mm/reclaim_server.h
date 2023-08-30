@@ -37,6 +37,10 @@ class ReclaimServer : public Server {
   void SetNewGenerationNotification(NewGenerationNotification callback);
 
   // END: Event Callbacks.
+ protected:
+  // Get the new generation callback for this server.
+  const NewGenerationNotification& GetNewGenerationCallback();
+
  private:
   // Performs implementation specific actions based on the received packet.
   void HandlePacket(const Connection& connection,

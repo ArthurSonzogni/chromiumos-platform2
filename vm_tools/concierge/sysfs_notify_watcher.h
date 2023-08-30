@@ -7,8 +7,8 @@
 
 #include <memory>
 
+#include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
-#include <base/task/sequenced_task_runner.h>
 #include <base/threading/thread.h>
 
 namespace vm_tools::concierge {
@@ -31,38 +31,36 @@ class SysfsNotifyWatcher {
   static std::unique_ptr<SysfsNotifyWatcher> Create(
       int fd, const SysfsNotifyCallback& callback);
 
-  virtual ~SysfsNotifyWatcher() = default;
+  ~SysfsNotifyWatcher();
   SysfsNotifyWatcher(const SysfsNotifyWatcher&) = delete;
   SysfsNotifyWatcher& operator=(const SysfsNotifyWatcher&) = delete;
 
   void SetCallback(const SysfsNotifyCallback& callback);
 
  private:
+  enum PollStatus { FAIL, INIT, PRI, EXIT };
+
+  static PollStatus PollOnce(int pollpri_fd, int exit_fd);
+
   SysfsNotifyWatcher(int fd, const SysfsNotifyCallback& callback);
 
   // Start watching the fd.
   bool StartWatching();
 
   // Callback that runs when poll() returns.
-  void PollEvent(bool success);
-
-  // Polls once on the watched fd.
-  // Runs on poll_thread_.
-  void PollOnThread(int fd);
-
-  // Used to run a poll() in the background.
-  base::Thread poll_thread_{"Sysfs Notify Poll Thread"};
-
-  // Runs tasks on the sequence on which this was instantiated (the
-  // sequence on which the callback must run).
-  const scoped_refptr<base::SequencedTaskRunner> main_thread_task_runner_ =
-      base::SequencedTaskRunner::GetCurrentDefault();
+  void PollHandler(PollStatus status);
 
   // The specific fd to watch
-  int fd_;
+  const int fd_;
 
   // The callback that is run after a POLLPRI event on fd
   SysfsNotifyCallback callback_;
+
+  // Used to signal the poll_thread to exit.
+  base::ScopedFD exit_fd_;
+
+  // Used to run a poll() in the background.
+  base::Thread poll_thread_{"Sysfs_Notify_Poll_Thread"};
 };
 
 }  // namespace vm_tools::concierge

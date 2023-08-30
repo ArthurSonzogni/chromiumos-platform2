@@ -97,10 +97,11 @@ bool MmService::Start() {
   // Unretained(this) is safe because the reclaim_broker_ instance is owned by
   // this class and is destroyed when this class is destroyed.
   reclaim_broker_ = ReclaimBroker::Create(
-      base::FilePath("/sys/kernel/mm/lru_gen/admin"), std::move(reclaim_server),
-      base::BindRepeating(&MmService::GetLowestBalloonBlockPriority,
-                          base::Unretained(this)),
-      base::BindRepeating(&MmService::Reclaim, base::Unretained(this)));
+      {base::FilePath("/sys/kernel/mm/lru_gen/admin"),
+       std::move(reclaim_server),
+       base::BindRepeating(&MmService::GetLowestBalloonBlockPriority,
+                           base::Unretained(this)),
+       base::BindRepeating(&MmService::Reclaim, base::Unretained(this))});
 
   if (!reclaim_broker_) {
     LOG(ERROR) << "Failed to create reclaim broker.";

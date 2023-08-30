@@ -5,6 +5,7 @@
 #include "vm_tools/concierge/sysfs_notify_watcher.h"
 
 #include <poll.h>
+#include <sys/eventfd.h>
 #include <unistd.h>
 
 #include <memory>
@@ -27,6 +28,20 @@ std::unique_ptr<SysfsNotifyWatcher> SysfsNotifyWatcher::Create(
   return watcher;
 }
 
+SysfsNotifyWatcher::SysfsNotifyWatcher(int fd,
+                                       const SysfsNotifyCallback& callback)
+    : fd_(fd), callback_(callback) {}
+
+SysfsNotifyWatcher::~SysfsNotifyWatcher() {
+  // Write to the exit fd to signal the poll_thread_ to exit.
+  uint64_t data = 1;
+  (void)write(exit_fd_.get(), &data, sizeof(data));
+}
+
+void SysfsNotifyWatcher::SetCallback(const SysfsNotifyCallback& callback) {
+  callback_ = callback;
+}
+
 bool SysfsNotifyWatcher::StartWatching() {
   // Since poll is a blocking call spawn a separate thread that will perform the
   // poll and wait until it returns. The poll event will be sent to the main
@@ -38,51 +53,48 @@ bool SysfsNotifyWatcher::StartWatching() {
     return false;
   }
 
-  // poll() on the fd on the polling thread.
-  // Safety note: Unretained(this) is safe since the poll_thread_ lifetime is
-  // coupled to the lifetime of this instance.
-  poll_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&SysfsNotifyWatcher::PollOnThread,
-                                base::Unretained(this), fd_));
+  exit_fd_.reset(eventfd(0, 0));
+
+  if (!exit_fd_.is_valid()) {
+    LOG(ERROR) << "Failed to create exit fd.";
+    return false;
+  }
+
+  PollHandler(PollStatus::INIT);
 
   return true;
 }
 
-void SysfsNotifyWatcher::PollOnThread(int fd) {
-  struct pollfd p;
-  p.fd = fd;
-  p.events = POLLPRI;
-  p.revents = 0;
+// static
+SysfsNotifyWatcher::PollStatus SysfsNotifyWatcher::PollOnce(int pollpri_fd,
+                                                            int exit_fd) {
+  struct pollfd p[2] = {{.fd = pollpri_fd, .events = POLLPRI, .revents = 0},
+                        {.fd = exit_fd, .events = POLLIN, .revents = 0}};
 
-  // Blocking call. This will only return once POLLPRI is set on the fd or an
-  // error occurs.
-  int ret = HANDLE_EINTR(poll(&p, 1, -1));
+  // Blocking call. This will only return once POLLPRI is set on |pollpri_fd| or
+  // if POLLIN is set on |exit_fd|.
+  int ret = HANDLE_EINTR(poll(p, 2, -1));
 
-  // Report the poll result to the main thread.
-  // Safety note: Unretained(this) is safe since the poll_thread_ lifetime
-  // (where this function is run) is coupled to the lifetime of this instance.
-  main_thread_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&SysfsNotifyWatcher::PollEvent,
-                                base::Unretained(this), ret > 0));
+  // Signaled to exit.
+  if (p[1].revents & POLLIN) {
+    return PollStatus::EXIT;
+  }
+
+  return ret > 0 ? PRI : FAIL;
 }
 
-void SysfsNotifyWatcher::PollEvent(bool success) {
-  callback_.Run(success);
+void SysfsNotifyWatcher::PollHandler(PollStatus status) {
+  if (status == PollStatus::PRI || status == PollStatus::FAIL) {
+    callback_.Run(status == PollStatus::PRI);
+  }
 
-  // After a poll event, poll again
-  // Safety note: Unretained(this) is safe since the poll_thread_ lifetime is
-  // coupled to the lifetime of this instance.
-  poll_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&SysfsNotifyWatcher::PollOnThread,
-                                base::Unretained(this), fd_));
-}
-
-SysfsNotifyWatcher::SysfsNotifyWatcher(int fd,
-                                       const SysfsNotifyCallback& callback)
-    : fd_(fd), callback_(callback) {}
-
-void SysfsNotifyWatcher::SetCallback(const SysfsNotifyCallback& callback) {
-  callback_ = callback;
+  // After a poll event, poll again if not exiting.
+  if (status != PollStatus::EXIT) {
+    poll_thread_.task_runner()->PostTaskAndReplyWithResult(
+        FROM_HERE, base::BindOnce(&PollOnce, fd_, exit_fd_.get()),
+        base::BindOnce(&SysfsNotifyWatcher::PollHandler,
+                       base::Unretained(this)));
+  }
 }
 
 }  // namespace vm_tools::concierge

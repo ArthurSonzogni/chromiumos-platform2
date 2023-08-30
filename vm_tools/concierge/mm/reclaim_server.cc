@@ -58,6 +58,11 @@ void ReclaimServer::SetNewGenerationNotification(
   new_generation_callback_ = callback;
 }
 
+const ReclaimServer::NewGenerationNotification&
+ReclaimServer::GetNewGenerationCallback() {
+  return new_generation_callback_;
+}
+
 void ReclaimServer::HandlePacket(
     const Connection& connection,
     const VmMemoryManagementPacket& received_packet) {
