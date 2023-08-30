@@ -203,8 +203,7 @@ TEST(DeviceTrackerTest, StopSessionMissingID) {
 // Test the whole flow with several fake USB devices.  Confirm that
 // exactly and only the devices that fully match the checks and have a SANE
 // backend have a signal emitted before shutting down the session.
-// TODO(cawhitelaw): b/297041527 - re-enable once fixed
-TEST(DeviceTrackerTest, DISABLED_CompleteDiscoverySession) {
+TEST(DeviceTrackerTest, CompleteDiscoverySession) {
   // Scanner that supports eSCL over IPP-USB.
   auto ippusb_escl_device = std::make_unique<UsbDeviceFake>();
 
