@@ -371,8 +371,9 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
     if (forward_record_.find(ifname) == forward_record_.end()) {
       return;
     }
-    VLOG(1) << "OnUplinkIPv6Changed: " << ifname << ", {"
-            << ((old_uplink_ip) ? old_uplink_ip->ToString() : "") << "} to {}";
+    LOG(INFO) << __func__ << ": " << ifname << ", {"
+              << ((old_uplink_ip) ? old_uplink_ip->ToString() : "")
+              << "} to {}";
     for (const auto& ifname_downlink :
          forward_record_[ifname].downstream_ifnames) {
       // Remove ip neigh proxy entry
@@ -397,9 +398,9 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
 
   const auto new_uplink_ip =
       upstream_shill_device.ipconfig.ipv6_cidr->address();
-  VLOG(1) << "OnUplinkIPv6Changed: " << ifname << ", {"
-          << ((old_uplink_ip) ? old_uplink_ip->ToString() : "") << "} to {"
-          << new_uplink_ip << "}";
+  LOG(INFO) << __func__ << ": " << ifname << ", {"
+            << ((old_uplink_ip) ? old_uplink_ip->ToString() : "") << "} to {"
+            << new_uplink_ip << "}";
   if (old_uplink_ip == new_uplink_ip) {
     return;
   }
@@ -427,6 +428,10 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
       // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
       // route replace` so we don't need to remove the old one first.
       for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
+        LOG(INFO) << __func__ << ": update /128 route to " << ifname_downlink
+                  << " for existing neighbor IP " << neighbor_ip
+                  << " because of new uplink IP " << new_uplink_ip << " on "
+                  << ifname;
         if (!datapath_->AddIPv6HostRoute(
                 ifname_downlink,
                 *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip,
@@ -586,12 +591,15 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
 
 void GuestIPv6Service::RegisterDownstreamNeighborIP(
     const std::string& ifname_downlink, const net_base::IPv6Address& ip) {
+  if (downstream_neighbors_[ifname_downlink].count(ip) != 0) {
+    return;
+  }
   downstream_neighbors_[ifname_downlink].insert(ip);
 
   const auto& uplink = DownlinkToUplink(ifname_downlink);
   if (!uplink) {
-    LOG(WARNING) << __func__ << ": " << ifname_downlink << ", neighbor IP "
-                 << ip << ", no corresponding uplink";
+    LOG(INFO) << __func__ << ": " << ifname_downlink << ", neighbor IP " << ip
+              << ", no corresponding uplink IP yet, postponing /128 route";
     return;
   }
 
