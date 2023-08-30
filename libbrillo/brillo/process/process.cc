@@ -561,6 +561,7 @@ bool ProcessImpl::Kill(int signal, int timeout) {
       return false;
     }
     if (w > 0) {
+      Release();
       Reset(0);
       return true;
     }
