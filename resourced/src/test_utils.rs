@@ -11,6 +11,7 @@ pub(crate) mod tests {
     use std::str;
 
     use crate::common::{BatterySaverMode, FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};
+    use crate::cpu_utils::SMT_CONTROL_PATH;
     use crate::power;
 
     const MOCK_NUM_CPU: i32 = 16;
@@ -55,6 +56,31 @@ pub(crate) mod tests {
         let use_flags_path = root.join("etc/ui_use_flags.txt");
         test_create_parent_dir(&use_flags_path);
         std::fs::write(use_flags_path, use_flags).unwrap();
+    }
+
+    pub fn test_write_online_cpu(root: &Path, cpu: u32, value: &str) {
+        let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{}/online", cpu));
+        test_create_parent_dir(&root_online_cpu);
+        std::fs::write(root_online_cpu, value).unwrap();
+    }
+
+    pub fn test_check_online_cpu(root: &Path, cpu: u32, expected: &str) {
+        let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{}/online", cpu));
+        test_create_parent_dir(&root_online_cpu);
+        let value = std::fs::read_to_string(root_online_cpu).unwrap();
+        assert_eq!(value, expected);
+    }
+    pub fn test_write_smt_control(root: &Path, status: &str) {
+        let smt_control = root.join(SMT_CONTROL_PATH);
+        test_create_parent_dir(&smt_control);
+        std::fs::write(smt_control, status).unwrap();
+    }
+
+    pub fn test_check_smt_control(root: &Path, expected: &str) {
+        let root_smt_control = root.join(SMT_CONTROL_PATH);
+        test_create_parent_dir(&root_smt_control);
+        let value = std::fs::read_to_string(root_smt_control).unwrap();
+        assert_eq!(value, expected);
     }
 
     pub fn test_write_cpuset_root_cpus(root: &Path, cpus: &str) {

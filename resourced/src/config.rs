@@ -109,10 +109,29 @@ impl FromDir for EnergyPerformancePreference {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CpuOfflinePreference {
+    SmallCore,
+    Smt,
+    Half,
+}
+
+impl FromDir for CpuOfflinePreference {
+    fn from_dir(dir: DirEntry) -> Result<Option<CpuOfflinePreference>> {
+        match dir.file_name().to_str() {
+            Some("small-core") => Ok(Some(CpuOfflinePreference::SmallCore)),
+            Some("smt") => Ok(Some(CpuOfflinePreference::Smt)),
+            Some("half") => Ok(Some(CpuOfflinePreference::Half)),
+            _ => bail!("Unknown cpu-offline {:?}!", dir.file_name()),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PowerPreferences {
     pub governor: Option<Governor>,
     pub epp: Option<EnergyPerformancePreference>,
+    pub cpu_offline: Option<CpuOfflinePreference>,
 }
 
 #[derive(Copy, Clone)]
@@ -123,6 +142,7 @@ pub enum PowerPreferencesType {
     VmBoot,
     BorealisGaming,
     ArcvmGaming,
+    BatterySaver,
 }
 
 impl PowerPreferencesType {
@@ -134,6 +154,7 @@ impl PowerPreferencesType {
             PowerPreferencesType::VmBoot => "vm-boot-power-preferences",
             PowerPreferencesType::BorealisGaming => "borealis-gaming-power-preferences",
             PowerPreferencesType::ArcvmGaming => "arcvm-gaming-power-preferences",
+            PowerPreferencesType::BatterySaver => "battery-saver-power-preferences",
         }
     }
 }
@@ -223,6 +244,7 @@ fn parse_config_from_path<T: FromDir>(path: &Path) -> Result<Option<T>> {
  *     * vm-boot-power-preferences/governor/..
  *     * borealis-gaming-power-preferences/governor/..
  *     * arcvm-gaming-power-preferences/governor/..
+ *     * battery-saver-power-preferences/governor/..
  *     * default-power-preferences/governor/..
  */
 #[derive(Clone, Debug)]
@@ -249,6 +271,7 @@ impl ConfigProvider for DirectoryConfigProvider {
         let mut preferences: PowerPreferences = PowerPreferences {
             governor: None,
             epp: None,
+            cpu_offline: None,
         };
 
         let governor_path = path.join("governor");
@@ -259,6 +282,12 @@ impl ConfigProvider for DirectoryConfigProvider {
         let epp_path = path.join("epp");
         if epp_path.exists() {
             preferences.epp = parse_config_from_path::<EnergyPerformancePreference>(&epp_path)?;
+        }
+
+        let cpu_offline_path = path.join("cpu-offline");
+        if cpu_offline_path.exists() {
+            preferences.cpu_offline =
+                parse_config_from_path::<CpuOfflinePreference>(&cpu_offline_path)?;
         }
 
         Ok(Some(preferences))
@@ -337,6 +366,7 @@ mod tests {
         let expected = PowerPreferences {
             governor: None,
             epp: Some(EnergyPerformancePreference::BalancePerformance),
+            cpu_offline: None,
         };
 
         assert_eq!(expected, actual.unwrap());
@@ -363,6 +393,10 @@ mod tests {
             (
                 PowerPreferencesType::ArcvmGaming,
                 "arcvm-gaming-power-preferences",
+            ),
+            (
+                PowerPreferencesType::BatterySaver,
+                "battery-saver-power-preferences",
             ),
         ];
 
@@ -393,6 +427,7 @@ mod tests {
                         sampling_rate: None,
                     }),
                     epp: None,
+                    cpu_offline: None,
                 };
 
                 assert_eq!(expected, actual.unwrap());
@@ -410,6 +445,7 @@ mod tests {
                         sampling_rate: None,
                     }),
                     epp: None,
+                    cpu_offline: None,
                 };
 
                 assert_eq!(expected, actual.unwrap());
@@ -427,6 +463,7 @@ mod tests {
                         sampling_rate: Some(16000),
                     }),
                     epp: None,
+                    cpu_offline: None,
                 };
 
                 assert_eq!(expected, actual.unwrap());

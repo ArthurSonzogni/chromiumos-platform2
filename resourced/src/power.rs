@@ -14,6 +14,7 @@ use log::{error, info};
 use crate::common;
 use crate::common::{BatterySaverMode, FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};
 use crate::config;
+use crate::cpu_utils::{hotplug_cpus, HotplugCpuAction};
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 const POWER_SUPPLY_ONLINE: &str = "online";
@@ -335,6 +336,25 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
 
         Ok(())
     }
+
+    fn apply_cpu_hotplug(&self, preferences: config::PowerPreferences) -> Result<()> {
+        match preferences.cpu_offline {
+            Some(config::CpuOfflinePreference::Smt) => {
+                hotplug_cpus(self.get_root(), HotplugCpuAction::OfflineSMT)?
+            }
+            Some(config::CpuOfflinePreference::Half) => {
+                hotplug_cpus(self.get_root(), HotplugCpuAction::OfflineHalf)?
+            }
+            Some(config::CpuOfflinePreference::SmallCore) => {
+                hotplug_cpus(self.get_root(), HotplugCpuAction::OfflineSmallCore)?
+            }
+            None => {
+                hotplug_cpus(self.get_root(), HotplugCpuAction::OnlineAll)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
@@ -355,17 +375,24 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         info!("Power source {:?}", power_source);
 
         if batterysaver == BatterySaverMode::Active {
-            preferences = if self.has_epp()? {
-                Some(config::PowerPreferences {
-                    governor: None,
-                    epp: Some(config::EnergyPerformancePreference::BalancePower),
-                })
-            } else {
-                Some(config::PowerPreferences {
-                    governor: Some(config::Governor::Conservative),
-                    epp: None,
-                })
-            };
+            preferences = self
+                .config_provider
+                .read_power_preferences(power_source, config::PowerPreferencesType::BatterySaver)?;
+            if preferences.is_none() {
+                preferences = if self.has_epp()? {
+                    Some(config::PowerPreferences {
+                        governor: None,
+                        epp: Some(config::EnergyPerformancePreference::BalancePower),
+                        cpu_offline: None,
+                    })
+                } else {
+                    Some(config::PowerPreferences {
+                        governor: Some(config::Governor::Conservative),
+                        epp: None,
+                        cpu_offline: None,
+                    })
+                };
+            }
         } else if game == GameMode::Borealis {
             preferences = self.config_provider.read_power_preferences(
                 power_source,
@@ -402,6 +429,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         }
 
         if let Some(preferences) = preferences {
+            self.apply_cpu_hotplug(preferences)?;
             self.apply_power_preferences(preferences)?
         }
 
@@ -444,6 +472,11 @@ pub fn new_directory_power_preferences_manager(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::tests::{
+        test_check_online_cpu, test_check_smt_control, test_write_cpu_max_freq,
+        test_write_cpuset_root_cpus, test_write_online_cpu, test_write_smt_control,
+        test_write_ui_use_flags,
+    };
     use anyhow::bail;
     use std::fs;
     use std::path::Path;
@@ -561,6 +594,8 @@ mod tests {
             fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
         arcvm_gaming_power_preferences:
             fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
+        battery_saver_power_preferences:
+            fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
     }
 
     impl Default for FakeConfigProvider {
@@ -574,6 +609,7 @@ mod tests {
                 vm_boot_power_preferences: |_| bail!("VM boot mode not Implemented"),
                 borealis_gaming_power_preferences: |_| bail!("Borealis gaming not Implemented"),
                 arcvm_gaming_power_preferences: |_| bail!("ARCVM gaming not Implemented"),
+                battery_saver_power_preferences: |_| bail!("Battery saver not Implemented"),
             }
         }
     }
@@ -602,6 +638,9 @@ mod tests {
                 }
                 config::PowerPreferencesType::ArcvmGaming => {
                     (self.arcvm_gaming_power_preferences)(power_source_type)
+                }
+                config::PowerPreferencesType::BatterySaver => {
+                    (self.battery_saver_power_preferences)(power_source_type)
                 }
             }
         }
@@ -786,6 +825,7 @@ mod tests {
     fn test_power_update_power_preferences_wrong_governor() -> Result<()> {
         let root = tempdir()?;
 
+        test_write_cpuset_root_cpus(root.path(), "0-3");
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
         };
@@ -798,6 +838,7 @@ mod tests {
                         sampling_rate: None,
                     }),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
             ..Default::default()
@@ -830,6 +871,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0)?;
         write_global_sampling_rate(root.path(), 2000)?;
+        test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
@@ -869,6 +911,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0)?;
         write_global_sampling_rate(root.path(), 2000)?;
+        test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
@@ -884,6 +927,7 @@ mod tests {
                         sampling_rate: Some(16000),
                     }),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
             ..Default::default()
@@ -918,6 +962,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0)?;
         write_global_sampling_rate(root.path(), 2000)?;
+        test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::DC,
@@ -933,6 +978,7 @@ mod tests {
                         sampling_rate: None,
                     }),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
             ..Default::default()
@@ -967,6 +1013,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0)?;
         write_global_sampling_rate(root.path(), 2000)?;
+        test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
@@ -980,6 +1027,7 @@ mod tests {
                         sampling_rate: Some(4000),
                     }),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
             web_rtc_power_preferences: |_| Ok(None),
@@ -1015,6 +1063,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0)?;
         write_global_sampling_rate(root.path(), 2000)?;
+        test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
@@ -1028,6 +1077,7 @@ mod tests {
                         sampling_rate: Some(16000),
                     }),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
             ..Default::default()
@@ -1062,6 +1112,8 @@ mod tests {
         let temp_dir = tempdir()?;
         let root = temp_dir.path();
 
+        test_write_cpuset_root_cpus(root, "0-3");
+
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
         };
@@ -1071,8 +1123,10 @@ mod tests {
                 Ok(Some(config::PowerPreferences {
                     governor: Some(config::Governor::Schedutil),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
+            battery_saver_power_preferences: |_| Ok(None),
             ..Default::default()
         };
 
@@ -1160,11 +1214,225 @@ mod tests {
     }
 
     #[test]
+    /// Tests the CPU offline when BSM on
+    fn test_power_update_power_preferences_hotplug_cpus() -> Result<()> {
+        struct Test<'a> {
+            cpus: &'a str,
+            big_little: bool,
+            cluster1_state: [&'a str; 2],
+            cluster2_state: [&'a str; 2],
+            cluster1_freq: [u32; 2],
+            cluster2_freq: [u32; 2],
+            bsm: common::BatterySaverMode,
+            config_provider: FakeConfigProvider,
+            smt_offlined: bool,
+            smt_orig_state: &'a str,
+            cluster1_expected_state: [&'a str; 2],
+            cluster2_expected_state: [&'a str; 2],
+            smt_expected_state: &'a str,
+        }
+
+        let tests = [
+            // Test offline small core
+            Test {
+                cpus: "0-3",
+                big_little: true,
+                cluster1_state: ["1"; 2],
+                cluster2_state: ["1"; 2],
+                cluster1_freq: [2400000; 2],
+                cluster2_freq: [1800000; 2],
+                bsm: common::BatterySaverMode::Active,
+                config_provider: FakeConfigProvider {
+                    battery_saver_power_preferences: |_| {
+                        Ok(Some(config::PowerPreferences {
+                            governor: Some(config::Governor::Conservative),
+                            epp: None,
+                            cpu_offline: Some(config::CpuOfflinePreference::SmallCore),
+                        }))
+                    },
+                    ..Default::default()
+                },
+                smt_offlined: false,
+                smt_orig_state: "on",
+                cluster1_expected_state: ["1"; 2],
+                cluster2_expected_state: ["0"; 2],
+                smt_expected_state: "",
+            },
+            // Test offline SMT
+            Test {
+                cpus: "0-3",
+                big_little: false,
+                cluster1_state: ["1"; 2],
+                cluster2_state: ["1"; 2],
+                cluster1_freq: [2400000; 2],
+                cluster2_freq: [2400000; 2],
+                bsm: common::BatterySaverMode::Active,
+                config_provider: FakeConfigProvider {
+                    battery_saver_power_preferences: |_| {
+                        Ok(Some(config::PowerPreferences {
+                            governor: Some(config::Governor::Conservative),
+                            epp: None,
+                            cpu_offline: Some(config::CpuOfflinePreference::Smt),
+                        }))
+                    },
+                    ..Default::default()
+                },
+                smt_offlined: true,
+                smt_orig_state: "on",
+                cluster1_expected_state: ["1"; 2],
+                cluster2_expected_state: ["0"; 2],
+                smt_expected_state: "off",
+            },
+            // Test offline half
+            Test {
+                cpus: "0-3",
+                big_little: false,
+                cluster1_state: ["1"; 2],
+                cluster2_state: ["1"; 2],
+                cluster1_freq: [2400000; 2],
+                cluster2_freq: [2400000; 2],
+                bsm: common::BatterySaverMode::Active,
+                config_provider: FakeConfigProvider {
+                    battery_saver_power_preferences: |_| {
+                        Ok(Some(config::PowerPreferences {
+                            governor: Some(config::Governor::Conservative),
+                            epp: None,
+                            cpu_offline: Some(config::CpuOfflinePreference::Half),
+                        }))
+                    },
+                    ..Default::default()
+                },
+                smt_offlined: false,
+                smt_orig_state: "on",
+                cluster1_expected_state: ["1"; 2],
+                cluster2_expected_state: ["0"; 2],
+                smt_expected_state: "off",
+            },
+            // Test online all
+            Test {
+                cpus: "0-3",
+                big_little: false,
+                cluster1_state: ["1"; 2],
+                cluster2_state: ["0"; 2],
+                cluster1_freq: [2400000; 2],
+                cluster2_freq: [2400000; 2],
+                bsm: common::BatterySaverMode::Inactive,
+                config_provider: FakeConfigProvider {
+                    battery_saver_power_preferences: |_| {
+                        Ok(Some(config::PowerPreferences {
+                            governor: None,
+                            epp: None,
+                            cpu_offline: None,
+                        }))
+                    },
+                    default_power_preferences: |_| {
+                        Ok(Some(config::PowerPreferences {
+                            governor: None,
+                            epp: None,
+                            cpu_offline: None,
+                        }))
+                    },
+                    ..Default::default()
+                },
+                smt_offlined: false,
+                smt_orig_state: "on",
+                cluster1_expected_state: ["1"; 2],
+                cluster2_expected_state: ["1"; 2],
+                smt_expected_state: "off",
+            },
+        ];
+
+        for test in tests {
+            //Setup
+            let temp_dir = tempdir()?;
+            let root = temp_dir.path();
+
+            let manager = DirectoryPowerPreferencesManager {
+                root: root.to_path_buf(),
+                config_provider: test.config_provider,
+                power_source_provider: FakePowerSourceProvider {
+                    power_source: config::PowerSourceType::DC,
+                },
+            };
+
+            test_write_cpuset_root_cpus(root, test.cpus);
+            test_write_smt_control(root, test.smt_orig_state);
+            write_per_policy_scaling_governor(
+                root,
+                vec![
+                    PolicyConfigs {
+                        policy_path: TEST_CPUFREQ_POLICIES[0],
+                        governor: &config::Governor::Performance,
+                        affected_cpus: "0-1",
+                    },
+                    PolicyConfigs {
+                        policy_path: TEST_CPUFREQ_POLICIES[1],
+                        governor: &config::Governor::Performance,
+                        affected_cpus: "2-3",
+                    },
+                ],
+            );
+
+            if test.big_little {
+                test_write_ui_use_flags(root, "big_little");
+            }
+
+            for (i, freq) in test.cluster1_freq.iter().enumerate() {
+                test_write_online_cpu(root, i.try_into().unwrap(), test.cluster1_state[i]);
+                test_write_cpu_max_freq(root, i.try_into().unwrap(), *freq);
+            }
+            for (i, freq) in test.cluster2_freq.iter().enumerate() {
+                test_write_online_cpu(
+                    root,
+                    (test.cluster1_freq.len() + i).try_into().unwrap(),
+                    test.cluster2_state[i],
+                );
+                test_write_cpu_max_freq(
+                    root,
+                    (test.cluster1_freq.len() + i).try_into().unwrap(),
+                    *freq,
+                );
+            }
+
+            // Call function to test
+            manager.update_power_preferences(
+                common::RTCAudioActive::Inactive,
+                common::FullscreenVideo::Inactive,
+                common::GameMode::Off,
+                common::VmBootMode::Inactive,
+                test.bsm,
+            )?;
+
+            // Check result.
+            if test.smt_offlined {
+                // The mock sysfs cannot offline the SMT CPUs, here to check the smt control state
+                test_check_smt_control(root, test.smt_expected_state);
+                continue;
+            }
+
+            for (i, state) in test.cluster1_expected_state.iter().enumerate() {
+                test_check_online_cpu(root, i.try_into().unwrap(), state);
+            }
+
+            for (i, state) in test.cluster2_expected_state.iter().enumerate() {
+                test_check_online_cpu(
+                    root,
+                    (test.cluster1_expected_state.len() + i).try_into().unwrap(),
+                    state,
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
     /// Tests the various EPP permutations
     fn test_power_update_power_preferences_epp() -> Result<()> {
         let root = tempdir()?;
 
         write_epp(root.path(), "balance_performance", AFFECTED_CPU0)?;
+        test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let tests = [
             (
@@ -1262,6 +1530,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0)?;
         write_global_sampling_rate(root.path(), 2000)?;
+        test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
@@ -1275,6 +1544,7 @@ mod tests {
                         sampling_rate: Some(16000),
                     }),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
             ..Default::default()
@@ -1309,6 +1579,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0)?;
         write_global_sampling_rate(root.path(), 2000)?;
+        test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
@@ -1322,6 +1593,7 @@ mod tests {
                         sampling_rate: Some(16000),
                     }),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
             ..Default::default()
@@ -1356,6 +1628,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0)?;
         write_global_sampling_rate(root.path(), 2000)?;
+        test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
@@ -1369,6 +1642,7 @@ mod tests {
                         sampling_rate: Some(16000),
                     }),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
             ..Default::default()
@@ -1424,6 +1698,7 @@ mod tests {
         write_per_policy_scaling_governor(root, policies);
         write_per_policy_powersave_bias(root, INIT_POWERSAVE_BIAS);
         write_per_policy_sampling_rate(root, INIT_SAMPLING_RATE);
+        test_write_cpuset_root_cpus(root, "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
             power_source: config::PowerSourceType::AC,
@@ -1437,6 +1712,7 @@ mod tests {
                         sampling_rate: Some(CONFIG_SAMPLING_RATE),
                     }),
                     epp: None,
+                    cpu_offline: None,
                 }))
             },
             ..Default::default()
@@ -1484,6 +1760,7 @@ mod tests {
         let temp_dir = tempdir()?;
         let root = temp_dir.path();
 
+        test_write_cpuset_root_cpus(root, "0-3");
         const INIT_POWERSAVE_BIAS: u32 = 0;
         const INIT_SAMPLING_RATE: u32 = 2000;
 
@@ -1523,6 +1800,7 @@ mod tests {
                 arcvm_gaming_power_preferences: config::PowerPreferences {
                     governor: Some(governor),
                     epp: None,
+                    cpu_offline: None,
                 },
             };
             let manager = DirectoryPowerPreferencesManager {

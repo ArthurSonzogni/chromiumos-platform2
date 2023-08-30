@@ -25,7 +25,6 @@ use crate::gpu_freq_scaling::intel_device;
 #[cfg(target_arch = "x86_64")]
 use crate::cgroup_x86_64::{media_dynamic_cgroup, MediaDynamicCgroupAction};
 
-use crate::cpu_utils::{hotplug_cpus, HotplugCpuAction};
 use crate::memory;
 
 // Paths for RPS up/down threshold relative to rootdir.
@@ -394,19 +393,6 @@ pub fn on_battery_saver_mode_change(
         Err(_) => bail!("Failed to set Battery saver mode activity"),
     }
 
-    if mode == BatterySaverMode::Inactive {
-        hotplug_cpus(
-            power_preference_manager.get_root(),
-            HotplugCpuAction::OnlineAll,
-        )?;
-    } else {
-        hotplug_cpus(
-            power_preference_manager.get_root(),
-            HotplugCpuAction::OfflineHalf,
-        )?;
-    }
-
-    // Governor/EPP setting
     update_power_preferences(power_preference_manager)?;
 
     Ok(())

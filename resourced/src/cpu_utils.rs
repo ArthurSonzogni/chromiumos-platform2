@@ -11,7 +11,7 @@ use std::str::FromStr;
 
 use crate::common;
 
-const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
+pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum HotplugCpuAction {
@@ -246,43 +246,14 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::tests::*;
+    use crate::test_utils::tests::{
+        test_check_online_cpu, test_check_smt_control, test_write_cpu_max_freq,
+        test_write_cpuset_root_cpus, test_write_online_cpu, test_write_smt_control,
+        test_write_ui_use_flags,
+    };
     use tempfile::TempDir;
 
     use super::*;
-
-    fn test_write_online_cpu(root: &Path, cpu: u32, value: &str) {
-        let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{}/online", cpu));
-        test_create_parent_dir(&root_online_cpu);
-        std::fs::write(root_online_cpu, value).unwrap();
-    }
-
-    fn test_check_online_cpu(root: &Path, cpu: u32, expected: &str) {
-        let root_online_cpu = root.join(format!("sys/devices/system/cpu/cpu{}/online", cpu));
-        test_create_parent_dir(&root_online_cpu);
-        let value = std::fs::read_to_string(root_online_cpu).unwrap();
-        assert_eq!(value, expected);
-    }
-
-    fn test_check_smt_control_state(root: &Path, expected: &str) {
-        let root_smt_control = root.join(SMT_CONTROL_PATH);
-        test_create_parent_dir(&root_smt_control);
-        let value = std::fs::read_to_string(root_smt_control).unwrap();
-        assert_eq!(value, expected);
-    }
-
-    fn test_write_smt_control(root: &Path, status: &str) {
-        let smt_control = root.join(SMT_CONTROL_PATH);
-        test_create_parent_dir(&smt_control);
-        std::fs::write(smt_control, status).unwrap();
-    }
-
-    fn test_check_smt_control(root: &Path, expected: &str) {
-        let smt_control = root.join(SMT_CONTROL_PATH);
-        test_create_parent_dir(&smt_control);
-        let value = std::fs::read_to_string(smt_control).unwrap();
-        assert_eq!(value, expected);
-    }
 
     #[test]
     fn test_hotplug_cpus() {
@@ -365,7 +336,7 @@ mod tests {
             // Check result.
             if test.hotplug == &HotplugCpuAction::OfflineSMT {
                 // The mock sysfs cannot offline the SMT CPUs, here to check the smt control state
-                test_check_smt_control_state(root.path(), test.smt_expected_state);
+                test_check_smt_control(root.path(), test.smt_expected_state);
                 continue;
             }
 
