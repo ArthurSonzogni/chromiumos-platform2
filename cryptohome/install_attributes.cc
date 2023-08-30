@@ -25,7 +25,7 @@ namespace cryptohome {
 
 // By default, we store this with other cryptohome state.
 const char InstallAttributes::kDefaultDataFile[] =
-    "/home/.shadow/install_attributes.pb";
+    "/var/lib/device_management/install_attributes.pb";
 const mode_t InstallAttributes::kDataFilePermissions = 0644;
 // This is the default location for the cache file.
 const char InstallAttributes::kDefaultCacheFile[] =
