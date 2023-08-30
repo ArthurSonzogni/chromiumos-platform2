@@ -383,14 +383,14 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
 }
 
 void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
+  ipv6_svc_->OnUplinkIPv6Changed(shill_device);
+
   if (!shill_device.ipconfig.ipv6_cidr) {
     if (shill_device.type == ShillClient::Device::Type::kCellular) {
       datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
     }
     return;
   }
-
-  ipv6_svc_->OnUplinkIPv6Changed(shill_device);
 
   for (auto& [_, nsinfo] : connected_namespaces_) {
     if (nsinfo.outbound_ifname != shill_device.ifname) {

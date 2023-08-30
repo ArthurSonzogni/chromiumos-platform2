@@ -364,14 +364,39 @@ void GuestIPv6Service::StopUplink(
 
 void GuestIPv6Service::OnUplinkIPv6Changed(
     const ShillClient::Device& upstream_shill_device) {
-  if (!upstream_shill_device.ipconfig.ipv6_cidr) {
-    return;
-  }
-  const auto new_uplink_ip =
-      upstream_shill_device.ipconfig.ipv6_cidr->address();
-
   const std::string& ifname = upstream_shill_device.ifname;
   const auto old_uplink_ip = GetUplinkIp(ifname);
+
+  if (!upstream_shill_device.ipconfig.ipv6_cidr) {
+    if (forward_record_.find(ifname) == forward_record_.end()) {
+      return;
+    }
+    VLOG(1) << "OnUplinkIPv6Changed: " << ifname << ", {"
+            << ((old_uplink_ip) ? old_uplink_ip->ToString() : "") << "} to {}";
+    for (const auto& ifname_downlink :
+         forward_record_[ifname].downstream_ifnames) {
+      // Remove ip neigh proxy entry
+      if (old_uplink_ip) {
+        datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *old_uplink_ip);
+      }
+      // Remove downlink /128 routes
+      for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
+        datapath_->RemoveIPv6HostRoute(
+            *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip, 128));
+      }
+      downstream_neighbors_[ifname_downlink].clear();
+      // Stop RA servers
+      if (old_uplink_ip &&
+          forward_record_[ifname].method == ForwardMethod::kMethodRAServer) {
+        StopRAServer(ifname_downlink);
+      }
+    }
+    uplink_ips_.erase(ifname);
+    return;
+  }
+
+  const auto new_uplink_ip =
+      upstream_shill_device.ipconfig.ipv6_cidr->address();
   VLOG(1) << "OnUplinkIPv6Changed: " << ifname << ", {"
           << ((old_uplink_ip) ? old_uplink_ip->ToString() : "") << "} to {"
           << new_uplink_ip << "}";
