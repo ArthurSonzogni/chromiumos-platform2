@@ -21,6 +21,10 @@
 
 namespace hwsec {
 
+Status AttestationFrontendImpl::WaitUntilReady() const {
+  return middleware_.CallSync<&Backend::State::WaitUntilReady>();
+}
+
 StatusOr<brillo::SecureBlob> AttestationFrontendImpl::Unseal(
     const brillo::Blob& sealed_data) const {
   return middleware_.CallSync<&Backend::Sealing::Unseal>(

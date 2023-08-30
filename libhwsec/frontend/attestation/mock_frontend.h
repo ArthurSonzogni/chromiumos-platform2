@@ -23,6 +23,7 @@ class MockAttestationFrontend : public MockFrontend,
  public:
   MockAttestationFrontend() = default;
   ~MockAttestationFrontend() override = default;
+  MOCK_METHOD(Status, WaitUntilReady, (), (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               Unseal,
               (const brillo::Blob& sealed_data),

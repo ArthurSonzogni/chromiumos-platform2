@@ -26,6 +26,9 @@ class AttestationFrontend : public Frontend {
   using CreateIdentityResult = Attestation::CreateIdentityResult;
   ~AttestationFrontend() override = default;
 
+  // Waits until the security module ready to use.
+  virtual Status WaitUntilReady() const = 0;
+
   // Unseals the |sealed_data| with current boot mode.
   virtual StatusOr<brillo::SecureBlob> Unseal(
       const brillo::Blob& sealed_data) const = 0;
