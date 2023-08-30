@@ -61,7 +61,7 @@ void Daemon::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 void Daemon::ProbeCategories(Daemon::DBusCallback<ProbeResult> cb,
                              const ProbeRequest& request) {
   AvlProbeConfigLoader config_loader;
-  const auto probe_config = config_loader.Load();
+  auto probe_config = config_loader.Load();
   if (!probe_config) {
     ProbeResult reply;
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
@@ -69,9 +69,11 @@ void Daemon::ProbeCategories(Daemon::DBusCallback<ProbeResult> cb,
     return Quit();
   }
 
+  auto* probe_config_ptr = probe_config.get();
   if (request.probe_default_category()) {
-    probe_config->Eval(base::BindOnce(&Daemon::ProbeCallback<ProbeResult>,
-                                      base::Unretained(this), std::move(cb)));
+    probe_config_ptr->Eval(base::BindOnce(&Daemon::ProbeCallback<ProbeResult>,
+                                          base::Unretained(this), std::move(cb),
+                                          std::move(probe_config)));
   } else {
     // Convert the ProbeReuslt from enum into array of string.
     std::vector<std::string> categories_to_probe;
@@ -81,10 +83,10 @@ void Daemon::ProbeCategories(Daemon::DBusCallback<ProbeResult> cb,
     for (int j = 0; j < request.categories_size(); j++)
       categories_to_probe.push_back(
           descriptor->FindValueByNumber(request.categories(j))->name());
-
-    probe_config->Eval(categories_to_probe,
-                       base::BindOnce(&Daemon::ProbeCallback<ProbeResult>,
-                                      base::Unretained(this), std::move(cb)));
+    probe_config_ptr->Eval(categories_to_probe,
+                           base::BindOnce(&Daemon::ProbeCallback<ProbeResult>,
+                                          base::Unretained(this), std::move(cb),
+                                          std::move(probe_config)));
   }
 }
 
@@ -118,7 +120,7 @@ void Daemon::ProbeSsfcComponents(
     Daemon::DBusCallback<ProbeSsfcComponentsResponse> cb,
     const ProbeSsfcComponentsRequest& request) {
   SsfcProbeConfigLoader config_loader;
-  const auto probe_config = config_loader.Load();
+  auto probe_config = config_loader.Load();
   if (!probe_config) {
     ProbeSsfcComponentsResponse reply;
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
@@ -126,13 +128,15 @@ void Daemon::ProbeSsfcComponents(
     return Quit();
   }
 
-  probe_config->Eval(
-      base::BindOnce(&Daemon::ProbeCallback<ProbeSsfcComponentsResponse>,
-                     base::Unretained(this), std::move(cb)));
+  auto* probe_config_ptr = probe_config.get();
+  probe_config_ptr->Eval(base::BindOnce(
+      &Daemon::ProbeCallback<ProbeSsfcComponentsResponse>,
+      base::Unretained(this), std::move(cb), std::move(probe_config)));
 }
 
 template <typename MessageType>
 void Daemon::ProbeCallback(Daemon::DBusCallback<MessageType> cb,
+                           std::unique_ptr<ProbeConfig> probe_config,
                            base::Value::Dict probe_result) {
   std::string output_json;
   base::JSONWriter::Write(probe_result, &output_json);

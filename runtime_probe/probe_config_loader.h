@@ -5,7 +5,7 @@
 #ifndef RUNTIME_PROBE_PROBE_CONFIG_LOADER_H_
 #define RUNTIME_PROBE_PROBE_CONFIG_LOADER_H_
 
-#include <optional>
+#include <memory>
 #include <string>
 
 #include "runtime_probe/probe_config.h"
@@ -27,11 +27,15 @@ enum class CrosDebugFlag {
 // Interface that provides ways to load probe configs.
 class ProbeConfigLoader {
  public:
+  ProbeConfigLoader() = default;
   virtual ~ProbeConfigLoader() = default;
 
+  ProbeConfigLoader(const ProbeConfigLoader&) = delete;
+  ProbeConfigLoader& operator=(const ProbeConfigLoader&) = delete;
+
   // Load the probe config.
-  // Return |std::nullopt| if loading fails.
-  virtual std::optional<ProbeConfig> Load() const = 0;
+  // Return |nullptr| if loading fails.
+  virtual std::unique_ptr<ProbeConfig> Load() const = 0;
 };
 
 // Read the cros_debug crossystem property.

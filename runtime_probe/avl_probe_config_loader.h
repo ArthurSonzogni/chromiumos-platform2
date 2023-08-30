@@ -5,8 +5,7 @@
 #ifndef RUNTIME_PROBE_AVL_PROBE_CONFIG_LOADER_H_
 #define RUNTIME_PROBE_AVL_PROBE_CONFIG_LOADER_H_
 
-#include <array>
-#include <optional>
+#include <memory>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -24,8 +23,8 @@ class AvlProbeConfigLoader : public ProbeConfigLoader {
   AvlProbeConfigLoader() = default;
 
   // Load probe config from AVL config paths. The function will return
-  // |std::nullopt| when loading fails.
-  std::optional<ProbeConfig> Load() const override;
+  // |nullptr| when loading fails.
+  std::unique_ptr<ProbeConfig> Load() const override;
 
  private:
   static constexpr auto kAllowedProbeFunctionNames =

@@ -18,6 +18,7 @@
 // TODO(crbug.com/1255584): Includes headers in alphabetical order.
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
 #include "runtime_probe/dbus_adaptors/org.chromium.RuntimeProbe.h"  // NOLINT(build/include_alpha)
+#include "runtime_probe/probe_config.h"
 
 namespace runtime_probe {
 
@@ -54,6 +55,7 @@ class Daemon : public brillo::DBusServiceDaemon,
 
   template <typename MessageType>
   void ProbeCallback(Daemon::DBusCallback<MessageType> cb,
+                     std::unique_ptr<ProbeConfig> probe_config,
                      base::Value::Dict probe_result);
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

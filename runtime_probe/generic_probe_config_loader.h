@@ -5,8 +5,7 @@
 #ifndef RUNTIME_PROBE_GENERIC_PROBE_CONFIG_LOADER_H_
 #define RUNTIME_PROBE_GENERIC_PROBE_CONFIG_LOADER_H_
 
-#include <optional>
-#include <vector>
+#include <memory>
 
 #include <base/files/file_path.h>
 
@@ -21,7 +20,7 @@ class GenericProbeConfigLoader : public ProbeConfigLoader {
 
   // Loads probe config from the given path.  This method only works when
   // cros_debug is enabled.
-  std::optional<ProbeConfig> Load() const override;
+  std::unique_ptr<ProbeConfig> Load() const override;
 
  private:
   base::FilePath path_;

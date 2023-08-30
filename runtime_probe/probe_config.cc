@@ -5,7 +5,6 @@
 #include "runtime_probe/probe_config.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include <base/barrier_callback.h>
@@ -52,17 +51,17 @@ void CollectComponentCategoryResults(
 
 }  // namespace
 
-std::optional<ProbeConfig> ProbeConfig::FromFile(
+std::unique_ptr<ProbeConfig> ProbeConfig::FromFile(
     const base::FilePath& file_path) {
   DVLOG(3) << "ProbeConfig::FromFile: " << file_path;
   std::string config_json;
   if (!base::ReadFileToString(file_path, &config_json)) {
-    return std::nullopt;
+    return nullptr;
   }
   auto json_val = base::JSONReader::Read(config_json, base::JSON_PARSE_RFC);
   if (!json_val || !json_val->is_dict()) {
     DVLOG(3) << "Failed to parse probe config as JSON.";
-    return std::nullopt;
+    return nullptr;
   }
 
   auto absolute_path = base::MakeAbsoluteFilePath(file_path);
@@ -71,19 +70,19 @@ std::optional<ProbeConfig> ProbeConfig::FromFile(
 
   auto config = ProbeConfig::FromValue(*json_val);
   if (!config)
-    return std::nullopt;
+    return nullptr;
   config->path_ = std::move(absolute_path);
   config->checksum_ = std::move(probe_config_sha1_hash);
   return config;
 }
 
-std::optional<ProbeConfig> ProbeConfig::FromValue(const base::Value& dv) {
+std::unique_ptr<ProbeConfig> ProbeConfig::FromValue(const base::Value& dv) {
   if (!dv.is_dict()) {
     LOG(ERROR) << "ProbeConfig::FromValue takes a dictionary as parameter";
-    return std::nullopt;
+    return nullptr;
   }
 
-  ProbeConfig instance;
+  std::unique_ptr<ProbeConfig> instance{new ProbeConfig()};
 
   for (const auto& entry : dv.GetDict()) {
     const auto& category_name = entry.first;
@@ -92,9 +91,9 @@ std::optional<ProbeConfig> ProbeConfig::FromValue(const base::Value& dv) {
     if (!category) {
       LOG(ERROR) << "Category " << category_name
                  << " doesn't contain a valid probe statement.";
-      return std::nullopt;
+      return nullptr;
     }
-    instance.category_[category_name] = std::move(category);
+    instance->category_[category_name] = std::move(category);
   }
 
   return instance;

@@ -4,7 +4,7 @@
 
 #include "runtime_probe/generic_probe_config_loader.h"
 
-#include <optional>
+#include <memory>
 
 #include <base/logging.h>
 
@@ -12,7 +12,7 @@
 
 namespace runtime_probe {
 
-std::optional<ProbeConfig> GenericProbeConfigLoader::Load() const {
+std::unique_ptr<ProbeConfig> GenericProbeConfigLoader::Load() const {
   if (CrosDebug() != CrosDebugFlag::kEnabled) {
     LOG(ERROR) << "Arbitrary probe config is only allowed with cros_debug=1";
     return {};

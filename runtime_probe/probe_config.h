@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -34,12 +33,12 @@ class ProbeConfig {
 
  public:
   // Factory method that creates the probe config from the given file path.
-  // Return |std::nullopt| if loading fails.
-  static std::optional<ProbeConfig> FromFile(const base::FilePath& file_path);
+  // Return |nullptr| if loading fails.
+  static std::unique_ptr<ProbeConfig> FromFile(const base::FilePath& file_path);
 
   // Factory method that creates the probe config from the given dictionary.
-  // Return |std::nullopt| if loading fails.
-  static std::optional<ProbeConfig> FromValue(const base::Value& dv);
+  // Return |nullptr| if loading fails.
+  static std::unique_ptr<ProbeConfig> FromValue(const base::Value& dv);
 
   // Evaluates the probe config.
   //

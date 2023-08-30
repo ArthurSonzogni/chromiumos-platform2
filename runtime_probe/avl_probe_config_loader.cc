@@ -4,7 +4,7 @@
 
 #include "runtime_probe/avl_probe_config_loader.h"
 
-#include <optional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -17,18 +17,18 @@
 
 namespace runtime_probe {
 
-std::optional<ProbeConfig> AvlProbeConfigLoader::Load() const {
+std::unique_ptr<ProbeConfig> AvlProbeConfigLoader::Load() const {
   for (const auto& file_path : GetPaths()) {
     if (base::PathExists(file_path)) {
       auto ret = ProbeConfig::FromFile(file_path);
       if (!(ret && ValidateProbeConfig(*ret))) {
         LOG(ERROR) << "Failed to load config: " << file_path.value();
-        return std::nullopt;
+        return nullptr;
       }
       return ret;
     }
   }
-  return std::nullopt;
+  return nullptr;
 }
 
 std::vector<base::FilePath> AvlProbeConfigLoader::GetPaths() const {
