@@ -6,16 +6,39 @@
 
 #include <iostream>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <brillo/errors/error.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 
 namespace lorgnette::cli {
 
 namespace {
 
 constexpr char kClientID[] = "lorgnette_cli";
+
+void PrintScannerDetails(const lorgnette::ScannerInfo& info,
+                         std::ostream& out) {
+  std::vector<std::string> formats(info.image_format().begin(),
+                                   info.image_format().end());
+  // clang-format off
+  out << "      " << "Device UUID:       " << info.device_uuid() << std::endl
+      << "      " << "Connection String: " << info.name() << std::endl
+      << "      " << "Manufacturer:      " << info.manufacturer() << std::endl
+      << "      " << "Model:             " << info.model() << std::endl
+      << "      " << "Device Type:       " << info.type() << std::endl
+      << "      " << "Connection Type:   "
+                  << ConnectionType_Name(info.connection_type())
+                                           << std::endl
+      << "      " << "Secure Connection: " << (info.secure() ? "yes" : "no")
+                                           << std::endl
+      << "      " << "Supported Formats: " << base::JoinString(formats, " ")
+                                           << std::endl;
+  // clang-format on
+}
 
 }  // namespace
 
@@ -69,13 +92,25 @@ void DiscoveryHandler::HandleScannerListChangedSignal(
     return;
   }
 
+  const ScannerInfo& scanner = signal.scanner();
   switch (signal.event_type()) {
     case ScannerListChangedSignal::SCANNER_ADDED:
-      std::cout << "  + " << signal.scanner().name() << std::endl;
+      if (!name_substring_.empty() &&
+          scanner.name().find(name_substring_) == std::string::npos) {
+        break;
+      }
+      std::cout << "  + " << scanner.name() << std::endl;
+      if (show_details_) {
+        PrintScannerDetails(scanner, std::cout);
+      }
       break;
 
     case ScannerListChangedSignal::SCANNER_REMOVED:
-      std::cout << "  - " << signal.scanner().name() << std::endl;
+      if (!name_substring_.empty() &&
+          scanner.name().find(name_substring_) == std::string::npos) {
+        break;
+      }
+      std::cout << "  - " << scanner.name() << std::endl;
       break;
 
     case ScannerListChangedSignal::ENUM_COMPLETE:
@@ -87,6 +122,14 @@ void DiscoveryHandler::HandleScannerListChangedSignal(
       LOG(ERROR) << "Unknown event received: " << signal.event_type();
       break;
   }
+}
+
+void DiscoveryHandler::SetShowDetails(bool show_details) {
+  show_details_ = show_details;
+}
+
+void DiscoveryHandler::SetScannerPattern(const std::string& scanner_substring) {
+  name_substring_ = scanner_substring;
 }
 
 }  // namespace lorgnette::cli

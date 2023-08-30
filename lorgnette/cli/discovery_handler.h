@@ -28,11 +28,16 @@ class DiscoveryHandler : public AsyncHandler {
 
   bool StartDiscovery();
 
+  void SetScannerPattern(const std::string& scanner_substring);
+  void SetShowDetails(bool show_details);
+
  private:
   void HandleScannerListChangedSignal(
       const lorgnette::ScannerListChangedSignal& signal);
 
   std::string session_id_;
+  bool show_details_ = false;
+  std::string name_substring_;
 
   // Keep as the last member variable.
   base::WeakPtrFactory<DiscoveryHandler> weak_factory_{this};

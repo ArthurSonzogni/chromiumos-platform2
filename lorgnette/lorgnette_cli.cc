@@ -496,6 +496,9 @@ int main(int argc, char** argv) {
   DEFINE_bool(show_advanced, false,
               "Show advanced options in scanner config output.");
 
+  // discover options
+  DEFINE_bool(show_details, false, "Show full scanner info during discovery");
+
   // General scanner operations options.
   DEFINE_string(scanner, "",
                 "Name of the scanner whose capabilities are requested.");
@@ -618,6 +621,8 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Failed to set up ScannerListChangedSignal handler";
       return 1;
     }
+    handler.SetShowDetails(FLAGS_show_details);
+    handler.SetScannerPattern(FLAGS_scanner);
     if (!handler.StartDiscovery()) {
       LOG(ERROR) << "Failed to start discovery";
       return 1;
