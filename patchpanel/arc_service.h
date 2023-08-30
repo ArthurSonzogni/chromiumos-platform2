@@ -199,9 +199,14 @@ class ArcService {
   // ARCVM hardcodes its interface name as eth%d (starting from 0). This is a
   // mapping of its TAP interface name to the interface name inside ARCVM.
   std::map<std::string, std::string> arcvm_guest_ifnames_;
-  // The ARC management Device associated with the ARC management interface arc0
-  // used for legacy adb-over-tcp support and VPN forwarding.
-  std::unique_ptr<Device> arc_device_;
+  // The IPv4 configuration for the "arc0" management Device. The configuration
+  // is only defined when |arc0_device_| is undefined, i.e when ARC is not
+  // running.
+  std::unique_ptr<Device::Config> arc0_config_;
+  // The "arc0" management Device associated with the virtual interface arc0
+  // used for legacy adb-over-tcp support and VPN forwarding. This ARC device is
+  // not associated with any given shill physical Device and is always created.
+  std::unique_ptr<Device> arc0_device_;
   // The PID of the ARC container instance or the CID of ARCVM instance.
   uint32_t id_;
   // All shill Devices currently managed by shill, keyed by host interface name.

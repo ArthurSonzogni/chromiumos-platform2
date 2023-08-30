@@ -156,8 +156,8 @@ bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
 }
 
 // Creates the ARC management Device used for VPN forwarding, ADB-over-TCP.
-std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
-                                       ArcService::ArcType arc_type) {
+std::unique_ptr<Device::Config> AllocateArc0Config(
+    AddressManager* addr_mgr, ArcService::ArcType arc_type) {
   auto ipv4_subnet =
       addr_mgr->AllocateIPv4Subnet(AddressManager::GuestType::kArc0);
   if (!ipv4_subnet) {
@@ -179,16 +179,9 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
 
   uint32_t subnet_index =
       (arc_type == ArcService::ArcType::kVM) ? 1 : kAnySubnetIndex;
-  auto config = std::make_unique<Device::Config>(
+  return std::make_unique<Device::Config>(
       addr_mgr->GenerateMacAddress(subnet_index), std::move(ipv4_subnet),
       std::move(host_ipv4_addr), std::move(guest_ipv4_addr));
-
-  // The "arc0" virtual device is either attached on demand to host VPNs or is
-  // used to forward host traffic into an Android VPN. Therefore, |shill_device|
-  // is not meaningful for the "arc0" virtual device and is undefined.
-  return std::make_unique<Device>(Device::Type::kARC0,
-                                  /*shill_device=*/std::nullopt, kArcbr0Ifname,
-                                  kArc0Ifname, std::move(config));
 }
 
 std::string PrefixIfname(base::StringPiece prefix, base::StringPiece ifname) {
@@ -283,7 +276,8 @@ ArcService::ArcService(Datapath* datapath,
       metrics_(metrics),
       arc_device_change_handler_(arc_device_change_handler),
       id_(kInvalidId) {
-  arc_device_ = MakeArc0Device(addr_mgr, arc_type_);
+  arc0_config_ = AllocateArc0Config(addr_mgr, arc_type_);
+  all_configs_.push_back(arc0_config_.get());
   AllocateAddressConfigs();
 }
 
@@ -333,7 +327,6 @@ void ArcService::AllocateAddressConfigs() {
         std::move(guest_ipv4_addr)));
   }
 
-  all_configs_.push_back(&arc_device_->config());
   // Iterate over |available_configs_| with a fixed explicit order and do not
   // rely on the implicit ordering derived from key values.
   for (const auto type :
@@ -346,13 +339,8 @@ void ArcService::AllocateAddressConfigs() {
 }
 
 void ArcService::RefreshMacAddressesInConfigs() {
-  arc_device_->config().set_mac_addr(addr_mgr_->GenerateMacAddress());
-  for (const auto type :
-       {ShillClient::Device::Type::kEthernet, ShillClient::Device::Type::kWifi,
-        ShillClient::Device::Type::kCellular}) {
-    for (auto& c : available_configs_[type]) {
-      c->set_mac_addr(addr_mgr_->GenerateMacAddress());
-    }
+  for (auto* config : all_configs_) {
+    config->set_mac_addr(addr_mgr_->GenerateMacAddress());
   }
 }
 
@@ -396,7 +384,15 @@ bool ArcService::Start(uint32_t id) {
     Stop(id_);
   }
 
-  std::string arc_device_ifname;
+  // The "arc0" virtual device is either attached on demand to host VPNs or is
+  // used to forward host traffic into an Android VPN. Therefore, |shill_device|
+  // is not meaningful for the "arc0" virtual device and is undefined.
+  arc0_device_ =
+      std::make_unique<Device>(Device::Type::kARC0,
+                               /*shill_device=*/std::nullopt, kArcbr0Ifname,
+                               kArc0Ifname, std::move(arc0_config_));
+
+  std::string arc0_device_ifname;
   if (arc_type_ == ArcType::kVM) {
     // Allocate TAP devices for all configs.
     int arcvm_ifname_id = 0;
@@ -418,7 +414,7 @@ bool ArcService::Start(uint32_t id) {
           kArcVmIfnamePrefix + std::to_string(arcvm_ifname_id);
       arcvm_ifname_id++;
     }
-    arc_device_ifname = arc_device_->config().tap_ifname();
+    arc0_device_ifname = arc0_device_->config().tap_ifname();
   } else {
     pid_t pid = static_cast<int>(id);
     if (pid < 0) {
@@ -439,12 +435,12 @@ bool ArcService::Start(uint32_t id) {
     // TODO(b/185881882): this should be safe to remove after b/185881882.
     RefreshMacAddressesInConfigs();
 
-    arc_device_ifname = kVethArc0Ifname;
+    arc0_device_ifname = kVethArc0Ifname;
     const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-        arc_device_->config().guest_ipv4_addr(), 30);
+        arc0_device_->config().guest_ipv4_addr(), 30);
     if (!datapath_->ConnectVethPair(
-            pid, kArcNetnsName, kVethArc0Ifname, arc_device_->guest_ifname(),
-            arc_device_->config().mac_addr(), guest_cidr,
+            pid, kArcNetnsName, kVethArc0Ifname, arc0_device_->guest_ifname(),
+            arc0_device_->config().mac_addr(), guest_cidr,
             /*remote_ipv6_cidr=*/std::nullopt,
             /*remote_multicast_flag=*/false)) {
       LOG(ERROR) << "Cannot create virtual link for " << kArc0Ifname;
@@ -452,7 +448,7 @@ bool ArcService::Start(uint32_t id) {
     }
     // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
     if (!SetSysfsOwnerToAndroidRoot(
-            pid, "net/" + arc_device_->guest_ifname() + "/mtu")) {
+            pid, "net/" + arc0_device_->guest_ifname() + "/mtu")) {
       RecordEvent(metrics_, ArcServiceUmaEvent::kSetVethMtuError);
     }
   }
@@ -460,19 +456,20 @@ bool ArcService::Start(uint32_t id) {
 
   // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
   const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      arc_device_->config().host_ipv4_addr(), 30);
+      arc0_device_->config().host_ipv4_addr(), 30);
   // Create the bridge for the management device arc0.
   if (!datapath_->AddBridge(kArcbr0Ifname, cidr)) {
     LOG(ERROR) << "Failed to setup bridge " << kArcbr0Ifname;
     return false;
   }
 
-  if (!datapath_->AddToBridge(kArcbr0Ifname, arc_device_ifname)) {
-    LOG(ERROR) << "Failed to bridge ARC Device " << arc_device_ifname << " to "
+  if (!datapath_->AddToBridge(kArcbr0Ifname, arc0_device_ifname)) {
+    LOG(ERROR) << "Failed to bridge ARC Device " << arc0_device_ifname << " to "
                << kArcbr0Ifname;
     return false;
   }
-  LOG(INFO) << "Started ARC management Device " << *arc_device_.get();
+
+  LOG(INFO) << "Started ARC management Device " << *arc0_device_.get();
 
   // Start already known shill <-> ARC mapped devices.
   for (const auto& [_, shill_device] : shill_devices_)
@@ -537,7 +534,9 @@ void ArcService::Stop(uint32_t id) {
   arcvm_guest_ifnames_.clear();
 
   datapath_->RemoveBridge(kArcbr0Ifname);
-  LOG(INFO) << "Stopped ARC management Device " << *arc_device_.get();
+  LOG(INFO) << "Stopped ARC management Device " << *arc0_device_.get();
+  arc0_config_ = arc0_device_->release_config();
+  arc0_device_.reset();
   id_ = kInvalidId;
   RecordEvent(metrics_, ArcServiceUmaEvent::kStopSuccess);
 }
