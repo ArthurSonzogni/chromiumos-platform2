@@ -1034,6 +1034,14 @@ class Metrics {
   };
 
   static constexpr HistogramMetric<NameByTechnology>
+      kMetricDHCPv4ProvisionDurationMillis = {
+          .n = NameByTechnology{"DHCPv4ProvisionDurationMillis"},
+          .min = 1,
+          .max = 30000,  // 30 seconds
+          .num_buckets = kTimerHistogramNumBuckets,
+  };
+
+  static constexpr HistogramMetric<NameByTechnology>
       kMetricSLAACProvisionDurationMillis = {
           .n = NameByTechnology{"SLAACProvisionDurationMillis"},
           .min = 1,

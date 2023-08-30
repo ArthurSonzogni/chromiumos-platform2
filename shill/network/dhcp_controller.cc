@@ -17,6 +17,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <metrics/timer.h>
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
@@ -186,6 +187,12 @@ void DHCPController::ProcessEventSignal(ClientEventReason reason,
   // depend on or change this value.
   set_is_lease_active(true);
 
+  // Only record the duration once. Note that Stop() has no effect if the timer
+  // has already stopped.
+  if (last_provision_timer_) {
+    last_provision_timer_->Stop();
+  }
+
   const bool is_gateway_arp = reason == ClientEventReason::kGatewayArp;
   // This is a non-authoritative confirmation that we or on the same
   // network as the one we received a lease on previously.  The DHCP
@@ -258,6 +265,9 @@ bool DHCPController::IsEphemeralLease() const {
 
 bool DHCPController::Start() {
   SLOG(this, 2) << __func__ << ": " << device_name();
+
+  last_provision_timer_ = std::make_unique<chromeos_metrics::Timer>();
+  last_provision_timer_->Start();
 
   // Setup program arguments.
   auto args = GetFlags();
@@ -464,6 +474,28 @@ void DHCPController::InvokeDropCallback(bool is_voluntary) {
   if (!drop_callback_.is_null()) {
     drop_callback_.Run(is_voluntary);
   }
+}
+
+std::optional<base::TimeDelta>
+DHCPController::GetAndResetLastProvisionDuration() {
+  if (!last_provision_timer_) {
+    return std::nullopt;
+  }
+
+  if (last_provision_timer_->HasStarted()) {
+    // The timer is still running, which means we haven't got any address.
+    return std::nullopt;
+  }
+
+  base::TimeDelta ret;
+  if (!last_provision_timer_->GetElapsedTime(&ret)) {
+    // The timer has not been started. This shouldn't happen since Start() is
+    // called right after the timer is created.
+    return std::nullopt;
+  }
+
+  last_provision_timer_.reset();
+  return ret;
 }
 
 }  // namespace shill

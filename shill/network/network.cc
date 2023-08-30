@@ -422,6 +422,14 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
       ev->OnIPv4ConfiguredWithDHCPLease(interface_index_);
     }
   }
+
+  // Report DHCP provision duration metric.
+  std::optional<base::TimeDelta> dhcp_duration =
+      dhcp_controller_->GetAndResetLastProvisionDuration();
+  if (dhcp_duration.has_value()) {
+    metrics_->SendToUMA(Metrics::kMetricDHCPv4ProvisionDurationMillis,
+                        technology_, dhcp_duration->InMilliseconds());
+  }
 }
 
 void Network::OnDHCPDrop(bool is_voluntary) {

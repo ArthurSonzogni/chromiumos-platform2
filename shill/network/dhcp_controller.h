@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/timer.h>
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
@@ -111,6 +112,15 @@ class DHCPController {
   // renewed in |time_left|. Returns nullopt if an error occurs (i.e. current
   // lease has already expired or no current DHCP lease), true otherwise.
   mockable std::optional<base::TimeDelta> TimeToLeaseExpiry();
+
+  // Returns the duration from Start() until the first time that this class gets
+  // the DHCP lease information from dhcpcd, and then resets the value (i.e.,
+  // consumes the value). The next call to this function will return
+  // std::nullopt, unless the DHCPController is Start()-ed again. Note that the
+  // timer will only be started in Start(), which means the duration include the
+  // time for starting the dhcpcd process, and the renewal process triggered by
+  // sending a D-Bus signal to an existing dhcpcd process won't be counted.
+  std::optional<base::TimeDelta> GetAndResetLastProvisionDuration();
 
   std::string device_name() const { return device_name_; }
 
@@ -278,6 +288,10 @@ class DHCPController {
   // Callbacks registered by RegisterCallbacks().
   UpdateCallback update_callback_;
   DropCallback drop_callback_;
+
+  // The timer to measure the duration from the last Start() until we get the
+  // DHCP lease information from the dhcpcd for the first time.
+  std::unique_ptr<chromeos_metrics::Timer> last_provision_timer_;
 
   // Root file path, used for testing.
   base::FilePath root_;
