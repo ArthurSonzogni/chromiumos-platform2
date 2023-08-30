@@ -2395,7 +2395,12 @@ void Datapath::SetupQoSDetectChain() {
                                  QoSFwmarkWithMask(QoSCategory::kDefault), "-j",
                                  "RETURN", "-w"});
 
-  // TODO(b/296958857): Add rules for TCP handshakes.
+  // Marking the first packet in the TCP handshake (SYN bit set and the ACK,RST
+  // and FIN bits cleared). We only care about the TCP connection initiated from
+  // the device now.
+  install_rule(IpFamily::kDual,
+               {"-p", "tcp", "--syn", "-j", "MARK", "--set-xmark",
+                QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
 
   // Marking ICMP packets.
   install_rule(IpFamily::kIPv4,
@@ -2406,7 +2411,10 @@ void Datapath::SetupQoSDetectChain() {
                 QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
 
   // TODO(b/296958774): Add rules for DNS.
-  // TODO(b/296952085): Add rules for WebRTC detection.
+
+  // TODO(b/296952085): Add rules for WebRTC detection. Also need to add an
+  // early-return rule above for packets marked by rules for network control, to
+  // avoid marks on TCP handshake packets being persisted into connmark.
 }
 
 void Datapath::SetupQoSApplyDSCPChain() {
