@@ -44,10 +44,10 @@ class MockPowerSupply : public PowerSupplyInterface {
   MOCK_METHOD(void, SetAdaptiveChargingHeuristicEnabled, (bool), (override));
   MOCK_METHOD(void,
               SetAdaptiveCharging,
-              (const base::TimeDelta&, double),
+              (const base::TimeDelta&, double, double),
               (override));
   MOCK_METHOD(void, ClearAdaptiveChargingChargeDelay, (), (override));
-  MOCK_METHOD(void, SetChargeLimited, (double), (override));
+  MOCK_METHOD(void, SetChargeLimited, (double, double), (override));
   MOCK_METHOD(void, ClearChargeLimited, (), (override));
   MOCK_METHOD(void, OnBatterySaverStateChanged, (), (override));
 

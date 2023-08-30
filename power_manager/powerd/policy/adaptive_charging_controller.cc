@@ -1239,7 +1239,8 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
       (status.external_power == PowerSupplyProperties_ExternalPower_AC ||
        status.external_power == PowerSupplyProperties_ExternalPower_USB)) {
     if (AtHoldPercent(status.display_battery_percentage)) {
-      power_supply_->SetChargeLimited(static_cast<double>(display_percent_));
+      power_supply_->SetChargeLimited(static_cast<double>(display_percent_),
+                                      static_cast<double>(hold_delta_percent_));
     } else {
       // Clear Charge Limit state for the `power_supply_` if we dropped below
       // the hold percent range. This can happen with Charge Limit with low
@@ -1262,8 +1263,9 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
           target_full_charge_time_ == base::TimeTicks::Max()
               ? base::TimeDelta()
               : target_full_charge_time_ - clock_.GetCurrentBootTime();
-      power_supply_->SetAdaptiveCharging(target_time_until_full,
-                                         static_cast<double>(display_percent_));
+      power_supply_->SetAdaptiveCharging(
+          target_time_until_full, static_cast<double>(display_percent_),
+          static_cast<double>(hold_delta_percent_));
     }
 
     // Since we report metrics on how well the ML model does even if Adaptive

@@ -1593,7 +1593,7 @@ TEST_F(AdaptiveChargingControllerTest, ChargeLimitAfterShutdown) {
 // Test that Charge Limit properly notifies the PowerSupply to properly display
 // the correct battery percentage.
 TEST_F(AdaptiveChargingControllerTest, ChargeLimitPowerSupplyState) {
-  EXPECT_CALL(power_supply_, SetChargeLimited(_)).Times(1);
+  EXPECT_CALL(power_supply_, SetChargeLimited(_, _)).Times(1);
   InitChargeLimitPref();
 
   EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);

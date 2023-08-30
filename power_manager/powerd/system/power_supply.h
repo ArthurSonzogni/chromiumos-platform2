@@ -265,9 +265,12 @@ class PowerSupplyInterface {
   // finish charging to full.
   // |hold_percent| is the what to set
   // |power_status_.display_battery_percentage| to while Adaptive Charging is
-  // delaying the charge.
+  // delaying the charge. This will only be done while
+  // display_battery_percentage is within the range [|hold_percent| -
+  // |hold_delta_percent| - 1, |hold_percent|].
   virtual void SetAdaptiveCharging(const base::TimeDelta& target_time_to_full,
-                                   double hold_percent) = 0;
+                                   double hold_percent,
+                                   double hold_delta_percent) = 0;
 
   // Clears |adaptive_charging_hold_percent_|.
   // |power_status_.display_battery_percentage| is no longer held at
@@ -276,8 +279,11 @@ class PowerSupplyInterface {
 
   // Sets if Charge Limit is currently maintaining |hold_percent| charge. This
   // indicates that |hold_percent| should be shown as the current display
-  // battery percentage.
-  virtual void SetChargeLimited(double hold_percent) = 0;
+  // battery percentage. This will only be done when the display battery
+  // percentage is within the range [|hold_percent| - |hold_delta_percent| - 1,
+  // |hold_percent|].
+  virtual void SetChargeLimited(double hold_percent,
+                                double hold_delta_percent) = 0;
 
   // Clears the charge limit, meaning that the display battery percentage should
   // no longer be locked to the |hold_percent| set via |SetChargeLimited|.
@@ -405,9 +411,11 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   void SetAdaptiveChargingSupported(bool supported) override;
   void SetAdaptiveChargingHeuristicEnabled(bool enabled) override;
   void SetAdaptiveCharging(const base::TimeDelta& target_time_to_full,
-                           double hold_percent) override;
+                           double hold_percent,
+                           double hold_delta_percent) override;
   void ClearAdaptiveChargingChargeDelay() override;
-  void SetChargeLimited(double hold_percent) override;
+  void SetChargeLimited(double hold_percent,
+                        double hold_delta_percent) override;
   void ClearChargeLimited() override;
   void OnBatterySaverStateChanged() override;
 
@@ -646,6 +654,10 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // The value to use for |power_status_.display_battery_percentage| while
   // Adaptive Charging is delaying charge.
   double adaptive_charging_hold_percent_ = 100.0;
+
+  // The value for determining the lower bound of the range for which Adaptive
+  // Charging and Charge Limit overwrite the display battery percentage.
+  double adaptive_charging_hold_delta_percent_ = 0.0;
 
   // The expected delay until the battery will be full, for when Adaptive
   // Charging is delaying charge.

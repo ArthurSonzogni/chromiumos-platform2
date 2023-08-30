@@ -775,10 +775,13 @@ void PowerSupply::SetAdaptiveChargingHeuristicEnabled(bool enabled) {
 }
 
 void PowerSupply::SetAdaptiveCharging(
-    const base::TimeDelta& target_time_to_full, double hold_percent) {
+    const base::TimeDelta& target_time_to_full,
+    double hold_percent,
+    double hold_delta_percent) {
   DCHECK(adaptive_charging_supported_);
   adaptive_charging_target_time_to_full_ = target_time_to_full;
   adaptive_charging_hold_percent_ = hold_percent;
+  adaptive_charging_hold_delta_percent_ = hold_delta_percent;
   adaptive_delaying_charge_ = true;
 }
 
@@ -788,12 +791,14 @@ void PowerSupply::ClearAdaptiveChargingChargeDelay() {
   adaptive_charging_target_time_to_full_ = base::TimeDelta();
 }
 
-void PowerSupply::SetChargeLimited(double hold_percent) {
+void PowerSupply::SetChargeLimited(double hold_percent,
+                                   double hold_delta_percent) {
   // Adaptive Charging and Charge Limit should not be active at the same time.
   DCHECK(!adaptive_delaying_charge_);
   DCHECK(adaptive_charging_supported_);
   charge_limited_ = true;
   adaptive_charging_hold_percent_ = hold_percent;
+  adaptive_charging_hold_delta_percent_ = hold_delta_percent;
 }
 
 void PowerSupply::ClearChargeLimited() {
@@ -1029,14 +1034,29 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
     status.adaptive_delaying_charge = adaptive_delaying_charge_;
     status.charge_limited = charge_limited_;
 
-    if (adaptive_delaying_charge_) {
-      status.display_battery_percentage = adaptive_charging_hold_percent_;
-      // If `adaptive_charging_target_time_to_full_` is the zero value, there's
-      // no current target for fully charging.
-      status.battery_time_to_full = adaptive_charging_target_time_to_full_;
-    } else if (charge_limited_ && status.display_battery_percentage <=
-                                      adaptive_charging_hold_percent_) {
-      status.display_battery_percentage = adaptive_charging_hold_percent_;
+    // Overwrite the `display_battery_percentage` for Adaptive Charging and
+    // Charge Limit. We only overwrite the value if it's currently within the
+    // range [`adaptive_charging_hold_percent_` -
+    // `adaptive_charging_hold_delta_percent_` - 1,
+    // `adaptive_charging_hold_percent_`].
+    // This prevents the value from being overwritten if the true display
+    // percentage is greater than the hold percentage or too far below the hold
+    // percentage.
+    // Overwriting the display percentage prevents confusion when Adaptive
+    // Charging or Charge Limit charge/discharge over a range while maintaining
+    // charge.
+    if (status.display_battery_percentage <= adaptive_charging_hold_percent_ &&
+        status.display_battery_percentage >=
+            (adaptive_charging_hold_percent_ -
+             adaptive_charging_hold_delta_percent_ - 1)) {
+      if (adaptive_delaying_charge_) {
+        status.display_battery_percentage = adaptive_charging_hold_percent_;
+        // If `adaptive_charging_target_time_to_full_` is the zero value,
+        // there's no current target for fully charging.
+        status.battery_time_to_full = adaptive_charging_target_time_to_full_;
+      } else if (charge_limited_) {
+        status.display_battery_percentage = adaptive_charging_hold_percent_;
+      }
     }
   }
 

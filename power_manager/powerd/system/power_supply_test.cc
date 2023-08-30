@@ -2329,11 +2329,13 @@ TEST_F(PowerSupplyTest, AdaptiveChargingTarget) {
   // The Adaptive Charging Target will override the existing values for
   // display_battery_percentage and battery_time_to_full.
   PowerStatus status;
-  double hold_charge = 0.8;
+  double hold_percent = 80.0;
+  double hold_delta = 5.0;
   base::TimeDelta target_time_delta = base::Hours(4);
-  power_supply_->SetAdaptiveCharging(target_time_delta, hold_charge);
+  power_supply_->SetAdaptiveCharging(target_time_delta, hold_percent,
+                                     hold_delta);
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(hold_charge, status.display_battery_percentage);
+  EXPECT_DOUBLE_EQ(hold_percent, status.display_battery_percentage);
   EXPECT_EQ(target_time_delta.InHours(), status.battery_time_to_full.InHours());
   EXPECT_TRUE(status.adaptive_delaying_charge);
   EXPECT_TRUE(status.adaptive_charging_supported);
@@ -2357,8 +2359,10 @@ TEST_F(PowerSupplyTest, AdaptiveChargingZeroTargetTime) {
   power_supply_->SetAdaptiveChargingSupported(true);
 
   PowerStatus status;
-  double hold_charge = 0.8;
-  power_supply_->SetAdaptiveCharging(base::TimeDelta(), hold_charge);
+  double hold_percent = 80.0;
+  double hold_delta = 5.0;
+  power_supply_->SetAdaptiveCharging(base::TimeDelta(), hold_percent,
+                                     hold_delta);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(base::TimeDelta(), status.battery_time_to_full);
 }
@@ -2396,17 +2400,76 @@ TEST_F(PowerSupplyTest, AdaptiveChargingHeuristic) {
   EXPECT_FALSE(proto.adaptive_delaying_charge());
 }
 
+TEST_F(PowerSupplyTest, AdaptiveChargingInsideRange) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  Init();
+
+  // The lower limit for `display_battery_percentage` being overwritten is
+  // `hold_percent` - `hold_delta` - 1.0. Measure 0.01 above this lower limit
+  // because of floating point math.
+  double actual_charge = 0.7401 * kFullFactor;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  power_supply_->SetAdaptiveChargingSupported(true);
+
+  PowerStatus status;
+  double hold_percent = 80.0;
+  double hold_delta = 5.0;
+  power_supply_->SetAdaptiveCharging(base::TimeDelta(), hold_percent,
+                                     hold_delta);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(hold_percent, status.display_battery_percentage);
+
+  // Test the upper limit of the range. Measure 0.01 below the upper limit
+  // because of floating point math.
+  actual_charge = 0.7999 * kFullFactor;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(hold_percent, status.display_battery_percentage);
+}
+
+// Test that the display battery percentage isn't overwritten when outside of
+// the range specified for Adaptive Charging.
+TEST_F(PowerSupplyTest, AdaptiveChargingOutsideRange) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  Init();
+
+  // Test for below the supported range.
+  double actual_charge = 0.70;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  power_supply_->SetAdaptiveChargingSupported(true);
+
+  PowerStatus status;
+  double hold_percent = 80.0;
+  double hold_delta = 5.0;
+  power_supply_->SetAdaptiveCharging(base::TimeDelta(), hold_percent,
+                                     hold_delta);
+  ASSERT_TRUE(UpdateStatus(&status));
+
+  // Charge should still be displayed as the actual charge since it's outside of
+  // the range [80 - 5 -1, 80].
+  EXPECT_DOUBLE_EQ((100.0 * actual_charge) / kFullFactor,
+                   status.display_battery_percentage);
+
+  // Test for above the supported range.
+  actual_charge = 0.81;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_DOUBLE_EQ((100.0 * actual_charge) / kFullFactor,
+                   status.display_battery_percentage);
+}
+
 TEST_F(PowerSupplyTest, ChargeLimitEnabled) {
   WriteDefaultValues(PowerSource::BATTERY);
   Init();
 
   double actual_charge = 0.75;
   double hold_percent = 80.0;
+  double hold_delta = 5.0;
   PowerStatus status;
   PowerSupplyProperties proto;
   UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
   power_supply_->SetAdaptiveChargingSupported(true);
-  power_supply_->SetChargeLimited(hold_percent);
+  power_supply_->SetChargeLimited(hold_percent, hold_delta);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(status.display_battery_percentage, hold_percent);
   EXPECT_TRUE(status.charge_limited);
@@ -2429,6 +2492,70 @@ TEST_F(PowerSupplyTest, ChargeLimitEnabled) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_NE(status.display_battery_percentage, hold_percent);
   EXPECT_FALSE(status.charge_limited);
+}
+
+TEST_F(PowerSupplyTest, ChargeLimitInsideRange) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  Init();
+
+  // The lower limit for `display_battery_percentage` being overwritten is
+  // `hold_percent` - `hold_delta` - 1.0. Add 0.01% to account for floating
+  // point math.
+  double actual_charge = 0.7401 * kFullFactor;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  power_supply_->SetAdaptiveChargingSupported(true);
+
+  PowerStatus status;
+  double hold_percent = 80.0;
+  double hold_delta = 5.0;
+  power_supply_->SetChargeLimited(hold_percent, hold_delta);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(hold_percent, status.display_battery_percentage);
+
+  // Test the upper limit of the range. Subtract 0.01% to account for floating
+  // point math.
+  actual_charge = 0.7999 * kFullFactor;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(hold_percent, status.display_battery_percentage);
+
+  // Verify that we clear all Charge Limit state when `ClearChargeLimit` is
+  // called.
+  power_supply_->ClearChargeLimited();
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_NE(status.display_battery_percentage, hold_percent);
+  EXPECT_FALSE(status.charge_limited);
+}
+
+// Test that the display battery percentage isn't overwritten when outside of
+// the range specified for Charge Limit.
+TEST_F(PowerSupplyTest, ChargeLimitOutsideRange) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  Init();
+
+  double actual_charge = 0.70;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  power_supply_->SetAdaptiveChargingSupported(true);
+
+  PowerStatus status;
+  double hold_percent = 80.0;
+  double hold_delta = 5.0;
+  power_supply_->SetChargeLimited(hold_percent, hold_delta);
+  ASSERT_TRUE(UpdateStatus(&status));
+
+  // Charge should still be displayed as the actual charge since it's outside of
+  // the range [80 - 5 -1, 80].
+  EXPECT_DOUBLE_EQ((100.0 * actual_charge) / kFullFactor,
+                   status.display_battery_percentage);
+
+  actual_charge = 0.81;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  ASSERT_TRUE(UpdateStatus(&status));
+
+  // Charge is above `hold_percent`, so `display_battery_percentage` should not
+  // be overwritten.
+  EXPECT_DOUBLE_EQ((100.0 * actual_charge) / kFullFactor,
+                   status.display_battery_percentage);
 }
 
 // Test that barreljack AC is ignored when configured with no barreljack
