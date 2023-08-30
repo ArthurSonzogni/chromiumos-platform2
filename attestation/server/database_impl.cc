@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 
 using base::FilePath;
 
@@ -68,6 +69,9 @@ bool DatabaseImpl::Reload() {
   if (!io_->Read(&buffer)) {
     return false;
   }
+
+  RETURN_IF_ERROR(hwsec_->WaitUntilReady()).As(false);
+
   return DecryptProtobuf(buffer);
 }
 
