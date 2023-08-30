@@ -42,10 +42,10 @@ using ::cryptohome::error::CryptohomeTPMError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
 using ::hwsec::PinWeaverManagerFrontend;
+using ::hwsec::PinWeaverManagerFrontend::AuthChannel::kFingerprintAuthChannel;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 
-constexpr uint8_t kFingerprintAuthChannel = 0;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 constexpr size_t kResetSecretSize = 32;
 

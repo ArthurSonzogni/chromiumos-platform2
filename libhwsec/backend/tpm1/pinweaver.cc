@@ -98,13 +98,13 @@ StatusOr<std::optional<uint32_t>> PinWeaverTpm1::GetExpirationInSeconds(
 }
 
 StatusOr<PinWeaverTpm1::PinWeaverEccPoint> PinWeaverTpm1::GeneratePk(
-    uint8_t auth_channel,
+    AuthChannel auth_channel,
     const PinWeaverTpm1::PinWeaverEccPoint& client_public_key) {
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
 
 StatusOr<PinWeaverTpm1::CredentialTreeResult> PinWeaverTpm1::InsertRateLimiter(
-    uint8_t auth_channel,
+    AuthChannel auth_channel,
     const std::vector<OperationPolicySetting>& policies,
     const uint64_t label,
     const std::vector<brillo::Blob>& h_aux,
@@ -115,7 +115,7 @@ StatusOr<PinWeaverTpm1::CredentialTreeResult> PinWeaverTpm1::InsertRateLimiter(
 }
 
 StatusOr<PinWeaverTpm1::CredentialTreeResult>
-PinWeaverTpm1::StartBiometricsAuth(uint8_t auth_channel,
+PinWeaverTpm1::StartBiometricsAuth(AuthChannel auth_channel,
                                    const uint64_t label,
                                    const std::vector<brillo::Blob>& h_aux,
                                    const brillo::Blob& orig_cred_metadata,

@@ -39,6 +39,7 @@ namespace {
 using ::base::test::TestFuture;
 using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
+using ::hwsec::PinWeaverManagerFrontend::AuthChannel::kFingerprintAuthChannel;
 using ::hwsec_foundation::kAesGcmIVSize;
 using ::hwsec_foundation::kAesGcmTagSize;
 using ::hwsec_foundation::error::testing::IsOk;
@@ -217,7 +218,8 @@ TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
   EXPECT_CALL(*bio_command_processor_, GetNonce(_))
       .WillOnce(
           [&kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
-  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth(0, kLeLabel, kNonce))
+  EXPECT_CALL(hwsec_pw_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel, kLeLabel, kNonce))
       .WillOnce(
           Return(hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
   EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_, _))
@@ -251,7 +253,8 @@ TEST_F(FingerprintDriverTest, PrepareForAddSuccess) {
   EXPECT_CALL(*bio_command_processor_, GetNonce(_))
       .WillOnce(
           [&kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
-  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth(0, kLeLabel, kNonce))
+  EXPECT_CALL(hwsec_pw_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel, kLeLabel, kNonce))
       .WillOnce(
           Return(hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
   EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_, _))
@@ -281,7 +284,8 @@ TEST_F(FingerprintDriverTest, PrepareForAuthenticateFailure) {
   EXPECT_CALL(*bio_command_processor_, GetNonce(_))
       .WillOnce(
           [&kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
-  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth(0, kLeLabel, kNonce))
+  EXPECT_CALL(hwsec_pw_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel, kLeLabel, kNonce))
       .WillOnce(
           Return(hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
   EXPECT_CALL(*bio_command_processor_, StartAuthenticateSession(_, _, _))
@@ -314,7 +318,8 @@ TEST_F(FingerprintDriverTest, PrepareForAuthenticateSuccess) {
   EXPECT_CALL(*bio_command_processor_, GetNonce(_))
       .WillOnce(
           [&kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
-  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth(0, kLeLabel, kNonce))
+  EXPECT_CALL(hwsec_pw_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel, kLeLabel, kNonce))
       .WillOnce(
           Return(hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
   EXPECT_CALL(*bio_command_processor_, StartAuthenticateSession(_, _, _))

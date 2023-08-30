@@ -92,13 +92,14 @@ PinWeaverManagerFrontendImpl::GetExpirationInSeconds(
 }
 
 StatusOr<PinWeaverEccPoint> PinWeaverManagerFrontendImpl::GeneratePk(
-    uint8_t auth_channel, const PinWeaverEccPoint& client_public_key) const {
+    AuthChannel auth_channel,
+    const PinWeaverEccPoint& client_public_key) const {
   return middleware_.CallSync<&Backend::PinWeaver::GeneratePk>(
       auth_channel, client_public_key);
 }
 
 StatusOr<uint64_t> PinWeaverManagerFrontendImpl::InsertRateLimiter(
-    uint8_t auth_channel,
+    AuthChannel auth_channel,
     const std::vector<OperationPolicySetting>& policies,
     const brillo::SecureBlob& reset_secret,
     const DelaySchedule& delay_schedule,
@@ -109,7 +110,7 @@ StatusOr<uint64_t> PinWeaverManagerFrontendImpl::InsertRateLimiter(
 
 StatusOr<StartBiometricsAuthReply>
 PinWeaverManagerFrontendImpl::StartBiometricsAuth(
-    uint8_t auth_channel,
+    AuthChannel auth_channel,
     const uint64_t label,
     const brillo::Blob& client_nonce) const {
   return middleware_.CallSync<&Backend::PinWeaverManager::StartBiometricsAuth>(

@@ -76,15 +76,15 @@ class PinWeaverManagerImpl : public PinWeaverManager {
   StatusOr<DelaySchedule> GetDelaySchedule(uint64_t label) override;
 
   StatusOr<uint64_t> InsertRateLimiter(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const std::vector<hwsec::OperationPolicySetting>& policies,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_sched,
       std::optional<uint32_t> expiration_delay) override;
 
   StatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
-      uint8_t auth_channel,
-      uint64_t label,
+      AuthChannel auth_channel,
+      const uint64_t label,
       const brillo::Blob& client_nonce) override;
 
   Status SyncHashTree() override;
@@ -112,7 +112,7 @@ class PinWeaverManagerImpl : public PinWeaverManager {
   // authentication factor, so that it can be used to look up the credential
   // later.
   StatusOr<uint64_t> InsertLeaf(
-      std::optional<uint8_t> auth_channel,
+      std::optional<AuthChannel> auth_channel,
       const std::vector<hwsec::OperationPolicySetting>& policies,
       const brillo::SecureBlob* le_secret,
       const brillo::SecureBlob* he_secret,

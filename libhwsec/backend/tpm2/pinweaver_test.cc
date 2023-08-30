@@ -35,6 +35,11 @@ using ErrorCode = hwsec::Backend::PinWeaver::CredentialTreeResult::ErrorCode;
 
 namespace hwsec {
 
+constexpr PinWeaver::AuthChannel kAuthChannel =
+    PinWeaver::AuthChannel::kFingerprintAuthChannel;
+constexpr PinWeaver::AuthChannel kWrongAuthChannel =
+    PinWeaver::AuthChannel::kTestAuthChannel;
+
 using BackendPinweaverTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendPinweaverTpm2Test, IsEnabled) {
@@ -941,7 +946,6 @@ TEST_F(BackendPinweaverTpm2Test, GetExpirationInSecondsV2) {
 
 TEST_F(BackendPinweaverTpm2Test, GeneratePk) {
   constexpr uint32_t kVersion = 2;
-  constexpr uint8_t kAuthChannel = 0;
   const std::string kFakeRoot = "fake_root";
   const std::string kClientCoordinate(32, 'A');
   const std::string kServerCoordinate(32, 'B');
@@ -961,9 +965,9 @@ TEST_F(BackendPinweaverTpm2Test, GeneratePk) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(
-      proxy_->GetMockTpmUtility(),
-      PinWeaverGenerateBiometricsAuthPk(kVersion, kAuthChannel, _, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              PinWeaverGenerateBiometricsAuthPk(
+                  kVersion, static_cast<uint8_t>(kAuthChannel), _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(0), SetArgPointee<4>(kFakeRoot),
                       SetArgPointee<5>(server_public_key),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -977,27 +981,6 @@ TEST_F(BackendPinweaverTpm2Test, GeneratePk) {
 
 TEST_F(BackendPinweaverTpm2Test, GeneratePkV1Unsupported) {
   constexpr uint32_t kVersion = 1;
-  constexpr uint8_t kAuthChannel = 0;
-  const std::string kClientCoordinate(32, 'A');
-
-  Backend::PinWeaver::PinWeaverEccPoint client_public_key;
-  memcpy(client_public_key.x, kClientCoordinate.data(),
-         kClientCoordinate.size());
-  memcpy(client_public_key.y, kClientCoordinate.data(),
-         kClientCoordinate.size());
-
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
-
-  EXPECT_THAT(
-      backend_->GetPinWeaverTpm2().GeneratePk(kAuthChannel, client_public_key),
-      NotOk());
-}
-
-TEST_F(BackendPinweaverTpm2Test, GeneratePkInvalidAuthChannel) {
-  constexpr uint32_t kVersion = 2;
-  constexpr uint8_t kAuthChannel = 2;
   const std::string kClientCoordinate(32, 'A');
 
   Backend::PinWeaver::PinWeaverEccPoint client_public_key;
@@ -1017,7 +1000,6 @@ TEST_F(BackendPinweaverTpm2Test, GeneratePkInvalidAuthChannel) {
 
 TEST_F(BackendPinweaverTpm2Test, InsertRateLimiter) {
   constexpr uint32_t kVersion = 2;
-  constexpr uint8_t kAuthChannel = 0;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
   const std::string kFakeCred = "fake_cred";
@@ -1057,10 +1039,11 @@ TEST_F(BackendPinweaverTpm2Test, InsertRateLimiter) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMockTpmUtility(),
-              PinWeaverCreateBiometricsAuthRateLimiter(
-                  kVersion, kAuthChannel, kLabel, _, kFakeResetSecret,
-                  kDelaySched, _, Eq(kExpirationDelay), _, _, _, _))
+  EXPECT_CALL(
+      proxy_->GetMockTpmUtility(),
+      PinWeaverCreateBiometricsAuthRateLimiter(
+          kVersion, static_cast<uint8_t>(kAuthChannel), kLabel, _,
+          kFakeResetSecret, kDelaySched, _, Eq(kExpirationDelay), _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<8>(0), SetArgPointee<9>(kFakeRoot),
                       SetArgPointee<10>(kFakeCred), SetArgPointee<11>(kFakeMac),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -1081,36 +1064,6 @@ TEST_F(BackendPinweaverTpm2Test, InsertRateLimiter) {
 
 TEST_F(BackendPinweaverTpm2Test, InsertRateLimiterV1Unsupported) {
   constexpr uint32_t kVersion = 1;
-  constexpr uint8_t kAuthChannel = 0;
-  constexpr uint32_t kLabel = 42;
-  const std::string kFakeRoot = "fake_root";
-  const std::string kFakeCred = "fake_cred";
-  const std::string kFakeMac = "fake_mac";
-  const brillo::SecureBlob kFakeResetSecret("fake_reset_secret");
-  const hwsec::Backend::PinWeaver::DelaySchedule kDelaySched = {
-      {5, UINT32_MAX},
-  };
-  const uint32_t kExpirationDelay = 100;
-  const std::vector<brillo::Blob>& kHAux = {
-      brillo::Blob(32, 'X'),
-      brillo::Blob(32, 'Y'),
-      brillo::Blob(32, 'Z'),
-  };
-
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
-
-  EXPECT_THAT(
-      backend_->GetPinWeaverTpm2().InsertRateLimiter(
-          kAuthChannel, /*policies=*/std::vector<OperationPolicySetting>(),
-          kLabel, kHAux, kFakeResetSecret, kDelaySched, kExpirationDelay),
-      NotOk());
-}
-
-TEST_F(BackendPinweaverTpm2Test, InsertRateLimiterInvalidAuthChannel) {
-  constexpr uint32_t kVersion = 2;
-  constexpr uint8_t kAuthChannel = 2;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
   const std::string kFakeCred = "fake_cred";
@@ -1139,7 +1092,6 @@ TEST_F(BackendPinweaverTpm2Test, InsertRateLimiterInvalidAuthChannel) {
 
 TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuth) {
   constexpr uint32_t kVersion = 2;
-  constexpr uint8_t kAuthChannel = 0;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
   const std::string kFakeCred = "fake_cred";
@@ -1162,10 +1114,10 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuth) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(
-      proxy_->GetMockTpmUtility(),
-      PinWeaverStartBiometricsAuth(kVersion, kAuthChannel, kFakeClientNonce, _,
-                                   kFakeCred, _, _, _, _, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              PinWeaverStartBiometricsAuth(
+                  kVersion, static_cast<uint8_t>(kAuthChannel),
+                  kFakeClientNonce, _, kFakeCred, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(0), SetArgPointee<6>(kFakeRoot),
                       SetArgPointee<7>(kFakeServerNonce),
                       SetArgPointee<8>(kFakeEncryptedHeSecret),
@@ -1195,7 +1147,6 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuth) {
 
 TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthAuthFail) {
   constexpr uint32_t kVersion = 2;
-  constexpr uint8_t kWrongAuthChannel = 1;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
   const std::string kFakeCred = "fake_cred";
@@ -1214,9 +1165,9 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthAuthFail) {
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(proxy_->GetMockTpmUtility(),
-              PinWeaverStartBiometricsAuth(kVersion, kWrongAuthChannel,
-                                           kFakeClientNonce, _, kFakeCred, _, _,
-                                           _, _, _, _, _))
+              PinWeaverStartBiometricsAuth(
+                  kVersion, static_cast<uint8_t>(kWrongAuthChannel),
+                  kFakeClientNonce, _, kFakeCred, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(PW_ERR_LOWENT_AUTH_FAILED),
                       SetArgPointee<6>(kFakeRoot), SetArgPointee<10>(kNewCred),
                       SetArgPointee<11>(kFakeMac),
@@ -1244,7 +1195,6 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthAuthFail) {
 
 TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthTpmFail) {
   constexpr uint32_t kVersion = 2;
-  constexpr uint8_t kAuthChannel = 0;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
   const std::string kFakeCred = "fake_cred";
@@ -1262,10 +1212,10 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthTpmFail) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(
-      proxy_->GetMockTpmUtility(),
-      PinWeaverStartBiometricsAuth(kVersion, kAuthChannel, kFakeClientNonce, _,
-                                   kFakeCred, _, _, _, _, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              PinWeaverStartBiometricsAuth(
+                  kVersion, static_cast<uint8_t>(kAuthChannel),
+                  kFakeClientNonce, _, kFakeCred, _, _, _, _, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
   EXPECT_THAT(backend_->GetPinWeaverTpm2().StartBiometricsAuth(
@@ -1276,33 +1226,6 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthTpmFail) {
 
 TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthV1NotSupported) {
   constexpr uint32_t kVersion = 1;
-  constexpr uint8_t kAuthChannel = 0;
-  constexpr uint32_t kLabel = 42;
-  const std::string kFakeRoot = "fake_root";
-  const std::string kFakeCred = "fake_cred";
-  const std::string kNewCred = "new_cred";
-  const std::string kFakeMac = "fake_mac";
-  const brillo::Blob kFakeClientNonce =
-      brillo::BlobFromString("fake_client_nonce");
-  const std::vector<brillo::Blob>& kHAux = {
-      brillo::Blob(32, 'X'),
-      brillo::Blob(32, 'Y'),
-      brillo::Blob(32, 'Z'),
-  };
-
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
-
-  EXPECT_THAT(backend_->GetPinWeaverTpm2().StartBiometricsAuth(
-                  kAuthChannel, kLabel, kHAux,
-                  brillo::BlobFromString(kFakeCred), kFakeClientNonce),
-              NotOk());
-}
-
-TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthInvalidAuthChannel) {
-  constexpr uint32_t kVersion = 2;
-  constexpr uint8_t kAuthChannel = 2;
   constexpr uint32_t kLabel = 42;
   const std::string kFakeRoot = "fake_root";
   const std::string kFakeCred = "fake_cred";

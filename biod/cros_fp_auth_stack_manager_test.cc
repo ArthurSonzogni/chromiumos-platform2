@@ -37,6 +37,7 @@ using PinWeaverEccPoint = hwsec::PinWeaverManagerFrontend::PinWeaverEccPoint;
 
 using hwsec::TPMError;
 using hwsec::TPMRetryAction;
+using hwsec::PinWeaverManagerFrontend::AuthChannel::kFingerprintAuthChannel;
 
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
@@ -52,8 +53,6 @@ using testing::SaveArg;
 using testing::SetArgPointee;
 
 namespace {
-
-constexpr uint8_t kCrosFpAuthChannel = 0;
 
 StartEnrollSessionRequest MakeStartEnrollSessionRequest(
     const brillo::Blob& gsc_nonce,
@@ -393,7 +392,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestInitializeNoPk) {
           .pub_y = kPubY,
           .encrypted_private_key = kEncryptedPriv,
       }));
-  EXPECT_CALL(*mock_pinweaver_manager_, GeneratePk(kCrosFpAuthChannel, _))
+  EXPECT_CALL(*mock_pinweaver_manager_, GeneratePk(kFingerprintAuthChannel, _))
       .WillOnce(ReturnValue(PinWeaverEccPoint()));
   EXPECT_CALL(*mock_cros_dev_, PairingKeyWrap(_, _, kEncryptedPriv))
       .WillOnce(ReturnValue(kEncryptedPk));
@@ -431,7 +430,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestInitializeNoPkPinWeaverFailed) {
           .pub_y = kPubY,
           .encrypted_private_key = kEncryptedPriv,
       }));
-  EXPECT_CALL(*mock_pinweaver_manager_, GeneratePk(kCrosFpAuthChannel, _))
+  EXPECT_CALL(*mock_pinweaver_manager_, GeneratePk(kFingerprintAuthChannel, _))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   EXPECT_FALSE(cros_fp_auth_stack_manager_->Initialize());

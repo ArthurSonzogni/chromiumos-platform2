@@ -66,12 +66,12 @@ class MockPinWeaverManagerFrontend : public MockFrontend,
               (const override));
   MOCK_METHOD(StatusOr<PinWeaverEccPoint>,
               GeneratePk,
-              (uint8_t auth_channel,
+              (AuthChannel auth_channel,
                const PinWeaverEccPoint& client_public_key),
               (const override));
   MOCK_METHOD(StatusOr<uint64_t>,
               InsertRateLimiter,
-              (uint8_t auth_channel,
+              (AuthChannel auth_channel,
                const std::vector<OperationPolicySetting>& policies,
                const brillo::SecureBlob& reset_secret,
                const DelaySchedule& delay_schedule,
@@ -79,7 +79,7 @@ class MockPinWeaverManagerFrontend : public MockFrontend,
               (const override));
   MOCK_METHOD(StatusOr<StartBiometricsAuthReply>,
               StartBiometricsAuth,
-              (uint8_t auth_channel,
+              (AuthChannel auth_channel,
                const uint64_t label,
                const brillo::Blob& client_nonce),
               (const override));

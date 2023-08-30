@@ -67,10 +67,10 @@ class PinWeaverTpm2 : public PinWeaver {
   StatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
       const brillo::Blob& cred_metadata) override;
   StatusOr<PinWeaverEccPoint> GeneratePk(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const PinWeaverEccPoint& client_public_key) override;
   StatusOr<CredentialTreeResult> InsertRateLimiter(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const std::vector<OperationPolicySetting>& policies,
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
@@ -78,7 +78,7 @@ class PinWeaverTpm2 : public PinWeaver {
       const DelaySchedule& delay_schedule,
       std::optional<uint32_t> expiration_delay) override;
   StatusOr<CredentialTreeResult> StartBiometricsAuth(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,

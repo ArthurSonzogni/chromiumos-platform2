@@ -126,12 +126,12 @@ class MockPinWeaver : public PinWeaver {
               (override));
   MOCK_METHOD(StatusOr<PinWeaverEccPoint>,
               GeneratePk,
-              (uint8_t auth_channel,
+              (AuthChannel auth_channel,
                const PinWeaverEccPoint& client_public_key),
               (override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               InsertRateLimiter,
-              (uint8_t auth_channel,
+              (AuthChannel auth_channel,
                const std::vector<OperationPolicySetting>& policies,
                const uint64_t label,
                const std::vector<brillo::Blob>& h_aux,
@@ -141,7 +141,7 @@ class MockPinWeaver : public PinWeaver {
               (override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               StartBiometricsAuth,
-              (uint8_t auth_channel,
+              (AuthChannel auth_channel,
                const uint64_t label,
                const std::vector<brillo::Blob>& h_aux,
                const brillo::Blob& orig_cred_metadata,

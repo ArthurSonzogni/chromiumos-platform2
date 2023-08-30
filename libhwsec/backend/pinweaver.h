@@ -124,6 +124,14 @@ class PinWeaver {
     uint8_t y[PinWeaverEccPointSize];
   };
 
+  enum class AuthChannel : uint8_t {
+    kFingerprintAuthChannel = 0,
+    // This channel is only for testing purpose, so we aren't setting a
+    // dedicated value for it.
+    kTestAuthChannel,
+    kMaxValue = kTestAuthChannel,
+  };
+
   // The delay schedule which determines the delay enforced between
   // authentication attempts.
   using DelaySchedule = std::map<uint32_t, uint32_t>;
@@ -269,7 +277,7 @@ class PinWeaver {
   // If successful, the secret is established and the server's public key is
   // returned.
   virtual StatusOr<PinWeaverEccPoint> GeneratePk(
-      uint8_t auth_channel, const PinWeaverEccPoint& client_public_key) = 0;
+      AuthChannel auth_channel, const PinWeaverEccPoint& client_public_key) = 0;
 
   // Tries to insert a rate-limiter credential into the TPM, bound to the
   // |auth_channel| auth channel.
@@ -292,7 +300,7 @@ class PinWeaver {
   //
   // In all cases, the resulting root hash is returned in |new_root|.
   virtual StatusOr<CredentialTreeResult> InsertRateLimiter(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const std::vector<OperationPolicySetting>& policies,
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
@@ -318,7 +326,7 @@ class PinWeaver {
   //
   // In all cases, the resulting root hash is returned in |new_root|.
   virtual StatusOr<CredentialTreeResult> StartBiometricsAuth(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,

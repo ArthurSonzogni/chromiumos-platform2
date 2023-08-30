@@ -34,10 +34,7 @@ using State = CrosFpAuthStackManager::State;
 using Mode = ec::FpMode::Mode;
 using PinWeaverEccPoint = hwsec::PinWeaverManagerFrontend::PinWeaverEccPoint;
 using hwsec::PinWeaverEccPointSize;
-
-namespace {
-constexpr uint8_t kCrosFpAuthChannel = 0;
-}
+using hwsec::PinWeaverManagerFrontend::AuthChannel::kFingerprintAuthChannel;
 
 CrosFpAuthStackManager::CrosFpAuthStackManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
@@ -109,7 +106,7 @@ bool CrosFpAuthStackManager::EstablishPairingKey() {
   std::copy(reply->pub_x.begin(), reply->pub_x.end(), pub_in.x);
   std::copy(reply->pub_y.begin(), reply->pub_y.end(), pub_in.y);
   hwsec::StatusOr<PinWeaverEccPoint> pub_out =
-      pinweaver_manager_->GeneratePk(kCrosFpAuthChannel, pub_in);
+      pinweaver_manager_->GeneratePk(kFingerprintAuthChannel, pub_in);
   if (!pub_out.ok()) {
     LOG(ERROR) << __func__ << "GeneratePk for GSC failed.";
     return false;

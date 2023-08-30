@@ -10,7 +10,7 @@
 #include <optional>
 #include <vector>
 
-#include "libhwsec/backend/pinweaver_manager/sync_hash_tree_types.h"
+#include "libhwsec/backend/pinweaver.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
 
@@ -20,6 +20,7 @@ namespace hwsec {
 // to work with pinweaver's credential functionality.
 class PinWeaverManager {
  public:
+  using AuthChannel = PinWeaver::AuthChannel;
   using DelaySchedule = std::map<uint32_t, uint32_t>;
 
   struct StartBiometricsAuthReply {
@@ -108,7 +109,7 @@ class PinWeaverManager {
   //
   // On success, returns the newly provisioned label.
   virtual StatusOr<uint64_t> InsertRateLimiter(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const std::vector<hwsec::OperationPolicySetting>& policies,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_sched,
@@ -119,8 +120,8 @@ class PinWeaverManager {
   // The |client_nonce| is used to perform session key exchange, which is then
   // used for encrypting the |encrypted_he_secret| released on success.
   virtual StatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
-      uint8_t auth_channel,
-      uint64_t label,
+      AuthChannel auth_channel,
+      const uint64_t label,
       const brillo::Blob& client_nonce) = 0;
 
   // Performs checks to ensure the SignInHashTree is in sync with the tree

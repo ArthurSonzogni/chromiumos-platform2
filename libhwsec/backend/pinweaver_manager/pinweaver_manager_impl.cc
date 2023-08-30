@@ -230,7 +230,7 @@ PinWeaverManagerImpl::GetDelaySchedule(uint64_t label) {
 }
 
 StatusOr<uint64_t> PinWeaverManagerImpl::InsertRateLimiter(
-    uint8_t auth_channel,
+    AuthChannel auth_channel,
     const std::vector<hwsec::OperationPolicySetting>& policies,
     const brillo::SecureBlob& reset_secret,
     const DelaySchedule& delay_sched,
@@ -242,8 +242,8 @@ StatusOr<uint64_t> PinWeaverManagerImpl::InsertRateLimiter(
 }
 
 StatusOr<PinWeaverManagerImpl::StartBiometricsAuthReply>
-PinWeaverManagerImpl::StartBiometricsAuth(uint8_t auth_channel,
-                                          uint64_t label,
+PinWeaverManagerImpl::StartBiometricsAuth(AuthChannel auth_channel,
+                                          const uint64_t label,
                                           const brillo::Blob& client_nonce) {
   RETURN_IF_ERROR(StateIsReady());
 
@@ -363,7 +363,7 @@ StatusOr<brillo::Blob> PinWeaverManagerImpl::GetCredentialMetadata(
 }
 
 StatusOr<uint64_t> PinWeaverManagerImpl::InsertLeaf(
-    std::optional<uint8_t> auth_channel,
+    std::optional<AuthChannel> auth_channel,
     const std::vector<hwsec::OperationPolicySetting>& policies,
     const brillo::SecureBlob* le_secret,
     const brillo::SecureBlob* he_secret,

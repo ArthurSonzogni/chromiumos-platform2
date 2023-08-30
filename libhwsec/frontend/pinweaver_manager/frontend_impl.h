@@ -45,16 +45,16 @@ class PinWeaverManagerFrontendImpl : public PinWeaverManagerFrontend,
   StatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
       const uint64_t label) const override;
   StatusOr<PinWeaverEccPoint> GeneratePk(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const PinWeaverEccPoint& client_public_key) const override;
   StatusOr<uint64_t> InsertRateLimiter(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const std::vector<OperationPolicySetting>& policies,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_schedule,
       std::optional<uint32_t> expiration_delay) const override;
   StatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const uint64_t label,
       const brillo::Blob& client_nonce) const override;
   Status BlockGeneratePk() const override;

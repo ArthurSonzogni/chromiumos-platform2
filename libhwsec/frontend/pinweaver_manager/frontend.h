@@ -29,6 +29,7 @@ class PinWeaverManagerFrontend : public Frontend {
   using CheckCredentialReply = PinWeaverManager::CheckCredentialReply;
   using StartBiometricsAuthReply = PinWeaverManager::StartBiometricsAuthReply;
   using ResetType = PinWeaverManager::ResetType;
+  using AuthChannel = PinWeaver::AuthChannel;
 
   ~PinWeaverManagerFrontend() override = default;
 
@@ -103,7 +104,7 @@ class PinWeaverManagerFrontend : public Frontend {
   // If successful, the secret is established and the server's public key is
   // returned.
   virtual StatusOr<PinWeaverEccPoint> GeneratePk(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const PinWeaverEccPoint& client_public_key) const = 0;
 
   // Tries to insert a rate-limiter credential into the TPM, bound to the
@@ -119,7 +120,7 @@ class PinWeaverManagerFrontend : public Frontend {
   //
   // If successful, the inserted label will be returned.
   virtual StatusOr<uint64_t> InsertRateLimiter(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const std::vector<OperationPolicySetting>& policies,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_schedule,
@@ -136,7 +137,7 @@ class PinWeaverManagerFrontend : public Frontend {
   // in |encrypted_he_secret|, and the IV used for encryption is in |iv|. The
   // nonce generated to perform the session key exchange is in |server_nonce|.
   virtual StatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
-      uint8_t auth_channel,
+      AuthChannel auth_channel,
       const uint64_t label,
       const brillo::Blob& client_nonce) const = 0;
 

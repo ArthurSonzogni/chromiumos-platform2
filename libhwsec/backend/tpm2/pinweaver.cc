@@ -37,7 +37,6 @@ namespace {
 
 constexpr uint8_t kPinWeaverProtocolVersion = 2;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
-constexpr uint8_t kMaxAuthChannel = 1;
 
 StatusOr<std::string> EncodeAuxHashes(const std::vector<brillo::Blob>& h_aux) {
   std::string result;
@@ -548,18 +547,13 @@ StatusOr<std::optional<uint32_t>> PinWeaverTpm2::GetExpirationInSeconds(
 }
 
 StatusOr<PinWeaverTpm2::PinWeaverEccPoint> PinWeaverTpm2::GeneratePk(
-    uint8_t auth_channel,
+    AuthChannel auth_channel,
     const PinWeaverTpm2::PinWeaverEccPoint& client_public_key) {
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
   if (version <= 1) {
     return MakeStatus<TPMError>(
         "PinWeaver Version 0/1 doesn't support biometrics operations",
         TPMRetryAction::kNoRetry);
-  }
-
-  if (auth_channel > kMaxAuthChannel) {
-    return MakeStatus<TPMError>("Invalid auth_channel",
-                                TPMRetryAction::kNoRetry);
   }
 
   uint32_t pinweaver_status = 0;
@@ -571,8 +565,9 @@ StatusOr<PinWeaverTpm2::PinWeaverEccPoint> PinWeaverTpm2::GeneratePk(
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(
           context_.GetTpmUtility().PinWeaverGenerateBiometricsAuthPk(
-              version, auth_channel, trunks_client_public_key,
-              &pinweaver_status, &root, &trunks_server_public_key)))
+              version, static_cast<uint8_t>(auth_channel),
+              trunks_client_public_key, &pinweaver_status, &root,
+              &trunks_server_public_key)))
       .WithStatus<TPMError>("Failed to generate pk in pinweaver");
 
   RETURN_IF_ERROR(
@@ -586,7 +581,7 @@ StatusOr<PinWeaverTpm2::PinWeaverEccPoint> PinWeaverTpm2::GeneratePk(
 }
 
 StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertRateLimiter(
-    uint8_t auth_channel,
+    AuthChannel auth_channel,
     const std::vector<OperationPolicySetting>& policies,
     const uint64_t label,
     const std::vector<brillo::Blob>& h_aux,
@@ -598,11 +593,6 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertRateLimiter(
     return MakeStatus<TPMError>(
         "PinWeaver Version 0/1 doesn't support biometrics operations",
         TPMRetryAction::kNoRetry);
-  }
-
-  if (auth_channel > kMaxAuthChannel) {
-    return MakeStatus<TPMError>("Invalid auth_channel",
-                                TPMRetryAction::kNoRetry);
   }
 
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
@@ -617,9 +607,9 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertRateLimiter(
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(
           context_.GetTpmUtility().PinWeaverCreateBiometricsAuthRateLimiter(
-              version, auth_channel, label, encoded_aux, reset_secret,
-              delay_schedule, pcr_criteria, expiration_delay, &pinweaver_status,
-              &root, &cred_metadata_string, &mac_string)))
+              version, static_cast<uint8_t>(auth_channel), label, encoded_aux,
+              reset_secret, delay_schedule, pcr_criteria, expiration_delay,
+              &pinweaver_status, &root, &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to insert rate-limiter in pinweaver");
 
   RETURN_IF_ERROR(
@@ -634,7 +624,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertRateLimiter(
 }
 
 StatusOr<PinWeaverTpm2::CredentialTreeResult>
-PinWeaverTpm2::StartBiometricsAuth(uint8_t auth_channel,
+PinWeaverTpm2::StartBiometricsAuth(AuthChannel auth_channel,
                                    const uint64_t label,
                                    const std::vector<brillo::Blob>& h_aux,
                                    const brillo::Blob& orig_cred_metadata,
@@ -644,11 +634,6 @@ PinWeaverTpm2::StartBiometricsAuth(uint8_t auth_channel,
     return MakeStatus<TPMError>(
         "PinWeaver Version 0/1 doesn't support biometrics operations",
         TPMRetryAction::kNoRetry);
-  }
-
-  if (auth_channel > kMaxAuthChannel) {
-    return MakeStatus<TPMError>("Invalid auth_channel",
-                                TPMRetryAction::kNoRetry);
   }
 
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
@@ -664,10 +649,10 @@ PinWeaverTpm2::StartBiometricsAuth(uint8_t auth_channel,
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(
           context_.GetTpmUtility().PinWeaverStartBiometricsAuth(
-              version, auth_channel, client_nonce, encoded_aux,
-              brillo::BlobToString(orig_cred_metadata), &pinweaver_status,
-              &root, &server_nonce, &encrypted_he_secret, &iv,
-              &cred_metadata_string, &mac_string)))
+              version, static_cast<uint8_t>(auth_channel), client_nonce,
+              encoded_aux, brillo::BlobToString(orig_cred_metadata),
+              &pinweaver_status, &root, &server_nonce, &encrypted_he_secret,
+              &iv, &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to try auth in pinweaver");
 
   return CredentialTreeResult{

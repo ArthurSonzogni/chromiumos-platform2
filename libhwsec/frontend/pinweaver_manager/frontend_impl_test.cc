@@ -11,6 +11,7 @@
 
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
@@ -22,7 +23,6 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "base/files/file_enumerator.h"
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 #include "libhwsec/error/tpm_retry_action.h"
 #include "libhwsec/frontend/pinweaver_manager/frontend_impl.h"
@@ -32,6 +32,7 @@ using ::hwsec_foundation::GetSecureRandom;
 
 namespace {
 
+using AuthChannel = hwsec::PinWeaverManagerFrontend::AuthChannel;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::IsOkAnd;
 using ::hwsec_foundation::error::testing::IsOkAndHolds;
@@ -42,7 +43,8 @@ using ::testing::Ge;
 
 constexpr int kLEMaxIncorrectAttempt = 5;
 constexpr int kFakeLogSize = 2;
-constexpr uint8_t kAuthChannel = 0;
+constexpr AuthChannel kAuthChannel = AuthChannel::kFingerprintAuthChannel;
+constexpr AuthChannel kWrongAuthChannel = AuthChannel::kTestAuthChannel;
 
 MATCHER_P(HasTPMRetryAction, matcher, "") {
   if (arg.ok()) {
@@ -205,7 +207,7 @@ class PinWeaverManagerImplTest : public ::testing::Test {
                                     temp_dir_.GetPath(), true));
   }
 
-  void GeneratePk(uint8_t auth_channel) {
+  void GeneratePk(AuthChannel auth_channel) {
     hwsec::PinWeaverManagerFrontend::PinWeaverEccPoint pt;
     brillo::Blob x_blob, y_blob;
     base::HexStringToBytes(kClientEccPointXHex, &x_blob);
@@ -216,7 +218,7 @@ class PinWeaverManagerImplTest : public ::testing::Test {
   }
 
   // Helper function to create a rate-limiter & then lock it out.
-  uint64_t CreateLockedOutRateLimiter(uint8_t auth_channel) {
+  uint64_t CreateLockedOutRateLimiter(AuthChannel auth_channel) {
     const std::map<uint32_t, uint32_t> delay_sched = {
         {kLEMaxIncorrectAttempt, UINT32_MAX},
     };
@@ -287,7 +289,6 @@ TEST_F(PinWeaverManagerImplTest, BasicInsertAndCheck) {
 // Basic check: Insert 2 rate-limiters, then verify we can retrieve them
 // correctly.
 TEST_F(PinWeaverManagerImplTest, BiometricsBasicInsertAndCheck) {
-  constexpr uint8_t kWrongAuthChannel = 1;
   std::map<uint32_t, uint32_t> delay_sched = {
       {kLEMaxIncorrectAttempt, UINT32_MAX},
   };
