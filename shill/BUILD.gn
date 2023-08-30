@@ -628,6 +628,7 @@ if (use.fuzzer) {
       "ethernet/mock_ethernet_provider.cc",
       "mock_adaptors.cc",
       "mock_control.cc",
+      "mock_device_info.cc",
       "mock_event_dispatcher.cc",
       "mock_manager.cc",
       "mock_metrics.cc",

@@ -66,8 +66,7 @@ class CellularServiceProviderTest : public testing::Test {
  public:
   CellularServiceProviderTest()
       : manager_(&control_, &dispatcher_, &metrics_),
-        modem_info_(&control_, &manager_),
-        device_info_(&manager_) {}
+        modem_info_(&control_, &manager_) {}
 
   ~CellularServiceProviderTest() override = default;
 
@@ -152,7 +151,6 @@ class CellularServiceProviderTest : public testing::Test {
   NiceMock<MockMetrics> metrics_;
   NiceMock<MockManager> manager_;
   MockModemInfo modem_info_;
-  NiceMock<MockDeviceInfo> device_info_;
   FakeStore storage_;
   scoped_refptr<NiceMock<MockProfile>> profile_;
   std::unique_ptr<CellularServiceProvider> provider_;

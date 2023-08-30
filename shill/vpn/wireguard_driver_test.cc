@@ -99,10 +99,8 @@ constexpr char kWireGuardIPAddress[] = "WireGuard.IPAddress";
 
 class WireGuardDriverTest : public testing::Test {
  public:
-  WireGuardDriverTest()
-      : manager_(&control_, &dispatcher_, &metrics_), device_info_(&manager_) {
+  WireGuardDriverTest() : manager_(&control_, &dispatcher_, &metrics_) {
     ResetDriver();
-    manager_.set_mock_device_info(&device_info_);
     SetFakeKeyGenerator();
   }
 
@@ -171,7 +169,7 @@ class WireGuardDriverTest : public testing::Test {
 
   void InvokeConnectAsyncKernel() {
     driver_->ConnectAsync(&driver_event_handler_);
-    EXPECT_CALL(device_info_, CreateWireGuardInterface(kIfName, _, _))
+    EXPECT_CALL(*device_info(), CreateWireGuardInterface(kIfName, _, _))
         .WillOnce([this](const std::string&,
                          DeviceInfo::LinkReadyCallback link_ready_cb,
                          base::OnceClosure failure_cb) {
@@ -230,13 +228,13 @@ class WireGuardDriverTest : public testing::Test {
                 SendEnumToUMA(Metrics::kMetricVpnWireGuardAllowedIPsType,
                               allowed_ips_type));
   }
+  MockDeviceInfo* device_info() { return manager_.mock_device_info(); }
 
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockProcessManager process_manager_;
   MockManager manager_;
-  NiceMock<MockDeviceInfo> device_info_;
   FakeStore fake_store_;
   std::unique_ptr<PropertyStore> property_store_;
   MockVPNDriverEventHandler driver_event_handler_;
@@ -294,7 +292,7 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
           "fd00:0:0:0:1::/128", "fd00:0:0:0:1::/128", "fd00:0:0:2::/64"));
 
   // Disconnect.
-  EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
+  EXPECT_CALL(*device_info(), DeleteInterface(kIfIndex));
   driver_->Disconnect();
 }
 
@@ -538,7 +536,7 @@ TEST_F(WireGuardDriverTest, OnConnectTimeout) {
   InvokeConnectAsyncKernel();
   InvokeLinkReady();
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
-  EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
+  EXPECT_CALL(*device_info(), DeleteInterface(kIfIndex));
   driver_->OnConnectTimeout();
 }
 
@@ -554,7 +552,7 @@ TEST_F(WireGuardDriverTest, DisconnectBeforeConnected) {
   // Link is created by kernel.
   InvokeConnectAsyncKernel();
   InvokeLinkReady();
-  EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
+  EXPECT_CALL(*device_info(), DeleteInterface(kIfIndex));
   driver_->Disconnect();
 }
 

@@ -63,8 +63,7 @@ class VPNServiceTest : public testing::Test {
  public:
   VPNServiceTest()
       : interface_name_("test-interface"),
-        manager_(&control_, &dispatcher_, &metrics_),
-        device_info_(&manager_) {
+        manager_(&control_, &dispatcher_, &metrics_) {
     Service::SetNextSerialNumberForTesting(0);
     driver_ = new MockVPNDriver();
     // There is at least one online service when the test service is created.
@@ -76,7 +75,6 @@ class VPNServiceTest : public testing::Test {
 
  protected:
   void SetUp() override {
-    manager_.set_mock_device_info(&device_info_);
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
     manager_.vpn_provider_->manager_ = &manager_;
     manager_.UpdateProviderMapping();
@@ -127,7 +125,6 @@ class VPNServiceTest : public testing::Test {
   MockMetrics metrics_;
   EventDispatcherForTest dispatcher_;
   MockManager manager_;
-  MockDeviceInfo device_info_;
   VPNServiceRefPtr service_;
 };
 

@@ -7,21 +7,17 @@
 #include <iterator>
 #include <memory>
 #include <set>
-#include <utility>
 
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
 #include "shill/ipconfig.h"
-#include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/store/fake_store.h"
-#include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_service.h"
 
 using testing::_;
@@ -39,11 +35,7 @@ constexpr char kName[] = "vpn-name";
 class VPNProviderTest : public testing::Test {
  public:
   VPNProviderTest()
-      : manager_(&control_, nullptr, &metrics_),
-        device_info_(&manager_),
-        provider_(&manager_) {
-    manager_.set_mock_device_info(&device_info_);
-  }
+      : manager_(&control_, nullptr, &metrics_), provider_(&manager_) {}
 
   ~VPNProviderTest() override = default;
 
@@ -68,7 +60,6 @@ class VPNProviderTest : public testing::Test {
   MockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
-  MockDeviceInfo device_info_;
   VPNProvider provider_;
 };
 

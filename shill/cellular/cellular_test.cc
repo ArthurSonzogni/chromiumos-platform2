@@ -10,7 +10,6 @@
 
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <utility>
 #include "dbus/shill/dbus-constants.h"
@@ -60,7 +59,6 @@ extern "C" {
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_external_task.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
@@ -157,7 +155,6 @@ class CellularTest : public testing::Test {
       : control_interface_(this),
         manager_(&control_interface_, &dispatcher_, &metrics_),
         modem_info_(&control_interface_, &manager_),
-        device_info_(&manager_),
         mock_mobile_operator_info_(nullptr),
         profile_(new NiceMock<MockProfile>(&manager_)) {
     cellular_service_provider_.set_profile_for_testing(profile_);
@@ -169,7 +166,6 @@ class CellularTest : public testing::Test {
     shill::ScopeLogger::GetInstance()->set_verbose_level(0);
     shill::ScopeLogger::GetInstance()->EnableScopesByName("cellular");
 
-    EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
     device_ =
         new Cellular(&manager_, kTestInterfaceName, kTestInterfaceAddress,
@@ -191,6 +187,8 @@ class CellularTest : public testing::Test {
     EXPECT_CALL(*profile_, GetStorage())
         .WillRepeatedly(Return(&profile_storage_));
   }
+
+  MockDeviceInfo* device_info() { return manager_.mock_device_info(); }
 
   void TearDown() override {
     metrics_.DeregisterDevice(device_->interface_index());
@@ -569,7 +567,6 @@ class CellularTest : public testing::Test {
   NiceMock<MockManager> manager_;
   NiceMock<MockMetrics> metrics_;
   MockModemInfo modem_info_;
-  NiceMock<MockDeviceInfo> device_info_;
   NiceMock<MockProcessManager> process_manager_;
   NiceMock<MockRTNLHandler> rtnl_handler_;
 
@@ -1207,10 +1204,10 @@ TEST_F(CellularTest, Notify) {
       new MockVirtualDevice(&manager_, ifname1, ifindex1, Technology::kPPP);
   std::map<std::string, std::string> ppp_config;
   ppp_config[kPPPInterfaceName] = ifname1;
-  EXPECT_CALL(device_info_, GetIndex(ifname1)).WillOnce(Return(ifindex1));
-  EXPECT_CALL(device_info_, CreatePPPDevice(_, StrEq(ifname1), ifindex1))
+  EXPECT_CALL(*device_info(), GetIndex(ifname1)).WillOnce(Return(ifindex1));
+  EXPECT_CALL(*device_info(), CreatePPPDevice(_, StrEq(ifname1), ifindex1))
       .WillOnce(Return(ppp_device1));
-  EXPECT_CALL(device_info_,
+  EXPECT_CALL(*device_info(),
               RegisterDevice(static_cast<DeviceRefPtr>(ppp_device1)));
   EXPECT_CALL(*ppp_device1, SetEnabled(true));
   EXPECT_CALL(*ppp_device1,
@@ -1220,14 +1217,14 @@ TEST_F(CellularTest, Notify) {
       UpdateIPConfig(Pointee(GetExpectedIPPropsFromPPPConfig(ppp_config)),
                      Eq(nullptr)));
   device_->Notify(kPPPReasonConnect, ppp_config);
-  Mock::VerifyAndClearExpectations(&device_info_);
+  Mock::VerifyAndClearExpectations(device_info());
   Mock::VerifyAndClearExpectations(ppp_device1);
 
   // Re-connect on same network device: if pppd sends us multiple connect
   // events, we behave rationally.
-  EXPECT_CALL(device_info_, GetIndex(ifname1)).WillOnce(Return(ifindex1));
-  EXPECT_CALL(device_info_, CreatePPPDevice(_, _, _)).Times(0);
-  EXPECT_CALL(device_info_, RegisterDevice(_)).Times(0);
+  EXPECT_CALL(*device_info(), GetIndex(ifname1)).WillOnce(Return(ifindex1));
+  EXPECT_CALL(*device_info(), CreatePPPDevice(_, _, _)).Times(0);
+  EXPECT_CALL(*device_info(), RegisterDevice(_)).Times(0);
   EXPECT_CALL(*ppp_device1, SetEnabled(true));
   EXPECT_CALL(*ppp_device1,
               SelectService(static_cast<ServiceRefPtr>(device_->service_)));
@@ -1236,7 +1233,7 @@ TEST_F(CellularTest, Notify) {
       UpdateIPConfig(Pointee(GetExpectedIPPropsFromPPPConfig(ppp_config)),
                      Eq(nullptr)));
   device_->Notify(kPPPReasonConnect, ppp_config);
-  Mock::VerifyAndClearExpectations(&device_info_);
+  Mock::VerifyAndClearExpectations(device_info());
   Mock::VerifyAndClearExpectations(ppp_device1);
 
   // Re-connect on new network device: if we still have the PPPDevice
@@ -1248,10 +1245,10 @@ TEST_F(CellularTest, Notify) {
       new MockVirtualDevice(&manager_, ifname2, ifindex2, Technology::kPPP);
   std::map<std::string, std::string> ppp_config2;
   ppp_config2[kPPPInterfaceName] = ifname2;
-  EXPECT_CALL(device_info_, GetIndex(ifname2)).WillOnce(Return(ifindex2));
-  EXPECT_CALL(device_info_, CreatePPPDevice(_, StrEq(ifname2), ifindex2))
+  EXPECT_CALL(*device_info(), GetIndex(ifname2)).WillOnce(Return(ifindex2));
+  EXPECT_CALL(*device_info(), CreatePPPDevice(_, StrEq(ifname2), ifindex2))
       .WillOnce(Return(ppp_device2));
-  EXPECT_CALL(device_info_,
+  EXPECT_CALL(*device_info(),
               RegisterDevice(static_cast<DeviceRefPtr>(ppp_device2)));
   EXPECT_CALL(*ppp_device1, SelectService(ServiceRefPtr(nullptr)));
   EXPECT_CALL(*ppp_device2, SetEnabled(true));
@@ -1262,7 +1259,7 @@ TEST_F(CellularTest, Notify) {
       UpdateIPConfig(Pointee(GetExpectedIPPropsFromPPPConfig(ppp_config2)),
                      Eq(nullptr)));
   device_->Notify(kPPPReasonConnect, ppp_config2);
-  Mock::VerifyAndClearExpectations(&device_info_);
+  Mock::VerifyAndClearExpectations(device_info());
   Mock::VerifyAndClearExpectations(ppp_device1);
   Mock::VerifyAndClearExpectations(ppp_device2);
 
@@ -1358,10 +1355,10 @@ TEST_F(CellularTest, PPPConnectionFailedAfterConnect) {
       new MockVirtualDevice(&manager_, ifname, ifindex, Technology::kPPP);
   std::map<std::string, std::string> ppp_config;
   ppp_config[kPPPInterfaceName] = ifname;
-  EXPECT_CALL(device_info_, GetIndex("ppp0")).WillOnce(Return(ifindex));
-  EXPECT_CALL(device_info_, CreatePPPDevice(_, StrEq(ifname), ifindex))
+  EXPECT_CALL(*device_info(), GetIndex("ppp0")).WillOnce(Return(ifindex));
+  EXPECT_CALL(*device_info(), CreatePPPDevice(_, StrEq(ifname), ifindex))
       .WillOnce(Return(ppp_device));
-  EXPECT_CALL(device_info_,
+  EXPECT_CALL(*device_info(),
               RegisterDevice(static_cast<DeviceRefPtr>(ppp_device)));
   EXPECT_CALL(*ppp_device, SetEnabled(true));
   EXPECT_CALL(*ppp_device, SelectService(static_cast<ServiceRefPtr>(service)));

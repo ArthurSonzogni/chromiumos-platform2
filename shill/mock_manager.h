@@ -7,11 +7,13 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gmock/gmock.h>
 
 #include "shill/manager.h"
+#include "shill/mock_device_info.h"
 
 namespace shill {
 
@@ -152,13 +154,13 @@ class MockManager : public Manager {
               ());
 
   // Getter and setter for a mocked device info instance.
-  DeviceInfo* mock_device_info() { return mock_device_info_; }
-  void set_mock_device_info(DeviceInfo* mock_device_info) {
-    mock_device_info_ = mock_device_info;
+  MockDeviceInfo* mock_device_info() { return mock_device_info_.get(); }
+  void set_mock_device_info(std::unique_ptr<MockDeviceInfo> mock_device_info) {
+    mock_device_info_ = std::move(mock_device_info);
   }
 
  private:
-  DeviceInfo* mock_device_info_;
+  std::unique_ptr<MockDeviceInfo> mock_device_info_;
   std::unique_ptr<MockEthernetProvider> mock_ethernet_provider_;
 };
 

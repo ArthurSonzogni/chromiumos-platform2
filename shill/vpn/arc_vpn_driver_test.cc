@@ -11,7 +11,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_virtual_device.h"
@@ -40,13 +39,9 @@ class ArcVpnDriverTest : public testing::Test {
  public:
   ArcVpnDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_),
-        device_info_(&manager_),
         device_(new MockVirtualDevice(
             &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN)),
-        store_(),
-        driver_(new ArcVpnDriver(&manager_, nullptr)) {
-    manager_.set_mock_device_info(&device_info_);
-  }
+        driver_(new ArcVpnDriver(&manager_, nullptr)) {}
 
   ~ArcVpnDriverTest() override = default;
 
@@ -72,12 +67,13 @@ class ArcVpnDriverTest : public testing::Test {
     driver_->Load(&store_, kStorageId);
   }
 
+  MockDeviceInfo* device_info() { return manager_.mock_device_info(); }
+
  protected:
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  NiceMock<MockDeviceInfo> device_info_;
   scoped_refptr<MockVirtualDevice> device_;
   FakeStore store_;
   MockVPNDriverEventHandler event_handler_;
@@ -90,7 +86,7 @@ TEST_F(ArcVpnDriverTest, VPNType) {
 
 TEST_F(ArcVpnDriverTest, ConnectAsync) {
   LoadPropertiesFromStore(true);
-  EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(kInterfaceIndex));
+  EXPECT_CALL(*device_info(), GetIndex(_)).WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(event_handler_,
               OnDriverConnected(std::string(VPNProvider::kArcBridgeIfName),
                                 kInterfaceIndex))

@@ -116,7 +116,7 @@ class WiFiCQMTest : public ::testing::Test {
   MockMetrics metrics_;
   MockControl control_interface_;
   EventDispatcherForTest dispatcher_;
-  MockManager manager_;
+  NiceMock<MockManager> manager_;
 
   scoped_refptr<MockWiFi> wifi_;
   std::unique_ptr<WiFiCQM> wifi_cqm_;

@@ -152,8 +152,7 @@ class MockCallbacks {
 
 class L2TPConnectionTest : public testing::Test {
  public:
-  L2TPConnectionTest()
-      : manager_(&control_, &dispatcher_, &metrics_), device_info_(&manager_) {
+  L2TPConnectionTest() : manager_(&control_, &dispatcher_, &metrics_) {
     auto callbacks = std::make_unique<VPNConnection::Callbacks>(
         base::BindRepeating(&MockCallbacks::OnConnected,
                             base::Unretained(&callbacks_)),
@@ -164,15 +163,16 @@ class L2TPConnectionTest : public testing::Test {
 
     l2tp_connection_ = std::make_unique<L2TPConnectionUnderTest>(
         std::make_unique<L2TPConnection::Config>(), std::move(callbacks),
-        &control_, &device_info_, &dispatcher_, &process_manager_);
+        &control_, device_info(), &dispatcher_, &process_manager_);
   }
+
+  MockDeviceInfo* device_info() { return manager_.mock_device_info(); }
 
  protected:
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  MockDeviceInfo device_info_;
   MockProcessManager process_manager_;
 
   MockCallbacks callbacks_;
@@ -346,7 +346,7 @@ TEST_F(L2TPConnectionTest, PPPNotifyConnected) {
   // Expects OnConnected() when kPPPReasonConnect event comes.
   auto actual_ip_properties = std::make_unique<IPConfig::Properties>();
   EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _, _));
-  EXPECT_CALL(device_info_, GetIndex(kIfName)).WillOnce(Return(kIfIndex));
+  EXPECT_CALL(*device_info(), GetIndex(kIfName)).WillOnce(Return(kIfIndex));
   l2tp_connection_->InvokeNotify(kPPPReasonConnect, config);
   dispatcher_.task_environment().RunUntilIdle();
 }
@@ -362,8 +362,8 @@ TEST_F(L2TPConnectionTest, PPPNotifyConnectedWithoutDeviceInfoReady) {
   // not known by shill now.
   DeviceInfo::LinkReadyCallback link_ready_cb;
   EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _, _)).Times(0);
-  EXPECT_CALL(device_info_, GetIndex(kIfName)).WillOnce(Return(-1));
-  EXPECT_CALL(device_info_, AddVirtualInterfaceReadyCallback(kIfName, _))
+  EXPECT_CALL(*device_info(), GetIndex(kIfName)).WillOnce(Return(-1));
+  EXPECT_CALL(*device_info(), AddVirtualInterfaceReadyCallback(kIfName, _))
       .WillOnce([&](const std::string&, DeviceInfo::LinkReadyCallback cb) {
         link_ready_cb = std::move(cb);
       });

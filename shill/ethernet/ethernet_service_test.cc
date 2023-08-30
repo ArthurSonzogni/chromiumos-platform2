@@ -9,7 +9,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/ethernet/mock_ethernet.h"
-#include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_profile.h"

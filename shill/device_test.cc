@@ -105,10 +105,7 @@ class TestDevice : public Device {
 
 class DeviceTest : public testing::Test {
  public:
-  DeviceTest()
-      : manager_(control_interface(), dispatcher(), metrics()),
-        device_info_(manager()) {
-    manager()->set_mock_device_info(&device_info_);
+  DeviceTest() : manager_(control_interface(), dispatcher(), metrics()) {
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
     DHCPProvider::GetInstance()->dispatcher_ = dispatcher();
 
@@ -189,7 +186,6 @@ class DeviceTest : public testing::Test {
   NiceMock<MockManager> manager_;
 
   scoped_refptr<TestDevice> device_;
-  NiceMock<MockDeviceInfo> device_info_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;
   MockNetwork* network_;  // owned by |device_|

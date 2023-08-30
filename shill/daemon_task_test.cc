@@ -74,7 +74,6 @@ class DaemonTaskTest : public Test {
         control_(new MockControl()),
         metrics_(new MockMetrics()),
         manager_(new MockManager(control_, dispatcher_, metrics_)),
-        device_info_(manager_),
         mojo_provider_(new MockMojoServiceProvider(manager_)) {}
   ~DaemonTaskTest() override = default;
   void SetUp() override {
@@ -118,7 +117,6 @@ class DaemonTaskTest : public Test {
   MockMetrics* metrics_;
   MockManager* manager_;
   MockNetlinkManager netlink_manager_;
-  DeviceInfo device_info_;
   MockMojoServiceProvider* mojo_provider_;
 };
 

@@ -267,8 +267,7 @@ class MockCallbacks {
 
 class IPsecConnectionTest : public testing::Test {
  public:
-  IPsecConnectionTest()
-      : manager_(&control_, &dispatcher_, &metrics_), device_info_(&manager_) {
+  IPsecConnectionTest() : manager_(&control_, &dispatcher_, &metrics_) {
     auto callbacks = std::make_unique<VPNConnection::Callbacks>(
         base::BindRepeating(&MockCallbacks::OnConnected,
                             base::Unretained(&callbacks_)),
@@ -281,8 +280,10 @@ class IPsecConnectionTest : public testing::Test {
     l2tp_connection_ = l2tp_tmp.get();
     ipsec_connection_ = std::make_unique<IPsecConnectionUnderTest>(
         std::make_unique<IPsecConnection::Config>(), std::move(callbacks),
-        std::move(l2tp_tmp), &device_info_, &dispatcher_, &process_manager_);
+        std::move(l2tp_tmp), device_info(), &dispatcher_, &process_manager_);
   }
+
+  MockDeviceInfo* device_info() { return manager_.mock_device_info(); }
 
  protected:
   void SetAsIKEv2Connection() {
@@ -298,7 +299,6 @@ class IPsecConnectionTest : public testing::Test {
   MockManager manager_;
 
   MockCallbacks callbacks_;
-  MockDeviceInfo device_info_;
   MockProcessManager process_manager_;
 
   std::unique_ptr<IPsecConnectionUnderTest> ipsec_connection_;
@@ -857,7 +857,7 @@ TEST_F(IPsecConnectionTest, ParseDNSServers) {
                       base::JoinString({"nameserver 1.2.3.4   # by strongSwan",
                                         "nameserver 1.2.3.5   # by strongSwan"},
                                        "\n")));
-  EXPECT_CALL(device_info_, CreateXFRMInterface(_, _, _, _, _))
+  EXPECT_CALL(*device_info(), CreateXFRMInterface(_, _, _, _, _))
       .WillRepeatedly(Return(true));
 
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
@@ -873,7 +873,7 @@ TEST_F(IPsecConnectionTest, ParseDNSServersEmptyFile) {
 
   // Simulates that charon does not create the file.
   const auto tmp_dir = ipsec_connection_->SetTempDir();
-  EXPECT_CALL(device_info_, CreateXFRMInterface(_, _, _, _, _))
+  EXPECT_CALL(*device_info(), CreateXFRMInterface(_, _, _, _, _))
       .WillRepeatedly(Return(true));
 
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
@@ -891,8 +891,8 @@ TEST_F(IPsecConnectionTest, CreateXFRMInterfaceAndNotifyConnected) {
   std::string actual_if_name;
   std::string actual_if_id;
   DeviceInfo::LinkReadyCallback registered_link_ready_cb;
-  EXPECT_CALL(device_info_, GetIndex("lo")).WillOnce(Return(kLoIndex));
-  EXPECT_CALL(device_info_, CreateXFRMInterface(_, kLoIndex, _, _, _))
+  EXPECT_CALL(*device_info(), GetIndex("lo")).WillOnce(Return(kLoIndex));
+  EXPECT_CALL(*device_info(), CreateXFRMInterface(_, kLoIndex, _, _, _))
       .WillOnce([&](const std::string& if_name, int, int if_id,
                     DeviceInfo::LinkReadyCallback link_ready_cb,
                     base::OnceClosure failure_cb) {
@@ -916,8 +916,8 @@ TEST_F(IPsecConnectionTest, CreateXFRMInterfaceFailed) {
 
   constexpr int kLoIndex = 10;
   base::OnceClosure registered_failure_cb;
-  EXPECT_CALL(device_info_, GetIndex("lo")).WillOnce(Return(kLoIndex));
-  EXPECT_CALL(device_info_, CreateXFRMInterface(_, kLoIndex, _, _, _))
+  EXPECT_CALL(*device_info(), GetIndex("lo")).WillOnce(Return(kLoIndex));
+  EXPECT_CALL(*device_info(), CreateXFRMInterface(_, kLoIndex, _, _, _))
       .WillOnce(
           [&registered_failure_cb](const std::string& if_name, int, int if_id,
                                    DeviceInfo::LinkReadyCallback link_ready_cb,

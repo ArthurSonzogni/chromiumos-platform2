@@ -587,7 +587,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
       : event_dispatcher_(std::move(dispatcher)),
         manager_(&control_interface_, event_dispatcher_.get(), &metrics_),
         power_manager_(new MockPowerManager(control_interface())),
-        device_info_(&manager_),
         wifi_(new WiFi(&manager_,
                        kDeviceName,
                        kDeviceAddress,
@@ -663,7 +662,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     ScopeLogger::GetInstance()->EnableScopesByName("wifi");
     ScopeLogger::GetInstance()->set_verbose_level(3);
     static_cast<Device*>(wifi_.get())->rtnl_handler_ = &rtnl_handler_;
-    ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
     EXPECT_CALL(manager_, CreateDefaultDHCPOption())
         .WillRepeatedly(Return(DHCPProvider::Options{
@@ -1236,7 +1234,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   MockPowerManager* power_manager() { return power_manager_; }
 
-  MockDeviceInfo* device_info() { return &device_info_; }
+  MockDeviceInfo* device_info() { return manager_.mock_device_info(); }
 
   MockNetwork* network() { return network_; }
 
@@ -1396,7 +1394,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   MockMetrics metrics_;
   MockManager manager_;
   MockPowerManager* power_manager_;  // Owned by |manager_|.
-  MockDeviceInfo device_info_;
   WiFiRefPtr wifi_;
   NiceMock<MockWiFiProvider> wifi_provider_;
   int bss_counter_;
@@ -3651,7 +3648,6 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   // completed->completed from wpa_supplicant.
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   ReportGetDHCPLease();
   // Similarly, rekeying events after we have an IP don't trigger L3
   // configuration.  However, we treat all transitions to completed as potential
@@ -4052,7 +4048,6 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   // that we verify that ResetSupsectCredentialFailures() is not called
   // on the service just because supplicant entered the Completed state.
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures()).Times(0);
-  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   EXPECT_CALL(*device_info(), GetByteCounts(_, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(0LL), Return(true)));
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
@@ -5135,7 +5130,6 @@ TEST_F(WiFiMainTest, OnGetDHCPLease_InvokesOnConnectedAndReachable) {
   ScopeLogger::GetInstance()->set_verbose_level(3);
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv4 DHCP lease obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_));
-  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   ReportIPv4ConfiguredWithDHCPLease();
 
   // We should not call WakeOnWiFi::OnConnectedAndReachable if we are not

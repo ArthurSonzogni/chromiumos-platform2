@@ -34,7 +34,6 @@
 #include "shill/ethernet/mock_ethernet_service.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
@@ -97,7 +96,6 @@ class EthernetTest : public testing::Test {
  public:
   EthernetTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        device_info_(&manager_),
         ethernet_(new TestEthernet(&manager_, ifname_, hwaddr_, ifindex_)),
         eap_listener_(new MockEapListener()),
         mock_eap_service_(new MockService(&manager_)),
@@ -113,7 +111,6 @@ class EthernetTest : public testing::Test {
 
     ethernet_->GetPrimaryNetwork()->set_dhcp_provider_for_testing(
         &dhcp_provider_);
-    ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
 
     ethernet_->eap_listener_.reset(eap_listener_);  // Transfers ownership.
@@ -262,7 +259,6 @@ class EthernetTest : public testing::Test {
   MockControl control_interface_;
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
-  MockDeviceInfo device_info_;
   scoped_refptr<TestEthernet> ethernet_;
   MockDHCPProvider dhcp_provider_;
 

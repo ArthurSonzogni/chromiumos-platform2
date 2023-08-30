@@ -107,12 +107,12 @@ class DeviceInfoTest : public Test {
   void SetUp() override {
     auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
     socket_factory_ = socket_factory.get();
+    EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
     device_info_.set_socket_factory_for_test(std::move(socket_factory));
 
     device_info_.rtnl_handler_ = &rtnl_handler_;
     device_info_.netlink_manager_ = &netlink_manager_;
     device_info_.time_ = &time_;
-    manager_.set_mock_device_info(&device_info_);
     patchpanel_client_ = new patchpanel::FakeClient();
     manager_.patchpanel_client_.reset(patchpanel_client_);
     CreateSysfsRoot();

@@ -222,10 +222,8 @@ class TestService : public ServiceUnderTest {
 class DevicePortalDetectorTest : public testing::Test {
  public:
   DevicePortalDetectorTest()
-      : manager_(&control_interface_, &dispatcher_, &metrics_),
-        device_info_(&manager_) {
+      : manager_(&control_interface_, &dispatcher_, &metrics_) {
     metrics_.SetLibraryForTesting(&fake_metrics_library_);
-    manager_.set_mock_device_info(&device_info_);
     device_ = new TestDevice(&manager_, kDeviceName, kDeviceAddress,
                              kDeviceInterfaceIndex, kTestTechnology);
   }
@@ -286,7 +284,6 @@ class DevicePortalDetectorTest : public testing::Test {
   Metrics metrics_;
   FakeMetricsLibrary fake_metrics_library_;
   NiceMock<MockManager> manager_;
-  NiceMock<MockDeviceInfo> device_info_;
   scoped_refptr<TestDevice> device_;
   scoped_refptr<TestService> service_;
 };

@@ -23,7 +23,6 @@
 
 #include "shill/http_url.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_manager.h"
 #include "shill/test_event_dispatcher.h"
@@ -73,8 +72,7 @@ class HttpRequestTest : public Test {
         transport_(std::make_shared<brillo::http::MockTransport>()),
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
-        manager_(&control_, &dispatcher_, nullptr),
-        device_info_(new NiceMock<MockDeviceInfo>(&manager_)) {}
+        manager_(&control_, &dispatcher_, nullptr) {}
 
  protected:
   class CallbackTarget {
@@ -234,7 +232,6 @@ class HttpRequestTest : public Test {
   EventDispatcherForTest dispatcher_;
   MockControl control_;
   MockManager manager_;
-  std::unique_ptr<MockDeviceInfo> device_info_;
   std::unique_ptr<HttpRequest> request_;
   StrictMock<CallbackTarget> target_;
   std::string expected_response_;

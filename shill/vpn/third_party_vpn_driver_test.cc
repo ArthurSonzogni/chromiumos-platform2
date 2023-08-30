@@ -39,11 +39,8 @@ class ThirdPartyVpnDriverTest : public testing::Test {
  public:
   ThirdPartyVpnDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_),
-        device_info_(&manager_),
         driver_(new ThirdPartyVpnDriver(&manager_, nullptr)),
-        adaptor_interface_(new ThirdPartyVpnMockAdaptor()) {
-    manager_.set_mock_device_info(&device_info_);
-  }
+        adaptor_interface_(new ThirdPartyVpnMockAdaptor()) {}
 
   ~ThirdPartyVpnDriverTest() override = default;
 
@@ -56,13 +53,14 @@ class ThirdPartyVpnDriverTest : public testing::Test {
 
   MOCK_METHOD(void, TestCallback, (const Error&));
 
+  MockDeviceInfo* device_info() { return manager_.mock_device_info(); }
+
  protected:
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockFileIO mock_file_io_;
   MockManager manager_;
-  NiceMock<MockDeviceInfo> device_info_;
   MockVPNDriverEventHandler event_handler_;
   std::unique_ptr<ThirdPartyVpnDriver> driver_;
   ThirdPartyVpnMockAdaptor* adaptor_interface_;  // Owned by |driver_|
@@ -77,14 +75,14 @@ TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
   int fd = 1;
 
   DeviceInfo::LinkReadyCallback link_ready_callback;
-  EXPECT_CALL(device_info_, CreateTunnelInterface(_))
+  EXPECT_CALL(*device_info(), CreateTunnelInterface(_))
       .WillOnce([&link_ready_callback](DeviceInfo::LinkReadyCallback callback) {
         link_ready_callback = std::move(callback);
         return true;
       });
   driver_->ConnectAsync(&event_handler_);
 
-  EXPECT_CALL(device_info_, OpenTunnelInterface(interface))
+  EXPECT_CALL(*device_info(), OpenTunnelInterface(interface))
       .WillOnce(Return(fd));
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kConnected)));
@@ -103,9 +101,9 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
   const std::string interface = kInterfaceName;
   int fd = 1;
 
-  EXPECT_CALL(device_info_, OpenTunnelInterface(interface))
+  EXPECT_CALL(*device_info(), OpenTunnelInterface(interface))
       .WillOnce(Return(fd));
-  EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
+  EXPECT_CALL(*device_info(), CreateTunnelInterface(_)).WillOnce(Return(true));
   driver_->ConnectAsync(&event_handler_);
   driver_->OnLinkReady(kInterfaceName, kInterfaceIndex);
 
@@ -144,9 +142,9 @@ TEST_F(ThirdPartyVpnDriverTest, PowerEvents) {
   const std::string interface = kInterfaceName;
   int fd = 1;
 
-  EXPECT_CALL(device_info_, OpenTunnelInterface(interface))
+  EXPECT_CALL(*device_info(), OpenTunnelInterface(interface))
       .WillOnce(Return(fd));
-  EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
+  EXPECT_CALL(*device_info(), CreateTunnelInterface(_)).WillOnce(Return(true));
   driver_->ConnectAsync(&event_handler_);
   driver_->OnLinkReady(kInterfaceName, kInterfaceIndex);
 
@@ -170,7 +168,7 @@ TEST_F(ThirdPartyVpnDriverTest, PowerEvents) {
 }
 
 TEST_F(ThirdPartyVpnDriverTest, OnConnectTimeout) {
-  EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
+  EXPECT_CALL(*device_info(), CreateTunnelInterface(_)).WillOnce(Return(true));
   driver_->ConnectAsync(&event_handler_);
 
   EXPECT_CALL(event_handler_, OnDriverFailure(_, _));

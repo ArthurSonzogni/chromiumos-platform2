@@ -105,12 +105,10 @@ class OpenVPNDriverTest
  public:
   OpenVPNDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_),
-        device_info_(&manager_),
         driver_(new OpenVPNDriver(&manager_, &process_manager_)),
         certificate_file_(new MockCertificateFile()),
         extra_certificates_file_(new MockCertificateFile()),
         management_server_(new NiceMock<MockOpenVPNManagementServer>()) {
-    manager_.set_mock_device_info(&device_info_);
     driver_->management_server_.reset(management_server_);
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
     driver_->extra_certificates_file_.reset(
@@ -203,12 +201,13 @@ class OpenVPNDriverTest
   void Notify(const std::string& reason,
               const std::map<std::string, std::string>& dict) override;
 
+  MockDeviceInfo* device_info() { return manager_.mock_device_info(); }
+
   MockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockProcessManager process_manager_;
   MockManager manager_;
-  NiceMock<MockDeviceInfo> device_info_;
   MockVPNDriverEventHandler event_handler_;
   std::unique_ptr<OpenVPNDriver> driver_;
   MockCertificateFile* certificate_file_;         // Owned by |driver_|.
@@ -270,7 +269,7 @@ TEST_F(OpenVPNDriverTest, ConnectAsync) {
   EXPECT_CALL(*management_server_, Start).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_CALL(process_manager_, StartProcessInMinijail).WillOnce(Return(10101));
-  EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(true));
+  EXPECT_CALL(*device_info(), CreateTunnelInterface(_)).WillOnce(Return(true));
   base::TimeDelta timeout = driver_->ConnectAsync(&event_handler_);
   EXPECT_EQ(timeout, GetDefaultConnectTimeout());
 

@@ -15,10 +15,8 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_service.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
 #include "shill/test_event_dispatcher.h"
@@ -95,9 +93,7 @@ VPNDriverUnderTest::VPNDriverUnderTest(Manager* manager)
 class VPNDriverTest : public Test {
  public:
   VPNDriverTest()
-      : manager_(&control_, &dispatcher_, &metrics_),
-        device_info_(&manager_),
-        driver_(&manager_) {}
+      : manager_(&control_, &dispatcher_, &metrics_), driver_(&manager_) {}
 
   ~VPNDriverTest() override = default;
 
@@ -127,7 +123,6 @@ class VPNDriverTest : public Test {
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  NiceMock<MockDeviceInfo> device_info_;
   VPNDriverUnderTest driver_;
 };
 
