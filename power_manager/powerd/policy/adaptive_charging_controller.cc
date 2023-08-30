@@ -825,6 +825,7 @@ void AdaptiveChargingController::Init(
   is_sustain_set_ = false;
   adaptive_charging_enabled_ = false;
   slow_charging_enabled_ = false;
+  charge_limit_enabled_ = false;
 
   power_supply_->AddObserver(this);
 
