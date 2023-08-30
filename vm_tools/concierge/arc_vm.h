@@ -64,6 +64,10 @@ struct ArcVmFeatures {
 
   // Apply the multi-arena config for jemalloc to low-RAM devices.
   bool low_mem_jemalloc_arenas_enabled;
+
+  // Whether LMKD in ARCVM should initialize the client and connect to the
+  // VmMemoryManagementService
+  bool use_vm_memory_management_client;
 };
 
 // Obtain virtiofs shared dir command-line parameter string for oem directory.

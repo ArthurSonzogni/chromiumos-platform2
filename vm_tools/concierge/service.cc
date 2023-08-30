@@ -3885,7 +3885,7 @@ void Service::AggressiveBalloon(
 
 EnableVmMemoryManagementServiceResponse
 Service::EnableVmMemoryManagementService(
-    const EnableVmMemoryManagementServiceRequest&) {
+    const EnableVmMemoryManagementServiceRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -3906,6 +3906,9 @@ Service::EnableVmMemoryManagementService(
     response.set_failure_reason(error);
     return response;
   }
+
+  arc_kill_decision_timeout_ =
+      base::Milliseconds(request.arc_kill_request_timeout_ms());
 
   // Initialize VmMemoryManagementService
   vm_memory_management_service_ = std::make_unique<mm::MmService>();

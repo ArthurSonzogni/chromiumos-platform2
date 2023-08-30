@@ -14,11 +14,11 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <chromeos/constants/vm_tools.h>
 #include <dbus/vm_concierge/dbus-constants.h>
 #include <vboot/crossystem.h>
 #include <libcrossystem/crossystem.h>
 #include <metrics/metrics_library.h>
-#include <chromeos/constants/vm_tools.h>
 
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/pstore.h"
@@ -427,9 +427,27 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       feature::PlatformFeatures::Get()->IsEnabledBlocking(
           kArcVmLowMemJemallocArenasFeature);
 
-  // Enable the responsive balloon feature in LMKD
-  params.emplace_back(base::StringPrintf("androidboot.lmkd.vsock_timeout=%d",
-                                         kLmkdVsockTimeoutMs));
+  // If the VmMemoryManagementService is active and initialized, then ARC should
+  // connect to it instead of the normal lmkd vsock port.
+  features.use_vm_memory_management_client =
+      vm_memory_management_service_ != nullptr;
+  if (features.use_vm_memory_management_client) {
+    params.emplace_back(base::StringPrintf(
+        "androidboot.lmkd.use_vm_memory_management_client=%s", "true"));
+    params.emplace_back(
+        base::StringPrintf("androidboot.lmkd.vm_memory_management_kill_"
+                           "decision_timeout_ms=%" PRId64,
+                           arc_kill_decision_timeout_.InMilliseconds()));
+    params.emplace_back(base::StringPrintf(
+        "androidboot.lmkd.vm_memory_management_reclaim_port=%d",
+        kVmMemoryManagementReclaimServerPort));
+    params.emplace_back(base::StringPrintf(
+        "androidboot.lmkd.vm_memory_management_kills_port=%d",
+        kVmMemoryManagementKillsServerPort));
+  } else {
+    params.emplace_back(base::StringPrintf("androidboot.lmkd.vsock_timeout=%d",
+                                           kLmkdVsockTimeoutMs));
+  }
 
   if (ShouldEnableAAudioMMAP(
           feature::PlatformFeatures::Get()->IsEnabledBlocking(

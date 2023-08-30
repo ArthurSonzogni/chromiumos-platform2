@@ -555,6 +555,9 @@ class Service final : public org::chromium::VmConciergeInterface,
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;
 
+  // The timeout arc should use for kill decision requests.
+  base::TimeDelta arc_kill_decision_timeout_;
+
   // The VM Memory Management service
   std::unique_ptr<mm::MmService> vm_memory_management_service_
       GUARDED_BY_CONTEXT(sequence_checker_);

@@ -307,7 +307,9 @@ std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
     return vm;
   }
 
-  if (!vm->SetupLmkdVsock()) {
+  // Set up LMKD VSOCK listener if VmMemoryManagementClient is disabled.
+  if (!vm->features_.use_vm_memory_management_client && !vm->SetupLmkdVsock()) {
+    LOG(ERROR) << "Failed to initialize LMKD VSOCK connection.";
     vm.reset();
     return vm;
   }
@@ -629,6 +631,12 @@ std::optional<ZoneInfoStats> ArcVmZoneStats(uint32_t cid, bool log_on_error) {
 
 void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
                                     const std::string& vm) {
+  // When the VmMemoryManagementClient is used, there is no balloon
+  // policy for ARCVM.
+  if (features_.use_vm_memory_management_client) {
+    return;
+  }
+
   balloon_init_attempts_--;
 
   // Only log on error if this is our last attempt. We expect some failures

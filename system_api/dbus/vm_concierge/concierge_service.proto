@@ -1494,7 +1494,10 @@ message AggressiveBalloonResponse {
 }
 
 // Request to enable the VmMemoryManagementService.
-message EnableVmMemoryManagementServiceRequest {}
+message EnableVmMemoryManagementServiceRequest {
+  // The timeout ARC should use for kill requests.
+  uint32 arc_kill_request_timeout_ms = 1;
+}
 
 // Response to an EnableVmMemoryManagementService request.
 message EnableVmMemoryManagementServiceResponse {
