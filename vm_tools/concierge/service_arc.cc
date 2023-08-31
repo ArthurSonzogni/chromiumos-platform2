@@ -25,6 +25,7 @@
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/byte_unit.h"
+#include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/service_common.h"
 #include "vm_tools/concierge/service_start_vm_helper.h"
@@ -280,6 +281,11 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::ARC_VM);
+
+  // Log how long it takes to start the VM.
+  metrics::DurationRecorder duration_recorder(
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
+      apps::VmType::ARCVM, metrics::DurationRecorder::Event::kVmStart);
 
   if (request.disks_size() > kMaxExtraDisks) {
     LOG(ERROR) << "Rejecting request with " << request.disks_size()

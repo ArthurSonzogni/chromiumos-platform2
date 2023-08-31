@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/uuid.h>
 
+#include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/service.h"
@@ -123,6 +124,11 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
 
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::PLUGIN_VM);
+
+  // Log how long it takes to start the VM.
+  metrics::DurationRecorder duration_recorder(
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
+      apps::VmType::PLUGIN_VM, metrics::DurationRecorder::Event::kVmStart);
 
   // Get the stateful directory.
   base::FilePath stateful_dir;
