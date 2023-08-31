@@ -429,6 +429,7 @@ type cros_var_lib_device_management, file_type, cros_file_type, cros_var_file_ty
 type cros_var_lib_dlcservice, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_dbus, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_featured, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_fpstudy, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_fwupd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_fwupd_pending, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_hiberman, file_type, cros_file_type, cros_var_file_type;
@@ -488,6 +489,7 @@ type cros_var_log_eventlog, file_type, cros_log_type, cros_file_type, cros_var_f
 type cros_var_log_extensions, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_faillog, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_fbpreprocessord, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_var_log_fpstudy, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_fwupd, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_hypervisor, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_lorgnette, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;

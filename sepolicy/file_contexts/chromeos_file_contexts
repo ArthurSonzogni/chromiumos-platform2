@@ -321,6 +321,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/dbus(/.*)?             u:object_r:cros_var_lib_dbus:s0
 /var/lib/dhcpcd(/.*)?           u:object_r:cros_var_lib_shill:s0
 /var/lib/featured(/.*)?         u:object_r:cros_var_lib_featured:s0
+/var/lib/fingers(/.*)?          u:object_r:cros_var_lib_fpstudy:s0
+/var/lib/fpstudygnupg(/.*)?     u:object_r:cros_var_lib_fpstudy:s0
 /var/lib/fwupd                  u:object_r:cros_var_lib_fwupd:s0
 /var/lib/fwupd/pending          u:object_r:cros_var_lib_fwupd_pending:s0
 /var/lib/hiberman               u:object_r:cros_var_lib_hiberman:s0
@@ -373,6 +375,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/extensions.log         u:object_r:cros_var_log_extensions:s0
 /var/log/faillog                u:object_r:cros_var_log_faillog:s0
 /var/log/fbpreprocessord        u:object_r:cros_var_log_fbpreprocessord:s0
+/var/log/fpstudy(/.*)?          u:object_r:cros_var_log_fpstudy:s0
+/var/log/fpstudy-audit.log      u:object_r:cros_syslog:s0
 /var/log/fwupd.log              u:object_r:cros_var_log_fwupd:s0
 /var/log/hammerd.log            u:object_r:cros_hammerd_log:s0
 /var/log/hypervisor.log         u:object_r:cros_var_log_hypervisor:s0
