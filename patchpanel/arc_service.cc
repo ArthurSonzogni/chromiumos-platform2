@@ -454,21 +454,7 @@ bool ArcService::Start(uint32_t id) {
   }
   id_ = id;
 
-  // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
-  const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      arc0_device_->config().host_ipv4_addr(), 30);
-  // Create the bridge for the management device arc0.
-  if (!datapath_->AddBridge(kArcbr0Ifname, cidr)) {
-    LOG(ERROR) << "Failed to setup bridge " << kArcbr0Ifname;
-    return false;
-  }
-
-  if (!datapath_->AddToBridge(kArcbr0Ifname, arc0_device_ifname)) {
-    LOG(ERROR) << "Failed to bridge ARC Device " << arc0_device_ifname << " to "
-               << kArcbr0Ifname;
-    return false;
-  }
-
+  StartArcDeviceDatapath(*arc0_device_, arc0_device_ifname);
   LOG(INFO) << "Started ARC management Device " << *arc0_device_.get();
 
   // Start already known shill <-> ARC mapped devices.
@@ -533,7 +519,7 @@ void ArcService::Stop(uint32_t id) {
   }
   arcvm_guest_ifnames_.clear();
 
-  datapath_->RemoveBridge(kArcbr0Ifname);
+  StopArcDeviceDatapath(*arc0_device_);
   LOG(INFO) << "Stopped ARC management Device " << *arc0_device_.get();
   arc0_config_ = arc0_device_->release_config();
   arc0_device_.reset();
@@ -590,20 +576,6 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
                                          guest_ifname, std::move(config));
   LOG(INFO) << "Starting ARC Device " << *device;
 
-  // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
-  const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      device->config().host_ipv4_addr(), 30);
-  // Create the bridge.
-  if (!datapath_->AddBridge(device->host_ifname(), cidr)) {
-    LOG(ERROR) << "Failed to setup bridge " << device->host_ifname();
-    return;
-  }
-
-  datapath_->StartRoutingDevice(shill_device, device->host_ifname(),
-                                TrafficSource::kArc);
-  datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kArc, shill_device,
-                                device->config().guest_ipv4_addr());
-
   std::string virtual_device_ifname;
   if (arc_type_ == ArcType::kVM) {
     virtual_device_ifname = device->config().tap_ifname();
@@ -633,18 +605,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     SetSysfsOwnerToAndroidRoot(pid, "net/" + device->guest_ifname() + "/mtu");
   }
 
-  if (!datapath_->AddToBridge(device->host_ifname(), virtual_device_ifname)) {
-    if (arc_type_ == ArcType::kContainer) {
-      datapath_->RemoveInterface(virtual_device_ifname);
-    }
-    LOG(ERROR) << "Failed to bridge interface " << virtual_device_ifname;
-    return;
-  }
-
-  if (IsAdbAllowed(shill_device.type) &&
-      !datapath_->AddAdbPortAccessRule(shill_device.ifname)) {
-    LOG(ERROR) << "Failed to add ADB port access rule";
-  }
+  StartArcDeviceDatapath(*device, virtual_device_ifname);
 
   arc_device_change_handler_.Run(shill_device, *device,
                                  Device::ChangeEvent::kAdded);
@@ -674,13 +635,7 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
   if (arc_type_ == ArcType::kContainer) {
     datapath_->RemoveInterface(ArcVethHostName(shill_device));
   }
-  datapath_->StopRoutingDevice(device->host_ifname());
-  datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, shill_device,
-                                   device->config().guest_ipv4_addr());
-  datapath_->RemoveBridge(device->host_ifname());
-  if (IsAdbAllowed(shill_device.type)) {
-    datapath_->DeleteAdbPortAccessRule(shill_device.ifname);
-  }
+  StopArcDeviceDatapath(*device);
   // Once the upstream shill Device is gone it may not be possible to retrieve
   // the Device type from shill DBus interface by interface name.
   ReleaseConfig(shill_device.type, it->second->release_config());
@@ -757,6 +712,59 @@ std::ostream& operator<<(std::ostream& stream, ArcService::ArcType arc_type) {
     case ArcService::ArcType::kVM:
       return stream << "ARCVM";
   }
+}
+
+void ArcService::StartArcDeviceDatapath(const Device& arc_device,
+                                        const std::string& arc_device_ifname) {
+  // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
+  const auto bridge_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      arc_device.config().host_ipv4_addr(), 30);
+
+  // Create the associated bridge and link the host virtual device to the
+  // bridge.
+  if (!datapath_->AddBridge(arc_device.host_ifname(), bridge_cidr)) {
+    LOG(ERROR) << __func__ << "(" << arc_device << "): Failed to setup bridge";
+    return;
+  }
+
+  if (!datapath_->AddToBridge(arc_device.host_ifname(), arc_device_ifname)) {
+    LOG(ERROR) << __func__ << "(" << arc_device
+               << "): Failed to link bridge and ARC virtual interface "
+               << arc_device_ifname;
+    return;
+  }
+
+  // Only setup additional iptables rules for ARC Devices bound to a shill
+  // Device. The iptables rules for arc0 are configured only when a VPN
+  // connection exists and are triggered directly from Manager when the default
+  // logical network switches to a VPN.
+  const auto& shill_device = arc_device.shill_device();
+  if (!shill_device) {
+    return;
+  }
+
+  datapath_->StartRoutingDevice(*shill_device, arc_device.host_ifname(),
+                                TrafficSource::kArc);
+  datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kArc, *shill_device,
+                                arc_device.config().guest_ipv4_addr());
+  if (IsAdbAllowed(shill_device->type) &&
+      !datapath_->AddAdbPortAccessRule(shill_device->ifname)) {
+    LOG(ERROR) << __func__ << "(" << arc_device
+               << "): Failed to add ADB port access rule";
+  }
+}
+
+void ArcService::StopArcDeviceDatapath(const Device& arc_device) {
+  const auto& shill_device = arc_device.shill_device();
+  if (shill_device) {
+    if (IsAdbAllowed(shill_device->type)) {
+      datapath_->DeleteAdbPortAccessRule(shill_device->ifname);
+    }
+    datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, *shill_device,
+                                     arc_device.config().guest_ipv4_addr());
+    datapath_->StopRoutingDevice(arc_device.host_ifname());
+  }
+  datapath_->RemoveBridge(arc_device.host_ifname());
 }
 
 }  // namespace patchpanel

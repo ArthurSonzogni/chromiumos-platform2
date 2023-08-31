@@ -292,7 +292,7 @@ TEST_F(ArcServiceTest, ContainerImpl_FailsToAddInterfaceToBridge) {
       .WillOnce(Return(false));
   EXPECT_CALL(*datapath_, RemoveInterface(_)).Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).Times(0);
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true));
 
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
