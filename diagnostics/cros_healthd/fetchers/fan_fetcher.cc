@@ -21,7 +21,6 @@
 #include <brillo/errors/error.h>
 #include <re2/re2.h>
 
-#include "debugd/dbus-proxies.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
