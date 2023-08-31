@@ -250,6 +250,9 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
     }
     if (network_config.ipv4_gateway) {
       gateway = network_config.ipv4_gateway->ToString();
+    } else if (force_overwrite) {
+      // Use "0.0.0.0" as empty gateway for backward compatibility.
+      gateway = net_base::IPv4Address().ToString();
     }
     if (network_config.ipv4_broadcast) {
       broadcast_address = network_config.ipv4_broadcast->ToString();
@@ -269,6 +272,9 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
     }
     if (network_config.ipv6_gateway) {
       gateway = network_config.ipv6_gateway->ToString();
+    } else if (force_overwrite) {
+      // Use "::" as empty gateway for backward compatibility.
+      gateway = net_base::IPv6Address().ToString();
     }
   }
 
