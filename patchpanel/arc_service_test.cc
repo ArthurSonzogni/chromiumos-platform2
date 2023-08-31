@@ -271,11 +271,11 @@ TEST_F(ArcServiceTest, ContainerImpl_FailsToCreateInterface) {
       .WillOnce(Return(false));
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostCIDR)).Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(_)).Times(0);
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(_));
 
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
-  EXPECT_FALSE(svc->IsStarted());
+  EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 

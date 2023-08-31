@@ -436,21 +436,6 @@ bool ArcService::Start(uint32_t id) {
     RefreshMacAddressesInConfigs();
 
     arc0_device_ifname = kVethArc0Ifname;
-    const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-        arc0_device_->config().guest_ipv4_addr(), 30);
-    if (!datapath_->ConnectVethPair(
-            pid, kArcNetnsName, kVethArc0Ifname, arc0_device_->guest_ifname(),
-            arc0_device_->config().mac_addr(), guest_cidr,
-            /*remote_ipv6_cidr=*/std::nullopt,
-            /*remote_multicast_flag=*/false)) {
-      LOG(ERROR) << "Cannot create virtual link for " << kArc0Ifname;
-      return false;
-    }
-    // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
-    if (!SetSysfsOwnerToAndroidRoot(
-            pid, "net/" + arc0_device_->guest_ifname() + "/mtu")) {
-      RecordEvent(metrics_, ArcServiceUmaEvent::kSetVethMtuError);
-    }
   }
   id_ = id;
 
@@ -501,28 +486,29 @@ void ArcService::Stop(uint32_t id) {
   }
   shill_devices_ = shill_devices;
 
-  // Stop the bridge for the management interface arc0.
-  if (arc_type_ == ArcType::kContainer) {
-    datapath_->RemoveInterface(kVethArc0Ifname);
-    if (!datapath_->NetnsDeleteName(kArcNetnsName)) {
-      LOG(WARNING) << "Failed to delete netns name " << kArcNetnsName;
-    }
-  }
-
-  // Destroy allocated TAP devices if any, including the ARC management Device.
-  for (auto* config : all_configs_) {
-    if (config->tap_ifname().empty())
-      continue;
-
-    datapath_->RemoveInterface(config->tap_ifname());
-    config->set_tap_ifname("");
-  }
-  arcvm_guest_ifnames_.clear();
-
-  StopArcDeviceDatapath(*arc0_device_);
+  StopArcDeviceDatapath(*arc0_device_, kVethArc0Ifname);
   LOG(INFO) << "Stopped ARC management Device " << *arc0_device_.get();
   arc0_config_ = arc0_device_->release_config();
   arc0_device_.reset();
+
+  if (arc_type_ == ArcType::kVM) {
+    // Destroy allocated TAP devices if any, including the ARC management
+    // Device.
+    for (auto* config : all_configs_) {
+      if (config->tap_ifname().empty()) {
+        continue;
+      }
+      datapath_->RemoveInterface(config->tap_ifname());
+      config->set_tap_ifname("");
+    }
+    arcvm_guest_ifnames_.clear();
+  } else {
+    // Free the network namespace name attached to the ARC container.
+    if (!datapath_->NetnsDeleteName(kArcNetnsName)) {
+      LOG(ERROR) << "Failed to delete netns name " << kArcNetnsName;
+    }
+  }
+
   id_ = kInvalidId;
   RecordEvent(metrics_, ArcServiceUmaEvent::kStopSuccess);
 }
@@ -584,25 +570,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
       return;
     }
   } else {
-    pid_t pid = static_cast<int>(id_);
-    if (pid < 0) {
-      LOG(ERROR) << "Invalid ARC container pid " << pid;
-      return;
-    }
     virtual_device_ifname = ArcVethHostName(shill_device);
-
-    const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-        device->config().guest_ipv4_addr(), 30);
-    if (!datapath_->ConnectVethPair(
-            pid, kArcNetnsName, virtual_device_ifname, device->guest_ifname(),
-            device->config().mac_addr(), guest_cidr,
-            /*remote_ipv6_cidr=*/std::nullopt,
-            IsMulticastInterface(shill_device.ifname))) {
-      LOG(ERROR) << "Cannot create veth link for device " << *device;
-      return;
-    }
-    // Allow netd to write to /sys/class/net/<guest_ifname>/mtu (b/169936104).
-    SetSysfsOwnerToAndroidRoot(pid, "net/" + device->guest_ifname() + "/mtu");
   }
 
   StartArcDeviceDatapath(*device, virtual_device_ifname);
@@ -631,11 +599,7 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
   arc_device_change_handler_.Run(shill_device, *device,
                                  Device::ChangeEvent::kRemoved);
 
-  // ARCVM TAP devices are removed in VmImpl::Stop() when the service stops
-  if (arc_type_ == ArcType::kContainer) {
-    datapath_->RemoveInterface(ArcVethHostName(shill_device));
-  }
-  StopArcDeviceDatapath(*device);
+  StopArcDeviceDatapath(*device, ArcVethHostName(shill_device));
   // Once the upstream shill Device is gone it may not be possible to retrieve
   // the Device type from shill DBus interface by interface name.
   ReleaseConfig(shill_device.type, it->second->release_config());
@@ -716,6 +680,34 @@ std::ostream& operator<<(std::ostream& stream, ArcService::ArcType arc_type) {
 
 void ArcService::StartArcDeviceDatapath(const Device& arc_device,
                                         const std::string& arc_device_ifname) {
+  // Only create the host virtual interface and guest virtual interface for the
+  // container. The TAP devices are currently always created statically ahead of
+  // time.
+  if (arc_type_ == ArcType::kContainer) {
+    pid_t pid = static_cast<int>(id_);
+    if (pid < 0) {
+      LOG(ERROR) << __func__ << "(" << arc_device
+                 << "): Invalid ARC container pid " << pid;
+      return;
+    }
+    const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+        arc_device.config().guest_ipv4_addr(), 30);
+    if (!datapath_->ConnectVethPair(pid, kArcNetnsName, arc_device_ifname,
+                                    arc_device.guest_ifname(),
+                                    arc_device.config().mac_addr(), guest_cidr,
+                                    /*remote_ipv6_cidr=*/std::nullopt,
+                                    /*remote_multicast_flag=*/false)) {
+      LOG(ERROR) << __func__ << "(" << arc_device
+                 << "): Cannot create virtual ethernet pair";
+      return;
+    }
+    // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
+    if (!SetSysfsOwnerToAndroidRoot(
+            pid, "net/" + arc_device.guest_ifname() + "/mtu")) {
+      RecordEvent(metrics_, ArcServiceUmaEvent::kSetVethMtuError);
+    }
+  }
+
   // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
   const auto bridge_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
       arc_device.config().host_ipv4_addr(), 30);
@@ -754,7 +746,8 @@ void ArcService::StartArcDeviceDatapath(const Device& arc_device,
   }
 }
 
-void ArcService::StopArcDeviceDatapath(const Device& arc_device) {
+void ArcService::StopArcDeviceDatapath(const Device& arc_device,
+                                       const std::string& arc_device_ifname) {
   const auto& shill_device = arc_device.shill_device();
   if (shill_device) {
     if (IsAdbAllowed(shill_device->type)) {
@@ -765,6 +758,12 @@ void ArcService::StopArcDeviceDatapath(const Device& arc_device) {
     datapath_->StopRoutingDevice(arc_device.host_ifname());
   }
   datapath_->RemoveBridge(arc_device.host_ifname());
+
+  // Only destroy the host virtual interface for the container. ARCVM TAP
+  // devices are removed separately when ARC stops.
+  if (arc_type_ == ArcType::kContainer) {
+    datapath_->RemoveInterface(arc_device_ifname);
+  }
 }
 
 }  // namespace patchpanel

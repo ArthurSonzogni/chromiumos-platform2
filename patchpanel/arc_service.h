@@ -152,12 +152,18 @@ class ArcService {
   // |ifname|.
   void RemoveDevice(const ShillClient::Device& shill_device);
 
-  // Starts the packet datapath on the host for the ARC device |arc_device|. The
-  // virtual interface |arc_device_ifname| must already exists.
+  // Starts the packet datapath on the host for the ARC device |arc_device|.
+  // If ARC is running in container mode, the veth interface
+  // |arc_device_ifname| is also created together with its counterpart inside
+  // the container. Otherwise if ARC is running in VM mode, the tap device must
+  // already exist.
   void StartArcDeviceDatapath(const Device& arc_device,
                               const std::string& arc_device_ifname);
-  // Stops the packet datapath on the host for the ARC device |arc_device|.
-  void StopArcDeviceDatapath(const Device& arc_device);
+  // Stops the packet datapath on the host for the ARC device |arc_device|. If
+  // ARC is running in container mode, the veth interface |arc_device_ifname| is
+  // also destroyed.
+  void StopArcDeviceDatapath(const Device& arc_device,
+                             const std::string& arc_device_ifname);
 
   // Notifies ArcService that the IP configuration of the physical shill Device
   // |shill_device| changed.
