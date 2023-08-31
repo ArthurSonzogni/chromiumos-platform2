@@ -16,12 +16,12 @@
 
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
+#include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 #include <net-base/mock_socket.h>
 
 #include "shill/ethernet/eap_protocol.h"
 #include "shill/mock_log.h"
-#include "shill/net/mock_io_handler_factory.h"
 
 using testing::_;
 using testing::DoAll;
@@ -34,9 +34,7 @@ namespace shill {
 
 class EapListenerTest : public testing::Test {
  public:
-  EapListenerTest() : listener_(kInterfaceIndex, kLinkName) {
-    listener_.io_handler_factory_ = &io_handler_factory_;
-  }
+  EapListenerTest() : listener_(kInterfaceIndex, kLinkName) {}
 
   ~EapListenerTest() override = default;
 
@@ -82,9 +80,12 @@ class EapListenerTest : public testing::Test {
     return reinterpret_cast<net_base::MockSocket*>(listener_.socket_.get());
   }
   void StartListener();
-  void ReceiveRequest() { listener_.ReceiveRequest(GetSocket()->Get()); }
+  void ReceiveRequest() { listener_.ReceiveRequest(); }
 
-  MockIOHandlerFactory io_handler_factory_;
+  // required by base::FileDescriptorWatcher.
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
+
   EapListener listener_;
   net_base::MockSocketFactory* socket_factory_;  // Owned by |listener_|.
 
@@ -125,12 +126,7 @@ void EapListenerTest::StartListener() {
         return socket;
       });
 
-  int socket_fd;
-  EXPECT_CALL(io_handler_factory_,
-              CreateIOReadyHandler(_, IOHandler::kModeInput, _))
-      .WillOnce(DoAll(SaveArg<0>(&socket_fd), Return(nullptr)));
   EXPECT_TRUE(listener_.Start());
-  EXPECT_EQ(socket_fd, listener_.socket_->Get());
 }
 
 TEST_F(EapListenerTest, Constructor) {

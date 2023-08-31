@@ -8,14 +8,11 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <net-base/socket.h>
 
 namespace shill {
-
-class IOHandler;
-class IOHandlerFactory;
-class ScopedSocketCloser;
 
 // Listens for EAP packets on |interface_index| and invokes a
 // callback when a request frame arrives.
@@ -52,13 +49,10 @@ class EapListener {
   std::unique_ptr<net_base::Socket> CreateSocket();
 
   // Retrieves an EAP packet from |socket_|.  This is the callback method
-  // configured on |receive_request_handler_|.
-  void ReceiveRequest(int fd);
+  // configured on |socket_watcher_|.
+  void ReceiveRequest();
 
   const std::string& LoggingTag();
-
-  // Factory to use for creating an input handler.
-  IOHandlerFactory* io_handler_factory_;
 
   // The interface index for the device to monitor.
   const int interface_index_;
@@ -76,8 +70,9 @@ class EapListener {
   // Receive socket configured to receive PAE (Port Access Entity) packets.
   std::unique_ptr<net_base::Socket> socket_;
 
-  // Input handler for |socket_|.  Calls ReceiveRequest().
-  std::unique_ptr<IOHandler> receive_request_handler_;
+  // Watcher to wait for |socket_| ready to read. It should be destructed
+  // prior than |socket_|, so it's declared after |socket_|.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
 };
 
 }  // namespace shill

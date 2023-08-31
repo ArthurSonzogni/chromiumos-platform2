@@ -18,7 +18,6 @@
 
 #include "shill/ethernet/eap_protocol.h"
 #include "shill/logging.h"
-#include "shill/net/io_handler_factory.h"
 
 namespace shill {
 
@@ -30,9 +29,7 @@ const size_t EapListener::kMaxEapPacketLength =
     sizeof(eap_protocol::Ieee8021xHdr) + sizeof(eap_protocol::EapHeader);
 
 EapListener::EapListener(int interface_index, const std::string& link_name)
-    : io_handler_factory_(IOHandlerFactory::GetInstance()),
-      interface_index_(interface_index),
-      link_name_(link_name) {}
+    : interface_index_(interface_index), link_name_(link_name) {}
 
 EapListener::~EapListener() = default;
 
@@ -44,15 +41,18 @@ bool EapListener::Start() {
   }
 
   socket_ = std::move(socket);
-  receive_request_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
-      socket_->Get(), IOHandler::kModeInput,
-      base::BindRepeating(&EapListener::ReceiveRequest,
-                          base::Unretained(this))));
+  socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      socket_->Get(), base::BindRepeating(&EapListener::ReceiveRequest,
+                                          base::Unretained(this)));
+  if (!socket_watcher_) {
+    LOG(ERROR) << LoggingTag() << ": Failed on watching EAP listener socket";
+    return false;
+  }
   return true;
 }
 
 void EapListener::Stop() {
-  receive_request_handler_.reset();
+  socket_watcher_.reset();
   socket_.reset();
 }
 
@@ -84,7 +84,7 @@ std::unique_ptr<net_base::Socket> EapListener::CreateSocket() {
   return socket;
 }
 
-void EapListener::ReceiveRequest(int fd) {
+void EapListener::ReceiveRequest() {
   struct {
     eap_protocol::Ieee8021xHdr onex_header;
     eap_protocol::EapHeader eap_header;
