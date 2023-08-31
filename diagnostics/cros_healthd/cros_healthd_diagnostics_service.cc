@@ -269,11 +269,15 @@ void CrosHealthdDiagnosticsService::RunFloatingPointAccuracyRoutine(
     mojom::NullableUint32Ptr length_seconds,
     RunFloatingPointAccuracyRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
-  if (!length_seconds.is_null())
+  if (!length_seconds.is_null()) {
     exec_duration = base::Seconds(length_seconds->value);
-  RunRoutine(routine_factory_->MakeFloatingPointAccuracyRoutine(exec_duration),
-             mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy,
-             std::move(callback));
+  }
+
+  auto args = mojom::RoutineArgument::NewFloatingPoint(
+      mojom::FloatingPointRoutineArgument::New(exec_duration));
+  RunRoutineWithAdapter(std::move(args),
+                        mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunGatewayCanBePingedRoutine(

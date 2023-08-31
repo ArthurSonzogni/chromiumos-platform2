@@ -28,7 +28,6 @@
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint_alive.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/power_button.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 #include "diagnostics/cros_healthd/routines/network/captive_portal.h"
 #include "diagnostics/cros_healthd/routines/network/dns_latency.h"
@@ -106,12 +105,6 @@ CrosHealthdRoutineFactoryImpl::MakeAcPowerRoutine(
     ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type) {
   return std::make_unique<AcPowerRoutine>(expected_status, expected_power_type);
-}
-
-std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeFloatingPointAccuracyRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
-  return CreateFloatingPointAccuracyRoutine(exec_duration);
 }
 
 std::unique_ptr<DiagnosticRoutine>

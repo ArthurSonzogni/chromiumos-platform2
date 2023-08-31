@@ -52,11 +52,6 @@ class CrosHealthdRoutineFactory {
   virtual std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) = 0;
-  // Constructs a new instance of the floating point accuracy routine. See
-  // diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_accuracy.h
-  // for details on the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeFloatingPointAccuracyRoutine(
-      const std::optional<base::TimeDelta>& exec_duration) = 0;
   // Constructs a new instance of the nvme_wear_level routine. See
   // diagnostics/cros_healthd/routines/storage/nvme_wear_level.h for details on
   // the routine itself.

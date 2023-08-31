@@ -14,7 +14,6 @@ group("all") {
     "//diagnostics/cros_health_tool:cros-health-tool",
     "//diagnostics/cros_healthd:cros_healthd",
     "//diagnostics/cros_healthd/delegate:executor-delegate",
-    "//diagnostics/cros_healthd/routines:floating-point-accuracy",
     "//diagnostics/cros_healthd/routines:urandom",
     "//diagnostics/cros_healthd/seccomp",
     "//diagnostics/mojom",

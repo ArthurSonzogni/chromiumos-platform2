@@ -58,8 +58,6 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) override;
-  std::unique_ptr<DiagnosticRoutine> MakeFloatingPointAccuracyRoutine(
-      const std::optional<base::TimeDelta>& exec_duration) override;
   std::unique_ptr<DiagnosticRoutine> MakeNvmeWearLevelRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy,
       ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold)

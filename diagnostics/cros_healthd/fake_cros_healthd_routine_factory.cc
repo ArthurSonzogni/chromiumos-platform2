@@ -238,12 +238,6 @@ FakeCrosHealthdRoutineFactory::MakeAcPowerRoutine(
 }
 
 std::unique_ptr<DiagnosticRoutine>
-FakeCrosHealthdRoutineFactory::MakeFloatingPointAccuracyRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
-  return std::move(next_routine_);
-}
-
-std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeNvmeWearLevelRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
     ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold) {
