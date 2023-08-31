@@ -700,6 +700,7 @@ class Cellular : public Device,
     ResultCallback callback;
     ApnList::ApnType apn_type;
     std::deque<Stringmap> apn_try_list;
+    bool apn_connected;
   };
   void CompleteTetheringOperation(const Error& error);
   bool InitializeTetheringOperation(TetheringOperationType type,

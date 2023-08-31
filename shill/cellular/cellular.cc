@@ -879,8 +879,17 @@ void Cellular::OnConnectionUpdated(int interface_index) {
   // Event on the default network, propagate it to the parent.
   if (default_pdn_ &&
       interface_index == default_pdn_->network()->interface_index()) {
+    // If the requested APN was connected during a DUN as DEFAULT connect or
+    // disconnect operation, we can now complete the operation successfully.
+    // If any event happens before we have connected the APN, we should
+    // ignore it.
     if (IsTetheringOperationDunAsDefaultOngoing()) {
-      CompleteTetheringOperation(Error(Error::kSuccess));
+      if (tethering_operation_->apn_connected) {
+        SLOG(1) << LoggingTag() << ": tethering operation can be completed";
+        CompleteTetheringOperation(Error(Error::kSuccess));
+      } else {
+        SLOG(1) << LoggingTag() << ": tethering operation still ongoing";
+      }
     }
     Device::OnConnectionUpdated(interface_index);
     return;
@@ -1464,6 +1473,13 @@ void Cellular::OnConnectReply(ApnList::ApnType apn_type,
     return;
   }
 
+  // If we are connecting or disconnecting DUN as DEFAULT, we can now expect to
+  // complete the operation once a (default) Network connection update is
+  // received.
+  if (IsTetheringOperationDunAsDefaultOngoing()) {
+    tethering_operation_->apn_connected = true;
+  }
+
   // Successful bearer connection, so store the APN type.
   default_pdn_apn_type_ = apn_type;
 
@@ -1589,6 +1605,7 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
   // updated to ignore events if a tethering operation is ongoing.
   ResultCallback callback = std::move(tethering_operation_->callback);
   bool dun_as_default_ongoing = IsTetheringOperationDunAsDefaultOngoing();
+  bool apn_connected = tethering_operation_->apn_connected;
   tethering_operation_ = std::nullopt;
 
   // Report error.
@@ -1600,6 +1617,9 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
     std::move(callback).Run(error);
     return;
   }
+
+  // On a successful completion, the APN must have been connected.
+  CHECK(apn_connected);
 
   // Report success.
   LOG(INFO) << LoggingTag() << ": Tethering operation successful";
@@ -1629,6 +1649,7 @@ bool Cellular::InitializeTetheringOperation(TetheringOperationType type,
   // Tethering connection attempt can go on.
   LOG(INFO) << LoggingTag() << ": Tethering operation started";
   tethering_operation_.emplace(type, std::move(callback));
+  tethering_operation_->apn_connected = false;
   return true;
 }
 
