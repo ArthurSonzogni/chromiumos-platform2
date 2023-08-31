@@ -1,3 +1,7 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 ACTION=="change", SUBSYSTEM=="drm", KERNEL=="card0", ENV{ERROR}=="1", \
   RUN+="/sbin/crash_reporter --udev=KERNEL=card0:SUBSYSTEM=drm:ACTION=change"
 
@@ -16,10 +20,6 @@ ACTION=="add", SUBSYSTEM=="devcoredump", \
 # For detecting usb controller issues.
 ACTION=="offline", SUBSYSTEM=="usb", ENV{ERROR}=="DEAD", \
   RUN+="/sbin/crash_reporter --udev=SUBSYSTEM=usb:ACTION=dead"
-
-# For EC Panics
-ACTION=="change", SUBSYSTEM=="platform", DRIVER=="cros_ec_lpcs", \
-  ENV{ERROR}=="PANIC", RUN+="/sbin/crash_reporter --ec_collect"
 
 # This rule is used only in Tast integration tests to test crash reporting
 # via udev.
