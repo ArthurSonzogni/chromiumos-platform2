@@ -374,9 +374,24 @@ class [[clang::consumable(unknown)]]   //
     return *this;
   }
 
+  [[clang::return_typestate(unknown)]]  //
+  StackableError
+  HintUnknown()&& {
+    return std::move(*this);
+  }
+
+  [[clang::set_typestate(unknown)]]     //
+  [[clang::return_typestate(unknown)]]  //
+  const StackableError&
+  HintUnknown() const& {
+    return *this;
+  }
+
   // Returns self.
   constexpr const StackableError& status() const& noexcept { return *this; }
-  StackableError status()&& noexcept { return std::move(*this); }
+  StackableError status()&& noexcept {
+    return std::move(*this);
+  }
 
   // Returns error status.
   [[clang::callable_when("unconsumed")]]   //

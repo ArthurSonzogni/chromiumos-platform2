@@ -75,11 +75,7 @@ MountStatusOr<std::unique_ptr<VaultKeyset>> KeysetManagement::GetValidKeyset(
   bool any_keyset_exists = false;
 
   CryptoStatus last_crypto_error;
-
-  // Disable the consumable checks, because the check wants the state of
-  // variable 'last_crypto_error' match at the entry and exit of loop.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wconsumed"
+  last_crypto_error.HintUnknown();
   for (int index : key_indices) {
     std::unique_ptr<VaultKeyset> vk = LoadVaultKeysetForUser(obfuscated, index);
     if (!vk) {
@@ -104,7 +100,6 @@ MountStatusOr<std::unique_ptr<VaultKeyset>> KeysetManagement::GetValidKeyset(
       return vk;
     }
   }
-#pragma clang diagnostic pop
 
   if (!any_keyset_exists) {
     LOG(ERROR) << "No parsable keysets found for " << obfuscated;
