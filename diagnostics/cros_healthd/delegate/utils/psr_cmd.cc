@@ -34,9 +34,13 @@ PsrCmd::PsrCmd(const char* mei_fp) {
 
 bool PsrCmd::MeiConnect() {
   if (ioctl(mei_fd_, IOCTL_MEI_CONNECT_CLIENT, mei_connect_data_) == -1) {
-    int err = errno;
-    LOG(ERROR) << "ioctl MEI connect failed: " << strerror(err);
-    return false;
+    // Delay & retry once.
+    usleep(kDelayUSec);
+    if (ioctl(mei_fd_, IOCTL_MEI_CONNECT_CLIENT, mei_connect_data_) == -1) {
+      int err = errno;
+      LOG(ERROR) << "ioctl MEI connect failed: " << strerror(err);
+      return false;
+    }
   }
 
   return true;

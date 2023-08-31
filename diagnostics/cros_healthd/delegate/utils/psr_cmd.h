@@ -54,6 +54,8 @@ static constexpr uint16_t kMaxSignLen = 512;
 static constexpr uint16_t kMaxCertChainSize = 3000;
 // Genesis data store info size.
 static constexpr uint16_t kGenesisDataStoreInfoSize = 1024;
+// Delay open in microseconds.
+static constexpr uint32_t kDelayUSec = 1e6;
 
 // Unique ID for PSR MEI requests.
 const uuid_le kGuid = GUID_INIT(
