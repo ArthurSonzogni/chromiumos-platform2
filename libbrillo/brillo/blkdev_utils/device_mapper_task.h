@@ -55,11 +55,17 @@ struct DeviceMapperVersion {
 //                    DeviceMapper::WipeTable.
 // - DM_DEVICE_RELOAD: used in DeviceMapper::WipeTable.
 // - DM_GET_TARGET_VERSION: used in DeviceMapper::GetVersion.
+// - DM_DEVICE_TARGET_MSG: used in Devicemapper::Message
+// - DM_DEVICE_SUSPEND: used in DeviceMapper::Suspend.
+// - DM_DEVICE_RESUME: used in DeviceMapper::Resume.
 class DevmapperTask {
  public:
   virtual ~DevmapperTask() = default;
   // Sets device name for the command.
   virtual bool SetName(const std::string& name) = 0;
+
+  // Sets message to a command.
+  virtual bool SetMessage(const std::string& msg) = 0;
 
   // Adds a target to the command. Should be followed by a Run();
   // Parameters:
@@ -115,6 +121,7 @@ class DevmapperTaskImpl : public DevmapperTask {
   explicit DevmapperTaskImpl(int type);
   ~DevmapperTaskImpl() override = default;
   bool SetName(const std::string& name) override;
+  bool SetMessage(const std::string& msg) override;
   bool AddTarget(uint64_t start,
                  uint64_t sectors,
                  const std::string& target,

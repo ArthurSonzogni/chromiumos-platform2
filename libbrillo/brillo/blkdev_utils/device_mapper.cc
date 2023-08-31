@@ -249,4 +249,58 @@ DeviceMapperVersion DeviceMapper::GetTargetVersion(const std::string& target) {
   return version_task->GetVersion();
 }
 
+bool DeviceMapper::Message(const std::string& name,
+                           const std::string& message) {
+  auto task = dm_task_factory_.Run(DM_DEVICE_TARGET_MSG);
+
+  if (!task->SetName(name)) {
+    LOG(ERROR) << "Message: SetName failed.";
+    return false;
+  }
+
+  if (!task->SetMessage(message)) {
+    LOG(ERROR) << "Message: SetMessage failed.";
+    return false;
+  }
+
+  if (!task->Run()) {
+    LOG(ERROR) << "Message: RunTask failed.";
+    return false;
+  }
+
+  return true;
+}
+
+bool DeviceMapper::Suspend(const std::string& name) {
+  auto task = dm_task_factory_.Run(DM_DEVICE_SUSPEND);
+
+  if (!task->SetName(name)) {
+    LOG(ERROR) << "Suspend: SetName failed.";
+    return false;
+  }
+
+  if (!task->Run()) {
+    LOG(ERROR) << "Suspend: Run failed.";
+    return false;
+  }
+
+  return true;
+}
+
+bool DeviceMapper::Resume(const std::string& name) {
+  auto task = dm_task_factory_.Run(DM_DEVICE_RESUME);
+
+  if (!task->SetName(name)) {
+    LOG(ERROR) << "Resume: SetName failed.";
+    return false;
+  }
+
+  if (!task->Run()) {
+    LOG(ERROR) << "Resume: Run failed.";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace brillo

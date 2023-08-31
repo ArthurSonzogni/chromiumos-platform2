@@ -122,6 +122,15 @@ class BRILLO_EXPORT DeviceMapper {
   //   target - Name of the device mapper target.
   DeviceMapperVersion GetTargetVersion(const std::string& target);
 
+  // Send a message to the device.
+  bool Message(const std::string& name, const std::string& message);
+
+  // Suspends the device.
+  bool Suspend(const std::string& name);
+
+  // Resumes the device.
+  bool Resume(const std::string& name);
+
  private:
   // Devmapper task factory.
   DevmapperTaskFactory dm_task_factory_;

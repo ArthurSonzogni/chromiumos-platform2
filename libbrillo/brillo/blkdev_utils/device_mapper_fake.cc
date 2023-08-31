@@ -50,6 +50,13 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
       dm_target_map_.erase(dev_name);
       dm_target_map_.insert(std::make_pair(dev_name, task->targets));
       break;
+    case DM_DEVICE_TARGET_MSG:
+    case DM_DEVICE_SUSPEND:
+    case DM_DEVICE_RESUME:
+      CHECK_EQ(udev_sync, false);
+      if (dm_target_map_.find(dev_name) == dm_target_map_.end())
+        return false;
+      break;
     default:
       return false;
   }
@@ -122,6 +129,15 @@ std::unique_ptr<DevmapperTask> CreateDevmapperTask(int type) {
 DeviceMapperVersion FakeDevmapperTask::GetVersion() {
   DeviceMapperVersion version({1, 21, 0});
   return version;
+}
+
+bool FakeDevmapperTask::SetMessage(const std::string& msg) {
+  // Make sure that message is only set for message tasks.
+  if (task_->type != DM_DEVICE_TARGET_MSG)
+    return false;
+
+  task_->message = std::string(msg);
+  return true;
 }
 
 }  // namespace fake

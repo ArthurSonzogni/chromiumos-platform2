@@ -35,6 +35,7 @@ struct DmTask {
   bool deferred;
   std::string name;
   std::vector<DmTarget> targets;
+  std::string message;
 };
 
 // Fake task factory: creates fake tasks that
@@ -56,6 +57,7 @@ class FakeDevmapperTask : public brillo::DevmapperTask {
                      SecureBlob* parameters) override;
   bool Run(bool udev_sync = true) override;
   DeviceMapperVersion GetVersion() override;
+  bool SetMessage(const std::string& msg) override;
   bool SetDeferredRemove() override;
 
  private:

@@ -24,6 +24,14 @@ bool DevmapperTaskImpl::SetName(const std::string& name) {
   return true;
 }
 
+bool DevmapperTaskImpl::SetMessage(const std::string& msg) {
+  if (!task_ || !dm_task_set_message(task_.get(), msg.c_str())) {
+    LOG(ERROR) << "SetMessage failed";
+    return false;
+  }
+  return true;
+}
+
 bool DevmapperTaskImpl::AddTarget(uint64_t start,
                                   uint64_t length,
                                   const std::string& type,
