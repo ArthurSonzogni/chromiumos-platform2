@@ -872,7 +872,9 @@ Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
         new_apn_info[kApnTypesProperty] =
             ApnList::JoinApnTypes({kApnTypeIA, kApnTypeDefault});
         new_apn_info[kApnAttachProperty] = kApnAttachProperty;
-      } else {
+      } else if (!base::Contains(new_apn_info, kApnTypesProperty)) {
+        // Skip setting |kApnTypesProperty| if the value was populated from the
+        // modb.
         new_apn_info[kApnTypesProperty] =
             ApnList::JoinApnTypes({kApnTypeDefault});
       }
