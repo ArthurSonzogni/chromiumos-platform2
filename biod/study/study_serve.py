@@ -46,7 +46,7 @@ DEFAULT_ARGS = {
     "syslog": False,
     "gpg-keyring": "",
     "gpg-recipients": "",
-    "log-dir": "/var/log/fingerprints",
+    "log-dir": "/var/log/fpstudy",
 }
 
 errors = [
