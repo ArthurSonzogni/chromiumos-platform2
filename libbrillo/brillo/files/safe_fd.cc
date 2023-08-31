@@ -632,19 +632,20 @@ SafeFD::Error SafeFD::Rmdir(const std::string& name,
     // The ScopedDIR takes ownership of this so dup_fd is not scoped on its own.
     int dup_fd = dup(dir_fd.get());
     if (dup_fd < 0) {
-      PLOG(ERROR) << "dup failed";
+      PLOG(ERROR) << "dup failed on fd for \"" << name << "\"";
       return SafeFD::Error::kIOError;
     }
 
     ScopedDIR dir(fdopendir(dup_fd));
     if (!dir.is_valid()) {
-      PLOG(ERROR) << "fdopendir failed";
+      PLOG(ERROR) << "fdopendir failed on fd for \"" << name << "\"";
       close(dup_fd);
       return SafeFD::Error::kIOError;
     }
 
     struct stat dir_info;
     if (fstat(dir_fd.get(), &dir_info) != 0) {
+      PLOG(ERROR) << "fstat failed for \"" << name << "\"";
       return SafeFD::Error::kIOError;
     }
 
@@ -660,6 +661,8 @@ SafeFD::Error SafeFD::Rmdir(const std::string& name,
         struct stat child_info;
         if (fstatat(dir_fd.get(), entry->d_name, &child_info,
                     AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW) != 0) {
+          PLOG(ERROR) << "fstatat failed for file \"" << entry->d_name
+                      << "\" in \"" << name << "\"";
           return SafeFD::Error::kIOError;
         }
 
@@ -687,7 +690,7 @@ SafeFD::Error SafeFD::Rmdir(const std::string& name,
       entry = HANDLE_EINTR_IF_EQ(readdir(dir.get()), nullptr);
     }
     if (errno != 0) {
-      PLOG(ERROR) << "readdir failed";
+      PLOG(ERROR) << "readdir failed for \"" << name << "\"";
       return SafeFD::Error::kIOError;
     }
   }
@@ -698,7 +701,7 @@ SafeFD::Error SafeFD::Rmdir(const std::string& name,
       // that it will fail for files, so don't log here.
       return SafeFD::Error::kWrongType;
     } else {
-      PLOG(ERROR) << "unlinkat failed";
+      PLOG(ERROR) << "unlinkat failed for \"" << name << "\"";
     }
     // If there was an error during the recursive delete, we expect unlink
     // to fail with ENOTEMPTY and we bubble the error from recursion
