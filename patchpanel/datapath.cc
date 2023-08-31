@@ -2402,7 +2402,14 @@ void Datapath::SetupQoSDetectChain() {
                {"-p", "icmpv6", "-j", "MARK", "--set-xmark",
                 QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
 
-  // TODO(b/296958774): Add rules for DNS.
+  // Marking DNS packets. 853 for DoT for Android is ignored here since it won't
+  // happen when dns-proxy is on.
+  install_rule(IpFamily::kDual,
+               {"-p", "udp", "--dport", "53", "-j", "MARK", "--set-xmark",
+                QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
+  install_rule(IpFamily::kDual,
+               {"-p", "tcp", "--dport", "53", "-j", "MARK", "--set-xmark",
+                QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
 
   // TODO(b/296952085): Add rules for WebRTC detection. Also need to add an
   // early-return rule above for packets marked by rules for network control, to

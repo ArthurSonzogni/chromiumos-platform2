@@ -525,6 +525,12 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual,
        "mangle -A qos_detect -p tcp --syn -j MARK --set-xmark "
        "0x00000060/0x000000e0 -w"},
+      {IpFamily::kDual,
+       "mangle -A qos_detect -p udp --dport 53 -j MARK --set-xmark "
+       "0x00000060/0x000000e0 -w"},
+      {IpFamily::kDual,
+       "mangle -A qos_detect -p tcp --dport 53 -j MARK --set-xmark "
+       "0x00000060/0x000000e0 -w"},
       // Asserts for QoS apply DSCP chain.
       {IpFamily::kDual, "mangle -N qos_apply_dscp -w"},
       {IpFamily::kDual,
