@@ -63,7 +63,7 @@ MakeGetKeyCharacteristicsRequest(
     const int32_t keymint_message_version);
 
 std::unique_ptr<::keymaster::GenerateKeyRequest> MakeGenerateKeyRequest(
-    const std::vector<arc::mojom::keymint::KeyParameterPtr>& data,
+    const arc::mojom::keymint::GenerateKeyRequestPtr& request,
     const int32_t keymint_message_version);
 
 std::unique_ptr<::keymaster::ImportKeyRequest> MakeImportKeyRequest(

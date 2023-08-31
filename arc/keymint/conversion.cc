@@ -437,11 +437,25 @@ MakeGetKeyCharacteristicsRequest(
 }
 
 std::unique_ptr<::keymaster::GenerateKeyRequest> MakeGenerateKeyRequest(
-    const std::vector<arc::mojom::keymint::KeyParameterPtr>& data,
+    const arc::mojom::keymint::GenerateKeyRequestPtr& request,
     const int32_t keymint_message_version) {
   auto out = std::make_unique<::keymaster::GenerateKeyRequest>(
       keymint_message_version);
-  ConvertToKeymasterMessage(data, &out->key_description);
+  ConvertToKeymasterMessage(request->key_params, &out->key_description);
+
+  // If mojo request carries an attestation key, convert it to Keymaster
+  // message type.
+  if (!request->attestation_key.is_null()) {
+    out->attestation_signing_key_blob = ::keymaster::KeymasterKeyBlob(
+        request->attestation_key->key_blob.data(),
+        request->attestation_key->key_blob.size());
+    ConvertToKeymasterMessage(request->attestation_key->attest_key_params,
+                              &out->attest_key_params);
+    out->issuer_subject = ::keymaster::KeymasterBlob(
+        request->attestation_key->issuer_subject_name.data(),
+        request->attestation_key->issuer_subject_name.size());
+  }
+
   return out;
 }
 
@@ -456,7 +470,19 @@ std::unique_ptr<::keymaster::ImportKeyRequest> MakeImportKeyRequest(
   out->key_data = ::keymaster::KeymasterKeyBlob(request->key_data.data(),
                                                 request->key_data.size());
 
-  // TODO(b/289173356): Add Attestation Key in MakeImportKeyRequest.
+  // If mojo request carries an attestation key, convert it to Keymaster
+  // message type.
+  if (!request->attestation_key.is_null()) {
+    out->attestation_signing_key_blob = ::keymaster::KeymasterKeyBlob(
+        request->attestation_key->key_blob.data(),
+        request->attestation_key->key_blob.size());
+    ConvertToKeymasterMessage(request->attestation_key->attest_key_params,
+                              &out->attest_key_params);
+    out->issuer_subject = ::keymaster::KeymasterBlob(
+        request->attestation_key->issuer_subject_name.data(),
+        request->attestation_key->issuer_subject_name.size());
+  }
+
   return out;
 }
 

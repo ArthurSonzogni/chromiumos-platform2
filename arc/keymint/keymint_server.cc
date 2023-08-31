@@ -242,8 +242,8 @@ void KeyMintServer::GetKeyCharacteristics(
 void KeyMintServer::GenerateKey(
     arc::mojom::keymint::GenerateKeyRequestPtr request,
     GenerateKeyCallback callback) {
-  auto km_request = MakeGenerateKeyRequest(
-      request->key_params, backend_.keymint()->message_version());
+  auto km_request =
+      MakeGenerateKeyRequest(request, backend_.keymint()->message_version());
 
   auto task_lambda = base::BindOnce(
       [](GenerateKeyCallback callback,

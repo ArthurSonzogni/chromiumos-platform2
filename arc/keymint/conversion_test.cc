@@ -108,6 +108,40 @@ std::vector<arc::mojom::keymint::KeyParameterPtr> KeyParameterVector() {
   return parameters;
 }
 
+arc::mojom::keymint::AttestationKeyPtr CreateAttestationKey() {
+  std::vector<uint8_t> key_blob(kBlob1.begin(), kBlob1.end());
+  std::vector<uint8_t> issuer_subject_name(kBlob2.begin(), kBlob2.end());
+  return arc::mojom::keymint::AttestationKey::New(
+      key_blob, KeyParameterVector(), issuer_subject_name);
+}
+
+::testing::AssertionResult VerifyAttestationKey(
+    const ::keymaster::KeymasterKeyBlob& key_blob,
+    const ::keymaster::AuthorizationSet& attest_key_params,
+    const ::keymaster::KeymasterBlob& issuer_subject,
+    const arc::mojom::keymint::AttestationKeyPtr& mojo) {
+  if (auto result = VerifyVectorUint8(
+          key_blob.key_material, key_blob.key_material_size, mojo->key_blob);
+      result != ::testing::AssertionSuccess()) {
+    return result;
+  }
+
+  if (auto result = VerifyKeyParametersWithStrictInputs(
+          attest_key_params, mojo->attest_key_params);
+      result != ::testing::AssertionSuccess()) {
+    return result;
+  }
+
+  if (auto result =
+          VerifyVectorUint8(issuer_subject.data, issuer_subject.data_length,
+                            mojo->issuer_subject_name);
+      result != ::testing::AssertionSuccess()) {
+    return result;
+  }
+
+  return ::testing::AssertionSuccess();
+}
+
 ::arc::mojom::keymint::HardwareAuthTokenPtr CreateHardwareAuthToken() {
   return ::arc::mojom::keymint::HardwareAuthToken::New(
       fakeChallenge, fakeUserId, fakeAuthenticatorId,
@@ -425,15 +459,20 @@ TEST(ConvertToKeymasterMessage, GetKeyCharacteristicsRequest) {
 
 TEST(ConvertToKeymasterMessage, GenerateKeyRequest) {
   // Prepare.
-  std::vector<arc::mojom::keymint::KeyParameterPtr> input =
-      KeyParameterVector();
+  auto input = arc::mojom::keymint::GenerateKeyRequest::New(
+      KeyParameterVector(), CreateAttestationKey());
 
   // Convert.
   auto output = MakeGenerateKeyRequest(input, kKeyMintMessageVersion);
 
   // Verify.
-  EXPECT_TRUE(
-      VerifyKeyParametersWithStrictInputs(output->key_description, input));
+  ASSERT_TRUE(output);
+  EXPECT_TRUE(VerifyKeyParametersWithStrictInputs(output->key_description,
+                                                  input->key_params));
+  ASSERT_TRUE(input->attestation_key);
+  EXPECT_TRUE(VerifyAttestationKey(
+      output->attestation_signing_key_blob, output->attest_key_params,
+      output->issuer_subject, input->attestation_key));
 }
 
 TEST(ConvertToMessage, ImportKeyRequest) {
@@ -441,20 +480,26 @@ TEST(ConvertToMessage, ImportKeyRequest) {
   auto input = arc::mojom::keymint::ImportKeyRequest::New(
       KeyParameterVector(), arc::mojom::keymint::KeyFormat::PKCS8,
       std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()),
-      arc::mojom::keymint::AttestationKeyPtr());
+      CreateAttestationKey());
 
   // Convert.
   auto output = MakeImportKeyRequest(std::move(input), kKeyMintMessageVersion);
 
   // Verify.
+  ASSERT_TRUE(output);
   EXPECT_EQ(static_cast<keymaster_key_format_t>(input->key_format),
             output->key_format);
   EXPECT_TRUE(VerifyKeyParametersWithStrictInputs(output->key_description,
                                                   input->key_params));
-  // TODO(b/289173356): Verify Attest Key here as well.
+
   EXPECT_TRUE(VerifyVectorUint8(output->key_data.key_material,
                                 output->key_data.key_material_size,
                                 input->key_data));
+
+  ASSERT_TRUE(input->attestation_key);
+  EXPECT_TRUE(VerifyAttestationKey(
+      output->attestation_signing_key_blob, output->attest_key_params,
+      output->issuer_subject, input->attestation_key));
 }
 
 TEST(ConvertToMessage, ImportWrappedKeyRequest) {
