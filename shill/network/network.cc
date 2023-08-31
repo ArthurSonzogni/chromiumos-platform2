@@ -154,7 +154,8 @@ void Network::Start(const Network::StartOptions& opts) {
                                             IPConfig::kTypeDHCP));
     dhcp_started = dhcp_controller_->RequestIP();
   } else if (link_local_protocol_network_config_ &&
-             link_local_protocol_network_config_->ipv4_address) {
+             (link_local_protocol_network_config_->ipv4_address ||
+              static_network_config_.ipv4_address)) {
     set_ipconfig(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
     ipconfig_->ApplyNetworkConfig(*link_local_protocol_network_config_,
