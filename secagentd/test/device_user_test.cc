@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "absl/strings/str_format.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
@@ -550,30 +551,55 @@ TEST_F(DeviceUserTestFixture, TestSessionManagerCrash) {
   EXPECT_EQ("", device_user_->GetDeviceUser());
 }
 
-TEST_F(DeviceUserTestFixture, TestLoginOutLoginOutForRedaction) {
+TEST_F(DeviceUserTestFixture, TestLoginOutLoginOutMultipleTimesForRedaction) {
+  int times = 3;
   EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
-      .Times(2)
+      .Times(times)
       .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
         *is_guest = false;
         return true;
       })));
+
+  std::vector<std::string> device_users;
+  for (int i = 0; i < times; i++) {
+    auto device_user = absl::StrFormat("user%d@email.com", i);
+    auto sanitized_name = absl::StrFormat("sanitized%d", i);
+
+    device_users.push_back(device_user);
+
+    ASSERT_TRUE(
+        base::CreateDirectory(daemon_store_directory_.Append(sanitized_name)));
+
+    EXPECT_CALL(*session_manager_ref_,
+                RetrievePolicyEx(
+                    CreateExpectedDescriptorBlob("user", device_user), _, _, _))
+        .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+          *out_blob = CreatePolicyFetchResponseBlob("user", kAffiliationID);
+          return true;
+        })));
+  }
+
+  // All expects must be nested because the parameters are the same each time.
   EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
           Invoke([](std::string* username, std::string* sanitized) {
-            *username = kDeviceUser;
-            *sanitized = kSanitized;
+            *username = "user0@email.com";
+            *sanitized = "sanitized0";
             return true;
           })))
       .WillOnce(WithArgs<0, 1>(
           Invoke([](std::string* username, std::string* sanitized) {
-            *username = "differentUser@email.com";
-            *sanitized = "differentSanitize";
+            *username = "user1@email.com";
+            *sanitized = "sanitized1";
+            return true;
+          })))
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = "user2@email.com";
+            *sanitized = "sanitized2";
             return true;
           })));
-  ASSERT_TRUE(
-      base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
-  ASSERT_TRUE(base::CreateDirectory(
-      daemon_store_directory_.Append("differentSanitize")));
+
   EXPECT_CALL(
       *session_manager_ref_,
       RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
@@ -581,49 +607,25 @@ TEST_F(DeviceUserTestFixture, TestLoginOutLoginOutForRedaction) {
         *out_blob = CreatePolicyFetchResponseBlob("device", kAffiliationID);
         return true;
       })));
-  EXPECT_CALL(*session_manager_ref_,
-              RetrievePolicyEx(
-                  CreateExpectedDescriptorBlob("user", kDeviceUser), _, _, _))
-      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
-        *out_blob = CreatePolicyFetchResponseBlob("user", kAffiliationID);
-        return true;
-      })));
-  EXPECT_CALL(*session_manager_ref_,
-              RetrievePolicyEx(CreateExpectedDescriptorBlob(
-                                   "user", "differentUser@email.com"),
-                               _, _, _))
-      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
-        *out_blob = CreatePolicyFetchResponseBlob("user", kAffiliationID);
-        return true;
-      })));
 
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  registration_cb_.Run(kStarted);
-  task_environment_.FastForwardBy(base::Seconds(2));
 
-  EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
-  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
-  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+  for (int i = 0; i < times; i++) {
+    registration_cb_.Run(kStarted);
+    task_environment_.FastForwardBy(base::Seconds(2));
 
-  registration_cb_.Run(kStopped);
-  EXPECT_EQ("", device_user_->GetDeviceUser());
-  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
-  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+    EXPECT_EQ(device_users[i], device_user_->GetDeviceUser());
+    ASSERT_EQ(i + 1, device_user_->GetUsernamesForRedaction().size());
+    EXPECT_EQ(device_users[i],
+              device_user_->GetUsernamesForRedaction().front());
 
-  registration_cb_.Run(kStarted);
-  task_environment_.FastForwardBy(base::Seconds(2));
-  ASSERT_EQ(2, device_user_->GetUsernamesForRedaction().size());
-  EXPECT_EQ("differentUser@email.com", device_user_->GetDeviceUser());
-  EXPECT_EQ("differentUser@email.com",
-            device_user_->GetUsernamesForRedaction().front());
-  EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().back());
-
-  registration_cb_.Run(kStopped);
-  EXPECT_EQ("", device_user_->GetDeviceUser());
-  ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
-  EXPECT_EQ("differentUser@email.com",
-            device_user_->GetUsernamesForRedaction().front());
+    registration_cb_.Run(kStopped);
+    EXPECT_EQ("", device_user_->GetDeviceUser());
+    ASSERT_EQ(i + 1, device_user_->GetUsernamesForRedaction().size());
+    EXPECT_EQ(device_users[i],
+              device_user_->GetUsernamesForRedaction().front());
+  }
 }
 
 TEST_F(DeviceUserTestFixture, TestLoginOutSameUsername) {

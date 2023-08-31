@@ -53,7 +53,7 @@ static const char kErrorFailedToResolve[] = "Failed to resolve ";
 static const char kErrorFailedToRead[] = "Failed to read ";
 static const char kErrorFailedToParse[] = "Failed to parse ";
 static const char kErrorSslSha[] = "SSL SHA error";
-static const char kRedactMessage[] = "[EMAIL_REDACTED]";
+static const char kRedactMessage[] = "(EMAIL_REDACTED)";
 
 std::string StableUuid(ProcessCache::InternalProcessKeyType seed) {
   base::MD5Digest md5;
@@ -249,7 +249,9 @@ const uint64_t GetScClockTck() {
 
 void RedactCommandline(std::string* commandline,
                        const std::list<std::string>& redacted_usernames) {
-  if (commandline->empty()) {
+  // Since we are redacting usernames that always contain the @ symbol, if the
+  // commandline does NOT contain one do not parse for usernames.
+  if (commandline->empty() || commandline->find("@") == std::string::npos) {
     return;
   }
 

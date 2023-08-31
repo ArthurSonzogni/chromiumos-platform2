@@ -18,6 +18,7 @@
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/time/time.h"
 #include "base/types/expected.h"
 #include "base/uuid.h"
 #include "bindings/chrome_device_policy.pb.h"
@@ -146,18 +147,10 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
 
   if (state == kStarted) {
     UpdateDeviceId();
-    // When a user logs in for the first time there is a delay for their
-    // ID to be added. Add a slight delay so the ID can appear.
-    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&DeviceUser::UpdateDeviceUser,
-                       weak_ptr_factory_.GetWeakPtr()),
-        base::Seconds(2));
+    UpdateDeviceUser();
   } else if (state == kStopping) {
     device_user_ = "";
   } else if (state == kStopped) {
-    redacted_usernames_.resize(1);
-
     device_user_ = "";
   }
 }
@@ -246,25 +239,13 @@ void DeviceUser::UpdateDeviceUser() {
       }
     }
 
-    // Retrieve user policy information.
-    auto response = RetrievePolicy(login_manager::ACCOUNT_TYPE_USER, username);
-    if (!response.ok()) {
-      device_user_ = "Unknown";
-      LOG(ERROR) << response.status();
-      return;
-    } else {
-      auto user_policy = response.value();
-      // Fill in device_user if user is affiliated.
-      if (IsAffiliated(user_policy)) {
-        device_user_ = username;
-      } else {
-        device_user_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
-      }
-      if (!base::ImportantFileWriter::WriteFileAtomically(username_file,
-                                                          device_user_)) {
-        LOG(ERROR) << "Failed to write username to file";
-      }
-    }
+    // When a user logs in for the first time there is a delay for their
+    // ID to be added. Add a slight delay so the ID can appear.
+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&DeviceUser::HandleUserPolicy,
+                       weak_ptr_factory_.GetWeakPtr(), username, username_file),
+        base::Seconds(2));
   }
 }
 
@@ -339,6 +320,29 @@ bool DeviceUser::SetDeviceUserIfLocalAccount(std::string& username) {
   }
 
   return true;
+}
+
+void DeviceUser::HandleUserPolicy(std::string username,
+                                  base::FilePath username_file) {
+  // Retrieve user policy information.
+  auto response = RetrievePolicy(login_manager::ACCOUNT_TYPE_USER, username);
+  if (!response.ok()) {
+    device_user_ = "Unknown";
+    LOG(ERROR) << response.status();
+    return;
+  }
+  auto policy_data = response.value();
+
+  // Fill in device_user if user is affiliated.
+  if (IsAffiliated(policy_data)) {
+    device_user_ = username;
+  } else {
+    device_user_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  }
+  if (!base::ImportantFileWriter::WriteFileAtomically(username_file,
+                                                      device_user_)) {
+    LOG(ERROR) << "Failed to write username to file";
+  }
 }
 
 }  // namespace secagentd

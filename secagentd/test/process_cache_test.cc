@@ -1109,7 +1109,7 @@ TEST_F(ProcessCacheTestFixture, TestPutFromBpfRedaction) {
 
   EXPECT_EQ(
       "''start' 'arc-sdcard-mount' "
-      "'CHROMEOS_USER=[EMAIL_REDACTED]' 'CONTAINER_PID=4704''",
+      "'CHROMEOS_USER=(EMAIL_REDACTED)' 'CONTAINER_PID=4704''",
       actual[0]->commandline());
 }
 
@@ -1130,7 +1130,7 @@ TEST_F(ProcessCacheTestFixture, TestScrapeFromProcFsRedaction) {
   auto actual = process_cache_->GetProcessHierarchy(kPidChildOfInit,
                                                     process.starttime_ns, 1);
 
-  EXPECT_EQ("'\t[EMAIL_REDACTED]\t ![EMAIL_REDACTED]!'",
+  EXPECT_EQ("'\t(EMAIL_REDACTED)\t !(EMAIL_REDACTED)!'",
             actual[0]->commandline());
 }
 
