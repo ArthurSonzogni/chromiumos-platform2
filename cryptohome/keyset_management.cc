@@ -65,7 +65,6 @@ MountStatusOr<std::unique_ptr<VaultKeyset>> KeysetManagement::GetValidKeyset(
     const std::optional<std::string>& label) {
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
-    LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(
             kLocKeysetManagementGetKeysetsFailedInGetValidKeyset),
@@ -595,7 +594,6 @@ void KeysetManagement::RemoveLECredentials(
     const ObfuscatedUsername& obfuscated_username) {
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated_username, &key_indices)) {
-    LOG(WARNING) << "No valid keysets on disk for " << obfuscated_username;
     return;
   }
 

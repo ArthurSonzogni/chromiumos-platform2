@@ -170,7 +170,6 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
   std::vector<int> keyset_indices;
   if (!keyset_management_->GetVaultKeysets(obfuscated_username,
                                            &keyset_indices)) {
-    LOG(WARNING) << "No valid keysets on disk for " << obfuscated_username;
     return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
   }
 
