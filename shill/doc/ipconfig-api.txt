@@ -56,11 +56,8 @@ Properties	string Address [readonly]
 			   "ipv4"       (fixed IPv4 network state)
 			   "ipv6"       (fixed IPv6 network state)
 			   "dhcp"       (IPv4 state setup using DHCP)
-			   "bootp"      (IPv4 state setup using BOOTP)
-			   "zeroconf"   (IPV4 state setup using ZeroConf)
-			   "dhcp6"      (IPv6 state setup using DHCP6)
-			   "ppp"        (IPv4 state setup using PPP)
-			   "vpn"        (IPv4 state setup using VPN)
+			   "slaac"      (IPv6 state setup using SLAAC)
+			   "vpn"        (IPv4 or IPv6 state setup using VPN)
 
 		int32 Mtu [readonly]
 
