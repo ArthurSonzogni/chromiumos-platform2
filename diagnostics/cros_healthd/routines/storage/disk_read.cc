@@ -37,7 +37,7 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 // The minimum free space size not to be in a low state during the test.
-constexpr uint32_t kDiskReadRoutineReservedSpaceMiB = 1024;
+constexpr uint32_t kDiskReadRoutineReservedSpaceMiB = 512;
 // Frequency to update the routine percentage.
 constexpr base::TimeDelta kDiskReadRoutineUpdatePeriod =
     base::Milliseconds(300);
