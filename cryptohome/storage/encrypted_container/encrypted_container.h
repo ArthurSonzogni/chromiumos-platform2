@@ -61,6 +61,9 @@ class EncryptedContainer {
   // Sets up the encrypted container, including creating the container if
   // needed.
   virtual bool Setup(const FileSystemKey& encryption_key) = 0;
+  // Evict all copies of encryption keys from memory. Returns whether key
+  // eviction has been done.
+  virtual bool EvictKey() { return false; }
   // Tears down the container, removing the encryption key if it was added.
   virtual bool Teardown() = 0;
   // Checks if the container exists on disk.

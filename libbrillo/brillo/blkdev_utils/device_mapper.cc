@@ -11,19 +11,11 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_tokenizer.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/blkdev_utils/device_mapper_task.h>
 #include <brillo/secure_blob.h>
 
 namespace brillo {
-
-// Use a tokenizer to parse string data stored in SecureBlob.
-// The tokenizer does not store internal state so it should be
-// okay to use with SecureBlobs.
-// DO NOT USE .toker() as that leaks contents of the SecureBlob.
-using SecureBlobTokenizer =
-    base::StringTokenizerT<std::string, SecureBlob::const_iterator>;
 
 DevmapperTable::DevmapperTable(uint64_t start,
                                uint64_t size,

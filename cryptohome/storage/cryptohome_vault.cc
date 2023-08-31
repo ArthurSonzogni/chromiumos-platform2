@@ -135,6 +135,34 @@ StorageStatus CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
   return StorageStatus::Ok();
 }
 
+StorageStatus CryptohomeVault::EvictKey() {
+  if (container_->GetType() != EncryptedContainerType::kDmcrypt) {
+    return StorageStatus::Make(FROM_HERE,
+                               "Not supported: container type is not dm-crypt.",
+                               MOUNT_ERROR_INVALID_ARGS);
+  }
+  if (!container_->EvictKey()) {
+    return StorageStatus::Make(FROM_HERE,
+                               "Failed to evict key from main container.",
+                               MOUNT_ERROR_REMOVE_FAILED);
+  }
+
+  if (cache_container_ && !cache_container_->EvictKey()) {
+    return StorageStatus::Make(FROM_HERE,
+                               "Failed to evict key from cache container.",
+                               MOUNT_ERROR_REMOVE_FAILED);
+  }
+
+  for (auto& [name, container] : application_containers_) {
+    if (!container->EvictKey()) {
+      return StorageStatus::Make(
+          FROM_HERE, "Failed to evict key from app container: " + name,
+          MOUNT_ERROR_REMOVE_FAILED);
+    }
+  }
+  return StorageStatus::Ok();
+}
+
 void CryptohomeVault::ReportVaultEncryptionType() {
   EncryptedContainerType type = migrating_container_
                                     ? migrating_container_->GetType()

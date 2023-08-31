@@ -17,9 +17,17 @@
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/strings/string_tokenizer.h>
 #include <brillo/blkdev_utils/device_mapper_task.h>
 
 namespace brillo {
+
+// Use a tokenizer to parse string data stored in SecureBlob.
+// The tokenizer does not store internal state so it should be
+// okay to use with SecureBlobs.
+// DO NOT USE .toker() as that leaks contents of the SecureBlob.
+using SecureBlobTokenizer =
+    base::StringTokenizerT<std::string, SecureBlob::const_iterator>;
 
 // DevmapperTable manages device parameters. Contains helper
 // functions to parse results from dmsetup. Since the table parameters

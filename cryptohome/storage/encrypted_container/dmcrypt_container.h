@@ -52,6 +52,8 @@ class DmcryptContainer : public EncryptedContainer {
 
   bool Teardown() override;
 
+  bool EvictKey() override;
+
   EncryptedContainerType GetType() const override {
     return EncryptedContainerType::kDmcrypt;
   }

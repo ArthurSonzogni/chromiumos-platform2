@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/check_op.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
 
 #include <memory>
@@ -15,6 +16,59 @@ namespace brillo {
 namespace fake {
 
 namespace {
+
+// Parses the parameters of a DmTarget, clears the key field and returns the
+// updated parameters as a SecureBlob.
+SecureBlob ClearKeysParameter(const DmTarget& dmt) {
+  std::string cipher;
+  base::FilePath device;
+  int iv_offset, device_offset;
+  uint64_t allow_discard;
+  // Parse dmt parameters, copy existing values and only remove key reference
+  SecureBlobTokenizer tokenizer(dmt.parameters.begin(), dmt.parameters.end(),
+                                " ");
+
+  // First field is the cipher.
+  if (!tokenizer.GetNext())
+    return SecureBlob();
+  cipher = std::string(tokenizer.token_begin(), tokenizer.token_end());
+
+  // The key is stored in the second field, skip this
+  if (!tokenizer.GetNext())
+    return SecureBlob();
+
+  // The next field is iv_offset
+  if (!tokenizer.GetNext() ||
+      !base::StringToInt(
+          std::string(tokenizer.token_begin(), tokenizer.token_end()),
+          &iv_offset))
+    return SecureBlob();
+
+  // The next field is const base::FilePath& device
+  if (!tokenizer.GetNext())
+    return SecureBlob();
+  device = base::FilePath(
+      std::string(tokenizer.token_begin(), tokenizer.token_end()));
+
+  // The next field is int device_offset
+  if (!tokenizer.GetNext() ||
+      !base::StringToInt(
+          std::string(tokenizer.token_begin(), tokenizer.token_end()),
+          &device_offset))
+    return SecureBlob();
+
+  // The next field is bool allow_discard
+  if (!tokenizer.GetNext() ||
+      !base::StringToUint64(
+          std::string(tokenizer.token_begin(), tokenizer.token_end()),
+          &allow_discard))
+    return SecureBlob();
+
+  // Construct one SecureBlob from the parameters and return it.
+  return DevmapperTable::CryptCreateParameters(
+      cipher, /*encryption_key=*/SecureBlob(), iv_offset, device, device_offset,
+      allow_discard);
+}
 
 // Stub DmTask runs into a map for easy reference.
 bool StubDmRunTask(DmTask* task, bool udev_sync) {
@@ -50,7 +104,27 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
       dm_target_map_.erase(dev_name);
       dm_target_map_.insert(std::make_pair(dev_name, task->targets));
       break;
-    case DM_DEVICE_TARGET_MSG:
+    case DM_DEVICE_TARGET_MSG: {
+      CHECK_EQ(udev_sync, false);
+      // Parse message for key wipe, written to mimic behaviour of:
+      // dmsetup message <device> 0 key wipe
+
+      if (dm_target_map_.find(dev_name) == dm_target_map_.end())
+        return false;
+
+      LOG(ERROR) << task->message;
+      // Fetch the DmTarget from the dm_target_map and wipe the key from
+      // that target.
+      DmTarget dmt = dm_target_map_.find(dev_name)->second.front();
+      dmt.parameters = ClearKeysParameter(dmt);
+
+      // Clear and refresh dm_target_map_ to reflect changes
+      // Updaste the DmTargets within |task| as well.
+      dm_target_map_.erase(dev_name);
+      task->targets = std::vector<DmTarget>{dmt};
+      dm_target_map_.insert(std::make_pair(dev_name, task->targets));
+      break;
+    }
     case DM_DEVICE_SUSPEND:
     case DM_DEVICE_RESUME:
       CHECK_EQ(udev_sync, false);

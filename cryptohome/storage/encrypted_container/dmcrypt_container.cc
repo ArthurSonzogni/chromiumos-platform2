@@ -187,6 +187,23 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   return true;
 }
 
+bool DmcryptContainer::EvictKey() {
+  // Pause device file I/O before wiping the key reference from the device.
+  if (!device_mapper_->Suspend(dmcrypt_device_name_)) {
+    LOG(ERROR) << "Dm-crypt device EvictKey(" << dmcrypt_device_name_
+               << ") failed.";
+    return false;
+  }
+  // Remove the dmcrypt device key only, keeps the backing device
+  // attached and dmcrypt table.
+  if (!device_mapper_->Message(dmcrypt_device_name_, "key wipe")) {
+    LOG(ERROR) << "Dm-crypt device EvictKey(" << dmcrypt_device_name_
+               << ") failed.";
+    return false;
+  }
+  return true;
+}
+
 bool DmcryptContainer::Reset() {
   // Only allow resets for raw devices; discard will otherwise remove the
   // filesystem as well.

@@ -263,6 +263,14 @@ bool Mount::OwnsMountPoint(const FilePath& path) const {
   return active_mounter_ && active_mounter_->IsPathMounted(path);
 }
 
+StorageStatus Mount::EvictCryptohomeKey(const Username& username) {
+  if (username_ == username && user_cryptohome_vault_) {
+    return user_cryptohome_vault_->EvictKey();
+  }
+  return StorageStatus::Make(FROM_HERE, "Failed to tear down dmcrypt table.",
+                             MOUNT_ERROR_INVALID_ARGS);
+}
+
 MountType Mount::GetMountType() const {
   if (!user_cryptohome_vault_) {
     return MountType::NONE;

@@ -49,6 +49,10 @@ class CryptohomeVault {
   // Sets up the cryptohome vault for mounting.
   StorageStatus Setup(const FileSystemKey& filesystem_key);
 
+  // Evict the cryptohome filesystem key from memory. Currently only
+  // Dmcrypt container based vault supports this operation.
+  StorageStatus EvictKey();
+
   // Removes the vault.
   bool Purge();
 
