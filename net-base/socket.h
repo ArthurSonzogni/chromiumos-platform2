@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include <base/containers/span.h>
 #include <base/files/scoped_file.h>
@@ -69,6 +70,11 @@ class NET_BASE_EXPORT Socket {
                                          int flags,
                                          struct sockaddr* src_addr,
                                          socklen_t* addrlen) const;
+
+  // Reads data from the socket into |message| and returns true if successful.
+  // The |message| parameter will be resized to hold the entirety of the read
+  // message (and any data in |message| will be overwritten).
+  virtual bool RecvMessage(std::vector<uint8_t>* message) const;
 
   // Delegates to send(fd_.get(), ...). On success, returns the number of bytes
   // sent. On failure, returns std::nullopt and the errno is set. The caller

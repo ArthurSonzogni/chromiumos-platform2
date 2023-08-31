@@ -100,6 +100,23 @@ std::optional<size_t> Socket::RecvFrom(base::span<uint8_t> buf,
   return ToOptionalSizeT(res);
 }
 
+bool Socket::RecvMessage(std::vector<uint8_t>* message) const {
+  DCHECK(message) << "message is null";
+
+  // Determine the amount of data currently waiting.
+  const size_t kFakeReadByteCount = 1;
+  std::vector<uint8_t> fake_read(kFakeReadByteCount);
+  const std::optional<size_t> read_size =
+      RecvFrom(fake_read, MSG_TRUNC | MSG_PEEK, nullptr, nullptr);
+  if (!read_size.has_value()) {
+    return false;
+  }
+
+  // Read the data that was waiting when we did our previous read.
+  message->resize(*read_size, 0);
+  return RecvFrom(*message, 0, nullptr, nullptr) == *read_size;
+}
+
 std::optional<size_t> Socket::Send(base::span<const uint8_t> buf,
                                    int flags) const {
   ssize_t res = HANDLE_EINTR(send(fd_.get(), buf.data(), buf.size(), flags));

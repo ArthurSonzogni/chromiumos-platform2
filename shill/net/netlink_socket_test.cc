@@ -119,30 +119,4 @@ TEST_F(NetlinkSocketTest, SequenceNumberTest) {
             netlink_socket_->GetSequenceNumber());
 }
 
-TEST_F(NetlinkSocketTest, GoodRecvMessageTest) {
-  static const std::vector<uint8_t> expected_results =
-      net_base::byte_utils::ByteStringToBytes(
-          "Random text may include things like 'freaking fracking foo'.");
-
-  FakeSocketRead fake_socket_read(expected_results);
-
-  // Expect one call to get the size...
-  EXPECT_CALL(*mock_socket_, RecvFrom(_, MSG_TRUNC | MSG_PEEK, _, _))
-      .WillOnce(Return(expected_results.size()));
-
-  // ...and expect a second call to get the data.
-  EXPECT_CALL(*mock_socket_, RecvFrom(_, 0, _, _))
-      .WillOnce(Invoke(&fake_socket_read, &FakeSocketRead::FakeSuccessfulRead));
-
-  std::vector<uint8_t> message;
-  EXPECT_TRUE(netlink_socket_->RecvMessage(&message));
-  EXPECT_EQ(message, expected_results);
-}
-
-TEST_F(NetlinkSocketTest, BadRecvMessageTest) {
-  std::vector<uint8_t> message;
-  EXPECT_CALL(*mock_socket_, RecvFrom).WillOnce(Return(std::nullopt));
-  EXPECT_FALSE(netlink_socket_->RecvMessage(&message));
-}
-
 }  // namespace shill.

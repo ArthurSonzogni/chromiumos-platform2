@@ -49,6 +49,48 @@ TEST(Socket, Release) {
   EXPECT_EQ(close(raw_fd), 0);
 }
 
+class SocketUnderTest : public Socket {
+ public:
+  SocketUnderTest() : Socket(base::ScopedFD(open("/dev/null", O_RDONLY))) {}
+  ~SocketUnderTest() override = default;
+
+  // Mocks RecvFrom() to verify RecvMessage().
+  MOCK_METHOD(std::optional<size_t>,
+              RecvFrom,
+              (base::span<uint8_t>, int, struct sockaddr*, socklen_t*),
+              (const, override));
+};
+
+TEST(Socket, RecvMessageFailed) {
+  SocketUnderTest socket;
+  EXPECT_CALL(socket, RecvFrom).WillOnce(Return(std::nullopt));
+
+  std::vector<uint8_t> message;
+  EXPECT_EQ(socket.RecvMessage(&message), false);
+}
+
+TEST(Socket, RecvMessageSuccess) {
+  const std::vector<uint8_t> recv_data = {1, 3, 5, 7, 9};
+
+  SocketUnderTest socket;
+  EXPECT_CALL(socket, RecvFrom(_, MSG_TRUNC | MSG_PEEK, _, _))
+      .WillOnce(Return(recv_data.size()));
+  EXPECT_CALL(socket, RecvFrom(_, 0, _, _))
+      .WillOnce([&](base::span<uint8_t> buf, int flags,
+                    struct sockaddr* src_addr,
+                    socklen_t* addrlen) -> std::optional<size_t> {
+        if (buf.size() != recv_data.size()) {
+          return std::nullopt;
+        }
+        memcpy(buf.data(), recv_data.data(), buf.size());
+        return buf.size();
+      });
+
+  std::vector<uint8_t> message;
+  EXPECT_EQ(socket.RecvMessage(&message), true);
+  EXPECT_EQ(message, recv_data);
+}
+
 MATCHER_P(IsNetlinkAddr, groups, "") {
   const struct sockaddr_nl* socket_address =
       reinterpret_cast<const struct sockaddr_nl*>(arg);

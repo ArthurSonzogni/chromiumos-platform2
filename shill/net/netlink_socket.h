@@ -65,9 +65,7 @@ class SHILL_EXPORT NetlinkSocket {
   // sequence number.
   virtual uint32_t GetSequenceNumber();
 
-  // Reads data from the socket into |message| and returns true if successful.
-  // The |message| parameter will be resized to hold the entirety of the read
-  // message (and any data in |message| will be overwritten).
+  // Delegates to net_base::Socket::RecvMessage().
   virtual bool RecvMessage(std::vector<uint8_t>* message);
 
   // Sends a message, returns true if successful.

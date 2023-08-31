@@ -8,6 +8,7 @@
 #include "net-base/socket.h"
 
 #include <memory>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <gmock/gmock.h>
@@ -44,6 +45,7 @@ class NET_BASE_EXPORT MockSocket : public Socket {
               RecvFrom,
               (base::span<uint8_t>, int, struct sockaddr*, socklen_t*),
               (const, override));
+  MOCK_METHOD(bool, RecvMessage, (std::vector<uint8_t>*), (const, override));
   MOCK_METHOD(std::optional<size_t>,
               Send,
               (base::span<const uint8_t>, int),

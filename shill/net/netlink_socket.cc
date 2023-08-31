@@ -42,28 +42,7 @@ NetlinkSocket::NetlinkSocket(std::unique_ptr<net_base::Socket> socket)
 NetlinkSocket::~NetlinkSocket() = default;
 
 bool NetlinkSocket::RecvMessage(std::vector<uint8_t>* message) {
-  if (!message) {
-    LOG(ERROR) << "Null |message|";
-    return false;
-  }
-
-  // Determine the amount of data currently waiting.
-  const size_t kFakeReadByteCount = 1;
-  std::vector<uint8_t> fake_read(kFakeReadByteCount);
-  const std::optional<size_t> result =
-      socket_->RecvFrom(fake_read, MSG_TRUNC | MSG_PEEK, nullptr, nullptr);
-  if (!result.has_value()) {
-    PLOG(ERROR) << "Socket recvfrom failed.";
-    return false;
-  }
-
-  // Read the data that was waiting when we did our previous read.
-  message->resize(*result, 0);
-  if (!socket_->RecvFrom(*message, 0, nullptr, nullptr).has_value()) {
-    PLOG(ERROR) << "Second socket recvfrom failed.";
-    return false;
-  }
-  return true;
+  return socket_->RecvMessage(message);
 }
 
 bool NetlinkSocket::SendMessage(base::span<const uint8_t> out_msg) {
