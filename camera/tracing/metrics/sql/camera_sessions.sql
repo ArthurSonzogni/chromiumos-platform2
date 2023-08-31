@@ -9,19 +9,19 @@ DROP TABLE IF EXISTS camera_sessions;
 CREATE TABLE camera_sessions AS
 WITH camera_open_and_close AS (
   SELECT * FROM slice WHERE
-    name = 'CameraHalAdapter::OpenDevice' OR
-    name = 'Camera3DeviceOpsDelegate::Close'
+    name = 'CameraModuleDelegate::OpenDevice' OR
+    name = 'CameraHalAdapter::CloseDevice'
   ORDER BY ts ASC)
 SELECT
   ROW_NUMBER() OVER () AS session_id,
   ts AS open_ts,
   (SELECT MIN(ts + dur) FROM camera_open_and_close WHERE
-     id > e.id AND name = 'Camera3DeviceOpsDelegate::Close'
+     id > e.id AND name = 'CameraHalAdapter::CloseDevice'
   ) AS close_ts
 FROM
   camera_open_and_close AS e
 WHERE
-  name = 'CameraHalAdapter::OpenDevice';
+  name = 'CameraModuleDelegate::OpenDevice';
 
 
 -- Add a pseudo camera session with session id 255 by including all the slices
