@@ -94,16 +94,17 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
       return true;
 
     const DeviceFirmwareCache& cache = device_it->second;
-    auto main_a = cache.main_firmware.find(carrier_a);
-    auto main_b = cache.main_firmware.find(carrier_b);
-    auto cust_a = cache.carrier_firmware.find(carrier_a);
-    auto cust_b = cache.carrier_firmware.find(carrier_b);
-    // one or several firmwares are missing
-    if (main_a == cache.main_firmware.end() ||
-        main_b == cache.main_firmware.end() ||
-        cust_a == cache.carrier_firmware.end() ||
-        cust_b == cache.carrier_firmware.end())
+    auto main_a = GetFirmwareForCarrier(cache.main_firmware, carrier_a);
+    auto main_b = GetFirmwareForCarrier(cache.main_firmware, carrier_b);
+    auto cust_a = GetFirmwareForCarrier(cache.carrier_firmware, carrier_a);
+    auto cust_b = GetFirmwareForCarrier(cache.carrier_firmware, carrier_b);
+
+    if (cust_a == cache.carrier_firmware.end() ||
+        cust_b == cache.carrier_firmware.end() ||
+        main_a == cache.main_firmware.end() ||
+        main_b == cache.main_firmware.end()) {
       return main_a == main_b && cust_a == cust_b;
+    }
     // same firmware if they are pointing to the 2 same files.
     return main_a->second == main_b->second && cust_a->second == cust_b->second;
   }
@@ -142,6 +143,14 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
 
     *out_info = *it->second;
     return true;
+  }
+
+  DeviceFirmwareCache::CarrierIndex::const_iterator GetFirmwareForCarrier(
+      const DeviceFirmwareCache::CarrierIndex& carrier_index,
+      std::string carrier_id) {
+    auto it = carrier_index.find(carrier_id);
+    return (it == carrier_index.end()) ? carrier_index.find(kGenericCarrierId)
+                                       : it;
   }
 
   void FindAssociatedFirmware(
