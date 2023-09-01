@@ -482,7 +482,7 @@ fn set_thp(mode: THPMode) -> Result<()> {
     let path = Path::new(THP_MODE_PATH);
     if path.exists() {
         static ENABLE_THP: Lazy<bool> = Lazy::new(|| match memory::get_meminfo() {
-            Ok(meminfo) => meminfo.total > 5 * 1024 * 1024,
+            Ok(meminfo) => meminfo.total > 9 * 1024 * 1024,
             Err(e) => {
                 warn! {"Failed to validate device memory: {:?}", e};
                 false
