@@ -206,10 +206,6 @@ constexpr uint64_t kDefaultIoLimit = MiB(1);
 // How often we should broadcast state of a disk operation (import or export).
 constexpr base::TimeDelta kDiskOpReportInterval = base::Seconds(15);
 
-// The minimum kernel version of the host which supports virtio-pmem.
-constexpr KernelVersionAndMajorRevision kMinKernelVersionForVirtioPmem =
-    std::make_pair(4, 4);
-
 // File path that reports the L1TF vulnerability status.
 constexpr const char kL1TFFilePath[] =
     "/sys/devices/system/cpu/vulnerabilities/l1tf";
@@ -1810,8 +1806,7 @@ StartVmResponse Service::StartVmInternal(
   // pmem is used, /dev/vda otherwise.
   // Assume every subsequent image was assigned a letter in alphabetical order
   // starting from 'b'.
-  bool use_pmem = host_kernel_version_ >= kMinKernelVersionForVirtioPmem &&
-                  USE_PMEM_DEVICE_FOR_ROOTFS;
+  bool use_pmem = USE_PMEM_DEVICE_FOR_ROOTFS;
   string rootfs_device = use_pmem ? "/dev/pmem0" : "/dev/vda";
   unsigned char disk_letter = use_pmem ? 'a' : 'b';
   std::vector<Disk> disks;
