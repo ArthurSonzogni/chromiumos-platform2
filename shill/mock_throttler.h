@@ -42,7 +42,7 @@ class MockThrottler : public Throttler {
               Throttle,
               (ResultCallback, const std::string&, uint32_t, uint32_t),
               (override));
-  MOCK_METHOD(void, WriteTCCommands, (int), (override));
+  MOCK_METHOD(void, WriteTCCommands, (), (override));
   MOCK_METHOD(void, OnProcessExited, (int), (override));
   MOCK_METHOD(void,
               Done,

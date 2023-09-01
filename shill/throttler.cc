@@ -8,12 +8,10 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
-#include <algorithm>
 #include <utility>
 #include <vector>
 
 #include "shill/logging.h"
-#include "shill/net/io_handler_factory.h"
 #include "shill/net/process_manager.h"
 #include "shill/throttler.h"
 
@@ -57,7 +55,6 @@ Throttler::Throttler(EventDispatcher* dispatcher, Manager* manager)
       tc_stdin_(-1),
       tc_pid_(0),
       manager_(manager),
-      io_handler_factory_(IOHandlerFactory::GetInstance()),
       process_manager_(ProcessManager::GetInstance()) {
   SLOG(2) << __func__;
 }
@@ -250,15 +247,19 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
          "Unable to set TC pipes to be non-blocking");
     return false;
   }
-  tc_stdin_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
-      tc_stdin_, IOHandler::kModeOutput,
-      base::BindRepeating(&Throttler::WriteTCCommands,
-                          weak_factory_.GetWeakPtr())));
+  tc_stdin_watcher_ = base::FileDescriptorWatcher::WatchWritable(
+      tc_stdin_,
+      base::BindRepeating(&Throttler::WriteTCCommands, base::Unretained(this)));
+  if (tc_stdin_watcher_ == nullptr) {
+    Done(std::move(callback_), Error::kOperationFailed,
+         "Failed to watch on TC stdin fd");
+    return false;
+  }
+
   return true;
 }
 
-void Throttler::WriteTCCommands(int fd) {
-  CHECK_EQ(fd, tc_stdin_);
+void Throttler::WriteTCCommands() {
   CHECK(tc_pid_);
 
   for (const auto& command : tc_commands_) {
@@ -272,7 +273,7 @@ void Throttler::WriteTCCommands(int fd) {
     }
   }
 
-  tc_stdin_handler_.reset();
+  tc_stdin_watcher_.reset();
   file_io_->Close(tc_stdin_);
   tc_stdin_ = -1;
   return;

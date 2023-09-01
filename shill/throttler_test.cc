@@ -4,14 +4,14 @@
 
 #include "shill/throttler.h"
 
+#include <gmock/gmock.h>
+#include <net-base/mock_socket.h>
+
 #include "shill/mock_control.h"
 #include "shill/mock_file_io.h"
-#include "shill/mock_log.h"
 #include "shill/mock_manager.h"
-#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
-#include "shill/testing.h"
 
 using testing::_;
 using testing::AllOf;
@@ -19,6 +19,7 @@ using testing::NiceMock;
 using testing::Return;
 using testing::StrictMock;
 using testing::Test;
+using testing::WithArg;
 
 namespace shill {
 
@@ -28,7 +29,6 @@ class ThrottlerTest : public Test {
       : mock_manager_(&control_interface_, &dispatcher_, nullptr),
         throttler_(&dispatcher_, &mock_manager_) {
     throttler_.process_manager_ = &mock_process_manager_;
-    throttler_.io_handler_factory_ = &mock_io_factory_handler_;
     throttler_.file_io_ = &mock_file_io_;
   }
 
@@ -45,9 +45,9 @@ class ThrottlerTest : public Test {
   EventDispatcherForTest dispatcher_;
   StrictMock<MockManager> mock_manager_;
   NiceMock<MockProcessManager> mock_process_manager_;
-  NiceMock<MockIOHandlerFactory> mock_io_factory_handler_;
   NiceMock<MockFileIO> mock_file_io_;
   Throttler throttler_;
+  net_base::MockSocket socket_;
 };
 
 const char ThrottlerTest::kIfaceName0[] = "eth0";
@@ -71,8 +71,14 @@ TEST_F(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState) {
                         MinijailOptionsMatchCapMask(kExpectedCapMask)),
                   _, _))
       .Times(interfaces.size())
-      .WillOnce(Return(kPID1))
-      .WillOnce(Return(kPID2));
+      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+        *std_fds.stdin_fd = socket_.Get();
+        return kPID1;
+      }))
+      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+        *std_fds.stdin_fd = socket_.Get();
+        return kPID2;
+      }));
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
@@ -98,7 +104,10 @@ TEST_F(ThrottlerTest, NewlyAddedInterfaceIsThrottled) {
                         MinijailOptionsMatchCapMask(kExpectedCapMask)),
                   _, _))
       .Times(1)
-      .WillOnce(Return(kPID3));
+      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+        *std_fds.stdin_fd = socket_.Get();
+        return kPID3;
+      }));
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_)).WillOnce(Return(false));
   throttler_.ApplyThrottleToNewInterface(kIfaceName2);
 }
@@ -119,7 +128,10 @@ TEST_F(ThrottlerTest, DisablingThrottleClearsState) {
                         MinijailOptionsMatchCapMask(kExpectedCapMask)),
                   _, _))
       .Times(1)
-      .WillOnce(Return(kPID1));
+      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+        *std_fds.stdin_fd = socket_.Get();
+        return kPID1;
+      }));
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
@@ -146,7 +158,10 @@ TEST_F(ThrottlerTest, DisablingThrottleWhenNoThrottleExists) {
                         MinijailOptionsMatchCapMask(kExpectedCapMask)),
                   _, _))
       .Times(1)
-      .WillOnce(Return(kPID1));
+      .WillOnce(WithArg<6>([&](struct std_file_descriptors std_fds) {
+        *std_fds.stdin_fd = socket_.Get();
+        return kPID1;
+      }));
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
