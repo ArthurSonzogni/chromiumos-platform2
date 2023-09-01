@@ -18,14 +18,12 @@
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/refptr_types.h"
 
 struct hostent;
 
 namespace shill {
 
 class Ares;
-class IOHandlerFactory;
 class Time;
 struct DnsClientState;
 
@@ -96,7 +94,6 @@ class DnsClient {
   net_base::IPAddress address_;
   std::string interface_name_;
   EventDispatcher* dispatcher_;
-  IOHandlerFactory* io_handler_factory_;
   ClientCallback callback_;
   int timeout_ms_;
   bool running_;

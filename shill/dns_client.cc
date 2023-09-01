@@ -10,12 +10,11 @@
 #include <sys/socket.h>
 
 #include <memory>
-#include <set>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/containers/contains.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
@@ -24,8 +23,6 @@
 #include <base/strings/string_util.h>
 
 #include "shill/logging.h"
-#include "shill/net/io_handler.h"
-#include "shill/net/io_handler_factory.h"
 #include "shill/net/shill_time.h"
 #include "shill/shill_ares.h"
 
@@ -69,8 +66,10 @@ struct DnsClientState {
   DnsClientState() : channel(nullptr), start_time{} {}
 
   ares_channel channel;
-  std::vector<std::unique_ptr<IOHandler>> read_handlers;
-  std::vector<std::unique_ptr<IOHandler>> write_handlers;
+  std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>
+      read_handlers;
+  std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>
+      write_handlers;
   struct timeval start_time;
 };
 
@@ -82,7 +81,6 @@ DnsClient::DnsClient(net_base::IPFamily family,
     : address_(family),
       interface_name_(interface_name),
       dispatcher_(dispatcher),
-      io_handler_factory_(IOHandlerFactory::GetInstance()),
       callback_(callback),
       timeout_ms_(timeout_ms),
       running_(false),
@@ -184,10 +182,10 @@ bool DnsClient::IsActive() const {
   return running_;
 }
 
-// We delay our call to completion so that we exit all IOHandlers, and
-// can clean up all of our local state before calling the callback, or
-// during the process of the execution of the callee (which is free to
-// call our destructor safely).
+// We delay our call to completion so that we exit all
+// base::FileDescriptorWatchers, and can clean up all of our local state before
+// calling the callback, or during the process of the execution of the callee
+// (which is free to call our destructor safely).
 void DnsClient::HandleCompletion() {
   SLOG(this, 3) << "In " << __func__;
 
@@ -308,20 +306,20 @@ bool DnsClient::RefreshHandles() {
   int action_bits =
       ares_->GetSock(resolver_state_->channel, sockets, ARES_GETSOCK_MAXNUM);
 
-  base::RepeatingCallback<void(int)> read_callback(base::BindRepeating(
-      &DnsClient::HandleDnsRead, weak_ptr_factory_.GetWeakPtr()));
-  base::RepeatingCallback<void(int)> write_callback(base::BindRepeating(
-      &DnsClient::HandleDnsWrite, weak_ptr_factory_.GetWeakPtr()));
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
-      resolver_state_->read_handlers.emplace_back(
-          base::WrapUnique(io_handler_factory_->CreateIOReadyHandler(
-              sockets[i], IOHandler::kModeInput, read_callback)));
+      resolver_state_->read_handlers.push_back(
+          base::FileDescriptorWatcher::WatchReadable(
+              sockets[i],
+              base::BindRepeating(&DnsClient::HandleDnsRead,
+                                  base::Unretained(this), sockets[i])));
     }
     if (ARES_GETSOCK_WRITABLE(action_bits, i)) {
-      resolver_state_->write_handlers.emplace_back(
-          base::WrapUnique(io_handler_factory_->CreateIOReadyHandler(
-              sockets[i], IOHandler::kModeOutput, write_callback)));
+      resolver_state_->write_handlers.push_back(
+          base::FileDescriptorWatcher::WatchWritable(
+              sockets[i],
+              base::BindRepeating(&DnsClient::HandleDnsWrite,
+                                  base::Unretained(this), sockets[i])));
     }
   }
 
@@ -347,8 +345,8 @@ bool DnsClient::RefreshHandles() {
     //    side-effect of both invoking the callback and returning False
     //    in Start().
     //  - If we got here from the tail of an IO event, we can't call
-    //    Stop() since that will blow away the IOHandler we are running
-    //    in.  We will perform the cleanup in the posted task below.
+    //    Stop() since that will blow away the base::FileDescriptorWatcher we
+    //    are running in.  We will perform the cleanup in the posted task below.
     //  - If we got here from a timeout handler, we will perform cleanup
     //    in the posted task.
     running_ = false;
@@ -373,16 +371,10 @@ bool DnsClient::RefreshHandles() {
 }
 
 void DnsClient::StopReadHandlers() {
-  for (auto& iter : resolver_state_->read_handlers) {
-    iter->Stop();
-  }
   resolver_state_->read_handlers.clear();
 }
 
 void DnsClient::StopWriteHandlers() {
-  for (auto& iter : resolver_state_->write_handlers) {
-    iter->Stop();
-  }
   resolver_state_->write_handlers.clear();
 }
 

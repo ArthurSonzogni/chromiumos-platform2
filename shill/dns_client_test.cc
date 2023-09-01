@@ -13,24 +13,20 @@
 
 #include <base/functional/bind.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <net-base/mock_socket.h>
 
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/mock_ares.h"
-#include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/net/io_handler.h"
-#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_time.h"
-#include "shill/testing.h"
 
 using testing::_;
 using testing::DoAll;
 using testing::Not;
 using testing::Return;
 using testing::ReturnArg;
-using testing::ReturnNew;
 using testing::SetArgPointee;
 using testing::StrEq;
 using testing::StrictMock;
@@ -49,7 +45,6 @@ char* kReturnAddressList[] = {kReturnAddressList0, nullptr};
 char kFakeAresChannelData = 0;
 const ares_channel kAresChannel =
     reinterpret_cast<ares_channel>(&kFakeAresChannelData);
-const int kAresFd = 10203;
 const base::TimeDelta kAresTimeout =
     base::Seconds(2);  // ARES transaction timeout
 const base::TimeDelta kAresWait =
@@ -112,27 +107,27 @@ class DnsClientTest : public Test {
                                    &hostent_);
   }
 
-  void CallDnsRead() { dns_client_->HandleDnsRead(kAresFd); }
+  void CallDnsRead() { dns_client_->HandleDnsRead(fake_ares_socket_.Get()); }
 
-  void CallDnsWrite() { dns_client_->HandleDnsWrite(kAresFd); }
+  void CallDnsWrite() { dns_client_->HandleDnsWrite(fake_ares_socket_.Get()); }
 
   void CallTimeout() { dns_client_->HandleTimeout(); }
 
   void CallCompletion() { dns_client_->HandleCompletion(); }
 
   void CreateClient(base::TimeDelta timeout) {
-    dns_client_.reset(new DnsClient(net_base::IPFamily::kIPv4,
-                                    kNetworkInterface, timeout.InMilliseconds(),
-                                    &dispatcher_, callback_target_.callback()));
+    dns_client_ = std::make_unique<DnsClient>(
+        net_base::IPFamily::kIPv4, kNetworkInterface, timeout.InMilliseconds(),
+        &dispatcher_, callback_target_.callback());
     dns_client_->ares_ = &ares_;
     dns_client_->time_ = &time_;
-    dns_client_->io_handler_factory_ = &io_handler_factory_;
   }
 
   void SetActive() {
-    // Returns that socket kAresFd is readable.
+    // Returns that ares socket is readable.
     EXPECT_CALL(ares_, GetSock(_, _, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(kAresFd), Return(1)));
+        .WillRepeatedly(
+            DoAll(SetArgPointee<1>(fake_ares_socket_.Get()), Return(1)));
     EXPECT_CALL(ares_, Timeout(_, _, _))
         .WillRepeatedly(DoAll(SetArgPointee<2>(ares_timeout_), ReturnArg<2>()));
   }
@@ -145,9 +140,6 @@ class DnsClientTest : public Test {
   void StartValidRequest() {
     CreateClient(kAresTimeout);
 
-    EXPECT_CALL(io_handler_factory_,
-                CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
-        .WillRepeatedly(ReturnNew<IOHandler>());
     SetActive();
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
     EXPECT_CALL(ares_, InitOptions(_, _, _))
@@ -165,7 +157,8 @@ class DnsClientTest : public Test {
   }
 
   void TestValidCompletion() {
-    EXPECT_CALL(ares_, ProcessFd(kAresChannel, kAresFd, ARES_SOCKET_BAD))
+    EXPECT_CALL(ares_, ProcessFd(kAresChannel, fake_ares_socket_.Get(),
+                                 ARES_SOCKET_BAD))
         .WillOnce(InvokeWithoutArgs(this, &DnsClientTest::CallReplyCB));
     ExpectPostCompletionTask();
     CallDnsRead();
@@ -221,7 +214,11 @@ class DnsClientTest : public Test {
     DnsClient::ClientCallback callback_;
   };
 
-  MockIOHandlerFactory io_handler_factory_;
+  // required by base::FileDescriptorWatcher.
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
+  net_base::MockSocket fake_ares_socket_;
+
   std::unique_ptr<DnsClient> dns_client_;
   StrictMock<MockEventDispatcher> dispatcher_;
   std::string queued_request_;
@@ -234,12 +231,6 @@ class DnsClientTest : public Test {
   int ares_result_;
   Error error_result_;
   std::optional<net_base::IPAddress> address_result_;
-};
-
-class SentinelIOHandler : public IOHandler {
- public:
-  MOCK_METHOD(void, Die, ());
-  virtual ~SentinelIOHandler() { Die(); }
 };
 
 TEST_F(DnsClientTest, Constructor) {
@@ -258,9 +249,6 @@ TEST_F(DnsClientTest, ServerJoin) {
       .Times(1);
   EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
 
-  EXPECT_CALL(io_handler_factory_,
-              CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
-      .WillOnce(ReturnNew<IOHandler>());
   SetActive();
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
   Error error;
@@ -326,7 +314,8 @@ TEST_F(DnsClientTest, GoodRequestWithDnsRead) {
   StartValidRequest();
   // Insert an intermediate HandleDnsRead callback.
   AdvanceTime(kAresWait);
-  EXPECT_CALL(ares_, ProcessFd(kAresChannel, kAresFd, ARES_SOCKET_BAD));
+  EXPECT_CALL(
+      ares_, ProcessFd(kAresChannel, fake_ares_socket_.Get(), ARES_SOCKET_BAD));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
   CallDnsRead();
   AdvanceTime(kAresWait);
@@ -337,7 +326,8 @@ TEST_F(DnsClientTest, GoodRequestWithDnsWrite) {
   StartValidRequest();
   // Insert an intermediate HandleDnsWrite callback.
   AdvanceTime(kAresWait);
-  EXPECT_CALL(ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, kAresFd));
+  EXPECT_CALL(
+      ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, fake_ares_socket_.Get()));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
   CallDnsWrite();
   AdvanceTime(kAresWait);
@@ -404,65 +394,14 @@ TEST_F(DnsClientTest, HostNotFound) {
   StartValidRequest();
   AdvanceTime(kAresWait);
   ares_result_ = ARES_ENOTFOUND;
-  EXPECT_CALL(ares_, ProcessFd(kAresChannel, kAresFd, ARES_SOCKET_BAD))
+  EXPECT_CALL(ares_,
+              ProcessFd(kAresChannel, fake_ares_socket_.Get(), ARES_SOCKET_BAD))
       .WillOnce(InvokeWithoutArgs(this, &DnsClientTest::CallReplyCB));
   ExpectPostCompletionTask();
   CallDnsRead();
   EXPECT_CALL(callback_target_, CallTarget(IsError(Error::kOperationFailed,
                                                    DnsClient::kErrorNotFound)));
   CallCompletion();
-}
-
-// Make sure IOHandles are deallocated when GetSock() reports them gone.
-TEST_F(DnsClientTest, IOHandleDeallocGetSock) {
-  CreateClient(kAresTimeout);
-  EXPECT_CALL(ares_, InitOptions(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
-  EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
-      .Times(1);
-  EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kGoodServer)))
-      .WillOnce(Return(ARES_SUCCESS));
-  EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
-  // This isn't any kind of scoped/ref pointer because we are tracking dealloc.
-  SentinelIOHandler* io_handler = new SentinelIOHandler();
-  EXPECT_CALL(io_handler_factory_,
-              CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
-      .WillOnce(Return(io_handler));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
-  SetActive();
-  Error error;
-  ASSERT_TRUE(dns_client_->Start({kGoodServer}, kGoodName, &error));
-  AdvanceTime(kAresWait);
-  SetInActive();
-  EXPECT_CALL(*io_handler, Die());
-  EXPECT_CALL(ares_, ProcessFd(kAresChannel, kAresFd, ARES_SOCKET_BAD));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
-  CallDnsRead();
-  EXPECT_CALL(ares_, Destroy(kAresChannel));
-}
-
-// Make sure IOHandles are deallocated when Stop() is called.
-TEST_F(DnsClientTest, IOHandleDeallocStop) {
-  CreateClient(kAresTimeout);
-  EXPECT_CALL(ares_, InitOptions(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
-  EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
-      .Times(1);
-  EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kGoodServer)))
-      .WillOnce(Return(ARES_SUCCESS));
-  EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
-  // This isn't any kind of scoped/ref pointer because we are tracking dealloc.
-  SentinelIOHandler* io_handler = new SentinelIOHandler();
-  EXPECT_CALL(io_handler_factory_,
-              CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
-      .WillOnce(Return(io_handler));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
-  SetActive();
-  Error error;
-  ASSERT_TRUE(dns_client_->Start({kGoodServer}, kGoodName, &error));
-  EXPECT_CALL(*io_handler, Die());
-  EXPECT_CALL(ares_, Destroy(kAresChannel));
-  dns_client_->Stop();
 }
 
 }  // namespace shill
