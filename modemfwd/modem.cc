@@ -24,6 +24,7 @@
 #include <ModemManager/ModemManager.h>
 #include <re2/re2.h>
 
+#include "base/containers/contains.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
 #include "modemmanager/dbus-proxies.h"
@@ -205,7 +206,12 @@ class ModemImpl : public Modem {
   }
 
   bool ClearAttachAPN(const std::string& carrier_uuid) override {
-    return helper_->ClearAttachAPN(carrier_uuid);
+    // TODO(b/298680267): Revert this as part of Attach APN cleanup
+    // We only need to clear attach apn on L850.
+    if (base::Contains(device_id_, "usb:2cb7:0007")) {
+      return helper_->ClearAttachAPN(carrier_uuid);
+    }
+    return true;
   }
 
  private:
@@ -346,7 +352,12 @@ class StubModem : public Modem {
   }
 
   bool ClearAttachAPN(const std::string& carrier_uuid) override {
-    return helper_->ClearAttachAPN(carrier_uuid);
+    // TODO(b/298680267): Revert this as part of Attach APN cleanup
+    // We only need to clear attach apn on L850.
+    if (base::Contains(device_id_, "usb:2cb7:0007")) {
+      return helper_->ClearAttachAPN(carrier_uuid);
+    }
+    return true;
   }
 
  private:
