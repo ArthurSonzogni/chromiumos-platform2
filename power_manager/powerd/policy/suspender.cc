@@ -222,6 +222,22 @@ void Suspender::OnDisplaysChanged(
   displays_ = std::move(sorted_new_displays);
 }
 
+bool Suspender::AddSuspendInternalDelay(const SuspendInternalDelay* delay) {
+  if (!suspend_delay_controller_->AddSuspendInternalDelay(delay))
+    return false;
+
+  if (!dark_suspend_delay_controller_->AddSuspendInternalDelay(delay)) {
+    suspend_delay_controller_->RemoveSuspendInternalDelay(delay);
+    return false;
+  }
+  return true;
+}
+
+void Suspender::RemoveSuspendInternalDelay(const SuspendInternalDelay* delay) {
+  suspend_delay_controller_->RemoveSuspendInternalDelay(delay);
+  dark_suspend_delay_controller_->RemoveSuspendInternalDelay(delay);
+}
+
 // static.
 std::string Suspender::EventToString(Event event) {
   switch (event) {

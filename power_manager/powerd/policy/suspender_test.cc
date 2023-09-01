@@ -20,6 +20,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/mock_adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/shutdown_from_suspend_stub.h"
+#include "power_manager/powerd/policy/suspend_delay_controller.h"
 #include "power_manager/powerd/system/dark_resume_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
@@ -1685,6 +1686,27 @@ TEST_F(SuspenderTest, SuspendDelayMetrics) {
                 metrics::kDefaultBuckets)
                 .ToString(),
             metrics_sender_.GetMetric(0));
+}
+
+// Tests that a SuspendInternalDelay is correctly passed to the
+// SuspendDelayControllers that the Suspender owns.
+TEST_F(SuspenderTest, SuspendInternalDelay) {
+  Init();
+  SuspendInternalDelay delay("delay");
+
+  EXPECT_TRUE(suspender_.AddSuspendInternalDelay(&delay));
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
+  EXPECT_FALSE(test_api_.suspend_delay_controller()->ReadyForSuspend());
+  EXPECT_FALSE(test_api_.dark_suspend_delay_controller()->ReadyForSuspend());
+
+  suspender_.RemoveSuspendInternalDelay(&delay);
+  EXPECT_TRUE(test_api_.suspend_delay_controller()->ReadyForSuspend());
+  EXPECT_TRUE(test_api_.dark_suspend_delay_controller()->ReadyForSuspend());
+
+  EXPECT_FALSE(suspender_.AddSuspendInternalDelay(&delay));
+  EXPECT_TRUE(test_api_.suspend_delay_controller()->ReadyForSuspend());
+  EXPECT_TRUE(test_api_.dark_suspend_delay_controller()->ReadyForSuspend());
 }
 
 }  // namespace power_manager::policy

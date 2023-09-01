@@ -45,6 +45,7 @@ namespace policy {
 
 class ShutdownFromSuspendInterface;
 class SuspendDelayController;
+class SuspendInternalDelay;
 
 // Suspender is responsible for suspending the system.
 //
@@ -267,6 +268,17 @@ class Suspender : public SuspendDelayObserver,
   // DisplayWatcherObserver implementation
   void OnDisplaysChanged(
       const std::vector<system::DisplayInfo>& displays) override;
+
+  // Add |delay| to any of the SuspendDelayControllers owned by the Suspender.
+  // Returns true if |delay| is successfully added to all
+  // SuspendDelayControllers. If |delay| fails to be added to any
+  // SuspendDelayController, it is removed from all of them and false is
+  // returned.
+  bool AddSuspendInternalDelay(const SuspendInternalDelay* delay);
+
+  // Remove |delay| to any of the SuspendDelayControllers owned by the
+  // Suspender.
+  void RemoveSuspendInternalDelay(const SuspendInternalDelay* delay);
 
  private:
   // States that Suspender can be in while the event loop is running.
