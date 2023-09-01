@@ -239,4 +239,7 @@ const char kPeripheralReadErrorLatencyMs[] =
 const int kPeripheralReadLatencyMsMin = 0;
 const int kPeripheralReadLatencyMsMax = 1000;
 
+const char kBatterySaverUserBrightenedSec[] =
+    "Power.BatterySaver.UserBrightenedSec";
+
 }  // namespace power_manager::metrics

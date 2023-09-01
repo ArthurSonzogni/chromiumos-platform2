@@ -196,6 +196,13 @@ class InternalBacklightController : public BacklightController,
   bool forced_off_ = false;
   bool battery_saver_ = false;
 
+  // Have we logged that the user increased brightness above what battery saver
+  // set?
+  bool battery_saver_user_brightened_logged_ = false;
+
+  // Time at which battery saver was activated.
+  base::TimeTicks battery_saver_enabled_time_;
+
   // Time at which Init() was called.
   base::TimeTicks init_time_;
 

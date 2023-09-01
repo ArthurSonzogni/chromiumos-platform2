@@ -23,6 +23,8 @@
 #include <dbus/message.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/common/metrics_constants.h"
+#include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
@@ -416,6 +418,8 @@ void InternalBacklightController::HandleBatterySaverModeChange(
   if (battery_saver_) {
     battery_saver_explicit_brightness_percent_ =
         ClampPercentToVisibleRange(battery_saver_brightness_percent_);
+    battery_saver_user_brightened_logged_ = false;
+    battery_saver_enabled_time_ = clock_->GetCurrentTime();
   }
 
   UpdateState(BacklightBrightnessChange_Cause_BATTERY_SAVER_STATE_CHANGED);
@@ -686,6 +690,20 @@ void InternalBacklightController::HandleSetBrightnessRequest(
   // When the user explicitly requests a specific brightness level, use it for
   // both AC and battery power.
   SetExplicitBrightnessPercent(percent, percent, transition, change_cause);
+
+  // Log a metric if the user increased brightness above what Battery Saver
+  // dimmed the display to.
+  if (battery_saver_ &&
+      cause == SetBacklightBrightnessRequest_Cause_USER_REQUEST &&
+      percent > ClampPercentToVisibleRange(battery_saver_brightness_percent_) &&
+      !battery_saver_user_brightened_logged_) {
+    const int battery_saver_active_time =
+        (clock_->GetCurrentTime() - battery_saver_enabled_time_).InSeconds();
+    if (SendMetric(metrics::kBatterySaverUserBrightenedSec,
+                   battery_saver_active_time, 0, 500, 50)) {
+      battery_saver_user_brightened_logged_ = true;
+    }
+  }
 }
 
 void InternalBacklightController::HandleGetBrightnessRequest(

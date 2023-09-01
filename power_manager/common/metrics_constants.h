@@ -201,6 +201,8 @@ extern const char kPeripheralReadErrorLatencyMs[];
 extern const int kPeripheralReadLatencyMsMin;
 extern const int kPeripheralReadLatencyMsMax;
 
+extern const char kBatterySaverUserBrightenedSec[];
+
 // Values for kBatteryInfoSampleName.
 enum class BatteryInfoSampleResult {
   READ,
