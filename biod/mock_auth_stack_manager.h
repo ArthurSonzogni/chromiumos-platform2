@@ -23,10 +23,14 @@ class MockAuthStackManager : public AuthStackManager {
   ~MockAuthStackManager() override = default;
 
   MOCK_METHOD(BiometricType, GetType, (), (override));
-  MOCK_METHOD(Session, StartEnrollSession, (), (override));
+  MOCK_METHOD(GetNonceReply, GetNonce, (), (override));
+  MOCK_METHOD(Session,
+              StartEnrollSession,
+              (const StartEnrollSessionRequest&),
+              (override));
   MOCK_METHOD(CreateCredentialReply,
               CreateCredential,
-              (const CreateCredentialRequest&),
+              (const CreateCredentialRequestV2&),
               (override));
   MOCK_METHOD(Session, StartAuthSession, (std::string user_id), (override));
   MOCK_METHOD(void,

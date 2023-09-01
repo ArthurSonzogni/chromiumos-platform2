@@ -40,18 +40,23 @@ class AuthStackManager {
   virtual ~AuthStackManager() = default;
   virtual BiometricType GetType() = 0;
 
+  // Generates and gets the AuthStack's session nonce. This should be called
+  // before StartEnroll/AuthSession as the first step of session establishment.
+  virtual GetNonceReply GetNonce() = 0;
+
   // Puts this AuthStackManager into EnrollSession mode, which can be ended by
   // letting the returned session fall out of scope. This will fail if ANY
   // other mode is active. Returns a false Session on failure. A
   // successful enroll session will put the AuthStackManager into ready state
   // for CreateCredential.
-  virtual Session StartEnrollSession() = 0;
+  virtual Session StartEnrollSession(
+      const StartEnrollSessionRequest& request) = 0;
 
   // Creates the actual fingerprint record. Should only be called after an
   // enroll session completes successfully. See CreateCredentialRequest/Reply
   // protos for the detailed function signature.
   virtual CreateCredentialReply CreateCredential(
-      const CreateCredentialRequest& request) = 0;
+      const CreateCredentialRequestV2& request) = 0;
 
   // Puts this AuthStackManager into AuthSession mode, which can be ended by
   // letting the returned session fall out of scope. This will fail if ANY other
@@ -85,8 +90,8 @@ class AuthStackManager {
   // wrapper, which registers to this callback once and emit a dbus signal on
   // every enroll scan done.
   using EnrollStatus = BiometricsManager::EnrollStatus;
-  using EnrollScanDoneCallback = base::RepeatingCallback<void(
-      ScanResult, const EnrollStatus&, brillo::Blob auth_nonce)>;
+  using EnrollScanDoneCallback =
+      base::RepeatingCallback<void(ScanResult, const EnrollStatus&)>;
   virtual void SetEnrollScanDoneHandler(
       const EnrollScanDoneCallback& on_enroll_scan_done) = 0;
 

@@ -80,9 +80,11 @@ class CrosFpAuthStackManager : public AuthStackManager {
   ~CrosFpAuthStackManager() override = default;
 
   BiometricType GetType() override;
-  AuthStackManager::Session StartEnrollSession() override;
+  GetNonceReply GetNonce() override;
+  AuthStackManager::Session StartEnrollSession(
+      const StartEnrollSessionRequest& request) override;
   CreateCredentialReply CreateCredential(
-      const CreateCredentialRequest& request) override;
+      const CreateCredentialRequestV2& request) override;
   AuthStackManager::Session StartAuthSession(std::string user_id) override;
   void AuthenticateCredential(
       const AuthenticateCredentialRequest& request,
@@ -119,8 +121,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
   bool LoadPairingKey();
 
   void OnEnrollScanDone(ScanResult result,
-                        const AuthStackManager::EnrollStatus& enroll_status,
-                        brillo::Blob auth_nonce);
+                        const AuthStackManager::EnrollStatus& enroll_status);
   void OnAuthScanDone(brillo::Blob auth_nonce);
   void OnSessionFailed();
 

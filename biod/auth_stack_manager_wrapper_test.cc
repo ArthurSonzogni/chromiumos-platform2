@@ -121,7 +121,7 @@ class AuthStackManagerWrapperTest : public ::testing::Test {
   std::unique_ptr<dbus::Response> StartEnrollSession(
       dbus::ObjectPath* object_path);
   std::unique_ptr<dbus::Response> CreateCredential(
-      const CreateCredentialRequest& request, CreateCredentialReply* reply);
+      const CreateCredentialRequestV2& request, CreateCredentialReply* reply);
   std::unique_ptr<dbus::Response> StartAuthSession(
       std::string user_id, dbus::ObjectPath* object_path);
   void EmitNameOwnerChangedSignal(const std::string& name,
@@ -252,8 +252,11 @@ std::unique_ptr<dbus::Response> AuthStackManagerWrapperTest::CallMethod(
 
 std::unique_ptr<dbus::Response> AuthStackManagerWrapperTest::StartEnrollSession(
     dbus::ObjectPath* object_path) {
+  StartEnrollSessionRequest request;
   dbus::MethodCall start_enroll_session(
       kAuthStackManagerInterface, kAuthStackManagerStartEnrollSessionMethod);
+  dbus::MessageWriter writer(&start_enroll_session);
+  writer.AppendProtoAsArrayOfBytes(request);
 
   auto response = CallMethod(&start_enroll_session);
   if (response->GetMessageType() == dbus::Message::MESSAGE_METHOD_RETURN) {
@@ -265,7 +268,7 @@ std::unique_ptr<dbus::Response> AuthStackManagerWrapperTest::StartEnrollSession(
 }
 
 std::unique_ptr<dbus::Response> AuthStackManagerWrapperTest::CreateCredential(
-    const CreateCredentialRequest& request, CreateCredentialReply* reply) {
+    const CreateCredentialRequestV2& request, CreateCredentialReply* reply) {
   dbus::MethodCall create_credential(kAuthStackManagerInterface,
                                      kAuthStackManagerCreateCredentialMethod);
   dbus::MessageWriter writer(&create_credential);
@@ -361,8 +364,6 @@ TEST_F(AuthStackManagerWrapperTest, TestStartEnrollSessionThenCancel) {
 }
 
 TEST_F(AuthStackManagerWrapperTest, TestEnrollSessionFinish) {
-  const brillo::Blob kAuthNonce(32, 1);
-
   dbus::ObjectPath object_path;
   ExpectStartEnrollSession();
 
@@ -378,21 +379,18 @@ TEST_F(AuthStackManagerWrapperTest, TestEnrollSessionFinish) {
   EXPECT_CALL(*bio_manager_, EndEnrollSession).Times(0);
 
   AuthStackManager::EnrollStatus enroll_status = {false, 50};
-  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS, enroll_status,
-                          brillo::Blob());
+  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS, enroll_status);
 
   // Finish enroll session.
   EXPECT_CALL(*object, Unregister).Times(1);
   EXPECT_CALL(*bio_manager_, EndEnrollSession).Times(1);
 
   AuthStackManager::EnrollStatus enroll_status_finish = {true, 100};
-  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS, enroll_status_finish,
-                          kAuthNonce);
+  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS,
+                          enroll_status_finish);
 }
 
 TEST_F(AuthStackManagerWrapperTest, TestEnrollSessionSignal) {
-  const brillo::Blob kAuthNonce(32, 1);
-
   dbus::ObjectPath object_path;
   ExpectStartEnrollSession();
 
@@ -417,31 +415,26 @@ TEST_F(AuthStackManagerWrapperTest, TestEnrollSessionSignal) {
   });
 
   AuthStackManager::EnrollStatus enroll_status = {false, 50};
-  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS, enroll_status,
-                          brillo::Blob());
+  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS, enroll_status);
 
   // Finish enroll session.
-  EXPECT_CALL(*object, SendSignal)
-      .WillOnce([&kAuthNonce](dbus::Signal* signal) {
-        EXPECT_EQ(signal->GetInterface(), kAuthStackManagerInterface);
-        EXPECT_EQ(signal->GetMember(), kBiometricsManagerEnrollScanDoneSignal);
-        dbus::MessageReader reader(signal);
-        EnrollScanDone proto;
-        reader.PopArrayOfBytesAsProto(&proto);
-        EXPECT_TRUE(proto.done());
-        EXPECT_EQ(proto.scan_result(), ScanResult::SCAN_RESULT_SUCCESS);
-        EXPECT_EQ(proto.percent_complete(), 100);
-        EXPECT_EQ(proto.auth_nonce(), brillo::BlobToString(kAuthNonce));
-      });
+  EXPECT_CALL(*object, SendSignal).WillOnce([](dbus::Signal* signal) {
+    EXPECT_EQ(signal->GetInterface(), kAuthStackManagerInterface);
+    EXPECT_EQ(signal->GetMember(), kBiometricsManagerEnrollScanDoneSignal);
+    dbus::MessageReader reader(signal);
+    EnrollScanDone proto;
+    reader.PopArrayOfBytesAsProto(&proto);
+    EXPECT_TRUE(proto.done());
+    EXPECT_EQ(proto.scan_result(), ScanResult::SCAN_RESULT_SUCCESS);
+    EXPECT_EQ(proto.percent_complete(), 100);
+  });
 
   AuthStackManager::EnrollStatus enroll_status_finish = {true, 100};
-  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS, enroll_status_finish,
-                          kAuthNonce);
+  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS,
+                          enroll_status_finish);
 }
 
 TEST_F(AuthStackManagerWrapperTest, TestOnEnrollScanDoneWithoutActiveSession) {
-  const brillo::Blob kAuthNonce(32, 1);
-
   auto iter = exported_objects_.find(mock_bio_path_.value());
   ASSERT_TRUE(iter != exported_objects_.end());
   scoped_refptr<dbus::MockExportedObject> object = iter->second;
@@ -449,8 +442,8 @@ TEST_F(AuthStackManagerWrapperTest, TestOnEnrollScanDoneWithoutActiveSession) {
   EXPECT_CALL(*object, SendSignal).Times(0);
 
   AuthStackManager::EnrollStatus enroll_status_finish = {true, 100};
-  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS, enroll_status_finish,
-                          kAuthNonce);
+  on_enroll_scan_done.Run(ScanResult::SCAN_RESULT_SUCCESS,
+                          enroll_status_finish);
 }
 
 TEST_F(AuthStackManagerWrapperTest, TestStartEnrollSessionFailed) {
@@ -706,18 +699,12 @@ TEST_F(AuthStackManagerWrapperTest, TestAuthSessionOwnerDies) {
 }
 
 TEST_F(AuthStackManagerWrapperTest, TestCreateCredential) {
-  const std::string kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2);
   const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
   const brillo::Blob kEncryptedSecret(32, 5);
   const brillo::Blob kPubOutX(32, 6), kPubOutY(32, 7);
   const std::string kRecordId("record_id");
 
-  CreateCredentialRequest request;
-  request.set_user_id(kUserId);
-  request.set_gsc_nonce(BlobToString(kGscNonce));
-  request.set_encrypted_label_seed(BlobToString(kEncryptedLabelSeed));
+  CreateCredentialRequestV2 request;
   request.mutable_pub()->set_x(BlobToString(kPubInX));
   request.mutable_pub()->set_y(BlobToString(kPubInY));
 

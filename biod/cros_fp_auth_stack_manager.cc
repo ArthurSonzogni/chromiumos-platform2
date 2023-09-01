@@ -133,14 +133,27 @@ BiometricType CrosFpAuthStackManager::GetType() {
   return BIOMETRIC_TYPE_FINGERPRINT;
 }
 
-BioSession CrosFpAuthStackManager::StartEnrollSession() {
+GetNonceReply CrosFpAuthStackManager::GetNonce() {
+  GetNonceReply reply;
+  std::optional<brillo::Blob> nonce = cros_dev_->GetNonce();
+  if (!nonce.has_value()) {
+    LOG(ERROR) << "Failed to get nonce.";
+    return reply;
+  }
+  reply.set_nonce(brillo::BlobToString(*nonce));
+  return reply;
+}
+
+BioSession CrosFpAuthStackManager::StartEnrollSession(
+    const StartEnrollSessionRequest& request) {
   if (!CanStartEnroll()) {
     LOG(ERROR) << "Can't start an enroll session now, current state is: "
                << CurrentStateToString();
     return BioSession(base::NullCallback());
   }
 
-  if (!session_manager_->GetUser().has_value()) {
+  const std::optional<std::string>& user_id = session_manager_->GetUser();
+  if (!user_id.has_value()) {
     LOG(ERROR) << "Can only start enroll session when there is a user session.";
     return Session(base::NullCallback());
   }
@@ -150,8 +163,14 @@ BioSession CrosFpAuthStackManager::StartEnrollSession() {
     return BioSession(base::NullCallback());
   }
 
-  // Make sure context is cleared before starting enroll session.
-  cros_dev_->ResetContext();
+  if (!cros_dev_->SetNonceContext(
+          brillo::BlobFromString(request.gsc_nonce()),
+          brillo::BlobFromString(request.encrypted_label_seed()),
+          brillo::BlobFromString(request.iv()))) {
+    LOG(ERROR) << "Failed to set nonce context";
+    return BioSession(base::NullCallback());
+  }
+
   if (!RequestEnrollImage())
     return BioSession(base::NullCallback());
   state_ = State::kEnroll;
@@ -161,7 +180,7 @@ BioSession CrosFpAuthStackManager::StartEnrollSession() {
 }
 
 CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
-    const CreateCredentialRequest& request) {
+    const CreateCredentialRequestV2& request) {
   CreateCredentialReply reply;
 
   if (!CanCreateCredential()) {
@@ -171,19 +190,10 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
     return reply;
   }
 
-  std::optional<std::string> current_user_id = session_manager_->GetUser();
-  if (!current_user_id.has_value() || request.user_id() != *current_user_id) {
-    LOG(ERROR) << "Credential can only be created for the current user.";
+  const std::optional<std::string>& user_id = session_manager_->GetUser();
+  if (!user_id.has_value()) {
+    LOG(ERROR) << "Can only create credential when there is a user session.";
     reply.set_status(CreateCredentialReply::INCORRECT_STATE);
-    return reply;
-  }
-
-  if (!cros_dev_->SetNonceContext(
-          brillo::BlobFromString(request.gsc_nonce()),
-          brillo::BlobFromString(request.encrypted_label_seed()),
-          brillo::BlobFromString(request.iv()))) {
-    LOG(ERROR) << "Failed to set nonce context";
-    reply.set_status(CreateCredentialReply::SET_NONCE_FAILED);
     return reply;
   }
 
@@ -211,7 +221,7 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
   BiodStorageInterface::RecordMetadata record{
       .record_format_version = kRecordFormatVersion,
       .record_id = record_id,
-      .user_id = std::move(request.user_id()),
+      .user_id = *user_id,
       .label = "",
       .validation_val = {},
   };
@@ -416,10 +426,8 @@ bool CrosFpAuthStackManager::LoadPairingKey() {
 }
 
 void CrosFpAuthStackManager::OnEnrollScanDone(
-    ScanResult result,
-    const AuthStackManager::EnrollStatus& enroll_status,
-    brillo::Blob auth_nonce) {
-  on_enroll_scan_done_.Run(result, enroll_status, std::move(auth_nonce));
+    ScanResult result, const AuthStackManager::EnrollStatus& enroll_status) {
+  on_enroll_scan_done_.Run(result, enroll_status);
 }
 
 void CrosFpAuthStackManager::OnAuthScanDone(brillo::Blob auth_nonce) {
@@ -532,19 +540,12 @@ void CrosFpAuthStackManager::DoEnrollImageEvent(uint32_t event) {
         .percent_complete = percent,
     };
 
-    OnEnrollScanDone(scan_result, enroll_status, brillo::Blob());
+    OnEnrollScanDone(scan_result, enroll_status);
 
     // The user needs to remove the finger before the next enrollment image.
     if (!RequestEnrollFingerUp())
       OnSessionFailed();
 
-    return;
-  }
-
-  std::optional<brillo::Blob> auth_nonce = cros_dev_->GetNonce();
-  if (!auth_nonce.has_value()) {
-    LOG(ERROR) << "Failed to get auth nonce.";
-    OnSessionFailed();
     return;
   }
 
@@ -554,8 +555,7 @@ void CrosFpAuthStackManager::DoEnrollImageEvent(uint32_t event) {
       .done = true,
       .percent_complete = 100,
   };
-  OnEnrollScanDone(ScanResult::SCAN_RESULT_SUCCESS, enroll_status,
-                   std::move(*auth_nonce));
+  OnEnrollScanDone(ScanResult::SCAN_RESULT_SUCCESS, enroll_status);
 }
 
 void CrosFpAuthStackManager::DoEnrollFingerUpEvent(uint32_t event) {

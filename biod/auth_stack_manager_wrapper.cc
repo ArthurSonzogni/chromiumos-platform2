@@ -65,6 +65,9 @@ AuthStackManagerWrapper::AuthStackManagerWrapper(
       static_cast<uint32_t>(auth_stack_manager_->GetType()));
   auth_stack_interface->AddProperty(kBiometricsManagerBiometricTypeProperty,
                                     &property_type_);
+  auth_stack_interface->AddMethodHandler(kAuthStackManagerGetNonceMethod,
+                                         base::Unretained(this),
+                                         &AuthStackManagerWrapper::GetNonce);
   auth_stack_interface->AddSimpleMethodHandlerWithErrorAndMessage(
       kAuthStackManagerStartEnrollSessionMethod,
       base::BindRepeating(&AuthStackManagerWrapper::StartEnrollSession,
@@ -144,8 +147,7 @@ void AuthStackManagerWrapper::OnNameOwnerChanged(dbus::Signal* sig) {
 
 void AuthStackManagerWrapper::OnEnrollScanDone(
     ScanResult scan_result,
-    const AuthStackManager::EnrollStatus& enroll_status,
-    brillo::Blob auth_nonce) {
+    const AuthStackManager::EnrollStatus& enroll_status) {
   if (!enroll_session_dbus_object_)
     return;
 
@@ -155,7 +157,6 @@ void AuthStackManagerWrapper::OnEnrollScanDone(
   EnrollScanDone proto;
   proto.set_scan_result(scan_result);
   proto.set_done(enroll_status.done);
-  proto.set_auth_nonce(brillo::BlobToString(auth_nonce));
   if (enroll_status.percent_complete >= 0) {
     proto.set_percent_complete(enroll_status.percent_complete);
   }
@@ -202,12 +203,20 @@ void AuthStackManagerWrapper::OnSessionFailed() {
     auth_session_.RunAndReset();
 }
 
+void AuthStackManagerWrapper::GetNonce(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<const GetNonceReply&>>
+        response) {
+  response->Return(auth_stack_manager_->GetNonce());
+}
+
 bool AuthStackManagerWrapper::StartEnrollSession(
     brillo::ErrorPtr* error,
     dbus::Message* message,
+    const StartEnrollSessionRequest& request,
     ObjectPath* enroll_session_path) {
   AuthStackManager::Session enroll_session =
-      auth_stack_manager_->StartEnrollSession();
+      auth_stack_manager_->StartEnrollSession(request);
   if (!enroll_session) {
     *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInternalError,
@@ -233,7 +242,7 @@ bool AuthStackManagerWrapper::StartEnrollSession(
 
 void AuthStackManagerWrapper::CreateCredential(
     std::unique_ptr<DBusMethodResponse<const CreateCredentialReply&>> response,
-    const CreateCredentialRequest& request) {
+    const CreateCredentialRequestV2& request) {
   response->Return(auth_stack_manager_->CreateCredential(request));
 }
 
