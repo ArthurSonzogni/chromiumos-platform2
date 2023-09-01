@@ -6,6 +6,7 @@
 #define SHILL_WIFI_LOCAL_DEVICE_H_
 
 #include <iostream>
+#include <optional>
 #include <string>
 
 #include <base/functional/callback.h>
@@ -57,7 +58,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   // Constructor function
   LocalDevice(Manager* manager,
               IfaceType type,
-              const std::string& link_name,
+              std::optional<std::string> link_name,
               const std::string& mac_address,
               uint32_t phy_index,
               const EventCallback& callback);
@@ -76,7 +77,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   // Return true if the device has a configured service and the service is up.
   mockable bool IsServiceUp() const;
 
-  const std::string& link_name() const { return link_name_; }
+  std::optional<std::string> link_name() const { return link_name_; }
   uint32_t phy_index() const { return phy_index_; }
   IfaceType iface_type() const { return iface_type_; }
   const std::string& mac_address() const { return mac_address_; }
@@ -109,7 +110,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   bool enabled_;
   Manager* manager_;
   IfaceType iface_type_;
-  std::string link_name_;
+  std::optional<std::string> link_name_;
   // MAC address to be configured on the device.
   std::string mac_address_;
   uint32_t phy_index_;

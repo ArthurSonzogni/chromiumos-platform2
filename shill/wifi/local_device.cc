@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <utility>
 
 #include <base/functional/bind.h>
@@ -22,7 +23,7 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 // Constructor function
 LocalDevice::LocalDevice(Manager* manager,
                          IfaceType type,
-                         const std::string& link_name,
+                         std::optional<std::string> link_name,
                          const std::string& mac_address,
                          uint32_t phy_index,
                          const EventCallback& callback)
@@ -33,20 +34,23 @@ LocalDevice::LocalDevice(Manager* manager,
       mac_address_(mac_address),
       phy_index_(phy_index),
       callback_(std::move(callback)) {
-  SLOG(1) << "LocalDevice(): " << link_name_ << " type: " << iface_type_
-          << " MAC address: " << mac_address_ << " Phy index: " << phy_index_;
+  SLOG(1) << "LocalDevice(): " << link_name_.value_or("(no link_name)")
+          << " type: " << iface_type_ << " MAC address: " << mac_address_
+          << " Phy index: " << phy_index_;
 }
 
 LocalDevice::~LocalDevice() {
-  SLOG(1) << "~LocalDevice(): " << link_name_ << " type: " << iface_type_
-          << " MAC address: " << mac_address_ << " Phy index: " << phy_index_;
+  SLOG(1) << "~LocalDevice(): " << link_name_.value_or("(no link_name)")
+          << " type: " << iface_type_ << " MAC address: " << mac_address_
+          << " Phy index: " << phy_index_;
 }
 
 bool LocalDevice::SetEnabled(bool enable) {
   if (enabled_ == enable)
     return true;
 
-  LOG(INFO) << (enable ? "Enable " : "Disable ") << "device: " << link_name_;
+  LOG(INFO) << (enable ? "Enable " : "Disable ")
+            << "device: " << link_name_.value_or("(no link_name)");
 
   if (enable) {
     if (!Start()) {
@@ -62,7 +66,8 @@ bool LocalDevice::SetEnabled(bool enable) {
 }
 
 void LocalDevice::PostDeviceEvent(DeviceEvent event) const {
-  SLOG(1) << "Device " << link_name_ << " posts event: " << event;
+  SLOG(1) << "Device " << link_name_.value_or("(no link_name)")
+          << " posts event: " << event;
 
   manager_->dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&LocalDevice::DeviceEventTask,
@@ -70,7 +75,8 @@ void LocalDevice::PostDeviceEvent(DeviceEvent event) const {
 }
 
 void LocalDevice::DeviceEventTask(DeviceEvent event) const {
-  SLOG(1) << "Device " << link_name_ << " handles event: " << event;
+  SLOG(1) << "Device " << link_name_.value_or("(no link_name)")
+          << " handles event: " << event;
   callback_.Run(event, this);
 }
 

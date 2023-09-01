@@ -525,12 +525,12 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
     }
     return;
   }
-
+  CHECK(hotspot_dev_->link_name());
   if (!upstream_network_ || !upstream_service_) {
     return;
   }
 
-  const auto& downstream_ifname = hotspot_dev_->link_name();
+  std::string downstream_ifname = *hotspot_dev_->link_name();
   const auto& upstream_ifname = upstream_network_->interface_name();
 
   std::optional<int> mtu = upstream_network_->GetNetworkConfig().mtu;
@@ -886,12 +886,12 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
                                                const LocalDevice* device) {
   if (!hotspot_dev_ || hotspot_dev_.get() != device) {
     LOG(ERROR) << "Receive event from unmatched local device: "
-               << device->link_name();
+               << device->link_name().value_or("(no link_name)");
     return;
   }
-
+  CHECK(device->link_name());
   LOG(INFO) << "TetheringManager received downstream device "
-            << device->link_name() << " event: " << event;
+            << *device->link_name() << " event: " << event;
 
   if (event == LocalDevice::DeviceEvent::kInterfaceDisabled ||
       event == LocalDevice::DeviceEvent::kServiceDown) {
@@ -934,7 +934,9 @@ void TetheringManager::OnDownstreamNetworkReady(
     return;
   }
 
-  const auto& downstream_ifname = hotspot_dev_->link_name();
+  CHECK(hotspot_dev_->link_name());
+
+  std::string downstream_ifname = *hotspot_dev_->link_name();
   const auto& upstream_ifname = upstream_network_->interface_name();
   if (!downstream_network_fd.is_valid()) {
     LOG(ERROR) << "Failed creating downstream network " << downstream_ifname

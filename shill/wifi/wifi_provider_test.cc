@@ -2592,7 +2592,7 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
       /*mac_address=*/"b6:13:c9:d7:32:0c", WiFiBand::kLowBand,
       WiFiSecurity::kWpa2, base::DoNothing());
   ASSERT_NE(device, nullptr);
-  EXPECT_EQ(provider_->local_devices_[device->link_name()], device);
+  EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);
 }
 
 TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
@@ -2622,7 +2622,7 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
       base::DoNothing());
   ASSERT_NE(device, nullptr);
   EXPECT_EQ(device->phy_index(), phy_index);
-  EXPECT_EQ(provider_->local_devices_[device->link_name()], device);
+  EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);
 }
 
 TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoChange) {

@@ -167,13 +167,14 @@ bool HotspotDevice::DeconfigureService() {
 }
 
 bool HotspotDevice::CreateInterface() {
+  CHECK(link_name());
   if (supplicant_interface_proxy_) {
     return true;
   }
 
   KeyValueStore create_interface_args;
   create_interface_args.Set<std::string>(WPASupplicant::kInterfacePropertyName,
-                                         link_name());
+                                         *link_name());
   create_interface_args.Set<std::string>(
       WPASupplicant::kInterfacePropertyDriver, WPASupplicant::kDriverNL80211);
   create_interface_args.Set<std::string>(
@@ -192,7 +193,7 @@ bool HotspotDevice::CreateInterface() {
   if (!SupplicantProcessProxy()->CreateInterface(create_interface_args,
                                                  &supplicant_interface_path_)) {
     // Interface might've already been created, attempt to retrieve it.
-    if (!SupplicantProcessProxy()->GetInterface(link_name(),
+    if (!SupplicantProcessProxy()->GetInterface(*link_name(),
                                                 &supplicant_interface_path_)) {
       LOG(ERROR) << __func__ << ": Failed to create interface with supplicant.";
       return false;
@@ -217,10 +218,11 @@ bool HotspotDevice::RemoveInterface() {
 }
 
 void HotspotDevice::StateChanged(const std::string& new_state) {
+  CHECK(link_name());
   if (supplicant_state_ == new_state)
     return;
 
-  LOG(INFO) << "Interface " << link_name() << " state changed from "
+  LOG(INFO) << "Interface " << *link_name() << " state changed from "
             << supplicant_state_ << " to " << new_state;
 
   // Convert state change to corresponding device event.
@@ -257,6 +259,7 @@ void HotspotDevice::PropertiesChanged(const KeyValueStore& properties) {
 
 void HotspotDevice::StationAdded(const RpcIdentifier& path,
                                  const KeyValueStore& properties) {
+  CHECK(link_name());
   if (base::Contains(stations_, path)) {
     LOG(INFO) << "Receive StationAdded event for " << path.value()
               << ", which is already in the list. Ignore.";
@@ -269,11 +272,12 @@ void HotspotDevice::StationAdded(const RpcIdentifier& path,
                  ? properties.Get<uint16_t>(WPASupplicant::kStationPropertyAID)
                  : -1;
   LOG(INFO) << "Station [" << aid << "] connected to hotspot device "
-            << link_name() << ", total station count: " << stations_.size();
+            << *link_name() << ", total station count: " << stations_.size();
   PostDeviceEvent(DeviceEvent::kPeerConnected);
 }
 
 void HotspotDevice::StationRemoved(const RpcIdentifier& path) {
+  CHECK(link_name());
   if (!base::Contains(stations_, path)) {
     LOG(INFO) << "Receive StationRemoved event for " << path.value()
               << ", which is not in the list. Ignore.";
@@ -286,7 +290,7 @@ void HotspotDevice::StationRemoved(const RpcIdentifier& path) {
           : -1;
   stations_.erase(path);
   LOG(INFO) << "Station [" << aid << "] disconnected from hotspot device "
-            << link_name() << ", total station count: " << stations_.size();
+            << *link_name() << ", total station count: " << stations_.size();
   PostDeviceEvent(DeviceEvent::kPeerDisconnected);
 }
 
@@ -313,7 +317,8 @@ void HotspotDevice::OnPhyInfoReady() {
 }
 
 void HotspotDevice::ScanTask() {
-  LOG(INFO) << "Interface " << link_name() << " scan requested.";
+  CHECK(link_name());
+  LOG(INFO) << "Interface " << *link_name() << " scan requested.";
   if (!supplicant_interface_proxy_.get()) {
     LOG(ERROR) << "Ignoring scan request while supplicant does not control the "
                   "interface.";
@@ -333,7 +338,8 @@ void HotspotDevice::ScanTask() {
 }
 
 void HotspotDevice::ScanDone(const bool& success) {
-  LOG(INFO) << "Interface " << link_name() << " scan done. Scan "
+  CHECK(link_name());
+  LOG(INFO) << "Interface " << *link_name() << " scan done. Scan "
             << (success ? "success" : "failed");
 
   if (pending_phy_info_) {

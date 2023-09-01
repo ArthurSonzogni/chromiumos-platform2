@@ -4,6 +4,8 @@
 
 #include "shill/wifi/local_device.h"
 
+#include <optional>
+
 #include <base/functional/bind.h>
 #include <base/test/mock_callback.h>
 #include <gmock/gmock.h>
@@ -32,7 +34,7 @@ class TestLocalDevice : public LocalDevice {
  public:
   TestLocalDevice(Manager* manager,
                   IfaceType type,
-                  const std::string& link_name,
+                  std::optional<std::string> link_name,
                   const std::string& mac_address,
                   uint32_t phy_index,
                   const EventCallback& callback)

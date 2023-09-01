@@ -1260,10 +1260,12 @@ std::string WiFiProvider::GetUniqueLocalDeviceName(
 
 void WiFiProvider::RegisterLocalDevice(LocalDeviceRefPtr device) {
   CHECK(device);
+  CHECK(device->link_name())
+      << "Tried to register a device without a link_name";
   uint32_t phy_index = device->phy_index();
-  std::string link_name = device->link_name();
+  std::string link_name = *device->link_name();
 
-  if (base::Contains(local_devices_, device->link_name())) {
+  if (base::Contains(local_devices_, link_name)) {
     return;
   }
 
@@ -1280,8 +1282,10 @@ void WiFiProvider::RegisterLocalDevice(LocalDeviceRefPtr device) {
 
 void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
   CHECK(device);
+  CHECK(device->link_name())
+      << "Tried to deregister a device without a link_name";
   uint32_t phy_index = device->phy_index();
-  std::string link_name = device->link_name();
+  std::string link_name = *device->link_name();
 
   SLOG(2) << "Deregistering WiFi local device " << link_name
           << " from phy_index: " << phy_index;
@@ -1351,8 +1355,11 @@ HotspotDeviceRefPtr WiFiProvider::CreateHotspotDeviceForTest(
 }
 
 void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {
-  if (!base::Contains(local_devices_, device->link_name())) {
-    LOG(ERROR) << "Unmanaged interface: " << device->link_name();
+  // It should be impossible for a device without a link_name value to be
+  // registered.
+  CHECK(device->link_name()) << "Tried to delete a device without a link_name";
+  if (!base::Contains(local_devices_, *device->link_name())) {
+    LOG(ERROR) << "Unmanaged interface: " << *device->link_name();
     return;
   }
 
