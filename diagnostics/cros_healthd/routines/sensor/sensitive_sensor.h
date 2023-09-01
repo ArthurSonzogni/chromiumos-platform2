@@ -6,7 +6,6 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_H_
 
 #include <map>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -17,7 +16,6 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
-#include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_constants.h"
 #include "diagnostics/cros_healthd/routines/sensor/sensor_existence_checker.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
@@ -58,6 +56,9 @@ class SensitiveSensorRoutine final
 
     // Update the sample for channel at index |indice|.
     void UpdateChannelSample(int32_t indice, int64_t value);
+
+    // Check if there is any error when interacting with Iioservice.
+    bool IsErrorOccurred();
 
     // Return the detail for output dict.
     base::Value::Dict GetDetailValue(int32_t id);

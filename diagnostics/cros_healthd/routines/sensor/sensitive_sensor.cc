@@ -19,6 +19,7 @@
 #include <base/task/single_thread_task_runner.h>
 
 #include "diagnostics/base/mojo_utils.h"
+#include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_constants.h"
 
 namespace diagnostics {
 namespace {
@@ -154,6 +155,24 @@ void SensitiveSensorRoutine::SensorDetail::UpdateChannelSample(int32_t indice,
   }
 }
 
+bool SensitiveSensorRoutine::SensorDetail::IsErrorOccurred() {
+  // Error getting channels.
+  if (!channels.has_value()) {
+    LOG(ERROR) << "Failed to get sensor channels.";
+    return true;
+  }
+
+  // Error reading samples.
+  for (const auto& [_, last_reading_sample] : checking_channel_sample) {
+    if (!last_reading_sample.has_value()) {
+      LOG(ERROR) << "Failed to read sensor sample.";
+      return true;
+    }
+  }
+
+  return false;
+}
+
 base::Value::Dict SensitiveSensorRoutine::SensorDetail::GetDetailValue(
     int32_t id) {
   base::Value::Dict sensor_output;
@@ -273,7 +292,7 @@ void SensitiveSensorRoutine::HandleVerificationResponse(
   existence_check_result_ = std::move(existence_check_result);
   if (existence_check_result_.empty()) {
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
-                     kSensitiveSensorRoutineFailedUnexpectedlyMessage);
+                     kSensitiveSensorRoutineErrorMessage);
     return;
   }
 
@@ -303,7 +322,7 @@ void SensitiveSensorRoutine::HandleFrequencyResponse(int32_t sensor_id,
     failed_sensors_[sensor_id] =
         pending_sensors_[sensor_id].GetDetailValue(sensor_id);
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
-                     kSensitiveSensorRoutineFailedUnexpectedlyMessage);
+                     kSensitiveSensorRoutineErrorMessage);
     return;
   }
 
@@ -325,7 +344,7 @@ void SensitiveSensorRoutine::HandleChannelIdsResponse(
       failed_sensors_[sensor_id] =
           pending_sensors_[sensor_id].GetDetailValue(sensor_id);
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
-                       kSensitiveSensorRoutineFailedUnexpectedlyMessage);
+                       kSensitiveSensorRoutineErrorMessage);
       return;
     }
 
@@ -349,7 +368,7 @@ void SensitiveSensorRoutine::HandleSetChannelsEnabledResponse(
     failed_sensors_[sensor_id] =
         pending_sensors_[sensor_id].GetDetailValue(sensor_id);
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
-                     kSensitiveSensorRoutineFailedUnexpectedlyMessage);
+                     kSensitiveSensorRoutineErrorMessage);
     return;
   }
 
@@ -388,7 +407,7 @@ void SensitiveSensorRoutine::OnErrorOccurred(
              << ", sensor id: " << id;
   failed_sensors_[id] = pending_sensors_[id].GetDetailValue(id);
   SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
-                   kSensitiveSensorRoutineFailedUnexpectedlyMessage);
+                   kSensitiveSensorRoutineErrorMessage);
 }
 
 void SensitiveSensorRoutine::OnTimeoutOccurred() {
@@ -397,7 +416,7 @@ void SensitiveSensorRoutine::OnTimeoutOccurred() {
       pending_sensors_.size() != observer_receiver_set_.size()) {
     LOG(ERROR) << "Mojo connection lost between Healthd and Iioservice";
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
-                     kSensitiveSensorRoutineFailedUnexpectedlyMessage);
+                     kSensitiveSensorRoutineErrorMessage);
     return;
   }
 
@@ -408,6 +427,12 @@ void SensitiveSensorRoutine::OnTimeoutOccurred() {
     // Store detail of failed sensor.
     failed_sensors_[sensor_id] =
         pending_sensors_[sensor_id].GetDetailValue(sensor_id);
+
+    if (pending_sensors_[sensor_id].IsErrorOccurred()) {
+      SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                       kSensitiveSensorRoutineErrorMessage);
+      return;
+    }
   }
   OnRoutineFinished();
 }
@@ -417,7 +442,7 @@ void SensitiveSensorRoutine::OnRoutineFinished() {
     if (result.state == SensorExistenceChecker::Result::kMissing ||
         result.state == SensorExistenceChecker::Result::kUnexpected) {
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
-                       kSensitiveSensorRoutineFailedCheckConfigMessage);
+                       kSensitiveSensorRoutineCheckConfigErrorMessage);
       return;
     }
   }

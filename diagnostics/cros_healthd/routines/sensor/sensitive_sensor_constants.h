@@ -12,11 +12,11 @@ inline constexpr char kSensitiveSensorRoutineRunningMessage[] =
     "Sensitive sensor routine running.";
 inline constexpr char kSensitiveSensorRoutinePassedMessage[] =
     "Sensitive sensor routine passed.";
-inline constexpr char kSensitiveSensorRoutineFailedUnexpectedlyMessage[] =
-    "Sensitive sensor routine failed unexpectedly.";
 inline constexpr char kSensitiveSensorRoutineFailedMessage[] =
     "Sensitive sensor routine failed to pass all sensors.";
-inline constexpr char kSensitiveSensorRoutineFailedCheckConfigMessage[] =
+inline constexpr char kSensitiveSensorRoutineErrorMessage[] =
+    "Sensitive sensor routine failed unexpectedly.";
+inline constexpr char kSensitiveSensorRoutineCheckConfigErrorMessage[] =
     "Sensitive sensor routine failed to pass configuration check.";
 
 // Supported sensor types
