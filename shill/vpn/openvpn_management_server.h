@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/socket.h>
 
@@ -17,8 +18,6 @@
 
 namespace shill {
 
-class IOHandler;
-class IOHandlerFactory;
 class OpenVPNDriver;
 
 class OpenVPNManagementServer {
@@ -66,7 +65,7 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, EscapeToQuote);
   FRIEND_TEST(OpenVPNManagementServerTest, Hold);
   FRIEND_TEST(OpenVPNManagementServerTest, OnInputStop);
-  FRIEND_TEST(OpenVPNManagementServerTest, OnReady);
+  FRIEND_TEST(OpenVPNManagementServerTest, OnSocketConnected);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReadyAcceptFail);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformAuthentication);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformAuthenticationNoCreds);
@@ -92,10 +91,12 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, SupplyTPMToken);
   FRIEND_TEST(OpenVPNManagementServerTest, SupplyTPMTokenNoPin);
 
-  // IO handler callbacks.
-  void OnReady(int fd);
+  // Called when |socket_| is ready to accept a connection.
+  void OnAcceptReady();
+
+  // Called when |connected_socket_| is ready to read.
+  void OnInputReady();
   void OnInput(base::span<const uint8_t> data);
-  void OnInputError(const std::string& error_msg);
 
   void Send(const std::string& data);
   void SendState(const std::string& state);
@@ -147,11 +148,15 @@ class OpenVPNManagementServer {
   std::unique_ptr<net_base::SocketFactory> socket_factory_ =
       std::make_unique<net_base::SocketFactory>();
   std::unique_ptr<net_base::Socket> socket_;
+  // Watcher to wait for |socket_| ready to accept a connection. It should be
+  // destructed prior than |socket_|.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
 
-  IOHandlerFactory* io_handler_factory_;
-  std::unique_ptr<IOHandler> ready_handler_;
   std::unique_ptr<net_base::Socket> connected_socket_;
-  std::unique_ptr<IOHandler> input_handler_;
+  // Watcher to wait for |connected_socket_| ready to read. It should be
+  // destructed prior than |connected_socket_|.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      connected_socket_watcher_;
 
   std::string state_;
 

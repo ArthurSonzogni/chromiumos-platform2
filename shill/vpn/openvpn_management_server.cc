@@ -21,7 +21,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/logging.h"
-#include "shill/net/io_handler_factory.h"
 #include "shill/vpn/openvpn_driver.h"
 
 namespace shill {
@@ -35,10 +34,7 @@ constexpr char kPasswordTagAuth[] = "Auth";
 }  // namespace
 
 OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver* driver)
-    : driver_(driver),
-      io_handler_factory_(IOHandlerFactory::GetInstance()),
-      hold_waiting_(false),
-      hold_release_(false) {}
+    : driver_(driver), hold_waiting_(false), hold_release_(false) {}
 
 OpenVPNManagementServer::~OpenVPNManagementServer() {
   OpenVPNManagementServer::Stop();
@@ -74,10 +70,14 @@ bool OpenVPNManagementServer::Start(
   SLOG(2) << "Listening socket: " << socket;
   socket_ = std::move(socket);
 
-  ready_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
-      socket_->Get(), IOHandler::kModeInput,
-      base::BindRepeating(&OpenVPNManagementServer::OnReady,
-                          base::Unretained(this))));
+  socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      socket_->Get(),
+      base::BindRepeating(&OpenVPNManagementServer::OnAcceptReady,
+                          base::Unretained(this)));
+  if (!socket_watcher_) {
+    LOG(ERROR) << "Failed to watch on listening socket.";
+    return false;
+  }
 
   // Append openvpn management API options.
   driver_->AppendOption("management", inet_ntoa(addr.sin_addr),
@@ -101,10 +101,10 @@ void OpenVPNManagementServer::Stop() {
     return;
   }
   state_.clear();
-  input_handler_.reset();
-  connected_socket_.reset();
 
-  ready_handler_.reset();
+  connected_socket_watcher_.reset();
+  connected_socket_.reset();
+  socket_watcher_.reset();
   socket_.reset();
 }
 
@@ -129,22 +129,37 @@ void OpenVPNManagementServer::Restart() {
   SendSignal("SIGUSR1");
 }
 
-void OpenVPNManagementServer::OnReady(int fd) {
-  SLOG(2) << __func__ << "(" << fd << ")";
+void OpenVPNManagementServer::OnAcceptReady() {
+  SLOG(2) << __func__;
+
+  connected_socket_watcher_.reset();
   connected_socket_ = socket_->Accept(nullptr, nullptr);
   if (!connected_socket_) {
-    PLOG(ERROR) << "Connected socket accept failed.";
+    PLOG(ERROR) << "Accept on listen socket failed.";
     return;
   }
+  socket_watcher_.reset();
 
-  ready_handler_.reset();
-  input_handler_.reset(io_handler_factory_->CreateIOInputHandler(
+  connected_socket_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       connected_socket_->Get(),
-      base::BindRepeating(&OpenVPNManagementServer::OnInput,
-                          base::Unretained(this)),
-      base::BindRepeating(&OpenVPNManagementServer::OnInputError,
-                          base::Unretained(this))));
+      base::BindRepeating(&OpenVPNManagementServer::OnInputReady,
+                          base::Unretained(this)));
+  if (!connected_socket_watcher_) {
+    LOG(ERROR) << "Failed on watching the connected socket.";
+    return;
+  }
   SendState("on");
+}
+
+void OpenVPNManagementServer::OnInputReady() {
+  uint8_t buf[4096];
+  ssize_t len = read(connected_socket_->Get(), buf, sizeof(buf));
+  if (len > 0) {
+    OnInput({buf, static_cast<size_t>(len)});
+  } else {
+    PLOG(ERROR) << "Failed to read from connected socket";
+    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+  }
 }
 
 void OpenVPNManagementServer::OnInput(base::span<const uint8_t> data) {
@@ -158,11 +173,6 @@ void OpenVPNManagementServer::OnInput(base::span<const uint8_t> data) {
     }
     ProcessMessage(message);
   }
-}
-
-void OpenVPNManagementServer::OnInputError(const std::string& error_msg) {
-  LOG(ERROR) << error_msg;
-  driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
 }
 
 void OpenVPNManagementServer::ProcessMessage(const std::string& message) {

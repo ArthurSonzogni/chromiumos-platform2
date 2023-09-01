@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/containers/span.h>
+#include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <net-base/mock_socket.h>
@@ -19,19 +20,15 @@
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_process_manager.h"
 #include "shill/store/key_value_store.h"
 #include "shill/vpn/mock_openvpn_driver.h"
 
 using testing::_;
 using testing::Assign;
-using testing::DoAll;
 using testing::Eq;
 using testing::InSequence;
 using testing::Return;
-using testing::ReturnNew;
-using testing::SaveArg;
 using testing::StrEq;
 
 namespace shill {
@@ -48,8 +45,6 @@ class OpenVPNManagementServerTest : public testing::Test {
       : manager_(&control_, &dispatcher_, &metrics_, "", "", ""),
         driver_(&manager_, &process_manager_),
         server_(&driver_) {
-    server_.io_handler_factory_ = &io_handler_factory_;
-
     auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
     socket_factory_ = socket_factory.get();
     server_.socket_factory_ = std::move(socket_factory);
@@ -153,13 +148,16 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   void SetClientState(const std::string& state) { server_.state_ = state; }
 
+  // required by base::FileDescriptorWatcher.
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
+
   MockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockProcessManager process_manager_;
   Manager manager_;
   MockOpenVPNDriver driver_;
-  MockIOHandlerFactory io_handler_factory_;
   OpenVPNManagementServer server_;  // Destroy before anything it references.
   net_base::MockSocketFactory* socket_factory_;  // Owned by |server_|.
 };
@@ -208,14 +206,8 @@ TEST_F(OpenVPNManagementServerTest, Start) {
         return socket;
       });
 
-  int socket_fd;
-  EXPECT_CALL(io_handler_factory_,
-              CreateIOReadyHandler(_, IOHandler::kModeInput, _))
-      .WillOnce(DoAll(SaveArg<0>(&socket_fd), ReturnNew<IOHandler>()));
   std::vector<std::vector<std::string>> options;
   EXPECT_TRUE(server_.Start(&options));
-  EXPECT_EQ(server_.socket_->Get(), socket_fd);
-  EXPECT_NE(nullptr, server_.ready_handler_);
   std::vector<std::vector<std::string>> expected_options{
       {"management", "127.0.0.1", "0"},
       {"management-client"},
@@ -230,14 +222,10 @@ TEST_F(OpenVPNManagementServerTest, Stop) {
 
   SetSocket(std::make_unique<net_base::MockSocket>());
   SetConnectedSocket(std::make_unique<net_base::MockSocket>());
-  server_.input_handler_ = std::make_unique<IOHandler>();
-  server_.ready_handler_ = std::make_unique<IOHandler>();
 
   SetClientState(OpenVPNManagementServer::kStateReconnecting);
   server_.Stop();
-  EXPECT_EQ(nullptr, server_.input_handler_);
   EXPECT_EQ(nullptr, server_.connected_socket_);
-  EXPECT_EQ(nullptr, server_.ready_handler_);
   EXPECT_EQ(nullptr, server_.socket_);
   EXPECT_TRUE(server_.state().empty());
   EXPECT_FALSE(server_.IsStarted());
@@ -245,34 +233,25 @@ TEST_F(OpenVPNManagementServerTest, Stop) {
 
 TEST_F(OpenVPNManagementServerTest, OnReadyAcceptFail) {
   auto socket = std::make_unique<net_base::MockSocket>();
-  int socket_fd = socket->Get();
   EXPECT_CALL(*socket, Accept(nullptr, nullptr)).WillOnce(Return(nullptr));
   SetSocket(std::move(socket));
 
-  server_.OnReady(socket_fd);
+  server_.OnAcceptReady();
   EXPECT_EQ(nullptr, server_.connected_socket_);
 }
 
-TEST_F(OpenVPNManagementServerTest, OnReady) {
+TEST_F(OpenVPNManagementServerTest, OnSocketConnected) {
   auto connected_socket = std::make_unique<net_base::MockSocket>();
   int connected_socket_fd = connected_socket->Get();
   ExpectSend(*connected_socket, "state on\n");
 
   auto socket = std::make_unique<net_base::MockSocket>();
-  int socket_fd = socket->Get();
   EXPECT_CALL(*socket, Accept(nullptr, nullptr))
       .WillOnce(Return(std::move(connected_socket)));
   SetSocket(std::move(socket));
 
-  server_.ready_handler_ = std::make_unique<IOHandler>();
-  EXPECT_CALL(io_handler_factory_,
-              CreateIOInputHandler(connected_socket_fd, _, _))
-      .WillOnce(ReturnNew<IOHandler>());
-
-  server_.OnReady(socket_fd);
+  server_.OnAcceptReady();
   EXPECT_EQ(connected_socket_fd, server_.connected_socket_->Get());
-  EXPECT_EQ(nullptr, server_.ready_handler_);
-  EXPECT_NE(nullptr, server_.input_handler_);
 }
 
 TEST_F(OpenVPNManagementServerTest, OnInput) {
