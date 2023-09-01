@@ -29,7 +29,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/io_handler_factory.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/vpn/vpn_types.h"
@@ -78,7 +77,6 @@ ThirdPartyVpnDriver::ThirdPartyVpnDriver(Manager* manager,
                 std::size(kProperties)),
       tun_fd_(-1),
       ip_properties_set_(false),
-      io_handler_factory_(IOHandlerFactory::GetInstance()),
       parameters_expected_(false),
       reconnect_supported_(false) {
   file_io_ = FileIO::GetInstance();
@@ -425,6 +423,19 @@ void ThirdPartyVpnDriver::SetParameters(
   }
 }
 
+void ThirdPartyVpnDriver::OnTunReadable() {
+  uint8_t buf[4096];
+  const ssize_t len = file_io_->Read(tun_fd_, buf, sizeof(buf));
+  if (len < 0) {
+    PLOG(ERROR) << "Failed to read tun fd";
+    CHECK_EQ(active_client_, this);
+    adaptor_interface_->EmitPlatformMessage(
+        static_cast<uint32_t>(PlatformMessage::kError));
+  } else {
+    OnInput({buf, static_cast<size_t>(len)});
+  }
+}
+
 void ThirdPartyVpnDriver::OnInput(base::span<const uint8_t> data) {
   // Not all Chrome apps can properly handle being passed IPv6 packets. This
   // usually should not be an issue because we prevent IPv6 traffic from being
@@ -446,19 +457,12 @@ void ThirdPartyVpnDriver::OnInput(base::span<const uint8_t> data) {
   adaptor_interface_->EmitPacketReceived(ip_packet);
 }
 
-void ThirdPartyVpnDriver::OnInputError(const std::string& error) {
-  LOG(ERROR) << error;
-  CHECK_EQ(active_client_, this);
-  adaptor_interface_->EmitPlatformMessage(
-      static_cast<uint32_t>(PlatformMessage::kError));
-}
-
 void ThirdPartyVpnDriver::Cleanup() {
+  tun_watcher_.reset();
   if (tun_fd_ > 0) {
     file_io_->Close(tun_fd_);
     tun_fd_ = -1;
   }
-  io_handler_.reset();
   if (active_client_ == this) {
     adaptor_interface_->EmitPlatformMessage(
         static_cast<uint32_t>(PlatformMessage::kDisconnected));
@@ -511,12 +515,15 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
     FailService(Service::kFailureInternal, "Unable to open tun interface");
     return;
   }
-  io_handler_.reset(io_handler_factory_->CreateIOInputHandler(
-      tun_fd_,
-      base::BindRepeating(&ThirdPartyVpnDriver::OnInput,
-                          base::Unretained(this)),
-      base::BindRepeating(&ThirdPartyVpnDriver::OnInputError,
-                          base::Unretained(this))));
+
+  tun_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      tun_fd_, base::BindRepeating(&ThirdPartyVpnDriver::OnTunReadable,
+                                   base::Unretained(this)));
+  if (tun_watcher_ == nullptr) {
+    LOG(ERROR) << "Failed on watching tun fd";
+    return;
+  }
+
   active_client_ = this;
   parameters_expected_ = true;
   adaptor_interface_->EmitPlatformMessage(

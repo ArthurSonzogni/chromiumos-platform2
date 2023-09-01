@@ -11,19 +11,18 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <gtest/gtest_prod.h>
 
-#include "base/containers/span.h"
 #include "shill/ipconfig.h"
-#include "shill/net/io_handler.h"
 #include "shill/vpn/vpn_driver.h"
 
 namespace shill {
 
 class Error;
 class FileIO;
-class IOHandlerFactory;
 class ThirdPartyVpnAdaptorInterface;
 
 class ThirdPartyVpnDriver : public VPNDriver {
@@ -201,8 +200,8 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   // These functions are called whe there is input and error in the tun
   // interface.
+  void OnTunReadable();
   void OnInput(base::span<const uint8_t> data);
-  void OnInputError(const std::string& error);
 
   static const Property kProperties[];
 
@@ -221,16 +220,13 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   // File descriptor for the tun device.
   int tun_fd_;
+  // Watcher to wait for |tun_fd_| ready to read. It should be destructed
+  // prior than |tun_fd_| is closed.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> tun_watcher_;
 
   // Configuration properties of the virtual VPN device set by the VPN client.
   std::unique_ptr<IPConfig::Properties> ipv4_properties_;
   bool ip_properties_set_;
-
-  IOHandlerFactory* io_handler_factory_;
-
-  // IO handler triggered when there is an error or data ready for read in the
-  // tun device.
-  std::unique_ptr<IOHandler> io_handler_;
 
   // The object is used to write to tun device.
   FileIO* file_io_;
