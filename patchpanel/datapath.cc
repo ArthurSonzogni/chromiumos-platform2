@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <iostream>
 #include <optional>
+#include <string>
 
 #include <base/check.h>
 #include <base/files/scoped_file.h>
@@ -139,6 +140,15 @@ std::string AutoDNATTargetChainName(AutoDNATTarget auto_dnat_target) {
   }
 }
 
+std::ostream& operator<<(std::ostream& stream, const DeviceMode tun_tap) {
+  switch (tun_tap) {
+    case DeviceMode::kTun:
+      return stream << "tun";
+    case DeviceMode::kTap:
+      return stream << "tap";
+  }
+}
+
 // Returns the conventional name for the PREROUTING mangle subchain
 // pertaining to the downstream interface |int_ifname|.
 std::string PreroutingSubChainName(const std::string& int_ifname) {
@@ -161,7 +171,6 @@ Datapath::Datapath(MinijailedProcessRunner* process_runner,
 void Datapath::Start() {
   // Restart from a clean iptables state in case of an unordered shutdown.
   ResetIptables();
-
   // Enable IPv4 packet forwarding
   if (!system_->SysNetSet(System::SysNet::kIPv4Forward, "1")) {
     LOG(ERROR) << "Failed to update net.ipv4.ip_forward."
@@ -688,10 +697,12 @@ bool Datapath::AddToBridge(const std::string& br_ifname,
   return true;
 }
 
-std::string Datapath::AddTAP(const std::string& name,
-                             const std::optional<MacAddress>& mac_addr,
-                             const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
-                             const std::string& user) {
+std::string Datapath::AddTunTap(
+    const std::string& name,
+    const std::optional<MacAddress>& mac_addr,
+    const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
+    const std::string& user,
+    DeviceMode dev_mode) {
   base::ScopedFD dev = system_->OpenTunDev();
   if (!dev.is_valid()) {
     PLOG(ERROR) << "Failed to open tun device";
@@ -702,18 +713,24 @@ std::string Datapath::AddTAP(const std::string& name,
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, name.empty() ? kDefaultIfname : name.c_str(),
           sizeof(ifr.ifr_name));
-  ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
-
+  switch (dev_mode) {
+    case DeviceMode::kTun:
+      ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+      break;
+    case DeviceMode::kTap:
+      ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+      break;
+  }
   // If a template was given as the name, ifr_name will be updated with the
   // actual interface name.
   if (system_->Ioctl(dev.get(), TUNSETIFF, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to create tap interface " << name;
+    PLOG(ERROR) << "Failed to create " << dev_mode << " interface " << name;
     return "";
   }
   const char* ifname = ifr.ifr_name;
 
   if (system_->Ioctl(dev.get(), TUNSETPERSIST, 1) != 0) {
-    PLOG(ERROR) << "Failed to persist tap interface " << ifname;
+    PLOG(ERROR) << "Failed to persist " << dev_mode << " interface " << ifname;
     return "";
   }
 
@@ -721,13 +738,13 @@ std::string Datapath::AddTAP(const std::string& name,
     uid_t uid = 0;
     if (!brillo::userdb::GetUserInfo(user, &uid, nullptr)) {
       PLOG(ERROR) << "Unable to look up UID for " << user;
-      RemoveTAP(ifname);
+      RemoveTunTap(ifname, dev_mode);
       return "";
     }
     if (system_->Ioctl(dev.get(), TUNSETOWNER, uid) != 0) {
-      PLOG(ERROR) << "Failed to set owner " << uid << " of tap interface "
-                  << ifname;
-      RemoveTAP(ifname);
+      PLOG(ERROR) << "Failed to set owner " << uid << " of " << dev_mode
+                  << " interface " << ifname;
+      RemoveTunTap(ifname, dev_mode);
       return "";
     }
   }
@@ -735,9 +752,9 @@ std::string Datapath::AddTAP(const std::string& name,
   // Create control socket for configuring the interface.
   base::ScopedFD sock(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
   if (!sock.is_valid()) {
-    PLOG(ERROR) << "Failed to create control socket for tap interface "
-                << ifname;
-    RemoveTAP(ifname);
+    PLOG(ERROR) << "Failed to create control socket for " << dev_mode
+                << " interface " << ifname;
+    RemoveTunTap(ifname, dev_mode);
     return "";
   }
 
@@ -747,9 +764,10 @@ std::string Datapath::AddTAP(const std::string& name,
     addr->sin_family = AF_INET;
     addr->sin_addr = ipv4_cidr->address().ToInAddr();
     if (system_->Ioctl(sock.get(), SIOCSIFADDR, &ifr) != 0) {
-      PLOG(ERROR) << "Failed to set ip address for vmtap interface " << ifname
-                  << " {" << ipv4_cidr->ToString() << "}";
-      RemoveTAP(ifname);
+      PLOG(ERROR) << "Failed to set ip address for " << dev_mode
+                  << " interface " << ifname << " {" << ipv4_cidr->ToString()
+                  << "}";
+      RemoveTunTap(ifname, dev_mode);
       return "";
     }
 
@@ -758,9 +776,9 @@ std::string Datapath::AddTAP(const std::string& name,
     netmask->sin_family = AF_INET;
     netmask->sin_addr = ipv4_cidr->ToNetmask().ToInAddr();
     if (system_->Ioctl(sock.get(), SIOCSIFNETMASK, &ifr) != 0) {
-      PLOG(ERROR) << "Failed to set netmask for vmtap interface " << ifname
-                  << " {" << ipv4_cidr->ToString() << "}";
-      RemoveTAP(ifname);
+      PLOG(ERROR) << "Failed to set netmask for " << dev_mode << " interface "
+                  << ifname << " {" << ipv4_cidr->ToString() << "}";
+      RemoveTunTap(ifname, dev_mode);
       return "";
     }
   }
@@ -770,31 +788,35 @@ std::string Datapath::AddTAP(const std::string& name,
     hwaddr->sa_family = ARPHRD_ETHER;
     memcpy(&hwaddr->sa_data, mac_addr.operator->(), sizeof(MacAddress));
     if (system_->Ioctl(sock.get(), SIOCSIFHWADDR, &ifr) != 0) {
-      PLOG(ERROR) << "Failed to set mac address for vmtap interface " << ifname
-                  << " {" << MacAddressToString(*mac_addr) << "}";
-      RemoveTAP(ifname);
+      PLOG(ERROR) << "Failed to set mac address for " << dev_mode
+                  << " interface " << ifname << " {"
+                  << MacAddressToString(*mac_addr) << "}";
+      RemoveTunTap(ifname, dev_mode);
       return "";
     }
   }
 
   if (system_->Ioctl(sock.get(), SIOCGIFFLAGS, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to get flags for tap interface " << ifname;
-    RemoveTAP(ifname);
+    PLOG(ERROR) << "Failed to get flags for " << dev_mode << " interface "
+                << ifname;
+    RemoveTunTap(ifname, dev_mode);
     return "";
   }
 
   ifr.ifr_flags |= (IFF_UP | IFF_RUNNING);
   if (system_->Ioctl(sock.get(), SIOCSIFFLAGS, &ifr) != 0) {
-    PLOG(ERROR) << "Failed to enable tap interface " << ifname;
-    RemoveTAP(ifname);
+    PLOG(ERROR) << "Failed to enable " << dev_mode << " interface " << ifname;
+    RemoveTunTap(ifname, dev_mode);
     return "";
   }
 
   return ifname;
 }
 
-void Datapath::RemoveTAP(const std::string& ifname) {
-  process_runner_->ip("tuntap", "del", {ifname, "mode", "tap"});
+void Datapath::RemoveTunTap(const std::string& ifname, DeviceMode dev_mode) {
+  const std::string dev_mode_str =
+      (dev_mode == DeviceMode::kTun) ? "tun" : "tap";
+  process_runner_->ip("tuntap", "del", {ifname, "mode", dev_mode_str});
 }
 
 bool Datapath::ConnectVethPair(pid_t netns_pid,

@@ -76,7 +76,7 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   wlan0_dev.ifname = "wlan0";
   crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
 
-  EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
+  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route).WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
@@ -130,7 +130,7 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
   wlan0_dev.ifname = "wlan0";
   crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
 
-  EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
+  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
   EXPECT_CALL(*datapath_,
@@ -200,7 +200,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
   // Start first Crostini VM.
   EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
-  EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
+  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
+
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_,
               StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM, _,
@@ -221,7 +222,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   ASSERT_EQ(device, crostini->GetDevice(vm_id1));
 
   // Start Parallels VM.
-  EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
+  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
       .WillOnce(Return("vmtap1"));
   EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_,
@@ -247,7 +248,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
   // Start second Crostini VM.
   EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
-  EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
+  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
       .WillOnce(Return("vmtap2"));
   EXPECT_CALL(*datapath_,
               StartRoutingDeviceAsUser("vmtap2", TrafficSource::kCrosVM, _,
@@ -331,7 +332,7 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
 
   // Start a Crostini VM and a Parallels VM.
   EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
-  EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
+  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"));
   EXPECT_CALL(*datapath_,

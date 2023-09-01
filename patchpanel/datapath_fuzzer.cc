@@ -149,8 +149,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.ConnectVethPair(pid, netns_name, ifname, ifname2, mac, cidr,
                            ipv6_cidr, provider.ConsumeBool());
   datapath.RemoveInterface(ifname);
-  datapath.AddTAP(ifname, mac, cidr, "");
-  datapath.RemoveTAP(ifname);
+  datapath.AddTunTap(ifname, mac, cidr, "", DeviceMode::kTun);
+  datapath.RemoveTunTap(ifname, DeviceMode::kTun);
+  datapath.AddTunTap(ifname, mac, cidr, "", DeviceMode::kTap);
+  datapath.RemoveTunTap(ifname, DeviceMode::kTap);
   datapath.AddIPv4Route(
       net_base::IPv4Address(provider.ConsumeIntegral<uint32_t>()), cidr);
   datapath.DeleteIPv4Route(

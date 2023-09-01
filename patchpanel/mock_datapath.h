@@ -49,11 +49,12 @@ class MockDatapath : public Datapath {
               (override));
 
   MOCK_METHOD(std::string,
-              AddTAP,
+              AddTunTap,
               (const std::string& name,
                const std::optional<MacAddress>& mac_addr,
                const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
-               const std::string& user),
+               const std::string& user,
+               DeviceMode dev_mode),
               (override));
   MOCK_METHOD(bool,
               ConnectVethPair,

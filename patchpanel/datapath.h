@@ -12,7 +12,6 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -130,6 +129,11 @@ enum class AutoDNATTarget {
   kParallels,
 };
 
+enum class DeviceMode {
+  kTun,
+  kTap,
+};
+
 // ARC networking data path configuration utility.
 // IPV4 addresses are always specified in singular dotted-form (a.b.c.d)
 // (not in CIDR representation
@@ -167,7 +171,7 @@ class Datapath {
   virtual bool AddToBridge(const std::string& br_ifname,
                            const std::string& ifname);
 
-  // Adds a new TAP device.
+  // Adds a new TUN device or a TAP device.
   // |name| may be empty, in which case a default device name will be used;
   // it may be a template (e.g. vmtap%d), in which case the kernel will
   // generate the name; or it may be fully defined. In all cases, upon success,
@@ -175,13 +179,13 @@ class Datapath {
   // |mac_addr| and |ipv4_cidr| should be std::nullopt if this interface will be
   // later bridged.
   // If |user| is empty, no owner will be set.
-  virtual std::string AddTAP(const std::string& name,
-                             const std::optional<MacAddress>& mac_addr,
-                             const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
-                             const std::string& user);
-
-  // |ifname| must be the actual name of the interface.
-  virtual void RemoveTAP(const std::string& ifname);
+  virtual std::string AddTunTap(
+      const std::string& name,
+      const std::optional<MacAddress>& mac_addr,
+      const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
+      const std::string& user,
+      DeviceMode dev_mode);
+  void RemoveTunTap(const std::string& ifname, DeviceMode dev_mode);
 
   // The following are iptables methods.
   // When specified, |ipv4_addr| is always singlar dotted-form (a.b.c.d)

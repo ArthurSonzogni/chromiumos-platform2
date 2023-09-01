@@ -654,6 +654,56 @@ TEST(DatapathTest, Stop) {
   datapath.Stop();
 }
 
+TEST(DatapathTest, AddTUN) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Datapath datapath(runner, firewall, &system);
+  MacAddress mac = {1, 2, 3, 4, 5, 6};
+  Subnet subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
+      base::DoNothing());
+  auto addr = subnet.AllocateAtOffset(1);
+  auto ifname =
+      datapath.AddTunTap("foo0", mac, addr->cidr(), "", DeviceMode::kTun);
+
+  EXPECT_EQ(ifname, "foo0");
+  std::vector<ioctl_req_t> expected = {
+      TUNSETIFF,     TUNSETPERSIST, SIOCSIFADDR, SIOCSIFNETMASK,
+      SIOCSIFHWADDR, SIOCGIFFLAGS,  SIOCSIFFLAGS};
+  EXPECT_EQ(system.ioctl_reqs, expected);
+}
+
+TEST(DatapathTest, AddTunWithoutMACAddress) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Datapath datapath(runner, firewall, &system);
+  Subnet subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
+      base::DoNothing());
+  auto addr = subnet.AllocateAtOffset(1);
+  auto ifname = datapath.AddTunTap("foo0", std::nullopt, addr->cidr(), "",
+                                   DeviceMode::kTun);
+
+  EXPECT_EQ(ifname, "foo0");
+  std::vector<ioctl_req_t> expected = {TUNSETIFF,    TUNSETPERSIST,
+                                       SIOCSIFADDR,  SIOCSIFNETMASK,
+                                       SIOCGIFFLAGS, SIOCSIFFLAGS};
+  EXPECT_EQ(system.ioctl_reqs, expected);
+}
+
+TEST(DatapathTest, RemoveTUN) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+  Verify_ip(*runner, "tuntap del foo0 mode tun");
+  Datapath datapath(runner, firewall, &system);
+  datapath.RemoveTunTap("foo0", DeviceMode::kTun);
+}
+
 TEST(DatapathTest, AddTAP) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
@@ -665,7 +715,8 @@ TEST(DatapathTest, AddTAP) {
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
   auto addr = subnet.AllocateAtOffset(1);
-  auto ifname = datapath.AddTAP("foo0", mac, addr->cidr(), "");
+  auto ifname =
+      datapath.AddTunTap("foo0", mac, addr->cidr(), "", DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -685,7 +736,8 @@ TEST(DatapathTest, AddTAPWithOwner) {
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
   auto addr = subnet.AllocateAtOffset(1);
-  auto ifname = datapath.AddTAP("foo0", mac, addr->cidr(), "root");
+  auto ifname =
+      datapath.AddTunTap("foo0", mac, addr->cidr(), "root", DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -700,7 +752,8 @@ TEST(DatapathTest, AddTAPNoAddrs) {
   FakeSystem system;
 
   Datapath datapath(runner, firewall, &system);
-  auto ifname = datapath.AddTAP("foo0", std::nullopt, std::nullopt, "");
+  auto ifname = datapath.AddTunTap("foo0", std::nullopt, std::nullopt, "",
+                                   DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {TUNSETIFF, TUNSETPERSIST, SIOCGIFFLAGS,
@@ -714,7 +767,7 @@ TEST(DatapathTest, RemoveTAP) {
   FakeSystem system;
   Verify_ip(*runner, "tuntap del foo0 mode tap");
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveTAP("foo0");
+  datapath.RemoveTunTap("foo0", DeviceMode::kTap);
 }
 
 TEST(DatapathTest, NetnsAttachName) {

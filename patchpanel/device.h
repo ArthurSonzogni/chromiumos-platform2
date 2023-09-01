@@ -167,7 +167,7 @@ class Device {
   // all ARC virtual devices, |host_ifname_| corresponds to the virtual bridge
   // created with Datapath::AddBridge(). For other crosvm guests (Termina VM,
   // Parallels VM, etc) this corresponds to the TAP device created with
-  // Datapath::AddTAP().
+  // Datapath::AddTunTap().
   std::string host_ifname_;
   // The name of the virtual interface used inside the guest environment. Only
   // available for ARC virtual devices, otherwise empty for other crosvm guests.
