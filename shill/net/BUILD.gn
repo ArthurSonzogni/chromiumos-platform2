@@ -28,12 +28,6 @@ install_config("install_headers") {
     "control_netlink_attribute.h",
     "generic_netlink_message.h",
     "ieee80211.h",
-    "io_handler.h",
-    "io_handler_factory.h",
-    "io_handler_factory_container.h",
-    "io_input_handler.h",
-    "io_ready_handler.h",
-    "mock_io_handler_factory.h",
     "mock_netlink_manager.h",
     "mock_netlink_socket.h",
     "mock_process_manager.h",
@@ -89,10 +83,6 @@ shared_library("libshill-net") {
     "control_netlink_attribute.cc",
     "generic_netlink_message.cc",
     "ieee80211.cc",
-    "io_handler_factory.cc",
-    "io_handler_factory_container.cc",
-    "io_input_handler.cc",
-    "io_ready_handler.cc",
     "netlink_attribute.cc",
     "netlink_manager.cc",
     "netlink_message.cc",
@@ -145,7 +135,6 @@ if (use.fuzzer) {
 if (use.test) {
   source_set("net_test_support") {
     sources = [
-      "mock_io_handler_factory.cc",
       "mock_netlink_manager.cc",
       "mock_netlink_socket.cc",
       "mock_process_manager.cc",

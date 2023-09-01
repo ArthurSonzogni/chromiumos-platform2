@@ -23,7 +23,6 @@
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
 
-#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_netlink_socket.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/netlink_packet.h"

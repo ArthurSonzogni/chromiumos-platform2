@@ -25,7 +25,6 @@
 #include <net-base/mock_socket.h>
 
 #include "shill/mock_log.h"
-#include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/rtnl_message.h"
 
 using testing::_;

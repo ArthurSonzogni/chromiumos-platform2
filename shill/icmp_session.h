@@ -30,7 +30,6 @@
 namespace shill {
 
 class EventDispatcher;
-class IOHandlerFactory;
 
 // The IcmpSession class encapsulates the task of performing a stateful exchange
 // of echo requests and echo replies between this host and another (i.e. ping).

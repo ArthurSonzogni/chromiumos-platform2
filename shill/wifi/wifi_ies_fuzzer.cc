@@ -9,7 +9,6 @@
 #include <base/strings/string_util.h>
 
 #include "shill/metrics.h"
-#include "shill/net/io_handler.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/wifi_endpoint.h"
 

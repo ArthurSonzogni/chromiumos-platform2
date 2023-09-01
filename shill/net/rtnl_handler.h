@@ -62,8 +62,8 @@ class SHILL_EXPORT RTNLHandler {
   static RTNLHandler* GetInstance();
 
   // This starts the event-monitoring function of the RTNL handler. This
-  // function will create an IOHandler and add it to the current message
-  // loop.
+  // function will create a base::FileDescriptorWatcher and add it to the
+  // current message loop.
   virtual void Start(uint32_t netlink_groups_mask);
 
   // Add an RTNL event listener to the list of entities that will
