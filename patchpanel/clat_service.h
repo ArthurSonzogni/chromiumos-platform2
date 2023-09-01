@@ -24,6 +24,11 @@ class ClatService {
 
   virtual ~ClatService();
 
+  // Enable or disable the CLAT feature. `Disable()` calls `StopClat()` to clean
+  // up the effects of ClatService if exist.
+  void Enable();
+  void Disable();
+
   // Processes changes in the default logical shill device.
   // This function judges whether CLAT is needed, and based on that decision it
   // will do one of the following operations: start CLAT, stop CLAT, reconfigure
@@ -47,7 +52,7 @@ class ClatService {
 
   // This function does the followings step by step: remove IPRule and IPRoute,
   // remove NDproxy, kill TAYGA's process, remove the tun device used for CLAT.
-  virtual void StopClat();
+  virtual void StopClat(bool clear_running_device = true);
 
   // These functions set or reset |clat_running_device_| in unit tests
   // respectively.
@@ -56,6 +61,10 @@ class ClatService {
 
  private:
   bool IsClatRunningDevice(const ShillClient::Device& shill_device);
+
+  // CLAT feature is disabled by default. This value can be changed in
+  // `Enable()` and `Disable()`
+  bool is_enabled_ = false;
 
   std::optional<ShillClient::Device> clat_running_device_;
 };

@@ -21,6 +21,30 @@ ClatService::~ClatService() {
   StopClat();
 }
 
+void ClatService::Enable() {
+  if (is_enabled_) {
+    return;
+  }
+
+  is_enabled_ = true;
+  // Starts CLAT immediately, if the default network is CLAT-eligible when it
+  // gets enabled.
+  if (clat_running_device_) {
+    StartClat(clat_running_device_.value());
+  }
+}
+
+void ClatService::Disable() {
+  if (!is_enabled_) {
+    return;
+  }
+  is_enabled_ = false;
+
+  // We keep `clat_running_device_` here because we want to start CLAT
+  // immediately after the feature is enabled again.
+  StopClat(/*clear_running_device=*/false);
+}
+
 void ClatService::OnShillDefaultLogicalDeviceChanged(
     const ShillClient::Device* new_device,
     const ShillClient::Device* prev_device) {
@@ -85,17 +109,38 @@ void ClatService::OnDefaultLogicalDeviceIPConfigChanged(
   }
 }
 
-// TODO(b/278970851): Do the actual implementation
 void ClatService::StartClat(const ShillClient::Device& shill_device) {
+  // Even if CLAT is disabled, we keep track of the device on which CLAT
+  // should be running so that we can start CLAT immediately after it's
+  // enabled.
   clat_running_device_ = shill_device;
+
+  if (!is_enabled_) {
+    return;
+  }
+
+  // TODO(b/278970851): Do the actual implementation
+  // Doing network configurations for CLAT and starting CLAT daemon.
 }
 
-// TODO(b/278970851): Do the actual implementation
-void ClatService::StopClat() {
+void ClatService::StopClat(bool clear_running_device) {
+  if (!is_enabled_) {
+    if (clear_running_device) {
+      clat_running_device_.reset();
+    }
+    return;
+  }
+
   if (!clat_running_device_) {
     return;
   }
-  clat_running_device_.reset();
+
+  // TODO(b/278970851): Do the actual implementation
+  // Cleaning up network configurations for CLAT.
+
+  if (clear_running_device) {
+    clat_running_device_.reset();
+  }
 }
 
 void ClatService::SetClatRunningDeviceForTest(

@@ -1296,6 +1296,14 @@ void Manager::SetFeatureFlag(
         qos_svc_->Disable();
       }
       break;
+    case patchpanel::SetFeatureFlagRequest::FeatureFlag::
+        SetFeatureFlagRequest_FeatureFlag_CLAT:
+      if (enabled) {
+        clat_svc_->Enable();
+      } else {
+        clat_svc_->Disable();
+      }
+      break;
     default:
       LOG(ERROR) << __func__ << "Unknown feature flag: " << flag;
       return;

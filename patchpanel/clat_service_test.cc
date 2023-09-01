@@ -35,9 +35,10 @@ class ClatServiceUnderTest : public ClatService {
     ON_CALL(*this, StartClat(_))
         .WillByDefault(
             (Invoke(this, &ClatServiceUnderTest::SetClatRunningDeviceForTest)));
-    ON_CALL(*this, StopClat())
+    ON_CALL(*this, StopClat(true))
         .WillByDefault(
             Invoke(this, &ClatServiceUnderTest::ResetClatRunningDeviceForTest));
+    Enable();
   }
 
   MOCK_METHOD(void,
@@ -45,7 +46,7 @@ class ClatServiceUnderTest : public ClatService {
               (const ShillClient::Device& shill_device),
               (override));
 
-  MOCK_METHOD(void, StopClat, (), (override));
+  MOCK_METHOD(void, StopClat, (bool clear_running_device), (override));
 };
 
 constexpr char kIPv4CIDR[] = "10.10.0.2/16";
@@ -117,7 +118,7 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
   // Start CLAT on the new_device.
   target.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 
-  EXPECT_CALL(target, StopClat());
+  EXPECT_CALL(target, StopClat(true));
   target.OnShillDefaultLogicalDeviceChanged(&v4only_dev, &v6only_dev);
 }
 
@@ -132,7 +133,7 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
   // Start CLAT on the new_device.
   target.OnShillDefaultLogicalDeviceChanged(&prev_v6only_dev, nullptr);
 
-  EXPECT_CALL(target, StopClat());
+  EXPECT_CALL(target, StopClat(true));
   EXPECT_CALL(target, StartClat(ShillDeviceHasInterfaceName("new_v6only")));
 
   target.OnShillDefaultLogicalDeviceChanged(&new_v6only_dev, &prev_v6only_dev);
@@ -146,7 +147,7 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
   ClatServiceUnderTest target;
   target.OnShillDefaultLogicalDeviceChanged(&dual_dev, nullptr);
 
-  EXPECT_CALL(target, StopClat()).Times(Exactly(0));
+  EXPECT_CALL(target, StopClat(_)).Times(Exactly(0));
   EXPECT_CALL(target, StartClat(_)).Times(Exactly(0));
   target.OnShillDefaultLogicalDeviceChanged(&v4only_dev, &dual_dev);
 }
@@ -159,7 +160,7 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
   ClatServiceUnderTest target;
   target.OnShillDefaultLogicalDeviceChanged(&v4only_dev, nullptr);
 
-  EXPECT_CALL(target, StopClat()).Times(Exactly(0));
+  EXPECT_CALL(target, StopClat(_)).Times(Exactly(0));
   EXPECT_CALL(target, StartClat(_)).Times(Exactly(0));
   target.OnShillDefaultLogicalDeviceChanged(&dual_dev, &v4only_dev);
 }
@@ -172,7 +173,7 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
   ClatServiceUnderTest target;
   target.OnShillDefaultLogicalDeviceChanged(&dual_dev, nullptr);
 
-  EXPECT_CALL(target, StopClat()).Times(Exactly(0));
+  EXPECT_CALL(target, StopClat(_)).Times(Exactly(0));
   EXPECT_CALL(target, StartClat(ShillDeviceHasInterfaceName("v6only")));
   target.OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
 }
@@ -185,7 +186,7 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
   ClatServiceUnderTest target;
   target.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 
-  EXPECT_CALL(target, StopClat());
+  EXPECT_CALL(target, StopClat(true));
   EXPECT_CALL(target, StartClat(_)).Times(Exactly(0));
   target.OnShillDefaultLogicalDeviceChanged(&dual_dev, &v6only_dev);
 }
@@ -201,7 +202,7 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
   ClatServiceUnderTest target;
   target.OnShillDefaultLogicalDeviceChanged(&prev_v6only_dev, nullptr);
 
-  EXPECT_CALL(target, StopClat()).Times(Exactly(0));
+  EXPECT_CALL(target, StopClat(_)).Times(Exactly(0));
   EXPECT_CALL(target, StartClat(_)).Times(Exactly(0));
   target.OnShillDefaultLogicalDeviceChanged(&new_v6only_dev, &prev_v6only_dev);
 }
@@ -224,7 +225,7 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
   // Start CLAT on the new_device.
   target.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 
-  EXPECT_CALL(target, StopClat());
+  EXPECT_CALL(target, StopClat(true));
   EXPECT_CALL(target, StartClat(_)).Times(Exactly(0));
   target.OnShillDefaultLogicalDeviceChanged(nullptr, &v6only_dev);
 }
@@ -243,7 +244,7 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
 
   // Unexpectedly the default logical device changes from an device different
   // from v6only_dev1 to another.
-  EXPECT_CALL(target, StopClat());
+  EXPECT_CALL(target, StopClat(true));
   EXPECT_CALL(target, StartClat(ShillDeviceHasInterfaceName("new_v6only")));
   target.OnShillDefaultLogicalDeviceChanged(&prev_v6only_dev, &prev_v6only_dev);
 }
@@ -256,9 +257,29 @@ TEST(ClatServiceDefaultLogicalDeviceChangeTest,
   ClatServiceUnderTest target;
   target.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 
-  EXPECT_CALL(target, StopClat()).Times(Exactly(0));
+  EXPECT_CALL(target, StopClat(_)).Times(Exactly(0));
   EXPECT_CALL(target, StartClat(_)).Times(Exactly(0));
   target.OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
+}
+
+TEST(ClatServiceDefaultLogicalDeviceChangeTest,
+     ChangeFromDualStackDeviceToIPv6OnlyDeviceWhileDisabled) {
+  const auto dual_dev = MakeFakeDualStackShillDevice("dual", 1);
+  const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 2);
+
+  ClatServiceUnderTest target;
+  target.OnShillDefaultLogicalDeviceChanged(&dual_dev, nullptr);
+
+  EXPECT_CALL(target, StopClat(false));
+  target.Disable();
+
+  EXPECT_CALL(target, StartClat(ShillDeviceHasInterfaceName("v6only")));
+  target.OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
+
+  // The default logical device is IPv6-only, so CLAT starts immdiately after
+  // it's enabled.
+  EXPECT_CALL(target, StartClat(ShillDeviceHasInterfaceName("v6only")));
+  target.Enable();
 }
 
 TEST(ClatServiceIPConfigChangeTest, IPv6OnlyDeviceGetIPv4Address) {
@@ -273,7 +294,7 @@ TEST(ClatServiceIPConfigChangeTest, IPv6OnlyDeviceGetIPv4Address) {
   default_logical_device.ipconfig.ipv4_cidr =
       net_base::IPv4CIDR::CreateFromCIDRString(kIPv4CIDR);
 
-  EXPECT_CALL(target, StopClat());
+  EXPECT_CALL(target, StopClat(true));
   target.OnDefaultLogicalDeviceIPConfigChanged(default_logical_device);
 }
 
@@ -299,7 +320,7 @@ TEST(ClatServiceIPConfigChangeTest, IPConfigChangeWithoutIPv6AddressChange) {
   v6only_dev.ipconfig.ipv4_dns_addresses = std::vector<std::string>{"1.1.1.1"};
 
   // This change has nothing with CLAT.
-  EXPECT_CALL(target, StopClat()).Times(Exactly(0));
+  EXPECT_CALL(target, StopClat(_)).Times(Exactly(0));
   EXPECT_CALL(target, StartClat(_)).Times(Exactly(0));
   target.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
 }
@@ -316,9 +337,50 @@ TEST(ClatServiceIPConfigChangeTest, IPv6AddressChangeInTheSamePrefix) {
   // Even the new IPn6 address of the default logical device has the same prefix
   // as the old one, CLAT needs to be reconfigured because the new address
   // conflict with the IPv6 address used by CLAT.
-  EXPECT_CALL(target, StopClat());
+  EXPECT_CALL(target, StopClat(true));
   EXPECT_CALL(target, StartClat(ShillDeviceHasInterfaceName("v6only")));
   target.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
+}
+
+TEST(ClatServiceIPConfigChangeTest,
+     EnabledAfterGettingIPv4AddressWhileDisabled) {
+  auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only");
+
+  ClatServiceUnderTest target;
+  target.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
+
+  EXPECT_CALL(target, StopClat(false));
+  target.Disable();
+
+  v6only_dev.ipconfig.ipv4_cidr =
+      net_base::IPv4CIDR::CreateFromCIDRString(kIPv4CIDR);
+
+  EXPECT_CALL(target, StopClat(true));
+  target.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
+
+  EXPECT_CALL(target, StartClat(_)).Times(Exactly(0));
+  target.Enable();
+}
+
+TEST(ClatServiceClatServiceIPConfigChangeTest,
+     EnabledAfterBecomingIPv6OnlyWhileDisabled) {
+  auto dual_dev = MakeFakeDualStackShillDevice("dual");
+
+  ClatServiceUnderTest target;
+  target.OnDefaultLogicalDeviceIPConfigChanged(dual_dev);
+
+  EXPECT_CALL(target, StopClat(false));
+  target.Disable();
+
+  dual_dev.ipconfig.ipv4_cidr.reset();
+
+  EXPECT_CALL(target, StartClat(ShillDeviceHasInterfaceName("dual")));
+  target.OnDefaultLogicalDeviceIPConfigChanged(dual_dev);
+
+  // The default logical device is IPv6-only, so CLAT starts immdiately after
+  // it's enabled.
+  EXPECT_CALL(target, StartClat(ShillDeviceHasInterfaceName("dual")));
+  target.Enable();
 }
 
 }  // namespace patchpanel

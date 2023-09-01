@@ -883,6 +883,7 @@ message NotifySocketConnectionEventResponse {}
 message SetFeatureFlagRequest {
   enum FeatureFlag {
     WIFI_QOS = 0;
+    CLAT = 1;
   };
 
   FeatureFlag flag = 1;
