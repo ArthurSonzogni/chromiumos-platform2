@@ -69,7 +69,7 @@ class IcmpTest : public Test {
 };
 
 TEST_F(IcmpTest, Constructor) {
-  EXPECT_EQ(-1, icmp_.socket());
+  EXPECT_EQ(nullptr, icmp_.socket());
   EXPECT_FALSE(icmp_.IsStarted());
 }
 

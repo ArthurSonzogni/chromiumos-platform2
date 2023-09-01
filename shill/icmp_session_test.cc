@@ -4,13 +4,16 @@
 
 #include "shill/icmp_session.h"
 
+#include <memory>
+
 #include <base/containers/span.h>
 #include <base/test/simple_test_tick_clock.h>
+#include <base/test/task_environment.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_socket.h>
 
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_icmp.h"
-#include "shill/net/mock_io_handler_factory.h"
 
 using testing::_;
 using testing::NiceMock;
@@ -63,7 +66,6 @@ class IcmpSessionTest : public Test {
   ~IcmpSessionTest() override = default;
 
   void SetUp() override {
-    icmp_session_.io_handler_factory_ = &io_handler_factory_;
     icmp_session_.tick_clock_ = &testing_clock_;
     icmp_ = new NiceMock<MockIcmp>();
     // Passes ownership.
@@ -85,8 +87,7 @@ class IcmpSessionTest : public Test {
     EXPECT_CALL(*icmp_, Start(destination, interface_index))
         .WillOnce(Return(true));
     icmp_->destination_ = destination;
-    EXPECT_CALL(io_handler_factory_,
-                CreateIOInputHandler(icmp_->socket(), _, _));
+    icmp_->socket_ = std::make_unique<net_base::MockSocket>();
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetTimeout()));
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     EXPECT_TRUE(Start(destination, interface_index));
@@ -126,7 +127,7 @@ class IcmpSessionTest : public Test {
 
   void VerifyIcmpSessionStopped() {
     EXPECT_TRUE(icmp_session_.timeout_callback_.IsCancelled());
-    EXPECT_FALSE(icmp_session_.echo_reply_handler_);
+    EXPECT_FALSE(icmp_session_.icmp_watcher_);
   }
 
   void OnEchoReplyReceived(base::span<const uint8_t> data) {
@@ -160,8 +161,11 @@ class IcmpSessionTest : public Test {
     return IcmpSession::kEchoRequestInterval;
   }
 
+  // required by base::FileDescriptorWatcher.
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
+
   MockIcmp* icmp_;
-  MockIOHandlerFactory io_handler_factory_;
   StrictMock<MockEventDispatcher> dispatcher_;
   IcmpSession icmp_session_;
   base::SimpleTestTickClock testing_clock_;
@@ -186,7 +190,6 @@ TEST_F(IcmpSessionTest, StartWhileAlreadyStarted) {
 
   // Since an ICMP session is already started, we should fail to start it again.
   EXPECT_CALL(*icmp_, Start(kIPAddress, kInterfaceIndex)).Times(0);
-  EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
   EXPECT_FALSE(Start(kIPAddress, kInterfaceIndex));

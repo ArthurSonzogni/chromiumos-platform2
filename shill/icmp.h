@@ -14,8 +14,6 @@
 
 namespace shill {
 
-class ScopedSocketCloser;
-
 // The Icmp class encapsulates the task of sending ICMP frames.
 class Icmp {
  public:
@@ -42,7 +40,7 @@ class Icmp {
   // |seq_num| respectively.
   virtual bool TransmitEchoRequest(uint16_t id, uint16_t seq_num);
 
-  int socket() const { return socket_ ? socket_->Get() : -1; }
+  net_base::Socket* socket() const { return socket_.get(); }
   const std::optional<net_base::IPAddress>& destination() const {
     return destination_;
   }

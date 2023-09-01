@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <utility>
+#include <vector>
 
 #include <arpa/inet.h>
 #include <netinet/icmp6.h>
@@ -20,7 +21,6 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/net/io_handler_factory.h"
 
 namespace {
 const int kIPHeaderLengthUnitBytes = 4;
@@ -37,7 +37,6 @@ uint16_t IcmpSession::kNextUniqueEchoId = 0;
 IcmpSession::IcmpSession(EventDispatcher* dispatcher)
     : weak_ptr_factory_(this),
       dispatcher_(dispatcher),
-      io_handler_factory_(IOHandlerFactory::GetInstance()),
       icmp_(new Icmp()),
       echo_id_(kNextUniqueEchoId),
       current_sequence_number_(0),
@@ -65,12 +64,10 @@ bool IcmpSession::Start(const net_base::IPAddress& destination,
   if (!icmp_->Start(destination, interface_index)) {
     return false;
   }
-  echo_reply_handler_.reset(io_handler_factory_->CreateIOInputHandler(
-      icmp_->socket(),
-      base::BindRepeating(&IcmpSession::OnEchoReplyReceived,
-                          weak_ptr_factory_.GetWeakPtr()),
-      base::BindRepeating(&IcmpSession::OnEchoReplyError,
-                          weak_ptr_factory_.GetWeakPtr())));
+
+  icmp_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+      icmp_->socket()->Get(), base::BindRepeating(&IcmpSession::OnIcmpReadable,
+                                                  base::Unretained(this)));
   result_callback_ = std::move(result_callback);
   timeout_callback_.Reset(BindOnce(&IcmpSession::ReportResultAndStopSession,
                                    weak_ptr_factory_.GetWeakPtr()));
@@ -90,7 +87,7 @@ void IcmpSession::Stop() {
     return;
   }
   timeout_callback_.Cancel();
-  echo_reply_handler_.reset();
+  icmp_watcher_.reset();
   icmp_->Stop();
 }
 
@@ -227,6 +224,17 @@ int IcmpSession::OnV6EchoReplyReceived(base::span<const uint8_t> message) {
   return received_icmp_header->icmp6_seq;
 }
 
+void IcmpSession::OnIcmpReadable() {
+  std::vector<uint8_t> message;
+  if (icmp_->socket()->RecvMessage(&message)) {
+    OnEchoReplyReceived(message);
+  } else {
+    PLOG(ERROR) << __func__ << ": failed to receive message from socket";
+    // Do nothing when we encounter an IO error, so we can continue receiving
+    // other pending echo replies.
+  }
+}
+
 void IcmpSession::OnEchoReplyReceived(base::span<const uint8_t> message) {
   const auto& destination = icmp_->destination();
   if (!destination) {
@@ -288,12 +296,6 @@ std::vector<base::TimeDelta> IcmpSession::GenerateIcmpResult() {
     }
   }
   return latencies;
-}
-
-void IcmpSession::OnEchoReplyError(const std::string& error_msg) {
-  LOG(ERROR) << __func__ << ": " << error_msg;
-  // Do nothing when we encounter an IO error, so we can continue receiving
-  // other pending echo replies.
 }
 
 void IcmpSession::ReportResultAndStopSession() {

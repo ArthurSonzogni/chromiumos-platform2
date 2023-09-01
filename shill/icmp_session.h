@@ -16,6 +16,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/containers/span.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/default_tick_clock.h>
@@ -25,7 +26,6 @@
 #include <net-base/ip_address.h>
 
 #include "shill/icmp.h"
-#include "shill/net/io_handler.h"
 
 namespace shill {
 
@@ -110,6 +110,9 @@ class IcmpSession {
   // reached.
   void TransmitEchoRequestTask();
 
+  // Called by |icmp_watcher_| when the ICMP socket is ready to read.
+  void OnIcmpReadable();
+
   // Called when an ICMP packet is received.
   void OnEchoReplyReceived(base::span<const uint8_t> message);
 
@@ -120,9 +123,6 @@ class IcmpSession {
   // Helper function that generates the result of the current ICMP session.
   IcmpSessionResult GenerateIcmpResult();
 
-  // Called when the input handler |echo_reply_handler_| encounters an error.
-  void OnEchoReplyError(const std::string& error_msg);
-
   // Calls |result_callback_| with the results collected so far, then stops the
   // IcmpSession. This function is called when the ICMP session successfully
   // completes, or when it times out. Does nothing if an ICMP session is not
@@ -131,8 +131,12 @@ class IcmpSession {
 
   base::WeakPtrFactory<IcmpSession> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
-  IOHandlerFactory* io_handler_factory_;
+
   std::unique_ptr<Icmp> icmp_;
+  // Watcher to wait for |icmp_->socket()| ready to read. It should be
+  // destructed prior than |icmp_->socket()|.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> icmp_watcher_;
+
   const uint16_t echo_id_;  // unique ID for this object's echo request/replies
   uint16_t current_sequence_number_;
   std::map<uint16_t, SentRecvTimePair> seq_num_to_sent_recv_time_;
@@ -142,7 +146,6 @@ class IcmpSession {
   base::DefaultTickClock default_tick_clock_;
   base::CancelableOnceClosure timeout_callback_;
   IcmpSessionResultCallback result_callback_;
-  std::unique_ptr<IOHandler> echo_reply_handler_;
 };
 
 }  // namespace shill
