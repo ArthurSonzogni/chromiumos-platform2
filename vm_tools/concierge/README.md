@@ -7,11 +7,12 @@ crosvm. See [`/vm_tools/README.md`](/vm_tools/README.md) for details.
 
 ## Hacking
 
-For quick iteration on related projects, work on `vm_protos` for grpc and
+If you are modifying protocols, cros_workon `vm_protos` for grpc and
 `chromeos-base/system_api` for dbus.
 
 ```
-cros_workon --board ${BOARD} start chromeos-base/system_api chromeos-base/vm_host_tools chromeos-base/vm_protos
+cros_workon --board ${BOARD} start \
+  chromeos-base/system_api chromeos-base/vm_host_tools chromeos-base/vm_protos
 ```
 
 Then it is possible to iterate on `vm_concierge`.
@@ -24,6 +25,13 @@ cros_workon_make --test --board=${BOARD} \
   chromeos-base/vm_protos \
   --install  # If vm_protos changed.
 cros_workon_make --test --board=${BOARD} chromeos-base/vm_host_tools
+```
+
+When deploying modifications to device, you can cros deploy the result.
+
+```
+cros_workon_make --test --install --board=brya chromeos-base/vm_host_tools && \
+cros deploy $DUT vm_host_tools
 ```
 
 ### Obtaining backtrace on crash
