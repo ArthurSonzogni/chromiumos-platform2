@@ -913,18 +913,20 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
 
 bool CellularService::CustomApnUpdated(bool configure_attach_apn,
                                        Error* error) {
+  bool is_connected = IsConnected();
+  if (is_connected) {
+    Disconnect(error, __func__);
+    if (!error->IsSuccess()) {
+      return false;
+    }
+  }
   if (configure_attach_apn) {
     // If we were using an attach APN, and we are no longer using it, we should
     // re-configure the attach APN to clear the attach APN in the modem.
     cellular_->ConfigureAttachApn();
     return true;
   }
-
-  if (IsConnected()) {
-    Disconnect(error, __func__);
-    if (!error->IsSuccess()) {
-      return false;
-    }
+  if (is_connected) {
     Connect(error, __func__);
     return error->IsSuccess();
   }
