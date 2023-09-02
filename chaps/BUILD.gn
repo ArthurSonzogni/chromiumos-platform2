@@ -443,6 +443,6 @@ if (use.fuzzer) {
 if (!use.systemd) {
   install_config("install_chapsd_conf") {
     sources = [ "init/chapsd.conf" ]
-    install_path = "/etc/init"
+    install_path = "upstart"
   }
 }

@@ -66,7 +66,7 @@ install_config("install_minijail_conf") {
 
 install_config("install_upstart_config") {
   sources = [ "secanomalyd.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 if (use.test) {

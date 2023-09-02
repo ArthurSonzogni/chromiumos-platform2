@@ -385,7 +385,7 @@ if (use.test) {
 # Install arc-keymintd.conf file.
 install_config("install_init") {
   sources = [ "init/arc-keymintd.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 # Install dbus configuration file.

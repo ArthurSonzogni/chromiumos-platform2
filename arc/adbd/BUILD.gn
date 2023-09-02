@@ -61,7 +61,7 @@ install_config("install_init") {
   } else {
     sources = [ "init/arc-adbd.conf" ]
   }
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 if (use.arcvm) {

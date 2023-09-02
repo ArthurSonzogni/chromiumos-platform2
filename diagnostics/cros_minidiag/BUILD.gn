@@ -41,7 +41,7 @@ executable("cros-minidiag-tool") {
 
 install_config("install_upstart_config") {
   sources = [ "upstart/send-boot-elog-metrics.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 if (use.test) {

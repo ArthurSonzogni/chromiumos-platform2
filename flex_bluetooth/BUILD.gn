@@ -36,7 +36,7 @@ executable("process_flex_bluetooth_overrides") {
 
 install_config("install_upstart_config") {
   sources = [ "init/flex-bluetooth.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 if (use.test) {

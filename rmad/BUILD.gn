@@ -43,7 +43,7 @@ executable("rmad") {
 # Install upstart configs and scripts.
 install_config("install_upstart_config") {
   sources = [ "init/rmad.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 # Install D-Bus configuration file.

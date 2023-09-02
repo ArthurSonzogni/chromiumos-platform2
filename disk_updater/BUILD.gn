@@ -12,7 +12,7 @@ group("all") {
 
 install_config("install_init") {
   sources = [ "scripts/chromeos-disk-firmware-update.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_script") {

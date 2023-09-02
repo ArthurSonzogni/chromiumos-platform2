@@ -26,5 +26,5 @@ install_config("install_minijail_arc_host_clock_service") {
 
 install_config("install_init_config") {
   sources = [ "arc-host-clock-service.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }

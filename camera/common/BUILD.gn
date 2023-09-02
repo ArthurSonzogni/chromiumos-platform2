@@ -532,7 +532,7 @@ if (use.fuzzer) {
 
 install_config("install_cros_camera_algo_conf") {
   sources = [ "init/cros-camera-algo.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_dbus_cros_camera_algo_conf") {
@@ -553,7 +553,7 @@ if (use.camera_feature_portrait_mode || use.ipu6se || use.ipu6epadln ||
     use.qualcomm_camx) {
   install_config("install_cros_camera_gpu_algo_conf") {
     sources = [ "init/cros-camera-gpu-algo.conf" ]
-    install_path = "/etc/init"
+    install_path = "upstart"
   }
 
   install_seccomp_policy("install_cros_camera_gpu_algo_policy") {

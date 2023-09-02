@@ -156,14 +156,14 @@ if (use.chromeless_tty) {
     ]
     install_configs = [
       {
-        path = "/etc/init"
+        path = "upstart"
       },
     ]
   }
 } else {
   install_config("install_cros_disks_config") {
     sources = [ "cros-disks.conf" ]
-    install_path = "/etc/init"
+    install_path = "upstart"
   }
 }
 

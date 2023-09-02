@@ -54,7 +54,7 @@ executable("cros_camera_diagnostics_service") {
 
 install_config("install_cros_camera_diagnostics_conf") {
   sources = [ "init/cros-camera-diagnostics.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_cros_camera_diagnostics_mojo") {

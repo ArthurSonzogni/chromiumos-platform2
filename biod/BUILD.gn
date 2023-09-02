@@ -154,7 +154,7 @@ install_config("install_init") {
     "init/bio_crypto_init.conf",
     "init/biod.conf",
   ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_systemd") {

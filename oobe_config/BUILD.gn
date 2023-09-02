@@ -142,7 +142,7 @@ install_config("install_dbus_config") {
 
 install_config("install_init_config_restore") {
   sources = [ "etc/init/oobe_config_restore.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_init_config_save") {
@@ -151,7 +151,7 @@ install_config("install_init_config_save") {
     "etc/init/shill_stop_waiter.conf",
     "etc/init/ui_stop_waiter.conf",
   ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_minijail_config_restore") {

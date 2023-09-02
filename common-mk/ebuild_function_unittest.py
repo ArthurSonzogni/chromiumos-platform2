@@ -279,6 +279,68 @@ class GenerateTests(cros_test_lib.TestCase):
             [["dosym", "source", "/symlink"]],
         )
 
+    def testInstallPathAlias(self):
+        self.assertEqual(
+            ebuild_function.generate(["source"], install_path="dbus_system_d"),
+            [
+                ["insinto", "/etc/dbus-1/system.d"],
+                ["insopts", "-m0644"],
+                ["doins", "source"],
+            ],
+        )
+        self.assertEqual(
+            ebuild_function.generate(
+                ["source"], install_path="dbus_system_services"
+            ),
+            [
+                ["insinto", "/usr/share/dbus-1/system-services"],
+                ["insopts", "-m0644"],
+                ["doins", "source"],
+            ],
+        )
+        self.assertEqual(
+            ebuild_function.generate(["source"], install_path="minijail_conf"),
+            [
+                ["insinto", "/usr/share/minijail"],
+                ["insopts", "-m0644"],
+                ["doins", "source"],
+            ],
+        )
+        self.assertEqual(
+            ebuild_function.generate(["source"], install_path="seccomp_policy"),
+            [
+                ["insinto", "/usr/share/policy"],
+                ["insopts", "-m0644"],
+                ["doins", "source"],
+            ],
+        )
+        self.assertEqual(
+            ebuild_function.generate(["source"], install_path="tmpfilesd"),
+            [
+                ["insinto", "/usr/lib/tmpfiles.d"],
+                ["insopts", "-m0644"],
+                ["doins", "source"],
+            ],
+        )
+        self.assertEqual(
+            ebuild_function.generate(
+                ["source"], install_path="tmpfiled_ondemand"
+            ),
+            [
+                ["insinto", "/usr/lib/tmpfiles.d/on-demand"],
+                ["insopts", "-m0644"],
+                ["doins", "source"],
+            ],
+        )
+        self.assertEqual(
+            ebuild_function.generate(["source"], install_path="upstart"),
+            [
+                ["insinto", "/etc/init"],
+                ["insopts", "-m0644"],
+                ["doins", "source"],
+            ],
+        )
+
     def testUnknownTypeInstall(self):
         # command_type is an unknown value
         with self.assertRaises(AssertionError):

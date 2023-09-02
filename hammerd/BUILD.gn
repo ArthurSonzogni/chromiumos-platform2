@@ -82,7 +82,7 @@ if (use.hammerd_api) {
 
 install_config("install_upstart_configs") {
   sources = [ "init/hammerd.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_upstart_scripts") {

@@ -27,7 +27,7 @@ install_config("install_init_scripts") {
     "init/arcvm-post-vm-start-services.conf",
     "init/arcvm-pre-login-services.conf",
   ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_dbus_scripts") {

@@ -129,7 +129,7 @@ install_config("install_services") {
 
 install_config("install_init") {
   sources = [ "init/system-proxy.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_minijail_conf") {

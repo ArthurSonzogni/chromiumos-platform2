@@ -70,7 +70,7 @@ executable("flex_hwis_tool") {
 
 install_config("install_upstart_config") {
   sources = [ "init/upstart/flex-hwis.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_minijail_flex_hwis_conf") {

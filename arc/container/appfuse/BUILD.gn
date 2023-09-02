@@ -75,7 +75,7 @@ install_config("install_system.d") {
 
 install_config("install_init") {
   sources = [ "init/arc-appfuse-provider.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_policy") {

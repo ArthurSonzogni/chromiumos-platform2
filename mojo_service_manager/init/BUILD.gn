@@ -22,7 +22,7 @@ install_seccomp_policy("install_seccomp") {
 
 install_config("install_init_config") {
   sources = [ "mojo_service_manager.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_minijail_conf") {

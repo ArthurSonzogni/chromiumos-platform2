@@ -53,7 +53,7 @@ if (use.fuzzer) {
 
 install_config("install_init_config") {
   sources = [ "log-bootid-on-boot.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 if (use.test) {

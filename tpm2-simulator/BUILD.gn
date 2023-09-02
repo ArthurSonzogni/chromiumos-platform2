@@ -108,7 +108,7 @@ executable("tpm2-simulator-stop") {
 
 install_config("install_init_scripts") {
   sources = [ "init/tpm2-simulator.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 # Install seccomp policy for cryptohome-proxy

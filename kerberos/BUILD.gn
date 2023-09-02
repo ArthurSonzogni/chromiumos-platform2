@@ -131,7 +131,7 @@ install_config("install_config_dbus_system-services") {
 
 install_config("install_config_init") {
   sources = [ "init/kerberosd.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_seccomp_policy") {

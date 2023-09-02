@@ -117,7 +117,7 @@ static_library("libnvram-boot-lockbox") {
 
 install_config("install_init") {
   sources = [ "init/bootlockboxd.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_minijail_conf") {

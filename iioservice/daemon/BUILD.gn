@@ -67,7 +67,7 @@ install_config("install_init_conf") {
     "init/cros-ec-accel.conf",
     "init/iioservice.conf",
   ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_dbus_conf") {

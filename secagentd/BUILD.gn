@@ -121,7 +121,7 @@ executable("secagentd") {
 # Install Upstart configuration.
 install_config("install_upstart_conf") {
   sources = [ "init/secagentd.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 # We invoke systemd-tmpfiles explicitly from the upstart config

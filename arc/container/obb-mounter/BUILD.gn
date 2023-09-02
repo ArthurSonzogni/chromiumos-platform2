@@ -125,7 +125,7 @@ action("generate_squashfs") {
 
 install_config("install_init") {
   sources = [ "init/arc-obb-mounter.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_system_d") {

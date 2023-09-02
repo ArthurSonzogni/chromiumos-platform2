@@ -102,7 +102,7 @@ install_config("install_headers") {
 
 install_config("install_init_conf") {
   sources = [ "init/feedback_daemon.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_systemd_conf") {

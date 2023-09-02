@@ -13,6 +13,18 @@ import os
 
 VALID_INSTALL_TYPES = ("bin", "ins", "lib.a", "lib.so", "sbin", "exe")
 
+# Support install_path aliases.
+INSTALL_PATH_ALIASES = {
+    # Please keep this list sorted alphabetically by key!
+    "dbus_system_d": "/etc/dbus-1/system.d",
+    "dbus_system_services": "/usr/share/dbus-1/system-services",
+    "minijail_conf": "/usr/share/minijail",
+    "seccomp_policy": "/usr/share/policy",
+    "tmpfilesd": "/usr/lib/tmpfiles.d",
+    "tmpfiled_ondemand": "/usr/lib/tmpfiles.d/on-demand",
+    "upstart": "/etc/init",
+}
+
 
 class EbuildFunctionError(Exception):
     """The base exception for ebuild_function."""
@@ -93,6 +105,7 @@ def generate(
         commands of "newxxx" like dosym.
     """
     if not command_type:
+        install_path = INSTALL_PATH_ALIASES.get(install_path, install_path)
         if not symlinks:
             install_type = "ins"
         else:

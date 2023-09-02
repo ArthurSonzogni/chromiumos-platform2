@@ -388,7 +388,7 @@ if (use.fuzzer) {
 
 install_config("install_trunksd_conf") {
   sources = [ "trunksd.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 # We invoke systemd-tmpfiles explicitly from the upstart config
@@ -402,7 +402,7 @@ install_config("install_freezer_tmpfilesd") {
 # instead.
 install_config("install_pre_init_config") {
   sources = [ "placeholders/cr50-result.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_tmpfiles_config") {

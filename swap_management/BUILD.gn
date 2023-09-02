@@ -77,7 +77,7 @@ install_config("install_init") {
     "share/swap_start.conf",
     "share/swap_stop.conf",
   ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_tmpfiles_config") {

@@ -43,7 +43,7 @@ install_config("install_dbus_config") {
 # Install the init config.
 install_config("install_init_config") {
   sources = [ "init/patchpanel.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 # Install the seccomp config.
