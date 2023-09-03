@@ -67,7 +67,7 @@ bool SetImage(const InstallConfig& install_config) {
 
   // An example value: <root_hexdigest and salt values shortened>
   //
-  // quiet loglevel=1 console=tty2 init=/sbin/init add_efi_memmap boot=local
+  // quiet loglevel=1 console=tty2 init=/sbin/init add_efi_memmap
   // noresume noswap i915.modeset=1 cros_secure tpm_tis.force=1
   // tpm_tis.interrupts=0 nmi_watchdog=panic,lapic root=/dev/dm-0 rootwait
   // ro dm_verity.error_behavior=3 dm_verity.max_bios=-1 dm_verity.dev_wait=1

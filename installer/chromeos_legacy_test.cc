@@ -29,7 +29,7 @@ const char kExampleGrubCfgFile[] =
     "  linuxefi /syslinux/vmlinuz.B cros_efi cros_debug "
     "root=/dev/dm-0 dm=\"DM verity=B\"\n"
     "  linux (hd0,3)/boot/vmlinuz quiet console=tty2 init=/sbin/init "
-    "boot=local rootwait ro noresume noswap loglevel=1 noinitrd "
+    "rootwait ro noresume noswap loglevel=1 noinitrd "
     "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n";
 
 const char kGrubCfgExpectedResult[] =
@@ -44,7 +44,7 @@ const char kGrubCfgExpectedResult[] =
     "  linux /syslinux/vmlinuz.B cros_efi cros_debug "
     "root=/dev/dm-0 dm=\"DM verity=B\"\n"
     "  linux (hd0,3)/boot/vmlinuz quiet console=tty2 init=/sbin/init "
-    "boot=local rootwait ro noresume noswap loglevel=1 noinitrd "
+    "rootwait ro noresume noswap loglevel=1 noinitrd "
     "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n";
 
 class EfiGrubCfgTest : public ::testing::Test {
@@ -94,7 +94,7 @@ TEST_F(EfiGrubCfgTest, GetKernelCommand) {
       "  linux /syslinux/vmlinuz.B cros_efi cros_debug "
       "root=/dev/dm-0 dm=\"DM verity=B\"\n"
       "  linux (hd0,3)/boot/vmlinuz quiet console=tty2 init=/sbin/init "
-      "boot=local rootwait ro noresume noswap loglevel=1 noinitrd "
+      "rootwait ro noresume noswap loglevel=1 noinitrd "
       "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n"));
 
   EfiGrubCfg cfg;
@@ -126,7 +126,7 @@ TEST_F(EfiGrubCfgTest, FixupLinuxEfi) {
       "  linuxefi /syslinux/vmlinuz.A root=/dev/dm-0 dm=\"DM verity=A\"\n"
       "  linuxefi /syslinux/vmlinuz.B root=/dev/dm-0 dm=\"DM verity=B\"\n"
       "  linux (hd0,3)/boot/vmlinuz quiet console=tty2 init=/sbin/init "
-      "boot=local rootwait ro noresume noswap loglevel=1 noinitrd "
+      "rootwait ro noresume noswap loglevel=1 noinitrd "
       "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n"));
 
   string expected =
@@ -135,7 +135,7 @@ TEST_F(EfiGrubCfgTest, FixupLinuxEfi) {
       "  linux /syslinux/vmlinuz.A root=/dev/dm-0 dm=\"DM verity=A\"\n"
       "  linux /syslinux/vmlinuz.B root=/dev/dm-0 dm=\"verity args\"\n"
       "  linux (hd0,3)/boot/vmlinuz quiet console=tty2 init=/sbin/init "
-      "boot=local rootwait ro noresume noswap loglevel=1 noinitrd "
+      "rootwait ro noresume noswap loglevel=1 noinitrd "
       "root=/dev/sdb3 i915.modeset=1 cros_efi cros_debug\n";
 
   EfiGrubCfg cfg;
