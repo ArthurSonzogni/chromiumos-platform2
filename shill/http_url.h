@@ -5,7 +5,9 @@
 #ifndef SHILL_HTTP_URL_H_
 #define SHILL_HTTP_URL_H_
 
+#include <optional>
 #include <string>
+#include <string_view>
 
 namespace shill {
 
@@ -18,18 +20,18 @@ class HttpUrl {
   static const int kDefaultHttpsPort;
 
   HttpUrl();
-  HttpUrl(const HttpUrl&) = delete;
-  HttpUrl& operator=(const HttpUrl&) = delete;
-
   ~HttpUrl();
 
+  static std::optional<HttpUrl> CreateFromString(std::string_view url_string);
+
   // Parse a URL from |url_string|.
-  bool ParseFromString(const std::string& url_string);
+  bool ParseFromString(std::string_view url_string);
 
   const std::string& host() const { return host_; }
   const std::string& path() const { return path_; }
   int port() const { return port_; }
   Protocol protocol() const { return protocol_; }
+  std::string ToString() const;
 
  private:
   std::string host_;

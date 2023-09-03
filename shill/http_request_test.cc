@@ -164,8 +164,9 @@ class HttpRequestTest : public Test {
   void GetDNSResultSuccess(const net_base::IPAddress& address) {
     request_->GetDNSResult(address);
   }
-  HttpRequest::Result StartRequest(const std::string& url) {
-    return request_->Start(kLoggingTag, url, {},
+  HttpRequest::Result StartRequest(const std::string& url_string) {
+    auto url = HttpUrl::CreateFromString(url_string);
+    return request_->Start(kLoggingTag, *url, {},
                            target_.request_success_callback(),
                            target_.request_error_callback());
   }

@@ -75,7 +75,7 @@ HttpRequest::~HttpRequest() {
 
 HttpRequest::Result HttpRequest::Start(
     const std::string& logging_tag,
-    const std::string& url_string,
+    const HttpUrl& url,
     const brillo::http::HeaderList& headers,
     base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
         request_success_callback,
@@ -85,13 +85,7 @@ HttpRequest::Result HttpRequest::Start(
   DCHECK(!is_running_);
 
   logging_tag_ = logging_tag;
-  HttpUrl url;
-  if (!url.ParseFromString(url_string)) {
-    LOG(ERROR) << logging_tag_
-               << ": Failed to parse URL string: " << url_string;
-    return kResultInvalidInput;
-  }
-  url_string_ = url_string;
+  url_ = url;
   headers_ = headers;
   is_running_ = true;
   server_hostname_ = url.host();
@@ -128,9 +122,10 @@ HttpRequest::Result HttpRequest::Start(
 }
 
 void HttpRequest::StartRequest() {
-  LOG(INFO) << logging_tag_ << ": Starting request to " << url_string_;
+  std::string url_string = url_.ToString();
+  LOG(INFO) << logging_tag_ << ": Starting request to " << url_string;
   request_id_ =
-      brillo::http::Get(url_string_, headers_, transport_,
+      brillo::http::Get(url_string, headers_, transport_,
                         base::BindOnce(&HttpRequest::SuccessCallback,
                                        weak_ptr_factory_.GetWeakPtr()),
                         base::BindOnce(&HttpRequest::ErrorCallback,

@@ -310,8 +310,8 @@ class PortalDetector {
   std::unique_ptr<HttpRequest> https_request_;
   std::unique_ptr<Result> result_;
 
-  std::string http_url_string_;
-  std::string https_url_string_;
+  HttpUrl http_url_;
+  HttpUrl https_url_;
   ProbingConfiguration probing_configuration_;
   base::CancelableOnceClosure trial_;
   bool is_active_;

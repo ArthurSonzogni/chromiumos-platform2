@@ -97,24 +97,27 @@ bool PortalDetector::Start(const std::string& ifname,
 
   // This step is rerun on each attempt, but trying it here will allow
   // Start() to abort on any obviously malformed URL strings.
-  HttpUrl http_url, https_url;
-  http_url_string_ =
+  const auto& http_url_string =
       PickProbeUrl(probing_configuration_.portal_http_url,
                    probing_configuration_.portal_fallback_http_urls);
-  https_url_string_ =
+  const auto http_url = HttpUrl::CreateFromString(http_url_string);
+  if (!http_url) {
+    LOG(ERROR) << LoggingTag() << ": Failed to parse HTTP probe URL string: "
+               << http_url_string;
+    return false;
+  }
+  http_url_ = *http_url;
+
+  const auto& https_url_string =
       PickProbeUrl(probing_configuration_.portal_https_url,
                    probing_configuration_.portal_fallback_https_urls);
-  if (!http_url.ParseFromString(http_url_string_)) {
-    LOG(ERROR) << LoggingTag() << ": Failed to parse HTTP probe URL string: "
-               << http_url_string_;
-    return false;
-  }
-
-  if (!https_url.ParseFromString(https_url_string_)) {
+  const auto https_url = HttpUrl::CreateFromString(https_url_string);
+  if (!https_url) {
     LOG(ERROR) << "Failed to parse HTTPS probe URL string: "
-               << https_url_string_;
+               << https_url_string;
     return false;
   }
+  https_url_ = *https_url;
 
   attempt_count_++;
   // TODO(hugobenichi) Network properties like src address and DNS should be
@@ -123,7 +126,7 @@ bool PortalDetector::Start(const std::string& ifname,
       std::make_unique<HttpRequest>(dispatcher_, ifname, ip_family, dns_list);
   // For non-default URLs, allow for secure communication with both Google and
   // non-Google servers.
-  bool allow_non_google_https = (https_url_string_ != kDefaultHttpsUrl);
+  bool allow_non_google_https = (https_url_string != kDefaultHttpsUrl);
   https_request_ = std::make_unique<HttpRequest>(
       dispatcher_, ifname, ip_family, dns_list, allow_non_google_https);
   trial_.Reset(base::BindOnce(&PortalDetector::StartTrialTask,
@@ -140,7 +143,7 @@ bool PortalDetector::Start(const std::string& ifname,
 void PortalDetector::StartTrialTask() {
   LOG(INFO) << LoggingTag() << ": Starting trial";
   HttpRequest::Result http_result = http_request_->Start(
-      LoggingTag() + " HTTP probe", http_url_string_, kHeaders,
+      LoggingTag() + " HTTP probe", http_url_, kHeaders,
       base::BindOnce(&PortalDetector::HttpRequestSuccessCallback,
                      weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&PortalDetector::HttpRequestErrorCallback,
@@ -162,7 +165,7 @@ void PortalDetector::StartTrialTask() {
   result_ = std::make_unique<Result>();
 
   HttpRequest::Result https_result = https_request_->Start(
-      LoggingTag() + " HTTPS probe", https_url_string_, kHeaders,
+      LoggingTag() + " HTTPS probe", https_url_, kHeaders,
       base::BindOnce(&PortalDetector::HttpsRequestSuccessCallback,
                      weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&PortalDetector::HttpsRequestErrorCallback,
@@ -222,7 +225,7 @@ void PortalDetector::HttpRequestSuccessCallback(
         result_->http_status = Status::kFailure;
       } else {
         result_->redirect_url_string = redirect_url_string;
-        result_->probe_url_string = http_url_string_;
+        result_->probe_url_string = http_url_.ToString();
       }
     }
     LOG(INFO) << LoggingTag()

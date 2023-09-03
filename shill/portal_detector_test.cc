@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/http_request.h"
+#include "shill/http_url.h"
 #include "shill/mock_event_dispatcher.h"
 
 using testing::_;
@@ -63,7 +64,7 @@ class MockHttpRequest : public HttpRequest {
       HttpRequest::Result,
       Start,
       (const std::string&,
-       const std::string&,
+       const HttpUrl&,
        const brillo::http::HeaderList&,
        base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>,
        base::OnceCallback<void(Result)>),
@@ -339,7 +340,7 @@ TEST_F(PortalDetectorTest, Restart) {
   EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
   EXPECT_EQ(0, portal_detector()->attempt_count());
   EXPECT_TRUE(StartPortalRequest());
-  EXPECT_EQ(portal_detector()->http_url_string_, kHttpUrl);
+  EXPECT_EQ(portal_detector()->http_url_.ToString(), kHttpUrl);
   EXPECT_EQ(1, portal_detector()->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
@@ -358,7 +359,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
   EXPECT_TRUE(StartPortalRequest());
-  EXPECT_EQ(portal_detector()->http_url_string_, kHttpUrl);
+  EXPECT_EQ(portal_detector()->http_url_.ToString(), kHttpUrl);
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
   PortalDetector::Result result;
@@ -387,11 +388,11 @@ TEST_F(PortalDetectorTest, AttemptCount) {
     EXPECT_TRUE(RestartPortalRequest());
 
     EXPECT_NE(
-        expected_retry_http_urls.find(portal_detector()->http_url_string_),
+        expected_retry_http_urls.find(portal_detector()->http_url_.ToString()),
         expected_retry_http_urls.end());
-    EXPECT_NE(
-        expected_retry_https_urls.find(portal_detector()->https_url_string_),
-        expected_retry_https_urls.end());
+    EXPECT_NE(expected_retry_https_urls.find(
+                  portal_detector()->https_url_.ToString()),
+              expected_retry_https_urls.end());
 
     portal_detector()->CompleteTrial(result);
     Mock::VerifyAndClearExpectations(&dispatcher_);

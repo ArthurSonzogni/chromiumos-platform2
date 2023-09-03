@@ -41,12 +41,20 @@ class HttpUrlParseTest : public testing::TestWithParam<StringAndResult> {
 
 TEST_P(HttpUrlParseTest, ParseURL) {
   bool result = url_.ParseFromString(GetParam().url_string);
+  auto url = HttpUrl::CreateFromString(GetParam().url_string);
   EXPECT_EQ(GetParam().result, result);
+  EXPECT_EQ(GetParam().result, url.has_value());
   if (GetParam().result && result) {
     EXPECT_EQ(GetParam().host, url_.host());
     EXPECT_EQ(GetParam().path, url_.path());
     EXPECT_EQ(GetParam().protocol, url_.protocol());
     EXPECT_EQ(GetParam().port, url_.port());
+    EXPECT_EQ(GetParam().host, url->host());
+    EXPECT_EQ(GetParam().path, url->path());
+    EXPECT_EQ(GetParam().protocol, url->protocol());
+    EXPECT_EQ(GetParam().port, url->port());
+    EXPECT_EQ(GetParam().url_string, url_.ToString());
+    EXPECT_EQ(GetParam().url_string, url->ToString());
   }
 }
 
@@ -90,6 +98,11 @@ INSTANTIATE_TEST_SUITE_P(
                                       HttpUrl::Protocol::kHttp,
                                       "www.foo.com",
                                       HttpUrl::kDefaultHttpPort,
-                                      "/?bar")));
+                                      "/?bar"),
+                      StringAndResult("http://www.foo.com:443/bar",
+                                      HttpUrl::Protocol::kHttp,
+                                      "www.foo.com",
+                                      443,
+                                      "/bar")));
 
 }  // namespace shill

@@ -4,11 +4,14 @@
 
 #include "shill/http_url.h"
 
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 namespace shill {
 
@@ -28,7 +31,16 @@ HttpUrl::HttpUrl() : port_(kDefaultHttpPort), protocol_(Protocol::kHttp) {}
 
 HttpUrl::~HttpUrl() = default;
 
-bool HttpUrl::ParseFromString(const std::string& url_string) {
+// static
+std::optional<HttpUrl> HttpUrl::CreateFromString(std::string_view url_string) {
+  HttpUrl url;
+  if (!url.ParseFromString(url_string)) {
+    return std::nullopt;
+  }
+  return url;
+}
+
+bool HttpUrl::ParseFromString(std::string_view url_string) {
   Protocol protocol = Protocol::kUnknown;
   size_t host_start = 0;
   int port = 0;
@@ -74,6 +86,39 @@ bool HttpUrl::ParseFromString(const std::string& url_string) {
   }
 
   return true;
+}
+
+std::string HttpUrl::ToString() const {
+  int port = port_;
+  std::string url_string;
+  switch (protocol_) {
+    case Protocol::kUnknown:
+      return "<invalid>";
+    case Protocol::kHttp:
+      url_string = kPrefixHttp;
+      if (port == kDefaultHttpPort) {
+        port = 0;
+      }
+      break;
+    case Protocol::kHttps:
+      url_string = kPrefixHttps;
+      if (port == kDefaultHttpsPort) {
+        port = 0;
+      }
+      break;
+  }
+  url_string += host_;
+  if (port != 0) {
+    url_string += ":" + std::to_string(port);
+  }
+  if (path_ != "/") {
+    if (base::StartsWith(path_, "/?")) {
+      url_string += path_.substr(1);
+    } else {
+      url_string += path_;
+    }
+  }
+  return url_string;
 }
 
 }  // namespace shill
