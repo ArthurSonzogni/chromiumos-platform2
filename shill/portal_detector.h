@@ -156,6 +156,12 @@ class PortalDetector {
     bool http_probe_completed = false;
     bool https_probe_completed = false;
 
+    // Total HTTP and HTTPS probe durations, recorded if the respective probe
+    // successfully started. The todal duration of the network validation
+    // attempt is the longest of the two durations.
+    base::TimeDelta http_duration = base::TimeDelta();
+    base::TimeDelta https_duration = base::TimeDelta();
+
     // Returns true if both http and https probes have completed, successfully
     // or not.
     bool IsComplete() const;

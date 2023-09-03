@@ -1034,6 +1034,8 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
   }
 
   network_validation_result_ = result;
+  auto total_duration = std::max(result.http_duration.InMilliseconds(),
+                                 result.https_duration.InMilliseconds());
 
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationResult(interface_index_, result);
@@ -1048,11 +1050,21 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
     case PortalDetector::ValidationState::kInternetConnectivity:
       // Conclusive result that allows the Service to transition to the
       // "online" state.
+      metrics_->SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
+                          technology_, total_duration);
+      break;
     case PortalDetector::ValidationState::kPortalRedirect:
       // Conclusive result that allows to start the portal detection sign-in
       // flow.
+      metrics_->SendToUMA(Metrics::kPortalDetectorPortalDiscoveryDuration,
+                          technology_, total_duration);
       break;
   }
+
+  metrics_->SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration, technology_,
+                      result.http_duration.InMilliseconds());
+  metrics_->SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration, technology_,
+                      result.https_duration.InMilliseconds());
 }
 
 void Network::StartConnectionDiagnostics() {

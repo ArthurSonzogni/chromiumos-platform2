@@ -1395,6 +1395,50 @@ class Metrics {
           .num_buckets = 10,
   };
 
+  // Duration of a complete portal detection attempt when the result is
+  // PortalDetector.ValidationState.kInternetConnectivity, in milliseconds.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorInternetValidationDuration = {
+          .n = {"PortalDetector.InternetValidationDuration",
+                TechnologyLocation::kAfterName},
+          .min = 10,
+          .max = 10000,  // 10 seconds
+          .num_buckets = 40,
+  };
+
+  // Duration of a complete portal detection attempt when the result is
+  // PortalDetector.ValidationState.kPortalRedirection, in milliseconds.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorPortalDiscoveryDuration = {
+          .n = {"PortalDetector.PortalDiscoveryDuration",
+                TechnologyLocation::kAfterName},
+          .min = 10,
+          .max = 10000,  // 10 seconds
+          .num_buckets = 40,
+  };
+
+  // Duration of a PortalDetector HTTP probe in milliseconds, for all probe
+  // results.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorHTTPProbeDuration = {
+          .n = {"PortalDetector.HTTPProbeDuration",
+                TechnologyLocation::kAfterName},
+          .min = 10,
+          .max = 10000,  // 10 seconds
+          .num_buckets = 40,
+  };
+
+  // Duration of a PortalDetector HTTPS probe in milliseconds, for all probe
+  // results.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorHTTPSProbeDuration = {
+          .n = {"PortalDetector.HTTPSProbeDuration",
+                TechnologyLocation::kAfterName},
+          .min = 10,
+          .max = 10000,  // 10 seconds
+          .num_buckets = 40,
+  };
+
   static constexpr char kMetricWiFiScanTimeInEbusyMilliseconds[] =
       "Network.Shill.WiFi.ScanTimeInEbusy";
 
