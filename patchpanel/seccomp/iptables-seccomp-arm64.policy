@@ -41,3 +41,4 @@ rt_sigreturn: 1
 brk: 1
 recvfrom: 1
 clock_gettime: 1
+uname: 1

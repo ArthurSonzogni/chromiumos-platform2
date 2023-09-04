@@ -41,3 +41,4 @@ ioctl: arg1 == TCGETS || arg1 == FIONREAD
 poll: 1
 recvfrom: 1
 clock_gettime: 1
+uname: 1
