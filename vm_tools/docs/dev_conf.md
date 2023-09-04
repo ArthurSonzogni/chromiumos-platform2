@@ -63,8 +63,10 @@ available:
 `BLOCK_ASYNC_EXECUTOR=(uring|epoll)`
 :   Switch the async executor of all virtio-blk devices.
 
-`SKIP_SWAP_TBW_MANAGEMENT=true`
-:   Ignore swap total bytes written limits for swap.
+`SKIP_SWAP_POLICY=true`
+:   Skip policy gates when enabling ARCVM swap. Since this skips total bytes
+    written throttling and low disk management, setting this may result in
+    excessive wear on the disk or errors due to exhausting disk space.
 
 Directives are applied in the order they appear (i.e. to change a flag, first
 delete it and then re-add it with the desired value).

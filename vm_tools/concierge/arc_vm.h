@@ -340,7 +340,7 @@ class ArcVm final : public VmBaseImpl {
       GUARDED_BY_CONTEXT(sequence_checker_);
   base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  bool skip_tbw_management_ = false;
+  bool skip_swap_policy_ = false;
   const int64_t guest_memory_size_;
 
   uint64_t aggressive_balloon_target_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;

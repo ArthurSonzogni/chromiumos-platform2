@@ -68,10 +68,8 @@ constexpr base::TimeDelta kArcPowerctlConnectTimeout = base::Seconds(5);
 // Port for arc-powerctl running on the guest side.
 constexpr unsigned int kVSockPort = 4242;
 
-// Custom parameter key to skip total bytes written management for ARCVM swap.
-// TODO(b/284408104): Rename this to skip whole vmm-swap policies to unblock
-// integration tests
-constexpr char kKeyToSkipVmmTbwManagement[] = "SKIP_SWAP_TBW_MANAGEMENT";
+// Custom parameter key to skip all swap policy for ARCVM swap.
+constexpr char kKeyToSkipSwapPolicy[] = "SKIP_SWAP_POLICY";
 
 // Shared directories and their tags
 constexpr char kOemEtcSharedDir[] = "/run/arcvm/host_generated/oem/etc";
@@ -485,9 +483,9 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   }
 
   if (custom_parameters &&
-      custom_parameters->ObtainSpecialParameter(kKeyToSkipVmmTbwManagement)
+      custom_parameters->ObtainSpecialParameter(kKeyToSkipSwapPolicy)
               .value_or("false") == "true") {
-    skip_tbw_management_ = true;
+    skip_swap_policy_ = true;
   }
 
   // Finally set the path to the kernel.
@@ -944,9 +942,12 @@ void ArcVm::HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update) {
   // Should not disable vmm-swap if vmm-swap is not enabled because there is a
   // case when vmm-swap is not available. StatefulDiskSpaceUpdate arrives
   // independent from vmm-swap.
-  // state > spaced::StatefulDiskSpaceState::NORMAL means LOW or CRITICAL.
   if (update.state() != spaced::StatefulDiskSpaceState::LOW &&
       update.state() != spaced::StatefulDiskSpaceState::CRITICAL) {
+    return;
+  }
+
+  if (skip_swap_policy_) {
     return;
   }
 
@@ -1183,7 +1184,7 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
         CalculateVmmSwapDurationTarget();
     base::TimeDelta next_disable_duration =
         vmm_swap_usage_policy_.PredictDuration();
-    if (!skip_tbw_management_ &&
+    if (!skip_swap_policy_ &&
         next_disable_duration < min_vmm_swap_duration_target) {
       LOG(INFO) << "Enabling vmm-swap is rejected by usage prediction. "
                    "Predict duration: "
@@ -1194,7 +1195,7 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
       return;
     }
   }
-  if (!skip_tbw_management_ && !vmm_swap_tbw_policy_->CanSwapOut()) {
+  if (!skip_swap_policy_ && !vmm_swap_tbw_policy_->CanSwapOut()) {
     LOG(WARNING) << "Enabling vmm-swap is rejected by TBW limit";
     ApplyVmmSwapPolicyResult(
         std::move(callback),
@@ -1202,7 +1203,7 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
     return;
   }
 
-  if (!is_vmm_swap_enabled_) {
+  if (!is_vmm_swap_enabled_ && !skip_swap_policy_) {
     pending_swap_vm_callback_ = std::move(callback);
     vmm_swap_low_disk_policy_->CanEnable(
         guest_memory_size_, base::BindOnce(&ArcVm::OnVmmSwapLowDiskPolicyResult,
