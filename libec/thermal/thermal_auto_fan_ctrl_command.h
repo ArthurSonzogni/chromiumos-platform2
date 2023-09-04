@@ -15,9 +15,12 @@
 namespace ec {
 
 class BRILLO_EXPORT ThermalAutoFanCtrlCommand
-    : public EcCommand<EmptyParam, EmptyParam> {
+    : public EcCommand<struct ec_params_auto_fan_ctrl_v1, EmptyParam> {
  public:
-  ThermalAutoFanCtrlCommand() : EcCommand(EC_CMD_THERMAL_AUTO_FAN_CTRL, 0) {}
+  explicit ThermalAutoFanCtrlCommand(uint8_t fan_idx)
+      : EcCommand(EC_CMD_THERMAL_AUTO_FAN_CTRL, 1) {
+    Req()->fan_idx = fan_idx;
+  }
   ~ThermalAutoFanCtrlCommand() override = default;
 };
 

@@ -12,9 +12,12 @@ namespace ec {
 namespace {
 
 TEST(ThermalAutoFanCtrlCommandTest, ThermalAutoFanCtrlCommand) {
-  ThermalAutoFanCtrlCommand cmd;
+  constexpr uint8_t fan_idx = 1;
+
+  ThermalAutoFanCtrlCommand cmd{fan_idx};
   EXPECT_EQ(cmd.Command(), EC_CMD_THERMAL_AUTO_FAN_CTRL);
-  EXPECT_GE(cmd.Version(), 0);
+  EXPECT_GE(cmd.Version(), 1);
+  EXPECT_EQ(cmd.Req()->fan_idx, fan_idx);
 }
 
 }  // namespace
