@@ -25,6 +25,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "cros_healthd-client",
     "libbrillo",
     "libchrome",
     "libmojo",
@@ -55,7 +56,6 @@ static_library("libflex_hwis") {
     ":metrics",
   ]
   libs = [ "policy" ]
-  deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
 }
 
 executable("flex_hwis_tool") {
