@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <optional>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,7 +15,6 @@
 #include <base/memory/ptr_util.h>
 #include <net-base/ip_address.h>
 
-#include "shill/ipconfig.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/address_service.h"
 #include "shill/network/network_priority.h"
@@ -31,6 +29,9 @@ namespace {
 // platform2/patchpanel/routing_service.cc after the routing layer is migrated
 // to patchpanel.
 constexpr const uint32_t kFwmarkRoutingMask = 0xffff0000;
+
+constexpr RoutingPolicyEntry::FwMark kCrosVmFwmark = {.value = 0x2100,
+                                                      .mask = 0x3f00};
 
 RoutingPolicyEntry::FwMark GetFwmarkRoutingTag(int interface_index) {
   return {.value = RoutingTable::GetInterfaceTableId(interface_index) << 16,
@@ -53,6 +54,9 @@ constexpr uint32_t kPhysicalPriorityOffset = 1000;
 // rules and sent out of the wrong interface, but the routes added to
 // |table_id| will not be ignored.
 constexpr uint32_t kDstRulePriority =
+    RoutingPolicyService::kRulePriorityMain - 4;
+// Priority for rules routing traffic from certain VMs through CLAT.
+constexpr uint32_t kClatRulePriority =
     RoutingPolicyService::kRulePriorityMain - 3;
 // Priority for VPN rules routing traffic or specific uids with the routing
 // table of a VPN connection.
@@ -62,6 +66,13 @@ constexpr uint32_t kVpnUidRulePriority =
 // interface.
 constexpr uint32_t kCatchallPriority =
     RoutingPolicyService::kRulePriorityMain - 1;
+
+// ID for the routing table that used for CLAT default routes. Patchpanel is
+// responsible for adding and removing routes in this table. Using a user
+// defined table ID lesser than 255 to avoid conflict with per-device table (for
+// which we use table ID 1000+).
+constexpr uint32_t kClatRoutingTableId = 249;
+
 }  // namespace
 
 NetworkApplier::NetworkApplier()
@@ -192,6 +203,16 @@ void NetworkApplier::ApplyRoutingPolicy(
       catch_all_rule.table = table_id;
       rule_table_->AddRule(interface_index, catch_all_rule);
     }
+  }
+
+  if (priority.is_primary_logical) {
+    // Add a routing rule for IPv4 traffic to look up CLAT table first before it
+    // get to catch-all rule.
+    auto clat_table_rule = RoutingPolicyEntry(net_base::IPFamily::kIPv4);
+    clat_table_rule.priority = kClatRulePriority;
+    clat_table_rule.table = kClatRoutingTableId;
+    clat_table_rule.fw_mark = kCrosVmFwmark;
+    rule_table_->AddRule(-1, clat_table_rule);
   }
 
   if (technology != Technology::kVPN) {

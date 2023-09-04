@@ -337,6 +337,9 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
   RoutingPolicyEntry::FwMark routing_fwmark;
   routing_fwmark.value = (1000 + kInterfaceIndex) << 16;
   routing_fwmark.mask = 0xffff0000;
+  RoutingPolicyEntry::FwMark vm_fwmark;
+  vm_fwmark.value = 0x00002100;
+  vm_fwmark.mask = 0x00003f00;
   const uint32_t kExpectedTable = 1003u;
   EXPECT_CALL(rule_table_, GetShillUid());
 
@@ -372,6 +375,10 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
       AddRule(kInterfaceIndex, IsValidIifRule(net_base::IPFamily::kIPv4, 1010u,
                                               "eth0", kExpectedTable)))
       .WillOnce(Return(true));
+  // 32763: from all fwmark 0x00002100/0x00003f00 lookup 249
+  EXPECT_CALL(rule_table_,
+              AddRule(-1, IsValidFwMarkRule(net_base::IPFamily::kIPv4, 32763u,
+                                            vm_fwmark, 249u)));
   // 32765: from all lookup 1003
   EXPECT_CALL(rule_table_, AddRule(kInterfaceIndex,
                                    IsValidRoutingRule(net_base::IPFamily::kIPv4,
@@ -436,6 +443,9 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
   RoutingPolicyEntry::FwMark routing_fwmark;
   routing_fwmark.value = (1000 + kInterfaceIndex) << 16;
   routing_fwmark.mask = 0xffff0000;
+  RoutingPolicyEntry::FwMark vm_fwmark;
+  vm_fwmark.value = 0x00002100;
+  vm_fwmark.mask = 0x00003f00;
   const uint32_t kExpectedTable = 1011u;
   EXPECT_CALL(rule_table_, GetShillUid());
 
@@ -456,6 +466,10 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
                                    IsValidOifRule(net_base::IPFamily::kIPv4,
                                                   10u, "tun0", kExpectedTable)))
       .WillOnce(Return(true));
+  // 32763: from all fwmark 0x00002100/0x00003f00 lookup 249
+  EXPECT_CALL(rule_table_,
+              AddRule(-1, IsValidFwMarkRule(net_base::IPFamily::kIPv4, 32763u,
+                                            vm_fwmark, 249u)));
   // 32764:  from all uidrange ()-() lookup 1003
   EXPECT_CALL(
       rule_table_,
@@ -538,17 +552,17 @@ TEST_F(NetworkApplierRoutingPolicyTest,
       AddRule(kInterfaceIndex, IsValidIifRule(net_base::IPFamily::kIPv4, 1020u,
                                               kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
-  // 32763:  from all to 203.0.113.0/26 lookup 1004
-  // 32763:  from all to 203.0.113.128/26 lookup 1004
+  // 32762:  from all to 203.0.113.0/26 lookup 1004
+  // 32762:  from all to 203.0.113.128/26 lookup 1004
   EXPECT_CALL(
       rule_table_,
-      AddRule(kInterfaceIndex, IsValidDstRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(kInterfaceIndex, IsValidDstRule(net_base::IPFamily::kIPv4, 32762u,
                                               net_base::IPCIDR(rfc3442_dsts[0]),
                                               kExpectedTable)))
       .WillOnce(Return(true));
   EXPECT_CALL(
       rule_table_,
-      AddRule(kInterfaceIndex, IsValidDstRule(net_base::IPFamily::kIPv4, 32763u,
+      AddRule(kInterfaceIndex, IsValidDstRule(net_base::IPFamily::kIPv4, 32762u,
                                               net_base::IPCIDR(rfc3442_dsts[1]),
                                               kExpectedTable)))
       .WillOnce(Return(true));
