@@ -299,6 +299,11 @@ is_arc_vm(`
     lnk_file
     sock_file
   } { rw_file_perms unlink };
+
+  # Permit cryptohome to read status socket files. SafeFD neeeds to read the
+  # status first before it performs removal. Context: b/283183030
+  allow cros_cryptohomed cros_home_shadow_uid_root_crosvm:sock_file { getattr };
+
   # Managing dm_task_cookie for setting up/tearing down dm-crypt devices
   allow cros_cryptohomed self:sem { associate create destroy read unix_read unix_write write };
 ',`
