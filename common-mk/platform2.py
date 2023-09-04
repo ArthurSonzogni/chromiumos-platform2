@@ -222,6 +222,9 @@ class Platform2:
         verbose=False,
         enable_tests=False,
         cache_dir=None,
+        strategy=None,
+        user=None,
+        bind_mount_dev=False,
         jobs=None,
         platform_subdir=None,
     ):
@@ -232,6 +235,9 @@ class Platform2:
         self.target_os = target_os
         self.verbose = verbose
         self.platform_subdir = platform_subdir
+        self.strategy = strategy
+        self.user = user
+        self.bind_mount_dev = bind_mount_dev
 
         if use_flags is not None:
             self.use_flags = use_flags
@@ -620,6 +626,12 @@ class Platform2:
                 "--action=run",
                 "--sysroot=%s" % self.sysroot,
             ]
+            if self.strategy:
+                options += [f"--strategy={self.strategy}"]
+            if self.user:
+                options += [f"--user={self.user}"]
+            if self.bind_mount_dev:
+                options += ["--bind-mount-dev"]
             if self.host:
                 options += ["--host"]
             if os.environ.get("PLATFORM_HOST_DEV_TEST") == "yes":
@@ -801,6 +813,22 @@ def GetParser():
         help="number of jobs to run in parallel",
     )
     parser.add_argument(
+        "--strategy",
+        default="sudo",
+        choices=("sudo", "unprivileged"),
+        help="strategy to enter sysroot, passed to platform2_test.py",
+    )
+    parser.add_argument(
+        "--user", help="user to run as, passed to platform2_test.py"
+    )
+    parser.add_argument(
+        "--bind-mount-dev",
+        action="store_true",
+        default=False,
+        help="bind mount /dev instead of creating a pseudo one, "
+        + "passed to platform2_test.py",
+    )
+    parser.add_argument(
         "--platform_subdir",
         required=True,
         help="subdir in platform2 where the package is located",
@@ -842,6 +870,9 @@ def main(argv):
         options.verbose,
         options.enable_tests,
         options.cache_dir,
+        options.strategy,
+        options.user,
+        options.bind_mount_dev,
         jobs=options.jobs,
         platform_subdir=options.platform_subdir,
     )
