@@ -62,6 +62,9 @@ class RoutineAdapter : public DiagnosticRoutine,
  private:
   // Sets error message when routine disconnects.
   void OnRoutineDisconnect(uint32_t custom_reason, const std::string& message);
+  // Notifies each of |status_changed_callbacks_| when the status changes.
+  void NotifyStatusChanged(
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status);
 
   // Holds the remote to communicate with the routine.
   mojo::Remote<ash::cros_healthd::mojom::RoutineControl> routine_control_;
@@ -80,6 +83,8 @@ class RoutineAdapter : public DiagnosticRoutine,
   std::string error_message_;
   // Callbacks to invoke when the status changes.
   std::vector<StatusChangedCallback> status_changed_callbacks_;
+  // Previous status of the routine, used for avoiding duplicate status in UMA.
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum last_status_;
 
   // Must be the last class member.
   base::WeakPtrFactory<RoutineAdapter> weak_ptr_factory_{this};

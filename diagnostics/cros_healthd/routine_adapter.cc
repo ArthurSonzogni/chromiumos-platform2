@@ -176,9 +176,20 @@ mojom::DiagnosticRoutineStatusEnum RoutineAdapter::GetStatus() {
   return mojom::DiagnosticRoutineStatusEnum::kWaiting;
 }
 
+void RoutineAdapter::NotifyStatusChanged(
+    ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status) {
+  bool is_status_changed = last_status_ != status;
+  last_status_ = status;
+
+  if (is_status_changed) {
+    for (const auto& callback : status_changed_callbacks_) {
+      callback.Run(status);
+    }
+  }
+}
+
 void RoutineAdapter::RegisterStatusChangedCallback(
     StatusChangedCallback callback) {
-  // We do not plan on supporting UMA status collection for now.
   status_changed_callbacks_.push_back(std::move(callback));
 }
 
@@ -190,6 +201,7 @@ void RoutineAdapter::PopulateStatusUpdate(
     auto update = mojom::NonInteractiveRoutineUpdate::New();
     update->status = mojom::DiagnosticRoutineStatusEnum::kError;
     update->status_message = error_message_;
+    NotifyStatusChanged(update->status);
     response->routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
     return;
@@ -198,6 +210,7 @@ void RoutineAdapter::PopulateStatusUpdate(
   if (routine_cancelled_) {
     auto update = mojom::NonInteractiveRoutineUpdate::New();
     update->status = mojom::DiagnosticRoutineStatusEnum::kCancelled;
+    NotifyStatusChanged(update->status);
     response->routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
     return;
@@ -206,6 +219,7 @@ void RoutineAdapter::PopulateStatusUpdate(
   if (routine_type_ == mojom::RoutineArgument::Tag::kUnrecognizedArgument) {
     auto update = mojom::NonInteractiveRoutineUpdate::New();
     update->status = mojom::DiagnosticRoutineStatusEnum::kUnknown;
+    NotifyStatusChanged(update->status);
     response->routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
     return;
@@ -223,6 +237,7 @@ void RoutineAdapter::PopulateStatusUpdate(
     case mojom::RoutineStateUnion::Tag::kInitialized: {
       auto update = mojom::NonInteractiveRoutineUpdate::New();
       update->status = mojom::DiagnosticRoutineStatusEnum::kRunning;
+      NotifyStatusChanged(update->status);
       response->routine_update_union =
           mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
@@ -230,6 +245,7 @@ void RoutineAdapter::PopulateStatusUpdate(
     case mojom::RoutineStateUnion::Tag::kRunning: {
       auto update = mojom::NonInteractiveRoutineUpdate::New();
       update->status = mojom::DiagnosticRoutineStatusEnum::kRunning;
+      NotifyStatusChanged(update->status);
       response->routine_update_union =
           mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
@@ -253,6 +269,7 @@ void RoutineAdapter::PopulateStatusUpdate(
           break;
       }
       update->status_message = waiting_ptr->message;
+      NotifyStatusChanged(update->status);
       response->routine_update_union =
           mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
@@ -276,6 +293,7 @@ void RoutineAdapter::PopulateStatusUpdate(
           }
         }
       }
+      NotifyStatusChanged(update->status);
       response->routine_update_union =
           mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
