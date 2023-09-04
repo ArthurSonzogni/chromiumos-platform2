@@ -108,7 +108,7 @@ HttpRequest::Result HttpRequest::Start(
   if (server_addr) {
     StartRequest();
   } else {
-    SLOG(this, 3) << "Looking up host: " << server_hostname_;
+    SLOG(this, 2) << "Looking up host: " << server_hostname_;
     Error error;
     if (!dns_client_->Start(dns_list_, server_hostname_, &error)) {
       LOG(ERROR) << logging_tag_
@@ -123,7 +123,7 @@ HttpRequest::Result HttpRequest::Start(
 
 void HttpRequest::StartRequest() {
   std::string url_string = url_.ToString();
-  LOG(INFO) << logging_tag_ << ": Starting request to " << url_string;
+  SLOG(this, 2) << logging_tag_ << ": Starting request to " << url_string;
   request_id_ =
       brillo::http::Get(url_string, headers_, transport_,
                         base::BindOnce(&HttpRequest::SuccessCallback,

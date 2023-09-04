@@ -141,7 +141,9 @@ bool PortalDetector::Start(const std::string& ifname,
 }
 
 void PortalDetector::StartTrialTask() {
-  LOG(INFO) << LoggingTag() << ": Starting trial";
+  LOG(INFO) << LoggingTag()
+            << ": Starting trial. HTTP probe: " << http_url_.host()
+            << ". HTTPS probe: " << https_url_.host();
   HttpRequest::Result http_result = http_request_->Start(
       LoggingTag() + " HTTP probe", http_url_, kHeaders,
       base::BindOnce(&PortalDetector::HttpRequestSuccessCallback,
@@ -181,11 +183,13 @@ void PortalDetector::StartTrialTask() {
 }
 
 void PortalDetector::CompleteTrial(Result result) {
-  LOG(INFO) << LoggingTag()
-            << ": Trial completed. HTTP probe: phase=" << result.http_phase
+  LOG(INFO) << LoggingTag() << ": Trial result: " << result.GetValidationState()
+            << ". HTTP probe: dest=" << http_url_.host()
+            << ", phase=" << result.http_phase
             << ", status=" << result.http_status
             << ", duration=" << result.http_duration
-            << ". HTTPS probe: phase=" << result.https_phase
+            << ". HTTPS probe: dest=" << https_url_.host()
+            << ", phase=" << result.https_phase
             << ", duration=" << result.https_duration;
   result.num_attempts = attempt_count_;
   CleanupTrial();
@@ -236,8 +240,8 @@ void PortalDetector::HttpRequestSuccessCallback(
   }
   result_->http_duration =
       base::Time::NowFromSystemTime() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag()
-            << ": HTTP probe response status code=" << status_code
+  LOG(INFO) << LoggingTag() << ": HTTP probe " << http_url_.host()
+            << " response status code=" << status_code
             << " status=" << result_->http_status
             << " duration=" << result_->http_duration;
   if (result_->IsComplete())
@@ -256,8 +260,8 @@ void PortalDetector::HttpsRequestSuccessCallback(
                               : Status::kFailure;
   result_->https_duration =
       base::Time::NowFromSystemTime() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag()
-            << ": HTTPS probe response status code=" << status_code
+  LOG(INFO) << LoggingTag() << ": HTTPS probe " << https_url_.host()
+            << " response status code=" << status_code
             << " status=" << result_->https_status
             << " duration=" << result_->https_duration;
   if (result_->IsComplete())
@@ -270,8 +274,8 @@ void PortalDetector::HttpRequestErrorCallback(HttpRequest::Result http_result) {
   result_->http_status = GetPortalStatusForRequestResult(http_result);
   result_->http_duration =
       base::Time::NowFromSystemTime() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag()
-            << ": HTTP probe failed with phase=" << result_->http_phase
+  LOG(INFO) << LoggingTag() << ": HTTP probe " << http_url_.host()
+            << " failed with phase=" << result_->http_phase
             << " status=" << result_->http_status
             << " duration=" << result_->http_duration;
   if (result_->IsComplete())
@@ -285,8 +289,8 @@ void PortalDetector::HttpsRequestErrorCallback(
   result_->https_status = GetPortalStatusForRequestResult(https_result);
   result_->https_duration =
       base::Time::NowFromSystemTime() - last_attempt_start_time_;
-  LOG(INFO) << LoggingTag()
-            << ": HTTPS probe failed with phase=" << result_->https_phase
+  LOG(INFO) << LoggingTag() << ": HTTPS probe " << https_url_.host()
+            << " failed with phase=" << result_->https_phase
             << " status=" << result_->https_status
             << " duration=" << result_->https_duration;
   if (result_->IsComplete())
