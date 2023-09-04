@@ -6,9 +6,11 @@
 
 #include <algorithm>
 #include <optional>
+#include <string_view>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -21,37 +23,40 @@ namespace patchpanel {
 
 namespace {
 
-ShillClient::Device::Type ParseDeviceType(const std::string& type_str) {
-  static const std::map<std::string, ShillClient::Device::Type> str2enum{
-      {shill::kTypeCellular, ShillClient::Device::Type::kCellular},
-      {shill::kTypeEthernet, ShillClient::Device::Type::kEthernet},
-      {shill::kTypeEthernetEap, ShillClient::Device::Type::kEthernetEap},
-      {shill::kTypeGuestInterface, ShillClient::Device::Type::kGuestInterface},
-      {shill::kTypeLoopback, ShillClient::Device::Type::kLoopback},
-      {shill::kTypePPP, ShillClient::Device::Type::kPPP},
-      {shill::kTypeTunnel, ShillClient::Device::Type::kTunnel},
-      {shill::kTypeWifi, ShillClient::Device::Type::kWifi},
-      {shill::kTypeVPN, ShillClient::Device::Type::kVPN},
-  };
+ShillClient::Device::Type ParseDeviceType(std::string_view type_str) {
+  static constexpr auto str2enum =
+      base::MakeFixedFlatMap<std::string_view, ShillClient::Device::Type>({
+          {shill::kTypeCellular, ShillClient::Device::Type::kCellular},
+          {shill::kTypeEthernet, ShillClient::Device::Type::kEthernet},
+          {shill::kTypeEthernetEap, ShillClient::Device::Type::kEthernetEap},
+          {shill::kTypeGuestInterface,
+           ShillClient::Device::Type::kGuestInterface},
+          {shill::kTypeLoopback, ShillClient::Device::Type::kLoopback},
+          {shill::kTypePPP, ShillClient::Device::Type::kPPP},
+          {shill::kTypeTunnel, ShillClient::Device::Type::kTunnel},
+          {shill::kTypeWifi, ShillClient::Device::Type::kWifi},
+          {shill::kTypeVPN, ShillClient::Device::Type::kVPN},
+      });
 
   const auto it = str2enum.find(type_str);
   return it != str2enum.end() ? it->second
                               : ShillClient::Device::Type::kUnknown;
 }
 
-const std::string DeviceTypeName(ShillClient::Device::Type type) {
-  static const std::map<ShillClient::Device::Type, std::string> enum2str{
-      {ShillClient::Device::Type::kUnknown, "Unknown"},
-      {ShillClient::Device::Type::kCellular, "Cellular"},
-      {ShillClient::Device::Type::kEthernet, "Ethernet"},
-      {ShillClient::Device::Type::kEthernetEap, "EthernetEap"},
-      {ShillClient::Device::Type::kGuestInterface, "GuestInterface"},
-      {ShillClient::Device::Type::kLoopback, "Loopback"},
-      {ShillClient::Device::Type::kPPP, "PPP"},
-      {ShillClient::Device::Type::kTunnel, "Tunnel"},
-      {ShillClient::Device::Type::kVPN, "VPN"},
-      {ShillClient::Device::Type::kWifi, "Wifi"},
-  };
+std::string_view DeviceTypeName(ShillClient::Device::Type type) {
+  static constexpr auto enum2str =
+      base::MakeFixedFlatMap<ShillClient::Device::Type, std::string_view>({
+          {ShillClient::Device::Type::kUnknown, "Unknown"},
+          {ShillClient::Device::Type::kCellular, "Cellular"},
+          {ShillClient::Device::Type::kEthernet, "Ethernet"},
+          {ShillClient::Device::Type::kEthernetEap, "EthernetEap"},
+          {ShillClient::Device::Type::kGuestInterface, "GuestInterface"},
+          {ShillClient::Device::Type::kLoopback, "Loopback"},
+          {ShillClient::Device::Type::kPPP, "PPP"},
+          {ShillClient::Device::Type::kTunnel, "Tunnel"},
+          {ShillClient::Device::Type::kVPN, "VPN"},
+          {ShillClient::Device::Type::kWifi, "Wifi"},
+      });
 
   const auto it = enum2str.find(type);
   return it != enum2str.end() ? it->second : "Unknown";
