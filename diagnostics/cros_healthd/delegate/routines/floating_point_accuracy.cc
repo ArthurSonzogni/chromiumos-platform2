@@ -8,10 +8,6 @@
 #include <math.h>
 
 #include <cstdint>
-#include <iostream>
-
-#include <base/time/time.h>
-#include <brillo/flag_helper.h>
 
 namespace diagnostics {
 

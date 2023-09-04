@@ -7,7 +7,6 @@
 #include <cmath>
 
 #include <base/logging.h>
-#include <base/stl_util.h>
 
 namespace diagnostics {
 

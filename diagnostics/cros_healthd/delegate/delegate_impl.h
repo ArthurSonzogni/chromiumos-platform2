@@ -5,8 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 
-#include <string>
-
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 

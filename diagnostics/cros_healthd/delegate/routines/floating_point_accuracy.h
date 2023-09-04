@@ -5,10 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_ROUTINES_FLOATING_POINT_ACCURACY_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_ROUTINES_FLOATING_POINT_ACCURACY_H_
 
-#include <bitset>
-#include <cstdint>
-#include "base/time/time.h"
-
 namespace diagnostics {
 
 class FloatingPointAccuracyDelegate {
