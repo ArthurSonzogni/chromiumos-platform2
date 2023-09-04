@@ -225,7 +225,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // closed after the function returns.  The caller needs to dup a fd in
   // |result| if the fd will be accessed after calling ProcessCaptureResult.
   mojom::Camera3CaptureResultPtr PrepareCaptureResult(
-      const camera3_capture_result_t* result);
+      Camera3CaptureDescriptor result);
 
   mojom::Camera3NotifyMsgPtr PrepareNotifyMsg(const camera3_notify_msg_t* msg);
 

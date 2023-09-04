@@ -192,6 +192,9 @@ class CROS_CAMERA_EXPORT Camera3StreamBuffer {
   Camera3StreamBuffer(const Camera3StreamBuffer& other) = delete;
   Camera3StreamBuffer& operator=(const Camera3StreamBuffer& other) = delete;
 
+  // Invalidates the wrapper and drops references to all buffer resources.
+  void Invalidate();
+
   // See the docstring of WaitOnAndClearReleaseFence above.
   [[nodiscard]] bool WaitOnAndClearReleaseFence(int timeout_ms) {
     return cros::WaitOnAndClearReleaseFence(raw_buffer_, timeout_ms);
@@ -238,7 +241,6 @@ class CROS_CAMERA_EXPORT Camera3StreamBuffer {
   Camera3StreamBuffer(const camera3_stream_buffer_t& stream_buffer,
                       Type type,
                       Direction dir);
-  void Invalidate();
 
   camera3_stream_buffer_t raw_buffer_ = kInvalidRawBuffer;
   Type type_ = Type::kInvalidType;
@@ -402,9 +404,16 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   bool is_valid() const { return type_ != Type::kInvalidType; }
   uint32_t frame_number() const { return frame_number_; }
   bool has_metadata() const { return !metadata_.isEmpty(); }
+  const android::CameraMetadata& metadata() const { return metadata_; }
   bool has_input_buffer() const { return input_buffer_.has_value(); }
   uint32_t num_output_buffers() const { return output_buffers_.size(); }
   uint32_t partial_result() const { return partial_result_; }
+
+  uint32_t num_physcam_metadata() const { return num_physcam_metadata_; }
+  const char** physcam_ids() const { return physcam_ids_; }
+  const camera_metadata_t** physcam_metadata() const {
+    return physcam_metadata_;
+  }
 
   FeatureMetadata& feature_metadata() { return feature_metadata_; }
   const FeatureMetadata& feature_metadata() const { return feature_metadata_; }

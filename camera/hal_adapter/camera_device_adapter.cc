@@ -987,10 +987,6 @@ void CameraDeviceAdapter::ReturnResultToClient(
       }
     }
   }
-  mojom::Camera3CaptureResultPtr result_ptr;
-  camera3_capture_result_t* locked_result = result_descriptor.LockForResult();
-  result_ptr = self->PrepareCaptureResult(locked_result);
-  result_descriptor.Unlock();
 
   // process_capture_result may be called multiple times for a single frame,
   // each time with a new disjoint piece of metadata and/or set of gralloc
@@ -1003,6 +999,9 @@ void CameraDeviceAdapter::ReturnResultToClient(
         HalAdapterTraceEvent::kCapture, result_descriptor.frame_number(),
         reinterpret_cast<uintptr_t>(output_buffer.stream())));
   }
+
+  mojom::Camera3CaptureResultPtr result_ptr =
+      self->PrepareCaptureResult(std::move(result_descriptor));
 
   base::AutoLock l(self->callback_ops_delegate_lock_);
   if (self->callback_ops_delegate_) {
@@ -1316,27 +1315,34 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
 }
 
 mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
-    const camera3_capture_result_t* result) {
+    Camera3CaptureDescriptor result) {
   mojom::Camera3CaptureResultPtr r = mojom::Camera3CaptureResult::New();
 
-  r->frame_number = result->frame_number;
-  r->result = internal::SerializeCameraMetadata(result->result);
-  r->partial_result = result->partial_result;
+  r->frame_number = result.frame_number();
+  auto* metadata_buf = result.metadata().getAndLock();
+  r->result = internal::SerializeCameraMetadata(metadata_buf);
+  result.metadata().unlock(metadata_buf);
+  r->partial_result = result.partial_result();
 
   // Serialize output buffers.  This may be none as num_output_buffers may be 0.
-  if (result->output_buffers) {
+  if (result.num_output_buffers()) {
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     base::AutoLock streams_lock(streams_lock_);
     std::vector<mojom::Camera3StreamBufferPtr> output_buffers;
-    for (size_t i = 0; i < result->num_output_buffers; i++) {
+    for (auto& buf : result.AcquireOutputBuffers()) {
       mojom::Camera3StreamBufferPtr out_buf = internal::SerializeStreamBuffer(
-          result->output_buffers + i, streams_, buffer_handles_);
+          &buf.raw_buffer(), streams_, buffer_handles_);
       if (out_buf.is_null()) {
         LOGF(ERROR) << "Failed to serialize output stream buffer";
         // TODO(jcliang): Handle error?
       }
-      RemoveReturnBufferLocked(out_buf->buffer_id,
-                               *(result->output_buffers + i));
+
+      const camera3_stream_buffer_t buf_handle = buf.raw_buffer();
+      // It's vital to drop the reference to the underlying camera buffer
+      // handle here because RemoveReturnBufferLocked() will free the backing
+      // memory asynchronously.
+      buf.Invalidate();
+      RemoveReturnBufferLocked(out_buf->buffer_id, buf_handle);
       output_buffers.push_back(std::move(out_buf));
     }
     if (output_buffers.size() > 0) {
@@ -1345,27 +1351,35 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
   }
 
   // Serialize input buffer.
-  if (result->input_buffer) {
+  if (result.has_input_buffer()) {
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     base::AutoLock streams_lock(streams_lock_);
     mojom::Camera3StreamBufferPtr input_buffer =
-        internal::SerializeStreamBuffer(result->input_buffer, streams_,
-                                        buffer_handles_);
+        internal::SerializeStreamBuffer(&result.GetInputBuffer()->raw_buffer(),
+                                        streams_, buffer_handles_);
     if (input_buffer.is_null()) {
       LOGF(ERROR) << "Failed to serialize input stream buffer";
     }
-    RemoveReturnBufferLocked(input_buffer->buffer_id, *result->input_buffer);
+
+    auto buf = result.AcquireInputBuffer().value();
+    const camera3_stream_buffer_t buf_handle = buf.raw_buffer();
+    // It's vital to drop the reference to the underlying camera buffer
+    // handle here because RemoveReturnBufferLocked() will free the backing
+    // memory asynchronously.
+    buf.Invalidate();
+    RemoveReturnBufferLocked(input_buffer->buffer_id, buf_handle);
     r->input_buffer = std::move(input_buffer);
   }
 
   if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
     // TODO(lnishan): Handle the errors here.
     std::vector<mojom::Camera3PhyscamMetadataPtr> phys_metadata;
-    for (int i = 0; i < result->num_physcam_metadata; ++i) {
+    for (int i = 0; i < result.num_physcam_metadata(); ++i) {
       phys_metadata[i] = mojom::Camera3PhyscamMetadata::New();
       int internal_camera_id = 0;
-      if (!base::StringToInt(result->physcam_ids[i], &internal_camera_id)) {
-        LOGF(ERROR) << "Invalid physical camera ID: " << result->physcam_ids[i];
+      if (!base::StringToInt(result.physcam_ids()[i], &internal_camera_id)) {
+        LOGF(ERROR) << "Invalid physical camera ID: "
+                    << result.physcam_ids()[i];
       }
       int public_camera_id =
           get_public_camera_id_callback_.Run(internal_camera_id);
@@ -1375,7 +1389,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
       }
       phys_metadata[i]->id = public_camera_id;
       phys_metadata[i]->metadata =
-          internal::SerializeCameraMetadata(result->physcam_metadata[i]);
+          internal::SerializeCameraMetadata(result.physcam_metadata()[i]);
     }
     r->physcam_metadata = std::move(phys_metadata);
   }

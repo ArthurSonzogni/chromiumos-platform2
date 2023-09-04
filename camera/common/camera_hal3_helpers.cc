@@ -184,6 +184,13 @@ Camera3StreamBuffer& Camera3StreamBuffer::operator=(
   return *this;
 }
 
+void Camera3StreamBuffer::Invalidate() {
+  EndTracing();
+  raw_buffer_ = kInvalidRawBuffer;
+  type_ = Type::kInvalidType;
+  dir_ = Direction::kInvalidDirection;
+}
+
 void Camera3StreamBuffer::StartTracing(int frame_number) {
   if (!is_valid() || trace_started_) {
     return;
@@ -237,13 +244,6 @@ Camera3StreamBuffer::Camera3StreamBuffer(
   auto* handle = camera_buffer_handle_t::FromBufferHandle(*raw_buffer_.buffer);
   CHECK(handle);
   raw_buffer_.buffer = const_cast<buffer_handle_t*>(&handle->self);
-}
-
-void Camera3StreamBuffer::Invalidate() {
-  EndTracing();
-  raw_buffer_ = kInvalidRawBuffer;
-  type_ = Type::kInvalidType;
-  dir_ = Direction::kInvalidDirection;
 }
 
 //
