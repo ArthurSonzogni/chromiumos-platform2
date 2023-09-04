@@ -49,6 +49,13 @@ message StartEnrollSessionReply {
   optional FingerprintError error = 1;
 }
 
+message StartAuthSessionRequest {
+  optional bytes user_id = 1;
+  optional bytes gsc_nonce = 2;
+  optional bytes encrypted_label_seed = 3;
+  optional bytes iv = 4;
+}
+
 // Returned from biod's StartAuthSession method.
 message StartAuthSessionReply {
   optional FingerprintError error = 1;
@@ -102,11 +109,22 @@ message CreateCredentialReply {
   optional string record_id = 5;
 }
 
+// TODO(b/298346899): This proto is deprecated and will be removed after
+// callers migrate to the new proto. Note that the new service itself
+// hasn't launched yet so we didn't keep the implementation backward
+// compatible with this proto. As of now, usage of this proto will already
+// result in failures.
 message AuthenticateCredentialRequest {
   optional bytes gsc_nonce = 1;
   optional bytes encrypted_label_seed = 2;
   optional bytes iv = 3;
   optional FpPublicKey pub = 4;
+}
+
+// TODO(b/298346899): Rename this back to AuthenticateCredentialRequest after
+// callers have switched over.
+message AuthenticateCredentialRequestV2 {
+  optional FpPublicKey pub = 1;
 }
 
 message AuthenticateCredentialReply {

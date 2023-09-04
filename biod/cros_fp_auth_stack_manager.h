@@ -66,7 +66,10 @@ class CrosFpAuthStackManager : public AuthStackManager {
       std::unique_ptr<CrosFpSessionManager> session_manager,
       std::unique_ptr<PairingKeyStorage> pk_storage,
       std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver,
-      State state = State::kNone);
+      State state = State::kNone,
+      // This param allows tests to set an initial |pending_match_event_| when
+      // initial state is State::kAuthDone.
+      std::optional<uint32_t> pending_match_event = std::nullopt);
   CrosFpAuthStackManager(const CrosFpAuthStackManager&) = delete;
   CrosFpAuthStackManager& operator=(const CrosFpAuthStackManager&) = delete;
 
@@ -85,9 +88,10 @@ class CrosFpAuthStackManager : public AuthStackManager {
       const StartEnrollSessionRequest& request) override;
   CreateCredentialReply CreateCredential(
       const CreateCredentialRequestV2& request) override;
-  AuthStackManager::Session StartAuthSession(std::string user_id) override;
+  AuthStackManager::Session StartAuthSession(
+      const StartAuthSessionRequest& request) override;
   void AuthenticateCredential(
-      const AuthenticateCredentialRequest& request,
+      const AuthenticateCredentialRequestV2& request,
       AuthStackManager::AuthenticateCredentialCallback callback) override;
   DeleteCredentialReply DeleteCredential(
       const DeleteCredentialRequest& request) override;
@@ -122,7 +126,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
 
   void OnEnrollScanDone(ScanResult result,
                         const AuthStackManager::EnrollStatus& enroll_status);
-  void OnAuthScanDone(brillo::Blob auth_nonce);
+  void OnAuthScanDone();
   void OnSessionFailed();
 
   bool LoadUser(std::string user_id, bool lock_to_user);
@@ -135,16 +139,9 @@ class CrosFpAuthStackManager : public AuthStackManager {
   bool RequestEnrollFingerUp();
   void DoEnrollImageEvent(uint32_t event);
   void DoEnrollFingerUpEvent(uint32_t event);
+  bool PrepareStartAuthSession(const StartAuthSessionRequest& request);
   bool RequestMatchFingerDown();
   void OnMatchFingerDown(uint32_t event);
-  void DoMatch(const AuthenticateCredentialRequest& request,
-               AuthStackManager::AuthenticateCredentialCallback callback);
-  void DoMatchEvent(
-      AuthenticateCredentialRequest request,
-      std::shared_ptr<AuthStackManager::AuthenticateCredentialCallback>
-          callback,
-      uint32_t event);
-  void AbortDoMatch(AuthStackManager::AuthenticateCredentialCallback callback);
   bool RequestFingerUp();
   void OnFingerUpEvent(uint32_t event);
 
@@ -165,9 +162,6 @@ class CrosFpAuthStackManager : public AuthStackManager {
   AuthStackManager::AuthScanDoneCallback on_auth_scan_done_;
   AuthStackManager::SessionFailedCallback on_session_failed_;
 
-  // A timer that aborts the match session when time is up.
-  base::OneShotTimer do_match_timer_;
-
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
 
   std::unique_ptr<CrosFpSessionManager> session_manager_;
@@ -183,6 +177,15 @@ class CrosFpAuthStackManager : public AuthStackManager {
   // multi-login, but as biod and FPMCU can only hold state for a single user,
   // we stick to the first logged-in user.
   bool locked_to_current_user_ = false;
+
+  // We need to cache the StartAuthSession request if we receive it during
+  // WaitForFingerUp state.
+  std::optional<StartAuthSessionRequest> pending_request_;
+
+  // We need to cache the match event received in match mode, as the actual
+  // match request will come in another command (AuthenticateCredential). This
+  // should be non-null iff we're in AuthDone state.
+  std::optional<uint32_t> pending_match_event_;
 
   std::unique_ptr<MaintenanceScheduler> maintenance_scheduler_;
 

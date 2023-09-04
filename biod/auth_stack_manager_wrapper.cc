@@ -168,16 +168,12 @@ void AuthStackManagerWrapper::OnEnrollScanDone(
   }
 }
 
-void AuthStackManagerWrapper::OnAuthScanDone(brillo::Blob auth_nonce) {
+void AuthStackManagerWrapper::OnAuthScanDone() {
   if (!auth_session_dbus_object_)
     return;
 
   dbus::Signal auth_scan_done_signal(kAuthStackManagerInterface,
                                      kBiometricsManagerAuthScanDoneSignal);
-  dbus::MessageWriter writer(&auth_scan_done_signal);
-  AuthScanDone proto;
-  proto.set_auth_nonce(brillo::BlobToString(auth_nonce));
-  writer.AppendProtoAsArrayOfBytes(proto);
   dbus_object_.SendSignal(&auth_scan_done_signal);
 }
 
@@ -246,12 +242,13 @@ void AuthStackManagerWrapper::CreateCredential(
   response->Return(auth_stack_manager_->CreateCredential(request));
 }
 
-bool AuthStackManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
-                                               dbus::Message* message,
-                                               std::string user_id,
-                                               ObjectPath* auth_session_path) {
+bool AuthStackManagerWrapper::StartAuthSession(
+    brillo::ErrorPtr* error,
+    dbus::Message* message,
+    const StartAuthSessionRequest& request,
+    ObjectPath* auth_session_path) {
   AuthStackManager::Session auth_session =
-      auth_stack_manager_->StartAuthSession(std::move(user_id));
+      auth_stack_manager_->StartAuthSession(request);
   if (!auth_session) {
     *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
                                    errors::kInternalError,
@@ -284,7 +281,7 @@ bool AuthStackManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
 void AuthStackManagerWrapper::AuthenticateCredential(
     std::unique_ptr<DBusMethodResponse<const AuthenticateCredentialReply&>>
         response,
-    const AuthenticateCredentialRequest& request) {
+    const AuthenticateCredentialRequestV2& request) {
   auto callback =
       [](std::unique_ptr<DBusMethodResponse<const AuthenticateCredentialReply&>>
              response,

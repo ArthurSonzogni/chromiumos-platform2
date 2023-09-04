@@ -63,16 +63,16 @@ class AuthStackManager {
   // mode is active. Returns a false Session on failure. A successful auth
   // session will put the AuthStackManager into ready state for
   // AuthenticateCredential.
-  virtual Session StartAuthSession(std::string user_id) = 0;
+  virtual Session StartAuthSession(const StartAuthSessionRequest& request) = 0;
 
   using AuthenticateCredentialCallback =
       base::OnceCallback<void(AuthenticateCredentialReply)>;
   // Loads the fingerprint records and perform the fingerprint match. Should
   // only be called after an auth session completes successfully. See
-  // AuthenticateCredentialRequest/Reply protos for the detailed function
+  // AuthenticateCredentialRequestV2/Reply protos for the detailed function
   // signature.
   virtual void AuthenticateCredential(
-      const AuthenticateCredentialRequest& request,
+      const AuthenticateCredentialRequestV2& request,
       AuthenticateCredentialCallback callback) = 0;
 
   virtual DeleteCredentialReply DeleteCredential(
@@ -98,8 +98,7 @@ class AuthStackManager {
   // This is a repeating callback because it is set by the AuthStack dbus
   // wrapper, which registers to this callback once and emit a dbus signal on
   // every auth scan done.
-  using AuthScanDoneCallback =
-      base::RepeatingCallback<void(brillo::Blob auth_nonce)>;
+  using AuthScanDoneCallback = base::RepeatingCallback<void()>;
   virtual void SetAuthScanDoneHandler(
       const AuthScanDoneCallback& on_auth_scan_done) = 0;
 

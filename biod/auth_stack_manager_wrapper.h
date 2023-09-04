@@ -44,7 +44,7 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
   void OnNameOwnerChanged(dbus::Signal* signal);
   void OnEnrollScanDone(ScanResult scan_result,
                         const AuthStackManager::EnrollStatus& enroll_status);
-  void OnAuthScanDone(brillo::Blob auth_nonce);
+  void OnAuthScanDone();
   void OnSessionFailed();
   void GetNonce(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                     const GetNonceReply&>> response);
@@ -57,12 +57,12 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
                         const CreateCredentialRequestV2& request);
   bool StartAuthSession(brillo::ErrorPtr* error,
                         dbus::Message* message,
-                        std::string user_id,
+                        const StartAuthSessionRequest& request,
                         dbus::ObjectPath* auth_session_path);
   void AuthenticateCredential(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           const AuthenticateCredentialReply&>> response,
-      const AuthenticateCredentialRequest& request);
+      const AuthenticateCredentialRequestV2& request);
   void DeleteCredential(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                             const DeleteCredentialReply&>> response,
                         const DeleteCredentialRequest& request);

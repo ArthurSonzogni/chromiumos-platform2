@@ -46,7 +46,8 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
     std::unique_ptr<CrosFpSessionManager> session_manager,
     std::unique_ptr<PairingKeyStorage> pk_storage,
     std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver,
-    State state)
+    State state,
+    std::optional<uint32_t> pending_match_event)
     : biod_metrics_(biod_metrics),
       cros_dev_(std::move(cros_fp_device)),
       power_button_filter_(std::move(power_button_filter)),
@@ -54,6 +55,7 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
       pk_storage_(std::move(pk_storage)),
       pinweaver_(std::move(pinweaver)),
       state_(state),
+      pending_match_event_(pending_match_event),
       maintenance_scheduler_(std::make_unique<MaintenanceScheduler>(
           cros_dev_.get(), biod_metrics_)),
       session_weak_factory_(this) {
@@ -255,25 +257,27 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
   return reply;
 }
 
-BioSession CrosFpAuthStackManager::StartAuthSession(std::string user_id) {
+BioSession CrosFpAuthStackManager::StartAuthSession(
+    const StartAuthSessionRequest& request) {
   if (!CanStartAuth()) {
     LOG(ERROR) << "Can't start an auth session now, current state is: "
                << CurrentStateToString();
     return BioSession(base::NullCallback());
   }
 
-  if (!LoadUser(user_id, false)) {
+  if (!LoadUser(request.user_id(), false)) {
     LOG(ERROR) << "Failed to load user for authentication.";
     return BioSession(base::NullCallback());
   }
 
   if (state_ == State::kWaitForFingerUp) {
     state_ = State::kAuthWaitForFingerUp;
+    pending_request_ = request;
   } else {
-    // Make sure context is cleared before starting auth session.
-    cros_dev_->ResetContext();
-    if (!RequestMatchFingerDown())
+    if (!PrepareStartAuthSession(request)) {
+      LOG(ERROR) << "Failed to prepare start auth session";
       return BioSession(base::NullCallback());
+    }
     state_ = State::kAuth;
   }
 
@@ -282,7 +286,7 @@ BioSession CrosFpAuthStackManager::StartAuthSession(std::string user_id) {
 }
 
 void CrosFpAuthStackManager::AuthenticateCredential(
-    const AuthenticateCredentialRequest& request,
+    const AuthenticateCredentialRequestV2& request,
     AuthStackManager::AuthenticateCredentialCallback callback) {
   AuthenticateCredentialReply reply;
 
@@ -294,32 +298,105 @@ void CrosFpAuthStackManager::AuthenticateCredential(
     return;
   }
 
-  if (!session_manager_->GetUser().has_value()) {
-    LOG(ERROR)
-        << "Can only authenticate credential when there is a user session.";
+  std::optional<uint32_t> event;
+  event.swap(pending_match_event_);
+  if (!event.has_value()) {
+    LOG(ERROR) << "No match event.";
     reply.set_status(AuthenticateCredentialReply::INCORRECT_STATE);
     std::move(callback).Run(std::move(reply));
     return;
   }
 
-  if (!cros_dev_->SetNonceContext(
-          brillo::BlobFromString(request.gsc_nonce()),
-          brillo::BlobFromString(request.encrypted_label_seed()),
-          brillo::BlobFromString(request.iv()))) {
-    LOG(ERROR) << "Failed to set nonce context";
-    reply.set_status(AuthenticateCredentialReply::SET_NONCE_FAILED);
+  // Don't try to match again until the user has lifted their finger from the
+  // sensor. Request the FingerUp event as soon as the HW signaled a match so it
+  // doesn't attempt a new match while the host is processing the first
+  // match event.
+  if (!RequestFingerUp()) {
+    state_ = State::kNone;
+    LOG(WARNING) << "Failed to request finger up.";
+  } else {
+    state_ = State::kWaitForFingerUp;
+  }
+
+  int match_result = EC_MKBP_FP_ERRCODE(*event);
+  bool matched = false;
+
+  uint32_t match_idx = EC_MKBP_FP_MATCH_IDX(*event);
+  LOG(INFO) << __func__ << " result: '" << MatchResultToString(match_result)
+            << "' (finger: " << match_idx << ")";
+
+  switch (match_result) {
+    case EC_MKBP_FP_ERR_MATCH_NO_TEMPLATES:
+      LOG(ERROR) << "No templates to match: " << std::hex << *event;
+      reply.set_status(AuthenticateCredentialReply::NO_TEMPLATES);
+      break;
+    case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
+      LOG(ERROR) << "Internal error when matching templates: " << std::hex
+                 << *event;
+      reply.set_status(AuthenticateCredentialReply::INTERNAL_ERROR);
+      break;
+    case EC_MKBP_FP_ERR_MATCH_NO:
+      reply.set_status(AuthenticateCredentialReply::SUCCESS);
+      reply.set_scan_result(ScanResult::SCAN_RESULT_NO_MATCH);
+      break;
+    case EC_MKBP_FP_ERR_MATCH_YES:
+    case EC_MKBP_FP_ERR_MATCH_YES_UPDATED:
+    case EC_MKBP_FP_ERR_MATCH_YES_UPDATE_FAILED:
+      // We are on a good path to successfully authenticate user, but
+      // we still need to fetch the positive match secret.
+      matched = true;
+      break;
+    case EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY:
+      reply.set_status(AuthenticateCredentialReply::SUCCESS);
+      reply.set_scan_result(ScanResult::SCAN_RESULT_INSUFFICIENT);
+      break;
+    case EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE:
+      reply.set_status(AuthenticateCredentialReply::SUCCESS);
+      reply.set_scan_result(ScanResult::SCAN_RESULT_PARTIAL);
+      break;
+    default:
+      LOG(ERROR) << "Unexpected result from matching templates: " << std::hex
+                 << *event;
+      reply.set_status(AuthenticateCredentialReply::INTERNAL_ERROR);
+  }
+
+  if (!matched) {
     std::move(callback).Run(std::move(reply));
     return;
   }
 
-  if (!cros_dev_->ReloadTemplates(session_manager_->GetNumOfTemplates())) {
-    LOG(ERROR) << "Failed to reload templates.";
-    reply.set_status(AuthenticateCredentialReply::UPLOAD_TEMPLATES_FAILED);
+  std::optional<RecordMetadata> metadata =
+      session_manager_->GetRecordMetadata(match_idx);
+  if (!metadata.has_value()) {
+    LOG(ERROR) << "Matched template idx not found in in-memory records.";
+    reply.set_status(AuthenticateCredentialReply::NO_TEMPLATES);
     std::move(callback).Run(std::move(reply));
     return;
   }
 
-  DoMatch(request, std::move(callback));
+  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> secret_reply =
+      cros_dev_->GetPositiveMatchSecretWithPubkey(
+          match_idx, brillo::BlobFromString(request.pub().x()),
+          brillo::BlobFromString(request.pub().y()));
+  if (!secret_reply.has_value()) {
+    LOG(ERROR) << "Failed to get positive match secret.";
+    reply.set_status(AuthenticateCredentialReply::NO_SECRET);
+    std::move(callback).Run(std::move(reply));
+    return;
+  }
+
+  reply.set_status(AuthenticateCredentialReply::SUCCESS);
+  reply.set_encrypted_secret(
+      brillo::BlobToString(secret_reply->encrypted_secret));
+  reply.set_iv(brillo::BlobToString(secret_reply->iv));
+  reply.mutable_pub()->set_x(brillo::BlobToString(secret_reply->pk_out_x));
+  reply.mutable_pub()->set_y(brillo::BlobToString(secret_reply->pk_out_y));
+  reply.set_record_id(metadata->record_id);
+
+  std::move(callback).Run(std::move(reply));
+
+  // TODO(b/253993586): Get latency stats and send UMA.
+  // TODO(b/254164023): Update dirty templates.
   return;
 }
 
@@ -430,8 +507,8 @@ void CrosFpAuthStackManager::OnEnrollScanDone(
   on_enroll_scan_done_.Run(result, enroll_status);
 }
 
-void CrosFpAuthStackManager::OnAuthScanDone(brillo::Blob auth_nonce) {
-  on_auth_scan_done_.Run(std::move(auth_nonce));
+void CrosFpAuthStackManager::OnAuthScanDone() {
+  on_auth_scan_done_.Run();
 }
 
 void CrosFpAuthStackManager::OnSessionFailed() {
@@ -569,191 +646,47 @@ void CrosFpAuthStackManager::DoEnrollFingerUpEvent(uint32_t event) {
     OnSessionFailed();
 }
 
+bool CrosFpAuthStackManager::PrepareStartAuthSession(
+    const StartAuthSessionRequest& request) {
+  if (!cros_dev_->SetNonceContext(
+          brillo::BlobFromString(request.gsc_nonce()),
+          brillo::BlobFromString(request.encrypted_label_seed()),
+          brillo::BlobFromString(request.iv()))) {
+    LOG(ERROR) << "Failed to set nonce context";
+    return false;
+  }
+  if (!cros_dev_->ReloadTemplates(session_manager_->GetNumOfTemplates())) {
+    LOG(ERROR) << "Failed to reload templates.";
+    return false;
+  }
+  if (!RequestMatchFingerDown()) {
+    return false;
+  }
+  return true;
+}
+
 bool CrosFpAuthStackManager::RequestMatchFingerDown() {
   next_session_action_ = base::BindRepeating(
       &CrosFpAuthStackManager::OnMatchFingerDown, base::Unretained(this));
-  if (!cros_dev_->SetFpMode(ec::FpMode(Mode::kFingerDown))) {
+  if (!cros_dev_->SetFpMode(ec::FpMode(Mode::kMatch))) {
     next_session_action_ = SessionAction();
-    LOG(ERROR) << "Failed to start finger down mode";
+    LOG(ERROR) << "Failed to start match mode";
     return false;
   }
   return true;
 }
 
 void CrosFpAuthStackManager::OnMatchFingerDown(uint32_t event) {
-  if (!(event & EC_MKBP_FP_FINGER_DOWN)) {
-    LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
-    // Continue waiting for the proper event, do not abort session.
-    return;
-  }
-
-  std::optional<brillo::Blob> auth_nonce = cros_dev_->GetNonce();
-  if (!auth_nonce) {
-    LOG(ERROR) << "Failed to get auth nonce.";
-    OnSessionFailed();
-    return;
-  }
-
-  OnTaskComplete();
-  state_ = State::kAuthDone;
-  OnAuthScanDone(std::move(*auth_nonce));
-}
-
-void CrosFpAuthStackManager::DoMatch(
-    const AuthenticateCredentialRequest& request,
-    AuthStackManager::AuthenticateCredentialCallback callback) {
-  AuthenticateCredentialReply reply;
-
-  // Either SetFpMode failed and only cb_failed will be called, or SetFpMode
-  // succeeded and one of cb_success, cb_timeout will be called depending on
-  // whether match even is emitted within a specified timer.
-  auto [cb, cb_failed] = base::SplitOnceCallback(std::move(callback));
-  auto [cb_success, cb_timeout] = base::SplitOnceCallback(std::move(cb));
-  next_session_action_ = base::BindRepeating(
-      &CrosFpAuthStackManager::DoMatchEvent, base::Unretained(this), request,
-      // We guarantee that the callback will only at most be called once: we
-      // never run the successful callback in DoMatchEvent before
-      // RequestFingerUp, and RequestFingerUp always overwrite
-      // next_session_action_ to another callback.
-      std::make_shared<AuthStackManager::AuthenticateCredentialCallback>(
-          std::move(cb_success)));
-  if (!cros_dev_->SetFpMode(ec::FpMode(Mode::kMatch))) {
-    next_session_action_ = SessionAction();
-    LOG(ERROR) << "Failed to set FPMCU to match mode.";
-    reply.set_status(AuthenticateCredentialReply::MATCH_FAILED);
-    std::move(cb_failed).Run(std::move(reply));
-    return;
-  }
-  state_ = State::kMatch;
-
-  do_match_timer_.Start(
-      FROM_HERE, base::Seconds(2),
-      base::BindOnce(&CrosFpAuthStackManager::AbortDoMatch,
-                     base::Unretained(this), std::move(cb_timeout)));
-  return;
-}
-
-void CrosFpAuthStackManager::DoMatchEvent(
-    AuthenticateCredentialRequest request,
-    std::shared_ptr<AuthStackManager::AuthenticateCredentialCallback> callback,
-    uint32_t event) {
-  AuthenticateCredentialReply reply;
-
   if (!(event & EC_MKBP_FP_MATCH)) {
     LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
     // Continue waiting for the proper event, do not abort session.
     return;
   }
 
-  do_match_timer_.Stop();
-
-  int match_result = EC_MKBP_FP_ERRCODE(event);
-
-  // Don't try to match again until the user has lifted their finger from the
-  // sensor. Request the FingerUp event as soon as the HW signaled a match so it
-  // doesn't attempt a new match while the host is processing the first
-  // match event.
-  if (!RequestFingerUp()) {
-    state_ = State::kNone;
-    LOG(WARNING) << "Failed to request finger up.";
-  } else {
-    state_ = State::kWaitForFingerUp;
-  }
-
-  bool matched = false;
-
-  uint32_t match_idx = EC_MKBP_FP_MATCH_IDX(event);
-  LOG(INFO) << __func__ << " result: '" << MatchResultToString(match_result)
-            << "' (finger: " << match_idx << ")";
-
-  switch (match_result) {
-    case EC_MKBP_FP_ERR_MATCH_NO_TEMPLATES:
-      LOG(ERROR) << "No templates to match: " << std::hex << event;
-      reply.set_status(AuthenticateCredentialReply::NO_TEMPLATES);
-      break;
-    case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
-      LOG(ERROR) << "Internal error when matching templates: " << std::hex
-                 << event;
-      reply.set_status(AuthenticateCredentialReply::INTERNAL_ERROR);
-      break;
-    case EC_MKBP_FP_ERR_MATCH_NO:
-      reply.set_status(AuthenticateCredentialReply::SUCCESS);
-      reply.set_scan_result(ScanResult::SCAN_RESULT_NO_MATCH);
-      break;
-    case EC_MKBP_FP_ERR_MATCH_YES:
-    case EC_MKBP_FP_ERR_MATCH_YES_UPDATED:
-    case EC_MKBP_FP_ERR_MATCH_YES_UPDATE_FAILED:
-      // We are on a good path to successfully authenticate user, but
-      // we still need to fetch the positive match secret.
-      matched = true;
-      break;
-    case EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY:
-      reply.set_status(AuthenticateCredentialReply::SUCCESS);
-      reply.set_scan_result(ScanResult::SCAN_RESULT_INSUFFICIENT);
-      break;
-    case EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE:
-      reply.set_status(AuthenticateCredentialReply::SUCCESS);
-      reply.set_scan_result(ScanResult::SCAN_RESULT_PARTIAL);
-      break;
-    default:
-      LOG(ERROR) << "Unexpected result from matching templates: " << std::hex
-                 << event;
-      reply.set_status(AuthenticateCredentialReply::INTERNAL_ERROR);
-  }
-
-  if (!matched) {
-    std::move(*callback).Run(std::move(reply));
-    return;
-  }
-
-  std::optional<RecordMetadata> metadata =
-      session_manager_->GetRecordMetadata(match_idx);
-  if (!metadata.has_value()) {
-    LOG(ERROR) << "Matched template idx not found in in-memory records.";
-    reply.set_status(AuthenticateCredentialReply::NO_TEMPLATES);
-    std::move(*callback).Run(std::move(reply));
-    return;
-  }
-
-  std::optional<ec::CrosFpDeviceInterface::GetSecretReply> secret_reply =
-      cros_dev_->GetPositiveMatchSecretWithPubkey(
-          match_idx, brillo::BlobFromString(request.pub().x()),
-          brillo::BlobFromString(request.pub().y()));
-  if (!secret_reply.has_value()) {
-    LOG(ERROR) << "Failed to get positive match secret.";
-    reply.set_status(AuthenticateCredentialReply::NO_SECRET);
-    std::move(*callback).Run(std::move(reply));
-    return;
-  }
-
-  reply.set_status(AuthenticateCredentialReply::SUCCESS);
-  reply.set_scan_result(SCAN_RESULT_SUCCESS);
-  reply.set_encrypted_secret(
-      brillo::BlobToString(secret_reply->encrypted_secret));
-  reply.set_iv(brillo::BlobToString(secret_reply->iv));
-  reply.mutable_pub()->set_x(brillo::BlobToString(secret_reply->pk_out_x));
-  reply.mutable_pub()->set_y(brillo::BlobToString(secret_reply->pk_out_y));
-  reply.set_record_id(metadata->record_id);
-
-  std::move(*callback).Run(std::move(reply));
-
-  // TODO(b/253993586): Get latency stats and send UMA.
-  // TODO(b/254164023): Update dirty templates.
-  return;
-}
-
-void CrosFpAuthStackManager::AbortDoMatch(
-    AuthStackManager::AuthenticateCredentialCallback callback) {
-  AuthenticateCredentialReply reply;
-  next_session_action_ = SessionAction();
-  LOG(ERROR) << "Match timed out.";
-  reply.set_status(AuthenticateCredentialReply::MATCH_FAILED);
-
-  // If match timed out, finger should already be up at this moment, so we don't
-  // have to wait for finger up event again.
-  state_ = State::kNone;
-
-  std::move(callback).Run(std::move(reply));
+  pending_match_event_ = event;
+  OnTaskComplete();
+  state_ = State::kAuthDone;
+  OnAuthScanDone();
 }
 
 bool CrosFpAuthStackManager::RequestFingerUp() {
@@ -776,14 +709,20 @@ void CrosFpAuthStackManager::OnFingerUpEvent(uint32_t event) {
   if (state_ == State::kWaitForFingerUp) {
     state_ = State::kNone;
   } else if (state_ == State::kAuthWaitForFingerUp) {
-    // Make sure context is cleared before starting auth session.
-    cros_dev_->ResetContext();
-    if (!RequestMatchFingerDown()) {
+    std::optional<StartAuthSessionRequest> request;
+    request.swap(pending_request_);
+    if (!request.has_value()) {
       OnSessionFailed();
       state_ = State::kNone;
-    } else {
-      state_ = State::kAuth;
+      return;
     }
+    if (!PrepareStartAuthSession(*request)) {
+      LOG(ERROR) << "Failed to prepare start auth session";
+      OnSessionFailed();
+      state_ = State::kNone;
+      return;
+    }
+    state_ = State::kAuth;
   } else {
     LOG(ERROR) << "Finger up event receiving in unexpected state: "
                << CurrentStateToString();

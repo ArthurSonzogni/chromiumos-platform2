@@ -53,8 +53,6 @@ using testing::SetArgPointee;
 
 namespace {
 
-constexpr base::TimeDelta kMatchTimeout = base::Seconds(2);
-
 constexpr uint8_t kCrosFpAuthChannel = 0;
 
 StartEnrollSessionRequest MakeStartEnrollSessionRequest(
@@ -76,17 +74,22 @@ CreateCredentialRequestV2 MakeCreateCredentialRequest(
   return request;
 }
 
-AuthenticateCredentialRequest MakeAuthenticateCredentialRequest(
+StartAuthSessionRequest MakeStartAuthSessionRequest(
     const std::string& user_id,
     const brillo::Blob& gsc_nonce,
     const brillo::Blob& encrypted_label_seed,
-    const brillo::Blob& iv,
-    const brillo::Blob& pub_x,
-    const brillo::Blob& pub_y) {
-  AuthenticateCredentialRequest request;
+    const brillo::Blob& iv) {
+  StartAuthSessionRequest request;
+  request.set_user_id(user_id);
   request.set_gsc_nonce(BlobToString(gsc_nonce));
   request.set_encrypted_label_seed(BlobToString(encrypted_label_seed));
   request.set_iv(BlobToString(iv));
+  return request;
+}
+
+AuthenticateCredentialRequestV2 MakeAuthenticateCredentialRequest(
+    const brillo::Blob& pub_x, const brillo::Blob& pub_y) {
+  AuthenticateCredentialRequestV2 request;
   request.mutable_pub()->set_x(BlobToString(pub_x));
   request.mutable_pub()->set_y(BlobToString(pub_y));
   return request;
@@ -118,7 +121,9 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
  public:
   void SetUp() override { SetUpWithInitialState(); }
 
-  void SetUpWithInitialState(State state = State::kNone) {
+  void SetUpWithInitialState(
+      State state = State::kNone,
+      std::optional<uint32_t> pending_match_event = std::nullopt) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     const auto mock_bus = base::MakeRefCounted<dbus::MockBus>(options);
@@ -158,7 +163,8 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
     auto cros_fp_auth_stack_manager = std::make_unique<CrosFpAuthStackManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
         &mock_metrics_, std::move(mock_session_manager),
-        std::move(mock_pk_storage), std::move(mock_pinweaver), state);
+        std::move(mock_pk_storage), std::move(mock_pinweaver), state,
+        pending_match_event);
 
     cros_fp_auth_stack_manager->SetEnrollScanDoneHandler(
         base::BindRepeating(&CrosFpAuthStackManagerTest::EnrollScanDoneHandler,
@@ -172,7 +178,7 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
         std::move(cros_fp_auth_stack_manager));
   }
 
-  MOCK_METHOD(void, AuthScanDoneHandler, (brillo::Blob auth_nonce));
+  MOCK_METHOD(void, AuthScanDoneHandler, ());
 
  protected:
   MOCK_METHOD(void, EnrollScanDoneHandler, (ScanResult, const EnrollStatus&));
@@ -432,8 +438,6 @@ TEST_F(CrosFpAuthStackManagerTest, TestInitializeNoPkPinWeaverFailed) {
 
 TEST_F(CrosFpAuthStackManagerTest, TestCreateCredentialNotReady) {
   const std::string kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
 
   auto request = MakeCreateCredentialRequest(kPubInX, kPubInY);
@@ -507,6 +511,8 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedOut) {
 TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessNoUser) {
   const std::string kUserId("testuser");
   const std::optional<std::string> kNoUser = std::nullopt;
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   const std::vector<CrosFpSessionManager::SessionRecord> kRecords{
       {
           .tmpl = VendorTemplate(32, 1),
@@ -516,8 +522,11 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessNoUser) {
       }};
   AuthStackManager::Session auth_session;
 
+  auto request = MakeStartAuthSessionRequest(kUserId, kGscNonce,
+                                             kEncryptedLabelSeed, kLabelSeedIv);
+
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kNoUser));
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(Return(kRecords));
@@ -525,9 +534,14 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessNoUser) {
     EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(i, kRecords[i].tmpl))
         .WillOnce(Return(true));
   }
+  EXPECT_CALL(*mock_cros_dev_,
+              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
+  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
 
   // Start auth session.
-  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId);
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
   EXPECT_TRUE(auth_session);
 
   // When auth session ends, FP mode will be set to kNone.
@@ -540,36 +554,49 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessNoUser) {
 
 TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopNoUserFailed) {
   const std::string kUserId("testuser");
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   const std::optional<std::string> kNoUser = std::nullopt;
   AuthStackManager::Session auth_session;
+
+  auto request = MakeStartAuthSessionRequest(kUserId, kGscNonce,
+                                             kEncryptedLabelSeed, kLabelSeedIv);
 
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId))
       .WillOnce(Return(false));
 
   // Start auth session.
-  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId);
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
   EXPECT_FALSE(auth_session);
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionSameUserSuccess) {
   const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kAuthNonce(32, 1);
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   AuthStackManager::Session auth_session;
 
+  auto request = MakeStartAuthSessionRequest(*kUserId, kGscNonce,
+                                             kEncryptedLabelSeed, kLabelSeedIv);
+
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)));
-  EXPECT_CALL(*mock_cros_dev_, GetNonce).WillOnce(Return(kAuthNonce));
-  EXPECT_CALL(*this, AuthScanDoneHandler(kAuthNonce));
+  EXPECT_CALL(*mock_cros_dev_,
+              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
+  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
+  EXPECT_CALL(*this, AuthScanDoneHandler);
 
   // Start auth session.
-  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId.value());
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
   EXPECT_TRUE(auth_session);
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuth);
 
-  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_DOWN);
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH);
 
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuthDone);
 }
@@ -577,18 +604,28 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionSameUserSuccess) {
 TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionDifferentUserSuccess) {
   const std::optional<std::string> kUserId("testuser");
   const std::string kSecondUserId("fakeuser");
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   AuthStackManager::Session auth_session;
+
+  auto request = MakeStartAuthSessionRequest(kSecondUserId, kGscNonce,
+                                             kEncryptedLabelSeed, kLabelSeedIv);
 
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
   EXPECT_CALL(*mock_session_manager_, UnloadUser);
   EXPECT_CALL(*mock_session_manager_, LoadUser(kSecondUserId))
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)));
+  EXPECT_CALL(*mock_cros_dev_,
+              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
+  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
 
   // Start auth session.
-  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kSecondUserId);
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
   EXPECT_TRUE(auth_session);
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuth);
 }
@@ -597,7 +634,12 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionDifferentUserFail) {
   const std::optional<std::string> kUserId("testuser");
   const std::optional<std::string> kNoUserId = std::nullopt;
   const std::string kSecondUserId("fakeuser");
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   AuthStackManager::Session auth_session;
+
+  auto request = MakeStartAuthSessionRequest(kSecondUserId, kGscNonce,
+                                             kEncryptedLabelSeed, kLabelSeedIv);
 
   {
     InSequence s;
@@ -609,7 +651,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionDifferentUserFail) {
 
   cros_fp_auth_stack_manager_->OnUserLoggedIn(kUserId.value());
   // Start auth session. Blocked because there is an existing logged-in user.
-  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kSecondUserId);
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
   EXPECT_FALSE(auth_session);
 }
 
@@ -879,8 +921,12 @@ class CrosFpAuthStackManagerInitiallyWaitForFingerUp
 TEST_F(CrosFpAuthStackManagerInitiallyWaitForFingerUp,
        TestAuthSessionSameUserSuccessDuringWaitForFingerUp) {
   const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kAuthNonce(32, 1);
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   AuthStackManager::Session auth_session;
+
+  auto request = MakeStartAuthSessionRequest(*kUserId, kGscNonce,
+                                             kEncryptedLabelSeed, kLabelSeedIv);
 
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
       .WillOnce(Return(true));
@@ -889,7 +935,7 @@ TEST_F(CrosFpAuthStackManagerInitiallyWaitForFingerUp,
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
 
   // Start auth session.
-  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId.value());
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
   EXPECT_TRUE(auth_session);
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(),
             State::kAuthWaitForFingerUp);
@@ -899,42 +945,53 @@ TEST_F(CrosFpAuthStackManagerInitiallyWaitForFingerUp,
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(),
             State::kAuthWaitForFingerUp);
 
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+  EXPECT_CALL(*mock_cros_dev_,
+              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
+  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuth);
 
-  EXPECT_CALL(*this, AuthScanDoneHandler(kAuthNonce));
+  EXPECT_CALL(*this, AuthScanDoneHandler);
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)));
-  EXPECT_CALL(*mock_cros_dev_, GetNonce).WillOnce(Return(kAuthNonce));
 
   // Finger down after lifting the finger first should complete the auth.
-  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_DOWN);
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH);
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuthDone);
 }
 
-TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionFingerDownModeFailed) {
+TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionMatchModeFailed) {
   const std::optional<std::string> kUserId("testuser");
+  const brillo::Blob kGscNonce(32, 1);
+  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   AuthStackManager::Session auth_session;
 
+  auto request = MakeStartAuthSessionRequest(*kUserId, kGscNonce,
+                                             kEncryptedLabelSeed, kLabelSeedIv);
+
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerDown)))
+  EXPECT_CALL(*mock_cros_dev_,
+              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
+  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(false));
 
   // Auth session should fail to start when FPMCU refuses to set finger down
   // mode.
-  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(kUserId.value());
+  auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
   EXPECT_FALSE(auth_session);
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestAuthenticateCredentialNotReady) {
   const std::string kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
 
-  AuthenticateCredentialRequest request = MakeAuthenticateCredentialRequest(
-      kUserId, kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX, kPubInY);
+  auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
 
   AuthenticateCredentialReply reply;
   cros_fp_auth_stack_manager_->AuthenticateCredential(
@@ -948,27 +1005,20 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthenticateCredentialNotReady) {
 class CrosFpAuthStackManagerInitiallyAuthDone
     : public CrosFpAuthStackManagerTest {
  public:
-  void SetUp() override { SetUpWithInitialState(State::kAuthDone); }
+  void SetUp() override {
+    SetUpWithInitialState(State::kAuthDone,
+                          EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES);
+  }
 };
 
 TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
        TestAuthenticateCredentialSuccess) {
   const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
   const brillo::Blob kEncryptedSecret(32, 5), kSecretIv(16, 5);
   const brillo::Blob kPubOutX(32, 6), kPubOutY(32, 7);
   const RecordMetadata kMetadata{.record_id = "record1"};
 
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_,
-              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
-      .WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecordMetadata(0))
@@ -982,19 +1032,13 @@ TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
           .pk_out_y = kPubOutY,
       }));
 
-  AuthenticateCredentialRequest request = MakeAuthenticateCredentialRequest(
-      kUserId.value(), kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX,
-      kPubInY);
+  auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
 
   AuthenticateCredentialReply reply;
   cros_fp_auth_stack_manager_->AuthenticateCredential(
       request, base::BindOnce([](AuthenticateCredentialReply* reply,
                                  AuthenticateCredentialReply r) { *reply = r; },
                               &reply));
-  // There might be other unrelated signals before the match signal. Test
-  // whether we handled the callbacks correctly.
-  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
-  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES);
 
   ASSERT_EQ(reply.status(), AuthenticateCredentialReply::SUCCESS);
   EXPECT_EQ(reply.encrypted_secret(), BlobToString(kEncryptedSecret));
@@ -1010,142 +1054,23 @@ TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
 }
 
 TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
-       TestAuthenticateCredentialNoUser) {
-  const std::string kUserId("testuser");
-  const std::optional<std::string> kNoUser = std::nullopt;
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
-  const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
-
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kNoUser));
-
-  AuthenticateCredentialRequest request = MakeAuthenticateCredentialRequest(
-      kUserId, kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX, kPubInY);
-
-  AuthenticateCredentialReply reply;
-  cros_fp_auth_stack_manager_->AuthenticateCredential(
-      request, base::BindOnce([](AuthenticateCredentialReply* reply,
-                                 AuthenticateCredentialReply r) { *reply = r; },
-                              &reply));
-
-  EXPECT_EQ(reply.status(), AuthenticateCredentialReply::INCORRECT_STATE);
-}
-
-TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
-       TestAuthenticateCredentialSetNonceContextFailed) {
-  const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
-  const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
-
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_, SetNonceContext).WillOnce(Return(false));
-
-  AuthenticateCredentialRequest request = MakeAuthenticateCredentialRequest(
-      kUserId.value(), kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX,
-      kPubInY);
-
-  AuthenticateCredentialReply reply;
-  cros_fp_auth_stack_manager_->AuthenticateCredential(
-      request, base::BindOnce([](AuthenticateCredentialReply* reply,
-                                 AuthenticateCredentialReply r) { *reply = r; },
-                              &reply));
-
-  EXPECT_EQ(reply.status(), AuthenticateCredentialReply::SET_NONCE_FAILED);
-}
-
-TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
-       TestAuthenticateCredentialReloadTemplatesFailed) {
-  const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
-  const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
-
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_,
-              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(false));
-
-  AuthenticateCredentialRequest request = MakeAuthenticateCredentialRequest(
-      kUserId.value(), kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX,
-      kPubInY);
-
-  AuthenticateCredentialReply reply;
-  cros_fp_auth_stack_manager_->AuthenticateCredential(
-      request, base::BindOnce([](AuthenticateCredentialReply* reply,
-                                 AuthenticateCredentialReply r) { *reply = r; },
-                              &reply));
-
-  EXPECT_EQ(reply.status(),
-            AuthenticateCredentialReply::UPLOAD_TEMPLATES_FAILED);
-}
-
-TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
-       TestAuthenticateCredentialTimeout) {
-  const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
-  const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
-
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_,
-              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
-      .WillOnce(Return(true));
-
-  AuthenticateCredentialRequest request = MakeAuthenticateCredentialRequest(
-      kUserId.value(), kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX,
-      kPubInY);
-
-  AuthenticateCredentialReply reply;
-  cros_fp_auth_stack_manager_->AuthenticateCredential(
-      request, base::BindOnce([](AuthenticateCredentialReply* reply,
-                                 AuthenticateCredentialReply r) { *reply = r; },
-                              &reply));
-  task_environment_.FastForwardBy(kMatchTimeout);
-
-  EXPECT_EQ(reply.status(), AuthenticateCredentialReply::MATCH_FAILED);
-  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kNone);
-}
-
-TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
        TestAuthenticateCredentialGetMetadataFailed) {
   const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
 
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_,
-              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
-      .WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecordMetadata(0))
       .WillOnce(Return(std::nullopt));
 
-  AuthenticateCredentialRequest request = MakeAuthenticateCredentialRequest(
-      kUserId.value(), kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX,
-      kPubInY);
+  auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
 
   AuthenticateCredentialReply reply;
   cros_fp_auth_stack_manager_->AuthenticateCredential(
       request, base::BindOnce([](AuthenticateCredentialReply* reply,
                                  AuthenticateCredentialReply r) { *reply = r; },
                               &reply));
-  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES);
-
   EXPECT_EQ(reply.status(), AuthenticateCredentialReply::NO_TEMPLATES);
-
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kWaitForFingerUp);
 
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
@@ -1155,19 +1080,9 @@ TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
 TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
        TestAuthenticateCredentialGetSecretFailed) {
   const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
   const RecordMetadata kMetadata{.record_id = "record1"};
 
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_,
-              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
-      .WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecordMetadata(0))
@@ -1175,19 +1090,15 @@ TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
   EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecretWithPubkey)
       .WillOnce(Return(std::nullopt));
 
-  AuthenticateCredentialRequest request = MakeAuthenticateCredentialRequest(
-      kUserId.value(), kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX,
-      kPubInY);
+  auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
 
   AuthenticateCredentialReply reply;
   cros_fp_auth_stack_manager_->AuthenticateCredential(
       request, base::BindOnce([](AuthenticateCredentialReply* reply,
                                  AuthenticateCredentialReply r) { *reply = r; },
                               &reply));
-  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES);
 
   EXPECT_EQ(reply.status(), AuthenticateCredentialReply::NO_SECRET);
-
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kWaitForFingerUp);
 
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
@@ -1204,27 +1115,19 @@ class CrosFpAuthStackManagerAuthScanResultTest
     : public CrosFpAuthStackManagerTest,
       public ::testing::WithParamInterface<AuthScanResultTestParam> {
  public:
-  void SetUp() override { SetUpWithInitialState(State::kAuthDone); }
+  void SetUp() override {
+    SetUpWithInitialState(State::kAuthDone,
+                          EC_MKBP_FP_MATCH | GetParam().event);
+  }
 };
 
 TEST_P(CrosFpAuthStackManagerAuthScanResultTest, ScanResult) {
-  const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kGscNonce(32, 1);
-  const brillo::Blob kEncryptedLabelSeed(32, 2), kLabelSeedIv(16, 2);
   const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
   const brillo::Blob kEncryptedSecret(32, 5), kSecretIv(16, 5);
   const brillo::Blob kPubOutX(32, 6), kPubOutY(32, 7);
   const RecordMetadata kMetadata{.record_id = "record1"};
   AuthScanResultTestParam param = GetParam();
 
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_,
-              SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
-      .WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
       .WillOnce(Return(true));
   if (param.status == AuthenticateCredentialReply::SUCCESS &&
@@ -1241,17 +1144,13 @@ TEST_P(CrosFpAuthStackManagerAuthScanResultTest, ScanResult) {
         }));
   }
 
-  AuthenticateCredentialRequest request = MakeAuthenticateCredentialRequest(
-      kUserId.value(), kGscNonce, kEncryptedLabelSeed, kLabelSeedIv, kPubInX,
-      kPubInY);
+  auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
 
   AuthenticateCredentialReply reply;
   cros_fp_auth_stack_manager_->AuthenticateCredential(
       request, base::BindOnce([](AuthenticateCredentialReply* reply,
                                  AuthenticateCredentialReply r) { *reply = r; },
                               &reply));
-  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | param.event);
-
   ASSERT_EQ(reply.status(), param.status);
   if (param.status == AuthenticateCredentialReply::SUCCESS) {
     ASSERT_EQ(reply.scan_result(), param.scan_result);
@@ -1277,7 +1176,6 @@ INSTANTIATE_TEST_SUITE_P(
             .event = EC_MKBP_FP_ERR_MATCH_NO_TEMPLATES,
             .status = AuthenticateCredentialReply::NO_TEMPLATES,
         },
-
         AuthScanResultTestParam{
             .event = EC_MKBP_FP_ERR_MATCH_NO_INTERNAL,
             .status = AuthenticateCredentialReply::INTERNAL_ERROR,
