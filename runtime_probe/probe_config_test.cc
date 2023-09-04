@@ -107,7 +107,7 @@ TEST_F(ProbeConfigTest, LoadConfig) {
 
   EXPECT_EQ(probe_statement->component_name_, "generic");
   EXPECT_EQ(probe_statement->key_.size(), 0);
-  EXPECT_NE(probe_statement->expect_value_, nullptr);
+  EXPECT_NE(probe_statement->expect_value_, std::nullopt);
   EXPECT_EQ(probe_statement->information_->GetDict().size(), 0);
   EXPECT_NE(probe_statement->probe_function_, nullptr);
 
