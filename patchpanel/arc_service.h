@@ -91,18 +91,18 @@ class ArcService {
     const std::string& guest_device_ifname() const {
       return guest_device_ifname_;
     }
-    // The static IPv4 subnet assigned to this ARC device.
+    // The static IPv4 subnet CIDR assigned to this ARC device.
     const net_base::IPv4CIDR& arc_ipv4_subnet() const {
       return arc_ipv4_subnet_;
     }
-    // The static IPv4 address assigned to the ARC virtual interface.
-    const net_base::IPv4Address& arc_ipv4_address() const {
+    // The static IPv4 CIDR address assigned to the ARC virtual interface.
+    const net_base::IPv4CIDR& arc_ipv4_address() const {
       return arc_ipv4_address_;
     }
-    // The static IPv4 address assigned to the bridge associated to this device.
-    // This corresponds to the next hop for the Android network associated to
-    // the ARC virtual interface.
-    const net_base::IPv4Address& bridge_ipv4_address() const {
+    // The static IPv4 CIDR address assigned to the bridge associated to this
+    // device. This corresponds to the next hop for the Android network
+    // associated to the ARC virtual interface.
+    const net_base::IPv4CIDR& bridge_ipv4_address() const {
       return bridge_ipv4_address_;
     }
     // Converts this ArcDevice to a patchpanel proto NetworkDevice object
@@ -116,8 +116,8 @@ class ArcService {
     std::string arc_device_ifname_;
     MacAddress arc_device_mac_address_;
     net_base::IPv4CIDR arc_ipv4_subnet_;
-    net_base::IPv4Address arc_ipv4_address_;
-    net_base::IPv4Address bridge_ipv4_address_;
+    net_base::IPv4CIDR arc_ipv4_address_;
+    net_base::IPv4CIDR bridge_ipv4_address_;
     std::string bridge_ifname_;
     std::string guest_device_ifname_;
   };

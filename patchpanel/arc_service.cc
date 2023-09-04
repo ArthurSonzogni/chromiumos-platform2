@@ -211,8 +211,8 @@ ArcService::ArcDevice::ArcDevice(
       arc_device_ifname_(arc_device_ifname),
       arc_device_mac_address_(arc_device_mac_address),
       arc_ipv4_subnet_(arc_ipv4_subnet.base_cidr()),
-      arc_ipv4_address_(arc_ipv4_subnet.CIDRAtOffset(2)->address()),
-      bridge_ipv4_address_(arc_ipv4_subnet.CIDRAtOffset(1)->address()),
+      arc_ipv4_address_(*arc_ipv4_subnet.CIDRAtOffset(2)),
+      bridge_ipv4_address_(*arc_ipv4_subnet.CIDRAtOffset(1)),
       bridge_ifname_(bridge_ifname),
       guest_device_ifname_(guest_device_ifname) {}
 
@@ -224,8 +224,8 @@ void ArcService::ArcDevice::ConvertToProto(NetworkDevice* output) const {
   output->set_phys_ifname(shill_device_ifname().value_or(kArc0Ifname));
   output->set_ifname(bridge_ifname());
   output->set_guest_ifname(guest_device_ifname());
-  output->set_ipv4_addr(arc_ipv4_address().ToInAddr().s_addr);
-  output->set_host_ipv4_addr(bridge_ipv4_address().ToInAddr().s_addr);
+  output->set_ipv4_addr(arc_ipv4_address().address().ToInAddr().s_addr);
+  output->set_host_ipv4_addr(bridge_ipv4_address().address().ToInAddr().s_addr);
   switch (type()) {
     case ArcType::kContainer:
       output->set_guest_type(NetworkDevice::ARC);
@@ -650,12 +650,10 @@ void ArcService::StartArcDeviceDatapath(
                  << "): Invalid ARC container pid " << pid;
       return;
     }
-    const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-        arc_device.arc_ipv4_address(), 30);
     if (!datapath_->ConnectVethPair(
             pid, kArcNetnsName, arc_device.arc_device_ifname(),
             arc_device.guest_device_ifname(),
-            arc_device.arc_device_mac_address(), guest_cidr,
+            arc_device.arc_device_mac_address(), arc_device.arc_ipv4_address(),
             /*remote_ipv6_cidr=*/std::nullopt,
             /*remote_multicast_flag=*/false)) {
       LOG(ERROR) << __func__ << "(" << arc_device
@@ -669,13 +667,10 @@ void ArcService::StartArcDeviceDatapath(
     }
   }
 
-  // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
-  const auto bridge_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      arc_device.bridge_ipv4_address(), 30);
-
   // Create the associated bridge and link the host virtual device to the
   // bridge.
-  if (!datapath_->AddBridge(arc_device.bridge_ifname(), bridge_cidr)) {
+  if (!datapath_->AddBridge(arc_device.bridge_ifname(),
+                            arc_device.bridge_ipv4_address())) {
     LOG(ERROR) << __func__ << "(" << arc_device << "): Failed to setup bridge";
     return;
   }
@@ -706,7 +701,7 @@ void ArcService::StartArcDeviceDatapath(
   datapath_->StartRoutingDevice(
       shill_device_it->second, arc_device.bridge_ifname(), TrafficSource::kArc);
   datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kArc, shill_device_it->second,
-                                arc_device.arc_ipv4_address());
+                                arc_device.arc_ipv4_address().address());
   if (IsAdbAllowed(shill_device_it->second.type) &&
       !datapath_->AddAdbPortAccessRule(shill_device_it->second.ifname)) {
     LOG(ERROR) << __func__ << "(" << arc_device
@@ -728,7 +723,7 @@ void ArcService::StopArcDeviceDatapath(
       }
       datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
                                        shill_device_it->second,
-                                       arc_device.arc_ipv4_address());
+                                       arc_device.arc_ipv4_address().address());
       datapath_->StopRoutingDevice(arc_device.bridge_ifname());
     }
   }
