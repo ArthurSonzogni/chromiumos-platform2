@@ -407,11 +407,11 @@ bool ArcService::Start(uint32_t id) {
   // used to forward host traffic into an Android VPN. Therefore, |shill_device|
   // is not meaningful for the "arc0" virtual device and is undefined.
   auto* arc0_subnet = arc0_config_->ipv4_subnet();
-  arc0_device_ = std::make_unique<ArcDevice>(
-      arc_type_, std::nullopt, arc0_device_ifname, arc0_config_->mac_addr(),
-      *arc0_subnet, kArcbr0Ifname, kArc0Ifname);
+  arc0_device_ = ArcDevice(arc_type_, std::nullopt, arc0_device_ifname,
+                           arc0_config_->mac_addr(), *arc0_subnet,
+                           kArcbr0Ifname, kArc0Ifname);
 
-  LOG(INFO) << "Starting ARC management Device " << *arc0_device_.get();
+  LOG(INFO) << "Starting ARC management Device " << *arc0_device_;
   StartArcDeviceDatapath(*arc0_device_);
 
   // Start already known shill <-> ARC mapped devices.
@@ -459,8 +459,8 @@ void ArcService::Stop(uint32_t id) {
   shill_devices_ = shill_devices;
 
   StopArcDeviceDatapath(*arc0_device_);
-  LOG(INFO) << "Stopped ARC management Device " << *arc0_device_.get();
-  arc0_device_.reset();
+  LOG(INFO) << "Stopped ARC management Device " << *arc0_device_;
+  arc0_device_ = std::nullopt;
 
   if (arc_type_ == ArcType::kVM) {
     // Destroy allocated TAP devices if any, including the ARC management
@@ -538,17 +538,18 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   }
 
   auto* arc_subnet = config->ipv4_subnet();
-  auto arc_device = std::make_unique<ArcDevice>(
-      arc_type_, shill_device.shill_device_interface_property,
-      arc_device_ifname, config->mac_addr(), *arc_subnet,
-      ArcBridgeName(shill_device), guest_ifname);
 
-  LOG(INFO) << "Starting ARC Device " << *arc_device;
-  StartArcDeviceDatapath(*arc_device);
+  auto arc_device_it =
+      devices_.try_emplace(shill_device.ifname, arc_type_,
+                           shill_device.shill_device_interface_property,
+                           arc_device_ifname, config->mac_addr(), *arc_subnet,
+                           ArcBridgeName(shill_device), guest_ifname);
 
-  arc_device_change_handler_.Run(shill_device, *arc_device,
+  LOG(INFO) << "Starting ARC Device " << arc_device_it.first->second;
+  StartArcDeviceDatapath(arc_device_it.first->second);
+
+  arc_device_change_handler_.Run(shill_device, arc_device_it.first->second,
                                  ArcDeviceEvent::kAdded);
-  devices_.emplace(shill_device.ifname, std::move(arc_device));
   assigned_configs_.emplace(shill_device.ifname, std::move(config));
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDeviceSuccess);
 }
@@ -559,15 +560,15 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
     if (it == devices_.end()) {
       LOG(WARNING) << "Unknown shill Device " << shill_device;
     } else {
-      auto* arc_device = it->second.get();
-      LOG(INFO) << "Removing ARC Device " << *arc_device;
-      arc_device_change_handler_.Run(shill_device, *arc_device,
+      const auto& arc_device = it->second;
+      LOG(INFO) << "Removing ARC Device " << arc_device;
+      arc_device_change_handler_.Run(shill_device, arc_device,
                                      ArcDeviceEvent::kRemoved);
-      StopArcDeviceDatapath(*arc_device);
+      StopArcDeviceDatapath(arc_device);
       const auto config_it = assigned_configs_.find(shill_device.ifname);
       if (config_it == assigned_configs_.end()) {
         LOG(ERROR) << "No IPv4 configuration found for ARC Device "
-                   << *arc_device;
+                   << arc_device;
       } else {
         ReleaseConfig(shill_device.type, std::move(config_it->second));
         assigned_configs_.erase(config_it);
@@ -598,7 +599,7 @@ std::vector<const Device::Config*> ArcService::GetDeviceConfigs() const {
 std::vector<const ArcService::ArcDevice*> ArcService::GetDevices() const {
   std::vector<const ArcDevice*> devices;
   for (const auto& [_, dev] : devices_) {
-    devices.push_back(dev.get());
+    devices.push_back(&dev);
   }
   return devices;
 }

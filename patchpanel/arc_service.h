@@ -55,8 +55,6 @@ class ArcService {
               const Subnet& arc_ipv4_subnet,
               std::string_view bridge_ifname,
               std::string_view guest_device_ifname);
-    ArcDevice(const ArcDevice&) = delete;
-    ArcDevice& operator=(const ArcDevice&) = delete;
     ~ArcDevice();
 
     // The type of this ARC device indicating it was created
@@ -229,7 +227,7 @@ class ArcService {
   std::map<std::string, std::unique_ptr<Device::Config>> assigned_configs_;
   // The ARC Devices corresponding to the host upstream network interfaces,
   // keyed by upstream interface name.
-  std::map<std::string, std::unique_ptr<ArcDevice>> devices_;
+  std::map<std::string, ArcDevice> devices_;
   // ARCVM hardcodes its interface name as eth%d (starting from 0). This is a
   // mapping of its TAP interface name to the interface name inside ARCVM.
   std::map<std::string, std::string> arcvm_guest_ifnames_;
@@ -239,7 +237,8 @@ class ArcService {
   // The "arc0" management Device associated with the virtual interface arc0
   // used for legacy adb-over-tcp support and VPN forwarding. This ARC device is
   // not associated with any given shill physical Device and is always created.
-  std::unique_ptr<ArcDevice> arc0_device_;
+  // This ARC device is defined iff ARC is running.
+  std::optional<ArcDevice> arc0_device_;
   // The PID of the ARC container instance or the CID of ARCVM instance.
   uint32_t id_;
   // All shill Devices currently managed by shill, keyed by host interface name.
