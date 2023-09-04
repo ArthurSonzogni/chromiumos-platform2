@@ -476,6 +476,12 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Returns true iff the balloon timer should be running.
   bool BalloonTimerShouldRun();
 
+  // Starts an upstart job which will fstrim the user's filesystem if lvm is
+  // being used.
+  // TODO(b/288998343): remove when bug is fixed and interrupted discards are
+  // not lost.
+  void TrimUserFilesystem();
+
   base::Thread metrics_thread_ GUARDED_BY_CONTEXT(sequence_checker_){
       "metrics thread"};
   // Destructor will need to run last after all metrics logging to allow

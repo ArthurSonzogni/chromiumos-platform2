@@ -1862,6 +1862,12 @@ StartVmResponse Service::StartVmInternal(
     storage_ballooning = true;
   }
 
+  // TODO(b/288998343): remove when bug is fixed and interrupted discards are
+  // not lost.
+  if (storage_ballooning) {
+    TrimUserFilesystem();
+  }
+
   for (const auto& d : request.disks()) {
     Disk disk{.path = base::FilePath(d.path()),
               .writable = d.writable(),
@@ -4976,6 +4982,38 @@ bool Service::BalloonTimerShouldRun() {
   }
 
   return false;
+}
+
+// Sends a message to the Upstart DBUS service, which should be owned by
+// init/root, to run the trim_filesystem.conf script
+// (see platform2/vm_tools/init/trim_filesystem.conf). The script runs
+// fstrim on the user filesystem if lvm is being used.
+void Service::TrimUserFilesystem() {
+  dbus::ObjectProxy* startup_proxy = bus_->GetObjectProxy(
+      "com.ubuntu.Upstart",
+      dbus::ObjectPath("/com/ubuntu/Upstart/jobs/trim_5ffilesystem"));
+  if (!startup_proxy) {
+    LOG(ERROR) << "Unable to get dbus proxy for Upstart";
+    return;
+  }
+
+  dbus::MethodCall method_call("com.ubuntu.Upstart0_6.Job", "Start");
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendArrayOfStrings({});
+  writer.AppendBool(true /* wait for response */);
+
+  startup_proxy->CallMethodWithErrorResponse(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::BindOnce([](dbus::Response* response, dbus::ErrorResponse* error) {
+        if (response) {
+          LOG(INFO) << "trim_filesystem returned successfully";
+        } else {
+          std::string message;
+          dbus::MessageReader reader(error);
+          reader.PopString(&message);
+          LOG(ERROR) << "trim_filesystem failed: " << message;
+        }
+      }));
 }
 
 }  // namespace vm_tools::concierge
