@@ -244,7 +244,7 @@ TEST_F(DHCPControllerTest, StartWithoutArpGateway) {
 
 TEST_F(DHCPControllerTest, TimeToLeaseExpiry_Success) {
   IPConfig::Properties properties;
-  properties.lease_duration_seconds = kLeaseDuration;
+  properties.dhcp_data.lease_duration_seconds = kLeaseDuration;
   SetCurrentTimeToSecond(kTimeNow);
   InvokeOnIPConfigUpdated(properties, true);
 
@@ -267,7 +267,7 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry_NoDHCPLease) {
 TEST_F(DHCPControllerTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
   SetDHCPVerboseLog();
   IPConfig::Properties properties;
-  properties.lease_duration_seconds = kLeaseDuration;
+  properties.dhcp_data.lease_duration_seconds = kLeaseDuration;
   SetCurrentTimeToSecond(kTimeNow);
   InvokeOnIPConfigUpdated(properties, true);
 
@@ -284,7 +284,7 @@ TEST_F(DHCPControllerTest, ExpiryMetrics) {
   // Get a lease with duration of 1 second, the expiry callback should be
   // triggered right after 1 second.
   IPConfig::Properties properties;
-  properties.lease_duration_seconds = 1;
+  properties.dhcp_data.lease_duration_seconds = 1;
   InvokeOnIPConfigUpdated(properties, true);
 
   dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
@@ -341,6 +341,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalSuccess) {
       KeyValueStore conf;
       conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress,
                          ++address_octet);
+      conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
       if (lease_time_given) {
         const uint32_t kLeaseTime = 1;
         conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyLeaseTime,
@@ -361,6 +362,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalSuccess) {
 TEST_F(DHCPControllerCallbackTest, ProcessEventSignalFail) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
   controller_->lease_acquisition_timeout_callback_.Reset(base::DoNothing());
   controller_->lease_expiration_callback_.Reset(base::DoNothing());
   controller_->ProcessEventSignal(DHCPController::ClientEventReason::kFail,
@@ -385,6 +387,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalUnknown) {
 TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArp) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(0));
   StartInstance();
@@ -408,6 +411,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArp) {
 TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArpNak) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(0));
   StartInstance();
@@ -443,6 +447,7 @@ TEST_F(DHCPControllerCallbackTest,
 TEST_F(DHCPControllerCallbackTest, StoppedDuringFailureCallback) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
   // Stop the DHCP config while it is calling the failure callback.  We
   // need to ensure that no callbacks are left running inadvertently as
   // a result.
@@ -459,6 +464,7 @@ TEST_F(DHCPControllerCallbackTest, StoppedDuringFailureCallback) {
 TEST_F(DHCPControllerCallbackTest, StoppedDuringSuccessCallback) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyLeaseTime, kLeaseDuration);
 
   // Stop the DHCP config while it is calling the success callback.  This

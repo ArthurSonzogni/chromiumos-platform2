@@ -4,8 +4,8 @@
 
 #include "shill/network/dhcpv4_config.h"
 
-#include <iterator>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
@@ -16,11 +16,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 
-#include "shill/ipconfig.h"
 #include "shill/logging.h"
-#include "shill/metrics.h"
-#include "shill/network/dhcp_provider.h"
-#include "shill/technology.h"
 
 namespace shill {
 
@@ -30,7 +26,7 @@ static auto kModuleLogScope = ScopeLogger::kDHCP;
 
 // static
 bool DHCPv4Config::ParseClasslessStaticRoutes(
-    const std::string& classless_routes, IPConfig::Properties* properties) {
+    const std::string& classless_routes, NetworkConfig* network_config) {
   if (classless_routes.empty()) {
     // It is not an error for this string to be empty.
     return true;
@@ -44,7 +40,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
     return false;
   }
 
-  std::vector<IPConfig::Route> routes;
+  std::vector<std::pair<net_base::IPv4CIDR, net_base::IPv4Address>> routes;
   auto route_iterator = route_strings.begin();
   // Classless routes are a space-delimited array of
   // "destination/prefix gateway" values.  As such, we iterate twice
@@ -72,52 +68,50 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
       return false;
     }
 
-    if (destination->prefix_length() == 0 && properties->gateway.empty()) {
+    if (destination->prefix_length() == 0 && !network_config->ipv4_gateway) {
       // If a default route is provided in the classless parameters and
       // we don't already have one, apply this as the default route.
       SLOG(2) << "In " << __func__ << ": Setting default gateway to "
               << gateway_as_string;
-      properties->gateway = gateway->ToString();
+      network_config->ipv4_gateway = gateway;
     } else {
-      IPConfig::Route route;
-      route.host = destination->address().ToString();
-      route.prefix = destination->prefix_length();
-      route.gateway = gateway->ToString();
-      routes.push_back(route);
+      routes.emplace_back(std::make_pair(*destination, *gateway));
       SLOG(2) << "In " << __func__ << ": Adding route to to "
               << destination_as_string << " via " << gateway_as_string;
     }
   }
 
-  properties->dhcp_classless_static_routes.swap(routes);
+  network_config->rfc3442_routes.swap(routes);
 
   return true;
 }
 
 // static
 bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
-                                      IPConfig::Properties* properties) {
+                                      NetworkConfig* network_config,
+                                      DHCPv4Config::Data* dhcp_data) {
   SLOG(2) << __func__;
-  properties->method = kTypeDHCP;
-  properties->address_family = net_base::IPFamily::kIPv4;
   std::string classless_static_routes;
   bool default_gateway_parse_error = false;
+  net_base::IPv4Address address;
+  uint8_t prefix_length = 0;
+  std::string domain_name;
+
   for (const auto& it : configuration.properties()) {
     const auto& key = it.first;
     const brillo::Any& value = it.second;
     SLOG(2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
-      properties->address =
-          net_base::IPv4Address(value.Get<uint32_t>()).ToString();
-      if (properties->address.empty()) {
+      address = net_base::IPv4Address(value.Get<uint32_t>());
+      if (address.IsZero()) {
         return false;
       }
     } else if (key == kConfigurationKeySubnetCIDR) {
-      properties->subnet_prefix = value.Get<uint8_t>();
+      prefix_length = value.Get<uint8_t>();
     } else if (key == kConfigurationKeyBroadcastAddress) {
-      properties->broadcast_address =
-          net_base::IPv4Address(value.Get<uint32_t>()).ToString();
-      if (properties->broadcast_address.empty()) {
+      network_config->ipv4_broadcast =
+          net_base::IPv4Address(value.Get<uint32_t>());
+      if (network_config->ipv4_broadcast->IsZero()) {
         return false;
       }
     } else if (key == kConfigurationKeyRouters) {
@@ -126,8 +120,8 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
         LOG(ERROR) << "No routers provided.";
         default_gateway_parse_error = true;
       } else {
-        properties->gateway = net_base::IPv4Address(routers[0]).ToString();
-        if (properties->gateway.empty()) {
+        network_config->ipv4_gateway = net_base::IPv4Address(routers[0]);
+        if (network_config->ipv4_gateway->IsZero()) {
           LOG(ERROR) << "Failed to parse router parameter provided.";
           default_gateway_parse_error = true;
         }
@@ -135,40 +129,52 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
     } else if (key == kConfigurationKeyDNS) {
       const auto& servers = value.Get<std::vector<uint32_t>>();
       for (auto it = servers.begin(); it != servers.end(); ++it) {
-        std::string server = net_base::IPv4Address(*it).ToString();
-        if (server.empty()) {
+        auto server = net_base::IPAddress(net_base::IPv4Address(*it));
+        if (server.IsZero()) {
           return false;
         }
-        properties->dns_servers.push_back(std::move(server));
+        network_config->dns_servers.push_back(std::move(server));
       }
     } else if (key == kConfigurationKeyDomainName) {
-      properties->domain_name = value.Get<std::string>();
+      domain_name = value.Get<std::string>();
     } else if (key == kConfigurationKeyDomainSearch) {
-      properties->domain_search = value.Get<std::vector<std::string>>();
+      network_config->dns_search_domains =
+          value.Get<std::vector<std::string>>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.Get<uint16_t>();
       if (mtu > NetworkConfig::kMinIPv4MTU) {
-        properties->mtu = mtu;
+        network_config->mtu = mtu;
       }
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {
       classless_static_routes = value.Get<std::string>();
     } else if (key == kConfigurationKeyVendorEncapsulatedOptions) {
-      properties->vendor_encapsulated_options = value.Get<ByteArray>();
+      dhcp_data->vendor_encapsulated_options = value.Get<ByteArray>();
     } else if (key == kConfigurationKeyWebProxyAutoDiscoveryUrl) {
-      properties->web_proxy_auto_discovery = value.Get<std::string>();
+      dhcp_data->web_proxy_auto_discovery = value.Get<std::string>();
     } else if (key == kConfigurationKeyLeaseTime) {
-      properties->lease_duration_seconds = value.Get<uint32_t>();
+      dhcp_data->lease_duration_seconds = value.Get<uint32_t>();
     } else if (key == kConfigurationKeyiSNSOptionData) {
-      properties->isns_option_data = value.Get<ByteArray>();
+      dhcp_data->isns_option_data = value.Get<ByteArray>();
     } else {
       SLOG(2) << "Key ignored.";
     }
   }
-  ParseClasslessStaticRoutes(classless_static_routes, properties);
-  if (default_gateway_parse_error && properties->gateway.empty()) {
-    return false;
+  if (!address.IsZero()) {
+    if (prefix_length > 0) {
+      network_config->ipv4_address =
+          net_base::IPv4CIDR::CreateFromAddressAndPrefix(address,
+                                                         prefix_length);
+    }
+    if (!network_config->ipv4_address) {
+      LOG(ERROR) << "Invalid prefix length " << prefix_length
+                 << ", ignoring address " << address;
+    }
   }
-  return true;
+  if (!domain_name.empty() && network_config->dns_search_domains.empty()) {
+    network_config->dns_search_domains.push_back(domain_name + ".");
+  }
+  ParseClasslessStaticRoutes(classless_static_routes, network_config);
+  return !default_gateway_parse_error || network_config->ipv4_gateway;
 }
 
 }  // namespace shill

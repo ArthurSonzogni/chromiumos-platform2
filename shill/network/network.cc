@@ -1146,7 +1146,7 @@ bool Network::IsConnectedViaTether() const {
     return false;
   }
   const auto& vendor_option =
-      ipconfig_->properties().vendor_encapsulated_options;
+      ipconfig_->properties().dhcp_data.vendor_encapsulated_options;
   if (vendor_option.size() != strlen(kAndroidMeteredHotspotVendorOption)) {
     return false;
   }

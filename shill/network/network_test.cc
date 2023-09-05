@@ -1093,13 +1093,13 @@ TEST_F(NetworkTest, IsConnectedViaTether) {
 
   IPConfig::Properties properties;
   const char vendor_option1[] = "ANDROID_METERED";
-  properties.vendor_encapsulated_options =
+  properties.dhcp_data.vendor_encapsulated_options =
       ByteArray(vendor_option1, vendor_option1 + strlen(vendor_option1));
   network_->ipconfig()->UpdateProperties(properties);
   EXPECT_TRUE(network_->IsConnectedViaTether());
 
   const char vendor_option2[] = "Some other non-empty value";
-  properties.vendor_encapsulated_options =
+  properties.dhcp_data.vendor_encapsulated_options =
       ByteArray(vendor_option2, vendor_option2 + strlen(vendor_option2));
   network_->ipconfig()->UpdateProperties(properties);
   EXPECT_FALSE(network_->IsConnectedViaTether());

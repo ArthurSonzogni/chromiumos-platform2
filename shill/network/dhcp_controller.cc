@@ -29,6 +29,7 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/network/dhcpv4_config.h"
+#include "shill/network/network_config.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -179,8 +180,22 @@ void DHCPController::ProcessEventSignal(ClientEventReason reason,
     LOG(WARNING) << "Event ignored.";
     return;
   }
+
+  NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+  if (!DHCPv4Config::ParseConfiguration(configuration, &network_config,
+                                        &dhcp_data)) {
+    LOG(ERROR) << device_name_
+               << ": Error parsing network configuration from DHCP client.";
+    return;
+  }
+  // TODO(b/269401899): Directly use network_config and dhcp_data in
+  // communication with Network.
   IPConfig::Properties properties;
-  CHECK(DHCPv4Config::ParseConfiguration(configuration, &properties));
+  properties.method = kTypeDHCP;
+  properties.address_family = net_base::IPFamily::kIPv4;
+  properties.UpdateFromNetworkConfig(network_config, /*force_overwrite=*/true);
+  properties.UpdateFromDHCPData(dhcp_data);
 
   // This needs to be set before calling OnIPConfigUpdated() below since
   // those functions may indirectly call other methods like ReleaseIP that
@@ -232,9 +247,10 @@ void DHCPController::OnIPConfigUpdated(const IPConfig::Properties& properties,
                                        bool new_lease_acquired) {
   if (new_lease_acquired) {
     StopAcquisitionTimeout();
-    if (properties.lease_duration_seconds) {
-      UpdateLeaseExpirationTime(properties.lease_duration_seconds);
-      StartExpirationTimeout(base::Seconds(properties.lease_duration_seconds));
+    if (properties.dhcp_data.lease_duration_seconds) {
+      UpdateLeaseExpirationTime(properties.dhcp_data.lease_duration_seconds);
+      StartExpirationTimeout(
+          base::Seconds(properties.dhcp_data.lease_duration_seconds));
     } else {
       LOG(WARNING)
           << "Lease duration is zero; not starting an expiration timer.";

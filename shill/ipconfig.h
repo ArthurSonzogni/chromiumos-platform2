@@ -14,6 +14,7 @@
 #include <net-base/ip_address.h>
 
 #include "shill/mockable.h"
+#include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_config.h"
 #include "shill/store/property_store.h"
 
@@ -57,6 +58,8 @@ class IPConfig {
         bool force_overwrite,
         net_base::IPFamily family = net_base::IPFamily::kIPv4);
 
+    void UpdateFromDHCPData(const DHCPv4Config::Data& dhcp_data);
+
     std::optional<net_base::IPFamily> address_family = std::nullopt;
     std::string address;
     int32_t subnet_prefix = 0;
@@ -86,14 +89,8 @@ class IPConfig {
     // sent to prefixes in this list will be routed through this connection,
     // even if it is not the default connection.
     std::vector<Route> dhcp_classless_static_routes;
-    // Vendor encapsulated option string gained from DHCP.
-    ByteArray vendor_encapsulated_options;
-    // iSNS option data gained from DHCP.
-    ByteArray isns_option_data;
-    // Web Proxy Auto Discovery (WPAD) URL gained from DHCP.
-    std::string web_proxy_auto_discovery;
-    // Length of time the lease was granted.
-    uint32_t lease_duration_seconds = 0;
+    // Informational data from DHCP.
+    DHCPv4Config::Data dhcp_data;
   };
 
   static constexpr int kUndefinedMTU = 0;

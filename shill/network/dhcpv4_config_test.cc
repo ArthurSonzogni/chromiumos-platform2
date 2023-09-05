@@ -4,12 +4,13 @@
 
 #include "shill/network/dhcpv4_config.h"
 
-#include <memory>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
+#include <net-base/ipv4_address.h>
 
-#include "shill/ipconfig.h"
+#include "shill/network/network_config.h"
 
 namespace shill {
 
@@ -22,11 +23,11 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   // Last gateway missing, leaving an odd number of parameters.
   const std::string kBrokenClasslessRoutes0 =
       kDefaultDestination + " " + kRouter0 + " " + kDestination1;
-  IPConfig::Properties properties;
+  NetworkConfig network_config;
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes0,
-                                                        &properties));
-  EXPECT_TRUE(properties.dhcp_classless_static_routes.empty());
-  EXPECT_TRUE(properties.gateway.empty());
+                                                        &network_config));
+  EXPECT_TRUE(network_config.rfc3442_routes.empty());
+  EXPECT_FALSE(network_config.ipv4_gateway.has_value());
 
   // Gateway argument for the second route is malformed, but we were able
   // to salvage a default gateway.
@@ -34,37 +35,40 @@ TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   const std::string kBrokenClasslessRoutes1 =
       kBrokenClasslessRoutes0 + " " + kBrokenRouter1;
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
-                                                        &properties));
-  EXPECT_TRUE(properties.dhcp_classless_static_routes.empty());
-  EXPECT_EQ(kRouter0, properties.gateway);
+                                                        &network_config));
+  EXPECT_TRUE(network_config.rfc3442_routes.empty());
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter0),
+            network_config.ipv4_gateway);
 
   const std::string kRouter1 = "10.0.0.253";
   const std::string kRouter2 = "10.0.0.252";
   const std::string kClasslessRoutes0 = kDefaultDestination + " " + kRouter2 +
                                         " " + kDestination1 + " " + kRouter1;
-  EXPECT_TRUE(
-      DHCPv4Config::ParseClasslessStaticRoutes(kClasslessRoutes0, &properties));
+  EXPECT_TRUE(DHCPv4Config::ParseClasslessStaticRoutes(kClasslessRoutes0,
+                                                       &network_config));
   // The old default route is preserved.
-  EXPECT_EQ(kRouter0, properties.gateway);
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter0),
+            network_config.ipv4_gateway);
 
   // The two routes (including the one which would have otherwise been
   // classified as a default route) are added to the routing table.
-  EXPECT_EQ(2, properties.dhcp_classless_static_routes.size());
-  const IPConfig::Route& route0 = properties.dhcp_classless_static_routes[0];
-  EXPECT_EQ(kDefaultAddress, route0.host);
-  EXPECT_EQ(0, route0.prefix);
-  EXPECT_EQ(kRouter2, route0.gateway);
+  EXPECT_EQ(2, network_config.rfc3442_routes.size());
+  const auto& route0 = network_config.rfc3442_routes[0];
+  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromStringAndPrefix(kDefaultAddress, 0),
+            route0.first);
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter2), route0.second);
 
-  const IPConfig::Route& route1 = properties.dhcp_classless_static_routes[1];
-  EXPECT_EQ(kAddress1, route1.host);
-  EXPECT_EQ(24, route1.prefix);
-  EXPECT_EQ(kRouter1, route1.gateway);
+  const auto& route1 = network_config.rfc3442_routes[1];
+  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromStringAndPrefix(kAddress1, 24),
+            route1.first);
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter1), route1.second);
 
   // A malformed routing table should not affect the current table.
   EXPECT_FALSE(DHCPv4Config::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
-                                                        &properties));
-  EXPECT_EQ(2, properties.dhcp_classless_static_routes.size());
-  EXPECT_EQ(kRouter0, properties.gateway);
+                                                        &network_config));
+  EXPECT_EQ(2, network_config.rfc3442_routes.size());
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString(kRouter0),
+            network_config.ipv4_gateway);
 }
 
 TEST(DHCPv4ConfigTest, ParseConfiguration) {
@@ -88,23 +92,28 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
   conf.Set<std::vector<uint8_t>>(DHCPv4Config::kConfigurationKeyiSNSOptionData,
                                  isns_data);
 
-  IPConfig::Properties properties;
-  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, &properties));
-  EXPECT_EQ("4.3.2.1", properties.address);
-  EXPECT_EQ(16, properties.subnet_prefix);
-  EXPECT_EQ("64.48.32.16", properties.broadcast_address);
-  EXPECT_EQ("8.6.4.2", properties.gateway);
-  ASSERT_EQ(2, properties.dns_servers.size());
-  EXPECT_EQ("3.5.7.9", properties.dns_servers[0]);
-  EXPECT_EQ("2.4.6.8", properties.dns_servers[1]);
-  EXPECT_EQ("domain-name", properties.domain_name);
-  ASSERT_EQ(2, properties.domain_search.size());
-  EXPECT_EQ("foo.com", properties.domain_search[0]);
-  EXPECT_EQ("bar.com", properties.domain_search[1]);
-  EXPECT_EQ(600, properties.mtu);
-  EXPECT_EQ(isns_data.size(), properties.isns_option_data.size());
+  NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+  ASSERT_TRUE(
+      DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
+  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromStringAndPrefix("4.3.2.1", 16),
+            network_config.ipv4_address);
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString("64.48.32.16"),
+            network_config.ipv4_broadcast);
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString("8.6.4.2"),
+            network_config.ipv4_gateway);
+  ASSERT_EQ(2, network_config.dns_servers.size());
+  EXPECT_EQ(*net_base::IPAddress::CreateFromString("3.5.7.9"),
+            network_config.dns_servers[0]);
+  EXPECT_EQ(*net_base::IPAddress::CreateFromString("2.4.6.8"),
+            network_config.dns_servers[1]);
+  ASSERT_EQ(2, network_config.dns_search_domains.size());
+  EXPECT_EQ("foo.com", network_config.dns_search_domains[0]);
+  EXPECT_EQ("bar.com", network_config.dns_search_domains[1]);
+  EXPECT_EQ(600, network_config.mtu);
+  EXPECT_EQ(isns_data.size(), dhcp_data.isns_option_data.size());
   EXPECT_FALSE(
-      memcmp(&properties.isns_option_data[0], &isns_data[0], isns_data.size()));
+      memcmp(&dhcp_data.isns_option_data[0], &isns_data[0], isns_data.size()));
 }
 
 TEST(DHCPv4ConfigTest, ParseConfigurationRespectingMinimumMTU) {
@@ -112,13 +121,15 @@ TEST(DHCPv4ConfigTest, ParseConfigurationRespectingMinimumMTU) {
   for (int mtu = NetworkConfig::kMinIPv4MTU - 3;
        mtu < NetworkConfig::kMinIPv4MTU + 3; mtu++) {
     KeyValueStore conf;
-    IPConfig::Properties properties;
     conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, mtu);
-    ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, &properties));
+    NetworkConfig network_config;
+    DHCPv4Config::Data dhcp_data;
+    ASSERT_TRUE(
+        DHCPv4Config::ParseConfiguration(conf, &network_config, &dhcp_data));
     if (mtu <= NetworkConfig::kMinIPv4MTU) {
-      EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
+      EXPECT_FALSE(network_config.mtu.has_value());
     } else {
-      EXPECT_EQ(mtu, properties.mtu);
+      EXPECT_EQ(mtu, network_config.mtu);
     }
   }
 }

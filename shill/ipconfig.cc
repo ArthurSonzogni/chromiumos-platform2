@@ -327,6 +327,11 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
   }
 }
 
+void IPConfig::Properties::UpdateFromDHCPData(
+    const DHCPv4Config::Data& dhcp_data) {
+  this->dhcp_data = dhcp_data;
+}
+
 // static
 uint32_t IPConfig::global_serial_ = 0;
 
@@ -353,14 +358,15 @@ IPConfig::IPConfig(ControlInterface* control_interface,
   store_.RegisterConstInt32(kPrefixlenProperty, &properties_.subnet_prefix);
   store_.RegisterConstStrings(kSearchDomainsProperty,
                               &properties_.domain_search);
-  store_.RegisterConstByteArray(kVendorEncapsulatedOptionsProperty,
-                                &properties_.vendor_encapsulated_options);
+  store_.RegisterConstByteArray(
+      kVendorEncapsulatedOptionsProperty,
+      &properties_.dhcp_data.vendor_encapsulated_options);
   store_.RegisterConstString(kWebProxyAutoDiscoveryUrlProperty,
-                             &properties_.web_proxy_auto_discovery);
+                             &properties_.dhcp_data.web_proxy_auto_discovery);
   store_.RegisterConstUint32(kLeaseDurationSecondsProperty,
-                             &properties_.lease_duration_seconds);
+                             &properties_.dhcp_data.lease_duration_seconds);
   store_.RegisterConstByteArray(kiSNSOptionDataProperty,
-                                &properties_.isns_option_data);
+                                &properties_.dhcp_data.isns_option_data);
   SLOG(this, 2) << __func__ << " device: " << device_name_;
 }
 
@@ -419,10 +425,13 @@ bool operator==(const IPConfig::Properties& lhs,
          lhs.exclusion_list == rhs.exclusion_list &&
          lhs.blackhole_ipv6 == rhs.blackhole_ipv6 && lhs.mtu == rhs.mtu &&
          lhs.dhcp_classless_static_routes == rhs.dhcp_classless_static_routes &&
-         lhs.vendor_encapsulated_options == rhs.vendor_encapsulated_options &&
-         lhs.isns_option_data == rhs.isns_option_data &&
-         lhs.web_proxy_auto_discovery == rhs.web_proxy_auto_discovery &&
-         lhs.lease_duration_seconds == rhs.lease_duration_seconds;
+         lhs.dhcp_data.vendor_encapsulated_options ==
+             rhs.dhcp_data.vendor_encapsulated_options &&
+         lhs.dhcp_data.isns_option_data == rhs.dhcp_data.isns_option_data &&
+         lhs.dhcp_data.web_proxy_auto_discovery ==
+             rhs.dhcp_data.web_proxy_auto_discovery &&
+         lhs.dhcp_data.lease_duration_seconds ==
+             rhs.dhcp_data.lease_duration_seconds;
 }
 
 std::ostream& operator<<(std::ostream& stream, const IPConfig& config) {
@@ -455,8 +464,8 @@ std::ostream& operator<<(std::ostream& stream,
   if (!properties.domain_name.empty()) {
     stream << ", domain name: " << properties.domain_name;
   }
-  if (!properties.web_proxy_auto_discovery.empty()) {
-    stream << ", wpad: " << properties.web_proxy_auto_discovery;
+  if (!properties.dhcp_data.web_proxy_auto_discovery.empty()) {
+    stream << ", wpad: " << properties.dhcp_data.web_proxy_auto_discovery;
   }
   if (properties.default_route) {
     stream << ", default_route: true";
@@ -467,8 +476,8 @@ std::ostream& operator<<(std::ostream& stream,
   if (properties.mtu != IPConfig::kUndefinedMTU) {
     stream << ", mtu: " << properties.mtu;
   }
-  if (properties.lease_duration_seconds != 0) {
-    stream << ", lease: " << properties.lease_duration_seconds << "s";
+  if (properties.dhcp_data.lease_duration_seconds != 0) {
+    stream << ", lease: " << properties.dhcp_data.lease_duration_seconds << "s";
   }
   return stream << "}";
 }
