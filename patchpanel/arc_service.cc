@@ -21,6 +21,7 @@
 #include <base/system/sys_info.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/constants/vm_tools.h>
+#include <metrics/metrics_library.h>
 #include <net-base/ipv4_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
@@ -217,13 +218,13 @@ ArcService::ArcService(ArcType arc_type,
                        AddressManager* addr_mgr,
                        ForwardingService* forwarding_service,
                        MetricsLibraryInterface* metrics,
-                       ArcDeviceChangeHandler arc_device_change_handler)
+                       DbusClientNotifier* dbus_client_notifier)
     : arc_type_(arc_type),
       datapath_(datapath),
       addr_mgr_(addr_mgr),
       forwarding_service_(forwarding_service),
       metrics_(metrics),
-      arc_device_change_handler_(arc_device_change_handler),
+      dbus_client_notifier_(dbus_client_notifier),
       id_(kInvalidId) {
   DCHECK(datapath_);
   DCHECK(addr_mgr_);
@@ -525,8 +526,10 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   forwarding_service_->StartForwarding(
       shill_device, arc_device_it.first->second.bridge_ifname(),
       {.ipv6 = true, .multicast = forward_multicast});
-  arc_device_change_handler_.Run(shill_device, arc_device_it.first->second,
-                                 ArcDeviceEvent::kAdded);
+  auto signal_device = std::make_unique<NetworkDevice>();
+  arc_device_it.first->second.ConvertToProto(signal_device.get());
+  dbus_client_notifier_->OnNetworkDeviceChanged(
+      std::move(signal_device), NetworkDeviceChangedSignal::DEVICE_ADDED);
   assigned_configs_.emplace(shill_device.ifname, std::move(config));
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDeviceSuccess);
 }
@@ -539,8 +542,10 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
     } else {
       const auto& arc_device = it->second;
       LOG(INFO) << "Removing ARC Device " << arc_device;
-      arc_device_change_handler_.Run(shill_device, arc_device,
-                                     ArcDeviceEvent::kRemoved);
+      auto signal_device = std::make_unique<NetworkDevice>();
+      arc_device.ConvertToProto(signal_device.get());
+      dbus_client_notifier_->OnNetworkDeviceChanged(
+          std::move(signal_device), NetworkDeviceChangedSignal::DEVICE_REMOVED);
       forwarding_service_->StopForwarding(shill_device,
                                           arc_device.bridge_ifname());
       StopArcDeviceDatapath(arc_device);

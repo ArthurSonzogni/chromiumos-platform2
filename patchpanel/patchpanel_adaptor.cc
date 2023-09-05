@@ -9,11 +9,15 @@
 #include <utility>
 
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
+#include <metrics/metrics_library.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <shill/net/process_manager.h>
 
 #include "patchpanel/downstream_network_service.h"
+#include "patchpanel/manager.h"
+#include "patchpanel/metrics.h"
 #include "patchpanel/proto_utils.h"
+#include "patchpanel/rtnl_client.h"
 
 namespace patchpanel {
 
@@ -34,6 +38,8 @@ PatchpanelAdaptor::PatchpanelAdaptor(const base::FilePath& cmd_path,
                                     this,
                                     std::make_unique<ShillClient>(bus, system),
                                     std::move(rtnl_client))) {}
+
+PatchpanelAdaptor::~PatchpanelAdaptor() {}
 
 void PatchpanelAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
@@ -379,10 +385,11 @@ SetFeatureFlagResponse PatchpanelAdaptor::SetFeatureFlag(
 }
 
 void PatchpanelAdaptor::OnNetworkDeviceChanged(
-    NetworkDevice* virtual_device, NetworkDeviceChangedSignal::Event event) {
+    std::unique_ptr<NetworkDevice> virtual_device,
+    NetworkDeviceChangedSignal::Event event) {
   NetworkDeviceChangedSignal signal;
   signal.set_event(event);
-  signal.set_allocated_device(virtual_device);  // Passes ownership
+  signal.set_allocated_device(virtual_device.release());  // Passes ownership
   SendNetworkDeviceChangedSignal(signal);
 }
 

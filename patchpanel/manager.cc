@@ -37,12 +37,12 @@ Manager::Manager(const base::FilePath& cmd_path,
                  System* system,
                  shill::ProcessManager* process_manager,
                  MetricsLibraryInterface* metrics,
-                 ClientNotifier* client_notifier,
+                 DbusClientNotifier* dbus_client_notifier,
                  std::unique_ptr<ShillClient> shill_client,
                  std::unique_ptr<RTNLClient> rtnl_client)
     : system_(system),
       metrics_(metrics),
-      client_notifier_(client_notifier),
+      dbus_client_notifier_(dbus_client_notifier),
       shill_client_(std::move(shill_client)),
       rtnl_client_(std::move(rtnl_client)) {
   DCHECK(rtnl_client_);
@@ -83,10 +83,9 @@ Manager::Manager(const base::FilePath& cmd_path,
 
   auto arc_type =
       USE_ARCVM ? ArcService::ArcType::kVM : ArcService::ArcType::kContainer;
-  arc_svc_ = std::make_unique<ArcService>(
-      arc_type, datapath_.get(), &addr_mgr_, this, metrics_,
-      base::BindRepeating(&Manager::OnArcDeviceChanged,
-                          weak_factory_.GetWeakPtr()));
+  arc_svc_ =
+      std::make_unique<ArcService>(arc_type, datapath_.get(), &addr_mgr_, this,
+                                   metrics_, dbus_client_notifier_);
   cros_svc_ = std::make_unique<CrostiniService>(
       &addr_mgr_, datapath_.get(), this,
       base::BindRepeating(&Manager::OnCrostiniDeviceEvent,
@@ -329,7 +328,6 @@ void Manager::OnShillDevicesChanged(
     }
 
     arc_svc_->AddDevice(device);
-
     if (device.type == ShillClient::Device::Type::kCellular) {
       datapath_->StartSourceIPv6PrefixEnforcement(device);
     }
@@ -408,37 +406,12 @@ void Manager::OnDoHProvidersChanged(
   qos_svc_->UpdateDoHProviders(doh_providers);
 }
 
-void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
-                                 const ArcService::ArcDevice& arc_device,
-                                 ArcService::ArcDeviceEvent event) {
-  // The legacy "arc0" Device is ignored for "NetworkDeviceChanged" signals
-  // and is never included in multicast forwarding or GuestIPv6Service.
-  if (!arc_device.shill_device_ifname()) {
-    return;
-  }
-  // b/273741099: For multiplexed Cellular interfaces, callers expect
-  // patchpanel to advertise the ARC virtual device as associated with the
-  // shill Device kInterfaceProperty value. This is handled in FillDeviceProto.
-  auto* signal_device = new NetworkDevice();
-  NetworkDeviceChangedSignal::Event signal_event;
-  arc_device.ConvertToProto(signal_device);
-  switch (event) {
-    case ArcService::ArcDeviceEvent::kAdded:
-      signal_event = NetworkDeviceChangedSignal::DEVICE_ADDED;
-      break;
-    case ArcService::ArcDeviceEvent::kRemoved:
-      signal_event = NetworkDeviceChangedSignal::DEVICE_REMOVED;
-      break;
-  }
-  client_notifier_->OnNetworkDeviceChanged(signal_device, signal_event);
-}
-
 void Manager::OnCrostiniDeviceEvent(
     const CrostiniService::CrostiniDevice& virtual_device,
     CrostiniService::CrostiniDeviceEvent event) {
-  auto* signal_device = new NetworkDevice();
+  auto signal_device = std::make_unique<NetworkDevice>();
   NetworkDeviceChangedSignal::Event signal_event;
-  virtual_device.ConvertToProto(signal_device);
+  virtual_device.ConvertToProto(signal_device.get());
   switch (event) {
     case CrostiniService::CrostiniDeviceEvent::kAdded:
       signal_event = NetworkDeviceChangedSignal::DEVICE_ADDED;
@@ -447,7 +420,8 @@ void Manager::OnCrostiniDeviceEvent(
       signal_event = NetworkDeviceChangedSignal::DEVICE_REMOVED;
       break;
   }
-  client_notifier_->OnNetworkDeviceChanged(signal_device, signal_event);
+  dbus_client_notifier_->OnNetworkDeviceChanged(std::move(signal_device),
+                                                signal_event);
 }
 
 bool Manager::ArcStartup(pid_t pid) {
@@ -823,8 +797,8 @@ void Manager::OnNeighborReachabilityEvent(
     const net_base::IPAddress& ip_addr,
     NeighborLinkMonitor::NeighborRole role,
     NeighborReachabilityEventSignal::EventType event_type) {
-  client_notifier_->OnNeighborReachabilityEvent(ifindex, ip_addr, role,
-                                                event_type);
+  dbus_client_notifier_->OnNeighborReachabilityEvent(ifindex, ip_addr, role,
+                                                     event_type);
 }
 
 ConnectNamespaceResponse Manager::ConnectNamespace(
@@ -1081,7 +1055,7 @@ void Manager::OnLifelineFdClosed(int client_fd) {
         dns_proxy_ipv6_addrs_.erase(rule.input_ifname);
         break;
     }
-    client_notifier_->OnNetworkConfigurationChanged();
+    dbus_client_notifier_->OnNetworkConfigurationChanged();
   }
 }
 
@@ -1139,7 +1113,7 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
                                       *rule.proxy_address.ToIPv6Address());
         break;
     }
-    client_notifier_->OnNetworkConfigurationChanged();
+    dbus_client_notifier_->OnNetworkConfigurationChanged();
   }
 
   // Store DNS proxy's redirection request.

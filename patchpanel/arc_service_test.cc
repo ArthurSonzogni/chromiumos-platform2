@@ -14,15 +14,16 @@
 #include <utility>
 #include <vector>
 
-#include <base/functional/bind.h>
-#include <base/functional/callback_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+#include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_forwarding_service.h"
 #include "patchpanel/routing_service.h"
@@ -104,7 +105,8 @@ MATCHER_P2(IsShillMultiplexedDevice,
 
 }  // namespace
 
-class ArcServiceTest : public testing::Test {
+class ArcServiceTest : public testing::Test,
+                       public patchpanel::DbusClientNotifier {
  public:
   ArcServiceTest() : testing::Test() {}
 
@@ -114,31 +116,42 @@ class ArcServiceTest : public testing::Test {
     addr_mgr_ = std::make_unique<AddressManager>();
     forwarding_service_ = std::make_unique<MockForwardingService>();
     metrics_ = std::make_unique<MetricsLibraryMock>();
+  }
+
+  void TearDown() override {
     guest_device_events_.clear();
-    shill_devices_.clear();
+    network_device_signals_.clear();
   }
 
   std::unique_ptr<ArcService> NewService(ArcService::ArcType arc_type) {
     return std::make_unique<ArcService>(
         arc_type, datapath_.get(), addr_mgr_.get(), forwarding_service_.get(),
-        metrics_.get(),
-        base::BindRepeating(&ArcServiceTest::ArcDeviceEventHandler,
-                            base::Unretained(this)));
+        metrics_.get(), this);
   }
 
   void ArcDeviceEventHandler(const ShillClient::Device& shill_device,
                              const ArcService::ArcDevice& arc_device,
-                             ArcService::ArcDeviceEvent event) {
-    guest_device_events_[arc_device.bridge_ifname()] = event;
-    shill_devices_[arc_device.bridge_ifname()] = shill_device;
+                             ArcService::ArcDeviceEvent event) {}
+  // DbusClientNotifier overrides
+  void OnNetworkDeviceChanged(
+      std::unique_ptr<NetworkDevice> virtual_device,
+      NetworkDeviceChangedSignal::Event event) override {
+    guest_device_events_[virtual_device->ifname()] = event;
+    network_device_signals_[virtual_device->ifname()].CopyFrom(*virtual_device);
   }
+  void OnNetworkConfigurationChanged() override {}
+  void OnNeighborReachabilityEvent(
+      int ifindex,
+      const net_base::IPAddress& ip_addr,
+      NeighborLinkMonitor::NeighborRole role,
+      NeighborReachabilityEventSignal::EventType event_type) override {}
 
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<MockForwardingService> forwarding_service_;
   std::unique_ptr<MetricsLibraryMock> metrics_;
-  std::map<std::string, ArcService::ArcDeviceEvent> guest_device_events_;
-  std::map<std::string, ShillClient::Device> shill_devices_;
+  std::map<std::string, NetworkDeviceChangedSignal::Event> guest_device_events_;
+  std::map<std::string, NetworkDevice> network_device_signals_;
 };
 
 TEST_F(ArcServiceTest, Arc0IPAddress) {
@@ -558,17 +571,18 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
   EXPECT_THAT(
       guest_device_events_,
       UnorderedElementsAre(
-          Pair(StrEq("arc_eth0"), ArcService::ArcDeviceEvent::kAdded),
-          Pair(StrEq("arc_wlan0"), ArcService::ArcDeviceEvent::kAdded)));
+          Pair(StrEq("arc_eth0"), NetworkDeviceChangedSignal::DEVICE_ADDED),
+          Pair(StrEq("arc_wlan0"), NetworkDeviceChangedSignal::DEVICE_ADDED)));
   guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // EXPECT_CALL(*forwarding_service_, StopForwarding(IsShillDevice("wlan0"), _,
   // kWiFiForwardingSet));
   svc->RemoveDevice(wlan_dev);
-  EXPECT_THAT(guest_device_events_,
-              UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
-                                        ArcService::ArcDeviceEvent::kRemoved)));
+  EXPECT_THAT(
+      guest_device_events_,
+      UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
+                                NetworkDeviceChangedSignal::DEVICE_REMOVED)));
   guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
@@ -577,9 +591,10 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
       StartForwarding(IsShillDevice("wlan0"), "arc_wlan0", kWiFiForwardingSet,
                       Eq(std::nullopt), Eq(std::nullopt)));
   svc->AddDevice(wlan_dev);
-  EXPECT_THAT(guest_device_events_,
-              UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
-                                        ArcService::ArcDeviceEvent::kAdded)));
+  EXPECT_THAT(
+      guest_device_events_,
+      UnorderedElementsAre(
+          Pair(StrEq("arc_wlan0"), NetworkDeviceChangedSignal::DEVICE_ADDED)));
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 }
@@ -671,11 +686,12 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
 
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
-  ASSERT_NE(shill_devices_.end(), shill_devices_.find("arc_eth0"));
-  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.16/24"),
-            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_cidr);
-  EXPECT_EQ(net_base::IPv4Address(192, 168, 1, 1),
-            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_gateway);
+  auto device_signal_it = network_device_signals_.find("arc_eth0");
+  ASSERT_NE(network_device_signals_.end(), device_signal_it);
+  EXPECT_EQ(net_base::IPv4Address(100, 115, 92, 6).ToInAddr().s_addr,
+            device_signal_it->second.ipv4_addr());
+  EXPECT_EQ(net_base::IPv4Address(100, 115, 92, 5).ToInAddr().s_addr,
+            device_signal_it->second.host_ipv4_addr());
 
   eth_dev.ipconfig.ipv4_cidr =
       *net_base::IPv4CIDR::CreateFromCIDRString("172.16.0.72/16");
@@ -695,11 +711,12 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
       *forwarding_service_,
       StopForwarding(IsShillDevice("eth0"), "arc_eth0", kNonWiFiForwardingSet));
   svc->Stop(kTestPID);
-  ASSERT_NE(shill_devices_.end(), shill_devices_.find("arc_eth0"));
-  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("172.16.0.72/16"),
-            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_cidr);
-  EXPECT_EQ(net_base::IPv4Address(172, 16, 0, 1),
-            shill_devices_.find("arc_eth0")->second.ipconfig.ipv4_gateway);
+  device_signal_it = network_device_signals_.find("arc_eth0");
+  ASSERT_NE(network_device_signals_.end(), device_signal_it);
+  EXPECT_EQ(net_base::IPv4Address(100, 115, 92, 6).ToInAddr().s_addr,
+            device_signal_it->second.ipv4_addr());
+  EXPECT_EQ(net_base::IPv4Address(100, 115, 92, 5).ToInAddr().s_addr,
+            device_signal_it->second.host_ipv4_addr());
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_Stop) {
@@ -1432,17 +1449,18 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   EXPECT_THAT(
       guest_device_events_,
       UnorderedElementsAre(
-          Pair(StrEq("arc_eth0"), ArcService::ArcDeviceEvent::kAdded),
-          Pair(StrEq("arc_wlan0"), ArcService::ArcDeviceEvent::kAdded)));
+          Pair(StrEq("arc_eth0"), NetworkDeviceChangedSignal::DEVICE_ADDED),
+          Pair(StrEq("arc_wlan0"), NetworkDeviceChangedSignal::DEVICE_ADDED)));
   guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // EXPECT_CALL(*forwarding_service_, StopForwarding(IsShillDevice("wlan0"), _,
   // kWiFiForwardingSet));
   svc->RemoveDevice(wlan_dev);
-  EXPECT_THAT(guest_device_events_,
-              UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
-                                        ArcService::ArcDeviceEvent::kRemoved)));
+  EXPECT_THAT(
+      guest_device_events_,
+      UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
+                                NetworkDeviceChangedSignal::DEVICE_REMOVED)));
   guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
@@ -1451,9 +1469,10 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
       StartForwarding(IsShillDevice("wlan0"), "arc_wlan0", kWiFiForwardingSet,
                       Eq(std::nullopt), Eq(std::nullopt)));
   svc->AddDevice(wlan_dev);
-  EXPECT_THAT(guest_device_events_,
-              UnorderedElementsAre(Pair(StrEq("arc_wlan0"),
-                                        ArcService::ArcDeviceEvent::kAdded)));
+  EXPECT_THAT(
+      guest_device_events_,
+      UnorderedElementsAre(
+          Pair(StrEq("arc_wlan0"), NetworkDeviceChangedSignal::DEVICE_ADDED)));
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 

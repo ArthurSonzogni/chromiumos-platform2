@@ -23,6 +23,7 @@
 #include "patchpanel/counters_service.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/downstream_network_service.h"
 #include "patchpanel/forwarding_service.h"
@@ -43,28 +44,13 @@ class QoSService;
 // The core implementation of the patchpanel daemon.
 class Manager : public ForwardingService {
  public:
-  // The notification callbacks to the client side.
-  class ClientNotifier {
-   public:
-    // Takes ownership of |virtual_device|.
-    virtual void OnNetworkDeviceChanged(
-        NetworkDevice* virtual_device,
-        NetworkDeviceChangedSignal::Event event) = 0;
-    virtual void OnNetworkConfigurationChanged() = 0;
-    virtual void OnNeighborReachabilityEvent(
-        int ifindex,
-        const net_base::IPAddress& ip_addr,
-        NeighborLinkMonitor::NeighborRole role,
-        NeighborReachabilityEventSignal::EventType event_type) = 0;
-  };
-
   // The caller should guarantee |system|, |process_manager|, |metrics| and
   // |client| variables outlive the created Manager instance.
   Manager(const base::FilePath& cmd_path,
           System* system,
           shill::ProcessManager* process_manager,
           MetricsLibraryInterface* metrics,
-          ClientNotifier* client_notifier,
+          DbusClientNotifier* dbus_client_notifier,
           std::unique_ptr<ShillClient> shill_client,
           std::unique_ptr<RTNLClient> rtnl_client);
   Manager(const Manager&) = delete;
@@ -204,11 +190,6 @@ class Manager : public ForwardingService {
   void OnIPv6NetworkChanged(const ShillClient::Device& shill_device);
   void OnDoHProvidersChanged(const ShillClient::DoHProviders& doh_providers);
 
-  // Callbacks from |arc_svc_| and |cros_svc_| to notify Manager about new
-  // or removed virtual Devices.
-  void OnArcDeviceChanged(const ShillClient::Device& shill_device,
-                          const ArcService::ArcDevice& arc_device,
-                          ArcService::ArcDeviceEvent event);
   void OnCrostiniDeviceEvent(
       const CrostiniService::CrostiniDevice& virtual_device,
       CrostiniService::CrostiniDeviceEvent event);
@@ -276,7 +257,7 @@ class Manager : public ForwardingService {
   MetricsLibraryInterface* metrics_;
 
   // The client of the Manager.
-  ClientNotifier* client_notifier_;
+  DbusClientNotifier* dbus_client_notifier_;
 
   // Shill Dbus client.
   std::unique_ptr<ShillClient> shill_client_;

@@ -23,6 +23,7 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/forwarding_service.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/shill_client.h"
@@ -185,7 +186,7 @@ class ArcService {
              AddressManager* addr_mgr,
              ForwardingService* forwarding_service,
              MetricsLibraryInterface* metrics,
-             ArcDeviceChangeHandler arc_device_change_handler);
+             DbusClientNotifier* dbus_client_notifier);
   ArcService(const ArcService&) = delete;
   ArcService& operator=(const ArcService&) = delete;
 
@@ -278,9 +279,9 @@ class ArcService {
   ForwardingService* forwarding_service_;
   // UMA metrics client, owned by Manager.
   MetricsLibraryInterface* metrics_;
-  // Manager callback used for notifying about ARC virtual device creation and
+  // Interface for notifying DBus client about ARC virtual device creation and
   // removal events.
-  ArcDeviceChangeHandler arc_device_change_handler_;
+  DbusClientNotifier* dbus_client_notifier_;
   // A set of preallocated ARC interface configurations keyed by technology type
   // and used for setting up ARCVM TAP devices at VM booting time.
   std::map<ShillClient::Device::Type, std::deque<std::unique_ptr<ArcConfig>>>
