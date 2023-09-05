@@ -9,6 +9,7 @@
 #ifdef GTK4
 #include <gdk/wayland/gdkwayland.h>
 #include <gdk/x11/gdkx.h>
+#include <graphene.h>
 #include <gtk/gtkwidget.h>
 #else
 #include <gdk/gdkwayland.h>
@@ -382,19 +383,28 @@ void CrosGtkIMContext::Reset() {
 }
 
 void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
-  int x = 0, y = 0;
+  double x = 0, y = 0;
 #ifdef GTK4
-  // TODO(b/291845382): In GTK4, when the window is not maximized the position
-  // of the candidates box is incorrect.
   if (!client_widget_)
     return;
+
   auto* native = gtk_widget_get_native(client_widget_);
-  double top_level_x, top_level_y;
-  // Get coordinates against the current window.
-  gtk_widget_translate_coordinates(client_widget_, GTK_WIDGET(native), area->x,
-                                   area->y, &top_level_x, &top_level_y);
-  x = top_level_x;
-  y = top_level_y;
+  auto top_level_point = GRAPHENE_POINT_INIT(0.f, 0.f);
+  auto client_point = GRAPHENE_POINT_INIT(static_cast<float>(area->x),
+                                          static_cast<float>(area->y));
+  if (gtk_widget_compute_point(client_widget_, GTK_WIDGET(native),
+                               &client_point, &top_level_point)) {
+    x = top_level_point.x;
+    y = top_level_point.y;
+  }
+
+  double offset_x = 0, offset_y = 0;
+  if (auto offset_native = gtk_widget_get_native(GTK_WIDGET(native))) {
+    gtk_native_get_surface_transform(offset_native, &offset_x, &offset_y);
+  }
+
+  x += offset_x;
+  y += offset_y;
 #else
   if (!gdk_window_)
     return;
@@ -410,7 +420,8 @@ void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
   x = offset_x - top_level_x + area->x;
   y = offset_y - top_level_y + area->y;
 #endif
-  backend_->SetCursorLocation(x, y, area->width, area->height);
+  backend_->SetCursorLocation(std::round(x), std::round(y), area->width,
+                              area->height);
 }
 
 void CrosGtkIMContext::SetSurrounding(const char* text,
