@@ -742,10 +742,9 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   }
 
   std::string text = base::StringPrintf("%08x-%s\n", hash, error_code.c_str());
-  const std::string kFlag = "--modem_failure";
-  return CrashReport(std::move(text),
-                     {std::move("--modem_failure"),
-                      base::StringPrintf("--weight=%d", weight)});
+  return CrashReport(
+      std::move(text),
+      {"--modem_failure", base::StringPrintf("--weight=%d", weight)});
 }
 
 ModemfwdParser::ModemfwdParser(bool testonly_send_all)
