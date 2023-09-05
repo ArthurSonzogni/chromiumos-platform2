@@ -525,7 +525,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
 
   *device_.get() = new_default_device;
   MaybeCreateResolver();
-  UpdateNameServers(device_->ipconfig);
+  UpdateNameServers();
 
   // For the default proxy, we have to update DNS redirection rule. This allows
   // DNS traffic to be redirected to the proxy.
@@ -584,8 +584,8 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
       if (!device_ || device_->ipconfig == device->ipconfig)
         return;
 
-      UpdateNameServers(device->ipconfig);
       device_->ipconfig = device->ipconfig;
+      UpdateNameServers();
       return;
 
     case Type::kARC:
@@ -611,7 +611,7 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
 
       *device_.get() = *device;
       MaybeCreateResolver();
-      UpdateNameServers(device->ipconfig);
+      UpdateNameServers();
 
       // Process the current set of patchpanel devices and add necessary
       // redirection rules.
@@ -673,7 +673,26 @@ void Proxy::MaybeCreateResolver() {
   }
 }
 
-void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
+void Proxy::UpdateNameServers() {
+  if (!device_) {
+    LOG(ERROR) << *this << " updating name servers with invalid shill device";
+    return;
+  }
+
+  auto ipconfig = device_->ipconfig;
+  // Special case for VPN without nameserver. Fallback to default physical
+  // network's nameserver(s).
+  if (device_->type == shill::Client::Device::Type::kVPN &&
+      device_->ipconfig.ipv4_dns_addresses.empty() &&
+      device_->ipconfig.ipv6_dns_addresses.empty()) {
+    auto dd = shill_->DefaultDevice(/*exclude_vpn=*/true);
+    if (!dd) {
+      LOG(ERROR) << *this << " no default non-VPN device found";
+      return;
+    }
+    ipconfig = dd->ipconfig;
+  }
+
   std::vector<net_base::IPv4Address> ipv4_nameservers;
   std::vector<net_base::IPv6Address> ipv6_nameservers;
 

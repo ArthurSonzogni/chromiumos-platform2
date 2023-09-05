@@ -175,7 +175,11 @@ class Proxy : public brillo::DBusDaemon {
   void OnDeviceChanged(const shill::Client::Device* const device);
 
   void MaybeCreateResolver();
-  void UpdateNameServers(const shill::Client::IPConfig& ipconfig);
+
+  // Update DNS proxy's name servers to the currently stored |device_|. If
+  // |device_| is a VPN without name server, fallback to the physical default
+  // device's name servers by first querying shill for it.
+  void UpdateNameServers();
 
   // Update DoH providers. If proxy is the default proxy and VPN is connected,
   // DoH is disabled. Force the provider to always be empty.

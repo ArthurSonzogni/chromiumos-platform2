@@ -883,9 +883,8 @@ TEST_F(ProxyTest, BasicDoHAutomatic) {
   MockResolver* mock_resolver = resolver.get();
   proxy.resolver_ = std::move(resolver);
   proxy.doh_config_.set_resolver(mock_resolver);
-  shill::Client::IPConfig ipconfig;
-  ipconfig.ipv4_dns_addresses = {"8.8.4.4"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"8.8.4.4"};
+  proxy.UpdateNameServers();
 
   EXPECT_CALL(
       *mock_resolver,
@@ -921,9 +920,8 @@ TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic) {
   MockResolver* mock_resolver = resolver.get();
   proxy.resolver_ = std::move(resolver);
   proxy.doh_config_.set_resolver(mock_resolver);
-  shill::Client::IPConfig ipconfig;
-  ipconfig.ipv4_dns_addresses = {"8.8.4.4"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"8.8.4.4"};
+  proxy.UpdateNameServers();
 
   EXPECT_CALL(
       *mock_resolver,
@@ -943,9 +941,8 @@ TEST_F(ProxyTest, NewResolverConfiguredWhenSet) {
   props["https://chrome.cloudflare-dns.com/dns-query"] =
       std::string("1.1.1.1,2606:4700:4700::1111");
   proxy.OnDoHProvidersChanged(props);
-  shill::Client::IPConfig ipconfig;
-  ipconfig.ipv4_dns_addresses = {"1.0.0.1", "1.1.1.1"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"1.0.0.1", "1.1.1.1"};
+  proxy.UpdateNameServers();
 
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
@@ -972,9 +969,8 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
 
   // Initially off.
   EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
-  shill::Client::IPConfig ipconfig;
-  ipconfig.ipv4_dns_addresses = {"1.1.1.1", "9.9.9.9"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"1.1.1.1", "9.9.9.9"};
+  proxy.UpdateNameServers();
 
   // Automatic mode - matched cloudflare.
   EXPECT_CALL(
@@ -990,15 +986,16 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
 
   // Automatic mode - no match.
   EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
-  ipconfig.ipv4_dns_addresses = {"10.10.10.1"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"10.10.10.1"};
+  proxy.UpdateNameServers();
 
   // Automatic mode - matched google.
   EXPECT_CALL(
       *mock_resolver,
       SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), false));
-  ipconfig.ipv4_dns_addresses = {"8.8.4.4", "10.10.10.1", "8.8.8.8"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"8.8.4.4", "10.10.10.1",
+                                                "8.8.8.8"};
+  proxy.UpdateNameServers();
 
   // Explicitly turned off.
   EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
@@ -1007,8 +1004,9 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
 
   // Still off - even switching ns back.
   EXPECT_CALL(*mock_resolver, SetDoHProviders(IsEmpty(), false));
-  ipconfig.ipv4_dns_addresses = {"8.8.4.4", "10.10.10.1", "8.8.8.8"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"8.8.4.4", "10.10.10.1",
+                                                "8.8.8.8"};
+  proxy.UpdateNameServers();
 
   // Always-on mode.
   EXPECT_CALL(
@@ -1031,9 +1029,9 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
       *mock_resolver,
       SetDoHProviders(ElementsAre(StrEq("https://doh.opendns.com/dns-query")),
                       false));
-  ipconfig.ipv4_dns_addresses = {"8.8.8.8"};
-  ipconfig.ipv6_dns_addresses = {"2620:119:35::35"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"8.8.8.8"};
+  proxy.device_->ipconfig.ipv6_dns_addresses = {"2620:119:35::35"};
+  proxy.UpdateNameServers();
 }
 
 TEST_F(ProxyTest, MultipleDoHProvidersForAlwaysOnMode) {
@@ -1065,9 +1063,8 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
   MockResolver* mock_resolver = resolver.get();
   proxy.resolver_ = std::move(resolver);
   proxy.doh_config_.set_resolver(mock_resolver);
-  shill::Client::IPConfig ipconfig;
-  ipconfig.ipv4_dns_addresses = {"1.1.1.1", "10.10.10.10"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"1.1.1.1", "10.10.10.10"};
+  proxy.UpdateNameServers();
 
   EXPECT_CALL(
       *mock_resolver,
@@ -1089,9 +1086,10 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
                                   StrEq("https://doh.opendns.com/dns-query"),
                                   StrEq("https://dns.quad9.net/dns-query")),
                               false));
-  ipconfig.ipv4_dns_addresses = {"8.8.8.8", "10.10.10.10"};
-  ipconfig.ipv6_dns_addresses = {"2620:fe::9", "2620:119:53::53"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"8.8.8.8", "10.10.10.10"};
+  proxy.device_->ipconfig.ipv6_dns_addresses = {"2620:fe::9",
+                                                "2620:119:53::53"};
+  proxy.UpdateNameServers();
 }
 
 TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
@@ -1103,9 +1101,8 @@ TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
   MockResolver* mock_resolver = resolver.get();
   proxy.resolver_ = std::move(resolver);
   proxy.doh_config_.set_resolver(mock_resolver);
-  shill::Client::IPConfig ipconfig;
-  ipconfig.ipv4_dns_addresses = {"1.1.1.1", "10.10.10.10"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"1.1.1.1", "10.10.10.10"};
+  proxy.UpdateNameServers();
 
   EXPECT_CALL(
       *mock_resolver,
@@ -1128,9 +1125,10 @@ TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
                                   StrEq("https://doh.opendns.com/dns-query"),
                                   StrEq("https://dns.quad9.net/dns-query")),
                               false));
-  ipconfig.ipv4_dns_addresses = {"8.8.8.8", "10.10.10.10"};
-  ipconfig.ipv6_dns_addresses = {"2620:fe::9", "2620:119:53::53"};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_->ipconfig.ipv4_dns_addresses = {"8.8.8.8", "10.10.10.10"};
+  proxy.device_->ipconfig.ipv6_dns_addresses = {"2620:fe::9",
+                                                "2620:119:53::53"};
+  proxy.UpdateNameServers();
 }
 
 TEST_F(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN) {
@@ -1912,26 +1910,28 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
 TEST_F(ProxyTest, UpdateNameServers) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), MessageDispatcher());
-  shill::Client::IPConfig ipconfig;
-  ipconfig.ipv4_dns_addresses = {"8.8.4.4",
-                                 "192.168.1.1",
-                                 "256.256.256.256",
-                                 "0.0.0.0",
-                                 "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16d",
-                                 "::2",
-                                 "::",
-                                 "a",
-                                 ""};
-  ipconfig.ipv6_dns_addresses = {"8.8.4.4",
-                                 "192.168.1.1",
-                                 "256.256.256.256",
-                                 "0.0.0.0",
-                                 "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e",
-                                 "::1",
-                                 "::",
-                                 "a",
-                                 ""};
-  proxy.UpdateNameServers(ipconfig);
+  proxy.device_ = std::make_unique<shill::Client::Device>();
+  proxy.device_->ipconfig.ipv4_dns_addresses = {
+      "8.8.4.4",
+      "192.168.1.1",
+      "256.256.256.256",
+      "0.0.0.0",
+      "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16d",
+      "::2",
+      "::",
+      "a",
+      ""};
+  proxy.device_->ipconfig.ipv6_dns_addresses = {
+      "8.8.4.4",
+      "192.168.1.1",
+      "256.256.256.256",
+      "0.0.0.0",
+      "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e",
+      "::1",
+      "::",
+      "a",
+      ""};
+  proxy.UpdateNameServers();
   const std::vector<net_base::IPv4Address> expected_ipv4_dns_addresses = {
       net_base::IPv4Address(8, 8, 4, 4), net_base::IPv4Address(192, 168, 1, 1)};
   const std::vector<net_base::IPv6Address> expected_ipv6_dns_addresses = {
