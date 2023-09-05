@@ -378,11 +378,11 @@ std::string Cellular::GetLegacyEquipmentIdentifier() const {
   return mac_address();
 }
 
-std::string Cellular::GetStorageIdentifier() const {
+std::string Cellular::DeviceStorageSuffix() const {
   // Cellular is not guaranteed to have a valid MAC address, and other unique
   // identifiers may not be initially available. Use the link name to
   // differentiate between internal devices and external devices.
-  return "device_" + link_name();
+  return link_name();
 }
 
 bool Cellular::Load(const StoreInterface* storage) {

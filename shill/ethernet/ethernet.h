@@ -81,8 +81,6 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   void StationRemoved(const RpcIdentifier& Station) override{};
   void PskMismatch() override{};
 
-  std::string GetStorageIdentifier() const override;
-
   // Inherited from Device and responds to a neighbor reachability event from
   // patchpanel. Restarts network validation if the event type contradicts the
   // current connection state (neighbor failure + kStateOnline, or neighbour
@@ -106,6 +104,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(EthernetProviderTest, MultipleServices);
   FRIEND_TEST(EthernetTest, RunEthtoolCmdSuccess);
   FRIEND_TEST(EthernetTest, RunEthtoolCmdFail);
+
+  std::string DeviceStorageSuffix() const override;
 
   // Return a pointer to the EthernetProvider for Ethernet devices.
   EthernetProvider* GetProvider();

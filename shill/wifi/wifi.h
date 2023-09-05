@@ -145,7 +145,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   void Start(EnabledStateChangedCallback callback) override;
   void Stop(EnabledStateChangedCallback callback) override;
-  std::string GetStorageIdentifier() const override;
   void Scan(Error* error, const std::string& reason) override;
   void EnsureScanAndConnectToBestService(Error* error);
   // Callback for system suspend.
@@ -282,6 +281,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
                                            Error* error);
 
  private:
+  std::string DeviceStorageSuffix() const override;
+
   // Result from a BSSAdded or BSSRemoved event.
   struct ScanResult {
     ScanResult() : is_removal(false) {}

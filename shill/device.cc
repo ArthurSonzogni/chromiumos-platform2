@@ -296,7 +296,7 @@ const RpcIdentifier& Device::GetRpcIdentifier() const {
 }
 
 std::string Device::GetStorageIdentifier() const {
-  return "device_" + mac_address_;
+  return "device_" + DeviceStorageSuffix();
 }
 
 void Device::UpdateGeolocationObjects(

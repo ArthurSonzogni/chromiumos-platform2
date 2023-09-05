@@ -147,7 +147,6 @@ class Cellular : public Device,
   // Inherited from Device.
   void CreateImplicitNetwork(bool fixed_ip_params) override;
   Network* GetPrimaryNetwork() const override;
-  std::string GetStorageIdentifier() const override;
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
   void Start(EnabledStateChangedCallback callback) override;
@@ -570,6 +569,8 @@ class Cellular : public Device,
     // The modem has been stopped.
     kModemStopped,
   };
+
+  std::string DeviceStorageSuffix() const override;
 
   void CreateCapability();
   void DestroyCapability();

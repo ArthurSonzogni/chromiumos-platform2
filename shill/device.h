@@ -153,7 +153,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   mockable bool UpdatePortalDetector(Network::ValidationReason reason);
 
   const RpcIdentifier& GetRpcIdentifier() const;
-  virtual std::string GetStorageIdentifier() const;
+  std::string GetStorageIdentifier() const;
 
   // Update the Geolocation objects. Each object is multiple
   // key-value pairs representing one entity that can be used for
@@ -430,6 +430,11 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   void HelpRegisterConstDerivedUint64(base::StringPiece name,
                                       uint64_t (Device::*get)(Error*));
+
+  // By default StorageId is equal to: "device_" + DeviceStorageSuffix()
+  // where the latter returns MAC address.  This can be overridden in
+  // subclasses.
+  virtual std::string DeviceStorageSuffix() const { return mac_address(); }
 
   // Property getters reserved for subclasses
   ControlInterface* control_interface() const;

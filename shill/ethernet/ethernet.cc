@@ -279,11 +279,9 @@ void Ethernet::ConnectTo(EthernetService* service) {
   UpdateLinkSpeed();
 }
 
-std::string Ethernet::GetStorageIdentifier() const {
-  if (!permanent_mac_address_.empty()) {
-    return "device_" + permanent_mac_address_;
-  }
-  return Device::GetStorageIdentifier();
+std::string Ethernet::DeviceStorageSuffix() const {
+  return permanent_mac_address().empty() ? Device::DeviceStorageSuffix()
+                                         : permanent_mac_address();
 }
 
 void Ethernet::DisconnectFrom(EthernetService* service) {

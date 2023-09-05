@@ -351,14 +351,8 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
   std::move(callback).Run(Error(Error::kSuccess));
 }
 
-std::string WiFi::GetStorageIdentifier() const {
-  std::string ret{"device_"};
-  if (perm_address_.empty()) {
-    ret += mac_address();
-  } else {
-    ret += perm_address_;
-  }
-  return ret;
+std::string WiFi::DeviceStorageSuffix() const {
+  return perm_address_.empty() ? Device::DeviceStorageSuffix() : perm_address_;
 }
 
 void WiFi::Scan(Error* /*error*/, const std::string& reason) {
