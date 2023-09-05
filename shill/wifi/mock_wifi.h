@@ -60,9 +60,9 @@ class MockWiFi : public WiFi {
               (WiFiLinkStatistics::Trigger trigger),
               (override));
   MOCK_METHOD(bool,
-              SetBSSIDAllowlist,
+              UpdateSupplicantProperties,
               (const WiFiService* service,
-               const Strings& bssid_allowlist,
+               const KeyValueStore& kv,
                Error* error),
               (override));
 };

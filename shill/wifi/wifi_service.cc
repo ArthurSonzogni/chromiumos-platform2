@@ -2090,7 +2090,10 @@ bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
           Device::MakeStringFromHardwareAddress(bytes));
     }
     // Try to update WPA supplicant as well.
-    if (!wifi_->SetBSSIDAllowlist(this, strings_bssid_allowlist, error)) {
+    KeyValueStore kv;
+    kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept,
+                        base::JoinString(strings_bssid_allowlist, " "));
+    if (!wifi_->UpdateSupplicantProperties(this, kv, error)) {
       // We allow a kNotFound error because it's ok if the network rpcid doesn't
       // exist yet. We'll eventually set the BSSID allowlist in WPA supplicant
       // on the initial configuration/connection later.
@@ -2126,6 +2129,21 @@ bool WiFiService::SetBSSIDRequested(const std::string& bssid_requested,
                                                bssid_requested.c_str()));
       return false;
     }
+  }
+
+  // Try to update WPA supplicant as well.
+  KeyValueStore kv;
+  kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSID, bssid_requested);
+  if (wifi_ && !wifi_->UpdateSupplicantProperties(this, kv, error)) {
+    // We allow a kNotFound error because it's ok if the network rpcid doesn't
+    // exist yet. We'll eventually set the BSSID in WPA supplicant on the
+    // initial configuration/connection later.
+    if (error->type() != Error::kNotFound) {
+      // If the network rpcid does exist but we failed for some other reason,
+      // then signal a failure.
+      return false;
+    }
+    error->Reset();
   }
 
   bssid_requested_ = bssid_requested;

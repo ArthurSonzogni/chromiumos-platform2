@@ -4168,23 +4168,20 @@ const WiFiPhy* WiFi::GetWiFiPhy() const {
   return provider_->GetPhyAtIndex(phy_index_);
 }
 
-bool WiFi::SetBSSIDAllowlist(const WiFiService* service,
-                             const Strings& bssid_allowlist,
-                             Error* error) {
+bool WiFi::UpdateSupplicantProperties(const WiFiService* service,
+                                      const KeyValueStore& kv,
+                                      Error* error) {
   RpcIdentifier network_rpcid = FindNetworkRpcidForService(service, error);
   if (network_rpcid.value().empty()) {
     // Error is already populated.
     return false;
   }
 
-  KeyValueStore kv;
-  kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept,
-                      base::JoinString(bssid_allowlist, " "));
   std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy =
       control_interface()->CreateSupplicantNetworkProxy(network_rpcid);
   if (!supplicant_network_proxy->SetProperties(kv)) {
     const auto error_message = base::StringPrintf(
-        "WiFi %s cannot set BSSID allowlist for service %s: "
+        "WiFi %s cannot set properties for service %s: "
         "DBus operation failed for rpcid %s.",
         link_name().c_str(), service->log_name().c_str(),
         network_rpcid.value().c_str());

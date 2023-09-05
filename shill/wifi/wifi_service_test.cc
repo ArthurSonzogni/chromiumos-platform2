@@ -705,6 +705,7 @@ TEST_F(WiFiServiceTest, ConnectTaskBSSIDAllowlist) {
   {
     Error error;
     WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassNone);
+    KeyValueStore kv;
 
     // The duped bssid's should get filtered out before we pass it to WPA
     // supplicant.
@@ -712,7 +713,9 @@ TEST_F(WiFiServiceTest, ConnectTaskBSSIDAllowlist) {
         "00:00:00:00:00:01", "00:00:00:00:00:01", "00:00:00:00:00:02"};
     std::vector<std::string> not_duped_bssid_allowlist = {"00:00:00:00:00:01",
                                                           "00:00:00:00:00:02"};
-    EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, not_duped_bssid_allowlist, _))
+    kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept,
+                        base::JoinString(not_duped_bssid_allowlist, " "));
+    EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, kv, _))
         .WillOnce(Return(true));
     EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
 
@@ -2992,7 +2995,8 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoUserInitiatedConnection) {
 
 TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
-  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, _, _))
+      .WillRepeatedly(Return(true));
   Error error;
 
   // Default value
@@ -3048,7 +3052,7 @@ TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   EXPECT_EQ(bssid_allowlist, service->GetBSSIDAllowlist(&error));
 
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _))
+  EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, _, _))
       .WillRepeatedly(Return(false));
 
   std::vector<std::string> new_bssid_allowlist = {"00:00:00:00:00:01"};
@@ -3074,7 +3078,8 @@ TEST_F(WiFiServiceTest, BSSIDConnectableEndpoints) {
 
 TEST_F(WiFiServiceTest, NoBSSIDConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, _, _))
+      .WillRepeatedly(Return(true));
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint = MakeEndpoint(
@@ -3101,7 +3106,8 @@ TEST_F(WiFiServiceTest, NoBSSIDConnectableEndpoints) {
 
 TEST_F(WiFiServiceTest, AllowlistedBSSIDConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, _, _))
+      .WillRepeatedly(Return(true));
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint = MakeEndpoint(
@@ -3132,6 +3138,8 @@ TEST_F(WiFiServiceTest, AllowlistedBSSIDConnectableEndpoints) {
 
 TEST_F(WiFiServiceTest, SetBSSIDRequested) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+  EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, _, _))
+      .WillRepeatedly(Return(true));
   Error error;
 
   // Default value
@@ -3154,6 +3162,8 @@ TEST_F(WiFiServiceTest, SetBSSIDRequested) {
 
 TEST_F(WiFiServiceTest, BSSIDRequestedToSupplicant) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+  EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, _, _))
+      .WillRepeatedly(Return(true));
 
   // If not set, the requested BSSID won't be set in the supplicant params
   KeyValueStore params = service->GetSupplicantConfigurationParameters();
@@ -3170,6 +3180,8 @@ TEST_F(WiFiServiceTest, BSSIDRequestedToSupplicant) {
 
 TEST_F(WiFiServiceTest, BSSIDRequestedConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, _, _))
+      .WillRepeatedly(Return(true));
   Error error;
 
   WiFiEndpoint::SecurityFlags flags;
@@ -3198,7 +3210,8 @@ TEST_F(WiFiServiceTest, BSSIDRequestedConnectableEndpoints) {
 
 TEST_F(WiFiServiceTest, BSSIDRequestedAndAllowlistedConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, _, _))
+      .WillRepeatedly(Return(true));
   Error error;
 
   WiFiEndpoint::SecurityFlags flags;
