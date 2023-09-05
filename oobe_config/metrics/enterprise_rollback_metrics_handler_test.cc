@@ -199,6 +199,15 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest, DoNotTrackEventIfFileIsLocked) {
   lock_process->Kill(SIGKILL, /*timeout=*/5);
 }
 
+TEST_F(EnterpriseRollbackMetricsHandlerTest, TrackEventEvenIfFileIsCorrupted) {
+  ASSERT_TRUE(
+      file_handler_.WriteRollbackMetricsData("This is not valid metrics data"));
+  ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
+
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+}
+
 TEST_F(EnterpriseRollbackMetricsHandlerTest,
        MetricsFileHasMetadataAndEventAfterTracking) {
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
@@ -248,7 +257,7 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest, ReportingFailsIfNoMetricsFile) {
   ASSERT_FALSE(enterprise_rollback_metrics_handler_.ReportTrackedEvents());
 }
 
-TEST_F(EnterpriseRollbackMetricsHandlerTest, ReportingCorruptedFileFails) {
+TEST_F(EnterpriseRollbackMetricsHandlerTest, ReportingFailsIfFileIsCorrupted) {
   ASSERT_TRUE(
       file_handler_.WriteRollbackMetricsData("This is not valid metrics data"));
   ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
@@ -256,7 +265,7 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest, ReportingCorruptedFileFails) {
 }
 
 TEST_F(EnterpriseRollbackMetricsHandlerTest,
-       ReportingEventsDeleteEventEntriesFromMetricsFile) {
+       ReportingDeleteEventEntriesFromMetricsFile) {
   EnterpriseRollbackMetricsData rollback_metrics_data;
 
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
@@ -382,6 +391,41 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
 }
 
 TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       ReportingEventNowDoesNotReportIfFileIsCorrupted) {
+  ASSERT_TRUE(
+      file_handler_.WriteRollbackMetricsData("This is not valid metrics data"));
+  ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::rollback_enterprise::
+                                  RollbackPolicyActivated::kEventNameHash)))
+      .Times(0);
+
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_.ReportEventNow(
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest, StopTrackingDeletesCorruptedFile) {
+  ASSERT_TRUE(
+      file_handler_.WriteRollbackMetricsData("This is not valid metrics data"));
+  ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
+
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StopTrackingRollback());
+  ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       StopTrackingDoesNothingIfFileDoesNotExist) {
+  ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
+
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StopTrackingRollback());
+  ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
        StopTrackingReportsEventsAndDeletesMetricFile) {
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
@@ -397,7 +441,7 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
       .Times(2);
 
   ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
-  enterprise_rollback_metrics_handler_.StopTrackingRollback();
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StopTrackingRollback());
 
   ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
 }
@@ -423,7 +467,7 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
                                   RollbackPolicyActivated::kEventNameHash)))
       .Times(0);
 
-  enterprise_rollback_metrics_handler_.StopTrackingRollback();
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StopTrackingRollback());
   ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
 
   lock_process->Kill(SIGKILL, /*timeout=*/5);
@@ -459,19 +503,51 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
 }
 
-TEST_F(EnterpriseRollbackMetricsHandlerTest,
-       TrackEventsCheckIsFalseIfNoMetricsFile) {
+TEST_F(EnterpriseRollbackMetricsHandlerTest, IsNotTrackingIfNoMetricsFile) {
   ASSERT_FALSE(file_handler_.HasRollbackMetricsData());
   ASSERT_FALSE(enterprise_rollback_metrics_handler_.IsTrackingRollbackEvents());
 }
 
-TEST_F(EnterpriseRollbackMetricsHandlerTest,
-       TrackEventsCheckIsTrueIfMetricsFileExists) {
+TEST_F(EnterpriseRollbackMetricsHandlerTest, IsTrackingIfMetricsFileExists) {
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
 
   ASSERT_TRUE(file_handler_.HasRollbackMetricsData());
   ASSERT_TRUE(enterprise_rollback_metrics_handler_.IsTrackingRollbackEvents());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest, IsTrackingForTargetVersion) {
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
+      kOsVersionM108, kOsVersionM107));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.IsTrackingForTargetVersion(
+      kOsVersionM107));
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest, IsNotTrackingForTargetVersion) {
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.StartTrackingRollback(
+      kOsVersionM108, kOsVersionM107));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_.TrackEvent(
+      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_.IsTrackingForTargetVersion(
+      kOsVersionM108));
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       IsNotTrackingForTargetVersionIfFileDoesNotExist) {
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_.IsTrackingForTargetVersion(
+      kOsVersionM107));
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       IsNotTrackingForTargetVersionIfFileIsCorrupted) {
+  ASSERT_TRUE(
+      file_handler_.WriteRollbackMetricsData("This is not valid metrics data"));
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_.IsTrackingForTargetVersion(
+      kOsVersionM107));
 }
 
 }  // namespace oobe_config

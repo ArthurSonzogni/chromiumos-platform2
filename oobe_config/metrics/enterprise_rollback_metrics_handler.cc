@@ -4,8 +4,8 @@
 
 #include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
 
+#include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/files/file.h>
@@ -55,6 +55,10 @@ bool EnterpriseRollbackMetricsHandler::StartTrackingRollback(
                  "old events and delete it.";
     StopTrackingRollback();
   }
+
+  LOG(INFO) << "Start tracking rollback metrics with "
+            << current_os_version.GetString() << " and "
+            << target_os_version.GetString();
 
   // Create header containing information about the current Enterprise Rollback.
   auto rollback_metadata =
@@ -129,37 +133,22 @@ bool EnterpriseRollbackMetricsHandler::TrackEvent(
 
 bool EnterpriseRollbackMetricsHandler::ReportEventNow(
     EnterpriseRollbackEvent event) const {
-  // We only track rollback events if the metrics file was created. Calling
-  // this method if metrics are not enabled is not an error.
-  if (!file_handler_.HasRollbackMetricsData()) {
-    LOG(INFO) << "Rollback event: " << event << ". Not recording metrics.";
-    return false;
-  }
-
-  // We need to read the file to obtain the rollback metadata. We do not lock
-  // the file because we do not need to read or change the existing events to
-  // report the new event.
-  std::string rollback_metrics_data;
-  if (!file_handler_.ReadRollbackMetricsData(&rollback_metrics_data)) {
-    LOG(ERROR) << "Error reading rollback metrics data.";
-    return false;
-  }
-
-  EnterpriseRollbackMetricsData metrics_data;
-  if (!metrics_data.ParseFromString(rollback_metrics_data)) {
-    LOG(ERROR) << "Could not parse EnterpriseRollbackMetricsData proto.";
+  std::optional<EnterpriseRollbackMetricsData> metrics_data =
+      GetRollbackMetricsData();
+  if (!metrics_data.has_value()) {
+    LOG(INFO) << "Rollback event: " << event << " not reported.";
     return false;
   }
 
   EventData new_event_data;
   new_event_data.set_event(event);
-  RecordStructuredMetric(new_event_data, metrics_data.rollback_metadata());
+  RecordStructuredMetric(new_event_data, metrics_data->rollback_metadata());
 
   // If there were previous events tracked in the file, we get this chance to
   // attempt to report them as well.
-  if (metrics_data.event_data_size() > 0) {
+  if (metrics_data->event_data_size() > 0) {
     if (!ReportTrackedEvents()) {
-      LOG(ERROR) << "Not possible to report tracked events.";
+      LOG(ERROR) << "Not possible to report previously tracked events.";
     }
   }
 
@@ -225,7 +214,8 @@ bool EnterpriseRollbackMetricsHandler::ReportTrackedEvents() const {
   return true;
 }
 
-void EnterpriseRollbackMetricsHandler::StopTrackingRollback() const {
+bool EnterpriseRollbackMetricsHandler::StopTrackingRollback() const {
+  LOG(INFO) << "Stopping rollback metrics tracking.";
   if (!ReportTrackedEvents()) {
     LOG(ERROR) << "Unable to report the events before deleting the rollback "
                   "metrics file.";
@@ -233,10 +223,13 @@ void EnterpriseRollbackMetricsHandler::StopTrackingRollback() const {
 
   if (!file_handler_.RemoveRollbackMetricsData()) {
     LOG(ERROR) << "Error when deleting the rollback metrics file.";
+    return false;
   }
+
+  return true;
 }
 
-void EnterpriseRollbackMetricsHandler::CleanRollbackTrackingIfStale() const {
+bool EnterpriseRollbackMetricsHandler::CleanRollbackTrackingIfStale() const {
   // Rollback metrics file should be updated periodically to track the events
   // before powerwash. When recording metrics after powerwash, the file header
   // is read but not modified but it is updated when previous events are
@@ -245,24 +238,73 @@ void EnterpriseRollbackMetricsHandler::CleanRollbackTrackingIfStale() const {
   std::optional<base::Time> last_modification =
       file_handler_.LastModifiedTimeRollbackMetricsDataFile();
   if (!last_modification.has_value()) {
-    return;
+    return true;
   }
 
   base::TimeDelta stale_delta = base::Time::Now() - last_modification.value();
   if (stale_delta.InDays() > kNumberStaleDaysBeforeDeletion) {
     // TODO(b/261850979): Add UMA metric to control how often the file stales.
     LOG(INFO) << "Deleting stale rollback metrics file.";
-    StopTrackingRollback();
+    return StopTrackingRollback();
   }
+
+  return true;
 }
 
 bool EnterpriseRollbackMetricsHandler::IsTrackingRollbackEvents() const {
   return file_handler_.HasRollbackMetricsData();
 }
 
+bool EnterpriseRollbackMetricsHandler::IsTrackingForTargetVersion(
+    const base::Version& target_os_version) const {
+  std::optional<EnterpriseRollbackMetricsData> metrics_data =
+      GetRollbackMetricsData();
+  if (!metrics_data.has_value()) {
+    return false;
+  }
+
+  base::Version target(
+      {metrics_data->rollback_metadata().target_chromeos_version_major(),
+       metrics_data->rollback_metadata().target_chromeos_version_minor(),
+       metrics_data->rollback_metadata().target_chromeos_version_patch()});
+
+  if (!target.IsValid()) {
+    LOG(ERROR) << "Version parsed not valid.";
+    return false;
+  }
+
+  return target_os_version == target;
+}
+
 void EnterpriseRollbackMetricsHandler::SetFileHandlerForTesting(
     const FileHandler& file_handler) {
   file_handler_ = file_handler;
+}
+
+std::optional<EnterpriseRollbackMetricsData>
+EnterpriseRollbackMetricsHandler::GetRollbackMetricsData() const {
+  if (!file_handler_.HasRollbackMetricsData()) {
+    return std::nullopt;
+  }
+
+  std::string rollback_metrics_data;
+  if (!file_handler_.ReadRollbackMetricsData(&rollback_metrics_data)) {
+    LOG(ERROR) << "Error reading rollback metrics data.";
+    return std::nullopt;
+  }
+
+  EnterpriseRollbackMetricsData metrics_data;
+  if (!metrics_data.ParseFromString(rollback_metrics_data)) {
+    LOG(ERROR) << "Could not parse EnterpriseRollbackMetricsData proto.";
+    return std::nullopt;
+  }
+
+  if (!metrics_data.has_rollback_metadata()) {
+    LOG(ERROR) << "No RollbackMetadata in proto.";
+    return std::nullopt;
+  }
+
+  return metrics_data;
 }
 
 }  // namespace oobe_config
