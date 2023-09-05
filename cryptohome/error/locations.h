@@ -1763,7 +1763,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockStartBioAuthFailedInCreate = 3350,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockCreateCredentialFailedInCreate = 3351,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockCreateRateLimiterFailedInCreate = 3352,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockInsertCredentialFailedInCreate = 3353,
@@ -1773,15 +1773,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilPrepareForAuthFingerprintNoService = 3355,
   /* =Obsolete= */
   kLocAuthBlockUtilPrepareForAddInvalidAuthFactorType = 3356,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocRateLimiterNoResetSecretInAuthInputForAdd = 3357,
   /* ./auth_session.cc */
   kLocAuthSessionDeriveUSSSecretFailedInAddSecretToUSS = 3358,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocNewRateLimiterWithNoSecretInAddSecretToUSS = 3359,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAddRateLimiterLabelFailedInAddSecretToUSS = 3360,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAddRateLimiterSecretFailedInAddSecretToUSS = 3361,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockNoUsernameInSelect = 3362,
@@ -1879,6 +1879,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAddRateLimiterResetSecretToUSSFailed = 3408,
   /* ./auth_session.cc */
   kLocAuthSessionUnauthedInPrepareForAdd = 3409,
+  /* ./auth_session.cc */
+  kLocRateLimiterNoRateLimiterInAuthInputForAdd = 3410,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

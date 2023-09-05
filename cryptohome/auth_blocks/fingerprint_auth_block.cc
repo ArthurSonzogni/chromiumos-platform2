@@ -52,15 +52,6 @@ constexpr char kFekKeyHmacData[] = "fek_key";
 constexpr uint8_t kFingerprintAuthChannel = 0;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 constexpr size_t kHeSecretSize = 32;
-constexpr size_t kResetSecretSize = 32;
-
-constexpr struct {
-  uint32_t attempts;
-  uint32_t delay;
-} kDefaultDelaySchedule[] = {
-    {5, kInfiniteDelay},
-};
-constexpr base::TimeDelta kExpirationLockout = base::Days(1);
 
 std::vector<hwsec::OperationPolicySetting> GetValidPoliciesOfUser(
     const ObfuscatedUsername& obfuscated_username) {
@@ -175,34 +166,13 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
         nullptr, nullptr);
     return;
   }
-  std::optional<uint64_t> rate_limiter_label = std::nullopt,
-                          created_rate_limiter_label = std::nullopt;
   // reset_secret here represents the existing/created rate limiter leaf's reset
   // secret. The same value will be used as the reset secret for the actual
   // fingerprint credential leaf. It usually never needs to be reset as
   // its authentication shouldn't never fail, but we still need to be able to
   // reset it when it's locked.
-  std::optional<brillo::SecureBlob> reset_secret;
-  if (auth_input.rate_limiter_label.has_value()) {
-    rate_limiter_label = *auth_input.rate_limiter_label;
-    reset_secret = auth_input.reset_secret;
-  } else {
-    reset_secret = CreateSecureRandomBlob(kResetSecretSize);
-    CryptoStatusOr<uint64_t> label =
-        CreateRateLimiter(*auth_input.obfuscated_username, *reset_secret);
-    if (!label.ok()) {
-      std::move(callback).Run(
-          MakeStatus<CryptohomeCryptoError>(
-              CRYPTOHOME_ERR_LOC(
-                  kLocFingerprintAuthBlockCreateRateLimiterFailedInCreate),
-              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
-              .Wrap(std::move(label).err_status()),
-          nullptr, nullptr);
-      return;
-    }
-    created_rate_limiter_label = rate_limiter_label = *label;
-  }
-  if (!rate_limiter_label.has_value() || !reset_secret.has_value()) {
+  if (!auth_input.rate_limiter_label.has_value() ||
+      !auth_input.reset_secret.has_value()) {
     LOG(ERROR) << "Missing label or reset_secret.";
     std::move(callback).Run(
         MakeStatus<CryptohomeError>(
@@ -227,7 +197,7 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
   }
   LECredStatusOr<LECredentialManager::StartBiometricsAuthReply> reply =
       le_manager_->StartBiometricsAuth(kFingerprintAuthChannel,
-                                       *rate_limiter_label, *nonce);
+                                       *auth_input.rate_limiter_label, *nonce);
   if (!reply.ok()) {
     LOG(ERROR) << "Failed to start biometrics auth with PinWeaver.";
     std::move(callback).Run(
@@ -239,7 +209,8 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
     return;
   }
   LECredStatus reset_status = le_manager_->ResetCredential(
-      *rate_limiter_label, *reset_secret, /*strong_reset=*/false);
+      *auth_input.rate_limiter_label, *auth_input.reset_secret,
+      /*strong_reset=*/false);
   if (!reset_status.ok()) {
     // TODO(b/275027852): Report metrics because we silently fail here.
     LOG(WARNING)
@@ -254,8 +225,8 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
   service_->CreateCredential(
       input, base::BindOnce(&FingerprintAuthBlock::ContinueCreate,
                             weak_factory_.GetWeakPtr(), std::move(callback),
-                            *auth_input.obfuscated_username, *reset_secret,
-                            created_rate_limiter_label));
+                            *auth_input.obfuscated_username,
+                            *auth_input.reset_secret));
 }
 
 void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
@@ -418,32 +389,10 @@ void FingerprintAuthBlock::PrepareForRemoval(
                      std::move(callback)));
 }
 
-CryptoStatusOr<uint64_t> FingerprintAuthBlock::CreateRateLimiter(
-    const ObfuscatedUsername& obfuscated_username,
-    const brillo::SecureBlob& reset_secret) {
-  std::vector<hwsec::OperationPolicySetting> policies =
-      GetValidPoliciesOfUser(obfuscated_username);
-
-  std::map<uint32_t, uint32_t> delay_sched;
-  for (const auto& entry : kDefaultDelaySchedule) {
-    delay_sched[entry.attempts] = entry.delay;
-  }
-
-  uint64_t label;
-  LECredStatus ret = le_manager_->InsertRateLimiter(
-      kFingerprintAuthChannel, policies, reset_secret, delay_sched,
-      kExpirationLockout.InSeconds(), &label);
-  if (!ret.ok()) {
-    return ret;
-  }
-  return label;
-}
-
 void FingerprintAuthBlock::ContinueCreate(
     CreateCallback callback,
     const ObfuscatedUsername& obfuscated_username,
     const brillo::SecureBlob& reset_secret,
-    std::optional<uint64_t> created_label,
     CryptohomeStatusOr<BiometricsAuthBlockService::OperationOutput> output) {
   if (!output.ok()) {
     LOG(ERROR) << "Failed to create biometrics credential.";
@@ -497,7 +446,6 @@ void FingerprintAuthBlock::ContinueCreate(
   key_blobs->vkk_key =
       HmacSha256(hmac_key, brillo::BlobFromString(kFekKeyHmacData));
   key_blobs->reset_secret = reset_secret;
-  key_blobs->rate_limiter_label = created_label;
 
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
                           std::move(key_blobs), std::move(auth_state));
