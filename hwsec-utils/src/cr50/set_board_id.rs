@@ -194,9 +194,9 @@ pub fn check_cr50_support_partial_board_id(
 pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict> {
     let flash_output = ctx
         .cmd_runner()
-        .run("flashrom", vec!["-p", "host", "--wp-status"])
+        .run("futility", vec!["flash", "--wp-status"])
         .map_err(|_| {
-            eprintln!("Failed to run flashrom.");
+            eprintln!("Failed to get the current flash WP state.");
             Cr50SetBoardIDVerdict::GeneralError
         })?;
 
@@ -415,7 +415,7 @@ mod tests {
     fn test_check_device_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("flashrom", vec!["-p", "host", "--wp-status"]),
+            MockCommandInput::new("futility", vec!["flash", "--wp-status"]),
             MockCommandOutput::new(0, "", ""),
         );
         mock_ctx.cmd_runner().add_expectation(
@@ -430,10 +430,10 @@ mod tests {
     }
 
     #[test]
-    fn test_check_device_flashrom_error() {
+    fn test_check_device_futility_error() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("flashrom", vec!["-p", "host", "--wp-status"]),
+            MockCommandInput::new("futility", vec!["flash", "--wp-status"]),
             MockCommandOutput::new(1, "", ""),
         );
         let result = check_device(&mut mock_ctx);
@@ -444,7 +444,7 @@ mod tests {
     fn test_check_device_not_running_normal_image() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("flashrom", vec!["-p", "host", "--wp-status"]),
+            MockCommandInput::new("futility", vec!["flash", "--wp-status"]),
             MockCommandOutput::new(0, "", ""),
         );
         mock_ctx.cmd_runner().add_expectation(
@@ -462,7 +462,7 @@ mod tests {
     fn test_check_device_write_protect_is_disabled() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("flashrom", vec!["-p", "host", "--wp-status"]),
+            MockCommandInput::new("futility", vec!["flash", "--wp-status"]),
             MockCommandOutput::new(0, "write protect is disabled", ""),
         );
         mock_ctx.cmd_runner().add_expectation(
