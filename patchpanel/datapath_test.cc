@@ -1691,6 +1691,26 @@ TEST(DatapathTest, AddIPv6HostRoute) {
                                         "2001:da8:e00::1234/128"));
 }
 
+TEST(DatapathTest, AddIPv4RouteToTable) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+  Verify_ip(*runner, "route add 192.0.2.2/24 dev eth0 table 123");
+  Datapath datapath(runner, firewall, &system);
+  datapath.AddIPv4RouteToTable(
+      "eth0", *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.2/24"), 123);
+}
+
+TEST(DatapathTest, DeleteIPv4RouteFromTable) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+  Verify_ip(*runner, "route del 192.0.2.2/24 dev eth0 table 123");
+  Datapath datapath(runner, firewall, &system);
+  datapath.DeleteIPv4RouteFromTable(
+      "eth0", *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.2/24"), 123);
+}
+
 TEST(DatapathTest, AddIPv4Route) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();

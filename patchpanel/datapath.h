@@ -185,7 +185,7 @@ class Datapath {
       const std::optional<net_base::IPv4CIDR>& ipv4_cidr,
       const std::string& user,
       DeviceMode dev_mode);
-  void RemoveTunTap(const std::string& ifname, DeviceMode dev_mode);
+  virtual void RemoveTunTap(const std::string& ifname, DeviceMode dev_mode);
 
   // The following are iptables methods.
   // When specified, |ipv4_addr| is always singlar dotted-form (a.b.c.d)
@@ -344,6 +344,14 @@ class Datapath {
                               const std::string& ipv6_addr);
   virtual void RemoveIPv6Address(const std::string& ifname,
                                  const std::string& ipv6_addr);
+
+  virtual bool AddIPv4RouteToTable(const std::string& ifname,
+                                   const net_base::IPv4CIDR& ipv4_cidr,
+                                   int table_id);
+
+  virtual void DeleteIPv4RouteFromTable(const std::string& ifname,
+                                        const net_base::IPv4CIDR& ipv4_cidr,
+                                        int table_id);
 
   // Adds (or deletes) a route to direct to |gateway_addr| the traffic destined
   // to the subnet defined by |subnet_cidr|.

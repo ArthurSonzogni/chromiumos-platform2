@@ -2162,6 +2162,22 @@ std::string Datapath::DumpIptables(IpFamily family, Iptables::Table table) {
   return result;
 }
 
+bool Datapath::AddIPv4RouteToTable(const std::string& ifname,
+                                   const net_base::IPv4CIDR& ipv4_cidr,
+                                   int table_id) {
+  return process_runner_->ip("route", "add",
+                             {ipv4_cidr.ToString(), "dev", ifname, "table",
+                              base::NumberToString(table_id)}) == 0;
+}
+
+void Datapath::DeleteIPv4RouteFromTable(const std::string& ifname,
+                                        const net_base::IPv4CIDR& ipv4_cidr,
+                                        int table_id) {
+  process_runner_->ip("route", "del",
+                      {ipv4_cidr.ToString(), "dev", ifname, "table",
+                       base::NumberToString(table_id)});
+}
+
 bool Datapath::AddIPv4Route(const IPv4Address& gateway_addr,
                             const IPv4CIDR& subnet_cidr) {
   struct rtentry route;

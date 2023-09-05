@@ -56,6 +56,10 @@ class MockDatapath : public Datapath {
                const std::string& user,
                DeviceMode dev_mode),
               (override));
+  MOCK_METHOD(void,
+              RemoveTunTap,
+              (const std::string& ifname, DeviceMode dev_mode),
+              (override));
   MOCK_METHOD(bool,
               ConnectVethPair,
               (pid_t pid,
@@ -97,6 +101,18 @@ class MockDatapath : public Datapath {
   MOCK_METHOD(bool,
               MaskInterfaceFlags,
               (const std::string& ifname, uint16_t on, uint16_t off),
+              (override));
+  MOCK_METHOD(bool,
+              AddIPv4RouteToTable,
+              (const std::string& ifname,
+               const net_base::IPv4CIDR& ipv4_cidr,
+               int table_id),
+              (override));
+  MOCK_METHOD(void,
+              DeleteIPv4RouteFromTable,
+              (const std::string& ifname,
+               const net_base::IPv4CIDR& ipv4_cidr,
+               int table_id),
               (override));
   MOCK_METHOD(bool,
               AddIPv4Route,

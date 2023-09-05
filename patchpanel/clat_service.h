@@ -6,19 +6,24 @@
 #define PATCHPANEL_CLAT_SERVICE_H_
 
 #include <optional>
+#include <string>
 
 #include <net-base/ipv6_address.h>
+#include <shill/net/process_manager.h>
 
+#include "patchpanel/datapath.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
 
-// This class configures, starts or stops CLAT on ChromeOS host when the main
+// This class configures, starts ortstops CLAT on ChromeOS host when the main
 // Manager process notifies this class about changes on either the default
 // logical device or IPConfig of it.
 class ClatService {
  public:
-  ClatService();
+  ClatService(Datapath* datapath,
+              shill::ProcessManager* process_manager,
+              System* system);
   ClatService(const ClatService&) = delete;
   ClatService& operator=(const ClatService&) = delete;
 
@@ -62,10 +67,32 @@ class ClatService {
  private:
   bool IsClatRunningDevice(const ShillClient::Device& shill_device);
 
-  std::optional<ShillClient::Device> clat_running_device_;
+  // Creates a config file /run/tayga/tayga.conf. An old config file will be
+  // overwritten by a new one.
+  bool CreateConfigFile(const std::string& ifname,
+                        const net_base::IPv6Address& clat_ipv6_addr);
+  bool StartTayga();
+  void StopTayga();
+
+  // These variables are injected at the constructor. The caller should
+  // guarantee these variables outlive the ClatService instance.
+  Datapath* datapath_;
+  shill::ProcessManager* process_manager_;
+  System* system_;
   // CLAT feature is disabled by default. This value can be changed in
   // `Enable()` and `Disable()`
   bool is_enabled_ = false;
+  pid_t tayga_pid_ = -1;
+
+  // The device on which CLAT should be running.
+  // If CLAT is enabled, this has a value when CLAT is actually running. If
+  // disabled, this has a value when the default logical device is IPv6-only.
+  std::optional<ShillClient::Device> clat_running_device_;
+  // IPv6 address used for address translation between IPv4 and IPv6 in CLAT.
+  // This will be the source address of outgoing packets and destination address
+  // of incoming packets in IPv6-only network. This has a value when CLAT is
+  // actually running. i.e. this is std::nullopt while CLAT is disabled.
+  std::optional<net_base::IPv6Address> clat_ipv6_addr_;
 };
 }  // namespace patchpanel
 

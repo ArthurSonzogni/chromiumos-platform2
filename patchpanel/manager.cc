@@ -95,9 +95,8 @@ Manager::Manager(const base::FilePath& cmd_path,
                           weak_factory_.GetWeakPtr()));
   ipv6_svc_ = std::make_unique<GuestIPv6Service>(nd_proxy_.get(),
                                                  datapath_.get(), system);
-  // TODO(b/278970851): Do the actual implementation. ClatService class needs to
-  // take Datapath* argument in constructor.
-  clat_svc_ = std::make_unique<ClatService>();
+  clat_svc_ =
+      std::make_unique<ClatService>(datapath_.get(), process_manager, system);
   network_monitor_svc_->Start();
   ipv6_svc_->Start();
 
