@@ -7,7 +7,6 @@
 // Always return true when the `reven_partition_migration` USE flag is
 // not enabled.
 bool RunRevenPartitionMigration(CgptManagerInterface& cgpt_manager,
-                                MetricsInterface& metrics,
-                                base::Environment& env) {
+                                MetricsInterface& metrics) {
   return true;
 }

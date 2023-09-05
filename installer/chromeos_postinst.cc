@@ -649,7 +649,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // partitions on the reven board. This is a no-op if the
       // `reven_partition_migration` USE flag is not enabled.
       if (!RunRevenPartitionMigration(
-              cgpt_manager, *MetricsInterface::GetMetricsInstance(), *env)) {
+              cgpt_manager, *MetricsInterface::GetMetricsInstance())) {
         LOG(ERROR) << "Fatal partition migration error.";
         return false;
       }

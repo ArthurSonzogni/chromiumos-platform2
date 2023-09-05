@@ -118,11 +118,6 @@ class PartitionMigrationTest : public ::testing::Test {
         .WillOnce(Return(true));
   }
 
-  void SetIsInstall(bool is_install) {
-    EXPECT_CALL(env_, HasVar(StrEq(kEnvIsInstall)))
-        .WillOnce(Return(is_install));
-  }
-
   void ExpectSlotAMigration() {
     SectorRange root_a = orig_partitions_[PartitionNum::ROOT_A];
 
@@ -162,7 +157,6 @@ class PartitionMigrationTest : public ::testing::Test {
   // the other interfaces, since they are very minimal and unlikely to
   // break.
   StrictMock<MockCgptManager> cgpt_manager_;
-  StrictMock<MockEnvironment> env_;
   StrictMock<MockMetrics> metrics_;
 
  private:
@@ -270,20 +264,17 @@ TEST_F(PartitionMigrationTest, SlotPlanRunGptWriteKernError) {
 // Tests for a successful migration of one or both slots:
 
 TEST_F(PartitionMigrationTest, RunSuccess) {
-  SetIsInstall(true);
   ExpectSlotAMigration();
   ExpectSlotBMigration();
   ExpectMetric(PartitionMigrationResult::kSuccess);
 
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_));
 
   CheckNewKernelData(PartitionNum::KERN_A);
   CheckNewKernelData(PartitionNum::KERN_B);
 }
 
 TEST_F(PartitionMigrationTest, RunSuccessCloudReady96) {
-  SetIsInstall(true);
-
   // Numbers from a beerover 96.4 install (`cgpt show`).
   orig_partitions_[PartitionNum::KERN_A] = {20480, 32768};
   orig_partitions_[PartitionNum::ROOT_A] = {6623232, 6242304};
@@ -297,39 +288,36 @@ TEST_F(PartitionMigrationTest, RunSuccessCloudReady96) {
   ExpectSlotBMigration();
   ExpectMetric(PartitionMigrationResult::kSuccess);
 
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_));
 
   CheckNewKernelData(PartitionNum::KERN_A);
   CheckNewKernelData(PartitionNum::KERN_B);
 }
 
 TEST_F(PartitionMigrationTest, RunNoMigrationNeeded) {
-  SetIsInstall(true);
   orig_partitions_[PartitionNum::KERN_A].count = MibToSectors(64);
   orig_partitions_[PartitionNum::KERN_B].count = MibToSectors(64);
 
   ExpectMetric(PartitionMigrationResult::kNoMigrationNeeded);
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_));
 }
 
 TEST_F(PartitionMigrationTest, RunSlotANoMigrationNeeded) {
-  SetIsInstall(true);
   orig_partitions_[PartitionNum::KERN_A].count = MibToSectors(64);
 
   ExpectSlotBMigration();
 
   ExpectMetric(PartitionMigrationResult::kSuccess);
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_));
 }
 
 TEST_F(PartitionMigrationTest, RunSlotBNoMigrationNeeded) {
-  SetIsInstall(true);
   orig_partitions_[PartitionNum::KERN_B].count = MibToSectors(64);
 
   ExpectSlotAMigration();
 
   ExpectMetric(PartitionMigrationResult::kSuccess);
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_));
 }
 
 // Tests for how errors are handled if either slot plan fails to
@@ -337,37 +325,31 @@ TEST_F(PartitionMigrationTest, RunSlotBNoMigrationNeeded) {
 // allowed to proceed (RunRevenPartitionMigration returns true).
 
 TEST_F(PartitionMigrationTest, RunSlotAPlanError) {
-  SetIsInstall(true);
   orig_partitions_.erase(PartitionNum::KERN_A);
 
   ExpectMetric(PartitionMigrationResult::kGptReadKernError);
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_));
 }
 
 TEST_F(PartitionMigrationTest, RunSlotBPlanError) {
-  SetIsInstall(true);
   orig_partitions_.erase(PartitionNum::KERN_B);
 
   ExpectMetric(PartitionMigrationResult::kGptReadKernError);
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_));
 }
 
 // Tests for propagating errors if either slot migration fails:
 
 TEST_F(PartitionMigrationTest, RunSlotAMigrationError) {
-  SetIsInstall(true);
-
   // Arbitrary choice of failure in the slot A migration.
   EXPECT_CALL(cgpt_manager_, SetSectorRange(PartitionNum::ROOT_A, _, _))
       .WillOnce(Return(CgptErrorCode::kUnknownError));
 
   ExpectMetric(PartitionMigrationResult::kGptWriteRootError);
-  EXPECT_FALSE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_FALSE(RunRevenPartitionMigration(cgpt_manager_, metrics_));
 }
 
 TEST_F(PartitionMigrationTest, RunSlotBMigrationError) {
-  SetIsInstall(true);
-
   // Arbitrary choice of failure in the slot B migration.
   EXPECT_CALL(cgpt_manager_, SetSectorRange(PartitionNum::ROOT_B, _, _))
       .WillOnce(Return(CgptErrorCode::kUnknownError));
@@ -377,62 +359,7 @@ TEST_F(PartitionMigrationTest, RunSlotBMigrationError) {
   ExpectSlotAMigration();
 
   ExpectMetric(PartitionMigrationResult::kGptWriteRootError);
-  EXPECT_FALSE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
-}
-
-// Test that no migration occurs during updates (except on particular
-// channels). This behavior will change in the future, but for now we
-// only run the migration on install.
-TEST_F(PartitionMigrationTest, NotRunningFromInstaller) {
-  SetIsInstall(false);
-  ExpectMetric(PartitionMigrationResult::kMigrationNotAllowed);
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
-}
-
-// Test that migration planning does occur during updates, even if the
-// migration doesn't run.
-TEST_F(PartitionMigrationTest, UpdatePlanningOccurs) {
-  SetIsInstall(false);
-
-  orig_partitions_[PartitionNum::KERN_A].count = MibToSectors(64);
-  orig_partitions_[PartitionNum::KERN_B].count = MibToSectors(64);
-
-  ExpectMetric(PartitionMigrationResult::kNoMigrationNeeded);
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
-}
-
-// Test that migration runs during updates when the payload is a test image.
-TEST_F(PartitionMigrationTest, UpdateMigrationOnTest) {
-  base::test::ScopedChromeOSVersionInfo scoped_info(
-      "CHROMEOS_RELEASE_TRACK=testimage-channel\n", base::Time::Now());
-
-  SetIsInstall(false);
-
-  ExpectSlotAMigration();
-  ExpectSlotBMigration();
-  ExpectMetric(PartitionMigrationResult::kSuccess);
-
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
-
-  CheckNewKernelData(PartitionNum::KERN_A);
-  CheckNewKernelData(PartitionNum::KERN_B);
-}
-
-// Test that migration runs during updates when the payload is on canary.
-TEST_F(PartitionMigrationTest, UpdateMigrationOnCanary) {
-  base::test::ScopedChromeOSVersionInfo scoped_info(
-      "CHROMEOS_RELEASE_TRACK=canary-channel\n", base::Time::Now());
-
-  SetIsInstall(false);
-
-  ExpectSlotAMigration();
-  ExpectSlotBMigration();
-  ExpectMetric(PartitionMigrationResult::kSuccess);
-
-  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
-
-  CheckNewKernelData(PartitionNum::KERN_A);
-  CheckNewKernelData(PartitionNum::KERN_B);
+  EXPECT_FALSE(RunRevenPartitionMigration(cgpt_manager_, metrics_));
 }
 
 TEST(PartitionMigration, MibToSectors) {

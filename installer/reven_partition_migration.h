@@ -5,8 +5,6 @@
 #ifndef INSTALLER_REVEN_PARTITION_MIGRATION_H_
 #define INSTALLER_REVEN_PARTITION_MIGRATION_H_
 
-#include <base/environment.h>
-
 #include "installer/cgpt_manager.h"
 #include "installer/metrics.h"
 
@@ -20,8 +18,6 @@
 // on a fatal failure. Note that returning true does not necessarily
 // indicate that the migration succeeded.
 [[nodiscard]] bool RunRevenPartitionMigration(
-    CgptManagerInterface& cgpt_manager,
-    MetricsInterface& metrics,
-    base::Environment& env);
+    CgptManagerInterface& cgpt_manager, MetricsInterface& metrics);
 
 #endif  // INSTALLER_REVEN_PARTITION_MIGRATION_H_

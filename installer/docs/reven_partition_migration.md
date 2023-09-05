@@ -33,20 +33,13 @@ The migration in more detail:
 4. The GPT headers are updated to shrink the root partitions, and update
    the location and size of the kernel partitions.
 
-To limit the initial scope of testing, the migration will be run for all
-fresh installs, but not for all updates. In particular, only test images
-and images on the canary/dev/beta channels will run the migration on update.
-That means fresh installations will always have 64MiB kernel partitions, but
-upgraded installations may still have 16MiB kernel partitions for
-now. Once we're confident that this is working well, we'll expand the
-scope of the migration to more updates, potentially with a
-[trial][featured] in place to roll out the change slowly. Once we're
-confident in that rollout, we'll mark a release as a "stepping-stone"
-update so that no devices can update to a release after that one without
-first passing through the stepping-stone update. After that we know that
-all devices have 64MiB kernel partitions, so we'll be able to update the
-disk layout to 64MiB. At that point we can also drop this migration
-code.
+Eventually we'll mark a release as a "stepping-stone" update so that no
+devices can update to a release after that one without first passing
+through the stepping-stone update. This is currently planned to happen
+in M120. In releases after that (M121 and later) we'll know that all
+devices have 64MiB kernel partitions, so we'll be able to change the
+disk layout of freshly-built images to 64MiB. At that point we can also
+drop this migration code.
 
 The implementation for the migration is in
 [`reven_partition_migration.cc`]. Note that the migration code is only
@@ -55,7 +48,6 @@ otherwise [`reven_partition_migration_stub.cc`] is built instead.
 
 [`reven_partition_migration.cc`]: ../reven_partition_migration.cc
 [`reven_partition_migration_stub.cc`]: ../reven_partition_migration_stub.cc
-[featured]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/featured
 [legacy_disk_layout]: https://chromium.googlesource.com/chromiumos/platform/crosutils/+/HEAD/build_library/legacy_disk_layout.json
 [v2 layout]: https://chromium.googlesource.com/chromiumos/platform/crosutils/+/HEAD/build_library/disk_layout_v2.json
 [v3 layout]: https://chromium.googlesource.com/chromiumos/platform/crosutils/+/HEAD/build_library/disk_layout_v3.json
