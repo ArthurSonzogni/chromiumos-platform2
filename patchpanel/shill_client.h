@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/flat_set.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus/object_path.h>
 #include <net-base/ipv4_address.h>
@@ -143,6 +144,16 @@ class ShillClient {
   using IPv6NetworkChangeHandler =
       base::RepeatingCallback<void(const Device& device)>;
 
+  // The DNS-over-HTTPS service providers which are URLs of the secure DNS
+  // service endpoints. Different from the DNSProxyDOHProviders property in
+  // shill (see shill/doc/manager-api.doc), this struct does not contain the IPs
+  // of name servers since they are not used in patchpanel now.
+  using DoHProviders = base::flat_set<std::string>;
+  // Client callback for listening to DoH providers change events on the Manager
+  // object of shill.
+  using DoHProvidersChangeHandler =
+      base::RepeatingCallback<void(const DoHProviders& doh_providers)>;
+
   explicit ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system);
   ShillClient(const ShillClient&) = delete;
   ShillClient& operator=(const ShillClient&) = delete;
@@ -165,6 +176,11 @@ class ShillClient {
 
   void RegisterIPv6NetworkChangedHandler(
       const IPv6NetworkChangeHandler& handler);
+
+  // Registers the provided handler for changes in DoH provider list. The
+  // handler will be called once immediately at registration.
+  void RegisterDoHProvidersChangedHandler(
+      const DoHProvidersChangeHandler& handler);
 
   void ScanDevices();
 
@@ -248,6 +264,10 @@ class ShillClient {
   // physical network changed.
   void SetDefaultPhysicalDevice(const std::optional<Device>& device);
 
+  // Updates |doh_providers_| variable to track the DoH providers from shill.
+  // Also invokes the handlers if the list changes.
+  void UpdateDoHProviders(const brillo::Any& property_value);
+
   // Parses the |ipconfig_properties| as the IPConfigs property of the shill
   // Device identified by |device_path|, which should be a list of object paths
   // of IPConfigs.
@@ -281,6 +301,10 @@ class ShillClient {
   //   Cellular Device, the name of primary multiplexed interface is unknown.
   std::map<std::string, std::pair<std::string, int>> datapath_interface_cache_;
 
+  // Tracks the DoH providers from the DNSProxyDOHProviders property on shill's
+  // Manager.
+  DoHProviders doh_providers_;
+
   // Called when the shill Device used as the default logical network changes.
   std::vector<DefaultDeviceChangeHandler> default_logical_device_handlers_;
   // Called when the shill Device used as the default physical network changes.
@@ -291,6 +315,8 @@ class ShillClient {
   std::vector<IPConfigsChangeHandler> ipconfigs_handlers_;
   // Called when the IPv6 network of any shill Device changes.
   std::vector<IPv6NetworkChangeHandler> ipv6_network_handlers_;
+  // Called when the DNSProxyDOHProviders property changes.
+  std::vector<DoHProvidersChangeHandler> doh_provider_handlers_;
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;

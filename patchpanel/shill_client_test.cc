@@ -492,5 +492,53 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   ASSERT_EQ(ipv6_network_change_calls_.size(), 3u);
 }
 
+TEST_F(ShillClientTest, DoHProviderHandler) {
+  // Helper function to trigger a chance event for the DNSProxyDOHProviders
+  // property.
+  const auto trigger_doh_change =
+      [&](const std::map<std::string, std::string>& kvs) {
+        brillo::VariantDictionary doh_val;
+        for (const auto& [k, v] : kvs) {
+          doh_val[k] = brillo::Any(v);
+        }
+        client_->NotifyManagerPropertyChange(
+            shill::kDNSProxyDOHProvidersProperty, brillo::Any(doh_val));
+      };
+
+  // Helper class to register the callback.
+  class FakeHandler {
+   public:
+    MOCK_METHOD(void,
+                OnDoHProvidersChanged,
+                (const ShillClient::DoHProviders&));
+  } handler;
+
+  // Constants used in this test.
+  const std::string doh1 = "doh.server.1";
+  const std::string doh2 = "doh.server.2";
+  const std::string ips1 = "ip1,ip2,ip3";
+  const std::string ips2 = "ip4,ip5,ip6";
+
+  // Before any callback is registered, ShillClient knows |doh1|.
+  trigger_doh_change({{doh1, ips1}});
+
+  // Register the callback should trigger it immediately.
+  EXPECT_CALL(handler, OnDoHProvidersChanged(ShillClient::DoHProviders{doh1}));
+  client_->RegisterDoHProvidersChangedHandler(base::BindRepeating(
+      &FakeHandler::OnDoHProvidersChanged, base::Unretained(&handler)));
+
+  // The value change (i.e., the IP address list) won't trigger the callback.
+  trigger_doh_change({{doh1, ips2}});
+
+  // New DoH provider.
+  EXPECT_CALL(handler,
+              OnDoHProvidersChanged(ShillClient::DoHProviders{doh1, doh2}));
+  trigger_doh_change({{doh1, ips1}, {doh2, ips2}});
+
+  // Removal of an existing DoH provider.
+  EXPECT_CALL(handler, OnDoHProvidersChanged(ShillClient::DoHProviders{doh2}));
+  trigger_doh_change({{doh2, ips2}});
+}
+
 }  // namespace
 }  // namespace patchpanel

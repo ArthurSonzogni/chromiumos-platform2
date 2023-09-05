@@ -105,6 +105,20 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
   // Shill client needs to know about the current default devices in case the
   // default devices are available prior to the client.
   UpdateDefaultDevices();
+
+  // Also fetch the DoH provider list.
+  brillo::VariantDictionary props;
+  if (!manager_proxy_->GetProperties(&props, nullptr)) {
+    LOG(ERROR) << "Unable to get Manager properties";
+    return;
+  }
+  if (const auto it = props.find(shill::kDNSProxyDOHProvidersProperty);
+      it != props.end()) {
+    UpdateDoHProviders(it->second);
+  } else {
+    LOG(ERROR) << "Manager properties is missing "
+               << shill::kDNSProxyDOHProvidersProperty;
+  }
 }
 
 const ShillClient::Device* ShillClient::default_logical_device() const {
@@ -262,6 +276,9 @@ void ShillClient::OnManagerPropertyChange(const std::string& property_name,
                                           const brillo::Any& property_value) {
   if (property_name == shill::kDevicesProperty) {
     UpdateDevices(property_value);
+  } else if (property_name == shill::kDNSProxyDOHProvidersProperty) {
+    UpdateDoHProviders(property_value);
+    return;
   } else if (property_name != shill::kDefaultServiceProperty &&
              property_name != shill::kServicesProperty &&
              property_name != shill::kConnectionStateProperty) {
@@ -785,6 +802,29 @@ void ShillClient::NotifyIPv6NetworkChangeHandlers(
   }
   for (const auto& handler : ipv6_network_handlers_) {
     handler.Run(device);
+  }
+}
+
+void ShillClient::RegisterDoHProvidersChangedHandler(
+    const DoHProvidersChangeHandler& handler) {
+  doh_provider_handlers_.push_back(handler);
+  handler.Run(doh_providers_);
+}
+
+void ShillClient::UpdateDoHProviders(const brillo::Any& property_value) {
+  base::flat_set<std::string> new_doh_providers;
+  for (const auto& [key, _] :
+       property_value.TryGet<brillo::VariantDictionary>()) {
+    new_doh_providers.insert(key);
+  }
+
+  if (new_doh_providers == doh_providers_) {
+    return;
+  }
+
+  doh_providers_.swap(new_doh_providers);
+  for (const auto& h : doh_provider_handlers_) {
+    h.Run(doh_providers_);
   }
 }
 
