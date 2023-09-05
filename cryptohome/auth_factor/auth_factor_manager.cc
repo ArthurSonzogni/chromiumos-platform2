@@ -194,10 +194,10 @@ CryptohomeStatus AuthFactorManager::DeleteAuthFactorFile(
   return OkStatus<CryptohomeError>();
 }
 
-CryptohomeStatusOr<std::unique_ptr<AuthFactor>>
-AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
-                                  AuthFactorType auth_factor_type,
-                                  const std::string& auth_factor_label) {
+CryptohomeStatusOr<AuthFactor> AuthFactorManager::LoadAuthFactor(
+    const ObfuscatedUsername& obfuscated_username,
+    AuthFactorType auth_factor_type,
+    const std::string& auth_factor_label) {
   CryptohomeStatusOr<base::FilePath> file_path = GetAuthFactorPath(
       obfuscated_username, auth_factor_type, auth_factor_label);
   if (!file_path.ok()) {
@@ -242,7 +242,7 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
-  return std::make_unique<AuthFactor>(
+  return AuthFactor(
       auth_factor_type, auth_factor_label,
       AuthFactorMetadata{.common = serialized_factor.value().common_metadata,
                          .metadata = serialized_factor.value().metadata},
@@ -262,7 +262,7 @@ AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
       LOG(WARNING) << "Skipping auth factor which has no key in USS " << label;
       continue;
     }
-    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor =
+    CryptohomeStatusOr<AuthFactor> auth_factor =
         LoadAuthFactor(obfuscated_username, auth_factor_type, label);
     if (!auth_factor.ok()) {
       LOG(WARNING) << "Skipping malformed auth factor " << label;
@@ -275,8 +275,8 @@ AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
   // Load all the VaultKeysets and backup VaultKeysets in disk and convert
   // them to AuthFactor format.
   std::vector<std::string> migrated_labels;
-  std::map<std::string, std::unique_ptr<AuthFactor>> vk_factor_map;
-  std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
+  std::map<std::string, AuthFactor> vk_factor_map;
+  std::map<std::string, AuthFactor> backup_factor_map;
   converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
       obfuscated_username, migrated_labels, vk_factor_map, backup_factor_map);
 
@@ -286,8 +286,8 @@ AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
   // VaultKeyset. In that case regular VaultKeyset overrides the existing
   // label in the map.
   for (auto& [unused, factor] : vk_factor_map) {
-    if (auth_factor_map.Find(factor->label())) {
-      LOG(WARNING) << "Unexpected duplication of label: " << factor->label()
+    if (auth_factor_map.Find(factor.label())) {
+      LOG(WARNING) << "Unexpected duplication of label: " << factor.label()
                    << ". Regular VaultKeyset will override the AuthFactor.";
     }
     auth_factor_map.Add(std::move(factor), AuthFactorStorageType::kVaultKeyset);
@@ -377,9 +377,8 @@ void AuthFactorManager::UpdateAuthFactor(
     AuthBlockUtility* auth_block_utility,
     StatusCallback callback) {
   // 1. Load the old auth factor state from disk.
-  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> existing_auth_factor =
-      LoadAuthFactor(obfuscated_username, auth_factor.type(),
-                     auth_factor_label);
+  CryptohomeStatusOr<AuthFactor> existing_auth_factor = LoadAuthFactor(
+      obfuscated_username, auth_factor.type(), auth_factor_label);
   if (!existing_auth_factor.ok()) {
     LOG(ERROR) << "Failed to load persisted auth factor " << auth_factor_label
                << " of type " << AuthFactorTypeToString(auth_factor.type())
@@ -411,7 +410,7 @@ void AuthFactorManager::UpdateAuthFactor(
   // 3. The old auth factor state was removed from disk. Call
   // `PrepareForRemoval()` to complete the removal.
   auth_block_utility->PrepareAuthBlockForRemoval(
-      obfuscated_username, existing_auth_factor.value()->auth_block_state(),
+      obfuscated_username, existing_auth_factor->auth_block_state(),
       base::BindOnce(&AuthFactorManager::LogPrepareForRemovalStatus,
                      base::Unretained(this), obfuscated_username, auth_factor,
                      std::move(callback)));

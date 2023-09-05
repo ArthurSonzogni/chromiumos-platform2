@@ -12,7 +12,6 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
-#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -31,15 +30,9 @@ constexpr char kLabel2[] = "factor2";
 
 // Make a password auth factor with the given label. There metadata and state
 // are empty because for testing the map we just need any factor with a label.
-// Returns a "unique_ptr, ptr" pair so that tests that we can hand off ownership
-// to the map while holding on to a raw pointer.
-std::pair<std::unique_ptr<AuthFactor>, AuthFactor*> MakeFactor(
-    std::string label) {
-  auto owned_ptr =
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, std::move(label),
-                                   AuthFactorMetadata(), AuthBlockState());
-  auto* unowned_ptr = owned_ptr.get();
-  return {std::move(owned_ptr), unowned_ptr};
+AuthFactor MakeFactor(std::string label) {
+  return AuthFactor(AuthFactorType::kPassword, std::move(label),
+                    AuthFactorMetadata(), AuthBlockState());
 }
 
 class AuthFactorMapTest : public testing::Test {
@@ -72,8 +65,8 @@ TEST_F(AuthFactorMapTest, InitialEmpty) {
 }
 
 TEST_F(AuthFactorMapTest, AddOne) {
-  auto [factor, ptr] = MakeFactor(kLabel1);
-  factor_map_.Add(std::move(factor), AuthFactorStorageType::kVaultKeyset);
+  AuthFactor factor = MakeFactor(kLabel1);
+  factor_map_.Add(factor, AuthFactorStorageType::kVaultKeyset);
 
   EXPECT_THAT(factor_map_.empty(), IsFalse());
   EXPECT_THAT(factor_map_.size(), Eq(1));
@@ -83,21 +76,21 @@ TEST_F(AuthFactorMapTest, AddOne) {
   EXPECT_THAT(
       factor_map_.HasFactorWithStorage(AuthFactorStorageType::kUserSecretStash),
       IsFalse());
-  EXPECT_THAT(factor_map_.Find(kLabel1)->auth_factor(), Ref(*ptr));
   EXPECT_THAT(factor_map_.Find(kLabel1)->storage_type(),
               Eq(AuthFactorStorageType::kVaultKeyset));
   EXPECT_THAT(factor_map_.Find(kLabel2), Eq(std::nullopt));
-  EXPECT_THAT(const_factor_map().Find(kLabel1)->auth_factor(), Ref(*ptr));
+  EXPECT_THAT(const_factor_map().Find(kLabel1)->auth_factor(),
+              Ref(factor_map_.Find(kLabel1)->auth_factor()));
   EXPECT_THAT(const_factor_map().Find(kLabel1)->storage_type(),
               Eq(AuthFactorStorageType::kVaultKeyset));
   EXPECT_THAT(const_factor_map().Find(kLabel2), Eq(std::nullopt));
 }
 
 TEST_F(AuthFactorMapTest, AddTwo) {
-  auto [factor1, ptr1] = MakeFactor(kLabel1);
-  auto [factor2, ptr2] = MakeFactor(kLabel2);
-  factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
-  factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
+  AuthFactor factor1 = MakeFactor(kLabel1);
+  AuthFactor factor2 = MakeFactor(kLabel2);
+  factor_map_.Add(factor1, AuthFactorStorageType::kVaultKeyset);
+  factor_map_.Add(factor2, AuthFactorStorageType::kUserSecretStash);
 
   EXPECT_THAT(factor_map_.empty(), IsFalse());
   EXPECT_THAT(factor_map_.size(), Eq(2));
@@ -107,25 +100,25 @@ TEST_F(AuthFactorMapTest, AddTwo) {
   EXPECT_THAT(
       factor_map_.HasFactorWithStorage(AuthFactorStorageType::kUserSecretStash),
       IsTrue());
-  EXPECT_THAT(factor_map_.Find(kLabel1)->auth_factor(), Ref(*ptr1));
   EXPECT_THAT(factor_map_.Find(kLabel1)->storage_type(),
               Eq(AuthFactorStorageType::kVaultKeyset));
-  EXPECT_THAT(factor_map_.Find(kLabel2)->auth_factor(), Ref(*ptr2));
   EXPECT_THAT(factor_map_.Find(kLabel2)->storage_type(),
               Eq(AuthFactorStorageType::kUserSecretStash));
-  EXPECT_THAT(const_factor_map().Find(kLabel1)->auth_factor(), Ref(*ptr1));
+  EXPECT_THAT(const_factor_map().Find(kLabel1)->auth_factor(),
+              Ref(factor_map_.Find(kLabel1)->auth_factor()));
   EXPECT_THAT(const_factor_map().Find(kLabel1)->storage_type(),
               Eq(AuthFactorStorageType::kVaultKeyset));
-  EXPECT_THAT(const_factor_map().Find(kLabel2)->auth_factor(), Ref(*ptr2));
+  EXPECT_THAT(const_factor_map().Find(kLabel2)->auth_factor(),
+              Ref(factor_map_.Find(kLabel2)->auth_factor()));
   EXPECT_THAT(const_factor_map().Find(kLabel2)->storage_type(),
               Eq(AuthFactorStorageType::kUserSecretStash));
 }
 
 TEST_F(AuthFactorMapTest, AddDuplicate) {
-  auto [factor1, ptr1] = MakeFactor(kLabel1);
-  auto [factor2, ptr2] = MakeFactor(kLabel1);
-  factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
-  factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
+  AuthFactor factor1 = MakeFactor(kLabel1);
+  AuthFactor factor2 = MakeFactor(kLabel1);
+  factor_map_.Add(factor1, AuthFactorStorageType::kVaultKeyset);
+  factor_map_.Add(factor2, AuthFactorStorageType::kUserSecretStash);
 
   EXPECT_THAT(factor_map_.empty(), IsFalse());
   EXPECT_THAT(factor_map_.size(), Eq(1));
@@ -135,21 +128,19 @@ TEST_F(AuthFactorMapTest, AddDuplicate) {
   EXPECT_THAT(
       factor_map_.HasFactorWithStorage(AuthFactorStorageType::kUserSecretStash),
       IsTrue());
-  EXPECT_THAT(factor_map_.Find(kLabel1)->auth_factor(), Ref(*ptr2));
   EXPECT_THAT(factor_map_.Find(kLabel1)->storage_type(),
               Eq(AuthFactorStorageType::kUserSecretStash));
   EXPECT_THAT(factor_map_.Find(kLabel2), Eq(std::nullopt));
-  EXPECT_THAT(const_factor_map().Find(kLabel1)->auth_factor(), Ref(*ptr2));
   EXPECT_THAT(const_factor_map().Find(kLabel1)->storage_type(),
               Eq(AuthFactorStorageType::kUserSecretStash));
   EXPECT_THAT(const_factor_map().Find(kLabel2), Eq(std::nullopt));
 }
 
 TEST_F(AuthFactorMapTest, ElementsAreMoved) {
-  auto [factor1, ptr1] = MakeFactor(kLabel1);
-  auto [factor2, ptr2] = MakeFactor(kLabel2);
-  factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
-  factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
+  AuthFactor factor1 = MakeFactor(kLabel1);
+  AuthFactor factor2 = MakeFactor(kLabel2);
+  factor_map_.Add(factor1, AuthFactorStorageType::kVaultKeyset);
+  factor_map_.Add(factor2, AuthFactorStorageType::kUserSecretStash);
   AuthFactorMap move_constructed_map = std::move(factor_map_);
   const AuthFactorMap& const_move_constructed_map = move_constructed_map;
 
@@ -163,18 +154,16 @@ TEST_F(AuthFactorMapTest, ElementsAreMoved) {
   EXPECT_THAT(move_constructed_map.HasFactorWithStorage(
                   AuthFactorStorageType::kUserSecretStash),
               IsTrue());
-  EXPECT_THAT(move_constructed_map.Find(kLabel1)->auth_factor(), Ref(*ptr1));
   EXPECT_THAT(move_constructed_map.Find(kLabel1)->storage_type(),
               Eq(AuthFactorStorageType::kVaultKeyset));
-  EXPECT_THAT(move_constructed_map.Find(kLabel2)->auth_factor(), Ref(*ptr2));
   EXPECT_THAT(move_constructed_map.Find(kLabel2)->storage_type(),
               Eq(AuthFactorStorageType::kUserSecretStash));
   EXPECT_THAT(const_move_constructed_map.Find(kLabel1)->auth_factor(),
-              Ref(*ptr1));
+              Ref(move_constructed_map.Find(kLabel1)->auth_factor()));
   EXPECT_THAT(const_move_constructed_map.Find(kLabel1)->storage_type(),
               Eq(AuthFactorStorageType::kVaultKeyset));
   EXPECT_THAT(const_move_constructed_map.Find(kLabel2)->auth_factor(),
-              Ref(*ptr2));
+              Ref(const_move_constructed_map.Find(kLabel2)->auth_factor()));
   EXPECT_THAT(const_move_constructed_map.Find(kLabel2)->storage_type(),
               Eq(AuthFactorStorageType::kUserSecretStash));
 }
@@ -193,8 +182,8 @@ TEST_F(AuthFactorMapTest, ReportMetricsEmpty) {
 }
 
 TEST_F(AuthFactorMapTest, ReportMetricsVk) {
-  auto [factor1, ptr1] = MakeFactor(kLabel1);
-  auto [factor2, ptr2] = MakeFactor(kLabel2);
+  AuthFactor factor1 = MakeFactor(kLabel1);
+  AuthFactor factor2 = MakeFactor(kLabel2);
   factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
   factor_map_.Add(std::move(factor2), AuthFactorStorageType::kVaultKeyset);
   ASSERT_THAT(factor_map_.size(), Eq(2));
@@ -210,8 +199,8 @@ TEST_F(AuthFactorMapTest, ReportMetricsVk) {
 }
 
 TEST_F(AuthFactorMapTest, ReportMetricsUss) {
-  auto [factor1, ptr1] = MakeFactor(kLabel1);
-  auto [factor2, ptr2] = MakeFactor(kLabel2);
+  AuthFactor factor1 = MakeFactor(kLabel1);
+  AuthFactor factor2 = MakeFactor(kLabel2);
   factor_map_.Add(std::move(factor1), AuthFactorStorageType::kUserSecretStash);
   factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
   ASSERT_THAT(factor_map_.size(), Eq(2));
@@ -227,8 +216,8 @@ TEST_F(AuthFactorMapTest, ReportMetricsUss) {
 }
 
 TEST_F(AuthFactorMapTest, ReportMetricsMixed) {
-  auto [factor1, ptr1] = MakeFactor(kLabel1);
-  auto [factor2, ptr2] = MakeFactor(kLabel2);
+  AuthFactor factor1 = MakeFactor(kLabel1);
+  AuthFactor factor2 = MakeFactor(kLabel2);
   factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
   factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
   ASSERT_THAT(factor_map_.size(), Eq(2));

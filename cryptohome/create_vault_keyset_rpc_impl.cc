@@ -204,10 +204,13 @@ void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
   AuthFactorVaultKeysetConverter converter(keyset_management_);
 
   // Add VaultKeyset as an AuthFactor to the linked AuthSession.
-  std::unique_ptr<AuthFactor> added_auth_factor =
-      converter.VaultKeysetToAuthFactor(auth_session->obfuscated_username(),
-                                        key_data.label());
-  auth_session->RegisterVaultKeysetAuthFactor(std::move(added_auth_factor));
+  if (std::optional<AuthFactor> added_auth_factor =
+          converter.VaultKeysetToAuthFactor(auth_session->obfuscated_username(),
+                                            key_data.label())) {
+    auth_session->RegisterVaultKeysetAuthFactor(*added_auth_factor);
+  } else {
+    LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
+  }
 
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }

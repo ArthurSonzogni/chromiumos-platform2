@@ -23,7 +23,7 @@ class AuthFactorMap final {
   // Structure containing an auth factor loaded from storage along with metadata
   // about the storage it was loaded from.
   struct StoredAuthFactor {
-    std::unique_ptr<AuthFactor> auth_factor;
+    AuthFactor auth_factor;
     AuthFactorStorageType storage_type;
   };
   // Declared here in the beginning to allow us to reference the underlying
@@ -41,7 +41,7 @@ class AuthFactorMap final {
     ValueView(const ValueView&) = default;
     ValueView& operator=(const ValueView&) = default;
 
-    const AuthFactor& auth_factor() const { return *storage_->auth_factor; }
+    const AuthFactor& auth_factor() const { return storage_->auth_factor; }
 
     AuthFactorStorageType storage_type() const {
       return storage_->storage_type;
@@ -109,8 +109,7 @@ class AuthFactorMap final {
   // Add a factor to the map, along with the given storage type. The factors are
   // only stored by label and so adding a new factor with the same label will
   // overwrite the prior one.
-  void Add(std::unique_ptr<AuthFactor> auth_factor,
-           AuthFactorStorageType storage_type);
+  void Add(AuthFactor auth_factor, AuthFactorStorageType storage_type);
 
   // Removes the factor for a given label. Does nothing if there is no factor
   // with that label.

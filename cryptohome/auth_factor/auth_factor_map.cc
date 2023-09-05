@@ -14,11 +14,12 @@
 
 namespace cryptohome {
 
-void AuthFactorMap::Add(std::unique_ptr<AuthFactor> auth_factor,
+void AuthFactorMap::Add(AuthFactor auth_factor,
                         AuthFactorStorageType storage_type) {
-  std::string label = auth_factor->label();
-  storage_[std::move(label)] = {.auth_factor = std::move(auth_factor),
-                                .storage_type = storage_type};
+  std::string label = auth_factor.label();
+  storage_.insert_or_assign(
+      std::move(label), StoredAuthFactor{.auth_factor = std::move(auth_factor),
+                                         .storage_type = storage_type});
 }
 
 void AuthFactorMap::Remove(const std::string& label) {

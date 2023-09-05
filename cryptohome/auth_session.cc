@@ -644,14 +644,9 @@ CryptohomeStatus AuthSession::OnUserCreated() {
   return OkStatus<CryptohomeError>();
 }
 
-void AuthSession::RegisterVaultKeysetAuthFactor(
-    std::unique_ptr<AuthFactor> auth_factor) {
-  if (auth_factor) {
-    auth_factor_map_.Add(std::move(auth_factor),
-                         AuthFactorStorageType::kVaultKeyset);
-    return;
-  }
-  LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
+void AuthSession::RegisterVaultKeysetAuthFactor(AuthFactor auth_factor) {
+  auth_factor_map_.Add(std::move(auth_factor),
+                       AuthFactorStorageType::kVaultKeyset);
 }
 
 void AuthSession::CreateAndPersistVaultKeyset(
@@ -699,14 +694,14 @@ void AuthSession::CreateAndPersistVaultKeyset(
     return;
   }
 
-  std::unique_ptr<AuthFactor> added_auth_factor =
+  std::optional<AuthFactor> added_auth_factor =
       converter_.VaultKeysetToAuthFactor(obfuscated_username_,
                                          key_data.label());
   // Initialize auth_factor_type with kPassword for CredentailVerifier.
   AuthFactorType auth_factor_type = AuthFactorType::kPassword;
   if (added_auth_factor) {
     auth_factor_type = added_auth_factor->type();
-    auth_factor_map_.Add(std::move(added_auth_factor),
+    auth_factor_map_.Add(std::move(*added_auth_factor),
                          AuthFactorStorageType::kVaultKeyset);
   } else {
     LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
@@ -1986,9 +1981,8 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   // Create the auth factor by combining the metadata with the auth block
   // state.
-  auto auth_factor =
-      std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
-                                   auth_factor_metadata, *auth_block_state);
+  AuthFactor auth_factor(auth_factor_type, auth_factor_label,
+                         auth_factor_metadata, *auth_block_state);
 
   CryptohomeStatus status = RemoveAuthFactorFromUssInMemory(auth_factor_label);
   if (!status.ok()) {
@@ -2003,7 +1997,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     return;
   }
 
-  status = AddAuthFactorToUssInMemory(*auth_factor, *key_blobs,
+  status = AddAuthFactorToUssInMemory(auth_factor, *key_blobs,
                                       OverwriteExistingKeyBlock::kDisabled);
   if (!status.ok()) {
     LOG(ERROR)
@@ -2033,18 +2027,16 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   // Update/persist the factor.
   auth_factor_manager_->UpdateAuthFactor(
-      obfuscated_username_, auth_factor_label, *auth_factor,
-      auth_block_utility_,
+      obfuscated_username_, auth_factor_label, auth_factor, auth_block_utility_,
       base::BindOnce(&AuthSession::ResaveUssWithFactorUpdated,
-                     base::Unretained(this), auth_factor_type,
-                     std::move(auth_factor), auth_input,
-                     std::move(auth_session_performance_timer),
+                     base::Unretained(this), auth_factor_type, auth_factor,
+                     auth_input, std::move(auth_session_performance_timer),
                      encrypted_uss_container.value(), std::move(on_done)));
 }
 
 void AuthSession::ResaveUssWithFactorUpdated(
     AuthFactorType auth_factor_type,
-    std::unique_ptr<AuthFactor> auth_factor,
+    AuthFactor auth_factor,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     const brillo::Blob& encrypted_uss_container,
@@ -2079,9 +2071,9 @@ void AuthSession::ResaveUssWithFactorUpdated(
   }
 
   // Create the credential verifier if applicable.
-  AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
+  AddCredentialVerifier(auth_factor_type, auth_factor.label(), auth_input);
 
-  LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
+  LOG(INFO) << "AuthSession: updated auth factor " << auth_factor.label()
             << " in USS.";
   auth_factor_map_.Add(std::move(auth_factor),
                        AuthFactorStorageType::kUserSecretStash);
@@ -2251,11 +2243,11 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
 
   // Create a copy of the existing factor with the new label and save it. Add a
   // cleanup to undo this if we fail, which we'll cancel if we succeed instead.
-  auto new_auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor new_auth_factor(
       old_auth_factor->type(), request.new_auth_factor_label(),
       old_auth_factor->metadata(), old_auth_factor->auth_block_state());
   if (auto status = session_->auth_factor_manager_->SaveAuthFactorFile(
-          session_->obfuscated_username_, *new_auth_factor);
+          session_->obfuscated_username_, new_auth_factor);
       !status.ok()) {
     LOG(ERROR) << "AuthSession: Unable to save a new copy of the auth factor.";
     std::move(on_done).Run(
@@ -2267,12 +2259,12 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
   }
   absl::Cleanup delete_new_aff = [this, &new_auth_factor]() {
     if (auto status = session_->auth_factor_manager_->DeleteAuthFactorFile(
-            session_->obfuscated_username_, *new_auth_factor);
+            session_->obfuscated_username_, new_auth_factor);
         !status.ok()) {
       LOG(ERROR)
           << "AuthSession: Unable to delete the auth_factor file with the "
              "new label: "
-          << new_auth_factor->label() << ": " << status;
+          << new_auth_factor.label() << ": " << status;
     }
   };
 
@@ -2327,7 +2319,7 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
   std::move(revert_uss).Cancel();
   if (auto verifier = session_->verifier_forwarder_.ReleaseVerifier(
           old_auth_factor->label())) {
-    verifier->ChangeLabel(new_auth_factor->label());
+    verifier->ChangeLabel(new_auth_factor.label());
     session_->verifier_forwarder_.AddVerifier(std::move(verifier));
   }
   session_->auth_factor_map_.Remove(old_auth_factor->label());
@@ -2649,9 +2641,8 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
             .Wrap(std::move(error)));
     return;
   }
-  auto replacement_auth_factor =
-      std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
-                                   auth_factor_metadata, *auth_block_state);
+  AuthFactor replacement_auth_factor(auth_factor_type, auth_factor_label,
+                                     auth_factor_metadata, *auth_block_state);
 
   // Set up the cleanup operations.
   // 1. Restore the in-memory USS to its current state. This will run only if
@@ -2663,7 +2654,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
   absl::Cleanup revert_uss = [this, &uss_snapshot]() {
     session_->user_secret_stash_->RestoreSnapshot(std::move(uss_snapshot));
   };
-  AuthFactor* factor_to_remove = replacement_auth_factor.get();
+  AuthFactor* factor_to_remove = &replacement_auth_factor;
   absl::Cleanup remove_leftover_factor = [this, &factor_to_remove]() {
     // Note that this runs after the operation (on_done) has completed
     // (successfully or not) and so the remove operation just takes a do-nothing
@@ -2676,7 +2667,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
 
   // Add the new factor into the USS and remove the old one.
   if (CryptohomeStatus status = session_->AddAuthFactorToUssInMemory(
-          *replacement_auth_factor, *key_blobs,
+          replacement_auth_factor, *key_blobs,
           OverwriteExistingKeyBlock::kDisabled);
       !status.ok()) {
     std::move(on_done).Run(
@@ -2717,7 +2708,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
   // Persist the new factor files out.
   if (CryptohomeStatus status =
           session_->auth_factor_manager_->SaveAuthFactorFile(
-              session_->obfuscated_username_, *replacement_auth_factor);
+              session_->obfuscated_username_, replacement_auth_factor);
       !status.ok()) {
     LOG(ERROR) << "Failed to persist replacement auth factor: "
                << auth_factor_label;
@@ -3402,9 +3393,8 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
   }
 
   // Create the auth factor by combining the metadata with the auth block state.
-  auto auth_factor =
-      std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
-                                   auth_factor_metadata, *auth_block_state);
+  AuthFactor auth_factor(auth_factor_type, auth_factor_label,
+                         auth_factor_metadata, *auth_block_state);
 
   // Grab a snapshot of the USS that will be reverted if these changes fail.
   auto uss_snapshot = user_secret_stash_->TakeSnapshot();
@@ -3414,7 +3404,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
 
   // Add the factor into the USS.
   CryptohomeStatus status = AddAuthFactorToUssInMemory(
-      *auth_factor, *key_blobs, OverwriteExistingKeyBlock::kEnabled);
+      auth_factor, *key_blobs, OverwriteExistingKeyBlock::kEnabled);
   if (!status.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthSessionAddToUssFailedInPersistToUSS),
@@ -3441,7 +3431,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
   // only start writing files after all validity checks (like the label
   // duplication check).
   status = auth_factor_manager_->SaveAuthFactorFile(obfuscated_username_,
-                                                    *auth_factor);
+                                                    auth_factor);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to persist created auth factor: "
                << auth_factor_label;
@@ -3480,9 +3470,9 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     }
   }
 
-  AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
+  AddCredentialVerifier(auth_factor_type, auth_factor.label(), auth_input);
 
-  LOG(INFO) << "AuthSession: added auth factor " << auth_factor->label()
+  LOG(INFO) << "AuthSession: added auth factor " << auth_factor.label()
             << " into USS.";
   auth_factor_map_.Add(std::move(auth_factor),
                        AuthFactorStorageType::kUserSecretStash);

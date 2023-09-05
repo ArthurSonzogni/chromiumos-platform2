@@ -217,8 +217,7 @@ class AfMapBuilder {
   // Helper to add copies of factors from an existing AuthFactorMap.
   AfMapBuilder& AddCopiesFromMap(const AuthFactorMap& af_map) {
     for (AuthFactorMap::ValueView entry : af_map) {
-      map_.Add(std::make_unique<AuthFactor>(entry.auth_factor()),
-               storage_type_);
+      map_.Add(entry.auth_factor(), storage_type_);
     }
     return *this;
   }
@@ -235,10 +234,9 @@ class AfMapBuilder {
     if constexpr (!std::is_void_v<StateType>) {
       auth_block_state.state = StateType();
     }
-    map_.Add(
-        std::make_unique<AuthFactor>(auth_factor_type, std::move(label),
-                                     AuthFactorMetadata(), auth_block_state),
-        storage_type_);
+    map_.Add(AuthFactor(auth_factor_type, std::move(label),
+                        AuthFactorMetadata(), auth_block_state),
+             storage_type_);
     return *this;
   }
 
@@ -1640,14 +1638,12 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   AuthBlockState auth_block_state;
   auth_block_state.state = TpmBoundToPcrAuthBlockState();
   AuthFactorMap auth_factor_map;
-  auth_factor_map.Add(
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
-                                   AuthFactorMetadata(), auth_block_state),
-      AuthFactorStorageType::kVaultKeyset);
-  auth_factor_map.Add(
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeOtherLabel,
-                                   AuthFactorMetadata(), auth_block_state),
-      AuthFactorStorageType::kVaultKeyset);
+  auth_factor_map.Add(AuthFactor(AuthFactorType::kPassword, kFakeLabel,
+                                 AuthFactorMetadata(), auth_block_state),
+                      AuthFactorStorageType::kVaultKeyset);
+  auth_factor_map.Add(AuthFactor(AuthFactorType::kPassword, kFakeOtherLabel,
+                                 AuthFactorMetadata(), auth_block_state),
+                      AuthFactorStorageType::kVaultKeyset);
 
   // Create AuthSession.
   auto no_uss = DisableUssExperiment();
@@ -2556,12 +2552,12 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kPassword, kFakeLabel,
       AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -2656,12 +2652,12 @@ TEST_F(AuthSessionWithUssExperimentTest,
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kPassword, kFakeLabel,
       AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -2757,12 +2753,12 @@ TEST_F(AuthSessionWithUssExperimentTest,
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kPassword, kFakeLabel,
       AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -2855,12 +2851,12 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kPin, kFakePinLabel,
       AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -2950,12 +2946,12 @@ TEST_F(AuthSessionWithUssExperimentTest,
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kPin, kFakePinLabel,
       AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -3062,12 +3058,12 @@ TEST_F(AuthSessionWithUssExperimentTest,
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kPin, kFakePinLabel,
       AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -3165,12 +3161,12 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kPin, kFakePinLabel,
       AuthFactorMetadata{.metadata = auth_factor::PinMetadata()},
       AuthBlockState{.state = PinWeaverAuthBlockState{.le_label = 0xbaadf00d}});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -3323,12 +3319,12 @@ TEST_F(AuthSessionWithUssExperimentTest,
       UserSecretStash::CreateRandomMainKey();
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kCryptohomeRecovery, kFakeLabel,
       AuthFactorMetadata{.metadata = auth_factor::CryptohomeRecoveryMetadata()},
       AuthBlockState{.state = CryptohomeRecoveryAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -3462,18 +3458,17 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
       UserSecretStash::CreateRandomMainKey();
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kSmartCard, kFakeLabel,
       AuthFactorMetadata{
           .metadata = auth_factor::SmartCardMetadata{.public_key_spki_der =
                                                          public_key_spki_der}},
       AuthBlockState{.state = ChallengeCredentialAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
-  auth_factor_map.Add(std::make_unique<AuthFactor>(*auth_factor),
-                      AuthFactorStorageType::kUserSecretStash);
+  auth_factor_map.Add(auth_factor, AuthFactorStorageType::kUserSecretStash);
   // Adding the auth factor into the USS and persisting the latter.
   const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
   std::optional<brillo::SecureBlob> wrapping_key =
@@ -3556,8 +3551,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
               UnorderedElementsAre(IsVerifierPtrWithLabel(kFakeLabel)));
 
   AuthFactorMap verify_auth_factor_map;
-  auth_factor_map.Add(std::make_unique<AuthFactor>(*auth_factor),
-                      AuthFactorStorageType::kUserSecretStash);
+  auth_factor_map.Add(auth_factor, AuthFactorStorageType::kUserSecretStash);
   AuthSession verify_auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
@@ -3646,12 +3640,12 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordPostAction) {
   ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
-  auto auth_factor = std::make_unique<AuthFactor>(
+  AuthFactor auth_factor(
       AuthFactorType::kPassword, kFakeLabel,
       AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
       AuthBlockState{.state = TpmBoundToPcrAuthBlockState()});
   EXPECT_TRUE(
-      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, *auth_factor)
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
           .ok());
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(std::move(auth_factor),
@@ -4745,12 +4739,11 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorMetadataSuccess) {
   auto loaded_auth_factor = auth_factor_manager_.LoadAuthFactor(
       SanitizeUserName(kFakeUsername), AuthFactorType::kPassword, kFakeLabel);
   EXPECT_THAT(loaded_auth_factor, IsOk());
-  EXPECT_EQ(loaded_auth_factor.value()->type(), AuthFactorType::kPassword);
-  EXPECT_EQ(loaded_auth_factor.value()->label(), kFakeLabel);
-  EXPECT_EQ(
-      loaded_auth_factor.value()->metadata().common.chrome_version_last_updated,
-      kFakeChromeVersion);
-  EXPECT_EQ(loaded_auth_factor.value()->metadata().common.user_specified_name,
+  EXPECT_EQ(loaded_auth_factor->type(), AuthFactorType::kPassword);
+  EXPECT_EQ(loaded_auth_factor->label(), kFakeLabel);
+  EXPECT_EQ(loaded_auth_factor->metadata().common.chrome_version_last_updated,
+            kFakeChromeVersion);
+  EXPECT_EQ(loaded_auth_factor->metadata().common.user_specified_name,
             kUserSpecifiedName);
 
   // Calling AuthenticateAuthFactor with the password succeeds.
@@ -4949,7 +4942,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
   // Create a factor containing a password that will become a kiosk factor.
   AuthFactorMap auth_factor_map;
   auth_factor_map.Add(
-      std::make_unique<AuthFactor>(
+      AuthFactor(
           AuthFactorType::kPassword, kLegacyLabel,
           AuthFactorMetadata{.metadata = auth_factor::PasswordMetadata()},
           AuthBlockState()),

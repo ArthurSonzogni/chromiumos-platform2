@@ -3583,14 +3583,13 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
       // Save the type.
       auth_factor_type = type;
       // Attempt to load the factor and then load it into the response.
-      auto loaded_auth_factor = auth_factor_manager_->LoadAuthFactor(
+      auto auth_factor = auth_factor_manager_->LoadAuthFactor(
           obfuscated_username, type, label);
-      if (loaded_auth_factor.ok()) {
-        AuthFactor& auth_factor = **loaded_auth_factor;
+      if (auth_factor.ok()) {
         const AuthFactorDriver& driver =
             auth_factor_driver_manager_->GetDriver(type);
         if (auto converted_to_proto =
-                driver.ConvertToProto(label, auth_factor.metadata())) {
+                driver.ConvertToProto(label, auth_factor->metadata())) {
           auth_factor_proto = std::move(*converted_to_proto);
         }
       }

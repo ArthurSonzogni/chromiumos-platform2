@@ -53,7 +53,7 @@ class AuthFactorManager final {
 
   // Loads from the auth factor with the given type and label from the file in
   // the user's data vault.
-  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> LoadAuthFactor(
+  CryptohomeStatusOr<AuthFactor> LoadAuthFactor(
       const ObfuscatedUsername& obfuscated_username,
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label);

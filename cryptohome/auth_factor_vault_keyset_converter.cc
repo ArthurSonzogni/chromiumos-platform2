@@ -105,33 +105,33 @@ AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags,
 }
 
 // Returns the AuthFactor object converted from the input VaultKeyset.
-std::unique_ptr<AuthFactor> ConvertToAuthFactor(const VaultKeyset& vk) {
+std::optional<AuthFactor> ConvertToAuthFactor(const VaultKeyset& vk) {
   AuthBlockState auth_block_state;
   if (!GetAuthBlockState(vk, auth_block_state /*out*/)) {
-    return nullptr;
+    return std::nullopt;
   }
 
   // If the VaultKeyset label is empty an artificial label legacy<index> is
   // returned.
   std::string label = vk.GetLabel();
   if (!IsValidAuthFactorLabel(label)) {
-    return nullptr;
+    return std::nullopt;
   }
 
   KeyData key_data = vk.GetKeyDataOrDefault();
   AuthFactorType auth_factor_type =
       VaultKeysetTypeToAuthFactorType(vk.GetFlags(), key_data);
   if (auth_factor_type == AuthFactorType::kUnspecified) {
-    return nullptr;
+    return std::nullopt;
   }
 
   AuthFactorMetadata metadata;
   if (!GetAuthFactorMetadataWithType(auth_factor_type, metadata, key_data)) {
-    return nullptr;
+    return std::nullopt;
   }
 
-  return std::make_unique<AuthFactor>(auth_factor_type, label, metadata,
-                                      auth_block_state);
+  return AuthFactor(auth_factor_type, std::move(label), std::move(metadata),
+                    std::move(auth_block_state));
 }
 
 }  // namespace
@@ -143,14 +143,14 @@ AuthFactorVaultKeysetConverter::AuthFactorVaultKeysetConverter(
 }
 AuthFactorVaultKeysetConverter::~AuthFactorVaultKeysetConverter() = default;
 
-std::unique_ptr<AuthFactor>
+std::optional<AuthFactor>
 AuthFactorVaultKeysetConverter::VaultKeysetToAuthFactor(
     const ObfuscatedUsername& obfuscated_username, const std::string& label) {
   std::unique_ptr<VaultKeyset> vk =
       keyset_management_->GetVaultKeyset(obfuscated_username, label);
   if (!vk) {
     LOG(ERROR) << "No keyset found for the given label: " << label;
-    return nullptr;
+    return std::nullopt;
   }
   return ConvertToAuthFactor(*vk);
 }
@@ -159,10 +159,8 @@ user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
     const ObfuscatedUsername& obfuscated_username,
     std::vector<std::string>& migrated_labels,
-    std::map<std::string, std::unique_ptr<AuthFactor>>&
-        out_label_to_auth_factor,
-    std::map<std::string, std::unique_ptr<AuthFactor>>&
-        out_label_to_auth_factor_backup_vks) {
+    std::map<std::string, AuthFactor>& out_label_to_auth_factor,
+    std::map<std::string, AuthFactor>& out_label_to_auth_factor_backup_vks) {
   out_label_to_auth_factor.clear();
   out_label_to_auth_factor_backup_vks.clear();
   migrated_labels.clear();
@@ -194,18 +192,18 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
       continue;
     }
 
-    std::unique_ptr<AuthFactor> auth_factor = ConvertToAuthFactor(*vk.get());
+    std::optional<AuthFactor> auth_factor = ConvertToAuthFactor(*vk);
     if (!auth_factor) {
       continue;
     }
 
     // Select map to write the auth factor into.
-    std::map<std::string, std::unique_ptr<AuthFactor>>& out_map =
+    std::map<std::string, AuthFactor>& out_map =
         vk->IsForBackup() ? out_label_to_auth_factor_backup_vks
                           : out_label_to_auth_factor;
 
     auto [unused, was_inserted] =
-        out_map.emplace(vk->GetLabel(), std::move(auth_factor));
+        out_map.emplace(vk->GetLabel(), std::move(*auth_factor));
     if (!was_inserted) {
       // This should not happen, but if somehow it does log it.
       const char* label_type = vk->IsForBackup() ? "backup " : "";

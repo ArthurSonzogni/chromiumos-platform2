@@ -6,7 +6,6 @@
 #define CRYPTOHOME_AUTH_FACTOR_VAULT_KEYSET_CONVERTER_H_
 
 #include <map>
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -37,7 +36,7 @@ class AuthFactorVaultKeysetConverter {
   ~AuthFactorVaultKeysetConverter();
 
   // Generates and returns an AuthFactor type with the |key_data|
-  std::unique_ptr<AuthFactor> VaultKeysetToAuthFactor(
+  std::optional<AuthFactor> VaultKeysetToAuthFactor(
       const ObfuscatedUsername& obfuscated_username, const std::string& label);
 
   // Returns all the existing VaultKeyset data on disk for migrated, backup and
@@ -48,10 +47,8 @@ class AuthFactorVaultKeysetConverter {
   user_data_auth::CryptohomeErrorCode VaultKeysetsToAuthFactorsAndKeyLabelData(
       const ObfuscatedUsername& obfuscated_username,
       std::vector<std::string>& migrated_labels,
-      std::map<std::string, std::unique_ptr<AuthFactor>>&
-          out_label_to_auth_factor,
-      std::map<std::string, std::unique_ptr<AuthFactor>>&
-          out_label_to_auth_factor_backup_vks);
+      std::map<std::string, AuthFactor>& out_label_to_auth_factor,
+      std::map<std::string, AuthFactor>& out_label_to_auth_factor_backup_vks);
 
   // Takes a label, which was sent from an AuthFactor API, find the VaultKeyset
   // identified with that label and returns its KeyData.
