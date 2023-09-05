@@ -107,6 +107,22 @@ vm_tools::StatefulDiskSpaceState MapSpacedStateToGuestState(
 
 }  // namespace
 
+void TerminaVm::MaitredDeleter::operator()(
+    brillo::AsyncGrpcClient<vm_tools::Maitred>* maitred) const {
+  // It is unsafe to delete the handle until shutdown has completed, so
+  // instead of blocking the destructor, we move ownership to a callback
+  // which deletes the handle.
+  maitred->ShutDown(base::BindOnce(
+      [](brillo::AsyncGrpcClient<vm_tools::Maitred>* maitred) {
+        // Deleting in a callback like this looks dangerous, but it's
+        // (currently) safe for the same reason that *not* deleting in a
+        // callback (currently) deadlocks, i.e. the callback is posted to
+        // the same sequence that called ShutDown().
+        delete maitred;
+      },
+      maitred));
+}
+
 TerminaVm::TerminaVm(Config config)
     : VmBaseImpl(VmBaseImpl::Config{
           .network_client = std::move(config.network_client),
@@ -128,29 +144,6 @@ TerminaVm::TerminaVm(Config config)
 
 TerminaVm::~TerminaVm() {
   Shutdown();
-
-  // TODO(hollingum): shutdown is currently in flux (crrev.com/c/4613567) so
-  // I'm putting this here for now. When shutdown has stabilized, make this a
-  // part of it.
-  if (maitred_handle_) {
-    stub_ = nullptr;
-    brillo::AsyncGrpcClient<vm_tools::Maitred>* maitred_handle_ptr =
-        maitred_handle_.get();
-    maitred_handle_ptr->ShutDown(base::BindOnce(
-        [](std::unique_ptr<brillo::AsyncGrpcClient<vm_tools::Maitred>>
-               maitred_handle) {
-          // It is unsafe to delete the handle until shutdown has completed, so
-          // instead of blocking the destructor, we move ownership to a callback
-          // which deletes the handle.
-          //
-          // Deleting in a callback like this looks dangerous, but it's
-          // (currently) safe for the same reason that *not* deleting in a
-          // callback (currently) deadlocks, i.e. that the callback is posted to
-          // the same sequence that called ShutDown().
-          maitred_handle.reset();
-        },
-        std::move(maitred_handle_)));
-  }
 }
 
 std::unique_ptr<TerminaVm> TerminaVm::Create(Config config) {
@@ -1090,9 +1083,8 @@ void TerminaVm::InitializeMaitredService(
   stub_ = stub.get();
   // The TaskRunner supplied here is the one on which *responses* will be
   // posted, so we use the current sequence.
-  maitred_handle_ =
-      std::make_unique<brillo::AsyncGrpcClient<vm_tools::Maitred>>(
-          base::SequencedTaskRunner::GetCurrentDefault(), std::move(stub));
+  maitred_handle_.reset(new brillo::AsyncGrpcClient<vm_tools::Maitred>(
+      base::SequencedTaskRunner::GetCurrentDefault(), std::move(stub)));
 }
 
 std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(

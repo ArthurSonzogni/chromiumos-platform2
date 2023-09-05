@@ -247,6 +247,11 @@ class TerminaVm final : public VmBaseImpl {
       VmBuilder vm_builder);
 
  private:
+  // Helper class for asynchronously cleaning up the GRPC client.
+  struct MaitredDeleter {
+    void operator()(brillo::AsyncGrpcClient<vm_tools::Maitred>* maitred) const;
+  };
+
   explicit TerminaVm(Config config);
 
   TerminaVm(const TerminaVm&) = delete;
@@ -290,7 +295,8 @@ class TerminaVm final : public VmBaseImpl {
   std::string permission_token_;
 
   // Used for making RPC requests to the maitre'd process inside the VM.
-  std::unique_ptr<brillo::AsyncGrpcClient<vm_tools::Maitred>> maitred_handle_;
+  std::unique_ptr<brillo::AsyncGrpcClient<vm_tools::Maitred>, MaitredDeleter>
+      maitred_handle_;
 
   // A handle to the maitred service, used for synchronous operations. Owned by
   // |maitred_handle_|.
