@@ -27,9 +27,10 @@ void ExtractFspm(const string& partition, const base::FilePath& fspm_path) {
   if (!CreateTemporaryFile(&fw_bin_path))
     return;
 
+  // TODO(roccochen): replace direct flashrom call with futility call.
   vector<string> cmd = {"/usr/sbin/flashrom",
                         "-p",
-                        "host",
+                        "internal",
                         "-r",
                         "-i",
                         "FW_MAIN_" + partition + ":" + fw_bin_path.value()};
