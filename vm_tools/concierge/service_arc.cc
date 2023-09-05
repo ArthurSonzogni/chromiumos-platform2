@@ -540,6 +540,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   if (USE_ARCVM_GKI) {
     vm_builder.AppendCustomParam("--initrd", kRamdiskPath);
+    // This is set to 0 by the GKI kernel so we set back to the default.
+    vm_builder.AppendKernelParam("8250.nr_uarts=4");
   } else {
     vm_builder.AppendCustomParam("--android-fstab", kFstabPath);
   }
