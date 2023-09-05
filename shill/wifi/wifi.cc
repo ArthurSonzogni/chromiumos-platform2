@@ -711,8 +711,6 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   } else if (mac_policy_change || !new_mac.empty()) {
     // During AddNetwork() (above) MAC and policy are being configured, but here
     // we need to send an explicit update.
-    std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy =
-        control_interface()->CreateSupplicantNetworkProxy(network_rpcid);
     KeyValueStore kv;
     if (mac_policy_change) {
       service->SetSupplicantMACPolicy(kv);
@@ -720,9 +718,8 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     if (!new_mac.empty()) {
       kv.Set(WPASupplicant::kNetworkPropertyMACAddrValue, new_mac);
     }
-    if (!supplicant_network_proxy->SetProperties(kv)) {
-      LOG(ERROR) << "Failed to change MAC for network: "
-                 << network_rpcid.value();
+    if (!UpdateSupplicantProperties(service, kv, error)) {
+      // Error is already logged
       return;
     }
   }
@@ -938,18 +935,12 @@ bool WiFi::ReconfigureBgscan(WiFiService* service) {
     return false;
   }
 
-  Error unused_error;
-  RpcIdentifier id = FindNetworkRpcidForService(service, &unused_error);
-  if (id.value().empty()) {
+  Error error;
+  if (!UpdateSupplicantProperties(service, bgscan_params, &error)) {
+    // Error is already logged
     return false;
   }
 
-  std::unique_ptr<SupplicantNetworkProxyInterface> network_proxy =
-      control_interface()->CreateSupplicantNetworkProxy(id);
-  if (!network_proxy->SetProperties(bgscan_params)) {
-    LOG(ERROR) << "SetProperties for " << id.value() << " failed.";
-    return false;
-  }
   LOG(INFO) << "Updated bgscan parameters: " << bgscan_string;
   service->set_bgscan_string(bgscan_string);
   return true;
