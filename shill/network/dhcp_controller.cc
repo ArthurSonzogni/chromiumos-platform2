@@ -189,13 +189,6 @@ void DHCPController::ProcessEventSignal(ClientEventReason reason,
                << ": Error parsing network configuration from DHCP client.";
     return;
   }
-  // TODO(b/269401899): Directly use network_config and dhcp_data in
-  // communication with Network.
-  IPConfig::Properties properties;
-  properties.method = kTypeDHCP;
-  properties.address_family = net_base::IPFamily::kIPv4;
-  properties.UpdateFromNetworkConfig(network_config, /*force_overwrite=*/true);
-  properties.UpdateFromDHCPData(dhcp_data);
 
   // This needs to be set before calling OnIPConfigUpdated() below since
   // those functions may indirectly call other methods like ReleaseIP that
@@ -214,7 +207,8 @@ void DHCPController::ProcessEventSignal(ClientEventReason reason,
   // client is still running, so we should not cancel the timeout
   // until that completes.  In the meantime, however, we can tentatively
   // configure our network in anticipation of successful completion.
-  OnIPConfigUpdated(properties, /*new_lease_acquired=*/!is_gateway_arp);
+  OnIPConfigUpdated(network_config, dhcp_data,
+                    /*new_lease_acquired=*/!is_gateway_arp);
   is_gateway_arp_active_ = is_gateway_arp;
 }
 
@@ -243,14 +237,14 @@ std::optional<base::TimeDelta> DHCPController::TimeToLeaseExpiry() {
   return base::Seconds(current_lease_expiration_time_->tv_sec - now.tv_sec);
 }
 
-void DHCPController::OnIPConfigUpdated(const IPConfig::Properties& properties,
+void DHCPController::OnIPConfigUpdated(const NetworkConfig& network_config,
+                                       const DHCPv4Config::Data& dhcp_data,
                                        bool new_lease_acquired) {
   if (new_lease_acquired) {
     StopAcquisitionTimeout();
-    if (properties.dhcp_data.lease_duration_seconds) {
-      UpdateLeaseExpirationTime(properties.dhcp_data.lease_duration_seconds);
-      StartExpirationTimeout(
-          base::Seconds(properties.dhcp_data.lease_duration_seconds));
+    if (dhcp_data.lease_duration_seconds) {
+      UpdateLeaseExpirationTime(dhcp_data.lease_duration_seconds);
+      StartExpirationTimeout(base::Seconds(dhcp_data.lease_duration_seconds));
     } else {
       LOG(WARNING)
           << "Lease duration is zero; not starting an expiration timer.";
@@ -261,8 +255,8 @@ void DHCPController::OnIPConfigUpdated(const IPConfig::Properties& properties,
 
   dispatcher_->PostTask(
       FROM_HERE, base::BindOnce(&DHCPController::InvokeUpdateCallback,
-                                weak_ptr_factory_.GetWeakPtr(), properties,
-                                new_lease_acquired));
+                                weak_ptr_factory_.GetWeakPtr(), network_config,
+                                dhcp_data, new_lease_acquired));
 }
 
 void DHCPController::NotifyFailure() {
@@ -479,10 +473,11 @@ void DHCPController::ResetLeaseExpirationTime() {
   current_lease_expiration_time_ = std::nullopt;
 }
 
-void DHCPController::InvokeUpdateCallback(const IPConfig::Properties properties,
+void DHCPController::InvokeUpdateCallback(const NetworkConfig& network_config,
+                                          const DHCPv4Config::Data& dhcp_data,
                                           bool new_lease_acquired) {
   if (!update_callback_.is_null()) {
-    update_callback_.Run(properties, new_lease_acquired);
+    update_callback_.Run(network_config, dhcp_data, new_lease_acquired);
   }
 }
 

@@ -44,11 +44,15 @@ class ProcessManager;
 // behalf, for purposes of administration or creating a dynamic DNS entry.
 class DHCPController {
  public:
-  // Called when the IPConfig got from DHCP is updated. |properties| contains
-  // all the parameters we get from DHCP. |new_lease_acquired| indicates whether
-  // or not a DHCP lease was acquired from the server.
-  using UpdateCallback = base::RepeatingCallback<void(
-      const IPConfig::Properties& properties, bool new_lease_acquired)>;
+  // Called when the IPConfig got from DHCP is updated. |network_config|
+  // contains the parameters we get from DHCP and will be used for network
+  // configuration. |dhcp_data| contains the other parameters that needs to be
+  // exposed to user.|new_lease_acquired| indicates whether or not a DHCP lease
+  // was acquired from the server.
+  using UpdateCallback =
+      base::RepeatingCallback<void(const NetworkConfig& network_config,
+                                   const DHCPv4Config::Data& dhcp_data,
+                                   bool new_lease_acquired)>;
   // Called when DHCP process ended without getting a lease. |is_voluntary|
   // indicates whether that was a voluntary stop per option 108, or because of a
   // failure.
@@ -127,9 +131,10 @@ class DHCPController {
   void set_root_for_testing(base::FilePath path) { root_ = path; }
 
  protected:
-  // On we get a new IP config properties via DHCP. The second parameter
-  // indicates whether this is an authoritative confirmation.
-  void OnIPConfigUpdated(const IPConfig::Properties& properties,
+  // On we get a new network config via DHCP. |new_lease_acquired| indicates
+  // whether this is an authoritative confirmation.
+  void OnIPConfigUpdated(const NetworkConfig& network_config,
+                         const DHCPv4Config::Data& dhcp_data,
                          bool new_lease_acquired);
 
   // Notifies registered listeners that the configuration process has failed.
@@ -231,7 +236,8 @@ class DHCPController {
   // PostTask(), so it can be guaranteed that callbacks will not be invoked when
   // this object has been destroyed, and the listener can safely destroy this
   // object in the callback.
-  void InvokeUpdateCallback(const IPConfig::Properties properties,
+  void InvokeUpdateCallback(const NetworkConfig& network_config,
+                            const DHCPv4Config::Data& dhcp_data,
                             bool new_lease_acquired);
   void InvokeDropCallback(bool is_failure);
 

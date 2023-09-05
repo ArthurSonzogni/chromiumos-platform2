@@ -400,19 +400,20 @@ IPConfig* Network::GetCurrentIPConfig() const {
   return nullptr;
 }
 
-void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
+void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
+                                        const DHCPv4Config::Data& dhcp_data,
                                         bool new_lease_acquired) {
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
   DCHECK(ipconfig());
   LOG(INFO) << *this << ": DHCP lease "
-            << (new_lease_acquired ? "acquired " : "update ") << properties;
+            << (new_lease_acquired ? "acquired " : "update ") << network_config;
   if (new_lease_acquired) {
     for (auto* ev : event_handlers_) {
       ev->OnGetDHCPLease(interface_index_);
     }
   }
-  ipconfig()->UpdateProperties(properties);
+  ipconfig()->UpdateFromDHCP(network_config, dhcp_data);
   OnIPv4ConfigUpdated();
   // TODO(b/232177767): OnIPv4ConfiguredWithDHCPLease() should be called inside
   // Network::OnIPv4ConfigUpdated() and only if SetupConnection() happened as a

@@ -25,6 +25,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_portal_detector.h"
 #include "shill/network/dhcp_controller.h"
+#include "shill/network/dhcpv4_config.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network.h"
@@ -1210,7 +1211,8 @@ class NetworkStartTest : public NetworkTest {
 
   void TriggerDHCPUpdateCallback() {
     ASSERT_NE(dhcp_controller_, nullptr);
-    dhcp_controller_->TriggerUpdateCallback(ipv4_dhcp_props_);
+    dhcp_controller_->TriggerUpdateCallback(ipv4_dhcp_config_,
+                                            DHCPv4Config::Data{});
   }
 
   void TriggerSLAACUpdate() {

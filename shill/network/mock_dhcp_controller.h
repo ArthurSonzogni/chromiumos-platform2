@@ -26,7 +26,8 @@ class MockDHCPController : public DHCPController {
 
   void RegisterCallbacks(UpdateCallback update_callback,
                          DropCallback drop_callback) override;
-  void TriggerUpdateCallback(const IPConfig::Properties& props);
+  void TriggerUpdateCallback(const NetworkConfig& network_config,
+                             const DHCPv4Config::Data& dhcp_data);
   void TriggerDropCallback(bool is_voluntary);
   void ProcessEventSignal(ClientEventReason reason,
                           const KeyValueStore& configuration) override;

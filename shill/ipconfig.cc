@@ -385,6 +385,14 @@ void IPConfig::ApplyNetworkConfig(const NetworkConfig& config,
   EmitChanges();
 }
 
+void IPConfig::UpdateFromDHCP(const NetworkConfig& config,
+                              const DHCPv4Config::Data& dhcp_data) {
+  properties_.method = kTypeDHCP;
+  properties_.UpdateFromDHCPData(dhcp_data);
+  properties_.UpdateFromNetworkConfig(config, true, net_base::IPFamily::kIPv4);
+  EmitChanges();
+}
+
 void IPConfig::UpdateProperties(const Properties& properties) {
   properties_ = properties;
   EmitChanges();

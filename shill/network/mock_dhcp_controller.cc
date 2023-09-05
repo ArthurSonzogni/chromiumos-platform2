@@ -30,8 +30,8 @@ void MockDHCPController::RegisterCallbacks(UpdateCallback update_callback,
 }
 
 void MockDHCPController::TriggerUpdateCallback(
-    const IPConfig::Properties& props) {
-  update_callback_.Run(props, /*new_lease_acquired=*/true);
+    const NetworkConfig& network_config, const DHCPv4Config::Data& dhcp_data) {
+  update_callback_.Run(network_config, dhcp_data, /*new_lease_acquired=*/true);
 }
 
 void MockDHCPController::TriggerDropCallback(bool is_voluntary) {

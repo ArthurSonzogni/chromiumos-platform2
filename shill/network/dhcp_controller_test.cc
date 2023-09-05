@@ -16,9 +16,9 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/logging.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_process_manager.h"
@@ -29,7 +29,6 @@
 #include "shill/store/property_store_test.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
-#include "shill/testing.h"
 
 using testing::_;
 using testing::AnyNumber;
@@ -102,9 +101,11 @@ class DHCPControllerTest : public PropertyStoreTest {
 
   void StopInstance() { controller_->Stop("In test"); }
 
-  void InvokeOnIPConfigUpdated(const IPConfig::Properties& properties,
+  void InvokeOnIPConfigUpdated(const NetworkConfig& network_config,
+                               const DHCPv4Config::Data& dhcp_data,
                                bool new_lease_acquired) {
-    controller_->OnIPConfigUpdated(properties, new_lease_acquired);
+    controller_->OnIPConfigUpdated(network_config, dhcp_data,
+                                   new_lease_acquired);
   }
 
   bool ShouldFailOnAcquisitionTimeout() {
@@ -243,10 +244,11 @@ TEST_F(DHCPControllerTest, StartWithoutArpGateway) {
 }
 
 TEST_F(DHCPControllerTest, TimeToLeaseExpiry_Success) {
-  IPConfig::Properties properties;
-  properties.dhcp_data.lease_duration_seconds = kLeaseDuration;
+  NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+  dhcp_data.lease_duration_seconds = kLeaseDuration;
   SetCurrentTimeToSecond(kTimeNow);
-  InvokeOnIPConfigUpdated(properties, true);
+  InvokeOnIPConfigUpdated(network_config, dhcp_data, true);
 
   for (uint32_t i = 0; i < kLeaseDuration; i++) {
     SetCurrentTimeToSecond(kTimeNow + i);
@@ -266,10 +268,11 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry_NoDHCPLease) {
 
 TEST_F(DHCPControllerTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
   SetDHCPVerboseLog();
-  IPConfig::Properties properties;
-  properties.dhcp_data.lease_duration_seconds = kLeaseDuration;
+  NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+  dhcp_data.lease_duration_seconds = kLeaseDuration;
   SetCurrentTimeToSecond(kTimeNow);
-  InvokeOnIPConfigUpdated(properties, true);
+  InvokeOnIPConfigUpdated(network_config, dhcp_data, true);
 
   // Lease should expire at kTimeNow + kLeaseDuration.
   ScopedMockLog log;
@@ -283,9 +286,11 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
 TEST_F(DHCPControllerTest, ExpiryMetrics) {
   // Get a lease with duration of 1 second, the expiry callback should be
   // triggered right after 1 second.
-  IPConfig::Properties properties;
-  properties.dhcp_data.lease_duration_seconds = 1;
-  InvokeOnIPConfigUpdated(properties, true);
+  NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+  dhcp_data.lease_duration_seconds = 1;
+  SetCurrentTimeToSecond(kTimeNow);
+  InvokeOnIPConfigUpdated(network_config, dhcp_data, true);
 
   dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
 
@@ -307,24 +312,26 @@ class DHCPControllerCallbackTest : public DHCPControllerTest {
                             base::Unretained(this)));
   }
 
-  MOCK_METHOD(void, UpdateCallback, (const IPConfig::Properties&, bool));
+  MOCK_METHOD(void,
+              UpdateCallback,
+              (const NetworkConfig&, const DHCPv4Config::Data&, bool));
   MOCK_METHOD(void, DropCallback, (bool is_voluntary));
 
   void ExpectUpdateCallback(bool new_lease_acquired) {
-    EXPECT_CALL(*this, UpdateCallback(_, new_lease_acquired))
-        .WillOnce(SaveArg<0>(&update_properties_));
+    EXPECT_CALL(*this, UpdateCallback(_, _, new_lease_acquired))
+        .WillOnce(SaveArg<0>(&updated_network_config_));
     EXPECT_CALL(*this, DropCallback(_)).Times(0);
     dispatcher()->task_environment().RunUntilIdle();
   }
 
   void ExpectFailureCallback() {
-    EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
+    EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
     EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false));
     dispatcher()->task_environment().RunUntilIdle();
   }
 
  protected:
-  IPConfig::Properties update_properties_;
+  NetworkConfig updated_network_config_;
 };
 
 }  // namespace
@@ -352,8 +359,9 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalSuccess) {
       std::string failure_message = name + " failed with lease time " +
                                     (lease_time_given ? "given" : "not given");
       EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
-      EXPECT_EQ(base::StringPrintf("%d.0.0.0", address_octet),
-                update_properties_.address)
+      EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString(
+                    base::StringPrintf("%d.0.0.0/24", address_octet)),
+                updated_network_config_.ipv4_address)
           << failure_message;
     }
   }
@@ -369,7 +377,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalFail) {
                                   conf);
   ExpectFailureCallback();
   Mock::VerifyAndClearExpectations(this);
-  EXPECT_TRUE(update_properties_.address.empty());
+  EXPECT_FALSE(updated_network_config_.ipv4_address.has_value());
   EXPECT_TRUE(controller_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(controller_->lease_expiration_callback_.IsCancelled());
 }
@@ -377,7 +385,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalFail) {
 TEST_F(DHCPControllerCallbackTest, ProcessEventSignalUnknown) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
-  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
+  EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
   EXPECT_CALL(*this, DropCallback(_)).Times(0);
   controller_->ProcessEventSignal(DHCPController::ClientEventReason::kUnknown,
                                   conf);
@@ -395,7 +403,8 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArp) {
       DHCPController::ClientEventReason::kGatewayArp, conf);
   ExpectUpdateCallback(false);
   Mock::VerifyAndClearExpectations(this);
-  EXPECT_EQ("4.3.2.1", update_properties_.address);
+  EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("4.3.2.1/24"),
+            updated_network_config_.ipv4_address);
   // Will not fail on acquisition timeout since Gateway ARP is active.
   EXPECT_FALSE(ShouldFailOnAcquisitionTimeout());
 
@@ -428,7 +437,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArpNak) {
 }
 
 TEST_F(DHCPControllerCallbackTest, ProcessStatusChangedSignalUnknown) {
-  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
+  EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
   EXPECT_CALL(*this, DropCallback(_)).Times(0);
   controller_->ProcessStatusChangedSignal(
       DHCPController::ClientStatus::kUnknown);
@@ -437,7 +446,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessStatusChangedSignalUnknown) {
 
 TEST_F(DHCPControllerCallbackTest,
        ProcessStatusChangedSignalIPv6OnlyPreferred) {
-  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
+  EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
   EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/true));
   controller_->ProcessStatusChangedSignal(
       DHCPController::ClientStatus::kIPv6Preferred);
@@ -474,7 +483,7 @@ TEST_F(DHCPControllerCallbackTest, StoppedDuringSuccessCallback) {
   // running inadvertently as a result.
   controller_->ProcessEventSignal(DHCPController::ClientEventReason::kBound,
                                   conf);
-  EXPECT_CALL(*this, UpdateCallback(_, true))
+  EXPECT_CALL(*this, UpdateCallback(_, _, true))
       .WillOnce(InvokeWithoutArgs(this, &DHCPControllerTest::StopInstance));
   dispatcher()->task_environment().RunUntilIdle();
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));

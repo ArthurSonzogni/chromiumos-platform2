@@ -9,6 +9,7 @@
 #include <optional>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <net-base/ip_address.h>
@@ -135,6 +136,10 @@ class IPConfig {
       const NetworkConfig& config,
       bool force_overwrite,
       net_base::IPFamily family = net_base::IPFamily::kIPv4);
+
+  // Update all information from DHCP and inform D-Bus listeners of the change.
+  void UpdateFromDHCP(const NetworkConfig& config,
+                      const DHCPv4Config::Data& dhcp_data);
 
  protected:
   mockable const Properties& properties() const { return properties_; }

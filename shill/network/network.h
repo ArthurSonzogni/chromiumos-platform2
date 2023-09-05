@@ -412,7 +412,8 @@ class Network {
   void OnIPv4ConfigUpdated();
   // Callback registered with DHCPController. Also see the comment for
   // DHCPController::UpdateCallback.
-  void OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
+  void OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
+                                 const DHCPv4Config::Data& dhcp_data,
                                  bool new_lease_acquired);
   // Callback invoked on DHCP failures and RFC 8925 voluntary stops.
   void OnDHCPDrop(bool is_voluntary);
