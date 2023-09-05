@@ -5060,6 +5060,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprint) {
 
 // Test that PrepareAuthFactor succeeds for fingerprint with the purpose of add.
 TEST_F(AuthSessionWithUssExperimentTest, PrepareFingerprintAdd) {
+  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
+  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
+  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   // Create an AuthSession and add a mock for a successful auth block prepare.
   auto auth_session = std::make_unique<AuthSession>(
       AuthSession::Params{.username = kFakeUsername,
@@ -5067,23 +5070,55 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareFingerprintAdd) {
                           .intent = AuthIntent::kVerifyOnly,
                           .auth_factor_status_update_timer =
                               std::make_unique<base::WallClockTimer>(),
-                          .user_exists = true,
+                          .user_exists = false,
                           .auth_factor_map = AuthFactorMap()},
       backing_apis_);
+  EXPECT_TRUE(auth_session->OnUserCreated().ok());
+  EXPECT_CALL(*mock_le_manager_ptr, InsertRateLimiter)
+      .WillOnce(DoAll(SetArgPointee<5>(0),
+                      Return(OkStatus<error::CryptohomeLECredError>())));
+
   EXPECT_CALL(*bio_processor_, StartEnrollSession(_))
       .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
 
   // Test.
   TestFuture<CryptohomeStatus> prepare_future;
-  user_data_auth::PrepareAuthFactorRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
-  request.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
-  request.set_purpose(user_data_auth::PURPOSE_ADD_AUTH_FACTOR);
-  auth_session->PrepareAuthFactor(request, prepare_future.GetCallback());
-  auth_session.reset();
-
+  user_data_auth::PrepareAuthFactorRequest prepare_request;
+  prepare_request.set_auth_session_id(auth_session->serialized_token());
+  prepare_request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  prepare_request.set_purpose(user_data_auth::PURPOSE_ADD_AUTH_FACTOR);
+  auth_session->PrepareAuthFactor(prepare_request,
+                                  prepare_future.GetCallback());
   // Verify.
   ASSERT_THAT(prepare_future.Get(), IsOk());
+
+  // Test.
+  TestFuture<CryptohomeStatus> terminate_future;
+  user_data_auth::TerminateAuthFactorRequest terminate_request;
+  terminate_request.set_auth_session_id(auth_session->serialized_token());
+  terminate_request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  auth_session->TerminateAuthFactor(terminate_request,
+                                    terminate_future.GetCallback());
+  // Verify.
+  ASSERT_THAT(terminate_future.Get(), IsOk());
+
+  // This time, the rate-limiter doesn't need to be created anymore.
+  EXPECT_CALL(*bio_processor_, StartEnrollSession(_))
+      .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
+
+  // Test.
+  TestFuture<CryptohomeStatus> prepare_future2;
+  user_data_auth::PrepareAuthFactorRequest prepare_request2;
+  prepare_request2.set_auth_session_id(auth_session->serialized_token());
+  prepare_request2.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  prepare_request2.set_purpose(user_data_auth::PURPOSE_ADD_AUTH_FACTOR);
+  auth_session->PrepareAuthFactor(prepare_request2,
+                                  prepare_future2.GetCallback());
+  // Verify.
+  ASSERT_THAT(prepare_future2.Get(), IsOk());
 }
 
 // Test adding two fingerprint auth factors and authenticating them.

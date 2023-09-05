@@ -21,10 +21,6 @@ bool CryptohomeRecoveryAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }
 
-bool CryptohomeRecoveryAuthFactorDriver::NeedsRateLimiter() const {
-  return false;
-}
-
 AuthFactorLabelArity
 CryptohomeRecoveryAuthFactorDriver::GetAuthFactorLabelArity() const {
   return AuthFactorLabelArity::kSingle;

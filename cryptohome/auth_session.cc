@@ -2796,10 +2796,17 @@ void AuthSession::PrepareAuthFactor(
         break;
       }
       case AuthFactorPreparePurpose::kPrepareAddAuthFactor: {
-        factor_driver.PrepareForAdd(
-            obfuscated_username_,
-            base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
-                           weak_factory_.GetWeakPtr(), std::move(on_done)));
+        auto* session_decrypt = GetAuthForDecrypt();
+        if (!session_decrypt) {
+          CryptohomeStatus status = MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInPrepareForAdd),
+              ErrorActionSet({PossibleAction::kAuth}),
+              user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
+          std::move(on_done).Run(std::move(status));
+          return;
+        }
+        session_decrypt->PrepareAuthFactorForAdd(*auth_factor_type,
+                                                 std::move(on_done));
         break;
       }
     }
@@ -2817,6 +2824,34 @@ void AuthSession::PrepareAuthFactor(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));
   }
+}
+
+void AuthSession::AuthForDecrypt::PrepareAuthFactorForAdd(
+    AuthFactorType auth_factor_type, StatusCallback on_done) {
+  AuthFactorDriver& factor_driver =
+      session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
+
+  if (!session_->user_secret_stash_) {
+    // Currently PrepareAuthFactor is only supported for USS.
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoUSSInPrepareAuthFactorForAdd),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+  if (factor_driver.NeedsRateLimiter()) {
+    CryptohomeStatus status = factor_driver.TryCreateRateLimiter(
+        session_->obfuscated_username_, *session_->user_secret_stash_);
+    if (!status.ok()) {
+      std::move(on_done).Run(std::move(status));
+      return;
+    }
+  }
+  factor_driver.PrepareForAdd(
+      session_->obfuscated_username_,
+      base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
+                     session_->weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
 void AuthSession::OnPrepareAuthFactorDone(

@@ -250,6 +250,16 @@ class AfDriverNoExpiration : public virtual AuthFactorDriver {
                                      const AuthFactor& factor) final;
 };
 
+// Common implementation of the rate-limiter functions for drivers which do not
+// need rate-limiter.
+class AfDriverNoRateLimiter : public virtual AuthFactorDriver {
+ private:
+  bool NeedsRateLimiter() const final { return false; }
+  CryptohomeStatus TryCreateRateLimiter(
+      const ObfuscatedUsername& username,
+      UserSecretStash& user_secret_stash) final;
+};
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_AUTH_FACTOR_TYPES_COMMON_H_

@@ -39,14 +39,14 @@ class KioskAuthFactorDriver final
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay,
-      public AfDriverNoExpiration {
+      public AfDriverNoExpiration,
+      public AfDriverNoRateLimiter {
  public:
   KioskAuthFactorDriver() = default;
 
  private:
   bool IsSupportedByHardware() const override;
   bool NeedsResetSecret() const override;
-  bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(

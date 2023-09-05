@@ -19,10 +19,6 @@ bool KioskAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }
 
-bool KioskAuthFactorDriver::NeedsRateLimiter() const {
-  return false;
-}
-
 AuthFactorLabelArity KioskAuthFactorDriver::GetAuthFactorLabelArity() const {
   return AuthFactorLabelArity::kSingle;
 }

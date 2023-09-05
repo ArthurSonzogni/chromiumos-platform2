@@ -5,8 +5,13 @@
 #include "cryptohome/auth_factor/types/fingerprint.h"
 
 #include <limits>
+#include <map>
 #include <utility>
+#include <vector>
 
+#include <base/time/time.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
@@ -31,8 +36,44 @@ using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
 using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
 
 constexpr char kEnableDecryptFilename[] = "fingerprint_decrypt_enable";
+constexpr uint8_t kFingerprintAuthChannel = 0;
+constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
+constexpr size_t kResetSecretSize = 32;
+
+constexpr struct {
+  uint32_t attempts;
+  uint32_t delay;
+} kDefaultDelaySchedule[] = {
+    {5, kInfiniteDelay},
+};
+constexpr base::TimeDelta kExpirationLockout = base::Days(1);
+
+std::vector<hwsec::OperationPolicySetting> GetValidPoliciesOfUser(
+    const ObfuscatedUsername& obfuscated_username) {
+  return std::vector<hwsec::OperationPolicySetting>{
+      hwsec::OperationPolicySetting{
+          .device_config_settings =
+              hwsec::DeviceConfigSettings{
+                  .current_user =
+                      hwsec::DeviceConfigSettings::CurrentUserSetting{
+                          .username = std::nullopt,
+                      },
+              },
+      },
+      hwsec::OperationPolicySetting{
+          .device_config_settings =
+              hwsec::DeviceConfigSettings{
+                  .current_user =
+                      hwsec::DeviceConfigSettings::CurrentUserSetting{
+                          .username = *obfuscated_username,
+                      },
+              },
+      },
+  };
+}
 
 }  // namespace
 
@@ -90,6 +131,45 @@ bool FingerprintAuthFactorDriver::NeedsResetSecret() const {
 
 bool FingerprintAuthFactorDriver::NeedsRateLimiter() const {
   return true;
+}
+
+CryptohomeStatus FingerprintAuthFactorDriver::TryCreateRateLimiter(
+    const ObfuscatedUsername& username, UserSecretStash& user_secret_stash) {
+  std::optional<uint64_t> rate_limiter_label =
+      user_secret_stash.GetFingerprintRateLimiterId();
+  if (rate_limiter_label.has_value()) {
+    return OkStatus<CryptohomeError>();
+  }
+  auto reset_secret =
+      hwsec_foundation::CreateSecureRandomBlob(kResetSecretSize);
+  std::vector<hwsec::OperationPolicySetting> policies =
+      GetValidPoliciesOfUser(username);
+
+  std::map<uint32_t, uint32_t> delay_sched;
+  for (const auto& entry : kDefaultDelaySchedule) {
+    delay_sched[entry.attempts] = entry.delay;
+  }
+
+  uint64_t label;
+  LECredStatus ret = crypto_->le_manager()->InsertRateLimiter(
+      kFingerprintAuthChannel, policies, reset_secret, delay_sched,
+      kExpirationLockout.InSeconds(), &label);
+  if (!ret.ok()) {
+    return ret;
+  }
+  if (!user_secret_stash.InitializeFingerprintRateLimiterId(label)) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAddRateLimiterLabelToUSSFailed),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+  }
+  if (!user_secret_stash.SetRateLimiterResetSecret(type(), reset_secret)) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAddRateLimiterResetSecretToUSSFailed),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+  }
+  return OkStatus<CryptohomeError>();
 }
 
 bool FingerprintAuthFactorDriver::IsDelaySupported() const {

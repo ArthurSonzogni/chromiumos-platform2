@@ -1869,6 +1869,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockDeleteRecordFailed = 3403,
   /* ./auth_blocks/biometrics_command_processor_impl.cc */
   kLocBiometricsProcessorMatchCredentialMatchFailed = 3404,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoUSSInPrepareAuthFactorForAdd = 3405,
+  /* ./auth_factor/types/common.cc */
+  kLocAuthFactorCommonIsCreateRateLimiterUnsupported = 3406,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAddRateLimiterLabelToUSSFailed = 3407,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAddRateLimiterResetSecretToUSSFailed = 3408,
+  /* ./auth_session.cc */
+  kLocAuthSessionUnauthedInPrepareForAdd = 3409,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

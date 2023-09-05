@@ -313,6 +313,10 @@ class AuthSession final {
         const user_data_auth::RemoveAuthFactorRequest& request,
         StatusCallback on_done);
 
+    // Prepares an auth factor type for the add purpose.
+    void PrepareAuthFactorForAdd(AuthFactorType auth_factor_type,
+                                 StatusCallback on_done);
+
    private:
     // Special case for relabel of an ephemeral user's factor.
     void RelabelAuthFactorEphemeral(

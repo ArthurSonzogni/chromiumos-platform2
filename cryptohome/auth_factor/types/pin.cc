@@ -62,10 +62,6 @@ bool PinAuthFactorDriver::NeedsResetSecret() const {
   return true;
 }
 
-bool PinAuthFactorDriver::NeedsRateLimiter() const {
-  return false;
-}
-
 bool PinAuthFactorDriver::IsDelaySupported() const {
   return true;
 }

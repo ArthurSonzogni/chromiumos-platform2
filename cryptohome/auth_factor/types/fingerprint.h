@@ -67,6 +67,9 @@ class FingerprintAuthFactorDriver final
   bool IsFullAuthSupported(AuthIntent auth_intent) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
+  CryptohomeStatus TryCreateRateLimiter(
+      const ObfuscatedUsername& username,
+      UserSecretStash& user_secret_stash) override;
   bool IsDelaySupported() const override;
   CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
       const ObfuscatedUsername& username,

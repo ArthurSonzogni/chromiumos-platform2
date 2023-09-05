@@ -41,14 +41,14 @@ class PinAuthFactorDriver final
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,
-      public AfDriverNoExpiration {
+      public AfDriverNoExpiration,
+      public AfDriverNoRateLimiter {
  public:
   explicit PinAuthFactorDriver(Crypto* crypto) : crypto_(crypto) {}
 
  private:
   bool IsSupportedByHardware() const override;
   bool NeedsResetSecret() const override;
-  bool NeedsRateLimiter() const override;
   bool IsDelaySupported() const override;
   CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
       const ObfuscatedUsername& username,

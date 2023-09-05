@@ -36,7 +36,8 @@ class NullAuthFactorDriver final
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay,
-      public AfDriverNoExpiration {
+      public AfDriverNoExpiration,
+      public AfDriverNoRateLimiter {
  public:
   NullAuthFactorDriver() = default;
 
@@ -48,7 +49,6 @@ class NullAuthFactorDriver final
     return false;
   }
   bool NeedsResetSecret() const override { return false; }
-  bool NeedsRateLimiter() const override { return false; }
   AuthFactorLabelArity GetAuthFactorLabelArity() const override {
     return AuthFactorLabelArity::kNone;
   }

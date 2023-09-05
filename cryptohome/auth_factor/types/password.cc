@@ -42,10 +42,6 @@ bool PasswordAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }
 
-bool PasswordAuthFactorDriver::NeedsRateLimiter() const {
-  return false;
-}
-
 AuthFactorLabelArity PasswordAuthFactorDriver::GetAuthFactorLabelArity() const {
   return AuthFactorLabelArity::kSingle;
 }

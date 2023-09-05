@@ -75,4 +75,12 @@ CryptohomeStatusOr<bool> AfDriverNoExpiration::IsExpired(
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
+CryptohomeStatus AfDriverNoRateLimiter::TryCreateRateLimiter(
+    const ObfuscatedUsername& username, UserSecretStash& user_secret_stash) {
+  return MakeStatus<CryptohomeError>(
+      CRYPTOHOME_ERR_LOC(kLocAuthFactorCommonIsCreateRateLimiterUnsupported),
+      ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
 }  // namespace cryptohome

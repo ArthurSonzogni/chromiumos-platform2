@@ -61,7 +61,8 @@ class PasswordAuthFactorDriver final
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,
       public AfDriverNoDelay,
-      public AfDriverNoExpiration {
+      public AfDriverNoExpiration,
+      public AfDriverNoRateLimiter {
  public:
   PasswordAuthFactorDriver() = default;
 
@@ -72,7 +73,6 @@ class PasswordAuthFactorDriver final
       const std::string& auth_factor_label,
       const AuthInput& auth_input) const override;
   bool NeedsResetSecret() const override;
-  bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(

@@ -63,10 +63,6 @@ bool SmartCardAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }
 
-bool SmartCardAuthFactorDriver::NeedsRateLimiter() const {
-  return false;
-}
-
 AuthFactorLabelArity SmartCardAuthFactorDriver::GetAuthFactorLabelArity()
     const {
   return AuthFactorLabelArity::kSingle;

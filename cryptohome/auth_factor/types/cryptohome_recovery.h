@@ -40,7 +40,8 @@ class CryptohomeRecoveryAuthFactorDriver final
                                              AuthIntentSequence<>>,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay,
-      public AfDriverNoExpiration {
+      public AfDriverNoExpiration,
+      public AfDriverNoRateLimiter {
  public:
   explicit CryptohomeRecoveryAuthFactorDriver(Crypto* crypto)
       : crypto_(crypto) {}
@@ -48,7 +49,6 @@ class CryptohomeRecoveryAuthFactorDriver final
  private:
   bool IsSupportedByHardware() const override;
   bool NeedsResetSecret() const override;
-  bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(

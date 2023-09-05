@@ -83,10 +83,6 @@ bool LegacyFingerprintAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }
 
-bool LegacyFingerprintAuthFactorDriver::NeedsRateLimiter() const {
-  return false;
-}
-
 AuthFactorLabelArity
 LegacyFingerprintAuthFactorDriver::GetAuthFactorLabelArity() const {
   return AuthFactorLabelArity::kNone;
