@@ -49,34 +49,39 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
       SignalCallback signal_callback,
       OnConnectedCallback on_connected_callback);
 
+  virtual void GetNonce(
+      base::OnceCallback<void(std::optional<GetNonceReply>)> callback);
+
   // Starts biometrics enroll session asynchronously.
   // |callback| is called when starting the enroll session succeeds/fails.
   virtual void StartEnrollSession(
+      const StartEnrollSessionRequest& request,
       base::OnceCallback<void(bool success)> callback);
 
   // Ends biometrics enroll session and resets state.
   virtual void EndEnrollSession();
 
   // Creates the actual fingerprint record. Should only be called after an
-  // enroll session completes successfully. See CreateCredentialRequest/Reply
+  // enroll session completes successfully. See CreateCredentialRequestV2/Reply
   // protos for the detailed function signature.
   virtual void CreateCredential(
-      const CreateCredentialRequest& request,
+      const CreateCredentialRequestV2& request,
       base::OnceCallback<void(std::optional<CreateCredentialReply>)> callback);
 
   // Starts biometrics auth session asynchronously.
   // |callback| is called when starting the auth session succeeds/fails.
   virtual void StartAuthSession(
-      std::string user_id, base::OnceCallback<void(bool success)> callback);
+      const StartAuthSessionRequest& request,
+      base::OnceCallback<void(bool success)> callback);
 
   // Ends biometrics auth session and resets state.
   virtual void EndAuthSession();
 
   // Performs the fingerprint match. Should only be called after an auth session
-  // completes successfully. See AuthenticateCredentialRequest/Reply protos for
-  // the detailed function signature.
+  // completes successfully. See AuthenticateCredentialRequestV2/Reply protos
+  // for the detailed function signature.
   virtual void AuthenticateCredential(
-      const AuthenticateCredentialRequest& request,
+      const AuthenticateCredentialRequestV2& request,
       base::OnceCallback<void(std::optional<AuthenticateCredentialReply>)>
           callback);
 
@@ -134,16 +139,6 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
   // Parse a dbus response and return the ObjectProxy implied by the response.
   // Returns nullptr on error.
   dbus::ObjectProxy* HandleStartSessionResponse(dbus::Response* response);
-
-  // Parse a dbus response and return the CreateCredentialReply implied by the
-  // response. Returns nullopt on error.
-  std::optional<CreateCredentialReply> HandleCreateCredentialResponse(
-      dbus::Response* response);
-
-  // Parse a dbus response and return the AuthenticateCredentialReply implied by
-  // the response. Returns nullopt on error.
-  std::optional<AuthenticateCredentialReply>
-  HandleAuthenticateCredentialResponse(dbus::Response* response);
 
   dbus::ObjectProxy* biod_enroll_session_ = nullptr;
   dbus::ObjectProxy* biod_auth_session_ = nullptr;

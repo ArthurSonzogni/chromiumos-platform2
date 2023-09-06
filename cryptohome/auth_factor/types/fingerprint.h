@@ -56,11 +56,17 @@ class FingerprintAuthFactorDriver final
  private:
   bool IsSupportedByHardware() const override;
   bool IsPrepareRequired() const override;
-  void PrepareForAdd(const ObfuscatedUsername& username,
+  void PrepareForAdd(const AuthInput& auth_input,
                      PreparedAuthFactorToken::Consumer callback) override;
+  void PrepareForAddOnGetNonce(PreparedAuthFactorToken::Consumer callback,
+                               const AuthInput& auth_input,
+                               std::optional<brillo::Blob> nonce);
   void PrepareForAuthenticate(
-      const ObfuscatedUsername& username,
+      const AuthInput& auth_input,
       PreparedAuthFactorToken::Consumer callback) override;
+  void PrepareForAuthOnGetNonce(PreparedAuthFactorToken::Consumer callback,
+                                const AuthInput& auth_input,
+                                std::optional<brillo::Blob> nonce);
   bool IsFullAuthSupported(AuthIntent auth_intent) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
@@ -82,6 +88,8 @@ class FingerprintAuthFactorDriver final
   Crypto* crypto_;
   UssStorage* uss_storage_;
   AsyncInitPtr<BiometricsAuthBlockService> bio_service_;
+
+  base::WeakPtrFactory<FingerprintAuthFactorDriver> weak_factory_{this};
 };
 
 }  // namespace cryptohome

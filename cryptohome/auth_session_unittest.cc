@@ -1130,7 +1130,6 @@ class AuthSessionWithUssTest : public AuthSessionTest {
         .WillOnce([&](AuthBlockType auth_block_type,
                       const AuthInput& auth_input,
                       AuthBlock::CreateCallback create_callback) {
-          EXPECT_TRUE(auth_input.rate_limiter_label.has_value());
           EXPECT_TRUE(auth_input.reset_secret.has_value());
           // Make an arbitrary auth block state type that can be used in the
           // tests.
@@ -1180,6 +1179,33 @@ class AuthSessionWithUssTest : public AuthSessionTest {
     return AddFingerprintAuthFactor(auth_session, kFakeSecondFingerprintLabel,
                                     brillo::SecureBlob(kFakeSecondVkkKey),
                                     kFakeSecondRecordId, kFakeSecondFpLabel);
+  }
+
+  void SetUpPrepareFingerprintForAdd() {
+    const brillo::Blob kNonce(32, 1);
+    EXPECT_CALL(*bio_processor_, GetNonce(_))
+        .WillOnce(
+            [kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
+    EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth)
+        .WillOnce(Return(
+            hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
+    EXPECT_CALL(*bio_processor_, StartEnrollSession(_, _))
+        .WillOnce(
+            [](auto&&, auto&& callback) { std::move(callback).Run(true); });
+  }
+
+  void SetUpPrepareFingerprintForAuth() {
+    const brillo::Blob kNonce(32, 1);
+    EXPECT_CALL(*bio_processor_, GetNonce(_))
+        .WillOnce(
+            [kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
+    EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth)
+        .WillOnce(Return(
+            hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
+    EXPECT_CALL(*bio_processor_, StartAuthenticateSession(_, _, _))
+        .WillOnce([](auto&&, auto&&, auto&& callback) {
+          std::move(callback).Run(true);
+        });
   }
 };
 
@@ -2848,38 +2874,6 @@ TEST_F(AuthSessionWithUssTest, LightweightFingerprintAuthentication) {
               UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
 
-// Test that PrepareAuthFactor succeeds for fingerprint with the purpose
-// of authentication.
-TEST_F(AuthSessionWithUssTest, PrepareLegacyFingerprintAuth) {
-  // Add the user session. Configure the credential verifier mock to
-  // succeed.
-  auto user_session = std::make_unique<MockUserSession>();
-  auto auth_session = std::make_unique<AuthSession>(
-      AuthSession::Params{.username = kFakeUsername,
-                          .is_ephemeral_user = false,
-                          .intent = AuthIntent::kVerifyOnly,
-                          .auth_factor_status_update_timer =
-                              std::make_unique<base::WallClockTimer>(),
-                          .user_exists = true,
-                          .auth_factor_map = AuthFactorMap()},
-      backing_apis_);
-  EXPECT_CALL(*bio_processor_,
-              StartAuthenticateSession(auth_session->obfuscated_username(), _))
-      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
-
-  // Test.
-  TestFuture<CryptohomeStatus> prepare_future;
-  user_data_auth::PrepareAuthFactorRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
-  request.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
-  request.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  auth_session->PrepareAuthFactor(request, prepare_future.GetCallback());
-  auth_session.reset();
-
-  // Verify.
-  ASSERT_THAT(prepare_future.Get(), IsOk());
-}
-
 // Test that PrepareAuthFactor succeeded for password.
 TEST_F(AuthSessionWithUssTest, PreparePasswordFailure) {
   // Setup.
@@ -2960,11 +2954,24 @@ TEST_F(AuthSessionWithUssTest, TerminateAuthFactorInactiveFactorFailure) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(AuthSessionWithUssTest, TerminateAuthFactorLegacyFingerprintSuccess) {
+TEST_F(AuthSessionWithUssTest, PrepareAndTerminateFingerprintForAuthSuccess) {
   // Setup.
-  // Add the user session. Configure the credential verifier mock to
-  // succeed.
-  auto user_session = std::make_unique<MockUserSession>();
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
+  ASSERT_THAT(uss, IsOk());
+  {
+    auto transaction = uss->StartTransaction();
+    // Add a rate-limiter so that later on a reset is needed after full auth.
+    ASSERT_THAT(
+        transaction.InitializeFingerprintRateLimiterId(kFakeRateLimiterLabel),
+        IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
+  }
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kVerifyOnly,
@@ -2973,9 +2980,7 @@ TEST_F(AuthSessionWithUssTest, TerminateAuthFactorLegacyFingerprintSuccess) {
                             .user_exists = true,
                             .auth_factor_map = AuthFactorMap()},
                            backing_apis_);
-  EXPECT_CALL(*bio_processor_,
-              StartAuthenticateSession(auth_session.obfuscated_username(), _))
-      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
+  SetUpPrepareFingerprintForAuth();
   TestFuture<CryptohomeStatus> prepare_future;
   user_data_auth::PrepareAuthFactorRequest prepare_request;
   prepare_request.set_auth_session_id(auth_session.serialized_token());
@@ -4017,8 +4022,7 @@ TEST_F(AuthSessionWithUssTest, PrepareFingerprintAdd) {
   EXPECT_CALL(hwsec_pw_manager_, InsertRateLimiter)
       .WillOnce(ReturnValue(/* ret_label */ 0));
 
-  EXPECT_CALL(*bio_processor_, StartEnrollSession(_))
-      .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
+  SetUpPrepareFingerprintForAdd();
 
   // Test.
   TestFuture<CryptohomeStatus> prepare_future;
@@ -4044,8 +4048,7 @@ TEST_F(AuthSessionWithUssTest, PrepareFingerprintAdd) {
   ASSERT_THAT(terminate_future.Get(), IsOk());
 
   // This time, the rate-limiter doesn't need to be created anymore.
-  EXPECT_CALL(*bio_processor_, StartEnrollSession(_))
-      .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
+  SetUpPrepareFingerprintForAdd();
 
   // Test.
   TestFuture<CryptohomeStatus> prepare_future2;
@@ -4080,8 +4083,7 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   // Prepare is necessary to create the rate-limiter.
   EXPECT_CALL(hwsec_pw_manager_, InsertRateLimiter)
       .WillOnce(ReturnValue(kFakeRateLimiterLabel));
-  EXPECT_CALL(*bio_processor_, StartEnrollSession(_))
-      .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
+  SetUpPrepareFingerprintForAdd();
   TestFuture<CryptohomeStatus> prepare_future;
   user_data_auth::PrepareAuthFactorRequest prepare_request;
   prepare_request.set_auth_session_id(auth_session.serialized_token());

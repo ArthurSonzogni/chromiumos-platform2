@@ -35,21 +35,28 @@ class MockAuthStackManagerProxyBase : public AuthStackManagerProxyBase {
               (override));
 
   MOCK_METHOD(void,
+              GetNonce,
+              (base::OnceCallback<void(std::optional<GetNonceReply>)>),
+              (override));
+
+  MOCK_METHOD(void,
               StartEnrollSession,
-              (base::OnceCallback<void(bool success)> callback),
+              (const StartEnrollSessionRequest& request,
+               base::OnceCallback<void(bool success)> callback),
               (override));
 
   MOCK_METHOD(void, EndEnrollSession, (), (override));
 
   MOCK_METHOD(void,
               CreateCredential,
-              (const CreateCredentialRequest&,
+              (const CreateCredentialRequestV2&,
                base::OnceCallback<void(std::optional<CreateCredentialReply>)>),
               (override));
 
   MOCK_METHOD(void,
               StartAuthSession,
-              (std::string, base::OnceCallback<void(bool success)> callback),
+              (const StartAuthSessionRequest& request,
+               base::OnceCallback<void(bool success)> callback),
               (override));
 
   MOCK_METHOD(void, EndAuthSession, (), (override));
@@ -57,7 +64,7 @@ class MockAuthStackManagerProxyBase : public AuthStackManagerProxyBase {
   MOCK_METHOD(
       void,
       AuthenticateCredential,
-      (const AuthenticateCredentialRequest&,
+      (const AuthenticateCredentialRequestV2&,
        base::OnceCallback<void(std::optional<AuthenticateCredentialReply>)>),
       (override));
 

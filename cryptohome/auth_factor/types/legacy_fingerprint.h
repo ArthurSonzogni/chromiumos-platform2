@@ -48,10 +48,10 @@ class LegacyFingerprintAuthFactorDriver final
       const std::set<AuthFactorStorageType>& configured_storage_types,
       const std::set<AuthFactorType>& configured_factors) const override;
   bool IsPrepareRequired() const override;
-  void PrepareForAdd(const ObfuscatedUsername& username,
+  void PrepareForAdd(const AuthInput& auth_input,
                      PreparedAuthFactorToken::Consumer callback) override;
   void PrepareForAuthenticate(
-      const ObfuscatedUsername& username,
+      const AuthInput& auth_input,
       PreparedAuthFactorToken::Consumer callback) override;
   bool IsLightAuthSupported(AuthIntent auth_intent) const override;
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(

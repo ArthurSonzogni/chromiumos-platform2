@@ -137,6 +137,8 @@ using ::testing::SaveArgPointee;
 using ::testing::SetArgPointee;
 using ::testing::UnorderedElementsAre;
 
+using CredentialTreeResult = hwsec::PinWeaverFrontend::CredentialTreeResult;
+
 // Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr int kAuthSessionExtensionDuration = 60;
 constexpr auto kAuthSessionTimeout = base::Minutes(5);
@@ -4254,87 +4256,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
                            user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 }
 
-TEST_F(UserDataAuthExTest, PrepareAuthFactorFingerprintSuccess) {
-  // Setup.
-  PrepareArguments();
-  start_auth_session_req_->mutable_account_id()->set_account_id(
-      "foo@example.com");
-  TestFuture<user_data_auth::StartAuthSessionReply> auth_session_reply_future;
-  userdataauth_->StartAuthSession(
-      *start_auth_session_req_,
-      auth_session_reply_future
-          .GetCallback<const user_data_auth::StartAuthSessionReply&>());
-  EXPECT_EQ(auth_session_reply_future.Get().error(),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  const std::string auth_session_id =
-      auth_session_reply_future.Get().auth_session_id();
-  EXPECT_TRUE(
-      AuthSession::GetTokenFromSerializedString(auth_session_id).has_value());
-
-  // Prepare the request and set up the mock components.
-  user_data_auth::PrepareAuthFactorRequest prepare_auth_factor_req;
-  prepare_auth_factor_req.set_auth_session_id(auth_session_id);
-  prepare_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
-  prepare_auth_factor_req.set_purpose(
-      user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  EXPECT_CALL(*bio_processor_, StartAuthenticateSession(_, _))
-      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
-
-  // Test.
-  TestFuture<user_data_auth::PrepareAuthFactorReply>
-      prepare_auth_factor_reply_future;
-  userdataauth_->PrepareAuthFactor(
-      prepare_auth_factor_req,
-      prepare_auth_factor_reply_future
-          .GetCallback<const user_data_auth::PrepareAuthFactorReply&>());
-
-  // Verify.
-  EXPECT_EQ(prepare_auth_factor_reply_future.Get().error(),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-}
-
-TEST_F(UserDataAuthExTest, PrepareAuthFactorFingerprintFailure) {
-  // Setup.
-  PrepareArguments();
-  start_auth_session_req_->mutable_account_id()->set_account_id(
-      "foo@example.com");
-  TestFuture<user_data_auth::StartAuthSessionReply> auth_session_reply_future;
-  userdataauth_->StartAuthSession(
-      *start_auth_session_req_,
-      auth_session_reply_future
-          .GetCallback<const user_data_auth::StartAuthSessionReply&>());
-  EXPECT_EQ(auth_session_reply_future.Get().error(),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  const std::string auth_session_id =
-      auth_session_reply_future.Get().auth_session_id();
-  EXPECT_TRUE(
-      AuthSession::GetTokenFromSerializedString(auth_session_id).has_value());
-
-  // Prepare the request and set up the mock components.
-  user_data_auth::PrepareAuthFactorRequest prepare_auth_factor_req;
-  prepare_auth_factor_req.set_auth_session_id(auth_session_id);
-  prepare_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
-  prepare_auth_factor_req.set_purpose(
-      user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  EXPECT_CALL(*bio_processor_, StartAuthenticateSession(_, _))
-      .WillOnce(
-          [](auto&&, auto&& callback) { std::move(callback).Run(false); });
-
-  // Test.
-  TestFuture<user_data_auth::PrepareAuthFactorReply>
-      prepare_auth_factor_reply_future;
-  userdataauth_->PrepareAuthFactor(
-      prepare_auth_factor_req,
-      prepare_auth_factor_reply_future
-          .GetCallback<const user_data_auth::PrepareAuthFactorReply&>());
-
-  // Verify.
-  EXPECT_EQ(prepare_auth_factor_reply_future.Get().error(),
-            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
-}
-
 TEST_F(UserDataAuthExTest, PrepareAuthFactorNoAuthSessionIdFailure) {
   // Setup.
   PrepareArguments();
@@ -4417,10 +4338,10 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorFingerprintSuccess) {
   user_data_auth::PrepareAuthFactorRequest prepare_auth_factor_req;
   prepare_auth_factor_req.set_auth_session_id(auth_session_id);
   prepare_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
   prepare_auth_factor_req.set_purpose(
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  EXPECT_CALL(*bio_processor_, StartAuthenticateSession(_, _))
+  EXPECT_CALL(fingerprint_manager_, StartAuthSessionAsyncForUser)
       .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
   TestFuture<user_data_auth::PrepareAuthFactorReply>
       prepare_auth_factor_reply_future;
@@ -4435,7 +4356,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorFingerprintSuccess) {
   user_data_auth::TerminateAuthFactorRequest terminate_auth_factor_req;
   terminate_auth_factor_req.set_auth_session_id(auth_session_id);
   terminate_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
   TestFuture<user_data_auth::TerminateAuthFactorReply>
       terminate_auth_factor_reply_future;
   userdataauth_->TerminateAuthFactor(

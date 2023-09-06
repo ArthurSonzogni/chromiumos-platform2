@@ -52,9 +52,14 @@ bool BiometricsAuthBlockService::IsReady() {
   return processor_->IsReady();
 }
 
+void BiometricsAuthBlockService::GetNonce(
+    base::OnceCallback<void(std::optional<brillo::Blob>)> callback) {
+  processor_->GetNonce(std::move(callback));
+}
+
 void BiometricsAuthBlockService::StartEnrollSession(
     AuthFactorType auth_factor_type,
-    ObfuscatedUsername obfuscated_username,
+    OperationInput payload,
     PreparedAuthFactorToken::Consumer on_done) {
   if (active_token_ || pending_token_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
@@ -67,15 +72,14 @@ void BiometricsAuthBlockService::StartEnrollSession(
 
   // Set up a callback with the processor to check the start session result.
   pending_token_ =
-      std::make_unique<Token>(auth_factor_type, Token::TokenType::kEnroll,
-                              std::move(obfuscated_username));
+      std::make_unique<Token>(auth_factor_type, Token::TokenType::kEnroll);
   processor_->StartEnrollSession(
+      std::move(payload),
       base::BindOnce(&BiometricsAuthBlockService::CheckSessionStartResult,
                      weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
-void BiometricsAuthBlockService::CreateCredential(OperationInput payload,
-                                                  OperationCallback on_done) {
+void BiometricsAuthBlockService::CreateCredential(OperationCallback on_done) {
   if (!active_token_ || active_token_->type() != Token::TokenType::kEnroll) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsServiceCreateCredentialNoSession),
@@ -85,8 +89,7 @@ void BiometricsAuthBlockService::CreateCredential(OperationInput payload,
     return;
   }
 
-  processor_->CreateCredential(active_token_->user_id(), std::move(payload),
-                               std::move(on_done));
+  processor_->CreateCredential(std::move(on_done));
 }
 
 void BiometricsAuthBlockService::EndEnrollSession() {
@@ -101,6 +104,7 @@ void BiometricsAuthBlockService::EndEnrollSession() {
 void BiometricsAuthBlockService::StartAuthenticateSession(
     AuthFactorType auth_factor_type,
     ObfuscatedUsername obfuscated_username,
+    OperationInput payload,
     PreparedAuthFactorToken::Consumer on_done) {
   if (active_token_ || pending_token_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
@@ -113,16 +117,15 @@ void BiometricsAuthBlockService::StartAuthenticateSession(
   }
 
   // Set up a callback with the manager to check the start session result.
-  pending_token_ = std::make_unique<Token>(
-      auth_factor_type, Token::TokenType::kAuthenticate, obfuscated_username);
+  pending_token_ = std::make_unique<Token>(auth_factor_type,
+                                           Token::TokenType::kAuthenticate);
   processor_->StartAuthenticateSession(
-      std::move(obfuscated_username),
+      std::move(obfuscated_username), std::move(payload),
       base::BindOnce(&BiometricsAuthBlockService::CheckSessionStartResult,
                      weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
-void BiometricsAuthBlockService::MatchCredential(OperationInput payload,
-                                                 OperationCallback on_done) {
+void BiometricsAuthBlockService::MatchCredential(OperationCallback on_done) {
   if (!active_token_ ||
       active_token_->type() != Token::TokenType::kAuthenticate) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -133,10 +136,7 @@ void BiometricsAuthBlockService::MatchCredential(OperationInput payload,
     return;
   }
 
-  processor_->MatchCredential(
-      std::move(payload),
-      base::BindOnce(&BiometricsAuthBlockService::OnMatchCredentialResponse,
-                     weak_factory_.GetWeakPtr(), std::move(on_done)));
+  processor_->MatchCredential(std::move(on_done));
 }
 
 void BiometricsAuthBlockService::EndAuthenticateSession() {
@@ -149,10 +149,6 @@ void BiometricsAuthBlockService::EndAuthenticateSession() {
   processor_->EndAuthenticateSession();
 }
 
-std::optional<brillo::Blob> BiometricsAuthBlockService::TakeNonce() {
-  return std::exchange(auth_nonce_, std::nullopt);
-}
-
 void BiometricsAuthBlockService::DeleteCredential(
     ObfuscatedUsername obfuscated_username,
     const std::string& record_id,
@@ -162,11 +158,9 @@ void BiometricsAuthBlockService::DeleteCredential(
 }
 
 BiometricsAuthBlockService::Token::Token(AuthFactorType auth_factor_type,
-                                         TokenType token_type,
-                                         ObfuscatedUsername user_id)
+                                         TokenType token_type)
     : PreparedAuthFactorToken(auth_factor_type),
       token_type_(token_type),
-      user_id_(std::move(user_id)),
       terminate_(*this) {}
 
 void BiometricsAuthBlockService::Token::AttachToService(
@@ -227,28 +221,23 @@ void BiometricsAuthBlockService::CheckSessionStartResult(
 }
 
 void BiometricsAuthBlockService::OnEnrollScanDone(
-    user_data_auth::AuthEnrollmentProgress signal,
-    std::optional<brillo::Blob> nonce) {
+    user_data_auth::AuthEnrollmentProgress signal) {
   // Process the signal either there is an active session or there is an
   // pending session since the signals could arrive as soon as the
   // session start reply and the session tranisition is yet to happen.
   Token* token = pending_token_ ? pending_token_.get() : active_token_;
   if (token && token->type() == Token::TokenType::kEnroll) {
-    if (nonce.has_value()) {
-      auth_nonce_ = std::move(*nonce);
-    }
     enroll_signal_sender_.Run(std::move(signal));
   }
 }
 
 void BiometricsAuthBlockService::OnAuthScanDone(
-    user_data_auth::AuthScanDone signal, brillo::Blob nonce) {
+    user_data_auth::AuthScanDone signal) {
   // Process the signal either there is an active session or there is an
   // pending session since the signals could arrive as soon as the
   // session start reply and the session tranisition is yet to happen.
   Token* token = pending_token_ ? pending_token_.get() : active_token_;
   if (token && token->type() == Token::TokenType::kAuthenticate) {
-    auth_nonce_ = std::move(nonce);
     auth_signal_sender_.Run(std::move(signal));
   }
 }
@@ -280,48 +269,6 @@ void BiometricsAuthBlockService::OnSessionFailed() {
       break;
     }
   }
-}
-
-void BiometricsAuthBlockService::OnMatchCredentialResponse(
-    OperationCallback callback, CryptohomeStatusOr<OperationOutput> resp) {
-  // This means that the session is already terminated by the caller, and we
-  // just need to return the MatchCredential response.
-  if (!active_token_ ||
-      active_token_->type() != Token::TokenType::kAuthenticate) {
-    std::move(callback).Run(std::move(resp));
-    return;
-  }
-
-  // Restart the session before returning the MatchCredential, so that when the
-  // user sees the match verdict it's guaranteed that they can already perform
-  // the next touch.
-  processor_->StartAuthenticateSession(
-      active_token_->user_id(),
-      base::BindOnce(&BiometricsAuthBlockService::OnSessionRestartResult,
-                     weak_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(resp)));
-}
-
-void BiometricsAuthBlockService::OnSessionRestartResult(
-    OperationCallback callback,
-    CryptohomeStatusOr<OperationOutput> resp,
-    bool success) {
-  // We need to check active_token_ here because if the session is already ended
-  // by the caller, we shouldn't emit any signals afterwards.
-  if (active_token_ &&
-      active_token_->type() == Token::TokenType::kAuthenticate && !success) {
-    active_token_->DetachFromService();
-    active_token_ = nullptr;
-    // If restarting session failed, Chrome will stop receiving auth scan
-    // signals. Send a signal that indicates failure to inform Chrome about
-    // this.
-    user_data_auth::AuthScanDone session_failed_signal;
-    session_failed_signal.mutable_scan_result()->set_fingerprint_result(
-        user_data_auth::FingerprintScanResult::
-            FINGERPRINT_SCAN_RESULT_FATAL_ERROR);
-    auth_signal_sender_.Run(std::move(session_failed_signal));
-  }
-  std::move(callback).Run(std::move(resp));
 }
 
 }  // namespace cryptohome

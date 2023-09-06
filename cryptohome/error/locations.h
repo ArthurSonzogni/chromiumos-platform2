@@ -1813,9 +1813,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockNoRateLimiterInCreate = 3347,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockNoResetSecretInCreate = 3348,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockNoNonceInCreate = 3349,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockStartBioAuthFailedInCreate = 3350,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockCreateCredentialFailedInCreate = 3351,
@@ -1841,9 +1841,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAddRateLimiterSecretFailedInAddSecretToUSS = 3361,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockNoUsernameInSelect = 3362,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockNoNonceInSelect = 3363,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockStartBioAuthFailedInSelect = 3364,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockAuthenticateCredentialFailedInSelect = 3365,
@@ -1941,6 +1941,30 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthTerminateAuthFactorNoAuthSession = 3411,
   /* ./userdataauth.cc */
   kLocUserDataAuthGetAuthSessionStatusNoAuthSession = 3412,
+  /* ./auth_session.cc */
+  kLocRateLimiterNoUSSInAuthInputForPrepare = 3413,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoRateLimiterInAuthInputPrepareAdd = 3414,
+  /* ./auth_session.cc */
+  kLocAuthSessionGetMetadataFailedInAuthInputPrepareAuth = 3415,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoRateLimiterInAuthInputPrepareAuth = 3416,
+  /* ./auth_factor/types/legacy_fingerprint.cc */
+  kLocAuthFactorLegacyFpPrepareForAuthNoUsername = 3417,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpNoResetSecretInPrepareAdd = 3418,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpPrepareAddGetNonceFailed = 3419,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpPrepareAddStartBioAuthFailed = 3420,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpNoUsernameInPrepareAuth = 3421,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpNoResetSecretInPrepareAuth = 3422,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpPrepareAuthGetNonceFailed = 3423,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpPrepareAuthStartBioAuthFailed = 3424,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

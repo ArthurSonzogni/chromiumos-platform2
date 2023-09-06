@@ -43,8 +43,7 @@ bool LegacyFingerprintAuthFactorDriver::IsPrepareRequired() const {
 }
 
 void LegacyFingerprintAuthFactorDriver::PrepareForAdd(
-    const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) {
+    const AuthInput& auth_input, PreparedAuthFactorToken::Consumer callback) {
   std::move(callback).Run(MakeStatus<CryptohomeError>(
       CRYPTOHOME_ERR_LOC(kLocAuthFactorLegacyFpPrepareForAddUnsupported),
       ErrorActionSet(
@@ -53,9 +52,16 @@ void LegacyFingerprintAuthFactorDriver::PrepareForAdd(
 }
 
 void LegacyFingerprintAuthFactorDriver::PrepareForAuthenticate(
-    const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) {
-  fp_service_->Start(username, std::move(callback));
+    const AuthInput& auth_input, PreparedAuthFactorToken::Consumer callback) {
+  if (!auth_input.obfuscated_username.has_value()) {
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorLegacyFpPrepareForAuthNoUsername),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  fp_service_->Start(*auth_input.obfuscated_username, std::move(callback));
 }
 
 bool LegacyFingerprintAuthFactorDriver::IsLightAuthSupported(

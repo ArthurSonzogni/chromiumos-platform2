@@ -370,14 +370,13 @@ bool BiometricsCommandProcessorImpl::IsReady() {
 }
 
 void BiometricsCommandProcessorImpl::SetEnrollScanDoneCallback(
-    base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
-                                 std::optional<brillo::Blob>)> on_done) {
+    base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress)>
+        on_done) {
   on_enroll_scan_done_ = on_done;
 }
 
 void BiometricsCommandProcessorImpl::SetAuthScanDoneCallback(
-    base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
-        on_done) {
+    base::RepeatingCallback<void(user_data_auth::AuthScanDone)> on_done) {
   on_auth_scan_done_ = on_done;
 }
 
@@ -386,20 +385,44 @@ void BiometricsCommandProcessorImpl::SetSessionFailedCallback(
   on_session_failed_ = on_failure;
 }
 
+void BiometricsCommandProcessorImpl::GetNonce(
+    base::OnceCallback<void(std::optional<brillo::Blob>)> callback) {
+  proxy_->GetNonce(base::BindOnce(
+      [](base::OnceCallback<void(std::optional<brillo::Blob>)> callback,
+         std::optional<biod::GetNonceReply> reply) {
+        if (!reply.has_value() || reply->nonce().empty()) {
+          std::move(callback).Run(std::nullopt);
+          return;
+        }
+        std::move(callback).Run(brillo::BlobFromString(reply->nonce()));
+      },
+      std::move(callback)));
+}
+
 void BiometricsCommandProcessorImpl::StartEnrollSession(
-    base::OnceCallback<void(bool)> on_done) {
-  proxy_->StartEnrollSession(std::move(on_done));
+    OperationInput payload, base::OnceCallback<void(bool)> on_done) {
+  biod::StartEnrollSessionRequest request;
+  request.set_gsc_nonce(brillo::BlobToString(payload.nonce));
+  request.set_encrypted_label_seed(
+      brillo::BlobToString(payload.encrypted_label_seed));
+  request.set_iv(brillo::BlobToString(payload.iv));
+  proxy_->StartEnrollSession(request, std::move(on_done));
 }
 
 void BiometricsCommandProcessorImpl::StartAuthenticateSession(
     ObfuscatedUsername obfuscated_username,
+    OperationInput payload,
     base::OnceCallback<void(bool)> on_done) {
-  proxy_->StartAuthSession(std::move(*obfuscated_username), std::move(on_done));
+  biod::StartAuthSessionRequest request;
+  request.set_user_id(*obfuscated_username);
+  request.set_gsc_nonce(brillo::BlobToString(payload.nonce));
+  request.set_encrypted_label_seed(
+      brillo::BlobToString(payload.encrypted_label_seed));
+  request.set_iv(brillo::BlobToString(payload.iv));
+  proxy_->StartAuthSession(request, std::move(on_done));
 }
 
 void BiometricsCommandProcessorImpl::CreateCredential(
-    ObfuscatedUsername obfuscated_username,
-    OperationInput payload,
     OperationCallback on_done) {
   CryptohomeStatusOr<crypto::ScopedEC_KEY> key = GenerateEcKey();
   if (!key.ok()) {
@@ -420,12 +443,7 @@ void BiometricsCommandProcessorImpl::CreateCredential(
     return;
   }
 
-  biod::CreateCredentialRequest request;
-  request.set_user_id(std::move(*obfuscated_username));
-  request.set_gsc_nonce(brillo::BlobToString(payload.nonce));
-  request.set_encrypted_label_seed(
-      brillo::BlobToString(payload.encrypted_label_seed));
-  request.set_iv(brillo::BlobToString(payload.iv));
+  biod::CreateCredentialRequestV2 request;
   *request.mutable_pub() = std::move(*pub);
 
   proxy_->CreateCredential(
@@ -436,7 +454,7 @@ void BiometricsCommandProcessorImpl::CreateCredential(
 }
 
 void BiometricsCommandProcessorImpl::MatchCredential(
-    OperationInput payload, OperationCallback on_done) {
+    OperationCallback on_done) {
   CryptohomeStatusOr<crypto::ScopedEC_KEY> key = GenerateEcKey();
   if (!key.ok()) {
     std::move(on_done).Run(
@@ -456,11 +474,7 @@ void BiometricsCommandProcessorImpl::MatchCredential(
     return;
   }
 
-  biod::AuthenticateCredentialRequest request;
-  request.set_gsc_nonce(brillo::BlobToString(payload.nonce));
-  request.set_encrypted_label_seed(
-      brillo::BlobToString(payload.encrypted_label_seed));
-  request.set_iv(brillo::BlobToString(payload.iv));
+  biod::AuthenticateCredentialRequestV2 request;
   *request.mutable_pub() = std::move(*pub);
 
   proxy_->AuthenticateCredential(
@@ -515,25 +529,14 @@ void BiometricsCommandProcessorImpl::OnEnrollScanDone(dbus::Signal* signal) {
   progress.set_done(message.done());
   progress.mutable_fingerprint_progress()->set_percent_complete(
       message.percent_complete());
-
-  std::optional<brillo::Blob> nonce = std::nullopt;
-  if (message.done()) {
-    nonce = brillo::BlobFromString(message.auth_nonce());
-  }
-  on_enroll_scan_done_.Run(std::move(progress), std::move(nonce));
+  on_enroll_scan_done_.Run(std::move(progress));
 }
 
 void BiometricsCommandProcessorImpl::OnAuthScanDone(dbus::Signal* signal) {
-  dbus::MessageReader signal_reader(signal);
-  biod::AuthScanDone message;
-  if (!signal_reader.PopArrayOfBytesAsProto(&message)) {
-    return;
-  }
   user_data_auth::AuthScanDone scan_done;
   scan_done.mutable_scan_result()->set_fingerprint_result(
       user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
-  on_auth_scan_done_.Run(std::move(scan_done),
-                         brillo::BlobFromString(message.auth_nonce()));
+  on_auth_scan_done_.Run(std::move(scan_done));
 }
 
 void BiometricsCommandProcessorImpl::OnSessionFailed(dbus::Signal* signal) {

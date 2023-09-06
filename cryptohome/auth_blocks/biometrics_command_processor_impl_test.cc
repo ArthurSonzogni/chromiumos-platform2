@@ -33,6 +33,7 @@ using hwsec_foundation::error::testing::IsOkAnd;
 
 using ::testing::_;
 using ::testing::Field;
+using ::testing::Optional;
 using ::testing::SaveArg;
 using ::testing::SizeIs;
 
@@ -45,13 +46,11 @@ constexpr char kPubPointYHex[] =
 constexpr char kFakeRecordId[] = "fake_record_id";
 
 biod::EnrollScanDone ConstructEnrollScanDone(biod::ScanResult scan_result,
-                                             int percent_complete,
-                                             const brillo::Blob& nonce) {
+                                             int percent_complete) {
   biod::EnrollScanDone ret;
   ret.set_scan_result(scan_result);
   ret.set_done(percent_complete == 100);
   ret.set_percent_complete(percent_complete);
-  ret.set_auth_nonce(brillo::BlobToString(nonce));
   return ret;
 }
 
@@ -145,12 +144,12 @@ class BiometricsCommandProcessorImplTest : public BaseTestFixture {
     enroll_callback_.Run(&enroll_scan_done_signal);
   }
 
-  void EmitAuthEvent(biod::AuthScanDone auth_scan) {
+  void EmitAuthEvent() {
     dbus::Signal auth_scan_done_signal(
         biod::kBiometricsManagerInterface,
         biod::kBiometricsManagerAuthScanDoneSignal);
     dbus::MessageWriter writer(&auth_scan_done_signal);
-    writer.AppendProtoAsArrayOfBytes(auth_scan);
+    writer.AppendProtoAsArrayOfBytes(biod::AuthScanDone{});
     auth_callback_.Run(&auth_scan_done_signal);
   }
 
@@ -193,12 +192,38 @@ TEST_F(BiometricsCommandProcessorImplTest, ConnectToSignalFailed) {
   EXPECT_EQ(processor_->IsReady(), false);
 }
 
+TEST_F(BiometricsCommandProcessorImplTest, GetNonceEmptyNonce) {
+  biod::GetNonceReply reply;
+  EXPECT_CALL(*mock_proxy_, GetNonce(_)).WillOnce([&reply](auto&& callback) {
+    std::move(callback).Run(reply);
+  });
+
+  TestFuture<std::optional<brillo::Blob>> future;
+  processor_->GetNonce(future.GetCallback());
+  EXPECT_FALSE(future.Get().has_value());
+}
+
+TEST_F(BiometricsCommandProcessorImplTest, GetNonceEmptyReply) {
+  EXPECT_CALL(*mock_proxy_, GetNonce(_)).WillOnce([](auto&& callback) {
+    std::move(callback).Run(std::nullopt);
+  });
+
+  TestFuture<std::optional<brillo::Blob>> future;
+  processor_->GetNonce(future.GetCallback());
+  EXPECT_FALSE(future.Get().has_value());
+}
+
 TEST_F(BiometricsCommandProcessorImplTest, StartEndEnrollSession) {
-  EXPECT_CALL(*mock_proxy_, StartEnrollSession(_))
-      .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
+  const BiometricsCommandProcessor::OperationInput kFakeInput{
+      .nonce = brillo::Blob(32, 1),
+      .encrypted_label_seed = brillo::Blob(32, 2),
+      .iv = brillo::Blob(16, 3),
+  };
+  EXPECT_CALL(*mock_proxy_, StartEnrollSession(_, _))
+      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
 
   TestFuture<bool> result;
-  processor_->StartEnrollSession(result.GetCallback());
+  processor_->StartEnrollSession(kFakeInput, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   EXPECT_TRUE(result.Get());
 
@@ -207,11 +232,17 @@ TEST_F(BiometricsCommandProcessorImplTest, StartEndEnrollSession) {
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, StartEndAuthenticateSession) {
-  EXPECT_CALL(*mock_proxy_, StartAuthSession(*kFakeUserId, _))
+  const BiometricsCommandProcessor::OperationInput kFakeInput{
+      .nonce = brillo::Blob(32, 1),
+      .encrypted_label_seed = brillo::Blob(32, 2),
+      .iv = brillo::Blob(16, 3),
+  };
+  EXPECT_CALL(*mock_proxy_, StartAuthSession(_, _))
       .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
 
   TestFuture<bool> result;
-  processor_->StartAuthenticateSession(kFakeUserId, result.GetCallback());
+  processor_->StartAuthenticateSession(kFakeUserId, kFakeInput,
+                                       result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   EXPECT_TRUE(result.Get());
 
@@ -220,57 +251,41 @@ TEST_F(BiometricsCommandProcessorImplTest, StartEndAuthenticateSession) {
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, ReceiveEnrollSignal) {
-  const brillo::Blob kFakeNonce(32, 1);
-
-  RepeatingTestFuture<user_data_auth::AuthEnrollmentProgress,
-                      std::optional<brillo::Blob>>
-      enroll_signals;
+  RepeatingTestFuture<user_data_auth::AuthEnrollmentProgress> enroll_signals;
   processor_->SetEnrollScanDoneCallback(enroll_signals.GetCallback());
 
-  EmitEnrollEvent(
-      ConstructEnrollScanDone(biod::SCAN_RESULT_PARTIAL, 50, brillo::Blob()));
+  EmitEnrollEvent(ConstructEnrollScanDone(biod::SCAN_RESULT_PARTIAL, 50));
   ASSERT_FALSE(enroll_signals.IsEmpty());
-  auto [progress, nonce] = enroll_signals.Take();
+  auto progress = enroll_signals.Take();
   EXPECT_EQ(progress.scan_result().fingerprint_result(),
             user_data_auth::FINGERPRINT_SCAN_RESULT_PARTIAL);
   EXPECT_FALSE(progress.done());
   EXPECT_EQ(progress.fingerprint_progress().percent_complete(), 50);
-  EXPECT_FALSE(nonce.has_value());
 
-  EmitEnrollEvent(
-      ConstructEnrollScanDone(biod::SCAN_RESULT_SUCCESS, 100, kFakeNonce));
+  EmitEnrollEvent(ConstructEnrollScanDone(biod::SCAN_RESULT_SUCCESS, 100));
   ASSERT_FALSE(enroll_signals.IsEmpty());
-  std::tie(progress, nonce) = enroll_signals.Take();
+  progress = enroll_signals.Take();
   EXPECT_EQ(progress.scan_result().fingerprint_result(),
             user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
   EXPECT_TRUE(progress.done());
   EXPECT_EQ(progress.fingerprint_progress().percent_complete(), 100);
-  ASSERT_TRUE(nonce.has_value());
-  EXPECT_EQ(nonce, kFakeNonce);
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, ReceiveAuthSignal) {
-  const brillo::Blob kFakeNonce1(32, 1), kFakeNonce2(32, 2);
-
-  RepeatingTestFuture<user_data_auth::AuthScanDone, brillo::Blob> auth_signals;
+  RepeatingTestFuture<user_data_auth::AuthScanDone> auth_signals;
   processor_->SetAuthScanDoneCallback(auth_signals.GetCallback());
 
-  biod::AuthScanDone auth_scan;
-  auth_scan.set_auth_nonce(brillo::BlobToString(kFakeNonce1));
-  EmitAuthEvent(auth_scan);
+  EmitAuthEvent();
   ASSERT_FALSE(auth_signals.IsEmpty());
-  auto [scan, nonce] = auth_signals.Take();
+  auto scan = auth_signals.Take();
   EXPECT_EQ(scan.scan_result().fingerprint_result(),
             user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
-  EXPECT_EQ(nonce, kFakeNonce1);
 
-  auth_scan.set_auth_nonce(brillo::BlobToString(kFakeNonce2));
-  EmitAuthEvent(auth_scan);
+  EmitAuthEvent();
   ASSERT_FALSE(auth_signals.IsEmpty());
-  std::tie(scan, nonce) = auth_signals.Take();
+  scan = auth_signals.Take();
   EXPECT_EQ(scan.scan_result().fingerprint_result(),
             user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
-  EXPECT_EQ(nonce, kFakeNonce2);
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, ReceiveSessionFailed) {
@@ -284,12 +299,6 @@ TEST_F(BiometricsCommandProcessorImplTest, ReceiveSessionFailed) {
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, CreateCredential) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   EXPECT_CALL(*mock_proxy_, CreateCredential(_, _))
       .WillOnce([](auto&&, auto&& callback) {
         std::move(callback).Run(ConstructCreateCredentialReply(
@@ -298,7 +307,7 @@ TEST_F(BiometricsCommandProcessorImplTest, CreateCredential) {
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       result;
-  processor_->CreateCredential(kFakeUserId, kFakeInput, result.GetCallback());
+  processor_->CreateCredential(result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   ASSERT_THAT(
       result.Get(),
@@ -312,12 +321,6 @@ TEST_F(BiometricsCommandProcessorImplTest, CreateCredential) {
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, CreateCredentialNoReply) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   EXPECT_CALL(*mock_proxy_, CreateCredential(_, _))
       .WillOnce([](auto&&, auto&& callback) {
         std::move(callback).Run(std::nullopt);
@@ -325,19 +328,13 @@ TEST_F(BiometricsCommandProcessorImplTest, CreateCredentialNoReply) {
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       result;
-  processor_->CreateCredential(kFakeUserId, kFakeInput, result.GetCallback());
+  processor_->CreateCredential(result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   EXPECT_EQ(result.Get().status()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, CreateCredentialFailure) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   EXPECT_CALL(*mock_proxy_, CreateCredential(_, _))
       .WillOnce([](auto&&, auto&& callback) {
         std::move(callback).Run(ConstructCreateCredentialReply(
@@ -346,19 +343,13 @@ TEST_F(BiometricsCommandProcessorImplTest, CreateCredentialFailure) {
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       result;
-  processor_->CreateCredential(kFakeUserId, kFakeInput, result.GetCallback());
+  processor_->CreateCredential(result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   EXPECT_EQ(result.Get().status()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, MatchCredential) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   EXPECT_CALL(*mock_proxy_, AuthenticateCredential(_, _))
       .WillOnce([](auto&&, auto&& callback) {
         std::move(callback).Run(ConstructAuthenticateCredentialReply(
@@ -368,7 +359,7 @@ TEST_F(BiometricsCommandProcessorImplTest, MatchCredential) {
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       result;
-  processor_->MatchCredential(kFakeInput, result.GetCallback());
+  processor_->MatchCredential(result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   ASSERT_THAT(
       result.Get(),
@@ -395,19 +386,13 @@ TEST_F(BiometricsCommandProcessorImplTest, MatchCredentialNoReply) {
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       result;
-  processor_->MatchCredential(kFakeInput, result.GetCallback());
+  processor_->MatchCredential(result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   EXPECT_EQ(result.Get().status()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, AuthenticateCredentialFailure) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   EXPECT_CALL(*mock_proxy_, AuthenticateCredential(_, _))
       .WillOnce([](auto&&, auto&& callback) {
         std::move(callback).Run(ConstructAuthenticateCredentialReply(
@@ -416,19 +401,13 @@ TEST_F(BiometricsCommandProcessorImplTest, AuthenticateCredentialFailure) {
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       result;
-  processor_->MatchCredential(kFakeInput, result.GetCallback());
+  processor_->MatchCredential(result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   EXPECT_EQ(result.Get().status()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, AuthenticateCredentialNoMatch) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   EXPECT_CALL(*mock_proxy_, AuthenticateCredential(_, _))
       .WillOnce([](auto&&, auto&& callback) {
         std::move(callback).Run(ConstructAuthenticateCredentialReply(
@@ -438,7 +417,7 @@ TEST_F(BiometricsCommandProcessorImplTest, AuthenticateCredentialNoMatch) {
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       result;
-  processor_->MatchCredential(kFakeInput, result.GetCallback());
+  processor_->MatchCredential(result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   EXPECT_EQ(result.Get().status()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED);

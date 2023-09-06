@@ -23,8 +23,6 @@ using testing::_;
 using testing::ByMove;
 using testing::Return;
 
-constexpr char kFakeUserId[] = "fake_user";
-
 class AuthStackManagerProxyBaseTest : public testing::Test {
  public:
   void SetUp() override {
@@ -74,7 +72,9 @@ TEST_F(AuthStackManagerProxyBaseTest, StartEnrollSessionNoResponse) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
   status_ = true;
+  StartEnrollSessionRequest request;
   proxy_base_->StartEnrollSession(
+      request,
       base::BindLambdaForTesting([this](bool success) { status_ = success; }));
   EXPECT_FALSE(status_);
   EXPECT_EQ(GetBiodEnrollSession(), nullptr);
@@ -113,7 +113,9 @@ TEST_F(AuthStackManagerProxyBaseTest, StartEnrollSessionGetSessionProxy) {
 
   status_ = false;
   // Install a lambda as the client callback and verify it is run.
+  StartEnrollSessionRequest request;
   proxy_base_->StartEnrollSession(
+      request,
       base::BindLambdaForTesting([this](bool success) { status_ = success; }));
   EXPECT_TRUE(status_);
   EXPECT_EQ(GetBiodEnrollSession(), enroll_session_proxy.get());
@@ -139,7 +141,7 @@ TEST_F(AuthStackManagerProxyBaseTest, CreateCredential) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
 
-  CreateCredentialRequest request;
+  CreateCredentialRequestV2 request;
   std::optional<CreateCredentialReply> reply_ret;
   // Install a lambda as the client callback and verify it is run.
   proxy_base_->CreateCredential(
@@ -166,7 +168,7 @@ TEST_F(AuthStackManagerProxyBaseTest, CreateCredentialInvalidResponse) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
 
-  CreateCredentialRequest request;
+  CreateCredentialRequestV2 request;
   std::optional<CreateCredentialReply> reply_ret;
   // Install a lambda as the client callback and verify it is run.
   proxy_base_->CreateCredential(
@@ -191,8 +193,9 @@ TEST_F(AuthStackManagerProxyBaseTest, StartAuthSessionNoResponse) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
   status_ = true;
+  StartAuthSessionRequest request;
   proxy_base_->StartAuthSession(
-      kFakeUserId,
+      request,
       base::BindLambdaForTesting([this](bool success) { status_ = success; }));
   EXPECT_FALSE(status_);
 }
@@ -211,10 +214,6 @@ TEST_F(AuthStackManagerProxyBaseTest, StartAuthSessionGetSessionProxy) {
       [auth_session_path](
           dbus::MethodCall* call, int unused_ms,
           base::OnceCallback<void(dbus::Response*)>* dbus_callback) {
-        dbus::MessageReader reader(call);
-        std::string user_id;
-        ASSERT_TRUE(reader.PopString(&user_id));
-        EXPECT_EQ(user_id, kFakeUserId);
         std::unique_ptr<dbus::Response> fake_response =
             dbus::Response::CreateEmpty();
         dbus::MessageWriter writer(fake_response.get());
@@ -233,8 +232,9 @@ TEST_F(AuthStackManagerProxyBaseTest, StartAuthSessionGetSessionProxy) {
 
   status_ = false;
   // Install a lambda as the client callback and verify it is run.
+  StartAuthSessionRequest request;
   proxy_base_->StartAuthSession(
-      kFakeUserId,
+      request,
       base::BindLambdaForTesting([this](bool success) { status_ = success; }));
   EXPECT_TRUE(status_);
   EXPECT_EQ(GetBiodAuthSession(), auth_session_proxy.get());
@@ -260,7 +260,7 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredential) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithFakeResponse);
 
-  AuthenticateCredentialRequest request;
+  AuthenticateCredentialRequestV2 request;
   std::optional<AuthenticateCredentialReply> reply_ret;
   // Install a lambda as the client callback and verify it is run.
   proxy_base_->AuthenticateCredential(
@@ -288,7 +288,7 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredentialInvalidResponse) {
   EXPECT_CALL(*mock_object_proxy_, DoCallMethod(_, _, _))
       .WillOnce(ExecuteCallbackWithEmptyResponse);
 
-  AuthenticateCredentialRequest request;
+  AuthenticateCredentialRequestV2 request;
   std::optional<AuthenticateCredentialReply> reply_ret;
   // Install a lambda as the client callback and verify it is run.
   proxy_base_->AuthenticateCredential(

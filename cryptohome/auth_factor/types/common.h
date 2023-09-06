@@ -162,9 +162,9 @@ class AfDriverWithMetadata : public virtual AuthFactorDriver {
 class AfDriverNoPrepare : public virtual AuthFactorDriver {
  private:
   bool IsPrepareRequired() const final { return false; }
-  void PrepareForAdd(const ObfuscatedUsername& username,
+  void PrepareForAdd(const AuthInput& auth_input,
                      PreparedAuthFactorToken::Consumer callback) final;
-  void PrepareForAuthenticate(const ObfuscatedUsername& username,
+  void PrepareForAuthenticate(const AuthInput& auth_input,
                               PreparedAuthFactorToken::Consumer callback) final;
 };
 

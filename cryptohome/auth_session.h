@@ -341,6 +341,13 @@ class AuthSession final {
         std::unique_ptr<KeyBlobs> key_blobs,
         std::unique_ptr<AuthBlockState> auth_block_state);
 
+    // Creates AuthInput for preparing an auth factor type for adding.
+    // As in this case the auth factor hasn't been decided yet, the AuthInput
+    // will typically be simpler than Add and Authenticate cases, and derivable
+    // from solely the |auth_factor_type|.
+    CryptohomeStatusOr<AuthInput> CreateAuthInputForPrepareForAdd(
+        AuthFactorType auth_factor_type);
+
     // The last member, to invalidate weak references first on destruction.
     base::WeakPtrFactory<AuthForDecrypt> weak_factory_{this};
   };
@@ -485,6 +492,13 @@ class AuthSession final {
   // the AuthInput will typically be simpler than Add and Authenticate cases,
   // and derivable from solely the |auth_factor_type|.
   CryptohomeStatusOr<AuthInput> CreateAuthInputForSelectFactor(
+      AuthFactorType auth_factor_type);
+
+  // Creates AuthInput for preparing an auth factor type for authentication.
+  // As in this case the auth factor hasn't been decided yet, the AuthInput will
+  // typically be simpler than Add and Authenticate cases, and derivable from
+  // solely the |auth_factor_type|.
+  CryptohomeStatusOr<AuthInput> CreateAuthInputForPrepareForAuth(
       AuthFactorType auth_factor_type);
 
   // This function attempts to add verifier for the given label based on the

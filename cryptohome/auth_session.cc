@@ -2568,8 +2568,13 @@ void AuthSession::PrepareAuthFactor(
   if (factor_driver.IsPrepareRequired()) {
     switch (*purpose) {
       case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor: {
+        auto auth_input = CreateAuthInputForPrepareForAuth(*auth_factor_type);
+        if (!auth_input.ok()) {
+          std::move(on_done).Run(std::move(auth_input).err_status());
+          return;
+        }
         factor_driver.PrepareForAuthenticate(
-            obfuscated_username_,
+            *auth_input,
             base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
                            weak_factory_.GetWeakPtr(), std::move(on_done)));
         break;
@@ -2627,8 +2632,13 @@ void AuthSession::AuthForDecrypt::PrepareAuthFactorForAdd(
       return;
     }
   }
+  auto auth_input = CreateAuthInputForPrepareForAdd(auth_factor_type);
+  if (!auth_input.ok()) {
+    std::move(on_done).Run(std::move(auth_input).err_status());
+    return;
+  }
   factor_driver.PrepareForAdd(
-      session_->obfuscated_username_,
+      *auth_input,
       base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
                      session_->weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
@@ -2950,21 +2960,15 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
   // Types which need rate-limiters are exclusive with those which need
   // per-label reset secrets.
   if (factor_driver.NeedsRateLimiter() && decrypted_uss_) {
-    // Currently fingerprint is the only auth factor type using rate limiter, so
-    // the interface isn't designed to be generic. We'll make it generic to any
-    // auth factor types in the future.
-    std::optional<uint64_t> rate_limiter_label =
-        decrypted_uss_->encrypted().fingerprint_rate_limiter_id();
     std::optional<brillo::SecureBlob> reset_secret =
         decrypted_uss_->GetRateLimiterResetSecret(auth_factor_type);
-    if (!rate_limiter_label.has_value() || !reset_secret.has_value()) {
+    if (!reset_secret.has_value()) {
       LOG(ERROR) << "No existing rate-limiter.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocRateLimiterNoRateLimiterInAuthInputForAdd),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
-    auth_input.rate_limiter_label = rate_limiter_label;
     auth_input.reset_secret = reset_secret;
     return std::move(auth_input);
   }
@@ -3007,6 +3011,81 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
       LOG(ERROR) << "No rate limiter ID in user metadata.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNoRateLimiterInAuthInputForSelect),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
+          user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+    }
+
+    auth_input.rate_limiter_label =
+        *encrypted_uss->fingerprint_rate_limiter_id();
+  }
+
+  return auth_input;
+}
+
+CryptohomeStatusOr<AuthInput>
+AuthSession::AuthForDecrypt::CreateAuthInputForPrepareForAdd(
+    AuthFactorType auth_factor_type) {
+  AuthInput auth_input{};
+  auth_input.obfuscated_username = session_->obfuscated_username_;
+
+  const AuthFactorDriver& factor_driver =
+      session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
+
+  if (factor_driver.NeedsRateLimiter()) {
+    if (!session_->decrypted_uss_) {
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocRateLimiterNoUSSInAuthInputForPrepare),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+    }
+    // Currently fingerprint is the only auth factor type using rate limiter, so
+    // the interface isn't designed to be generic. We'll make it generic to any
+    // auth factor types in the future.
+    std::optional<uint64_t> rate_limiter_label =
+        session_->decrypted_uss_->encrypted().fingerprint_rate_limiter_id();
+    std::optional<brillo::SecureBlob> reset_secret =
+        session_->decrypted_uss_->GetRateLimiterResetSecret(auth_factor_type);
+    if (!rate_limiter_label.has_value() || !reset_secret.has_value()) {
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoRateLimiterInAuthInputPrepareAdd),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+    }
+    auth_input.rate_limiter_label = rate_limiter_label;
+    auth_input.reset_secret = reset_secret;
+    return std::move(auth_input);
+  }
+
+  return std::move(auth_input);
+}
+
+CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForPrepareForAuth(
+    AuthFactorType auth_factor_type) {
+  AuthInput auth_input{};
+  auth_input.obfuscated_username = obfuscated_username_;
+
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
+  if (factor_driver.NeedsRateLimiter()) {
+    // Load the USS to get the raw user metadata directly.
+    CryptohomeStatusOr<EncryptedUss> encrypted_uss =
+        EncryptedUss::FromStorage(uss_storage_);
+    if (!encrypted_uss.ok()) {
+      return MakeStatus<CryptohomeError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocAuthSessionGetMetadataFailedInAuthInputPrepareAuth),
+                 user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+          .Wrap(std::move(encrypted_uss).err_status());
+    }
+
+    // Currently fingerprint is the only auth factor type using rate
+    // limiter, so the field name isn't generic. We'll make it generic to any
+    // auth factor types in the future.
+    if (!encrypted_uss->fingerprint_rate_limiter_id().has_value()) {
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthSessionNoRateLimiterInAuthInputPrepareAuth),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
                           PossibleAction::kAuth}),
           user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);

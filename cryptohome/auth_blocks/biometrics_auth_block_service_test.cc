@@ -46,13 +46,7 @@ MATCHER_P(ProtoEq, proto, "") {
   return arg.SerializeAsString() == proto.SerializeAsString();
 }
 
-// Compares OperationInput/Output structs.
-MATCHER_P(OperationInputEq, input, "") {
-  return arg.nonce == input.nonce &&
-         arg.encrypted_label_seed == input.encrypted_label_seed &&
-         arg.iv == input.iv;
-}
-
+// Compares OperationOutput structs.
 MATCHER_P(OperationOutputEq, output, "") {
   return arg.record_id == output.record_id &&
          arg.auth_secret == output.auth_secret &&
@@ -63,31 +57,33 @@ MATCHER_P(OperationOutputEq, output, "") {
 // into a given argument. Useful for mocking out the biometrics command
 // processor methods.
 struct SaveStartEnrollSessionCallback {
-  void operator()(base::OnceCallback<void(bool)> callback) {
+  void operator()(BiometricsCommandProcessor::OperationInput input,
+                  base::OnceCallback<void(bool)> callback) {
     *captured_callback = std::move(callback);
   }
   base::OnceCallback<void(bool)>* captured_callback;
 };
 
 struct SaveCreateCredentialCallback {
-  void operator()(ObfuscatedUsername,
-                  BiometricsCommandProcessor::OperationInput,
-                  BiometricsCommandProcessor::OperationCallback callback) {
+  void operator()(
+
+      BiometricsCommandProcessor::OperationCallback callback) {
     *captured_callback = std::move(callback);
   }
   BiometricsCommandProcessor::OperationCallback* captured_callback;
 };
 
 struct SaveStartAuthenticateSessionCallback {
-  void operator()(ObfuscatedUsername, base::OnceCallback<void(bool)> callback) {
+  void operator()(ObfuscatedUsername,
+                  BiometricsCommandProcessor::OperationInput,
+                  base::OnceCallback<void(bool)> callback) {
     *captured_callback = std::move(callback);
   }
   base::OnceCallback<void(bool)>* captured_callback;
 };
 
 struct SaveMatchCredentialCallback {
-  void operator()(BiometricsCommandProcessor::OperationInput,
-                  BiometricsCommandProcessor::OperationCallback callback) {
+  void operator()(BiometricsCommandProcessor::OperationCallback callback) {
     *captured_callback = std::move(callback);
   }
   BiometricsCommandProcessor::OperationCallback* captured_callback;
@@ -100,6 +96,22 @@ AuthEnrollmentProgress ConstructAuthEnrollmentProgress(
   ret.set_done(percent_complete == 100);
   ret.mutable_fingerprint_progress()->set_percent_complete(percent_complete);
   return ret;
+}
+
+BiometricsCommandProcessor::OperationInput GetFakeInput() {
+  return {
+      .nonce = brillo::Blob(32, 1),
+      .encrypted_label_seed = brillo::Blob(32, 2),
+      .iv = brillo::Blob(16, 3),
+  };
+}
+
+BiometricsCommandProcessor::OperationOutput GetFakeOutput() {
+  return {
+      .record_id = "fake_id",
+      .auth_secret = brillo::SecureBlob(32, 1),
+      .auth_pin = brillo::SecureBlob(32, 2),
+  };
 }
 
 // Base test fixture which sets up the task environment.
@@ -130,25 +142,21 @@ class BiometricsAuthBlockServiceTest : public BaseTestFixture {
  protected:
   const ObfuscatedUsername kFakeUserId{"fake"};
 
-  void EmitEnrollEvent(user_data_auth::AuthEnrollmentProgress progress,
-                       std::optional<brillo::Blob> nonce) {
-    enroll_callback_.Run(progress, nonce);
+  void EmitEnrollEvent(user_data_auth::AuthEnrollmentProgress progress) {
+    enroll_callback_.Run(progress);
   }
 
-  void EmitAuthEvent(user_data_auth::AuthScanDone auth_scan,
-                     brillo::Blob nonce) {
-    auth_callback_.Run(auth_scan, nonce);
+  void EmitAuthEvent(user_data_auth::AuthScanDone auth_scan) {
+    auth_callback_.Run(auth_scan);
   }
 
   void EmitSessionFailedEvent() { session_failed_callback_.Run(); }
 
   MockBiometricsCommandProcessor* mock_processor_;
-  base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
-                               std::optional<brillo::Blob>)>
+  base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress)>
       enroll_callback_;
   RepeatingTestFuture<user_data_auth::AuthEnrollmentProgress> enroll_signals_;
-  base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
-      auth_callback_;
+  base::RepeatingCallback<void(user_data_auth::AuthScanDone)> auth_callback_;
   RepeatingTestFuture<user_data_auth::AuthScanDone> auth_signals_;
   base::RepeatingCallback<void()> session_failed_callback_;
   std::unique_ptr<BiometricsAuthBlockService> service_;
@@ -156,12 +164,12 @@ class BiometricsAuthBlockServiceTest : public BaseTestFixture {
 
 TEST_F(BiometricsAuthBlockServiceTest, StartEnrollSuccess) {
   base::OnceCallback<void(bool)> start_session_callback;
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
       .WillOnce(SaveStartEnrollSessionCallback{&start_session_callback});
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
 
   ASSERT_FALSE(start_result.IsReady());
@@ -173,13 +181,14 @@ TEST_F(BiometricsAuthBlockServiceTest, StartEnrollSuccess) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, StartEnrollAgainFailure) {
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
-      .WillOnce([&](auto&& callback) { std::move(callback).Run(true); });
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
+      .WillOnce(
+          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
 
   // Kick off the 1st start.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
   ASSERT_TRUE(start_result.IsReady());
   EXPECT_THAT(start_result.Get(), IsOk());
@@ -187,7 +196,7 @@ TEST_F(BiometricsAuthBlockServiceTest, StartEnrollAgainFailure) {
   // Kick off the 2nd start.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       second_start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                second_start_result.GetCallback());
   ASSERT_TRUE(second_start_result.IsReady());
   EXPECT_EQ(second_start_result.Get().status()->local_legacy_error(),
@@ -197,19 +206,19 @@ TEST_F(BiometricsAuthBlockServiceTest, StartEnrollAgainFailure) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, StartEnrollDuringPendingSessionFailure) {
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_)).Times(1);
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _)).Times(1);
 
   // Kick off the 1st start.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
   ASSERT_FALSE(start_result.IsReady());
 
   // Kick off the 2nd start.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       second_start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                second_start_result.GetCallback());
   ASSERT_TRUE(second_start_result.IsReady());
   EXPECT_EQ(second_start_result.Get().status()->local_legacy_error(),
@@ -224,16 +233,16 @@ TEST_F(BiometricsAuthBlockServiceTest, StartEnrollAgainSuccess) {
 
   {
     InSequence s;
-    EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
+    EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
         .WillOnce(SaveStartEnrollSessionCallback{&start_session_callback1});
-    EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
+    EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
         .WillOnce(SaveStartEnrollSessionCallback{&start_session_callback2});
   }
 
   // Kick off the 1st start.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
   ASSERT_FALSE(start_result.IsReady());
   std::move(start_session_callback1).Run(false);
@@ -244,7 +253,7 @@ TEST_F(BiometricsAuthBlockServiceTest, StartEnrollAgainSuccess) {
   // Kick off the 2nd start.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       second_start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                second_start_result.GetCallback());
   ASSERT_FALSE(second_start_result.IsReady());
   std::move(start_session_callback2).Run(true);
@@ -255,15 +264,13 @@ TEST_F(BiometricsAuthBlockServiceTest, StartEnrollAgainSuccess) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, ReceiveEnrollSignalSuccess) {
-  const brillo::Blob kFakeNonce(32, 1);
-
   base::OnceCallback<void(bool)> start_session_callback;
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
       .WillOnce(SaveStartEnrollSessionCallback{&start_session_callback});
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
 
   ASSERT_FALSE(start_result.IsReady());
@@ -273,54 +280,46 @@ TEST_F(BiometricsAuthBlockServiceTest, ReceiveEnrollSignalSuccess) {
 
   AuthEnrollmentProgress event1 = ConstructAuthEnrollmentProgress(
       FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS, 50);
-  EmitEnrollEvent(event1, std::nullopt);
+  EmitEnrollEvent(event1);
   ASSERT_FALSE(enroll_signals_.IsEmpty());
   EXPECT_THAT(enroll_signals_.Take(), ProtoEq(event1));
-  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 
   AuthEnrollmentProgress event2 = ConstructAuthEnrollmentProgress(
       FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS, 100);
-  EmitEnrollEvent(event2, kFakeNonce);
+  EmitEnrollEvent(event2);
   ASSERT_FALSE(enroll_signals_.IsEmpty());
   EXPECT_THAT(enroll_signals_.Take(), ProtoEq(event2));
-  EXPECT_EQ(service_->TakeNonce(), kFakeNonce);
 
   ASSERT_TRUE(enroll_signals_.IsEmpty());
-  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 
   EXPECT_CALL(*mock_processor_, EndEnrollSession);
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, ReceiveEnrollSignalPendingSessionStart) {
-  const brillo::Blob kFakeNonce(32, 1);
-
   base::OnceCallback<void(bool)> start_session_callback;
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
       .WillOnce(SaveStartEnrollSessionCallback{&start_session_callback});
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
 
   ASSERT_FALSE(start_result.IsReady());
 
   AuthEnrollmentProgress event1 = ConstructAuthEnrollmentProgress(
       FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS, 50);
-  EmitEnrollEvent(event1, std::nullopt);
+  EmitEnrollEvent(event1);
   ASSERT_FALSE(enroll_signals_.IsEmpty());
   EXPECT_THAT(enroll_signals_.Take(), ProtoEq(event1));
-  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 
   AuthEnrollmentProgress event2 = ConstructAuthEnrollmentProgress(
       FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS, 100);
-  EmitEnrollEvent(event2, kFakeNonce);
+  EmitEnrollEvent(event2);
   ASSERT_FALSE(enroll_signals_.IsEmpty());
   EXPECT_THAT(enroll_signals_.Take(), ProtoEq(event2));
-  EXPECT_EQ(service_->TakeNonce(), kFakeNonce);
 
   ASSERT_TRUE(enroll_signals_.IsEmpty());
-  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 
   std::move(start_session_callback).Run(true);
   ASSERT_TRUE(start_result.IsReady());
@@ -329,22 +328,21 @@ TEST_F(BiometricsAuthBlockServiceTest, ReceiveEnrollSignalPendingSessionStart) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, ReceiveEmptyEnrollSignalWithoutSession) {
-  const brillo::Blob kFakeNonce(32, 1);
   AuthEnrollmentProgress event = ConstructAuthEnrollmentProgress(
       FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS, 100);
-  EmitEnrollEvent(event, kFakeNonce);
+  EmitEnrollEvent(event);
   ASSERT_TRUE(enroll_signals_.IsEmpty());
-  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInEnrollSession) {
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
       .Times(2)
-      .WillRepeatedly([&](auto&& callback) { std::move(callback).Run(true); });
+      .WillRepeatedly(
+          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
 
   ASSERT_TRUE(start_result.IsReady());
@@ -361,7 +359,7 @@ TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInEnrollSession) {
   // ended.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       second_start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                second_start_result.GetCallback());
 
   ASSERT_TRUE(second_start_result.IsReady());
@@ -371,24 +369,13 @@ TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInEnrollSession) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, CreateCredentialSuccess) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-  const BiometricsCommandProcessor::OperationOutput kFakeOutput{
-      .record_id = "fake_id",
-      .auth_secret = brillo::SecureBlob(32, 1),
-      .auth_pin = brillo::SecureBlob(32, 2),
-  };
-
   base::OnceCallback<void(bool)> start_session_callback;
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
       .WillOnce(SaveStartEnrollSessionCallback{&start_session_callback});
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
 
   ASSERT_FALSE(start_result.IsReady());
@@ -397,38 +384,29 @@ TEST_F(BiometricsAuthBlockServiceTest, CreateCredentialSuccess) {
   EXPECT_THAT(start_result.Get(), IsOk());
 
   BiometricsCommandProcessor::OperationCallback create_credential_callback;
-  EXPECT_CALL(*mock_processor_,
-              CreateCredential(kFakeUserId, OperationInputEq(kFakeInput), _))
+  EXPECT_CALL(*mock_processor_, CreateCredential(_))
       .WillOnce(SaveCreateCredentialCallback{&create_credential_callback});
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       create_credential_result;
-  service_->CreateCredential(kFakeInput,
-                             create_credential_result.GetCallback());
+  service_->CreateCredential(create_credential_result.GetCallback());
 
   ASSERT_FALSE(create_credential_result.IsReady());
-  std::move(create_credential_callback).Run(kFakeOutput);
+  std::move(create_credential_callback).Run(GetFakeOutput());
   ASSERT_TRUE(create_credential_result.IsReady());
   EXPECT_THAT(create_credential_result.Get(),
-              IsOkAnd(OperationOutputEq(kFakeOutput)));
+              IsOkAnd(OperationOutputEq(GetFakeOutput())));
 
   EXPECT_CALL(*mock_processor_, EndEnrollSession);
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, CreateCredentialNoSessionFailure) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   EXPECT_CALL(*mock_processor_, CreateCredential).Times(0);
 
   RepeatingTestFuture<
       CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       create_credential_result;
-  service_->CreateCredential(kFakeInput,
-                             create_credential_result.GetCallback());
+  service_->CreateCredential(create_credential_result.GetCallback());
 
   ASSERT_FALSE(create_credential_result.IsEmpty());
   EXPECT_EQ(create_credential_result.Take().status()->local_legacy_error(),
@@ -436,12 +414,13 @@ TEST_F(BiometricsAuthBlockServiceTest, CreateCredentialNoSessionFailure) {
 
   // After a session is terminated, CreateCredential should fail too.
 
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
-      .WillOnce([&](auto&& callback) { std::move(callback).Run(true); });
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
+      .WillOnce(
+          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
   ASSERT_TRUE(start_result.IsReady());
   EXPECT_THAT(start_result.Get(), IsOk());
@@ -452,8 +431,7 @@ TEST_F(BiometricsAuthBlockServiceTest, CreateCredentialNoSessionFailure) {
   service_->EndEnrollSession();
 
   // Test that CreateCredential fails after a terminated session.
-  service_->CreateCredential(kFakeInput,
-                             create_credential_result.GetCallback());
+  service_->CreateCredential(create_credential_result.GetCallback());
 
   ASSERT_FALSE(create_credential_result.IsEmpty());
   EXPECT_EQ(create_credential_result.Take().status()->local_legacy_error(),
@@ -462,12 +440,13 @@ TEST_F(BiometricsAuthBlockServiceTest, CreateCredentialNoSessionFailure) {
 
 TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateSuccess) {
   base::OnceCallback<void(bool)> start_session_callback;
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
       .WillOnce(SaveStartAuthenticateSessionCallback{&start_session_callback});
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
 
   ASSERT_FALSE(start_result.IsReady());
@@ -479,14 +458,16 @@ TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateSuccess) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateAgainFailure) {
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-      .WillOnce(
-          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(true);
+      });
 
   // Kick off the 1st start.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
   ASSERT_TRUE(start_result.IsReady());
   EXPECT_THAT(start_result.Get(), IsOk());
@@ -495,6 +476,7 @@ TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateAgainFailure) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       second_start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      second_start_result.GetCallback());
   ASSERT_TRUE(second_start_result.IsReady());
   EXPECT_EQ(second_start_result.Get().status()->local_legacy_error(),
@@ -505,13 +487,14 @@ TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateAgainFailure) {
 
 TEST_F(BiometricsAuthBlockServiceTest,
        StartAuthenticateDuringPendingSessionFailure) {
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
       .Times(1);
 
   // Kick off the 1st start.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
   ASSERT_FALSE(start_result.IsReady());
 
@@ -519,6 +502,7 @@ TEST_F(BiometricsAuthBlockServiceTest,
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       second_start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      second_start_result.GetCallback());
   ASSERT_TRUE(second_start_result.IsReady());
   EXPECT_EQ(second_start_result.Get().status()->local_legacy_error(),
@@ -533,10 +517,10 @@ TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateAgainSuccess) {
 
   {
     InSequence s;
-    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
+    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
         .WillOnce(
             SaveStartAuthenticateSessionCallback{&start_session_callback1});
-    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
+    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
         .WillOnce(
             SaveStartAuthenticateSessionCallback{&start_session_callback2});
   }
@@ -545,6 +529,7 @@ TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateAgainSuccess) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
   ASSERT_FALSE(start_result.IsReady());
   std::move(start_session_callback1).Run(false);
@@ -556,6 +541,7 @@ TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateAgainSuccess) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       second_start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      second_start_result.GetCallback());
   ASSERT_FALSE(second_start_result.IsReady());
   std::move(start_session_callback2).Run(true);
@@ -566,15 +552,14 @@ TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateAgainSuccess) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, ReceiveAuthenticateSignalSuccess) {
-  const brillo::Blob kFakeNonce(32, 1);
-
   base::OnceCallback<void(bool)> start_session_callback;
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
       .WillOnce(SaveStartAuthenticateSessionCallback{&start_session_callback});
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
 
   ASSERT_FALSE(start_result.IsReady());
@@ -585,28 +570,25 @@ TEST_F(BiometricsAuthBlockServiceTest, ReceiveAuthenticateSignalSuccess) {
   user_data_auth::AuthScanDone event;
   event.mutable_scan_result()->set_fingerprint_result(
       FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS);
-  EmitAuthEvent(event, kFakeNonce);
+  EmitAuthEvent(event);
   ASSERT_FALSE(auth_signals_.IsEmpty());
   EXPECT_THAT(auth_signals_.Take(), ProtoEq(event));
-  EXPECT_EQ(service_->TakeNonce(), kFakeNonce);
 
   ASSERT_TRUE(auth_signals_.IsEmpty());
-  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 
   EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
 }
 
 TEST_F(BiometricsAuthBlockServiceTest,
        ReceiveAuthenticateSignalPendingSessionStart) {
-  const brillo::Blob kFakeNonce(32, 1);
-
   base::OnceCallback<void(bool)> start_session_callback;
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
       .WillOnce(SaveStartAuthenticateSessionCallback{&start_session_callback});
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
 
   ASSERT_FALSE(start_result.IsReady());
@@ -614,13 +596,11 @@ TEST_F(BiometricsAuthBlockServiceTest,
   user_data_auth::AuthScanDone event;
   event.mutable_scan_result()->set_fingerprint_result(
       FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS);
-  EmitAuthEvent(event, kFakeNonce);
+  EmitAuthEvent(event);
   ASSERT_FALSE(auth_signals_.IsEmpty());
   EXPECT_THAT(auth_signals_.Take(), ProtoEq(event));
-  EXPECT_EQ(service_->TakeNonce(), kFakeNonce);
 
   ASSERT_TRUE(auth_signals_.IsEmpty());
-  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 
   std::move(start_session_callback).Run(true);
   ASSERT_TRUE(start_result.IsReady());
@@ -630,24 +610,24 @@ TEST_F(BiometricsAuthBlockServiceTest,
 
 TEST_F(BiometricsAuthBlockServiceTest,
        ReceiveEmptyAuthenticateSignalWithoutSession) {
-  const brillo::Blob kFakeNonce(32, 1);
   user_data_auth::AuthScanDone event;
   event.mutable_scan_result()->set_fingerprint_result(
       FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS);
-  EmitAuthEvent(event, kFakeNonce);
+  EmitAuthEvent(event);
   ASSERT_TRUE(auth_signals_.IsEmpty());
-  EXPECT_EQ(service_->TakeNonce(), std::nullopt);
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInAuthenticateSession) {
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
       .Times(2)
-      .WillRepeatedly(
-          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
+      .WillRepeatedly([&](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(true);
+      });
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
 
   ASSERT_TRUE(start_result.IsReady());
@@ -665,6 +645,7 @@ TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInAuthenticateSession) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       second_start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      second_start_result.GetCallback());
 
   ASSERT_TRUE(second_start_result.IsReady());
@@ -674,212 +655,59 @@ TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInAuthenticateSession) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialSuccess) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-  const BiometricsCommandProcessor::OperationOutput kFakeOutput{
-      .record_id = "fake_id",
-      .auth_secret = brillo::SecureBlob(32, 1),
-      .auth_pin = brillo::SecureBlob(32, 2),
-  };
-
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-      .Times(2)
-      .WillRepeatedly(
-          [&](auto&&, auto&& on_done) { std::move(on_done).Run(true); });
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&& on_done) {
+        std::move(on_done).Run(true);
+      });
   EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
 
   ASSERT_TRUE(start_result.IsReady());
   EXPECT_THAT(start_result.Get(), IsOk());
 
   BiometricsCommandProcessor::OperationCallback match_credential_callback;
-  EXPECT_CALL(*mock_processor_,
-              MatchCredential(OperationInputEq(kFakeInput), _))
+  EXPECT_CALL(*mock_processor_, MatchCredential(_))
       .WillOnce(SaveMatchCredentialCallback{&match_credential_callback});
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       match_credential_result;
-  service_->MatchCredential(kFakeInput, match_credential_result.GetCallback());
+  service_->MatchCredential(match_credential_result.GetCallback());
 
   ASSERT_FALSE(match_credential_result.IsReady());
-  std::move(match_credential_callback).Run(kFakeOutput);
+  std::move(match_credential_callback).Run(GetFakeOutput());
   ASSERT_TRUE(match_credential_result.IsReady());
   EXPECT_THAT(match_credential_result.Get(),
-              IsOkAnd(OperationOutputEq(kFakeOutput)));
+              IsOkAnd(OperationOutputEq(GetFakeOutput())));
   EXPECT_TRUE(auth_signals_.IsEmpty());
-}
-
-TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialTwiceSuccess) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput1{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  },
-      kFakeInput2{
-          .nonce = brillo::Blob(32, 4),
-          .encrypted_label_seed = brillo::Blob(32, 5),
-          .iv = brillo::Blob(16, 6),
-      };
-  const BiometricsCommandProcessor::OperationOutput kFakeOutput1{
-      .record_id = "fake_id1",
-      .auth_secret = brillo::SecureBlob(32, 1),
-      .auth_pin = brillo::SecureBlob(32, 2),
-  },
-      kFakeOutput2{
-          .record_id = "fake_id2",
-          .auth_secret = brillo::SecureBlob(32, 3),
-          .auth_pin = brillo::SecureBlob(32, 4),
-      };
-
-  BiometricsCommandProcessor::OperationCallback match_credential_callback1,
-      match_credential_callback2;
-  // In this test, the processor should start an authenticate session, process a
-  // match credential operation after emitting an auth scan signal, and repeat
-  // these steps again.
-  {
-    InSequence s;
-    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-        .WillOnce(
-            [&](auto&&, auto&& on_done) { std::move(on_done).Run(true); });
-    EXPECT_CALL(*mock_processor_,
-                MatchCredential(OperationInputEq(kFakeInput1), _))
-        .WillOnce(SaveMatchCredentialCallback{&match_credential_callback1});
-    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-        .WillOnce(
-            [&](auto&&, auto&& on_done) { std::move(on_done).Run(true); });
-    EXPECT_CALL(*mock_processor_,
-                MatchCredential(OperationInputEq(kFakeInput2), _))
-        .WillOnce(SaveMatchCredentialCallback{&match_credential_callback2});
-    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-        .WillOnce(
-            [&](auto&&, auto&& on_done) { std::move(on_done).Run(true); });
-    EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
-  }
-
-  // Start the authenticate session.
-  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
-      start_result;
-  service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
-                                     start_result.GetCallback());
-  ASSERT_TRUE(start_result.IsReady());
-  EXPECT_THAT(start_result.Get(), IsOk());
-
-  RepeatingTestFuture<
-      CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
-      match_credential_result;
-  service_->MatchCredential(kFakeInput1, match_credential_result.GetCallback());
-
-  ASSERT_TRUE(match_credential_result.IsEmpty());
-  // Emit a scan event.
-  std::move(match_credential_callback1).Run(kFakeOutput1);
-  ASSERT_FALSE(match_credential_result.IsEmpty());
-  EXPECT_THAT(match_credential_result.Take(),
-              IsOkAnd(OperationOutputEq(kFakeOutput1)));
-
-  // After the match credential operation completed, the underlying authenticate
-  // session should restart automatically, and we should be able to match
-  // credential again.
-  service_->MatchCredential(kFakeInput2, match_credential_result.GetCallback());
-
-  ASSERT_TRUE(match_credential_result.IsEmpty());
-  // Emit a scan event.
-  std::move(match_credential_callback2).Run(kFakeOutput2);
-  ASSERT_FALSE(match_credential_result.IsEmpty());
-  EXPECT_THAT(match_credential_result.Take(),
-              IsOkAnd(OperationOutputEq(kFakeOutput2)));
-
-  EXPECT_TRUE(auth_signals_.IsEmpty());
-}
-
-TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialRestartFailure) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-  const BiometricsCommandProcessor::OperationOutput kFakeOutput{
-      .record_id = "fake_id",
-      .auth_secret = brillo::SecureBlob(32, 1),
-      .auth_pin = brillo::SecureBlob(32, 2),
-  };
-
-  BiometricsCommandProcessor::OperationCallback match_credential_callback;
-  {
-    InSequence s;
-    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-        .WillOnce(
-            [&](auto&&, auto&& on_done) { std::move(on_done).Run(true); });
-    EXPECT_CALL(*mock_processor_,
-                MatchCredential(OperationInputEq(kFakeInput), _))
-        .WillOnce(SaveMatchCredentialCallback{&match_credential_callback});
-    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-        .WillOnce(
-            [&](auto&&, auto&& on_done) { std::move(on_done).Run(false); });
-  }
-
-  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
-      start_result;
-  service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
-                                     start_result.GetCallback());
-  ASSERT_TRUE(start_result.IsReady());
-  EXPECT_THAT(start_result.Get(), IsOk());
-
-  TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
-      match_credential_result;
-  service_->MatchCredential(kFakeInput, match_credential_result.GetCallback());
-
-  ASSERT_FALSE(match_credential_result.IsReady());
-  std::move(match_credential_callback).Run(kFakeOutput);
-  ASSERT_TRUE(match_credential_result.IsReady());
-  EXPECT_THAT(match_credential_result.Get(),
-              IsOkAnd(OperationOutputEq(kFakeOutput)));
-
-  // As session restart fails, a scan failure signal should be emitted.
-  user_data_auth::AuthScanDone event;
-  event.mutable_scan_result()->set_fingerprint_result(
-      FingerprintScanResult::FINGERPRINT_SCAN_RESULT_FATAL_ERROR);
-  EXPECT_FALSE(auth_signals_.IsEmpty());
-  EXPECT_THAT(auth_signals_.Take(), ProtoEq(event));
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialEndBeforeRestart) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-  const BiometricsCommandProcessor::OperationOutput kFakeOutput{
-      .record_id = "fake_id",
-      .auth_secret = brillo::SecureBlob(32, 1),
-      .auth_pin = brillo::SecureBlob(32, 2),
-  };
-
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-      .WillOnce([&](auto&&, auto&& on_done) { std::move(on_done).Run(true); });
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&& on_done) {
+        std::move(on_done).Run(true);
+      });
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
 
   ASSERT_TRUE(start_result.IsReady());
   EXPECT_THAT(start_result.Get(), IsOk());
 
   BiometricsCommandProcessor::OperationCallback match_credential_callback;
-  EXPECT_CALL(*mock_processor_,
-              MatchCredential(OperationInputEq(kFakeInput), _))
+  EXPECT_CALL(*mock_processor_, MatchCredential(_))
       .WillOnce(SaveMatchCredentialCallback{&match_credential_callback});
 
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       match_credential_result;
-  service_->MatchCredential(kFakeInput, match_credential_result.GetCallback());
+  service_->MatchCredential(match_credential_result.GetCallback());
   ASSERT_FALSE(match_credential_result.IsReady());
 
   EXPECT_CALL(*mock_processor_, EndAuthenticateSession).Times(1);
@@ -887,26 +715,20 @@ TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialEndBeforeRestart) {
   service_->EndAuthenticateSession();
 
   // StartAuthenticateSession shouldn't be triggered again.
-  std::move(match_credential_callback).Run(kFakeOutput);
+  std::move(match_credential_callback).Run(GetFakeOutput());
   ASSERT_TRUE(match_credential_result.IsReady());
   EXPECT_THAT(match_credential_result.Get(),
-              IsOkAnd(OperationOutputEq(kFakeOutput)));
+              IsOkAnd(OperationOutputEq(GetFakeOutput())));
   EXPECT_TRUE(auth_signals_.IsEmpty());
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialNoSessionFailure) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   EXPECT_CALL(*mock_processor_, MatchCredential).Times(0);
 
   RepeatingTestFuture<
       CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       match_credential_result;
-  service_->MatchCredential(kFakeInput, match_credential_result.GetCallback());
+  service_->MatchCredential(match_credential_result.GetCallback());
 
   ASSERT_FALSE(match_credential_result.IsEmpty());
   EXPECT_EQ(match_credential_result.Take().status()->local_legacy_error(),
@@ -914,13 +736,15 @@ TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialNoSessionFailure) {
 
   // After a session is terminated, MatchCredential should fail too.
 
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-      .WillOnce(
-          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(true);
+      });
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
   ASSERT_TRUE(start_result.IsReady());
   EXPECT_THAT(start_result.Get(), IsOk());
@@ -931,7 +755,7 @@ TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialNoSessionFailure) {
   service_->EndAuthenticateSession();
 
   // Test that MatchCredential fails after a terminated session.
-  service_->MatchCredential(kFakeInput, match_credential_result.GetCallback());
+  service_->MatchCredential(match_credential_result.GetCallback());
 
   ASSERT_FALSE(match_credential_result.IsEmpty());
   EXPECT_EQ(match_credential_result.Take().status()->local_legacy_error(),
@@ -939,18 +763,13 @@ TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialNoSessionFailure) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, EnrollSessionInvalidActions) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   // Start an enroll session.
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
-      .WillOnce([&](auto&& callback) { std::move(callback).Run(true); });
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
+      .WillOnce(
+          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_result.GetCallback());
   ASSERT_TRUE(start_result.IsReady());
   EXPECT_THAT(start_result.Get(), IsOk());
@@ -959,6 +778,7 @@ TEST_F(BiometricsAuthBlockServiceTest, EnrollSessionInvalidActions) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_auth_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_auth_result.GetCallback());
   ASSERT_TRUE(start_auth_result.IsReady());
   EXPECT_EQ(start_auth_result.Get().status()->local_legacy_error(),
@@ -968,7 +788,7 @@ TEST_F(BiometricsAuthBlockServiceTest, EnrollSessionInvalidActions) {
   EXPECT_CALL(*mock_processor_, MatchCredential).Times(0);
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       match_credential_result;
-  service_->MatchCredential(kFakeInput, match_credential_result.GetCallback());
+  service_->MatchCredential(match_credential_result.GetCallback());
   ASSERT_TRUE(match_credential_result.IsReady());
   EXPECT_EQ(match_credential_result.Take().status()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
@@ -979,19 +799,15 @@ TEST_F(BiometricsAuthBlockServiceTest, EnrollSessionInvalidActions) {
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, AuthenticateSessionInvalidActions) {
-  const BiometricsCommandProcessor::OperationInput kFakeInput{
-      .nonce = brillo::Blob(32, 1),
-      .encrypted_label_seed = brillo::Blob(32, 2),
-      .iv = brillo::Blob(16, 3),
-  };
-
   // Start an authenticate session.
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
-      .WillOnce(
-          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(true);
+      });
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
   service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     GetFakeInput(),
                                      start_result.GetCallback());
   ASSERT_TRUE(start_result.IsReady());
   EXPECT_THAT(start_result.Get(), IsOk());
@@ -999,7 +815,7 @@ TEST_F(BiometricsAuthBlockServiceTest, AuthenticateSessionInvalidActions) {
   // Starting an enroll session should fail.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_enroll_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
                                start_enroll_result.GetCallback());
   ASSERT_TRUE(start_enroll_result.IsReady());
   EXPECT_EQ(start_enroll_result.Get().status()->local_legacy_error(),
@@ -1009,8 +825,7 @@ TEST_F(BiometricsAuthBlockServiceTest, AuthenticateSessionInvalidActions) {
   EXPECT_CALL(*mock_processor_, CreateCredential).Times(0);
   TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       create_credential_result;
-  service_->CreateCredential(kFakeInput,
-                             create_credential_result.GetCallback());
+  service_->CreateCredential(create_credential_result.GetCallback());
   ASSERT_TRUE(create_credential_result.IsReady());
   EXPECT_EQ(create_credential_result.Take().status()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);

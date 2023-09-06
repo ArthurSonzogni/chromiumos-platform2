@@ -52,46 +52,49 @@ class BiometricsCommandProcessor {
   // EnrollScanDone event. The event will be packed into an
   // AuthEnrollmentProgress proto and a nonce (if enrollment is done).
   virtual void SetEnrollScanDoneCallback(
-      base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
-                                   std::optional<brillo::Blob>)> on_done) = 0;
+      base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress)>
+          on_done) = 0;
 
   // Sets the repeating callback that will be triggered whenever biod emits an
   // AuthScanDone event. The event will be packed into an AuthScanDone proto and
   // a nonce.
   virtual void SetAuthScanDoneCallback(
-      base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
-          on_done) = 0;
+      base::RepeatingCallback<void(user_data_auth::AuthScanDone)> on_done) = 0;
 
   // Sets the repeating callback that will be triggered whenever the biod proxy
   // reports a session error.
   virtual void SetSessionFailedCallback(
       base::RepeatingCallback<void()> on_failure) = 0;
 
+  // Fetches the nonce from the biometrics auth stack that will be used for
+  // initiating the encrypted session between PinWeaver and it.
+  virtual void GetNonce(
+      base::OnceCallback<void(std::optional<brillo::Blob>)> callback) = 0;
+
   // Starts an enroll session in biod. |on_done| is triggered with whether the
   // enroll session is started successfully.
-  virtual void StartEnrollSession(base::OnceCallback<void(bool)> on_done) = 0;
+  virtual void StartEnrollSession(OperationInput payload,
+                                  base::OnceCallback<void(bool)> on_done) = 0;
 
   // Starts an authenticate session in biod. |on_done| is triggered with whether
   // the authenticate session is started successfully.
   virtual void StartAuthenticateSession(
       ObfuscatedUsername obfuscated_username,
+      OperationInput payload,
       base::OnceCallback<void(bool)> on_done) = 0;
 
   // Creates the actual biometrics credential in biod after enrollment is done.
   // Secret values of the credential is returned and packed into an
   // OperationOutput struct. If successful, |on_done| is triggered with the
   // OperationOutput; otherwise it's triggered with a CryptohomeError.
-  virtual void CreateCredential(ObfuscatedUsername obfuscated_username,
-                                OperationInput payload,
-                                OperationCallback on_done) = 0;
+  virtual void CreateCredential(OperationCallback on_done) = 0;
 
   // Matches the collected biometrics image against all the user's enrolled
   // records after an auth scan is performed. Secret values of the credential is
   // returned and packed into an OperationOutput struct. If successful,
   // |on_done| is triggered with the OperationOutput; otherwise it's triggered
   // with a CryptohomeError.
-  virtual void MatchCredential(OperationInput payload,
-                               OperationCallback on_done) = 0;
+  virtual void MatchCredential(OperationCallback on_done) = 0;
 
   // Ends the existing enroll session in biod.
   virtual void EndEnrollSession() = 0;

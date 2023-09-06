@@ -35,23 +35,23 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
   // BiometricsCommandProcessor methods.
   bool IsReady() override;
   void SetEnrollScanDoneCallback(
-      base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
-                                   std::optional<brillo::Blob>)> on_done)
-      override;
-  void SetAuthScanDoneCallback(
-      base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
+      base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress)>
           on_done) override;
+  void SetAuthScanDoneCallback(
+      base::RepeatingCallback<void(user_data_auth::AuthScanDone)> on_done)
+      override;
   void SetSessionFailedCallback(
       base::RepeatingCallback<void()> on_failure) override;
-  void StartEnrollSession(base::OnceCallback<void(bool)> on_done) override;
+  void GetNonce(
+      base::OnceCallback<void(std::optional<brillo::Blob>)> callback) override;
+  void StartEnrollSession(OperationInput payload,
+                          base::OnceCallback<void(bool)> on_done) override;
   void StartAuthenticateSession(
       ObfuscatedUsername obfuscated_username,
+      OperationInput payload,
       base::OnceCallback<void(bool)> on_done) override;
-  void CreateCredential(ObfuscatedUsername obfuscated_username,
-                        OperationInput payload,
-                        OperationCallback on_done) override;
-  void MatchCredential(OperationInput payload,
-                       OperationCallback on_done) override;
+  void CreateCredential(OperationCallback on_done) override;
+  void MatchCredential(OperationCallback on_done) override;
   void EndEnrollSession() override;
   void EndAuthenticateSession() override;
   void DeleteCredential(
@@ -93,10 +93,9 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
       base::OnceCallback<void(DeleteResult)> on_done,
       std::optional<biod::DeleteCredentialReply> reply);
 
-  base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
-                               std::optional<brillo::Blob>)>
+  base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress)>
       on_enroll_scan_done_;
-  base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
+  base::RepeatingCallback<void(user_data_auth::AuthScanDone)>
       on_auth_scan_done_;
   base::RepeatingCallback<void()> on_session_failed_;
   std::unique_ptr<biod::AuthStackManagerProxyBase> proxy_;

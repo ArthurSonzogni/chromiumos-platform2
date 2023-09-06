@@ -70,13 +70,13 @@ class AuthFactorDriver {
 
   // Prepare the factor type for the addition of a new instance of this factor.
   // Returns through the asynchronous |callback|.
-  virtual void PrepareForAdd(const ObfuscatedUsername& username,
+  virtual void PrepareForAdd(const AuthInput& auth_input,
                              PreparedAuthFactorToken::Consumer callback) = 0;
 
   // Prepare the factor type for authentication. Returns through the
   // asynchronous |callback|.
   virtual void PrepareForAuthenticate(
-      const ObfuscatedUsername& username,
+      const AuthInput& auth_input,
       PreparedAuthFactorToken::Consumer callback) = 0;
 
   // Specifies if the factor supports the given intent when doing either full or

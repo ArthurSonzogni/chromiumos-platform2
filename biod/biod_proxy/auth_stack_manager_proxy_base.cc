@@ -57,10 +57,23 @@ void AuthStackManagerProxyBase::ConnectToSessionFailedSignal(
                           std::move(on_connected_callback));
 }
 
+void AuthStackManagerProxyBase::GetNonce(
+    base::OnceCallback<void(std::optional<GetNonceReply>)> callback) {
+  dbus::MethodCall method_call(biod::kAuthStackManagerInterface,
+                               biod::kAuthStackManagerGetNonceMethod);
+  proxy_->CallMethod(
+      &method_call, kDbusTimeoutMs,
+      base::BindOnce(&AuthStackManagerProxyBase::OnProtoResponse<GetNonceReply>,
+                     base::Unretained(this), std::move(callback)));
+}
+
 void AuthStackManagerProxyBase::StartEnrollSession(
+    const StartEnrollSessionRequest& request,
     base::OnceCallback<void(bool success)> callback) {
   dbus::MethodCall method_call(biod::kAuthStackManagerInterface,
                                biod::kAuthStackManagerStartEnrollSessionMethod);
+  dbus::MessageWriter method_writer(&method_call);
+  method_writer.AppendProtoAsArrayOfBytes(request);
 
   proxy_->CallMethod(
       &method_call, kDbusTimeoutMs,
@@ -75,7 +88,7 @@ void AuthStackManagerProxyBase::EndEnrollSession() {
 }
 
 void AuthStackManagerProxyBase::CreateCredential(
-    const CreateCredentialRequest& request,
+    const CreateCredentialRequestV2& request,
     base::OnceCallback<void(std::optional<CreateCredentialReply>)> callback) {
   dbus::MethodCall method_call(biod::kAuthStackManagerInterface,
                                biod::kAuthStackManagerCreateCredentialMethod);
@@ -90,11 +103,12 @@ void AuthStackManagerProxyBase::CreateCredential(
 }
 
 void AuthStackManagerProxyBase::StartAuthSession(
-    std::string user_id, base::OnceCallback<void(bool success)> callback) {
+    const StartAuthSessionRequest& request,
+    base::OnceCallback<void(bool success)> callback) {
   dbus::MethodCall method_call(biod::kAuthStackManagerInterface,
                                biod::kAuthStackManagerStartAuthSessionMethod);
   dbus::MessageWriter method_writer(&method_call);
-  method_writer.AppendString(user_id);
+  method_writer.AppendProtoAsArrayOfBytes(request);
 
   proxy_->CallMethod(
       &method_call, kDbusTimeoutMs,
@@ -109,7 +123,7 @@ void AuthStackManagerProxyBase::EndAuthSession() {
 }
 
 void AuthStackManagerProxyBase::AuthenticateCredential(
-    const AuthenticateCredentialRequest& request,
+    const AuthenticateCredentialRequestV2& request,
     base::OnceCallback<void(std::optional<AuthenticateCredentialReply>)>
         callback) {
   dbus::MethodCall method_call(
@@ -177,40 +191,6 @@ dbus::ObjectProxy* AuthStackManagerProxyBase::HandleStartSessionResponse(
     return nullptr;
   }
   return bus_->GetObjectProxy(biod::kBiodServiceName, auth_path);
-}
-
-std::optional<CreateCredentialReply>
-AuthStackManagerProxyBase::HandleCreateCredentialResponse(
-    dbus::Response* response) {
-  if (!response) {
-    LOG(ERROR) << "CreateCredential had no response.";
-    return std::nullopt;
-  }
-
-  dbus::MessageReader response_reader(response);
-  CreateCredentialReply reply;
-  if (!response_reader.PopArrayOfBytesAsProto(&reply)) {
-    LOG(ERROR) << "CreateCredential had incorrect response.";
-    return std::nullopt;
-  }
-  return reply;
-}
-
-std::optional<AuthenticateCredentialReply>
-AuthStackManagerProxyBase::HandleAuthenticateCredentialResponse(
-    dbus::Response* response) {
-  if (!response) {
-    LOG(ERROR) << "AuthenticateCredential had no response.";
-    return std::nullopt;
-  }
-
-  dbus::MessageReader response_reader(response);
-  AuthenticateCredentialReply reply;
-  if (!response_reader.PopArrayOfBytesAsProto(&reply)) {
-    LOG(ERROR) << "AuthenticateCredential had incorrect response.";
-    return std::nullopt;
-  }
-  return reply;
 }
 
 }  // namespace biod

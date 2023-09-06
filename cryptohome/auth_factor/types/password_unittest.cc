@@ -160,7 +160,8 @@ TEST_F(PasswordDriverTest, PrepareForAddFails) {
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+  AuthInput auth_input{.obfuscated_username = kObfuscatedUser};
+  driver.PrepareForAdd(auth_input, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
@@ -171,7 +172,8 @@ TEST_F(PasswordDriverTest, PrepareForAuthFails) {
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  AuthInput auth_input{.obfuscated_username = kObfuscatedUser};
+  driver.PrepareForAuthenticate(auth_input, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }

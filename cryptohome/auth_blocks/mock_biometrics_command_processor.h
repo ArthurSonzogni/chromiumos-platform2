@@ -20,35 +20,33 @@ class MockBiometricsCommandProcessor : public BiometricsCommandProcessor {
   MOCK_METHOD(
       void,
       SetEnrollScanDoneCallback,
-      (base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
-                                    std::optional<brillo::Blob>)>),
+      (base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress)>),
       (override));
   MOCK_METHOD(bool, IsReady, (), (override));
   MOCK_METHOD(void,
               SetAuthScanDoneCallback,
-              (base::RepeatingCallback<void(user_data_auth::AuthScanDone,
-                                            brillo::Blob)>),
+              (base::RepeatingCallback<void(user_data_auth::AuthScanDone)>),
               (override));
   MOCK_METHOD(void,
               SetSessionFailedCallback,
               (base::RepeatingCallback<void()>),
               (override));
   MOCK_METHOD(void,
+              GetNonce,
+              (base::OnceCallback<void(std::optional<brillo::Blob>)>),
+              (override));
+  MOCK_METHOD(void,
               StartEnrollSession,
-              (base::OnceCallback<void(bool)>),
+              (OperationInput payload, base::OnceCallback<void(bool)>),
               (override));
   MOCK_METHOD(void,
               StartAuthenticateSession,
-              (ObfuscatedUsername, base::OnceCallback<void(bool)>),
+              (ObfuscatedUsername,
+               OperationInput payload,
+               base::OnceCallback<void(bool)>),
               (override));
-  MOCK_METHOD(void,
-              CreateCredential,
-              (ObfuscatedUsername, OperationInput, OperationCallback),
-              (override));
-  MOCK_METHOD(void,
-              MatchCredential,
-              (OperationInput, OperationCallback),
-              (override));
+  MOCK_METHOD(void, CreateCredential, (OperationCallback), (override));
+  MOCK_METHOD(void, MatchCredential, (OperationCallback), (override));
   MOCK_METHOD(void, EndEnrollSession, (), (override));
   MOCK_METHOD(void, EndAuthenticateSession, (), (override));
   MOCK_METHOD(void,

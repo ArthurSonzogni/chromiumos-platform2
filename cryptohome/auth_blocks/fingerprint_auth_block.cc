@@ -52,7 +52,6 @@ using DeleteResult = BiometricsAuthBlockService::DeleteResult;
 // GSC secrets.
 constexpr char kFekKeyHmacData[] = "fek_key";
 
-constexpr uint8_t kFingerprintAuthChannel = 0;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 constexpr size_t kHeSecretSize = 32;
 
@@ -169,9 +168,8 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
   // fingerprint credential leaf. It usually never needs to be reset as
   // its authentication shouldn't never fail, but we still need to be able to
   // reset it when it's locked.
-  if (!auth_input.rate_limiter_label.has_value() ||
-      !auth_input.reset_secret.has_value()) {
-    LOG(ERROR) << "Missing label or reset_secret.";
+  if (!auth_input.reset_secret.has_value()) {
+    LOG(ERROR) << "Missing reset_secret.";
     std::move(callback).Run(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoResetSecretInCreate),
@@ -181,52 +179,10 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
     return;
   }
 
-  std::optional<brillo::Blob> nonce = service_->TakeNonce();
-  if (!nonce.has_value()) {
-    LOG(ERROR) << "Missing nonce, probably meaning there isn't a completed "
-                  "enroll session.";
-    std::move(callback).Run(
-        MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoNonceInCreate),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            CryptoError::CE_OTHER_CRYPTO),
-        nullptr, nullptr);
-    return;
-  }
-  hwsec::StatusOr<hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply>
-      reply = hwsec_pw_manager_->StartBiometricsAuth(
-          kFingerprintAuthChannel, *auth_input.rate_limiter_label, *nonce);
-  if (!reply.ok()) {
-    LOG(ERROR) << "Failed to start biometrics auth with PinWeaver.";
-    std::move(callback).Run(
-        MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocFingerprintAuthBlockStartBioAuthFailedInCreate))
-            .Wrap(
-                MakeStatus<CryptohomeTPMError>(std::move(reply).err_status())),
-        nullptr, nullptr);
-    return;
-  }
-
-  hwsec::Status reset_status = hwsec_pw_manager_->ResetCredential(
-      *auth_input.rate_limiter_label, *auth_input.reset_secret,
-      hwsec::PinWeaverManagerFrontend::ResetType::kWrongAttempts);
-  if (!reset_status.ok()) {
-    // TODO(b/275027852): Report metrics because we silently fail here.
-    LOG(WARNING)
-        << "Failed to reset rate-limiter during KeyBlobs creation. This "
-           "doesn't block the creation but shouldn't normally happen.";
-  }
-  BiometricsAuthBlockService::OperationInput input{
-      .nonce = std::move(reply->server_nonce),
-      .encrypted_label_seed = std::move(reply->encrypted_he_secret),
-      .iv = std::move(reply->iv),
-  };
-  service_->CreateCredential(
-      input, base::BindOnce(&FingerprintAuthBlock::ContinueCreate,
-                            weak_factory_.GetWeakPtr(), std::move(callback),
-                            *auth_input.obfuscated_username,
-                            *auth_input.reset_secret));
+  service_->CreateCredential(base::BindOnce(
+      &FingerprintAuthBlock::ContinueCreate, weak_factory_.GetWeakPtr(),
+      std::move(callback), *auth_input.obfuscated_username,
+      *auth_input.reset_secret));
 }
 
 void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
@@ -305,15 +261,10 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
                           std::nullopt);
 }
 
-// SelectFactor for FingerprintAuthBlock is actually doing the heavy-lifting
-// job for Derive, if you compare it with Create. This is because we only know
-// the actual AuthFactor the user used (the correct finger) after biometrics
-// auth stack returns a positive match verdict.
 void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
                                         std::vector<AuthFactor> auth_factors,
                                         SelectFactorCallback callback) {
   if (!auth_input.rate_limiter_label.has_value()) {
-    LOG(ERROR) << "Missing rate_limiter_label.";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoUsernameInSelect),
@@ -323,39 +274,7 @@ void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
     return;
   }
 
-  std::optional<brillo::Blob> nonce = service_->TakeNonce();
-  if (!nonce.has_value()) {
-    LOG(ERROR) << "Missing nonce, probably meaning there isn't a completed "
-                  "authenticate session.";
-    std::move(callback).Run(
-        MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoNonceInSelect),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            CryptoError::CE_OTHER_CRYPTO),
-        std::nullopt, std::nullopt);
-    return;
-  }
-  hwsec::StatusOr<hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply>
-      reply = hwsec_pw_manager_->StartBiometricsAuth(
-          kFingerprintAuthChannel, *auth_input.rate_limiter_label, *nonce);
-  if (!reply.ok()) {
-    LOG(ERROR) << "Failed to start biometrics auth with PinWeaver.";
-    std::move(callback).Run(
-        MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocFingerprintAuthBlockStartBioAuthFailedInSelect))
-            .Wrap(
-                MakeStatus<CryptohomeTPMError>(std::move(reply).err_status())),
-        std::nullopt, std::nullopt);
-    return;
-  }
-  BiometricsAuthBlockService::OperationInput input{
-      .nonce = std::move(reply->server_nonce),
-      .encrypted_label_seed = std::move(reply->encrypted_he_secret),
-      .iv = std::move(reply->iv),
-  };
   service_->MatchCredential(
-      input,
       base::BindOnce(&FingerprintAuthBlock::ContinueSelect,
                      weak_factory_.GetWeakPtr(), std::move(callback),
                      std::move(auth_factors), *auth_input.rate_limiter_label));

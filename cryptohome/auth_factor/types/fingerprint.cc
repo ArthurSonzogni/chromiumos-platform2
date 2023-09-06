@@ -16,6 +16,7 @@
 #include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
+#include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
@@ -35,9 +36,12 @@
 namespace cryptohome {
 namespace {
 
+using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::CryptohomeTPMError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
+using ::hwsec::PinWeaverManagerFrontend;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 
@@ -88,8 +92,7 @@ bool FingerprintAuthFactorDriver::IsPrepareRequired() const {
 }
 
 void FingerprintAuthFactorDriver::PrepareForAdd(
-    const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) {
+    const AuthInput& auth_input, PreparedAuthFactorToken::Consumer callback) {
   if (!bio_service_) {
     std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareForAddNoService),
@@ -99,12 +102,73 @@ void FingerprintAuthFactorDriver::PrepareForAdd(
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
-  bio_service_->StartEnrollSession(type(), username, std::move(callback));
+
+  // reset_secret here represents the existing/created rate limiter leaf's reset
+  // secret. The same value will be used as the reset secret for the actual
+  // fingerprint credential leaf. It usually never needs to be reset as
+  // its authentication shouldn't never fail, but we still need to be able to
+  // reset it when it's locked.
+  if (!auth_input.rate_limiter_label.has_value() ||
+      !auth_input.reset_secret.has_value()) {
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFpNoResetSecretInPrepareAdd),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  bio_service_->GetNonce(base::BindOnce(
+      &FingerprintAuthFactorDriver::PrepareForAddOnGetNonce,
+      weak_factory_.GetWeakPtr(), std::move(callback), auth_input));
+}
+
+void FingerprintAuthFactorDriver::PrepareForAddOnGetNonce(
+    PreparedAuthFactorToken::Consumer callback,
+    const AuthInput& auth_input,
+    std::optional<brillo::Blob> nonce) {
+  CHECK(bio_service_);
+  CHECK(auth_input.rate_limiter_label.has_value());
+  CHECK(auth_input.reset_secret.has_value());
+
+  if (!nonce.has_value()) {
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareAddGetNonceFailed),
+        ErrorActionSet({PossibleAction::kReboot}),
+        user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+    return;
+  }
+
+  hwsec::StatusOr<PinWeaverManagerFrontend::StartBiometricsAuthReply> reply =
+      crypto_->GetPinWeaverManager()->StartBiometricsAuth(
+          kFingerprintAuthChannel, *auth_input.rate_limiter_label,
+          std::move(*nonce));
+  if (!reply.ok()) {
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareAddStartBioAuthFailed))
+            .Wrap(
+                MakeStatus<CryptohomeTPMError>(std::move(reply).err_status())));
+    return;
+  }
+  hwsec::Status reset_status = crypto_->GetPinWeaverManager()->ResetCredential(
+      *auth_input.rate_limiter_label, *auth_input.reset_secret,
+      PinWeaverManagerFrontend::ResetType::kWrongAttempts);
+  if (!reset_status.ok()) {
+    // TODO(b/275027852): Report metrics because we silently fail here.
+    LOG(WARNING) << "Failed to reset rate-limiter during PrepareForAdd. This "
+                    "doesn't block the creation but shouldn't normally happen.";
+  }
+  BiometricsAuthBlockService::OperationInput input{
+      .nonce = std::move(reply->server_nonce),
+      .encrypted_label_seed = std::move(reply->encrypted_he_secret),
+      .iv = std::move(reply->iv),
+  };
+  bio_service_->StartEnrollSession(type(), std::move(input),
+                                   std::move(callback));
 }
 
 void FingerprintAuthFactorDriver::PrepareForAuthenticate(
-    const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) {
+    const AuthInput& auth_input, PreparedAuthFactorToken::Consumer callback) {
   if (!bio_service_) {
     std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareForAuthNoService),
@@ -114,7 +178,63 @@ void FingerprintAuthFactorDriver::PrepareForAuthenticate(
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
-  bio_service_->StartAuthenticateSession(type(), username, std::move(callback));
+
+  if (!auth_input.obfuscated_username.has_value()) {
+    std::move(callback).Run(MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFpNoUsernameInPrepareAuth),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO));
+    return;
+  }
+  if (!auth_input.rate_limiter_label.has_value()) {
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFpNoResetSecretInPrepareAuth),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  bio_service_->GetNonce(base::BindOnce(
+      &FingerprintAuthFactorDriver::PrepareForAuthOnGetNonce,
+      weak_factory_.GetWeakPtr(), std::move(callback), auth_input));
+}
+
+void FingerprintAuthFactorDriver::PrepareForAuthOnGetNonce(
+    PreparedAuthFactorToken::Consumer callback,
+    const AuthInput& auth_input,
+    std::optional<brillo::Blob> nonce) {
+  CHECK(bio_service_);
+  CHECK(auth_input.obfuscated_username.has_value());
+  CHECK(auth_input.rate_limiter_label.has_value());
+
+  if (!nonce.has_value()) {
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareAuthGetNonceFailed),
+        ErrorActionSet({PossibleAction::kReboot}),
+        user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+    return;
+  }
+
+  hwsec::StatusOr<PinWeaverManagerFrontend::StartBiometricsAuthReply> reply =
+      crypto_->GetPinWeaverManager()->StartBiometricsAuth(
+          kFingerprintAuthChannel, *auth_input.rate_limiter_label,
+          std::move(*nonce));
+  if (!reply.ok()) {
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareAuthStartBioAuthFailed))
+            .Wrap(
+                MakeStatus<CryptohomeTPMError>(std::move(reply).err_status())));
+    return;
+  }
+  BiometricsAuthBlockService::OperationInput input{
+      .nonce = std::move(reply->server_nonce),
+      .encrypted_label_seed = std::move(reply->encrypted_he_secret),
+      .iv = std::move(reply->iv),
+  };
+  bio_service_->StartAuthenticateSession(type(),
+                                         *auth_input.obfuscated_username,
+                                         std::move(input), std::move(callback));
 }
 
 bool FingerprintAuthFactorDriver::IsFullAuthSupported(

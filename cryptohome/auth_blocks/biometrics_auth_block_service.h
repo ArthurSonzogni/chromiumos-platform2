@@ -48,16 +48,20 @@ class BiometricsAuthBlockService {
   // This can be used to determine biometrics auth factor's availability.
   bool IsReady();
 
+  // GetNonce fetches the nonce from the biometrics auth stack that will be used
+  // for initiating the encrypted session between PinWeaver and it.
+  void GetNonce(base::OnceCallback<void(std::optional<brillo::Blob>)> callback);
+
   // StartEnrollSession initiates a biometrics enrollment session. If
   // successful, enroll_signal_sender will be triggered with upcoming enrollment
   // progress signals.
   void StartEnrollSession(AuthFactorType auth_factor_type,
-                          ObfuscatedUsername obfuscated_username,
+                          OperationInput payload,
                           PreparedAuthFactorToken::Consumer on_done);
 
   // CreateCredential returns the necessary data for cryptohome to
   // create an AuthFactor for the newly created biometrics credential.
-  void CreateCredential(OperationInput payload, OperationCallback on_done);
+  void CreateCredential(OperationCallback on_done);
 
   // EndEnrollSession ends the biometrics enrollment session.
   void EndEnrollSession();
@@ -67,20 +71,15 @@ class BiometricsAuthBlockService {
   // authentication scan signals.
   void StartAuthenticateSession(AuthFactorType auth_factor_type,
                                 ObfuscatedUsername obfuscated_username,
+                                OperationInput payload,
                                 PreparedAuthFactorToken::Consumer on_done);
 
   // MatchCredential returns the necessary data for cryptohome to
   // authenticate the AuthFactor for the matched biometrics credential.
-  void MatchCredential(OperationInput payload, OperationCallback on_done);
+  void MatchCredential(OperationCallback on_done);
 
   // EndAuthenticateSession ends the biometrics authentication session.
   void EndAuthenticateSession();
-
-  // TakeNonce retrieves the nonce from the latest-completed enrollment or auth
-  // scan event. The nonce is needed for the caller to interact with PinWeaver
-  // and construct the OperationInput. The nonce is erased after calling this
-  // function such that a nonce is never retrieved twice.
-  std::optional<brillo::Blob> TakeNonce();
 
   // Calls BiometricsCommandProcessor::DeleteCredential.
   void DeleteCredential(ObfuscatedUsername obfuscated_username,
@@ -95,9 +94,7 @@ class BiometricsAuthBlockService {
       kAuthenticate,
     };
 
-    Token(AuthFactorType auth_factor_type,
-          TokenType token_type,
-          ObfuscatedUsername user_id);
+    Token(AuthFactorType auth_factor_type, TokenType token_type);
 
     // Attaches the token to the underlying service. Ideally we'd do this in the
     // constructor but the token is constructed when we initiate the request to
@@ -114,13 +111,10 @@ class BiometricsAuthBlockService {
 
     TokenType type() const { return token_type_; }
 
-    ObfuscatedUsername user_id() const { return user_id_; }
-
    private:
     CryptohomeStatus TerminateAuthFactor() override;
 
     TokenType token_type_;
-    ObfuscatedUsername user_id_;
     BiometricsAuthBlockService* service_ = nullptr;
     TerminateOnDestruction terminate_;
   };
@@ -131,10 +125,9 @@ class BiometricsAuthBlockService {
   void CheckSessionStartResult(PreparedAuthFactorToken::Consumer on_done,
                                bool success);
 
-  void OnEnrollScanDone(user_data_auth::AuthEnrollmentProgress signal,
-                        std::optional<brillo::Blob> nonce);
+  void OnEnrollScanDone(user_data_auth::AuthEnrollmentProgress signal);
 
-  void OnAuthScanDone(user_data_auth::AuthScanDone signal, brillo::Blob nonce);
+  void OnAuthScanDone(user_data_auth::AuthScanDone signal);
 
   // This is triggered when biometrics command processor reports a session
   // failure. The way we indicate session failures (and hence there will be no
@@ -144,24 +137,7 @@ class BiometricsAuthBlockService {
   // always ends the session when there is a session failure.
   void OnSessionFailed();
 
-  // As biometrics auth stack's AuthenticateSession is expected to be
-  // established once for each touch, but the cryptohome AuthSession prefers
-  // treating the AuthenticateSession as long-living, we need to restart the
-  // session after each MatchCredential. This function is designed to be used as
-  // a callback with BiometricsCommandProcessor.
-  void OnMatchCredentialResponse(OperationCallback callback,
-                                 CryptohomeStatusOr<OperationOutput> resp);
-
-  // When session is restarted after a MatchCredential, trigger the
-  // MatchCredential's callback. If session restart isn't successful, also emits
-  // a signal to indicate that the authenticate session has ended.
-  void OnSessionRestartResult(OperationCallback callback,
-                              CryptohomeStatusOr<OperationOutput> resp,
-                              bool success);
-
   std::unique_ptr<BiometricsCommandProcessor> processor_;
-  // The most recent auth nonce received.
-  std::optional<brillo::Blob> auth_nonce_;
   // The token created when starting a session. This is cleared and returned to
   // the caller when the session is started successfully.
   std::unique_ptr<Token> pending_token_;

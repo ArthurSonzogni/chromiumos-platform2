@@ -121,8 +121,6 @@ struct KeyBlobs {
   std::optional<brillo::Blob> chaps_iv;
   // The reset secret used for LE credentials.
   std::optional<brillo::SecureBlob> reset_secret;
-  // The PinWeaver leaf label of the created rate-limiter.
-  std::optional<uint64_t> rate_limiter_label;
 };
 
 }  // namespace cryptohome

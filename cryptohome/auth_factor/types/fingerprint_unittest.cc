@@ -207,18 +207,32 @@ TEST_F(FingerprintDriverTest, SupportedByBlock) {
 }
 
 TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
+  const brillo::SecureBlob kResetSecret(32, 1);
+  const brillo::Blob kNonce(32, 2);
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
       &platform_, &crypto_, &uss_storage_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
-  EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_))
-      .WillOnce([](auto&& callback) { std::move(callback).Run(false); });
+  EXPECT_CALL(*bio_command_processor_, GetNonce(_))
+      .WillOnce(
+          [&kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
+  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth(0, kLeLabel, kNonce))
+      .WillOnce(
+          Return(hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
+  EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_, _))
+      .WillOnce(
+          [](auto&&, auto&& callback) { std::move(callback).Run(false); });
 
   // Test.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+  AuthInput auth_input{
+      .obfuscated_username = kObfuscatedUser,
+      .reset_secret = kResetSecret,
+      .rate_limiter_label = kLeLabel,
+  };
+  driver.PrepareForAdd(auth_input, prepare_result.GetCallback());
 
   // Verify.
   EXPECT_THAT(prepare_result.Get(), NotOk());
@@ -227,38 +241,62 @@ TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
 }
 
 TEST_F(FingerprintDriverTest, PrepareForAddSuccess) {
+  const brillo::SecureBlob kResetSecret(32, 1);
+  const brillo::Blob kNonce(32, 2);
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
       &platform_, &crypto_, &uss_storage_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
-  EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_))
-      .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
+  EXPECT_CALL(*bio_command_processor_, GetNonce(_))
+      .WillOnce(
+          [&kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
+  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth(0, kLeLabel, kNonce))
+      .WillOnce(
+          Return(hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
+  EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_, _))
+      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
 
   // Test.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+  AuthInput auth_input{
+      .obfuscated_username = kObfuscatedUser,
+      .reset_secret = kResetSecret,
+      .rate_limiter_label = kLeLabel,
+  };
+  driver.PrepareForAdd(auth_input, prepare_result.GetCallback());
 
   // Verify.
   EXPECT_THAT(prepare_result.Get(), IsOk());
 }
 
-TEST_F(FingerprintDriverTest, PrepareForAuthFailure) {
+TEST_F(FingerprintDriverTest, PrepareForAuthenticateFailure) {
+  const brillo::Blob kNonce(32, 2);
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
       &platform_, &crypto_, &uss_storage_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
-  EXPECT_CALL(*bio_command_processor_,
-              StartAuthenticateSession(kObfuscatedUser, _))
+  EXPECT_CALL(*bio_command_processor_, GetNonce(_))
       .WillOnce(
-          [](auto&&, auto&& callback) { std::move(callback).Run(false); });
+          [&kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
+  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth(0, kLeLabel, kNonce))
+      .WillOnce(
+          Return(hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
+  EXPECT_CALL(*bio_command_processor_, StartAuthenticateSession(_, _, _))
+      .WillOnce([](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(false);
+      });
 
   // Test.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  AuthInput auth_input{
+      .obfuscated_username = kObfuscatedUser,
+      .rate_limiter_label = kLeLabel,
+  };
+  driver.PrepareForAuthenticate(auth_input, prepare_result.GetCallback());
 
   // Verify.
   EXPECT_THAT(prepare_result.Get(), NotOk());
@@ -266,20 +304,32 @@ TEST_F(FingerprintDriverTest, PrepareForAuthFailure) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
 }
 
-TEST_F(FingerprintDriverTest, PrepareForAuthSuccess) {
+TEST_F(FingerprintDriverTest, PrepareForAuthenticateSuccess) {
+  const brillo::Blob kNonce(32, 2);
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
       &platform_, &crypto_, &uss_storage_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
-  EXPECT_CALL(*bio_command_processor_,
-              StartAuthenticateSession(kObfuscatedUser, _))
-      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
+  EXPECT_CALL(*bio_command_processor_, GetNonce(_))
+      .WillOnce(
+          [&kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
+  EXPECT_CALL(hwsec_pw_manager_, StartBiometricsAuth(0, kLeLabel, kNonce))
+      .WillOnce(
+          Return(hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
+  EXPECT_CALL(*bio_command_processor_, StartAuthenticateSession(_, _, _))
+      .WillOnce([](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(true);
+      });
 
   // Test.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  AuthInput auth_input{
+      .obfuscated_username = kObfuscatedUser,
+      .rate_limiter_label = kLeLabel,
+  };
+  driver.PrepareForAuthenticate(auth_input, prepare_result.GetCallback());
 
   // Verify.
   EXPECT_THAT(prepare_result.Get(), IsOk());
