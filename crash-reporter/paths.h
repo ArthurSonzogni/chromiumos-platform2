@@ -154,6 +154,14 @@ inline constexpr char kRunningLooseChromeCrashEarlyTestFile[] =
 inline constexpr char kGscPrevCrashLogIdPath[] =
     "/mnt/stateful_partition/unencrypted/preserve/gsc_prev_crash_log_id";
 
+// These are used when the hw_details USE flag is set.
+// The location of dmi info on devices with UEFI firmware.
+inline constexpr char kDmiIdDirectory[] = "/sys/class/dmi/id/";
+// The few fields that describe the "Model name".
+inline constexpr char kProductNameFile[] = "product_name";
+inline constexpr char kProductVersionFile[] = "product_version";
+inline constexpr char kSysVendorFile[] = "sys_vendor";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);

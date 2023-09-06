@@ -55,8 +55,10 @@ using base::StringPrintf;
 using brillo::FindLog;
 using ::testing::_;
 using ::testing::Eq;
+using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
+using ::testing::Not;
 using ::testing::Optional;
 using ::testing::Return;
 
@@ -2426,6 +2428,67 @@ TEST_F(CrashCollectorTest, AddCrashMetaUploadData_WeightKey) {
           static_cast<int>(CrashCollector::AddWeightResult::kMaxValue) + 1))
       .WillOnce(Return(true));
   collector_.AddCrashMetaUploadData("weight", "10");
+}
+
+TEST_F(CrashCollectorTest, AddDetailedHardwareData) {
+  collector_.set_send_detailed_hw_for_test(true);
+
+  base::FilePath dmi_id_path = paths::Get(paths::kDmiIdDirectory);
+  ASSERT_TRUE(base::CreateDirectory(dmi_id_path));
+  ASSERT_TRUE(base::WriteFile(dmi_id_path.Append(paths::kProductNameFile),
+                              "OptiPlex 9010"));
+  ASSERT_TRUE(
+      base::WriteFile(dmi_id_path.Append(paths::kProductVersionFile), "01"));
+  ASSERT_TRUE(
+      base::WriteFile(dmi_id_path.Append(paths::kSysVendorFile), "Dell Inc."));
+
+  collector_.AddDetailedHardwareData();
+
+  std::string meta = collector_.extra_metadata_;
+  EXPECT_THAT(meta,
+              HasSubstr("upload_var_chromeosflex_product_name=OptiPlex 9010"));
+  EXPECT_THAT(meta, HasSubstr("upload_var_chromeosflex_product_version=01"));
+  EXPECT_THAT(meta,
+              HasSubstr("upload_var_chromeosflex_product_vendor=Dell Inc."));
+}
+
+TEST_F(CrashCollectorTest, AddDetailedHardwareData_DoNotSend) {
+  collector_.set_send_detailed_hw_for_test(false);
+
+  base::FilePath dmi_id_path = paths::Get(paths::kDmiIdDirectory);
+  ASSERT_TRUE(base::CreateDirectory(dmi_id_path));
+  ASSERT_TRUE(base::WriteFile(dmi_id_path.Append(paths::kProductNameFile),
+                              "20AN0069US"));
+  ASSERT_TRUE(base::WriteFile(dmi_id_path.Append(paths::kProductVersionFile),
+                              "ThinkPad T440p"));
+  ASSERT_TRUE(
+      base::WriteFile(dmi_id_path.Append(paths::kSysVendorFile), "LENOVO"));
+
+  collector_.AddDetailedHardwareData();
+
+  std::string meta = collector_.extra_metadata_;
+  EXPECT_THAT(meta, Not(HasSubstr("upload_var_chromeosflex_product_name")));
+  EXPECT_THAT(meta, Not(HasSubstr("upload_var_chromeosflex_product_version")));
+  EXPECT_THAT(meta, Not(HasSubstr("upload_var_chromeosflex_product_vendor")));
+}
+
+TEST_F(CrashCollectorTest, AddDetailedHardwareData_FailedRead) {
+  collector_.set_send_detailed_hw_for_test(true);
+
+  base::FilePath dmi_id_path = paths::Get(paths::kDmiIdDirectory);
+  ASSERT_TRUE(base::CreateDirectory(dmi_id_path));
+  ASSERT_TRUE(base::WriteFile(dmi_id_path.Append(paths::kProductNameFile),
+                              "OptiPlex 9010"));
+  ASSERT_TRUE(
+      base::WriteFile(dmi_id_path.Append(paths::kProductVersionFile), "01"));
+
+  collector_.AddDetailedHardwareData();
+
+  std::string meta = collector_.extra_metadata_;
+  EXPECT_THAT(meta,
+              HasSubstr("upload_var_chromeosflex_product_name=OptiPlex 9010"));
+  EXPECT_THAT(meta, HasSubstr("upload_var_chromeosflex_product_version=01"));
+  EXPECT_THAT(meta, Not(HasSubstr("upload_var_chromeosflex_product_vendor")));
 }
 
 TEST_F(CrashCollectorTest, GetLogContents) {

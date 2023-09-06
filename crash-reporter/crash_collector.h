@@ -216,6 +216,11 @@ class CrashCollector {
   // testing purposes.
   std::string get_extra_metadata_for_test() const { return extra_metadata_; }
 
+  // For testing, set whether to send detailed hardware data.
+  void set_send_detailed_hw_for_test(bool use_hw_details) {
+    send_detailed_hw_ = use_hw_details;
+  }
+
   void SetUseSavedLsb(bool use_saved_lsb) { use_saved_lsb_ = use_saved_lsb; }
 
   // Initialize the crash collector for detection of crashes, given a
@@ -302,6 +307,9 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, AddCrashMetaWeight_InvalidWeight);
   FRIEND_TEST(CrashCollectorTest, AddCrashMetaWeight_CalledTwice);
   FRIEND_TEST(CrashCollectorTest, AddCrashMetaUploadData_WeightKey);
+  FRIEND_TEST(CrashCollectorTest, AddDetailedHardwareData);
+  FRIEND_TEST(CrashCollectorTest, AddDetailedHardwareData_DoNotSend);
+  FRIEND_TEST(CrashCollectorTest, AddDetailedHardwareData_FailedRead);
   FRIEND_TEST(CrashCollectorTest, ParseProcessTicksFromStat);
   FRIEND_TEST(CrashCollectorTest, Sanitize);
   FRIEND_TEST(CrashCollectorTest, StripMacAddressesBasic);
@@ -542,6 +550,12 @@ class CrashCollector {
   // metadata file. |weight| is also used as the weight when recording to UMA.
   void AddCrashMetaWeight(int weight);
 
+  // Add non-standard hardware meta data to the crash metadata file, only if
+  // the hw_details USE flag is set.
+  //
+  // Intended for use by ChromeOS Flex, where hardware is highly unpredictable.
+  void AddDetailedHardwareData();
+
   // Gets the corresponding value for |key| from the lsb-release file.
   // If |use_saved_lsb_| is true, prefer the lsb-release saved in
   // crash_reporter_state_path_.
@@ -600,6 +614,14 @@ class CrashCollector {
   bool device_policy_loaded_;
   std::unique_ptr<policy::DevicePolicy> device_policy_;
   int weight_ = 1;
+
+  // Whether to include detailed hardware info in crash metadata,
+  // based on hw_details USE flag. See AddDetailedHardwareData.
+#if USE_HW_DETAILS
+  bool send_detailed_hw_ = true;
+#else
+  bool send_detailed_hw_ = false;
+#endif  // USE_HW_DETAILS
 
   // Should reports always be stored in the user crash directory, or can they be
   // stored in the system directory if we are not running as "chronos"?

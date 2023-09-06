@@ -165,6 +165,16 @@ constexpr char kARCStatus[] = "Built with ARCVM";
 constexpr char kARCStatus[] = "Not built with ARC";
 #endif
 
+// All the files under /sys/class/dmi/id/ appear to be 4096 bytes, though the
+// actual contents are smaller. I can't find where in the spec it says how big
+// DMI fields can be, but it looks like the kernel "dmi_header" uses a u8 to
+// store the length.
+constexpr int64_t kDmiMaxSize = 256;
+constexpr char kProductNameKey[] = "chromeosflex_product_name";
+constexpr char kProductVersionKey[] = "chromeosflex_product_version";
+// This string is intentionally different to match the field as used elsewhere.
+constexpr char kSysVendorKey[] = "chromeosflex_product_vendor";
+
 #define NCG(x) "(?:" x ")"
 #define OPT_NCG(x) NCG(x) "?"
 #define DEC_OCTET NCG("1[0-9][0-9]|2[0-4][0-9]|25[0-5]|[1-9][0-9]|[0-9]")
@@ -511,6 +521,18 @@ bool CarefullyReadFileToStringWithMaxSize(const base::FilePath& path,
   contents->append(data.begin(), data.end());
 
   return true;
+}
+
+std::optional<std::string> ReadDmiIdBestEffort(const std::string& file) {
+  const base::FilePath path = paths::Get(paths::kDmiIdDirectory).Append(file);
+
+  std::string contents;
+  if (!base::ReadFileToStringWithMaxSize(path, &contents, kDmiMaxSize)) {
+    LOG(INFO) << "Couldn't read " << path.value();
+    return std::nullopt;
+  }
+
+  return contents;
 }
 
 CrashCollector::CrashCollector(
@@ -1591,6 +1613,39 @@ void CrashCollector::AddCrashMetaWeight(int weight) {
                    base::NumberToString(weight_));
 }
 
+void CrashCollector::AddDetailedHardwareData() {
+  // Don't send if we're not supposed to.
+  if (!send_detailed_hw_) {
+    return;
+  }
+
+  const std::optional<std::string> product_name(
+      ReadDmiIdBestEffort(paths::kProductNameFile));
+  const std::optional<std::string> product_version(
+      ReadDmiIdBestEffort(paths::kProductVersionFile));
+  const std::optional<std::string> sys_vendor(
+      ReadDmiIdBestEffort(paths::kSysVendorFile));
+
+  // For these three we really care about the distinction between not having
+  // read it and having read it but the file being empty -- some OEMs put/leave
+  // "useless" values (like empty strings or "To be filled by O.E.M.") in there,
+  // but even those can provide some signal.
+  // Use AddCrashMetaData so present-but-empty values aren't filtered out.
+  if (product_name.has_value()) {
+    AddCrashMetaData(constants::kUploadVarPrefix + std::string(kProductNameKey),
+                     product_name.value());
+  }
+  if (product_version.has_value()) {
+    AddCrashMetaData(
+        constants::kUploadVarPrefix + std::string(kProductVersionKey),
+        product_version.value());
+  }
+  if (sys_vendor.has_value()) {
+    AddCrashMetaData(constants::kUploadVarPrefix + std::string(kSysVendorKey),
+                     sys_vendor.value());
+  }
+}
+
 std::string CrashCollector::GetLsbReleaseValue(const std::string& key) const {
   std::vector<base::FilePath> directories = {lsb_release_.DirName()};
   if (use_saved_lsb_) {
@@ -1765,6 +1820,8 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
     AddCrashMetaUploadData("is-enterprise-enrolled",
                            *is_enterprise_enrolled ? "true" : "false");
   }
+
+  AddDetailedHardwareData();
 
   ComputedCrashSeverity computed_crash_severity = ComputeSeverity(exec_name);
   std::string crash_severity =
