@@ -59,7 +59,6 @@ config("compiler_defaults") {
     "-Wstring-compare",
     "-Wstring-plus-int",
     "-Wxor-used-as-pow",
-    "-Wimplicit-int-float-conversion",
     "-Wdeprecated-declarations",
 
     # We use C99 array designators in C++ code.  Our compilers support this

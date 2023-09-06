@@ -326,7 +326,6 @@ COMMON_CFLAGS-clang := -fvisibility=hidden -ggdb -Wimplicit-fallthrough
 COMMON_CFLAGS := -Wall -Wunused -Wno-unused-parameter -Wunreachable-code \
   -Wbool-operation -Wstring-compare -Wstring-plus-int  -Wxor-used-as-pow \
   -Wint-in-bool-context -Wfree-nonheap-object \
-  -Wimplicit-int-float-conversion \
   -Werror -Wformat=2 -fno-strict-aliasing $(SSP_CFLAGS) -O1
 CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER)) -std=gnu++17
 CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER)) -std=gnu17
