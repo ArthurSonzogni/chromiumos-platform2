@@ -194,7 +194,9 @@ class StaticIPParametersTest : public Test {
     ipconfig_props.exclusion_list = {kExcludedRoute0, kExcludedRoute1};
     ipconfig_props.inclusion_list = {kIncludedRoute0, kIncludedRoute1};
     ipconfig_props.default_route = false;
-    network_->set_ipconfig_properties_for_testing(ipconfig_props);
+    NetworkConfig network_config =
+        IPConfig::Properties::ToNetworkConfig(&ipconfig_props, nullptr);
+    network_->set_dhcp_network_config_for_testing(network_config);
   }
   void SetStaticProperties() { SetStaticPropertiesWithVersion(0); }
   void SetStaticPropertiesWithVersion(int version) {
@@ -270,6 +272,7 @@ TEST_F(StaticIPParametersTest, ApplyEmptyParameters) {
 }
 
 TEST_F(StaticIPParametersTest, DefaultRoute) {
+  network_->set_dhcp_network_config_for_testing(NetworkConfig{});
   SetStaticPropertiesWithoutRoute(service_->mutable_store());
   AttachNetwork();
   EXPECT_TRUE(network_->GetNetworkConfig().ipv4_default_route);
@@ -377,11 +380,10 @@ TEST_F(StaticIPParametersTest, SavedParameters) {
   ExpectPopulatedIPConfigWithVersion(1);
 
   // Clear all "StaticIP" parameters. Current IPConfig will be recovered from
-  // saved config, and the saved config should be cleared.
+  // saved config.
   service_->mutable_store()->SetKeyValueStoreProperty(
       "StaticIPConfig", KeyValueStore(), &unused_error);
   dispatcher_.task_environment().RunUntilIdle();
-  EXPECT_TRUE(GetSavedArgs().IsEmpty());
   ExpectPopulatedIPConfigWithVersion(0);
 
   // Reset current IPConfig to version 0.

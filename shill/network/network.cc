@@ -29,6 +29,7 @@
 #include "shill/metrics.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/network_applier.h"
+#include "shill/network/network_config.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/routing_table.h"
@@ -284,6 +285,8 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
     ipconfig_changed = true;
   }
   link_local_protocol_network_config_ = nullptr;
+  slaac_network_config_ = nullptr;
+  dhcp_network_config_ = nullptr;
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {
     for (auto* ev : event_handlers_) {
@@ -329,8 +332,6 @@ void Network::OnIPv4ConfigUpdated() {
   if (!ipconfig()) {
     return;
   }
-  saved_network_config_ =
-      IPConfig::Properties::ToNetworkConfig(&ipconfig()->properties(), nullptr);
   ipconfig()->ApplyNetworkConfig(static_network_config_, false);
   if (static_network_config_.ipv4_address.has_value() && dhcp_controller_) {
     // If we are using a statically configured IP address instead of a leased IP
@@ -363,13 +364,22 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
 
   LOG(INFO) << *this << ": static IPv4 config update " << config;
 
-  // Clear the previously applied static IP parameters. The new config will be
-  // applied in ConfigureStaticIPTask().
-  if (saved_network_config_) {
-    ipconfig()->ApplyNetworkConfig(*saved_network_config_,
+  // Clear the previously applied static IP parameters and revert to the one
+  // from DHCP or data link layer. The new static config will be applied in
+  // OnIPv4ConfigUpdated().
+  // TODO(b/269401899): Implement the merge logic in RecalculateNetworkConfig()
+  // instead.
+  const NetworkConfig* underlying_config = nullptr;
+  if (dhcp_network_config_) {
+    underlying_config = dhcp_network_config_.get();
+  }
+  if (link_local_protocol_network_config_) {
+    underlying_config = link_local_protocol_network_config_.get();
+  }
+  if (underlying_config) {
+    ipconfig()->ApplyNetworkConfig(*underlying_config,
                                    /*force_overwrite=*/true);
   }
-  saved_network_config_ = std::nullopt;
 
   // TODO(b/232177767): Apply the static IP parameters no matter if there is a
   // valid IPv4 in it.
@@ -400,6 +410,16 @@ IPConfig* Network::GetCurrentIPConfig() const {
   return nullptr;
 }
 
+std::optional<NetworkConfig> Network::GetSavedIPConfig() const {
+  if (dhcp_network_config_) {
+    return *dhcp_network_config_;
+  }
+  if (link_local_protocol_network_config_) {
+    return *link_local_protocol_network_config_;
+  }
+  return std::nullopt;
+}
+
 void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
                                         const DHCPv4Config::Data& dhcp_data,
                                         bool new_lease_acquired) {
@@ -413,6 +433,7 @@ void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
       ev->OnGetDHCPLease(interface_index_);
     }
   }
+  dhcp_network_config_ = std::make_unique<NetworkConfig>(network_config);
   ipconfig()->UpdateFromDHCP(network_config, dhcp_data);
   OnIPv4ConfigUpdated();
   // TODO(b/232177767): OnIPv4ConfiguredWithDHCPLease() should be called inside
@@ -476,6 +497,7 @@ void Network::OnDHCPDrop(bool is_voluntary) {
     return;
   }
 
+  dhcp_network_config_.reset();
   ipconfig()->ResetProperties();
   for (auto* ev : event_handlers_) {
     ev->OnIPConfigsPropertyUpdated(interface_index_);

@@ -1206,7 +1206,7 @@ KeyValueStore Service::GetSavedIPConfig(Error* /*error*/) {
     return {};
   }
   return StaticIPParameters::NetworkConfigToKeyValues(
-      attached_network_->saved_network_config().value_or(NetworkConfig{}));
+      attached_network_->GetSavedIPConfig().value_or(NetworkConfig{}));
 }
 
 VirtualDeviceRefPtr Service::GetVirtualDevice() const {
