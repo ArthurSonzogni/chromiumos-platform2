@@ -166,11 +166,6 @@ void EnterHealthdMinijail() {
   minijail_use_seccomp_filter(jail.get());
   minijail_parse_seccomp_filters(jail.get(), kSeccompFilterPath);
 
-  // TODO(b/182964589): Remove CAP_IPC_LOCK when we move stressapptest to
-  // executor.
-  minijail_use_caps(jail.get(), CAP_TO_MASK(CAP_IPC_LOCK));
-  minijail_set_ambient_caps(jail.get());
-
   minijail_enter(jail.get());
 }
 
