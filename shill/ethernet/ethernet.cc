@@ -15,10 +15,13 @@
 
 #include <memory>
 #include <set>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/fixed_flat_map.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -70,13 +73,6 @@ constexpr char kVpdEthernetMacFilePath[] = "/sys/firmware/vpd/ro/ethernet_mac0";
 // Path to file with |dock_mac| VPD field value.
 constexpr char kVpdDockMacFilePath[] = "/sys/firmware/vpd/ro/dock_mac";
 
-// Name of the /drivers/net/veth.c driver. This driver is only used in tast and
-// should be ignored when reporting driver names in NotifyEthernetDriverName().
-constexpr char kVethDriverName[] = "veth";
-// Name of the /drivers/net/virtio_net.c driver. This driver is only used on the
-// host when ChromeOS itself runs on a VM and should be ignored when reporting
-// driver names in NotifyEthernetDriverName().
-constexpr char kVirtioNetDriverName[] = "virtio_net";
 // Constant used to notify metrics of failed attempt to get ethernet driver name
 // from ETHTOOL.
 constexpr char kEthernetDriverNameError[] = "error";
@@ -1006,82 +1002,67 @@ void Ethernet::NotifyEthernetDriverName() {
     driver = dvrname;
   }
 
-  // Ignore virtual ethernet interfaces used in tast to simulate a physical
-  // ethernet network interface and virtio_net interfaces when ChromeOS runs
-  // inside a VM.
-  if (driver == kVethDriverName || driver == kVirtioNetDriverName) {
+  // Ignore virtual interface drivers used in testing for reporting driver
+  // names.
+  static constexpr auto ignoredDrivers =
+      base::MakeFixedFlatSet<std::string_view>({
+          // Name of the /drivers/net/veth.c driver. For interfaces managed by
+          // shill, this driver is only used in tast to simulate
+          // physical networks.
+          "veth",
+          // Name of the /drivers/net/virtio_net.c driver. This driver is only
+          // used on the
+          // host when ChromeOS itself runs on a VM.
+          "virtio_net",
+      });
+  if (ignoredDrivers.find(driver) != ignoredDrivers.end()) {
     return;
   }
 
-  Metrics::EthernetDriver driver_enum;
-  if (driver == "alx") {
-    driver_enum = Metrics::kEthernetDriverAlx;
-  } else if (driver == "aqc111") {
-    driver_enum = Metrics::kEthernetDriverAqc111;
-  } else if (driver == "asix") {
-    driver_enum = Metrics::kEthernetDriverAsix;
-  } else if (driver == "atl1c") {
-    driver_enum = Metrics::kEthernetDriverAtl1c;
-  } else if (driver == "atlantic") {
-    driver_enum = Metrics::kEthernetDriverAtlantic;
-  } else if (driver == "ax88179_178a") {
-    driver_enum = Metrics::kEthernetDriverAx88179_178a;
-  } else if (driver == "cdc_eem") {
-    driver_enum = Metrics::kEthernetDriverCdcEem;
-  } else if (driver == "cdc_ether") {
-    driver_enum = Metrics::kEthernetDriverCdcEther;
-  } else if (driver == "cdc_mbim") {
-    driver_enum = Metrics::kEthernetDriverCdcMbim;
-  } else if (driver == "cdc_ncm") {
-    driver_enum = Metrics::kEthernetDriverCdcNcm;
-  } else if (driver == "dm9601") {
-    driver_enum = Metrics::kEthernetDriverDm9601;
-  } else if (driver == "e100") {
-    driver_enum = Metrics::kEthernetDriverE100;
-  } else if (driver == "e1000") {
-    driver_enum = Metrics::kEthernetDriverE1000;
-  } else if (driver == "e1000e") {
-    driver_enum = Metrics::kEthernetDriverE1000e;
-  } else if (driver == "igb") {
-    driver_enum = Metrics::kEthernetDriverIgb;
-  } else if (driver == "igbvf") {
-    driver_enum = Metrics::kEthernetDriverIgbvf;
-  } else if (driver == "igc") {
-    driver_enum = Metrics::kEthernetDriverIgc;
-  } else if (driver == "ipheth") {
-    driver_enum = Metrics::kEthernetDriverIpheth;
-  } else if (driver == "jme") {
-    driver_enum = Metrics::kEthernetDriverJme;
-  } else if (driver == "mcs7830") {
-    driver_enum = Metrics::kEthernetDriverMcs7830;
-  } else if (driver == "MOSCHIP usb-ethernet driver") {
-    driver_enum = Metrics::kEthernetDriverMosChip;
-  } else if (driver == "pegasus") {
-    driver_enum = Metrics::kEthernetDriverPegasus;
-  } else if (driver == "r8152") {
-    driver_enum = Metrics::kEthernetDriverR8152;
-  } else if (driver == "r8169") {
-    driver_enum = Metrics::kEthernetDriverR8169;
-  } else if (driver == "rndis_host") {
-    driver_enum = Metrics::kEthernetDriverRndisHost;
-  } else if (driver == "rtl8150") {
-    driver_enum = Metrics::kEthernetDriverRtl8150;
-  } else if (driver == "sky2") {
-    driver_enum = Metrics::kEthernetDriverSky2;
-  } else if (driver == "smsc75xx") {
-    driver_enum = Metrics::kEthernetDriverSmsc75xx;
-  } else if (driver == "smsc95xx") {
-    driver_enum = Metrics::kEthernetDriverSmsc95xx;
-  } else if (driver == "tg3") {
-    driver_enum = Metrics::kEthernetDriverTg3;
-  } else if (driver == "error") {
-    driver_enum = Metrics::kEthernetDriverError;
-  } else {
+  static constexpr auto driverName2enum =
+      base::MakeFixedFlatMap<std::string_view, Metrics::EthernetDriver>({
+          {"alx", Metrics::kEthernetDriverAlx},
+          {"aqc111", Metrics::kEthernetDriverAqc111},
+          {"asix", Metrics::kEthernetDriverAsix},
+          {"atl1c", Metrics::kEthernetDriverAtl1c},
+          {"atlantic", Metrics::kEthernetDriverAtlantic},
+          {"ax88179_178a", Metrics::kEthernetDriverAx88179_178a},
+          {"cdc_eem", Metrics::kEthernetDriverCdcEem},
+          {"cdc_ether", Metrics::kEthernetDriverCdcEther},
+          {"cdc_mbim", Metrics::kEthernetDriverCdcMbim},
+          {"cdc_ncm", Metrics::kEthernetDriverCdcNcm},
+          {"dm9601", Metrics::kEthernetDriverDm9601},
+          {"e100", Metrics::kEthernetDriverE100},
+          {"e1000", Metrics::kEthernetDriverE1000},
+          {"e1000e", Metrics::kEthernetDriverE1000e},
+          {"igb", Metrics::kEthernetDriverIgb},
+          {"igbvf", Metrics::kEthernetDriverIgbvf},
+          {"igc", Metrics::kEthernetDriverIgc},
+          {"ipheth", Metrics::kEthernetDriverIpheth},
+          {"jme", Metrics::kEthernetDriverJme},
+          {"mcs7830", Metrics::kEthernetDriverMcs7830},
+          {"MOSCHIP usb-ethernet driver", Metrics::kEthernetDriverMosChip},
+          {"pegasus", Metrics::kEthernetDriverPegasus},
+          {"r8152", Metrics::kEthernetDriverR8152},
+          {"r8169", Metrics::kEthernetDriverR8169},
+          {"rndis_host", Metrics::kEthernetDriverRndisHost},
+          {"rtl8150", Metrics::kEthernetDriverRtl8150},
+          {"sky2", Metrics::kEthernetDriverSky2},
+          {"smsc75xx", Metrics::kEthernetDriverSmsc75xx},
+          {"smsc95xx", Metrics::kEthernetDriverSmsc95xx},
+          {"tg3", Metrics::kEthernetDriverTg3},
+          {"error", Metrics::kEthernetDriverError},
+      });
+
+  const auto it = driverName2enum.find(driver);
+  if (it == driverName2enum.end()) {
+    metrics()->SendEnumToUMA(Metrics::kMetricEthernetDriver,
+                             Metrics::kEthernetDriverUnknown);
     LOG(WARNING) << LoggingTag() << ": Unknown ethernet driver name " << '"'
                  << driver << '"';
-    driver_enum = Metrics::kEthernetDriverUnknown;
+    return;
   }
-  metrics()->SendEnumToUMA(Metrics::kMetricEthernetDriver, driver_enum);
+  metrics()->SendEnumToUMA(Metrics::kMetricEthernetDriver, it->second);
 }
 
 }  // namespace shill
