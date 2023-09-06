@@ -22,6 +22,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <net-base/ipv6_address.h>
 
@@ -92,7 +93,7 @@ bool CreateConfigFile(const std::string& ifname,
 
   if (chmod(conf_file_path.value().c_str(), S_IRUSR | S_IRGRP | S_IWUSR)) {
     PLOG(ERROR) << "Failed to set permissions on " << conf_file_path;
-    base::DeletePathRecursively(conf_file_path);
+    brillo::DeletePathRecursively(conf_file_path);
     return false;
   }
 
@@ -100,7 +101,7 @@ bool CreateConfigFile(const std::string& ifname,
       0) {
     PLOG(ERROR) << "Failed to change owner group of configuration file "
                 << conf_file_path;
-    base::DeletePathRecursively(conf_file_path);
+    brillo::DeletePathRecursively(conf_file_path);
     return false;
   }
   return true;
@@ -676,13 +677,13 @@ bool GuestIPv6Service::StopRAServer(const std::string& ifname) {
   brillo::ProcessImpl process;
   process.Reset(pid);
   if (process.Kill(SIGTERM, kTimeoutForSIGTERM.InSeconds())) {
-    base::DeleteFile(pid_file_path);
+    brillo::DeleteFile(pid_file_path);
     return true;
   }
   LOG(WARNING) << "Not able to gracefully stop radvd[" << pid
                << "] for interface " << ifname << ", trying to force stop";
   if (process.Kill(SIGKILL, kTimeoutForSIGKILL.InSeconds())) {
-    base::DeleteFile(pid_file_path);
+    brillo::DeleteFile(pid_file_path);
     return true;
   }
   LOG(ERROR) << "Cannot stop radvd[" << pid << "] for interface " << ifname;
