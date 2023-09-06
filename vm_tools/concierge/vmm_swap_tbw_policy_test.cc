@@ -69,16 +69,16 @@ class VmmSwapTbwPolicyTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOut) {
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   EXPECT_TRUE(policy.CanSwapOut());
 }
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutWithin1dayTarget) {
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   policy.Record(399);
@@ -87,8 +87,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutWithin1dayTarget) {
 }
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTarget) {
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   policy.Record(400);
@@ -97,8 +97,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTarget) {
 }
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTargetWithMultiRecords) {
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   // Buffer size is 28 but they are merged within 1 day.
@@ -111,8 +111,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds1dayTargetWithMultiRecords) {
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds1dayTarget) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   policy.Record(400, now - base::Days(1));
@@ -122,8 +122,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds1dayTarget) {
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds7dayTarget) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   for (int i = 0; i < 7; i++) {
@@ -135,8 +135,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds7dayTarget) {
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds7dayTarget) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   for (int i = 0; i < 6; i++) {
@@ -149,8 +149,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds7dayTarget) {
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds7dayTarget) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   for (int i = 0; i < 7; i++) {
@@ -162,8 +162,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds7dayTarget) {
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds28dayTarget) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   for (int i = 0; i < 28; i++) {
@@ -175,8 +175,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutExceeds28dayTarget) {
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds28dayTarget) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   for (int i = 0; i < 27; i++) {
@@ -189,8 +189,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutNotExceeds28dayTarget) {
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds28dayTarget) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   for (int i = 0; i < 28; i++) {
@@ -202,8 +202,8 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutAfterExceeds28dayTarget) {
 
 TEST_F(VmmSwapTbwPolicyTest, CanSwapOutIgnoreRotatedObsoleteData) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   for (int i = 0; i < 28; i++) {
@@ -216,11 +216,11 @@ TEST_F(VmmSwapTbwPolicyTest, CanSwapOutIgnoreRotatedObsoleteData) {
 
 TEST_F(VmmSwapTbwPolicyTest, Init) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
-  EXPECT_TRUE(policy.Init(history_file_path_, now));
+  EXPECT_TRUE(policy.Init(now));
 
   // Creates history file
   EXPECT_TRUE(base::PathExists(history_file_path_));
@@ -228,21 +228,21 @@ TEST_F(VmmSwapTbwPolicyTest, Init) {
 
 TEST_F(VmmSwapTbwPolicyTest, InitTwice) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
-  EXPECT_TRUE(policy.Init(history_file_path_, now));
-  EXPECT_FALSE(policy.Init(history_file_path_, now));
+  EXPECT_TRUE(policy.Init(now));
+  EXPECT_FALSE(policy.Init(now));
 }
 
 TEST_F(VmmSwapTbwPolicyTest, InitIfFileNotExist) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
-  EXPECT_TRUE(policy.Init(history_file_path_, now));
+  EXPECT_TRUE(policy.Init(now));
 
   // By default it is not allowed to swap out for 1 day.
   EXPECT_FALSE(policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
@@ -251,15 +251,15 @@ TEST_F(VmmSwapTbwPolicyTest, InitIfFileNotExist) {
 
 TEST_F(VmmSwapTbwPolicyTest, InitIfFileExists) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   // Create file
   base::File history_file = base::File(
       history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
-  EXPECT_TRUE(policy.Init(history_file_path_, now));
+  EXPECT_TRUE(policy.Init(now));
 
   // The history is empty.
   EXPECT_TRUE(policy.CanSwapOut(now));
@@ -267,15 +267,15 @@ TEST_F(VmmSwapTbwPolicyTest, InitIfFileExists) {
 
 TEST_F(VmmSwapTbwPolicyTest, InitIfFileIsBroken) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(100);
 
   base::File history_file = base::File(
       history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
   ASSERT_TRUE(history_file.Write(0, "invalid_data", 12));
-  EXPECT_FALSE(policy.Init(history_file_path_, now));
+  EXPECT_FALSE(policy.Init(now));
 
   // The pessimistic history does not allow to swap out for 1 day.
   EXPECT_FALSE(policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
@@ -284,15 +284,16 @@ TEST_F(VmmSwapTbwPolicyTest, InitIfFileIsBroken) {
 
 TEST_F(VmmSwapTbwPolicyTest, InititialHistoryFile) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy before_policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
-  VmmSwapTbwPolicy after_policy = VmmSwapTbwPolicy(
-      GetMetricsRef(), std::make_unique<base::MockRepeatingTimer>());
+  VmmSwapTbwPolicy before_policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
+  VmmSwapTbwPolicy after_policy =
+      VmmSwapTbwPolicy(GetMetricsRef(), history_file_path_,
+                       std::make_unique<base::MockRepeatingTimer>());
   before_policy.SetTargetTbwPerDay(100);
   after_policy.SetTargetTbwPerDay(100);
 
-  EXPECT_TRUE(before_policy.Init(history_file_path_, now));
-  EXPECT_TRUE(after_policy.Init(history_file_path_, now));
+  EXPECT_TRUE(before_policy.Init(now));
+  EXPECT_TRUE(after_policy.Init(now));
 
   // The initialized history from policy1 is written into the history file.
   EXPECT_FALSE(after_policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
@@ -301,22 +302,23 @@ TEST_F(VmmSwapTbwPolicyTest, InititialHistoryFile) {
 
 TEST_F(VmmSwapTbwPolicyTest, RecordWriteEntriesToFile) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy before_policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
-  VmmSwapTbwPolicy after_policy = VmmSwapTbwPolicy(
-      GetMetricsRef(), std::make_unique<base::MockRepeatingTimer>());
+  VmmSwapTbwPolicy before_policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
+  VmmSwapTbwPolicy after_policy =
+      VmmSwapTbwPolicy(GetMetricsRef(), history_file_path_,
+                       std::make_unique<base::MockRepeatingTimer>());
   before_policy.SetTargetTbwPerDay(100);
   after_policy.SetTargetTbwPerDay(100);
   // Create empty file
   base::File history_file = base::File(
       history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-  EXPECT_TRUE(before_policy.Init(history_file_path_, now));
+  EXPECT_TRUE(before_policy.Init(now));
 
   for (int i = 0; i < 7; i++) {
     before_policy.Record(200, now + base::Days(i));
   }
   now = now + base::Days(6);
-  EXPECT_TRUE(after_policy.Init(history_file_path_, now));
+  EXPECT_TRUE(after_policy.Init(now));
 
   EXPECT_FALSE(after_policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
   EXPECT_TRUE(after_policy.CanSwapOut(now + base::Days(1)));
@@ -324,17 +326,18 @@ TEST_F(VmmSwapTbwPolicyTest, RecordWriteEntriesToFile) {
 
 TEST_F(VmmSwapTbwPolicyTest, RecordRotateHistoryFile) {
   base::Time now = base::Time::Now();
-  VmmSwapTbwPolicy before_policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
-  VmmSwapTbwPolicy after_policy = VmmSwapTbwPolicy(
-      GetMetricsRef(), std::make_unique<base::MockRepeatingTimer>());
+  VmmSwapTbwPolicy before_policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
+  VmmSwapTbwPolicy after_policy =
+      VmmSwapTbwPolicy(GetMetricsRef(), history_file_path_,
+                       std::make_unique<base::MockRepeatingTimer>());
   int target = 60 * 24;
   before_policy.SetTargetTbwPerDay(target);
   after_policy.SetTargetTbwPerDay(target);
   // Create empty file
   base::File history_file = base::File(
       history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-  EXPECT_TRUE(before_policy.Init(history_file_path_, now));
+  EXPECT_TRUE(before_policy.Init(now));
 
   int64_t before_file_size = -1;
   int64_t count = 0;
@@ -353,7 +356,7 @@ TEST_F(VmmSwapTbwPolicyTest, RecordRotateHistoryFile) {
   after_policy.SetTargetTbwPerDay(count);
   EXPECT_FALSE(before_policy.CanSwapOut(now));
   EXPECT_TRUE(before_policy.CanSwapOut(now + base::Days(1)));
-  EXPECT_TRUE(after_policy.Init(history_file_path_, now));
+  EXPECT_TRUE(after_policy.Init(now));
   EXPECT_FALSE(after_policy.CanSwapOut(now));
   EXPECT_TRUE(after_policy.CanSwapOut(now + base::Days(1)));
 
@@ -374,14 +377,15 @@ TEST_F(VmmSwapTbwPolicyTest, InitMigratesOldFormatIntoNewFormat) {
   }
   now += base::Days(6);
 
-  VmmSwapTbwPolicy before_policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
-  VmmSwapTbwPolicy after_policy = VmmSwapTbwPolicy(
-      GetMetricsRef(), std::make_unique<base::MockRepeatingTimer>());
+  VmmSwapTbwPolicy before_policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
+  VmmSwapTbwPolicy after_policy =
+      VmmSwapTbwPolicy(GetMetricsRef(), history_file_path_,
+                       std::make_unique<base::MockRepeatingTimer>());
   before_policy.SetTargetTbwPerDay(100);
   after_policy.SetTargetTbwPerDay(100);
 
-  EXPECT_TRUE(before_policy.Init(history_file_path_, now));
+  EXPECT_TRUE(before_policy.Init(now));
   // The old file is removed
   EXPECT_FALSE(base::PathExists(old_file_path));
   EXPECT_FALSE(
@@ -395,28 +399,28 @@ TEST_F(VmmSwapTbwPolicyTest, InitMigratesOldFormatIntoNewFormat) {
       before_policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
   EXPECT_TRUE(before_policy.CanSwapOut(now + base::Days(1)));
 
-  EXPECT_TRUE(after_policy.Init(history_file_path_, now));
+  EXPECT_TRUE(after_policy.Init(now));
   EXPECT_FALSE(after_policy.CanSwapOut(now + base::Days(1) - base::Seconds(1)));
   EXPECT_TRUE(after_policy.CanSwapOut(now + base::Days(1)));
 }
 
 TEST_F(VmmSwapTbwPolicyTest, InitNotTriggerReportTimer) {
   base::MockRepeatingTimer* report_timer = report_timer_.get();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(MiB(500));
 
-  ASSERT_TRUE(policy.Init(history_file_path_));
+  ASSERT_TRUE(policy.Init());
 
   EXPECT_FALSE(report_timer->IsRunning());
 }
 
 TEST_F(VmmSwapTbwPolicyTest, RecordTriggersReportTimer) {
   base::MockRepeatingTimer* report_timer = report_timer_.get();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(MiB(500));
-  ASSERT_TRUE(policy.Init(history_file_path_));
+  ASSERT_TRUE(policy.Init());
   ASSERT_FALSE(report_timer->IsRunning());
 
   policy.Record(0);
@@ -427,10 +431,10 @@ TEST_F(VmmSwapTbwPolicyTest, RecordTriggersReportTimer) {
 
 TEST_F(VmmSwapTbwPolicyTest, ReportTBWOfAWeek) {
   base::MockRepeatingTimer* report_timer = report_timer_.get();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(MiB(500));
-  ASSERT_TRUE(policy.Init(history_file_path_));
+  ASSERT_TRUE(policy.Init());
   ASSERT_FALSE(report_timer->IsRunning());
 
   task_environment_.FastForwardBy(base::Days(1));
@@ -456,10 +460,10 @@ TEST_F(VmmSwapTbwPolicyTest, ReportTBWOfAWeek) {
 
 TEST_F(VmmSwapTbwPolicyTest, ReportTBWOfAWeekDelayedReport) {
   base::MockRepeatingTimer* report_timer = report_timer_.get();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(MiB(500));
-  ASSERT_TRUE(policy.Init(history_file_path_));
+  ASSERT_TRUE(policy.Init());
   ASSERT_FALSE(report_timer->IsRunning());
 
   task_environment_.FastForwardBy(base::Days(1));
@@ -488,10 +492,10 @@ TEST_F(VmmSwapTbwPolicyTest, ReportTBWOfAWeekDelayedReport) {
 
 TEST_F(VmmSwapTbwPolicyTest, ReportTBWOfAWeekDelayedReportForMultipleWeeks) {
   base::MockRepeatingTimer* report_timer = report_timer_.get();
-  VmmSwapTbwPolicy policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   policy.SetTargetTbwPerDay(MiB(500));
-  ASSERT_TRUE(policy.Init(history_file_path_));
+  ASSERT_TRUE(policy.Init());
   ASSERT_FALSE(report_timer->IsRunning());
 
   for (int i = 0; i < 100; i++) {
@@ -515,14 +519,15 @@ TEST_F(VmmSwapTbwPolicyTest, ReportTBWOfAWeekDelayedReportForMultipleWeeks) {
 
 TEST_F(VmmSwapTbwPolicyTest, InitTriggerReportTimerIfPreviouslyReported) {
   base::MockRepeatingTimer* report_timer = report_timer_.get();
-  VmmSwapTbwPolicy before_policy = VmmSwapTbwPolicy(
-      GetMetricsRef(), std::make_unique<base::MockRepeatingTimer>());
-  VmmSwapTbwPolicy after_policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy before_policy =
+      VmmSwapTbwPolicy(GetMetricsRef(), history_file_path_,
+                       std::make_unique<base::MockRepeatingTimer>());
+  VmmSwapTbwPolicy after_policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   before_policy.SetTargetTbwPerDay(MiB(500));
   after_policy.SetTargetTbwPerDay(MiB(500));
 
-  ASSERT_TRUE(before_policy.Init(history_file_path_));
+  ASSERT_TRUE(before_policy.Init());
   task_environment_.FastForwardBy(base::Days(1));
   before_policy.Record(MiB(100));
   task_environment_.FastForwardBy(base::Days(3));
@@ -530,7 +535,7 @@ TEST_F(VmmSwapTbwPolicyTest, InitTriggerReportTimerIfPreviouslyReported) {
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsTotalBytesWrittenInAWeek, _, _, _, _))
       .Times(0);
-  ASSERT_TRUE(after_policy.Init(history_file_path_));
+  ASSERT_TRUE(after_policy.Init());
   EXPECT_TRUE(report_timer->IsRunning());
   EXPECT_EQ(report_timer->GetCurrentDelay(), base::Days(4));
 
@@ -549,14 +554,15 @@ TEST_F(VmmSwapTbwPolicyTest, InitTriggerReportTimerIfPreviouslyReported) {
 TEST_F(VmmSwapTbwPolicyTest,
        InitTriggerReportTimerIfPreviouslyReportedMoreThanAWeekAgo) {
   base::MockRepeatingTimer* report_timer = report_timer_.get();
-  VmmSwapTbwPolicy before_policy = VmmSwapTbwPolicy(
-      GetMetricsRef(), std::make_unique<base::MockRepeatingTimer>());
-  VmmSwapTbwPolicy after_policy =
-      VmmSwapTbwPolicy(GetMetricsRef(), std::move(report_timer_));
+  VmmSwapTbwPolicy before_policy =
+      VmmSwapTbwPolicy(GetMetricsRef(), history_file_path_,
+                       std::make_unique<base::MockRepeatingTimer>());
+  VmmSwapTbwPolicy after_policy = VmmSwapTbwPolicy(
+      GetMetricsRef(), history_file_path_, std::move(report_timer_));
   before_policy.SetTargetTbwPerDay(MiB(500));
   after_policy.SetTargetTbwPerDay(MiB(500));
 
-  ASSERT_TRUE(before_policy.Init(history_file_path_));
+  ASSERT_TRUE(before_policy.Init());
   task_environment_.FastForwardBy(base::Days(1));
   before_policy.Record(MiB(100));
   task_environment_.FastForwardBy(base::Days(15));
@@ -567,7 +573,7 @@ TEST_F(VmmSwapTbwPolicyTest,
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsTotalBytesWrittenInAWeek, 0, _, _, _))
       .Times(1);
-  ASSERT_TRUE(after_policy.Init(history_file_path_));
+  ASSERT_TRUE(after_policy.Init());
   EXPECT_TRUE(report_timer->IsRunning());
   EXPECT_EQ(report_timer->GetCurrentDelay(), base::Days(7));
 }

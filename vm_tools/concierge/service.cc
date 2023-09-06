@@ -1405,7 +1405,8 @@ bool Service::Init() {
           metrics_thread_.task_runner()));
 
   vmm_swap_tbw_policy_ = std::make_unique<VmmSwapTbwPolicy>(
-      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()));
+      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
+      base::FilePath(kVmmSwapTbwHistoryFilePath));
 
   if (!dbus_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::IO, 0))) {
@@ -1601,7 +1602,7 @@ bool Service::Init() {
   base::FilePath tbw_history_file_path(kVmmSwapTbwHistoryFilePath);
   // VmmSwapTbwPolicy repopulate pessimistic history if it fails to init. This
   // is safe to continue using regardless of the result.
-  vmm_swap_tbw_policy_->Init(tbw_history_file_path);
+  vmm_swap_tbw_policy_->Init();
 
   return true;
 }

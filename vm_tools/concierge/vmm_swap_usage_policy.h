@@ -18,6 +18,7 @@
 
 #include "vm_concierge/vmm_swap_policy.pb.h"
 #include "vm_tools/concierge/byte_unit.h"
+#include "vm_tools/concierge/vmm_swap_history_file_manager.h"
 
 namespace vm_tools::concierge {
 
@@ -37,12 +38,12 @@ namespace vm_tools::concierge {
 // calculated values.
 class VmmSwapUsagePolicy final {
  public:
-  VmmSwapUsagePolicy() = default;
+  explicit VmmSwapUsagePolicy(base::FilePath history_file_path);
   VmmSwapUsagePolicy(const VmmSwapUsagePolicy&) = delete;
   VmmSwapUsagePolicy& operator=(const VmmSwapUsagePolicy&) = delete;
   ~VmmSwapUsagePolicy() = default;
 
-  bool Init(base::FilePath path, base::Time time = base::Time::Now());
+  bool Init(base::Time time = base::Time::Now());
   void OnEnabled(base::Time time = base::Time::Now());
   void OnDisabled(base::Time time = base::Time::Now());
   void OnDestroy(base::Time time = base::Time::Now());
@@ -77,7 +78,7 @@ class VmmSwapUsagePolicy final {
   base::RingBuffer<SwapPeriod, kUsageHistoryLength> usage_history_
       GUARDED_BY_CONTEXT(sequence_checker_);
   bool is_enabled_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
-  base::FilePath history_file_path_ GUARDED_BY_CONTEXT(sequence_checker_);
+  const VmmSwapHistoryFileManager history_file_path_;
   std::optional<base::File> history_file_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   void AddEnableRecordIfMissing(base::Time time);

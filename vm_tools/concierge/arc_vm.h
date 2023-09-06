@@ -76,13 +76,12 @@ class ArcVm final : public VmBaseImpl {
     uint32_t vsock_cid;
     std::unique_ptr<patchpanel::Client> network_client;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
+    bool is_vmm_swap_enabled;
     // The metrics sender for vmm-swap feature.
     std::unique_ptr<VmmSwapMetrics> vmm_swap_metrics;
     std::unique_ptr<VmmSwapLowDiskPolicy> vmm_swap_low_disk_policy;
     const raw_ref<VmmSwapTbwPolicy> vmm_swap_tbw_policy;
-    // The path to the history file of `VmmSwapUsagePolicy`. If vmm-swap is not
-    // enabled this should be `nullopt`, otherwise the file is created.
-    std::optional<base::FilePath> vmm_swap_usage_path;
+    base::FilePath vmm_swap_usage_path;
     // The callback for notify other dbus service when vm is swapping.
     base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback;
     // `guest_memory_size` is the size of the guest memory in bytes which is

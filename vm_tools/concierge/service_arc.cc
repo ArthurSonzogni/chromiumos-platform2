@@ -591,11 +591,11 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       std::make_unique<VmmSwapLowDiskPolicy>(
           swap_dir,
           raw_ref<spaced::DiskUsageProxy>::from_ptr(disk_usage_proxy_.get()));
+  base::FilePath vmm_swap_usage_path =
+      GetVmmSwapUsageHistoryPath(request.owner_id());
 
-  std::optional<base::FilePath> vmm_swap_usage_path;
   if (request.enable_vmm_swap()) {
     vm_builder.SetVmmSwapDir(swap_dir);
-    vmm_swap_usage_path = GetVmmSwapUsageHistoryPath(request.owner_id());
   }
 
   base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback =
@@ -607,13 +607,14 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .vsock_cid = vsock_cid,
       .network_client = std::move(network_client),
       .seneschal_server_proxy = std::move(server_proxy),
+      .is_vmm_swap_enabled = request.enable_vmm_swap(),
       .vmm_swap_metrics = std::make_unique<VmmSwapMetrics>(
           apps::VmType::ARCVM,
           raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get())),
       .vmm_swap_low_disk_policy = std::move(vmm_swap_low_disk_policy),
       .vmm_swap_tbw_policy =
           raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
-      .vmm_swap_usage_path = std::move(vmm_swap_usage_path),
+      .vmm_swap_usage_path = vmm_swap_usage_path,
       .vm_swapping_notify_callback = std::move(vm_swapping_notify_callback),
       .guest_memory_size = MiB(memory_mib),
       .runtime_dir = std::move(runtime_dir),

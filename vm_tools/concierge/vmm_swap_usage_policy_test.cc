@@ -15,14 +15,28 @@
 #include "vm_tools/concierge/byte_unit.h"
 
 namespace vm_tools::concierge {
-TEST(VmmSwapUsagePolicyTest, PredictDuration) {
-  VmmSwapUsagePolicy policy;
+
+namespace {
+class VmmSwapUsagePolicyTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    history_file_path_ = temp_dir_.GetPath().Append("usage_history");
+  }
+
+  base::ScopedTempDir temp_dir_;
+  base::FilePath history_file_path_;
+};
+}  // namespace
+
+TEST_F(VmmSwapUsagePolicyTest, PredictDuration) {
+  VmmSwapUsagePolicy policy(history_file_path_);
 
   EXPECT_TRUE(policy.PredictDuration().is_zero());
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationJustLogLongTimeAgo) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationJustLogLongTimeAgo) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(29));
@@ -31,8 +45,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationJustLogLongTimeAgo) {
   EXPECT_TRUE(policy.PredictDuration(now).is_zero());
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationEnabledFullTime) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationEnabledFullTime) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(29));
@@ -40,8 +54,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationEnabledFullTime) {
   EXPECT_EQ(policy.PredictDuration(now), base::Days(28 + 21 + 14 + 7) / 4);
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationWithMissingEnabledRecord) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationWithMissingEnabledRecord) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(29));
@@ -52,8 +66,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationWithMissingEnabledRecord) {
   EXPECT_EQ(policy.PredictDuration(now), base::Days(28 + 21 + 14 + 7) / 4);
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan1WeekDataWhileDisabled) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLessThan1WeekDataWhileDisabled) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(7) + base::Hours(1));
@@ -66,8 +80,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan1WeekDataWhileDisabled) {
   EXPECT_EQ(policy.PredictDuration(now), base::Hours(2));
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan1WeekDataWhileEnabled) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLessThan1WeekDataWhileEnabled) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(6));
@@ -79,8 +93,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan1WeekDataWhileEnabled) {
   EXPECT_EQ(policy.PredictDuration(now), base::Minutes(20));
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationJust1WeekData) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationJust1WeekData) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(7));
@@ -92,9 +106,9 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationJust1WeekData) {
   EXPECT_EQ(policy.PredictDuration(now), base::Hours(10));
 }
 
-TEST(VmmSwapUsagePolicyTest,
-     PredictDurationLessThan1WeekDataWhileMultipleEnabled) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest,
+       PredictDurationLessThan1WeekDataWhileMultipleEnabled) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Minutes(50));
@@ -105,8 +119,8 @@ TEST(VmmSwapUsagePolicyTest,
   EXPECT_EQ(policy.PredictDuration(now), base::Minutes(40));
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan2WeekData) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLessThan2WeekData) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(10));
@@ -119,8 +133,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan2WeekData) {
   EXPECT_EQ(policy.PredictDuration(now), base::Hours(1));
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan3WeekData) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLessThan3WeekData) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(14) - base::Hours(2));
@@ -133,8 +147,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan3WeekData) {
   EXPECT_EQ(policy.PredictDuration(now), base::Hours(5));
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan4WeekData) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLessThan4WeekData) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(21) - base::Hours(2));
@@ -149,8 +163,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLessThan4WeekData) {
   EXPECT_EQ(policy.PredictDuration(now), base::Hours(4));
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationFullData) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationFullData) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(28) - base::Hours(2));
@@ -167,8 +181,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationFullData) {
   EXPECT_EQ(policy.PredictDuration(now), base::Hours(7));
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationFullDataWithEmptyWeeks) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationFullDataWithEmptyWeeks) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(28) - base::Hours(2));
@@ -179,8 +193,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationFullDataWithEmptyWeeks) {
   EXPECT_EQ(policy.PredictDuration(now), base::Hours(4));
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLong2WeeksData4Weeks) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLong2WeeksData4Weeks) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(28) - base::Hours(2));
@@ -193,8 +207,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLong2WeeksData4Weeks) {
   EXPECT_EQ(policy.PredictDuration(now), (base::Days(7) + base::Hours(12)) / 4);
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLong3WeeksData4Weeks) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLong3WeeksData4Weeks) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(28) - base::Hours(2));
@@ -208,8 +222,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLong3WeeksData4Weeks) {
             (base::Days(21) + base::Hours(15)) / 4);
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLong4WeeksData4Weeks) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLong4WeeksData4Weeks) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(28) - base::Hours(2));
@@ -221,8 +235,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLong4WeeksData4Weeks) {
             (base::Days(42) + base::Hours(12)) / 4);
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLongData3Weeks) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLongData3Weeks) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(28) - base::Hours(2));
@@ -237,8 +251,8 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLongData3Weeks) {
   EXPECT_EQ(policy.PredictDuration(now), (base::Days(7) + base::Hours(15)) / 4);
 }
 
-TEST(VmmSwapUsagePolicyTest, PredictDurationLongData2Weeks) {
-  VmmSwapUsagePolicy policy;
+TEST_F(VmmSwapUsagePolicyTest, PredictDurationLongData2Weeks) {
+  VmmSwapUsagePolicy policy(history_file_path_);
   base::Time now = base::Time::Now();
 
   policy.OnEnabled(now - base::Days(28) - base::Hours(2));
@@ -251,41 +265,32 @@ TEST(VmmSwapUsagePolicyTest, PredictDurationLongData2Weeks) {
   EXPECT_EQ(policy.PredictDuration(now), (base::Days(7) + base::Hours(9)) / 4);
 }
 
-TEST(VmmSwapUsagePolicyTest, Init) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, Init) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy policy;
+  VmmSwapUsagePolicy policy(history_file_path_);
 
-  EXPECT_TRUE(policy.Init(history_file_path, now));
+  EXPECT_TRUE(policy.Init(now));
 
   // Creates history file
-  EXPECT_TRUE(base::PathExists(history_file_path));
+  EXPECT_TRUE(base::PathExists(history_file_path_));
   int64_t file_size = -1;
-  ASSERT_TRUE(base::GetFileSize(history_file_path, &file_size));
+  ASSERT_TRUE(base::GetFileSize(history_file_path_, &file_size));
   EXPECT_EQ(file_size, 0);
 }
 
-TEST(VmmSwapUsagePolicyTest, InitTwice) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, InitTwice) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy policy;
+  VmmSwapUsagePolicy policy(history_file_path_);
 
-  EXPECT_TRUE(policy.Init(history_file_path, now));
-  EXPECT_FALSE(policy.Init(history_file_path, now));
+  EXPECT_TRUE(policy.Init(now));
+  EXPECT_FALSE(policy.Init(now));
 }
 
-TEST(VmmSwapUsagePolicyTest, InitIfFileNotExist) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, InitIfFileNotExist) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy policy;
+  VmmSwapUsagePolicy policy(history_file_path_);
 
-  ASSERT_TRUE(policy.Init(history_file_path, now));
+  ASSERT_TRUE(policy.Init(now));
 
   // The history is empty.
   EXPECT_EQ(policy.PredictDuration(now), base::TimeDelta());
@@ -293,18 +298,15 @@ TEST(VmmSwapUsagePolicyTest, InitIfFileNotExist) {
   EXPECT_EQ(policy.PredictDuration(now), base::Days(7));
 }
 
-TEST(VmmSwapUsagePolicyTest, InitIfFileExists) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, InitIfFileExists) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy policy;
+  VmmSwapUsagePolicy policy(history_file_path_);
 
   // Create file
   base::File history_file = base::File(
-      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+      history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
-  EXPECT_TRUE(policy.Init(history_file_path, now));
+  EXPECT_TRUE(policy.Init(now));
 
   // The history is empty.
   EXPECT_EQ(policy.PredictDuration(now), base::TimeDelta());
@@ -312,18 +314,15 @@ TEST(VmmSwapUsagePolicyTest, InitIfFileExists) {
   EXPECT_EQ(policy.PredictDuration(now), base::Days(7));
 }
 
-TEST(VmmSwapUsagePolicyTest, InitIfFileIsBroken) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, InitIfFileIsBroken) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy policy;
+  VmmSwapUsagePolicy policy(history_file_path_);
 
   base::File history_file = base::File(
-      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+      history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
   ASSERT_TRUE(history_file.Write(0, "invalid_data", 12));
-  EXPECT_FALSE(policy.Init(history_file_path, now));
+  EXPECT_FALSE(policy.Init(now));
 
   // The history is empty.
   EXPECT_EQ(policy.PredictDuration(now), base::TimeDelta());
@@ -331,12 +330,9 @@ TEST(VmmSwapUsagePolicyTest, InitIfFileIsBroken) {
   EXPECT_EQ(policy.PredictDuration(now), base::Days(7));
 }
 
-TEST(VmmSwapUsagePolicyTest, InitIfFileIsTooLong) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, InitIfFileIsTooLong) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy policy;
+  VmmSwapUsagePolicy policy(history_file_path_);
 
   UsageHistoryEntryContainer container;
   while (container.ByteSizeLong() <= 5 * KiB(4)) {
@@ -348,26 +344,23 @@ TEST(VmmSwapUsagePolicyTest, InitIfFileIsTooLong) {
     now += base::Hours(1);
   }
   base::File history_file = base::File(
-      history_file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+      history_file_path_, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
   ASSERT_TRUE(history_file.IsValid());
   ASSERT_TRUE(
       container.SerializeToFileDescriptor(history_file.GetPlatformFile()));
 
-  EXPECT_FALSE(policy.Init(history_file_path, now));
+  EXPECT_FALSE(policy.Init(now));
   // The history is empty.
   EXPECT_EQ(policy.PredictDuration(now), base::TimeDelta());
   policy.OnEnabled(now - base::Days(8));
   EXPECT_EQ(policy.PredictDuration(now), base::Days(7));
 }
 
-TEST(VmmSwapUsagePolicyTest, OnDisabledWriteEntriesToFile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, OnDisabledWriteEntriesToFile) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy before_policy;
-  VmmSwapUsagePolicy after_policy;
-  ASSERT_TRUE(before_policy.Init(history_file_path, now));
+  VmmSwapUsagePolicy before_policy(history_file_path_);
+  VmmSwapUsagePolicy after_policy(history_file_path_);
+  ASSERT_TRUE(before_policy.Init(now));
   // 1 day
   before_policy.OnEnabled(now - base::Days(28));
   before_policy.OnDisabled(now - base::Days(27));
@@ -384,19 +377,16 @@ TEST(VmmSwapUsagePolicyTest, OnDisabledWriteEntriesToFile) {
   before_policy.OnDisabled(now - base::Days(1));
   ASSERT_EQ(before_policy.PredictDuration(now), base::Days(3));
 
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(now));
 
   EXPECT_EQ(after_policy.PredictDuration(now), base::Days(3));
 }
 
-TEST(VmmSwapUsagePolicyTest, OnDestroyWriteEntriesToFile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, OnDestroyWriteEntriesToFile) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy before_policy;
-  VmmSwapUsagePolicy after_policy;
-  ASSERT_TRUE(before_policy.Init(history_file_path, now));
+  VmmSwapUsagePolicy before_policy(history_file_path_);
+  VmmSwapUsagePolicy after_policy(history_file_path_);
+  ASSERT_TRUE(before_policy.Init(now));
   // 1 days
   before_policy.OnEnabled(now - base::Days(14));
   before_policy.OnDisabled(now - base::Days(13));
@@ -405,37 +395,31 @@ TEST(VmmSwapUsagePolicyTest, OnDestroyWriteEntriesToFile) {
   before_policy.OnDestroy(now - base::Days(5));
   ASSERT_EQ(before_policy.PredictDuration(now), base::Days(4));
 
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(now));
 
   EXPECT_EQ(after_policy.PredictDuration(now), base::Days(4));
 }
 
-TEST(VmmSwapUsagePolicyTest, OnDestroyWithoutDisable) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, OnDestroyWithoutDisable) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy before_policy;
-  VmmSwapUsagePolicy after_policy;
-  ASSERT_TRUE(before_policy.Init(history_file_path, now));
+  VmmSwapUsagePolicy before_policy(history_file_path_);
+  VmmSwapUsagePolicy after_policy(history_file_path_);
+  ASSERT_TRUE(before_policy.Init(now));
   // 14 days + 7 days
   before_policy.OnEnabled(now - base::Days(14));
   before_policy.OnDestroy(now - base::Days(1));
   ASSERT_EQ(before_policy.PredictDuration(now), base::Days(21) / 2);
 
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(now));
 
   EXPECT_EQ(after_policy.PredictDuration(now), base::Days(21) / 2);
 }
 
-TEST(VmmSwapUsagePolicyTest, OnDestroyLatestEnableAfter1hour) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, OnDestroyLatestEnableAfter1hour) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy before_policy;
-  VmmSwapUsagePolicy after_policy;
-  ASSERT_TRUE(before_policy.Init(history_file_path, now));
+  VmmSwapUsagePolicy before_policy(history_file_path_);
+  VmmSwapUsagePolicy after_policy(history_file_path_);
+  ASSERT_TRUE(before_policy.Init(now));
   // 1 days
   before_policy.OnEnabled(now - base::Days(14));
   before_policy.OnDisabled(now - base::Days(13));
@@ -447,19 +431,16 @@ TEST(VmmSwapUsagePolicyTest, OnDestroyLatestEnableAfter1hour) {
   before_policy.OnDestroy(now - base::Days(1));
   ASSERT_EQ(before_policy.PredictDuration(now), base::Days(4));
 
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(now));
 
   EXPECT_EQ(after_policy.PredictDuration(now), base::Days(4));
 }
 
-TEST(VmmSwapUsagePolicyTest, OnDestroyLatestEnableWithin1hour) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, OnDestroyLatestEnableWithin1hour) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy before_policy;
-  VmmSwapUsagePolicy after_policy;
-  ASSERT_TRUE(before_policy.Init(history_file_path, now));
+  VmmSwapUsagePolicy before_policy(history_file_path_);
+  VmmSwapUsagePolicy after_policy(history_file_path_);
+  ASSERT_TRUE(before_policy.Init(now));
   // 1 days
   before_policy.OnEnabled(now - base::Days(14));
   before_policy.OnDisabled(now - base::Days(13));
@@ -471,19 +452,16 @@ TEST(VmmSwapUsagePolicyTest, OnDestroyLatestEnableWithin1hour) {
   before_policy.OnDestroy(now - base::Days(7) - base::Minutes(5));
   ASSERT_EQ(before_policy.PredictDuration(now), base::Days(4));
 
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(now));
 
   EXPECT_EQ(after_policy.PredictDuration(now), base::Days(4));
 }
 
-TEST(VmmSwapUsagePolicyTest, InitMultipleShutdownRecordAreIgnored) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, InitMultipleShutdownRecordAreIgnored) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy before_policy;
-  VmmSwapUsagePolicy after_policy;
-  ASSERT_TRUE(before_policy.Init(history_file_path, now));
+  VmmSwapUsagePolicy before_policy(history_file_path_);
+  VmmSwapUsagePolicy after_policy(history_file_path_);
+  ASSERT_TRUE(before_policy.Init(now));
   // 3 days
   before_policy.OnEnabled(now - base::Days(14));
   before_policy.OnDestroy(now - base::Days(12));
@@ -494,19 +472,16 @@ TEST(VmmSwapUsagePolicyTest, InitMultipleShutdownRecordAreIgnored) {
   before_policy.OnDisabled(now - base::Days(2));
   ASSERT_EQ(before_policy.PredictDuration(now), base::Days(4));
 
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(now));
 
   EXPECT_EQ(after_policy.PredictDuration(now), base::Days(4));
 }
 
-TEST(VmmSwapUsagePolicyTest, OnDisabledRotateHistoryFile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, OnDisabledRotateHistoryFile) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy before_policy;
-  VmmSwapUsagePolicy after_policy;
-  ASSERT_TRUE(before_policy.Init(history_file_path, now));
+  VmmSwapUsagePolicy before_policy(history_file_path_);
+  VmmSwapUsagePolicy after_policy(history_file_path_);
+  ASSERT_TRUE(before_policy.Init(now));
 
   int64_t before_file_size = -1;
   for (int i = 0;
@@ -515,30 +490,27 @@ TEST(VmmSwapUsagePolicyTest, OnDisabledRotateHistoryFile) {
     now += base::Hours(1);
     before_policy.OnDisabled(now);
     if (i >= 5 * 4096 / 25) {
-      ASSERT_TRUE(base::GetFileSize(history_file_path, &before_file_size));
+      ASSERT_TRUE(base::GetFileSize(history_file_path_, &before_file_size));
     }
   }
   before_policy.OnEnabled(now);
   now += base::Hours(1);
   before_policy.OnDisabled(now);
   int64_t after_file_size = -1;
-  ASSERT_TRUE(base::GetFileSize(history_file_path, &after_file_size));
+  ASSERT_TRUE(base::GetFileSize(history_file_path_, &after_file_size));
   EXPECT_LT(after_file_size, before_file_size);
 
   ASSERT_EQ(before_policy.PredictDuration(now), base::Hours(1));
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(now));
   // The file content is valid after rotation.
   EXPECT_EQ(after_policy.PredictDuration(now), base::Hours(1));
 }
 
-TEST(VmmSwapUsagePolicyTest, OnDestroyRotateHistoryFile) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath history_file_path = temp_dir.GetPath().Append("usage_history");
+TEST_F(VmmSwapUsagePolicyTest, OnDestroyRotateHistoryFile) {
   base::Time now = base::Time::Now();
-  VmmSwapUsagePolicy before_policy;
-  VmmSwapUsagePolicy after_policy;
-  ASSERT_TRUE(before_policy.Init(history_file_path, now));
+  VmmSwapUsagePolicy before_policy(history_file_path_);
+  VmmSwapUsagePolicy after_policy(history_file_path_);
+  ASSERT_TRUE(before_policy.Init(now));
 
   int64_t before_file_size = -1;
   for (int i = 0; before_file_size < 5 * 4096 - 25; i++) {
@@ -546,23 +518,23 @@ TEST(VmmSwapUsagePolicyTest, OnDestroyRotateHistoryFile) {
     now += base::Hours(1);
     before_policy.OnDisabled(now);
     if (i >= 5 * 4096 / 25) {
-      ASSERT_TRUE(base::GetFileSize(history_file_path, &before_file_size));
+      ASSERT_TRUE(base::GetFileSize(history_file_path_, &before_file_size));
     }
   }
   before_policy.OnEnabled(now);
   now += base::Hours(1);
   before_policy.OnDestroy(now);
   int64_t after_file_size = -1;
-  ASSERT_TRUE(base::GetFileSize(history_file_path, &after_file_size));
+  ASSERT_TRUE(base::GetFileSize(history_file_path_, &after_file_size));
   EXPECT_LT(after_file_size, before_file_size);
 
   ASSERT_EQ(before_policy.PredictDuration(now), base::Hours(1));
-  EXPECT_TRUE(after_policy.Init(history_file_path, now));
+  EXPECT_TRUE(after_policy.Init(now));
   // The file content is valid after rotation.
   EXPECT_EQ(after_policy.PredictDuration(now), base::Hours(1));
 }
 
-TEST(VmmSwapUsagePolicyTest, MaxEntrySize) {
+TEST_F(VmmSwapUsagePolicyTest, MaxEntrySize) {
   UsageHistoryEntryContainer container;
   UsageHistoryEntry* new_entry = container.add_entries();
   // -1 gives the max varint length.

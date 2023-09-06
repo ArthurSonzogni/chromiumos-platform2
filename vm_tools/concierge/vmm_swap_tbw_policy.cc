@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <fcntl.h>
 #include <memory>
 #include <optional>
 #include <string>
@@ -16,17 +15,16 @@
 #include <base/containers/ring_buffer.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
-#include <brillo/files/file_util.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "vm_concierge/vmm_swap_policy.pb.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/vmm_swap_history_file.h"
+#include "vm_tools/concierge/vmm_swap_history_file_manager.h"
 
 namespace vm_tools::concierge {
 
@@ -48,8 +46,11 @@ static constexpr int kTotalBytesWrittenNumBuckets = 50;
 
 VmmSwapTbwPolicy::VmmSwapTbwPolicy(
     const raw_ref<MetricsLibraryInterface> metrics,
+    const base::FilePath history_file_path,
     std::unique_ptr<base::RepeatingTimer> report_timer)
-    : metrics_(metrics), report_timer_(std::move(report_timer)) {
+    : metrics_(metrics),
+      history_file_path_(history_file_path),
+      report_timer_(std::move(report_timer)) {
   // Push a sentinel. VmmSwapTbwPolicy::AppendEntry() checks the latest entry by
   // `tbw_history_.MutableReadBuffer()` which fails if current index is 0.
   tbw_history_.SaveToBuffer(
@@ -66,26 +67,22 @@ uint64_t VmmSwapTbwPolicy::GetTargetTbwPerDay() {
   return target_tbw_per_day_;
 }
 
-bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
+bool VmmSwapTbwPolicy::Init(base::Time now) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (history_file_.has_value()) {
     LOG(ERROR) << "Tbw history file is already loaded";
     return false;
   }
-  history_file_path_ = path;
 
   // The old format file was named "tbw_history". If there is the file, load the
   // history from the old file and recreate a new file from the history.
   // TODO(b/289975202): Remove this 2 milestones (M119) after since we care
   // about the last 28 days history.
-  base::FilePath old_file_path =
-      history_file_path_.DirName().Append(kOldHistoryFileName);
-  if (base::PathExists(old_file_path)) {
+  base::File old_file = history_file_path_.OpenFileInDir(kOldHistoryFileName);
+  if (old_file.IsValid() ||
+      old_file.error_details() != base::File::FILE_ERROR_NOT_FOUND) {
     LOG(INFO) << "Old tbw history file is found. Recreate a new history file.";
-    base::File old_file =
-        base::File(open(old_file_path.value().c_str(), O_RDONLY | O_CLOEXEC));
-    // Remove the old file whether it succeeds to load history or not.
-    brillo::DeleteFile(old_file_path);
+    history_file_path_.DeleteFileInDir(kOldHistoryFileName);
     if (old_file.IsValid()) {
       if (LoadFromOldFormattedFile(old_file, now)) {
         // The file was old formatted. Replace the old history file with the new
@@ -94,20 +91,18 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
       }
     } else {
       LOG(ERROR) << "Failed to open old tbw history file: "
-                 << old_file.ErrorToString(base::File::GetLastFileError());
+                 << old_file.ErrorToString(old_file.error_details());
     }
   }
 
-  base::File file =
-      base::File(open(history_file_path_.value().c_str(),
-                      O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0600));
+  base::File file = history_file_path_.Create();
   if (file.IsValid()) {
-    LOG(INFO) << "Tbw history file is created at: " << history_file_path_;
+    LOG(INFO) << "Tbw history file is created at: "
+              << history_file_path_.path();
     history_file_ = std::move(file);
-  } else if (base::File::GetLastFileError() == base::File::FILE_ERROR_EXISTS) {
-    LOG(INFO) << "Load tbw history from: " << history_file_path_;
-    file = base::File(
-        open(history_file_path_.value().c_str(), O_RDWR | O_CLOEXEC));
+  } else if (file.error_details() == base::File::FILE_ERROR_EXISTS) {
+    LOG(INFO) << "Load tbw history from: " << history_file_path_.path();
+    file = history_file_path_.Open();
     if (LoadFromFile(file, now)) {
       history_file_ = std::move(file);
       // Resume reporting only when the previous tbw policy has started
@@ -127,7 +122,7 @@ bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
     }
   } else {
     LOG(ERROR) << "Failed to create tbw history file: "
-               << file.ErrorToString(base::File::GetLastFileError());
+               << file.ErrorToString(file.error_details());
   }
 
   // Add pessimistic entries as if there were max disk writes in last 28days.
@@ -351,11 +346,8 @@ void VmmSwapTbwPolicy::AppendEntry(uint64_t bytes_written, base::Time time) {
 
 bool VmmSwapTbwPolicy::RotateHistoryFile(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  base::FilePath tmp_file_path = history_file_path_.AddExtension("tmp");
 
-  history_file_ =
-      base::File(open(tmp_file_path.value().c_str(),
-                      O_CREAT | O_TRUNC | O_RDWR | O_CLOEXEC, 0600));
+  history_file_ = history_file_path_.CreateRotationFile();
   if (!history_file_->IsValid()) {
     LOG(ERROR) << "Failed to create new tbw history file: "
                << history_file_->ErrorToString(history_file_->error_details());
@@ -389,21 +381,13 @@ bool VmmSwapTbwPolicy::RotateHistoryFile(base::Time time) {
     }
   }
 
-  base::File::Error error;
-  if (success &&
-      !base::ReplaceFile(tmp_file_path, history_file_path_, &error)) {
-    LOG(ERROR) << "Failed to replace history file: "
-               << history_file_->ErrorToString(error);
-    success = false;
-  }
+  success = success && history_file_path_.Rotate();
 
   if (!success) {
     // If Write*Entry() method fails to write an entry, it deletes the original
     // file and closes the temporary file descriptor.
     // Remove the remaining temporary file here.
-    if (!brillo::DeleteFile(tmp_file_path)) {
-      LOG(ERROR) << "Failed to delete tmp history file";
-    }
+    history_file_path_.DeleteRotationFile();
     return false;
   }
 
@@ -414,9 +398,7 @@ bool VmmSwapTbwPolicy::RotateHistoryFile(base::Time time) {
 
 void VmmSwapTbwPolicy::DeleteFile() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!brillo::DeleteFile(history_file_path_)) {
-    LOG(ERROR) << "Failed to delete history file.";
-  }
+  history_file_path_.Delete();
   // Stop writing entries to the file and close the file.
   history_file_ = std::nullopt;
 }

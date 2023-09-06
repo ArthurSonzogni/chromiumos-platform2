@@ -22,6 +22,7 @@
 
 #include "vm_concierge/vmm_swap_policy.pb.h"
 #include "vm_tools/concierge/byte_unit.h"
+#include "vm_tools/concierge/vmm_swap_history_file_manager.h"
 
 namespace vm_tools::concierge {
 
@@ -55,6 +56,7 @@ namespace vm_tools::concierge {
 class VmmSwapTbwPolicy final {
  public:
   explicit VmmSwapTbwPolicy(const raw_ref<MetricsLibraryInterface> metrics,
+                            const base::FilePath history_file_path,
                             std::unique_ptr<base::RepeatingTimer> report_timer =
                                 std::make_unique<base::RepeatingTimer>());
   VmmSwapTbwPolicy(const VmmSwapTbwPolicy&) = delete;
@@ -71,8 +73,7 @@ class VmmSwapTbwPolicy final {
   // This creates the file if it does not exist.
   //
   // The `time` is injectable for testing purpose.
-  bool Init(base::FilePath history_file_path,
-            base::Time time = base::Time::Now());
+  bool Init(base::Time time = base::Time::Now());
 
   // Record a tbw history entry.
   //
@@ -110,7 +111,7 @@ class VmmSwapTbwPolicy final {
   uint64_t target_tbw_per_day_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   base::RingBuffer<BytesWritten, kTbwHistoryLength> tbw_history_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  base::FilePath history_file_path_ GUARDED_BY_CONTEXT(sequence_checker_);
+  const VmmSwapHistoryFileManager history_file_path_;
   std::optional<base::File> history_file_ GUARDED_BY_CONTEXT(sequence_checker_);
   std::optional<base::Time> last_reported_at_
       GUARDED_BY_CONTEXT(sequence_checker_);

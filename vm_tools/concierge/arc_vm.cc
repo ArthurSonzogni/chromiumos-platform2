@@ -266,12 +266,13 @@ ArcVm::ArcVm(Config config)
       swap_state_monitor_timer_(std::move(config.swap_state_monitor_timer)),
       vmm_swap_low_disk_policy_(std::move(config.vmm_swap_low_disk_policy)),
       vmm_swap_tbw_policy_(config.vmm_swap_tbw_policy),
+      vmm_swap_usage_policy_(config.vmm_swap_usage_path),
       vm_swapping_notify_callback_(
           std::move(config.vm_swapping_notify_callback)),
       guest_memory_size_(config.guest_memory_size),
       weak_ptr_factory_(this) {
-  if (config.vmm_swap_usage_path.has_value()) {
-    vmm_swap_usage_policy_.Init(config.vmm_swap_usage_path.value());
+  if (config.is_vmm_swap_enabled) {
+    vmm_swap_usage_policy_.Init();
   }
   vmm_swap_metrics_->SetFetchVmmSwapStatusFunction(
       base::BindRepeating(&ArcVm::FetchVmmSwapStatus, base::Unretained(this)));

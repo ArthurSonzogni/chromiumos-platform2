@@ -936,6 +936,9 @@ class ArcVmTest : public ::testing::Test {
     // Allocate resources for the VM.
     uint32_t vsock_cid = vsock_cid_pool_.Allocate();
 
+    vmm_swap_tbw_policy_ = std::make_unique<VmmSwapTbwPolicy>(
+        raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library_.get()),
+        temp_dir_.GetPath().Append("tbw_history2"));
     vmm_swap_tbw_policy_->SetTargetTbwPerDay(MiB(512));
 
     // The following owned and destroyed by ArcVm class unique_ptr destructor.
@@ -967,6 +970,7 @@ class ArcVmTest : public ::testing::Test {
             raw_ref<spaced::DiskUsageProxy>::from_ptr(disk_usage_proxy_.get())),
         .vmm_swap_tbw_policy =
             raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
+        .vmm_swap_usage_path = temp_dir_.GetPath().Append("usage_history"),
         .vm_swapping_notify_callback = base::BindRepeating(
             &ArcVmTest::OnVmSwapping, base::Unretained(this)),
         .guest_memory_size = kGuestMemorySize,
@@ -1079,9 +1083,7 @@ class ArcVmTest : public ::testing::Test {
   raw_ptr<base::MockRepeatingTimer> swap_state_monitor_timer_;
   raw_ptr<base::MockRepeatingTimer> swap_metrics_heartbeat_timer_;
 
-  std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ =
-      std::make_unique<VmmSwapTbwPolicy>(
-          raw_ref<MetricsLibraryInterface>::from_ptr(metrics_library_.get()));
+  std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_;
   org::chromium::SpacedProxyMock* spaced_proxy_;
   std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;
 

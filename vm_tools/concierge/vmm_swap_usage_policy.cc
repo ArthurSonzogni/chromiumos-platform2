@@ -5,7 +5,6 @@
 #include "vm_tools/concierge/vmm_swap_usage_policy.h"
 
 #include <algorithm>
-#include <fcntl.h>
 #include <iterator>
 #include <optional>
 #include <string>
@@ -14,18 +13,17 @@
 #include <base/containers/span.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
-#include <brillo/files/file_util.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "vm_concierge/vmm_swap_policy.pb.h"
 #include "vm_tools/concierge/vmm_swap_history_file.h"
+#include "vm_tools/concierge/vmm_swap_history_file_manager.h"
 
 namespace vm_tools::concierge {
 
@@ -33,36 +31,35 @@ namespace {
 constexpr base::TimeDelta WEEK = base::Days(7);
 }  // namespace
 
-bool VmmSwapUsagePolicy::Init(base::FilePath path, base::Time time) {
+VmmSwapUsagePolicy::VmmSwapUsagePolicy(base::FilePath history_file_path)
+    : history_file_path_(history_file_path) {}
+
+bool VmmSwapUsagePolicy::Init(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (history_file_.has_value()) {
     LOG(ERROR) << "Usage history file is already loaded";
     return false;
   }
-  history_file_path_ = path;
 
-  base::File file =
-      base::File(open(history_file_path_.value().c_str(),
-                      O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0600));
+  base::File file = history_file_path_.Create();
   if (file.IsValid()) {
-    LOG(INFO) << "Usage history file is created at: " << history_file_path_;
+    LOG(INFO) << "Usage history file is created at: "
+              << history_file_path_.path();
     history_file_ = std::move(file);
     return true;
   }
 
-  base::File::Error error = base::File::GetLastFileError();
-  if (error != base::File::FILE_ERROR_EXISTS) {
+  if (file.error_details() != base::File::FILE_ERROR_EXISTS) {
     LOG(ERROR) << "Failed to create usage history file: "
-               << file.ErrorToString(error);
+               << file.ErrorToString(file.error_details());
     return false;
   }
 
-  LOG(INFO) << "Load usage history from: " << history_file_path_;
-  file =
-      base::File(open(history_file_path_.value().c_str(), O_RDWR | O_CLOEXEC));
+  LOG(INFO) << "Load usage history from: " << history_file_path_.path();
+  file = history_file_path_.Open();
   if (!file.IsValid()) {
     LOG(ERROR) << "Failed to open usage history file: "
-               << file.ErrorToString(base::File::GetLastFileError());
+               << file.ErrorToString(file.error_details());
     return false;
   }
 
@@ -344,13 +341,9 @@ bool VmmSwapUsagePolicy::LoadFromFile(base::File& file, base::Time now) {
 
 bool VmmSwapUsagePolicy::RotateHistoryFile(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  base::FilePath tmp_file_path = history_file_path_.AddExtension("tmp");
 
-  history_file_ =
-      base::File(open(tmp_file_path.value().c_str(),
-                      O_CREAT | O_TRUNC | O_RDWR | O_CLOEXEC, 0600));
+  history_file_ = history_file_path_.CreateRotationFile();
   if (!history_file_->IsValid()) {
-    history_file_ = base::File(base::File::GetLastFileError());
     LOG(ERROR) << "Failed to create new usage history file: "
                << history_file_->ErrorToString(history_file_->error_details());
     DeleteFile();
@@ -369,21 +362,13 @@ bool VmmSwapUsagePolicy::RotateHistoryFile(base::Time time) {
     }
   }
 
-  base::File::Error error;
-  if (success &&
-      !base::ReplaceFile(tmp_file_path, history_file_path_, &error)) {
-    LOG(ERROR) << "Failed to replace usage history file: "
-               << history_file_->ErrorToString(error);
-    success = false;
-  }
+  success = success && history_file_path_.Rotate();
 
   if (!success) {
     // If Write*Entry() method fails to write an entry, it deletes the original
     // file and closes the temporary file descriptor.
     // Remove the remaining temporary file here.
-    if (!brillo::DeleteFile(tmp_file_path)) {
-      LOG(ERROR) << "Failed to delete tmp history file";
-    }
+    history_file_path_.DeleteRotationFile();
     return false;
   }
 
@@ -394,9 +379,7 @@ bool VmmSwapUsagePolicy::RotateHistoryFile(base::Time time) {
 
 void VmmSwapUsagePolicy::DeleteFile() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!brillo::DeleteFile(history_file_path_)) {
-    LOG(ERROR) << "Failed to delete usage history file.";
-  }
+  history_file_path_.Delete();
   // Stop writing entries to the file and close the file.
   history_file_ = std::nullopt;
 }

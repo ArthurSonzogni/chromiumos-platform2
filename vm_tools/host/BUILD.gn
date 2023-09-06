@@ -201,6 +201,7 @@ static_library("libconcierge") {
     "../concierge/vm_permission_interface.cc",
     "../concierge/vm_util.cc",
     "../concierge/vm_wl_interface.cc",
+    "../concierge/vmm_swap_history_file_manager.cc",
     "../concierge/vmm_swap_low_disk_policy.cc",
     "../concierge/vmm_swap_metrics.cc",
     "../concierge/vmm_swap_tbw_policy.cc",
