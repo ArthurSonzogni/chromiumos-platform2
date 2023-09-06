@@ -3020,8 +3020,10 @@ TEST_F(CellularTest, AcquireTetheringNetwork_NoService) {
   ASSERT_EQ(device_->service(), nullptr);
 
   base::test::TestFuture<Network*, const Error&> future;
+  base::test::TestFuture<TetheringManager::CellularUpstreamEvent> future_event;
   device_->AcquireTetheringNetwork(TetheringManager::UpdateTimeoutCallback(),
-                                   future.GetCallback());
+                                   future.GetCallback(),
+                                   future_event.GetRepeatingCallback());
   EXPECT_EQ(future.Get<Network*>(), nullptr);
   EXPECT_TRUE(future.Get<Error>().IsFailure());
 }
@@ -3033,8 +3035,10 @@ TEST_F(CellularTest, AcquireTetheringNetwork_NoModem) {
   ASSERT_EQ(GetCapability3gpp(), nullptr);
 
   base::test::TestFuture<Network*, const Error&> future;
+  base::test::TestFuture<TetheringManager::CellularUpstreamEvent> future_event;
   device_->AcquireTetheringNetwork(TetheringManager::UpdateTimeoutCallback(),
-                                   future.GetCallback());
+                                   future.GetCallback(),
+                                   future_event.GetRepeatingCallback());
   EXPECT_EQ(future.Get<Network*>(), nullptr);
   EXPECT_TRUE(future.Get<Error>().IsFailure());
 }
@@ -3046,8 +3050,10 @@ TEST_F(CellularTest, AcquireTetheringNetwork_Inhibited) {
   SetInhibited(true);
 
   base::test::TestFuture<Network*, const Error&> future;
+  base::test::TestFuture<TetheringManager::CellularUpstreamEvent> future_event;
   device_->AcquireTetheringNetwork(TetheringManager::UpdateTimeoutCallback(),
-                                   future.GetCallback());
+                                   future.GetCallback(),
+                                   future_event.GetRepeatingCallback());
   EXPECT_EQ(future.Get<Network*>(), nullptr);
   EXPECT_TRUE(future.Get<Error>().IsFailure());
 }
@@ -3058,8 +3064,11 @@ TEST_F(CellularTest, AcquireTetheringNetwork_Disconnected) {
   ASSERT_NE(device_->service(), nullptr);
 
   base::test::TestFuture<Network*, const Error&> future;
+  base::test::TestFuture<TetheringManager::CellularUpstreamEvent> future_event;
   device_->AcquireTetheringNetwork(TetheringManager::UpdateTimeoutCallback(),
-                                   future.GetCallback());
+                                   future.GetCallback(),
+                                   future_event.GetRepeatingCallback());
+
   EXPECT_EQ(future.Get<Network*>(), nullptr);
   EXPECT_TRUE(future.Get<Error>().IsFailure());
 }
@@ -3082,8 +3091,10 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DisallowedByOperator) {
       .WillRepeatedly(Return(false));
 
   base::test::TestFuture<Network*, const Error&> future;
+  base::test::TestFuture<TetheringManager::CellularUpstreamEvent> future_event;
   device_->AcquireTetheringNetwork(TetheringManager::UpdateTimeoutCallback(),
-                                   future.GetCallback());
+                                   future.GetCallback(),
+                                   future_event.GetRepeatingCallback());
   EXPECT_EQ(future.Get<Network*>(), nullptr);
   EXPECT_TRUE(future.Get<Error>().IsFailure());
 }

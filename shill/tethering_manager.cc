@@ -728,7 +728,9 @@ void TetheringManager::StartTetheringSession() {
         base::BindRepeating(&TetheringManager::OnStartingTetheringUpdateTimeout,
                             base::Unretained(this)),
         base::BindOnce(&TetheringManager::OnUpstreamNetworkAcquired,
-                       base::Unretained(this)));
+                       base::Unretained(this)),
+        base::BindRepeating(&TetheringManager::OnCellularUpstreamEvent,
+                            base::Unretained(this)));
   } else if (upstream_technology_ == Technology::kEthernet) {
     const auto eth_service = manager_->GetFirstEthernetService();
     const auto upstream_network =
@@ -1114,6 +1116,24 @@ void TetheringManager::CheckReadiness(
   manager_->dispatcher()->PostTask(
       FROM_HERE,
       base::BindOnce(std::move(callback), EntitlementStatus::kReady));
+}
+
+void TetheringManager::OnCellularUpstreamEvent(
+    TetheringManager::CellularUpstreamEvent event) {
+  if (upstream_technology_ != Technology::kCellular) {
+    LOG(ERROR) << "Unexpected upstream event from cellular received";
+    return;
+  }
+  switch (event) {
+    case TetheringManager::CellularUpstreamEvent::kUserNoLongerEntitled:
+      if (state_ == TetheringState::kTetheringActive ||
+          state_ == TetheringState::kTetheringStarting) {
+        LOG(INFO) << "TetheringManager stopping session because user is no "
+                     "longer entitled to tether";
+        StopTetheringSession(StopReason::kUpstreamDisconnect);
+      }
+      break;
+  }
 }
 
 // static

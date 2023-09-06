@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/network/network.h"
+#include "shill/tethering_manager.h"
 
 namespace shill {
 
@@ -29,7 +30,8 @@ class MockCellularServiceProvider : public CellularServiceProvider {
   MOCK_METHOD(void,
               AcquireTetheringNetwork,
               (TetheringManager::UpdateTimeoutCallback,
-               TetheringManager::AcquireNetworkCallback),
+               TetheringManager::AcquireNetworkCallback,
+               TetheringManager::CellularUpstreamEventCallback),
               ());
   MOCK_METHOD(void,
               ReleaseTetheringNetwork,

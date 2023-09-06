@@ -385,7 +385,8 @@ void CellularServiceProvider::TetheringEntitlementCheck(
 
 void CellularServiceProvider::AcquireTetheringNetwork(
     TetheringManager::UpdateTimeoutCallback update_timeout_callback,
-    TetheringManager::AcquireNetworkCallback callback) {
+    TetheringManager::AcquireNetworkCallback callback,
+    TetheringManager::CellularUpstreamEventCallback tethering_event_callback) {
   SLOG(3) << __func__;
   if (!HardwareSupportsTethering()) {
     manager_->dispatcher()->PostTask(
@@ -415,7 +416,8 @@ void CellularServiceProvider::AcquireTetheringNetwork(
   cellular_device->AcquireTetheringNetwork(
       update_timeout_callback,
       base::BindOnce(&CellularServiceProvider::OnAcquireTetheringNetworkReady,
-                     weak_factory_.GetWeakPtr(), std::move(callback)));
+                     weak_factory_.GetWeakPtr(), std::move(callback)),
+      std::move(tethering_event_callback));
 }
 
 void CellularServiceProvider::OnAcquireTetheringNetworkReady(

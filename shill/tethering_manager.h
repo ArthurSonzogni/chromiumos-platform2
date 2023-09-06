@@ -12,6 +12,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/files/scoped_file.h>
+#include "base/functional/callback_forward.h"
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_piece.h>
 #include <chromeos/patchpanel/dbus/client.h>
@@ -51,6 +52,10 @@ class TetheringManager : public Network::EventHandler {
     kUpstreamNetworkNotAvailable,
   };
 
+  enum class CellularUpstreamEvent {
+    kUserNoLongerEntitled,  // The user is no longer entitled to tether.
+  };
+
   static const char* EntitlementStatusName(EntitlementStatus status);
 
   enum class SetEnabledResult {
@@ -88,6 +93,9 @@ class TetheringManager : public Network::EventHandler {
       TetheringManager::SetEnabledResult, Network*, ServiceRefPtr)>;
   using UpdateTimeoutCallback =
       base::RepeatingCallback<void(base::TimeDelta timeout)>;
+  using CellularUpstreamEventCallback =
+      base::RepeatingCallback<void(TetheringManager::CellularUpstreamEvent)>;
+
   // Storage group for tethering configs.
   static constexpr char kStorageId[] = "tethering";
 
@@ -213,6 +221,8 @@ class TetheringManager : public Network::EventHandler {
                                  ServiceRefPtr service);
   // Upstream network release callback handler.
   void OnUpstreamNetworkReleased(bool is_success);
+  // Cellular Upstream event callback handler.
+  void OnCellularUpstreamEvent(TetheringManager::CellularUpstreamEvent event);
   // Trigger callback function asynchronously to post SetTetheringEnabled dbus
   // result.
   void PostSetEnabledResult(SetEnabledResult result);

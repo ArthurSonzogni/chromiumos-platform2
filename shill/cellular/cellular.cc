@@ -2035,29 +2035,46 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
   return TetheringOperationType::kConnectDunMultiplexed;
 }
 
+void Cellular::OnAcquireTetheringNetworkReady(
+    AcquireTetheringNetworkResultCallback callback,
+    Network* network,
+    const Error& error) {
+  SLOG(3) << __func__;
+  if (!error.IsSuccess()) {
+    tethering_event_callback_.Reset();
+  }
+  std::move(callback).Run(network, error);
+}
+
 void Cellular::AcquireTetheringNetwork(
     TetheringManager::UpdateTimeoutCallback update_timeout_callback,
-    AcquireTetheringNetworkResultCallback callback) {
+    AcquireTetheringNetworkResultCallback callback,
+    TetheringManager::CellularUpstreamEventCallback tethering_event_callback) {
   SLOG(1) << LoggingTag() << ": " << __func__;
   CHECK(!callback.is_null());
-
+  CHECK(!tethering_event_callback.is_null());
+  tethering_event_callback_ = std::move(tethering_event_callback);
+  auto internal_callback =
+      base::BindOnce(&Cellular::OnAcquireTetheringNetworkReady,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   Error error;
   switch (GetTetheringOperationType(&error)) {
     case TetheringOperationType::kConnectDunMultiplexed:
-      ConnectMultiplexedTetheringPdn(std::move(callback));
+      ConnectMultiplexedTetheringPdn(std::move(internal_callback));
       return;
     case TetheringOperationType::kConnectDunAsDefaultPdn:
       // Request a longer start timeout as we need to go through a full
       // PDN connection setup sequence.
       update_timeout_callback.Run(kLongTetheringStartTimeout);
-      ConnectTetheringAsDefaultPdn(std::move(callback));
+      ConnectTetheringAsDefaultPdn(std::move(internal_callback));
       return;
     case TetheringOperationType::kReuseDefaultPdn:
-      ReuseDefaultPdnForTethering(std::move(callback));
+      ReuseDefaultPdnForTethering(std::move(internal_callback));
       return;
     case TetheringOperationType::kFailed:
       dispatcher()->PostTask(
-          FROM_HERE, base::BindOnce(std::move(callback), nullptr, error));
+          FROM_HERE,
+          base::BindOnce(std::move(internal_callback), nullptr, error));
       return;
     case TetheringOperationType::kDisconnectDunAsDefaultPdn:
     case TetheringOperationType::kDisconnectDunMultiplexed:
@@ -2153,7 +2170,7 @@ void Cellular::ReleaseTetheringNetwork(Network* network,
                                        ResultCallback callback) {
   SLOG(1) << LoggingTag() << ": " << __func__;
   CHECK(!callback.is_null());
-
+  tethering_event_callback_.Reset();
   // No explicit network given, which means there is an ongoing tethering
   // network acquisition operation that needs to be aborted.
   if (!network) {
@@ -3927,32 +3944,36 @@ void Cellular::EntitlementCheck(
   carrier_entitlement_->Check(mobile_operator_info_->entitlement_config());
 }
 
+void Cellular::TriggerEntitlementCheckCallbacks(
+    TetheringManager::EntitlementStatus result) {
+  if (!entitlement_check_callback_.is_null()) {
+    std::move(entitlement_check_callback_).Run(result);
+  }
+  if (!tethering_event_callback_.is_null() &&
+      result != TetheringManager::EntitlementStatus::kReady) {
+    tethering_event_callback_.Run(
+        TetheringManager::CellularUpstreamEvent::kUserNoLongerEntitled);
+  }
+}
+
 void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
   LOG(INFO) << "Entitlement check updated: " << static_cast<int>(result);
   switch (result) {
     case shill::CarrierEntitlement::Result::kAllowed:
-      if (!entitlement_check_callback_.is_null()) {
-        std::move(entitlement_check_callback_)
-            .Run(TetheringManager::EntitlementStatus::kReady);
-      }
+      TriggerEntitlementCheckCallbacks(
+          TetheringManager::EntitlementStatus::kReady);
       break;
     case shill::CarrierEntitlement::Result::kNetworkNotReady:
-      if (!entitlement_check_callback_.is_null()) {
-        std::move(entitlement_check_callback_)
-            .Run(TetheringManager::EntitlementStatus::
-                     kUpstreamNetworkNotAvailable);
-      }
+      TriggerEntitlementCheckCallbacks(
+          TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable);
       break;
     case shill::CarrierEntitlement::Result::kGenericError:
       LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "Generic error";
       [[fallthrough]];
     case shill::CarrierEntitlement::Result::kUnrecognizedUser:  // FALLTHROUGH
     case shill::CarrierEntitlement::Result::kUserNotAllowedToTether:
-      if (!entitlement_check_callback_.is_null()) {
-        std::move(entitlement_check_callback_)
-            .Run(TetheringManager::EntitlementStatus::kNotAllowed);
-      }
-      // TODO(b/273355097): Disconnect DUN and end hotspot session.
+      TriggerEntitlementCheckCallbacks(
+          TetheringManager::EntitlementStatus::kNotAllowed);
       break;
   }
 }

@@ -211,7 +211,7 @@ class TetheringManagerTest : public testing::Test {
     ON_CALL(*hotspot_device_.get(), DeconfigureService())
         .WillByDefault(Return(true));
     ON_CALL(*hotspot_device_.get(), IsServiceUp()).WillByDefault(Return(true));
-    ON_CALL(*cellular_service_provider_, AcquireTetheringNetwork(_, _))
+    ON_CALL(*cellular_service_provider_, AcquireTetheringNetwork(_, _, _))
         .WillByDefault(Return());
     ON_CALL(*cellular_service_provider_, ReleaseTetheringNetwork(_, _))
         .WillByDefault(Return());
@@ -390,6 +390,11 @@ class TetheringManagerTest : public testing::Test {
                              LocalDevice::DeviceEvent event,
                              LocalDevice* device) {
     tethering_manager->OnDownstreamDeviceEvent(event, device);
+  }
+
+  void OnCellularUpstreamEvent(TetheringManager* tethering_manager,
+                               TetheringManager::CellularUpstreamEvent event) {
+    tethering_manager->OnCellularUpstreamEvent(event);
   }
 
   TetheringManager::TetheringState TetheringState(
@@ -1631,6 +1636,17 @@ TEST_F(TetheringManagerTest, CheckMACStored) {
   EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(ini_mac), _, _, _))
       .WillOnce(Return(hotspot_device_));
   SetEnabled(tethering_manager_, true);
+}
+
+TEST_F(TetheringManagerTest, OnCellularUpstreamEvent) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+  OnCellularUpstreamEvent(
+      tethering_manager_,
+      TetheringManager::CellularUpstreamEvent::kUserNoLongerEntitled);
+  CheckTetheringStopping(tethering_manager_,
+                         kTetheringIdleReasonUpstreamDisconnect);
 }
 
 }  // namespace shill

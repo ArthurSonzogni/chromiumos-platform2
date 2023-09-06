@@ -93,7 +93,8 @@ class CellularServiceProvider : public ProviderInterface {
   // the current carrier and modem.
   mockable void AcquireTetheringNetwork(
       TetheringManager::UpdateTimeoutCallback update_timeout_callback,
-      TetheringManager::AcquireNetworkCallback callback);
+      TetheringManager::AcquireNetworkCallback callback,
+      TetheringManager::CellularUpstreamEventCallback tethering_event_callback);
 
   // Notifies that a tethering session has stopped and that the Network object
   // obtained with AcquireTetheringNetwork() is not used for tethering anymore.

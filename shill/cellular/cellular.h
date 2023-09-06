@@ -278,7 +278,8 @@ class Cellular : public Device,
       base::OnceCallback<void(Network* network, const Error& error)>;
   virtual void AcquireTetheringNetwork(
       TetheringManager::UpdateTimeoutCallback update_timeout_callback,
-      AcquireTetheringNetworkResultCallback callback);
+      AcquireTetheringNetworkResultCallback callback,
+      TetheringManager::CellularUpstreamEventCallback tethering_event_callback);
 
   // Asynchronously releases the tethering network, if any. This may involve
   // disconnecting a PDN connection or a no-op in certain other cases.
@@ -477,6 +478,10 @@ class Cellular : public Device,
     return multiplexed_tethering_pdn_ ? multiplexed_tethering_pdn_->network()
                                       : nullptr;
   }
+  void OnAcquireTetheringNetworkReady(
+      AcquireTetheringNetworkResultCallback callback,
+      Network* network,
+      const Error& error);
 
   // Public to ease testing without real RTNL link events.
   void DefaultLinkDeleted();
@@ -730,6 +735,8 @@ class Cellular : public Device,
 
   void ResetCarrierEntitlement();
   void OnEntitlementCheckUpdated(CarrierEntitlement::Result result);
+  void TriggerEntitlementCheckCallbacks(
+      TetheringManager::EntitlementStatus result);
 
   // Single tethering operation context, whenever any connection setup is
   // required (i.e. not used when reusing the default network for tethering).
@@ -951,6 +958,9 @@ class Cellular : public Device,
   // is requested to |CarrierEntitlement|.
   base::OnceCallback<void(TetheringManager::EntitlementStatus)>
       entitlement_check_callback_;
+  // Stores the callback passed in |AcquireTetheringNetwork| to notify the
+  // caller of an event related to the tethering session.
+  TetheringManager::CellularUpstreamEventCallback tethering_event_callback_;
   // Legacy device storage identifier, used for removing legacy entry.
   std::string legacy_storage_id_;
 
