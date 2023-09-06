@@ -135,9 +135,6 @@ void EnterHealthdMinijail() {
   minijail_bind(jail.get(), "/var/lib/metrics", "/var/lib/metrics", 1);
   // Symlink for reading the timezone file.
   minijail_bind(jail.get(), "/var/lib/timezone", "/var/lib/timezone", 0);
-  // Diagnostics can create test files in this directory.
-  minijail_bind(jail.get(), "/var/cache/diagnostics", "/var/cache/diagnostics",
-                1);
   // Symlink for reading the boot up info.
   BindMountIfPathExists(jail.get(), base::FilePath("/var/log/bios_times.txt"));
   // There might be no shutdown info, so we only bind mount it when the files
