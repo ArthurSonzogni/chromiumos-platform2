@@ -278,13 +278,16 @@ bool FeatureManagementImpl::Check_HW_Requirement(
   }
 
   // Feature level 1:
-  // DRAM > 8GB
+  // DRAM >= 8GiB. But since not all the physical RAM is available (PCI hole),
+  // settle for 7GiB.
   // Obtain the size of the physical memory of the system.
-  const size_t k8GB = 8 * 1024 * 1024 * 1024ULL;
-  if (base::SysInfo::AmountOfPhysicalMemory() < k8GB)
+  const size_t k7GiB = 7 * 1024 * 1024 * 1024ULL;
+  if (base::SysInfo::AmountOfPhysicalMemory() < k7GiB)
     return false;
 
-  // SSD > 128GB
+  // SSD >= 128GB
+  // But since SSD counts in power of 10 and controller may even take a bigger
+  // share, settle for 110GiB.
   // sysinfo AmountOfTotalDiskSpace can not be used, it returns the size of the
   // underlying filesystem.
   std::optional<base::FilePath> root_device =
@@ -297,8 +300,8 @@ bool FeatureManagementImpl::Check_HW_Requirement(
   if (!size)
     return false;
 
-  const size_t k128GB = 128 * 1024 * 1024 * 1024ULL;
-  if (*size < k128GB)
+  const size_t k110GiB = 110 * 1024 * 1024 * 1024ULL;
+  if (*size < k110GiB)
     return false;
 
   return true;
