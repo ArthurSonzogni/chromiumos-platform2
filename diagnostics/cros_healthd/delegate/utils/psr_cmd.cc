@@ -64,18 +64,14 @@ bool PsrCmd::MeiReceive(std::vector<uint8_t>& buffer, ssize_t& buff_len) {
   FD_ZERO(&readfds);
   FD_SET(mei_fd_, &readfds);
 
-  int err;
   int ready = select(mei_fd_ + 1, &readfds, nullptr, nullptr, &tv);
   if (ready < 0) {
-    err = errno;
     LOG(ERROR) << __func__ << "Select error: " << strerror(errno);
     return false;
   } else if (!ready) {
-    err = errno;
     LOG(ERROR) << __func__ << "Timeout: " << strerror(errno);
     return false;
   } else if (!FD_ISSET(mei_fd_, &readfds)) {
-    err = errno;
     LOG(ERROR) << __func__ << ": Internal error: " << strerror(errno);
     return false;
   }
@@ -83,11 +79,9 @@ bool PsrCmd::MeiReceive(std::vector<uint8_t>& buffer, ssize_t& buff_len) {
   ssize_t read_bytes =
       read(mei_fd_, static_cast<void*>(buffer.data()), buff_len);
   if (read_bytes < 0) {
-    err = errno;
     LOG(ERROR) << __func__ << ": Reading error: " << strerror(errno);
     return false;
   } else if (!read_bytes) {
-    err = errno;
     LOG(ERROR) << __func__ << ": No response: " << strerror(errno);
     return false;
   }
