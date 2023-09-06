@@ -117,6 +117,16 @@ class WiFiPhy {
   // Return level of P2P/STA concurrency.
   mockable ConcurrencySupportLevel P2PSTAConcurrency() const;
 
+  // Add interface type to the reserved list.
+  bool ReserveIfaceType(nl80211_iftype iftype, unsigned int min_channels);
+
+  // Remove interface from the reserved list.
+  bool FreeIfaceType(nl80211_iftype iftype);
+
+  // Check if it's possible to use the interface together with already
+  // used ones.
+  bool CanUseIface(nl80211_iftype iftype, unsigned int min_channels) const;
+
   // This structure keeps information about frequency reported in PHY dump.
   // |flags| is a bitmap with bits corresponding to NL80211_FREQUENCY_ATTR_*
   // flags reported, |value| is the actual frequency in MHz and |attributes|
@@ -159,6 +169,7 @@ class WiFiPhy {
   std::set<LocalDeviceConstRefPtr> wifi_local_devices_;
   std::set<nl80211_iftype> supported_ifaces_;
   std::vector<ConcurrencyCombination> concurrency_combs_;
+  std::vector<nl80211_iftype> concurrency_reservations_;
   Frequencies frequencies_;
   // This is temporarily used during parsing of WiFi PHY dumps.  At the end of
   // PHY dump this is transferred into |frequencies_| - see also

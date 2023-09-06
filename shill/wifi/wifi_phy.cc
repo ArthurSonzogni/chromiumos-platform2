@@ -6,6 +6,7 @@
 #include <numeric>
 #include <utility>
 
+#include <base/containers/contains.h>
 #include <base/rand_util.h>
 #include <net-base/attribute_list.h>
 #include <net-base/netlink_attribute.h>
@@ -18,6 +19,36 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 }  // namespace Logging
+
+namespace {
+void removeIface(std::vector<ConcurrencyCombination>* combinations,
+                 nl80211_iftype iftype) {
+  // Decrease/remove limit in each combination variant.
+  // When removing elements on the fly, a simplified for loop cannot be used
+  // because erase() increases iterator by itself.
+  for (auto cit = combinations->begin(); cit != combinations->end();
+       /* Empty on purpose. */) {
+    // The same limitation applies for the limits loop.
+    for (auto lit = cit->limits.begin(); lit != cit->limits.end();
+         /* Empty on purpose. */) {
+      if (base::Contains(lit->iftypes, iftype)) {
+        lit->max--;
+        cit->max_num--;
+      }
+      if (lit->max <= 0) {
+        cit->limits.erase(lit);
+      } else {
+        ++lit;
+      }
+    }
+    if (cit->max_num <= 0) {
+      combinations->erase(cit);
+    } else {
+      ++cit;
+    }
+  }
+}
+}  // namespace
 
 WiFiPhy::WiFiPhy(uint32_t phy_index)
     : phy_index_(phy_index), reg_self_managed_(false) {}
@@ -285,6 +316,55 @@ WiFiPhy::ConcurrencySupportLevel WiFiPhy::P2PSTAConcurrency() const {
     default:  // (2+)
       return ConcurrencySupportLevel::MCC;
   }
+}
+
+bool WiFiPhy::ReserveIfaceType(nl80211_iftype iftype,
+                               unsigned int min_channels) {
+  if (CanUseIface(iftype, min_channels)) {
+    concurrency_reservations_.push_back(iftype);
+    return true;
+  }
+  return false;
+}
+
+bool WiFiPhy::FreeIfaceType(nl80211_iftype iftype) {
+  // std::remove is not used, because only one instance of the
+  // interface needs to be removed.
+  auto it = std::find(concurrency_reservations_.begin(),
+                      concurrency_reservations_.end(), iftype);
+  if (it != concurrency_reservations_.end()) {
+    concurrency_reservations_.erase(it);
+    return true;
+  }
+  return false;
+}
+
+bool WiFiPhy::CanUseIface(nl80211_iftype iftype,
+                          unsigned int min_channels) const {
+  // Copy the current interface combinations;
+  auto combinations_copy = concurrency_combs_;
+
+  // Eliminate existing types, then only possible will remain.
+  for (auto& rm_type : concurrency_reservations_) {
+    removeIface(&combinations_copy, rm_type);
+  }
+
+  for (auto& combination : combinations_copy) {
+    if (combination.num_channels < min_channels) {
+      // No point checking limits, if channel number requirement is not met.
+      continue;
+    }
+    for (auto& limit : combination.limits) {
+      if (base::Contains(limit.iftypes, iftype)) {
+        LOG(INFO) << iftype
+                  << " allowed, valid combinations left: " << combinations_copy;
+        return true;
+      }
+    }
+  }
+  LOG(WARNING) << iftype << " not allowed, no valid combinations left: "
+               << combinations_copy;
+  return false;
 }
 
 void WiFiPhy::DumpFrequencies() const {
