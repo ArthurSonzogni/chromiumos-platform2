@@ -21,7 +21,7 @@ constexpr uint8_t kI2cOffset = 0x20;
 constexpr size_t kI2cResponseHeaderSize = 2;
 
 TEST(I2cReadCommand, I2cReadCommand) {
-  constexpr uint8_t kReadLen[] = {1, 2};
+  constexpr uint8_t kReadLen[] = {1, 2, 4};
   for (auto read_len : kReadLen) {
     auto cmd = I2cReadCommand::Create(kI2cBus, kI2cAddr, kI2cOffset, read_len);
     EXPECT_EQ(cmd->Command(), EC_CMD_I2C_PASSTHRU);
@@ -32,9 +32,11 @@ TEST(I2cReadCommand, I2cReadCommand) {
 }
 
 TEST(I2cReadCommand, InvalidReadLen) {
-  constexpr uint8_t kInvalidReadLen = 100;
-  EXPECT_FALSE(
-      I2cReadCommand::Create(kI2cBus, kI2cAddr, kI2cOffset, kInvalidReadLen));
+  constexpr uint8_t kInvalidReadLen[] = {0, 3, 8, 100};
+  for (auto read_len : kInvalidReadLen) {
+    EXPECT_FALSE(
+        I2cReadCommand::Create(kI2cBus, kI2cAddr, kI2cOffset, read_len));
+  }
 }
 
 // Mock the underlying EcCommand to test.
@@ -73,6 +75,22 @@ TEST_F(I2cReadCommandTest, ReadTwoBytesSucceed) {
   EXPECT_EQ(mock_cmd->Data(), 0x0b0a);
 #else
   EXPECT_EQ(mock_cmd->Data(), 0x0a0b);
+#endif
+}
+
+TEST_F(I2cReadCommandTest, ReadFourBytesSucceed) {
+  i2c_passthru::Response response{.resp = {.i2c_status = 0, .num_msgs = 1},
+                                  .data = {0x0a, 0x0b, 0x0c, 0x0d}};
+  constexpr uint8_t kReadLen = 4;
+  auto mock_cmd =
+      I2cReadCommand::Create<NiceMock<MockI2cReadCommand>>(0, 0, 0, kReadLen);
+  ON_CALL(*mock_cmd, Resp).WillByDefault(Return(&response));
+  ON_CALL(*mock_cmd, RespSize)
+      .WillByDefault(Return(kI2cResponseHeaderSize + kReadLen));
+#if defined(ARCH_CPU_LITTLE_ENDIAN)
+  EXPECT_EQ(mock_cmd->Data(), 0x0d0c0b0a);
+#else
+  EXPECT_EQ(mock_cmd->Data(), 0x0a0b0c0d);
 #endif
 }
 

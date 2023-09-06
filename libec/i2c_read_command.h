@@ -14,8 +14,15 @@
 
 namespace ec {
 
+// The command to read data over I2C buses.
 class BRILLO_EXPORT I2cReadCommand : public I2cPassthruCommand {
  public:
+  // Factory method.
+  // @param port I2C port number
+  // @param addr8 I2C target address in 8-bit
+  // @param offset offset to read from or write to
+  // @param read_len number of bytes to read. Should be 1, 2, or 4.
+  // @return a pointer to the command or |nullptr| if error
   template <typename T = I2cReadCommand>
   static std::unique_ptr<T> Create(uint8_t port,
                                    uint8_t addr8,
@@ -24,7 +31,7 @@ class BRILLO_EXPORT I2cReadCommand : public I2cPassthruCommand {
     static_assert(std::is_base_of_v<I2cReadCommand, T>,
                   "Only classes derived from I2cReadCommand can use Create");
 
-    if (read_len != 1 && read_len != 2) {
+    if (read_len != 1 && read_len != 2 && read_len != 4) {
       return nullptr;
     }
 
@@ -33,7 +40,7 @@ class BRILLO_EXPORT I2cReadCommand : public I2cPassthruCommand {
   }
   ~I2cReadCommand() override = default;
 
-  virtual uint16_t Data() const;
+  virtual uint32_t Data() const;
 
  protected:
   I2cReadCommand(uint8_t port, uint8_t addr8, uint8_t offset, uint8_t read_len)
