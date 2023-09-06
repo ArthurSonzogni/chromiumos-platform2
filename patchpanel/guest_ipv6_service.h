@@ -134,6 +134,12 @@ class GuestIPv6Service {
   // Owned by Manager
   System* system_;
 
+  bool CreateConfigFile(const std::string& ifname,
+                        const net_base::IPv6CIDR& prefix,
+                        const std::vector<std::string>& rdnss,
+                        const std::optional<int>& mtu,
+                        const std::optional<int>& hop_limit);
+
   bool StartRadvd(const std::string& ifname);
 
   // The current forwarding records, keyed by the upstream interface name.

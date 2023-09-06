@@ -55,58 +55,6 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
   }
 }
 
-bool CreateConfigFile(const std::string& ifname,
-                      const net_base::IPv6CIDR& prefix,
-                      const std::vector<std::string>& rdnss,
-                      const std::optional<int>& mtu,
-                      const std::optional<int>& hop_limit) {
-  std::vector<std::string> lines;
-  lines.push_back(base::StringPrintf("interface %s {", ifname.c_str()));
-  lines.push_back("  AdvSendAdvert on;");
-  if (mtu) {
-    lines.push_back(base::StringPrintf("  AdvLinkMTU %d;", *mtu));
-  }
-  if (hop_limit) {
-    lines.push_back(base::StringPrintf("  AdvCurHopLimit %d;", *hop_limit));
-  }
-  lines.push_back(
-      base::StringPrintf("  prefix %s {", prefix.ToString().c_str()));
-  lines.push_back("    AdvOnLink off;");
-  lines.push_back("    AdvAutonomous on;");
-  lines.push_back("  };");
-  if (!rdnss.empty()) {
-    lines.push_back(base::StringPrintf("  RDNSS %s {",
-                                       base::JoinString(rdnss, " ").c_str()));
-    lines.push_back("  };");
-  }
-  lines.push_back("};");
-  lines.push_back("");
-  std::string contents = base::JoinString(lines, "\n");
-
-  const base::FilePath& conf_file_path =
-      base::FilePath(kRadvdRunDir)
-          .Append(std::string(kRadvdConfigFilePrefix) + ifname);
-  if (!base::WriteFile(conf_file_path, contents)) {
-    PLOG(ERROR) << "Failed to write config file";
-    return false;
-  }
-
-  if (chmod(conf_file_path.value().c_str(), S_IRUSR | S_IRGRP | S_IWUSR)) {
-    PLOG(ERROR) << "Failed to set permissions on " << conf_file_path;
-    brillo::DeletePathRecursively(conf_file_path);
-    return false;
-  }
-
-  if (chown(conf_file_path.value().c_str(), kPatchpaneldUid, kPatchpaneldGid) !=
-      0) {
-    PLOG(ERROR) << "Failed to change owner group of configuration file "
-                << conf_file_path;
-    brillo::DeletePathRecursively(conf_file_path);
-    return false;
-  }
-  return true;
-}
-
 }  // namespace
 
 // TODO(b/228585272): Support prefix larger than /64
@@ -688,6 +636,58 @@ bool GuestIPv6Service::StopRAServer(const std::string& ifname) {
   }
   LOG(ERROR) << "Cannot stop radvd[" << pid << "] for interface " << ifname;
   return false;
+}
+
+bool GuestIPv6Service::CreateConfigFile(const std::string& ifname,
+                                        const net_base::IPv6CIDR& prefix,
+                                        const std::vector<std::string>& rdnss,
+                                        const std::optional<int>& mtu,
+                                        const std::optional<int>& hop_limit) {
+  std::vector<std::string> lines;
+  lines.push_back(base::StringPrintf("interface %s {", ifname.c_str()));
+  lines.push_back("  AdvSendAdvert on;");
+  if (mtu) {
+    lines.push_back(base::StringPrintf("  AdvLinkMTU %d;", *mtu));
+  }
+  if (hop_limit) {
+    lines.push_back(base::StringPrintf("  AdvCurHopLimit %d;", *hop_limit));
+  }
+  lines.push_back(
+      base::StringPrintf("  prefix %s {", prefix.ToString().c_str()));
+  lines.push_back("    AdvOnLink off;");
+  lines.push_back("    AdvAutonomous on;");
+  lines.push_back("  };");
+  if (!rdnss.empty()) {
+    lines.push_back(base::StringPrintf("  RDNSS %s {",
+                                       base::JoinString(rdnss, " ").c_str()));
+    lines.push_back("  };");
+  }
+  lines.push_back("};");
+  lines.push_back("");
+  std::string contents = base::JoinString(lines, "\n");
+
+  const base::FilePath& conf_file_path =
+      base::FilePath(kRadvdRunDir)
+          .Append(std::string(kRadvdConfigFilePrefix) + ifname);
+  if (!base::WriteFile(conf_file_path, contents)) {
+    PLOG(ERROR) << "Failed to write config file";
+    return false;
+  }
+
+  if (chmod(conf_file_path.value().c_str(), S_IRUSR | S_IRGRP | S_IWUSR)) {
+    PLOG(ERROR) << "Failed to set permissions on " << conf_file_path;
+    brillo::DeletePathRecursively(conf_file_path);
+    return false;
+  }
+
+  if (chown(conf_file_path.value().c_str(), kPatchpaneldUid, kPatchpaneldGid) !=
+      0) {
+    PLOG(ERROR) << "Failed to change owner group of configuration file "
+                << conf_file_path;
+    brillo::DeletePathRecursively(conf_file_path);
+    return false;
+  }
+  return true;
 }
 
 bool GuestIPv6Service::StartRadvd(const std::string& ifname) {
