@@ -258,9 +258,7 @@ void CreateSystemKey(const base::FilePath& root,
   base::WriteFile(log_file, "");
 
   if (base::PathExists(no_early)) {
-    bool status;
-    status = base::AppendToFile(log_file,
-                                "Opt not to create a system key in advance.");
+    base::AppendToFile(log_file, "Opt not to create a system key in advance.");
     return;
   }
 
