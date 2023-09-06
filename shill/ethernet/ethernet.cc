@@ -73,6 +73,10 @@ constexpr char kVpdDockMacFilePath[] = "/sys/firmware/vpd/ro/dock_mac";
 // Name of the /drivers/net/veth.c driver. This driver is only used in tast and
 // should be ignored when reporting driver names in NotifyEthernetDriverName().
 constexpr char kVethDriverName[] = "veth";
+// Name of the /drivers/net/virtio_net.c driver. This driver is only used on the
+// host when ChromeOS itself runs on a VM and should be ignored when reporting
+// driver names in NotifyEthernetDriverName().
+constexpr char kVirtioNetDriverName[] = "virtio_net";
 // Constant used to notify metrics of failed attempt to get ethernet driver name
 // from ETHTOOL.
 constexpr char kEthernetDriverNameError[] = "error";
@@ -1003,8 +1007,9 @@ void Ethernet::NotifyEthernetDriverName() {
   }
 
   // Ignore virtual ethernet interfaces used in tast to simulate a physical
-  // ethernet network interface.
-  if (driver == kVethDriverName) {
+  // ethernet network interface and virtio_net interfaces when ChromeOS runs
+  // inside a VM.
+  if (driver == kVethDriverName || driver == kVirtioNetDriverName) {
     return;
   }
 
@@ -1015,6 +1020,8 @@ void Ethernet::NotifyEthernetDriverName() {
     driver_enum = Metrics::kEthernetDriverAqc111;
   } else if (driver == "asix") {
     driver_enum = Metrics::kEthernetDriverAsix;
+  } else if (driver == "atl1c") {
+    driver_enum = Metrics::kEthernetDriverAtl1c;
   } else if (driver == "atlantic") {
     driver_enum = Metrics::kEthernetDriverAtlantic;
   } else if (driver == "ax88179_178a") {
@@ -1047,14 +1054,20 @@ void Ethernet::NotifyEthernetDriverName() {
     driver_enum = Metrics::kEthernetDriverJme;
   } else if (driver == "mcs7830") {
     driver_enum = Metrics::kEthernetDriverMcs7830;
+  } else if (driver == "MOSCHIP usb-ethernet driver") {
+    driver_enum = Metrics::kEthernetDriverMosChip;
   } else if (driver == "pegasus") {
     driver_enum = Metrics::kEthernetDriverPegasus;
   } else if (driver == "r8152") {
     driver_enum = Metrics::kEthernetDriverR8152;
   } else if (driver == "r8169") {
     driver_enum = Metrics::kEthernetDriverR8169;
+  } else if (driver == "rndis_host") {
+    driver_enum = Metrics::kEthernetDriverRndisHost;
   } else if (driver == "rtl8150") {
     driver_enum = Metrics::kEthernetDriverRtl8150;
+  } else if (driver == "sky2") {
+    driver_enum = Metrics::kEthernetDriverSky2;
   } else if (driver == "smsc75xx") {
     driver_enum = Metrics::kEthernetDriverSmsc75xx;
   } else if (driver == "smsc95xx") {
