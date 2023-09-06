@@ -70,6 +70,18 @@ TPMVer RuntimeTPMVer(std::optional<TPMVer> set_value_for_testing) {
   return TPMVer::kUnknown;
 }
 
+#else
+
+TPMVer BuildTimeTPMVer() {
+#if USE_TPM1
+  return TPMVer::kTPM1;
+#elif USE_TPM2
+  return TPMVer::kTPM2;
+#else
+  return TPMVer::kNoTPM;
+#endif
+}
+
 #endif
 
 }  // namespace tpm

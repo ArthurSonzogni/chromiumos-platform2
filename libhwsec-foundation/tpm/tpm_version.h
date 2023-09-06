@@ -31,6 +31,17 @@ RuntimeTPMVer(std::optional<TPMVer> set_cache_for_testing = std::nullopt);
 
 #else
 
+HWSEC_FOUNDATION_EXPORT TPMVer BuildTimeTPMVer();
+
+#if USE_TPM1 && USE_TPM2
+
+// Fallback to the build time TPM version in the shared library.
+inline TPMVer RuntimeTPMVer() {
+  return BuildTimeTPMVer();
+}
+
+#else
+
 inline constexpr TPMVer RuntimeTPMVer() {
 #if USE_TPM1
   return TPMVer::kTPM1;
@@ -40,6 +51,8 @@ inline constexpr TPMVer RuntimeTPMVer() {
   return TPMVer::kNoTPM;
 #endif
 }
+
+#endif
 
 #endif
 
