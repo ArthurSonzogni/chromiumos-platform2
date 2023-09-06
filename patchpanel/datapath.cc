@@ -1055,32 +1055,33 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
     for (size_t i = 0; i < rule.nameservers.size(); i++) {
       std::vector<std::string> args{
           "-p",
+          protocol,
+          "--dport",  // input destination port
+          kDefaultDnsPort,
+          "-m",
+          "owner",
+          "--uid-owner",
+          kChronosUid,
       };
-      args.push_back(protocol);
-      args.push_back("--dport");  // input destination port
-      args.push_back(kDefaultDnsPort);
-      args.push_back("-m");
-      args.push_back("owner");
-      args.push_back("--uid-owner");
-      args.push_back(kChronosUid);
 
       // If there are multiple destination IPs, forward to them in a round robin
       // fashion with statistics module.
       if (rule.nameservers.size() > 1) {
-        args.push_back("-m");
-        args.push_back("statistic");
-        args.push_back("--mode");
-        args.push_back("nth");
-        args.push_back("--every");
-        args.push_back(std::to_string(rule.nameservers.size() - i));
-        args.push_back("--packet");
-        args.push_back("0");
+        std::initializer_list<std::string> statistic_args = {
+            "-m",       "statistic",
+            "--mode",   "nth",
+            "--every",  std::to_string(rule.nameservers.size() - i),
+            "--packet", "0",
+        };
+        args.insert(args.end(), statistic_args);
       }
-      args.push_back("-j");
-      args.push_back("DNAT");
-      args.push_back("--to-destination");
-      args.push_back(rule.nameservers[i].ToString());
-      args.push_back("-w");  // Wait for xtables lock.
+      args.insert(args.end(), {
+                                  "-j",
+                                  "DNAT",
+                                  "--to-destination",
+                                  rule.nameservers[i].ToString(),
+                                  "-w",
+                              });
       if (!ModifyIptables(family, Iptables::Table::kNat, op,
                           kRedirectChromeDnsChain, args)) {
         success = false;
