@@ -65,10 +65,29 @@ class DlcHelper;
 class Service final : public org::chromium::VmConciergeInterface,
                       public spaced::SpacedObserverInterface {
  public:
-  // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
-  // for the current thread when this process receives a SIGTERM.
-  static std::unique_ptr<Service> Create(base::OnceClosure quit_closure);
+  // Helper definition for the callback used to signal the service has stopped.
+  using ServiceShutdownCallback = base::OnceCallback<void(bool)>;
+
+  // Creates a service instance. The service won't do anything until
+  // Host<sync>() is called.
+  Service();
+
+  // Services should not be moved or copied.
+  Service(const Service&) = delete;
+  Service& operator=(const Service&) = delete;
+
   ~Service() override;
+
+  // Hosts this service on the current thread. This operation blocks the current
+  // thread until the service stops, either because SIGTERM was sent to the
+  // parent process (with a return of "true") or because the service failed to
+  // spawn (with a return of "false").
+  bool HostBlocking();
+
+  // Hosts this service asynchronously on the current sequence. Invokes
+  // |on_shutdown| when the service ends, see HostBlocking() for details on
+  // how/why the callback will be invoked.
+  void HostAsync(ServiceShutdownCallback on_shutdown);
 
  private:
   // Describes GPU shader cache paths.
@@ -78,12 +97,7 @@ class Service final : public org::chromium::VmConciergeInterface,
     base::FilePath foz_db_list;
   };
 
-  explicit Service(base::OnceClosure quit_closure);
-  Service(const Service&) = delete;
-  Service& operator=(const Service&) = delete;
-
-  // Initializes the service by connecting to the system DBus daemon, exporting
-  // its methods, and taking ownership of it's name.
+  // TODO(b/296025701): Move code out of this method and into async helpers.
   bool Init();
 
   // Handles the termination of a child process.
@@ -527,9 +541,9 @@ class Service final : public org::chromium::VmConciergeInterface,
   // The server where the StartupListener service lives.
   std::shared_ptr<grpc::Server> grpc_server_vm_;
 
-  // Closure that's posted to the current thread's TaskRunner when the service
-  // receives a SIGTERM.
-  base::OnceClosure quit_closure_;
+  // Callback that's posted to the current sequence's TaskRunner when the
+  // service stops running (or fails to start running).
+  ServiceShutdownCallback on_shutdown_;
 
   // Ensure calls are made on the right thread.
   SEQUENCE_CHECKER(sequence_checker_);

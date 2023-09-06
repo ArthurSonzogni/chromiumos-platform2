@@ -61,6 +61,7 @@
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
+#include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -1247,20 +1248,8 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
   return true;
 }
 
-// static
-std::unique_ptr<Service> Service::Create(base::OnceClosure quit_closure) {
-  auto service = base::WrapUnique(new Service(std::move(quit_closure)));
-
-  if (!service->Init()) {
-    service.reset();
-  }
-
-  return service;
-}
-
-Service::Service(base::OnceClosure quit_closure)
+Service::Service()
     : next_seneschal_server_port_(kFirstSeneschalServerPort),
-      quit_closure_(std::move(quit_closure)),
       host_kernel_version_(GetKernelVersion()),
       weak_ptr_factory_(this) {}
 
@@ -1294,6 +1283,28 @@ void Service::OnSignalReadable() {
     LOG(ERROR) << "Received unknown signal from signal fd: "
                << strsignal(siginfo.ssi_signo);
   }
+}
+
+bool Service::HostBlocking() {
+  bool success;
+  base::RunLoop run_loop;
+  vm_tools::concierge::Service::HostAsync(base::BindOnce(
+      [](base::RunLoop* loop, bool* out_success,
+         bool service_ran_successfully) {
+        *out_success = service_ran_successfully;
+        loop->Quit();
+      },
+      &run_loop, &success));
+  run_loop.Run();
+  return success;
+}
+
+void Service::HostAsync(ServiceShutdownCallback on_shutdown) {
+  if (!Init()) {
+    std::move(on_shutdown).Run(false);
+    return;
+  }
+  on_shutdown_ = std::move(on_shutdown);
 }
 
 bool Service::Init() {
@@ -1653,9 +1664,9 @@ void Service::HandleSigterm() {
   LOG(INFO) << "Shutting down due to SIGTERM";
 
   StopAllVmsImpl(SERVICE_SHUTDOWN);
-  if (!quit_closure_.is_null()) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, std::move(quit_closure_));
+  if (!on_shutdown_.is_null()) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(on_shutdown_), true));
   }
 }
 
