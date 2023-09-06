@@ -805,19 +805,19 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUSSStorageWriteFailedInPersist = 489,
   /* ./user_secret_stash/storage.cc */
   kLocUSSStorageReadFailedInLoadPersisted = 490,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSNoFEKInGetFSKeyFromPayload = 491,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSNoFNEKInGetFSKeyFromPayload = 492,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSNoFEKSaltInGetFSKeyFromPayload = 493,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSNoFNEKSaltInGetFSKeyFromPayload = 494,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSNoFEKSigInGetFSKeyFromPayload = 495,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSNoFNEKSigInGetFSKeyFromPayload = 496,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSNoChapsKeyInGetFSKeyFromPayload = 497,
   /* ./user_secret_stash/encrypted.cc */
   kLocUSSDeserializeFailedInGetContainerFromFB = 498,
@@ -835,39 +835,39 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUSSNoGCMTagInGetContainerFromFB = 504,
   /* ./user_secret_stash/encrypted.cc */
   kLocUSSTagWrongSizeInGetContainerFromFB = 505,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSEmptyWrappingIDInUnwrapMKFromBlocks = 506,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSWrongWKSizeInUnwrapMKFromBlocks = 507,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSWrappedBlockNotFoundInUnwrapMKFromBlocks = 508,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSUnknownAlgInUnwrapMKFromBlocks = 509,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSEmptyEncKeyInUnwrapMKFromBlocks = 510,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSWrongIVSizeInUnwrapMKFromBlocks = 511,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSWrongTagSizeInUnwrapMKFromBlocks = 512,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSDecryptFailedInUnwrapMKFromBlocks = 513,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSInvalidKeySizeInFromEncContainer = 514,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSGetFromFBFailedInFromEncContainer = 515,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSFromPayloadFailedInFromEncContainer = 516,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSAesGcmFailedInFromEncPayload = 517,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSDeserializeFailedInFromEncPayload = 518,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSGetFSKeyFailedInFromEncPayload = 519,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSGetFromFBFailedInFromEncContainerWithWK = 520,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSUnwrapMKFailedInFromEncContainerWithWK = 521,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSFromPayloadFailedInFromEncContainerWithWK = 522,
   /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSUnwrapMKFailedInUnwrapMK = 523,

@@ -21,8 +21,25 @@
 
 namespace cryptohome {
 
+// This class represents a raw encrypted User Secret Stash (USS). It can be
+// constructed directly from a raw representation of the underlying data
+// structures of the USS but also provides factories to (attempt to) construct
+// it from one of the forms it can be stored in.
+//
+// All of the sensitive data in the USS is kept in its encrypted form, hence the
+// name ("Encrypted"). The class does provide functions to decrypt the contents
+// of the USS but it must be given a key to do so.
 class EncryptedUss {
  public:
+  // Passkey object used to restrict some functions to DecryptedUss. Only
+  // DecryptedUss can construct this and so functions only it should call
+  // require it as a parameter.
+  class Passkey {
+   private:
+    friend class DecryptedUss;
+    Passkey() = default;
+  };
+
   // Container for a wrapped (encrypted) USS main key.
   struct WrappedKeyBlock {
     // The algorithm used for wrapping the USS main key.
@@ -37,7 +54,7 @@ class EncryptedUss {
 
   // Container for the entire stash.
   struct Container {
-    // The encrypted ciperhtext of the secret stash.
+    // The encrypted ciphertext of the secret stash.
     brillo::Blob ciphertext;
     // The random IV used in the ciphertext encryption.
     brillo::Blob iv;
@@ -70,8 +87,17 @@ class EncryptedUss {
   EncryptedUss(EncryptedUss&&) = default;
   EncryptedUss& operator=(EncryptedUss&&) = default;
 
+  // Decrypt the USS ciphertext using the given main key.
+  CryptohomeStatusOr<brillo::SecureBlob> DecryptPayload(
+      const brillo::SecureBlob& main_key) const;
+
   // The set of wrapping IDs contained in the store.
   std::set<std::string_view> WrappedMainKeyIds() const;
+
+  // Unwrap the main key using the given wrapping ID and key.
+  CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKey(
+      const std::string& wrapping_id,
+      const brillo::SecureBlob& wrapping_key) const;
 
   // The OS version on which this particular user secret stash was originally
   // created. The format is the one of the CHROMEOS_RELEASE_VERSION field in
@@ -91,6 +117,9 @@ class EncryptedUss {
 
   // Return the full user metadata.
   const UserMetadata& user_metadata() const { return container_.user_metadata; }
+
+  // Return the raw container. Only accessible to specific friend classes.
+  const Container& container(Passkey) const { return container_; }
 
  private:
   Container container_;

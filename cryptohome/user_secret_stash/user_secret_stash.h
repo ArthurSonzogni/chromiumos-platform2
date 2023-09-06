@@ -17,6 +17,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
 
 namespace cryptohome {
@@ -162,12 +163,14 @@ class UserSecretStash {
 
   // Returns whether there's a wrapped key block with the given wrapping ID.
   bool HasWrappedMainKey(const std::string& wrapping_id) const;
+
   // Unwraps (decrypts) the USS main key from the wrapped key block with the
   // given wrapping ID. Returns a status if it doesn't exist or the unwrapping
   // fails.
   CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKey(
       const std::string& wrapping_id,
       const brillo::SecureBlob& wrapping_key) const;
+
   // Wraps (encrypts) the USS main key using the given wrapped key. The wrapped
   // data is added into the USS as a wrapped key block with the given wrapping
   // ID. |main_key| must be non-empty, and |wrapping_key| - of
@@ -177,11 +180,13 @@ class UserSecretStash {
                                      const std::string& wrapping_id,
                                      const brillo::SecureBlob& wrapping_key,
                                      OverwriteExistingKeyBlock clobber);
+
   // Changes the wrapping ID for an existing key. This does not modify the key
   // itself in any way. Returns false if either the old ID doesn't exist or the
   // new ID already does.
   bool RenameWrappedMainKey(const std::string& old_wrapping_id,
                             const std::string& new_wrapping_id);
+
   // Removes the wrapped key with the given ID. If it doesn't exist, returns
   // false.
   bool RemoveWrappedMainKey(const std::string& wrapping_id);
@@ -230,32 +235,14 @@ class UserSecretStash {
   void RestoreSnapshot(Snapshot&& snapshot);
 
  private:
-  // Decrypts the USS payload flatbuffer using the passed main key and
-  // constructs the USS instance from it. Returns null on decryption or
-  // validation failure.
-  static CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-  FromEncryptedPayload(
-      const brillo::Blob& ciphertext,
-      const brillo::Blob& iv,
-      const brillo::Blob& gcm_tag,
-      const std::map<std::string, EncryptedUss::WrappedKeyBlock>&
-          wrapped_key_blocks,
-      const std::string& created_on_os_version,
-      const UserMetadata& user_metadata,
-      const brillo::SecureBlob& main_key);
-
-  UserSecretStash(
-      FileSystemKeyset file_system_keyset,
-      std::string created_on_os_version,
-      std::map<std::string, brillo::SecureBlob> reset_secrets,
-      std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets);
+  explicit UserSecretStash(DecryptedUss decrypted);
 
   UserSecretStash(FileSystemKeyset file_system_keyset,
                   std::string created_on_os_version);
 
   // Keys registered with the kernel to decrypt files and file names, together
   // with corresponding salts and signatures.
-  const FileSystemKeyset file_system_keyset_;
+  FileSystemKeyset file_system_keyset_;
   // Stores multiple wrapped (encrypted) representations of the main key, each
   // wrapped using a different intermediate key. The map's index is the wrapping
   // ID, which is an opaque string (although upper programmatic layers can add
@@ -263,7 +250,7 @@ class UserSecretStash {
   std::map<std::string, EncryptedUss::WrappedKeyBlock> wrapped_key_blocks_;
   // The OS version on which this particular user secret stash was originally
   // created.
-  const std::string created_on_os_version_;
+  std::string created_on_os_version_;
   // The reset secrets corresponding to each auth factor, by label.
   std::map<std::string, brillo::SecureBlob> reset_secrets_;
   // The reset secrets corresponding to each auth factor type's rate limiter.
