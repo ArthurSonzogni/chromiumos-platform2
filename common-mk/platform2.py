@@ -13,11 +13,20 @@ import glob
 import itertools
 import json
 import os
+from pathlib import Path
 import shlex
+import sys
 
 import common_utils
 import ebuild_function
 
+
+TOP_DIR = Path(__file__).resolve().parent.parent
+
+# Find chromite!
+sys.path.insert(0, str(TOP_DIR.parent.parent))
+
+# pylint: disable=wrong-import-position
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
 from chromite.lib import osutils
