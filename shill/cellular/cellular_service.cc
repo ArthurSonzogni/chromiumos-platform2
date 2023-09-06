@@ -906,8 +906,14 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
   apn_info_ = new_apn_info;
   adaptor()->EmitStringmapChanged(kCellularApnProperty, apn_info_);
 
-  if (ApnList::IsAttachApn(apn_info_) ||
-      ApnList::IsAttachApn(last_attach_apn_info_)) {
+  bool configure_attach_apn = ApnList::IsAttachApn(apn_info_) ||
+                              ApnList::IsAttachApn(last_attach_apn_info_);
+  return CustomApnUpdated(configure_attach_apn, error);
+}
+
+bool CellularService::CustomApnUpdated(bool configure_attach_apn,
+                                       Error* error) {
+  if (configure_attach_apn) {
     // If we were using an attach APN, and we are no longer using it, we should
     // re-configure the attach APN to clear the attach APN in the modem.
     cellular_->ConfigureAttachApn();
@@ -975,25 +981,9 @@ bool CellularService::SetCustomApnList(const Stringmaps& value, Error* error) {
   adaptor()->EmitStringmapsChanged(kCellularCustomApnListProperty,
                                    custom_apn_list_.value());
 
-  if (exist_attach || ApnList::IsAttachApn(last_attach_apn_info_)) {
-    // If we were using an attach APN, and we are no longer using it, we should
-    // re-configure the attach APN to clear the attach APN in the modem.
-    cellular_->ConfigureAttachApn();
-    return true;
-  }
-
-  if (IsConnected()) {
-    Disconnect(error, __func__);
-    if (!error->IsSuccess()) {
-      return false;
-    }
-    Connect(error, __func__);
-    return error->IsSuccess();
-  }
-  ResetAutoConnectCooldownTime();
-  // UpdateService to trigger AutoConnect if necessary.
-  manager()->UpdateService(this);
-  return true;
+  bool configure_attach_apn =
+      exist_attach || ApnList::IsAttachApn(last_attach_apn_info_);
+  return CustomApnUpdated(configure_attach_apn, error);
 }
 
 void CellularService::ClearCustomApnList(Error* error) {

@@ -226,6 +226,7 @@ class CellularService : public Service {
   Stringmap ValidateCustomApn(const Stringmap& value, bool using_apn_revamp_ui);
   Stringmaps GetCustomApnList(Error* error);
   bool SetCustomApnList(const Stringmaps& value, Error* error);
+  bool CustomApnUpdated(bool configure_attach_apn, Error* error);
   // This function is used to completely remove the property. The existence of
   // the property indicates if the new APN UI revamp is used or not.
   void ClearCustomApnList(Error*);
