@@ -361,4 +361,59 @@ std::optional<int> WiFiPhy::SelectFrequency(WiFiBand band) const {
   return selected;
 }
 
+// Operators to facilitate interface combination logging.
+std::ostream& operator<<(std::ostream& out, const nl80211_iftype& it) {
+  switch (it) {
+    case NL80211_IFTYPE_ADHOC:
+      return out << "IBSS";
+    case NL80211_IFTYPE_STATION:
+      return out << "STA";
+    case NL80211_IFTYPE_AP:
+      return out << "AP";
+    case NL80211_IFTYPE_P2P_CLIENT:
+      return out << "P2P_CLIENT";
+    case NL80211_IFTYPE_P2P_GO:
+      return out << "P2P_GO";
+    case NL80211_IFTYPE_P2P_DEVICE:
+      return out << "P2P_DEVICE";
+    default:
+      return out << "unknown(" << int(it) << ")";
+  }
+}
+
+std::ostream& operator<<(std::ostream& out,
+                         const std::vector<nl80211_iftype>& it) {
+  out << "{ ";
+  for (const auto& i : it)
+    out << i << ", ";
+  out << "\b\b }";
+  return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const IfaceLimit& il) {
+  return out << "{ iftypes: " << il.iftypes << ", max:" << il.max << " }";
+}
+
+std::ostream& operator<<(std::ostream& out, const std::vector<IfaceLimit>& il) {
+  out << "{ ";
+  for (const auto& c : il)
+    out << c << ", ";
+  out << "\b\b }";
+  return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const ConcurrencyCombination& cc) {
+  return out << "{ limits: " << cc.limits << ", max_num:" << cc.max_num
+             << ", num_channels: " << cc.num_channels << " }";
+}
+
+std::ostream& operator<<(std::ostream& out,
+                         const std::vector<ConcurrencyCombination>& cc) {
+  out << "{ ";
+  for (const auto& c : cc)
+    out << c << ", ";
+  out << "\b\b }";
+  return out;
+}
+
 }  // namespace shill

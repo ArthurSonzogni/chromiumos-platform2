@@ -172,6 +172,21 @@ inline bool operator==(const WiFiPhy::Frequency& f1,
          f1.attributes == f2.attributes;
 }
 
+// Operators to facilitate interface combination logging.
+std::ostream& operator<<(std::ostream& out, const nl80211_iftype& it);
+
+std::ostream& operator<<(std::ostream& out,
+                         const std::vector<nl80211_iftype>& it);
+
+std::ostream& operator<<(std::ostream& out, const IfaceLimit& il);
+
+std::ostream& operator<<(std::ostream& out, const std::vector<IfaceLimit>& il);
+
+std::ostream& operator<<(std::ostream& out, const ConcurrencyCombination& cc);
+
+std::ostream& operator<<(std::ostream& out,
+                         const std::vector<ConcurrencyCombination>& cc);
+
 }  // namespace shill
 
 #endif  // SHILL_WIFI_WIFI_PHY_H_
