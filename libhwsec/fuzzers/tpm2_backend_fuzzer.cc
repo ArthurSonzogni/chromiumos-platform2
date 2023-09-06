@@ -495,6 +495,10 @@ void FuzzMain(FuzzedDataProvider& data_provider) {
 FuzzedDataProvider* g_data_provider;
 std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char> g_engine;
 
+// Generating too much low entropy random data will cause the fuzzer stuck
+// in the RSA keygen, we should not waste time for that kind of case.
+uint32_t g_low_entropy_rand_count = 0;
+
 enum class RandByteType {
   kQuick,
   kConsume,
@@ -506,6 +510,11 @@ enum class RandByteType {
 int FuzzRandBytes(unsigned char* buf, int num) {
   if (g_data_provider == nullptr) {
     return 0;
+  }
+
+  if (g_low_entropy_rand_count > 4096) {
+    std::generate(buf, buf + num, std::ref(g_engine));
+    return 1;
   }
 
   switch (g_data_provider->ConsumeEnum<RandByteType>()) {
@@ -521,9 +530,11 @@ int FuzzRandBytes(unsigned char* buf, int num) {
       break;
     case RandByteType::kZero:
       memset(buf, 0, num);
+      g_low_entropy_rand_count++;
       break;
     case RandByteType::kOne:
       memset(buf, 0xff, num);
+      g_low_entropy_rand_count++;
       break;
   }
 
@@ -570,6 +581,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider data_provider(data, size);
   hwsec::g_data_provider = &data_provider;
   hwsec::g_engine.seed(0);
+  hwsec::g_low_entropy_rand_count = 0;
 
   hwsec::FuzzMain(data_provider);
   return 0;
