@@ -1115,7 +1115,6 @@ bool Daemon::RunEcCommand(ec::EcCommandInterface& cmd) {
 bool Daemon::SetBatterySustain(int lower, int upper) {
   auto cmd = ec_command_factory_->ChargeControlSetCommand(CHARGE_CONTROL_NORMAL,
                                                           lower, upper);
-
   bool success = RunEcCommand(*cmd);
   if (!success) {
     // This is expected if the EC doesn't support battery sustainer.
@@ -1137,6 +1136,27 @@ bool Daemon::SetBatterySlowCharging(uint32_t limit_mA) {
   }
 
   return success;
+}
+
+bool Daemon::SetBatteryDischarge() {
+  // Second and third args don't matter for CHARGE_CONTROL_DISCHARGE.
+  auto cmd = ec_command_factory_->ChargeControlSetCommand(
+      CHARGE_CONTROL_DISCHARGE, 0, 0);
+
+  bool success = RunEcCommand(*cmd);
+  if (!success) {
+    LOG(ERROR) << "Failed to force discharge the battery";
+  }
+
+  return success;
+}
+
+bool Daemon::AddSuspendInternalDelay(policy::SuspendInternalDelay* delay) {
+  return suspender_->AddSuspendInternalDelay(delay);
+}
+
+void Daemon::RemoveSuspendInternalDelay(policy::SuspendInternalDelay* delay) {
+  suspender_->RemoveSuspendInternalDelay(delay);
 }
 
 void Daemon::GetAdaptiveChargingPrediction(

@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <brillo/errors/error.h>
 #include <brillo/timers/alarm_timer.h>
 #include <featured/feature_library.h>
@@ -25,6 +26,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/suspend_delay_controller.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/powerd/system/power_supply.h"
@@ -53,13 +55,26 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
     // after it is reached by disabling charging (AC will provide current, but
     // won't charge the battery). If both `lower` and `upper` are -1, charge
     // behavior is reverted to the default behavior.
-    // Returns true upon success and false otherwise.
     virtual bool SetBatterySustain(int lower, int upper) = 0;
 
     // Set the battery charge current limit to `limit_mA` in milliamps which
     // will be the charge current used to charge the battery during the slow
     // charging phase of adaptive charging.
     virtual bool SetBatterySlowCharging(uint32_t limit_mA) = 0;
+
+    // Set the battery to force discharge. Returns true if force discharge is
+    // successfully enabled.
+    virtual bool SetBatteryDischarge() = 0;
+
+    // Add an internal delay for suspend, which is used for the Charge Limit
+    // feature. Returns true if suspend will be delayed for `delay`. Adding a
+    // delay later in the suspend process will result in that delay being
+    // rejected and false will be returned.
+    virtual bool AddSuspendInternalDelay(SuspendInternalDelay* delay) = 0;
+
+    // Remove an internal delay for suspend, which should be done when the code
+    // that requires suspend to be delayed is completed.
+    virtual void RemoveSuspendInternalDelay(SuspendInternalDelay* delay) = 0;
 
     // Get the prediction for the next X hours on whether the charger will be
     // connected. Each value in the `result` is added to a sum, one at a time,
@@ -99,8 +114,12 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
   // in dark resume to re-evaluate charging delays.
   virtual void PrepareForSuspendAttempt() = 0;
 
-  // Reschedules writes for ChargeHistory.
+  // Reschedules writes for ChargeHistory and enables Charge Limit if it was
+  // deferred.
   virtual void HandleFullResume() = 0;
+
+  // Enables Charge Limit if it was deferred before suspend.
+  virtual void HandleDarkResume() = 0;
 
   // Disables Adaptive Charging for shutdown (and hibernate).
   virtual void HandleShutdown() = 0;
@@ -477,7 +496,7 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
     base::TimeDelta finish_charging_delay = slow_charging_enabled_
                                                 ? kFinishSlowChargingDelay
                                                 : kFinishChargingDelay;
-    return target_full_charge_time_ - base::TimeTicks::Now() -
+    return target_full_charge_time_ - clock_.GetCurrentBootTime() -
            finish_charging_delay;
   }
 
@@ -501,6 +520,7 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;
   void PrepareForSuspendAttempt() override;
   void HandleFullResume() override;
+  void HandleDarkResume() override;
   void HandleShutdown() override;
   void OnPredictionResponse(bool inference_done,
                             const std::vector<double>& result) override;
@@ -549,6 +569,10 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // Sets the battery charge current limit to 0.1C (10% of battery design
   // capacity).
   void StartSlowCharging();
+
+  // Completes the operation to enable Charge Limit by enabling the battery
+  // sustainer. This function may be scheduled as a delayed task.
+  void CompleteChargeLimit();
 
   // Starts Charge Limit on the system, which prevents charging over
   // `adaptive_charging_hold_percent_` at all times, even after shutdown.
@@ -632,6 +656,18 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // well.
   std::unique_ptr<brillo::timers::SimpleAlarmTimer> charge_alarm_ =
       brillo::timers::SimpleAlarmTimer::Create();
+
+  // For enabling the battery sustainer after a delay, which is a workaround for
+  // the battery sustainer not discharging the battery when it is full. This is
+  // a OneShotTimer instead of a SimpleAlarmTimer since we won't wake the system
+  // for this use case (we'll just enable the sustainer on resume instead).
+  std::unique_ptr<base::OneShotTimer> charge_limit_discharge_timer_ =
+      std::make_unique<base::OneShotTimer>();
+
+  // For delaying suspend when we're force discharging the battery temporarily
+  // as a workaround for the battery sustainer not discharging when the battery
+  // is full.
+  std::unique_ptr<SuspendInternalDelay> charge_limit_delay_;
 
   // Current target for when we plan to fully charge the battery.
   base::TimeTicks target_full_charge_time_;

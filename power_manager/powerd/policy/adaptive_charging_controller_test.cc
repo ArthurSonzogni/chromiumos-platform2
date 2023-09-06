@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <functional>
 #include <limits>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,6 +20,7 @@
 #include <base/json/json_file_value_serializer.h>
 #include <base/json/values_util.h>
 #include <base/run_loop.h>
+#include <base/test/task_environment.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <featured/fake_platform_features.h>
@@ -47,14 +49,33 @@ const int64_t kDefaultTestPercent = 70;
 class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
  public:
   bool SetBatterySustain(int lower, int upper) override {
+    fake_discharge = false;
     fake_lower = lower;
     fake_upper = upper;
+    if (enable_battery_sustain_closure && lower != kBatterySustainDisabled)
+      enable_battery_sustain_closure.Run();
+    return true;
+  }
+
+  bool SetBatteryDischarge() override {
+    fake_discharge = true;
+    fake_lower = kBatterySustainDisabled;
+    fake_upper = kBatterySustainDisabled;
     return true;
   }
 
   bool SetBatterySlowCharging(uint32_t limit_mA) override {
     fake_limit = limit_mA;
     return true;
+  }
+
+  bool AddSuspendInternalDelay(SuspendInternalDelay* delay) override {
+    internal_delays.insert(delay);
+    return !suspend_in_progress;
+  }
+
+  void RemoveSuspendInternalDelay(SuspendInternalDelay* delay) override {
+    internal_delays.erase(delay);
   }
 
   void GetAdaptiveChargingPrediction(const assist_ranker::RankerExample& proto,
@@ -78,15 +99,19 @@ class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
   // associated hour, except for the last result, which is the probability of
   // unplug after the corresponding hour for the second to last result.
   std::vector<double> fake_result;
+  base::RepeatingClosure enable_battery_sustain_closure;
   int fake_lower;
   int fake_upper;
+  bool fake_discharge;
   uint32_t fake_limit;
   metrics::AdaptiveChargingState adaptive_state;
+  std::set<SuspendInternalDelay*> internal_delays;
+  bool suspend_in_progress;
 };
 
 }  // namespace
 
-class AdaptiveChargingControllerTest : public TestEnvironment {
+class AdaptiveChargingControllerTest : public ::testing::Test {
  public:
   AdaptiveChargingControllerTest() {
     auto recheck_alarm = brillo::timers::SimpleAlarmTimer::CreateForTesting();
@@ -97,7 +122,9 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
     delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
     delegate_.fake_lower = kBatterySustainDisabled;
     delegate_.fake_upper = kBatterySustainDisabled;
+    delegate_.fake_discharge = false;
     delegate_.fake_limit = kSlowChargingDisabled;
+    delegate_.suspend_in_progress = false;
     power_status_.external_power = PowerSupplyProperties_ExternalPower_AC;
     power_status_.display_battery_percentage = kDefaultTestPercent;
     power_status_.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
@@ -221,6 +248,14 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
         &delegate_, &backlight_controller_, &input_watcher_, &power_supply_,
         &dbus_wrapper_, platform_features_.get(), &prefs_);
     power_supply_.NotifyObservers();
+
+    // If Charge Limit is enabled via pref, the AdaptiveChargingController posts
+    // the task to enable Charge Limit due to avoid a mutual Init dependency
+    // with the Suspender class.
+    base::RunLoop enable_sustainer_loop;
+    delegate_.enable_battery_sustain_closure =
+        enable_sustainer_loop.QuitClosure();
+    enable_sustainer_loop.Run();
 
     EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
               metrics::AdaptiveChargingState::USER_DISABLED);
@@ -360,6 +395,9 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
   }
 
  protected:
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO,
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   FakeDelegate delegate_;
   policy::BacklightControllerStub backlight_controller_;
   system::InputWatcherStub input_watcher_;
@@ -1612,6 +1650,95 @@ TEST_F(AdaptiveChargingControllerTest, ChargeLimitPowerSupplyState) {
   // battery percentage, but the feature should still be enabled.
   EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
   EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+}
+
+// Test that the Charge Limit workaround, discharging for 1 second, for a full
+// battery is done.
+TEST_F(AdaptiveChargingControllerTest, ChargeLimitDischargeWorkaround) {
+  InitFullCharge();
+
+  PowerManagementPolicy policy;
+  policy.set_charge_limit_enabled(true);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::USER_DISABLED);
+  EXPECT_TRUE(delegate_.fake_discharge);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+
+  // Check that the sustainer is enabled after 1 second.
+  task_environment_.FastForwardBy(base::Seconds(1));
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+}
+
+// Test that enabling Charge Limit after suspend is initiated delays Charge
+// Limit until after Resume.
+TEST_F(AdaptiveChargingControllerTest, ChargeLimitSuspendDelay) {
+  InitFullCharge();
+  delegate_.suspend_in_progress = true;
+
+  PowerManagementPolicy policy;
+  policy.set_charge_limit_enabled(true);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+  // Check that neither force discharge or the sustainer are not initiated.
+  EXPECT_FALSE(delegate_.fake_discharge);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+
+  // Check that neither discharge or the sustainer started after the delay.
+  task_environment_.FastForwardBy(base::Seconds(1));
+  EXPECT_FALSE(delegate_.fake_discharge);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+}
+
+// Test that the force discharge workaround for Charge Limit is disabled on
+// Suspend.
+TEST_F(AdaptiveChargingControllerTest, ChargeLimitDisableDischargeOnSuspend) {
+  InitFullCharge();
+
+  PowerManagementPolicy policy;
+  policy.set_charge_limit_enabled(true);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+  EXPECT_TRUE(delegate_.fake_discharge);
+
+  // Check that preparing for suspend disables both force discharge and the
+  // battery sustainer (the SuspendInternalDelay timed out).
+  adaptive_charging_controller_.PrepareForSuspendAttempt();
+  EXPECT_FALSE(delegate_.fake_discharge);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+
+  // Check that the timer doesn't go off and enable the battery sustainer.
+  task_environment_.FastForwardBy(base::Seconds(1));
+  EXPECT_FALSE(delegate_.fake_discharge);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+}
+
+// Test that the force discharge workaround for Charge Limit is disabled on
+// Shutdown.
+TEST_F(AdaptiveChargingControllerTest, ChargeLimitDisableDischargeOnShutdown) {
+  InitFullCharge();
+
+  PowerManagementPolicy policy;
+  policy.set_charge_limit_enabled(true);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+  EXPECT_TRUE(delegate_.fake_discharge);
+
+  // Check that shutdown disables both force dicharge and the battery sustainer.
+  adaptive_charging_controller_.HandleShutdown();
+  EXPECT_FALSE(delegate_.fake_discharge);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+
+  // Check that the timer doesn't go off and enable the battery sustainer.
+  task_environment_.FastForwardBy(base::Seconds(1));
+  EXPECT_FALSE(delegate_.fake_discharge);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
 }
 
 }  // namespace power_manager::policy

@@ -837,6 +837,8 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result,
   dark_suspend_id_++;
 
   shutdown_from_suspend_->HandleDarkResume();
+  if (adaptive_charging_controller_)
+    adaptive_charging_controller_->HandleDarkResume();
 
   if (result == Delegate::SuspendResult::SUCCESS) {
     // This is the start of a new dark resume wake.

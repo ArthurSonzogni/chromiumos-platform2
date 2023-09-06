@@ -44,6 +44,9 @@ const char kTimeOnACSubDir[] = "time_on_ac/";
 const int kMaxRetentionDays = 30;
 const base::TimeDelta kRetentionDays = base::Days(kMaxRetentionDays);
 const base::TimeDelta kChargeHistoryTimeInterval = base::Minutes(15);
+// The duration that we need to temporarily force discharge before enabling the
+// battery sustainer when the battery is full.
+const base::TimeDelta kBatterySustainAfterDischargeDelay = base::Seconds(1);
 const int kMaxChargeEvents = 50;
 
 const int kDefaultMinDaysHistory = 14;
@@ -822,6 +825,7 @@ void AdaptiveChargingController::Init(
   min_days_history_ = kDefaultMinDaysHistory;
   min_full_on_ac_ratio_ = kDefaultMinFullOnACRatio;
   cached_external_power_ = PowerSupplyProperties_ExternalPower_DISCONNECTED;
+  charge_limit_delay_ = std::make_unique<SuspendInternalDelay>("Charge Limit");
   is_sustain_set_ = false;
   adaptive_charging_enabled_ = false;
   slow_charging_enabled_ = false;
@@ -868,7 +872,10 @@ void AdaptiveChargingController::Init(
   // sustain functionality is not supported on this system, we will still run ML
   // models for Adaptive Charging so we can track how well we would do if it is
   // enabled.
-  adaptive_charging_supported_ = SetSustain(100, 100);
+  // TODO(b/222620437): Always disable the Battery Sustainer before setting new
+  // limits due to an issue with some firmware.
+  adaptive_charging_supported_ =
+      SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
   if (!adaptive_charging_supported_) {
     // AdaptiveChargingController still runs the predictions to report how well
     // the ML model performs, even if the system isn't supported.
@@ -881,10 +888,6 @@ void AdaptiveChargingController::Init(
   }
 
   power_supply_->SetAdaptiveChargingSupported(adaptive_charging_supported_);
-
-  // TODO(b/222620437): Always disable the Battery Sustainer before setting new
-  // limits due to an issue with some firmware.
-  SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
 
   // Adaptive Charging and Charge Limit state is reset during Init. If either of
   // the features were enabled or disabled via `HandlePolicyChange`, another
@@ -901,7 +904,14 @@ void AdaptiveChargingController::Init(
   LOG(INFO) << "Charge Limit is "
             << (charge_limit_enabled_ ? "enabled" : "disabled");
   if (charge_limit_enabled_) {
-    StartChargeLimit();
+    // Start Charge Limit via a call to `PostTask`, since the
+    // `policy::Suspender` class, which Charge Limit relies on to delay suspend,
+    // needs to have Init called first. The Suspender class takes a pointer to
+    // the AdaptiveChargingController object, so we can't just reorder
+    // instantiation in `Daemon`.
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&AdaptiveChargingController::StartChargeLimit,
+                                  weak_ptr_factory_.GetWeakPtr()));
   }
 }
 
@@ -1014,6 +1024,17 @@ void AdaptiveChargingController::PrepareForSuspendAttempt() {
   power_supply_->RefreshImmediately();
   charge_history_.OnEnterLowPowerState();
 
+  // This means we're in the middle of discharging before enabling the battery
+  // sustainer. The delay before enabling the battery sustainer is 1 second, and
+  // suspend delays timeout after 20 seconds, which means something else is
+  // likely wrong for this race condition to hit.
+  if (charge_limit_discharge_timer_->IsRunning()) {
+    LOG(WARNING) << "Suspend started before Charge Limit completed enablement";
+    charge_limit_discharge_timer_->Stop();
+    SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+    is_sustain_set_ = false;
+  }
+
   // Don't run UpdateAdaptiveCharging, which will schedule an RTC wake from
   // sleep, if `recheck_alarm_` isn't already running.
   if (!IsRunning())
@@ -1026,6 +1047,13 @@ void AdaptiveChargingController::PrepareForSuspendAttempt() {
 
 void AdaptiveChargingController::HandleFullResume() {
   charge_history_.OnExitLowPowerState();
+  if (charge_limit_enabled_ && !is_sustain_set_)
+    StartChargeLimit();
+}
+
+void AdaptiveChargingController::HandleDarkResume() {
+  if (charge_limit_enabled_ && !is_sustain_set_)
+    StartChargeLimit();
 }
 
 void AdaptiveChargingController::HandleShutdown() {
@@ -1033,6 +1061,13 @@ void AdaptiveChargingController::HandleShutdown() {
   state_ = AdaptiveChargingState::SHUTDOWN;
   StopAdaptiveCharging();
   charge_history_.OnEnterLowPowerState();
+  // If we race with Shutdown to enable Charge Limit with the discharge
+  // workaround, enabling it will have to wait until the next boot.
+  if (charge_limit_discharge_timer_->IsRunning()) {
+    charge_limit_discharge_timer_->Stop();
+    SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+    is_sustain_set_ = false;
+  }
 }
 
 void AdaptiveChargingController::OnPredictionResponse(
@@ -1583,22 +1618,68 @@ void AdaptiveChargingController::StartSlowCharging() {
   power_supply_->ClearAdaptiveChargingChargeDelay();
 }
 
+void AdaptiveChargingController::CompleteChargeLimit() {
+  // Make sure Charge Limit didn't get disabled between when this task was
+  // scheduled and now.
+  if (charge_limit_enabled_ &&
+      !SetSustain(hold_percent_ - hold_delta_percent_, hold_percent_)) {
+    LOG(ERROR) << "Disabling Charge Limit after failing to set battery "
+               << "sustainer.";
+    charge_limit_enabled_ = false;
+    is_sustain_set_ = false;
+  }
+
+  delegate_->RemoveSuspendInternalDelay(charge_limit_delay_.get());
+}
+
 void AdaptiveChargingController::StartChargeLimit() {
   // Adaptive Charging should always be stopped before starting Charge Limit.
   DCHECK(state_ != AdaptiveChargingState::ACTIVE);
   LOG(INFO) << "Starting Charge Limit.";
-  if (!is_sustain_set_ &&
-      !SetSustain(hold_percent_ - hold_delta_percent_, hold_percent_)) {
-    LOG(ERROR) << "Failed to set battery sustain for Charge Limit.";
-    charge_limit_enabled_ = false;
-    return;
+  if (!is_sustain_set_) {
+    // TODO(b/295239614) Battery sustainer doesn't work when the battery is full
+    // (and not charging), but this can be worked around by discharging the
+    // battery for a second before enabling the battery sustainer. Remove this
+    // after all platforms have EC firmware with the fix to this bug.
+    const system::PowerStatus status = power_supply_->GetPowerStatus();
+    if (status.battery_state == PowerSupplyProperties_BatteryState_FULL) {
+      if (state_ == AdaptiveChargingState::SHUTDOWN) {
+        LOG(INFO) << "Not enabling Charge Limit after shutdown started due to "
+                  << "full battery workaround";
+        return;
+      }
+      if (!delegate_->AddSuspendInternalDelay(charge_limit_delay_.get())) {
+        // Too late in the suspend process to start Charge Limit. Wait until
+        // resume to start.
+        LOG(INFO) << "Enabling Charge Limit deferred until resume due to full "
+                  << "battery workaround";
+        return;
+      }
+      if (!delegate_->SetBatteryDischarge()) {
+        charge_limit_enabled_ = false;
+        LOG(ERROR) << "Failed to set battery discharge for Charge Limit";
+        return;
+      }
+
+      // `is_sustain_set_` should be set to true, even if we're waiting on the
+      // delayed task to call SetSustain. This prevents something else from
+      // enabling the sustainer too soon for the workaround to b/295239614.
+      is_sustain_set_ = true;
+      charge_limit_discharge_timer_->Start(
+          FROM_HERE, kBatterySustainAfterDischargeDelay, this,
+          &AdaptiveChargingController::CompleteChargeLimit);
+    } else {
+      is_sustain_set_ = true;
+      CompleteChargeLimit();
+    }
   }
-  is_sustain_set_ = true;
+
   display_percent_ = hold_percent_;
 }
 
 void AdaptiveChargingController::StopChargeLimit() {
   LOG(INFO) << "Stopping Charge Limit.";
+  charge_limit_discharge_timer_->Stop();
   SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
   power_supply_->ClearChargeLimited();
   is_sustain_set_ = false;

@@ -32,6 +32,8 @@ class MockAdaptiveChargingController
 
   MOCK_METHOD(void, HandleFullResume, (), (override));
 
+  MOCK_METHOD(void, HandleDarkResume, (), (override));
+
   MOCK_METHOD(void, HandleShutdown, (), (override));
 
   MOCK_METHOD(void,
