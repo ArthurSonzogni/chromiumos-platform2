@@ -422,24 +422,45 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    // Allow setting file size truncate(2) to support file write(2).
-    const int kAllowedToSet = FUSE_SET_ATTR_SIZE;
-
-    constexpr auto allowed_to_set = [](int to_set) {
-      if (to_set & ~kAllowedToSet)
-        return ENOTSUP;
-      if (!to_set)  // Nothing to_set? error EINVAL.
-        return EINVAL;
-      return 0;
-    };
-
-    VLOG(1) << "to_set " << ToSetFlagsToString(to_set);
-    if (errno = allowed_to_set(to_set); errno) {
+    // When *serving* fusebox files, we hard-code kChronosUID:kChronosAccessGID
+    // as the file owner (in the chown sense). We allow *setting* the owner as
+    // long as it's the same uid:gid.
+    bool not_supported = false;
+    if (to_set & FUSE_SET_ATTR_UID) {
+      not_supported = not_supported || (attr->st_uid != kChronosUID);
+      to_set &= ~FUSE_SET_ATTR_UID;
+    }
+    if (to_set & FUSE_SET_ATTR_GID) {
+      not_supported = not_supported || (attr->st_gid != kChronosAccessGID);
+      to_set &= ~FUSE_SET_ATTR_GID;
+    }
+    not_supported =
+        not_supported || ((to_set != 0) && (to_set != FUSE_SET_ATTR_SIZE));
+    if (not_supported) {
+      errno = ENOTSUP;
       request->ReplyError(errno);
       PLOG(ERROR) << "setattr";
       return;
     }
 
+    if (to_set == 0) {
+      // Treat it like a GetAttr FUSE request (a kStat2Method D-Bus request).
+      Stat2RequestProto request_proto;
+      request_proto.set_file_system_url(GetInodeTable().GetDevicePath(node));
+
+      dbus::MethodCall method(kFuseBoxServiceInterface, kStat2Method);
+      dbus::MessageWriter writer(&method);
+      writer.AppendProtoAsArrayOfBytes(request_proto);
+
+      auto stat_response = base::BindOnce(&FuseBoxClient::StatResponse,
+                                          weak_ptr_factory_.GetWeakPtr(),
+                                          std::move(request), node->ino);
+      CallFuseBoxServerMethod(&method, std::move(stat_response));
+      return;
+    }
+
+    // FUSE_SET_ATTR_SIZE becomes a kTruncateMethod D-Bus request.
+    CHECK(to_set == FUSE_SET_ATTR_SIZE);
     TruncateRequestProto request_proto;
     request_proto.set_file_system_url(GetInodeTable().GetDevicePath(node));
     request_proto.set_length(base::strict_cast<int64_t>(attr->st_size));
