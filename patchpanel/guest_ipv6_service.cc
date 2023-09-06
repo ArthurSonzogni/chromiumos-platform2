@@ -638,33 +638,42 @@ bool GuestIPv6Service::StopRAServer(const std::string& ifname) {
   return false;
 }
 
+namespace {
+constexpr char kRadvdConfTemplate[] = R"(interface $1 {
+  AdvSendAdvert on;
+  prefix $2 {
+    AdvOnLink off;
+    AdvAutonomous on;
+  };
+  $3
+};
+)";
+}  // namespace
+
 bool GuestIPv6Service::CreateConfigFile(const std::string& ifname,
                                         const net_base::IPv6CIDR& prefix,
                                         const std::vector<std::string>& rdnss,
                                         const std::optional<int>& mtu,
                                         const std::optional<int>& hop_limit) {
-  std::vector<std::string> lines;
-  lines.push_back(base::StringPrintf("interface %s {", ifname.c_str()));
-  lines.push_back("  AdvSendAdvert on;");
+  std::vector<std::string> options;
   if (mtu) {
-    lines.push_back(base::StringPrintf("  AdvLinkMTU %d;", *mtu));
+    options.push_back(base::StringPrintf("AdvLinkMTU %d;", *mtu));
   }
   if (hop_limit) {
-    lines.push_back(base::StringPrintf("  AdvCurHopLimit %d;", *hop_limit));
+    options.push_back(base::StringPrintf("AdvCurHopLimit %d;", *hop_limit));
   }
-  lines.push_back(
-      base::StringPrintf("  prefix %s {", prefix.ToString().c_str()));
-  lines.push_back("    AdvOnLink off;");
-  lines.push_back("    AdvAutonomous on;");
-  lines.push_back("  };");
   if (!rdnss.empty()) {
-    lines.push_back(base::StringPrintf("  RDNSS %s {",
-                                       base::JoinString(rdnss, " ").c_str()));
-    lines.push_back("  };");
+    options.push_back(
+        base::StrCat({"RDNSS ", base::JoinString(rdnss, " "), " {};"}));
   }
-  lines.push_back("};");
-  lines.push_back("");
-  std::string contents = base::JoinString(lines, "\n");
+  const std::string contents = base::ReplaceStringPlaceholders(
+      kRadvdConfTemplate,
+      {
+          /*$1=*/ifname,
+          /*$2=*/prefix.ToString(),
+          /*$3=*/base::JoinString(options, "\n  "),
+      },
+      nullptr);
 
   const base::FilePath& conf_file_path =
       base::FilePath(kRadvdRunDir)

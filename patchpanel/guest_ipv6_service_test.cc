@@ -512,14 +512,13 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
 
 constexpr char kExpectedConfigFile[] = R"(interface eth0 {
   AdvSendAdvert on;
-  AdvLinkMTU 1000;
-  AdvCurHopLimit 64;
   prefix fd00::/64 {
     AdvOnLink off;
     AdvAutonomous on;
   };
-  RDNSS fd00::1 fd00::2 {
-  };
+  AdvLinkMTU 1000;
+  AdvCurHopLimit 64;
+  RDNSS fd00::1 fd00::2 {};
 };
 )";
 
