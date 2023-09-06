@@ -3263,16 +3263,15 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
                   Error::kSuccess,
                   Metrics::DetailedCellularConnectionResult::APNType::kDUN));
 
-  // Service is connected and portal detection is supported.
-  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
+  // Portal detection is supported.
   ON_CALL(*service, IsPortalDetectionDisabled()).WillByDefault(Return(false));
 
   // Last good APN should NOT be updated because we're connecting a DUN APN.
   EXPECT_CALL(*service, SetLastGoodApn(_)).Times(0);
 
-  // Service state should NOT be updated in any way because we're hiding the
-  // reconnection from it.
-  EXPECT_CALL(*service, SetState(_)).Times(0);
+  // Service state should transition to Associating.
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   EXPECT_CALL(*service, SetFailure(_)).Times(0);
   EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
 
@@ -3304,12 +3303,11 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Optional(_))));
 
-  // Onnce the new Network is started, portal detection should be explicitly
-  // requested.
-  EXPECT_CALL(*default_pdn_, StartPortalDetection(_)).WillOnce(Return(true));
-
-  // Service would get the attached network updated.
+  // Service would get the attached network updated, and state transitions to
+  // Configuring.
   EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(default_pdn_)));
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateAssociating));
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
 
   // The multiplexed interface property name will be repopulated.
   EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
@@ -3321,6 +3319,21 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
 
   // Operation doesn't finish yet.
   EXPECT_FALSE(future.IsReady());
+
+  // State check must be called twice. The first time will control the
+  // transition to Connected state (so must be not connected first). The second
+  // time controls whether portal detection should be started (so must be
+  // connected).
+  EXPECT_CALL(*service, state())
+      .WillOnce(Return(Service::kStateConfiguring))
+      .WillOnce(Return(Service::kStateConnected));
+
+  // Service will transition to Connected.
+  EXPECT_CALL(*service, SetState(Service::kStateConnected));
+
+  // Once the new Network is started, portal detection should be explicitly
+  // requested.
+  EXPECT_CALL(*default_pdn_, StartPortalDetection(_)).WillOnce(Return(true));
 
   // 3rd step: Network reports connection updated
   device_->OnConnectionUpdated(kTestInterfaceIndex);
@@ -3581,16 +3594,15 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
           Error::kSuccess,
           Metrics::DetailedCellularConnectionResult::APNType::kDefault));
 
-  // Service is connected and portal detection is supported.
-  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
+  // Portal detection is supported.
   ON_CALL(*service, IsPortalDetectionDisabled()).WillByDefault(Return(false));
 
   // Last good APN should be updated because we're connecting a DEFAULT APN.
   EXPECT_CALL(*service, SetLastGoodApn(_));
 
-  // Service state should NOT be updated in any way because we're hiding the
-  // reconnection from it.
-  EXPECT_CALL(*service, SetState(_)).Times(0);
+  // Service state should transition to Associating.
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   EXPECT_CALL(*service, SetFailure(_)).Times(0);
   EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
 
@@ -3619,12 +3631,11 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Optional(_))));
 
-  // Onnce the new Network is started, portal detection should be explicitly
-  // requested.
-  EXPECT_CALL(*default_pdn_, StartPortalDetection(_)).WillOnce(Return(true));
-
-  // Service would get the attached network updated.
+  // Service would get the attached network updated, and state transitions to
+  // Configuring.
   EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(default_pdn_)));
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateAssociating));
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
 
   // The multiplexed interface property name will be repopulated.
   EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
@@ -3636,6 +3647,21 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
 
   // Operation doesn't finish yet.
   EXPECT_FALSE(future.IsReady());
+
+  // State check must be called twice. The first time will control the
+  // transition to Connected state (so must be not connected first). The second
+  // time controls whether portal detection should be started (so must be
+  // connected).
+  EXPECT_CALL(*service, state())
+      .WillOnce(Return(Service::kStateConfiguring))
+      .WillOnce(Return(Service::kStateConnected));
+
+  // Service will transition to Connected.
+  EXPECT_CALL(*service, SetState(Service::kStateConnected));
+
+  // Once the new Network is started, portal detection should be explicitly
+  // requested.
+  EXPECT_CALL(*default_pdn_, StartPortalDetection(_)).WillOnce(Return(true));
 
   // 3rd step: Network reports connection updated
   device_->OnConnectionUpdated(kTestInterfaceIndex);

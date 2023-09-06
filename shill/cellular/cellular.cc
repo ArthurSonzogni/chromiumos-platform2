@@ -1507,9 +1507,7 @@ void Cellular::OnEnabled() {
 }
 
 void Cellular::OnConnecting() {
-  // When reconnecting DUN as DEFAULT we don't do any service state update,
-  // to hide the PDN reconnection being done internally.
-  if (service_ && !IsTetheringOperationDunAsDefaultOngoing()) {
+  if (service_) {
     service_->SetState(Service::kStateAssociating);
   }
 }
@@ -1736,10 +1734,13 @@ void Cellular::OnCapabilityDisconnectBeforeReconnectReply(const Error& error) {
     return;
   }
 
-  // Not a full cleanup, we try not to touch service state.
+  // Not a full cleanup, but we do transition the Service state out of a
+  // connected state, so that clients can rearrange their connections.
   SetPrimaryMultiplexedInterface("");
   default_pdn_apn_type_ = std::nullopt;
   default_pdn_ = std::nullopt;
+
+  SetServiceState(Service::kStateAssociating);
 
   // We trigger a capability connect using a specific APN try list (which may
   // e.g. be the DUN-specific try list). The generic OnConnectReply() is used so
@@ -1996,16 +1997,14 @@ void Cellular::DefaultLinkUp() {
   SetPrimaryMultiplexedInterface(default_pdn_->network()->interface_name());
   SetState(State::kLinked);
 
-  // The only change performed in the service when a tethering operation to
-  // connect or disconnect DUN as DEFAULT is ongoing is the update of the
-  // attached network. We want to hide the internal reconnection process to
-  // the already selected service as much as possible.
+  // When a tethering operation to connect or disconnect DUN as DEFAULT is
+  // ongoing we just update the attached network.
   if (IsTetheringOperationDunAsDefaultOngoing()) {
     ResetServiceAttachedNetwork();
   } else {
     SelectService(service_);
-    SetServiceState(Service::kStateConfiguring);
   }
+  SetServiceState(Service::kStateConfiguring);
 
   default_pdn_->Start();
 }
