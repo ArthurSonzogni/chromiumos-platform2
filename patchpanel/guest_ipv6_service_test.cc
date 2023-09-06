@@ -55,6 +55,14 @@ class GuestIPv6ServiceUnderTest : public GuestIPv6Service {
     *fm.mutable_ndproxy_signal() = nm;
     OnNDProxyMessage(fm);
   }
+
+  void TriggerCreateConfigFile(const std::string& ifname,
+                               const net_base::IPv6CIDR& prefix,
+                               const std::vector<std::string>& rdnss,
+                               const std::optional<int>& mtu,
+                               const std::optional<int>& hop_limit) {
+    GuestIPv6Service::CreateConfigFile(ifname, prefix, rdnss, mtu, hop_limit);
+  }
 };
 
 ShillClient::Device MakeFakeShillDevice(const std::string& ifname,
@@ -66,8 +74,6 @@ ShillClient::Device MakeFakeShillDevice(const std::string& ifname,
   dev.service_path = "/service/" + std::to_string(ifindex);
   return dev;
 }
-
-}  // namespace
 
 class GuestIPv6ServiceTest : public ::testing::Test {
  protected:
@@ -504,4 +510,29 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
   target.StopForwarding(up1_dev, "down1");
 }
 
+constexpr char kExpectedConfigFile[] = R"(interface eth0 {
+  AdvSendAdvert on;
+  AdvLinkMTU 1000;
+  AdvCurHopLimit 64;
+  prefix fd00::/64 {
+    AdvOnLink off;
+    AdvAutonomous on;
+  };
+  RDNSS fd00::1 fd00::2 {
+  };
+};
+)";
+
+TEST_F(GuestIPv6ServiceTest, CreateConfigFile) {
+  GuestIPv6ServiceUnderTest target(datapath_.get(), system_.get());
+  EXPECT_CALL(*system_, WriteConfigFile(_, kExpectedConfigFile))
+      .WillOnce(Return(true));
+  target.TriggerCreateConfigFile(
+      "eth0", *net_base::IPv6CIDR::CreateFromCIDRString("fd00::/64"),
+      {"fd00::1", "fd00::2"},
+      /*mtu=*/1000,
+      /*hop_limit*/ 64);
+}
+
+}  // namespace
 }  // namespace patchpanel

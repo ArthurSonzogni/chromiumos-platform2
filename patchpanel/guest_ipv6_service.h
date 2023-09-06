@@ -109,6 +109,13 @@ class GuestIPv6Service {
   // address to guest-facing interface.
   void OnNDProxyMessage(const FeedbackMessage& msg);
 
+  // It's protected so that can be accessed in the unit tests.
+  bool CreateConfigFile(const std::string& ifname,
+                        const net_base::IPv6CIDR& prefix,
+                        const std::vector<std::string>& rdnss,
+                        const std::optional<int>& mtu,
+                        const std::optional<int>& hop_limit);
+
  private:
   struct ForwardEntry {
     ForwardMethod method;
@@ -133,12 +140,6 @@ class GuestIPv6Service {
   Datapath* datapath_;
   // Owned by Manager
   System* system_;
-
-  bool CreateConfigFile(const std::string& ifname,
-                        const net_base::IPv6CIDR& prefix,
-                        const std::vector<std::string>& rdnss,
-                        const std::optional<int>& mtu,
-                        const std::optional<int>& hop_limit);
 
   bool StartRadvd(const std::string& ifname);
 
