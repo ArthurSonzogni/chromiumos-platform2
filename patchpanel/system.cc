@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 
 namespace patchpanel {
 
@@ -190,6 +191,26 @@ bool System::Write(std::string_view path, std::string_view content) {
     return false;
   }
 
+  return true;
+}
+
+bool System::WriteConfigFile(base::FilePath path, std::string_view contents) {
+  if (!base::WriteFile(path, contents)) {
+    PLOG(ERROR) << "Failed to write config file to " << path;
+    return false;
+  }
+
+  if (chmod(path.value().c_str(), S_IRUSR | S_IRGRP | S_IWUSR)) {
+    PLOG(ERROR) << "Failed to set permissions on " << path;
+    brillo::DeletePathRecursively(path);
+    return false;
+  }
+
+  if (chown(path.value().c_str(), kPatchpaneldUid, kPatchpaneldGid) != 0) {
+    PLOG(ERROR) << "Failed to change owner group of " << path;
+    brillo::DeletePathRecursively(path);
+    return false;
+  }
   return true;
 }
 

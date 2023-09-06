@@ -10,9 +10,11 @@
 #include <linux/sockios.h>
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -99,6 +101,10 @@ class FakeSystem : public System {
               (const, override));
   MOCK_METHOD(int, IfNametoindex, (std::string_view), (override));
   MOCK_METHOD(std::string, IfIndextoname, (int), (override));
+  MOCK_METHOD(bool,
+              WriteConfigFile,
+              (base::FilePath, std::string_view),
+              (override));
 
   std::vector<ioctl_req_t> ioctl_reqs;
   std::vector<std::pair<std::string, struct rtentry>> ioctl_rtentry_args;

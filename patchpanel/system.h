@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 
 namespace patchpanel {
@@ -105,6 +106,10 @@ class System {
   virtual std::string IfIndextoname(int ifindex);
 
   static bool Write(std::string_view path, std::string_view content);
+
+  // Writes |contents| into |path| and changes the owner and group to
+  // `patchpaneld:patchpaneld`. Returns true if all the steps succeed.
+  virtual bool WriteConfigFile(base::FilePath path, std::string_view contents);
 };
 
 }  // namespace patchpanel

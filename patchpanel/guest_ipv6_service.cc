@@ -669,25 +669,8 @@ bool GuestIPv6Service::CreateConfigFile(const std::string& ifname,
   const base::FilePath& conf_file_path =
       base::FilePath(kRadvdRunDir)
           .Append(std::string(kRadvdConfigFilePrefix) + ifname);
-  if (!base::WriteFile(conf_file_path, contents)) {
-    PLOG(ERROR) << "Failed to write config file";
-    return false;
-  }
 
-  if (chmod(conf_file_path.value().c_str(), S_IRUSR | S_IRGRP | S_IWUSR)) {
-    PLOG(ERROR) << "Failed to set permissions on " << conf_file_path;
-    brillo::DeletePathRecursively(conf_file_path);
-    return false;
-  }
-
-  if (chown(conf_file_path.value().c_str(), kPatchpaneldUid, kPatchpaneldGid) !=
-      0) {
-    PLOG(ERROR) << "Failed to change owner group of configuration file "
-                << conf_file_path;
-    brillo::DeletePathRecursively(conf_file_path);
-    return false;
-  }
-  return true;
+  return system_->WriteConfigFile(conf_file_path, contents);
 }
 
 bool GuestIPv6Service::StartRadvd(const std::string& ifname) {
