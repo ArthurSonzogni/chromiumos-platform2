@@ -235,12 +235,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   update_dev_info->set_original_sku_index(sku_index);
   update_dev_info->set_original_whitelabel_index(custom_label_index);
   update_dev_info->set_original_dram_part_number(dram_part_number);
-  // TODO(chenghan): Set it to |custom_label_index|. This is an intermediate
-  // step to wait for Chrome transitioning to use |custom_label_index|. Before
-  // the transition, |custom_label_index| is invalid and we fallback to use
-  // |whitelabel_index| as Chrome's input. After the transition,
-  // |custom_label_index| is valid and we can use it directly.
-  update_dev_info->set_original_custom_label_index(-1);
+  update_dev_info->set_original_custom_label_index(custom_label_index);
   update_dev_info->set_original_feature_level(feature_level);
 
   for (auto region_option : region_list) {
