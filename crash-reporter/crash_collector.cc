@@ -5,14 +5,16 @@
 #include "crash-reporter/crash_collector.h"
 
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>  // For file creation modes.
 #include <inttypes.h>
 #include <linux/limits.h>  // PATH_MAX
-#include <sys/mman.h>      // for memfd_create
-#include <sys/types.h>     // for mode_t and gid_t.
-#include <sys/utsname.h>   // For uname.
-#include <sys/wait.h>      // For waitpid.
-#include <unistd.h>        // For execv and fork.
+#include <string.h>
+#include <sys/mman.h>     // for memfd_create
+#include <sys/types.h>    // for mode_t and gid_t.
+#include <sys/utsname.h>  // For uname.
+#include <sys/wait.h>     // For waitpid.
+#include <unistd.h>       // For execv and fork.
 
 #include <ctime>
 #include <map>
@@ -256,6 +258,59 @@ void ExtractEnvironmentVars(const std::string& contents,
   }
 }
 
+// static
+bool CrashCollector::OpenCrashDirectory(const base::FilePath& dir,
+                                        mode_t expected_mode,
+                                        uid_t expected_owner,
+                                        gid_t expected_group,
+                                        int* dirfd_out) {
+  const FilePath parent_dir = dir.DirName();
+  const FilePath final_dir = dir.BaseName();
+
+  base::ScopedFD parentfd;
+  if (!ValidatePathAndOpen(parent_dir,
+                           base::ScopedFD::Receiver(parentfd).get())) {
+    return false;
+  }
+
+  // Now handle the final part of the crash dir. Note: We omit O_CLOEXEC on
+  // purpose as children will use it. (Which is why we can't get use
+  // ValidatePathAndOpen to get this file descriptor.)
+  const char* final_dir_str = final_dir.value().c_str();
+  int dirfd_int = openat(parentfd.get(), final_dir_str,
+                         O_DIRECTORY | O_NOFOLLOW | O_RDONLY);
+  if (dirfd_int < 0) {
+    PLOG(ERROR) << "Unable to open crash directory " << dir.value() << ": ";
+    return false;
+  }
+  base::ScopedFD dirfd(dirfd_int);
+
+  struct stat st;
+  if (fstat(dirfd.get(), &st) < 0) {
+    PLOG(ERROR) << "Unable to stat crash path: " << dir.value();
+    return false;
+  }
+
+  if (st.st_uid != expected_owner) {
+    LOG(ERROR) << "Incorrect owner for " << dir.value() << "; expected "
+               << expected_owner << " got " << st.st_uid;
+    return false;
+  }
+  if (st.st_gid != expected_group) {
+    LOG(ERROR) << "Incorrect group for " << dir.value() << "; expected "
+               << expected_group << " got " << st.st_gid;
+    return false;
+  }
+  if ((st.st_mode & 07777) != expected_mode) {
+    LOG(ERROR) << "Incorrect mode for " << dir.value() << "; expected "
+               << expected_mode << " got " << st.st_mode;
+    return false;
+  }
+
+  *dirfd_out = dirfd.release();
+  return true;
+}
+
 // Create a directory using the specified mode/user/group, and make sure it
 // is actually a directory with the specified permissions.
 // static
@@ -279,9 +334,19 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
   int dirfd =
       openat(parentfd, final_dir_str, O_DIRECTORY | O_NOFOLLOW | O_RDONLY);
   if (dirfd < 0) {
+    // We expect the directory will not always exist, so don't write an error
+    // message until the creation fails as well.
+    const char* errno_message = strerrordesc_np(errno);
+    if (errno_message == nullptr) {
+      errno_message = "Invalid errno";
+    }
+    std::string original_error =
+        base::StrCat({"Unable to open directory ", dir.value(), ": ",
+                      errno_message, "; trying to create..."});
     if (errno != ENOENT) {
       // Delete whatever is there.
       if (unlinkat(parentfd, final_dir_str, 0) < 0) {
+        LOG(ERROR) << original_error;
         PLOG(ERROR) << "Unable to clean up crash path: " << dir.value();
         close(parentfd);
         return false;
@@ -291,6 +356,7 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
     // It doesn't exist, so create it!  We'll recheck the mode below.
     if (mkdirat(parentfd, final_dir_str, mode) < 0) {
       if (errno != EEXIST) {
+        LOG(ERROR) << original_error;
         PLOG(ERROR) << "Unable to create crash directory: " << dir.value();
         close(parentfd);
         return false;
@@ -979,6 +1045,7 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
 std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
     uid_t process_euid,
     uid_t default_user_id,
+    bool* can_create_or_fix,
     mode_t* mode,
     uid_t* directory_owner,
     gid_t* directory_group) {
@@ -991,6 +1058,11 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
   // * For system crashes, we use the system crash path.
   // For crashes that occur during integration tests of the crash reporter
   // system itself, we use regular (non-test-device) behavior.
+  *can_create_or_fix = false;
+  *mode = kSystemCrashDirectoryMode;
+  *directory_owner = constants::kRootUid;
+  *directory_group = 0;
+
 #if USE_KVM_GUEST
   // In the VM, there is no cryptohome or /home/chronos, so we'll fall back to
   // the system crash directory after the #if.
@@ -1009,6 +1081,10 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
     }
     std::optional<FilePath> maybe_path = GetUserCrashDirectoryNew();
     if (maybe_path) {
+      // We *cannot* create or fix /run/daemon-store/crash/..., so don't try.
+      // Only cryptohome's namespace mounter is capable of mounting it
+      // correctly.
+      *can_create_or_fix = false;
       return maybe_path;
     }
   }
@@ -1030,6 +1106,8 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
     }
     *mode = kUserCrashPathMode;
     *directory_owner = default_user_id;
+    // We could create /home/chronos/crash if needed
+    *can_create_or_fix = true;
 
     // Fall back to /home/chronos/crash
     return paths::Get(paths::kFallbackUserCrashDirectory);
@@ -1039,6 +1117,8 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
   // other than chronos, so fall back to the system directory.
   *mode = kSystemCrashDirectoryMode;
   *directory_owner = constants::kRootUid;
+  // We could create /var/spool/crash if needed
+  *can_create_or_fix = true;
   if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
                                     directory_group)) {
     PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
@@ -1077,15 +1157,16 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   uid_t directory_owner;
   gid_t directory_group;
   std::optional<base::FilePath> maybe_path;
+  bool can_create_or_fix = true;
   // Roll a die to decide whether to attempt using daemon-store. Even if this
   // comes up as true, we might not use daemon-store (for example if the user is
   // logged out, or we otherwise fail to get the daemon-store directory)
   // TODO(b/186659673): Validate daemon-store usage and always use it.
   if (UseDaemonStore()) {
     AddCrashMetaUploadData(kDaemonStoreKey, "true");
-    maybe_path =
-        GetCrashDirectoryInfoNew(euid, default_user_id, &directory_mode,
-                                 &directory_owner, &directory_group);
+    maybe_path = GetCrashDirectoryInfoNew(euid, default_user_id,
+                                          &can_create_or_fix, &directory_mode,
+                                          &directory_owner, &directory_group);
   } else {
     AddCrashMetaUploadData(kDaemonStoreKey, "false");
     maybe_path =
@@ -1102,10 +1183,18 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   // be accessible in the children (when dropping privs), and we don't want to
   // pass the direct path in the filesystem as it'd be subject to TOCTOU.
   int dirfd;
-  if (!CreateDirectoryWithSettings(full_path, directory_mode, directory_owner,
-                                   directory_group, &dirfd)) {
-    LOG(ERROR) << "CreateDirectory failed";
-    return false;
+  if (can_create_or_fix) {
+    if (!CreateDirectoryWithSettings(full_path, directory_mode, directory_owner,
+                                     directory_group, &dirfd)) {
+      LOG(ERROR) << "CreateDirectory failed";
+      return false;
+    }
+  } else {
+    if (!OpenCrashDirectory(full_path, directory_mode, directory_owner,
+                            directory_group, &dirfd)) {
+      LOG(ERROR) << "OpenCrashDirectory(" << full_path.value() << ") failed";
+      return false;
+    }
   }
 
   // Have all the rest of the tools access the directory by file handle.  This

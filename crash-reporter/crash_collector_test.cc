@@ -4,8 +4,11 @@
 
 #include "crash-reporter/crash_collector_test.h"
 
+#include <dirent.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -102,7 +105,7 @@ CrashCollectorMock::CrashCollectorMock(
 
 class CrashCollectorTest : public ::testing::Test {
  public:
-  void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(Return());
 
     collector_.Initialize(false);
@@ -1250,6 +1253,7 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNew) {
   const int kNtpUid = 5;
   const int kChronosUid = 1000;
 
+  bool can_create_or_fix = false;
   mode_t directory_mode;
   uid_t directory_owner;
   gid_t directory_group;
@@ -1264,19 +1268,24 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNew) {
   const mode_t kExpectedSystemMode = 02770;
   // In the guest, we use /var/spool/crash even though we're logged in
   path = collector_
-             .GetCrashDirectoryInfoNew(kRootUid, kChronosUid, &directory_mode,
+             .GetCrashDirectoryInfoNew(kRootUid, kChronosUid,
+                                       &can_create_or_fix, &directory_mode,
                                        &directory_owner, &directory_group)
              .value();
   EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_TRUE(can_create_or_fix);
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
   EXPECT_EQ(kRootUid, directory_owner);
   EXPECT_EQ(kCrashAccessGid, directory_group);
 
+  can_create_or_fix = false;
   path = collector_
-             .GetCrashDirectoryInfoNew(kNtpUid, kChronosUid, &directory_mode,
-                                       &directory_owner, &directory_group)
+             .GetCrashDirectoryInfoNew(kNtpUid, kChronosUid, &can_create_or_fix,
+                                       &directory_mode, &directory_owner,
+                                       &directory_group)
              .value();
   EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_TRUE(can_create_or_fix);
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
   EXPECT_EQ(kRootUid, directory_owner);
   EXPECT_EQ(kCrashAccessGid, directory_group);
@@ -1293,42 +1302,52 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNew) {
   ASSERT_TRUE(test_util::CreateFile(test_in_prog, ""));
 
   // In the host, we always use daemon_store when logged in.
+  can_create_or_fix = true;
   path = collector_
-             .GetCrashDirectoryInfoNew(kRootUid, kChronosUid, &directory_mode,
+             .GetCrashDirectoryInfoNew(kRootUid, kChronosUid,
+                                       &can_create_or_fix, &directory_mode,
                                        &directory_owner, &directory_group)
              .value();
   EXPECT_EQ(kExpectedDir, path);
+  EXPECT_FALSE(can_create_or_fix);
   EXPECT_EQ(kExpectedDaemonStoreMode, directory_mode);
   EXPECT_EQ(kCrashUserUid, directory_owner);
   EXPECT_EQ(kCrashUserAccessGid, directory_group);
 
+  can_create_or_fix = true;
   path = collector_
-             .GetCrashDirectoryInfoNew(kNtpUid, kChronosUid, &directory_mode,
-                                       &directory_owner, &directory_group)
+             .GetCrashDirectoryInfoNew(kNtpUid, kChronosUid, &can_create_or_fix,
+                                       &directory_mode, &directory_owner,
+                                       &directory_group)
              .value();
   EXPECT_EQ(kExpectedDir, path);
+  EXPECT_FALSE(can_create_or_fix);
   EXPECT_EQ(kExpectedDaemonStoreMode, directory_mode);
   EXPECT_EQ(kCrashUserUid, directory_owner);
   EXPECT_EQ(kCrashUserAccessGid, directory_group);
 
-  path =
-      collector_
-          .GetCrashDirectoryInfoNew(kChronosUid, kChronosUid, &directory_mode,
-                                    &directory_owner, &directory_group)
-          .value();
+  can_create_or_fix = true;
+  path = collector_
+             .GetCrashDirectoryInfoNew(kChronosUid, kChronosUid,
+                                       &can_create_or_fix, &directory_mode,
+                                       &directory_owner, &directory_group)
+             .value();
   EXPECT_EQ(kExpectedDir, path);
+  EXPECT_FALSE(can_create_or_fix);
   EXPECT_EQ(kExpectedDaemonStoreMode, directory_mode);
   EXPECT_EQ(kCrashUserUid, directory_owner);
   EXPECT_EQ(kCrashUserAccessGid, directory_group);
 
   collector_.crash_directory_selection_method_ =
       CrashCollector::kAlwaysUseDaemonStore;
-  path =
-      collector_
-          .GetCrashDirectoryInfoNew(kChronosUid, kChronosUid, &directory_mode,
-                                    &directory_owner, &directory_group)
-          .value();
+  can_create_or_fix = true;
+  path = collector_
+             .GetCrashDirectoryInfoNew(kChronosUid, kChronosUid,
+                                       &can_create_or_fix, &directory_mode,
+                                       &directory_owner, &directory_group)
+             .value();
   EXPECT_EQ(kExpectedDir, path);
+  EXPECT_FALSE(can_create_or_fix);
   EXPECT_EQ(kExpectedDaemonStoreMode, directory_mode);
   EXPECT_EQ(kCrashUserUid, directory_owner);
   EXPECT_EQ(kCrashUserAccessGid, directory_group);
@@ -1343,6 +1362,7 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNewLoggedOut) {
   const int kChronosUid = 1000;
   const mode_t kExpectedSystemMode = 02770;
 
+  bool can_create_or_fix = false;
   mode_t directory_mode;
   uid_t directory_owner;
   gid_t directory_group;
@@ -1353,37 +1373,45 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNewLoggedOut) {
 
   // When not logged in, system dirs should use /var/spool/crash/ (in VM or not)
   path = collector_
-             .GetCrashDirectoryInfoNew(kRootUid, kChronosUid, &directory_mode,
+             .GetCrashDirectoryInfoNew(kRootUid, kChronosUid,
+                                       &can_create_or_fix, &directory_mode,
                                        &directory_owner, &directory_group)
              .value();
   EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_TRUE(can_create_or_fix);
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
   EXPECT_EQ(kRootUid, directory_owner);
   EXPECT_EQ(kCrashAccessGid, directory_group);
 
+  can_create_or_fix = false;
   path = collector_
-             .GetCrashDirectoryInfoNew(kNtpUid, kChronosUid, &directory_mode,
-                                       &directory_owner, &directory_group)
+             .GetCrashDirectoryInfoNew(kNtpUid, kChronosUid, &can_create_or_fix,
+                                       &directory_mode, &directory_owner,
+                                       &directory_group)
              .value();
   EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_TRUE(can_create_or_fix);
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
   EXPECT_EQ(kRootUid, directory_owner);
   EXPECT_EQ(kCrashAccessGid, directory_group);
 
-  path =
-      collector_
-          .GetCrashDirectoryInfoNew(kChronosUid, kChronosUid, &directory_mode,
-                                    &directory_owner, &directory_group)
-          .value();
+  can_create_or_fix = false;
+  path = collector_
+             .GetCrashDirectoryInfoNew(kChronosUid, kChronosUid,
+                                       &can_create_or_fix, &directory_mode,
+                                       &directory_owner, &directory_group)
+             .value();
 #if USE_KVM_GUEST
   // Inside the VM, everything goes to /var/spool/crash.
   EXPECT_EQ("/var/spool/crash", path.value());
+  EXPECT_TRUE(can_create_or_fix);
   EXPECT_EQ(0, directory_owner);
   EXPECT_EQ(kCrashAccessGid, directory_group);
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
 #else
   const int kCrashUserAccessGid = 420;
   EXPECT_EQ(paths::Get("/home/chronos/crash"), path);
+  EXPECT_TRUE(can_create_or_fix);
   EXPECT_EQ(kChronosUid, directory_owner);
   EXPECT_EQ(kCrashUserAccessGid, directory_group);
   EXPECT_EQ(kExpectedSystemMode, directory_mode);
@@ -1391,10 +1419,161 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNewLoggedOut) {
   collector_.crash_directory_selection_method_ =
       CrashCollector::kAlwaysUseDaemonStore;
   std::optional<FilePath> path_maybe = collector_.GetCrashDirectoryInfoNew(
-      kChronosUid, kChronosUid, &directory_mode, &directory_owner,
-      &directory_group);
+      kChronosUid, kChronosUid, &can_create_or_fix, &directory_mode,
+      &directory_owner, &directory_group);
   EXPECT_FALSE(path_maybe.has_value());
 #endif  // USE_KVM_GUEST
+}
+
+TEST_F(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_Success) {
+  base::FilePath subdir = test_dir_.Append("crash");
+  ASSERT_TRUE(base::CreateDirectory(subdir));
+  const std::string kTestfileName = "testfile";
+  ASSERT_TRUE(base::WriteFile(subdir.Append(kTestfileName), "test"));
+  const int kCrashAccessGid = 419;
+  const int kChronosUid = 1001;
+  const mode_t kExpectedMode = 0770;
+
+  ASSERT_EQ(chown(subdir.value().c_str(), kChronosUid, kCrashAccessGid), 0)
+      << strerrordesc_np(errno);
+
+  ASSERT_EQ(chmod(subdir.value().c_str(), kExpectedMode), 0)
+      << strerrordesc_np(errno);
+
+  int fd = -1;
+  EXPECT_TRUE(CrashCollector::OpenCrashDirectory(
+      subdir, kExpectedMode, kChronosUid, kCrashAccessGid, &fd));
+  ASSERT_GT(fd, 0);
+
+  // Ensure fd is actually open and pointing to correct directory.
+  DIR* dir = fdopendir(fd);
+  ASSERT_TRUE(dir != nullptr) << strerrordesc_np(errno);
+
+  errno = 0;
+  bool found_test_file = false;
+  for (struct dirent* entry = readdir(dir); entry != nullptr;
+       entry = readdir(dir)) {
+    if (entry->d_name == kTestfileName) {
+      found_test_file = true;
+      break;
+    }
+    errno = 0;
+  }
+  // Only way to detect end-of-directory vs. an error.
+  EXPECT_EQ(errno, 0) << strerrordesc_np(errno);
+  EXPECT_TRUE(found_test_file);
+  closedir(dir);
+}
+
+TEST_F(CrashCollectorTest,
+       RunAsRoot_OpenCrashDirectory_ParentDirectoryMissing) {
+  base::FilePath crash_directory = test_dir_.Append("missing").Append("crash");
+  const int kCrashAccessGid = 419;
+  const int kChronosUid = 1001;
+  const mode_t kMode = 0770;
+
+  int fd = -1;
+  EXPECT_FALSE(CrashCollector::OpenCrashDirectory(
+      crash_directory, kMode, kChronosUid, kCrashAccessGid, &fd));
+  ASSERT_LT(fd, 0);
+
+  // Log message should be from ValidatePathAndOpen.
+  EXPECT_TRUE(brillo::FindLog("Unable to access crash path"));
+}
+
+TEST_F(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_Missing) {
+  base::FilePath subdir = test_dir_.Append("crash");
+  const int kCrashAccessGid = 419;
+  const int kChronosUid = 1001;
+  const mode_t kMode = 0770;
+
+  int fd = -1;
+  EXPECT_FALSE(CrashCollector::OpenCrashDirectory(subdir, kMode, kChronosUid,
+                                                  kCrashAccessGid, &fd));
+  ASSERT_LT(fd, 0);
+
+  EXPECT_FALSE(base::PathExists(subdir));
+  EXPECT_TRUE(brillo::FindLog("Unable to open crash directory"));
+}
+
+TEST_F(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_NotADirectory) {
+  base::FilePath file = test_dir_.Append("crash");
+  ASSERT_TRUE(base::WriteFile(file, ""));
+  const int kCrashAccessGid = 419;
+  const int kChronosUid = 1001;
+  const mode_t kMode = 0770;
+  ASSERT_EQ(chown(file.value().c_str(), kChronosUid, kCrashAccessGid), 0)
+      << strerrordesc_np(errno);
+
+  ASSERT_EQ(chmod(file.value().c_str(), kMode), 0) << strerrordesc_np(errno);
+
+  int fd = -1;
+  EXPECT_FALSE(CrashCollector::OpenCrashDirectory(file, kMode, kChronosUid,
+                                                  kCrashAccessGid, &fd));
+  ASSERT_LT(fd, 0);
+  EXPECT_TRUE(brillo::FindLog("Unable to open crash directory"));
+}
+
+TEST_F(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_WrongOwner) {
+  base::FilePath subdir = test_dir_.Append("crash");
+  ASSERT_TRUE(base::CreateDirectory(subdir));
+  const int kCrashAccessGid = 419;
+  const int kChronosUid = 1001;
+  const mode_t kExpectedMode = 0770;
+
+  ASSERT_EQ(chown(subdir.value().c_str(), /*owner_id=*/0, kCrashAccessGid), 0)
+      << strerrordesc_np(errno);
+
+  ASSERT_EQ(chmod(subdir.value().c_str(), kExpectedMode), 0)
+      << strerrordesc_np(errno);
+
+  int fd = -1;
+  EXPECT_FALSE(CrashCollector::OpenCrashDirectory(
+      subdir, kExpectedMode, kChronosUid, kCrashAccessGid, &fd));
+  ASSERT_LT(fd, 0);
+
+  EXPECT_TRUE(brillo::FindLog("Incorrect owner for"));
+}
+
+TEST_F(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_WrongGroup) {
+  base::FilePath subdir = test_dir_.Append("crash");
+  ASSERT_TRUE(base::CreateDirectory(subdir));
+  const int kCrashAccessGid = 419;
+  const int kChronosUid = 1001;
+  const mode_t kExpectedMode = 0770;
+
+  ASSERT_EQ(chown(subdir.value().c_str(), kChronosUid, /*group_id=*/0), 0)
+      << strerrordesc_np(errno);
+
+  ASSERT_EQ(chmod(subdir.value().c_str(), kExpectedMode), 0)
+      << strerrordesc_np(errno);
+
+  int fd = -1;
+  EXPECT_FALSE(CrashCollector::OpenCrashDirectory(
+      subdir, kExpectedMode, kChronosUid, kCrashAccessGid, &fd));
+  ASSERT_LT(fd, 0);
+
+  EXPECT_TRUE(brillo::FindLog("Incorrect group for"));
+}
+
+TEST_F(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_WrongMode) {
+  base::FilePath subdir = test_dir_.Append("crash");
+  ASSERT_TRUE(base::CreateDirectory(subdir));
+  const int kCrashAccessGid = 419;
+  const int kChronosUid = 1001;
+  const mode_t kExpectedMode = 0770;
+
+  ASSERT_EQ(chown(subdir.value().c_str(), kChronosUid, kCrashAccessGid), 0)
+      << strerrordesc_np(errno);
+
+  ASSERT_EQ(chmod(subdir.value().c_str(), 0777), 0) << strerrordesc_np(errno);
+
+  int fd = -1;
+  EXPECT_FALSE(CrashCollector::OpenCrashDirectory(
+      subdir, kExpectedMode, kChronosUid, kCrashAccessGid, &fd));
+  ASSERT_LT(fd, 0);
+
+  EXPECT_TRUE(brillo::FindLog("Incorrect mode for"));
 }
 
 TEST_F(CrashCollectorTest, FormatDumpBasename) {

@@ -277,6 +277,15 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoOldLoggedOut);
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoNew);
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfoNewLoggedOut);
+  FRIEND_TEST(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_Success);
+  FRIEND_TEST(CrashCollectorTest,
+              RunAsRoot_OpenCrashDirectory_ParentDirectoryMissing);
+
+  FRIEND_TEST(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_Missing);
+  FRIEND_TEST(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_NotADirectory);
+  FRIEND_TEST(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_WrongOwner);
+  FRIEND_TEST(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_WrongGroup);
+  FRIEND_TEST(CrashCollectorTest, RunAsRoot_OpenCrashDirectory_WrongMode);
   FRIEND_TEST(CrashCollectorTest, GetCrashPath);
   FRIEND_TEST(CrashCollectorTest, GetLogContents);
   FRIEND_TEST(CrashCollectorTest, GetMultipleLogContents);
@@ -416,11 +425,12 @@ class CrashCollector {
       uid_t* directory_owner,
       gid_t* directory_group);
   // Once the daemon-store experiment is done, rename to just
-  // GetCrashDirectoryInfo
+  // GetCrashDirectoryInfo.
   // TODO(b/186659673): Validate daemon-store usage and rename this.
   std::optional<base::FilePath> GetCrashDirectoryInfoNew(
       uid_t process_euid,
       uid_t default_user_id,
+      bool* can_create_or_fix,
       mode_t* mode,
       uid_t* directory_owner,
       gid_t* directory_group);
@@ -449,6 +459,14 @@ class CrashCollector {
                                           int* dir_fd,
                                           mode_t files_mode = 0);
 
+  // Opens the directory we store crashes in (/run/daemon-store/crash/<userhash>
+  // in most cases). Will fail if the mode, owner, or group does not match the
+  // expected values.
+  static bool OpenCrashDirectory(const base::FilePath& dir,
+                                 mode_t expected_mode,
+                                 uid_t expected_owner,
+                                 gid_t expected_group,
+                                 int* dirfd_out);
   // Format crash name based on components.
   std::string FormatDumpBasename(const std::string& exec_name,
                                  time_t timestamp,
