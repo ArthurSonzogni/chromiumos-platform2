@@ -1352,6 +1352,8 @@ const char* Service::ConnectFailureToString(ConnectFailure failure) {
       return kErrorTooManySTAs;
     case kFailureDisconnect:
       return kErrorDisconnect;
+    case kFailureDelayedConnectSetup:
+      return kErrorDelayedConnectSetup;
     case kFailureMax:
       NOTREACHED();
   }
@@ -1452,6 +1454,8 @@ Metrics::NetworkServiceError Service::ConnectFailureToMetricsEnum(
       return Metrics::kNetworkServiceErrorTooManySTAs;
     case Service::kFailureDisconnect:
       return Metrics::kNetworkServiceErrorDisconnect;
+    case Service::kFailureDelayedConnectSetup:
+      return Metrics::kNetworkServiceErrorDelayedConnectSetup;
     case Service::kFailureUnknown:
     case Service::kFailureMax:
       return Metrics::kNetworkServiceErrorUnknown;

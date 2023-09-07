@@ -762,6 +762,7 @@ constexpr char kErrorSimCarrierLocked[] = "sim-carrier-locked";
 constexpr char kErrorNotRegistered[] = "not-registered";
 constexpr char kErrorTooManySTAs[] = "too-many-stas";
 constexpr char kErrorDisconnect[] = "disconnect-failure";
+constexpr char kErrorDelayedConnectSetup[] = "delayed-connect-setup-failure";
 constexpr char kErrorUnknownFailure[] = "unknown-failure";
 
 // Flimflam error result codes.

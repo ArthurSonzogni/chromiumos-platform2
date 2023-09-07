@@ -153,6 +153,10 @@ class Service : public base::RefCounted<Service> {
     // the client (i.e. Chrome).
     kFailureDisconnect,
     kFailureSimCarrierLocked,
+    // The service had to delay handling the connect request, but upon retrying
+    // the connect itself ran into a synchronous failure setting up the
+    // connection (i.e. as if the D-Bus call itself would have failed).
+    kFailureDelayedConnectSetup,
     kFailureMax
   };
   enum ConnectState {

@@ -953,6 +953,7 @@ class Metrics {
     kNetworkServiceErrorNotRegistered = 27,
     kNetworkServiceErrorInvalidAPN = 28,
     kNetworkServiceErrorSimCarrierLocked = 29,
+    kNetworkServiceErrorDelayedConnectSetup = 30,
     kNetworkServiceErrorMax
   };
   static constexpr EnumMetric<NameByTechnology> kMetricNetworkServiceError = {

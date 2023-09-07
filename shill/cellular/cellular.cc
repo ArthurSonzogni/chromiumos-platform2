@@ -3036,7 +3036,7 @@ void Cellular::ConnectToPendingAfterDelay() {
             << service->log_name();
   service->Connect(&error, "Pending connect");
   if (!error.IsSuccess())
-    service->SetFailure(Service::kFailureConnect);
+    service->SetFailure(Service::kFailureDelayedConnectSetup);
 }
 
 void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
