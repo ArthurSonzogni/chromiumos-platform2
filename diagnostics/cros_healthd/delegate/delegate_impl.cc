@@ -33,6 +33,7 @@
 #include <libec/motion_sense_command_lid_angle.h>
 #include <libec/pwm/pwm_get_fan_target_rpm_command.h>
 #include <libec/pwm/pwm_set_fan_target_rpm_command.h>
+#include <libec/thermal/thermal_auto_fan_ctrl_command.h>
 
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
@@ -634,6 +635,28 @@ void DelegateImpl::SetFanSpeed(
     }
   }
 
+  std::move(callback).Run(std::nullopt);
+}
+
+void DelegateImpl::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  std::optional<uint8_t> num_fans = GetNumFans(cros_fd.get());
+
+  if (!num_fans.has_value()) {
+    std::move(callback).Run("Failed to get number of fans");
+    return;
+  }
+
+  for (uint8_t fan_idx = 0; fan_idx < num_fans.value(); ++fan_idx) {
+    ec::ThermalAutoFanCtrlCommand set_auto_fan_ctrl{fan_idx};
+    if (!set_auto_fan_ctrl.Run(cros_fd.get())) {
+      LOG(ERROR) << "Failed to set fan speed to auto control for fan idx: "
+                 << static_cast<int>(fan_idx);
+      // We should attempt to set all the fan to autocontrol, so even if one of
+      // the fan fails, we should continue issuing command to others.
+      continue;
+    }
+  }
   std::move(callback).Run(std::nullopt);
 }
 

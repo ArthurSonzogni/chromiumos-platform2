@@ -69,6 +69,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void GetAllFanSpeed(GetAllFanSpeedCallback callback) override;
   void SetFanSpeed(const base::flat_map<uint8_t, uint16_t>& fan_id_to_rpm,
                    SetFanSpeedCallback callback) override;
+  void SetAllFanAutoControl(SetAllFanAutoControlCallback callback) override;
 
  private:
   ec::EcCommandFactoryInterface* const ec_command_factory_;
