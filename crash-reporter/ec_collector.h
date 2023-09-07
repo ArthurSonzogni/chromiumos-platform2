@@ -52,6 +52,7 @@ class ECCollector : public CrashCollector {
   friend class ECCollectorTest;
 
   base::FilePath debugfs_path_;
+  base::FilePath libfs_path_;
 };
 
 #endif  // CRASH_REPORTER_EC_COLLECTOR_H_
