@@ -1041,7 +1041,7 @@ void Ethernet::NotifyEthernetDriverName() {
           {"ipheth", Metrics::kEthernetDriverIpheth},
           {"jme", Metrics::kEthernetDriverJme},
           {"mcs7830", Metrics::kEthernetDriverMcs7830},
-          {"MOSCHIP usb-ethernet driver", Metrics::kEthernetDriverMosChip},
+          {"MOSCHIP usb-ethernet driver", Metrics::kEthernetDriverMcs7830},
           {"pegasus", Metrics::kEthernetDriverPegasus},
           {"r8152", Metrics::kEthernetDriverR8152},
           {"r8169", Metrics::kEthernetDriverR8169},
