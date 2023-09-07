@@ -32,8 +32,8 @@ namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
 
 // Test values for fan speed.
-constexpr uint32_t kFirstFanSpeedRpm = 2255;
-constexpr uint32_t kSecondFanSpeedRpm = 1263;
+constexpr uint16_t kFirstFanSpeedRpm = 2255;
+constexpr uint16_t kSecondFanSpeedRpm = 1263;
 
 class FanUtilsTest : public ::testing::Test {
  protected:
@@ -63,7 +63,7 @@ class FanUtilsTest : public ::testing::Test {
 // Test that fan information can be fetched successfully.
 TEST_F(FanUtilsTest, FetchFanInfo) {
   // Set the mock executor response.
-  std::vector<uint32_t> fan_rpms = {kFirstFanSpeedRpm, kSecondFanSpeedRpm};
+  std::vector<uint16_t> fan_rpms = {kFirstFanSpeedRpm, kSecondFanSpeedRpm};
   std::optional<std::string> error = std::nullopt;
   EXPECT_CALL(*mock_executor(), GetAllFanSpeed(_))
       .WillOnce(base::test::RunOnceCallback<0>(fan_rpms, error));
@@ -80,7 +80,7 @@ TEST_F(FanUtilsTest, FetchFanInfo) {
 // Test that no fan information is returned for a device that has no fan.
 TEST_F(FanUtilsTest, NoFan) {
   // Set the mock executor response.
-  std::vector<uint32_t> fan_rpms = {};
+  std::vector<uint16_t> fan_rpms = {};
   std::optional<std::string> error = std::nullopt;
   EXPECT_CALL(*mock_executor(), GetAllFanSpeed(_))
       .WillOnce(base::test::RunOnceCallback<0>(fan_rpms, error));
@@ -95,7 +95,7 @@ TEST_F(FanUtilsTest, NoFan) {
 // returns a ProbeError.
 TEST_F(FanUtilsTest, CollectFanSpeedFailure) {
   // Set the mock executor response.
-  std::vector<uint32_t> fan_rpms = {};
+  std::vector<uint16_t> fan_rpms = {};
   std::optional<std::string> error = "Some error happened!";
   EXPECT_CALL(*mock_executor(), GetAllFanSpeed(_))
       .WillOnce(base::test::RunOnceCallback<0>(fan_rpms, error));

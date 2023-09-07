@@ -204,7 +204,8 @@ interface Executor {
   //
   // The response:
   // * |fan_rpms| - An array containing the rpm of each fan.
-  GetAllFanSpeed() => (array<uint32> fan_rpms, string? err);
+  // * |err| - Error message if existed.
+  GetAllFanSpeed() => (array<uint16> fan_rpms, string? err);
 
   // Runs the `iw` command and returns the result.
   enum IwCommand {

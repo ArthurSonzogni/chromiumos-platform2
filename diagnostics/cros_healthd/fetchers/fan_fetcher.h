@@ -37,7 +37,7 @@ class FanFetcher final : public BaseFetcher {
  private:
   // Handles the executor's response to a GetAllFanSpeed IPC.
   void HandleFanSpeedResponse(FetchFanInfoCallback callback,
-                              const std::vector<uint32_t>& fan_rpms,
+                              const std::vector<uint16_t>& fan_rpms,
                               const std::optional<std::string>& error);
 
   // Must be the last member of the class, so that it's destroyed first when an

@@ -308,7 +308,7 @@ void Executor::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetAllFanSpeed(CreateOnceDelegateCallback(
-      std::move(delegate), std::move(callback), std::vector<uint32_t>{},
+      std::move(delegate), std::move(callback), std::vector<uint16_t>{},
       kFailToLaunchDelegate));
   delegate_ptr->StartAsync();
 }

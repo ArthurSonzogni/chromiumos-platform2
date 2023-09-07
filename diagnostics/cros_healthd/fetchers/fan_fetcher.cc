@@ -47,7 +47,7 @@ void FanFetcher::FetchFanInfo(FetchFanInfoCallback callback) {
 
 void FanFetcher::HandleFanSpeedResponse(
     FetchFanInfoCallback callback,
-    const std::vector<uint32_t>& fan_rpms,
+    const std::vector<uint16_t>& fan_rpms,
     const std::optional<std::string>& error) {
   if (error.has_value()) {
     std::move(callback).Run(mojom::FanResult::NewError(CreateAndLogProbeError(
@@ -58,8 +58,10 @@ void FanFetcher::HandleFanSpeedResponse(
   }
 
   std::vector<mojom::FanInfoPtr> fan_info;
-  for (uint32_t fan_rpm : fan_rpms) {
-    fan_info.push_back(mojom::FanInfo::New(fan_rpm));
+  for (uint16_t fan_rpm : fan_rpms) {
+    // The healthd interface for fan telemetry returns uint32 as the fan rpm
+    // value. Typecast into uint32 here.
+    fan_info.push_back(mojom::FanInfo::New(static_cast<uint32_t>(fan_rpm)));
   }
 
   std::move(callback).Run(mojom::FanResult::NewFanInfo(std::move(fan_info)));

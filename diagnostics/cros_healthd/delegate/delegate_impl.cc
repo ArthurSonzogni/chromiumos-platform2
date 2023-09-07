@@ -578,7 +578,7 @@ void DelegateImpl::RunFloatingPoint(base::TimeDelta exec_duration,
 
 void DelegateImpl::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
   auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
-  std::vector<uint32_t> fan_rpms;
+  std::vector<uint16_t> fan_rpms;
   std::optional<uint8_t> num_fans = GetNumFans(cros_fd.get());
 
   if (!num_fans.has_value()) {
