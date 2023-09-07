@@ -38,6 +38,7 @@ class LibsaneWrapperImpl : public LibsaneWrapper {
                         SANE_Int maxlen,
                         SANE_Int* len) override;
   void sane_cancel(SANE_Handle h) override;
+  SANE_Status sane_set_io_mode(SANE_Handle h, SANE_Bool m) override;
 };
 
 }  // namespace lorgnette

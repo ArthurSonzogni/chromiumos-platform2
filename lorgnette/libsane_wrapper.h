@@ -35,6 +35,7 @@ class LibsaneWrapper {
                                 SANE_Int maxlen,
                                 SANE_Int* len) = 0;
   virtual void sane_cancel(SANE_Handle h) = 0;
+  virtual SANE_Status sane_set_io_mode(SANE_Handle h, SANE_Bool m) = 0;
 };
 
 }  // namespace lorgnette

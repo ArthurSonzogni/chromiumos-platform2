@@ -865,6 +865,15 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
 
     // Handle non-standard results.
     if (result == SANE_STATUS_GOOD) {
+      // If the handle supports non-blocking I/O, it may return SANE_STATUS_GOOD
+      // with no bytes when data is not ready.  In that case, wait a short time
+      // and try again.
+      if (read == 0) {
+        // TODO(b/223811174): Return control to the event loop instead of
+        // sleeping so asynchronous cancel requests can arrive.
+        base::PlatformThread::Sleep(base::Milliseconds(100));
+        continue;
+      }
       if (rows_written >= params->lines) {
         brillo::Error::AddTo(
             error, FROM_HERE, kDbusDomain, kManagerServiceError,

@@ -735,10 +735,37 @@ TEST(SaneDeviceImplFakeSaneTest, CancelScanWithoutJobSucceeds) {
   EXPECT_FALSE(device.GetCurrentJob().has_value());
 }
 
-TEST(SaneDeviceImplFakeSaneTest, CreateCancelScanJobSuccess) {
+TEST(SaneDeviceImplFakeSaneTest, CreateCancelScanJobSuccessBlocking) {
   LibsaneWrapperFake libsane;
   SANE_Handle h = libsane.CreateScanner("TestScanner");
   libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, false);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  // No job at first.
+  EXPECT_FALSE(device.GetCurrentJob().has_value());
+
+  // StartScan creates a job.
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+  ASSERT_TRUE(device.GetCurrentJob().has_value());
+  EXPECT_NE(device.GetCurrentJob().value(), "");
+
+  // CancelScan removes the job.
+  EXPECT_TRUE(device.CancelScan(&error));
+  EXPECT_EQ(error, nullptr);
+  EXPECT_FALSE(device.GetCurrentJob().has_value());
+}
+
+TEST(SaneDeviceImplFakeSaneTest, CreateCancelScanJobSuccessNonBlocking) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
   auto open_devices = std::make_shared<DeviceSet>();
 
   brillo::ErrorPtr error;

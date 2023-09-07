@@ -319,12 +319,22 @@ SANE_Status SaneDeviceImpl::StartScan(brillo::ErrorPtr* error) {
   }
 
   SANE_Status status = libsane_->sane_start(handle_);
-  if (status == SANE_STATUS_GOOD) {
-    scan_running_ = true;
-    StartJob();
+  if (status != SANE_STATUS_GOOD) {
+    return status;
+  }
+  scan_running_ = true;
+  StartJob();
+
+  // Attempt to set non-blocking I/O on the handle.  Don't return an error if
+  // this fails because both cases have to be handled when reading scan data
+  // anyway.
+  if (libsane_->sane_set_io_mode(handle_, SANE_TRUE) == SANE_STATUS_GOOD) {
+    LOG(INFO) << __func__ << ": Set handle to non-blocking I/O";
+  } else {
+    LOG(INFO) << __func__ << ": Device does not support non-blocking I/O";
   }
 
-  return status;
+  return SANE_STATUS_GOOD;
 }
 
 std::optional<ScanParameters> SaneDeviceImpl::GetScanParameters(

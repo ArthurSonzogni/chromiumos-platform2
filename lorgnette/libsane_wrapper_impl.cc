@@ -63,4 +63,8 @@ void LibsaneWrapperImpl::sane_cancel(SANE_Handle h) {
   ::sane_cancel(h);
 }
 
+SANE_Status LibsaneWrapperImpl::sane_set_io_mode(SANE_Handle h, SANE_Bool m) {
+  return ::sane_set_io_mode(h, m);
+}
+
 }  // namespace lorgnette

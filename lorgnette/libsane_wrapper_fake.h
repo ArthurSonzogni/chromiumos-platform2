@@ -42,6 +42,7 @@ class LibsaneWrapperFake : public LibsaneWrapper {
                         SANE_Int maxlen,
                         SANE_Int* len) override;
   void sane_cancel(SANE_Handle h) override;
+  SANE_Status sane_set_io_mode(SANE_Handle h, SANE_Bool m) override;
 
   // Creates a handle that will be returned by sane_open(`name`).
   SANE_Handle CreateScanner(const std::string& name);
@@ -57,6 +58,7 @@ class LibsaneWrapperFake : public LibsaneWrapper {
   void SetOptionValue(SANE_Handle handle, size_t field, void* value);
 
   void SetSaneStartResult(SANE_Handle handle, SANE_Status result);
+  void SetSupportsNonBlocking(SANE_Handle handle, bool support);
 
  protected:
   struct FakeScanner {
@@ -65,6 +67,7 @@ class LibsaneWrapperFake : public LibsaneWrapper {
     std::vector<SANE_Option_Descriptor> descriptors;
     std::vector<std::optional<void*>> values;
     SANE_Status sane_start_result;
+    bool supports_nonblocking;
   };
 
   std::unordered_map<SANE_Handle, FakeScanner> scanners_;

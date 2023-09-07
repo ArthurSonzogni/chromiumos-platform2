@@ -109,6 +109,16 @@ SANE_Status LibsaneWrapperFake::sane_read(SANE_Handle h,
 
 void LibsaneWrapperFake::sane_cancel(SANE_Handle h) {}
 
+SANE_Status LibsaneWrapperFake::sane_set_io_mode(SANE_Handle h, SANE_Bool m) {
+  auto elem = scanners_.find(h);
+  if (elem == scanners_.end()) {
+    return SANE_STATUS_INVAL;
+  }
+  FakeScanner& scanner = elem->second;
+  return scanner.supports_nonblocking ? SANE_STATUS_GOOD
+                                      : SANE_STATUS_UNSUPPORTED;
+}
+
 SANE_Handle LibsaneWrapperFake::CreateScanner(const std::string& name) {
   static size_t scanner_id = 0;
   SANE_Handle h = reinterpret_cast<SANE_Handle>(++scanner_id);
@@ -116,6 +126,7 @@ SANE_Handle LibsaneWrapperFake::CreateScanner(const std::string& name) {
       .name = name,
       .handle = h,
       .sane_start_result = SANE_STATUS_IO_ERROR,
+      .supports_nonblocking = true,  // Match the most popular backends.
   };
   return h;
 }
@@ -147,6 +158,14 @@ void LibsaneWrapperFake::SetSaneStartResult(SANE_Handle handle,
   CHECK(elem != scanners_.end());
   FakeScanner& scanner = elem->second;
   scanner.sane_start_result = result;
+}
+
+void LibsaneWrapperFake::SetSupportsNonBlocking(SANE_Handle handle,
+                                                bool support) {
+  auto elem = scanners_.find(handle);
+  CHECK(elem != scanners_.end());
+  FakeScanner& scanner = elem->second;
+  scanner.supports_nonblocking = support;
 }
 
 }  // namespace lorgnette
