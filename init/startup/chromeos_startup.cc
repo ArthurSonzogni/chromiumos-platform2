@@ -93,8 +93,6 @@ constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
 // kEncryptedStatefulMnt stores the path to the initial mount point for
 // the encrypted stateful partition
 constexpr char kEncryptedStatefulMnt[] = "encrypted";
-// This file is written to when /var is too full and the logs are deleted.
-constexpr char kReclaimFullVar[] = ".reclaim_full_var";
 // This value is threshold for determining that /var is full.
 const int kVarFullThreshold = 10485760;
 
@@ -759,8 +757,6 @@ int ChromeosStartup::Run() {
   // which should not be covered up here.
   if (IsVarFull()) {
     brillo::DeletePathRecursively(root_.Append(kVarLog));
-    base::FilePath reclaim_full_var = stateful_.Append(kReclaimFullVar);
-    base::WriteFile(reclaim_full_var, "Startup.ReclaimFullVar");
   }
 
   // Gather logs if needed. This might clear /var, so all init has to be after
