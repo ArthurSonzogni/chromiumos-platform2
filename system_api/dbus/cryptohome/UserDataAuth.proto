@@ -286,6 +286,25 @@ message IsMountedReply {
   bool is_ephemeral_mount = 2;
 }
 
+// Output parameters for EvictDeviceKey()
+message EvictDeviceKeyReply {
+  // Indicates an error if |error| is not empty.
+  CryptohomeErrorCode error = 1;
+
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
+}
+
+// Input parameters to EvictDeviceKey()
+message EvictDeviceKeyRequest {
+  // Id of the auth session associated with the user we aim to evict the
+  // in-memory device (For example: dmcrypt) keyset for.
+  bytes auth_session_id = 1;
+}
+
 // Input parameters to Unmount()
 // Currently we only support unmounting all mounted cryptohomes but in the
 // future we may implement per-user unmount, at which point we can extend this
