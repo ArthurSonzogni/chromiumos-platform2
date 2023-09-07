@@ -646,6 +646,8 @@ constexpr char kRadvdConfTemplate[] = R"(interface $1 {
     AdvAutonomous on;
   };
   $3
+  $4
+  $5
 };
 )";
 }  // namespace
@@ -655,23 +657,19 @@ bool GuestIPv6Service::CreateConfigFile(const std::string& ifname,
                                         const std::vector<std::string>& rdnss,
                                         const std::optional<int>& mtu,
                                         const std::optional<int>& hop_limit) {
-  std::vector<std::string> options;
-  if (mtu) {
-    options.push_back(base::StringPrintf("AdvLinkMTU %d;", *mtu));
-  }
-  if (hop_limit) {
-    options.push_back(base::StringPrintf("AdvCurHopLimit %d;", *hop_limit));
-  }
-  if (!rdnss.empty()) {
-    options.push_back(
-        base::StrCat({"RDNSS ", base::JoinString(rdnss, " "), " {};"}));
-  }
   const std::string contents = base::ReplaceStringPlaceholders(
       kRadvdConfTemplate,
       {
           /*$1=*/ifname,
           /*$2=*/prefix.ToString(),
-          /*$3=*/base::JoinString(options, "\n  "),
+          /*$3=*/(mtu ? base::StringPrintf("AdvLinkMTU %d;", *mtu) : ""),
+          /*$4=*/
+          (hop_limit ? base::StringPrintf("AdvCurHopLimit %d;", *hop_limit)
+                     : ""),
+          /*$5=*/
+          (!rdnss.empty()
+               ? base::StrCat({"RDNSS ", base::JoinString(rdnss, " "), " {};"})
+               : ""),
       },
       nullptr);
 
