@@ -28,7 +28,7 @@ StatusOr<brillo::Blob> RandomTpm1::RandomBlob(size_t size) {
 StatusOr<brillo::SecureBlob> RandomTpm1::RandomSecureBlob(size_t size) {
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle());
 
   brillo::SecureBlob random(size);
   ScopedTssSecureMemory tpm_data(overalls_, context);

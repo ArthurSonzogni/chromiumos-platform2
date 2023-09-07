@@ -159,7 +159,7 @@ StatusOr<brillo::Blob> VendorTpm1::GetRsuDeviceId() {
 StatusOr<IFXFieldUpgradeInfo> VendorTpm1::GetIFXFieldUpgradeInfo() {
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle());
 
   uint32_t length;
   ScopedTssMemory response(overalls_, context);

@@ -126,10 +126,6 @@ void BackendTpm1TestBase::SetupSrk() {
 }
 
 void BackendTpm1TestBase::SetupDelegate() {
-  // Cache the default user TPM handle.
-  EXPECT_THAT(backend_->GetTssHelper().GetUserTpmHandle(),
-              IsOkAndHolds(kDefaultTpm));
-
   TSS_HPOLICY kPolicy1 = 0x9909;
 
   std::string fake_delegate_blob = "fake_deleagte_blob";
@@ -147,14 +143,7 @@ void BackendTpm1TestBase::SetupDelegate() {
       .RetiresOnSaturation();
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
-              Ospi_Context_GetTpmObject(kDefaultContext, _))
-      .Times(AtMost(1))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(kDefaultDelegateTpm), Return(TPM_SUCCESS)))
-      .RetiresOnSaturation();
-
-  EXPECT_CALL(proxy_->GetMockOveralls(),
-              Ospi_GetPolicyObject(kDefaultDelegateTpm, TSS_POLICY_USAGE, _))
+              Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(kPolicy1), Return(TPM_SUCCESS)));
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
@@ -167,13 +156,18 @@ void BackendTpm1TestBase::SetupDelegate() {
                                  TSS_TSPATTRIB_POLDEL_OWNERBLOB, _, _))
       .With(Args<4, 3>(ElementsAreArray(fake_delegate_blob)))
       .WillRepeatedly(Return(TPM_SUCCESS));
+
+  // Setup cleanup
+  EXPECT_CALL(
+      proxy_->GetMockOveralls(),
+      Ospi_SetAttribUint32(kPolicy1, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                           TSS_TSPATTRIB_POLDEL_TYPE, TSS_DELEGATIONTYPE_NONE))
+      .WillRepeatedly(Return(TPM_SUCCESS));
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Policy_FlushSecret(kPolicy1))
+      .WillRepeatedly(Return(TPM_SUCCESS));
 }
 
 void BackendTpm1TestBase::SetupOwner() {
-  // Cache the default user TPM handle.
-  EXPECT_THAT(backend_->GetTssHelper().GetUserTpmHandle(),
-              IsOkAndHolds(kDefaultTpm));
-
   TSS_HPOLICY kPolicy1 = 0x9909;
 
   std::string fake_owner_password = "fake_owner_password";
@@ -187,18 +181,16 @@ void BackendTpm1TestBase::SetupOwner() {
       .RetiresOnSaturation();
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
-              Ospi_Context_GetTpmObject(kDefaultContext, _))
-      .Times(AtMost(1))
-      .WillOnce(DoAll(SetArgPointee<1>(kDefaultOwnerTpm), Return(TPM_SUCCESS)))
-      .RetiresOnSaturation();
-
-  EXPECT_CALL(proxy_->GetMockOveralls(),
-              Ospi_GetPolicyObject(kDefaultOwnerTpm, TSS_POLICY_USAGE, _))
+              Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(kPolicy1), Return(TPM_SUCCESS)));
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kPolicy1, TSS_SECRET_MODE_PLAIN, _, _))
       .With(Args<3, 2>(ElementsAreArray(fake_owner_password)))
+      .WillRepeatedly(Return(TPM_SUCCESS));
+
+  // Setup cleanup
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Policy_FlushSecret(kPolicy1))
       .WillRepeatedly(Return(TPM_SUCCESS));
 }
 

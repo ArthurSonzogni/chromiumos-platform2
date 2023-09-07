@@ -251,7 +251,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(proxy_->GetMockOveralls(),
-                Ospi_TPM_CMKApproveMA(kDefaultDelegateTpm, kMigdataHandle))
+                Ospi_TPM_CMKApproveMA(kDefaultTpm, kMigdataHandle))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
@@ -490,8 +490,6 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
     uint32_t kFakePubKeyHandle = 0x1234;
     uint32_t kFakeMigDestPubKeyHandle = 0x1239;
 
-    SetupDelegate();
-
     EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_TPM_PcrRead(_, _, _, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<2>(pcr_value_.size()),
@@ -628,10 +626,10 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMockOveralls(),
-                Ospi_TPM_AuthorizeMigrationTicket(
-                    kDefaultDelegateTpm, kFakeMigDestPubKeyHandle,
-                    TSS_MS_RESTRICT_APPROVE_DOUBLE, _, _))
+    EXPECT_CALL(
+        proxy_->GetMockOveralls(),
+        Ospi_TPM_AuthorizeMigrationTicket(kDefaultTpm, kFakeMigDestPubKeyHandle,
+                                          TSS_MS_RESTRICT_APPROVE_DOUBLE, _, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<3>(mig_auth_blob_.size()),
                         SetArgPointee<4>(mig_auth_blob_.data()),
@@ -676,7 +674,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(proxy_->GetMockOveralls(),
-                Ospi_TPM_CMKCreateTicket(kDefaultDelegateTpm, kFakePubKeyHandle,
+                Ospi_TPM_CMKCreateTicket(kDefaultTpm, kFakePubKeyHandle,
                                          kMigdataHandle))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));

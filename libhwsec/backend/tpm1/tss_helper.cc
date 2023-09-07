@@ -20,6 +20,23 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
+namespace {
+
+void DelegateHandleSettingCleanup(overalls::Overalls& overalls,
+                                  TSS_HPOLICY tpm_usage_policy) {
+  overalls.Ospi_SetAttribUint32(
+      tpm_usage_policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+      TSS_TSPATTRIB_POLDEL_TYPE, TSS_DELEGATIONTYPE_NONE);
+  overalls.Ospi_Policy_FlushSecret(tpm_usage_policy);
+}
+
+void OwnerHandleSettingCleanup(overalls::Overalls& overalls,
+                               TSS_HPOLICY tpm_usage_policy) {
+  overalls.Ospi_Policy_FlushSecret(tpm_usage_policy);
+}
+
+}  // namespace
+
 StatusOr<ScopedTssContext> TssHelper::GetScopedTssContext() {
   ScopedTssContext local_context_handle(overalls_);
 
@@ -46,7 +63,7 @@ StatusOr<TSS_HCONTEXT> TssHelper::GetTssContext() {
   return tss_context_.value().value();
 }
 
-StatusOr<TSS_HTPM> TssHelper::GetUserTpmHandle() {
+StatusOr<TSS_HTPM> TssHelper::GetTpmHandle() {
   if (user_tpm_handle_.has_value()) {
     return user_tpm_handle_.value().value();
   }
@@ -64,7 +81,7 @@ StatusOr<TSS_HTPM> TssHelper::GetUserTpmHandle() {
   return user_tpm_handle_.value().value();
 }
 
-StatusOr<ScopedTssObject<TSS_HTPM>> TssHelper::GetDelegateTpmHandle() {
+StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleAsDelegate() {
   tpm_manager::GetTpmStatusRequest request;
   tpm_manager::GetTpmStatusReply reply;
 
@@ -82,19 +99,15 @@ StatusOr<ScopedTssObject<TSS_HTPM>> TssHelper::GetDelegateTpmHandle() {
                                 TPMRetryAction::kNoRetry);
   }
 
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, GetTssContext(),
-                   _.WithStatus<TPMError>("Failed to get TSS context"));
-
-  ScopedTssObject<TSS_HTPM> local_tpm_handle(overalls_, context);
-
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Context_GetTpmObject(
-                      context, local_tpm_handle.ptr())))
-      .WithStatus<TPMError>("Failed to call Ospi_Context_GetTpmObject");
+  ASSIGN_OR_RETURN(TSS_HTPM local_tpm_handle, GetTpmHandle());
 
   TSS_HPOLICY tpm_usage_policy;
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetPolicyObject(
                       local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))
       .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
+
+  base::ScopedClosureRunner cleanup(base::BindOnce(
+      DelegateHandleSettingCleanup, std::ref(overalls_), tpm_usage_policy));
 
   brillo::Blob delegate_secret =
       brillo::BlobFromString(reply.local_data().owner_delegate().secret());
@@ -111,10 +124,10 @@ StatusOr<ScopedTssObject<TSS_HTPM>> TssHelper::GetDelegateTpmHandle() {
                       delegate_blob.data())))
       .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
 
-  return local_tpm_handle;
+  return cleanup;
 }
 
-StatusOr<ScopedTssObject<TSS_HTPM>> TssHelper::GetOwnerTpmHandle() {
+StatusOr<base::ScopedClosureRunner> TssHelper::SetTpmHandleAsOwner() {
   tpm_manager::GetTpmStatusRequest request;
   tpm_manager::GetTpmStatusReply reply;
   if (brillo::ErrorPtr err; !tpm_manager_.GetTpmStatus(
@@ -129,17 +142,15 @@ StatusOr<ScopedTssObject<TSS_HTPM>> TssHelper::GetOwnerTpmHandle() {
                                 TPMRetryAction::kNoRetry);
   }
 
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, GetTssContext(),
-                   _.WithStatus<TPMError>("Failed to get TSS context"));
-  ScopedTssObject<TSS_HTPM> local_tpm_handle(overalls_, context);
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Context_GetTpmObject(
-                      context, local_tpm_handle.ptr())))
-      .WithStatus<TPMError>("Failed to call Ospi_Context_GetTpmObject");
+  ASSIGN_OR_RETURN(TSS_HTPM local_tpm_handle, GetTpmHandle());
 
   TSS_HPOLICY tpm_usage_policy;
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetPolicyObject(
                       local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))
       .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
+
+  base::ScopedClosureRunner cleanup(base::BindOnce(
+      OwnerHandleSettingCleanup, std::ref(overalls_), tpm_usage_policy));
 
   brillo::Blob owner_password =
       brillo::BlobFromString(reply.local_data().owner_password());
@@ -147,7 +158,7 @@ StatusOr<ScopedTssObject<TSS_HTPM>> TssHelper::GetOwnerTpmHandle() {
                       tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
                       owner_password.size(), owner_password.data())))
       .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
-  return local_tpm_handle;
+  return cleanup;
 }
 
 }  // namespace hwsec

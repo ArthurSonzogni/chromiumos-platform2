@@ -495,7 +495,7 @@ TEST_F(BackendAttestationTpm1Test, CreateIdentity) {
   brillo::Blob fake_request = kFakeRequest;
   EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_TPM_CollateIdentityRequest(
-                  kDefaultOwnerTpm, kDefaultSrkHandle, kFakePcaKeyHandle,
+                  kDefaultTpm, kDefaultSrkHandle, kFakePcaKeyHandle,
                   kFakeIdentityLabel.size(), fake_identity_label_ptr,
                   kFakeIdentityKeyHandle, TSS_ALG_3DES, _, _))
       .WillOnce(DoAll(SetArgPointee<7>(fake_request.size()),

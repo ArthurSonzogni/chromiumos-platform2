@@ -175,7 +175,7 @@ StatusOr<attestation::Quote> AttestationTpm1::Quote(
                        "Failed to convert device configs to PCR selection"));
 
   ASSIGN_OR_RETURN(const KeyTpm1& key_data, key_management_.GetKeyData(key));
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle());
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
   // Generate the quote.
   TSS_VALIDATION validation = {};
@@ -359,8 +359,9 @@ StatusOr<Attestation::CreateIdentityResult> AttestationTpm1::CreateIdentity(
                                 TPMRetryAction::kNoRetry);
   }
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
-  ASSIGN_OR_RETURN(ScopedTssObject<TSS_HTPM> tpm_handle,
-                   tss_helper_.GetOwnerTpmHandle());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle());
+  ASSIGN_OR_RETURN(base::ScopedClosureRunner owner_handle_cleanup,
+                   tss_helper_.SetTpmHandleAsOwner());
 
   // Create fake PCA key.
   crypto::ScopedRSA fake_pca_key =

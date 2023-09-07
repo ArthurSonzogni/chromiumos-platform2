@@ -639,8 +639,9 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
 
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(ScopedTssObject<TSS_HTPM> tpm_handle,
-                   tss_helper_.GetDelegateTpmHandle());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle());
+  ASSIGN_OR_RETURN(base::ScopedClosureRunner delegate_handle_cleanup,
+                   tss_helper_.SetTpmHandleAsDelegate());
 
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(
@@ -671,7 +672,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
   // structure.
   ASSIGN_OR_RETURN(
       const Blob& ma_approval_ticket,
-      ObtainMaApprovalTicket(overalls_, context, tpm_handle.value(),
+      ObtainMaApprovalTicket(overalls_, context, tpm_handle,
                              msa_composite_digest),
       _.WithStatus<TPMError>("Failed to obtain MA approval ticket"));
 
@@ -688,7 +689,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm1::Seal(
   // CMK blob and the TPM_PUBKEY blob.
   ASSIGN_OR_RETURN(
       const GenerateCmkResult& cmk,
-      GenerateCmk(overalls_, context, tpm_handle.value(), srk_data.key_handle,
+      GenerateCmk(overalls_, context, tpm_handle, srk_data.key_handle,
                   msa_composite_digest, ma_approval_ticket),
       _.WithStatus<TPMError>("Failed to generate CMK"));
 
@@ -802,9 +803,6 @@ StatusOr<SignatureSealingTpm1::ChallengeResult> SignatureSealingTpm1::Challenge(
 
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(ScopedTssObject<TSS_HTPM> tpm_handle,
-                   tss_helper_.GetDelegateTpmHandle());
-
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(
       ScopedKey protection_key,
@@ -911,8 +909,9 @@ StatusOr<SecureBlob> SignatureSealingTpm1::Unseal(
   // Obtain the TPM context and handle with the required authorization.
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(ScopedTssObject<TSS_HTPM> tpm_handle,
-                   tss_helper_.GetDelegateTpmHandle());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle());
+  ASSIGN_OR_RETURN(base::ScopedClosureRunner delegate_handle_cleanup,
+                   tss_helper_.SetTpmHandleAsDelegate());
 
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(ScopedKey protection_key,
@@ -937,7 +936,7 @@ StatusOr<SecureBlob> SignatureSealingTpm1::Unseal(
   // Obtain the migration authorization blob for the migration destination key.
   ASSIGN_OR_RETURN(
       const Blob& migration_authorization_blob,
-      ObtainMigrationAuthorization(overalls_, context, tpm_handle.value(),
+      ObtainMigrationAuthorization(overalls_, context, tpm_handle,
                                    migration_destination_key_data.key_handle),
       _.WithStatus<TPMError>("Failed to obtain the migration authorization"));
 
@@ -945,8 +944,7 @@ StatusOr<SecureBlob> SignatureSealingTpm1::Unseal(
   ASSIGN_OR_RETURN(
       const Blob& cmk_migration_signature_ticket,
       ObtainCmkMigrationSignatureTicket(
-          overalls_, context, tpm_handle.value(),
-          protection_key_data.key_handle,
+          overalls_, context, tpm_handle, protection_key_data.key_handle,
           challenge_data.migration_destination_key_pubkey,
           challenge_data.cmk_pubkey, challenge_data.protection_key_pubkey,
           challenge_response),
@@ -964,7 +962,7 @@ StatusOr<SecureBlob> SignatureSealingTpm1::Unseal(
   // Perform the migration of the CMK onto the migration destination key.
   ASSIGN_OR_RETURN(
       const MigrateCmkResult& migrate_cmk,
-      MigrateCmk(overalls_, context, tpm_handle.value(), srk_data.key_handle,
+      MigrateCmk(overalls_, context, tpm_handle, srk_data.key_handle,
                  challenge_data.srk_wrapped_cmk,
                  challenge_data.migration_destination_key_pubkey,
                  challenge_data.cmk_pubkey,

@@ -104,6 +104,7 @@ class MockOveralls : public Overalls {
                TSS_RESULT(TSS_HCONTEXT, TSS_FLAG, TSS_UUID, TSS_HKEY*));
   MOCK_METHOD4(Ospi_Policy_SetSecret,
                TSS_RESULT(TSS_HPOLICY, TSS_FLAG, UINT32, BYTE*));
+  MOCK_METHOD1(Ospi_Policy_FlushSecret, TSS_RESULT(TSS_HPOLICY));
   MOCK_METHOD2(Ospi_Policy_AssignToObject,
                TSS_RESULT(TSS_HPOLICY, TSS_HOBJECT));
   MOCK_METHOD3(Ospi_TPM_CreateEndorsementKey,

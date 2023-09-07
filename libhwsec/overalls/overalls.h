@@ -281,6 +281,9 @@ class Overalls {
     return Tspi_Policy_SetSecret(hPolicy, secretMode, ulSecretLength,
                                  rgbSecret);
   }
+  virtual TSS_RESULT Ospi_Policy_FlushSecret(TSS_HPOLICY hPolicy) {
+    return Tspi_Policy_FlushSecret(hPolicy);
+  }
   virtual TSS_RESULT Ospi_Policy_AssignToObject(TSS_HPOLICY hPolicy,
                                                 TSS_HOBJECT hObject) {
     return Tspi_Policy_AssignToObject(hPolicy, hObject);

@@ -120,7 +120,7 @@ StatusOr<OperationPolicy> ConfigTpm1::ToOperationPolicy(
 Status ConfigTpm1::SetCurrentUser(const std::string& current_user) {
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle());
 
   brillo::Blob extention = Sha1(brillo::BlobFromString(current_user));
 
@@ -188,7 +188,7 @@ StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToCurrentPcrValueMap(
 StatusOr<brillo::Blob> ConfigTpm1::ReadPcr(uint32_t pcr_index) {
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetTpmHandle());
 
   uint32_t length = 0;
   ScopedTssMemory buffer(overalls_, context);

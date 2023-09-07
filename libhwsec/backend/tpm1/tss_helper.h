@@ -10,6 +10,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/functional/callback_helpers.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/proxy/proxy.h"
@@ -27,15 +28,15 @@ class TssHelper {
 
   StatusOr<ScopedTssContext> GetScopedTssContext();
   StatusOr<TSS_HCONTEXT> GetTssContext();
-  StatusOr<TSS_HTPM> GetUserTpmHandle();
+  StatusOr<TSS_HTPM> GetTpmHandle();
 
   // The delegate TPM handle would not be cached to prevent leaking the delegate
   // permission.
-  StatusOr<ScopedTssObject<TSS_HTPM>> GetDelegateTpmHandle();
+  StatusOr<base::ScopedClosureRunner> SetTpmHandleAsDelegate();
 
   // The owner TPM handle would not be cached to prevent leaking the owner
   // permission.
-  StatusOr<ScopedTssObject<TSS_HTPM>> GetOwnerTpmHandle();
+  StatusOr<base::ScopedClosureRunner> SetTpmHandleAsOwner();
 
  private:
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
