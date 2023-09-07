@@ -989,4 +989,22 @@ void Executor::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
   delegate_ptr->StartAsync();
 }
 
+void Executor::SetFanSpeed(
+    const base::flat_map<uint8_t, uint16_t>& fan_id_to_rpm,
+    SetFanSpeedCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kFan,
+      SandboxedProcess::Options{
+          .user = user::kEc,
+          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
+      });
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->SetFanSpeed(
+      fan_id_to_rpm,
+      CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
+                                 kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
+}
+
 }  // namespace diagnostics

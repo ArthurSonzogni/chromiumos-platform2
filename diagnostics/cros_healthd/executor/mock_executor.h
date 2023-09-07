@@ -181,6 +181,11 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               (override));
   MOCK_METHOD(void, ReadBtmonLog, (ReadBtmonLogCallback callback), (override));
   MOCK_METHOD(void, RemoveBtmonLog, (RemoveBtmonLogCallback), (override));
+  MOCK_METHOD(void,
+              SetFanSpeed,
+              ((const base::flat_map<uint8_t, uint16_t>&)fan_rpms,
+               SetFanSpeedCallback callback),
+              (override));
 };
 
 }  // namespace diagnostics

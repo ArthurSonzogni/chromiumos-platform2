@@ -470,4 +470,15 @@ interface Executor {
   // The response:
   // * |result| - contains information of removing log file by running rm.
   RemoveBtmonLog() => (ExecutedProcessResult result);
+
+  // Set the fan speed for given fans through the EC.
+  //
+  // The request:
+  // * |fan_id_to_rpm| - The key is the fan index, and the value is the fan
+  //                     speed to set the fan to in rpm. Note that the speed can
+  //                     only be set to uint16.
+  //
+  // The response:
+  // * |err| - Error message if existed.
+  SetFanSpeed(map<uint8, uint16> fan_id_to_rpm) => (string? err);
 };
