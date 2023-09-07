@@ -186,6 +186,10 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               ((const base::flat_map<uint8_t, uint16_t>&)fan_rpms,
                SetFanSpeedCallback callback),
               (override));
+  MOCK_METHOD(void,
+              SetAllFanAutoControl,
+              (SetAllFanAutoControlCallback callback),
+              (override));
 };
 
 }  // namespace diagnostics

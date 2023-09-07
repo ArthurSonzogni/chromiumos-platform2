@@ -151,6 +151,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void RemoveBtmonLog(RemoveBtmonLogCallback callback) override;
   void SetFanSpeed(const base::flat_map<uint8_t, uint16_t>& fan_id_to_rpm,
                    SetFanSpeedCallback callback) override;
+  void SetAllFanAutoControl(SetAllFanAutoControlCallback callback) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

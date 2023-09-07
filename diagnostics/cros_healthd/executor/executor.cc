@@ -1007,4 +1007,18 @@ void Executor::SetFanSpeed(
   delegate_ptr->StartAsync();
 }
 
+void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kFan,
+      SandboxedProcess::Options{
+          .user = user::kEc,
+          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
+      });
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->SetAllFanAutoControl(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback), kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
+}
+
 }  // namespace diagnostics

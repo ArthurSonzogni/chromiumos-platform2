@@ -481,4 +481,10 @@ interface Executor {
   // The response:
   // * |err| - Error message if existed.
   SetFanSpeed(map<uint8, uint16> fan_id_to_rpm) => (string? err);
+
+  // Set the fan speed for all fans to auto fan control.
+  //
+  // The response:
+  // * |err| - Error message if existed.
+  SetAllFanAutoControl() => (string? err);
 };
