@@ -42,7 +42,7 @@ PoliciesFeaturesBroker::PoliciesFeaturesBroker(
                         false}},
                       {Feature::kCrOSLateBootSecagentdXDRNetworkEvents,
                        {{.name = "CrOSLateBootSecagentdXDRNetworkEvents",
-                         .default_state = FEATURE_DISABLED_BY_DEFAULT},
+                         .default_state = FEATURE_ENABLED_BY_DEFAULT},
                         false}},
                       {Feature::kCrOSLateBootSecagentdXDRAuthenticateEvents,
                        {{.name = "CrOSLateBootSecagentdXDRAuthenticateEvents",
