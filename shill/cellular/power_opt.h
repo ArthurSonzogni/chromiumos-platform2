@@ -27,7 +27,7 @@ class PowerOpt {
   };
 
   enum class PowerOptReason {
-    kNoSerivceGeneral,
+    kNoServiceGeneral,
     kNoServiceInvalidApn,
     kNoServiceNoSubscription,
     kNoServiceAdminRestriction,

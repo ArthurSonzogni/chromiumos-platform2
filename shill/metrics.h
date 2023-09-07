@@ -1841,10 +1841,10 @@ class Metrics {
       kOff = 3,
     };
     enum class CellularPowerOptimizationReason {
-      kNoSerivceGeneral = 0,
+      kNoServiceGeneral = 0,
       kNoServiceInvalidApn = 1,
       kNoServiceNoSubscription = 2,
-      kNoServiceAdminRestrition = 3,
+      kNoServiceAdminRestriction = 3,
       kNoServiceLongNotOnline = 4,
     };
     PowerState new_power_state;
