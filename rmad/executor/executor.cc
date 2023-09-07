@@ -64,6 +64,10 @@ constexpr char kDiagnosticsLogFilename[] = "diagnostics-log.txt";
 // Supported file systems for stateful partition.
 const std::vector<std::string> kStatefulFileSystems = {"vfat", "ext4", "ext3",
                                                        "ext2"};
+// Powerwash related constants.
+constexpr char kPowerwashRequestFilePath[] =
+    "/mnt/stateful_partition/factory_install_reset";
+constexpr char kRmaPowerwashArgs[] = "fast safe keepimg rma";
 
 std::string FormatTime(const base::Time& time) {
   base::Time::Exploded e;
@@ -103,10 +107,19 @@ bool CopyAndChown(const base::FilePath& from_path,
   return true;
 }
 
-// Powerwash related constants.
-constexpr char kPowerwashRequestFilePath[] =
-    "/mnt/stateful_partition/factory_install_reset";
-constexpr char kRmaPowerwashArgs[] = "fast safe keepimg rma";
+bool WriteStringToFileAtomic(const base::FilePath& path,
+                             const std::string& data) {
+  if (!brillo::WriteStringToFile(path, data)) {
+    LOG(ERROR) << "Failed to write " << path.value();
+    return false;
+  }
+  if (!brillo::SyncFileOrDirectory(path, /*is_directory=*/false,
+                                   /*data_sync=*/false)) {
+    LOG(ERROR) << "Failed to sync " << path.value();
+    return false;
+  }
+  return true;
+}
 
 }  // namespace
 
@@ -156,36 +169,28 @@ void Executor::MountAndWriteLog(uint8_t device_id,
 
     const base::FilePath system_log_path =
         directory_filepath.Append(kSystemLogFilename);
-    if (base::WriteFile(system_log_path, system_log.c_str())) {
-      brillo::SyncFileOrDirectory(system_log_path, false, true);
-    } else {
+    if (!WriteStringToFileAtomic(system_log_path, system_log)) {
       std::move(callback).Run(std::nullopt);
       return;
     }
 
     const base::FilePath json_log_path =
         directory_filepath.Append(kJsonLogFilename);
-    if (base::WriteFile(json_log_path, json_log.c_str())) {
-      brillo::SyncFileOrDirectory(json_log_path, false, true);
-    } else {
+    if (!WriteStringToFileAtomic(json_log_path, json_log)) {
       std::move(callback).Run(std::nullopt);
       return;
     }
 
     const base::FilePath text_log_path =
         directory_filepath.Append(kTextLogFilename);
-    if (base::WriteFile(text_log_path, text_log.c_str())) {
-      brillo::SyncFileOrDirectory(text_log_path, false, true);
-    } else {
+    if (!WriteStringToFileAtomic(text_log_path, text_log.c_str())) {
       std::move(callback).Run(std::nullopt);
       return;
     }
 
     const base::FilePath diagnostics_log_path =
         directory_filepath.Append(kDiagnosticsLogFilename);
-    if (base::WriteFile(diagnostics_log_path, diagnostics_log.c_str())) {
-      brillo::SyncFileOrDirectory(diagnostics_log_path, false, true);
-    } else {
+    if (!WriteStringToFileAtomic(diagnostics_log_path, diagnostics_log)) {
       std::move(callback).Run(std::nullopt);
       return;
     }
@@ -222,8 +227,8 @@ void Executor::MountAndCopyFirmwareUpdater(
     const base::FilePath target_updater_path(kTargetFirmwareUpdaterAbsPath);
     if (base::PathExists(source_updater_path) &&
         base::CopyFile(source_updater_path, target_updater_path)) {
-      brillo::SyncFileOrDirectory(base::FilePath(target_updater_path), false,
-                                  true);
+      brillo::SyncFileOrDirectory(base::FilePath(target_updater_path),
+                                  /*is_directory=*/false, /*data_sync=*/false);
       std::move(callback).Run(true);
       return;
     }
@@ -265,10 +270,12 @@ void Executor::MountAndCopyDiagnosticsApp(
           to_swbn_path.value(), to_crx_path.value());
       std::move(callback).Run(std::move(info));
       // Then sync the files.
-      if (!brillo::SyncFileOrDirectory(to_swbn_path, false, true)) {
+      if (!brillo::SyncFileOrDirectory(to_swbn_path, /*is_directory=*/false,
+                                       /*data_sync=*/false)) {
         LOG(ERROR) << "Failed to sync " << to_swbn_path.value();
       }
-      if (!brillo::SyncFileOrDirectory(to_crx_path, false, true)) {
+      if (!brillo::SyncFileOrDirectory(to_crx_path, /*is_directory=*/false,
+                                       /*data_sync=*/false)) {
         LOG(ERROR) << "Failed to sync " << to_crx_path.value();
       }
       return;
@@ -283,13 +290,9 @@ void Executor::RebootEc(RebootEcCallback callback) {
 
 void Executor::RequestRmaPowerwash(RequestRmaPowerwashCallback callback) {
   const base::FilePath powerwash_file_path(kPowerwashRequestFilePath);
-  if (!base::WriteFile(powerwash_file_path, kRmaPowerwashArgs,
-                       std::size(kRmaPowerwashArgs) - 1)) {
-    LOG(ERROR) << "Failed to write powerwash request file";
+  if (!WriteStringToFileAtomic(powerwash_file_path, kRmaPowerwashArgs)) {
     std::move(callback).Run(false);
-  } else if (!brillo::SyncFileOrDirectory(powerwash_file_path, false, true)) {
-    LOG(ERROR) << "Failed to sync powerwash request file";
-    std::move(callback).Run(false);
+    return;
   }
   std::move(callback).Run(true);
 }
@@ -298,8 +301,8 @@ void Executor::RequestBatteryCutoff(RequestBatteryCutoffCallback callback) {
   if (!crossystem_utils_->SetInt(CrosSystemUtils::kBatteryCutoffRequestProperty,
                                  1)) {
     std::move(callback).Run(false);
+    return;
   }
-
   std::move(callback).Run(true);
 }
 

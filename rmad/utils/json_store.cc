@@ -145,7 +145,8 @@ bool JsonStore::ClearAndDeleteFile() {
 }
 
 bool JsonStore::Sync() const {
-  return brillo::SyncFileOrDirectory(file_path_, false, true);
+  return brillo::SyncFileOrDirectory(file_path_, /*is_directory=*/false,
+                                     /*data_sync=*/false);
 }
 
 bool JsonStore::InitFromFile(bool read_only) {
