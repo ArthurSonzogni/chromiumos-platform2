@@ -80,7 +80,7 @@ void RunVideoConferencingRoutine(
     const std::optional<std::string>& stun_server_hostname,
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunVideoConferencingRoutine(
       stun_server_hostname,
       base::BindOnce(&ParseVideoConferencingResult).Then(std::move(callback)));

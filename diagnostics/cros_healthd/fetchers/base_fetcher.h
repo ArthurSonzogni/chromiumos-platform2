@@ -12,7 +12,7 @@ namespace diagnostics {
 class BaseFetcher {
  public:
   explicit BaseFetcher(Context* context) : context_(context) {
-    DCHECK(context_);
+    CHECK(context_);
   }
   BaseFetcher(const BaseFetcher&) = delete;
   BaseFetcher& operator=(const BaseFetcher&) = delete;

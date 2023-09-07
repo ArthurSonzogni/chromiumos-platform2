@@ -34,7 +34,7 @@ namespace diagnostics {
 
 PowerEventsImpl::PowerEventsImpl(Context* context)
     : context_(context), weak_ptr_factory_(this) {
-  DCHECK(context_);
+  CHECK(context_);
 
   context_->power_manager_proxy()->RegisterPowerSupplyPollSignalHandler(
       base::BindRepeating(&PowerEventsImpl::OnPowerSupplyPollSignal,

@@ -21,7 +21,7 @@ namespace diagnostics {
 
 TouchscreenEventsImpl::TouchscreenEventsImpl(Context* context)
     : receiver_(this), context_(context) {
-  DCHECK(context_);
+  CHECK(context_);
 
   observers_.set_disconnect_handler(base::BindRepeating(
       &TouchscreenEventsImpl::StopMonitor, base::Unretained(this)));

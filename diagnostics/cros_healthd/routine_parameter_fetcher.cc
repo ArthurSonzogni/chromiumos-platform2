@@ -20,7 +20,7 @@ namespace diagnostics {
 RoutineParameterFetcher::RoutineParameterFetcher(
     brillo::CrosConfigInterface* cros_config)
     : cros_config_(cros_config) {
-  DCHECK(cros_config_);
+  CHECK(cros_config_);
 }
 
 RoutineParameterFetcher::~RoutineParameterFetcher() = default;

@@ -29,7 +29,7 @@ constexpr uint32_t kAhTomAhMultiplier = 1000;
 SimpleRoutine::RoutineResult GetBatteryCapacityResult(Context* const context,
                                                       uint32_t low_mah,
                                                       uint32_t high_mah) {
-  DCHECK(context);
+  CHECK(context);
 
   if (low_mah > high_mah) {
     return {

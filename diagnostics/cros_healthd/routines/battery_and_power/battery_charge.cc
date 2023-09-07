@@ -40,8 +40,8 @@ BatteryChargeRoutine::BatteryChargeRoutine(
     default_tick_clock_ = std::make_unique<base::DefaultTickClock>();
     tick_clock_ = default_tick_clock_.get();
   }
-  DCHECK(context_);
-  DCHECK(tick_clock_);
+  CHECK(context_);
+  CHECK(tick_clock_);
 }
 
 BatteryChargeRoutine::~BatteryChargeRoutine() = default;

@@ -75,7 +75,7 @@ SimpleRoutine::RoutineResult ParseArcPingResult(
 
 void RunArcPingRoutine(NetworkDiagnosticsAdapter* network_diagnostics_adapter,
                        SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunArcPingRoutine(
       base::BindOnce(&ParseArcPingResult).Then(std::move(callback)));
 }

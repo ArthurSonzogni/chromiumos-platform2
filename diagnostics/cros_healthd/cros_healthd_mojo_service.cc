@@ -28,9 +28,9 @@ CrosHealthdMojoService::CrosHealthdMojoService(
       context_(context),
       fetch_aggregator_(fetch_aggregator),
       event_aggregator_(event_aggregator) {
-  DCHECK(context_);
-  DCHECK(fetch_aggregator_);
-  DCHECK(event_aggregator_);
+  CHECK(context_);
+  CHECK(fetch_aggregator_);
+  CHECK(event_aggregator_);
   probe_provider_.Register(context->mojo_service()->GetServiceManager(),
                            chromeos::mojo_services::kCrosHealthdProbe);
   event_provider_.Register(context->mojo_service()->GetServiceManager(),

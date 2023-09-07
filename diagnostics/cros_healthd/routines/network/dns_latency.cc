@@ -63,7 +63,7 @@ SimpleRoutine::RoutineResult ParseDnsLatencyResult(
 void RunDnsLatencyRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunDnsLatencyRoutine(
       base::BindOnce(&ParseDnsLatencyResult).Then(std::move(callback)));
 }

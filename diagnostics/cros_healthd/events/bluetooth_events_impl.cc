@@ -16,7 +16,7 @@ namespace diagnostics {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 BluetoothEventsImpl::BluetoothEventsImpl(Context* context) {
-  DCHECK(context);
+  CHECK(context);
 
   event_subscriptions_.push_back(
       context->bluetooth_event_hub()->SubscribeAdapterAdded(base::BindRepeating(

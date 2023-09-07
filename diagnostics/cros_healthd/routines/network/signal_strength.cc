@@ -58,7 +58,7 @@ SimpleRoutine::RoutineResult ParseSignalStrengthResult(
 void RunSignalStrengthRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunSignalStrengthRoutine(
       base::BindOnce(&ParseSignalStrengthResult).Then(std::move(callback)));
 }

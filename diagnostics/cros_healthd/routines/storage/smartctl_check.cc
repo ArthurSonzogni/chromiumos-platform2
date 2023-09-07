@@ -99,7 +99,7 @@ SmartctlCheckRoutine::SmartctlCheckRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
     const std::optional<uint32_t>& percentage_used_threshold)
     : debugd_proxy_(debugd_proxy) {
-  DCHECK(debugd_proxy_);
+  CHECK(debugd_proxy_);
   if (percentage_used_threshold.has_value()) {
     percentage_used_threshold_ = percentage_used_threshold.value();
   } else {

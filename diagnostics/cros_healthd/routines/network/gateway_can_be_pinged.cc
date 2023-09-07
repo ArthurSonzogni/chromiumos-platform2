@@ -71,7 +71,7 @@ SimpleRoutine::RoutineResult ParseGatewayCanBePingedResult(
 void RunGatewayCanBePingedRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunGatewayCanBePingedRoutine(
       base::BindOnce(&ParseGatewayCanBePingedResult).Then(std::move(callback)));
 }

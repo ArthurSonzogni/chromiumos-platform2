@@ -69,7 +69,7 @@ SimpleRoutine::RoutineResult ParseHasSecureWiFiConnectionResult(
 void RunHasSecureWiFiConnectionRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunHasSecureWiFiConnectionRoutine(
       base::BindOnce(&ParseHasSecureWiFiConnectionResult)
           .Then(std::move(callback)));

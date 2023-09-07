@@ -118,8 +118,8 @@ SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
     : cros_config_(cros_config),
       debugd_proxy_(debugd_proxy),
       root_dir_(root_dir) {
-  DCHECK(cros_config_);
-  DCHECK(debugd_proxy_);
+  CHECK(cros_config_);
+  CHECK(debugd_proxy_);
 }
 
 SystemConfig::~SystemConfig() = default;

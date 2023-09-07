@@ -213,7 +213,7 @@ SubtestProgressInfo SubtestEnumToProgressInfo(
 MemoryRoutine::MemoryRoutine(Context* context,
                              const mojom::MemoryRoutineArgumentPtr& arg)
     : context_(context), max_testing_mem_kib_(arg->max_testing_mem_kib) {
-  DCHECK(context_);
+  CHECK(context_);
 }
 
 MemoryRoutine::~MemoryRoutine() = default;

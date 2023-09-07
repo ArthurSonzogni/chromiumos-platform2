@@ -32,7 +32,7 @@ void HandleSignalConnected(const std::string& interface,
 namespace diagnostics {
 
 AudioEventsImpl::AudioEventsImpl(Context* context) : context_(context) {
-  DCHECK(context_);
+  CHECK(context_);
   context_->cras_proxy()->RegisterUnderrunSignalHandler(
       base::BindRepeating(&AudioEventsImpl::OnUnderrunSignal,
                           base::Unretained(this)),

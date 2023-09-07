@@ -21,7 +21,7 @@ namespace diagnostics {
 
 TouchpadEventsImpl::TouchpadEventsImpl(Context* context)
     : receiver_(this), context_(context) {
-  DCHECK(context_);
+  CHECK(context_);
 
   observers_.set_disconnect_handler(base::BindRepeating(
       &TouchpadEventsImpl::StopMonitor, base::Unretained(this)));

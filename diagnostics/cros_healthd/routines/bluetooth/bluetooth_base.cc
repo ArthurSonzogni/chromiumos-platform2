@@ -22,7 +22,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 BluetoothRoutineBase::BluetoothRoutineBase(Context* context)
     : context_(context) {
-  DCHECK(context_);
+  CHECK(context_);
   adapters_ = context->bluetooth_info_manager()->GetAdapters();
 }
 

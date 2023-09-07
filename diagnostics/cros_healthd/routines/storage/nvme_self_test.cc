@@ -94,7 +94,7 @@ NvmeSelfTestRoutine::NvmeSelfTestRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
     SelfTestType self_test_type)
     : debugd_proxy_(debugd_proxy), self_test_type_(self_test_type) {
-  DCHECK(debugd_proxy_);
+  CHECK(debugd_proxy_);
 }
 
 NvmeSelfTestRoutine::~NvmeSelfTestRoutine() = default;

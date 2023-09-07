@@ -41,7 +41,7 @@ NvmeWearLevelRoutine::NvmeWearLevelRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
     const std::optional<uint32_t>& wear_level_threshold)
     : debugd_proxy_(debugd_proxy), wear_level_threshold_(wear_level_threshold) {
-  DCHECK(debugd_proxy_);
+  CHECK(debugd_proxy_);
 }
 
 NvmeWearLevelRoutine::~NvmeWearLevelRoutine() = default;

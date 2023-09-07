@@ -28,7 +28,7 @@ AudioSetVolumeRoutine::AudioSetVolumeRoutine(Context* context,
                                              uint8_t volume,
                                              bool mute_on)
     : node_id_(node_id), volume_(volume), mute_on_(mute_on), context_(context) {
-  DCHECK(context_);
+  CHECK(context_);
   volume_ = std::min(volume_, (uint8_t)100);
 }
 

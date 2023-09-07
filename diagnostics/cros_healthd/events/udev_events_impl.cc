@@ -78,7 +78,7 @@ void FillUsbEventInfo(const std::unique_ptr<brillo::UdevDevice>& device,
 }  // namespace
 
 UdevEventsImpl::UdevEventsImpl(Context* context) : context_(context) {
-  DCHECK(context_);
+  CHECK(context_);
 }
 
 bool UdevEventsImpl::Initialize() {

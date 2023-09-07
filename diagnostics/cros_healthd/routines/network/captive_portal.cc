@@ -68,7 +68,7 @@ SimpleRoutine::RoutineResult ParseCaptivePortalResult(
 void RunCaptivePortalRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunCaptivePortalRoutine(
       base::BindOnce(&ParseCaptivePortalResult).Then(std::move(callback)));
 }

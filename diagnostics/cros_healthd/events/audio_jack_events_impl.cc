@@ -20,7 +20,7 @@ namespace diagnostics {
 
 AudioJackEventsImpl::AudioJackEventsImpl(Context* context)
     : receiver_(this), context_(context) {
-  DCHECK(context_);
+  CHECK(context_);
 
   observers_.set_disconnect_handler(base::BindRepeating(
       &AudioJackEventsImpl::StopMonitor, base::Unretained(this)));

@@ -63,7 +63,7 @@ SimpleRoutine::RoutineResult ParseHttpFirewallResult(
 void RunHttpFirewallRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunHttpFirewallRoutine(
       base::BindOnce(&ParseHttpFirewallResult).Then(std::move(callback)));
 }

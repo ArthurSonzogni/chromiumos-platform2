@@ -66,7 +66,7 @@ SimpleRoutine::RoutineResult ParseDnsResolverPresentResult(
 void RunDnsResolverPresentRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunDnsResolverPresentRoutine(
       base::BindOnce(&ParseDnsResolverPresentResult).Then(std::move(callback)));
 }

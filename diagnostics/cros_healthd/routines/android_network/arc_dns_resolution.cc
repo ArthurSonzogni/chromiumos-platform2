@@ -68,7 +68,7 @@ SimpleRoutine::RoutineResult ParseArcDnsResolutionResult(
 void RunArcDnsResolutionRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     SimpleRoutine::RoutineResultCallback callback) {
-  DCHECK(network_diagnostics_adapter);
+  CHECK(network_diagnostics_adapter);
   network_diagnostics_adapter->RunArcDnsResolutionRoutine(
       base::BindOnce(&ParseArcDnsResolutionResult).Then(std::move(callback)));
 }

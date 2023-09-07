@@ -32,7 +32,7 @@ void HandleSignalConnected(const std::string& interface,
 namespace diagnostics {
 LidEventsImpl::LidEventsImpl(Context* context)
     : context_(context), weak_ptr_factory_(this) {
-  DCHECK(context_);
+  CHECK(context_);
 
   context_->power_manager_proxy()->RegisterLidClosedSignalHandler(
       base::BindRepeating(&LidEventsImpl::OnLidClosedSignal,

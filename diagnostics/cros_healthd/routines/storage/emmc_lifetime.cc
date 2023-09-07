@@ -101,7 +101,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 EmmcLifetimeRoutine::EmmcLifetimeRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy)
     : debugd_proxy_(debugd_proxy) {
-  DCHECK(debugd_proxy_);
+  CHECK(debugd_proxy_);
 }
 
 EmmcLifetimeRoutine::~EmmcLifetimeRoutine() = default;
