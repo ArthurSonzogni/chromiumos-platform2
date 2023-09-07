@@ -215,7 +215,10 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
     // If permissive USB is enabled, we should potentially still allow claimed
     // interfaces, pending the result of other rules e.g.
     // AllowExternallyTaggedUsbDeviceRule.
-    if (GetCrosUsbLocationProperty(device).has_value()) {
+    auto cros_usb_location = GetCrosUsbLocationProperty(device);
+
+    if (cros_usb_location.has_value() &&
+        cros_usb_location != CrosUsbLocationProperty::kUnknown) {
       return IGNORE;
     }
   }
