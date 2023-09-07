@@ -4,6 +4,9 @@
 
 #include "secagentd/batch_sender.h"
 
+#include <string>
+#include <variant>
+
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
@@ -247,6 +250,36 @@ TEST_F(BatchSenderTestFixture, TestVisit) {
   EXPECT_FALSE(batch_sender_->Visit(AVM::kProcessTerminate,
                                     "Key does not exist", std::move(cb2)));
   EXPECT_FALSE(cb2_run);
+}
+
+TEST_F(BatchSenderTestFixture, TestVisitMostRecent) {
+  auto proc_exec_1 = std::make_unique<BatchSenderTestFixture::AVM>();
+  auto proc_exec_1_ptr = proc_exec_1.get();
+  proc_exec_1->CopyFrom(expected_process_exec_1_);
+  proc_exec_1->mutable_process_exec()->set_terminate_timestamp_us(1);
+  batch_sender_->Enqueue(std::move(proc_exec_1));
+
+  // Create a second process exec with the same UUID and different terminate
+  // timestamp to verify that the second one is updated.
+  // Note this should never happen in practice.
+  auto proc_exec_2 = std::make_unique<BatchSenderTestFixture::AVM>();
+  auto proc_exec_2_ptr = proc_exec_2.get();
+  proc_exec_2->CopyFrom(expected_process_exec_1_);
+  proc_exec_2->mutable_process_exec()->set_terminate_timestamp_us(5);
+  batch_sender_->Enqueue(std::move(proc_exec_2));
+
+  // Update the terminate timestamp to verify most recent event updated.
+  auto update_count_cb =
+      base::BindLambdaForTesting([](BatchSenderTestFixture::AVM* exec_event) {
+        exec_event->mutable_process_exec()->set_terminate_timestamp_us(
+            exec_event->process_exec().terminate_timestamp_us() + 1);
+      });
+  EXPECT_TRUE(batch_sender_->Visit(
+      BatchSenderTestFixture::AVM::kProcessExec,
+      proc_exec_1_ptr->process_exec().spawn_process().process_uuid(),
+      std::move(update_count_cb)));
+  EXPECT_EQ(1, proc_exec_1_ptr->process_exec().terminate_timestamp_us());
+  EXPECT_EQ(6, proc_exec_2_ptr->process_exec().terminate_timestamp_us());
 }
 
 }  // namespace secagentd::testing

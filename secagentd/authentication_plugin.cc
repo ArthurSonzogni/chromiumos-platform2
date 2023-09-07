@@ -4,8 +4,8 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <utility>
+#include <variant>
 
 #include "absl/status/status.h"
 #include "base/functional/bind.h"
@@ -34,9 +34,21 @@ AuthenticationPlugin::AuthenticationPlugin(
     scoped_refptr<DeviceUserInterface> device_user,
     uint32_t batch_interval_s)
     : weak_ptr_factory_(this),
-      message_sender_(message_sender),
       policies_features_broker_(policies_features_broker),
       device_user_(device_user) {
+  batch_sender_ =
+      std::make_unique<BatchSender<std::monostate, pb::XdrAuthenticateEvent,
+                                   pb::AuthenticateEventAtomicVariant>>(
+          base::BindRepeating(
+              [](const cros_xdr::reporting::AuthenticateEventAtomicVariant&
+                     event) -> std::monostate {
+                // Only the most recent event type will need to be visited
+                // so monostate is used. This makes it so for each type of auth
+                // variation only 1 event is tracked.
+                return std::monostate();
+              }),
+          message_sender, reporting::Destination::CROS_SECURITY_USER,
+          batch_interval_s);
   CHECK(message_sender != nullptr);
 }
 
@@ -48,6 +60,8 @@ absl::Status AuthenticationPlugin::Activate() {
   if (is_active_) {
     return absl::OkStatus();
   }
+
+  batch_sender_->Start();
 
   // Register cryptohome proxy for authentication result.
   if (!cryptohome_proxy_) {
@@ -119,18 +133,16 @@ void AuthenticationPlugin::FillCommon(
 }
 
 void AuthenticationPlugin::HandleScreenLock() {
-  auto xdr_proto = std::make_unique<pb::XdrAuthenticateEvent>();
-  auto screen_lock = xdr_proto->add_batched_events();
+  auto screen_lock = std::make_unique<pb::AuthenticateEventAtomicVariant>();
   screen_lock->mutable_lock();
-  FillCommon(screen_lock);
+  FillCommon(screen_lock.get());
 
-  SendAuthenticationEvent(std::move(xdr_proto));
+  EnqueueAuthenticationEvent(std::move(screen_lock));
 }
 
 void AuthenticationPlugin::HandleScreenUnlock() {
-  auto xdr_proto = std::make_unique<pb::XdrAuthenticateEvent>();
-  auto screen_lock = xdr_proto->add_batched_events();
-  FillCommon(screen_lock);
+  auto screen_lock = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  FillCommon(screen_lock.get());
 
   auto* authentication =
       screen_lock->mutable_unlock()->mutable_authentication();
@@ -138,19 +150,18 @@ void AuthenticationPlugin::HandleScreenUnlock() {
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&AuthenticationPlugin::DelayedCheckForAuthSignal,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(xdr_proto),
+                       weak_ptr_factory_.GetWeakPtr(), std::move(screen_lock),
                        authentication),
         kWaitForAuthFactorS);
     return;
   }
 
-  SendAuthenticationEvent(std::move(xdr_proto));
+  EnqueueAuthenticationEvent(std::move(screen_lock));
 }
 
 void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
-  auto xdr_proto = std::make_unique<pb::XdrAuthenticateEvent>();
-  auto log_event = xdr_proto->add_batched_events();
-  FillCommon(log_event);
+  auto log_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  FillCommon(log_event.get());
 
   if (state == kStarted) {
     auto* authentication = log_event->mutable_logon()->mutable_authentication();
@@ -158,7 +169,7 @@ void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
       base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&AuthenticationPlugin::DelayedCheckForAuthSignal,
-                         weak_ptr_factory_.GetWeakPtr(), std::move(xdr_proto),
+                         weak_ptr_factory_.GetWeakPtr(), std::move(log_event),
                          authentication),
           kWaitForAuthFactorS);
       return;
@@ -169,7 +180,7 @@ void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
     return;
   }
 
-  SendAuthenticationEvent(std::move(xdr_proto));
+  EnqueueAuthenticationEvent(std::move(log_event));
 }
 
 void AuthenticationPlugin::HandleRegistrationResult(
@@ -207,21 +218,20 @@ bool AuthenticationPlugin::FillAuthFactor(pb::Authentication* proto) {
   return false;
 }
 
-void AuthenticationPlugin::SendAuthenticationEvent(
-    std::unique_ptr<pb::XdrAuthenticateEvent> proto) {
-  message_sender_->SendMessage(reporting::CROS_SECURITY_USER,
-                               proto->mutable_common(), std::move(proto),
-                               std::nullopt);
+void AuthenticationPlugin::EnqueueAuthenticationEvent(
+    std::unique_ptr<pb::AuthenticateEventAtomicVariant> proto) {
+  batch_sender_->Enqueue(std::move(proto));
 }
 
 void AuthenticationPlugin::DelayedCheckForAuthSignal(
-    std::unique_ptr<cros_xdr::reporting::XdrAuthenticateEvent> xdr_proto,
+    std::unique_ptr<cros_xdr::reporting::AuthenticateEventAtomicVariant>
+        xdr_proto,
     cros_xdr::reporting::Authentication* authentication) {
   if (!FillAuthFactor(authentication)) {
     authentication->add_auth_factor(
         AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN);
   }
-  SendAuthenticationEvent(std::move(xdr_proto));
+  EnqueueAuthenticationEvent(std::move(xdr_proto));
 }
 
 }  // namespace secagentd

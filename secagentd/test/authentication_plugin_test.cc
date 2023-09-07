@@ -17,6 +17,7 @@
 #include "secagentd/device_user.h"
 #include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
+#include "secagentd/test/mock_batch_sender.h"
 #include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"
 #include "secagentd/test/mock_policies_features_broker.h"
@@ -34,6 +35,11 @@ using ::testing::Return;
 using ::testing::WithArg;
 using ::testing::WithArgs;
 
+using BatchSenderType =
+    ::testing::StrictMock<MockBatchSender<std::monostate,
+                                          pb::XdrAuthenticateEvent,
+                                          pb::AuthenticateEventAtomicVariant>>;
+
 constexpr char kDeviceUser[] = "deviceUser@email.com";
 
 class AuthenticationPluginTestFixture : public ::testing::Test {
@@ -47,11 +53,16 @@ class AuthenticationPluginTestFixture : public ::testing::Test {
     policies_features_broker_ =
         base::MakeRefCounted<MockPoliciesFeaturesBroker>();
     plugin_factory_ = std::make_unique<PluginFactory>();
+
     plugin_ = plugin_factory_->Create(
         Types::Plugin::kAuthenticate, message_sender_, process_cache,
-        policies_features_broker_, device_user_, -1);
+        policies_features_broker_, device_user_, 1);
     EXPECT_NE(nullptr, plugin_);
+
+    auto batch_sender = std::make_unique<BatchSenderType>();
+    batch_sender_ = batch_sender.get();
     auth_plugin_ = static_cast<AuthenticationPlugin*>(plugin_.get());
+    auth_plugin_->SetBatchSenderForTesting(std::move(batch_sender));
   }
 
   void SaveRegisterLockingCbs() {
@@ -76,6 +87,8 @@ class AuthenticationPluginTestFixture : public ::testing::Test {
   }
 
   void SetupObjectProxies() {
+    EXPECT_CALL(*batch_sender_, Start());
+
     cryptohome_proxy_ =
         std::make_unique<org::chromium::UserDataAuthInterfaceProxyMock>();
     cryptohome_object_proxy_ = new dbus::MockObjectProxy(
@@ -112,6 +125,7 @@ class AuthenticationPluginTestFixture : public ::testing::Test {
   std::unique_ptr<PluginFactory> plugin_factory_;
   std::unique_ptr<PluginInterface> plugin_;
   AuthenticationPlugin* auth_plugin_;
+  BatchSenderType* batch_sender_;
   base::RepeatingCallback<void(
       const user_data_auth::AuthenticateAuthFactorCompleted&)>
       auth_factor_cb_;
@@ -136,19 +150,18 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLockToUnlock) {
   auto success = completed.mutable_success();
   success->set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
 
-  // message_sender_ will be called twice. Once for lock, once for unlock.
-  auto lock_event = std::make_unique<pb::XdrAuthenticateEvent>();
-  auto unlock_event = std::make_unique<pb::XdrAuthenticateEvent>();
-  EXPECT_CALL(*message_sender_,
-              SendMessage(reporting::Destination::CROS_SECURITY_USER, _, _, _))
+  // batch_sender_ will be called twice. Once for lock, once for unlock.
+  auto lock_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto unlock_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(2)
-      .WillOnce(WithArg<2>(
+      .WillOnce(WithArg<0>(
           Invoke([&lock_event](
                      std::unique_ptr<google::protobuf::MessageLite> message) {
             lock_event->ParseFromString(
                 std::move(message->SerializeAsString()));
           })))
-      .WillOnce(WithArg<2>(
+      .WillOnce(WithArg<0>(
           Invoke([&unlock_event](
                      std::unique_ptr<google::protobuf::MessageLite> message) {
             unlock_event->ParseFromString(
@@ -159,21 +172,20 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLockToUnlock) {
   auth_factor_cb_.Run(completed);
   locked_cb_.Run();
 
-  auto expected_event = std::make_unique<pb::XdrAuthenticateEvent>();
+  auto expected_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
   expected_event->mutable_common();
-  auto expected_batched = expected_event->add_batched_events();
-  expected_batched->mutable_lock();
-  expected_batched->mutable_common()->set_device_user(kDeviceUser);
-  expected_batched->mutable_common()->set_create_timestamp_us(
-      lock_event->batched_events()[0].common().create_timestamp_us());
+  expected_event->mutable_lock();
+  expected_event->mutable_common()->set_device_user(kDeviceUser);
+  expected_event->mutable_common()->set_create_timestamp_us(
+      lock_event->common().create_timestamp_us());
   EXPECT_THAT(*expected_event, EqualsProto(*lock_event));
 
   // Unlock.
   unlocked_cb_.Run();
-  expected_batched->mutable_unlock()->mutable_authentication()->add_auth_factor(
+  expected_event->mutable_unlock()->mutable_authentication()->add_auth_factor(
       AuthFactorType::Authentication_AuthenticationType_AUTH_PIN);
-  expected_batched->mutable_common()->set_create_timestamp_us(
-      unlock_event->batched_events()[0].common().create_timestamp_us());
+  expected_event->mutable_common()->set_create_timestamp_us(
+      unlock_event->common().create_timestamp_us());
   EXPECT_THAT(*expected_event, EqualsProto(*unlock_event));
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
             GetAuthFactor());
@@ -191,19 +203,18 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
   auto success = completed.mutable_success();
   success->set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 
-  // message_sender_ will be called twice. Once for login, once for logout.
-  auto logout_event = std::make_unique<pb::XdrAuthenticateEvent>();
-  auto login_event = std::make_unique<pb::XdrAuthenticateEvent>();
-  EXPECT_CALL(*message_sender_,
-              SendMessage(reporting::Destination::CROS_SECURITY_USER, _, _, _))
+  // batch_sender_ will be called twice. Once for login, once for logout.
+  auto logout_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto login_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(2)
-      .WillOnce(WithArg<2>(
+      .WillOnce(WithArg<0>(
           Invoke([&login_event](
                      std::unique_ptr<google::protobuf::MessageLite> message) {
             login_event->ParseFromString(
                 std::move(message->SerializeAsString()));
           })))
-      .WillOnce(WithArg<2>(
+      .WillOnce(WithArg<0>(
           Invoke([&logout_event](
                      std::unique_ptr<google::protobuf::MessageLite> message) {
             logout_event->ParseFromString(
@@ -214,23 +225,22 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
   auth_factor_cb_.Run(completed);
   state_changed_cb_.Run(kStarted);
 
-  auto expected_event = std::make_unique<pb::XdrAuthenticateEvent>();
+  auto expected_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
   expected_event->mutable_common();
-  auto expected_batched = expected_event->add_batched_events();
-  expected_batched->mutable_logon()->mutable_authentication()->add_auth_factor(
+  expected_event->mutable_logon()->mutable_authentication()->add_auth_factor(
       AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD);
-  expected_batched->mutable_common()->set_device_user(kDeviceUser);
-  expected_batched->mutable_common()->set_create_timestamp_us(
-      login_event->batched_events()[0].common().create_timestamp_us());
+  expected_event->mutable_common()->set_device_user(kDeviceUser);
+  expected_event->mutable_common()->set_create_timestamp_us(
+      login_event->common().create_timestamp_us());
   EXPECT_THAT(*expected_event, EqualsProto(*login_event));
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
             GetAuthFactor());
 
   // Logoff.
   state_changed_cb_.Run(kStopped);
-  expected_batched->mutable_logoff();
-  expected_batched->mutable_common()->set_create_timestamp_us(
-      logout_event->batched_events()[0].common().create_timestamp_us());
+  expected_event->mutable_logoff();
+  expected_event->mutable_common()->set_create_timestamp_us(
+      logout_event->common().create_timestamp_us());
   EXPECT_THAT(*expected_event, EqualsProto(*logout_event));
 }
 
@@ -246,11 +256,10 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
   auto success = completed.mutable_success();
   success->set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 
-  auto login_event = std::make_unique<pb::XdrAuthenticateEvent>();
-  EXPECT_CALL(*message_sender_,
-              SendMessage(reporting::Destination::CROS_SECURITY_USER, _, _, _))
+  auto login_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(1)
-      .WillOnce(WithArg<2>(
+      .WillOnce(WithArg<0>(
           Invoke([&login_event](
                      std::unique_ptr<google::protobuf::MessageLite> message) {
             login_event->ParseFromString(
@@ -263,25 +272,17 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
   auth_factor_cb_.Run(completed);
   task_environment_.FastForwardBy(kWaitForAuthFactorS);
 
-  ASSERT_EQ(1, login_event->batched_events_size());
-  ASSERT_EQ(1, login_event->batched_events()[0]
-                   .logon()
-                   .authentication()
-                   .auth_factor_size());
+  ASSERT_EQ(1, login_event->logon().authentication().auth_factor_size());
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
-            login_event->batched_events()[0]
-                .logon()
-                .authentication()
-                .auth_factor()[0]);
+            login_event->logon().authentication().auth_factor()[0]);
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
             GetAuthFactor());
 
   // Unlock.
-  auto unlock_event = std::make_unique<pb::XdrAuthenticateEvent>();
-  EXPECT_CALL(*message_sender_,
-              SendMessage(reporting::Destination::CROS_SECURITY_USER, _, _, _))
+  auto unlock_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(1)
-      .WillOnce(WithArg<2>(
+      .WillOnce(WithArg<0>(
           Invoke([&unlock_event](
                      std::unique_ptr<google::protobuf::MessageLite> message) {
             unlock_event->ParseFromString(
@@ -293,16 +294,9 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
   auth_factor_cb_.Run(completed);
   task_environment_.FastForwardBy(kWaitForAuthFactorS);
 
-  ASSERT_EQ(1, unlock_event->batched_events_size());
-  ASSERT_EQ(1, unlock_event->batched_events()[0]
-                   .unlock()
-                   .authentication()
-                   .auth_factor_size());
+  ASSERT_EQ(1, unlock_event->unlock().authentication().auth_factor_size());
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
-            unlock_event->batched_events()[0]
-                .unlock()
-                .authentication()
-                .auth_factor()[0]);
+            unlock_event->unlock().authentication().auth_factor()[0]);
   EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
             GetAuthFactor());
 }

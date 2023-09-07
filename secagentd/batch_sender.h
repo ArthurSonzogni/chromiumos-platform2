@@ -100,10 +100,11 @@ class BatchSender
       base::AutoUnlock unlock(events_lock_);
       Flush();
     }
-    lookup_map_.insert(
-        std::make_pair(std::make_pair(atomic_event->variant_type_case(),
-                                      kd_.Run(*atomic_event)),
-                       atomic_event.get()));
+    // Replace existing element if exists so most recent event is visited.
+    lookup_map_.insert_or_assign(
+        std::make_pair(atomic_event->variant_type_case(),
+                       kd_.Run(*atomic_event)),
+        atomic_event.get());
     events_byte_size_ += event_byte_size;
     events_.emplace_back(std::move(atomic_event));
   }

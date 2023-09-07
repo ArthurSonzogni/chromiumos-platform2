@@ -10,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -324,6 +325,11 @@ class AuthenticationPlugin : public PluginInterface {
  private:
   friend class testing::AuthenticationPluginTestFixture;
 
+  using BatchSenderType =
+      BatchSenderInterface<std::monostate,
+                           cros_xdr::reporting::XdrAuthenticateEvent,
+                           cros_xdr::reporting::AuthenticateEventAtomicVariant>;
+
   // Fills the common field for the protos.
   void FillCommon(cros_xdr::reporting::AuthenticateEventAtomicVariant* proto);
   // Creates and sends a screen Lock event.
@@ -343,19 +349,24 @@ class AuthenticationPlugin : public PluginInterface {
   // Fills the proto's auth factor if auth_factor_ is known.
   // Returns if auth factor was filled.
   bool FillAuthFactor(cros_xdr::reporting::Authentication* proto);
-  // Sends the Authentication event to the CROS_SECURITY_USER destination.
-  void SendAuthenticationEvent(
-      std::unique_ptr<cros_xdr::reporting::XdrAuthenticateEvent>);
+  // Enqueues the Authentication event to the CROS_SECURITY_USER destination.
+  void EnqueueAuthenticationEvent(
+      std::unique_ptr<cros_xdr::reporting::AuthenticateEventAtomicVariant>);
   // If there is an entry event but auth factor is not filled, wait and
   // then check again for auth factor. If still not found send message anyway.
   void DelayedCheckForAuthSignal(
-      std::unique_ptr<cros_xdr::reporting::XdrAuthenticateEvent> xdr_proto,
+      std::unique_ptr<cros_xdr::reporting::AuthenticateEventAtomicVariant>
+          xdr_proto,
       cros_xdr::reporting::Authentication* authentication);
+  // Inject the given (mock) BatchSender object for unit testing.
+  void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
+    batch_sender_ = std::move(given);
+  }
 
   base::WeakPtrFactory<AuthenticationPlugin> weak_ptr_factory_;
-  scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<DeviceUserInterface> device_user_;
+  std::unique_ptr<BatchSenderType> batch_sender_;
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
       cryptohome_proxy_;
   AuthFactorType auth_factor_type_ =
