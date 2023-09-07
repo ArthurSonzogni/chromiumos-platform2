@@ -234,6 +234,46 @@ config("test") {
     "-Wl,-rpath-link=lib/",
   ]
 
+  if (!use.cros_host) {
+    # The path where fake libraries are installed on the host. It is
+    # for tests, implementing simple backend.
+    _test_lib_dir = "build/lib"
+
+    ldflags += [
+      # The path where fake libraries are installed on the host. It is
+      # for tests (e.g. fuzzer/unit tests) running on the host device.
+      string_join("",
+                  [
+                    "-Wl,-rpath=/",
+                    _test_lib_dir,
+                  ]),
+      string_join("",
+                  [
+                    "-Wl,-rpath=/",
+                    _test_lib_dir,
+                    "64",
+                  ]),
+    ]
+
+    # To link against library that present an interface with a fake backend,
+    # for unit testing:
+    # To prevent such a library to be installed in the rootfs, the library
+    # is installed in a directory in /build/$BOARD/.
+    lib_dirs = [
+      string_join("",
+                  [
+                    "${sysroot}/",
+                    _test_lib_dir,
+                  ]),
+      string_join("",
+                  [
+                    "${sysroot}/",
+                    _test_lib_dir,
+                    "64",
+                  ]),
+    ]
+  }
+
   # gnlint: disable=GnLintCommonTesting
   libs = [
     "gmock",
