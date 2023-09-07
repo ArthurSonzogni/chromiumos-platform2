@@ -907,11 +907,11 @@ bool Datapath::ConfigureInterface(const std::string& ifname,
       up ? "up" : "down",
   };
   if (mac_addr) {
-    iplink_args.push_back("addr");
-    iplink_args.push_back(MacAddressToString(*mac_addr));
+    iplink_args.insert(iplink_args.end(),
+                       {"addr", MacAddressToString(*mac_addr)});
   }
-  iplink_args.push_back("multicast");
-  iplink_args.push_back(enable_multicast ? "on" : "off");
+  iplink_args.insert(iplink_args.end(),
+                     {"multicast", enable_multicast ? "on" : "off"});
   return process_runner_->ip("link", "set", iplink_args) == 0;
 }
 
@@ -1105,15 +1105,9 @@ bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
     if (!ifname.empty()) {
       args.insert(args.end(), {"-i", ifname});
     }
-    args.push_back("-p");
-    args.push_back(protocol);
-    args.push_back("--dport");
-    args.push_back(kDefaultDnsPort);
-    args.push_back("-j");
-    args.push_back("DNAT");
-    args.push_back("--to-destination");
-    args.push_back(rule.proxy_address.ToString());
-    args.push_back("-w");
+    args.insert(args.end(),
+                {"-p", protocol, "--dport", kDefaultDnsPort, "-j", "DNAT",
+                 "--to-destination", rule.proxy_address.ToString(), "-w"});
     if (!ModifyIptables(family, Iptables::Table::kNat, op, chain, args)) {
       success = false;
     }
@@ -1946,8 +1940,7 @@ bool Datapath::ModifyConnmarkRestore(IpFamily family,
                                      Fwmark mask) {
   std::vector<std::string> args;
   if (!iif.empty()) {
-    args.push_back("-i");
-    args.push_back(iif);
+    args.insert(args.end(), {"-i", iif});
   }
   args.insert(args.end(), {"-j", "CONNMARK", "--restore-mark", "--mask",
                            mask.ToString(), "-w"});
@@ -2021,26 +2014,18 @@ bool Datapath::ModifyFwmark(IpFamily family,
                             bool log_failures) {
   std::vector<std::string> args;
   if (!iif.empty()) {
-    args.push_back("-i");
-    args.push_back(iif);
+    args.insert(args.end(), {"-i", iif});
   }
   if (!uid_name.empty()) {
-    args.push_back("-m");
-    args.push_back("owner");
-    args.push_back("--uid-owner");
-    args.push_back(uid_name);
+    args.insert(args.end(), {"-m", "owner", "--uid-owner", uid_name});
   }
   if (classid != 0) {
-    args.push_back("-m");
-    args.push_back("cgroup");
-    args.push_back("--cgroup");
-    args.push_back(base::StringPrintf("0x%08x", classid));
+    args.insert(args.end(), {"-m", "cgroup", "--cgroup",
+                             base::StringPrintf("0x%08x", classid)});
   }
-  args.push_back("-j");
-  args.push_back("MARK");
-  args.push_back("--set-mark");
-  args.push_back(mark.ToString() + "/" + mask.ToString());
-  args.push_back("-w");
+  args.insert(args.end(),
+              {"-j", "MARK", "--set-mark",
+               base::StrCat({mark.ToString(), "/", mask.ToString()}), "-w"});
 
   return ModifyIptables(family, Iptables::Table::kMangle, op, chain, args,
                         log_failures);
@@ -2056,12 +2041,10 @@ bool Datapath::ModifyJumpRule(IpFamily family,
                               bool log_failures) {
   std::vector<std::string> args;
   if (!iif.empty()) {
-    args.push_back("-i");
-    args.push_back(iif);
+    args.insert(args.end(), {"-i", iif});
   }
   if (!oif.empty()) {
-    args.push_back("-o");
-    args.push_back(oif);
+    args.insert(args.end(), {"-o", oif});
   }
   args.insert(args.end(), {"-j", target, "-w"});
   return ModifyIptables(family, table, op, chain, args, log_failures);
@@ -2073,10 +2056,9 @@ bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
                                        Fwmark mask) {
   std::vector<std::string> args;
   if (mark.Value() != 0 && mask.Value() != 0) {
-    args.push_back("-m");
-    args.push_back("mark");
-    args.push_back("--mark");
-    args.push_back(mark.ToString() + "/" + mask.ToString());
+    args.insert(args.end(),
+                {"-m", "mark", "--mark",
+                 base::StrCat({mark.ToString(), "/", mask.ToString()})});
   }
   args.insert(args.end(), {"-j", kApplyVpnMarkChain, "-w"});
   return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, chain,
@@ -2089,11 +2071,7 @@ bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
                                            bool log_failures) {
   std::vector<std::string> args;
   if (!uid.empty()) {
-    args.push_back("-m");
-    args.push_back("owner");
-    args.push_back("!");
-    args.push_back("--uid-owner");
-    args.push_back(uid);
+    args.insert(args.end(), {"-m", "owner", "!", "--uid-owner", uid});
   }
   args.insert(args.end(), {"-j", kSkipApplyVpnMarkChain, "-w"});
   return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, chain,
