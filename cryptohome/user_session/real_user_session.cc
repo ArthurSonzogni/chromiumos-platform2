@@ -97,6 +97,21 @@ MountStatus RealUserSession::MountVault(
   return OkStatus<CryptohomeMountError>();
 }
 
+MountStatus RealUserSession::EvictDeviceKey() {
+  StorageStatus status = mount_->EvictCryptohomeKey();
+  if (!status.ok()) {
+    // Reboot if the eviction operation failed, powerwash otherwise.
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(kLocUserSessionEvictCryptohomeKeyInEvictDeviceKey),
+        ErrorActionSet({status->error() == MOUNT_ERROR_INVALID_ARGS
+                            ? PossibleAction::kPowerwash
+                            : PossibleAction::kReboot}),
+        status->error());
+  }
+
+  return OkStatus<CryptohomeMountError>();
+}
+
 MountStatus RealUserSession::MountEphemeral(const Username& username) {
   if (username_ != username) {
     NOTREACHED() << "MountEphemeral username mismatch.";

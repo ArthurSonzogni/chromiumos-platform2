@@ -623,6 +623,11 @@ class UserDataAuth {
       base::OnceCallback<
           void(const user_data_auth::PrepareEphemeralVaultReply&)> on_done);
 
+  void EvictDeviceKey(
+      user_data_auth::EvictDeviceKeyRequest request,
+      base::OnceCallback<void(const user_data_auth::EvictDeviceKeyReply&)>
+          on_done);
+
   void PreparePersistentVault(
       user_data_auth::PreparePersistentVaultRequest request,
       base::OnceCallback<

@@ -37,6 +37,7 @@ class MockUserSession : public UserSession {
                const FileSystemKeyset&,
                const CryptohomeVault::Options&),
               (override));
+  MOCK_METHOD(MountStatus, EvictDeviceKey, (), (override));
   MOCK_METHOD(MountStatus, MountEphemeral, (const Username&), (override));
   MOCK_METHOD(MountStatus, MountGuest, (), (override));
   MOCK_METHOD(bool, Unmount, (), (override));

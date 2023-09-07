@@ -51,6 +51,8 @@ class RealUserSession : public UserSession {
     return mount_->OwnsMountPoint(path);
   }
 
+  MountStatus EvictDeviceKey() override;
+
   bool MigrateVault(const Mount::MigrationCallback& callback,
                     MigrationType migration_type) override {
     return mount_->MigrateEncryption(callback, migration_type);

@@ -98,7 +98,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // EvictCryptohomeKey evicts the keys from a user's cryptohome vault &
   // dmcrypt device.
-  virtual StorageStatus EvictCryptohomeKey(const Username& username);
+  virtual StorageStatus EvictCryptohomeKey();
 
   // Get the HomeDirs instance
   virtual HomeDirs* homedirs() { return homedirs_; }

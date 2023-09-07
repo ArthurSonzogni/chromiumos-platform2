@@ -56,6 +56,9 @@ class UserSession {
       const FileSystemKeyset& fs_keyset,
       const CryptohomeVault::Options& vault_options) = 0;
 
+  // Evicts the device key from the user's encrypted device.
+  virtual MountStatus EvictDeviceKey() = 0;
+
   // Creates and mounts a ramdisk backed ephemeral session for the given user.
   virtual MountStatus MountEphemeral(const Username& username) = 0;
 

@@ -219,6 +219,16 @@ class UserDataAuthAdaptor
           user_data_auth::PreparePersistentVaultReply>> response,
       const user_data_auth::PreparePersistentVaultRequest& in_request);
 
+  void EvictDeviceKey(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::EvictDeviceKeyReply>> response,
+      const user_data_auth::EvictDeviceKeyRequest& in_request) override;
+
+  void DoEvictDeviceKey(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::EvictDeviceKeyReply>> response,
+      const user_data_auth::EvictDeviceKeyRequest& in_request);
+
   void PrepareVaultForMigration(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::PrepareVaultForMigrationReply>> response,

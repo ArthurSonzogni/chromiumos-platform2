@@ -1581,6 +1581,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCreateVaultKeysetRpcImplNoVkInAddKeyset = 2322,
   /* ./create_vault_keyset_rpc_impl.cc */
   kLocCreateVaultKeysetRpcImplAddFailedInAddKeyset = 2323,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthKeyEvictionFailedInEvictDeviceKey = 2324,
+  /* ./user_session/real_user_session.cc */
+  kLocUserSessionEvictCryptohomeKeyInEvictDeviceKey = 2325,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoActiveMountInEvictDeviceKey = 2326,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2500
   //// See location_db.py for more info.

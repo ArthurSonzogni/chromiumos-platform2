@@ -3041,6 +3041,77 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
   return OkStatus<CryptohomeError>();
 }
 
+void UserDataAuth::EvictDeviceKey(
+    user_data_auth::EvictDeviceKeyRequest request,
+    base::OnceCallback<void(const user_data_auth::EvictDeviceKeyReply&)>
+        on_done) {
+  // This method touches the |sessions_| object so it needs to run on
+  // |mount_thread_|
+  AssertOnMountThread();
+  user_data_auth::EvictDeviceKeyReply reply;
+  // This loops through all active and mounted user sessions and evicts the
+  // device key for each one. In practice having multiple mounts is not an
+  // expected use case, but as a user_id is not specified, it should iterate
+  // through all the active sessions. We consider "cryptohome" to be mounted if
+  // any existing session is mounted.
+  std::optional<CryptohomeStatus> eviction_result = std::nullopt;
+  for (const auto& [unused, session] : *sessions_) {
+    // Check if the session is actively mounted.
+    const ObfuscatedUsername obfuscated_username =
+        SanitizeUserName(session.GetUsername());
+    if (!session.IsActive()) {
+      LOG(ERROR) << "Session is not mounted: " << obfuscated_username;
+      continue;
+    }
+
+    if (!homedirs_->Exists(obfuscated_username)) {
+      LOG(ERROR) << "Home directory of " << obfuscated_username
+                 << "does not exist.";
+      continue;
+    }
+
+    // An active and mounted session was found.
+    MountStatus mount_status = session.EvictDeviceKey();
+    if (!mount_status.ok()) {
+      LOG(ERROR) << "Couldn't evict key of " << obfuscated_username;
+      // Only record an error for the first element/session in |sessions_|.
+      if (!eviction_result)
+        eviction_result = std::move(mount_status);
+      continue;
+    }
+    // If any session succeeded the operation as a whole is considered
+    // successful
+    eviction_result = OkStatus<CryptohomeError>();
+  }
+
+  // Did not find any mounted session, eviction_result was never initialized.
+  if (!eviction_result) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoActiveMountInEvictDeviceKey),
+            ErrorActionSet({PossibleAction::kAuth}),
+            user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL));
+  }
+
+  // Return results of EvictDeviceKey(), either OK or error of the first mounted
+  // session.
+  // Unwrap status into result to satisfy StatusChain move semantics.
+  auto result = std::move(eviction_result.value());
+  if (!result.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthKeyEvictionFailedInEvictDeviceKey),
+            ErrorActionSet({PossibleAction::kReboot}),
+            user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL)
+            .Wrap(std::move(result)));
+  }
+
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+}
+
 void UserDataAuth::AddAuthFactor(
     user_data_auth::AddAuthFactorRequest request,
     base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>

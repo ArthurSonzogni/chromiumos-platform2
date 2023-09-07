@@ -334,6 +334,20 @@ do.
       </arg>
     </method>
 
+    <!-- Evict in-memory encryption key from device. -->
+    <method name="EvictDeviceKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::EvictDeviceKeyRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::EvictDeviceKeyReply"/>
+      </arg>
+    </method>
+
     <!-- Prepares user datastore for a migration. -->
     <method name="PrepareVaultForMigration">
       <annotation name="org.chromium.DBus.Method.Kind"
