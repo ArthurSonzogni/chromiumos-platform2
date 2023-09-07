@@ -4,6 +4,7 @@
 
 #include "fbpreprocessor/pseudonymization_manager.h"
 
+#include <set>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -13,6 +14,7 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/time/time.h>
 
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/input_manager.h"
@@ -20,6 +22,11 @@
 #include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
 #include "fbpreprocessor/storage.h"
+
+namespace {
+constexpr int kMaxProcessedDumps = 5;
+constexpr base::TimeDelta kMaxProcessedInterval = base::Minutes(30);
+}  // namespace
 
 namespace fbpreprocessor {
 
@@ -40,6 +47,13 @@ void PseudonymizationManager::StartPseudonymization(
   // long-running operations for now.
   if (user_root_dir_.empty()) {
     LOG(ERROR) << "Can't start pseudonymization without output directory.";
+    return;
+  }
+  if (!RateLimitingAllowsNewPseudonymization()) {
+    // TODO(b/307593542): remove filenames from logs.
+    LOG(INFO) << "Too many recent pseudonymizations, rejecting the request for "
+              << fw_dump.DumpFile();
+    manager_->input_manager()->DeleteFirmwareDump(fw_dump);
     return;
   }
   FirmwareDump output(
@@ -93,6 +107,27 @@ void PseudonymizationManager::OnPseudonymizationComplete(
     }
   }
   manager_->input_manager()->DeleteFirmwareDump(input);
+}
+
+bool PseudonymizationManager::RateLimitingAllowsNewPseudonymization() {
+  base::Time now = base::Time::Now();
+  // Erase all the pseudonymizations that happened more than
+  // |kMaxProcessedInterval| ago.
+  for (auto it = recently_processed_.begin();
+       it != recently_processed_.end();) {
+    if ((now - *it) > kMaxProcessedInterval) {
+      it = recently_processed_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  // If fewer than |kMaxProcessedDumps| pseudonymizations are left it means
+  // we're not hitting the rate limit.
+  bool allowed = recently_processed_.size() < kMaxProcessedDumps;
+  if (allowed) {
+    recently_processed_.insert(now);
+  }
+  return allowed;
 }
 
 }  // namespace fbpreprocessor

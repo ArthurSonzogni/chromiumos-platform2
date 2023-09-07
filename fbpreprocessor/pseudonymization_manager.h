@@ -5,10 +5,12 @@
 #ifndef FBPREPROCESSOR_PSEUDONYMIZATION_MANAGER_H_
 #define FBPREPROCESSOR_PSEUDONYMIZATION_MANAGER_H_
 
+#include <set>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
@@ -36,7 +38,11 @@ class PseudonymizationManager : public SessionStateManager::Observer {
                                   const FirmwareDump& output,
                                   bool success);
 
+  bool RateLimitingAllowsNewPseudonymization();
+
   base::FilePath user_root_dir_;
+
+  std::set<base::Time> recently_processed_;
 
   Manager* manager_;
 
