@@ -40,6 +40,17 @@ enum class PressureLevelArcvm {
   FOREGROUND = 3,
 };
 
+enum class PressureLevelArcContainer {
+  // There is enough memory to use.
+  NONE = 0,
+  // ARC container is advised to kill cached processes to free memory.
+  CACHED = 1,
+  // ARC container is advised to kill perceptible processes to free memory.
+  PERCEPTIBLE = 2,
+  // ARC container is advised to kill foreground processes to free memory.
+  FOREGROUND = 3,
+};
+
 // Methods.
 const char kGetAvailableMemoryKBMethod[] = "GetAvailableMemoryKB";
 const char kGetForegroundAvailableMemoryKBMethod[] =
@@ -62,7 +73,6 @@ const char kSetVmBootModeWithTimeoutMethod[] = "SetVmBootModeWithTimeout";
 //   E.g., argument (PressureLevelChrome::CRITICAL, 10000): Chrome should free
 //   10000 KB to leave the critical memory pressure level (to moderate pressure
 //   level).
-// TODO(vovoy): Consider serializing these parameters to protobuf.
 const char kMemoryPressureChrome[] = "MemoryPressureChrome";
 
 // MemoryPressureArcvm signal contains 2 arguments:
@@ -73,6 +83,15 @@ const char kMemoryPressureChrome[] = "MemoryPressureChrome";
 //   10000 KB to leave the foreground memory pressure level (to perceptible
 //   pressure level).
 const char kMemoryPressureArcvm[] = "MemoryPressureArcvm";
+
+// MemoryPressureArcContainer signal contains 2 arguments:
+//   1. pressure_level, BYTE, see also enum PressureLevelArcContainer.
+//   2. delta, UINT64, memory amount to free in KB to leave the current
+//   pressure level.
+//   E.g. argument (PressureLevelArcContainer::FOREGROUND, 10000): ARC container
+//   should free 10000 KB to leave the foreground memory pressure level (to
+//   perceptible pressure level).
+const char kMemoryPressureArcContainer[] = "MemoryPressureArcContainer";
 
 }  // namespace resource_manager
 
