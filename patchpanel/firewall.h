@@ -71,16 +71,20 @@ class Firewall {
     kIPv6,
   };
 
-  // Adds ACCEPT chain rules to the filter INPUT chain.
+  // Adds or removes ACCEPT chain rules to/from the filter INPUT chain.
   bool AddAcceptRule(IpFamily ip_family,
                      Protocol protocol,
                      uint16_t port,
                      const std::string& interface);
-  // Removes ACCEPT chain rules from the filter INPUT chain.
   bool DeleteAcceptRule(IpFamily ip_family,
                         Protocol protocol,
                         uint16_t port,
                         const std::string& interface);
+  bool ModifyAcceptRule(IpFamily ip_family,
+                        Protocol protocol,
+                        uint16_t port,
+                        const std::string& interface,
+                        Iptables::Command command);
   // Adds or removes MASQUERADE chain rules to/from the nat PREROUTING chain.
   bool ModifyIpv4DNATRule(Protocol protocol,
                           const std::optional<net_base::IPv4Address>& input_ip,
@@ -101,6 +105,10 @@ class Firewall {
   bool DeleteLoopbackLockdownRule(IpFamily ip_family,
                                   Protocol protocol,
                                   uint16_t port);
+  bool ModifyLoopbackLockdownRule(IpFamily ip_family,
+                                  Protocol protocol,
+                                  uint16_t port,
+                                  Iptables::Command command);
   bool RunIptables(IpFamily ip_family,
                    Iptables::Table table,
                    Iptables::Command command,

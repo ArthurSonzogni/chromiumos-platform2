@@ -197,16 +197,15 @@ bool Firewall::ModifyIpv4DNATRule(
       ProtocolName(protocol),
   };
   if (input_ip) {
-    argv.push_back("-d");  // input destination ip
-    argv.push_back(input_ip->ToString());
+    argv.insert(argv.end(),
+                {"-d", input_ip->ToString()});  // input destination ip
   }
-  argv.push_back("--dport");  // input destination port
-  argv.push_back(std::to_string(port));
-  argv.push_back("-j");
-  argv.push_back("DNAT");
-  argv.push_back("--to-destination");  // new output destination ip:port
-  argv.push_back(dst_ip.ToString() + ":" + std::to_string(dst_port));
-  argv.push_back("-w");  // Wait for xtables lock.
+  argv.insert(
+      argv.end(),
+      {"--dport", std::to_string(port),   // input destination port
+       "-j", "DNAT", "--to-destination",  // new output destination ip:port
+       base::StrCat({dst_ip.ToString(), ":", std::to_string(dst_port)}), "-w"});
+
   return RunIptables(IpFamily::kIPv4, Iptables::Table::kNat, command,
                      kIngressPortForwardingChain, argv);
 }
@@ -287,28 +286,23 @@ bool Firewall::AddAcceptRule(IpFamily ip_family,
                              Protocol protocol,
                              uint16_t port,
                              const std::string& interface) {
-  std::vector<std::string> argv{
-      "-p",  // protocol
-      ProtocolName(protocol),
-      "--dport",  // destination port
-      std::to_string(port),
-  };
-  if (!interface.empty()) {
-    argv.push_back("-i");  // interface
-    argv.push_back(interface);
-  }
-  argv.push_back("-j");
-  argv.push_back("ACCEPT");
-  argv.push_back("-w");  // Wait for xtables lock.
-
-  return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kI,
-                     kIngressPortFirewallChain, argv);
+  return ModifyAcceptRule(ip_family, protocol, port, interface,
+                          Iptables::Command::kI);
 }
 
 bool Firewall::DeleteAcceptRule(IpFamily ip_family,
                                 Protocol protocol,
                                 uint16_t port,
                                 const std::string& interface) {
+  return ModifyAcceptRule(ip_family, protocol, port, interface,
+                          Iptables::Command::kD);
+}
+
+bool Firewall::ModifyAcceptRule(IpFamily ip_family,
+                                Protocol protocol,
+                                uint16_t port,
+                                const std::string& interface,
+                                Iptables::Command command) {
   std::vector<std::string> argv{
       "-p",  // protocol
       ProtocolName(protocol),
@@ -316,44 +310,32 @@ bool Firewall::DeleteAcceptRule(IpFamily ip_family,
       std::to_string(port),
   };
   if (!interface.empty()) {
-    argv.push_back("-i");  // interface
-    argv.push_back(interface);
+    argv.insert(argv.end(), {"-i", interface});
   }
-  argv.push_back("-j");
-  argv.push_back("ACCEPT");
-  argv.push_back("-w");  // Wait for xtables lock.
+  argv.insert(argv.end(), {"-j", "ACCEPT", "-w"});
 
-  return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kD,
+  return RunIptables(ip_family, Iptables::Table::kFilter, command,
                      kIngressPortFirewallChain, argv);
 }
 
 bool Firewall::AddLoopbackLockdownRule(IpFamily ip_family,
                                        Protocol protocol,
                                        uint16_t port) {
-  std::vector<std::string> argv{
-      "-p",  // protocol
-      ProtocolName(protocol),
-      "--dport",  // destination port
-      std::to_string(port),
-      "-o",  // output interface
-      "lo",
-      "-m",  // match extension
-      "owner",
-      "!",
-      "--uid-owner",
-      "chronos",
-      "-j",
-      "REJECT",
-      "-w",  // Wait for xtables lock.
-  };
-
-  return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kI,
-                     kEgressPortFirewallChain, argv);
+  return ModifyLoopbackLockdownRule(ip_family, protocol, port,
+                                    Iptables::Command::kI);
 }
 
 bool Firewall::DeleteLoopbackLockdownRule(IpFamily ip_family,
                                           Protocol protocol,
                                           uint16_t port) {
+  return ModifyLoopbackLockdownRule(ip_family, protocol, port,
+                                    Iptables::Command::kD);
+}
+
+bool Firewall::ModifyLoopbackLockdownRule(IpFamily ip_family,
+                                          Protocol protocol,
+                                          uint16_t port,
+                                          Iptables::Command command) {
   std::vector<std::string> argv{
       "-p",  // protocol
       ProtocolName(protocol),
@@ -371,8 +353,7 @@ bool Firewall::DeleteLoopbackLockdownRule(IpFamily ip_family,
       "-w",  // Wait for xtables lock.
   };
 
-  // TODO(b/278486416):  add IPv4 or IPv6
-  return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kD,
+  return RunIptables(ip_family, Iptables::Table::kFilter, command,
                      kEgressPortFirewallChain, argv);
 }
 
