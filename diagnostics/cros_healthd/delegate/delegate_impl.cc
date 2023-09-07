@@ -32,6 +32,7 @@
 #include <libec/mkbp_event.h>
 #include <libec/motion_sense_command_lid_angle.h>
 #include <libec/pwm/pwm_get_fan_target_rpm_command.h>
+#include <libec/pwm/pwm_set_fan_target_rpm_command.h>
 
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
@@ -606,6 +607,34 @@ void DelegateImpl::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
   }
 
   std::move(callback).Run(fan_rpms, std::nullopt);
+}
+
+void DelegateImpl::SetFanSpeed(
+    const base::flat_map<uint8_t, uint16_t>& fan_id_to_rpm,
+    SetFanSpeedCallback callback) {
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  std::optional<uint8_t> num_fans = GetNumFans(cros_fd.get());
+
+  if (!num_fans.has_value()) {
+    std::move(callback).Run("Failed to get number of fans");
+    return;
+  }
+
+  for (const auto& [id, rpm] : fan_id_to_rpm) {
+    if (id >= num_fans) {
+      LOG(ERROR) << "Attempting to set fan speed on invalid fan id";
+      continue;
+    }
+    ec::PwmSetFanTargetRpmCommand set_fan_rpm{rpm, id};
+    if (!set_fan_rpm.Run(cros_fd.get())) {
+      LOG(ERROR) << "Failed to set fan speed: " << static_cast<int>(rpm)
+                 << " for fan idx: " << static_cast<int>(id);
+      std::move(callback).Run("Failed to set fan speed");
+      return;
+    }
+  }
+
+  std::move(callback).Run(std::nullopt);
 }
 
 }  // namespace diagnostics

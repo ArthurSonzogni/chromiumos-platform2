@@ -161,4 +161,14 @@ interface Delegate {
   // * |fan_rpms| - An array containing the rpm of each fan.
   // * |err| - Error message if existed.
   GetAllFanSpeed() => (array<uint16> fan_rpms, string? err);
+
+  // Set the fan speed for given fans through the EC.
+  //
+  // The request:
+  // * |fan_id_to_rpm| - The key is the fan index, and the value is the fan
+  //                     speed to set the fan to in rpm.
+  //
+  // The response:
+  // * |err| - Error message if existed.
+  SetFanSpeed(map<uint8, uint16> fan_id_to_rpm) => (string? err);
 };
