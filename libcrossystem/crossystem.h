@@ -80,6 +80,39 @@ class BRILLO_EXPORT Crossystem {
   BRILLO_PRIVATE static constexpr char kDevBootSignedOnly[] =
       "dev_boot_signed_only";
 
+  // Name of property containing the position of the Developer Switch when the
+  // device booted.
+  BRILLO_PRIVATE static constexpr char kDevSwitchBoot[] = "devsw_boot";
+
+  // Name of property indicating if we booted in developer mode.
+  BRILLO_PRIVATE static constexpr char kCrosDebug[] = "cros_debug";
+
+  // Name of property containing the active main firmware.
+  BRILLO_PRIVATE static constexpr char kMainFirmwareActive[] = "mainfw_act";
+
+  // Name of property containing the main firmware type.
+  BRILLO_PRIVATE static constexpr char kMainFirmwareType[] = "mainfw_type";
+  BRILLO_PRIVATE static constexpr char kMainfwTypeNonchrome[] = "nonchrome";
+
+  // Name of property that signals a request to clear TPM owner on next reboot.
+  BRILLO_PRIVATE static constexpr char kClearTpmOwnerRequest[] =
+      "clear_tpm_owner_request";
+
+  // Name of property that indicates if the current build is a debug build.
+  BRILLO_PRIVATE static constexpr char kDebugBuild[] = "debug_build";
+
+  // Name of property that contains the recovery reason.
+  BRILLO_PRIVATE static constexpr char kRecoveryReason[] = "recovery_reason";
+
+  // Name of property that indicates if nvram has been cleared.
+  BRILLO_PRIVATE static constexpr char kNvramCleared[] = "nvram_cleared";
+
+  // Name of property that indicates if dev mode is blocked.
+  BRILLO_PRIVATE static constexpr char kBlockDevmode[] = "block_devmode";
+
+  // Name of property contianing the enrollment status.
+  BRILLO_PRIVATE static constexpr char kCheckEnrollment[] = "check_enrollment";
+
  private:
   std::unique_ptr<CrossystemVbootInterface> impl_;
 };
