@@ -341,3 +341,58 @@ template("goproto_library") {
     }
   }
 }
+
+# Compile protocol buffers to Perfetto protozero (.pbzero.h) headers.
+#
+# Parameters:
+#   proto_in_dir
+#       Input directory.
+#   proto_out_dir
+#       Output directory. Relative to gen directory.
+#   sources
+#       The proto file paths.
+#
+template("protozero_library") {
+  action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "proto_in_dir",
+                             "proto_out_dir",
+                             "sources",
+                           ])
+
+    proto_in_dir = rebase_path(invoker.proto_in_dir)
+
+    # Build protoc command line to run.
+    script = "//common-mk/file_generator_wrapper.py"
+    proto_lib_dirs = [
+      proto_in_dir,
+      "/usr/include/proto",
+    ]
+
+    args = [ "protoc" ]
+
+    foreach(x, proto_lib_dirs) {
+      args += [
+        "--proto_path",
+        x,
+      ]
+    }
+
+    args += [
+      "--plugin",
+      "protoc-gen-plugin=/usr/libexec/protozero_plugin",
+      "--plugin_out=wrapper_namespace=pbzero:${root_gen_dir}/${proto_out_dir}",
+    ]
+    foreach(source, sources) {
+      args += [ rebase_path(source) ]
+    }
+
+    # Output dependency.
+    outputs = []
+    foreach(source, invoker.sources) {
+      name = get_path_info(source, "name")
+      outputs += [ "${root_gen_dir}/${proto_out_dir}/${name}.pbzero.h" ]
+    }
+  }
+}
