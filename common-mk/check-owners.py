@@ -7,20 +7,17 @@
 
 import logging
 from pathlib import Path
-import sys
 
 
-TOP_DIR = Path(__file__).resolve().parent.parent
-
-# Find chromite!
-sys.path.insert(0, str(TOP_DIR.parent.parent))
-
+_HACK_VAR_TO_DISABLE_ISORT = "hack"
 # pylint: disable=wrong-import-position
+import chromite_init  # pylint: disable=unused-import
+
 from chromite.lib import commandline
 from chromite.lib import git
 
 
-# pylint: enable=wrong-import-position
+TOP_DIR = Path(__file__).resolve().parent.parent
 
 
 def GetActiveProjects():

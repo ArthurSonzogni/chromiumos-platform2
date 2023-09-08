@@ -9,20 +9,16 @@ Default values follow the default values of ebuild (see manpage of ebuild).
 https://dev.gentoo.org/~zmedico/portage/doc/man/ebuild.5.html
 """
 
-import os
-import sys
 from unittest import mock
 
 import ebuild_function
 
-sys.path.insert(
-    0,
-    os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", ".."),
-)
-# pylint: disable=wrong-import-position
-from chromite.lib import cros_test_lib
 
-# pylint: enable=wrong-import-position
+_HACK_VAR_TO_DISABLE_ISORT = "hack"
+# pylint: disable=wrong-import-position
+import chromite_init  # pylint: disable=unused-import
+
+from chromite.lib import cros_test_lib
 
 
 class DoCommandTests(cros_test_lib.TestCase):

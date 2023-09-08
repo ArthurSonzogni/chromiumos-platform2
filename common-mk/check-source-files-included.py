@@ -24,16 +24,17 @@ import sys
 from typing import FrozenSet, Iterable, List, Optional, Tuple, Union
 
 
-TOP_DIR = Path(__file__).resolve().parent.parent
-SOURCE_FILE_SUFFICES = (".c", ".cc", ".cpp", ".cxx")
-
-# Find chromite.
-sys.path.insert(0, str(TOP_DIR.parent.parent))
-
+_HACK_VAR_TO_DISABLE_ISORT = "hack"
 # pylint: disable=wrong-import-position
+import chromite_init  # pylint: disable=unused-import
+
 from chromite.lib import cros_build_lib
 from chromite.lib import git
 from chromite.lint.linters import gnlint
+
+
+TOP_DIR = Path(__file__).resolve().parent.parent
+SOURCE_FILE_SUFFICES = (".c", ".cc", ".cpp", ".cxx")
 
 
 class ProjectLiterals:

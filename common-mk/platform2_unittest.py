@@ -6,18 +6,18 @@
 """Unit tests for platform2.py"""
 
 import os
-import sys
 from unittest import mock
 
-sys.path.insert(
-    0,
-    os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", ".."),
-)
-# pylint: disable=wrong-import-position
 import platform2
+
+
+_HACK_VAR_TO_DISABLE_ISORT = "hack"
+
+# pylint: disable=wrong-import-position
+import chromite_init  # pylint: disable=unused-import
+
 from chromite.lib import cros_test_lib
 
-# pylint: enable=wrong-import-position
 
 PLATFORM_SUBDIR = "platform"
 SYSROOT = "/"

@@ -7,22 +7,20 @@
 
 import json
 import os
-import sys
+from pathlib import Path
 
 
-TOP_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-
-# Find chromite!
-sys.path.insert(0, os.path.join(TOP_DIR, "..", ".."))
-
+_HACK_VAR_TO_DISABLE_ISORT = "hack"
 # pylint: disable=wrong-import-position
+import chromite_init  # pylint: disable=unused-import
+
 from chromite.lib import commandline
 from chromite.lib import constants
 from chromite.lib import cros_build_lib
 from chromite.lib import git
 
 
-# pylint: enable=wrong-import-position
+TOP_DIR = Path(__file__).resolve().parent.parent
 
 CHECK_STABLE_MOJOM_COMPATIBILITY = os.path.join(
     constants.SOURCE_ROOT,

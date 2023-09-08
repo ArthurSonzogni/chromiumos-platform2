@@ -15,7 +15,6 @@ import ctypes
 import ctypes.util
 import errno
 import os
-from pathlib import Path
 import pwd
 import re
 import signal
@@ -28,12 +27,11 @@ import capng  # pylint: disable=import-error
 import psutil  # pylint: disable=import-error
 
 
-TOP_DIR = Path(__file__).resolve().parent.parent
-
-# Find chromite!
-sys.path.insert(0, str(TOP_DIR.parent.parent))
+_HACK_VAR_TO_DISABLE_ISORT = "hack"
 
 # pylint: disable=wrong-import-position
+import chromite_init  # pylint: disable=unused-import
+
 from chromite.lib import build_target_lib
 from chromite.lib import commandline
 from chromite.lib import constants
