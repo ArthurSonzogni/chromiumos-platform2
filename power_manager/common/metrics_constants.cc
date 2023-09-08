@@ -61,9 +61,6 @@ const int kBatteryChargeHealthMax = 111;
 const char kBatteryCapacityActualSuffix[] = ".Actual";
 const char kBatteryCapacityDesignSuffix[] = ".Design";
 
-const char kBatteryLifeRollingAverageSuffix[] = ".RollingAverage";
-const int kBatteryLifeRollingAverageSampleSize = 10;
-
 const char kBatteryCapacityName[] = "Power.BatteryCapacity";  // mWh
 const int kBatteryCapacityMin = 0;
 const int kBatteryCapacityMax = 200000;
@@ -85,9 +82,36 @@ const base::TimeDelta kBatteryDischargeRateWhileSuspendedMinSuspend =
 const char kBatteryPercentageAtHibernateSuspendName[] =
     "Power.BatteryPercentageAtHibernateSuspend";  // %
 
+// Power.BatteryLife.* reports ChromeOS battery life at that instant using
+// Battery size divided by battery discharge rate sampling. This provides
+// the instantaneous battery life of the current workload.
+
 const char kBatteryLifeName[] = "Power.BatteryLife";  // minute
 const int kBatteryLifeMin = 1;
 const int kBatteryLifeMax = 48 * 60;
+
+// The middle buckets of Power.BatteryLife.* metrics are quite coarse because
+// these metrics design to capture almost all possible values which is 1 minute
+// to 48 hours. For example, the closest bucket to 9.65 hours are 9.07 & 10.3
+// hours, which make 9.65 hours bucket can be anywhere from 9.36 - 9.98 hours.
+//
+// Power.BatteryLife.Detail.* put the battery life data outside of 5-13 hours
+// range to the overflow and underflow buckets to provide better detail for data
+// near the median value of the range. The data resolution is now less than 5
+// minutes around 9-10 hours range.
+const char kBatteryLifeDetailSuffix[] = ".Detail";  // minute
+const int kBatteryLifeDetailMin = 5 * 60;
+const int kBatteryLifeDetailMax = 13 * 60;
+const int kBatteryLifeDetailBuckets = 200;
+
+// Power.BatteryLife.* only provide instantaneous battery life. This does not
+// work well with bursty workload like browsing where the power consumption is
+// higher when the web is loading and lower when users are reading the page.
+//
+// Power.BatteryLife.RollingAverage.* takes the average of last 10 samples of
+// Power.BatteryLife.* to provide data that is closer to what user would see.
+const char kBatteryLifeRollingAverageSuffix[] = ".RollingAverage";
+const int kBatteryLifeRollingAverageSampleSize = 10;
 
 const char kBatteryLifeWhileSuspendedName[] =
     "Power.BatteryLifeWhileSuspended";  // hour

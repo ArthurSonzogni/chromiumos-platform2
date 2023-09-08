@@ -67,6 +67,19 @@ ConnectedChargingPorts GetConnectedChargingPorts(const PowerStatus& status) {
     return ConnectedChargingPorts::NONE;
 }
 
+// Helper method for power.BatteryLife & power.BatteryLife.Detail metrics.
+// We send the same data again with tighter max and min value to have more
+// granularity with the buckets in the middle.
+void SendCoarseAndDetailBatteryLifeMetric(std::string metrics_name,
+                                          std::string suffix,
+                                          int value) {
+  SendMetric(metrics_name + suffix, value, kBatteryLifeMin, kBatteryLifeMax,
+             kDefaultDischargeBuckets);
+  SendMetric(metrics_name + kBatteryLifeDetailSuffix + suffix, value,
+             kBatteryLifeDetailMin, kBatteryLifeDetailMax,
+             kBatteryLifeDetailBuckets);
+}
+
 }  // namespace
 
 // static
@@ -659,28 +672,30 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   rolling_average_design_.push_back(battery_life_design);
 
   std::string metrics_name = kBatteryLifeName;
-  SendMetric(metrics_name + kBatteryCapacityActualSuffix,
-             static_cast<int>(round(battery_life_actual)), kBatteryLifeMin,
-             kBatteryLifeMax, kDefaultDischargeBuckets);
-  SendMetric(metrics_name + kBatteryCapacityDesignSuffix,
-             static_cast<int>(round(battery_life_design)), kBatteryLifeMin,
-             kBatteryLifeMax, kDefaultDischargeBuckets);
+  SendCoarseAndDetailBatteryLifeMetric(
+      kBatteryLifeName, kBatteryCapacityActualSuffix,
+      static_cast<int>(round(battery_life_actual)));
+  SendCoarseAndDetailBatteryLifeMetric(
+      kBatteryLifeName, kBatteryCapacityDesignSuffix,
+      static_cast<int>(round(battery_life_design)));
 
   if (rolling_average_actual_.size() == kBatteryLifeRollingAverageSampleSize) {
     double average = CalculateRollingAverage(rolling_average_actual_);
-    SendMetric(metrics_name + kBatteryLifeRollingAverageSuffix +
-                   kBatteryCapacityActualSuffix,
-               static_cast<int>(average), kBatteryLifeMin, kBatteryLifeMax,
-               kDefaultDischargeBuckets);
+    SendCoarseAndDetailBatteryLifeMetric(
+        kBatteryLifeName,
+        std::string(kBatteryLifeRollingAverageSuffix) +
+            kBatteryCapacityActualSuffix,
+        static_cast<int>(average));
     rolling_average_actual_.pop_front();
   }
 
   if (rolling_average_design_.size() == kBatteryLifeRollingAverageSampleSize) {
     double average = CalculateRollingAverage(rolling_average_design_);
-    SendMetric(metrics_name + kBatteryLifeRollingAverageSuffix +
-                   kBatteryCapacityDesignSuffix,
-               static_cast<int>(average), kBatteryLifeMin, kBatteryLifeMax,
-               kDefaultDischargeBuckets);
+    SendCoarseAndDetailBatteryLifeMetric(
+        kBatteryLifeName,
+        std::string(kBatteryLifeRollingAverageSuffix) +
+            kBatteryCapacityDesignSuffix,
+        static_cast<int>(average));
     rolling_average_design_.pop_front();
   }
 }

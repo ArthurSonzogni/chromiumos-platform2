@@ -28,6 +28,10 @@ extern const int kDefaultBuckets;
 // discharge.
 extern const int kDefaultDischargeBuckets;
 
+// Default number of buckets to use for numeric histogram metrics for
+// power.BatteryLife.Clamp.*
+extern const int kBatteryLifeDetailBuckets;
+
 extern const char kSuspendAttemptsBeforeSuccessName[];
 extern const char kHibernateAttemptsBeforeSuccessName[];
 extern const char kSuspendAttemptsBeforeCancelName[];
@@ -67,6 +71,10 @@ extern const char kBatteryCapacityDesignSuffix[];
 
 extern const char kBatteryLifeRollingAverageSuffix[];
 extern const int kBatteryLifeRollingAverageSampleSize;
+
+extern const char kBatteryLifeDetailSuffix[];
+extern const int kBatteryLifeDetailMin;
+extern const int kBatteryLifeDetailMax;
 
 extern const char kBatteryCapacityName[];
 extern const int kBatteryCapacityMin;

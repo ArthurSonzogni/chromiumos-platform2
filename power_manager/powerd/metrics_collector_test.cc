@@ -117,11 +117,21 @@ class MetricsCollectorTest : public TestEnvironment {
     IgnoreMetric(kBatteryDischargeRateWhileSuspendedName);
     IgnoreEnumMetric(kBatteryPercentageAtHibernateSuspendName);
     IgnoreMetric(std::string(kBatteryLifeName) + kBatteryCapacityActualSuffix);
+    IgnoreMetric(std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+                 kBatteryCapacityActualSuffix);
     IgnoreMetric(std::string(kBatteryLifeName) + kBatteryCapacityDesignSuffix);
+    IgnoreMetric(std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+                 kBatteryCapacityDesignSuffix);
     IgnoreMetric(std::string(kBatteryLifeName) +
                  kBatteryLifeRollingAverageSuffix +
                  kBatteryCapacityActualSuffix);
+    IgnoreMetric(std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+                 kBatteryLifeRollingAverageSuffix +
+                 kBatteryCapacityActualSuffix);
     IgnoreMetric(std::string(kBatteryLifeName) +
+                 kBatteryLifeRollingAverageSuffix +
+                 kBatteryCapacityDesignSuffix);
+    IgnoreMetric(std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
                  kBatteryLifeRollingAverageSuffix +
                  kBatteryCapacityDesignSuffix);
     IgnoreMetric(std::string(kBatteryLifeWhileSuspendedName) +
@@ -186,11 +196,21 @@ class MetricsCollectorTest : public TestEnvironment {
                      kBatteryCapacityActualSuffix,
                  rolling_average_actual, kBatteryLifeMin, kBatteryLifeMax,
                  kDefaultDischargeBuckets);
+    ExpectMetric(std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+                     kBatteryLifeRollingAverageSuffix +
+                     kBatteryCapacityActualSuffix,
+                 rolling_average_actual, kBatteryLifeDetailMin,
+                 kBatteryLifeDetailMax, kBatteryLifeDetailBuckets);
     ExpectMetric(std::string(kBatteryLifeName) +
                      kBatteryLifeRollingAverageSuffix +
                      kBatteryCapacityDesignSuffix,
                  rolling_average_design, kBatteryLifeMin, kBatteryLifeMax,
                  kDefaultDischargeBuckets);
+    ExpectMetric(std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+                     kBatteryLifeRollingAverageSuffix +
+                     kBatteryCapacityDesignSuffix,
+                 rolling_average_design, kBatteryLifeDetailMin,
+                 kBatteryLifeDetailMax, kBatteryLifeDetailBuckets);
   }
 
   void ExpectBatteryDischargeRateMetric(int discharge_rate,
@@ -202,9 +222,17 @@ class MetricsCollectorTest : public TestEnvironment {
     ExpectMetric(std::string(kBatteryLifeName) + kBatteryCapacityActualSuffix,
                  battery_life_actual, kBatteryLifeMin, kBatteryLifeMax,
                  kDefaultDischargeBuckets);
+    ExpectMetric(std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+                     kBatteryCapacityActualSuffix,
+                 battery_life_actual, kBatteryLifeDetailMin,
+                 kBatteryLifeDetailMax, kBatteryLifeDetailBuckets);
     ExpectMetric(std::string(kBatteryLifeName) + kBatteryCapacityDesignSuffix,
                  battery_life_design, kBatteryLifeMin, kBatteryLifeMax,
                  kDefaultDischargeBuckets);
+    ExpectMetric(std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+                     kBatteryCapacityDesignSuffix,
+                 battery_life_design, kBatteryLifeDetailMin,
+                 kBatteryLifeDetailMax, kBatteryLifeDetailBuckets);
   }
 
   void ExpectNumOfSessionsPerChargeMetric(int sample) {
@@ -306,6 +334,12 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
   metrics_to_test_.insert(std::string(kBatteryLifeName) +
                           kBatteryCapacityActualSuffix);
   metrics_to_test_.insert(std::string(kBatteryLifeName) +
+                          kBatteryLifeDetailSuffix +
+                          kBatteryCapacityActualSuffix);
+  metrics_to_test_.insert(std::string(kBatteryLifeName) +
+                          kBatteryCapacityDesignSuffix);
+  metrics_to_test_.insert(std::string(kBatteryLifeName) +
+                          kBatteryLifeDetailSuffix +
                           kBatteryCapacityDesignSuffix);
 
   IgnoreHandlePowerStatusUpdateMetrics();
@@ -364,9 +398,15 @@ TEST_F(MetricsCollectorTest, BatteryLifeRollingAverage) {
   metrics_to_test_.insert(std::string(kBatteryLifeName) +
                           kBatteryLifeRollingAverageSuffix +
                           kBatteryCapacityActualSuffix);
+  metrics_to_test_.insert(
+      std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+      kBatteryLifeRollingAverageSuffix + kBatteryCapacityActualSuffix);
   metrics_to_test_.insert(std::string(kBatteryLifeName) +
                           kBatteryLifeRollingAverageSuffix +
                           kBatteryCapacityDesignSuffix);
+  metrics_to_test_.insert(
+      std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+      kBatteryLifeRollingAverageSuffix + kBatteryCapacityDesignSuffix);
   const base::TimeDelta interval = kBatteryDischargeRateInterval;
   power_status_.battery_energy_rate = 5.0;
   power_status_.battery_energy_full = 50.0;
@@ -409,9 +449,15 @@ TEST_F(MetricsCollectorTest, BatteryLifeRollingAverageResets) {
   metrics_to_test_.insert(std::string(kBatteryLifeName) +
                           kBatteryLifeRollingAverageSuffix +
                           kBatteryCapacityActualSuffix);
+  metrics_to_test_.insert(
+      std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+      kBatteryLifeRollingAverageSuffix + kBatteryCapacityActualSuffix);
   metrics_to_test_.insert(std::string(kBatteryLifeName) +
                           kBatteryLifeRollingAverageSuffix +
                           kBatteryCapacityDesignSuffix);
+  metrics_to_test_.insert(
+      std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
+      kBatteryLifeRollingAverageSuffix + kBatteryCapacityDesignSuffix);
   const base::TimeDelta interval = kBatteryDischargeRateInterval;
   power_status_.battery_energy_rate = 5.0;
   power_status_.battery_energy_full = 50.0;
