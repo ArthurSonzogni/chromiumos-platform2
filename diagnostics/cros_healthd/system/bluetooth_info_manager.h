@@ -23,8 +23,6 @@ class BluetoothInfoManager {
   virtual std::vector<org::bluez::Device1ProxyInterface*> GetDevices() const;
   virtual std::vector<org::bluez::AdminPolicyStatus1ProxyInterface*>
   GetAdminPolicies() const;
-  virtual std::vector<org::bluez::LEAdvertisingManager1ProxyInterface*>
-  GetAdvertisings() const;
   virtual std::vector<org::bluez::Battery1ProxyInterface*> GetBatteries() const;
 
  private:

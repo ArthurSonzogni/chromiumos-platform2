@@ -23,10 +23,6 @@ std::vector<org::bluez::AdminPolicyStatus1ProxyInterface*>
 BluetoothInfoManager::GetAdminPolicies() const {
   return bluez_proxy_->GetAdminPolicyStatus1Instances();
 }
-std::vector<org::bluez::LEAdvertisingManager1ProxyInterface*>
-BluetoothInfoManager::GetAdvertisings() const {
-  return bluez_proxy_->GetLEAdvertisingManager1Instances();
-}
 std::vector<org::bluez::Battery1ProxyInterface*>
 BluetoothInfoManager::GetBatteries() const {
   return bluez_proxy_->GetBattery1Instances();

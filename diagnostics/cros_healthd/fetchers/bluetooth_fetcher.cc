@@ -26,11 +26,6 @@ constexpr char kBluetoothTypeBrEdrName[] = "BR/EDR";
 constexpr char kBluetoothTypeLeName[] = "LE";
 constexpr char kBluetoothTypeDualName[] = "DUAL";
 
-constexpr char kSupportedCapabilitiesMaxAdvLenKey[] = "MaxAdvLen";
-constexpr char kSupportedCapabilitiesMaxScnRspLenKey[] = "MaxScnRspLen";
-constexpr char kSupportedCapabilitiesMinTxPowerKey[] = "MinTxPower";
-constexpr char kSupportedCapabilitiesMaxTxPowerKey[] = "MaxTxPower";
-
 // Convert std::string to |BluetoothDeviceType| enum.
 mojom::BluetoothDeviceType GetDeviceType(const std::string& type) {
   if (type == kBluetoothTypeBrEdrName)
@@ -50,34 +45,6 @@ void ParseServiceAllowList(
   for (const auto& policy : admin_policies) {
     out_service_allow_list[policy->GetObjectPath()] =
         policy->service_allow_list();
-  }
-}
-
-// Parse Bluetooth info from LEAdvertisingManager1 interface and store in the
-// map.
-void ParseSupportedCapabilities(
-    std::vector<org::bluez::LEAdvertisingManager1ProxyInterface*> advertisings,
-    std::map<dbus::ObjectPath, mojom::SupportedCapabilitiesPtr>&
-        out_supported_capabilities) {
-  for (const auto& advertising : advertisings) {
-    auto data = advertising->supported_capabilities();
-    // Drop data if missing any element.
-    if (data.find(kSupportedCapabilitiesMaxAdvLenKey) == data.end() ||
-        data.find(kSupportedCapabilitiesMaxScnRspLenKey) == data.end() ||
-        data.find(kSupportedCapabilitiesMinTxPowerKey) == data.end() ||
-        data.find(kSupportedCapabilitiesMaxTxPowerKey) == data.end()) {
-      continue;
-    }
-    mojom::SupportedCapabilities info;
-    info.max_adv_len = brillo::GetVariantValueOrDefault<uint8_t>(
-        data, kSupportedCapabilitiesMaxAdvLenKey);
-    info.max_scn_rsp_len = brillo::GetVariantValueOrDefault<uint8_t>(
-        data, kSupportedCapabilitiesMaxScnRspLenKey);
-    info.min_tx_power = brillo::GetVariantValueOrDefault<int16_t>(
-        data, kSupportedCapabilitiesMinTxPowerKey);
-    info.max_tx_power = brillo::GetVariantValueOrDefault<int16_t>(
-        data, kSupportedCapabilitiesMaxTxPowerKey);
-    out_supported_capabilities[advertising->GetObjectPath()] = info.Clone();
   }
 }
 
@@ -152,12 +119,6 @@ mojom::BluetoothResultPtr FetchBluetoothInfo(Context* context) {
   ParseServiceAllowList(bluetooth_info_manager->GetAdminPolicies(),
                         service_allow_list);
 
-  // Map from the adapter's ObjectPath to the supported capabilities.
-  std::map<dbus::ObjectPath, mojom::SupportedCapabilitiesPtr>
-      supported_capabilities;
-  ParseSupportedCapabilities(bluetooth_info_manager->GetAdvertisings(),
-                             supported_capabilities);
-
   // Map from the adapter's ObjectPath to the connected devices.
   std::map<dbus::ObjectPath, std::vector<mojom::BluetoothDeviceInfoPtr>>
       connected_devices;
@@ -188,11 +149,6 @@ mojom::BluetoothResultPtr FetchBluetoothInfo(Context* context) {
     const auto it_service_allow_list = service_allow_list.find(adapter_path);
     if (it_service_allow_list != service_allow_list.end()) {
       info.service_allow_list = it_service_allow_list->second;
-    }
-
-    const auto it_capabilities = supported_capabilities.find(adapter_path);
-    if (it_capabilities != supported_capabilities.end()) {
-      info.supported_capabilities = std::move(it_capabilities->second);
     }
     adapter_infos.push_back(info.Clone());
   }

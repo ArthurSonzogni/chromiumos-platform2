@@ -30,10 +30,6 @@ class MockBluetoothInfoManager final : public BluetoothInfoManager {
               GetAdminPolicies,
               (),
               (const, override));
-  MOCK_METHOD(std::vector<org::bluez::LEAdvertisingManager1ProxyInterface*>,
-              GetAdvertisings,
-              (),
-              (const, override));
   MOCK_METHOD(std::vector<org::bluez::Battery1ProxyInterface*>,
               GetBatteries,
               (),

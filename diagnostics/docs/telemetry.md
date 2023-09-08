@@ -170,7 +170,6 @@ event --help`.
 | uuids | array&lt;string&gt;? | The list of the available local services. |
 | modalias | string? | Local Device ID information. |
 | service_allow_list | array&lt;string&gt;? | List of allowed system devices. |
-| supported_capabilities | [SupportedCapabilities?](#SupportedCapabilities) | A dictionary of supported capabilities. |
 
 ##### BluetoothDeviceInfo
 | Field | Type | Description |
@@ -194,14 +193,6 @@ event --help`.
 | kBrEdr | BR/EDR. |
 | kLe | LE. |
 | kDual | DUAL. |
-
-##### SupportedCapabilities
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| max_adv_len | uint8 | Max advertising data length. |
-| max_scn_rsp_len | uint8 | Max advertising scan response length. |
-| min_tx_power | int16 | Min advertising tx power (dBm). |
-| max_tx_power | int16 | Max advertising tx power (dBm). |
 
 ###  Bus
 

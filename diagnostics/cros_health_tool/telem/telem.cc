@@ -449,15 +449,6 @@ void DisplayBluetoothInfo(const mojom::BluetoothResultPtr& result) {
     SET_DICT(uuids, info, &data);
     SET_DICT(modalias, info, &data);
     SET_DICT(service_allow_list, info, &data);
-    if (info->supported_capabilities) {
-      base::Value::Dict out_capabilities;
-      SET_DICT(max_adv_len, info->supported_capabilities, &out_capabilities);
-      SET_DICT(max_scn_rsp_len, info->supported_capabilities,
-               &out_capabilities);
-      SET_DICT(min_tx_power, info->supported_capabilities, &out_capabilities);
-      SET_DICT(max_tx_power, info->supported_capabilities, &out_capabilities);
-      data.Set("supported_capabilities", std::move(out_capabilities));
-    }
     adapters.Append(std::move(data));
   }
   output.Set("adapters", std::move(adapters));
