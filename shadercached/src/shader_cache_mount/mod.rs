@@ -203,8 +203,7 @@ fn get_mesa_cache_relative_path(render_server_path: &Path) -> Result<PathBuf> {
 }
 
 fn get_single_file(path: &Path) -> Result<OsString> {
-    let mut entries =
-        fs::read_dir(path).context(format!("Failed to find single file at {:?}", path))?;
+    let mut entries = fs::read_dir(path).context(format!("Failed to find or access {:?}", path))?;
     let entry = entries.next();
     if entries.next().is_some() {
         return Err(anyhow!("Multiple directories found under: {:?}", path));
