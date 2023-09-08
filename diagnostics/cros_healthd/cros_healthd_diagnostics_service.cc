@@ -87,6 +87,7 @@ CrosHealthdDiagnosticsService::CrosHealthdDiagnosticsService(
       routine_service_(routine_service) {
   CHECK(context_);
   CHECK(routine_factory_);
+  CHECK(routine_service_);
   ground_truth_ = std::make_unique<GroundTruth>(context_);
 
   // Service is ready after available routines are populated.
