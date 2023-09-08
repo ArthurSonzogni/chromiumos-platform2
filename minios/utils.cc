@@ -122,7 +122,7 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
   std::string content;
   content.reserve(num_lines * num_cols);
   int64_t bytes_read = 0;
-  int current_line = 0, current_col = 0, read_buffer_lines = 0;
+  int current_col = 0, read_buffer_lines = 0;
   while (f.ReadAtCurrentPos(&c, 1) > 0 && read_buffer_lines < num_lines) {
     ++bytes_read;
     if (c == '\n') {
@@ -132,7 +132,6 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
         ++read_buffer_lines;
       }
       current_col = 0;
-      ++current_line;
       continue;
     }
     if (current_col < num_cols) {
