@@ -30,6 +30,7 @@
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <re2/re2.h>
 
+#include "lorgnette/cli/advanced_scan.h"
 #include "lorgnette/cli/discovery_handler.h"
 #include "lorgnette/cli/print_config.h"
 #include "lorgnette/cli/scan_handler.h"
@@ -49,9 +50,11 @@ enum class Command {
   kGetJsonCaps,
   kShowConfig,
   kDiscover,
+  kAdvancedScan,
 };
 
 constexpr auto kCommandMap = base::MakeFixedFlatMap<std::string_view, Command>({
+    {"advanced_scan", Command::kAdvancedScan},
     {"cancel_scan", Command::kCancelScan},
     {"discover", Command::kDiscover},
     {"get_json_caps", Command::kGetJsonCaps},
@@ -710,6 +713,29 @@ int main(int argc, char** argv) {
       lorgnette::cli::PrintScannerConfig(config.value(), FLAGS_show_inactive,
                                          FLAGS_show_advanced, std::cout);
       return 0;
+    }
+    case Command::kAdvancedScan: {
+      if (FLAGS_scanner.empty()) {
+        LOG(ERROR) << "Must specify scanner for advanced scan";
+        return 1;
+      }
+
+      std::string image_format_string = base::ToLowerASCII(FLAGS_image_format);
+      std::string mime_type;
+      if (image_format_string == "png") {
+        mime_type = "image/png";
+      } else if (image_format_string == "jpg") {
+        mime_type = "image/jpeg";
+      } else {
+        LOG(ERROR) << "Unknown image format: \"" << image_format_string
+                   << "\". Supported values are \"PNG\" and \"JPG\"";
+        return 1;
+      }
+
+      return lorgnette::cli::DoAdvancedScan(manager.get(), FLAGS_scanner,
+                                            mime_type, FLAGS_output)
+                 ? 0
+                 : 1;
     }
   }
 

@@ -12,25 +12,13 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 #include <brillo/errors/error.h>
+
+#include "lorgnette/cli/file_pattern.h"
 
 namespace lorgnette::cli {
 
 namespace {
-
-std::string EscapeScannerName(const std::string& scanner_name) {
-  std::string escaped;
-  for (char c : scanner_name) {
-    if (isalnum(c)) {
-      escaped += c;
-    } else {
-      escaped += '_';
-    }
-  }
-  return escaped;
-}
 
 std::string ExtensionForFormat(lorgnette::ImageFormat image_format) {
   switch (image_format) {
@@ -152,18 +140,8 @@ std::optional<lorgnette::GetNextImageResponse> ScanHandler::GetNextImage(
 }
 
 void ScanHandler::RequestNextPage() {
-  std::string expanded_path = output_pattern_;
-  base::ReplaceFirstSubstringAfterOffset(
-      &expanded_path, 0, "%n", base::StringPrintf("%d", current_page_));
-  base::ReplaceFirstSubstringAfterOffset(&expanded_path, 0, "%s",
-                                         EscapeScannerName(scanner_name_));
-  base::ReplaceFirstSubstringAfterOffset(&expanded_path, 0, "%e",
-                                         format_extension_);
-  base::FilePath output_path = base::FilePath(expanded_path);
-  if (current_page_ > 1 && output_pattern_.find("%n") == std::string::npos) {
-    output_path = output_path.InsertBeforeExtension(
-        base::StringPrintf("_page%d", current_page_));
-  }
+  base::FilePath output_path = ExpandPattern(output_pattern_, current_page_,
+                                             scanner_name_, format_extension_);
 
   std::optional<lorgnette::GetNextImageResponse> response =
       GetNextImage(output_path);

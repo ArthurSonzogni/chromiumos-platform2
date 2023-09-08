@@ -109,10 +109,13 @@ executable("lorgnette") {
 
 static_library("liblorgnette_cli") {
   sources = [
+    "cli/advanced_scan.cc",
     "cli/async_handler.cc",
     "cli/discovery_handler.cc",
+    "cli/file_pattern.cc",
     "cli/print_config.cc",
     "cli/scan_handler.cc",
+    "constants.cc",
     "guess_source.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -188,7 +191,10 @@ if (use.test) {
   }
 
   executable("lorgnette_cli_unittest") {
-    sources = [ "cli/print_config_test.cc" ]
+    sources = [
+      "cli/file_pattern_test.cc",
+      "cli/print_config_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":liblorgnette_config_test",
