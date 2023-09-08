@@ -40,12 +40,12 @@ namespace rmad {
 
 namespace {
 
-const char kCroslogCmd[] = "/usr/sbin/croslog";
+constexpr char kCroslogCmd[] = "/usr/sbin/croslog";
 
-const char kInitctlCmd[] = "/sbin/initctl";
-const std::vector<std::string> kWaitServices = {"system-services"};
-const int kWaitServicesPollInterval = 1;  // 1 second.
-const int kWaitServicesRetries = 10;
+constexpr char kInitctlCmd[] = "/sbin/initctl";
+constexpr std::array<std::string_view, 1> kWaitServices = {"system-services"};
+constexpr int kWaitServicesPollInterval = 1;  // 1 second.
+constexpr int kWaitServicesRetries = 10;
 
 constexpr char kDiagnosticsAppSwbnRelPath[] = "diagnostics_app.swbn";
 constexpr char kDiagnosticsAppCrxRelPath[] = "diagnostics_app.crx";
@@ -138,8 +138,8 @@ bool RmadInterfaceImpl::WaitForServices() {
   for (int i = 0; i < kWaitServicesRetries; ++i) {
     DLOG(INFO) << "Checking services";
     bool all_running = true;
-    for (const std::string& service : kWaitServices) {
-      cmd_utils_->GetOutput({kInitctlCmd, "status", service}, &output);
+    for (const std::string_view& service : kWaitServices) {
+      cmd_utils_->GetOutput({kInitctlCmd, "status", service.data()}, &output);
       if (output.find("running") == std::string::npos) {
         all_running = false;
         break;

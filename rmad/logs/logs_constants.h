@@ -5,10 +5,9 @@
 #ifndef RMAD_LOGS_LOGS_CONSTANTS_H_
 #define RMAD_LOGS_LOGS_CONSTANTS_H_
 
-#include <string>
+#include <string_view>
 
 #include <base/containers/fixed_flat_map.h>
-#include <base/strings/string_piece.h>
 
 namespace rmad {
 
@@ -94,7 +93,7 @@ enum class LogCalibrationStatus {
 };
 
 constexpr auto kLogCalibrationStatusMap =
-    base::MakeFixedFlatMap<LogCalibrationStatus, base::StringPiece>(
+    base::MakeFixedFlatMap<LogCalibrationStatus, std::string_view>(
         {{LogCalibrationStatus::kFailed, kLogCalibrationStatusFailedString},
          {LogCalibrationStatus::kSkip, kLogCalibrationStatusSkippedString},
          {LogCalibrationStatus::kRetry, kLogCalibrationStatusRetriedString}});
@@ -108,7 +107,7 @@ enum class FirmwareUpdateStatus {
 };
 
 constexpr auto kFirmwareUpdateStatusMap =
-    base::MakeFixedFlatMap<FirmwareUpdateStatus, base::StringPiece>(
+    base::MakeFixedFlatMap<FirmwareUpdateStatus, std::string_view>(
         {{FirmwareUpdateStatus::kUsbPluggedIn,
           kLogFirmwareUpdatePluggedInString},
          {FirmwareUpdateStatus::kUsbPluggedInFileNotFound,

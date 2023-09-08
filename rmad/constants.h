@@ -5,14 +5,10 @@
 #ifndef RMAD_CONSTANTS_H_
 #define RMAD_CONSTANTS_H_
 
-#include <array>
-#include <map>
-#include <string>
-#include <utility>
+#include <string_view>
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/containers/fixed_flat_set.h>
-#include <base/strings/string_piece.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
 
@@ -70,10 +66,10 @@ inline constexpr auto kComponentsNeedUpdateCbi =
     base::MakeFixedFlatSet<RmadComponent>(
         {RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
 
-// We map RmadState::StateCase (enum) to std::string to represent state in a
-// more readable way.
+// We map RmadState::StateCase (enum) to std::string_view to represent state in
+// a more readable way.
 inline constexpr auto kStateNames =
-    base::MakeFixedFlatMap<RmadState::StateCase, base::StringPiece>({
+    base::MakeFixedFlatMap<RmadState::StateCase, std::string_view>({
         {RmadState::kWelcome, "Welcome"},
         {RmadState::kComponentsRepair, "ComponentsRepair"},
         {RmadState::kDeviceDestination, "DeviceDestination"},
