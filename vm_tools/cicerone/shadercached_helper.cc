@@ -33,6 +33,8 @@ void ShaderCacheMountStatusChanged(
   } else if (!mount_status.error().empty()) {
     *error_out = mount_status.error();
   } else if (mount_status.mounted() == expected_mount) {
+    LOG(INFO) << "Shader cache for steam app " << mount_status.steam_app_id()
+              << " successfully " << (expected_mount ? "mounted" : "unmounted");
     *error_out = "";
   } else {
     // |mounted| does not equate to |expected_mount| despite having no error
@@ -43,7 +45,9 @@ void ShaderCacheMountStatusChanged(
                            expected_mount, mount_status.mounted());
   }
 
-  event->Signal();
+  if (event != nullptr) {
+    event->Signal();
+  }
 }
 }  // namespace
 
@@ -85,10 +89,14 @@ void ShadercachedHelper::InstallShaderCache(
       .vm_name = vm_name,
       .owner_id = owner_id,
       .steam_app_id = request->steam_app_id()};
-  if (request->wait() &&
-      !AddCallback(condition, /*expected_mount=*/true, error_out, event)) {
-    event->Signal();
-    return;
+
+  bool callback_added =
+      AddCallback(condition, /*expected_mount=*/true, error_out,
+                  request->wait() ? event : nullptr);
+
+  if (!callback_added) {
+    LOG(WARNING) << "Failed to add callback for install of steam id "
+                 << request->steam_app_id();
   }
 
   dbus::MethodCall method_call(shadercached::kShaderCacheInterface,
@@ -125,10 +133,8 @@ void ShadercachedHelper::InstallShaderCache(
     return;
   }
 
-  if (!request->wait()) {
-    // Only signal if we don't have to wait. If wait is set, signal will happen
-    // at ShaderCacheMountStatusChanged.
-    *error_out = "";
+  if (!request->wait() || !callback_added) {
+    // Only signal if we don't have to wait or can't detect that a wait is over.
     event->Signal();
     return;
   }

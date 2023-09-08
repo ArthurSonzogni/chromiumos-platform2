@@ -198,7 +198,7 @@ bool HostNotifier::InstallShaderCache(uint64_t steam_app_id,
   grpc::Status status = stub_->InstallShaderCache(&ctx, request, &response);
 
   if (!status.ok()) {
-    if (mount) {
+    if (mount && wait) {
       LOG(ERROR) << "Failed to install and mount shader cache: "
                  << status.error_message();
     } else {
@@ -207,10 +207,11 @@ bool HostNotifier::InstallShaderCache(uint64_t steam_app_id,
     }
     return false;
   }
-  if (mount) {
+  if (mount && wait) {
+    // The requested mount op was waited on and returned with no errors.
     LOG(INFO) << "Successfully installed and mounted shader cache DLC";
   } else {
-    LOG(INFO) << "Successfully triggered shader cache DLC installation";
+    LOG(INFO) << "Successfully scheduled shader cache DLC for installation";
   }
   return true;
 }
