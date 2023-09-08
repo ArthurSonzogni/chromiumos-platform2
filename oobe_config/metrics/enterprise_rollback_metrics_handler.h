@@ -5,15 +5,17 @@
 #ifndef OOBE_CONFIG_METRICS_ENTERPRISE_ROLLBACK_METRICS_HANDLER_H_
 #define OOBE_CONFIG_METRICS_ENTERPRISE_ROLLBACK_METRICS_HANDLER_H_
 
+#include <memory>
 #include <optional>
 
 #include <base/version.h>
 #include <brillo/brillo_export.h>
 
-#include "oobe_config/filesystem/file_handler.h"
 #include "oobe_config/metrics/enterprise_rollback_metrics_data.pb.h"
 
 namespace oobe_config {
+
+class FileHandler;
 
 // Shared library to track the events triggered during Enterprise Rollback.
 // Events are tracked in a file that is preserved through powerwash. This file
@@ -80,9 +82,9 @@ class BRILLO_EXPORT EnterpriseRollbackMetricsHandler {
   // if there is an error cleaning up the tracking file.
   bool CleanRollbackTrackingIfStale() const;
 
-  // Checks if we are tracking events of the current rollback process. Events
-  // are tracked if the rollback metrics file exists.
-  bool IsTrackingRollbackEvents() const;
+  // Checks if we are tracking events of the current rollback process. Rollback
+  // events are tracked if the rollback metrics file exists.
+  bool IsTrackingRollback() const;
 
   // Compares `target_os_version` to the target version stored as metadata in
   // the rollback metrics file. Returns true if both versions are the same.
@@ -90,15 +92,14 @@ class BRILLO_EXPORT EnterpriseRollbackMetricsHandler {
   // the target version from the file.
   bool IsTrackingForTargetVersion(const base::Version& target_os_version) const;
 
-  void SetFileHandlerForTesting(const FileHandler& file_handler);
-
- private:
+ protected:
   // Reads rollback metrics file and parses content into
-  // EnterpriseRollbackMetricsData proto.
+  // EnterpriseRollbackMetricsData proto. Does not return the proto if the file
+  // does not contain the metadata.
   std::optional<EnterpriseRollbackMetricsData> GetRollbackMetricsData() const;
 
   // Object for managing files.
-  FileHandler file_handler_;
+  std::unique_ptr<FileHandler> file_handler_;
 };
 
 }  // namespace oobe_config

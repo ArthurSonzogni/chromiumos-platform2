@@ -15,16 +15,19 @@ group("all") {
     ":oobe_config_restore",
     ":oobe_config_save",
     ":rollback_cleanup",
-    "filesystem:install_headers",
     "metrics:install_headers",
     "metrics:install_pkgconfig",
     "metrics:install_proto_header",
+    "metrics:libenterprise_rollback_metrics",
   ]
   if (use.test) {
     deps += [
       ":oobe_config_test",
       "filesystem:filesystem_test",
-      "metrics:libenterprise_rollback_metrics_test",
+      "metrics:enterprise_rollback_metrics_tests",
+      "metrics:install_headers-test",
+      "metrics:install_pkgconfig-test",
+      "metrics:libenterprise_rollback_metrics-test",
     ]
   }
   if (use.fuzzer) {

@@ -32,13 +32,21 @@ proto_library("enterprise_rollback_metrics_proto") {
   standalone = true
 }
 
-shared_library("libenterprise_rollback_metrics") {
+source_set("enterprise_rollback_metrics_library_common_sources") {
   sources = [
     "enterprise_rollback_metrics_handler.cc",
     "structured_metrics_recorder.cc",
   ]
+  all_dependent_configs = [ ":target_defaults" ]
+
+  # PIC is required for shared libraries and their dependencies.
+  configs += [ "//common-mk:pic" ]
+}
+
+shared_library("libenterprise_rollback_metrics") {
   configs += [ ":target_defaults" ]
   deps = [
+    ":enterprise_rollback_metrics_library_common_sources",
     ":enterprise_rollback_metrics_proto",
     "//oobe_config/filesystem:filesystem",
   ]
@@ -62,7 +70,39 @@ install_config("install_proto_header") {
 }
 
 if (use.test) {
-  executable("libenterprise_rollback_metrics_test") {
+  install_config("install_headers-test") {
+    sources = [ "enterprise_rollback_metrics_handler_for_testing.h" ]
+    install_path = "/usr/include/oobe_config/metrics"
+  }
+
+  install_config("install_pkgconfig-test") {
+    sources = [ "libenterprise_rollback_metrics-test.pc" ]
+    install_path = "${libdir}/pkgconfig"
+  }
+
+  source_set("enterprise_rollback_metrics_library_test_sources") {
+    sources = [ "enterprise_rollback_metrics_handler_for_testing.cc" ]
+    configs += [ "//common-mk:test" ]
+    deps = [ ":enterprise_rollback_metrics_library_common_sources" ]
+
+    # PIC is required for shared libraries and their dependencies.
+    configs += [ "//common-mk:pic" ]
+  }
+
+  shared_library("libenterprise_rollback_metrics-test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":enterprise_rollback_metrics_library_test_sources",
+      ":enterprise_rollback_metrics_proto",
+      "//oobe_config/filesystem:filesystem_for_testing",
+    ]
+    install_path = "lib"
+  }
+
+  executable("enterprise_rollback_metrics_tests") {
     sources = [
       "enterprise_rollback_metrics_handler_test.cc",
       "structured_metrics_recorder_test.cc",
@@ -73,7 +113,8 @@ if (use.test) {
     ]
     run_test = true
     deps = [
-      ":libenterprise_rollback_metrics",
+      ":enterprise_rollback_metrics_library_test_sources",
+      ":enterprise_rollback_metrics_proto",
       "//common-mk/testrunner",
       "//oobe_config/filesystem:filesystem_for_testing",
     ]

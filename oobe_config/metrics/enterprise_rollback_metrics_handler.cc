@@ -4,13 +4,13 @@
 
 #include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
 
-#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file.h>
 #include <base/logging.h>
 
+#include "oobe_config/filesystem/file_handler.h"
 #include "oobe_config/metrics/structured_metrics_recorder.h"
 
 namespace oobe_config {
@@ -33,24 +33,25 @@ std::unique_ptr<RollbackMetadata> MetadataFromVersions(
 
 }  // namespace
 
-EnterpriseRollbackMetricsHandler::EnterpriseRollbackMetricsHandler()
-    : file_handler_(FileHandler()) {}
+EnterpriseRollbackMetricsHandler::EnterpriseRollbackMetricsHandler() {
+  file_handler_ = std::make_unique<FileHandler>();
+}
 
 EnterpriseRollbackMetricsHandler::~EnterpriseRollbackMetricsHandler() = default;
 
 bool EnterpriseRollbackMetricsHandler::StartTrackingRollback(
     const base::Version& current_os_version,
     const base::Version& target_os_version) const {
-  if (!file_handler_.HasMetricsReportingEnabledFlag()) {
+  if (!file_handler_->HasMetricsReportingEnabledFlag()) {
     LOG(INFO) << "Metrics are not enabled. Not creating the Rollback metrics "
                  "file because Rollback events should not be tracked.";
     // As existing Rollback metrics will not be reported even if they were
     // already tracked, we can delete a pre-existent file.
-    file_handler_.RemoveRollbackMetricsData();
+    file_handler_->RemoveRollbackMetricsData();
     return false;
   }
 
-  if (file_handler_.HasRollbackMetricsData()) {
+  if (file_handler_->HasRollbackMetricsData()) {
     LOG(INFO) << "Previous metrics data file encountered. Attempting to report "
                  "old events and delete it.";
     StopTrackingRollback();
@@ -75,21 +76,21 @@ bool EnterpriseRollbackMetricsHandler::StartTrackingRollback(
   // to the ongoing rollback. Therefore, the creation of the new file and the
   // metadata writing must happen in a unique step to ensure any previous data
   // is overwritten.
-  return file_handler_.CreateRollbackMetricsDataAtomically(metrics_data_str);
+  return file_handler_->CreateRollbackMetricsDataAtomically(metrics_data_str);
 }
 
 bool EnterpriseRollbackMetricsHandler::TrackEvent(
     const EnterpriseRollbackEvent& event) const {
   // We only track rollback events if the metrics file was created. Calling
   // this method if metrics are not enabled is not an error.
-  if (!file_handler_.HasRollbackMetricsData()) {
+  if (!file_handler_->HasRollbackMetricsData()) {
     LOG(INFO) << "Not recording metrics. Rollback event " << event
               << " not tracked.";
     return false;
   }
 
   std::optional<base::File> rollback_metrics_file =
-      file_handler_.OpenRollbackMetricsDataFile();
+      file_handler_->OpenRollbackMetricsDataFile();
   if (!rollback_metrics_file.has_value()) {
     LOG(ERROR) << "Cannot open Rollback metrics file. Rollback event " << event
                << " not tracked.";
@@ -102,7 +103,7 @@ bool EnterpriseRollbackMetricsHandler::TrackEvent(
   // corresponding metric.
   // If the lock is busy we do not wait for the lock to be released. It is
   // preferable to lose the metric than risk blocking Rollback.
-  if (!file_handler_.LockFileNoBlocking(*rollback_metrics_file)) {
+  if (!file_handler_->LockFileNoBlocking(*rollback_metrics_file)) {
     LOG(ERROR) << "Cannot lock Rollback metrics file. Rollback event " << event
                << " not tracked.";
     return false;
@@ -119,15 +120,15 @@ bool EnterpriseRollbackMetricsHandler::TrackEvent(
   std::string event_data_serialized;
   metrics_data.SerializeToString(&event_data_serialized);
 
-  if (!file_handler_.ExtendOpenedFile(*rollback_metrics_file,
-                                      event_data_serialized)) {
+  if (!file_handler_->ExtendOpenedFile(*rollback_metrics_file,
+                                       event_data_serialized)) {
     LOG(ERROR) << "Cannot extend Rollback metrics file." << event
                << " not tracked.";
-    file_handler_.UnlockFile(*rollback_metrics_file);
+    file_handler_->UnlockFile(*rollback_metrics_file);
     return false;
   }
 
-  file_handler_.UnlockFile(*rollback_metrics_file);
+  file_handler_->UnlockFile(*rollback_metrics_file);
   return true;
 }
 
@@ -158,7 +159,7 @@ bool EnterpriseRollbackMetricsHandler::ReportEventNow(
 bool EnterpriseRollbackMetricsHandler::ReportTrackedEvents() const {
   // This method should only be called if the rollback metrics file exists, but
   // it is possible that the file was deleted by another process simultaneously.
-  if (!file_handler_.HasRollbackMetricsData()) {
+  if (!file_handler_->HasRollbackMetricsData()) {
     LOG(ERROR) << "No Rollback metrics file.";
     return false;
   }
@@ -169,29 +170,29 @@ bool EnterpriseRollbackMetricsHandler::ReportTrackedEvents() const {
   // We need to lock for the whole duration of the read and truncate process to
   // ensure the events are removed from the file when reported.
   std::optional<base::File> rollback_metrics_file =
-      file_handler_.OpenRollbackMetricsDataFile();
+      file_handler_->OpenRollbackMetricsDataFile();
   if (!rollback_metrics_file.has_value()) {
     LOG(ERROR) << "Cannot open Rollback metrics file.";
     return false;
   }
 
-  if (!file_handler_.LockFileNoBlocking(*rollback_metrics_file)) {
+  if (!file_handler_->LockFileNoBlocking(*rollback_metrics_file)) {
     LOG(ERROR)
         << "Cannot lock Rollback metrics file. Not reporting the events.";
     return false;
   }
 
   std::optional<std::string> rollback_metrics_data =
-      file_handler_.GetOpenedFileData(*rollback_metrics_file);
+      file_handler_->GetOpenedFileData(*rollback_metrics_file);
   if (!rollback_metrics_data.has_value()) {
-    file_handler_.UnlockFile(*rollback_metrics_file);
+    file_handler_->UnlockFile(*rollback_metrics_file);
     return false;
   }
 
   EnterpriseRollbackMetricsData metrics_data;
   if (!metrics_data.ParseFromString(rollback_metrics_data.value())) {
     LOG(ERROR) << "Could not parse EnterpriseRollbackMetricsData proto.";
-    file_handler_.UnlockFile(*rollback_metrics_file);
+    file_handler_->UnlockFile(*rollback_metrics_file);
     return false;
   }
 
@@ -206,11 +207,11 @@ bool EnterpriseRollbackMetricsHandler::ReportTrackedEvents() const {
     metrics_data.clear_event_data();
     std::string rollback_metrics_header;
     metrics_data.SerializeToString(&rollback_metrics_header);
-    file_handler_.TruncateOpenedFile(*rollback_metrics_file,
-                                     rollback_metrics_header.length());
+    file_handler_->TruncateOpenedFile(*rollback_metrics_file,
+                                      rollback_metrics_header.length());
   }
 
-  file_handler_.UnlockFile(*rollback_metrics_file);
+  file_handler_->UnlockFile(*rollback_metrics_file);
   return true;
 }
 
@@ -221,7 +222,7 @@ bool EnterpriseRollbackMetricsHandler::StopTrackingRollback() const {
                   "metrics file.";
   }
 
-  if (!file_handler_.RemoveRollbackMetricsData()) {
+  if (!file_handler_->RemoveRollbackMetricsData()) {
     LOG(ERROR) << "Error when deleting the rollback metrics file.";
     return false;
   }
@@ -236,7 +237,7 @@ bool EnterpriseRollbackMetricsHandler::CleanRollbackTrackingIfStale() const {
   // recorded. If the file has not been modified for days, it can mean that
   // something went wrong in the process and the file is stale.
   std::optional<base::Time> last_modification =
-      file_handler_.LastModifiedTimeRollbackMetricsDataFile();
+      file_handler_->LastModifiedTimeRollbackMetricsDataFile();
   if (!last_modification.has_value()) {
     return true;
   }
@@ -251,8 +252,8 @@ bool EnterpriseRollbackMetricsHandler::CleanRollbackTrackingIfStale() const {
   return true;
 }
 
-bool EnterpriseRollbackMetricsHandler::IsTrackingRollbackEvents() const {
-  return file_handler_.HasRollbackMetricsData();
+bool EnterpriseRollbackMetricsHandler::IsTrackingRollback() const {
+  return file_handler_->HasRollbackMetricsData();
 }
 
 bool EnterpriseRollbackMetricsHandler::IsTrackingForTargetVersion(
@@ -276,19 +277,14 @@ bool EnterpriseRollbackMetricsHandler::IsTrackingForTargetVersion(
   return target_os_version == target;
 }
 
-void EnterpriseRollbackMetricsHandler::SetFileHandlerForTesting(
-    const FileHandler& file_handler) {
-  file_handler_ = file_handler;
-}
-
 std::optional<EnterpriseRollbackMetricsData>
 EnterpriseRollbackMetricsHandler::GetRollbackMetricsData() const {
-  if (!file_handler_.HasRollbackMetricsData()) {
+  if (!file_handler_->HasRollbackMetricsData()) {
     return std::nullopt;
   }
 
   std::string rollback_metrics_data;
-  if (!file_handler_.ReadRollbackMetricsData(&rollback_metrics_data)) {
+  if (!file_handler_->ReadRollbackMetricsData(&rollback_metrics_data)) {
     LOG(ERROR) << "Error reading rollback metrics data.";
     return std::nullopt;
   }

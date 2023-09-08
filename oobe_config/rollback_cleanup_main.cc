@@ -56,7 +56,7 @@ bool RollbackJustFinished() {
 // be cleaning data too early.
 void CleanEnterpriseRollbackMetrics() {
   oobe_config::EnterpriseRollbackMetricsHandler metrics_handler;
-  if (metrics_handler.IsTrackingRollbackEvents()) {
+  if (metrics_handler.IsTrackingRollback()) {
     metrics_handler.StopTrackingRollback();
   }
 }
@@ -75,7 +75,7 @@ void CleanEnterpriseRollbackLeftovers() {
 // file is deleted if it has not been updated in a while.
 void CleanEnterpriseRollbackMetricsIfStale() {
   oobe_config::EnterpriseRollbackMetricsHandler metrics_handler;
-  if (metrics_handler.IsTrackingRollbackEvents()) {
+  if (metrics_handler.IsTrackingRollback()) {
     metrics_handler.CleanRollbackTrackingIfStale();
   }
 }
