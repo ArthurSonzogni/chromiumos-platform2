@@ -27,12 +27,12 @@
 #include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
 #include <install_attributes/libinstallattributes.h>
+#include <libcrossystem/crossystem.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "crypto/signature_verifier.h"
 #include "login_manager/blob_util.h"
-#include "login_manager/crossystem.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/feature_flags_util.h"
 #include "login_manager/key_generator.h"
@@ -122,7 +122,7 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
     SystemUtils* system,
-    Crossystem* crossystem,
+    crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader) {
   return base::WrapUnique(new DevicePolicyService(
@@ -197,7 +197,7 @@ DevicePolicyService::DevicePolicyService(
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
     SystemUtils* system,
-    Crossystem* crossystem,
+    crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader)
     : PolicyService(policy_dir, policy_key, metrics, true),
@@ -490,32 +490,27 @@ bool DevicePolicyService::MayUpdateSystemSettings() {
   }
 
   // Check whether device is running on ChromeOS firmware.
-  char buffer[Crossystem::kVbMaxStringProperty];
-  if (crossystem_->VbGetSystemPropertyString(Crossystem::kMainfwType, buffer,
-                                             sizeof(buffer)) != 0 ||
-      strcmp(Crossystem::kMainfwTypeNonchrome, buffer) == 0) {
-    return false;
-  }
-
-  return true;
+  std::optional<std::string> buffer = crossystem_->VbGetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType);
+  return buffer && buffer != crossystem::Crossystem::kMainfwTypeNonchrome;
 }
 
 bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
   const int block_devmode_setting =
       GetSettings().system_settings().block_devmode();
-  int block_devmode_value =
-      crossystem_->VbGetSystemPropertyInt(Crossystem::kBlockDevmode);
-  if (block_devmode_value == -1) {
+  std::optional<int> block_devmode_value = crossystem_->VbGetSystemPropertyInt(
+      crossystem::Crossystem::kBlockDevmode);
+  if (!block_devmode_value) {
     LOG(ERROR) << "Failed to read block_devmode flag!";
   }
 
   // Set crossystem block_devmode flag.
   if (block_devmode_value != block_devmode_setting) {
-    if (crossystem_->VbSetSystemPropertyInt(Crossystem::kBlockDevmode,
-                                            block_devmode_setting) != 0) {
+    if (!crossystem_->VbSetSystemPropertyInt(
+            crossystem::Crossystem::kBlockDevmode, block_devmode_setting)) {
       LOG(ERROR) << "Failed to write block_devmode flag!";
     } else {
-      block_devmode_value = block_devmode_setting;
+      block_devmode_value.emplace(block_devmode_setting);
     }
   }
 
@@ -523,14 +518,15 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
   // OK as long as block_devmode is the only consumer of nvram_cleared. Once
   // other use cases crop up, clearing has to be done in cooperation.)
   if (block_devmode_value == block_devmode_setting) {
-    const int nvram_cleared_value =
-        crossystem_->VbGetSystemPropertyInt(Crossystem::kNvramCleared);
-    if (nvram_cleared_value == -1) {
+    std::optional<int> nvram_cleared_value =
+        crossystem_->VbGetSystemPropertyInt(
+            crossystem::Crossystem::kNvramCleared);
+    if (!nvram_cleared_value) {
       LOG(ERROR) << "Failed to read nvram_cleared flag!";
     }
     if (nvram_cleared_value != 0) {
-      if (crossystem_->VbSetSystemPropertyInt(Crossystem::kNvramCleared, 0) !=
-          0) {
+      if (!crossystem_->VbSetSystemPropertyInt(
+              crossystem::Crossystem::kNvramCleared, 0)) {
         LOG(ERROR) << "Failed to clear nvram_cleared flag!";
       }
     }
@@ -538,7 +534,7 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
 
   // Used to keep the update key-value pairs for the VPD updater script.
   std::vector<std::pair<std::string, std::string>> updates;
-  updates.push_back(std::make_pair(Crossystem::kBlockDevmode,
+  updates.push_back(std::make_pair(crossystem::Crossystem::kBlockDevmode,
                                    std::to_string(block_devmode_setting)));
 
   // Check if device is enrolled. The flag for enrolled device is written to VPD
@@ -577,7 +573,7 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
     return true;
   }
 
-  updates.push_back(std::make_pair(Crossystem::kCheckEnrollment,
+  updates.push_back(std::make_pair(crossystem::Crossystem::kCheckEnrollment,
                                    std::to_string(is_enrolled)));
 
   // Note that VPD update errors will be ignored if the device is not enrolled.
@@ -593,7 +589,8 @@ void DevicePolicyService::ClearBlockDevmode(Completion completion) {
   // The block_devmode system property needs to be set to 0 as well to unblock
   // dev mode. It is stored independently from VPD and firmware management
   // parameters.
-  if (crossystem_->VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0) != 0) {
+  if (!crossystem_->VbSetSystemPropertyInt(
+          crossystem::Crossystem::kBlockDevmode, 0)) {
     std::move(completion)
         .Run(CreateError(dbus_error::kSystemPropertyUpdateFailed,
                          "Failed to set block_devmode system property to 0."));
@@ -601,7 +598,7 @@ void DevicePolicyService::ClearBlockDevmode(Completion completion) {
   }
   auto split_callback = base::SplitOnceCallback(std::move(completion));
   if (!vpd_process_->RunInBackground(
-          {{Crossystem::kBlockDevmode, "0"}}, false,
+          {{crossystem::Crossystem::kBlockDevmode, "0"}}, false,
           base::BindOnce(&HandleVpdUpdateCompletion, false,
                          std::move(split_callback.first)))) {
     std::move(split_callback.second)

@@ -21,10 +21,10 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <install_attributes/libinstallattributes.h>
+#include <libcrossystem/crossystem.h>
 
 #include "login_manager/android_oci_wrapper.h"
 #include "login_manager/child_exit_handler.h"
-#include "login_manager/crossystem_impl.h"
 #include "login_manager/device_identifier_generator.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker.h"
@@ -283,7 +283,7 @@ class SessionManagerService
   PolicyKey owner_key_;
   KeyGenerator key_gen_;
   DeviceIdentifierGenerator device_identifier_generator_;
-  CrossystemImpl crossystem_;
+  crossystem::Crossystem crossystem_;
   VpdProcessImpl vpd_process_;
   std::unique_ptr<ContainerManagerInterface> android_container_;
   InstallAttributesReader install_attributes_reader_;

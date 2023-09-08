@@ -15,8 +15,8 @@
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
+#include <libcrossystem/crossystem_fake.h>
 
-#include "login_manager/fake_crossystem.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_vpd_process.h"
 #include "login_manager/session_manager_impl.h"
@@ -48,7 +48,8 @@ namespace login_manager {
 class DevModeUnblockBrokerTest : public ::testing::Test {
  public:
   DevModeUnblockBrokerTest()
-      : fwmp_proxy_(new dbus::MockObjectProxy(
+      : crossystem_(std::make_unique<crossystem::fake::CrossystemFake>()),
+        fwmp_proxy_(new dbus::MockObjectProxy(
             nullptr, "", dbus::ObjectPath("/fake/fwmp"))) {
     SetupFs();
   }
@@ -102,7 +103,7 @@ class DevModeUnblockBrokerTest : public ::testing::Test {
   SystemUtilsImpl real_utils_;
   testing::NiceMock<MockSystemUtils> utils_;
   base::ScopedTempDir tmpdir_;
-  FakeCrossystem crossystem_;
+  crossystem::Crossystem crossystem_;
   MockVpdProcess vpd_process_;
   scoped_refptr<dbus::MockObjectProxy> fwmp_proxy_;
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
@@ -179,7 +180,7 @@ TEST_F(DevModeUnblockBrokerTest, DetectBlockedDevMode) {
   EXPECT_CALL(*fwmp_proxy_, DoWaitForServiceToBeAvailable(_))
       .WillOnce(Invoke(
           this, &DevModeUnblockBrokerTest::StoreDoWaitForServiceToBeAvailable));
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 1);
   InitBroker();
   InvokeServiceAvailableFromStored();
   EXPECT_TRUE(broker_->IsDevModeBlockedForCarrierLock());
@@ -197,7 +198,7 @@ TEST_F(DevModeUnblockBrokerTest, DetectUnBlockedDevMode) {
   EXPECT_CALL(*fwmp_proxy_, CallMethodAndBlock(_, _))
       .WillRepeatedly(
           Invoke(this, &DevModeUnblockBrokerTest::CreateMockProxyResponse));
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 0);
   InitBroker();
   InvokeServiceAvailableFromStored();
   EXPECT_FALSE(broker_->IsDevModeBlockedForCarrierLock());
@@ -213,13 +214,14 @@ TEST_F(DevModeUnblockBrokerTest, VerifyFwmpVpdUpdatOneUnblockFromAll) {
   EXPECT_CALL(*fwmp_proxy_, DoWaitForServiceToBeAvailable(_))
       .WillOnce(Invoke(
           this, &DevModeUnblockBrokerTest::StoreDoWaitForServiceToBeAvailable));
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1);
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 1);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kNvramCleared, 1);
   InitBroker();
   InvokeServiceAvailableFromStored();
 
-  VpdProcess::KeyValuePairs updates{{Crossystem::kBlockDevmode, "0"},
-                                    {Crossystem::kCheckEnrollment, "0"}};
+  VpdProcess::KeyValuePairs updates{
+      {crossystem::Crossystem::kBlockDevmode, "0"},
+      {crossystem::Crossystem::kCheckEnrollment, "0"}};
 
   EXPECT_CALL(*fwmp_proxy_, DoWaitForServiceToBeAvailable(_))
       .WillOnce(Invoke(
@@ -243,7 +245,8 @@ TEST_F(DevModeUnblockBrokerTest, VerifyFwmpVpdUpdatOneUnblockFromAll) {
   writer.AppendProtoAsArrayOfBytes(reply);
   std::move(fwmp_removal_callback).Run(response.get());
 
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
+                   crossystem::Crossystem::kBlockDevmode));
 }
 
 // Verify that broker waits on unblock from all the modules before clearing
@@ -254,12 +257,13 @@ TEST_F(DevModeUnblockBrokerTest, VerifyWaitForUnblockFromAll) {
   EXPECT_CALL(*fwmp_proxy_, DoWaitForServiceToBeAvailable(_))
       .WillOnce(Invoke(
           this, &DevModeUnblockBrokerTest::StoreDoWaitForServiceToBeAvailable));
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 1);
   InitBroker();
   InvokeServiceAvailableFromStored();
   dbus::ObjectProxy::ResponseCallback fwmp_removal_callback;
   broker_->UnblockDevModeForCarrierLock(base::BindRepeating(&UnblockAtInit));
-  EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
+  EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(
+                   crossystem::Crossystem::kBlockDevmode));
 }
 
 // Verify that broker detects any previous interrupted unblocking operation and
@@ -275,8 +279,8 @@ TEST_F(DevModeUnblockBrokerTest, VerifyRestartInterrupted) {
       base::FilePath(DevModeUnblockBroker::kEnrollmentUnblockedFlag), "1");
   utils_.AtomicFileWrite(
       base::FilePath(DevModeUnblockBroker::kFirmwareVariantPath), "Test_Modem");
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1);
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 1);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kNvramCleared, 1);
 
   EXPECT_CALL(*fwmp_proxy_, DoWaitForServiceToBeAvailable(_))
       .WillRepeatedly(Invoke(
@@ -288,8 +292,9 @@ TEST_F(DevModeUnblockBrokerTest, VerifyRestartInterrupted) {
   EXPECT_CALL(*fwmp_proxy_,
               DoCallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
       .WillOnce(MovePointee<2>(&fwmp_removal_callback));
-  VpdProcess::KeyValuePairs updates{{Crossystem::kBlockDevmode, "0"},
-                                    {Crossystem::kCheckEnrollment, "0"}};
+  VpdProcess::KeyValuePairs updates{
+      {crossystem::Crossystem::kBlockDevmode, "0"},
+      {crossystem::Crossystem::kCheckEnrollment, "0"}};
   EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
       .WillOnce(Return(true));
 
@@ -303,7 +308,8 @@ TEST_F(DevModeUnblockBrokerTest, VerifyRestartInterrupted) {
   writer.AppendProtoAsArrayOfBytes(reply);
   std::move(fwmp_removal_callback).Run(response.get());
 
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
+                   crossystem::Crossystem::kBlockDevmode));
 }
 
 }  // namespace login_manager

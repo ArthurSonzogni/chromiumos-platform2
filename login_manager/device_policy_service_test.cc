@@ -21,12 +21,12 @@
 #include <crypto/scoped_nss_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libcrossystem/crossystem_fake.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "bindings/install_attributes.pb.h"
 #include "login_manager/blob_util.h"
-#include "login_manager/fake_crossystem.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_install_attributes_reader.h"
@@ -120,7 +120,8 @@ class FakePolicyServiceDelegate : public PolicyService::Delegate {
 
 class DevicePolicyServiceTest : public ::testing::Test {
  public:
-  DevicePolicyServiceTest() = default;
+  DevicePolicyServiceTest()
+      : crossystem_(std::make_unique<crossystem::fake::CrossystemFake>()) {}
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
@@ -174,9 +175,12 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   void SetDefaultSettings() {
-    crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
-    crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
-    crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+    crossystem_.VbSetSystemPropertyString(
+        crossystem::Crossystem::kMainFirmwareType, "normal");
+    crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode,
+                                       0);
+    crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kNvramCleared,
+                                       1);
 
     EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
 
@@ -313,7 +317,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   std::unique_ptr<MockMetrics> metrics_;
   std::unique_ptr<StrictMock<MockMitigator>> mitigator_;
   testing::NiceMock<MockSystemUtils> utils_;
-  FakeCrossystem crossystem_;
+  crossystem::Crossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockInstallAttributesReader install_attributes_reader_;
 
@@ -603,9 +607,10 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   MockNssUtil nss;
   InitService(&nss, true);
 
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+  crossystem_.VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType, "normal");
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 0);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kNvramCleared, 1);
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(true);
@@ -621,8 +626,10 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   SetDataInInstallAttributes("enterprise");
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
 
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
-  EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
+                   crossystem::Crossystem::kNvramCleared));
+  EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(
+                   crossystem::Crossystem::kBlockDevmode));
 }
 
 // Ensure block devmode is unset properly in NVRAM.
@@ -630,9 +637,10 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   MockNssUtil nss;
   InitService(&nss, true);
 
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1);
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+  crossystem_.VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType, "normal");
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 1);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kNvramCleared, 1);
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
@@ -648,8 +656,10 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   SetDataInInstallAttributes("enterprise");
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
 
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
+                   crossystem::Crossystem::kNvramCleared));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
+                   crossystem::Crossystem::kBlockDevmode));
 }
 
 // Ensure non-enrolled and non-blockdevmode device will call VPD update
@@ -668,7 +678,8 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
   service.set_install_attributes_reader(&install_attributes_reader_);
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+  crossystem_.VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType, "normal");
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
@@ -680,8 +691,8 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   SetDataInInstallAttributes("consumer");
 
   VpdProcess::KeyValuePairs updates{
-      {Crossystem::kBlockDevmode, "0"},
-      {Crossystem::kCheckEnrollment, "0"},
+      {crossystem::Crossystem::kBlockDevmode, "0"},
+      {crossystem::Crossystem::kCheckEnrollment, "0"},
   };
   EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
       .WillOnce(Return(true));
@@ -709,7 +720,8 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
   service.set_install_attributes_reader(&install_attributes_reader_);
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+  crossystem_.VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType, "normal");
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
@@ -721,8 +733,8 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   SetDataInInstallAttributes("enterprise");
 
   VpdProcess::KeyValuePairs updates{
-      {Crossystem::kBlockDevmode, "0"},
-      {Crossystem::kCheckEnrollment, "1"},
+      {crossystem::Crossystem::kBlockDevmode, "0"},
+      {crossystem::Crossystem::kCheckEnrollment, "1"},
   };
   EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
       .WillOnce(Return(true));
@@ -746,7 +758,8 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
   service.set_crossystem(&crossystem_);
   service.set_vpd_process(&vpd_process_);
   service.set_install_attributes_reader(&install_attributes_reader_);
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+  crossystem_.VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType, "normal");
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
@@ -756,8 +769,8 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   SetDataInInstallAttributes("enterprise");
   VpdProcess::KeyValuePairs updates{
-      {Crossystem::kBlockDevmode, "0"},
-      {Crossystem::kCheckEnrollment, "1"},
+      {crossystem::Crossystem::kBlockDevmode, "0"},
+      {crossystem::Crossystem::kCheckEnrollment, "1"},
   };
   EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
       .WillOnce(Return(false));
@@ -774,9 +787,10 @@ TEST_F(DevicePolicyServiceTest, CheckMissingInstallAttributes) {
   MockNssUtil nss;
   InitService(&nss, true);
 
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+  crossystem_.VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType, "normal");
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 0);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kNvramCleared, 1);
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(true);
@@ -797,9 +811,10 @@ TEST_F(DevicePolicyServiceTest, CheckWeirdInstallAttributes) {
   MockNssUtil nss;
   InitService(&nss, true);
 
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
-  crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
+  crossystem_.VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType, "normal");
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kBlockDevmode, 0);
+  crossystem_.VbSetSystemPropertyInt(crossystem::Crossystem::kNvramCleared, 1);
 
   auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(true);
@@ -1035,26 +1050,32 @@ TEST_F(DevicePolicyServiceTest, TestClearBlockDevmode) {
   MockNssUtil nss;
   InitService(&nss, true);
   const std::vector<std::pair<std::string, std::string>> kExpectedUpdate = {
-      {Crossystem::kBlockDevmode, "0"}};
+      {crossystem::Crossystem::kBlockDevmode, "0"}};
 
-  EXPECT_EQ(0,
-            crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1));
+  EXPECT_TRUE(crossystem_.VbSetSystemPropertyInt(
+      crossystem::Crossystem::kBlockDevmode, 1));
   EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, false, _))
       .Times(1)
       .WillOnce(Return(true));
   service_->ClearBlockDevmode(MockPolicyService::CreateDoNothing());
   Mock::VerifyAndClearExpectations(&vpd_process_);
-  EXPECT_EQ(-1, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
 
-  EXPECT_EQ(0,
-            crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1));
+  EXPECT_FALSE(crossystem_.VbGetSystemPropertyInt(
+      crossystem::Crossystem::kNvramCleared));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
+                   crossystem::Crossystem::kBlockDevmode));
+
+  EXPECT_TRUE(crossystem_.VbSetSystemPropertyInt(
+      crossystem::Crossystem::kBlockDevmode, 1));
   EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, false, _))
       .Times(1)
       .WillOnce(Return(false));
   service_->ClearBlockDevmode(MockPolicyService::CreateExpectFailureCallback());
-  EXPECT_EQ(-1, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
-  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
+
+  EXPECT_FALSE(crossystem_.VbGetSystemPropertyInt(
+      crossystem::Crossystem::kNvramCleared));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(
+                   crossystem::Crossystem::kBlockDevmode));
 }
 
 TEST_F(DevicePolicyServiceTest, TestResilientStore) {
@@ -1239,16 +1260,18 @@ TEST_F(DevicePolicyServiceTest, MayUpdateSystemSettings) {
   InitService(&nss, true);
   EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
 
-  // We shouldn't update system settings if kMainfwType isn't set.
+  // We shouldn't update system settings if kMainFirmwareType isn't set.
   EXPECT_FALSE(service_->MayUpdateSystemSettings());
 
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType,
-                                        Crossystem::kMainfwTypeNonchrome);
+  crossystem_.VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType,
+      crossystem::Crossystem::kMainfwTypeNonchrome);
   // We shouldn't update system settings if the device is non chrome.
   EXPECT_FALSE(service_->MayUpdateSystemSettings());
 
   // Any FW type that's not "nonchrome" is a valid FW to update.
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+  crossystem_.VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType, "normal");
   // We should update a "normal" ChromeOS FW.
   EXPECT_TRUE(service_->MayUpdateSystemSettings());
 }

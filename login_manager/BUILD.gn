@@ -33,6 +33,7 @@ pkg_config("target_defaults") {
     "libchromeos-ui",
     "libcontainer",
     "libcros_config",
+    "libcrossystem",
     "libmetrics",
     "libminijail",
     "libpasswordprovider",
@@ -83,8 +84,6 @@ static_library("libsession_manager") {
     "chrome_features_service_client.cc",
     "chrome_setup.cc",
     "container_manager_interface.cc",
-    "crossystem.cc",
-    "crossystem_impl.cc",
     "cumulative_use_time_metric.cc",
     "dbus_util.cc",
     "dev_mode_unblock_broker.cc",
@@ -167,6 +166,7 @@ if (use.test) {
       "libbrillo-test",
       "libchrome-test",
       "libcros_config",
+      "libcrossystem-test",
       "libsegmentation-test",
     ]
   }
@@ -184,7 +184,6 @@ if (use.test) {
       "fake_browser_job.cc",
       "fake_child_process.cc",
       "fake_container_manager.cc",
-      "fake_crossystem.cc",
       "fake_generated_key_handler.cc",
       "fake_generator_job.cc",
       "fake_secret_util.cc",

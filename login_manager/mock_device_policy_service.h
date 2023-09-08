@@ -15,10 +15,9 @@
 #include <vector>
 
 #include <crypto/scoped_nss_types.h>
+#include <libcrossystem/crossystem.h>
 
 #include "bindings/chrome_device_policy.pb.h"
-
-class Crossystem;
 
 namespace login_manager {
 class SystemUtils;
@@ -61,7 +60,9 @@ class MockDevicePolicyService : public DevicePolicyService {
       (override));
 
   void set_system_utils(SystemUtils* system) { system_ = system; }
-  void set_crossystem(Crossystem* crossystem) { crossystem_ = crossystem; }
+  void set_crossystem(crossystem::Crossystem* crossystem) {
+    crossystem_ = crossystem;
+  }
   void set_vpd_process(VpdProcess* vpd_process) { vpd_process_ = vpd_process; }
   void set_install_attributes_reader(
       InstallAttributesReader* install_attributes_reader) {

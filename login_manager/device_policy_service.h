@@ -15,13 +15,13 @@
 #include <base/gtest_prod_util.h>
 #include <base/memory/ref_counted.h>
 #include <crypto/scoped_nss_types.h>
+#include <libcrossystem/crossystem.h>
 
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/vpd_process.h"
 
-class Crossystem;
 class InstallAttributesReader;
 
 namespace crypto {
@@ -59,7 +59,7 @@ class DevicePolicyService : public PolicyService {
       OwnerKeyLossMitigator* mitigator,
       NssUtil* nss,
       SystemUtils* system,
-      Crossystem* crossystem,
+      crossystem::Crossystem* crossystem,
       VpdProcess* vpd_process,
       InstallAttributesReader* install_attributes_reader);
 
@@ -154,7 +154,7 @@ class DevicePolicyService : public PolicyService {
                       OwnerKeyLossMitigator* mitigator,
                       NssUtil* nss,
                       SystemUtils* system,
-                      Crossystem* crossystem,
+                      crossystem::Crossystem* crossystem,
                       VpdProcess* vpd_process,
                       InstallAttributesReader* install_attributes_reader);
   DevicePolicyService(const DevicePolicyService&) = delete;
@@ -214,7 +214,7 @@ class DevicePolicyService : public PolicyService {
   OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;
   SystemUtils* system_;                                 // Owned by the caller.
-  Crossystem* crossystem_;                              // Owned by the caller.
+  crossystem::Crossystem* crossystem_;                  // Owned by the caller.
   VpdProcess* vpd_process_;                             // Owned by the caller.
   InstallAttributesReader* install_attributes_reader_;  // Owned by the caller.
 

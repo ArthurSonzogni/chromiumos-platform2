@@ -24,6 +24,7 @@
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
+#include <libcrossystem/crossystem.h>
 #include <libpasswordprovider/password_provider.h>
 
 #include "login_manager/arc_sideload_status_interface.h"
@@ -39,7 +40,6 @@
 #include "login_manager/policy_service.h"
 #include "login_manager/regen_mitigator.h"
 
-class Crossystem;
 class InstallAttributesReader;
 
 namespace arc {
@@ -172,7 +172,7 @@ class SessionManagerImpl
                      NssUtil* nss,
                      std::optional<base::FilePath> ns_path,
                      SystemUtils* utils,
-                     Crossystem* crossystem,
+                     crossystem::Crossystem* crossystem,
                      VpdProcess* vpd_process,
                      PolicyKey* owner_key,
                      ContainerManagerInterface* android_container,
@@ -506,7 +506,7 @@ class SessionManagerImpl
   NssUtil* nss_;
   std::optional<base::FilePath> chrome_mount_ns_path_;
   SystemUtils* system_;
-  Crossystem* crossystem_;
+  crossystem::Crossystem* crossystem_;
   VpdProcess* vpd_process_;
   PolicyKey* owner_key_;
   ContainerManagerInterface* android_container_;

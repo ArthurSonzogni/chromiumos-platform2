@@ -15,10 +15,9 @@
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <libcrossystem/crossystem.h>
 
 #include "login_manager/vpd_process.h"
-
-class Crossystem;
 
 namespace dbus {
 class Bus;
@@ -54,12 +53,12 @@ class DevModeUnblockBroker {
 
   static std::unique_ptr<DevModeUnblockBroker> Create(
       SystemUtils* system,
-      Crossystem* crossystem,
+      crossystem::Crossystem* crossystem,
       VpdProcess* vpd_process,
       dbus::ObjectProxy* fwmp_proxy);
 
   DevModeUnblockBroker(SystemUtils* system,
-                       Crossystem* crossystem,
+                       crossystem::Crossystem* crossystem,
                        VpdProcess* vpd_process,
                        dbus::ObjectProxy* fwmp_proxy);
   DevModeUnblockBroker(const DevModeUnblockBroker&) = delete;
@@ -108,7 +107,7 @@ class DevModeUnblockBroker {
   bool dev_mode_unblocked_ =
       false;  // To maintain if DEV mode is already unblocked
   SystemUtils* system_ = nullptr;            // Owned by the caller.
-  Crossystem* crossystem_ = nullptr;         // Owned by the caller.
+  crossystem::Crossystem* crossystem_ = nullptr;  // Owned by the caller.
   VpdProcess* vpd_process_ = nullptr;        // Owned by the caller.
   dbus::ObjectProxy* fwmp_proxy_ = nullptr;  // Owned by the caller.
   base::WeakPtrFactory<DevModeUnblockBroker> weak_ptr_factory_{this};

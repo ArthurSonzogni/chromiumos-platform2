@@ -48,6 +48,7 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <install_attributes/libinstallattributes.h>
+#include <libcrossystem/crossystem.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
 
@@ -58,7 +59,6 @@
 #include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/browser_job.h"
-#include "login_manager/crossystem.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/device_policy_service.h"
@@ -418,7 +418,7 @@ SessionManagerImpl::SessionManagerImpl(
     NssUtil* nss,
     std::optional<base::FilePath> ns_path,
     SystemUtils* utils,
-    Crossystem* crossystem,
+    crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     PolicyKey* owner_key,
     ContainerManagerInterface* android_container,
@@ -1257,8 +1257,8 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
       return false;
     }
 
-    if (crossystem_->VbSetSystemPropertyInt(Crossystem::kClearTpmOwnerRequest,
-                                            1) != 0) {
+    if (!crossystem_->VbSetSystemPropertyInt(
+            crossystem::Crossystem::kClearTpmOwnerRequest, 1)) {
       *error = CREATE_ERROR_AND_LOG(dbus_error::kNotAvailable,
                                     "Failed to request TPM clear.");
       return false;

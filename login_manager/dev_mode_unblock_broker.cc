@@ -13,8 +13,8 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <libcrossystem/crossystem.h>
 
-#include "login_manager/crossystem.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
@@ -35,7 +35,7 @@ constexpr char DevModeUnblockBroker::kEnrollmentUnblockedFlag[] =
 
 std::unique_ptr<DevModeUnblockBroker> DevModeUnblockBroker::Create(
     SystemUtils* system,
-    Crossystem* crossystem,
+    crossystem::Crossystem* crossystem,
     VpdProcess* vpd_process,
     dbus::ObjectProxy* fwmp_proxy) {
   return std::make_unique<DevModeUnblockBroker>(system, crossystem, vpd_process,
@@ -43,7 +43,7 @@ std::unique_ptr<DevModeUnblockBroker> DevModeUnblockBroker::Create(
 }
 
 DevModeUnblockBroker::DevModeUnblockBroker(SystemUtils* system,
-                                           Crossystem* crossystem,
+                                           crossystem::Crossystem* crossystem,
                                            VpdProcess* vpd_process,
                                            dbus::ObjectProxy* fwmp_proxy)
     : system_(system),
@@ -135,7 +135,7 @@ bool DevModeUnblockBroker::IsDevModeBlocked() {
   // of dev mode.
   // - Check for FWMP space with DEVELOPER_DISABLE_BOOT flag.
   // - VPD sysyfs entry
-  // - Crossystem
+  // - crossystem::Crossystem
   bool block_dev_mode_fwmp = IsDevModeBlockedInFwmp();
   LOG(INFO) << "block_devmode_fwmp " << block_dev_mode_fwmp;
 
@@ -149,14 +149,15 @@ bool DevModeUnblockBroker::IsDevModeBlocked() {
       return true;
   }
 
-  int block_devmode_system =
-      crossystem_->VbGetSystemPropertyInt(Crossystem::kBlockDevmode);
-  if (block_devmode_system == -1) {
+  std::optional<int> block_devmode_system = crossystem_->VbGetSystemPropertyInt(
+      crossystem::Crossystem::kBlockDevmode);
+  if (!block_devmode_system) {
     LOG(ERROR) << "Failed to read block_devmode flag!";
+    return false;
   }
-  LOG(INFO) << "block_devmode_system " << block_devmode_system;
 
-  return block_devmode_system == 1;
+  LOG(INFO) << "block_devmode_system " << *block_devmode_system;
+  return *block_devmode_system == 1;
 }
 
 bool DevModeUnblockBroker::IsDevModeBlockedInFwmp() {
@@ -295,7 +296,8 @@ void DevModeUnblockBroker::UnblockDevModeInVpd(CompletionCallback completion) {
   // The block_devmode system property needs to be set to 0 as well to unblock
   // dev mode. It is stored independently from VPD and firmware management
   // parameters.
-  if (crossystem_->VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0) != 0) {
+  if (!crossystem_->VbSetSystemPropertyInt(
+          crossystem::Crossystem::kBlockDevmode, 0)) {
     LOG(ERROR) << "Failed to set system property ";
     std::move(completion)
         .Run(CreateError(dbus_error::kSystemPropertyUpdateFailed,
@@ -305,17 +307,18 @@ void DevModeUnblockBroker::UnblockDevModeInVpd(CompletionCallback completion) {
   // Clear any existing nvram_cleared flag after updating block_devmode
   // value in VPD so that init script will try to read from VPD directly
   // if sysfs entry for block_devmode is not present.
-  const int nvram_cleared_value =
-      crossystem_->VbGetSystemPropertyInt(Crossystem::kNvramCleared);
-  if (nvram_cleared_value == -1) {
+  std::optional<int> nvram_cleared_value = crossystem_->VbGetSystemPropertyInt(
+      crossystem::Crossystem::kNvramCleared);
+  if (!nvram_cleared_value) {
     LOG(ERROR) << "Failed to read nvram_cleared flag!";
     std::move(completion)
         .Run(CreateError(dbus_error::kNvramClearedReadFailed,
                          "Failed to read nvram_cleared flag."));
     return;
   }
-  if (nvram_cleared_value != 0 && (crossystem_->VbSetSystemPropertyInt(
-                                       Crossystem::kNvramCleared, 0) != 0)) {
+  if (*nvram_cleared_value != 0 &&
+      !crossystem_->VbSetSystemPropertyInt(
+          crossystem::Crossystem::kNvramCleared, 0)) {
     LOG(ERROR) << "Failed to clear nvram_cleared flag!";
     std::move(completion)
         .Run(CreateError(dbus_error::kNvramClearedUpdateFailed,
@@ -323,8 +326,8 @@ void DevModeUnblockBroker::UnblockDevModeInVpd(CompletionCallback completion) {
     return;
   }
   if (!vpd_process_->RunInBackground(
-          {{Crossystem::kBlockDevmode, "0"},
-           {Crossystem::kCheckEnrollment, "0"}},
+          {{crossystem::Crossystem::kBlockDevmode, "0"},
+           {crossystem::Crossystem::kCheckEnrollment, "0"}},
           false,
           base::BindOnce(&DevModeUnblockBroker::HandleVpdDevModeUnblockResult,
                          weak_ptr_factory_.GetWeakPtr(), false,

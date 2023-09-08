@@ -52,6 +52,7 @@
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libcrossystem/crossystem_fake.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
 
@@ -65,7 +66,6 @@
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/fake_container_manager.h"
-#include "login_manager/fake_crossystem.h"
 #include "login_manager/fake_secret_util.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
@@ -327,6 +327,7 @@ class SessionManagerImplTest : public ::testing::Test,
   SessionManagerImplTest()
       : bus_(new FakeBus()),
         device_identifier_generator_(&utils_, &metrics_),
+        crossystem_(std::make_unique<crossystem::fake::CrossystemFake>()),
         android_container_(kAndroidPid),
         powerd_proxy_(new dbus::MockObjectProxy(
             nullptr, "", dbus::ObjectPath("/fake/powerd"))),
@@ -996,7 +997,7 @@ class SessionManagerImplTest : public ::testing::Test,
   MockNssUtil nss_;
   SystemUtilsImpl real_utils_;
   testing::NiceMock<MockSystemUtils> utils_;
-  FakeCrossystem crossystem_;
+  crossystem::Crossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
   FakeContainerManager android_container_;
@@ -3635,7 +3636,7 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
         EXPECT_EQ(1, file_contents_.count(
                          SessionManagerImpl::kStatefulPreservationRequestFile));
         EXPECT_EQ(1, crossystem_.VbGetSystemPropertyInt(
-                         Crossystem::kClearTpmOwnerRequest));
+                         crossystem::Crossystem::kClearTpmOwnerRequest));
       }
     } else {
       EXPECT_FALSE(result);
