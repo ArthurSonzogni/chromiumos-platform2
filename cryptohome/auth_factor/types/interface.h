@@ -20,6 +20,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
@@ -66,7 +67,24 @@ class AuthFactorDriver {
 
   // Indicates if the factor requires the use of a Prepare operation before it
   // can be added or authenticated.
-  virtual bool IsPrepareRequired() const = 0;
+  // Specifies how the Prepare operation should be called for a given
+  // AuthFactorPreparePurpose of the given auth factor type.
+  enum class PrepareRequirement {
+    // Prepare operation isn't needed for the given purpose.
+    kNone,
+    // There are 2 cases we return |kOnce| because they need the same behavior:
+    // 1. Each prepare session the client starts will only correspond to a
+    // single actual operation of the given purpose. E.g., fingerprint
+    // enrollment.
+    // 2. Completing the Prepare operation supports multiple upcoming operations
+    // of the given purpose. E.g., legacy fingerprint auth.
+    kOnce,
+    // Completing the Prepare operation only supports 1 upcoming operation of
+    // the given purpose. E.g., fingerprint auth.
+    kEach,
+  };
+  virtual PrepareRequirement GetPrepareRequirement(
+      AuthFactorPreparePurpose purpose) const = 0;
 
   // Prepare the factor type for the addition of a new instance of this factor.
   // Returns through the asynchronous |callback|.

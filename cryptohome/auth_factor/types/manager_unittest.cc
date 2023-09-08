@@ -79,23 +79,72 @@ TEST_F(AuthFactorDriverManagerTest, GetDriverIsSameForConstAndNonconst) {
                 "All types of AuthFactorType are not all included here");
 }
 
-// Test AuthFactorDriver::IsPrepareRequired. We do this here instead of in a
+// Test AuthFactorDriver::PrepareRequirement. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler
 // to validate than N separate tests.
-TEST_F(AuthFactorDriverManagerTest, IsPrepareRequired) {
-  auto prepare_req = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsPrepareRequired();
+TEST_F(AuthFactorDriverManagerTest, PrepareRequirement) {
+  auto prepare_req = [this](AuthFactorType type,
+                            AuthFactorPreparePurpose purpose) {
+    return manager_.GetDriver(type).GetPrepareRequirement(purpose);
   };
 
-  EXPECT_THAT(prepare_req(AuthFactorType::kPassword), IsFalse());
-  EXPECT_THAT(prepare_req(AuthFactorType::kPin), IsFalse());
-  EXPECT_THAT(prepare_req(AuthFactorType::kCryptohomeRecovery), IsFalse());
-  EXPECT_THAT(prepare_req(AuthFactorType::kKiosk), IsFalse());
-  EXPECT_THAT(prepare_req(AuthFactorType::kSmartCard), IsFalse());
-  EXPECT_THAT(prepare_req(AuthFactorType::kLegacyFingerprint), IsTrue());
-  EXPECT_THAT(prepare_req(AuthFactorType::kFingerprint), IsTrue());
+  EXPECT_EQ(prepare_req(AuthFactorType::kPassword,
+                        AuthFactorPreparePurpose::kPrepareAddAuthFactor),
+            AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(prepare_req(AuthFactorType::kPin,
+                        AuthFactorPreparePurpose::kPrepareAddAuthFactor),
+            AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(prepare_req(AuthFactorType::kCryptohomeRecovery,
+                        AuthFactorPreparePurpose::kPrepareAddAuthFactor),
+            AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(prepare_req(AuthFactorType::kKiosk,
+                        AuthFactorPreparePurpose::kPrepareAddAuthFactor),
+            AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(prepare_req(AuthFactorType::kSmartCard,
+                        AuthFactorPreparePurpose::kPrepareAddAuthFactor),
+            AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(prepare_req(AuthFactorType::kLegacyFingerprint,
+                        AuthFactorPreparePurpose::kPrepareAddAuthFactor),
+            AuthFactorDriver::PrepareRequirement::kOnce);
+  EXPECT_EQ(prepare_req(AuthFactorType::kFingerprint,
+                        AuthFactorPreparePurpose::kPrepareAddAuthFactor),
+            AuthFactorDriver::PrepareRequirement::kOnce);
+  EXPECT_EQ(prepare_req(AuthFactorType::kUnspecified,
+                        AuthFactorPreparePurpose::kPrepareAddAuthFactor),
+            AuthFactorDriver::PrepareRequirement::kNone);
 
-  EXPECT_THAT(prepare_req(AuthFactorType::kUnspecified), IsFalse());
+  EXPECT_EQ(
+      prepare_req(AuthFactorType::kPassword,
+                  AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),
+      AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(
+      prepare_req(AuthFactorType::kPin,
+                  AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),
+      AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(
+      prepare_req(AuthFactorType::kCryptohomeRecovery,
+                  AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),
+      AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(
+      prepare_req(AuthFactorType::kKiosk,
+                  AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),
+      AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(
+      prepare_req(AuthFactorType::kSmartCard,
+                  AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),
+      AuthFactorDriver::PrepareRequirement::kNone);
+  EXPECT_EQ(
+      prepare_req(AuthFactorType::kLegacyFingerprint,
+                  AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),
+      AuthFactorDriver::PrepareRequirement::kOnce);
+  EXPECT_EQ(
+      prepare_req(AuthFactorType::kFingerprint,
+                  AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),
+      AuthFactorDriver::PrepareRequirement::kEach);
+  EXPECT_EQ(
+      prepare_req(AuthFactorType::kUnspecified,
+                  AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),
+      AuthFactorDriver::PrepareRequirement::kNone);
   static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
                 "All types of AuthFactorType are not all included here");
 }

@@ -1070,6 +1070,9 @@ void AuthSession::AuthenticateAuthFactor(
     return;
   }
 
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(*request_auth_factor_type);
+
   auto callback_with_metrics =
       WrapCallbackWithMetricsReporting<const PostAuthAction&>(
           std::move(callback), *request_auth_factor_type,
@@ -1080,11 +1083,37 @@ void AuthSession::AuthenticateAuthFactor(
   // places to keep code simple.
   auto [on_done_temp, on_done_with_action] =
       base::SplitOnceCallback(std::move(callback_with_metrics));
-  StatusCallback on_done =
-      base::BindOnce(std::move(on_done_temp), kNoPostAction);
 
-  const AuthFactorDriver& factor_driver =
-      auth_factor_driver_manager_->GetDriver(*request_auth_factor_type);
+  bool needs_reprepare =
+      factor_driver.GetPrepareRequirement(
+          AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor) ==
+      AuthFactorDriver::PrepareRequirement::kEach;
+
+  StatusCallback on_done;
+  if (needs_reprepare) {
+    on_done = base::BindOnce(
+        [](AuthenticateAuthFactorCallback callback,
+           AuthFactorType auth_factor_type, CryptohomeStatus status) {
+          if (status.ok()) {
+            std::move(callback).Run(kNoPostAction, std::move(status));
+            return;
+          }
+          AuthSession::PostAuthAction reprepare_action{
+              .action_type = PostAuthActionType::kReprepare};
+          user_data_auth::AuthFactorType auth_factor_type_proto =
+              AuthFactorTypeToProto(auth_factor_type);
+          user_data_auth::PrepareAuthFactorRequest request;
+          request.set_auth_factor_type(auth_factor_type_proto);
+          request.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+          reprepare_action.reprepare_request = request;
+          std::move(callback).Run(std::move(reprepare_action),
+                                  std::move(status));
+        },
+        std::move(on_done_temp), *request_auth_factor_type);
+  } else {
+    on_done = base::BindOnce(std::move(on_done_temp), kNoPostAction);
+  }
+
   AuthFactorLabelArity label_arity = factor_driver.GetAuthFactorLabelArity();
   switch (label_arity) {
     case AuthFactorLabelArity::kNone: {
@@ -2565,7 +2594,8 @@ void AuthSession::PrepareAuthFactor(
     return;
   }
 
-  if (factor_driver.IsPrepareRequired()) {
+  if (factor_driver.GetPrepareRequirement(*purpose) !=
+      AuthFactorDriver::PrepareRequirement::kNone) {
     switch (*purpose) {
       case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor: {
         auto auth_input = CreateAuthInputForPrepareForAuth(*auth_factor_type);
@@ -2664,19 +2694,6 @@ void AuthSession::TerminateAuthFactor(
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocAuthSessionInvalidAuthFactorTypeInTerminateAuthFactor),
-        ErrorActionSet({PossibleAction::kRetry}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-    std::move(on_done).Run(std::move(status));
-    return;
-  }
-  const AuthFactorDriver& factor_driver =
-      auth_factor_driver_manager_->GetDriver(*auth_factor_type);
-
-  // For auth factor types that do not need Prepare, neither do they need
-  // Terminate, return an invalid argument error.
-  if (!factor_driver.IsPrepareRequired()) {
-    CryptohomeStatus status = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionTerminateBadAuthFactorType),
         ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));

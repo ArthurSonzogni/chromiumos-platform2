@@ -4237,7 +4237,7 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   EXPECT_THAT(verify_session.authorized_intents(),
               UnorderedElementsAre(AuthIntent::kVerifyOnly));
   std::tie(action, status) = decrypt_future_without_policy.Take();
-  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
+  EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kReprepare);
   EXPECT_THAT(status, NotOk());
   EXPECT_THAT(decrypt_session1.authorized_intents(), IsEmpty());
   std::tie(action, status) = decrypt_future_with_policy.Take();

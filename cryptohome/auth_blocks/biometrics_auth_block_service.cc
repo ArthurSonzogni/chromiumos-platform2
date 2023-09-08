@@ -106,7 +106,17 @@ void BiometricsAuthBlockService::StartAuthenticateSession(
     ObfuscatedUsername obfuscated_username,
     OperationInput payload,
     PreparedAuthFactorToken::Consumer on_done) {
-  if (active_token_ || pending_token_) {
+  // Starting an authenticate session again during an active session is allowed.
+  if (active_token_ &&
+      active_token_->type() != Token::TokenType::kAuthenticate) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocBiometricsServiceCheckStartConcurrentSession),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_BIOMETRICS_BUSY);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+  if (pending_token_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocBiometricsServiceStartAuthenticateConcurrentSession),
@@ -188,14 +198,6 @@ CryptohomeStatus BiometricsAuthBlockService::Token::TerminateAuthFactor() {
 
 void BiometricsAuthBlockService::CheckSessionStartResult(
     PreparedAuthFactorToken::Consumer on_done, bool success) {
-  if (active_token_) {
-    CryptohomeStatus status = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocBiometricsServiceCheckStartConcurrentSession),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_BIOMETRICS_BUSY);
-    std::move(on_done).Run(std::move(status));
-    return;
-  }
   if (!pending_token_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsServiceStartSessionNoToken),
@@ -216,6 +218,9 @@ void BiometricsAuthBlockService::CheckSessionStartResult(
     return;
   }
   token->AttachToService(this);
+  if (active_token_) {
+    active_token_->DetachFromService();
+  }
   active_token_ = token.get();
   std::move(on_done).Run(std::move(token));
 }

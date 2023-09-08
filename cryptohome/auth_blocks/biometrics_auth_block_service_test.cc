@@ -457,34 +457,6 @@ TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateSuccess) {
   EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
 }
 
-TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateAgainFailure) {
-  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&& callback) {
-        std::move(callback).Run(true);
-      });
-
-  // Kick off the 1st start.
-  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
-      start_result;
-  service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
-                                     GetFakeInput(),
-                                     start_result.GetCallback());
-  ASSERT_TRUE(start_result.IsReady());
-  EXPECT_THAT(start_result.Get(), IsOk());
-
-  // Kick off the 2nd start.
-  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
-      second_start_result;
-  service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
-                                     GetFakeInput(),
-                                     second_start_result.GetCallback());
-  ASSERT_TRUE(second_start_result.IsReady());
-  EXPECT_EQ(second_start_result.Get().status()->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_BIOMETRICS_BUSY);
-
-  EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
-}
-
 TEST_F(BiometricsAuthBlockServiceTest,
        StartAuthenticateDuringPendingSessionFailure) {
   EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _, _))

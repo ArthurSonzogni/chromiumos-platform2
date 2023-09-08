@@ -47,7 +47,8 @@ class LegacyFingerprintAuthFactorDriver final
   bool IsSupportedByStorage(
       const std::set<AuthFactorStorageType>& configured_storage_types,
       const std::set<AuthFactorType>& configured_factors) const override;
-  bool IsPrepareRequired() const override;
+  PrepareRequirement GetPrepareRequirement(
+      AuthFactorPreparePurpose purpose) const override;
   void PrepareForAdd(const AuthInput& auth_input,
                      PreparedAuthFactorToken::Consumer callback) override;
   void PrepareForAuthenticate(

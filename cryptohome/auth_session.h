@@ -229,10 +229,16 @@ class AuthSession final {
     // Repeat the request with |repeat_request|. This will be used to reset the
     // credential lockouts.
     kRepeat,
+    // Terminate and prepare the auth factor again. This is used for the factors
+    // where an authentication attempts actually consumes the prepare token. To
+    // hide this implementation detail from Chrome, we need to implement it as a
+    // post-action.
+    kReprepare,
   };
   struct PostAuthAction {
     PostAuthActionType action_type;
     std::optional<AuthenticateAuthFactorRequest> repeat_request;
+    std::optional<user_data_auth::PrepareAuthFactorRequest> reprepare_request;
   };
 
   using AuthenticateAuthFactorCallback =

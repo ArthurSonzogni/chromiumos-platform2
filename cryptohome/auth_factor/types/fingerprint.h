@@ -55,7 +55,8 @@ class FingerprintAuthFactorDriver final
 
  private:
   bool IsSupportedByHardware() const override;
-  bool IsPrepareRequired() const override;
+  PrepareRequirement GetPrepareRequirement(
+      AuthFactorPreparePurpose purpose) const override;
   void PrepareForAdd(const AuthInput& auth_input,
                      PreparedAuthFactorToken::Consumer callback) override;
   void PrepareForAddOnGetNonce(PreparedAuthFactorToken::Consumer callback,

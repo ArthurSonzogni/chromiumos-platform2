@@ -87,8 +87,15 @@ bool FingerprintAuthFactorDriver::IsSupportedByHardware() const {
   return FingerprintAuthBlock::IsSupported(*crypto_, bio_service_).ok();
 }
 
-bool FingerprintAuthFactorDriver::IsPrepareRequired() const {
-  return true;
+AuthFactorDriver::PrepareRequirement
+FingerprintAuthFactorDriver::GetPrepareRequirement(
+    AuthFactorPreparePurpose purpose) const {
+  switch (purpose) {
+    case AuthFactorPreparePurpose::kPrepareAddAuthFactor:
+      return PrepareRequirement::kOnce;
+    case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor:
+      return PrepareRequirement::kEach;
+  }
 }
 
 void FingerprintAuthFactorDriver::PrepareForAdd(

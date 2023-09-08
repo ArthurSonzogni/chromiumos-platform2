@@ -468,7 +468,28 @@ void HandleAuthenticationResult(
                 }
               },
               std::move(auth_session)));
-      break;
+      return;
+    }
+    case AuthSession::PostAuthActionType::kReprepare: {
+      if (!post_auth_action.reprepare_request.has_value()) {
+        LOG(DFATAL) << "PostAuthActionType::kReprepare with null "
+                       "reprepare_request field.";
+        return;
+      }
+      AuthSession* auth_session_ptr = auth_session.Get();
+      auth_session_ptr->PrepareAuthFactor(
+          post_auth_action.reprepare_request.value(),
+          base::BindOnce(
+              [](InUseAuthSession unused_auth_session,
+                 CryptohomeStatus status) {
+                if (!status.ok()) {
+                  LOG(ERROR) << "Reprepare failed after an "
+                                "authentication attempt: "
+                             << std::move(status);
+                }
+              },
+              std::move(auth_session)));
+      return;
     }
   }
 }

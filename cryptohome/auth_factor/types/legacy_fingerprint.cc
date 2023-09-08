@@ -38,8 +38,10 @@ bool LegacyFingerprintAuthFactorDriver::IsSupportedByStorage(
   return false;
 }
 
-bool LegacyFingerprintAuthFactorDriver::IsPrepareRequired() const {
-  return true;
+AuthFactorDriver::PrepareRequirement
+LegacyFingerprintAuthFactorDriver::GetPrepareRequirement(
+    AuthFactorPreparePurpose purpose) const {
+  return PrepareRequirement::kOnce;
 }
 
 void LegacyFingerprintAuthFactorDriver::PrepareForAdd(
