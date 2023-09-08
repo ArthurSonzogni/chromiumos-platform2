@@ -525,6 +525,9 @@ CPU.
 
 ## update_engine.log
 
+Logs from update_engine. Useful to know what version the system upgraded to and
+from and when. Shows lsb-release inside the old and new rootfs when updating.
+
 ## upstart
 
 ## uptime

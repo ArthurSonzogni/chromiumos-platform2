@@ -129,7 +129,6 @@ const std::set<base::StringPiece> kEmptyEntries{
     "tpm_version",
     "typecd",
     "ui_log",
-    "update_engine.log",
     "upstart",
     "usb4 devices",
     "verified boot",
