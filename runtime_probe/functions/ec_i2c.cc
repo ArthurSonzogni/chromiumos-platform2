@@ -58,10 +58,8 @@ EcI2cFunction::DataType EcI2cFunction::EvalImpl() const {
 
   DataType result{};
   base::Value::Dict dv{};
-  if (size_ == 8) {
-    dv.Set("data", cmd->Data());
-  } else if (size_ == 16) {
-    dv.Set("data", cmd->Data());
+  if (size_ == 8 || size_ == 16 || size_ == 32) {
+    dv.Set("data", static_cast<int>(cmd->Data()));
   }
   result.Append(std::move(dv));
   return result;

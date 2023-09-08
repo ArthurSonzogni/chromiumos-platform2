@@ -44,7 +44,7 @@ class EcI2cFunctionTest : public BaseFunctionTest {
     }
 
     MOCK_METHOD(bool, Run, (int), (override));
-    MOCK_METHOD(uint16_t, Data, (), (const override));
+    MOCK_METHOD(uint32_t, Data, (), (const override));
     MOCK_METHOD(uint32_t, Result, (), (const override));
     MOCK_METHOD(uint8_t, I2cStatus, (), (const override));
   };
