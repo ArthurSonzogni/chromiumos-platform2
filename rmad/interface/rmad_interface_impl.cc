@@ -47,6 +47,9 @@ const std::vector<std::string> kWaitServices = {"system-services"};
 const int kWaitServicesPollInterval = 1;  // 1 second.
 const int kWaitServicesRetries = 10;
 
+constexpr char kDiagnosticsAppSwbnRelPath[] = "diagnostics_app.swbn";
+constexpr char kDiagnosticsAppCrxRelPath[] = "diagnostics_app.crx";
+
 constexpr char kSummaryDivider[] =
     "\n========================================="
     "=================================\n\n";
@@ -678,17 +681,39 @@ void RmadInterfaceImpl::SetDiagnosticsAppNotFoundHandler(
 
 void RmadInterfaceImpl::InstallExtractedDiagnosticsApp(
     InstallExtractedDiagnosticsAppCallback callback) {
+  const base::FilePath from_swbn_path =
+      working_dir_path_.Append(kDiagnosticsAppSwbnRelPath);
+  const base::FilePath from_crx_path =
+      working_dir_path_.Append(kDiagnosticsAppCrxRelPath);
+  const base::FilePath to_swbn_path =
+      unencrypted_rma_dir_path_.Append(kDiagnosticsAppSwbnRelPath);
+  const base::FilePath to_crx_path =
+      unencrypted_rma_dir_path_.Append(kDiagnosticsAppCrxRelPath);
   InstallExtractedDiagnosticsAppReply reply;
-  reply.set_error(RMAD_ERROR_USB_NOT_FOUND);
-
+  if (base::PathExists(from_swbn_path) && base::PathExists(from_crx_path)) {
+    base::CopyFile(from_swbn_path, to_swbn_path);
+    base::CopyFile(from_crx_path, to_crx_path);
+    reply.set_error(RMAD_ERROR_OK);
+  } else {
+    reply.set_error(RMAD_ERROR_DIAGNOSTICS_APP_NOT_FOUND);
+  }
   ReplyCallback(std::move(callback), reply);
 }
 
 void RmadInterfaceImpl::GetInstalledDiagnosticsApp(
     GetInstalledDiagnosticsAppCallback callback) {
+  const base::FilePath swbn_path =
+      unencrypted_rma_dir_path_.Append(kDiagnosticsAppSwbnRelPath);
+  const base::FilePath crx_path =
+      unencrypted_rma_dir_path_.Append(kDiagnosticsAppCrxRelPath);
   GetInstalledDiagnosticsAppReply reply;
-  reply.set_error(RMAD_ERROR_USB_NOT_FOUND);
-
+  if (base::PathExists(swbn_path) && base::PathExists(crx_path)) {
+    reply.set_error(RMAD_ERROR_OK);
+    reply.set_diagnostics_app_swbn_path(swbn_path.value());
+    reply.set_diagnostics_app_crx_path(crx_path.value());
+  } else {
+    reply.set_error(RMAD_ERROR_DIAGNOSTICS_APP_NOT_FOUND);
+  }
   ReplyCallback(std::move(callback), reply);
 }
 

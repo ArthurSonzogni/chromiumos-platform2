@@ -1501,7 +1501,7 @@ TEST_F(RmadInterfaceImplTest, ExtractExternalDiagnosticsApp_NoValidPartition) {
   rmad_interface.ExtractExternalDiagnosticsApp(base::BindOnce(callback));
 }
 
-TEST_F(RmadInterfaceImplTest, GetInternalDiagnosticsApp) {
+TEST_F(RmadInterfaceImplTest, InstallExtractedDiagnosticsApp_Success) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
   auto json_store =
@@ -1516,16 +1516,30 @@ TEST_F(RmadInterfaceImplTest, GetInternalDiagnosticsApp) {
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
-  // This is still a faked function.
+  // Create diagnostics app in working directory.
+  EXPECT_TRUE(
+      base::WriteFile(working_dir_path_.Append("diagnostics_app.swbn"), "123"));
+  EXPECT_TRUE(
+      base::WriteFile(working_dir_path_.Append("diagnostics_app.crx"), "456"));
+
   auto callback = [](const InstallExtractedDiagnosticsAppReply& reply,
                      bool quit_daemon) {
-    EXPECT_EQ(RMAD_ERROR_USB_NOT_FOUND, reply.error());
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.InstallExtractedDiagnosticsApp(base::BindOnce(callback));
+
+  // Check that the files are copied to unencrypted RMA directory.
+  std::string swbn_data, crx_data;
+  EXPECT_TRUE(base::ReadFileToString(
+      unencrypted_rma_dir_path_.Append("diagnostics_app.swbn"), &swbn_data));
+  EXPECT_EQ("123", swbn_data);
+  EXPECT_TRUE(base::ReadFileToString(
+      unencrypted_rma_dir_path_.Append("diagnostics_app.crx"), &crx_data));
+  EXPECT_EQ("456", crx_data);
 }
 
-TEST_F(RmadInterfaceImplTest, GetInstalledDiagnosticsApp) {
+TEST_F(RmadInterfaceImplTest, InstallExtractedDiagnosticsApp_NotFound) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
   auto json_store =
@@ -1540,10 +1554,75 @@ TEST_F(RmadInterfaceImplTest, GetInstalledDiagnosticsApp) {
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
-  // This is still a faked function.
+  auto callback = [](const InstallExtractedDiagnosticsAppReply& reply,
+                     bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_DIAGNOSTICS_APP_NOT_FOUND, reply.error());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.InstallExtractedDiagnosticsApp(base::BindOnce(callback));
+
+  EXPECT_FALSE(base::PathExists(
+      unencrypted_rma_dir_path_.Append("diagnostics_app.swbn")));
+  EXPECT_FALSE(base::PathExists(
+      unencrypted_rma_dir_path_.Append("diagnostics_app.crx")));
+}
+
+TEST_F(RmadInterfaceImplTest, GetInstalledDiagnosticsApp_Success) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, "", 0);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
+  RmadInterfaceImpl rmad_interface(
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
+      CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  // Create diagnostics app in unencrypted RMA directory.
+  const base::FilePath diagnostics_app_swbn_path =
+      unencrypted_rma_dir_path_.Append("diagnostics_app.swbn");
+  const base::FilePath diagnostics_app_crx_path =
+      unencrypted_rma_dir_path_.Append("diagnostics_app.crx");
+  EXPECT_TRUE(base::WriteFile(diagnostics_app_swbn_path, "123"));
+  EXPECT_TRUE(base::WriteFile(diagnostics_app_crx_path, "456"));
+
+  auto callback = [](const base::FilePath& diagnostics_app_swbn_path,
+                     const base::FilePath& diagnostics_app_crx_path,
+                     const GetInstalledDiagnosticsAppReply& reply,
+                     bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ(diagnostics_app_swbn_path.value(),
+              reply.diagnostics_app_swbn_path());
+    EXPECT_EQ(diagnostics_app_crx_path.value(),
+              reply.diagnostics_app_crx_path());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.GetInstalledDiagnosticsApp(base::BindOnce(
+      callback, diagnostics_app_swbn_path, diagnostics_app_crx_path));
+}
+
+TEST_F(RmadInterfaceImplTest, GetInstalledDiagnosticsApp_NotFound) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, "", 0);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
+  RmadInterfaceImpl rmad_interface(
+      json_store, working_dir_path_, unencrypted_rma_dir_path_,
+      CreateStateHandlerManager(json_store), CreateRuntimeProbeClient(false),
+      CreateShillClient(nullptr),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
+      CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
   auto callback = [](const GetInstalledDiagnosticsAppReply& reply,
                      bool quit_daemon) {
-    EXPECT_EQ(RMAD_ERROR_USB_NOT_FOUND, reply.error());
+    EXPECT_EQ(RMAD_ERROR_DIAGNOSTICS_APP_NOT_FOUND, reply.error());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetInstalledDiagnosticsApp(base::BindOnce(callback));
