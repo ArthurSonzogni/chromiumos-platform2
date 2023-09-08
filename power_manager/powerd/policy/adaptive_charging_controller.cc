@@ -1632,9 +1632,9 @@ void AdaptiveChargingController::StopAdaptiveCharging() {
   // for keeping track of metrics, even if Adaptive Charging is disabled.
   if (is_sustain_set_ && !charge_limit_enabled_) {
     SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+    is_sustain_set_ = false;
   }
 
-  is_sustain_set_ = false;
   SetSlowCharging(kSlowChargingDisabled);
   power_supply_->ClearAdaptiveChargingChargeDelay();
 }
