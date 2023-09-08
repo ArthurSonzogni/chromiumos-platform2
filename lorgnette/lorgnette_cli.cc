@@ -5,10 +5,12 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -39,6 +41,33 @@ using lorgnette::cli::ScanHandler;
 using org::chromium::lorgnette::ManagerProxy;
 
 namespace {
+
+enum class Command {
+  kList,
+  kScan,
+  kCancelScan,
+  kGetJsonCaps,
+  kShowConfig,
+  kDiscover,
+};
+
+constexpr auto kCommandMap = base::MakeFixedFlatMap<std::string_view, Command>({
+    {"cancel_scan", Command::kCancelScan},
+    {"discover", Command::kDiscover},
+    {"get_json_caps", Command::kGetJsonCaps},
+    {"list", Command::kList},
+    {"scan", Command::kScan},
+    {"show_config", Command::kShowConfig},
+});
+
+template <class T, class M>
+std::vector<T> MapKeys(const M& map) {
+  std::vector<T> keys;
+  for (const auto& [k, v] : map) {
+    keys.push_back(k);
+  }
+  return keys;
+}
 
 std::optional<std::vector<std::string>> ReadLines(base::File* file) {
   std::string buf(1 << 20, '\0');
@@ -509,16 +538,13 @@ int main(int argc, char** argv) {
 
   const std::vector<std::string>& args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
-  if (args.size() != 1 || (args[0] != "scan" && args[0] != "cancel_scan" &&
-                           args[0] != "list" && args[0] != "get_json_caps" &&
-                           args[0] != "discover" && args[0] != "show_config")) {
-    std::cerr << "usage: lorgnette_cli "
-                 "[list|scan|cancel_scan|get_json_caps|show_config] "
-                 "[FLAGS...]"
-              << std::endl;
+  if (args.size() != 1 || !base::Contains(kCommandMap, args[0])) {
+    std::cerr << "Usage: lorgnette_cli "
+              << base::JoinString(MapKeys<std::string_view>(kCommandMap), "|")
+              << " [FLAGS...]" << std::endl;
     return 1;
   }
-  const std::string& command = args[0];
+  Command command = kCommandMap.at(args[0]);
 
   // Create a task executor for this thread. This will automatically be bound
   // to the current thread so that it is usable by other code for posting tasks.
@@ -549,134 +575,142 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (command == "scan") {
-    if (!FLAGS_uuid.empty()) {
-      LOG(ERROR) << "--uuid flag is not supported in scan mode.";
-      return 1;
+  switch (command) {
+    case Command::kScan: {
+      if (!FLAGS_uuid.empty()) {
+        LOG(ERROR) << "--uuid flag is not supported in scan mode.";
+        return 1;
+      }
+
+      std::optional<lorgnette::SourceType> source_type =
+          GuessSourceType(FLAGS_scan_source);
+
+      if (!source_type.has_value()) {
+        LOG(ERROR)
+            << "Unknown source type: \"" << FLAGS_scan_source
+            << "\". Supported values are \"Platen\",\"ADF\", \"ADF Simplex\""
+               ", and \"ADF Duplex\"";
+        return 1;
+      }
+
+      lorgnette::ScanRegion region;
+      region.set_top_left_x(FLAGS_top_left_x);
+      region.set_top_left_y(FLAGS_top_left_y);
+      region.set_bottom_right_x(FLAGS_bottom_right_x);
+      region.set_bottom_right_y(FLAGS_bottom_right_y);
+
+      std::string color_mode_string = base::ToLowerASCII(FLAGS_color_mode);
+      lorgnette::ColorMode color_mode;
+      if (color_mode_string == "color") {
+        color_mode = lorgnette::MODE_COLOR;
+      } else if (color_mode_string == "grayscale" ||
+                 color_mode_string == "gray") {
+        color_mode = lorgnette::MODE_GRAYSCALE;
+      } else if (color_mode_string == "lineart" || color_mode_string == "bw") {
+        color_mode = lorgnette::MODE_LINEART;
+      } else {
+        LOG(ERROR) << "Unknown color mode: \"" << color_mode_string
+                   << "\". Supported values are \"Color\", \"Grayscale\", and "
+                      "\"Lineart\"";
+        return 1;
+      }
+
+      std::string image_format_string = base::ToLowerASCII(FLAGS_image_format);
+      lorgnette::ImageFormat image_format;
+      if (image_format_string == "png") {
+        image_format = lorgnette::IMAGE_FORMAT_PNG;
+      } else if (image_format_string == "jpg") {
+        image_format = lorgnette::IMAGE_FORMAT_JPEG;
+      } else {
+        LOG(ERROR) << "Unknown image format: \"" << image_format_string
+                   << "\". Supported values are \"PNG\" and \"JPG\"";
+        return 1;
+      }
+
+      bool success =
+          DoScan(std::move(manager), FLAGS_scan_resolution, source_type.value(),
+                 region, color_mode, image_format, FLAGS_all, FLAGS_scanner,
+                 FLAGS_output);
+      return success ? 0 : 1;
     }
 
-    std::optional<lorgnette::SourceType> source_type =
-        GuessSourceType(FLAGS_scan_source);
+    case Command::kList: {
+      std::vector<std::string> scanners = BuildScannerList(manager.get());
 
-    if (!source_type.has_value()) {
-      LOG(ERROR)
-          << "Unknown source type: \"" << FLAGS_scan_source
-          << "\". Supported values are \"Platen\",\"ADF\", \"ADF Simplex\""
-             ", and \"ADF Duplex\"";
-      return 1;
+      std::cout << "Detected scanners:" << std::endl;
+      for (int i = 0; i < scanners.size(); i++) {
+        std::cout << scanners[i] << std::endl;
+      }
+      return 0;
     }
 
-    lorgnette::ScanRegion region;
-    region.set_top_left_x(FLAGS_top_left_x);
-    region.set_top_left_y(FLAGS_top_left_y);
-    region.set_bottom_right_x(FLAGS_bottom_right_x);
-    region.set_bottom_right_y(FLAGS_bottom_right_y);
-
-    std::string color_mode_string = base::ToLowerASCII(FLAGS_color_mode);
-    lorgnette::ColorMode color_mode;
-    if (color_mode_string == "color") {
-      color_mode = lorgnette::MODE_COLOR;
-    } else if (color_mode_string == "grayscale" ||
-               color_mode_string == "gray") {
-      color_mode = lorgnette::MODE_GRAYSCALE;
-    } else if (color_mode_string == "lineart" || color_mode_string == "bw") {
-      color_mode = lorgnette::MODE_LINEART;
-    } else {
-      LOG(ERROR) << "Unknown color mode: \"" << color_mode_string
-                 << "\". Supported values are \"Color\", \"Grayscale\", and "
-                    "\"Lineart\"";
-      return 1;
+    case Command::kDiscover: {
+      std::cout << "Discovering scanners: " << std::endl;
+      base::RunLoop run_loop;
+      DiscoveryHandler handler(run_loop.QuitClosure(), manager.get());
+      if (!handler.WaitUntilConnected()) {
+        LOG(ERROR) << "Failed to set up ScannerListChangedSignal handler";
+        return 1;
+      }
+      handler.SetShowDetails(FLAGS_show_details);
+      handler.SetScannerPattern(FLAGS_scanner);
+      if (!handler.StartDiscovery()) {
+        LOG(ERROR) << "Failed to start discovery";
+        return 1;
+      }
+      run_loop.Run();
+      return 0;
     }
+    case Command::kCancelScan: {
+      if (FLAGS_uuid.empty()) {
+        LOG(ERROR) << "Must specify scan uuid to cancel using --uuid=[...]";
+        return 1;
+      }
 
-    std::string image_format_string = base::ToLowerASCII(FLAGS_image_format);
-    lorgnette::ImageFormat image_format;
-    if (image_format_string == "png") {
-      image_format = lorgnette::IMAGE_FORMAT_PNG;
-    } else if (image_format_string == "jpg") {
-      image_format = lorgnette::IMAGE_FORMAT_JPEG;
-    } else {
-      LOG(ERROR) << "Unknown image format: \"" << image_format_string
-                 << "\". Supported values are \"PNG\" and \"JPG\"";
-      return 1;
+      std::optional<lorgnette::CancelScanResponse> response =
+          CancelScan(manager.get(), FLAGS_uuid);
+      if (!response.has_value())
+        return 1;
+
+      if (!response->success()) {
+        LOG(ERROR) << "Failed to cancel scan: " << response->failure_reason();
+        return 1;
+      }
+      return 0;
     }
+    case Command::kGetJsonCaps: {
+      if (FLAGS_scanner.empty()) {
+        LOG(ERROR) << "Must specify scanner to get capabilities";
+        return 1;
+      }
 
-    bool success = DoScan(std::move(manager), FLAGS_scan_resolution,
-                          source_type.value(), region, color_mode, image_format,
-                          FLAGS_all, FLAGS_scanner, FLAGS_output);
-    return success ? 0 : 1;
-  } else if (command == "list") {
-    std::vector<std::string> scanners = BuildScannerList(manager.get());
+      std::optional<lorgnette::ScannerCapabilities> capabilities =
+          GetScannerCapabilities(manager.get(), FLAGS_scanner);
+      if (!capabilities.has_value()) {
+        LOG(ERROR) << "Received null capabilities from lorgnette";
+        return 1;
+      }
 
-    std::cout << "Detected scanners:" << std::endl;
-    for (int i = 0; i < scanners.size(); i++) {
-      std::cout << scanners[i] << std::endl;
+      std::cout << ScannerCapabilitiesToJson(capabilities.value());
+      return 0;
     }
-    return 0;
+    case Command::kShowConfig: {
+      if (FLAGS_scanner.empty()) {
+        LOG(ERROR) << "Must specify scanner to get its config";
+        return 1;
+      }
 
-  } else if (command == "discover") {
-    std::cout << "Discovering scanners: " << std::endl;
-    base::RunLoop run_loop;
-    DiscoveryHandler handler(run_loop.QuitClosure(), manager.get());
-    if (!handler.WaitUntilConnected()) {
-      LOG(ERROR) << "Failed to set up ScannerListChangedSignal handler";
-      return 1;
-    }
-    handler.SetShowDetails(FLAGS_show_details);
-    handler.SetScannerPattern(FLAGS_scanner);
-    if (!handler.StartDiscovery()) {
-      LOG(ERROR) << "Failed to start discovery";
-      return 1;
-    }
-    run_loop.Run();
-    return 0;
+      std::optional<lorgnette::ScannerConfig> config =
+          GetScannerConfig(manager.get(), FLAGS_scanner);
+      if (!config.has_value()) {
+        LOG(ERROR) << "Unable to open scanner " << FLAGS_scanner;
+        return 1;
+      }
 
-  } else if (command == "cancel_scan") {
-    if (FLAGS_uuid.empty()) {
-      LOG(ERROR) << "Must specify scan uuid to cancel using --uuid=[...]";
-      return 1;
+      lorgnette::cli::PrintScannerConfig(config.value(), FLAGS_show_inactive,
+                                         FLAGS_show_advanced, std::cout);
+      return 0;
     }
-
-    std::optional<lorgnette::CancelScanResponse> response =
-        CancelScan(manager.get(), FLAGS_uuid);
-    if (!response.has_value())
-      return 1;
-
-    if (!response->success()) {
-      LOG(ERROR) << "Failed to cancel scan: " << response->failure_reason();
-      return 1;
-    }
-    return 0;
-  } else if (command == "get_json_caps") {
-    if (FLAGS_scanner.empty()) {
-      LOG(ERROR) << "Must specify scanner to get capabilities";
-      return 1;
-    }
-
-    std::optional<lorgnette::ScannerCapabilities> capabilities =
-        GetScannerCapabilities(manager.get(), FLAGS_scanner);
-    if (!capabilities.has_value()) {
-      LOG(ERROR) << "Received null capabilities from lorgnette";
-      return 1;
-    }
-
-    std::cout << ScannerCapabilitiesToJson(capabilities.value());
-    return 0;
-  } else if (command == "show_config") {
-    if (FLAGS_scanner.empty()) {
-      LOG(ERROR) << "Must specify scanner to get its config";
-      return 1;
-    }
-
-    std::optional<lorgnette::ScannerConfig> config =
-        GetScannerConfig(manager.get(), FLAGS_scanner);
-    if (!config.has_value()) {
-      LOG(ERROR) << "Unable to open scanner " << FLAGS_scanner;
-      return 1;
-    }
-
-    lorgnette::cli::PrintScannerConfig(config.value(), FLAGS_show_inactive,
-                                       FLAGS_show_advanced, std::cout);
-    return 0;
   }
 
   NOTREACHED();
