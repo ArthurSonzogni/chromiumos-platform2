@@ -5,6 +5,7 @@
 #include "patchpanel/minijailed_process_runner.h"
 
 #include <linux/capability.h>
+#include <poll.h>
 #include <unistd.h>
 
 #include <utility>
@@ -13,8 +14,10 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <brillo/process/process.h>
 
 namespace patchpanel {
@@ -43,28 +46,84 @@ constexpr char kConntrackPath[] = "/usr/sbin/conntrack";
 constexpr char kIptablesSeccompFilterPath[] =
     "/usr/share/policy/iptables-seccomp.policy";
 
-// An empty string will be returned if read fails.
-std::string ReadBlockingFDToStringAndClose(base::ScopedFD fd) {
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "Invalid fd";
-    return "";
+// Used in HandlePollEvent() for poll(). Negative fds will be ignored by poll().
+constexpr int kInvalidFd = -1;
+
+// Consume poll() POLLIN event and append the read() result to |output_str| if
+// it's not nullptr. On POLLHUP or failure, reset the fd in |pollfd_struct|
+// (i.e., set it to a negative value) to exclude it from the next poll(). If
+// |output_str| is nullptr, the read() result will just be discarded.
+bool HandlePollEvent(struct pollfd* pollfd_struct, std::string* output_str) {
+  // Static buffer to avoid it getting allocated on stack every time.
+  static constexpr int kBufSize = 4096;
+  static char buf[kBufSize] = {0};
+
+  // No event means the function is triggered by a timeout.
+  if (pollfd_struct->revents == 0) {
+    return true;
   }
 
-  static constexpr int kBufSize = 2048;
-  char buf[kBufSize] = {0};
-  std::string output;
-  while (true) {
-    ssize_t cnt = HANDLE_EINTR(read(fd.get(), buf, kBufSize));
-    if (cnt == -1) {
-      PLOG(ERROR) << __func__ << " failed";
-      return "";
-    }
+  // Only POLLHUP means the writer side has closed the pipe and there is no
+  // remaining data to consume.
+  if (pollfd_struct->revents == POLLHUP) {
+    pollfd_struct->fd = kInvalidFd;
+    return true;
+  }
 
-    if (cnt == 0) {
-      return output;
-    }
+  // Other signal other than POLLIN and POLLHUP indicates an error. Note that
+  // POLLIN and POLLHUP can be set at the same time.
+  if (!(pollfd_struct->revents & POLLIN)) {
+    PLOG(ERROR) << "poll() failed, revent=" << pollfd_struct->revents;
+    // Note that when the fd field is negative, poll() will ignore the events
+    // field and reset the revents field to zero when return, so we don't need
+    // to clear other fields here. See `man 2 poll` for details.
+    pollfd_struct->fd = kInvalidFd;
+    return false;
+  }
 
-    output.append({buf, static_cast<size_t>(cnt)});
+  ssize_t cnt = HANDLE_EINTR(read(pollfd_struct->fd, buf, kBufSize));
+  if (cnt == -1) {
+    PLOG(ERROR) << "read() failed";
+    pollfd_struct->fd = kInvalidFd;
+    return false;
+  }
+
+  if (output_str) {
+    output_str->append({buf, static_cast<size_t>(cnt)});
+  }
+
+  return true;
+}
+
+// Reads the pipes of stdout and stderr from a child process, until the write
+// sides of both peers are closed, which is a signal that the child process is
+// exiting.
+void ReadPipesUntilClose(std::string_view logging_tag,
+                         int fd_stdout,
+                         int fd_stderr,
+                         std::string* str_stdout,
+                         std::string* str_stderr) {
+  struct pollfd pollfds[] = {
+      {.fd = fd_stdout, .events = POLLIN},
+      {.fd = fd_stderr, .events = POLLIN},
+  };
+
+  static constexpr auto kPollInterval = base::Milliseconds(500);
+  while (1) {
+    int ret = poll(pollfds, 2, kPollInterval.InMilliseconds());
+    if (ret == -1) {
+      PLOG(ERROR) << "Failed to poll() outputs for " << logging_tag;
+      break;
+    }
+    if (!HandlePollEvent(&pollfds[0], str_stdout)) {
+      LOG(ERROR) << "Failed to process stdout for " << logging_tag;
+    }
+    if (!HandlePollEvent(&pollfds[1], str_stderr)) {
+      LOG(ERROR) << "Failed to process stderr for " << logging_tag;
+    }
+    if (pollfds[0].fd == kInvalidFd && pollfds[1].fd == kInvalidFd) {
+      break;
+    }
   }
 }
 
@@ -82,45 +141,46 @@ int MinijailedProcessRunner::RunSyncDestroy(
   }
   args.push_back(nullptr);
 
+  const std::string logging_tag =
+      base::StrCat({"'", base::JoinString(argv, " "), "'"});
+
   pid_t pid;
   int fd_stdout = -1;
-  int* stdout_p = output ? &fd_stdout : nullptr;
   int fd_stderr = -1;
-  int* stderr_p = log_failures ? &fd_stderr : nullptr;
   bool ran = mj->RunPipesAndDestroy(jail, args, &pid, /*stdin=*/nullptr,
-                                    stdout_p, stderr_p);
-  if (output) {
-    *output = ReadBlockingFDToStringAndClose(base::ScopedFD(fd_stdout));
+                                    &fd_stdout, &fd_stderr);
+  if (!ran) {
+    LOG(ERROR) << "Could not execute " << logging_tag;
+    return -1;
   }
+
+  base::ScopedFD scoped_fd_stdout(fd_stdout);
+  base::ScopedFD scoped_fd_stderr(fd_stderr);
   std::string stderr_buf;
-  if (log_failures) {
-    stderr_buf = ReadBlockingFDToStringAndClose(base::ScopedFD(fd_stderr));
-    base::TrimWhitespaceASCII(stderr_buf, base::TRIM_TRAILING, &stderr_buf);
-  }
+  ReadPipesUntilClose(logging_tag, fd_stdout, fd_stderr, output,
+                      log_failures ? &stderr_buf : nullptr);
+  base::TrimWhitespaceASCII(stderr_buf, base::TRIM_TRAILING, &stderr_buf);
 
   int status = 0;
-  if (ran) {
-    ran = system_->WaitPid(pid, &status) == pid;
+  if (system_->WaitPid(pid, &status) == -1) {
+    LOG(ERROR) << "Failed to waitpid() for " << logging_tag;
+    return -1;
   }
 
-  if (!ran) {
-    LOG(ERROR) << "Could not execute '" << base::JoinString(argv, " ") << "'";
-  } else if (log_failures && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {
+  if (log_failures && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {
     if (WIFEXITED(status)) {
-      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
-                   << "' exited with code " << WEXITSTATUS(status);
+      LOG(WARNING) << logging_tag << " exited with code "
+                   << WEXITSTATUS(status);
     } else if (WIFSIGNALED(status)) {
-      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
-                   << "' exited with signal " << WTERMSIG(status);
+      LOG(WARNING) << logging_tag << " exited with signal " << WTERMSIG(status);
     } else {
-      LOG(WARNING) << "Subprocess '" << base::JoinString(argv, " ")
-                   << "' exited with unknown status " << status;
+      LOG(WARNING) << logging_tag << " exited with unknown status " << status;
     }
     if (!stderr_buf.empty()) {
       LOG(WARNING) << "stderr: " << stderr_buf;
     }
   }
-  return ran && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+  return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
 void EnterChildProcessJail() {
