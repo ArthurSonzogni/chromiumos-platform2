@@ -9,13 +9,19 @@ group("all") {
   deps = [
     ":install_libcrossystem_headers",
     ":libcrossystem",
-    ":libcrossystem-test",
-    ":libcrossystem-test_pc",
     ":libcrossystem_pc",
     ":libcrossystem_static",
   ]
+  if (use.test || use.fuzzer) {
+    deps += [
+      ":libcrossystem-test",
+      ":libcrossystem-test_pc",
+    ]
+  }
   if (use.test) {
-    deps += [ ":libcrossystem_tests" ]
+    deps += [
+      ":libcrossystem_tests",
+    ]
   }
 }
 
