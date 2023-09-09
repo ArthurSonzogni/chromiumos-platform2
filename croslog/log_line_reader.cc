@@ -64,9 +64,8 @@ void LogLineReader::OpenFile(const base::FilePath& file_path) {
   file_path_ = file_path;
   pos_ = 0;
 
-  // TODO(yoshiki): Use stat_wrapper_t and File::FStat after libchrome uprev.
-  struct stat file_stat;
-  if (fstat(file_.GetPlatformFile(), &file_stat) == 0)
+  base::stat_wrapper_t file_stat;
+  if (base::File::Fstat(file_.GetPlatformFile(), &file_stat) == 0)
     file_inode_ = file_stat.st_ino;
   DCHECK_NE(0, file_inode_);
 
