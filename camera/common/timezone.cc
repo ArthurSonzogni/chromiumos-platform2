@@ -13,6 +13,7 @@
 #include <map>
 
 #include <base/files/file_util.h>
+#include <base/no_destructor.h>
 #include <base/strings/utf_string_conversions.h>
 
 #include "cros-camera/common.h"
@@ -29,9 +30,8 @@ class TimezoneMap {
   TimezoneMap(const TimezoneMap&) = delete;
   TimezoneMap& operator=(const TimezoneMap&) = delete;
   static TimezoneMap* GetInstance() {
-    // TODO(shik): change to base::NoDestructor after libchrome uprev.
-    static TimezoneMap* instance = new TimezoneMap();
-    return instance;
+    static base::NoDestructor<TimezoneMap> instance;
+    return instance.get();
   }
 
   std::string CountryCodeForTimezone(const std::string& olson_code) {
@@ -43,7 +43,6 @@ class TimezoneMap {
     return std::string();
   }
 
- private:
   TimezoneMap() {
     // These mappings are adapted from zone.tab, which is available at
     // <http://www.ietf.org/timezones/data/zone.tab> and is a part of public
@@ -601,6 +600,7 @@ class TimezoneMap {
       map_[data.old_code] = map_[data.new_code];
   }
 
+ private:
   struct CompareCStrings {
     bool operator()(const char* str1, const char* str2) const {
       return strcmp(str1, str2) < 0;
