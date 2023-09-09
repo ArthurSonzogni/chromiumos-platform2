@@ -1439,7 +1439,9 @@ TEST_F(ServiceTest, SetCheckPortal) {
   EXPECT_FALSE(service_->IsPortalDetectionDisabled());
 
   {
-    EXPECT_CALL(*mock_device, UpdatePortalDetector(false));
+    EXPECT_CALL(*mock_device,
+                UpdatePortalDetector(
+                    Network::ValidationReason::kServicePropertyUpdate, false));
     Error error;
     service_->SetCheckPortal("false", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1448,7 +1450,9 @@ TEST_F(ServiceTest, SetCheckPortal) {
     Mock::VerifyAndClearExpectations(mock_device.get());
   }
   {
-    EXPECT_CALL(*mock_device, UpdatePortalDetector(false));
+    EXPECT_CALL(*mock_device,
+                UpdatePortalDetector(
+                    Network::ValidationReason::kServicePropertyUpdate, false));
     Error error;
     service_->SetCheckPortal("true", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1457,7 +1461,9 @@ TEST_F(ServiceTest, SetCheckPortal) {
     Mock::VerifyAndClearExpectations(mock_device.get());
   }
   {
-    EXPECT_CALL(*mock_device, UpdatePortalDetector(false));
+    EXPECT_CALL(*mock_device,
+                UpdatePortalDetector(
+                    Network::ValidationReason::kServicePropertyUpdate, false));
     Error error;
     service_->SetCheckPortal("auto", &error);
     EXPECT_TRUE(error.IsSuccess());
@@ -1466,7 +1472,7 @@ TEST_F(ServiceTest, SetCheckPortal) {
     Mock::VerifyAndClearExpectations(mock_device.get());
   }
   {
-    EXPECT_CALL(*mock_device, UpdatePortalDetector(_)).Times(0);
+    EXPECT_CALL(*mock_device, UpdatePortalDetector(_, false)).Times(0);
     Error error;
     service_->SetCheckPortal("xxx", &error);
     EXPECT_FALSE(error.IsSuccess());
@@ -2432,7 +2438,9 @@ TEST_F(ServiceTest, RequestPortalDetection) {
   ON_CALL(mock_manager_, FindDeviceFromService(_))
       .WillByDefault(Return(mock_device));
 
-  EXPECT_CALL(*mock_device, UpdatePortalDetector(true)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_device, UpdatePortalDetector(
+                                Network::ValidationReason::kDBusRequest, true))
+      .WillOnce(Return(true));
 
   Error error;
   service_->RequestPortalDetection(&error);

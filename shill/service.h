@@ -1029,8 +1029,7 @@ class Service : public base::RefCounted<Service> {
   // portal detection became enabled. Otherwise request to stop portal
   // detection if the Service is connected and portal detection became
   // disabled.
-  void OnPortalDetectionConfigurationChange(bool restart,
-                                            const std::string& reason);
+  void OnPortalDetectionConfigurationChange(bool restart);
 
   void InitializeServiceStateTransitionMetrics();
   void UpdateServiceStateTransitionMetrics(Service::ConnectState new_state);

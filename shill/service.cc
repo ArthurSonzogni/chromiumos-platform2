@@ -1271,7 +1271,8 @@ void Service::RequestPortalDetection(Error* error) {
                           "Failed to find device from service: " + log_name());
     return;
   }
-  if (!device->UpdatePortalDetector(/*restart=*/true)) {
+  if (!device->UpdatePortalDetector(Network::ValidationReason::kDBusRequest,
+                                    /*restart=*/true)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         "Failed to restart portal detection for service: " + log_name());
@@ -2199,12 +2200,11 @@ bool Service::SetCheckPortal(const std::string& check_portal, Error* error) {
     return false;
   }
   check_portal_ = check_portal;
-  OnPortalDetectionConfigurationChange(/*restart=*/false, __func__);
+  OnPortalDetectionConfigurationChange(/*restart=*/false);
   return true;
 }
 
-void Service::OnPortalDetectionConfigurationChange(bool restart,
-                                                   const std::string& reason) {
+void Service::OnPortalDetectionConfigurationChange(bool restart) {
   if (!IsConnected()) {
     return;
   }
@@ -2219,10 +2219,8 @@ void Service::OnPortalDetectionConfigurationChange(bool restart,
   // Stop portal detection if it should now be disabled and ensure that the
   // Service transitions to the "online" state now that portal detection has
   // stopped.
-  LOG(INFO) << log_name()
-            << ": Updating PortalDetector after configuration change: "
-            << reason;
-  device->UpdatePortalDetector(restart);
+  device->UpdatePortalDetector(
+      Network::ValidationReason::kServicePropertyUpdate, restart);
 }
 
 std::string Service::GetGuid(Error* error) {
@@ -2317,7 +2315,7 @@ bool Service::SetProxyConfig(const std::string& proxy_config, Error* error) {
   proxy_config_ = proxy_config;
   // Force portal detection to restart if it was already running: the new
   // Proxy settings could change validation results.
-  OnPortalDetectionConfigurationChange(/*restart=*/true, __func__);
+  OnPortalDetectionConfigurationChange(/*restart=*/true);
   adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
   return true;
 }

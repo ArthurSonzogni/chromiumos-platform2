@@ -1683,11 +1683,15 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
   // If the tethering specific multiplexed Network was just connected, start
   // portal detection. Not needed when connecting DUN as DEFAULT because
   // Device::OnConnectionUpdated() already does it.
+  // TODO(b/291845893): Remove this special case once the portal detection state
+  // machine is entirely controlled from Network and once Device is not involved
+  // anymore.
   if (multiplexed_dun_ongoing && multiplexed_tethering_pdn_) {
     // On a successful completion of a multiplexed DUN connection, the APN must
     // have been connected.
     CHECK(apn_connected);
-    multiplexed_tethering_pdn_->network()->StartPortalDetection(true);
+    multiplexed_tethering_pdn_->network()->StartPortalDetection(
+        Network::ValidationReason::kNetworkConnectionUpdate, true);
   }
 
   // Report success.

@@ -80,7 +80,10 @@ class MockNetwork : public Network {
               (const patchpanel::Client::NeighborReachabilityEvent&));
   MOCK_METHOD(bool, ipv4_gateway_found, (), (const, override));
   MOCK_METHOD(bool, ipv6_gateway_found, (), (const, override));
-  MOCK_METHOD(bool, StartPortalDetection, (bool), (override));
+  MOCK_METHOD(bool,
+              StartPortalDetection,
+              (Network::ValidationReason, bool),
+              (override));
   MOCK_METHOD(bool, RestartPortalDetection, (), (override));
   MOCK_METHOD(void, StopPortalDetection, (), (override));
   MOCK_METHOD(bool, IsPortalDetectionInProgress, (), (const, override));

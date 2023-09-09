@@ -3339,7 +3339,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
 
   // Once the new Network is started, portal detection should be explicitly
   // requested.
-  EXPECT_CALL(*default_pdn_, StartPortalDetection(_)).WillOnce(Return(true));
+  EXPECT_CALL(*default_pdn_, StartPortalDetection).WillOnce(Return(true));
 
   // 3rd step: Network reports connection updated
   device_->OnConnectionUpdated(kTestInterfaceIndex);
@@ -3709,7 +3709,7 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
 
   // Once the new Network is started, portal detection should be explicitly
   // requested.
-  EXPECT_CALL(*default_pdn_, StartPortalDetection(_)).WillOnce(Return(true));
+  EXPECT_CALL(*default_pdn_, StartPortalDetection).WillOnce(Return(true));
 
   // 3rd step: Network reports connection updated
   device_->OnConnectionUpdated(kTestInterfaceIndex);

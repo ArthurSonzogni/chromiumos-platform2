@@ -154,6 +154,28 @@ class Network {
     kConnected,
   };
 
+  // Reasons for starting or restarting portal detection on a Network.
+  enum class ValidationReason {
+    // IPv4 or IPv6 configuration of the network has completed.
+    kNetworkConnectionUpdate,
+    // Service order has changed.
+    kServiceReorder,
+    // A Service property relevant to network validation has changed.
+    kServicePropertyUpdate,
+    // A Manager property relevant to network validation has changed.
+    kManagerPropertyUpdate,
+    // A DBus request to recheck network validation has been received.
+    kDBusRequest,
+    // A L2 neighbor event has been received for an ethernet link indicating
+    // the gateway is not reachable. This event can trigger Internet access
+    // revalidation checks only on ethernet links.
+    kEthernetGatewayUnreachable,
+    // A L2 neighbor event has been received for an ethernet link indicating
+    // the gateway is reachable. This event can trigger Internet access
+    // revalidation checks only on ethernet links.
+    kEthernetGatewayReachable,
+  };
+
   explicit Network(
       int interface_index,
       const std::string& interface_name,
@@ -275,7 +297,7 @@ class Network {
   // cycle is started only if |reset| is true, otherwise the call does nothing.
   // Returns true if portal detection starts successfully or was already running
   // and |reset| is false.
-  mockable bool StartPortalDetection(bool reset);
+  mockable bool StartPortalDetection(ValidationReason reason, bool reset);
   // Schedules the next portal detection attempt for the current network
   // validation cycle. Returns true if portal detection restarts successfully.
   // If portal detection fails to restart, it is stopped.
@@ -554,6 +576,8 @@ class Network {
 };
 
 std::ostream& operator<<(std::ostream& stream, const Network& network);
+std::ostream& operator<<(std::ostream& stream,
+                         Network::ValidationReason reason);
 
 }  // namespace shill
 

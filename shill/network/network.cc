@@ -953,34 +953,37 @@ std::optional<net_base::IPAddress> Network::gateway() const {
   return std::nullopt;
 }
 
-bool Network::StartPortalDetection(bool reset) {
+bool Network::StartPortalDetection(ValidationReason reason, bool reset) {
   if (!IsConnected()) {
-    LOG(INFO) << *this
-              << ": Cannot start portal detection: Network is not connected";
+    LOG(INFO) << *this << " " << __func__ << "(" << reason
+              << "): Cannot start portal detection: Network is not connected";
     return false;
   }
 
   if (!reset && IsPortalDetectionInProgress()) {
-    LOG(INFO) << *this << ": Portal detection is already running.";
+    LOG(INFO) << *this << " " << __func__ << "(" << reason
+              << "): Portal detection is already running.";
     return true;
   }
 
   const auto local_address = local();
   if (!local_address) {
-    LOG(ERROR) << *this
-               << ": Cannot start portal detection: No valid IP address";
+    LOG(ERROR) << *this << " " << __func__ << "(" << reason
+               << "): Cannot start portal detection: No valid IP address";
     return false;
   }
 
   portal_detector_ = CreatePortalDetector();
   if (!portal_detector_->Start(interface_name_, local_address->GetFamily(),
                                dns_servers(), logging_tag_)) {
-    LOG(ERROR) << *this << ": Portal detection failed to start.";
+    LOG(ERROR) << *this << " " << __func__ << "(" << reason
+               << "): Portal detection failed to start.";
     portal_detector_.reset();
     return false;
   }
 
-  LOG(INFO) << *this << ": Portal detection started.";
+  LOG(INFO) << *this << " " << __func__ << "(" << reason
+            << "): Portal detection started.";
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationStart(interface_index_);
   }
@@ -1241,6 +1244,26 @@ void Network::ReportNeighborLinkMonitorFailure(
 
 std::ostream& operator<<(std::ostream& stream, const Network& network) {
   return stream << network.logging_tag();
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         Network::ValidationReason reason) {
+  switch (reason) {
+    case Network::ValidationReason::kNetworkConnectionUpdate:
+      return stream << "NetworkConnectionUpdate";
+    case Network::ValidationReason::kServiceReorder:
+      return stream << "ServiceReorder";
+    case Network::ValidationReason::kServicePropertyUpdate:
+      return stream << "ServicePropertyUpdate";
+    case Network::ValidationReason::kManagerPropertyUpdate:
+      return stream << "ManagerPropertyUpdate";
+    case Network::ValidationReason::kDBusRequest:
+      return stream << "DbusRequest";
+    case Network::ValidationReason::kEthernetGatewayUnreachable:
+      return stream << "EthernetGatewayUnreachable";
+    case Network::ValidationReason::kEthernetGatewayReachable:
+      return stream << "EthernetGatewayReachable";
+  }
 }
 
 }  // namespace shill

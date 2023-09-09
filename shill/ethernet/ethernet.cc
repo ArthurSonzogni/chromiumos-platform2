@@ -920,7 +920,8 @@ void Ethernet::OnNeighborReachabilityEvent(
     // Network validation is expected to time out, do not force a restart in
     // case some other mechanism has already triggered a revalidation which
     // would otherwise get cancelled.
-    UpdatePortalDetector(/*restart=*/false);
+    UpdatePortalDetector(Network::ValidationReason::kEthernetGatewayUnreachable,
+                         /*restart=*/false);
   }
 
   // When a reachability success event is received and the connection is thought
@@ -932,7 +933,8 @@ void Ethernet::OnNeighborReachabilityEvent(
               << ": gateway reachability event in 'no-connectivity' state.";
     // Validation should be confirmed as soon as possible. If Internet is
     // validation is expected to be short so a restart is always forced.
-    UpdatePortalDetector(/*restart=*/true);
+    UpdatePortalDetector(Network::ValidationReason::kEthernetGatewayReachable,
+                         /*restart=*/true);
   }
 }
 

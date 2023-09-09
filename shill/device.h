@@ -150,7 +150,8 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   //   PortalDetector instance with the latest network layer properties.
   // If the Service is connected and portal detection should not be running, it
   // is stopped and the connection state of the Service is set to "online".
-  mockable bool UpdatePortalDetector(bool restart);
+  mockable bool UpdatePortalDetector(Network::ValidationReason reason,
+                                     bool restart);
 
   const RpcIdentifier& GetRpcIdentifier() const;
   virtual std::string GetStorageIdentifier() const;

@@ -2414,8 +2414,12 @@ TEST_F(ManagerTest, SetCheckPortalList) {
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
 
-  EXPECT_CALL(*mock_devices_[0], UpdatePortalDetector(false));
-  EXPECT_CALL(*mock_devices_[1], UpdatePortalDetector(false));
+  EXPECT_CALL(*mock_devices_[0],
+              UpdatePortalDetector(
+                  Network::ValidationReason::kManagerPropertyUpdate, false));
+  EXPECT_CALL(*mock_devices_[1],
+              UpdatePortalDetector(
+                  Network::ValidationReason::kManagerPropertyUpdate, false));
 
   Error error;
   SetCheckPortalList("ethernet,cellular", &error);
