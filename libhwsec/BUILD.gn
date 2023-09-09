@@ -111,31 +111,33 @@ install_config("install_tpm2_error_h") {
   install_path = "/usr/include/chromeos/libhwsec/error"
 }
 
-shared_library("libhwsec_test") {
-  sources = [
-    "factory/tpm2_simulator_factory_for_test.cc",
-    "platform/fake_platform.cc",
-    "proxy/tpm2_simulator_proxy_for_test.cc",
-    "test_utils/fake_tpm_nvram_for_test.cc",
-  ]
-  if (use.tpm) {
-    sources += [ "test_utils/tpm1/test_fixture.cc" ]
+if (use.test) {
+  shared_library("libhwsec_test") {
+    sources = [
+      "factory/tpm2_simulator_factory_for_test.cc",
+      "platform/fake_platform.cc",
+      "proxy/tpm2_simulator_proxy_for_test.cc",
+      "test_utils/fake_tpm_nvram_for_test.cc",
+    ]
+    if (use.tpm) {
+      sources += [ "test_utils/tpm1/test_fixture.cc" ]
+    }
+    pkg_deps = [ "libcrossystem-test" ]
+    configs += [ ":target_defaults" ]
+    libs = [
+      "tpm2",
+      "tpm2_simulator_executor",
+      "trunks",
+      "trunks_test",
+      "trunksd_lib",
+      "pinweaver",
+    ]
+    install_path = "lib"
+    deps = [
+      ":hardware_abstraction_internal_library",
+      ":libhwsec",
+    ]
   }
-  pkg_deps = [ "libcrossystem-test" ]
-  configs += [ ":target_defaults" ]
-  libs = [
-    "tpm2",
-    "tpm2_simulator_executor",
-    "trunks",
-    "trunks_test",
-    "trunksd_lib",
-    "pinweaver",
-  ]
-  install_path = "lib"
-  deps = [
-    ":hardware_abstraction_internal_library",
-    ":libhwsec",
-  ]
 }
 
 config("libhwsec_tpm1_config") {
