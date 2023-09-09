@@ -30,9 +30,6 @@ namespace {
 // device.
 constexpr char kSideloadingAllowedBootAttribute[] = "arc_sideloading_allowed";
 
-// TODO(victorhsieh): switch to base::DoNothing() once libchrome is upreved.
-void DoNothing(ArcSideloadStatusInterface::Status, const char*) {}
-
 }  // namespace
 
 ArcSideloadStatus::ArcSideloadStatus(dbus::ObjectProxy* boot_lockbox_proxy)
@@ -99,7 +96,7 @@ void ArcSideloadStatus::OnBootLockboxServiceAvailable(bool service_available) {
     return;
   }
 
-  GetAdbSideloadAllowed(base::BindOnce(&DoNothing));
+  GetAdbSideloadAllowed(base::DoNothing());
 }
 
 void ArcSideloadStatus::GetAdbSideloadAllowed(
