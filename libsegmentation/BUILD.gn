@@ -14,13 +14,15 @@ group("all") {
     ":install_tmpfiles_config",
     ":internal_protos",
     ":libsegmentation",
-    ":libsegmentation-test",
-    ":libsegmentation-test_pc",
     ":libsegmentation_pc",
     ":libsegmentation_static",
   ]
   if (use.test) {
-    deps += [ ":libsegmentation_tests" ]
+    deps += [
+      ":libsegmentation-test",
+      ":libsegmentation-test_pc",
+      ":libsegmentation_tests",
+    ]
   }
 }
 
