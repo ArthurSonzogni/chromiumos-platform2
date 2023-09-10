@@ -423,6 +423,38 @@ void ConvertToKeymasterMessage(
   out->Reinitialize(param_set.param_set());
 }
 
+std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>
+ConvertKeyCharacteristics(const ::keymaster::AuthorizationSet& hw_enforced,
+                          const ::keymaster::AuthorizationSet& sw_enforced,
+                          bool include_keystore_enforced = true) {
+  // TODO(b/299981713) : Add conversion for Software Security level.
+  // The current function makes the assumption that we are not using Software
+  // Security Level.
+  std::vector<arc::mojom::keymint::KeyCharacteristicsPtr> key_chars_array;
+
+  // KeyMint Enforced Key Characteristics.
+  auto keyMintEnforcedChars = arc::mojom::keymint::KeyCharacteristics::New(
+      arc::mojom::keymint::SecurityLevel::TRUSTED_ENVIRONMENT,
+      ConvertFromKeymasterMessage(hw_enforced));
+
+  if (!keyMintEnforcedChars.is_null() &&
+      !keyMintEnforcedChars->authorizations.empty()) {
+    key_chars_array.push_back(std::move(keyMintEnforcedChars));
+  }
+
+  // Keystore Enforced Key characteristics.
+  auto keystoreEnforcedChars = arc::mojom::keymint::KeyCharacteristics::New(
+      arc::mojom::keymint::SecurityLevel::KEYSTORE,
+      ConvertFromKeymasterMessage(sw_enforced));
+
+  if (include_keystore_enforced && !keystoreEnforcedChars.is_null() &&
+      !keystoreEnforcedChars->authorizations.empty()) {
+    key_chars_array.push_back(std::move(keystoreEnforcedChars));
+  }
+
+  return key_chars_array;
+}
+
 // Request Methods.
 std::unique_ptr<::keymaster::GetKeyCharacteristicsRequest>
 MakeGetKeyCharacteristicsRequest(
@@ -701,19 +733,9 @@ MakeGetKeyCharacteristicsResult(
         km_response.error);
   }
 
-  // Enforced response corresponds to Trusted Execution
-  // Environment(TEE) security level.
-  auto teeChars = arc::mojom::keymint::KeyCharacteristics::New(
-      arc::mojom::keymint::SecurityLevel::TRUSTED_ENVIRONMENT,
-      ConvertFromKeymasterMessage(km_response.enforced));
-  // Unenforced response corresponds to Software security level.
-  auto softwareChars = arc::mojom::keymint::KeyCharacteristics::New(
-      arc::mojom::keymint::SecurityLevel::SOFTWARE,
-      ConvertFromKeymasterMessage(km_response.unenforced));
-
-  std::vector<arc::mojom::keymint::KeyCharacteristicsPtr> output;
-  output.push_back(std::move(teeChars));
-  output.push_back(std::move(softwareChars));
+  auto output =
+      ConvertKeyCharacteristics(km_response.enforced, km_response.unenforced,
+                                /* include_keystore_enforced = */ false);
 
   return arc::mojom::keymint::KeyCharacteristicsArrayOrError::
       NewKeyCharacteristics(std::move(output));
@@ -732,18 +754,8 @@ arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeGenerateKeyResult(
                                   km_response.key_blob.key_material_size);
 
   // Create the Key Characteristics Array.
-  // Enforced response corresponds to Trusted Execution
-  // Environment(TEE) security level.
-  auto teeChars = arc::mojom::keymint::KeyCharacteristics::New(
-      arc::mojom::keymint::SecurityLevel::TRUSTED_ENVIRONMENT,
-      ConvertFromKeymasterMessage(km_response.enforced));
-  // Unenforced response corresponds to Software security level.
-  auto softwareChars = arc::mojom::keymint::KeyCharacteristics::New(
-      arc::mojom::keymint::SecurityLevel::SOFTWARE,
-      ConvertFromKeymasterMessage(km_response.unenforced));
-  std::vector<arc::mojom::keymint::KeyCharacteristicsPtr> key_chars_array;
-  key_chars_array.push_back(std::move(teeChars));
-  key_chars_array.push_back(std::move(softwareChars));
+  auto key_chars_array =
+      ConvertKeyCharacteristics(km_response.enforced, km_response.unenforced);
 
   // Create the Certificate Array.
   std::vector<arc::mojom::keymint::CertificatePtr> cert_array =
@@ -769,18 +781,8 @@ arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeImportKeyResult(
                                   km_response.key_blob.key_material_size);
 
   // Create the Key Characteristics Array.
-  // Enforced response corresponds to Trusted Execution
-  // Environment(TEE) security level.
-  auto teeChars = arc::mojom::keymint::KeyCharacteristics::New(
-      arc::mojom::keymint::SecurityLevel::TRUSTED_ENVIRONMENT,
-      ConvertFromKeymasterMessage(km_response.enforced));
-  // Unenforced response corresponds to Software security level.
-  auto softwareChars = arc::mojom::keymint::KeyCharacteristics::New(
-      arc::mojom::keymint::SecurityLevel::SOFTWARE,
-      ConvertFromKeymasterMessage(km_response.unenforced));
-  std::vector<arc::mojom::keymint::KeyCharacteristicsPtr> key_chars_array;
-  key_chars_array.push_back(std::move(teeChars));
-  key_chars_array.push_back(std::move(softwareChars));
+  auto key_chars_array =
+      ConvertKeyCharacteristics(km_response.enforced, km_response.unenforced);
 
   // Create the Certificate Array.
   std::vector<arc::mojom::keymint::CertificatePtr> cert_array =
@@ -806,18 +808,8 @@ arc::mojom::keymint::KeyCreationResultOrErrorPtr MakeImportWrappedKeyResult(
                                   km_response.key_blob.key_material_size);
 
   // Create the Key Characteristics Array.
-  // Enforced response corresponds to Trusted Execution
-  // Environment(TEE) security level.
-  auto teeChars = arc::mojom::keymint::KeyCharacteristics::New(
-      arc::mojom::keymint::SecurityLevel::TRUSTED_ENVIRONMENT,
-      ConvertFromKeymasterMessage(km_response.enforced));
-  // Unenforced response corresponds to Software security level.
-  auto softwareChars = arc::mojom::keymint::KeyCharacteristics::New(
-      arc::mojom::keymint::SecurityLevel::SOFTWARE,
-      ConvertFromKeymasterMessage(km_response.unenforced));
-  std::vector<arc::mojom::keymint::KeyCharacteristicsPtr> key_chars_array;
-  key_chars_array.push_back(std::move(teeChars));
-  key_chars_array.push_back(std::move(softwareChars));
+  auto key_chars_array =
+      ConvertKeyCharacteristics(km_response.enforced, km_response.unenforced);
 
   // Create the Certificate Array.
   std::vector<arc::mojom::keymint::CertificatePtr> cert_array =
