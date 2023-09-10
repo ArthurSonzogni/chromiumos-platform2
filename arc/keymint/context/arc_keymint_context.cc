@@ -284,9 +284,75 @@ keymaster_error_t ArcKeyMintContext::CreateKeyBlob(
     ::keymaster::KeymasterKeyBlob* key_blob,
     ::keymaster::AuthorizationSet* hw_enforced,
     ::keymaster::AuthorizationSet* sw_enforced) const {
-  keymaster_error_t error =
-      SetKeyBlobAuthorizations(key_description, origin, os_version_,
-                               os_patchlevel_, hw_enforced, sw_enforced);
+  // Check whether the key blob can be securely stored by pure software secure
+  // key storage.
+  bool canStoreBySecureKeyStorageIfRequired = false;
+  if (GetSecurityLevel() != KM_SECURITY_LEVEL_SOFTWARE &&
+      pure_soft_secure_key_storage_ != nullptr) {
+    pure_soft_secure_key_storage_->HasSlot(
+        &canStoreBySecureKeyStorageIfRequired);
+  }
+
+  bool needStoreBySecureKeyStorage = false;
+  if (key_description.GetTagValue(::keymaster::TAG_ROLLBACK_RESISTANCE)) {
+    needStoreBySecureKeyStorage = true;
+    if (!canStoreBySecureKeyStorageIfRequired) {
+      return KM_ERROR_ROLLBACK_RESISTANCE_UNAVAILABLE;
+    }
+  }
+
+  if (GetSecurityLevel() != KM_SECURITY_LEVEL_SOFTWARE) {
+    // We're pretending to be some sort of secure hardware.  Put relevant tags
+    // in hw_enforced.
+    for (auto& entry : key_description) {
+      switch (entry.tag) {
+        case KM_TAG_PURPOSE:
+        case KM_TAG_ALGORITHM:
+        case KM_TAG_KEY_SIZE:
+        case KM_TAG_RSA_PUBLIC_EXPONENT:
+        case KM_TAG_BLOB_USAGE_REQUIREMENTS:
+        case KM_TAG_DIGEST:
+        case KM_TAG_PADDING:
+        case KM_TAG_BLOCK_MODE:
+        case KM_TAG_MIN_SECONDS_BETWEEN_OPS:
+        case KM_TAG_MAX_USES_PER_BOOT:
+        case KM_TAG_USER_SECURE_ID:
+        case KM_TAG_NO_AUTH_REQUIRED:
+        case KM_TAG_AUTH_TIMEOUT:
+        case KM_TAG_CALLER_NONCE:
+        case KM_TAG_MIN_MAC_LENGTH:
+        case KM_TAG_KDF:
+        case KM_TAG_EC_CURVE:
+        case KM_TAG_ECIES_SINGLE_HASH_MODE:
+        case KM_TAG_USER_AUTH_TYPE:
+        case KM_TAG_ORIGIN:
+        case KM_TAG_OS_VERSION:
+        case KM_TAG_OS_PATCHLEVEL:
+        case KM_TAG_EARLY_BOOT_ONLY:
+        case KM_TAG_UNLOCKED_DEVICE_REQUIRED:
+        case KM_TAG_RSA_OAEP_MGF_DIGEST:
+        case KM_TAG_ROLLBACK_RESISTANCE:
+          hw_enforced->push_back(entry);
+          break;
+
+        case KM_TAG_USAGE_COUNT_LIMIT:
+          // Enforce single use key with usage count limit = 1 into secure key
+          // storage.
+          if (canStoreBySecureKeyStorageIfRequired && entry.integer == 1) {
+            needStoreBySecureKeyStorage = true;
+            hw_enforced->push_back(entry);
+          }
+          break;
+
+        default:
+          break;
+      }
+    }
+  }
+
+  keymaster_error_t error = SetKeyBlobAuthorizations(
+      key_description, origin, os_version_, os_patchlevel_, hw_enforced,
+      sw_enforced, GetKmVersion());
   if (error != KM_ERROR_OK) {
     return error;
   }
@@ -298,8 +364,24 @@ keymaster_error_t ArcKeyMintContext::CreateKeyBlob(
     return error;
   }
 
-  return SerializeKeyDataBlob(key_material, hidden, *hw_enforced, *sw_enforced,
-                              key_blob);
+  error = SerializeKeyDataBlob(key_material, hidden, *hw_enforced, *sw_enforced,
+                               key_blob);
+  if (error != KM_ERROR_OK) {
+    return error;
+  }
+
+  // Pretend to be some sort of secure hardware that can securely store the key
+  // blob.
+  if (!needStoreBySecureKeyStorage) {
+    return KM_ERROR_OK;
+  }
+  ::keymaster::km_id_t keyid;
+  if (!soft_keymaster_enforcement_.CreateKeyId(*key_blob, &keyid)) {
+    return KM_ERROR_UNKNOWN_ERROR;
+  }
+  assert(needStoreBySecureKeyStorage && canStoreBySecureKeyStorageIfRequired);
+
+  return pure_soft_secure_key_storage_->WriteKey(keyid, *key_blob);
 }
 
 keymaster_error_t ArcKeyMintContext::ParseKeyBlob(
@@ -336,7 +418,26 @@ keymaster_error_t ArcKeyMintContext::ParseKeyBlob(
     return KM_ERROR_INVALID_ARGUMENT;
   }
 
+  // Pretend to be some sort of secure hardware that can securely store
+  // the key blob. Check the key blob is still securely stored now.
+  if (hw_enforced.Contains(KM_TAG_ROLLBACK_RESISTANCE) ||
+      hw_enforced.Contains(KM_TAG_USAGE_COUNT_LIMIT)) {
+    if (pure_soft_secure_key_storage_ == nullptr) {
+      return KM_ERROR_INVALID_KEY_BLOB;
+    }
+    ::keymaster::km_id_t keyid = 0;
+    bool exists = false;
+    if (!soft_keymaster_enforcement_.CreateKeyId(key_blob, &keyid)) {
+      return KM_ERROR_INVALID_KEY_BLOB;
+    }
+    error = pure_soft_secure_key_storage_->KeyExists(keyid, &exists);
+    if (error != KM_ERROR_OK || !exists) {
+      return KM_ERROR_INVALID_KEY_BLOB;
+    }
+  }
+
   ::keymaster::KeyFactory* factory = GetKeyFactory(algorithm.value());
+
   return factory->LoadKey(std::move(key_material), additional_params,
                           std::move(hw_enforced), std::move(sw_enforced), key);
 }
@@ -365,10 +466,10 @@ keymaster_error_t ArcKeyMintContext::UpgradeKeyBlob(
   // Try to upgrade system version and patchlevel, return if upgrade fails.
   bool os_version_did_change = false;
   bool patchlevel_did_change = false;
-  if (!UpgradeIntegerTag(::keymaster::TAG_OS_VERSION, os_version_, &sw_enforced,
+  if (!UpgradeIntegerTag(::keymaster::TAG_OS_VERSION, os_version_, &hw_enforced,
                          &os_version_did_change) ||
       !UpgradeIntegerTag(::keymaster::TAG_OS_PATCHLEVEL, os_patchlevel_,
-                         &sw_enforced, &patchlevel_did_change)) {
+                         &hw_enforced, &patchlevel_did_change)) {
     return KM_ERROR_INVALID_ARGUMENT;
   }
 
