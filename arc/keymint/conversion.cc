@@ -924,6 +924,16 @@ arc::mojom::keymint::ByteArrayOrErrorPtr MakeUpdateResult(
   return arc::mojom::keymint::ByteArrayOrError::NewOutput(std::move(output));
 }
 
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeGetRootOfTrustResult(
+    const ::keymaster::GetRootOfTrustResponse& km_response) {
+  if (km_response.error != KM_ERROR_OK) {
+    return arc::mojom::keymint::ByteArrayOrError::NewError(km_response.error);
+  }
+
+  return arc::mojom::keymint::ByteArrayOrError::NewOutput(
+      km_response.rootOfTrust);
+}
+
 arc::mojom::keymint::BeginResultOrErrorPtr MakeBeginResult(
     const ::keymaster::BeginOperationResponse& km_response) {
   if (km_response.error != KM_ERROR_OK) {

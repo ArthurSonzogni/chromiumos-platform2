@@ -210,6 +210,42 @@ void KeyMintServer::RunKeyMintRequest_SingleInput(
                      std::move(callback)));
 }
 
+template <typename KmMember, typename KmRequest, typename KmResponse>
+void KeyMintServer::RunKeyMintRequest_GetRootOfTrust(
+    const base::Location& location,
+    KmMember member,
+    std::unique_ptr<KmRequest> request,
+    base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
+  auto task_lambda =
+      [](const base::Location& location,
+         scoped_refptr<base::TaskRunner> original_task_runner,
+         ::keymaster::AndroidKeymaster* keymaster, KmMember member,
+         std::unique_ptr<KmRequest> request,
+         base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
+        // Prepare a KeyMint response data structure.
+        auto response =
+            std::make_unique<KmResponse>(keymaster->message_version());
+
+        // Execute the operation.
+        auto result = (*keymaster.*member)(*request);
+        // Post |callback| to the |original_task_runner| given |response|.
+
+        response->error = result.error;
+        response->rootOfTrust = result.rootOfTrust;
+
+        original_task_runner->PostTask(
+            location, base::BindOnce(std::move(callback), std::move(response)));
+      };
+  // Post the KeyMint operation to a background thread while capturing the
+  // current task runner.
+  backend_thread_.task_runner()->PostTask(
+      location,
+      base::BindOnce(task_lambda, location,
+                     base::SingleThreadTaskRunner::GetCurrentDefault(),
+                     backend_.keymint(), member, std::move(request),
+                     std::move(callback)));
+}
+
 void KeyMintServer::AddRngEntropy(const std::vector<uint8_t>& data,
                                   AddRngEntropyCallback callback) {
   // Convert input |data| into |km_request|. All data is deep copied to avoid
@@ -480,10 +516,25 @@ void KeyMintServer::GetRootOfTrustChallenge(
 
 void KeyMintServer::GetRootOfTrust(const std::vector<uint8_t>& challenge,
                                    GetRootOfTrustCallback callback) {
-  // Implement this when needed.
-  auto error =
-      arc::mojom::keymint::ByteArrayOrError::NewError(KM_ERROR_UNIMPLEMENTED);
-  std::move(callback).Run(std::move(error));
+  // Convert input |request| into |km_request|. All data is deep copied to avoid
+  // use-after-free.
+  auto km_request = std::make_unique<::keymaster::GetRootOfTrustRequest>(
+      backend_.keymint()->message_version(), challenge);
+
+  auto task_lambda = base::BindOnce(
+      [](GetRootOfTrustCallback callback,
+         std::unique_ptr<::keymaster::GetRootOfTrustResponse> km_response) {
+        // Run callback.
+        CHECK(km_response);
+        auto response = MakeGetRootOfTrustResult(*km_response);
+        std::move(callback).Run(std::move(response));
+      },
+      std::move(callback));
+
+  // Call KeyMint.
+  RunKeyMintRequest_GetRootOfTrust(
+      FROM_HERE, &::keymaster::AndroidKeymaster::GetRootOfTrust,
+      std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::SendRootOfTrust(const std::vector<uint8_t>& root_of_trust,

@@ -160,6 +160,13 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
       std::unique_ptr<KmRequest> request,
       base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback);
 
+  template <typename KmMember, typename KmRequest, typename KmResponse>
+  void RunKeyMintRequest_GetRootOfTrust(
+      const base::Location& location,
+      KmMember member,
+      std::unique_ptr<KmRequest> request,
+      base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback);
+
   template <typename KmMember, typename KmResponse>
   void RunKeyMintRequest_EmptyInput(
       const base::Location& location,

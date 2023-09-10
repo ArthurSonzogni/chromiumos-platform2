@@ -136,6 +136,9 @@ arc::mojom::keymint::ByteArrayOrErrorPtr MakeUpgradeKeyResult(
 arc::mojom::keymint::ByteArrayOrErrorPtr MakeUpdateResult(
     const ::keymaster::UpdateOperationResponse& km_response);
 
+arc::mojom::keymint::ByteArrayOrErrorPtr MakeGetRootOfTrustResult(
+    const ::keymaster::GetRootOfTrustResponse& km_response);
+
 arc::mojom::keymint::BeginResultOrErrorPtr MakeBeginResult(
     const ::keymaster::BeginOperationResponse& km_response);
 
