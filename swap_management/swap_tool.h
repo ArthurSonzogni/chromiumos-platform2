@@ -81,8 +81,6 @@ class SwapTool {
  private:
   absl::StatusOr<bool> IsZramSwapOn();
   absl::StatusOr<uint64_t> GetMemTotal();
-  absl::Status SetDefaultLowMemoryMargin(uint64_t mem_total);
-  absl::Status InitializeMMTunables(uint64_t mem_total);
   absl::StatusOr<uint64_t> GetZramSize(uint64_t mem_total);
   absl::Status EnableZramSwapping();
 

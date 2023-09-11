@@ -69,7 +69,6 @@ FilePmdMapped:         0 kB
 DirectMap4k:      188268 kB
 DirectMap2M:     8200192 kB)";
 const char kZramDisksize8G[] = "16679780352";
-const char kChromeosLowMemMargin8G[] = "413 3181";
 }  // namespace
 
 class MockSwapToolUtil : public swap_management::SwapToolUtil {
@@ -182,20 +181,14 @@ TEST_F(SwapToolTest, SwapStartWithoutSwapEnabled) {
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
-  // GetMemTotal
-  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
-                      Return(absl::OkStatus())));
-  // InitializeMMTunables
-  EXPECT_CALL(
-      mock_util_,
-      WriteFile(base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
-                kChromeosLowMemMargin8G))
-      .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(
       mock_util_,
       WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
       .WillOnce(Return(absl::OkStatus()));
+  // GetMemTotal
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
+      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
+                      Return(absl::OkStatus())));
   // GetZramSize
   EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
                               base::FilePath("/var/lib/swap/swap_size"), _, _))
@@ -223,20 +216,14 @@ TEST_F(SwapToolTest, SwapStartButSwapIsDisabled) {
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
-  // GetMemTotal
-  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
-                      Return(absl::OkStatus())));
-  // InitializeMMTunables
-  EXPECT_CALL(
-      mock_util_,
-      WriteFile(base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
-                kChromeosLowMemMargin8G))
-      .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(
       mock_util_,
       WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
       .WillOnce(Return(absl::OkStatus()));
+  // GetMemTotal
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
+      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
+                      Return(absl::OkStatus())));
   // GetZramSize
   EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
                               base::FilePath("/var/lib/swap/swap_size"), _, _))
@@ -250,20 +237,14 @@ TEST_F(SwapToolTest, SwapStartWithEmptySwapZramSize) {
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
-  // GetMemTotal
-  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
-                      Return(absl::OkStatus())));
-  // InitializeMMTunables
-  EXPECT_CALL(
-      mock_util_,
-      WriteFile(base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
-                kChromeosLowMemMargin8G))
-      .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(
       mock_util_,
       WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
       .WillOnce(Return(absl::OkStatus()));
+  // GetMemTotal
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
+      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
+                      Return(absl::OkStatus())));
   // GetZramSize
   EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
                               base::FilePath("/var/lib/swap/swap_size"), _, _))

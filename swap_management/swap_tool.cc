@@ -193,30 +193,6 @@ absl::StatusOr<uint64_t> SwapTool::GetMemTotal() {
   return absl::NotFoundError("Could not get MemTotal in /proc/meminfo");
 }
 
-// Compute fraction of total RAM used for low-mem margin. The fraction is
-// given in bips. A "bip" or "basis point" is 1/100 of 1%.
-absl::Status SwapTool::SetDefaultLowMemoryMargin(uint64_t mem_total) {
-  // Calculate critical margin in MiB, which is 5.2% free. Ignore the decimal.
-  uint64_t critical_margin = (static_cast<double>(mem_total) / 1024) * 0.052;
-  // Calculate moderate margin in MiB, which is 40% free. Ignore the decimal.
-  uint64_t moderate_margin = (static_cast<double>(mem_total) / 1024) * 0.4;
-  // Write into margin special file.
-  return SwapToolUtil::Get()->WriteFile(
-      base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
-      std::to_string(critical_margin) + " " + std::to_string(moderate_margin));
-}
-
-// Initialize MM tunnables.
-absl::Status SwapTool::InitializeMMTunables(uint64_t mem_total) {
-  absl::Status status = SetDefaultLowMemoryMargin(mem_total);
-  if (!status.ok())
-    return status;
-
-  return SwapToolUtil::Get()->WriteFile(
-      base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
-      std::to_string(kMinFilelistDefaultValueKB));
-}
-
 // Return zram (compressed ram disk) size in byte for swap.
 // kSwapSizeFile contains the zram size in MiB.
 // Empty or missing kSwapSizeFile means use default size, which is
@@ -503,13 +479,16 @@ absl::Status SwapTool::SwapStart() {
     return absl::OkStatus();
   }
 
+  // Initialize min_filelist_kbytes.
+  if (!SwapToolUtil::Get()
+           ->WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
+                       std::to_string(kMinFilelistDefaultValueKB))
+           .ok())
+    LOG(WARNING) << status;
+
   absl::StatusOr<uint64_t> mem_total = GetMemTotal();
   if (!mem_total.ok())
     return mem_total.status();
-
-  status = InitializeMMTunables(*mem_total);
-  if (!status.ok())
-    return status;
 
   absl::StatusOr<uint64_t> size_byte = GetZramSize(*mem_total);
   if (!size_byte.ok() || *size_byte == 0)
@@ -604,22 +583,10 @@ std::string SwapTool::SwapStatus() {
 
   // Show tunables.
   if (SwapToolUtil::Get()
-          ->ReadFileToString(
-              base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"), &tmp)
-          .ok())
-    output << "low-memory margin (MiB): " + tmp;
-  if (SwapToolUtil::Get()
           ->ReadFileToString(base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
                              &tmp)
           .ok())
     output << "min_filelist_kbytes (KiB): " + tmp;
-  if (SwapToolUtil::Get()
-          ->ReadFileToString(
-              base::FilePath(
-                  "/sys/kernel/mm/chromeos-low_mem/ram_vs_swap_weight"),
-              &tmp)
-          .ok())
-    output << "ram_vs_swap_weight: " + tmp;
   if (SwapToolUtil::Get()
           ->ReadFileToString(base::FilePath("/proc/sys/vm/extra_free_kbytes"),
                              &tmp)
