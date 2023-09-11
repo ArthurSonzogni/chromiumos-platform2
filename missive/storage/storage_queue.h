@@ -66,6 +66,9 @@ using ErrorInjectionHandlerType =
 // sequencing id to be eliminated.
 class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
  public:
+  // Metadata file name prefix.
+  static constexpr char kMetadataFileNamePrefix[] = "META";
+
   // These values are persisted to logs. Entries should not be renumbered and
   // numeric values should never be reused.
   enum ResourceExhaustedCase : int {

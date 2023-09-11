@@ -74,9 +74,6 @@ constexpr size_t kCompressionThreshold = 2;
 const CompressionInformation::CompressionAlgorithm kCompressionType =
     CompressionInformation::COMPRESSION_SNAPPY;
 
-// Metadata file name prefix.
-constexpr char METADATA_NAME[] = "META";
-
 // Forbidden file/folder names
 const char kInvalidFilePrefix[] = "..";
 #if defined(OS_WIN)
@@ -1092,9 +1089,10 @@ TEST_P(StorageQueueTest,
   ResetTestStorageQueue();
 
   // Delete all metadata files.
-  EnsureDeletingFiles(options.directory(),
-                      /*recursive=*/false, base::FileEnumerator::FILES,
-                      base::StrCat({METADATA_NAME, ".*"}));
+  EnsureDeletingFiles(
+      options.directory(),
+      /*recursive=*/false, base::FileEnumerator::FILES,
+      base::StrCat({StorageQueue::kMetadataFileNamePrefix, ".*"}));
 
   // Avoid init resume upload upon non-empty queue restart.
   {
@@ -1153,7 +1151,8 @@ TEST_P(StorageQueueTest,
 
   // Delete the last metadata file.
   {  // scoping this block so that dir_enum is not used later.
-    const auto last_metadata_file_pattern = base::StrCat({METADATA_NAME, ".2"});
+    const auto last_metadata_file_pattern =
+        base::StrCat({StorageQueue::kMetadataFileNamePrefix, ".2"});
     base::FileEnumerator dir_enum(options.directory(),
                                   /*recursive=*/false,
                                   base::FileEnumerator::FILES,

@@ -121,6 +121,7 @@ static_library("storage_test_support") {
 static_library("storage_util") {
   sources = [ "storage_util.cc" ]
   configs += [ ":target_defaults" ]
+  deps = [ ":storage_queue" ]
 }
 
 static_library("storage") {

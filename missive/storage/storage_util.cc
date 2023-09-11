@@ -7,25 +7,21 @@
 #include <string>
 #include <tuple>
 
+#include <base/files/file.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/uuid.h>
 
+#include "missive/storage/storage_queue.h"
 #include "missive/util/file.h"
 #include "missive/util/status.h"
 
 namespace reporting {
 
-// Find all subdirectories in the storage directory that represent storage
-// queues based on the subdirectory name. Returns a set of tuples of
-// <Priority,GenerationGuid> where each tuple represents a valid storage
-// queue directory. Queue directories are named in the format:
-// <Priority>.<GenerationGuid> (e.g. foo/bar/Security.Xhd34k,
-// foo/bar/FastBatch.bKd3La1). If the directory name follows this format,
-// then it is a valid queue directory so we parse the priority and
-// generation guid and return them. The exception to this naming convention
-// are legacy queue directories which may be named by priority with no
-// generation guid (e.g. foo/bar/Security,  foo/bar/FastBatch). In this case
-// we set the generation guid in the queue parameter to be an empty string.
+// static
 StorageDirectory::Set StorageDirectory::FindQueueDirectories(
     const StorageOptions& options) {
   Set queue_params;
@@ -56,11 +52,12 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
   return queue_params;
 }
 
+// static
 StatusOr<std::tuple<Priority, GenerationGuid>>
 StorageDirectory::GetPriorityAndGenerationGuid(const base::FilePath& full_name,
                                                const StorageOptions& options) {
   // Try to parse generation guid from file path
-  const auto generation_guid = ParseGenerationGuidFromFileName(full_name);
+  const auto generation_guid = ParseGenerationGuidFromFilePath(full_name);
   if (!generation_guid.ok()) {
     return generation_guid.status();
   }
@@ -72,7 +69,8 @@ StorageDirectory::GetPriorityAndGenerationGuid(const base::FilePath& full_name,
   return std::make_tuple(priority.ValueOrDie(), generation_guid.ValueOrDie());
 }
 
-StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFileName(
+// static
+StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFilePath(
     const base::FilePath& full_name) {
   // The string returned by `Extension()` includes the leading period, i.e
   // ".txt" instead of "txt", so remove the period just get the text part of
@@ -84,7 +82,7 @@ StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFileName(
                       full_name.MaybeAsASCII()}));
   }
 
-  std::string extension_without_leading_period =
+  const std::string extension_without_leading_period =
       full_name.Extension().substr(1);
 
   const auto generation_guid =
@@ -98,8 +96,9 @@ StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFileName(
   return generation_guid.AsLowercaseString();
 }
 
+// static
 StatusOr<Priority> StorageDirectory::ParsePriorityFromQueueDirectory(
-    const base::FilePath full_path, const StorageOptions& options) {
+    const base::FilePath& full_path, const StorageOptions& options) {
   for (const auto& priority_queue_options_pair :
        options.ProduceQueuesOptionsList()) {
     if (priority_queue_options_pair.second.directory() ==
@@ -112,20 +111,65 @@ StatusOr<Priority> StorageDirectory::ParsePriorityFromQueueDirectory(
                               full_path.MaybeAsASCII()}));
 }
 
-bool StorageDirectory::DeleteEmptySubdirectories(
-    const base::FilePath directory) {
-  base::FileEnumerator dir_enum(directory,
+// static
+bool StorageDirectory::IsMetaDataFile(const base::FilePath& filepath) {
+  const auto found = filepath.BaseName().MaybeAsASCII().find(
+      StorageQueue::kMetadataFileNamePrefix);
+  return found != std::string::npos;
+}
+
+// static
+bool StorageDirectory::QueueDirectoryContainsNoUnconfirmedRecords(
+    const base::FilePath& queue_directory) {
+  base::FileEnumerator queue_dir_enum(queue_directory,
+                                      /*recursive=*/false,
+                                      base::FileEnumerator::FILES);
+
+  for (base::FilePath entry = queue_dir_enum.Next(); !entry.empty();
+       entry = queue_dir_enum.Next()) {
+    if (!IsMetaDataFile(entry) && queue_dir_enum.GetInfo().GetSize() > 0) {
+      // It's a record that has not been confirmed.
+      return false;
+    }
+  }
+  return true;
+}
+
+// static
+bool StorageDirectory::DeleteEmptyMultigenerationQueueDirectories(
+    const base::FilePath& storage_directory) {
+  base::FileEnumerator dir_enum(storage_directory,
                                 /*recursive=*/false,
                                 base::FileEnumerator::DIRECTORIES);
-  return DeleteFilesWarnIfFailed(
-      dir_enum, base::BindRepeating([](const base::FilePath& directory) {
-        LOG(ERROR) << "Checking " << directory.MaybeAsASCII();
-        if (base::IsDirectoryEmpty(directory)) {
-          LOG(INFO) << "Deleting empty queue directory "
-                    << directory.MaybeAsASCII();
-          return true;
+
+  const bool executed_without_error = DeleteFilesWarnIfFailed(
+      dir_enum, base::BindRepeating([](const base::FilePath& queue_directory) {
+        bool should_delete_queue_directory =
+            ParseGenerationGuidFromFilePath(queue_directory).ok() &&
+            QueueDirectoryContainsNoUnconfirmedRecords(queue_directory);
+
+        if (!should_delete_queue_directory) {
+          return false;
         }
-        return false;
+
+        LOG(INFO) << "Attempting to delete multigenerational queue directory "
+                  << queue_directory.MaybeAsASCII();
+
+        const bool deleted_queue_files_successfully =
+            DeleteFilesWarnIfFailed(base::FileEnumerator(
+                queue_directory, false, base::FileEnumerator::FILES));
+
+        LOG_IF(ERROR, !deleted_queue_files_successfully)
+            << "Cannot delete queue directory "
+            << queue_directory.MaybeAsASCII()
+            << ". Failed to delete files within directory.";
+
+        return deleted_queue_files_successfully;
       }));
+
+  LOG_IF(ERROR, !executed_without_error)
+      << "Error occurred while deleting queue directories";
+
+  return executed_without_error;
 }
 }  // namespace reporting

@@ -176,7 +176,9 @@ void Storage::Create(
 
     void OnStart() override {
       CheckOnValidSequence();
-      StorageDirectory::DeleteEmptySubdirectories(
+      // TODO(b/300553971): delete empty queues periodically, not just during
+      // storage creation.
+      StorageDirectory::DeleteEmptyMultigenerationQueueDirectories(
           storage_->options_.directory());
 
       // Get the information we need to create queues
@@ -189,8 +191,8 @@ void Storage::Create(
         return;
       }
 
-      // Encryption is enabled. Locate the latest signed_encryption_key file
-      // with matching key signature after deserialization.
+      // Encryption is enabled. Locate the latest signed_encryption_key
+      // file with matching key signature after deserialization.
       const auto download_key_result =
           storage_->key_in_storage_->DownloadKeyFile();
       if (!download_key_result.ok()) {

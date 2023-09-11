@@ -52,6 +52,7 @@
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
+#include "missive/storage/storage_util.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
@@ -1599,6 +1600,48 @@ TEST_P(StorageTest, WriteIntoStorageReopenWriteMoreAndFlush) {
   EXPECT_TRUE(RecordsArrivedInExpectedOrder(upload_store_.Records(), allKData));
   EXPECT_TRUE(
       RecordsArrivedInExpectedOrder(upload_store_.Records(), allKMoreData));
+}
+
+// This test verifies that "empty" multigeneration queue directories are deleted
+// when storage is created. "Empty" means that there are no unconfirmed records
+// in the directory - it may still contain META files or empty record files with
+// size 0, and these are fine to delete.
+TEST_P(StorageTest, EmptyMultigenerationalQueuesAreDeletedOnStartup) {
+  CreateTestStorageOrDie(BuildTestStorageOptions());
+  WriteStringOrDie(FAST_BATCH, kData[0]);
+
+  {
+    // Set uploader expectations.
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+        .WillOnce(
+            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+              return TestUploader::SetUp(FAST_BATCH, &waiter, this)
+                  .Required(0, kData[0])
+                  .Complete();
+            }))
+        .RetiresOnSaturation();
+
+    // Forward time to trigger upload
+    SetExpectedUploadsCount();
+    task_environment_.FastForwardBy(base::Seconds(1));
+  }
+
+  // Confirm #0 and forward time again, removing data #0
+  ConfirmOrDie(FAST_BATCH, /*sequencing_id=*/0);
+
+  // Shutdown storage
+  ResetTestStorage();
+
+  // Startup storage. It should delete the FAST_BATCH queue directory since all
+  // records have been confirmed and theoretically deleted from the directory.
+  CreateTestStorageOrDie(BuildTestStorageOptions());
+
+  const int expected_num_queue_directories = 0;
+  const int num_queue_directories =
+      StorageDirectory::FindQueueDirectories(options_).size();
+  EXPECT_THAT(num_queue_directories, Eq(expected_num_queue_directories));
 }
 
 TEST_P(StorageTest, WriteAndRepeatedlyUploadWithConfirmations) {

@@ -85,9 +85,6 @@ void SendResExCaseToUma(StorageQueue::ResourceExhaustedCase case_enum) {
                       << static_cast<int>(case_enum);
 }
 
-// Metadata file name prefix.
-constexpr char METADATA_NAME[] = "META";
-
 // The size in bytes that all files and records are rounded to (for privacy:
 // make it harder to differ between kinds of records).
 constexpr size_t FRAME_SIZE = 16u;
@@ -747,7 +744,7 @@ Status StorageQueue::WriteMetadata(std::string_view current_record_digest) {
   ASSIGN_OR_RETURN(scoped_refptr<SingleFile> meta_file,
                    SingleFile::Create(
                        {.filename = options_.directory()
-                                        .Append(METADATA_NAME)
+                                        .Append(kMetadataFileNamePrefix)
                                         .AddExtensionASCII(base::NumberToString(
                                             next_sequencing_id_)),
                         .size = 0,
@@ -881,7 +878,7 @@ Status StorageQueue::RestoreMetadata(
   base::FileEnumerator dir_enum(options_.directory(),
                                 /*recursive=*/false,
                                 base::FileEnumerator::FILES,
-                                base::StrCat({METADATA_NAME, ".*"}));
+                                base::StrCat({kMetadataFileNamePrefix, ".*"}));
   for (auto full_name = dir_enum.Next(); !full_name.empty();
        full_name = dir_enum.Next()) {
     const auto file_sequence_id =
@@ -952,7 +949,7 @@ void StorageQueue::DeleteOutdatedMetadata(int64_t sequencing_id_to_keep) const {
   base::FileEnumerator dir_enum(options_.directory(),
                                 /*recursive=*/false,
                                 base::FileEnumerator::FILES,
-                                base::StrCat({METADATA_NAME, ".*"}));
+                                base::StrCat({kMetadataFileNamePrefix, ".*"}));
   DeleteFilesWarnIfFailed(
       dir_enum,
       base::BindRepeating(
