@@ -277,9 +277,10 @@ int MinijailedProcessRunner::iptables(Iptables::Table table,
                                       base::StringPiece chain,
                                       const std::vector<std::string>& argv,
                                       bool log_failures,
+                                      std::optional<base::TimeDelta> timeout,
                                       std::string* output) {
   return RunIptables(kIptablesPath, table, command, chain, argv, log_failures,
-                     output);
+                     timeout, output);
 }
 
 int MinijailedProcessRunner::ip6tables(Iptables::Table table,
@@ -287,9 +288,10 @@ int MinijailedProcessRunner::ip6tables(Iptables::Table table,
                                        base::StringPiece chain,
                                        const std::vector<std::string>& argv,
                                        bool log_failures,
+                                       std::optional<base::TimeDelta> timeout,
                                        std::string* output) {
   return RunIptables(kIp6tablesPath, table, command, chain, argv, log_failures,
-                     output);
+                     timeout, output);
 }
 
 int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
@@ -298,6 +300,7 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
                                          std::string_view chain,
                                          const std::vector<std::string>& argv,
                                          bool log_failures,
+                                         std::optional<base::TimeDelta> timeout,
                                          std::string* output) {
   std::vector<std::string> args = {std::string(iptables_path), "-t",
                                    Iptables::TableName(table),
@@ -318,7 +321,8 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
   // Set up seccomp filter.
   mj_->UseSeccompFilter(jail, kIptablesSeccompFilterPath);
 
-  return RunSyncDestroy(args, mj_, jail, log_failures, output);
+  return RunSyncDestroyWithTimeout(args, mj_, jail, log_failures, timeout,
+                                   output);
 }
 
 int MinijailedProcessRunner::modprobe_all(

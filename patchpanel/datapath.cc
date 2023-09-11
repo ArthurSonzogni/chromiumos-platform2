@@ -2137,16 +2137,16 @@ std::string Datapath::DumpIptables(IpFamily family, Iptables::Table table) {
   std::vector<std::string> argv = {"-x", "-v", "-n", "-w"};
   switch (family) {
     case IpFamily::kIPv4:
-      if (process_runner_->iptables(table, Iptables::Command::kL, /*chain=*/"",
-                                    argv,
-                                    /*log_failures=*/true, &result) != 0) {
+      if (process_runner_->iptables(
+              table, Iptables::Command::kL, /*chain=*/"", argv,
+              /*log_failures=*/true, /*timeout=*/std::nullopt, &result) != 0) {
         LOG(ERROR) << "Could not dump iptables " << table;
       }
       break;
     case IpFamily::kIPv6:
-      if (process_runner_->ip6tables(table, Iptables::Command::kL, /*chain=*/"",
-                                     argv,
-                                     /*log_failures=*/true, &result) != 0) {
+      if (process_runner_->ip6tables(
+              table, Iptables::Command::kL, /*chain=*/"", argv,
+              /*log_failures=*/true, /*timeout=*/std::nullopt, &result) != 0) {
         LOG(ERROR) << "Could not dump ip6tables " << table;
       }
       break;

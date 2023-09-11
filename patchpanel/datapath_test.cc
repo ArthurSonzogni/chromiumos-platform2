@@ -84,6 +84,7 @@ class MockProcessRunner : public MinijailedProcessRunner {
                base::StringPiece chain,
                const std::vector<std::string>& argv,
                bool log_failures,
+               std::optional<base::TimeDelta> timeout,
                std::string* output),
               (override));
   MOCK_METHOD(int,
@@ -93,6 +94,7 @@ class MockProcessRunner : public MinijailedProcessRunner {
                base::StringPiece chain,
                const std::vector<std::string>& argv,
                bool log_failures,
+               std::optional<base::TimeDelta> timeout,
                std::string* output),
               (override));
   MOCK_METHOD(int,
@@ -184,12 +186,12 @@ void Verify_iptables(MockProcessRunner& runner,
       << "incorrect command name in expected args: " << args;
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
     EXPECT_CALL(runner, iptables(*table, *command, StrEq(chain),
-                                 ElementsAreArray(argv), _, nullptr))
+                                 ElementsAreArray(argv), _, _, nullptr))
         .WillOnce(Return(0));
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
     EXPECT_CALL(runner, ip6tables(*table, *command, StrEq(chain),
-                                  ElementsAreArray(argv), _, nullptr))
+                                  ElementsAreArray(argv), _, _, nullptr))
         .WillOnce(Return(0));
   }
 }
@@ -211,13 +213,13 @@ void Verify_iptables_in_sequence(MockProcessRunner& runner,
       << "incorrect command name in expected args: " << args;
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
     EXPECT_CALL(runner, iptables(*table, *command, StrEq(chain),
-                                 ElementsAreArray(argv), _, nullptr))
+                                 ElementsAreArray(argv), _, _, nullptr))
         .InSequence(sequence)
         .WillOnce(Return(0));
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
     EXPECT_CALL(runner, ip6tables(*table, *command, StrEq(chain),
-                                  ElementsAreArray(argv), _, nullptr))
+                                  ElementsAreArray(argv), _, _, nullptr))
         .InSequence(sequence)
         .WillOnce(Return(0));
   }
@@ -1168,9 +1170,9 @@ TEST(DatapathTest, StartDownstreamLocalOnlyNetwork) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables).Times(0);
+  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(*runner, ip).Times(0);
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
@@ -1218,9 +1220,9 @@ TEST(DatapathTest, StopDownstreamLocalOnlyNetwork) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
-  EXPECT_CALL(*runner, iptables(_, _, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables).Times(0);
+  EXPECT_CALL(*runner, ip6tables).Times(0);
+  EXPECT_CALL(*runner, ip).Times(0);
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
@@ -1788,12 +1790,12 @@ TEST(DatapathTest, DumpIptables) {
 
   EXPECT_CALL(*runner,
               iptables(Iptables::Table::kMangle, Iptables::Command::kL,
-                       StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _))
-      .WillOnce(DoAll(SetArgPointee<5>("<iptables output>"), Return(0)));
-  EXPECT_CALL(*runner,
-              ip6tables(Iptables::Table::kMangle, Iptables::Command::kL,
-                        StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _))
-      .WillOnce(DoAll(SetArgPointee<5>("<ip6tables output>"), Return(0)));
+                       StrEq(""), ElementsAre("-x", "-v", "-n", "-w"), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>("<iptables output>"), Return(0)));
+  EXPECT_CALL(*runner, ip6tables(Iptables::Table::kMangle,
+                                 Iptables::Command::kL, StrEq(""),
+                                 ElementsAre("-x", "-v", "-n", "-w"), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>("<ip6tables output>"), Return(0)));
 
   Datapath datapath(runner, firewall, &system);
   EXPECT_EQ("<iptables output>",

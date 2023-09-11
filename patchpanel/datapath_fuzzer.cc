@@ -49,6 +49,7 @@ class FakeProcessRunner : public MinijailedProcessRunner {
                   std::string_view chain,
                   const std::vector<std::string>& argv,
                   bool log_failures,
+                  std::optional<base::TimeDelta> timeout,
                   std::string* output) override {
     return 0;
   }
