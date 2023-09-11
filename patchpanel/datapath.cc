@@ -2119,15 +2119,16 @@ bool Datapath::ModifyIptables(IpFamily family,
                               Iptables::Command command,
                               base::StringPiece chain,
                               const std::vector<std::string>& argv,
-                              bool log_failures) {
+                              bool log_failures,
+                              std::optional<base::TimeDelta> timeout) {
   bool success = true;
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
     success &= process_runner_->iptables(table, command, chain, argv,
-                                         log_failures) == 0;
+                                         log_failures, timeout) == 0;
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
     success &= process_runner_->ip6tables(table, command, chain, argv,
-                                          log_failures) == 0;
+                                          log_failures, timeout) == 0;
   }
   return success;
 }

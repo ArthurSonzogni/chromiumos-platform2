@@ -430,7 +430,7 @@ TEST_F(MulticastCountersServiceTest, StartMulticastCountersService) {
     EXPECT_CALL(
         *datapath_,
         ModifyIptables(rule.ip_family, Iptables::Table::kMangle, rule.command,
-                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
+                       StrEq(rule.chain), ElementsAreArray(rule.argv), _, _));
   }
 
   multicast_counters_svc_->Start();
@@ -486,7 +486,7 @@ TEST_F(MulticastCountersServiceTest, StopMulticastCountersService) {
     EXPECT_CALL(
         *datapath_,
         ModifyIptables(rule.ip_family, Iptables::Table::kMangle, rule.command,
-                       StrEq("INPUT"), ElementsAreArray(rule.argv), _));
+                       StrEq("INPUT"), ElementsAreArray(rule.argv), _, _));
   }
   for (const auto& rule : expected_chain_flushes) {
     EXPECT_CALL(*datapath_, FlushChain(rule.ip_family, Iptables::Table::kMangle,
@@ -509,14 +509,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceAdded) {
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_mdns"),
-                             ElementsAreArray(mdns_args), _))
+                             ElementsAreArray(mdns_args), _, _))
       .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "eth0", "-j", "rx_ethernet_ssdp",
                                         "-w"};
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_ssdp"),
-                             ElementsAreArray(ssdp_args), _))
+                             ElementsAreArray(ssdp_args), _, _))
       .Times(1);
   multicast_counters_svc_->OnPhysicalDeviceAdded(eth0_device);
 }
@@ -530,14 +530,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAdded) {
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_mdns"),
-                             ElementsAreArray(mdns_args), _))
+                             ElementsAreArray(mdns_args), _, _))
       .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "wlan0", "-j", "rx_wifi_ssdp",
                                         "-w"};
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_ssdp"),
-                             ElementsAreArray(ssdp_args), _))
+                             ElementsAreArray(ssdp_args), _, _))
       .Times(1);
   multicast_counters_svc_->OnPhysicalDeviceAdded(wlan0_device);
 }
@@ -548,7 +548,7 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceAdded) {
       MakeShillDevice(ShillClient::Device::Type::kCellular, "wwan0", 3);
   cell_device.primary_multiplexed_interface = "wwan0";
   EXPECT_CALL(*datapath_,
-              ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _))
+              ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _, _))
       .Times(0);
   multicast_counters_svc_->OnPhysicalDeviceAdded(cell_device);
 }
@@ -563,14 +563,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceRemoved) {
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kD, StrEq("rx_mdns"),
-                             ElementsAreArray(mdns_args), _))
+                             ElementsAreArray(mdns_args), _, _))
       .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "eth0", "-j", "rx_ethernet_ssdp",
                                         "-w"};
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kD, StrEq("rx_ssdp"),
-                             ElementsAreArray(ssdp_args), _))
+                             ElementsAreArray(ssdp_args), _, _))
       .Times(1);
   multicast_counters_svc_->OnPhysicalDeviceRemoved(eth0_device);
 }
@@ -584,14 +584,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceRemoved) {
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kD, StrEq("rx_mdns"),
-                             ElementsAreArray(mdns_args), _))
+                             ElementsAreArray(mdns_args), _, _))
       .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "wlan0", "-j", "rx_wifi_ssdp",
                                         "-w"};
   EXPECT_CALL(*datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kD, StrEq("rx_ssdp"),
-                             ElementsAreArray(ssdp_args), _))
+                             ElementsAreArray(ssdp_args), _, _))
       .Times(1);
   multicast_counters_svc_->OnPhysicalDeviceRemoved(wlan0_device);
 }
@@ -602,7 +602,7 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceRemoved) {
       MakeShillDevice(ShillClient::Device::Type::kCellular, "wwan0", 3);
   cell_device.primary_multiplexed_interface = "wwan0";
   EXPECT_CALL(*datapath_,
-              ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _))
+              ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _, _))
       .Times(0);
   multicast_counters_svc_->OnPhysicalDeviceRemoved(cell_device);
 }

@@ -430,12 +430,14 @@ class Datapath {
                            base::StringPiece chain,
                            bool log_failures = true);
   // Sends an iptables command for table |table|.
-  virtual bool ModifyIptables(IpFamily family,
-                              Iptables::Table table,
-                              Iptables::Command command,
-                              base::StringPiece chain,
-                              const std::vector<std::string>& argv,
-                              bool log_failures = true);
+  virtual bool ModifyIptables(
+      IpFamily family,
+      Iptables::Table table,
+      Iptables::Command command,
+      base::StringPiece chain,
+      const std::vector<std::string>& argv,
+      bool log_failures = true,
+      std::optional<base::TimeDelta> timeout = std::nullopt);
   // Dumps the iptables chains rules for the table |table|. |family| must be
   // either IPv4 or IPv6.
   virtual std::string DumpIptables(IpFamily family, Iptables::Table table);
