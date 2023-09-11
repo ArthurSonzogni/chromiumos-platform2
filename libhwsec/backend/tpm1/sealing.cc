@@ -28,38 +28,27 @@ StatusOr<bool> SealingTpm1::IsSupported() {
   return da_mitigation_.IsReady();
 }
 
-StatusOr<ScopedTssKey> SealingTpm1::GetAuthValueKey(
-    const std::optional<brillo::SecureBlob>& auth_value) {
+StatusOr<ScopedTssPolicy> SealingTpm1::SetAuthPolicy(
+    TSS_HKEY key, const brillo::SecureBlob& auth_value) {
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
-
-  ScopedTssKey enc_handle(overalls_, context);
-
-  // Create the enc_handle.
+  ScopedTssPolicy auth_policy(overalls_, context);
+  // Get the TPM usage policy object and set the auth_value.
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
-                      context, TSS_OBJECT_TYPE_ENCDATA, TSS_ENCDATA_SEAL,
-                      enc_handle.ptr())))
-      .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
+                      context, TSS_OBJECT_TYPE_POLICY, TSS_POLICY_USAGE,
+                      auth_policy.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
 
-  if (auth_value.has_value()) {
-    // Get the TPM usage policy object and set the auth_value.
-    TSS_HPOLICY tpm_usage_policy;
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetPolicyObject(
-                        tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))
-        .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
+  brillo::SecureBlob mutable_auth_value = auth_value;
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_SetSecret(
+                      auth_policy, TSS_SECRET_MODE_PLAIN,
+                      mutable_auth_value.size(), mutable_auth_value.data())))
+      .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
 
-    brillo::SecureBlob mutable_auth_value = *auth_value;
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_SetSecret(
-                        tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
-                        mutable_auth_value.size(), mutable_auth_value.data())))
-        .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
-
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_AssignToObject(
-                        tpm_usage_policy, enc_handle)))
-        .WithStatus<TPMError>("Failed to call Ospi_Policy_AssignToObject");
-  }
-  return enc_handle;
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(
+                      overalls_.Ospi_Policy_AssignToObject(auth_policy, key)))
+      .WithStatus<TPMError>("Failed to call Ospi_Policy_AssignToObject");
+  return auth_policy;
 }
 
 StatusOr<brillo::Blob> SealingTpm1::Seal(
@@ -97,9 +86,18 @@ StatusOr<brillo::Blob> SealingTpm1::Seal(
     }
   }
 
-  ASSIGN_OR_RETURN(ScopedTssKey auth_value_key,
-                   GetAuthValueKey(policy.permission.auth_value),
-                   _.WithStatus<TPMError>("Failed to get auth value key"));
+  ScopedTssKey auth_value_key(overalls_, context);
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
+                      context, TSS_OBJECT_TYPE_ENCDATA, TSS_ENCDATA_SEAL,
+                      auth_value_key.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
+  ScopedTssPolicy auth_policy(overalls_, context);
+  if (policy.permission.auth_value.has_value()) {
+    ASSIGN_OR_RETURN(
+        auth_policy,
+        SetAuthPolicy(auth_value_key, policy.permission.auth_value.value()),
+        _.WithStatus<TPMError>("Failed to set auth policy to the key"));
+  }
 
   brillo::SecureBlob plaintext = unsealed_data;
 
@@ -144,9 +142,18 @@ StatusOr<brillo::SecureBlob> SealingTpm1::Unseal(
 
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(ScopedTssKey auth_value_key,
-                   GetAuthValueKey(policy.permission.auth_value),
-                   _.WithStatus<TPMError>("Failed to get auth value key"));
+  ScopedTssKey auth_value_key(overalls_, context);
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
+                      context, TSS_OBJECT_TYPE_ENCDATA, TSS_ENCDATA_SEAL,
+                      auth_value_key.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
+  ScopedTssPolicy auth_policy(overalls_, context);
+  if (policy.permission.auth_value.has_value()) {
+    ASSIGN_OR_RETURN(
+        auth_policy,
+        SetAuthPolicy(auth_value_key, policy.permission.auth_value.value()),
+        _.WithStatus<TPMError>("Failed to set auth policy to the key"));
+  }
 
   brillo::Blob mutable_sealed_data = sealed_data;
   RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribData(

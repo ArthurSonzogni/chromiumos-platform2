@@ -65,8 +65,9 @@ TEST_F(BackendSealingTpm1Test, Seal) {
       .WillOnce(DoAll(SetArgPointee<3>(kFakeEncHandle), Return(TPM_SUCCESS)));
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
-              Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
-      .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)));
+              Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
+                                        TSS_POLICY_USAGE, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kFakeHPolicy), Return(TPM_SUCCESS)));
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kFakeHPolicy, TSS_SECRET_MODE_PLAIN, _, _))
@@ -128,8 +129,9 @@ TEST_F(BackendSealingTpm1Test, Unseal) {
       .WillOnce(DoAll(SetArgPointee<3>(kFakeEncHandle), Return(TPM_SUCCESS)));
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
-              Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
-      .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)));
+              Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
+                                        TSS_POLICY_USAGE, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kFakeHPolicy), Return(TPM_SUCCESS)));
 
   EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kFakeHPolicy, TSS_SECRET_MODE_PLAIN, _, _))

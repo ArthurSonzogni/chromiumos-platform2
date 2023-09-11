@@ -28,6 +28,8 @@ using testing::AtLeast;
 using testing::AtMost;
 using testing::DoAll;
 using testing::ElementsAreArray;
+using testing::Expectation;
+using testing::InSequence;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
@@ -285,13 +287,18 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(
-        proxy_->GetMockOveralls(),
-        Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
-                                  TSS_POLICY_USAGE, _))
-        .Times(generic_times)
-        .WillOnce(
-            DoAll(SetArgPointee<3>(kUsagePolicyHandle), Return(TPM_SUCCESS)));
+    Expectation create_usage_policy =
+        EXPECT_CALL(
+            proxy_->GetMockOveralls(),
+            Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
+                                      TSS_POLICY_USAGE, _))
+            .Times(generic_times)
+            .WillOnce(DoAll(SetArgPointee<3>(kUsagePolicyHandle),
+                            Return(TPM_SUCCESS)))
+            .WillOnce(
+                DoAll(SetArgPointee<3>(kFakeHPolicy), Return(TPM_SUCCESS)))
+            .WillOnce(
+                DoAll(SetArgPointee<3>(kFakeHPolicy), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
         proxy_->GetMockOveralls(),
@@ -412,20 +419,16 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(
-        proxy_->GetMockOveralls(),
-        Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_ENCDATA,
-                                  TSS_ENCDATA_SEAL, _))
-        .Times(generic_times)
-        .WillOnce(DoAll(SetArgPointee<3>(kFakeEncHandle1), Return(TPM_SUCCESS)))
-        .WillOnce(
-            DoAll(SetArgPointee<3>(kFakeEncHandle2), Return(TPM_SUCCESS)));
-
-    EXPECT_CALL(proxy_->GetMockOveralls(),
-                Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
-        .Times(generic_times)
-        .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)))
-        .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)));
+    Expectation create_encdata =
+        EXPECT_CALL(
+            proxy_->GetMockOveralls(),
+            Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_ENCDATA,
+                                      TSS_ENCDATA_SEAL, _))
+            .Times(generic_times)
+            .WillOnce(
+                DoAll(SetArgPointee<3>(kFakeEncHandle1), Return(TPM_SUCCESS)))
+            .WillOnce(
+                DoAll(SetArgPointee<3>(kFakeEncHandle2), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
         proxy_->GetMockOveralls(),
@@ -908,10 +911,12 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<3>(kFakeEncHandle), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMockOveralls(),
-                Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
+    EXPECT_CALL(
+        proxy_->GetMockOveralls(),
+        Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
+                                  TSS_POLICY_USAGE, _))
         .Times(generic_times)
-        .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)));
+        .WillOnce(DoAll(SetArgPointee<3>(kFakeHPolicy), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
         proxy_->GetMockOveralls(),
