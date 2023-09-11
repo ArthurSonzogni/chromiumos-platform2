@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <base/check.h>
@@ -97,10 +98,13 @@ bool HandlePollEvent(struct pollfd* pollfd_struct, std::string* output_str) {
 
 // Reads the pipes of stdout and stderr from a child process, until the write
 // sides of both peers are closed, which is a signal that the child process is
-// exiting.
-void ReadPipesUntilClose(std::string_view logging_tag,
+// exiting. If |deadline| is set, this function will return no matter if the
+// pipes are closed when the deadline is reached. Returns whether the pipes have
+// been closed, i.e., returns false if the timeout happened, and true otherwise.
+bool ReadPipesUntilClose(std::string_view logging_tag,
                          int fd_stdout,
                          int fd_stderr,
+                         std::optional<base::Time> deadline,
                          std::string* str_stdout,
                          std::string* str_stderr) {
   struct pollfd pollfds[] = {
@@ -108,9 +112,21 @@ void ReadPipesUntilClose(std::string_view logging_tag,
       {.fd = fd_stderr, .events = POLLIN},
   };
 
-  static constexpr auto kPollInterval = base::Milliseconds(500);
+  static constexpr auto kDefaultPollInterval = base::Milliseconds(500);
   while (1) {
-    int ret = poll(pollfds, 2, kPollInterval.InMilliseconds());
+    base::TimeDelta poll_interval = kDefaultPollInterval;
+    if (deadline.has_value()) {
+      const auto now = base::Time::NowFromSystemTime();
+      // `=` here to avoid interval is set to 0 by any chance.
+      if (now >= *deadline) {
+        return false;
+      }
+      poll_interval = std::min(poll_interval, *deadline - now);
+    }
+    // This cast is safe since the value is guaranteed to be between 0 and
+    // kDefaultPollInterval.InMilliseconds().
+    int poll_interval_int = static_cast<int>(poll_interval.InMilliseconds());
+    int ret = poll(pollfds, 2, poll_interval_int);
     if (ret == -1) {
       PLOG(ERROR) << "Failed to poll() outputs for " << logging_tag;
       break;
@@ -125,16 +141,25 @@ void ReadPipesUntilClose(std::string_view logging_tag,
       break;
     }
   }
+
+  return true;
 }
 
 }  // namespace
 
-int MinijailedProcessRunner::RunSyncDestroy(
+int MinijailedProcessRunner::RunSyncDestroyWithTimeout(
     const std::vector<std::string>& argv,
     brillo::Minijail* mj,
     minijail* jail,
     bool log_failures,
+    std::optional<base::TimeDelta> timeout,
     std::string* output) {
+  const base::Time started_at = base::Time::NowFromSystemTime();
+  std::optional<base::Time> deadline = std::nullopt;
+  if (timeout.has_value()) {
+    deadline = started_at + *timeout;
+  }
+
   std::vector<char*> args;
   for (const auto& arg : argv) {
     args.push_back(const_cast<char*>(arg.c_str()));
@@ -157,14 +182,31 @@ int MinijailedProcessRunner::RunSyncDestroy(
   base::ScopedFD scoped_fd_stdout(fd_stdout);
   base::ScopedFD scoped_fd_stderr(fd_stderr);
   std::string stderr_buf;
-  ReadPipesUntilClose(logging_tag, fd_stdout, fd_stderr, output,
-                      log_failures ? &stderr_buf : nullptr);
+  if (!ReadPipesUntilClose(logging_tag, fd_stdout, fd_stderr, deadline, output,
+                           log_failures ? &stderr_buf : nullptr)) {
+    LOG(ERROR) << logging_tag << " has timed out";
+    brillo::ProcessImpl process;
+    process.Reset(pid);
+    // Note that process.Kill() will also called waitpid() inside so we can just
+    // return here.
+    if (!process.Kill(SIGKILL, /*timeout=*/1)) {
+      LOG(ERROR) << "Failed to kill " << logging_tag;
+    }
+    return -1;
+  }
+
   base::TrimWhitespaceASCII(stderr_buf, base::TRIM_TRAILING, &stderr_buf);
 
   int status = 0;
   if (system_->WaitPid(pid, &status) == -1) {
     LOG(ERROR) << "Failed to waitpid() for " << logging_tag;
     return -1;
+  }
+
+  const base::TimeDelta duration = base::Time::NowFromSystemTime() - started_at;
+  if (duration > base::Seconds(1)) {
+    LOG(WARNING) << logging_tag << " took " << duration.InMilliseconds()
+                 << "ms to finish.";
   }
 
   if (log_failures && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {

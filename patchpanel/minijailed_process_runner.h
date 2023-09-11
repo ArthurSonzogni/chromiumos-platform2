@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/strings/string_piece.h>
+#include <base/time/time.h>
 #include <brillo/minijail/minijail.h>
 
 #include "patchpanel/iptables.h"
@@ -110,7 +111,17 @@ class MinijailedProcessRunner {
                      brillo::Minijail* mj,
                      minijail* jail,
                      bool log_failures,
-                     std::string* output);
+                     std::string* output) {
+    return RunSyncDestroyWithTimeout(argv, mj, jail, log_failures,
+                                     /*timeout=*/std::nullopt, output);
+  }
+
+  int RunSyncDestroyWithTimeout(const std::vector<std::string>& argv,
+                                brillo::Minijail* mj,
+                                minijail* jail,
+                                bool log_failures,
+                                std::optional<base::TimeDelta> timeout,
+                                std::string* output);
 
   brillo::Minijail* mj_;
   std::unique_ptr<System> system_;
