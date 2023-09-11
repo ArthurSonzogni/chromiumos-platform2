@@ -40,7 +40,7 @@ pkg_config("target_defaults") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/runtime_probe.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 # TODO(chungsheng): We should consider moving these into a subdirectory.

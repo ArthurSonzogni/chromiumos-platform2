@@ -172,7 +172,7 @@ executable("chapsd") {
 
 install_config("dbus_conf") {
   sources = [ "org.chromium.Chaps.conf" ]
-  install_path = "/etc/dbus-1/system.d/"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_client_headers") {
@@ -211,7 +211,7 @@ executable("p11_replay") {
 
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/chaps.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 if (use.test) {

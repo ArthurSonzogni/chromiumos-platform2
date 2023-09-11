@@ -212,12 +212,12 @@ executable("debugd") {
 
 install_config("install_tmpfilesd") {
   sources = [ "tmpfiles.d/debugd.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 install_config("install_tmpfilesd_dev") {
   sources = [ "tmpfiles.d/on-demand/debugd-dev.conf" ]
-  install_path = "/usr/lib/tmpfiles.d/on-demand"
+  install_path = "tmpfiled_ondemand"
 }
 
 pkg_config("capture_packets_config") {

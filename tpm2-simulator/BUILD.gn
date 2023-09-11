@@ -114,11 +114,11 @@ install_config("install_init_scripts") {
 # Install seccomp policy for cryptohome-proxy
 install_config("install_seccomp_policy") {
   sources = [ "seccomp/tpm2-simulator-" + getenv("ARCH") + ".policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
   outputs = [ "tpm2-simulator.policy" ]
 }
 
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/tpm2-simulator.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }

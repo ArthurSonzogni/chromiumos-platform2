@@ -121,12 +121,12 @@ executable("kerberosd") {
 
 install_config("install_config_dbus_systemd") {
   sources = [ "dbus/org.chromium.Kerberos.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_config_dbus_system-services") {
   sources = [ "dbus/org.chromium.Kerberos.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
+  install_path = "dbus_system_services"
 }
 
 install_config("install_config_init") {
@@ -138,7 +138,7 @@ install_config("install_seccomp_policy") {
   arch = getenv("ARCH")
   sources = [ "seccomp/kerberosd-seccomp-$arch.policy" ]
   outputs = [ "kerberosd-seccomp.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }
 
 install_config("install_config_cros_startup") {

@@ -67,32 +67,32 @@ pkg_config("target_defaults_pkg_deps") {
 
 install_config("install_minijail_arc_boot_continue") {
   sources = [ "init/minijail/arc-boot-continue.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_minijail_arc_create_data_conf") {
   sources = [ "init/minijail/arc-create-data.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_minijail_arc_handle_upgrade_conf") {
   sources = [ "init/minijail/arc-handle-upgrade.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_minijail_arcvm_per_board_features_conf") {
   sources = [ "init/minijail/arcvm-per-board-features.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_minijail_arc_remove_data_conf") {
   sources = [ "init/minijail/arc-remove-data.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_minijail_arc_stale_directory_remover_conf") {
   sources = [ "init/minijail/arc-stale-directory-remover.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 config("target_defaults") {

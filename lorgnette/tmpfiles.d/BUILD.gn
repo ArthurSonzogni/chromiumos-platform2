@@ -8,5 +8,5 @@ group("tmpfiles.d") {
 
 install_config("install_tmpfiles_config") {
   sources = [ "lorgnette.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }

@@ -8,5 +8,5 @@ group("tmpfiles.d") {
 
 install_config("install_config") {
   sources = [ "dns-proxy.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }

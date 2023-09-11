@@ -68,7 +68,7 @@ config("local_print_proto_include") {
 # since it needs to run when /sys/fs/cgroup is available.
 install_config("install_tmpfilesd") {
   sources = [ "tmpfiles.d/cryptohome_freezer.conf" ]
-  install_path = "/usr/lib/tmpfiles.d/on-demand"
+  install_path = "tmpfiled_ondemand"
 }
 
 action("print_proto_library") {

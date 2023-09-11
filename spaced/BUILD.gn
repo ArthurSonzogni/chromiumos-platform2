@@ -103,12 +103,12 @@ executable("spaced_cli") {
 
 install_config("install_dbus_config") {
   sources = [ "dbus_bindings/org.chromium.Spaced.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_init") {
   sources = [ "init/spaced.conf" ]
-  install_path = "/etc/init"
+  install_path = "upstart"
 }
 
 install_config("install_headers") {
@@ -123,7 +123,7 @@ install_config("install_headers") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/spaced.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 if (use.test) {

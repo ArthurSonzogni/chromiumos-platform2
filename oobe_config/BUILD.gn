@@ -137,7 +137,7 @@ executable("rollback_cleanup") {
 
 install_config("install_dbus_config") {
   sources = [ "etc/dbus-1/org.chromium.OobeConfigRestore.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_init_config_restore") {
@@ -156,37 +156,37 @@ install_config("install_init_config_save") {
 
 install_config("install_minijail_config_restore") {
   sources = [ "minijail/oobe_config_restore.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_minijail_config_save") {
   sources = [ "minijail/oobe_config_save.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 # Install seccomp policy files
 install_config("install_policy_config_restore") {
   sources = [ "seccomp_filters/oobe_config_restore-seccomp-" + getenv("ARCH") +
               ".policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
   outputs = [ "oobe_config_restore-seccomp.policy" ]
 }
 
 install_config("install_policy_config_save") {
   sources = [ "seccomp_filters/oobe_config_save-seccomp-" + getenv("ARCH") +
               ".policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
   outputs = [ "oobe_config_save-seccomp.policy" ]
 }
 
 install_config("install_tmpfilesd_config_restore") {
   sources = [ "tmpfiles.d/on-demand/oobe_config_restore.conf" ]
-  install_path = "/usr/lib/tmpfiles.d/on-demand"
+  install_path = "tmpfiled_ondemand"
 }
 
 install_config("install_tmpfilesd_config_save") {
   sources = [ "tmpfiles.d/on-demand/oobe_config_save.conf" ]
-  install_path = "/usr/lib/tmpfiles.d/on-demand"
+  install_path = "tmpfiled_ondemand"
 }
 
 proto_library("oobe_config_proto") {

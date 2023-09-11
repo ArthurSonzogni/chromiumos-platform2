@@ -142,7 +142,7 @@ install_config("install_policy") {
     "${_seccomp_src_dir}/bio-crypto-init-seccomp-${_arch}.policy",
     "${_seccomp_src_dir}/biod-seccomp-${_arch}.policy",
   ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
   outputs = [
     "bio-crypto-init-seccomp.policy",
     "biod-seccomp.policy",
@@ -159,7 +159,7 @@ install_config("install_init") {
 
 install_config("install_systemd") {
   sources = [ "dbus/org.chromium.BiometricsDaemon.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 if (use.test) {

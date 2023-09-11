@@ -395,7 +395,7 @@ install_config("install_trunksd_conf") {
 # since it needs to run when /sys/fs/cgroup is available.
 install_config("install_freezer_tmpfilesd") {
   sources = [ "tmpfiles.d/trunks_freezer.conf" ]
-  install_path = "/usr/lib/tmpfiles.d/on-demand"
+  install_path = "tmpfiled_ondemand"
 }
 
 # TODO(b/265866896): provider better abstraction by adding trunks-pre-init event
@@ -407,7 +407,7 @@ install_config("install_pre_init_config") {
 
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/trunks.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 generate_pkg_config("libtrunks") {

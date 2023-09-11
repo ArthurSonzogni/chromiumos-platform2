@@ -21,7 +21,7 @@ executable("arc-host-clock-service") {
 
 install_config("install_minijail_arc_host_clock_service") {
   sources = [ "minijail/arc-host-clock-service.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_init_config") {

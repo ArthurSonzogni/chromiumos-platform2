@@ -75,16 +75,16 @@ install_config("install_upstart_config") {
 
 install_config("install_minijail_flex_hwis_conf") {
   sources = [ "minijail/flex-hwis.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_tmpfiles_config") {
   sources = [ "init/tmpfiles.d/flex-hwis.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 install_config("install_policy") {
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
   sources = [ "seccomp_filters/flex_hwis.policy" ]
   outputs = [ "flex_hwis-seccomp.policy" ]
 }

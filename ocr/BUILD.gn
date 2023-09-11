@@ -27,7 +27,7 @@ generate_mojom_bindings("ocr_mojo_bindings") {
 }
 
 install_config("install_minijail_conf") {
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
   sources = [ "minijail/ocr.conf" ]
 }
 

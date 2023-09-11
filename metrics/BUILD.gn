@@ -46,7 +46,7 @@ group("all") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/metrics_daemon.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 shared_library("libmetrics") {

@@ -51,12 +51,12 @@ executable("easy_unlock") {
 
 install_config("install_conf") {
   sources = [ "org.chromium.EasyUnlock.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_service") {
   sources = [ "org.chromium.EasyUnlock.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
+  install_path = "dbus_system_services"
 }
 
 install_config("install_init_conf") {

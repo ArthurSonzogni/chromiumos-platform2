@@ -69,8 +69,7 @@ config("test_warning_suppressions") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/hpsd.conf" ]
-  install_path = "/usr/share/minijail"
-
+  install_path = "minijail_conf"
 }
 
 generate_dbus_adaptors("hpsd-adaptors") {

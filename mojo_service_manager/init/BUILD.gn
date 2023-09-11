@@ -17,7 +17,7 @@ group("init") {
 install_seccomp_policy("install_seccomp") {
   _arch = getenv("ARCH")
   sources = [ "seccomp/${_arch}/mojo_service_manager.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }
 
 install_config("install_init_config") {
@@ -27,10 +27,10 @@ install_config("install_init_config") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/mojo_service_manager.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/mojo_service_manager.conf" ]
-  install_path = "/usr/lib/tmpfiles.d/on-demand"
+  install_path = "tmpfiled_ondemand"
 }

@@ -7,5 +7,5 @@ import("//common-mk/install_seccomp_policy.gni")
 install_seccomp_policy("seccomp_policy") {
   _arch = getenv("ARCH")
   sources = [ "${_arch}/printscanmgr-seccomp.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }

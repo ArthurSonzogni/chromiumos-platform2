@@ -96,17 +96,17 @@ if (use.cellular) {
 
 install_config("install_dbus_conf") {
   sources = [ "dbus/org.chromium.PowerManager.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_minijail_power_conf") {
   sources = [ "minijail/powerd.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_minijail_temp_logger_conf") {
   sources = [ "minijail/temp_logger.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 pkg_config("target_defaults") {
@@ -556,7 +556,7 @@ install_config("install_init_scripts") {
 
 install_config("install_tmpfiles_conf") {
   sources = [ "tmpfiles.d/powerd.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 if (use.fuzzer || use.test) {

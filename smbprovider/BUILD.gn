@@ -108,12 +108,12 @@ executable("smbproviderd") {
 
 install_config("install_dbus_config") {
   sources = [ "etc/dbus-1/org.chromium.SmbProvider.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_dbus_service") {
   sources = [ "org.chromium.SmbProvider.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
+  install_path = "dbus_system_services"
 }
 
 install_config("install_init") {
@@ -122,7 +122,7 @@ install_config("install_init") {
 }
 
 install_config("install_policy") {
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
   sources =
       [ "seccomp_filters/smbprovider-seccomp-" + getenv("ARCH") + ".policy" ]
   outputs = [ "smbprovider-seccomp.policy" ]

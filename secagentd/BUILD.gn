@@ -128,13 +128,13 @@ install_config("install_upstart_conf") {
 # since it needs to run when /sys/fs/cgroup is available.
 install_config("install_freezer_tmpfilesd") {
   sources = [ "tmpfiles.d/secagentd_freezer.conf" ]
-  install_path = "/usr/lib/tmpfiles.d/on-demand"
+  install_path = "tmpfiled_ondemand"
 }
 
 # Install Minijail configuration.
 install_config("install_minijail_conf") {
   sources = [ "minijail/secagentd.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 # Redirects log messages to /var/log/secagentd.log.
@@ -146,7 +146,7 @@ install_config("install_rsyslog_conf") {
 # Creates secagentd.log entry.
 install_config("install_tmpfiles_conf") {
   sources = [ "tmpfiles.d/secagentd.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 if (use.test) {

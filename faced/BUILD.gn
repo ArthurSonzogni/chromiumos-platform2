@@ -28,7 +28,7 @@ group("all") {
 
 install_config("install_dbus_conf") {
   sources = [ "dbus/org.chromium.FaceAuthDaemon.conf" ]
-  install_path = "/etc/dbus-1/system.d/"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_init_conf") {
@@ -38,7 +38,7 @@ install_config("install_init_conf") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/faced.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 generate_mojom_bindings("face_auth_mojo_bindings") {

@@ -72,14 +72,14 @@ install_config("install_cros_camera_conf") {
 
 install_config("install_dbus_cros_camera_conf") {
   sources = [ "dbus/CrosCamera.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_seccomp_policy("install_cros_camera_policy") {
   arch = getenv("ARCH")
   sources = [ "seccomp_filter/cros-camera-${arch}.policy" ]
   outputs = [ "cros-camera-seccomp.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }
 
 if (use.cheets) {

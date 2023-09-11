@@ -152,7 +152,7 @@ executable("feature_check") {
 
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/libsegmentation.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 if (use.test) {

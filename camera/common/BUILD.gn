@@ -537,14 +537,14 @@ install_config("install_cros_camera_algo_conf") {
 
 install_config("install_dbus_cros_camera_algo_conf") {
   sources = [ "dbus/CrosCameraAlgo.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_seccomp_policy("install_cros_camera_algo_policy") {
   arch = getenv("ARCH")
   sources = [ "seccomp_filter/cros-camera-algo-${arch}.policy" ]
   outputs = [ "cros-camera-algo-seccomp.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }
 
 # The sandboxed GPU service is used by Portrait Mode feature, IPU6SE
@@ -560,7 +560,7 @@ if (use.camera_feature_portrait_mode || use.ipu6se || use.ipu6epadln ||
     arch = getenv("ARCH")
     sources = [ "seccomp_filter/cros-camera-gpu-algo-${arch}.policy" ]
     outputs = [ "cros-camera-gpu-algo-seccomp.policy" ]
-    install_path = "/usr/share/policy"
+    install_path = "seccomp_policy"
   }
 }
 
@@ -588,12 +588,12 @@ install_config("install_libcamera_connector_so") {
 
 install_config("install_minijail_algo_conf") {
   sources = [ "minijail/cros-camera-algo.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_minijail_gpu_algo_conf") {
   sources = [ "minijail/cros-camera-gpu-algo.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_camera_hal_dispatcher_mojo") {

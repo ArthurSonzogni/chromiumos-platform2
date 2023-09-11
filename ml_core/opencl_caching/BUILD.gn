@@ -47,11 +47,11 @@ install_config("install_init") {
 
 install_config("install_dbus") {
   sources = [ "dbus/opencl-cacher-dbus.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 # Only on AMD64 for now
 install_config("install_seccomp") {
   sources = [ "seccomp_filter/opencl-cacher-amd64.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }

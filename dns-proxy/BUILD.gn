@@ -90,7 +90,7 @@ install_config("install_init_config") {
 
 install_config("install_seccomp_policy") {
   sources = [ "seccomp/dns-proxy-seccomp-" + getenv("ARCH") + ".policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
   outputs = [ "dns-proxy-seccomp.policy" ]
 }
 

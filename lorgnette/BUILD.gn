@@ -130,12 +130,12 @@ executable("lorgnette_cli") {
 
 install_config("install_dbus_config") {
   sources = [ "dbus_permissions/org.chromium.lorgnette.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_system_service") {
   sources = [ "dbus_service/org.chromium.lorgnette.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
+  install_path = "dbus_system_services"
 }
 
 install_config("install_init") {
@@ -145,7 +145,7 @@ install_config("install_init") {
 
 install_config("install_minijail_config") {
   sources = [ "minijail/lorgnette.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 if (use.test) {

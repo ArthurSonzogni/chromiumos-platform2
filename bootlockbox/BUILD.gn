@@ -24,7 +24,7 @@ group("all") {
 
 install_config("install_systemd") {
   sources = [ "org.chromium.BootLockbox.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 pkg_config("bootlockbox_dependent_config") {
@@ -122,18 +122,18 @@ install_config("install_init") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/bootlockboxd.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_policy") {
   _arch = getenv("ARCH")
   sources = [ "seccomp/bootlockboxd-seccomp-${_arch}.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 
   outputs = [ "bootlockboxd-seccomp.policy" ]
 }
 
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/bootlockbox.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }

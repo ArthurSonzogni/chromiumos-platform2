@@ -62,12 +62,12 @@ executable("swap_management") {
 
 install_config("install_dbus_config") {
   sources = [ "share/org.chromium.SwapManagement.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/swap_management.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_init") {
@@ -82,7 +82,7 @@ install_config("install_init") {
 
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/swap_management.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 install_config("install_udev_rule") {

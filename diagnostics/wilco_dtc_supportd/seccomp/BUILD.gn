@@ -17,5 +17,5 @@ install_seccomp_policy("diagnostics_seccomp_wilco") {
     "${_arch}/wilco-dtc-resize2fs-seccomp.policy",
     "${_arch}/wilco_dtc_supportd-seccomp.policy",
   ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }

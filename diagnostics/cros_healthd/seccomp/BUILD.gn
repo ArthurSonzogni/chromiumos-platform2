@@ -44,7 +44,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp") {
     "${_arch}/memtester-seccomp.policy",
     "${_arch}/stressapptest-seccomp.policy",
   ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 
   required_syscalls = BASE_REQUIRED_SYSCALLS
   denied_syscalls = BASE_DENIED_SYSCALLS
@@ -64,7 +64,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
     "${_arch}/psr-seccomp.policy",
     "${_arch}/readonly-fetchers-seccomp.policy",
   ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 
   required_syscalls = BASE_REQUIRED_SYSCALLS + [
                         # These syscalls are required by all executor delegates.
@@ -83,7 +83,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
 install_and_check_seccomp_policy("diagnostics_seccomp_healthd") {
   _arch = getenv("ARCH")
   sources = [ "${_arch}/cros_healthd-seccomp.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 
   required_syscalls = BASE_REQUIRED_SYSCALLS
   denied_syscalls = []

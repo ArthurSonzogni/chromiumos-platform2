@@ -46,12 +46,12 @@ shared_library("libcros_ml_core") {
 
 install_config("install_minijail_conf") {
   sources = [ "opencl_caching/minijail/opencl-cacher.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_tmpfiles") {
   sources = [ "tmpfiles.d/ml-core.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 # These headers come from the ml-core-headers-*.tar.xz unpacked by the ebuild file.

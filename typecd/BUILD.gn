@@ -43,8 +43,8 @@ pkg_config("target_defaults") {
 }
 
 install_config("install_minijail_config") {
-  sources = ["minijail/typecd.conf"]
-  install_path = "/usr/share/minijail"
+  sources = [ "minijail/typecd.conf" ]
+  install_path = "minijail_conf"
 }
 
 executable("typecd") {

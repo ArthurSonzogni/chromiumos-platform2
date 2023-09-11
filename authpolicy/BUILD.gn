@@ -205,7 +205,7 @@ install_config("install_init") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/authpolicyd.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_policy") {
@@ -214,7 +214,7 @@ install_config("install_policy") {
     "seccomp_filters/klist-seccomp.policy",
     "seccomp_filters/samba-seccomp.policy",
   ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }
 
 install_config("install_process_management_policies") {
@@ -224,7 +224,7 @@ install_config("install_process_management_policies") {
 
 install_config("install_systemd") {
   sources = [ "etc/dbus-1/org.chromium.AuthPolicy.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 # Unit tests.

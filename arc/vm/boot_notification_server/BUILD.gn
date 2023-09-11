@@ -24,7 +24,7 @@ pkg_config("arcvm_boot_notification_server_config") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/arcvm-boot-notification-server.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 executable("arcvm_boot_notification_server") {

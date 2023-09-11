@@ -116,17 +116,17 @@ install_config("install_usb_device_info") {
 # since it needs to run when /sys/fs/cgroup is available.
 install_config("install_tmpfilesd") {
   sources = [ "tmpfiles.d/cros-disks.conf" ]
-  install_path = "/usr/lib/tmpfiles.d/on-demand"
+  install_path = "tmpfiled_ondemand"
 }
 
 install_config("install_dbus_config") {
   sources = [ "org.chromium.CrosDisks.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_minijail_config") {
   sources = [ "minijail/cros-disks.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_setuid_restriction") {
@@ -191,7 +191,7 @@ if (use.seccomp) {
       "smbfs-seccomp.policy",
     ]
 
-    install_path = "/usr/share/policy"
+    install_path = "seccomp_policy"
   }
 }
 

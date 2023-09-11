@@ -15,7 +15,7 @@ group("init") {
 install_seccomp_policy("install_seccomp") {
   _arch = getenv("ARCH")
   sources = [ "seccomp/${_arch}/runtime_probe-seccomp.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }
 
 install_config("install_init_config") {

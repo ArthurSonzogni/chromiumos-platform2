@@ -96,7 +96,7 @@ if (use.seccomp) {
   install_config("install_policy") {
     sources =
         [ "seccomp/apk-cache-cleaner-seccomp-" + getenv("ARCH") + ".policy" ]
-    install_path = "/usr/share/policy"
+    install_path = "seccomp_policy"
     outputs = [ "apk-cache-cleaner-seccomp.policy" ]
   }
 }

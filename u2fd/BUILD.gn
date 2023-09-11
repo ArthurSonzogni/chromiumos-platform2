@@ -26,7 +26,7 @@ group("all") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/u2fd.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 pkg_config("target_defaults") {
@@ -209,5 +209,5 @@ if (use.fuzzer) {
 
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/u2fd.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }

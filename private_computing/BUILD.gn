@@ -61,17 +61,17 @@ install_config("install_init") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/private_computing.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_systemd") {
   sources = [ "dbus/org.chromium.PrivateComputing.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_service") {
   sources = [ "dbus/org.chromium.PrivateComputing.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
+  install_path = "dbus_system_services"
 }
 
 # Unit tests.

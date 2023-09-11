@@ -16,7 +16,7 @@ group("all") {
 }
 
 install_config("install_minijail_conf") {
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
   sources = [ "minijail/arcvm-server-proxy.conf" ]
 }
 

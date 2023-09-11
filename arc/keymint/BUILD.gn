@@ -391,18 +391,18 @@ install_config("install_init") {
 # Install dbus configuration file.
 install_config("install_dbus_config") {
   sources = [ "dbus_permissions/org.chromium.ArcKeyMint.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 # Install dbus service file.
 install_config("install_dbus_service") {
   sources = [ "dbus_permissions/org.chromium.ArcKeyMint.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
+  install_path = "dbus_system_services"
 }
 
 install_seccomp_policy("install_arc_keymintd_policy") {
   arch = getenv("ARCH")
   sources = [ "seccomp/arc-keymintd-seccomp-${arch}.policy" ]
   outputs = [ "arc-keymintd-seccomp.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }

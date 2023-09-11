@@ -70,12 +70,12 @@ executable("hardware_verifier") {
 
 install_config("install_dbus_config") {
   sources = [ "dbus/org.chromium.HardwareVerifier.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_dbus_service") {
   sources = [ "dbus/org.chromium.HardwareVerifier.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
+  install_path = "dbus_system_services"
 }
 
 install_config("install_init_config") {
@@ -88,12 +88,12 @@ install_config("install_init_config") {
 
 install_config("install_minijail_config") {
   sources = [ "minijail/hardware_verifier.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_minijail_dbus_config") {
   sources = [ "minijail/hardware_verifier-dbus.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 if (use.test) {

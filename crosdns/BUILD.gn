@@ -71,7 +71,7 @@ executable("crosdns") {
 
 install_config("install_dbus_conf") {
   sources = [ "dbus_permissions/org.chromium.CrosDns.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_init_conf") {
@@ -81,14 +81,14 @@ install_config("install_init_conf") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/crosdns.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 if (use.seccomp) {
   install_config("install_seccomp_policy") {
     _arch = getenv("ARCH")
     sources = [ "init/crosdns-seccomp-${_arch}.policy" ]
-    install_path = "/usr/share/policy"
+    install_path = "seccomp_policy"
     outputs = [ "crosdns-seccomp.policy" ]
   }
 }

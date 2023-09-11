@@ -241,5 +241,5 @@ if (use.fuzzer) {
 # Install dbus service file.
 install_config("install_dbus_service") {
   sources = [ "dbus_permissions/org.chromium.ArcKeymaster.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
+  install_path = "dbus_system_services"
 }

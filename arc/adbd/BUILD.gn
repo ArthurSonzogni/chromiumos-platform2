@@ -67,7 +67,7 @@ install_config("install_init") {
 if (use.arcvm) {
   install_config("install_systemd") {
     sources = [ "init/dbus-1/ArcVmAdbd.conf" ]
-    install_path = "/etc/dbus-1/system.d"
+    install_path = "dbus_system_d"
   }
 }
 
@@ -80,7 +80,7 @@ if (use.seccomp) {
     }
     _arch = getenv("ARCH")
     sources = [ "seccomp/arc${_vm}-adbd-${_arch}.policy" ]
-    install_path = "/usr/share/policy"
+    install_path = "seccomp_policy"
     outputs = [ "arc${_vm}-adbd-seccomp.policy" ]
   }
 }

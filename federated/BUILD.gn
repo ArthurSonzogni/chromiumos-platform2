@@ -108,24 +108,24 @@ install_config("install_upstart_conf") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/federated-service.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_seccomp_policy") {
   sources =
       [ "seccomp/federated_service-seccomp-" + getenv("ARCH") + ".policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
   outputs = [ "federated_service-seccomp.policy" ]
 }
 
 install_config("install_dbus_config_file") {
   sources = [ "dbus/org.chromium.Federated.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_dbus_service_activation_config") {
   sources = [ "dbus/org.chromium.Federated.service" ]
-  install_path = "/usr/share/dbus-1/system-services"
+  install_path = "dbus_system_services"
 }
 
 if (use.test) {

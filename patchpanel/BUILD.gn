@@ -37,7 +37,7 @@ group("all") {
 # Install the D-Bus config.
 install_config("install_dbus_config") {
   sources = [ "dbus/org.chromium.Patchpanel.conf" ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 # Install the init config.
@@ -49,7 +49,7 @@ install_config("install_init_config") {
 # Install the seccomp config.
 install_config("install_seccomp_policy") {
   sources = [ "seccomp/iptables-seccomp-" + getenv("ARCH") + ".policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
   outputs = [ "iptables-seccomp.policy" ]
 }
 

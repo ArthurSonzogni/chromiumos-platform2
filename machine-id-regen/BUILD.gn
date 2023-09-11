@@ -62,7 +62,7 @@ install_config("init_confs") {
 
 install_config("tmpfile_confs") {
   sources = [ "tmpfiles.d/machine_id_regen.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
+  install_path = "tmpfilesd"
 }
 
 if (use.test) {

@@ -64,12 +64,12 @@ install_config("install_cros_camera_diagnostics_mojo") {
 
 install_config("install_minijail_conf") {
   sources = [ "minijail/cros-camera-diagnostics.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_seccomp_policy("install_cros_camera_diagnostics_policy") {
   arch = getenv("ARCH")
   sources = [ "seccomp_filter/cros-camera-diagnostics-${arch}.policy" ]
   outputs = [ "cros-camera-diagnostics.policy" ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 }

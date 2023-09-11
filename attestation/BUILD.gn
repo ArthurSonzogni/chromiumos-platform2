@@ -313,7 +313,7 @@ install_config("install_systemd") {
     "pca_agent/server/org.chromium.PcaAgent.conf",
     "server/org.chromium.Attestation.conf",
   ]
-  install_path = "/etc/dbus-1/system.d"
+  install_path = "dbus_system_d"
 }
 
 install_config("install_init") {
@@ -326,7 +326,7 @@ install_config("install_init") {
 
 install_config("install_minijail_conf") {
   sources = [ "pca_agent/server/minijail/pca_agentd.conf" ]
-  install_path = "/usr/share/minijail"
+  install_path = "minijail_conf"
 }
 
 install_config("install_policy") {
@@ -335,7 +335,7 @@ install_config("install_policy") {
     "pca_agent/server/pca_agentd-seccomp-${_arch}.policy",
     "server/attestationd-seccomp-${_arch}.policy",
   ]
-  install_path = "/usr/share/policy"
+  install_path = "seccomp_policy"
 
   # NOSORT
   outputs = [
