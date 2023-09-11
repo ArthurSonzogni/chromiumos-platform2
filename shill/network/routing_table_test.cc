@@ -141,6 +141,17 @@ MATCHER_P3(IsBlackholeRoutingPacket, family, metric, table, "") {
          !arg->HasAttribute(RTA_GATEWAY) && priority && *priority == metric;
 }
 
+MATCHER_P2(IsUnreachableRoutingPacket, family, table, "") {
+  const RTNLMessage::RouteStatus& status = arg->route_status();
+
+  return arg->type() == RTNLMessage::kTypeRoute &&
+         arg->family() == net_base::ToSAFamily(family) &&
+         arg->flags() == (NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL) &&
+         status.table == table && status.protocol == RTPROT_BOOT &&
+         status.scope == RT_SCOPE_UNIVERSE && status.type == RTN_UNREACHABLE &&
+         !arg->HasAttribute(RTA_SRC) && !arg->HasAttribute(RTA_GATEWAY);
+}
+
 MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
   const RTNLMessage::RouteStatus& status = arg->route_status();
 
@@ -204,6 +215,16 @@ void RoutingTableTest::SendRouteEntryWithSeqAndProto(
 
 void RoutingTableTest::Start() {
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestRoute));
+  EXPECT_CALL(rtnl_handler_,
+              DoSendMessage(
+                  IsUnreachableRoutingPacket(net_base::IPFamily::kIPv6,
+                                             RoutingTable::kUnreachableTableId),
+                  _));
+  EXPECT_CALL(rtnl_handler_,
+              DoSendMessage(
+                  IsUnreachableRoutingPacket(net_base::IPFamily::kIPv4,
+                                             RoutingTable::kUnreachableTableId),
+                  _));
   routing_table_->Start();
 }
 

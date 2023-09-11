@@ -4,8 +4,6 @@
 
 #include "shill/network/network_applier.h"
 
-#include <linux/fib_rules.h>
-
 #include <algorithm>
 #include <optional>
 #include <string>
@@ -66,12 +64,6 @@ constexpr uint32_t kVpnUidRulePriority =
 // interface.
 constexpr uint32_t kCatchallPriority =
     RoutingPolicyService::kRulePriorityMain - 1;
-
-// ID for the routing table that used for CLAT default routes. Patchpanel is
-// responsible for adding and removing routes in this table. Using a user
-// defined table ID lesser than 255 to avoid conflict with per-device table (for
-// which we use table ID 1000+).
-constexpr uint32_t kClatRoutingTableId = 249;
 
 }  // namespace
 
@@ -148,20 +140,6 @@ void NetworkApplier::ApplyRoutingPolicy(
   bool is_primary_physical = priority.is_primary_physical;
   rule_table_->FlushRules(interface_index);
 
-  // b/180521518: IPv6 routing rules are always omitted for a Cellular
-  // connection that is not the primary physical connection. This prevents
-  // applications from accidentally using the Cellular network and causing data
-  // charges with IPv6 traffic when the primary physical connection is IPv4
-  // only.
-  bool no_ipv6 = technology == Technology::kCellular && !is_primary_physical;
-
-  // b/189952150: when |no_ipv6| is true and shill must prevent IPv6 traffic on
-  // this connection for applications, it is still necessary to ensure that some
-  // critical system IPv6 traffic can be routed. Example: shill portal detection
-  // probes when the network connection is IPv6 only. For the time being the
-  // only supported case is traffic from shill.
-  uint32_t shill_uid = rule_table_->GetShillUid();
-
   // b/177620923 Add uid rules just before the default rule to route to the VPN
   // interface any untagged traffic owner by a uid routed through VPN
   // connections. These rules are necessary for consistency between source IP
@@ -173,7 +151,7 @@ void NetworkApplier::ApplyRoutingPolicy(
         auto entry = RoutingPolicyEntry(family);
         entry.priority = kVpnUidRulePriority;
         entry.table = table_id;
-        entry.uid_range = fib_rule_uid_range{uid, uid};
+        entry.uid_range = uid.second;
         rule_table_->AddRule(interface_index, entry);
       }
     }
@@ -210,7 +188,7 @@ void NetworkApplier::ApplyRoutingPolicy(
     // get to catch-all rule.
     auto clat_table_rule = RoutingPolicyEntry(net_base::IPFamily::kIPv4);
     clat_table_rule.priority = kClatRulePriority;
-    clat_table_rule.table = kClatRoutingTableId;
+    clat_table_rule.table = RoutingTable::kClatRoutingTableId;
     clat_table_rule.fw_mark = kCrosVmFwmark;
     rule_table_->AddRule(-1, clat_table_rule);
   }
@@ -233,16 +211,36 @@ void NetworkApplier::ApplyRoutingPolicy(
     rule_table_->AddRule(interface_index, dst_addr_rule);
   }
 
-  // Always set a rule for matching traffic tagged with the fwmark routing tag
-  // corresponding to this network interface.
+  // b/180521518: Add an explicit rule to block user IPv6 traffic for a Cellular
+  // connection that is not the primary physical connection. This prevents
+  // Chrome from accidentally using the Cellular network and causing data
+  // charges with IPv6 traffic when the primary physical connection is IPv4
+  // only.
+  bool chronos_no_ipv6 =
+      technology == Technology::kCellular && !is_primary_physical;
+  if (chronos_no_ipv6) {
+    auto chrome_uid = rule_table_->GetChromeUid();
+    for (const auto& address : all_addresses) {
+      if (address.GetFamily() != net_base::IPFamily::kIPv6) {
+        continue;
+      }
+      auto blackhole_chronos_ipv6_rule =
+          RoutingPolicyEntry(net_base::IPFamily::kIPv6);
+      blackhole_chronos_ipv6_rule.priority = rule_priority - 1;
+      blackhole_chronos_ipv6_rule.src = address;
+      blackhole_chronos_ipv6_rule.table = RoutingTable::kUnreachableTableId;
+      blackhole_chronos_ipv6_rule.uid_range = chrome_uid;
+      rule_table_->AddRule(interface_index, blackhole_chronos_ipv6_rule);
+    }
+  }
+
+  //  Always set a rule for matching traffic tagged with the fwmark routing tag
+  //  corresponding to this network interface.
   for (const auto family : net_base::kIPFamilies) {
     auto fwmark_routing_entry = RoutingPolicyEntry(family);
     fwmark_routing_entry.priority = rule_priority;
     fwmark_routing_entry.table = table_id;
     fwmark_routing_entry.fw_mark = GetFwmarkRoutingTag(interface_index);
-    if (no_ipv6 && fwmark_routing_entry.family == net_base::IPFamily::kIPv6) {
-      fwmark_routing_entry.uid_range = fib_rule_uid_range{shill_uid, shill_uid};
-    }
     rule_table_->AddRule(interface_index, fwmark_routing_entry);
   }
 
@@ -253,9 +251,6 @@ void NetworkApplier::ApplyRoutingPolicy(
     oif_rule.priority = rule_priority;
     oif_rule.table = table_id;
     oif_rule.oif_name = interface_name;
-    if (no_ipv6 && oif_rule.family == net_base::IPFamily::kIPv6) {
-      oif_rule.uid_range = fib_rule_uid_range{shill_uid, shill_uid};
-    }
     rule_table_->AddRule(interface_index, oif_rule);
   }
 
@@ -267,9 +262,6 @@ void NetworkApplier::ApplyRoutingPolicy(
       if_addr_rule.src = address;
       if_addr_rule.table = table_id;
       if_addr_rule.priority = rule_priority;
-      if (address.GetFamily() == net_base::IPFamily::kIPv6 && no_ipv6) {
-        if_addr_rule.uid_range = fib_rule_uid_range{shill_uid, shill_uid};
-      }
       rule_table_->AddRule(interface_index, if_addr_rule);
     }
 
@@ -278,9 +270,6 @@ void NetworkApplier::ApplyRoutingPolicy(
       iif_rule.priority = rule_priority;
       iif_rule.table = table_id;
       iif_rule.iif_name = interface_name;
-      if (no_ipv6 && iif_rule.family == net_base::IPFamily::kIPv6) {
-        iif_rule.uid_range = fib_rule_uid_range{shill_uid, shill_uid};
-      }
       rule_table_->AddRule(interface_index, iif_rule);
     }
   }

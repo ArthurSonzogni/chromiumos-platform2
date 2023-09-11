@@ -150,6 +150,16 @@ void RoutingTable::Start() {
                        base::BindRepeating(&RoutingTable::RouteMsgHandler,
                                            base::Unretained(this))));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
+
+  // Initialize kUnreachableTableId as a table to block traffic.
+  auto route = RoutingTableEntry(net_base::IPFamily::kIPv6)
+                   .SetTable(kUnreachableTableId)
+                   .SetType(RTN_UNREACHABLE);
+  AddRouteToKernelTable(0, route);
+  route = RoutingTableEntry(net_base::IPFamily::kIPv4)
+              .SetTable(kUnreachableTableId)
+              .SetType(RTN_UNREACHABLE);
+  AddRouteToKernelTable(0, route);
 }
 
 void RoutingTable::Stop() {

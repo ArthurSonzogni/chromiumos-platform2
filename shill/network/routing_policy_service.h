@@ -9,12 +9,12 @@
 #include <linux/fib_rules.h>
 
 #include <memory>
-#include <set>
 #include <string>
+#include <string_view>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
+#include <base/containers/flat_map.h>
 #include <base/no_destructor.h>
 
 #include "shill/net/rtnl_message.h"
@@ -86,10 +86,11 @@ class RoutingPolicyService {
   virtual void FlushRules(int interface_index);
 
   // Returns the user traffic uids.
-  virtual const std::vector<uint32_t>& GetUserTrafficUids();
+  virtual const base::flat_map<std::string_view, fib_rule_uid_range>&
+  GetUserTrafficUids();
 
-  // Returns shill uid used for critical system traffic.
-  virtual uint32_t GetShillUid();
+  // Returns the uid for Chrome traffic.
+  virtual fib_rule_uid_range GetChromeUid();
 
  protected:
   RoutingPolicyService();
@@ -120,7 +121,7 @@ class RoutingPolicyService {
   // "User traffic" refers to traffic from processes that run under one of the
   // unix users enumered in |kUserTrafficUsernames| constant in
   // shill/routing_table.cc.
-  std::vector<uint32_t> user_traffic_uids_;
+  base::flat_map<std::string_view, fib_rule_uid_range> user_traffic_uids_;
 
   // Cache singleton pointer for performance and test purposes.
   RTNLHandler* rtnl_handler_;

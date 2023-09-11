@@ -8,6 +8,8 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/strings/string_piece.h>
@@ -47,7 +49,7 @@ static_assert(
 // service is not active, traffic from these users will blackholed.
 // Currently the "user traffic" as defined by these usernames does not include
 // e.g. Android apps or system processes like the update engine.
-constexpr std::array<base::StringPiece, 9> kUserTrafficUsernames = {
+constexpr std::array<std::string_view, 9> kUserTrafficUsernames = {
     "chronos",         // Traffic originating from chrome and nacl applications
     "debugd",          // crosh terminal
     "cups",            // built-in printing using the cups daemon
@@ -65,15 +67,17 @@ constexpr std::array<base::StringPiece, 9> kUserTrafficUsernames = {
     "fuse-smbfs"  // smbfs SMB filesystem daemon
 };
 
-std::vector<uint32_t> ComputeUserTrafficUids() {
-  std::vector<uint32_t> uids;
+constexpr std::string_view kChromeUsername = "chronos";
+
+base::flat_map<std::string_view, fib_rule_uid_range> ComputeUserTrafficUids() {
+  base::flat_map<std::string_view, fib_rule_uid_range> uids;
   for (const auto& username : kUserTrafficUsernames) {
     uid_t uid;
     if (!brillo::userdb::GetUserInfo(std::string(username), &uid, nullptr)) {
       LOG(WARNING) << "Unable to look up UID for " << username;
       continue;
     }
-    uids.push_back(uint32_t{uid});
+    uids[username] = fib_rule_uid_range{uid, uid};
   }
   return uids;
 }
@@ -324,15 +328,19 @@ bool RoutingPolicyService::ApplyRule(uint32_t interface_index,
   return rtnl_handler_->SendMessage(std::move(message), nullptr);
 }
 
-const std::vector<uint32_t>& RoutingPolicyService::GetUserTrafficUids() {
+const base::flat_map<std::string_view, fib_rule_uid_range>&
+RoutingPolicyService::GetUserTrafficUids() {
   if (user_traffic_uids_.empty()) {
     user_traffic_uids_ = ComputeUserTrafficUids();
   }
   return user_traffic_uids_;
 }
 
-uint32_t RoutingPolicyService::GetShillUid() {
-  return getuid();
+fib_rule_uid_range RoutingPolicyService::GetChromeUid() {
+  if (user_traffic_uids_.empty()) {
+    user_traffic_uids_ = ComputeUserTrafficUids();
+  }
+  return user_traffic_uids_[kChromeUsername];
 }
 
 RoutingPolicyEntry::RoutingPolicyEntry(net_base::IPFamily family)

@@ -42,6 +42,17 @@ class RoutingTable {
   // in each routing table.
   static constexpr int kShillDefaultRouteMetric = 65536;
 
+  // ID for the routing table that used for CLAT default routes. Patchpanel is
+  // responsible for adding and removing routes in this table. Using a user
+  // defined table ID lesser than 255 to avoid conflict with per-device table
+  // (for which we use table ID 1000+).
+  static constexpr uint32_t kClatRoutingTableId = 249;
+
+  // ID for a routing table to block all traffic. Used in b/180521518 to prevent
+  // Chrome to send traffic through IPv6 cellular when there is another
+  // IPv4-only primary network.
+  static constexpr uint32_t kUnreachableTableId = 250;
+
   virtual ~RoutingTable();
 
   static RoutingTable* GetInstance();

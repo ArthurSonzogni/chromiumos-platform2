@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <linux/fib_rules.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -11,7 +13,6 @@
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
 
-#include "shill/ipconfig.h"
 #include "shill/mock_resolver.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_network_applier.h"
@@ -20,6 +21,7 @@
 #include "shill/network/mock_routing_table.h"
 #include "shill/network/network_applier.h"
 #include "shill/network/network_priority.h"
+#include "shill/network/routing_table.h"
 #include "shill/technology.h"
 
 using testing::_;
@@ -341,7 +343,6 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
   vm_fwmark.value = 0x00002100;
   vm_fwmark.mask = 0x00003f00;
   const uint32_t kExpectedTable = 1003u;
-  EXPECT_CALL(rule_table_, GetShillUid());
 
   EXPECT_CALL(rule_table_, FlushRules(kInterfaceIndex));
 
@@ -447,9 +448,9 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultVPN) {
   vm_fwmark.value = 0x00002100;
   vm_fwmark.mask = 0x00003f00;
   const uint32_t kExpectedTable = 1011u;
-  EXPECT_CALL(rule_table_, GetShillUid());
 
-  auto user_uids = std::vector<uint32_t>{100u};
+  auto user_uids = base::flat_map<std::string_view, fib_rule_uid_range>{
+      {"chronos", fib_rule_uid_range{100u, 100u}}};
   EXPECT_CALL(rule_table_, GetUserTrafficUids()).WillOnce(ReturnRef(user_uids));
 
   EXPECT_CALL(rule_table_, FlushRules(kInterfaceIndex));
@@ -523,7 +524,6 @@ TEST_F(NetworkApplierRoutingPolicyTest,
   routing_fwmark.value = (1000 + kInterfaceIndex) << 16;
   routing_fwmark.mask = 0xffff0000;
   const uint32_t kExpectedTable = 1004u;
-  EXPECT_CALL(rule_table_, GetShillUid());
 
   EXPECT_CALL(rule_table_, FlushRules(kInterfaceIndex));
 
@@ -599,7 +599,8 @@ TEST_F(NetworkApplierRoutingPolicyTest,
                                        all_addresses, rfc3442_dsts);
 }
 
-TEST_F(NetworkApplierRoutingPolicyTest, NonDefaultCellularShouldHaveNoIPv6) {
+TEST_F(NetworkApplierRoutingPolicyTest,
+       NonDefaultCellularShouldHaveChromeIPv6Blocked) {
   const int kInterfaceIndex = 5;
   const std::string kInterfaceName = "wwan0";
 
@@ -616,9 +617,8 @@ TEST_F(NetworkApplierRoutingPolicyTest, NonDefaultCellularShouldHaveNoIPv6) {
   routing_fwmark.mask = 0xffff0000;
   const uint32_t kExpectedTable = 1005u;
 
-  const uint32_t shill_uid = 22000u;
-  EXPECT_CALL(rule_table_, GetShillUid()).WillOnce(Return(shill_uid));
-
+  EXPECT_CALL(rule_table_, GetChromeUid())
+      .WillOnce(Return(fib_rule_uid_range{100u, 100u}));
   EXPECT_CALL(rule_table_, FlushRules(kInterfaceIndex));
 
   // IPv4 rules:
@@ -648,33 +648,36 @@ TEST_F(NetworkApplierRoutingPolicyTest, NonDefaultCellularShouldHaveNoIPv6) {
       .WillOnce(Return(true));
 
   // IPv6 rules:
-  // 1030:  from all fwmark 0x3ed0000/0xffff0000 uidrange (shill) lookup 1005
-  EXPECT_CALL(
-      rule_table_,
-      AddRule(kInterfaceIndex, IsValidFwMarkRuleWithUid(
-                                   net_base::IPFamily::kIPv6, 1030u,
-                                   routing_fwmark, shill_uid, kExpectedTable)))
+  // 1029:  from 2001:db8:0:1000::abcd/64 uidrange (chrome) lookup 250
+  EXPECT_CALL(rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidSrcRuleWithUid(net_base::IPFamily::kIPv6, 1029u,
+                                            all_addresses[1], 100u,
+                                            RoutingTable::kUnreachableTableId)))
+      .WillOnce(Return(true));
+  // 1030:  from all fwmark 0x3ed0000/0xffff0000 lookup 1005
+  EXPECT_CALL(rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidFwMarkRule(net_base::IPFamily::kIPv6, 1030u,
+                                        routing_fwmark, kExpectedTable)))
       .WillOnce(Return(true));
   // 1030:  from all oif wlan0 lookup 1005
   EXPECT_CALL(
       rule_table_,
-      AddRule(kInterfaceIndex,
-              IsValidOifRuleWithUid(net_base::IPFamily::kIPv6, 1030u,
-                                    kInterfaceName, shill_uid, kExpectedTable)))
+      AddRule(kInterfaceIndex, IsValidOifRule(net_base::IPFamily::kIPv6, 1030u,
+                                              kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
-  // 1030:  from 198.51.100.101/24 lookup 1005
+  // 1030:  from 2001:db8:0:1000::abcd/64 lookup 1005
   EXPECT_CALL(rule_table_,
               AddRule(kInterfaceIndex,
-                      IsValidSrcRuleWithUid(net_base::IPFamily::kIPv6, 1030u,
-                                            all_addresses[1], shill_uid,
-                                            kExpectedTable)))
+                      IsValidSrcRule(net_base::IPFamily::kIPv6, 1030u,
+                                     all_addresses[1], kExpectedTable)))
       .WillOnce(Return(true));
   // 1030:  from all iif wwan0 lookup 1005
   EXPECT_CALL(
       rule_table_,
-      AddRule(kInterfaceIndex,
-              IsValidIifRuleWithUid(net_base::IPFamily::kIPv6, 1030u,
-                                    kInterfaceName, shill_uid, kExpectedTable)))
+      AddRule(kInterfaceIndex, IsValidIifRule(net_base::IPFamily::kIPv6, 1030u,
+                                              kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
 
   EXPECT_CALL(*proc_fs_, FlushRoutingCache()).WillOnce(Return(true));
