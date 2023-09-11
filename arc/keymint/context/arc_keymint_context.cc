@@ -215,7 +215,7 @@ std::optional<std::string> ExtractBase64Spki(
 }  // namespace
 
 ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
-    : PureSoftKeymasterContext(version),
+    : PureSoftKeymasterContext(version, KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT),
       rsa_key_factory_(context_adaptor_.GetWeakPtr(), KM_ALGORITHM_RSA) {}
 
 ArcKeyMintContext::~ArcKeyMintContext() = default;
