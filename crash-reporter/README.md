@@ -364,8 +364,8 @@ These spool dirs are covered in detail in [Crash Report Storage].
 *   `/var/spool/crash/`: System crash reports.
 *   `/home/chronos/crash/`: Logged-out Chrome crashes.
 *   `/run/daemon-store/crash/<user_hash>/`: User-specific queued reports.
-    Note that `/home/root/<user_hash>/crash-reporter/` is the same directory and
-    can be referenced instead.
+    Note that `/home/root/<user_hash>/crash/` is the same directory and can be
+    referenced instead.
 
 ### Boot Clean Paths (/run)
 
