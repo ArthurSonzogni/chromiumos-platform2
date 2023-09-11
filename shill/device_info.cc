@@ -186,6 +186,8 @@ const char* const kModemDrivers[] = {
     "qmi_wwan",
     // For Mediatek-based PCIe modems (Fibocom FM350, etc.)
     "mtk_t7xx",
+    // For Qualcomm SoCs (trogdor)
+    "ipa",
 };
 
 // Path to the tun device.
