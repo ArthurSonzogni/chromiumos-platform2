@@ -13,7 +13,7 @@
 # due to a prior udev add or change event.
 ENV{MIST_SUPPORTED_DEVICE}=="1", GOTO="mist_end"
 
-ACTION!="add|change", GOTO="mist_end"
+ACTION=="remove", GOTO="mist_end"
 
 #-------------------------------------------------------------------------------
 # Supported USB devices after switching into a modem
