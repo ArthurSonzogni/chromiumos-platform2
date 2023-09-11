@@ -89,7 +89,9 @@ void ImageLoader::OnShutdown(int* return_code) {
 }
 
 void ImageLoader::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
-  LOG(FATAL) << "Subprocess " << pid << " exited unexpectedly.";
+  LOG(ERROR) << "Subprocess " << pid << " exited unexpectedly.";
+  // TODO(b/195419571): Force the shutdown.
+  shutdown_callback_.callback().Run();
 }
 
 void ImageLoader::PostponeShutdown() {
