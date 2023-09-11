@@ -8,8 +8,10 @@
 #include <string>
 #include <utility>
 
+#include <base/test/bind.h>
 #include <base/test/power_monitor_test.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
 #include <gmock/gmock.h>
@@ -31,6 +33,7 @@ namespace cryptohome {
 namespace {
 
 using ::base::test::TaskEnvironment;
+using ::base::test::TestFuture;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::testing::_;
@@ -383,6 +386,65 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
   EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(serialized_token));
   in_use_auth_session = auth_session_manager_.FindAuthSession(serialized_token);
   ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+}
+
+TEST_F(AuthSessionManagerTest, AddFindAndWaitRemove) {
+  base::UnguessableToken token;
+  bool is_called = false;
+  InUseAuthSession saved_session;
+  auto callback = [&saved_session, &is_called](InUseAuthSession auth_session) {
+    is_called = true;
+    saved_session = std::move(auth_session);
+  };
+  TestFuture<InUseAuthSession> future;
+
+  // Start scope for first InUseAuthSession
+  {
+    auto created_auth_session = std::make_unique<AuthSession>(
+        AuthSession::Params{.username = kUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = false,
+                            .auth_factor_map = AuthFactorMap()},
+        backing_apis_);
+    auto* created_auth_session_ptr = created_auth_session.get();
+
+    InUseAuthSession auth_session =
+        auth_session_manager_.AddAuthSession(std::move(created_auth_session));
+    ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
+    token = auth_session->token();
+
+    // FindAuthSession on the same token doesn't work, the actual session is
+    // owned by |auth_session|.
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+
+    // FindAndWaitAuthSession on the same token will not trigger the callback
+    // directly, but wait for the session is not in use instead.
+    auth_session_manager_.RunWhenAvailable(
+        token, base::BindLambdaForTesting(callback));
+    EXPECT_FALSE(is_called);
+
+    // |future| will be queued behind |future1|.
+    auth_session_manager_.RunWhenAvailable(token, future.GetCallback());
+    EXPECT_FALSE(future.IsReady());
+
+    // Scope ends here to free the InUseAuthSession, after this |future1| will
+    // be executed.
+  }
+
+  ASSERT_TRUE(is_called);
+  EXPECT_THAT(saved_session.AuthSessionStatus(), IsOk());
+  EXPECT_FALSE(future.IsReady());
+
+  // If we remove the token now, the callback should be called with a
+  // non-existing auth session.
+  EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(token));
+  ASSERT_TRUE(future.IsReady());
+  EXPECT_THAT(future.Get().AuthSessionStatus(), NotOk());
 }
 
 TEST_F(AuthSessionManagerTest, RemoveNonExisting) {

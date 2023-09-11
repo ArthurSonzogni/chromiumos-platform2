@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <queue>
 #include <string>
 
 #include <base/time/clock.h>
@@ -72,8 +73,43 @@ class AuthSessionManager {
   void SetAuthFactorStatusUpdateCallback(
       const AuthFactorStatusUpdateCallback& callback);
 
+  // Finds existing auth session with token and invoke |callback| with the auth
+  // session. If the auth session is available or doesn't exist, the callback is
+  // invoked directly with identical behavior to |FindAuthSession|. If the auth
+  // session exists but is currently active, |callback| will be invoked when the
+  // auth session becomes available (released from active usage).
+  void RunWhenAvailable(const base::UnguessableToken& token,
+                        base::OnceCallback<void(InUseAuthSession)> callback);
+  // Overload to avoid deserialization on client side.
+  void RunWhenAvailable(const std::string& serialized_token,
+                        base::OnceCallback<void(InUseAuthSession)> callback);
+
  private:
   friend class InUseAuthSession;
+
+  // A simple wrapper around
+  // |std::queue<base::OnceCallback<void(InUseAuthSession)>>|, that invokes each
+  // pending callback with error when destructed.
+  class PendingCallbacksQueue {
+   public:
+    PendingCallbacksQueue() = default;
+    ~PendingCallbacksQueue();
+    PendingCallbacksQueue(PendingCallbacksQueue&& queue) = default;
+    PendingCallbacksQueue& operator=(PendingCallbacksQueue&& queue) = default;
+
+    bool IsEmpty();
+    void Push(base::OnceCallback<void(InUseAuthSession)> callback);
+    base::OnceCallback<void(InUseAuthSession)> Pop();
+
+   private:
+    std::queue<base::OnceCallback<void(InUseAuthSession)>> callbacks_;
+  };
+
+  struct AuthSessionMapEntry {
+    std::unique_ptr<AuthSession> session;
+    // The operations that are waiting for the session to be released.
+    PendingCallbacksQueue pending_callbacks;
+  };
 
   // Starts/Restarts/Stops the expiration timer based on the current contents of
   // the expiration map.
@@ -99,7 +135,7 @@ class AuthSessionManager {
   // Track all of the managed auth sessions by token. For AuthSessions in active
   // use, the unique_ptr for the AuthSession for a given token will be nullptr,
   // as the ownership is being held by an InUseAuthSession object.
-  std::map<base::UnguessableToken, std::unique_ptr<AuthSession>> auth_sessions_;
+  std::map<base::UnguessableToken, AuthSessionMapEntry> auth_sessions_;
 
   // Timer infrastructure used to track sessions for expiration. This is done by
   // using a map of expiration time -> token to keep track of when sessions

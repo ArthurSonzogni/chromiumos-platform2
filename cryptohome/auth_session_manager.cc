@@ -65,7 +65,7 @@ InUseAuthSession AuthSessionManager::AddAuthSession(
 
   // Add an entry to the session map. Note that we're deliberately initializing
   // things into an in-use state by only adding a blank entry in the map.
-  auth_sessions_.emplace_hint(iter, token, nullptr);
+  auth_sessions_.emplace_hint(iter, token, AuthSessionMapEntry{});
   InUseAuthSession in_use(*this, /*is_session_active=*/true,
                           std::move(auth_session));
 
@@ -145,13 +145,13 @@ InUseAuthSession AuthSessionManager::FindAuthSession(
 
   // If the AuthSessionManager doesn't own the AuthSession unique_ptr,
   // then the AuthSession is actively in use for another dbus operation.
-  if (!it->second) {
+  if (!it->second.session) {
     return InUseAuthSession(*this, /*is_session_active=*/true, nullptr);
   } else {
     // By giving ownership of the unique_ptr we are marking
     // the AuthSession as in active use.
     return InUseAuthSession(*this, /*is_session_active=*/false,
-                            std::move(it->second));
+                            std::move(it->second.session));
   }
 }
 
@@ -221,12 +221,77 @@ void AuthSessionManager::MarkNotInUse(std::unique_ptr<AuthSession> session) {
     // just return and allow the object to be destroyed.
     return;
   }
-  it->second = std::move(session);
+  if (!it->second.pending_callbacks.IsEmpty()) {
+    it->second.pending_callbacks.Pop().Run(InUseAuthSession(
+        *this, /*is_session_active=*/false, std::move(session)));
+    return;
+  }
+  it->second.session = std::move(session);
 }
 
 void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
     const AuthFactorStatusUpdateCallback& callback) {
   auth_factor_status_update_callback_ = callback;
+}
+
+void AuthSessionManager::RunWhenAvailable(
+    const std::string& serialized_token,
+    base::OnceCallback<void(InUseAuthSession)> callback) {
+  std::optional<base::UnguessableToken> token =
+      AuthSession::GetTokenFromSerializedString(serialized_token);
+  if (!token.has_value()) {
+    LOG(ERROR) << "Unparsable AuthSession token for find";
+    std::move(callback).Run(
+        InUseAuthSession(*this, /*is_session_active=*/false, nullptr));
+  }
+  RunWhenAvailable(token.value(), std::move(callback));
+}
+
+void AuthSessionManager::RunWhenAvailable(
+    const base::UnguessableToken& token,
+    base::OnceCallback<void(InUseAuthSession)> callback) {
+  auto it = auth_sessions_.find(token);
+  if (it == auth_sessions_.end()) {
+    std::move(callback).Run(
+        InUseAuthSession(*this, /*is_session_active=*/false, nullptr));
+    return;
+  }
+
+  // If the AuthSessionManager doesn't own the AuthSession unique_ptr,
+  // then the AuthSession is actively in use for another dbus operation. Put the
+  // callback into the pending_callbacks queue.
+  if (!it->second.session) {
+    it->second.pending_callbacks.Push(std::move(callback));
+    return;
+  }
+
+  // By giving ownership of the unique_ptr we are marking
+  // the AuthSession as in active use.
+  std::move(callback).Run(InUseAuthSession(*this, /*is_session_active=*/false,
+                                           std::move(it->second.session)));
+}
+
+AuthSessionManager::PendingCallbacksQueue::~PendingCallbacksQueue() {
+  while (!IsEmpty()) {
+    Pop().Run(InUseAuthSession());
+  }
+}
+
+bool AuthSessionManager::PendingCallbacksQueue::IsEmpty() {
+  return callbacks_.empty();
+}
+
+void AuthSessionManager::PendingCallbacksQueue::Push(
+    base::OnceCallback<void(InUseAuthSession)> callback) {
+  callbacks_.push(std::move(callback));
+}
+
+base::OnceCallback<void(InUseAuthSession)>
+AuthSessionManager::PendingCallbacksQueue::Pop() {
+  base::OnceCallback<void(InUseAuthSession)> callback =
+      std::move(callbacks_.front());
+  callbacks_.pop();
+  return callback;
 }
 
 InUseAuthSession::InUseAuthSession()
