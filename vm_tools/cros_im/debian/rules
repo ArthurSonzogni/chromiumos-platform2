@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 export DH_VERBOSE=1
-DEB_BUILD_ARCH ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 
 %:
 	dh $@
@@ -12,13 +11,6 @@ DEB_BUILD_ARCH ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 override_dh_auto_configure:
 # TODO(b/291831134): Enable build_gtk4 flag for bookworm only.
 	dh_auto_configure -- -Dwl_protocol_dir=protocols
-
-override_dh_auto_test:
-ifeq (,$(filter armhf,$(DEB_BUILD_ARCH)))
-	dh_auto_test
-else
-	echo "Skipping tests due to Weston errors on armhf."
-endif
 
 # Exclude qtbase-abi in ${shlib:Depends}. This is a virtual package that is not
 # compatible with Ubuntu users, and is not needed since cros-im already depends
