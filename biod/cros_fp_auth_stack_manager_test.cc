@@ -209,11 +209,13 @@ TEST_F(CrosFpAuthStackManagerTest, TestStartEnrollSessionSuccess) {
                                                kLabelSeedIv);
 
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
   // Expect biod will check if there is space for a new template.
-  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(1));
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(3));
   EXPECT_CALL(*mock_cros_dev_,
               SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
 
   // Expect that biod will ask FPMCU to set the enroll mode.
   EXPECT_CALL(*mock_cros_dev_,
@@ -244,6 +246,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestStartEnrollSessionTwiceFailed) {
   EXPECT_CALL(*mock_cros_dev_,
               SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(0)).WillRepeatedly(Return(true));
 
   EXPECT_CALL(*mock_cros_dev_,
               SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
@@ -275,6 +278,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestEnrollSessionEnrollModeFailed) {
   EXPECT_CALL(*mock_cros_dev_,
               SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(0)).WillRepeatedly(Return(true));
 
   EXPECT_CALL(*mock_cros_dev_,
               SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
@@ -316,6 +320,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestDoEnrollImageEventSuccess) {
   EXPECT_CALL(*mock_cros_dev_,
               SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(0)).WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(_)).WillRepeatedly(Return(true));
   enroll_session = cros_fp_auth_stack_manager_->StartEnrollSession(request);
   ASSERT_TRUE(enroll_session);
@@ -460,8 +465,8 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInSuccess) {
   EXPECT_CALL(*mock_session_manager_, GetUser()).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(Return(kRecords));
-  for (int i = 0; i < 2; i++) {
-    EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(i, kRecords[i].tmpl))
+  for (const auto& record : kRecords) {
+    EXPECT_CALL(*mock_cros_dev_, UploadTemplate(record.tmpl))
         .WillOnce(Return(true));
   }
   cros_fp_auth_stack_manager_->OnUserLoggedIn(kUserId);
@@ -495,7 +500,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInUploadFailed) {
   EXPECT_CALL(*mock_session_manager_, GetUser()).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(Return(kRecords));
-  EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(0, kRecords[0].tmpl))
+  EXPECT_CALL(*mock_cros_dev_, UploadTemplate(kRecords[0].tmpl))
       .WillOnce(Return(false));
   cros_fp_auth_stack_manager_->OnUserLoggedIn(kUserId);
 
@@ -530,15 +535,15 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessNoUser) {
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(Return(kRecords));
-  for (int i = 0; i < 2; i++) {
-    EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(i, kRecords[i].tmpl))
+  for (const auto& record : kRecords) {
+    EXPECT_CALL(*mock_cros_dev_, UploadTemplate(record.tmpl))
         .WillOnce(Return(true));
   }
   EXPECT_CALL(*mock_cros_dev_,
               SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
 
   // Start auth session.
   auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
@@ -588,7 +593,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionSameUserSuccess) {
               SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
   EXPECT_CALL(*this, AuthScanDoneHandler);
 
   // Start auth session.
@@ -622,7 +627,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionDifferentUserSuccess) {
               SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
 
   // Start auth session.
   auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
@@ -664,7 +669,6 @@ TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialSuccess) {
   EXPECT_CALL(*mock_session_manager_, DeleteRecord(kRecordId))
       .WillOnce(Return(true));
   // Assume there are no more templates after deletion.
-  // `PreloadCurrentUserTemplates` is covered in other tests already anyway.
   EXPECT_CALL(*mock_session_manager_, GetRecords())
       .WillOnce(Return(std::vector<CrosFpSessionManager::SessionRecord>()));
 
@@ -783,9 +787,6 @@ TEST_F(CrosFpAuthStackManagerInitiallyEnrollDoneTest,
       }));
   EXPECT_CALL(*mock_session_manager_, CreateRecord(_, Pointee(kTemplate)))
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(1, kTemplate))
-      .WillOnce(Return(true));
 
   auto request = MakeCreateCredentialRequest(kPubInX, kPubInY);
 
@@ -798,44 +799,6 @@ TEST_F(CrosFpAuthStackManagerInitiallyEnrollDoneTest,
   EXPECT_FALSE(reply.record_id().empty());
 
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kNone);
-}
-
-TEST_F(CrosFpAuthStackManagerInitiallyEnrollDoneTest,
-       TestCreateCredentialPreloadFailed) {
-  const std::optional<std::string> kUserId("testuser");
-  const brillo::Blob kPubInX(32, 3), kPubInY(32, 4);
-  const brillo::Blob kEncryptedSecret(32, 5), kSecretIv(16, 5);
-  const brillo::Blob kPubOutX(32, 6), kPubOutY(32, 7);
-  const brillo::Blob kTemplate(10, 8);
-
-  EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
-  EXPECT_CALL(*mock_cros_dev_, GetTemplate(-1))
-      .WillOnce(Return(ByMove(std::make_unique<VendorTemplate>(kTemplate))));
-  EXPECT_CALL(*mock_cros_dev_,
-              GetPositiveMatchSecretWithPubkey(-1, kPubInX, kPubInY))
-      .WillOnce(Return(GetSecretReply{
-          .encrypted_secret = kEncryptedSecret,
-          .iv = kSecretIv,
-          .pk_out_x = kPubOutX,
-          .pk_out_y = kPubOutY,
-      }));
-  EXPECT_CALL(*mock_session_manager_, CreateRecord(_, Pointee(kTemplate)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, PreloadTemplate(1, kTemplate))
-      .WillOnce(Return(false));
-
-  auto request = MakeCreateCredentialRequest(kPubInX, kPubInY);
-
-  auto reply = cros_fp_auth_stack_manager_->CreateCredential(request);
-  ASSERT_EQ(reply.status(), CreateCredentialReply::SUCCESS);
-  EXPECT_EQ(reply.encrypted_secret(), BlobToString(kEncryptedSecret));
-  EXPECT_EQ(reply.iv(), BlobToString(kSecretIv));
-  EXPECT_EQ(reply.pub().x(), BlobToString(kPubOutX));
-  EXPECT_EQ(reply.pub().y(), BlobToString(kPubOutY));
-  EXPECT_FALSE(reply.record_id().empty());
-
-  EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kLocked);
 }
 
 TEST_F(CrosFpAuthStackManagerInitiallyEnrollDoneTest,
@@ -949,7 +912,7 @@ TEST_F(CrosFpAuthStackManagerInitiallyWaitForFingerUp,
               SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
@@ -977,7 +940,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionMatchModeFailed) {
               SetNonceContext(kGscNonce, kEncryptedLabelSeed, kLabelSeedIv))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
-  EXPECT_CALL(*mock_cros_dev_, ReloadTemplates(2)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(false));
 

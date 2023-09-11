@@ -157,7 +157,8 @@ BioSession CrosFpAuthStackManager::StartEnrollSession(
     return Session(base::NullCallback());
   }
 
-  if (session_manager_->GetNumOfTemplates() >= cros_dev_->MaxTemplateCount()) {
+  size_t num_of_templates = session_manager_->GetNumOfTemplates();
+  if (num_of_templates >= cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << "No space for an additional template.";
     return BioSession(base::NullCallback());
   }
@@ -167,6 +168,11 @@ BioSession CrosFpAuthStackManager::StartEnrollSession(
           brillo::BlobFromString(request.encrypted_label_seed()),
           brillo::BlobFromString(request.iv()))) {
     LOG(ERROR) << "Failed to set nonce context";
+    return BioSession(base::NullCallback());
+  }
+
+  if (!cros_dev_->UnlockTemplates(num_of_templates)) {
+    LOG(ERROR) << "Failed to unlock templates.";
     return BioSession(base::NullCallback());
   }
 
@@ -232,18 +238,7 @@ CreateCredentialReply CrosFpAuthStackManager::CreateCredential(
     return reply;
   }
 
-  // We need to upload the newly-enrolled template to the preloaded buffer, so
-  // that we can load it properly with other preloaded templates the next time
-  // we want to AuthenticateCredential.
-  LOG(INFO) << "Upload record " << LogSafeID(record_id) << ".";
-  if (!cros_dev_->PreloadTemplate(session_manager_->GetNumOfTemplates() - 1,
-                                  std::move(actual_tmpl))) {
-    LOG(ERROR) << "Preload template failed.";
-    state_ = State::kLocked;
-  } else {
-    state_ = State::kNone;
-  }
-
+  state_ = State::kNone;
   reply.set_status(CreateCredentialReply::SUCCESS);
   reply.set_encrypted_secret(
       brillo::BlobToString(secret_reply->encrypted_secret));
@@ -422,7 +417,7 @@ DeleteCredentialReply CrosFpAuthStackManager::DeleteCredential(
     reply.set_status(DeleteCredentialReply::DELETION_FAILED);
     return reply;
   }
-  if (!PreloadCurrentUserTemplates()) {
+  if (!UploadCurrentUserTemplates()) {
     LOG(ERROR) << "Failed to reload the current user's templates. Biod locked "
                   "for further actions.";
     // The credential is still deleted successfully, so don't need to return
@@ -539,19 +534,18 @@ bool CrosFpAuthStackManager::LoadUser(std::string user_id, bool lock_to_user) {
     state_ = State::kLocked;
     return false;
   }
-  return PreloadCurrentUserTemplates();
+  return UploadCurrentUserTemplates();
 }
 
-bool CrosFpAuthStackManager::PreloadCurrentUserTemplates() {
+bool CrosFpAuthStackManager::UploadCurrentUserTemplates() {
   std::vector<CrosFpSessionManager::SessionRecord> records =
       session_manager_->GetRecords();
-  for (size_t i = 0; i < records.size(); i++) {
-    const auto& record = records[i];
+  for (const auto& record : records) {
     // TODO(b/253993586): Send record format version metrics here.
     LOG(INFO) << "Upload record " << LogSafeID(record.record_metadata.record_id)
               << ".";
-    if (!cros_dev_->PreloadTemplate(i, record.tmpl)) {
-      LOG(ERROR) << "Preload template failed.";
+    if (!cros_dev_->UploadTemplate(record.tmpl)) {
+      LOG(ERROR) << "Upload template failed.";
       state_ = State::kLocked;
       return false;
     }
@@ -658,8 +652,8 @@ bool CrosFpAuthStackManager::PrepareStartAuthSession(
     LOG(ERROR) << "Failed to set nonce context";
     return false;
   }
-  if (!cros_dev_->ReloadTemplates(session_manager_->GetNumOfTemplates())) {
-    LOG(ERROR) << "Failed to reload templates.";
+  if (!cros_dev_->UnlockTemplates(session_manager_->GetNumOfTemplates())) {
+    LOG(ERROR) << "Failed to unlock templates.";
     return false;
   }
   if (!RequestMatchFingerDown()) {

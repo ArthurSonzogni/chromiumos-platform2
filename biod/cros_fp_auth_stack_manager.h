@@ -129,10 +129,10 @@ class CrosFpAuthStackManager : public AuthStackManager {
   void OnSessionFailed();
 
   bool LoadUser(std::string user_id, bool lock_to_user);
-  // Preload encrypted user templates into FPMCU. We only need to do this when
-  // the current user has changed, or when we delete a template and a reload is
-  // required.
-  bool PreloadCurrentUserTemplates();
+  // Load encrypted user templates into FPMCU. We only need to do this when
+  // the current user has changed, or when we delete a template, or after we
+  // enrolled a new finger.
+  bool UploadCurrentUserTemplates();
 
   bool RequestEnrollImage();
   bool RequestEnrollFingerUp();
