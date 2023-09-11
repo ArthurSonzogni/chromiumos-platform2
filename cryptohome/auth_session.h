@@ -187,9 +187,7 @@ class AuthSession final {
   const AuthFactorMap& auth_factor_map() const { return auth_factor_map_; }
 
   // Indicates if the session has a User Secret Stash enabled.
-  bool has_user_secret_stash() const {
-    return user_secret_stash_ && user_secret_stash_main_key_;
-  }
+  bool has_user_secret_stash() const { return user_secret_stash_ != nullptr; }
 
   // Indicates if the session has migration to User Secret Stash enabled.
   bool has_migrate_to_user_secret_stash() const {
@@ -383,14 +381,14 @@ class AuthSession final {
   // OnMigrationUssCreated is the callback function to be called after
   // migration secret is generated and added to UserSecretStash during the
   // AuthenticateViaVaultKeysetAndMigrateToUss() operation.
-  void OnMigrationUssCreated(AuthBlockType auth_block_type,
-                             AuthFactorType auth_factor_type,
-                             const AuthFactorMetadata& auth_factor_metadata,
-                             const AuthInput& auth_input,
-                             CryptohomeStatus pre_migration_status,
-                             StatusCallback on_done,
-                             std::unique_ptr<UserSecretStash> user_secret_stash,
-                             brillo::SecureBlob uss_main_key);
+  void OnMigrationUssCreated(
+      AuthBlockType auth_block_type,
+      AuthFactorType auth_factor_type,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const AuthInput& auth_input,
+      CryptohomeStatus pre_migration_status,
+      StatusCallback on_done,
+      std::unique_ptr<UserSecretStash> user_secret_stash);
 
   // OnMigrationUssCreatedForUpdate is the callback function to be called after
   // migration secret is generated and added to UserSecretStash during the
@@ -404,8 +402,7 @@ class AuthSession final {
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_state,
-      std::unique_ptr<UserSecretStash> user_secret_stash,
-      brillo::SecureBlob uss_main_key);
+      std::unique_ptr<UserSecretStash> user_secret_stash);
 
   // Sets |vault_keyset_| for testing purpose.
   void set_vault_keyset_for_testing(std::unique_ptr<VaultKeyset> value) {
@@ -870,8 +867,6 @@ class AuthSession final {
   // The decrypted UserSecretStash. Only populated for users who have it (legacy
   // users who only have vault keysets will have this field equal to null).
   std::unique_ptr<UserSecretStash> user_secret_stash_;
-  // The UserSecretStash main key. Only populated iff |user_secret_stash_| is.
-  std::optional<brillo::SecureBlob> user_secret_stash_main_key_;
   Crypto* const crypto_;
   Platform* const platform_;
   // The user session map and a verifier forwarder associated with it.

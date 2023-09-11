@@ -183,7 +183,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     // If the USS was decrypted successfully, its reencryption must succeed as
     // well.
     cryptohome::CryptohomeStatusOr<Blob> reencrypted =
-        stash_status.value()->GetEncryptedContainer(mutated_uss_main_key);
+        stash_status.value()->GetEncryptedContainer();
     CHECK(reencrypted.ok());
 
     // Decryption of the reencrypted USS must succeed as well, and the result

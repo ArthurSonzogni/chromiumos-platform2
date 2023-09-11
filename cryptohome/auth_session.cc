@@ -628,7 +628,6 @@ CryptohomeStatus AuthSession::OnUserCreated() {
     if (IsUserSecretStashExperimentEnabled(platform_)) {
       // Check invariants.
       CHECK(!user_secret_stash_);
-      CHECK(!user_secret_stash_main_key_.has_value());
       CHECK(file_system_keyset_.has_value());
       // The USS experiment is on, hence create the USS for the newly created
       // non-ephemeral user. Keep the USS in memory: it will be persisted after
@@ -644,7 +643,6 @@ CryptohomeStatus AuthSession::OnUserCreated() {
             user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
       }
       user_secret_stash_ = std::move(uss_status).value();
-      user_secret_stash_main_key_ = UserSecretStash::CreateRandomMainKey();
     }
   }
 
@@ -1029,9 +1027,8 @@ void AuthSession::OnMigrationUssCreatedForUpdate(
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state,
-    std::unique_ptr<UserSecretStash> user_secret_stash,
-    brillo::SecureBlob uss_main_key) {
-  if (!user_secret_stash || uss_main_key.empty()) {
+    std::unique_ptr<UserSecretStash> user_secret_stash) {
+  if (!user_secret_stash) {
     LOG(ERROR) << "Uss migration during UpdateVaultKeyset failed for "
                   "VaultKeyset with label: "
                << auth_factor_label;
@@ -1043,7 +1040,6 @@ void AuthSession::OnMigrationUssCreatedForUpdate(
   }
 
   user_secret_stash_ = std::move(user_secret_stash);
-  user_secret_stash_main_key_ = std::move(uss_main_key);
 
   auto migration_performance_timer =
       std::make_unique<AuthSessionPerformanceTimer>(kUSSMigrationTimer);
@@ -1064,9 +1060,8 @@ void AuthSession::OnMigrationUssCreated(
     const AuthInput& auth_input,
     CryptohomeStatus pre_migration_status,
     StatusCallback on_done,
-    std::unique_ptr<UserSecretStash> user_secret_stash,
-    brillo::SecureBlob uss_main_key) {
-  if (!user_secret_stash || uss_main_key.empty()) {
+    std::unique_ptr<UserSecretStash> user_secret_stash) {
+  if (!user_secret_stash) {
     LOG(ERROR) << "Uss migration failed for VaultKeyset with label: "
                << key_data_.label();
     // We don't report VK to USS migration status here because it is expected
@@ -1077,7 +1072,6 @@ void AuthSession::OnMigrationUssCreated(
   }
 
   user_secret_stash_ = std::move(user_secret_stash);
-  user_secret_stash_main_key_ = std::move(uss_main_key);
 
   auto migration_performance_timer =
       std::make_unique<AuthSessionPerformanceTimer>(kUSSMigrationTimer);
@@ -1127,7 +1121,7 @@ const FileSystemKeyset& AuthSession::file_system_keyset() const {
 }
 
 bool AuthSession::PersistResetSecretToUss() {
-  CHECK(user_secret_stash_main_key_.has_value());
+  CHECK(user_secret_stash_);
 
   // Update UserSecretStash in memory with reset_secret from not-migrated
   // keyset. If reset_secret isn't updated, no need to persist.
@@ -1137,8 +1131,7 @@ bool AuthSession::PersistResetSecretToUss() {
 
   // Encrypt the updated USS.
   CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
-      user_secret_stash_->GetEncryptedContainer(
-          user_secret_stash_main_key_.value());
+      user_secret_stash_->GetEncryptedContainer();
   if (!encrypted_uss_container.ok()) {
     LOG(ERROR) << "Failed to encrypt user secret stash after updating "
                   "reset_secret.";
@@ -1741,7 +1734,6 @@ void AuthSession::RemoveAuthFactorViaUserSecretStash(
     StatusCallback on_done) {
   // Preconditions.
   CHECK(user_secret_stash_);
-  CHECK(user_secret_stash_main_key_.has_value());
 
   auth_factor_manager_->RemoveAuthFactor(
       obfuscated_username_, auth_factor, auth_block_utility_,
@@ -1784,8 +1776,7 @@ void AuthSession::ResaveUssWithFactorRemoved(
   }
 
   CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
-      user_secret_stash_->GetEncryptedContainer(
-          user_secret_stash_main_key_.value());
+      user_secret_stash_->GetEncryptedContainer();
   if (!encrypted_uss_container.ok()) {
     LOG(ERROR) << "AuthSession: Failed to encrypt user secret stash after auth "
                   "factor removal.";
@@ -2033,8 +2024,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   // Encrypt the updated USS.
   CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
-      user_secret_stash_->GetEncryptedContainer(
-          user_secret_stash_main_key_.value());
+      user_secret_stash_->GetEncryptedContainer();
   if (!encrypted_uss_container.ok()) {
     LOG(ERROR) << "AuthSession: Failed to encrypt user secret stash for auth "
                   "factor update.";
@@ -2307,8 +2297,7 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
     return;
   }
   CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
-      session_->user_secret_stash_->GetEncryptedContainer(
-          session_->user_secret_stash_main_key_.value());
+      session_->user_secret_stash_->GetEncryptedContainer();
   if (!encrypted_uss_container.ok()) {
     LOG(ERROR)
         << "Failed to persist user secret stash after changing labels from: "
@@ -2712,8 +2701,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
 
   // Encrypt the updated USS.
   CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
-      session_->user_secret_stash_->GetEncryptedContainer(
-          *session_->user_secret_stash_main_key_);
+      session_->user_secret_stash_->GetEncryptedContainer();
   if (!encrypted_uss_container.ok()) {
     LOG(ERROR) << "Failed to encrypt user secret stash after auth factor "
                   "creation with label: "
@@ -3466,8 +3454,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
 
   // Encrypt the updated USS.
   CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
-      user_secret_stash_->GetEncryptedContainer(
-          user_secret_stash_main_key_.value());
+      user_secret_stash_->GetEncryptedContainer();
   if (!encrypted_uss_container.ok()) {
     LOG(ERROR) << "Failed to encrypt user secret stash after auth factor "
                   "creation with label: "
@@ -3594,7 +3581,6 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
   // persisting to UserSecretStash; next time migration fail again since label
   // already exists.
   CryptohomeStatus status = user_secret_stash_->AddWrappedMainKey(
-      user_secret_stash_main_key_.value(),
       /*wrapping_id=*/auth_factor.label(), uss_credential_secret.value(),
       clobber);
   if (!status.ok()) {
@@ -4010,13 +3996,11 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // This unwraps the USS Main Key with the credential secret, and decrypts the
   // USS payload using the USS Main Key. The wrapping_id field is defined equal
   // to the factor's label.
-  brillo::SecureBlob decrypted_main_key;
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
       user_secret_stash_status =
           UserSecretStash::FromEncryptedContainerWithWrappingKey(
               encrypted_uss.value(), /*wrapping_id=*/auth_factor_label,
-              /*wrapping_key=*/uss_credential_secret.value(),
-              &decrypted_main_key);
+              /*wrapping_key=*/uss_credential_secret.value());
   if (!user_secret_stash_status.ok()) {
     LOG(ERROR) << "Failed to decrypt the user secret stash";
     std::move(on_done).Run(
@@ -4036,7 +4020,6 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   user_secret_stash_ = std::move(user_secret_stash_status).value();
-  user_secret_stash_main_key_ = decrypted_main_key;
 
   // Populate data fields from the USS.
   file_system_keyset_ = user_secret_stash_->GetFileSystemKeyset();

@@ -869,23 +869,23 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUSSUnwrapMKFailedInFromEncContainerWithWK = 521,
   /* =Obsolete= */
   kLocUSSFromPayloadFailedInFromEncContainerWithWK = 522,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSUnwrapMKFailedInUnwrapMK = 523,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* =Obsolete= */
   kLocUSSMainKeyEmptyInAddWrappedMainKey = 524,
-  /* ./user_secret_stash/user_secret_stash.cc */
-  kLocUSSWrappingIDEmptyInAddWrappedMainKey = 525,
-  /* ./user_secret_stash/user_secret_stash.cc */
-  kLocUSSWrappingWrongSizeInAddWrappedMainKey = 526,
-  /* ./user_secret_stash/user_secret_stash.cc */
-  kLocUSSDuplicateWrappingInAddWrappedMainKey = 527,
-  /* ./user_secret_stash/user_secret_stash.cc */
-  kLocUSSEncryptFailedInAddWrappedMainKey = 528,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSWrappingIDEmptyInAssignWrappedMainKey = 525,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSWrappingWrongSizeInAssignWrappedMainKey = 526,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSDuplicateWrappingInInsertWrappedMainKey = 527,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSEncryptFailedInAssignWrappedMainKey = 528,
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSPayloadSerializeFailedInGetEncContainer = 529,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/decrypted.cc */
   kLocUSSPayloadEncryptFailedInGetEncContainer = 530,
-  /* ./user_secret_stash/user_secret_stash.cc */
+  /* ./user_secret_stash/encrypted.cc */
   kLocUSSContainerSerializeFailedInGetEncContainer = 531,
   /* ./userdataauth.cc */
   kLocUserDataAuthNotConfiguredInStartAuthSession = 532,
@@ -1513,6 +1513,22 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionPersistFactorFailedInReplaceAfIntoUss = 2160,
   /* ./auth_session.cc */
   kLocAuthSessionPersistUssFailedInReplaceAfIntoUss = 2161,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSNewIdAlreadyExistsInRenameWrappedMainKey = 2162,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSOldIdDoesntExistInRenameWrappedMainKey = 2163,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSIdDoesntExistInRemoveWrappedMainKey = 2164,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSSecretAlreadyExistsInInsertResetSecret = 2165,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSResetSecretDoesntExistInRemove = 2166,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSSecretAlreadyExistsInInsertRateLimiterResetSecret = 2167,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUssInitializeAlreadySetFpRateLimiterId = 2168,
+  /* ./user_secret_stash/decrypted.cc */
+  kLocUSSMainKeyWrongSizeInCreateUss = 2169,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

@@ -1622,9 +1622,6 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -1642,12 +1639,10 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakeLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
@@ -1727,9 +1722,6 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -1747,12 +1739,10 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakeLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
@@ -1833,9 +1823,6 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUssFails) {
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -1853,12 +1840,10 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUssFails) {
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakeLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
@@ -1937,9 +1922,6 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUss) {
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -1957,12 +1939,10 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUss) {
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakePinLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
@@ -2037,9 +2017,6 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUssWithRecreate) {
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -2057,12 +2034,10 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUssWithRecreate) {
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakePinLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
@@ -2156,9 +2131,6 @@ TEST_F(AuthSessionWithUssTest,
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -2176,12 +2148,10 @@ TEST_F(AuthSessionWithUssTest,
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakePinLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
@@ -2265,9 +2235,6 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -2285,12 +2252,10 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakePinLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
@@ -2431,9 +2396,6 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor.
   AuthFactor auth_factor(
       AuthFactorType::kCryptohomeRecovery, kFakeLabel,
@@ -2451,12 +2413,10 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakeLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
@@ -2576,9 +2536,6 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
       UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
   ASSERT_TRUE(uss_status.ok());
   std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor.
   AuthFactor auth_factor(
       AuthFactorType::kSmartCard, kFakeLabel,
@@ -2596,12 +2553,10 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakeLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());
@@ -2775,9 +2730,6 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
   // Add a rate-limiter so that later on a reset is needed after full
   // auth.
   EXPECT_TRUE(uss->InitializeFingerprintRateLimiterId(kFakeRateLimiterLabel));
-  std::optional<brillo::SecureBlob> uss_main_key =
-      UserSecretStash::CreateRandomMainKey();
-  ASSERT_TRUE(uss_main_key.has_value());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -2795,12 +2747,10 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
   std::optional<brillo::SecureBlob> wrapping_key =
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
-  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value(),
+  EXPECT_TRUE(uss->AddWrappedMainKey(kFakeLabel, wrapping_key.value(),
                                      OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss->GetEncryptedContainer(uss_main_key.value());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss->GetEncryptedContainer();
   ASSERT_TRUE(encrypted_uss.ok());
   EXPECT_TRUE(
       uss_storage_.Persist(encrypted_uss.value(), obfuscated_username).ok());

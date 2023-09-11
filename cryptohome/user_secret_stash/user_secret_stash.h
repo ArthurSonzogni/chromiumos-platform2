@@ -88,8 +88,12 @@ inline SetUssExperimentOverride DisableUssExperiment() {
 // the UserSecretStash is accessed. Don't pass the raw flatbuffer around.
 class UserSecretStash {
  public:
-  // Sets up a UserSecretStash with random contents (reset secret, etc.) and the
-  // values from the specified file system keyset.
+  // Sets up a UserSecretStash to protect a given filesystem keyset with the
+  // specified main key.
+  static CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> CreateNew(
+      FileSystemKeyset file_system_keyset, brillo::SecureBlob main_key);
+  // Sets up a UserSecretStash to protect a given filesystem keyset with a
+  // randomly generated main key.
   static CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> CreateRandom(
       FileSystemKeyset file_system_keyset);
   // This deserializes the |flatbuffer| into a UserSecretStashContainer table.
@@ -100,17 +104,11 @@ class UserSecretStash {
   FromEncryptedContainer(const brillo::Blob& flatbuffer,
                          const brillo::SecureBlob& main_key);
   // Same as |FromEncryptedContainer()|, but the main key is unwrapped from the
-  // USS container using the given wrapping key. The |main_key| output argument
-  // is populated with the unwrapped main key on success.
+  // USS container using the given wrapping key.
   static CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
   FromEncryptedContainerWithWrappingKey(const brillo::Blob& flatbuffer,
                                         const std::string& wrapping_id,
-                                        const brillo::SecureBlob& wrapping_key,
-                                        brillo::SecureBlob* main_key);
-
-  // Randomly generates a USS Main Key. This is intended to be used when
-  // creating a fresh USS via |CreateRandom()|.
-  static brillo::SecureBlob CreateRandomMainKey();
+                                        const brillo::SecureBlob& wrapping_key);
 
   virtual ~UserSecretStash() = default;
 
@@ -173,11 +171,9 @@ class UserSecretStash {
 
   // Wraps (encrypts) the USS main key using the given wrapped key. The wrapped
   // data is added into the USS as a wrapped key block with the given wrapping
-  // ID. |main_key| must be non-empty, and |wrapping_key| - of
-  // |kAesGcm256KeySize| length. Returns a status if the wrapping ID is already
-  // used and |clobber| is disabled, or the wrapping fails.
-  CryptohomeStatus AddWrappedMainKey(const brillo::SecureBlob& main_key,
-                                     const std::string& wrapping_id,
+  // ID. Returns a status if the wrapping ID is already used and |clobber| is
+  // disabled, or the wrapping fails.
+  CryptohomeStatus AddWrappedMainKey(const std::string& wrapping_id,
                                      const brillo::SecureBlob& wrapping_key,
                                      OverwriteExistingKeyBlock clobber);
 
@@ -191,12 +187,10 @@ class UserSecretStash {
   // false.
   bool RemoveWrappedMainKey(const std::string& wrapping_id);
 
-  // This uses the |main_key|, which should be 256-bit as of right now, to
-  // encrypt this UserSecretStash class. The object is converted to a
-  // UserSecretStashPayload table, serialized, encrypted with AES-GCM-256, and
-  // serialized as a UserSecretStashContainer table.
-  CryptohomeStatusOr<brillo::Blob> GetEncryptedContainer(
-      const brillo::SecureBlob& main_key);
+  // The object is converted to a UserSecretStashPayload table, serialized,
+  // encrypted with AES-GCM-256, and serialized as a UserSecretStashContainer
+  // table into a blob.
+  CryptohomeStatusOr<brillo::Blob> GetEncryptedContainer();
 
   // Functions to create a snapshot of the current state of the USS and to
   // restore it to the state from a given snapshot. These are generally useful
@@ -214,18 +208,10 @@ class UserSecretStash {
    private:
     friend class UserSecretStash;
 
-    Snapshot(const std::map<std::string, EncryptedUss::WrappedKeyBlock>&
-                 wrapped_key_blocks,
-             const std::map<std::string, brillo::SecureBlob>& reset_secrets,
-             const std::map<AuthFactorType, brillo::SecureBlob>&
-                 rate_limiter_reset_secrets,
-             const UserMetadata& user_metadata);
+    explicit Snapshot(DecryptedUss decrypted);
 
-    // These are copies of all of the internal mutable state of the USS.
-    std::map<std::string, EncryptedUss::WrappedKeyBlock> wrapped_key_blocks_;
-    std::map<std::string, brillo::SecureBlob> reset_secrets_;
-    std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets_;
-    UserMetadata user_metadata_;
+    // This is basically a copy of the internal state of the USS.
+    DecryptedUss decrypted_;
   };
   // Take will capture the current state of the USS in the returned snapshot.
   Snapshot TakeSnapshot() const;
@@ -237,26 +223,8 @@ class UserSecretStash {
  private:
   explicit UserSecretStash(DecryptedUss decrypted);
 
-  UserSecretStash(FileSystemKeyset file_system_keyset,
-                  std::string created_on_os_version);
-
-  // Keys registered with the kernel to decrypt files and file names, together
-  // with corresponding salts and signatures.
-  FileSystemKeyset file_system_keyset_;
-  // Stores multiple wrapped (encrypted) representations of the main key, each
-  // wrapped using a different intermediate key. The map's index is the wrapping
-  // ID, which is an opaque string (although upper programmatic layers can add
-  // semantics to it, in order to map it to the authentication method).
-  std::map<std::string, EncryptedUss::WrappedKeyBlock> wrapped_key_blocks_;
-  // The OS version on which this particular user secret stash was originally
-  // created.
-  std::string created_on_os_version_;
-  // The reset secrets corresponding to each auth factor, by label.
-  std::map<std::string, brillo::SecureBlob> reset_secrets_;
-  // The reset secrets corresponding to each auth factor type's rate limiter.
-  std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets_;
-  // user metadata
-  UserMetadata user_metadata_;
+  // The underlying decrypted USS object.
+  DecryptedUss decrypted_;
 };
 
 }  // namespace cryptohome

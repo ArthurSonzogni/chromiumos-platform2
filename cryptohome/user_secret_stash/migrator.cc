@@ -54,7 +54,6 @@ void UssMigrator::MigrateVaultKeysetToUss(
 
   // Load the USS container with the encrypted payload.
   std::unique_ptr<UserSecretStash> user_secret_stash;
-  brillo::SecureBlob uss_main_key;
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       user_secret_stash_storage.LoadPersisted(SanitizeUserName(username_));
   if (!encrypted_uss.ok()) {
@@ -69,19 +68,14 @@ void UssMigrator::MigrateVaultKeysetToUss(
       ReapAndReportError(std::move(uss_status).status(),
                          kCryptohomeErrorUssMigrationErrorBucket);
       ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssCreation);
-      std::move(completion_callback)
-          .Run(/*user_secret_stash=*/nullptr,
-               /*uss_main_key=*/brillo::SecureBlob());
+      std::move(completion_callback).Run(/*user_secret_stash=*/nullptr);
       return;
     }
     user_secret_stash = std::move(uss_status).value();
-    uss_main_key = UserSecretStash::CreateRandomMainKey();
-    if (!AddMigrationSecretToUss(uss_main_key, *user_secret_stash)) {
+    if (!AddMigrationSecretToUss(*user_secret_stash)) {
       ReportVkToUssMigrationStatus(
           VkToUssMigrationStatus::kFailedAddingMigrationSecret);
-      std::move(completion_callback)
-          .Run(/*user_secret_stash=*/nullptr,
-               /*uss_main_key=*/brillo::SecureBlob());
+      std::move(completion_callback).Run(/*user_secret_stash=*/nullptr);
       return;
     }
   } else {
@@ -90,22 +84,19 @@ void UssMigrator::MigrateVaultKeysetToUss(
     auto uss_status = UserSecretStash::FromEncryptedContainerWithWrappingKey(
         encrypted_uss.value(),
         /*wrapping_id=*/kMigrationSecretLabel,
-        /*wrapping_key=*/*migration_secret_, &uss_main_key);
+        /*wrapping_key=*/*migration_secret_);
     if (!uss_status.ok()) {
       LOG(ERROR) << "Failed to decrypt the UserSecretStash during migration.";
       ReapAndReportError(std::move(uss_status).status(),
                          kCryptohomeErrorUssMigrationErrorBucket);
       ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssDecrypt);
-      std::move(completion_callback)
-          .Run(/*user_secret_stash=*/nullptr,
-               /*uss_main_key=*/brillo::SecureBlob());
+      std::move(completion_callback).Run(/*user_secret_stash=*/nullptr);
       return;
     }
     user_secret_stash = std::move(uss_status).value();
   }
 
-  std::move(completion_callback)
-      .Run(std::move(user_secret_stash), std::move(uss_main_key));
+  std::move(completion_callback).Run(std::move(user_secret_stash));
 }
 
 void UssMigrator::GenerateMigrationSecret(
@@ -116,13 +107,10 @@ void UssMigrator::GenerateMigrationSecret(
                  brillo::BlobFromString(kMigrationSecretDerivationPublicInfo)));
 }
 
-bool UssMigrator::AddMigrationSecretToUss(
-    const brillo::SecureBlob& uss_main_key,
-    UserSecretStash& user_secret_stash) {
+bool UssMigrator::AddMigrationSecretToUss(UserSecretStash& user_secret_stash) {
   // This wraps the USS Main Key with the migration_secret and adds the
   // migration_secret key block to USS in memory.
   CryptohomeStatus status = user_secret_stash.AddWrappedMainKey(
-      uss_main_key,
       /*wrapping_id=*/kMigrationSecretLabel, *migration_secret_,
       OverwriteExistingKeyBlock::kDisabled);
   if (!status.ok()) {

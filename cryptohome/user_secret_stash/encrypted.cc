@@ -225,8 +225,9 @@ CryptohomeStatusOr<brillo::SecureBlob> EncryptedUss::DecryptPayload(
 
   // Use the main key to decrypt the USS payload.
   brillo::SecureBlob serialized_payload;
-  if (!AesGcmDecrypt(container_.ciphertext, std::nullopt, container_.gcm_tag,
-                     main_key, container_.iv, &serialized_payload)) {
+  if (!AesGcmDecrypt(container_.ciphertext, /*ad=*/std::nullopt,
+                     container_.gcm_tag, main_key, container_.iv,
+                     &serialized_payload)) {
     LOG(ERROR) << "Failed to decrypt UserSecretStash payload";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSAesGcmFailedInFromEncPayload),
@@ -331,6 +332,40 @@ CryptohomeStatusOr<brillo::SecureBlob> EncryptedUss::UnwrapMainKey(
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return main_key;
+}
+
+CryptohomeStatusOr<brillo::Blob> EncryptedUss::ToBlob() const {
+  // Pack the container struct into the flatbuffer object.
+  UserSecretStashContainer container = {
+      .encryption_algorithm = UserSecretStashEncryptionAlgorithm::AES_GCM_256,
+      .ciphertext = container_.ciphertext,
+      .iv = container_.iv,
+      .gcm_tag = container_.gcm_tag,
+      .created_on_os_version = container_.created_on_os_version,
+      .user_metadata = container_.user_metadata,
+  };
+  for (const auto& [wrapping_id, wrapped_key_block] :
+       container_.wrapped_key_blocks) {
+    container.wrapped_key_blocks.push_back(UserSecretStashWrappedKeyBlock{
+        .wrapping_id = wrapping_id,
+        .encryption_algorithm = wrapped_key_block.encryption_algorithm,
+        .encrypted_key = wrapped_key_block.encrypted_key,
+        .iv = wrapped_key_block.iv,
+        .gcm_tag = wrapped_key_block.gcm_tag,
+    });
+  }
+
+  // Attempt to serialize the flatbuffer into a blob.
+  std::optional<brillo::Blob> serialized_container = container.Serialize();
+  if (!serialized_container) {
+    LOG(ERROR) << "Failed to serialize UserSecretStashContainer";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSContainerSerializeFailedInGetEncContainer),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  return *serialized_container;
 }
 
 }  // namespace cryptohome

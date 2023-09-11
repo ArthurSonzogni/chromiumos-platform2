@@ -2476,11 +2476,10 @@ class UserDataAuthExTest : public UserDataAuthTest {
     // Generate a main key and some wrap it for each label. Note that we just
     // make up junk wrapping keys because we don't actually plan to decrypt the
     // container.
-    SecureBlob main_key = UserSecretStash::CreateRandomMainKey();
     for (const std::string& label : labels) {
       SecureBlob wrapping_key(kAesGcm256KeySize, 0xC0);
       CryptohomeStatus status = uss.AddWrappedMainKey(
-          main_key, label, wrapping_key, OverwriteExistingKeyBlock::kDisabled);
+          label, wrapping_key, OverwriteExistingKeyBlock::kDisabled);
       if (!status.ok()) {
         ADD_FAILURE() << "Making a test USS failed adding label " << label
                       << ": " << status;
@@ -2488,7 +2487,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
       }
     }
     // Persist the USS we constructed.
-    auto container = uss.GetEncryptedContainer(main_key);
+    auto container = uss.GetEncryptedContainer();
     if (!container.ok()) {
       ADD_FAILURE() << "Making a test USS failed at GetEncryptedContainer: "
                     << container.status();

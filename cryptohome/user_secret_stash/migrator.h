@@ -33,8 +33,7 @@ class UssMigrator {
   // Completes the UserSecretStash migration by persisting AuthFactor to
   // UserSecretStash and converting the VaultKeyset to a backup VaultKeyset.
   using CompletionCallback = base::OnceCallback<void(
-      std::unique_ptr<UserSecretStash> user_secret_stash,
-      brillo::SecureBlob uss_main_key)>;
+      std::unique_ptr<UserSecretStash> user_secret_stash)>;
 
   // The function that migrates the VaultKeyset with |label| and
   // |filesystem_keyset| to AuthFactor and USS.
@@ -49,8 +48,7 @@ class UssMigrator {
 
   // Adds the migration secret as a |wrapped_key_block| to the given
   // user secret stash.
-  bool AddMigrationSecretToUss(const brillo::SecureBlob& uss_main_key,
-                               UserSecretStash& user_secret_stash);
+  bool AddMigrationSecretToUss(UserSecretStash& user_secret_stash);
 
   // Removes the |wrapped_key_block| corresponding to the migration secret from
   // the given user secret stash.

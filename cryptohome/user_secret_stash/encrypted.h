@@ -121,6 +121,10 @@ class EncryptedUss {
   // Return the raw container. Only accessible to specific friend classes.
   const Container& container(Passkey) const { return container_; }
 
+  // Convert the container to a raw flatbuffer. This produces output that can be
+  // used with FromBlob.
+  CryptohomeStatusOr<brillo::Blob> ToBlob() const;
+
  private:
   Container container_;
 };

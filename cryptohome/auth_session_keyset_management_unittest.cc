@@ -1048,12 +1048,11 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
-  brillo::SecureBlob decrypted_main_key;
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
       user_secret_stash_status =
           UserSecretStash::FromEncryptedContainerWithWrappingKey(
               *uss_serialized_container_status, kDefaultLabel,
-              *uss_credential_secret, &decrypted_main_key);
+              *uss_credential_secret);
   ASSERT_TRUE(user_secret_stash_status.ok());
   // Verify that the user_secret_stash has the wrapped_key_block for
   // the default label.
@@ -1108,12 +1107,11 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
-  brillo::SecureBlob decrypted_main_key;
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
       user_secret_stash_status =
           UserSecretStash::FromEncryptedContainerWithWrappingKey(
               *uss_serialized_container_status, kPasswordLabel,
-              *uss_credential_secret, &decrypted_main_key);
+              *uss_credential_secret);
   ASSERT_TRUE(user_secret_stash_status.ok());
 
   // Verify that the user_secret_stash has the wrapped_key_blocks for the
@@ -1178,12 +1176,11 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
-  brillo::SecureBlob decrypted_main_key;
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
       user_secret_stash_status =
           UserSecretStash::FromEncryptedContainerWithWrappingKey(
               *uss_serialized_container_status, kPasswordLabel,
-              *uss_credential_secret, &decrypted_main_key);
+              *uss_credential_secret);
   ASSERT_TRUE(user_secret_stash_status.ok());
 
   // Verify that the user_secret_stash has the wrapped_key_blocks for the
@@ -1237,12 +1234,11 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
-  brillo::SecureBlob decrypted_main_key;
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
       user_secret_stash_status =
           UserSecretStash::FromEncryptedContainerWithWrappingKey(
               *uss_serialized_container_status, kPasswordLabel,
-              *uss_credential_secret, &decrypted_main_key);
+              *uss_credential_secret);
   ASSERT_TRUE(user_secret_stash_status.ok());
   // Verify that the user_secret_stash has the wrapped_key_blocks for both
   // AuthFactor labels.

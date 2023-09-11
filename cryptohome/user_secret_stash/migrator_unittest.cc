@@ -70,17 +70,16 @@ class UssMigratorTest : public ::testing::Test {
   void CallMigrator(std::string label) {
     auto iter = vk_map_.find(label);
     std::unique_ptr<VaultKeyset> vault_keyset = std::move(iter->second);
-    TestFuture<std::unique_ptr<UserSecretStash>, brillo::SecureBlob>
-        migrate_future;
+    TestFuture<std::unique_ptr<UserSecretStash>> migrate_future;
     migrator_.MigrateVaultKeysetToUss(uss_storage_, vault_keyset->GetLabel(),
                                       file_system_keyset_,
                                       migrate_future.GetCallback());
-    std::tie(user_secret_stash_, uss_main_key_) = migrate_future.Take();
+    user_secret_stash_ = migrate_future.Take();
   }
 
   void PersistUss() {
     CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
-        user_secret_stash_->GetEncryptedContainer(uss_main_key_);
+        user_secret_stash_->GetEncryptedContainer();
     ASSERT_THAT(encrypted_uss_container, IsOk());
     EXPECT_THAT(uss_storage_.Persist(encrypted_uss_container.value(),
                                      SanitizeUserName(username_)),
@@ -91,7 +90,6 @@ class UssMigratorTest : public ::testing::Test {
     EXPECT_TRUE(platform_.DeleteFileDurable(UserSecretStashPath(
         SanitizeUserName(username_), kUserSecretStashDefaultSlot)));
     user_secret_stash_.reset();
-    uss_main_key_ = brillo::SecureBlob();
     // Create an empty user_secret_stash.
     EXPECT_TRUE(platform_.TouchFileDurable(UserSecretStashPath(
         SanitizeUserName(username_), kUserSecretStashDefaultSlot)));
@@ -103,7 +101,6 @@ class UssMigratorTest : public ::testing::Test {
     EXPECT_FALSE(user_secret_stash_->HasWrappedMainKey(
         std::string(kMigrationSecretLabel)));
     user_secret_stash_.reset();
-    uss_main_key_ = brillo::SecureBlob();
   }
 
   void SetUp() override { GenerateVaultKeysets(); }
@@ -113,7 +110,6 @@ class UssMigratorTest : public ::testing::Test {
   FakePlatform platform_;
   FileSystemKeyset file_system_keyset_;
   std::unique_ptr<UserSecretStash> user_secret_stash_;
-  brillo::SecureBlob uss_main_key_;
   UssStorage uss_storage_{&platform_};
   std::map<std::string, std::unique_ptr<VaultKeyset>> vk_map_;
   std::unique_ptr<VaultKeyset> pin_vault_keyset_;
@@ -124,11 +120,9 @@ class UssMigratorTest : public ::testing::Test {
 // Test that user secret stash is created by the migrator if there isn't any
 // existing user secret stash for the user.
 TEST_F(UssMigratorTest, UserSecretStashCreatedIfDoesntExist) {
-  EXPECT_TRUE(uss_main_key_.empty());
   EXPECT_EQ(nullptr, user_secret_stash_);
 
   CallMigrator(kLabel);
-  EXPECT_FALSE(uss_main_key_.empty());
   EXPECT_NE(nullptr, user_secret_stash_);
 }
 
@@ -144,7 +138,6 @@ TEST_F(UssMigratorTest, MigratorAppendToTheSameUserSecretStash) {
   EXPECT_TRUE(user_secret_stash_->HasWrappedMainKey(
       std::string(kMigrationSecretLabel)));
 
-  EXPECT_FALSE(uss_main_key_.empty());
   EXPECT_NE(nullptr, user_secret_stash_);
 }
 
@@ -157,7 +150,6 @@ TEST_F(UssMigratorTest, MigrationFailsIfUssCorrupted) {
   CorruptUssAndResetState();
   CallMigrator(kPinLabel);
   EXPECT_EQ(nullptr, user_secret_stash_);
-  EXPECT_EQ(brillo::SecureBlob(""), uss_main_key_);
 }
 
 // Test that failure in obtaining migration secret block fails the migration.
@@ -169,7 +161,6 @@ TEST_F(UssMigratorTest, MigrationFailsIfThereIsUssButNoMigrationKey) {
   RemoveMigrationSecretAndResetState();
   CallMigrator(kPinLabel);
   EXPECT_EQ(nullptr, user_secret_stash_);
-  EXPECT_TRUE(uss_main_key_.empty());
 }
 
 }  // namespace
