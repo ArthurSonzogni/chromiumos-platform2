@@ -118,9 +118,12 @@ constexpr char kDeviceMapperDevicePrefix[] = "/dev/mapper/dmcrypt";
 namespace {
 // Some utility functions used by UserDataAuth.
 
-// Wrapper function for the ReplyWithError.
+// Wrapper function for the ReplyWithError. |unused_auth_session| parameter is
+// used for keeping the InUseAuthSession alive until the operation has
+// completed.
 template <typename ReplyType>
-void ReplyWithStatus(base::OnceCallback<void(const ReplyType&)> on_done,
+void ReplyWithStatus(InUseAuthSession unused_auth_session,
+                     base::OnceCallback<void(const ReplyType&)> on_done,
                      CryptohomeStatus status) {
   ReplyType reply;
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
@@ -238,7 +241,7 @@ user_data_auth::AuthFactorWithStatus* MutableAuthFactorForReplyType(
 // UpdateAuthFactorMetadata and UpdateAuthFactorWithReply.
 template <typename ReplyType>
 void ReplyWithAuthFactorStatus(
-    AuthSession* auth_session,
+    InUseAuthSession auth_session,
     UserPolicyFile* user_policy_file,
     AuthFactorDriverManager* auth_factor_driver_manager,
     UserSession* user_session,
@@ -252,7 +255,7 @@ void ReplyWithAuthFactorStatus(
   }
 
   // These should be active and we expect these to be set always.
-  CHECK(auth_session);
+  CHECK(auth_session.AuthSessionStatus().ok());
   CHECK(auth_factor_driver_manager);
 
   std::optional<user_data_auth::AuthFactorWithStatus> auth_factor_with_status;
@@ -366,19 +369,23 @@ void HandleAuthenticationResult(
             << "PostAuthActionType::kRepeat with null repeat_request field.";
         return;
       }
-      auth_session->AuthenticateAuthFactor(
+      AuthSession* auth_session_ptr = auth_session.Get();
+      auth_session_ptr->AuthenticateAuthFactor(
           post_auth_action.repeat_request.value(),
           // Currently there are no scenarios where a repeated auth will specify
           // a non-null action. Keep the logic simple here instead of recursing.
-          base::BindOnce([](const AuthSession::PostAuthAction& unused_action,
-                            CryptohomeStatus status) {
-            if (!status.ok()) {
-              LOG(ERROR)
-                  << "Repeated full auth failed while light auth succeeded: "
-                  << std::move(status);
-              // TODO(b/287305183): Send UMA here.
-            }
-          }));
+          base::BindOnce(
+              [](InUseAuthSession unused_auth_session,
+                 const AuthSession::PostAuthAction& unused_action,
+                 CryptohomeStatus status) {
+                if (!status.ok()) {
+                  LOG(ERROR) << "Repeated full auth failed while light auth "
+                                "succeeded: "
+                             << std::move(status);
+                  // TODO(b/287305183): Send UMA here.
+                }
+              },
+              std::move(auth_session)));
       break;
     }
   }
@@ -2997,14 +3004,15 @@ void UserDataAuth::AddAuthFactor(
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
     return;
   }
+  const Username& username = auth_session_status.value()->username();
   session_decrypt->AddAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::AddAuthFactorReply>,
-          auth_session_status->Get(), user_policy_file_status.value(),
-          auth_factor_driver_manager_,
-          sessions_->Find(auth_session_status.value()->username()),
-          request.auth_factor().label(), std::move(on_done)));
+          std::move(auth_session_status.value()),
+          user_policy_file_status.value(), auth_factor_driver_manager_,
+          sessions_->Find(username), request.auth_factor().label(),
+          std::move(on_done)));
 }
 
 void UserDataAuth::AuthenticateAuthFactor(
@@ -3146,14 +3154,15 @@ void UserDataAuth::UpdateAuthFactor(
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
     return;
   }
+  const Username& username = auth_session_status.value()->username();
   session_decrypt->UpdateAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::UpdateAuthFactorReply>,
-          auth_session_status->Get(), user_policy_file_status.value(),
-          auth_factor_driver_manager_,
-          sessions_->Find(auth_session_status.value()->username()),
-          request.auth_factor().label(), std::move(on_done)));
+          std::move(auth_session_status.value()),
+          user_policy_file_status.value(), auth_factor_driver_manager_,
+          sessions_->Find(username), request.auth_factor().label(),
+          std::move(on_done)));
 }
 
 void UserDataAuth::UpdateAuthFactorMetadata(
@@ -3187,13 +3196,14 @@ void UserDataAuth::UpdateAuthFactorMetadata(
                             PossibleAction::kReboot})));
     return;
   }
-  auth_session_status.value()->UpdateAuthFactorMetadata(
+  AuthSession* auth_session_ptr = auth_session_status->Get();
+  auth_session_ptr->UpdateAuthFactorMetadata(
       request, base::BindOnce(
                    &ReplyWithAuthFactorStatus<
                        user_data_auth::UpdateAuthFactorMetadataReply>,
-                   auth_session_status->Get(), user_policy_file_status.value(),
-                   auth_factor_driver_manager_,
-                   sessions_->Find(auth_session_status.value()->username()),
+                   std::move(auth_session_status.value()),
+                   user_policy_file_status.value(), auth_factor_driver_manager_,
+                   sessions_->Find(auth_session_ptr->username()),
                    request.auth_factor().label(), std::move(on_done)));
 }
 
@@ -3244,8 +3254,8 @@ void UserDataAuth::RelabelAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::RelabelAuthFactorReply>,
-          &auth_session, *user_policy_file, auth_factor_driver_manager_,
-          sessions_->Find(auth_session.username()),
+          std::move(auth_session_status.value()), *user_policy_file,
+          auth_factor_driver_manager_, sessions_->Find(auth_session.username()),
           request.new_auth_factor_label(), std::move(on_done)));
 }
 
@@ -3296,8 +3306,8 @@ void UserDataAuth::ReplaceAuthFactor(
       request,
       base::BindOnce(
           &ReplyWithAuthFactorStatus<user_data_auth::ReplaceAuthFactorReply>,
-          &auth_session, *user_policy_file, auth_factor_driver_manager_,
-          sessions_->Find(auth_session.username()),
+          std::move(auth_session_status.value()), *user_policy_file,
+          auth_factor_driver_manager_, sessions_->Find(auth_session.username()),
           request.auth_factor().label(), std::move(on_done)));
 }
 
@@ -3319,10 +3329,6 @@ void UserDataAuth::RemoveAuthFactor(
     return;
   }
 
-  StatusCallback on_remove_auth_factor_finished =
-      base::BindOnce(&ReplyWithStatus<user_data_auth::RemoveAuthFactorReply>,
-                     std::move(on_done));
-
   auto* session_decrypt = auth_session_status.value()->GetAuthForDecrypt();
   if (!session_decrypt) {
     ReplyWithError(
@@ -3333,6 +3339,11 @@ void UserDataAuth::RemoveAuthFactor(
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
     return;
   }
+
+  StatusCallback on_remove_auth_factor_finished = base::BindOnce(
+      &ReplyWithStatus<user_data_auth::RemoveAuthFactorReply>,
+      std::move(auth_session_status.value()), std::move(on_done));
+
   session_decrypt->RemoveAuthFactor(request,
                                     std::move(on_remove_auth_factor_finished));
 }
@@ -3675,10 +3686,11 @@ void UserDataAuth::PrepareAuthFactor(
             .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
-  auth_session->PrepareAuthFactor(
+  AuthSession* auth_session_ptr = auth_session.Get();
+  auth_session_ptr->PrepareAuthFactor(
       request,
       base::BindOnce(&ReplyWithStatus<user_data_auth::PrepareAuthFactorReply>,
-                     std::move(on_done)));
+                     std::move(auth_session), std::move(on_done)));
 }
 
 void UserDataAuth::TerminateAuthFactor(
@@ -3702,10 +3714,11 @@ void UserDataAuth::TerminateAuthFactor(
             .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
-  auth_session->TerminateAuthFactor(
+  AuthSession* auth_session_ptr = auth_session.Get();
+  auth_session_ptr->TerminateAuthFactor(
       request,
       base::BindOnce(&ReplyWithStatus<user_data_auth::TerminateAuthFactorReply>,
-                     std::move(on_done)));
+                     std::move(auth_session), std::move(on_done)));
 }
 
 void UserDataAuth::GetAuthSessionStatus(
@@ -3783,10 +3796,12 @@ void UserDataAuth::CreateVaultKeyset(
                        .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
+  AuthSession& auth_session = **auth_session_status;
 
   create_vault_keyset_impl_->CreateVaultKeyset(
-      request, auth_session_status.value(),
+      request, auth_session,
       base::BindOnce(&ReplyWithStatus<user_data_auth::CreateVaultKeysetReply>,
+                     std::move(auth_session_status.value()),
                      std::move(on_done)));
 }
 

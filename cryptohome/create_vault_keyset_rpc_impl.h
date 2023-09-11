@@ -26,7 +26,7 @@ class CreateVaultKeysetRpcImpl {
 
   void CreateVaultKeyset(
       const user_data_auth::CreateVaultKeysetRequest& request,
-      InUseAuthSession& auth_session,
+      AuthSession& auth_session,
       StatusCallback on_done);
 
  private:
@@ -34,7 +34,7 @@ class CreateVaultKeysetRpcImpl {
       const ObfuscatedUsername& obfuscated_username, bool disable_key_data);
   void CreateAndPersistVaultKeyset(const KeyData& key_data,
                                    const bool disable_key_data,
-                                   InUseAuthSession& auth_session,
+                                   AuthSession& auth_session,
                                    StatusCallback on_done,
                                    CryptohomeStatus callback_error,
                                    std::unique_ptr<KeyBlobs> key_blobs,

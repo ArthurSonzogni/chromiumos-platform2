@@ -61,13 +61,13 @@ bool CreateVaultKeysetRpcImpl::ClearKeyDataFromInitialKeyset(
 
 void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
     const user_data_auth::CreateVaultKeysetRequest& request,
-    InUseAuthSession& auth_session,
+    AuthSession& auth_session,
     StatusCallback on_done) {
   // Preconditions:
-  CHECK_EQ(request.auth_session_id(), auth_session->serialized_token());
+  CHECK_EQ(request.auth_session_id(), auth_session.serialized_token());
   // At this point AuthSession should be authenticated as it needs
   // FileSystemKeys to wrap the new credentials.
-  if (!auth_session->authorized_intents().contains(AuthIntent::kDecrypt)) {
+  if (!auth_session.authorized_intents().contains(AuthIntent::kDecrypt)) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocCreateVaultKeysetRpcImplUnauthedInCreateVaultKeyset),
@@ -105,8 +105,8 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
   AuthInput auth_input = {
       .user_input = brillo::SecureBlob(request.passkey()),
       .locked_to_single_user = auth_block_utility_->GetLockedToSingleUser(),
-      .username = auth_session->username(),
-      .obfuscated_username = auth_session->obfuscated_username()};
+      .username = auth_session.username(),
+      .obfuscated_username = auth_session.obfuscated_username()};
 
   // Generate the reset seed for AuthInput.
   if (factor_driver.NeedsResetSecret()) {
@@ -144,7 +144,7 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
 void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
     const KeyData& key_data,
     const bool disable_key_data,
-    InUseAuthSession& auth_session,
+    AuthSession& auth_session,
     StatusCallback on_done,
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
@@ -172,9 +172,9 @@ void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
   }
 
   CryptohomeStatus status = AddVaultKeyset(
-      key_data.label(), key_data, auth_session->obfuscated_username(),
-      auth_session->file_system_keyset(),
-      !auth_session->auth_factor_map().HasFactorWithStorage(
+      key_data.label(), key_data, auth_session.obfuscated_username(),
+      auth_session.file_system_keyset(),
+      !auth_session.auth_factor_map().HasFactorWithStorage(
           AuthFactorStorageType::kVaultKeyset),
       VaultKeysetIntent{.backup = false}, std::move(key_blobs),
       std::move(auth_state));
@@ -189,7 +189,7 @@ void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
     return;
   }
 
-  if (!ClearKeyDataFromInitialKeyset(auth_session->obfuscated_username(),
+  if (!ClearKeyDataFromInitialKeyset(auth_session.obfuscated_username(),
                                      disable_key_data)) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
@@ -205,9 +205,9 @@ void CreateVaultKeysetRpcImpl::CreateAndPersistVaultKeyset(
 
   // Add VaultKeyset as an AuthFactor to the linked AuthSession.
   if (std::optional<AuthFactor> added_auth_factor =
-          converter.VaultKeysetToAuthFactor(auth_session->obfuscated_username(),
+          converter.VaultKeysetToAuthFactor(auth_session.obfuscated_username(),
                                             key_data.label())) {
-    auth_session->RegisterVaultKeysetAuthFactor(*added_auth_factor);
+    auth_session.RegisterVaultKeysetAuthFactor(*added_auth_factor);
   } else {
     LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
   }
