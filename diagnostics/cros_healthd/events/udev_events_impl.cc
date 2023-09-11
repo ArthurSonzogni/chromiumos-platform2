@@ -102,10 +102,10 @@ bool UdevEventsImpl::Initialize() {
     return false;
   }
 
-  // TODO(b/292042644): Add support for getting both HDMI and DP connectors.
-  context_->executor()->GetConnectedHdmiConnectors(
-      base::BindOnce(&UdevEventsImpl::HandleGetConnectedHdmiConnectors,
-                     weak_factory_.GetWeakPtr())
+  context_->executor()->GetConnectedExternalDisplayConnectors(
+      base::BindOnce(
+          &UdevEventsImpl::HandleGetConnectedExternalDisplayConnectors,
+          weak_factory_.GetWeakPtr())
           .Then(base::BindOnce(
               &UdevEventsImpl::InitializeConnectedExternalDisplayConnectors,
               weak_factory_.GetWeakPtr())));
@@ -119,7 +119,7 @@ void UdevEventsImpl::InitializeConnectedExternalDisplayConnectors() {
   current_external_display_connectors_ = {};
 }
 
-void UdevEventsImpl::HandleGetConnectedHdmiConnectors(
+void UdevEventsImpl::HandleGetConnectedExternalDisplayConnectors(
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connected_displays,
     const std::optional<std::string>& error) {
   if (error.has_value()) {
@@ -287,9 +287,10 @@ void UdevEventsImpl::AddExternalDisplayObserver(
 }
 
 void UdevEventsImpl::OnExternalDisplayChange() {
-  context_->executor()->GetConnectedHdmiConnectors(
-      base::BindOnce(&UdevEventsImpl::HandleGetConnectedHdmiConnectors,
-                     weak_factory_.GetWeakPtr())
+  context_->executor()->GetConnectedExternalDisplayConnectors(
+      base::BindOnce(
+          &UdevEventsImpl::HandleGetConnectedExternalDisplayConnectors,
+          weak_factory_.GetWeakPtr())
           .Then(base::BindOnce(&UdevEventsImpl::UpdateExternalDisplayObservers,
                                weak_factory_.GetWeakPtr())));
 }

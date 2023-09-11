@@ -47,8 +47,8 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
       override;
   void GetLidAngle(GetLidAngleCallback callback) override;
   void GetPsr(GetPsrCallback callback) override;
-  void GetConnectedHdmiConnectors(
-      GetConnectedHdmiConnectorsCallback callback) override;
+  void GetConnectedExternalDisplayConnectors(
+      GetConnectedExternalDisplayConnectorsCallback callback) override;
   void GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) override;
   void FetchDisplayInfo(FetchDisplayInfoCallback callback) override;
   void MonitorPowerButton(
