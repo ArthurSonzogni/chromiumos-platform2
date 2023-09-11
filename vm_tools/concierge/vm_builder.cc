@@ -434,7 +434,8 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     args.emplace_back("--balloon-ws-reporting", "");
 
   for (const auto& tap_fd : tap_fds_)
-    args.emplace_back("--net", "tap-fd=" + std::to_string(tap_fd.get()));
+    args.emplace_back(
+        "--net", "packed-queue=true,tap-fd=" + std::to_string(tap_fd.get()));
 
   if (vsock_cid_.has_value())
     args.emplace_back("--cid", std::to_string(vsock_cid_.value()));
