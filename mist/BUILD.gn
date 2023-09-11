@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":install_conf",
+    ":install_udev",
     ":mist",
   ]
   if (use.test) {
@@ -60,6 +61,11 @@ executable("mist") {
 install_config("install_conf") {
   sources = [ "default.conf" ]
   install_path = "/usr/share/mist"
+}
+
+install_config("install_udev") {
+  sources = [ "51-mist.rules" ]
+  install_path = "/lib/udev/rules.d"
 }
 
 if (use.test) {
