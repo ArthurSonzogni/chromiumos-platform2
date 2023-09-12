@@ -251,6 +251,10 @@ void CarrierEntitlement::HttpRequestErrorCallback(
     LOG(ERROR) << "Entitlement check failed with error code :"
                << error->GetCode() << ":" << error->GetMessage();
   }
+  // Reschedule a new background check if the cached value is Allowed.
+  if (last_result_ == Result::kAllowed) {
+    PostBackgroundCheck();
+  }
   SendResult(last_result_);
   metrics_->NotifyCellularEntitlementCheckResult(
       Metrics::kCellularEntitlementCheckHttpRequestError);
