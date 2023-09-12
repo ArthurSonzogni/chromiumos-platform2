@@ -82,8 +82,6 @@ class TelemetryForTesting {
   void AddInputInfo();
   // Fill in default fake tpm information.
   void AddTpmInfo();
-  // Fill in all the information.
-  void AddTelemetryInfo();
 
   // Returns a copy of the TelemetryInfoPtr we've been building.
   mojom::TelemetryInfoPtr Get() const;
