@@ -15,11 +15,10 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
-
-#include "patchpanel/file_descriptor_watcher_posix.h"
 
 namespace patchpanel {
 

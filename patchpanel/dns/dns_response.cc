@@ -12,10 +12,7 @@
 #include <string_view>
 #include <utility>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include "base/big_endian.h"
-#pragma GCC diagnostic pop
 #include "base/logging.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/string_util.h"

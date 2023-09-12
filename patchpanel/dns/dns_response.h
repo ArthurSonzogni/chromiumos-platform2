@@ -13,11 +13,8 @@
 #include <string_view>
 #include <vector>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include "base/memory/ref_counted.h"
 #include "base/time/time.h"
-#pragma GCC diagnostic pop
 #include "brillo/brillo_export.h"
 
 #include "patchpanel/dns/dns_protocol.h"

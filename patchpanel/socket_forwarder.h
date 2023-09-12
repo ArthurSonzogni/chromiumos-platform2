@@ -14,11 +14,7 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
-// Ignore Wconversion warnings in libbase headers.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <base/threading/simple_thread.h>
-#pragma GCC diagnostic pop
 #include <brillo/brillo_export.h>
 
 #include "patchpanel/socket.h"

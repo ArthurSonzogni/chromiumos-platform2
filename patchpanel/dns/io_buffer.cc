@@ -5,10 +5,7 @@
 #include "patchpanel/dns/io_buffer.h"
 
 #include "base/logging.h"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include "base/numerics/safe_math.h"
-#pragma GCC diagnostic pop
 
 #include <base/check_op.h>
 

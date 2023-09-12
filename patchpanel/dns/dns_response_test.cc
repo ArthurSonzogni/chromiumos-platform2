@@ -10,11 +10,8 @@
 #include <optional>
 #include <string_view>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include "base/big_endian.h"
 #include "base/time/time.h"
-#pragma GCC diagnostic pop
 
 #include "patchpanel/dns/dns_protocol.h"
 #include "patchpanel/dns/dns_query.h"

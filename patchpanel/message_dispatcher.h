@@ -12,12 +12,11 @@
 
 #include <sys/socket.h>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
 #include <google/protobuf/message_lite.h>
-
-#include "patchpanel/file_descriptor_watcher_posix.h"
 
 namespace patchpanel {
 

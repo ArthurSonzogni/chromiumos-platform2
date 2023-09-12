@@ -12,10 +12,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <base/timer/timer.h>
-#pragma GCC diagnostic pop
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <shill/net/rtnl_listener.h>

@@ -11,11 +11,7 @@
 
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
-// Ignore Wconversion warnings in libbase headers.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <base/test/task_environment.h>
-#pragma GCC diagnostic pop
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>

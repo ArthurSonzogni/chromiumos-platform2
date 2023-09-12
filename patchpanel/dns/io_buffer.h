@@ -11,10 +11,7 @@
 #include <string>
 
 #include "base/memory/free_deleter.h"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include "base/memory/ref_counted.h"
-#pragma GCC diagnostic pop
 #include "base/pickle.h"
 #include "brillo/brillo_export.h"
 

@@ -7,15 +7,11 @@
 #include <string_view>
 #include <utility>
 
+#include "base/big_endian.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
-#include "base/sys_byteorder.h"
-// Ignore Wconversion warnings in libbase headers.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#include "base/big_endian.h"
 #include "base/numerics/safe_conversions.h"
-#pragma GCC diagnostic pop
+#include "base/sys_byteorder.h"
 
 #include "patchpanel/dns/dns_protocol.h"
 #include "patchpanel/dns/dns_util.h"

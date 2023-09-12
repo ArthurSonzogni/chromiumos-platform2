@@ -4,10 +4,7 @@
 
 #include <string>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <base/at_exit.h>
-#pragma GCC diagnostic pop
 #include <base/logging.h>
 
 #include "patchpanel/counters_service.h"

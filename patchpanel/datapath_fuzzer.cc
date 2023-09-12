@@ -10,10 +10,7 @@
 #include <string>
 #include <vector>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <base/at_exit.h>
-#pragma GCC diagnostic pop
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
