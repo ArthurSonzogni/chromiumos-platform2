@@ -48,27 +48,23 @@ const uint32_t FirmwareManagementParameters::kNvramBytes =
     sizeof(struct FirmwareManagementParametersRawV1_0);
 const uint32_t FirmwareManagementParameters::kCrcDataOffset = 2;
 
-// static
-std::unique_ptr<FirmwareManagementParameters>
-FirmwareManagementParameters::CreateInstance(
-    const hwsec::CryptohomeFrontend* hwsec) {
-  CHECK(hwsec);
+FirmwareManagementParameters::FirmwareManagementParameters(
+    const hwsec::CryptohomeFrontend* hwsec)
+    : hwsec_(hwsec), raw_(new FirmwareManagementParametersRawV1_0()) {
+  CHECK(hwsec_);
 
   if (PLATFORM_FWMP_INDEX) {
-    return std::make_unique<FirmwareManagementParameters>(
-        hwsec::Space::kPlatformFirmwareManagementParameters, hwsec);
+    fwmp_type_ = hwsec::Space::kPlatformFirmwareManagementParameters;
+    return;
   }
-
   if (hwsec::StatusOr<hwsec::CryptohomeFrontend::StorageState> state =
           hwsec->GetSpaceState(
               hwsec::Space::kPlatformFirmwareManagementParameters);
       !state.ok()) {
-    return std::make_unique<FirmwareManagementParameters>(
-        hwsec::Space::kFirmwareManagementParameters, hwsec);
+    fwmp_type_ = hwsec::Space::kFirmwareManagementParameters;
+    return;
   }
-
-  return std::make_unique<FirmwareManagementParameters>(
-      hwsec::Space::kPlatformFirmwareManagementParameters, hwsec);
+  fwmp_type_ = hwsec::Space::kPlatformFirmwareManagementParameters;
 }
 
 FirmwareManagementParameters::FirmwareManagementParameters(

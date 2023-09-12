@@ -496,7 +496,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   // Initialize Firmware Management Parameters
   if (!firmware_management_parameters_) {
     default_firmware_management_params_ =
-        FirmwareManagementParameters::CreateInstance(hwsec_);
+        std::make_unique<FirmwareManagementParameters>(hwsec_);
     firmware_management_parameters_ = default_firmware_management_params_.get();
   }
 

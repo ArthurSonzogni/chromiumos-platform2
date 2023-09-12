@@ -43,11 +43,6 @@ struct FirmwareManagementParametersRawV1_0;
 // ...
 class FirmwareManagementParameters {
  public:
-  // Creates a propoer firmware management parameters according to the TPM
-  // version on the device.
-  static std::unique_ptr<FirmwareManagementParameters> CreateInstance(
-      const hwsec::CryptohomeFrontend* hwsec);
-
   // Populates the basic internal state of the firmware management parameters.
   //
   // Parameters
@@ -59,6 +54,7 @@ class FirmwareManagementParameters {
   // FirmwareManagementParameters requires a |tpm|.  If a NULL |tpm| is
   // supplied, none of the operations will succeed, but it should not crash or
   // behave unexpectedly. See firmware_management_parameters.md for info.
+  explicit FirmwareManagementParameters(const hwsec::CryptohomeFrontend* hwsec);
   FirmwareManagementParameters(hwsec::Space fwmp_type,
                                const hwsec::CryptohomeFrontend* hwsec);
   FirmwareManagementParameters(const FirmwareManagementParameters&) = delete;
@@ -135,7 +131,7 @@ class FirmwareManagementParameters {
   FirmwareManagementParameters();
 
  private:
-  const hwsec::Space fwmp_type_;
+  hwsec::Space fwmp_type_;
   const hwsec::CryptohomeFrontend* const hwsec_;
   std::unique_ptr<FirmwareManagementParametersRawV1_0> raw_;
   bool loaded_ = false;
