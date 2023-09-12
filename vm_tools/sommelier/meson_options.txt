@@ -52,6 +52,12 @@ option('black_screen_fix',
   description: 'enable a fix to fix some apps blackscreening when losing focus'
 )
 
+option('quirks',
+  type: 'boolean',
+  value: false,
+  description: 'support "quirks mode" config files'
+)
+
 option('with_tests',
   type: 'boolean',
   value: true,

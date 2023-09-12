@@ -126,6 +126,44 @@ if get_option('gamepad')
   cpp_args += '-DGAMEPAD_SUPPORT'
 endif
 
+#===============#
+# Quirks config #
+#===============#
+
+quirks_sources = []
+quirks_testing = []
+quirks_dependencies = []
+if get_option('quirks')
+  # Generate protocol buffer sources
+  protoc = find_program('protoc')
+  gen = generator(
+    protoc,
+    output: ['@BASENAME@.pb.cc', '@BASENAME@.pb.h'],
+    arguments: [
+      '--proto_path=@CURRENT_SOURCE_DIR@',
+      '--cpp_out=@BUILD_DIR@',
+      '@INPUT@',
+    ],
+  )
+  quirks_proto = gen.process(
+    'quirks/quirks.proto',
+    preserve_path_from: meson.current_source_dir(),
+  )
+
+  quirks_sources = [
+    'quirks/sommelier-quirks.cc',
+  ] + quirks_proto
+
+  quirks_testing = [
+    'quirks/sommelier-quirks-test.cc',
+  ] + quirks_proto
+
+  quirks_dependencies = [
+    dependency('protobuf'),
+  ]
+  cpp_args += '-DQUIRKS_SUPPORT'
+endif
+
 #===========#
 # Sommelier #
 #===========#
@@ -182,7 +220,7 @@ libsommelier = static_library('sommelier',
     'virtualization/virtwl_channel.cc',
     'virtualization/virtgpu_channel.cc',
     'xcb/xcb-shim.cc',
-  ] + wl_outs + tracing_sources + gamepad_sources + shim_outs,
+  ] + wl_outs + tracing_sources + gamepad_sources + quirks_sources + shim_outs,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
     dependency('gbm'),
@@ -195,7 +233,7 @@ libsommelier = static_library('sommelier',
     dependency('xcb-shape'),
     dependency('xcb-xfixes'),
     dependency('xkbcommon'),
-  ] + tracing_dependencies + gamepad_dependencies,
+  ] + gamepad_dependencies + tracing_dependencies + quirks_dependencies,
   cpp_args: cpp_args + sommelier_defines,
   include_directories: includes,
 )
@@ -226,13 +264,13 @@ if get_option('with_tests')
       'testing/mock-wayland-channel.cc',
       'testing/sommelier-test-util.cc',
       'xcb/fake-xcb-shim.cc',
-    ] + wl_outs + shim_outs + gamepad_testing,
+    ] + wl_outs + shim_outs + gamepad_testing + quirks_testing,
     link_with: libsommelier,
     dependencies: [
       dependency('gtest'),
       dependency('gmock'),
       dependency('pixman-1')
-    ] + gamepad_dependencies + tracing_dependencies,
+    ] + gamepad_dependencies + tracing_dependencies + quirks_dependencies,
     cpp_args: cpp_args + sommelier_defines,
     include_directories: includes + testing_includes,
   )
