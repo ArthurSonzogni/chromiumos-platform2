@@ -44,6 +44,7 @@
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/dbus_adaptors/org.chromium.VmConcierge.h"
 #include "vm_tools/concierge/disk_image.h"
+#include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/mm/mm_service.h"
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
@@ -150,6 +151,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   void OnStopVmComplete(
       const VmId vm_id,
       VmStopReason reason,
+      std::unique_ptr<metrics::DurationRecorder> duration_recorder,
       base::OnceCallback<void(VmBaseImpl::StopResult)> callback,
       VmBaseImpl::StopResult result);
 

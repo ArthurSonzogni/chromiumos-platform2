@@ -1649,7 +1649,7 @@ void Service::HandleChildExit() {
       }
 
       // Handle cleanup related to the VM stopping
-      OnStopVmComplete(iter->first, VM_EXITED, base::DoNothing(),
+      OnStopVmComplete(iter->first, VM_EXITED, {}, base::DoNothing(),
                        VmBaseImpl::StopResult::SUCCESS);
     }
   }
@@ -2326,9 +2326,10 @@ void Service::StopVmInternal(
   VmBaseImpl::Info info = vm->GetInfo();
 
   // Log how long it takes to stop the VM.
-  metrics::DurationRecorder duration_recorder(
-      raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()), info.type,
-      metrics::DurationRecorder::Event::kVmStop);
+  std::unique_ptr<metrics::DurationRecorder> duration_recorder =
+      std::make_unique<metrics::DurationRecorder>(
+          raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()), info.type,
+          metrics::DurationRecorder::Event::kVmStop);
 
   // Notify that we are about to stop a VM.
   NotifyVmStopping(vm_id, info.cid);
@@ -2344,12 +2345,14 @@ void Service::StopVmInternal(
   iter->second->PerformStopSequence(
       stop_type,
       base::BindOnce(&Service::OnStopVmComplete, weak_ptr_factory_.GetWeakPtr(),
-                     vm_id, reason, std::move(callback)));
+                     vm_id, reason, std::move(duration_recorder),
+                     std::move(callback)));
 }
 
 void Service::OnStopVmComplete(
     const VmId vm_id,
     VmStopReason reason,
+    std::unique_ptr<metrics::DurationRecorder> duration_recorder,
     base::OnceCallback<void(VmBaseImpl::StopResult)> callback,
     VmBaseImpl::StopResult result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -2391,6 +2394,8 @@ void Service::OnStopVmComplete(
 
   vms_.erase(iter);
   std::move(callback).Run(result);
+
+  // duration_recorder records its metric when it goes out of scope.
   return;
 }
 
