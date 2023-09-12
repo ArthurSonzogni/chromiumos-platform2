@@ -24,7 +24,7 @@ namespace {
 // Currently, this is same as ARC-Keymaster.
 constexpr char kApplicationID[] =
     "CrOS_d5bbc079d2497110feadfc97c40d718ae46f4658";
-constexpr char kEncryptKeyLabel[] = "arc-keymintd_AES_key";
+constexpr char kEncryptKeyLabel[] = "arc-keymasterd_AES_key";
 
 // Largest attribute retrieved is a certificate X509. Consider anything larger
 // than 10KB an error.
