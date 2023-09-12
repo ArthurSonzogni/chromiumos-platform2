@@ -50,6 +50,7 @@ pkg_config("target_defaults") {
     "-Wall",
     "-Werror",
     "-Wextra",
+    "-Wno-deprecated-declarations",
   ]
   cflags_cc = [ "-std=c++17" ]
   include_dirs = [
