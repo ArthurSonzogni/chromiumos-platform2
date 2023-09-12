@@ -50,6 +50,58 @@ mojom::TelemetryInfoPtr MockMojo::MockMemoryInfo() {
   return std::move(info_);
 }
 
+mojom::TelemetryInfoPtr MockMojo::MockPciBusInfo(
+    const mojom::BusDeviceClass controller, bool is_multiple) {
+  auto bus_devices = std::vector<mojom::BusDevicePtr>(is_multiple ? 2 : 1);
+
+  for (int i = 0; i < (is_multiple ? 2 : 1); i++) {
+    auto& bus_device = bus_devices[i];
+    bus_device = mojom::BusDevice::New();
+    bus_device->vendor_name = kPciVendorName;
+    bus_device->product_name = kBusProductName;
+    bus_device->device_class = controller;
+
+    auto pci_bus_info = mojom::PciBusInfo::New();
+    pci_bus_info->vendor_id = i == 0 ? kPciBusVendorId : kSecondPciBusVendorId;
+    pci_bus_info->device_id = i == 0 ? kPciBusDeviceId : kSecondPciBusDeviceId;
+    pci_bus_info->driver = kPciBusDriver;
+
+    auto& bus_info = bus_device->bus_info;
+    bus_info = mojom::BusInfo::NewPciBusInfo({std::move(pci_bus_info)});
+  }
+
+  info_->bus_result = mojom::BusResult::NewBusDevices({std::move(bus_devices)});
+  return std::move(info_);
+}
+
+mojom::TelemetryInfoPtr MockMojo::MockUsbBusInfo(
+    const mojom::BusDeviceClass controller) {
+  auto bus_devices = std::vector<mojom::BusDevicePtr>(1);
+  auto& bus_device = bus_devices[0];
+
+  bus_device = mojom::BusDevice::New();
+  bus_device->vendor_name = kUsbVendorName;
+  bus_device->product_name = kBusProductName;
+  bus_device->device_class = controller;
+
+  auto usb_bus_info = mojom::UsbBusInfo::New();
+  usb_bus_info->vendor_id = kPciBusVendorId;
+  usb_bus_info->product_id = kPciBusDeviceId;
+
+  auto& interfaces = usb_bus_info->interfaces;
+  interfaces = std::vector<mojom::UsbBusInterfaceInfoPtr>(1);
+
+  auto& interface = interfaces[0];
+  interface = mojom::UsbBusInterfaceInfo::New();
+  interface->driver = kPciBusDriver;
+
+  auto& bus_info = bus_device->bus_info;
+  bus_info = mojom::BusInfo::NewUsbBusInfo({std::move(usb_bus_info)});
+
+  info_->bus_result = mojom::BusResult::NewBusDevices({std::move(bus_devices)});
+  return std::move(info_);
+}
+
 mojom::TelemetryInfoPtr MockMojo::MockGraphicsInfo() {
   auto graphics_info = mojom::GraphicsInfo::New();
   auto& gles_info = graphics_info->gles_info;

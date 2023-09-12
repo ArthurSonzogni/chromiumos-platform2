@@ -58,63 +58,11 @@ class MockMojo {
   // Create a mock memory information for testing purposes.
   mojom::TelemetryInfoPtr MockMemoryInfo();
   // Create a mock pci bus information for testing purposes.
-  template <class T>
-  mojom::TelemetryInfoPtr MockPciBusInfo(const T& controller,
-                                         bool is_multiple) {
-    auto bus_devices = std::vector<mojom::BusDevicePtr>(is_multiple ? 2 : 1);
-
-    for (int i = 0; i < (is_multiple ? 2 : 1); i++) {
-      auto& bus_device = bus_devices[i];
-      bus_device = mojom::BusDevice::New();
-      bus_device->vendor_name = kPciVendorName;
-      bus_device->product_name = kBusProductName;
-      bus_device->device_class = controller;
-
-      auto pci_bus_info = mojom::PciBusInfo::New();
-      pci_bus_info->vendor_id =
-          i == 0 ? kPciBusVendorId : kSecondPciBusVendorId;
-      pci_bus_info->device_id =
-          i == 0 ? kPciBusDeviceId : kSecondPciBusDeviceId;
-      pci_bus_info->driver = kPciBusDriver;
-
-      auto& bus_info = bus_device->bus_info;
-      bus_info = mojom::BusInfo::NewPciBusInfo({std::move(pci_bus_info)});
-    }
-
-    info_->bus_result =
-        mojom::BusResult::NewBusDevices({std::move(bus_devices)});
-    return std::move(info_);
-  }
-
+  mojom::TelemetryInfoPtr MockPciBusInfo(const mojom::BusDeviceClass controller,
+                                         bool is_multiple);
   // Create a mock usb bus information for testing purposes.
-  template <class T>
-  mojom::TelemetryInfoPtr MockUsbBusInfo(const T& controller) {
-    auto bus_devices = std::vector<mojom::BusDevicePtr>(1);
-    auto& bus_device = bus_devices[0];
-
-    bus_device = mojom::BusDevice::New();
-    bus_device->vendor_name = kUsbVendorName;
-    bus_device->product_name = kBusProductName;
-    bus_device->device_class = controller;
-
-    auto usb_bus_info = mojom::UsbBusInfo::New();
-    usb_bus_info->vendor_id = kPciBusVendorId;
-    usb_bus_info->product_id = kPciBusDeviceId;
-
-    auto& interfaces = usb_bus_info->interfaces;
-    interfaces = std::vector<mojom::UsbBusInterfaceInfoPtr>(1);
-
-    auto& interface = interfaces[0];
-    interface = mojom::UsbBusInterfaceInfo::New();
-    interface->driver = kPciBusDriver;
-
-    auto& bus_info = bus_device->bus_info;
-    bus_info = mojom::BusInfo::NewUsbBusInfo({std::move(usb_bus_info)});
-
-    info_->bus_result =
-        mojom::BusResult::NewBusDevices({std::move(bus_devices)});
-    return std::move(info_);
-  }
+  mojom::TelemetryInfoPtr MockUsbBusInfo(
+      const mojom::BusDeviceClass controller);
   // Create a mock graphics information for testing purposes.
   mojom::TelemetryInfoPtr MockGraphicsInfo();
   // Create a mock input information for testing purposes.
