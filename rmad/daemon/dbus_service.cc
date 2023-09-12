@@ -126,53 +126,66 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_->AddOrGetInterface(kRmadInterfaceName);
 
-  dbus_interface->AddMethodHandler(kIsRmaRequiredMethod,
-                                   weak_ptr_factory_.GetWeakPtr(),
-                                   &DBusService::HandleIsRmaRequiredMethod);
   dbus_interface->AddMethodHandler(
-      kGetCurrentStateMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<GetStateReply,
-                                        &RmadInterface::GetCurrentState>);
+      kIsRmaRequiredMethod,
+      base::BindRepeating(&DBusService::HandleIsRmaRequiredMethod,
+                          weak_ptr_factory_.GetWeakPtr()));
   dbus_interface->AddMethodHandler(
-      kTransitionNextStateMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<TransitionNextStateRequest,
-                                        GetStateReply,
-                                        &RmadInterface::TransitionNextState>);
+      kGetCurrentStateMethod,
+      base::BindRepeating(&DBusService::DelegateToInterface<GetStateReply>,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          &RmadInterface::GetCurrentState));
   dbus_interface->AddMethodHandler(
-      kTransitionPreviousStateMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<
-          GetStateReply, &RmadInterface::TransitionPreviousState>);
+      kTransitionNextStateMethod,
+      base::BindRepeating(
+          &DBusService::DelegateToInterface<GetStateReply,
+                                            const TransitionNextStateRequest&>,
+          weak_ptr_factory_.GetWeakPtr(), &RmadInterface::TransitionNextState));
   dbus_interface->AddMethodHandler(
-      kAbortRmaMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<AbortRmaReply,
-                                        &RmadInterface::AbortRma>);
+      kTransitionPreviousStateMethod,
+      base::BindRepeating(&DBusService::DelegateToInterface<GetStateReply>,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          &RmadInterface::TransitionPreviousState));
   dbus_interface->AddMethodHandler(
-      kGetLogMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<GetLogReply, &RmadInterface::GetLog>);
+      kAbortRmaMethod,
+      base::BindRepeating(&DBusService::DelegateToInterface<AbortRmaReply>,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          &RmadInterface::AbortRma));
   dbus_interface->AddMethodHandler(
-      kSaveLogMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<std::string, SaveLogReply,
-                                        &RmadInterface::SaveLog>);
+      kGetLogMethod,
+      base::BindRepeating(&DBusService::DelegateToInterface<GetLogReply>,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          &RmadInterface::GetLog));
   dbus_interface->AddMethodHandler(
-      kRecordBrowserActionMetricMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<
-          RecordBrowserActionMetricRequest, RecordBrowserActionMetricReply,
-          &RmadInterface::RecordBrowserActionMetric>);
+      kSaveLogMethod,
+      base::BindRepeating(
+          &DBusService::DelegateToInterface<SaveLogReply, const std::string&>,
+          weak_ptr_factory_.GetWeakPtr(), &RmadInterface::SaveLog));
   dbus_interface->AddMethodHandler(
-      kExtractExternalDiagnosticsAppMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<
-          ExtractExternalDiagnosticsAppReply,
-          &RmadInterface::ExtractExternalDiagnosticsApp>);
+      kRecordBrowserActionMetricMethod,
+      base::BindRepeating(&DBusService::DelegateToInterface<
+                              RecordBrowserActionMetricReply,
+                              const RecordBrowserActionMetricRequest&>,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          &RmadInterface::RecordBrowserActionMetric));
   dbus_interface->AddMethodHandler(
-      kInstallExtractedDiagnosticsAppMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<
-          InstallExtractedDiagnosticsAppReply,
-          &RmadInterface::InstallExtractedDiagnosticsApp>);
+      kExtractExternalDiagnosticsAppMethod,
+      base::BindRepeating(
+          &DBusService::DelegateToInterface<ExtractExternalDiagnosticsAppReply>,
+          weak_ptr_factory_.GetWeakPtr(),
+          &RmadInterface::ExtractExternalDiagnosticsApp));
   dbus_interface->AddMethodHandler(
-      kGetInstalledDiagnosticsAppMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<
-          GetInstalledDiagnosticsAppReply,
-          &RmadInterface::GetInstalledDiagnosticsApp>);
+      kInstallExtractedDiagnosticsAppMethod,
+      base::BindRepeating(&DBusService::DelegateToInterface<
+                              InstallExtractedDiagnosticsAppReply>,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          &RmadInterface::InstallExtractedDiagnosticsApp));
+  dbus_interface->AddMethodHandler(
+      kGetInstalledDiagnosticsAppMethod,
+      base::BindRepeating(
+          &DBusService::DelegateToInterface<GetInstalledDiagnosticsAppReply>,
+          weak_ptr_factory_.GetWeakPtr(),
+          &RmadInterface::GetInstalledDiagnosticsApp));
 
   error_signal_ = dbus_interface->RegisterSignal<int>(kErrorSignal);
   hardware_verification_signal_ =
@@ -309,7 +322,7 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
 }
 
 void DBusService::HandleIsRmaRequiredMethod(
-    std::unique_ptr<DBusMethodResponse<bool>> response) {
+    DBusMethodResponsePtr<bool> response) {
   // Quit the daemon if we are not in RMA.
   bool quit_daemon = !is_rma_required_;
   SendReply(std::move(response), is_rma_required_, quit_daemon);
