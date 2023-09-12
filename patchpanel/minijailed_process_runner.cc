@@ -247,10 +247,11 @@ MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj,
                                                  std::unique_ptr<System> system)
     : mj_(mj), system_(std::move(system)) {}
 
-int MinijailedProcessRunner::Run(const std::vector<std::string>& argv,
-                                 bool log_failures) {
+int MinijailedProcessRunner::RunIp(const std::vector<std::string>& argv,
+                                   bool log_failures) {
   minijail* jail = mj_->New();
-  CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
+  CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
+  minijail_inherit_usergroups(jail);
   mj_->UseCapabilities(jail, kNetRawAdminCapMask);
   return RunSyncDestroy(argv, mj_, jail, log_failures, nullptr);
 }
@@ -261,7 +262,7 @@ int MinijailedProcessRunner::ip(const std::string& obj,
                                 bool log_failures) {
   std::vector<std::string> args = {kIpPath, obj, cmd};
   args.insert(args.end(), argv.begin(), argv.end());
-  return Run(args, log_failures);
+  return RunIp(args, log_failures);
 }
 
 int MinijailedProcessRunner::ip6(const std::string& obj,
@@ -270,7 +271,7 @@ int MinijailedProcessRunner::ip6(const std::string& obj,
                                  bool log_failures) {
   std::vector<std::string> args = {kIpPath, "-6", obj, cmd};
   args.insert(args.end(), argv.begin(), argv.end());
-  return Run(args, log_failures);
+  return RunIp(args, log_failures);
 }
 
 int MinijailedProcessRunner::iptables(Iptables::Table table,

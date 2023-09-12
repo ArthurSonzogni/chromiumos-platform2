@@ -39,7 +39,8 @@ class MinijailedProcessRunner {
 
   virtual ~MinijailedProcessRunner() = default;
 
-  // Runs ip.
+  // Runs ip as user |patchpaneld| and under the group |patchpaneld|. Also,
+  // inherits supplemntary groups (i.e. group |tun|) of user |patchpaneld|.
   virtual int ip(const std::string& obj,
                  const std::string& cmd,
                  const std::vector<std::string>& args,
@@ -94,11 +95,13 @@ class MinijailedProcessRunner {
                         bool log_failures = true);
 
  protected:
+  // Used by ip() and ip6().
   // Runs a process (argv[0]) with optional arguments (argv[1]...)
-  // in a minijail as an unprivileged user with CAP_NET_ADMIN and
-  // CAP_NET_RAW capabilities.
-  virtual int Run(const std::vector<std::string>& argv,
-                  bool log_failures = true);
+  // in a minijail as user |patchpaneld| and user the group |patchpaneld| with
+  // CAP_NET_ADMIN and CAP_NET_RAW capabilities. Inherits supplementary groups
+  // of |patchpaneld|.
+  virtual int RunIp(const std::vector<std::string>& argv,
+                    bool log_failures = true);
 
   virtual int RunIptables(std::string_view iptables_path,
                           Iptables::Table table,

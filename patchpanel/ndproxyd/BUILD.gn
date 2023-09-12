@@ -32,6 +32,7 @@ executable("ndproxyd") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libminijail",
     "libnet-base",
   ]
   if (use.fuzzer) {

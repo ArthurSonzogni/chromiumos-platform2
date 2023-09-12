@@ -4,6 +4,7 @@
 
 #include "patchpanel/minijailed_process_runner.h"
 
+#include <brillo/minijail/minijail.h>
 #include <linux/capability.h>
 #include <sys/types.h>
 
@@ -44,6 +45,8 @@ class MinijailProcessRunnerTest : public ::testing::Test {
     runner_ = std::make_unique<MinijailedProcessRunner>(
         &mj_, base::WrapUnique(system_));
 
+    jail_ = brillo::Minijail::GetInstance()->New();
+
     // The default actions are:
     // 1) Set pid to kFakePid;
     // 2) The caller requests pipes for stdout and stderr, create a pipe for
@@ -67,10 +70,17 @@ class MinijailProcessRunnerTest : public ::testing::Test {
               }
               return true;
             }));
+
+    // This is required to prevent a Segmentation Fault when
+    // minijail_inherit_usergroups(jail) is invoked within ip() and ip6().
+    ON_CALL(mj_, New).WillByDefault(Return(jail_));
   }
+
+  ~MinijailProcessRunnerTest() { minijail_destroy(jail_); }
 
   brillo::MockMinijail mj_;
   std::unique_ptr<MinijailedProcessRunner> runner_;
+  minijail* jail_;
   MockSystem* system_;  // Owned by |runner_|.
 };
 
@@ -94,7 +104,7 @@ TEST_F(MinijailProcessRunnerTest, modprobe_all) {
 TEST_F(MinijailProcessRunnerTest, ip) {
   uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
   EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("patchpaneld"), StrEq("patchpaneld")))
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(mj_, RunPipesAndDestroy(
@@ -111,7 +121,7 @@ TEST_F(MinijailProcessRunnerTest, ip) {
 TEST_F(MinijailProcessRunnerTest, ip6) {
   uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
   EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("patchpaneld"), StrEq("patchpaneld")))
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(

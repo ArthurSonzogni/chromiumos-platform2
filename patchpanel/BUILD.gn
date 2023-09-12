@@ -64,6 +64,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libmetrics",
+    "libminijail",
     "libnet-base",
     "libshill-client",
     "libshill-net",

@@ -28,7 +28,7 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   FakeProcessRunner& operator=(const FakeProcessRunner&) = delete;
   ~FakeProcessRunner() = default;
 
-  int Run(const std::vector<std::string>& argv, bool log_failures) override {
+  int RunIp(const std::vector<std::string>& argv, bool log_failures) override {
     return 0;
   }
 
