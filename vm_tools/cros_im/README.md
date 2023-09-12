@@ -11,6 +11,18 @@ apps), and only Debian Bullseye/Bookworm containers are officially supported.
 Known issues are tracked [here][issue hotlist] and bugs can be reported
 [here][new issue].
 
+## FAQ
+
+### App support
+
+- Libreoffice: Please ensure the GTK3 plugin is installed:
+`sudo apt install libreoffice-gtk3`.
+- Anki: Only the Qt5 version is supported currently, and the Qt5 flag must be enabled (see
+[below](#system-configuration)). If you manually downloaded and installed Anki, you will need to run:
+```bash
+sudo ln -s {/usr/lib/*/qt5,/usr/local/share/anki/lib/PyQt5/Qt5}/plugins/platforminputcontexts/libcrosplatforminputcontextplugin.so
+```
+
 ## System configuration
 The #crostini-ime-support flag in chrome://flags must be enabled to fully
 enable Crostini IME support. It sets the env var `GTK_IM_MODULE=cros` globally
