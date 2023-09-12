@@ -30,8 +30,17 @@ fn mock_concierge_connection(
     send_calls: usize,
 ) -> Arc<MockDbusConnectionTrait> {
     let mut mock_conn = MockDbusConnectionTrait::new();
+
     if vm_gpu_cache_path_calls > 0 {
         let mock_gpu_cache_str = mock_gpu_cache.path().display().to_string();
+        // Every time we get the VM's cache path, we expect...
+        // ... a call to add group permissions to the mesa shader cache
+        mock_conn
+            .expect_call_dbus_method()
+            .times(vm_gpu_cache_path_calls)
+            .returning(move |_, _, _, _, _: (Vec<u8>,)| Box::pin(async { Ok(()) }));
+
+        //... a call to actually get back the path to the mesa shader cache
         mock_conn
             .expect_call_dbus_method()
             .times(vm_gpu_cache_path_calls)

@@ -73,8 +73,15 @@ impl ShaderCacheMount {
         })
     }
 
-    pub fn initialize(&mut self) -> Result<()> {
+    pub async fn initialize<D: DbusConnectionTrait>(
+        &mut self,
+        vm_id: &VmId,
+        dbus_conn: Arc<D>,
+    ) -> Result<()> {
         if self.mount_base_path.is_none() || self.relative_mesa_cache_path.is_none() {
+            // Mesa shader cache is created with insufficient permissions as of 23.1.4
+            service::add_shader_cache_group_permission(vm_id, dbus_conn).await?;
+
             let relative_mesa_path = get_mesa_cache_relative_path(&self.render_server_path)?;
             self.mount_base_path = Some(self.render_server_path.join(&relative_mesa_path));
             self.relative_mesa_cache_path = Some(relative_mesa_path);

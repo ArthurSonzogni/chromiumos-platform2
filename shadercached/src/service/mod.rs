@@ -83,7 +83,9 @@ pub async fn handle_install<D: DbusConnectionTrait>(
     // have triggered mesa to initialize shader cache.
     // Hence, treat initialize attempt failure as failure. We are not supporting
     // the case of manually triggering shadercached before Steam launch.
-    shader_cache_mount.initialize()?;
+    shader_cache_mount
+        .initialize(&vm_id, dbus_conn.clone())
+        .await?;
 
     // Save the current mount status in the response
     let mut response: InstallResponse = InstallResponse::new();

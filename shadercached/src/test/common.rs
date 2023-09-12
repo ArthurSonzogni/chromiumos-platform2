@@ -14,6 +14,7 @@ use crate::{
         steam_app_id_to_dlc, SteamAppId, CRYPTO_HOME, GPU_DEVICE_ID, IMAGE_LOADER,
         PRECOMPILED_CACHE_DIR,
     },
+    dbus_wrapper::MockDbusConnectionTrait,
     shader_cache_mount::{ShaderCacheMount, ShaderCacheMountMap, VmId},
 };
 
@@ -108,7 +109,16 @@ pub async fn add_shader_cache_mount(
 ) -> Result<()> {
     let mut mount_map_write = mount_map.write().await;
     let mut shader_cache_mount = ShaderCacheMount::new(mock_gpu_cache.path().to_path_buf(), vm_id)?;
-    shader_cache_mount.initialize()?;
+
+    let mut mock_conn = MockDbusConnectionTrait::new();
+    mock_conn
+        .expect_call_dbus_method()
+        .times(1)
+        .returning(move |_, _, _, _, _: (Vec<u8>,)| Box::pin(async { Ok(()) }));
+
+    shader_cache_mount
+        .initialize(vm_id, Arc::new(mock_conn))
+        .await?;
     mount_map_write.insert(vm_id.clone(), shader_cache_mount);
 
     Ok(())
