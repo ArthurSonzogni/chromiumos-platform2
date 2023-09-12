@@ -55,11 +55,12 @@ TPMRetryAction PinWeaverError::ToTPMRetryAction() const {
     case PinWeaverErrorCode::kHashTreeOutOfSync:
       return TPMRetryAction::kPinWeaverOutOfSync;
     case PinWeaverErrorCode::kInvalidLeSecret:
-    case PinWeaverErrorCode::kInvalidResetSecret:
-    case PinWeaverErrorCode::kPolicyNotMatch:
       return TPMRetryAction::kUserAuth;
+    case PinWeaverErrorCode::kPolicyNotMatch:
+      return TPMRetryAction::kReboot;
     case PinWeaverErrorCode::kTooManyAttempts:
       return TPMRetryAction::kPinWeaverLockedOut;
+    case PinWeaverErrorCode::kInvalidResetSecret:
     case PinWeaverErrorCode::kOther:
       return TPMRetryAction::kNoRetry;
   }

@@ -374,7 +374,7 @@ TEST_F(PinWeaverManagerImplTest, CheckPcrAuth) {
 
   ASSERT_OK(backend_->GetConfigTpm2().SetCurrentUser(kWrongUsername));
   EXPECT_THAT(pinweaver_manager_->CheckCredential(label1, kLeSecret1),
-              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kReboot))));
 }
 
 // Verify invalid secrets and getting locked out due to too many attempts.
@@ -492,7 +492,7 @@ TEST_F(PinWeaverManagerImplTest, ResetSecretNegative) {
 
   EXPECT_THAT(pinweaver_manager_->ResetCredential(label1, kLeSecret1,
                                                   ResetType::kWrongAttempts),
-              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kNoRetry))));
 
   // Make sure that Check still fails.
   EXPECT_THAT(
@@ -540,7 +540,7 @@ TEST_F(PinWeaverManagerImplTest, BiometricsResetSecretNegative) {
 
   EXPECT_THAT(pinweaver_manager_->ResetCredential(label1, kLeSecret1,
                                                   ResetType::kWrongAttempts),
-              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kUserAuth))));
+              NotOkAnd(HasTPMRetryAction(Eq(TPMRetryAction::kNoRetry))));
 
   // Make sure that StartBiometricsAuth still fails.
   EXPECT_THAT(
