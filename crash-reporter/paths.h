@@ -124,7 +124,8 @@ inline constexpr char kCrashSenderLockFile[] = "/run/lock/crash_sender";
 
 // Location in the home dir (or fallback home dir) where lacros experiment IDs
 // are written.
-constexpr char kLacrosVariationsListFile[] = ".variations-list-lacros.txt";
+inline constexpr char kLacrosVariationsListFile[] =
+    ".variations-list-lacros.txt";
 
 // Location in the home dir (or fallback home dir) where experiment IDs are
 // written.
