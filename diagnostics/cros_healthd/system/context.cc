@@ -129,34 +129,9 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   tick_clock_ = std::make_unique<base::DefaultTickClock>();
   udev_ = brillo::Udev::Create();
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
-
-  // TODO(b/270471793): Remove this workaround after the Bluez issue is fixed.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&Context::BootstrapBluezProxy,
-                     weak_ptr_factory_.GetWeakPtr()),
-      base::Seconds(10));
 }
 
 Context::~Context() = default;
-
-void Context::BootstrapBluezProxy() {
-  bluetooth_info_manager_.reset();
-  bluez_proxy_.reset();
-  if (!connection_.Connect()->RemoveObjectManager(
-          "org.bluez", dbus::ObjectPath{"/"},
-          base::BindOnce(&Context::UpdateBluezProxy,
-                         weak_ptr_factory_.GetWeakPtr()))) {
-    LOG(ERROR) << "Failed to remove Bluez object manager";
-  }
-}
-
-void Context::UpdateBluezProxy() {
-  bluez_proxy_ = std::make_unique<org::bluezProxy>(connection_.Connect());
-  bluetooth_info_manager_ =
-      std::make_unique<BluetoothInfoManager>(bluez_proxy_.get());
-  bluetooth_event_hub_->UpdateProxy(bluez_proxy_.get());
-}
 
 std::unique_ptr<PciUtil> Context::CreatePciUtil() {
   return std::make_unique<PciUtilImpl>();

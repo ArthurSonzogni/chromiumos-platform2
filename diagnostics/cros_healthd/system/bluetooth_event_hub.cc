@@ -9,10 +9,6 @@
 namespace diagnostics {
 
 BluetoothEventHub::BluetoothEventHub(org::bluezProxy* bluez_proxy) {
-  UpdateProxy(bluez_proxy);
-}
-
-void BluetoothEventHub::UpdateProxy(org::bluezProxy* bluez_proxy) {
   if (!bluez_proxy)
     return;
   bluez_proxy->SetAdapter1AddedCallback(base::BindRepeating(

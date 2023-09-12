@@ -177,12 +177,6 @@ class Context {
   Context();
 
  private:
-  // Reset the Bluez proxy and remove Bluez object manager on D-Bus.
-  void BootstrapBluezProxy();
-
-  // Update the Bluez proxy for Bluetooth objects.
-  void UpdateBluezProxy();
-
   // Allows MockContext to override the default helper objects.
   friend class MockContext;
 
@@ -225,9 +219,6 @@ class Context {
   std::unique_ptr<ResourceQueue> memory_cpu_resource_queue_;
 
   base::FilePath root_dir_;
-
-  // Must be the last class member.
-  base::WeakPtrFactory<Context> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

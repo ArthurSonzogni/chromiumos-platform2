@@ -38,10 +38,6 @@ class BluetoothEventHub {
   BluetoothEventHub& operator=(const BluetoothEventHub&) = delete;
   ~BluetoothEventHub() = default;
 
-  // TODO(b/270471793): To bootstrap proxy, we update proxy by the following
-  // method, which should be removed after Bluez issue is fixed.
-  void UpdateProxy(org::bluezProxy* bluez_proxy);
-
   base::CallbackListSubscription SubscribeAdapterAdded(
       OnBluetoothAdapterAddedCallback callback);
   base::CallbackListSubscription SubscribeAdapterRemoved(
