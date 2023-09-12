@@ -5,11 +5,10 @@
 
 """Verify syscall in seccomp policy files."""
 
+import argparse
 from collections import namedtuple
 from pathlib import Path
 import sys
-
-from chromite.lib import commandline
 
 
 SeccompLine = namedtuple("SeccompLine", ["line_number", "line", "value"])
@@ -106,7 +105,7 @@ def seccomp_pair(arg):
 
 def GetParser():
     """Returns an argument parser."""
-    parser = commandline.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seccomp", required=True, help="Seccomp filename.")
     parser.add_argument(
         "--output",
@@ -136,7 +135,6 @@ def GetParser():
 def main(argv):
     parser = GetParser()
     opts = parser.parse_args(argv)
-    opts.Freeze()
 
     parse_error = ParseSeccompAndReturnParseError(
         opts.seccomp, opts.required_syscalls, opts.denied_syscalls
@@ -149,4 +147,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    commandline.ScriptWrapperMain(lambda _: main)
+    sys.exit(main(sys.argv[1:]))
