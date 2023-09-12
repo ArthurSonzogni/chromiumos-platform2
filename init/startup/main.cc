@@ -41,17 +41,20 @@ int main(int argc, char* argv[]) {
 
   startup::Flags flags;
   startup::ChromeosStartup::ParseFlags(&flags);
-  CrosSystemImpl* cros_system = new CrosSystemImpl();
+  std::unique_ptr<CrosSystemImpl> cros_system =
+      std::make_unique<CrosSystemImpl>();
   startup::MountHelperFactory mount_helper_factory(
-      std::make_unique<startup::Platform>(), cros_system, flags,
+      std::make_unique<startup::Platform>(), cros_system.get(), flags,
       base::FilePath("/"), base::FilePath(kStatefulPartition),
       base::FilePath(kLsbRelease));
-  auto mount_helper = mount_helper_factory.Generate();
-  auto startup = std::make_unique<startup::ChromeosStartup>(
-      std::unique_ptr<CrosSystemImpl>(cros_system), flags, base::FilePath("/"),
-      base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
-      base::FilePath(kProcPath), std::make_unique<startup::Platform>(),
-      std::move(mount_helper));
+  std::unique_ptr<startup::MountHelper> mount_helper =
+      mount_helper_factory.Generate();
+  std::unique_ptr<startup::ChromeosStartup> startup =
+      std::make_unique<startup::ChromeosStartup>(
+          std::unique_ptr<CrosSystem>(std::move(cros_system)), flags,
+          base::FilePath("/"), base::FilePath(kStatefulPartition),
+          base::FilePath(kLsbRelease), base::FilePath(kProcPath),
+          std::make_unique<startup::Platform>(), std::move(mount_helper));
 
   return startup->Run();
 }
