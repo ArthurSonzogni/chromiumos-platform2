@@ -8,7 +8,6 @@ source_set("libdiag") {
   sources = [
     "diag.cc",
     "diag_actions.cc",
-    "observers/routine_observer.cc",
     "repliers/led_lit_up_routine_replier.cc",
     "routine_v2_client.cc",
   ]

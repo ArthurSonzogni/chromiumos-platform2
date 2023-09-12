@@ -7,19 +7,21 @@
 
 #include <string>
 
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/run_loop.h>
+#include <base/values.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/cros_health_tool/diag/observers/routine_observer.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
 // RoutineV2Client interacts with CrosHealthdRoutinesService to access routines.
 // When |single_line_json| is true, the output JSON string will be printed in a
-// single line.
-class RoutineV2Client {
+// single line. Otherwise, it will pretty-print the JSON string.
+class RoutineV2Client : public ash::cros_healthd::mojom::RoutineObserver {
  public:
   explicit RoutineV2Client(
       mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
@@ -28,6 +30,10 @@ class RoutineV2Client {
   RoutineV2Client(const RoutineV2Client&) = delete;
   RoutineV2Client& operator=(const RoutineV2Client&) = delete;
   ~RoutineV2Client();
+
+  // ash::cros_healthd::mojom::RoutineObserver override.
+  void OnRoutineStateChange(
+      ash::cros_healthd::mojom::RoutineStatePtr state) override;
 
   // Creates a routine with the given |argument|.
   void CreateRoutine(ash::cros_healthd::mojom::RoutineArgumentPtr argument);
@@ -38,18 +44,19 @@ class RoutineV2Client {
 
  private:
   void OnRoutineDisconnection(uint32_t error, const std::string& message);
+  void PrintOutput(const base::Value::Dict& output);
 
   // The remote for CrosHealthdRoutinesService.
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
       routine_service_;
-  // Whether to print the output JSON string in a single line.
-  bool single_line_json_ = false;
+  // The callback for printing the output.
+  base::RepeatingCallback<void(const base::Value::Dict&)> output_printer_;
   // This mojo remote controls the routine.
   mojo::Remote<ash::cros_healthd::mojom::RoutineControl> routine_control_;
   // Used for waiting until terminated.
   base::RunLoop run_loop_;
-  // The observer for handling routine state updates.
-  RoutineObserver observer_{run_loop_.QuitClosure()};
+  // Allows the remote to call RoutineObserver methods.
+  mojo::Receiver<ash::cros_healthd::mojom::RoutineObserver> receiver_{this};
   // Must be the last member of the class.
   base::WeakPtrFactory<RoutineV2Client> weak_factory_{this};
 };
