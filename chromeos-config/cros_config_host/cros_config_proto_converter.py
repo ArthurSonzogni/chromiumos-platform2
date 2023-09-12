@@ -8,7 +8,7 @@
 # pylint: disable=too-many-lines
 
 import argparse
-from collections import namedtuple
+import collections
 import collections.abc
 import functools
 import glob
@@ -39,7 +39,7 @@ from lxml import etree
 # pylint: enable=import-error
 
 
-Config = namedtuple(
+Config = collections.namedtuple(
     "Config",
     [
         "program",
@@ -54,7 +54,7 @@ Config = namedtuple(
     ],
 )
 
-ConfigFiles = namedtuple(
+ConfigFiles = collections.namedtuple(
     "ConfigFiles",
     [
         "arc_hw_features",
@@ -2620,7 +2620,13 @@ def _build_modem(config):
         firmware_variant = hw_features.cellular.model.lower()
     else:
         firmware_variant = config.hw_design.name.lower()
-    result = {"firmware-variant": firmware_variant}
+    result = {}
+    result["firmware-variant"] = firmware_variant
+    if hw_features.cellular.wedge_timeout_in_ms:
+        result[
+            "wedge-reboot-delay-ms"
+        ] = hw_features.cellular.wedge_timeout_in_ms
+
     return result
 
 

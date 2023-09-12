@@ -212,7 +212,8 @@
           "sku-id": 2147483647
         },
         "modem": {
-          "firmware-variant": "fake_ref_design"
+          "firmware-variant": "fake_ref_design",
+          "wedge-reboot-delay-ms": 120000
         },
         "name": "fake_ref_design",
         "nnpalm": {
@@ -967,7 +968,8 @@
           "sku-id": 32
         },
         "modem": {
-          "firmware-variant": "project_a"
+          "firmware-variant": "project_a",
+          "wedge-reboot-delay-ms": 120000
         },
         "name": "project_a",
         "power": {
@@ -5020,7 +5022,8 @@
           "sku-id": 64
         },
         "modem": {
-          "firmware-variant": "project_wl"
+          "firmware-variant": "project_wl",
+          "wedge-reboot-delay-ms": 210000
         },
         "name": "project_wl",
         "power": {
@@ -5234,7 +5237,8 @@
           "whitelabel-tag": "loema"
         },
         "modem": {
-          "firmware-variant": "project_wl"
+          "firmware-variant": "project_wl",
+          "wedge-reboot-delay-ms": 210000
         },
         "name": "project_wl",
         "power": {
@@ -5448,7 +5452,8 @@
           "whitelabel-tag": "loemb"
         },
         "modem": {
-          "firmware-variant": "project_wl"
+          "firmware-variant": "project_wl",
+          "wedge-reboot-delay-ms": 210000
         },
         "name": "project_wl",
         "power": {
@@ -5662,7 +5667,8 @@
           "whitelabel-tag": "loemc"
         },
         "modem": {
-          "firmware-variant": "project_wl"
+          "firmware-variant": "project_wl",
+          "wedge-reboot-delay-ms": 210000
         },
         "name": "project_wl",
         "power": {
@@ -5889,7 +5895,8 @@
           "whitelabel-tag": "branda"
         },
         "modem": {
-          "firmware-variant": "project_rebrand"
+          "firmware-variant": "project_rebrand",
+          "wedge-reboot-delay-ms": 180000
         },
         "name": "project_rebrand",
         "power": {
