@@ -28,6 +28,7 @@ MASKED_PROPERTIES="
   EAP.PIN
   EAP.SubjectMatch
   Name
+  UIData
   WiFi.BSSID
   WiFi.HexSSID
   WiFi.SSID
