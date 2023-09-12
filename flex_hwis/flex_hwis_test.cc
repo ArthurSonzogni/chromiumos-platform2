@@ -80,7 +80,7 @@ class FlexHwisTest : public ::testing::Test {
         .WillOnce(Return(true));
 
     CreateUuid(kUuid);
-    info_ = telemetry_.MockTelemetryInfo();
+    telemetry_.AddTelemetryInfo();
   }
 
   void CreateTimeStamp(const std::string& timestamp) {
@@ -110,7 +110,6 @@ class FlexHwisTest : public ::testing::Test {
 
   StrictMock<policy::MockPolicyProvider> mock_policy_provider_;
   StrictMock<policy::MockDevicePolicy> mock_device_policy_;
-  mojom::TelemetryInfoPtr info_;
   MetricsLibraryMock library_;
   base::ScopedTempDir test_dir_;
   base::FilePath test_path_;
@@ -120,7 +119,7 @@ class FlexHwisTest : public ::testing::Test {
 TEST_F(FlexHwisTest, FailToGetUuid) {
   auto flex_hwis_sender_ =
       flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
-  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
 
   CreateUuid("");
 
@@ -131,7 +130,7 @@ TEST_F(FlexHwisTest, FailToGetUuid) {
 TEST_F(FlexHwisTest, HasRunRecently) {
   auto flex_hwis_sender_ =
       flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
-  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   CreateTimeStamp(base::TimeFormatHTTP(base::Time::Now()));
 
   EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
@@ -141,7 +140,7 @@ TEST_F(FlexHwisTest, HasRunRecently) {
 TEST_F(FlexHwisTest, ManagedWithoutPermission) {
   auto flex_hwis_sender_ =
       flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
-  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   EXPECT_CALL(mock_device_policy_, GetReportSystemInfo(_))
       .WillOnce(SetEnabled(false));
   ExpectEnumMetric(PermissionResult::kPolicyDenial);
@@ -153,7 +152,7 @@ TEST_F(FlexHwisTest, ManagedWithoutPermission) {
 TEST_F(FlexHwisTest, UnManagedWithoutPermission) {
   auto flex_hwis_sender_ =
       flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
-  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   EXPECT_CALL(mock_device_policy_, IsEnterpriseEnrolled())
       .WillOnce(SetEnterpriseEnrolled(false));
   EXPECT_CALL(mock_device_policy_, GetHwDataUsageEnabled(_))
@@ -167,7 +166,7 @@ TEST_F(FlexHwisTest, UnManagedWithoutPermission) {
 TEST_F(FlexHwisTest, ManagedWithPermission) {
   auto flex_hwis_sender_ =
       flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
-  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   ExpectEnumMetric(PermissionResult::kPolicySuccess);
   ExpectBooleanMetric(true);
 
@@ -178,7 +177,7 @@ TEST_F(FlexHwisTest, ManagedWithPermission) {
 TEST_F(FlexHwisTest, UnManagedWithPermission) {
   auto flex_hwis_sender_ =
       flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
-  flex_hwis_sender_.SetTelemetryInfoForTesting(std::move(info_));
+  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
   EXPECT_CALL(mock_device_policy_, IsEnterpriseEnrolled())
       .WillOnce(SetEnterpriseEnrolled(false));
   ExpectEnumMetric(PermissionResult::kOptInSuccess);

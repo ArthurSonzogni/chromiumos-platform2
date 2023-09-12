@@ -35,8 +35,8 @@ class FlexHwisMojoTest : public ::testing::Test {
 
 TEST_F(FlexHwisMojoTest, MojoSystem) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = telemetry_.MockSystemInfo();
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddSystemInfo();
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetSystemInfo(&data);
 
   EXPECT_EQ(data.mutable_dmi_info()->vendor(), kSystemVersion);
@@ -48,8 +48,8 @@ TEST_F(FlexHwisMojoTest, MojoSystem) {
 
 TEST_F(FlexHwisMojoTest, MojoCpu) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = telemetry_.MockCpuInfo();
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddCpuInfo();
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetCpuInfo(&data);
 
   EXPECT_EQ(data.cpu(0).name(), kCpuModelName);
@@ -57,8 +57,8 @@ TEST_F(FlexHwisMojoTest, MojoCpu) {
 
 TEST_F(FlexHwisMojoTest, MojoMemory) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = telemetry_.MockMemoryInfo();
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddMemoryInfo();
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetMemoryInfo(&data);
 
   EXPECT_EQ(data.mutable_memory()->total_kib(), kMemoryKib);
@@ -66,9 +66,8 @@ TEST_F(FlexHwisMojoTest, MojoMemory) {
 
 TEST_F(FlexHwisMojoTest, MojoBusEthernet) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = telemetry_.MockPciBusInfo(
-      mojom::BusDeviceClass::kEthernetController, false);
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kEthernetController, false);
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetBusInfo(&data);
 
   EXPECT_EQ(data.ethernet_adapter(0).name(), kBusPciName);
@@ -79,9 +78,8 @@ TEST_F(FlexHwisMojoTest, MojoBusEthernet) {
 
 TEST_F(FlexHwisMojoTest, MojoBusWireless) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = telemetry_.MockPciBusInfo(
-      mojom::BusDeviceClass::kWirelessController, false);
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kWirelessController, false);
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetBusInfo(&data);
 
   EXPECT_EQ(data.wireless_adapter(0).name(), kBusPciName);
@@ -92,9 +90,8 @@ TEST_F(FlexHwisMojoTest, MojoBusWireless) {
 
 TEST_F(FlexHwisMojoTest, MojoBusBluetooth) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info =
-      telemetry_.MockUsbBusInfo(mojom::BusDeviceClass::kBluetoothAdapter);
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddUsbBusInfo(mojom::BusDeviceClass::kBluetoothAdapter);
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetBusInfo(&data);
 
   EXPECT_EQ(data.bluetooth_adapter(0).name(), kBusUsbName);
@@ -106,9 +103,8 @@ TEST_F(FlexHwisMojoTest, MojoBusBluetooth) {
 TEST_F(FlexHwisMojoTest, MojoBusDisplay) {
   hwis_proto::Device data;
   // Some flex devices have multiple graphics adapter.
-  mojom::TelemetryInfoPtr info = telemetry_.MockPciBusInfo(
-      mojom::BusDeviceClass::kDisplayController, true);
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kDisplayController, true);
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetBusInfo(&data);
 
   EXPECT_EQ(data.gpu(0).name(), kBusPciName);
@@ -120,8 +116,8 @@ TEST_F(FlexHwisMojoTest, MojoBusDisplay) {
 
 TEST_F(FlexHwisMojoTest, MojoGraphics) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = telemetry_.MockGraphicsInfo();
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddGraphicsInfo();
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetGraphicInfo(&data);
 
   EXPECT_EQ(data.mutable_graphics_info()->gl_version(), kGraphicsVersion);
@@ -134,8 +130,8 @@ TEST_F(FlexHwisMojoTest, MojoGraphics) {
 
 TEST_F(FlexHwisMojoTest, MojoInput) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = telemetry_.MockInputInfo();
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddInputInfo();
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetInputInfo(&data);
 
   EXPECT_EQ(data.mutable_touchpad()->stack(), kTouchpadLibraryName);
@@ -143,8 +139,8 @@ TEST_F(FlexHwisMojoTest, MojoInput) {
 
 TEST_F(FlexHwisMojoTest, MojoTpm) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = telemetry_.MockTpmInfo();
-  flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
+  telemetry_.AddTpmInfo();
+  flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetTpmInfo(&data);
 
   EXPECT_EQ(data.mutable_tpm()->tpm_version(), kTpmFamilyStr);

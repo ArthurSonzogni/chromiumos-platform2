@@ -8,7 +8,7 @@
 
 namespace flex_hwis {
 
-mojom::TelemetryInfoPtr TelemetryForTesting::MockSystemInfo() {
+void TelemetryForTesting::AddSystemInfo() {
   auto system_info = mojom::SystemInfo::New();
 
   auto& dmi_info = system_info->dmi_info;
@@ -24,10 +24,9 @@ mojom::TelemetryInfoPtr TelemetryForTesting::MockSystemInfo() {
 
   info_->system_result =
       mojom::SystemResult::NewSystemInfo({std::move(system_info)});
-  return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr TelemetryForTesting::MockCpuInfo() {
+void TelemetryForTesting::AddCpuInfo() {
   auto cpu_info = mojom::CpuInfo::New();
 
   auto& physical_cpus = cpu_info->physical_cpus;
@@ -38,20 +37,18 @@ mojom::TelemetryInfoPtr TelemetryForTesting::MockCpuInfo() {
   physical_cpu->model_name = kCpuModelName;
 
   info_->cpu_result = mojom::CpuResult::NewCpuInfo({std::move(cpu_info)});
-  return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr TelemetryForTesting::MockMemoryInfo() {
+void TelemetryForTesting::AddMemoryInfo() {
   auto memory_info = mojom::MemoryInfo::New();
   memory_info->total_memory_kib = kMemoryKib;
 
   info_->memory_result =
       mojom::MemoryResult::NewMemoryInfo({std::move(memory_info)});
-  return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr TelemetryForTesting::MockPciBusInfo(
-    const mojom::BusDeviceClass controller, bool is_multiple) {
+void TelemetryForTesting::AddPciBusInfo(const mojom::BusDeviceClass controller,
+                                        bool is_multiple) {
   auto bus_devices = std::vector<mojom::BusDevicePtr>(is_multiple ? 2 : 1);
 
   for (int i = 0; i < (is_multiple ? 2 : 1); i++) {
@@ -71,10 +68,9 @@ mojom::TelemetryInfoPtr TelemetryForTesting::MockPciBusInfo(
   }
 
   info_->bus_result = mojom::BusResult::NewBusDevices({std::move(bus_devices)});
-  return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr TelemetryForTesting::MockUsbBusInfo(
+void TelemetryForTesting::AddUsbBusInfo(
     const mojom::BusDeviceClass controller) {
   auto bus_devices = std::vector<mojom::BusDevicePtr>(1);
   auto& bus_device = bus_devices[0];
@@ -99,10 +95,9 @@ mojom::TelemetryInfoPtr TelemetryForTesting::MockUsbBusInfo(
   bus_info = mojom::BusInfo::NewUsbBusInfo({std::move(usb_bus_info)});
 
   info_->bus_result = mojom::BusResult::NewBusDevices({std::move(bus_devices)});
-  return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr TelemetryForTesting::MockGraphicsInfo() {
+void TelemetryForTesting::AddGraphicsInfo() {
   auto graphics_info = mojom::GraphicsInfo::New();
   auto& gles_info = graphics_info->gles_info;
   gles_info = mojom::GLESInfo::New();
@@ -117,19 +112,17 @@ mojom::TelemetryInfoPtr TelemetryForTesting::MockGraphicsInfo() {
 
   info_->graphics_result =
       mojom::GraphicsResult::NewGraphicsInfo({std::move(graphics_info)});
-  return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr TelemetryForTesting::MockInputInfo() {
+void TelemetryForTesting::AddInputInfo() {
   auto input_info = mojom::InputInfo::New();
   input_info->touchpad_library_name = kTouchpadLibraryName;
 
   info_->input_result =
       mojom::InputResult::NewInputInfo({std::move(input_info)});
-  return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr TelemetryForTesting::MockTpmInfo() {
+void TelemetryForTesting::AddTpmInfo() {
   auto tpm_info = mojom::TpmInfo::New();
   auto& version = tpm_info->version;
   version = mojom::TpmVersion::New();
@@ -148,17 +141,20 @@ mojom::TelemetryInfoPtr TelemetryForTesting::MockTpmInfo() {
   status->owned = kTpmOwned;
 
   info_->tpm_result = mojom::TpmResult::NewTpmInfo({std::move(tpm_info)});
-  return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr TelemetryForTesting::MockTelemetryInfo() {
-  info_ = MockSystemInfo();
-  info_ = MockCpuInfo();
-  info_ = MockMemoryInfo();
-  info_ = MockPciBusInfo(mojom::BusDeviceClass::kEthernetController, false);
-  info_ = MockGraphicsInfo();
-  info_ = MockInputInfo();
-  info_ = MockTpmInfo();
-  return std::move(info_);
+void TelemetryForTesting::AddTelemetryInfo() {
+  AddSystemInfo();
+  AddCpuInfo();
+  AddMemoryInfo();
+  AddPciBusInfo(mojom::BusDeviceClass::kEthernetController, false);
+  AddGraphicsInfo();
+  AddInputInfo();
+  AddTpmInfo();
 }
+
+mojom::TelemetryInfoPtr TelemetryForTesting::Get() const {
+  return info_.Clone();
+}
+
 }  // namespace flex_hwis

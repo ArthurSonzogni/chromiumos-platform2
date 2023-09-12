@@ -49,28 +49,30 @@ inline constexpr char kUuid[] = "reven-uuid";
 namespace flex_hwis {
 namespace mojom = ::ash::cros_healthd::mojom;
 
+// Builds a mojom::TelemetryInfoPtr for use in tests.
 class TelemetryForTesting {
  public:
-  // Create a mock system information for testing purposes.
-  mojom::TelemetryInfoPtr MockSystemInfo();
-  // Create a mock cpu information for testing purposes.
-  mojom::TelemetryInfoPtr MockCpuInfo();
-  // Create a mock memory information for testing purposes.
-  mojom::TelemetryInfoPtr MockMemoryInfo();
-  // Create a mock pci bus information for testing purposes.
-  mojom::TelemetryInfoPtr MockPciBusInfo(const mojom::BusDeviceClass controller,
-                                         bool is_multiple);
-  // Create a mock usb bus information for testing purposes.
-  mojom::TelemetryInfoPtr MockUsbBusInfo(
-      const mojom::BusDeviceClass controller);
-  // Create a mock graphics information for testing purposes.
-  mojom::TelemetryInfoPtr MockGraphicsInfo();
-  // Create a mock input information for testing purposes.
-  mojom::TelemetryInfoPtr MockInputInfo();
-  // Create a mock tpm information for testing purposes.
-  mojom::TelemetryInfoPtr MockTpmInfo();
-  // Create a total mock telemetry information for testing purposes.
-  mojom::TelemetryInfoPtr MockTelemetryInfo();
+  // Fill in fake system information.
+  void AddSystemInfo();
+  // Fill in fake cpu information.
+  void AddCpuInfo();
+  // Fill in fake memory information.
+  void AddMemoryInfo();
+  // Fill in fake pci bus information.
+  void AddPciBusInfo(const mojom::BusDeviceClass controller, bool is_multiple);
+  // Fill in fake usb bus information.
+  void AddUsbBusInfo(const mojom::BusDeviceClass controller);
+  // Fill in fake graphics information.
+  void AddGraphicsInfo();
+  // Fill in fake input information.
+  void AddInputInfo();
+  // Fill in fake tpm information.
+  void AddTpmInfo();
+  // Fill in all the information.
+  void AddTelemetryInfo();
+
+  // Returns a copy of the TelemetryInfoPtr we've been building.
+  mojom::TelemetryInfoPtr Get() const;
 
  private:
   mojom::TelemetryInfoPtr info_ = mojom::TelemetryInfo::New();
