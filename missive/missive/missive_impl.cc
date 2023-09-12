@@ -526,8 +526,10 @@ void MissiveImpl::HandleUploadResponse(
     LOG(ERROR) << "Disable reporting, status=" << upload_status;
     SetEnabled(/*is_enabled=*/false);
   }
-  health_module_->set_debugging(
-      upload_response_value.health_data_logging_enabled());
+  if (upload_response_value.has_health_data_logging_enabled()) {
+    health_module_->set_debugging(
+        upload_response_value.health_data_logging_enabled());
+  }
 }
 
 void MissiveImpl::SetEnabled(bool is_enabled) {

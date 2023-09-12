@@ -123,6 +123,11 @@ void QueueUploaderInterface::Completed(Status final_status) {
     auto* const record = recorder_->mutable_upload_encrypted_record_call();
     record->set_priority(priority_);
     final_status.SaveTo(record->mutable_status());
+    // Move recorder_ into local variable, so that it destructs.
+    // After that it is no longer necessary anyway, but being destructed
+    // here, it will be included in health history and attached to upload
+    // request and thus immediately visible on Chrome.
+    const auto finished_recording = std::move(recorder_);
   }
   storage_uploader_interface_->Completed(final_status);
 }

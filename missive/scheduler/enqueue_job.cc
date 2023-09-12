@@ -76,7 +76,9 @@ EnqueueJob::EnqueueJob(
       request_(std::move(request)) {}
 
 void EnqueueJob::StartImpl() {
-  health_module_->set_debugging(request_.health_data_logging_enabled());
+  if (request_.has_health_data_logging_enabled()) {
+    health_module_->set_debugging(request_.health_data_logging_enabled());
+  }
   storage_module_->AddRecord(
       request_.priority(), std::move(request_.record()),
       base::BindPostTask(
