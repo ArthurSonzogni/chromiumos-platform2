@@ -13,7 +13,10 @@
 #include <dbus/object_path.h>
 
 #include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/floss_controller.h"
+#include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
 
 namespace diagnostics {
@@ -104,13 +107,30 @@ void ParseDevicesInfo(
   }
 }
 
-}  // namespace
+void FetchBluetoothInfoInner(Context* context,
+                             FetchBluetoothInfoCallback callback,
+                             brillo::Error* err,
+                             bool floss_enabled) {
+  if (err) {
+    std::move(callback).Run(mojom::BluetoothResult::NewError(
+        CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                               "Failed to get floss enabled state")));
+    return;
+  }
 
-mojom::BluetoothResultPtr FetchBluetoothInfo(Context* context) {
+  if (floss_enabled) {
+    // TODO(b/300007763): Support Bluetooth telemetry via Floss.
+    std::move(callback).Run(
+        mojom::BluetoothResult::NewBluetoothAdapterInfo({}));
+    return;
+  }
+
   const auto bluetooth_info_manager = context->bluetooth_info_manager();
   if (!bluetooth_info_manager) {
-    return mojom::BluetoothResult::NewError(CreateAndLogProbeError(
-        mojom::ErrorType::kServiceUnavailable, "Bluez proxy is not ready"));
+    std::move(callback).Run(mojom::BluetoothResult::NewError(
+        CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable,
+                               "Bluez proxy is not ready")));
+    return;
   }
   std::vector<mojom::BluetoothAdapterInfoPtr> adapter_infos;
 
@@ -153,8 +173,25 @@ mojom::BluetoothResultPtr FetchBluetoothInfo(Context* context) {
     adapter_infos.push_back(info.Clone());
   }
 
-  return mojom::BluetoothResult::NewBluetoothAdapterInfo(
-      std::move(adapter_infos));
+  std::move(callback).Run(mojom::BluetoothResult::NewBluetoothAdapterInfo(
+      std::move(adapter_infos)));
+}
+
+}  // namespace
+
+void FetchBluetoothInfo(Context* context, FetchBluetoothInfoCallback callback) {
+  const auto floss_controller = context->floss_controller();
+  if (!floss_controller || !floss_controller->GetManager()) {
+    std::move(callback).Run(mojom::BluetoothResult::NewError(
+        CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable,
+                               "Bluetooth manager proxy is not ready")));
+    return;
+  }
+
+  auto [on_success, on_error] = SplitDbusCallback(
+      base::BindOnce(&FetchBluetoothInfoInner, context, std::move(callback)));
+  floss_controller->GetManager()->GetFlossEnabledAsync(std::move(on_success),
+                                                       std::move(on_error));
 }
 
 }  // namespace diagnostics

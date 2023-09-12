@@ -31,12 +31,14 @@
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
 #include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/powerd_adapter_impl.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 
 namespace diagnostics {
 
@@ -67,7 +69,7 @@ Context::Context() = default;
 Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
                  std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
                  base::OnceClosure shutdown_callback) {
-  // Initiailize static member
+  // Initialize static member
   root_dir_ = base::FilePath("/");
   udev_monitor_ = std::move(udev_monitor);
 
@@ -79,6 +81,9 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   attestation_proxy_ =
       std::make_unique<org::chromium::AttestationProxy>(dbus_bus);
   bluez_proxy_ = std::make_unique<org::bluezProxy>(dbus_bus);
+  bluetooth_manager_proxy_ =
+      std::make_unique<org::chromium::bluetooth::Manager::ObjectManagerProxy>(
+          dbus_bus);
   cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
       dbus_bus, cras::kCrasServiceName,
       dbus::ObjectPath(cras::kCrasServicePath));
@@ -124,6 +129,8 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   system_utils_ = std::make_unique<SystemUtilitiesImpl>();
   bluetooth_info_manager_ =
       std::make_unique<BluetoothInfoManager>(bluez_proxy_.get());
+  floss_controller_ =
+      std::make_unique<FlossController>(bluetooth_manager_proxy_.get());
   bluetooth_event_hub_ =
       std::make_unique<BluetoothEventHub>(bluez_proxy_.get());
   tick_clock_ = std::make_unique<base::DefaultTickClock>();

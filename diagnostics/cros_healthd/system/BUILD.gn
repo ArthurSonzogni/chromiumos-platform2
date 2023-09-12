@@ -53,6 +53,7 @@ source_set("libcros_healthd_system") {
     "bluetooth_event_hub.cc",
     "bluetooth_info_manager.cc",
     "context.cc",
+    "floss_controller.cc",
     "ground_truth.cc",
     "mojo_service_impl.cc",
     "powerd_adapter_impl.cc",

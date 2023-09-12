@@ -40,6 +40,10 @@ class PowerManagerProxyInterface;
 class TpmManagerProxyInterface;
 class SpacedProxyInterface;
 
+namespace bluetooth::Manager {
+class ObjectManagerProxy;
+}  // namespace bluetooth::Manager
+
 namespace cras {
 class ControlProxyInterface;
 }  // namespace cras
@@ -55,6 +59,7 @@ class bluezProxy;
 namespace diagnostics {
 class BluetoothEventHub;
 class BluetoothInfoManager;
+class FlossController;
 
 // A context class for holding the helper objects used in cros_healthd, which
 // simplifies the passing of the helper objects to other objects. For instance,
@@ -147,6 +152,9 @@ class Context {
   BluetoothInfoManager* bluetooth_info_manager() const {
     return bluetooth_info_manager_.get();
   }
+  // Use the object returned by floss_controller() to access Bluetooth instances
+  // via Floss proxy.
+  FlossController* floss_controller() const { return floss_controller_.get(); }
   // Use the object returned by bluetooth_event_hub() to subscribe Bluetooth
   // events.
   BluetoothEventHub* bluetooth_event_hub() const {
@@ -193,6 +201,8 @@ class Context {
 
   // Used to access Bluetooth info and watch Bluetooth events.
   std::unique_ptr<org::bluezProxy> bluez_proxy_;
+  std::unique_ptr<org::chromium::bluetooth::Manager::ObjectManagerProxy>
+      bluetooth_manager_proxy_;
 
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
@@ -210,6 +220,7 @@ class Context {
   std::unique_ptr<SystemUtilities> system_utils_;
   std::unique_ptr<BluetoothEventHub> bluetooth_event_hub_;
   std::unique_ptr<BluetoothInfoManager> bluetooth_info_manager_;
+  std::unique_ptr<FlossController> floss_controller_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   std::unique_ptr<brillo::Udev> udev_;

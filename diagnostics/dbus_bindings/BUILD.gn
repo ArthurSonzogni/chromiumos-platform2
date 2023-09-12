@@ -10,10 +10,22 @@ group("dbus_bindings") {
 
 group("dbus-proxies") {
   deps = [
+    ":bluetooth-manager-proxies",
     ":bluez-proxies",
     ":cras-proxies",
     ":fwupd-proxies",
   ]
+}
+
+generate_dbus_proxies("bluetooth-manager-proxies") {
+  dbus_service_config = "bluetooth_manager/dbus-service-config.json"
+  proxy_output_file =
+      "include/diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
+  mock_output_file =
+      "include/diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
+  proxy_path_in_mocks =
+      "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
+  sources = [ "bluetooth_manager/org.chromium.bluetooth.Manager.xml" ]
 }
 
 generate_dbus_proxies("bluez-proxies") {

@@ -137,7 +137,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kBluetooth: {
-        info->bluetooth_result = FetchBluetoothInfo(context_);
+        FetchBluetoothInfo(
+            context_, CreateFetchCallback(&barrier, &info->bluetooth_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kSystem: {

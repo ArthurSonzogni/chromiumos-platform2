@@ -10,10 +10,12 @@
 
 namespace diagnostics {
 
-// Returns a structure with either the Bluetooth information or the error that
-// occurred fetching the information.
-ash::cros_healthd::mojom::BluetoothResultPtr FetchBluetoothInfo(
-    Context* context);
+// Fetches Bluetooth info and pass the result to the callback. Returns a
+// structure with either the Bluetooth information or the error that occurred
+// fetching the information.
+using FetchBluetoothInfoCallback =
+    base::OnceCallback<void(ash::cros_healthd::mojom::BluetoothResultPtr)>;
+void FetchBluetoothInfo(Context* context, FetchBluetoothInfoCallback callback);
 
 }  // namespace diagnostics
 

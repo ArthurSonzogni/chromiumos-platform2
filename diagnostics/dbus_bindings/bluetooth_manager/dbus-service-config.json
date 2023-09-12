@@ -1,0 +1,7 @@
+{
+  "service_name": "org.chromium.bluetooth.Manager",
+  "object_manager": {
+    "name": "org.chromium.bluetooth.Manager.ObjectManager",
+    "object_path": "/"
+  }
+}
