@@ -113,6 +113,9 @@ class CarrierEntitlementTest : public testing::Test {
         .WillRepeatedly(Return(mock_network.get()));
     network_ = mock_network.get();
     cellular_->set_network_for_testing(std::move(mock_network));
+    EXPECT_CALL(*network_, HasInternetConnectivity())
+        .Times(AtLeast(0))
+        .WillRepeatedly(Return(true));
     carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
         cellular_.get(), &metrics_, check_cb_.Get());
   }
@@ -473,7 +476,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckNoEntitlementNeeded) {
 
 TEST_F(CarrierEntitlementTestNoParams, CheckNoNetwork) {
   EXPECT_CALL(*cellular_, GetPrimaryNetwork()).WillOnce(Return(nullptr));
-  EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
+  EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kNetworkNotReady));
   EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
                             Metrics::kCellularEntitlementCheckNoNetwork));
   carrier_entitlement_->Check(config_);
@@ -482,7 +485,7 @@ TEST_F(CarrierEntitlementTestNoParams, CheckNoNetwork) {
 
 TEST_F(CarrierEntitlementTestNoParams, CheckNetworkNotConnected) {
   EXPECT_CALL(*network_, IsConnected()).WillOnce(Return(false));
-  EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
+  EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kNetworkNotReady));
   EXPECT_CALL(metrics_,
               NotifyCellularEntitlementCheckResult(
                   Metrics::kCellularEntitlementCheckNetworkNotConnected));
@@ -490,6 +493,20 @@ TEST_F(CarrierEntitlementTestNoParams, CheckNetworkNotConnected) {
   carrier_entitlement_->Check(config_);
   VerifyAllExpectations();
 }
+TEST_F(CarrierEntitlementTestNoParams, CheckNetworkNotOnline) {
+  EXPECT_CALL(*network_, IsConnected())
+      .Times(AtLeast(0))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*network_, HasInternetConnectivity()).WillOnce(Return(false));
+  EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kNetworkNotReady));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckNetworkNotOnline));
+
+  carrier_entitlement_->Check(config_);
+  VerifyAllExpectations();
+}
+
 class CarrierEntitlementTestGet : public CarrierEntitlementTest {
  public:
   CarrierEntitlementTestGet()

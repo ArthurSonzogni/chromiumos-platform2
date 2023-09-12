@@ -1103,8 +1103,6 @@ void TetheringManager::CheckReadiness(
     return;
   }
 
-  // TODO(b/235762746) Check if Internet access has been validated.
-
   // When the upstream technology is Cellular, delegate to the Provider.
   if (upstream_technology_ == Technology::kCellular) {
     manager_->cellular_service_provider()->TetheringEntitlementCheck(

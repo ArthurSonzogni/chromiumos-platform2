@@ -3936,6 +3936,13 @@ void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
             .Run(TetheringManager::EntitlementStatus::kReady);
       }
       break;
+    case shill::CarrierEntitlement::Result::kNetworkNotReady:
+      if (!entitlement_check_callback_.is_null()) {
+        std::move(entitlement_check_callback_)
+            .Run(TetheringManager::EntitlementStatus::
+                     kUpstreamNetworkNotAvailable);
+      }
+      break;
     case shill::CarrierEntitlement::Result::kGenericError:
       LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "Generic error";
       [[fallthrough]];

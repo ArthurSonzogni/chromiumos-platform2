@@ -94,7 +94,7 @@ void CarrierEntitlement::CheckInternal(bool user_triggered) {
   if (!network) {
     LOG(ERROR)
         << "Cannot run entitlement check because Network object is missing";
-    SendResult(Result::kGenericError);
+    SendResult(Result::kNetworkNotReady);
     metrics_->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckNoNetwork);
     return;
@@ -103,9 +103,17 @@ void CarrierEntitlement::CheckInternal(bool user_triggered) {
   if (!network->IsConnected()) {
     LOG(ERROR)
         << "Cannot run entitlement check because the network is not connected";
-    SendResult(Result::kGenericError);
+    SendResult(Result::kNetworkNotReady);
     metrics_->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckNetworkNotConnected);
+    return;
+  }
+
+  if (!network->HasInternetConnectivity()) {
+    LOG(ERROR) << "Cannot run entitlement check because cellular is not online";
+    SendResult(Result::kNetworkNotReady);
+    metrics_->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckNetworkNotOnline);
     return;
   }
 

@@ -40,6 +40,7 @@ class CarrierEntitlement {
  public:
   enum class Result {
     kAllowed,
+    kNetworkNotReady,
     kUserNotAllowedToTether,
     kUnrecognizedUser,
     kGenericError
