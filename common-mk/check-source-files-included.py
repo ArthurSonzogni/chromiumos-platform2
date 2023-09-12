@@ -36,6 +36,15 @@ from chromite.lint.linters import gnlint
 TOP_DIR = Path(__file__).resolve().parent.parent
 SOURCE_FILE_SUFFICES = (".c", ".cc", ".cpp", ".cxx")
 
+# common-mk example files that are not intended to be part of GN build.
+EXCLUDED_FILES = frozenset(
+    (
+        "common-mk/example/component/component.cc",
+        "common-mk/example/component/subcomponent/subcomponent.c",
+        "common-mk/example/project_main.cc",
+    )
+)
+
 
 class ProjectLiterals:
     """Manages project literals."""
@@ -199,6 +208,10 @@ def CheckSourceFileIncludedInBuild(
         if not path.name.endswith(SOURCE_FILE_SUFFICES):
             # Header files are not checked here because they do not necessarily
             # need to be present in a build file.
+            continue
+
+        if str(path) in EXCLUDED_FILES:
+            # List of files that don't need to be checked (e.g. examples).
             continue
 
         project = path.parts[0]
