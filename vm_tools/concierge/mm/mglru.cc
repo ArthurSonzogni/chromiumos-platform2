@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/mm/mglru.h"
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -31,7 +32,7 @@ std::optional<MglruGeneration> ParseGeneration(const std::string_view line) {
 
   // sequence_num, timestamp_msec, anon_pages, file_pages.
   constexpr size_t kNumGenVals = 4;
-  uint32_t vals[kNumGenVals];
+  int32_t vals[kNumGenVals];
 
   // A generation should have at least 4 distinct numbers.
   if (tokens.size() < kNumGenVals) {
@@ -39,9 +40,11 @@ std::optional<MglruGeneration> ParseGeneration(const std::string_view line) {
   }
 
   for (size_t i = 0; i < kNumGenVals; i++) {
-    if (!base::StringToUint(tokens[i], &vals[i])) {
+    if (!base::StringToInt(tokens[i], &vals[i])) {
       return std::nullopt;
     }
+    // If the nr_pages are of negative values, convert it to 0.
+    vals[i] = std::max(0, vals[i]);
   }
 
   MglruGeneration gen;

@@ -230,5 +230,55 @@ TEST(MglruUtilTest, TestMultipleNewKernel) {
   ASSERT_TRUE(StatsEqual(expected_stats, *stats));
 }
 
+TEST(MglruUtilTest, TestMultipleOldKernel) {
+  // Kernel 5.4 versions can have nr_anon_pages/nr_file_pages as -0.
+  // Parse it as 0 for this case.
+  std::string input =
+      R"(memcg     1 /
+  node     0
+           0       1177          -0         822
+           1       1177          7           0
+           2       1177          0           0
+           3       1177       1171        5125
+)";
+
+  MglruStats expected_stats;
+  MglruMemcg* cg = AddMemcg(&expected_stats, 1);
+  MglruNode* node = AddNode(cg, 0);
+  AddGeneration(node, 0, 1177, 0, 822);
+  AddGeneration(node, 1, 1177, 7, 0);
+  AddGeneration(node, 2, 1177, 0, 0);
+  AddGeneration(node, 3, 1177, 1171, 5125);
+
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 1024);
+  ASSERT_TRUE(stats);
+  ASSERT_TRUE(StatsEqual(expected_stats, *stats));
+}
+
+TEST(MglruUtilTest, TestNegativeValues) {
+  // Test when nr_anon_pages/nr_file_pages are of negative values,
+  // they will be converted to 0.
+  std::string input =
+      R"(memcg     1 /
+  node     0
+           0       1177          -5         822
+           1       1177          7          -100
+           2       1177          0           0
+           3       1177       1171        5125
+)";
+
+  MglruStats expected_stats;
+  MglruMemcg* cg = AddMemcg(&expected_stats, 1);
+  MglruNode* node = AddNode(cg, 0);
+  AddGeneration(node, 0, 1177, 0, 822);
+  AddGeneration(node, 1, 1177, 7, 0);
+  AddGeneration(node, 2, 1177, 0, 0);
+  AddGeneration(node, 3, 1177, 1171, 5125);
+
+  std::optional<MglruStats> stats = ParseStatsFromString(input, 1024);
+  ASSERT_TRUE(stats);
+  ASSERT_TRUE(StatsEqual(expected_stats, *stats));
+}
+
 }  // namespace
 }  // namespace vm_tools::concierge::mm::mglru
