@@ -21,7 +21,7 @@
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_bluetooth_info_manager.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/dbus_bindings/bluetooth/dbus-proxy-mocks.h"
+#include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
 namespace diagnostics {
 namespace {

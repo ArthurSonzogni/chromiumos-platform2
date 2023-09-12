@@ -13,7 +13,7 @@
 #include <base/time/tick_clock.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
+#include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {

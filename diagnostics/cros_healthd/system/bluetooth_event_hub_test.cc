@@ -13,7 +13,7 @@
 
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
 #include "diagnostics/cros_healthd/system/fake_bluetooth_event_hub.h"
-#include "diagnostics/dbus_bindings/bluetooth/dbus-proxy-mocks.h"
+#include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
 namespace diagnostics {
 namespace {

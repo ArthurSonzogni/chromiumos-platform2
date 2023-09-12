@@ -42,11 +42,11 @@ source_set("libcros_healthd_system") {
   configs += [ ":libcros_healthd_system_pkg_deps" ]
   deps = [
     ":libcros_healthd_system_pci_util",
-    "//diagnostics:dbus-proxies",
     "//diagnostics/base",
     "//diagnostics/cros_healthd/executor:libcros_healthd_executor",
     "//diagnostics/cros_healthd/network:libnetwork_health_adapter",
     "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter",
+    "//diagnostics/dbus_bindings",
     "//diagnostics/mojom/external:libcros_healthd_internal",
   ]
   sources = [

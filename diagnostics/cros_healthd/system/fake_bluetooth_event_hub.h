@@ -10,7 +10,7 @@
 #include <dbus/object_path.h>
 
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
-#include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
+#include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
 
 namespace diagnostics {
 

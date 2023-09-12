@@ -11,7 +11,7 @@
 #include <dbus/object_path.h>
 #include <base/callback_list.h>
 
-#include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
+#include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
 
 namespace diagnostics {
 
