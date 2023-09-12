@@ -3905,27 +3905,37 @@ void UserDataAuth::TerminateAuthFactor(
     base::OnceCallback<void(const user_data_auth::TerminateAuthFactorReply&)>
         on_done) {
   AssertOnMountThread();
-  user_data_auth::TerminateAuthFactorReply reply;
-  InUseAuthSession auth_session =
-      auth_session_manager_->FindAuthSession(request.auth_session_id());
-  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
-  if (!auth_session_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocUserDataAuthTerminateAuthFactorAuthSessionNotFound),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-            .Wrap(std::move(auth_session_status).err_status()));
-    return;
-  }
-  AuthSession* auth_session_ptr = auth_session.Get();
-  auth_session_ptr->TerminateAuthFactor(
-      request,
-      base::BindOnce(&ReplyWithStatus<user_data_auth::TerminateAuthFactorReply>,
-                     std::move(auth_session), std::move(on_done)));
+  auth_session_manager_->RunWhenAvailable(
+      request.auth_session_id(),
+      base::BindOnce(
+          [](const user_data_auth::TerminateAuthFactorRequest& request,
+             base::OnceCallback<void(
+                 const user_data_auth::TerminateAuthFactorReply&)> on_done,
+             InUseAuthSession auth_session) {
+            user_data_auth::TerminateAuthFactorReply reply;
+            CryptohomeStatus auth_session_status =
+                auth_session.AuthSessionStatus();
+            if (!auth_session_status.ok()) {
+              ReplyWithError(
+                  std::move(on_done), reply,
+                  MakeStatus<CryptohomeError>(
+                      CRYPTOHOME_ERR_LOC(
+                          kLocUserDataAuthTerminateAuthFactorNoAuthSession),
+                      ErrorActionSet(
+                          {PossibleAction::kDevCheckUnexpectedState}),
+                      user_data_auth::CryptohomeErrorCode::
+                          CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
+                      .Wrap(std::move(auth_session_status).err_status()));
+              return;
+            }
+            AuthSession* auth_session_ptr = auth_session.Get();
+            auth_session_ptr->TerminateAuthFactor(
+                request,
+                base::BindOnce(
+                    &ReplyWithStatus<user_data_auth::TerminateAuthFactorReply>,
+                    std::move(auth_session), std::move(on_done)));
+          },
+          request, std::move(on_done)));
 }
 
 void UserDataAuth::GetAuthSessionStatus(
