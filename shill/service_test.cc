@@ -1477,48 +1477,21 @@ TEST_F(ServiceTest, SetCheckPortal) {
   }
 }
 
-TEST_F(ServiceTest, SetProxyConfig) {
-  scoped_refptr<MockDevice> mock_device =
-      new MockDevice(&mock_manager_, kDeviceName, kDeviceHwAddr, 1);
-  ON_CALL(mock_manager_, FindDeviceFromService(_))
-      .WillByDefault(Return(mock_device));
-
-  // Ensure no other conditions for IsPortalDetectionDisabled is met.
-  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
-      .WillRepeatedly(Return(true));
-  {
-    Error error;
-    service_->SetCheckPortal("true", &error);
-  }
-  SetStateField(Service::kStateConnected);
-  EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-
-  {
-    EXPECT_CALL(*mock_device, UpdatePortalDetector(true));
-    Error error;
-    service_->SetProxyConfig("proxyconfiguration", &error);
-    EXPECT_TRUE(error.IsSuccess());
-    EXPECT_TRUE(service_->HasProxyConfig());
-    EXPECT_TRUE(service_->IsPortalDetectionDisabled());
-    Mock::VerifyAndClearExpectations(mock_device.get());
-  }
-  {
-    EXPECT_CALL(*mock_device, UpdatePortalDetector(true));
-    Error error;
-    service_->SetProxyConfig("", &error);
-    EXPECT_TRUE(error.IsSuccess());
-    EXPECT_FALSE(service_->HasProxyConfig());
-    EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-    Mock::VerifyAndClearExpectations(mock_device.get());
-  }
-}
-
 TEST_F(ServiceTest, IsPortalDetectionDisabled) {
   {
-    // The service has a proxy configuration.
+    // The service has is configured through ONC device policy.
     Error error;
     service_->SetCheckPortal("true", &error);
-    service_->SetProxyConfig("proxyconfiguration", &error);
+    service_->SetONCSource("DevicePolicy", &error);
+    EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_TRUE(service_->IsPortalDetectionDisabled());
+  }
+  {
+    // The service has is configured through ONC user policy.
+    Error error;
+    service_->SetCheckPortal("true", &error);
+    service_->SetONCSource("UserPolicy", &error);
     EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
         .WillRepeatedly(Return(true));
     EXPECT_TRUE(service_->IsPortalDetectionDisabled());

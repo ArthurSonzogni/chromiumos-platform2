@@ -2017,12 +2017,13 @@ bool Service::IsDisconnectable(Error* error) const {
 }
 
 bool Service::IsPortalDetectionDisabled() const {
-  // Services with HTTP proxy configurations should not be checked by the
-  // connection manager, since we don't have the ability to evaluate
-  // arbitrary proxy configs and their possible credentials.
-  // TODO(b/207657239) Make PortalDetector proxy-aware and compatible with
-  // web proxy configurations.
-  if (HasProxyConfig()) {
+  // Services created through policy should not be checked by the connection
+  // manager, since we don't have the ability to evaluate arbitrary proxy
+  // configs and their possible credentials. One possible scenario for the case
+  // is an on-prem proxy server with a strict firewall that blocks portal
+  // detection probes. See also b/279520395.
+  if (source_ == ONCSource::kONCSourceDevicePolicy ||
+      source_ == ONCSource::kONCSourceUserPolicy) {
     return true;
   }
 
