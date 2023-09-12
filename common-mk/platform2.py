@@ -69,7 +69,6 @@ _IUSE = [
     "compilation_database",
     "containers",
     "coverage",
-    "cpp20",
     "cr50_onboard",
     "cros_arm64",
     "cros_debug",
