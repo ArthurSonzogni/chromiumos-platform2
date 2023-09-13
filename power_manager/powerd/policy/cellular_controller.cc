@@ -18,23 +18,7 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
-#if USE_QRTR
-#include <libqrtr.h>
-#endif  //  USE_QRTR
-
 #include "power_manager/common/prefs.h"
-
-#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
-              // into modemmanager.
-#define TROGDOR_MODEM_NODE_ID (0x0)
-#define TROGDOR_WDS_SERVICE_ID (0x1)
-
-namespace {
-const char kUpstartServiceName[] = "com.ubuntu.Upstart";
-const char kNodeAddedEvent[] = "qrtr-service-added";
-const char kNodeRemovedEvent[] = "qrtr-service-removed";
-}  // namespace
-#endif  // USE_QRTR
 
 namespace {
 #if USE_CELLULAR
@@ -83,17 +67,7 @@ namespace power_manager::policy {
 
 CellularController::CellularController() : weak_ptr_factory_(this) {}
 
-CellularController::~CellularController() {
-#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
-              // into modemmanager.
-  watcher_ = nullptr;
-  if (socket_.is_valid()) {
-    StopServiceLookup(TROGDOR_WDS_SERVICE_ID, 1, 0);
-    watcher_ = nullptr;
-    socket_.reset();
-  }
-#endif  // USE_QRTR
-}
+CellularController::~CellularController() {}
 
 void CellularController::Init(Delegate* delegate,
                               PrefsInterface* prefs,
@@ -143,10 +117,6 @@ void CellularController::Init(Delegate* delegate,
       << use_multi_power_level_dynamic_sar_
       << " use_regulatory_domain_for_dynamic_sar_ = "
       << use_regulatory_domain_for_dynamic_sar_;
-
-#if USE_QRTR
-  CHECK(InitQrtrSocket());
-#endif
 
 #if USE_CELLULAR
   if (use_modemmanager_for_dynamic_sar_) {
@@ -540,142 +510,4 @@ void CellularController::InitModemManagerSarInterface() {
 }
 #endif  // USE_CELLULAR
 
-#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
-              // into modemmanager.
-void CellularController::EmitEvent(const char* event) {
-  brillo::ErrorPtr error;
-  if (!upstart_proxy_->EmitEvent(event, {}, false /* wait */, &error)) {
-    LOG(ERROR) << "Could not emit upstart event: " << error->GetMessage();
-    return;
-  }
-  LOG(INFO) << "Emit upstart event: " << event;
-}
-
-void CellularController::OnFileCanReadWithoutBlocking() {
-  OnDataAvailable(this);
-}
-
-int CellularController::Recv(void* buf, size_t size, void* metadata) {
-  uint32_t node, port;
-  int ret = qrtr_recvfrom(socket_.get(), buf, size, &node, &port);
-  VLOG(2) << "Receiving packet from node: " << node << " port: " << port;
-  if (metadata) {
-    PacketMetadata* data = reinterpret_cast<PacketMetadata*>(metadata);
-    data->node = node;
-    data->port = port;
-  }
-  return ret;
-}
-
-void CellularController::ProcessQrtrPacket(uint32_t node,
-                                           uint32_t port,
-                                           int size) {
-  sockaddr_qrtr qrtr_sock;
-  qrtr_sock.sq_family = AF_QIPCRTR;
-  qrtr_sock.sq_node = node;
-  qrtr_sock.sq_port = port;
-
-  qrtr_packet pkt;
-  int ret = qrtr_decode(&pkt, buffer_.data(), size, &qrtr_sock);
-  if (ret < 0) {
-    LOG(ERROR) << "qrtr_decode failed";
-    return;
-  }
-
-  switch (pkt.type) {
-    case QRTR_TYPE_NEW_SERVER:
-      VLOG(1) << "Received NEW_SERVER QRTR packet node = " << pkt.node
-              << " port = " << pkt.port << " service = " << pkt.service;
-      if (pkt.node == TROGDOR_MODEM_NODE_ID &&
-          pkt.service == TROGDOR_WDS_SERVICE_ID) {
-        EmitEvent(kNodeAddedEvent);
-      }
-      break;
-    case QRTR_TYPE_DEL_SERVER:
-      VLOG(1) << "Received DEL_SERVER QRTR packet node = " << pkt.node
-              << " port = " << pkt.port << " service = " << pkt.service;
-      if (pkt.node == TROGDOR_MODEM_NODE_ID &&
-          pkt.service == TROGDOR_WDS_SERVICE_ID) {
-        EmitEvent(kNodeRemovedEvent);
-      }
-      break;
-    default:
-      VLOG(1) << "Received QRTR packet but did not recognize packet type "
-              << pkt.type << ".";
-  }
-}
-
-int CellularController::Send(const void* data,
-                             size_t size,
-                             const void* metadata) {
-  uint32_t node = 0, port = 0;
-  if (metadata) {
-    const PacketMetadata* data =
-        reinterpret_cast<const PacketMetadata*>(metadata);
-    node = data->node;
-    port = data->port;
-  }
-  VLOG(2) << "Sending packet to node: " << node << " port: " << port;
-  return qrtr_sendto(socket_.get(), node, port, data, size);
-}
-
-bool CellularController::StartServiceLookup(uint32_t service,
-                                            uint16_t version_major,
-                                            uint16_t version_minor) {
-  return qrtr_new_lookup(socket_.get(), service, version_major,
-                         version_minor) >= 0;
-}
-
-bool CellularController::StopServiceLookup(uint32_t service,
-                                           uint16_t version_major,
-                                           uint16_t version_minor) {
-  return qrtr_remove_lookup(socket_.get(), service, version_major,
-                            version_minor) >= 0;
-}
-
-inline void CellularController::OnDataAvailable(CellularController* cc) {
-  void* metadata = nullptr;
-  CellularController::PacketMetadata data = {0, 0};
-  metadata = reinterpret_cast<void*>(&data);
-
-  int bytes_received = cc->Recv(buffer_.data(), buffer_.size(), metadata);
-  if (bytes_received < 0) {
-    LOG(ERROR) << "Socket recv failed";
-    return;
-  }
-  VLOG(1) << "ModemQrtr recevied raw data (" << bytes_received
-          << " bytes): " << base::HexEncode(buffer_.data(), bytes_received);
-  ProcessQrtrPacket(data.node, data.port, bytes_received);
-}
-
-bool CellularController::InitQrtrSocket() {
-  uint8_t kQrtrPort = 0;
-  constexpr size_t kBufferSize = 4096;
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-  CHECK(bus->Connect());
-  upstart_proxy_ =
-      std::make_unique<com::ubuntu::Upstart0_6Proxy>(bus, kUpstartServiceName);
-  buffer_.resize(kBufferSize);
-  socket_.reset(qrtr_open(kQrtrPort));
-  if (!socket_.is_valid()) {
-    LOG(ERROR) << "Failed to open QRTR socket with port " << kQrtrPort;
-    return false;
-  }
-
-  watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      socket_.get(),
-      base::BindRepeating(&CellularController::OnFileCanReadWithoutBlocking,
-                          base::Unretained(this)));
-
-  if (!watcher_) {
-    LOG(ERROR) << "Failed to set up WatchFileDescriptor";
-    socket_.reset();
-    return false;
-  }
-
-  return StartServiceLookup(TROGDOR_WDS_SERVICE_ID, 1, 0);
-}
-#endif  // USE_QRTR
 }  // namespace power_manager::policy

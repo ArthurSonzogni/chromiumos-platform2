@@ -23,10 +23,6 @@
 #include <shill/dbus-proxies.h>
 #include "shill/dbus/client/client.h"
 #endif
-#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
-              // into modemmanager.
-#include "upstart/dbus-proxies.h"
-#endif
 
 namespace power_manager {
 
@@ -37,17 +33,6 @@ namespace policy {
 // CellularController initiates power-related changes to the cellular chipset.
 class CellularController : public UserProximityHandler::Delegate {
  public:
-#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
-              // into modemmanager.
-  enum class Type {
-    kQrtr,
-    kMbim,
-  };
-  struct PacketMetadata {
-    uint32_t port;
-    uint32_t node;
-  };
-#endif  // USE_QRTR
   // Performs work on behalf of CellularController.
   class Delegate {
    public:
@@ -114,23 +99,7 @@ class CellularController : public UserProximityHandler::Delegate {
   void OnShillReset(bool reset);
   void OnShillDeviceChanged(const shill::Client::Device* const device);
 
-#endif        // USE_CELLULAR
-#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
-              // into modemmanager.
-  bool InitQrtrSocket();
-  void OnFileCanReadWithoutBlocking();
-  void EmitEvent(const char* event);
-  void OnDataAvailable(CellularController* cc);
-  void ProcessQrtrPacket(uint32_t node, uint32_t port, int size);
-  int Recv(void* buf, size_t size, void* metadata);
-  int Send(const void* data, size_t size, const void* metadata);
-  bool StartServiceLookup(uint32_t service,
-                          uint16_t version_major,
-                          uint16_t version_minor);
-  bool StopServiceLookup(uint32_t service,
-                         uint16_t version_major,
-                         uint16_t version_minor);
-#endif  // USE_QRTR
+#endif  // USE_CELLULAR
 
   Delegate* delegate_ = nullptr;  // Not owned.
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;
@@ -152,14 +121,6 @@ class CellularController : public UserProximityHandler::Delegate {
   std::map<RadioTransmitPower, uint32_t> level_mappings_;
   // Regulatory domain to offset mapping
   std::map<CellularRegulatoryDomain, uint32_t> regulatory_domain_mappings_;
-
-#if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
-              // into modemmanager.
-  base::ScopedFD socket_;
-  std::vector<uint8_t> buffer_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
-  std::unique_ptr<com::ubuntu::Upstart0_6Proxy> upstart_proxy_;
-#endif  // USE_QRTR
 
   // GPIO number for the dynamic power reduction signal of a built-in cellular
   // modem.

@@ -65,20 +65,6 @@ group("all") {
       ":thermal_device_fuzzer",
     ]
   }
-
-  # TODO(b/188798246) Remove this once qc-netmgr is merged back into modemmanager
-  if (use.qrtr) {
-    deps += [ ":generate_upstart_proxies" ]
-  }
-}
-
-# TODO(b/188798246) Remove this once qc-netmgr is merged back into modemmanager
-if (use.qrtr) {
-  generate_dbus_proxies("generate_upstart_proxies") {
-    upstart_in_dir = "${sysroot}/usr/share/dbus-1/interfaces/"
-    proxy_output_file = "include/upstart/dbus-proxies.h"
-    sources = [ "${upstart_in_dir}/com.ubuntu.Upstart.xml" ]
-  }
 }
 
 if (use.cellular) {
@@ -114,7 +100,6 @@ pkg_config("target_defaults") {
     "USE_CELLULAR=${use.cellular}",
     "USE_IIOSERVICE=${use.iioservice}",
     "USE_IIOSERVICE_PROXIMITY=${use.iioservice_proximity}",
-    "USE_QRTR=${use.qrtr}",
   ]
 
   # NOSORT
@@ -143,17 +128,6 @@ pkg_config("target_defaults") {
     pkg_deps += [ "protobuf" ]
   } else {
     pkg_deps += [ "protobuf-lite" ]
-  }
-
-  # TODO(b/188798246) Remove this once qc-netmgr is merged back into modemmanager.
-  if (use.qrtr) {
-    pkg_deps += [
-      "gio-2.0",
-      "gio-unix-2.0",
-      "glib-2.0",
-      "gthread-2.0",
-    ]
-    libs = [ "qrtr" ]
   }
 }
 
@@ -318,9 +292,6 @@ static_library("libpolicy") {
   deps = []
   if (use.cellular) {
     deps += [ ":generate_modemmanager_proxies" ]
-  }
-  if (use.qrtr) {
-    deps += [ ":generate_upstart_proxies" ]
   }
 }
 
