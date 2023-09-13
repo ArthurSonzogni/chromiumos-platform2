@@ -78,6 +78,37 @@ base::TimeDelta g_retry_delay = base::Milliseconds(100);
 // would prevent the overhead in the single thread environment.
 base::NoDestructor<MaybeSynchronized<GlobalData>> g_global_data;
 
+// Perform an operation, repeat in case of "would block" errors.
+// Parameters:
+//     op - operation to perform.
+using ChapsOperation = std::function<CK_RV(void)>;
+static CK_RV PerformNonBlocking(ChapsOperation op) {
+  CK_RV result;
+  base::TimeTicks deadline = base::TimeTicks::Now() + g_retry_timeout;
+  do {
+    result = op();
+    if (result != CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS)
+      break;
+    base::PlatformThread::Sleep(g_retry_delay);
+  } while (base::TimeTicks::Now() < deadline);
+  return result;
+}
+
+// Close the session.
+static CK_RV CloseSessionInternal(SynchronizedHandle<GlobalData>& g,
+                                  CK_SESSION_HANDLE hSession) {
+  LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  CK_RV result = PerformNonBlocking(
+      [&] { return g->proxy->CloseSession(*g->user_isolate, hSession); });
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
+
+  // Update the records.
+  g->open_sessions.erase(hSession);
+
+  return CKR_OK;
+}
+
 // Tear down helper.
 static void TearDown() {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
@@ -87,7 +118,7 @@ static void TearDown() {
   }
   for (const auto& handle : open_session_handles) {
     LOG(WARNING) << "Orphan session " << handle << " left open, closing it.";
-    CK_RV rv = C_CloseSession(handle);
+    CK_RV rv = CloseSessionInternal(g, handle);
     if (rv != CKR_OK) {
       LOG(WARNING) << "Failed to close orphan session " << handle << ", error "
                    << rv;
@@ -132,22 +163,6 @@ static CK_RV HandlePKCS11Output(CK_RV result,
     if (result == CKR_BUFFER_TOO_SMALL && !out_buffer)
       result = CKR_OK;
   }
-  return result;
-}
-
-// Perform an operation, repeat in case of "would block" errors.
-// Parameters:
-//     op - operation to perform.
-using ChapsOperation = std::function<CK_RV(void)>;
-static CK_RV PerformNonBlocking(ChapsOperation op) {
-  CK_RV result;
-  base::TimeTicks deadline = base::TimeTicks::Now() + g_retry_timeout;
-  do {
-    result = op();
-    if (result != CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS)
-      break;
-    base::PlatformThread::Sleep(g_retry_delay);
-  } while (base::TimeTicks::Now() < deadline);
   return result;
 }
 
@@ -548,16 +563,7 @@ EXPORT_SPEC CK_RV C_OpenSession(CK_SLOT_ID slotID,
 // PKCS #11 v2.20 section 11.6 page 118.
 EXPORT_SPEC CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
-  LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  CK_RV result = PerformNonBlocking(
-      [&] { return g->proxy->CloseSession(*g->user_isolate, hSession); });
-  LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  VLOG(1) << __func__ << " - CKR_OK";
-
-  // Update the records.
-  g->open_sessions.erase(hSession);
-
-  return CKR_OK;
+  return CloseSessionInternal(g, hSession);
 }
 
 // PKCS #11 v2.20 section 11.6 page 120.
