@@ -7,12 +7,14 @@ use std::sync::mpsc::channel;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 use dbus::blocking::Connection;
 use dbus::channel::MatchingReceiver; // For start_receive
 use dbus::message::MatchRule;
 use dbus_crossroads::Crossroads;
-use log::{debug, error};
+use log::debug;
+use log::error;
 
 const HIBERMAN_DBUS_NAME: &str = "org.chromium.Hibernate";
 const HIBERMAN_DBUS_PATH: &str = "/org/chromium/Hibernate";

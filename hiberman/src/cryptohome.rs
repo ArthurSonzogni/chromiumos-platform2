@@ -4,7 +4,8 @@
 
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 use dbus::blocking::Connection;
 use libchromeos::secure_blob::SecureBlob;
 use protobuf::Message;
