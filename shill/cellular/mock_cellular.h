@@ -33,7 +33,8 @@ class MockCellular : public Cellular {
   MOCK_METHOD(void, StartPPP, (const std::string&), (override));
   MOCK_METHOD(void,
               AcquireTetheringNetwork,
-              (AcquireTetheringNetworkResultCallback),
+              (TetheringManager::UpdateTimeoutCallback,
+               AcquireTetheringNetworkResultCallback),
               (override));
 };
 

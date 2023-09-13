@@ -195,7 +195,7 @@ class TetheringManagerTest : public testing::Test {
     ON_CALL(*hotspot_device_.get(), DeconfigureService())
         .WillByDefault(Return(true));
     ON_CALL(*hotspot_device_.get(), IsServiceUp()).WillByDefault(Return(true));
-    ON_CALL(*cellular_service_provider_, AcquireTetheringNetwork(_))
+    ON_CALL(*cellular_service_provider_, AcquireTetheringNetwork(_, _))
         .WillByDefault(Return());
     ON_CALL(*cellular_service_provider_, ReleaseTetheringNetwork(_, _))
         .WillByDefault(Return());
@@ -396,6 +396,11 @@ class TetheringManagerTest : public testing::Test {
 
   void OnStartingTetheringTimeout(TetheringManager* tethering_manager) {
     tethering_manager->OnStartingTetheringTimeout();
+  }
+
+  void OnStartingTetheringUpdateTimeout(TetheringManager* tethering_manager,
+                                        base::TimeDelta timeout) {
+    tethering_manager->OnStartingTetheringUpdateTimeout(timeout);
   }
 
   void OnStoppingTetheringTimeout(TetheringManager* tethering_manager) {
@@ -1428,6 +1433,26 @@ TEST_F(TetheringManagerTest, TetheringStartTimer) {
   TetheringPrerequisite(tethering_manager_);
   EXPECT_TRUE(GetStartTimer(tethering_manager_).IsCancelled());
   SetEnabled(tethering_manager_, true);
+  EXPECT_FALSE(GetStartTimer(tethering_manager_).IsCancelled());
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringStarting);
+
+  // Tethering start timeout
+  OnStartingTetheringTimeout(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
+}
+
+TEST_F(TetheringManagerTest, TetheringStartTimerUpdated) {
+  // Start tethering.
+  TetheringPrerequisite(tethering_manager_);
+  EXPECT_TRUE(GetStartTimer(tethering_manager_).IsCancelled());
+  SetEnabled(tethering_manager_, true);
+  EXPECT_FALSE(GetStartTimer(tethering_manager_).IsCancelled());
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringStarting);
+
+  // Timeout updated
+  OnStartingTetheringUpdateTimeout(tethering_manager_, base::Seconds(20));
   EXPECT_FALSE(GetStartTimer(tethering_manager_).IsCancelled());
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringStarting);

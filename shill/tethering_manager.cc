@@ -52,8 +52,10 @@ static constexpr size_t kMaxWiFiHexSSIDLength = 32 * 2;
 static constexpr size_t kMinWiFiPassphraseLength = 8;
 static constexpr size_t kMaxWiFiPassphraseLength = 63;
 // Stop tethering and return error if tethering cannot be fully started within
-// |kStartTimeout| time.
-static constexpr base::TimeDelta kStartTimeout = base::Seconds(45);
+// |kStartTimeout| time. This is the default value that will be used, unless it
+// is explicitly updated by the upstream technology handler (e.g. if a complex
+// setup that may require a longer timeout is used).
+static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
 // Return error if tethering cannot be fully stopped within |kStopTimeout| time.
 static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
 
@@ -527,8 +529,7 @@ void TetheringManager::CheckAndPostTetheringStopResult() {
 
 void TetheringManager::OnStartingTetheringTimeout() {
   SetEnabledResult result = SetEnabledResult::kFailure;
-  LOG(ERROR) << __func__ << ": cannot start tethering session in "
-             << kStartTimeout;
+  LOG(ERROR) << __func__ << ": tethering session start timed out";
 
   if (!hotspot_dev_ || !hotspot_dev_->IsServiceUp()) {
     result = SetEnabledResult::kDownstreamWiFiFailure;
@@ -539,6 +540,28 @@ void TetheringManager::OnStartingTetheringTimeout() {
   }
   PostSetEnabledResult(result);
   StopTetheringSession(StopReason::kError);
+}
+
+void TetheringManager::OnStartingTetheringUpdateTimeout(
+    base::TimeDelta timeout) {
+  LOG(INFO) << __func__ << ": " << timeout;
+  DCHECK(timeout > kStartTimeout);
+
+  if (start_timer_callback_.IsCancelled()) {
+    LOG(INFO) << __func__ << ": already cancelled";
+    return;
+  }
+
+  if (state_ != TetheringState::kTetheringStarting) {
+    LOG(INFO) << __func__ << ": not starting";
+    return;
+  }
+
+  start_timer_callback_.Cancel();
+  start_timer_callback_.Reset(base::BindOnce(
+      &TetheringManager::OnStartingTetheringTimeout, base::Unretained(this)));
+  manager_->dispatcher()->PostDelayedTask(
+      FROM_HERE, start_timer_callback_.callback(), timeout);
 }
 
 void TetheringManager::FreeUpstreamNetwork() {
@@ -622,6 +645,8 @@ void TetheringManager::StartTetheringSession() {
   // Prepare the upstream network.
   if (upstream_technology_ == Technology::kCellular) {
     manager_->cellular_service_provider()->AcquireTetheringNetwork(
+        base::BindRepeating(&TetheringManager::OnStartingTetheringUpdateTimeout,
+                            base::Unretained(this)),
         base::BindOnce(&TetheringManager::OnUpstreamNetworkAcquired,
                        base::Unretained(this)));
   } else if (upstream_technology_ == Technology::kEthernet) {

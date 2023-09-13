@@ -92,6 +92,7 @@ class CellularServiceProvider : public ProviderInterface {
   // tethering session, creating and connecting a new Network if necessary for
   // the current carrier and modem.
   mockable void AcquireTetheringNetwork(
+      TetheringManager::UpdateTimeoutCallback update_timeout_callback,
       TetheringManager::AcquireNetworkCallback callback);
 
   // Notifies that a tethering session has stopped and that the Network object

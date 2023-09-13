@@ -28,7 +28,8 @@ class MockCellularServiceProvider : public CellularServiceProvider {
       ());
   MOCK_METHOD(void,
               AcquireTetheringNetwork,
-              (TetheringManager::AcquireNetworkCallback),
+              (TetheringManager::UpdateTimeoutCallback,
+               TetheringManager::AcquireNetworkCallback),
               ());
   MOCK_METHOD(void,
               ReleaseTetheringNetwork,

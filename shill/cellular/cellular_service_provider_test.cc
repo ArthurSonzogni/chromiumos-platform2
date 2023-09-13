@@ -501,13 +501,16 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
   StrictMock<base::MockOnceCallback<void(TetheringManager::SetEnabledResult,
                                          Network*, ServiceRefPtr)>>
       cb;
+  StrictMock<base::MockRepeatingCallback<void(base::TimeDelta)>>
+      update_timeout_cb;
 
   fake_cros_config_->SetString("/modem", "firmware-variant", "vell");
   // No Device registered.
   EXPECT_CALL(
       cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
               nullptr, ServiceRefPtr()));
-  provider()->AcquireTetheringNetwork(cb.Get());
+  EXPECT_CALL(update_timeout_cb, Run(_)).Times(0);
+  provider()->AcquireTetheringNetwork(update_timeout_cb.Get(), cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 
@@ -520,30 +523,32 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
   service->SetState(Service::kStateConnected);
 
   // The tethering network acquisition in the device fails
-  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_))
-      .WillOnce(WithArgs<0>(
+  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _))
+      .WillOnce(WithArgs<1>(
           Invoke([](Cellular::AcquireTetheringNetworkResultCallback callback) {
             std::move(callback).Run(nullptr, Error(Error::kOperationFailed));
           })));
   EXPECT_CALL(
       cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
               nullptr, ServiceRefPtr()));
-  provider()->AcquireTetheringNetwork(cb.Get());
+  provider()->AcquireTetheringNetwork(TetheringManager::UpdateTimeoutCallback(),
+                                      cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(device.get());
   Mock::VerifyAndClearExpectations(&cb);
 
   // The tethering network acquisition in the device succeeds
   // but for some reason no Network is returned
-  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_))
-      .WillOnce(WithArgs<0>(
+  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _))
+      .WillOnce(WithArgs<1>(
           Invoke([](Cellular::AcquireTetheringNetworkResultCallback callback) {
             std::move(callback).Run(nullptr, Error(Error::kSuccess));
           })));
   EXPECT_CALL(
       cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
               nullptr, ServiceRefPtr()));
-  provider()->AcquireTetheringNetwork(cb.Get());
+  provider()->AcquireTetheringNetwork(TetheringManager::UpdateTimeoutCallback(),
+                                      cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(device.get());
   Mock::VerifyAndClearExpectations(&cb);
@@ -556,15 +561,16 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
 
   // The tethering network acquisition in the device succeeds
   // and a valid Network is returned
-  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_))
-      .WillOnce(WithArgs<0>(
+  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _))
+      .WillOnce(WithArgs<1>(
           Invoke([network_ptr](
                      Cellular::AcquireTetheringNetworkResultCallback callback) {
             std::move(callback).Run(network_ptr, Error(Error::kSuccess));
           })));
   EXPECT_CALL(cb, Run(TetheringManager::SetEnabledResult::kSuccess, network_ptr,
                       ServiceRefPtr(service)));
-  provider()->AcquireTetheringNetwork(cb.Get());
+  provider()->AcquireTetheringNetwork(TetheringManager::UpdateTimeoutCallback(),
+                                      cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(device.get());
   Mock::VerifyAndClearExpectations(&cb);
@@ -581,7 +587,8 @@ TEST_F(CellularServiceProviderTest,
   // No Device registered.
   EXPECT_CALL(cb, Run(TetheringManager::SetEnabledResult::kNotAllowed, nullptr,
                       ServiceRefPtr()));
-  provider()->AcquireTetheringNetwork(cb.Get());
+  provider()->AcquireTetheringNetwork(TetheringManager::UpdateTimeoutCallback(),
+                                      cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 }

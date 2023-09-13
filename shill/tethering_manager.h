@@ -86,6 +86,8 @@ class TetheringManager : public Network::EventHandler {
   };
   using AcquireNetworkCallback = base::OnceCallback<void(
       TetheringManager::SetEnabledResult, Network*, ServiceRefPtr)>;
+  using UpdateTimeoutCallback =
+      base::RepeatingCallback<void(base::TimeDelta timeout)>;
   // Storage group for tethering configs.
   static constexpr char kStorageId[] = "tethering";
 
@@ -223,6 +225,8 @@ class TetheringManager : public Network::EventHandler {
   // Check if all the tethering resources are freed. If so post the
   // SetTetheringEnabled(false) dbus result.
   void CheckAndPostTetheringStopResult();
+  // Handler function to be called when a new start timeout is requested.
+  void OnStartingTetheringUpdateTimeout(base::TimeDelta timeout);
   // Handler function to be called when starting tethering session times out.
   void OnStartingTetheringTimeout();
   // Handler function to be called when stopping tethering session times out.

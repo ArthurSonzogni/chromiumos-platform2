@@ -273,6 +273,7 @@ class Cellular : public Device,
   using AcquireTetheringNetworkResultCallback =
       base::OnceCallback<void(Network* network, const Error& error)>;
   virtual void AcquireTetheringNetwork(
+      TetheringManager::UpdateTimeoutCallback update_timeout_callback,
       AcquireTetheringNetworkResultCallback callback);
 
   // Asynchronously releases the tethering network. This may involve

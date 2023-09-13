@@ -90,6 +90,10 @@ constexpr base::TimeDelta kPendingConnectCancel = base::Minutes(1);
 constexpr char kEntitlementCheckAnomalyDetectorPrefix[] =
     "Entitlement check failed: ";
 
+// Longer tethering start timeout value, used when the upstream network setup
+// requires the connection of a new PDN.
+static constexpr base::TimeDelta kLongTetheringStartTimeout = base::Seconds(45);
+
 bool IsEnabledModemState(Cellular::ModemState state) {
   switch (state) {
     case Cellular::kModemStateFailed:
@@ -1849,6 +1853,7 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
 }
 
 void Cellular::AcquireTetheringNetwork(
+    TetheringManager::UpdateTimeoutCallback update_timeout_callback,
     AcquireTetheringNetworkResultCallback callback) {
   SLOG(1) << LoggingTag() << ": " << __func__;
   CHECK(!callback.is_null());
@@ -1856,6 +1861,9 @@ void Cellular::AcquireTetheringNetwork(
   Error error;
   switch (GetTetheringOperationType(&error)) {
     case TetheringOperationType::kConnectDunAsDefaultPdn:
+      // Request a longer start timeout as we need to go through a full
+      // PDN connection setup sequence.
+      update_timeout_callback.Run(kLongTetheringStartTimeout);
       ConnectTetheringAsDefaultPdn(std::move(callback));
       return;
     case TetheringOperationType::kReuseDefaultPdn:
