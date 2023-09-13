@@ -26,8 +26,8 @@ class BluetoothEventsImplTest : public testing::Test {
     bluetooth_events_impl_.AddObserver(observer_.BindNewPendingRemote());
   }
 
-  FakeBluetoothEventHub* fake_bluetooth_event_hub() const {
-    return mock_context_.fake_bluetooth_event_hub();
+  FakeBluezEventHub* fake_bluez_event_hub() const {
+    return mock_context_.fake_bluez_event_hub();
   }
 
   void WaitAndCheckEvent(mojom::BluetoothEventInfo::State state) {
@@ -48,37 +48,37 @@ class BluetoothEventsImplTest : public testing::Test {
 
 // Test that we can receive an adapter added event.
 TEST_F(BluetoothEventsImplTest, ReceiveAdapterAddedEvent) {
-  fake_bluetooth_event_hub()->SendAdapterAdded();
+  fake_bluez_event_hub()->SendAdapterAdded();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterAdded);
 }
 
 // Test that we can receive an adapter removed event.
 TEST_F(BluetoothEventsImplTest, ReceiveAdapterRemovedEvent) {
-  fake_bluetooth_event_hub()->SendAdapterRemoved();
+  fake_bluez_event_hub()->SendAdapterRemoved();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterRemoved);
 }
 
 // Test that we can receive an adapter property changed event.
 TEST_F(BluetoothEventsImplTest, ReceiveAdapterPropertyChangedEvent) {
-  fake_bluetooth_event_hub()->SendAdapterPropertyChanged();
+  fake_bluez_event_hub()->SendAdapterPropertyChanged();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterPropertyChanged);
 }
 
 // Test that we can receive a device added event.
 TEST_F(BluetoothEventsImplTest, ReceiveDeviceAddedEvent) {
-  fake_bluetooth_event_hub()->SendDeviceAdded();
+  fake_bluez_event_hub()->SendDeviceAdded();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDeviceAdded);
 }
 
 // Test that we can receive a device removed event.
 TEST_F(BluetoothEventsImplTest, ReceiveDeviceRemovedEvent) {
-  fake_bluetooth_event_hub()->SendDeviceRemoved();
+  fake_bluez_event_hub()->SendDeviceRemoved();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDeviceRemoved);
 }
 
 // Test that we can receive a device property changed event.
 TEST_F(BluetoothEventsImplTest, ReceiveDevicePropertyChangedEvent) {
-  fake_bluetooth_event_hub()->SendDevicePropertyChanged();
+  fake_bluez_event_hub()->SendDevicePropertyChanged();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
 }
 

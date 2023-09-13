@@ -50,8 +50,8 @@ source_set("libcros_healthd_system") {
     "//diagnostics/mojom/external:libcros_healthd_internal",
   ]
   sources = [
-    "bluetooth_event_hub.cc",
-    "bluetooth_info_manager.cc",
+    "bluez_controller.cc",
+    "bluez_event_hub.cc",
     "context.cc",
     "floss_controller.cc",
     "ground_truth.cc",
@@ -106,7 +106,7 @@ if (use.test || use.fuzzer) {
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
     ]
     sources = [
-      "fake_bluetooth_event_hub.cc",
+      "fake_bluez_event_hub.cc",
       "fake_mojo_service.cc",
       "fake_pci_util.cc",
       "fake_powerd_adapter.cc",
@@ -132,7 +132,7 @@ if (use.test) {
 
   source_set("libcros_healthd_system_test") {
     sources = [
-      "bluetooth_event_hub_test.cc",
+      "bluez_event_hub_test.cc",
       "ground_truth_test.cc",
       "powerd_adapter_impl_test.cc",
       "system_config_test.cc",

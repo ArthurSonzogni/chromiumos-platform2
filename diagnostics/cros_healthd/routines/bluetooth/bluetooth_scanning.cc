@@ -21,7 +21,7 @@
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
+#include "diagnostics/cros_healthd/system/bluez_event_hub.h"
 
 namespace diagnostics {
 namespace {
@@ -86,11 +86,11 @@ void BluetoothScanningRoutine::Start() {
       exec_duration_);
 
   event_subscriptions_.push_back(
-      context_->bluetooth_event_hub()->SubscribeDeviceAdded(
+      context_->bluez_event_hub()->SubscribeDeviceAdded(
           base::BindRepeating(&BluetoothScanningRoutine::OnDeviceAdded,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
-      context_->bluetooth_event_hub()->SubscribeDevicePropertyChanged(
+      context_->bluez_event_hub()->SubscribeDevicePropertyChanged(
           base::BindRepeating(
               &BluetoothScanningRoutine::OnDevicePropertyChanged,
               weak_ptr_factory_.GetWeakPtr())));

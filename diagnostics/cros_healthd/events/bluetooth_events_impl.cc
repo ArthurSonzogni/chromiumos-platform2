@@ -9,7 +9,7 @@
 
 #include <base/check.h>
 
-#include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
+#include "diagnostics/cros_healthd/system/bluez_event_hub.h"
 
 namespace diagnostics {
 
@@ -19,25 +19,25 @@ BluetoothEventsImpl::BluetoothEventsImpl(Context* context) {
   CHECK(context);
 
   event_subscriptions_.push_back(
-      context->bluetooth_event_hub()->SubscribeAdapterAdded(base::BindRepeating(
+      context->bluez_event_hub()->SubscribeAdapterAdded(base::BindRepeating(
           &BluetoothEventsImpl::AdapterAdded, weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
-      context->bluetooth_event_hub()->SubscribeAdapterRemoved(
+      context->bluez_event_hub()->SubscribeAdapterRemoved(
           base::BindRepeating(&BluetoothEventsImpl::AdapterRemoved,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
-      context->bluetooth_event_hub()->SubscribeAdapterPropertyChanged(
+      context->bluez_event_hub()->SubscribeAdapterPropertyChanged(
           base::BindRepeating(&BluetoothEventsImpl::AdapterPropertyChanged,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
-      context->bluetooth_event_hub()->SubscribeDeviceAdded(base::BindRepeating(
+      context->bluez_event_hub()->SubscribeDeviceAdded(base::BindRepeating(
           &BluetoothEventsImpl::DeviceAdded, weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
-      context->bluetooth_event_hub()->SubscribeDeviceRemoved(
+      context->bluez_event_hub()->SubscribeDeviceRemoved(
           base::BindRepeating(&BluetoothEventsImpl::DeviceRemoved,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
-      context->bluetooth_event_hub()->SubscribeDevicePropertyChanged(
+      context->bluez_event_hub()->SubscribeDevicePropertyChanged(
           base::BindRepeating(&BluetoothEventsImpl::DevicePropertyChanged,
                               weak_ptr_factory_.GetWeakPtr())));
 }

@@ -16,7 +16,7 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
-#include "diagnostics/cros_healthd/system/mock_bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
@@ -39,7 +39,7 @@ class BluetoothPowerRoutineTest : public testing::Test {
       delete;
 
   void SetUp() override {
-    EXPECT_CALL(*mock_context_.mock_bluetooth_info_manager(), GetAdapters())
+    EXPECT_CALL(*mock_context_.mock_bluez_controller(), GetAdapters())
         .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
             &mock_adapter_proxy_}));
     routine_ = std::make_unique<BluetoothPowerRoutine>(&mock_context_);
@@ -47,12 +47,12 @@ class BluetoothPowerRoutineTest : public testing::Test {
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
-  FakeBluetoothEventHub* fake_bluetooth_event_hub() {
-    return mock_context_.fake_bluetooth_event_hub();
+  FakeBluezEventHub* fake_bluez_event_hub() {
+    return mock_context_.fake_bluez_event_hub();
   }
 
   void SetUpNullAdapter() {
-    EXPECT_CALL(*mock_context_.mock_bluetooth_info_manager(), GetAdapters())
+    EXPECT_CALL(*mock_context_.mock_bluez_controller(), GetAdapters())
         .WillOnce(
             Return(std::vector<org::bluez::Adapter1ProxyInterface*>{nullptr}));
     routine_ = std::make_unique<BluetoothPowerRoutine>(&mock_context_);
@@ -70,7 +70,7 @@ class BluetoothPowerRoutineTest : public testing::Test {
               [=](bool powered, base::OnceCallback<void(bool)> on_finish) {
                 std::move(on_finish).Run(is_success);
                 if (is_success) {
-                  fake_bluetooth_event_hub()->SendAdapterPropertyChanged(
+                  fake_bluez_event_hub()->SendAdapterPropertyChanged(
                       &mock_adapter_proxy_, mock_adapter_proxy_.PoweredName());
                 }
               });

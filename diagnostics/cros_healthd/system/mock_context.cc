@@ -43,8 +43,8 @@ MockContext::MockContext() {
   powerd_adapter_ = std::make_unique<FakePowerdAdapter>();
   system_config_ = std::make_unique<FakeSystemConfig>();
   system_utils_ = std::make_unique<FakeSystemUtilities>();
-  bluetooth_event_hub_ = std::make_unique<FakeBluetoothEventHub>();
-  bluetooth_info_manager_ = std::make_unique<MockBluetoothInfoManager>();
+  bluez_controller_ = std::make_unique<MockBluezController>();
+  bluez_event_hub_ = std::make_unique<FakeBluezEventHub>();
   floss_controller_ = std::make_unique<MockFlossController>();
   tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
   tpm_manager_proxy_ = std::make_unique<
@@ -126,12 +126,12 @@ FakeSystemUtilities* MockContext::fake_system_utils() const {
   return static_cast<FakeSystemUtilities*>(system_utils_.get());
 }
 
-FakeBluetoothEventHub* MockContext::fake_bluetooth_event_hub() const {
-  return static_cast<FakeBluetoothEventHub*>(bluetooth_event_hub_.get());
+MockBluezController* MockContext::mock_bluez_controller() const {
+  return static_cast<MockBluezController*>(bluez_controller_.get());
 }
 
-MockBluetoothInfoManager* MockContext::mock_bluetooth_info_manager() const {
-  return static_cast<MockBluetoothInfoManager*>(bluetooth_info_manager_.get());
+FakeBluezEventHub* MockContext::fake_bluez_event_hub() const {
+  return static_cast<FakeBluezEventHub*>(bluez_event_hub_.get());
 }
 
 MockFlossController* MockContext::mock_floss_controller() const {

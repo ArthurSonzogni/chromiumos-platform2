@@ -16,7 +16,7 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
-#include "diagnostics/cros_healthd/system/mock_bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
@@ -39,7 +39,7 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
       const BluetoothDiscoveryRoutineTest&) = delete;
 
   void SetUp() override {
-    EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
         .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
             &mock_adapter_proxy_}));
     routine_ = std::make_unique<BluetoothDiscoveryRoutine>(&mock_context_);
@@ -47,16 +47,16 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
-  MockBluetoothInfoManager* mock_bluetooth_info_manager() {
-    return mock_context_.mock_bluetooth_info_manager();
+  MockBluezController* mock_bluez_controller() {
+    return mock_context_.mock_bluez_controller();
   }
 
-  FakeBluetoothEventHub* fake_bluetooth_event_hub() {
-    return mock_context_.fake_bluetooth_event_hub();
+  FakeBluezEventHub* fake_bluez_event_hub() {
+    return mock_context_.fake_bluez_event_hub();
   }
 
   void SetUpNullAdapter() {
-    EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
         .WillOnce(
             Return(std::vector<org::bluez::Adapter1ProxyInterface*>{nullptr}));
     routine_ = std::make_unique<BluetoothDiscoveryRoutine>(&mock_context_);
@@ -78,7 +78,7 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
     EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
         .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
-          fake_bluetooth_event_hub()->SendAdapterPropertyChanged(
+          fake_bluez_event_hub()->SendAdapterPropertyChanged(
               &mock_adapter_proxy_, mock_adapter_proxy_.DiscoveringName());
         }));
     // The discovering state will be accessed when a property change event is
@@ -91,7 +91,7 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
     EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _))
         .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
-          fake_bluetooth_event_hub()->SendAdapterPropertyChanged(
+          fake_bluez_event_hub()->SendAdapterPropertyChanged(
               &mock_adapter_proxy_, mock_adapter_proxy_.DiscoveringName());
         }));
     // The discovering state will be accessed when a property change event is

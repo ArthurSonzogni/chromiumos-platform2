@@ -2,21 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_BLUETOOTH_INFO_MANAGER_H_
-#define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_BLUETOOTH_INFO_MANAGER_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_BLUEZ_CONTROLLER_H_
+#define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_BLUEZ_CONTROLLER_H_
 
 #include <vector>
 
-#include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/bluez_controller.h"
 
 namespace diagnostics {
 
-class MockBluetoothInfoManager final : public BluetoothInfoManager {
+class MockBluezController final : public BluezController {
  public:
-  MockBluetoothInfoManager() = default;
-  MockBluetoothInfoManager(const MockBluetoothInfoManager&) = delete;
-  MockBluetoothInfoManager& operator=(const MockBluetoothInfoManager&) = delete;
-  ~MockBluetoothInfoManager() = default;
+  MockBluezController() = default;
+  MockBluezController(const MockBluezController&) = delete;
+  MockBluezController& operator=(const MockBluezController&) = delete;
+  ~MockBluezController() = default;
 
   MOCK_METHOD(std::vector<org::bluez::Adapter1ProxyInterface*>,
               GetAdapters,
@@ -38,4 +38,4 @@ class MockBluetoothInfoManager final : public BluetoothInfoManager {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_BLUETOOTH_INFO_MANAGER_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_BLUEZ_CONTROLLER_H_

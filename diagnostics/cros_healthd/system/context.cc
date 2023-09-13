@@ -29,8 +29,8 @@
 
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
-#include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
-#include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/bluez_controller.h"
+#include "diagnostics/cros_healthd/system/bluez_event_hub.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
@@ -127,12 +127,10 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   system_config_ =
       std::make_unique<SystemConfig>(cros_config_.get(), debugd_proxy_.get());
   system_utils_ = std::make_unique<SystemUtilitiesImpl>();
-  bluetooth_info_manager_ =
-      std::make_unique<BluetoothInfoManager>(bluez_proxy_.get());
+  bluez_controller_ = std::make_unique<BluezController>(bluez_proxy_.get());
+  bluez_event_hub_ = std::make_unique<BluezEventHub>(bluez_proxy_.get());
   floss_controller_ =
       std::make_unique<FlossController>(bluetooth_manager_proxy_.get());
-  bluetooth_event_hub_ =
-      std::make_unique<BluetoothEventHub>(bluez_proxy_.get());
   tick_clock_ = std::make_unique<base::DefaultTickClock>();
   udev_ = brillo::Udev::Create();
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();

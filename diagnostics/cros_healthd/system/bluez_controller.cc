@@ -4,27 +4,27 @@
 
 #include <vector>
 
-#include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/bluez_controller.h"
 
 namespace diagnostics {
 
-BluetoothInfoManager::BluetoothInfoManager(org::bluezProxy* bluez_proxy)
+BluezController::BluezController(org::bluezProxy* bluez_proxy)
     : bluez_proxy_(bluez_proxy) {}
 
-std::vector<org::bluez::Adapter1ProxyInterface*>
-BluetoothInfoManager::GetAdapters() const {
+std::vector<org::bluez::Adapter1ProxyInterface*> BluezController::GetAdapters()
+    const {
   return bluez_proxy_->GetAdapter1Instances();
 }
-std::vector<org::bluez::Device1ProxyInterface*>
-BluetoothInfoManager::GetDevices() const {
+std::vector<org::bluez::Device1ProxyInterface*> BluezController::GetDevices()
+    const {
   return bluez_proxy_->GetDevice1Instances();
 }
 std::vector<org::bluez::AdminPolicyStatus1ProxyInterface*>
-BluetoothInfoManager::GetAdminPolicies() const {
+BluezController::GetAdminPolicies() const {
   return bluez_proxy_->GetAdminPolicyStatus1Instances();
 }
-std::vector<org::bluez::Battery1ProxyInterface*>
-BluetoothInfoManager::GetBatteries() const {
+std::vector<org::bluez::Battery1ProxyInterface*> BluezController::GetBatteries()
+    const {
   return bluez_proxy_->GetBattery1Instances();
 }
 

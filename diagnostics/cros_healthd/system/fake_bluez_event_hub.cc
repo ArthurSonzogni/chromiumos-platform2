@@ -2,34 +2,33 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/system/fake_bluetooth_event_hub.h"
+#include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
 
 #include <string>
 
 namespace diagnostics {
 
-void FakeBluetoothEventHub::SendAdapterAdded(
+void FakeBluezEventHub::SendAdapterAdded(
     org::bluez::Adapter1ProxyInterface* adapter) {
   OnAdapterAdded(adapter);
 }
-void FakeBluetoothEventHub::SendAdapterRemoved(
+void FakeBluezEventHub::SendAdapterRemoved(
     const dbus::ObjectPath& adapter_path) {
   OnAdapterRemoved(adapter_path);
 }
-void FakeBluetoothEventHub::SendAdapterPropertyChanged(
+void FakeBluezEventHub::SendAdapterPropertyChanged(
     org::bluez::Adapter1ProxyInterface* adapter,
     const std::string& property_name) {
   OnAdapterPropertyChanged(adapter, property_name);
 }
-void FakeBluetoothEventHub::SendDeviceAdded(
+void FakeBluezEventHub::SendDeviceAdded(
     org::bluez::Device1ProxyInterface* device) {
   OnDeviceAdded(device);
 }
-void FakeBluetoothEventHub::SendDeviceRemoved(
-    const dbus::ObjectPath& device_path) {
+void FakeBluezEventHub::SendDeviceRemoved(const dbus::ObjectPath& device_path) {
   OnDeviceRemoved(device_path);
 }
-void FakeBluetoothEventHub::SendDevicePropertyChanged(
+void FakeBluezEventHub::SendDevicePropertyChanged(
     org::bluez::Device1ProxyInterface* device,
     const std::string& property_name) {
   OnDevicePropertyChanged(device, property_name);

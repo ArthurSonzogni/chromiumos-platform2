@@ -11,8 +11,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
-#include "diagnostics/cros_healthd/system/fake_bluetooth_event_hub.h"
+#include "diagnostics/cros_healthd/system/bluez_event_hub.h"
+#include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
 namespace diagnostics {
@@ -20,15 +20,15 @@ namespace {
 
 using ::testing::StrictMock;
 
-// Tests for the BluetoothEventHub class.
-class BluetoothEventHubTest : public testing::Test {
+// Tests for the BluezEventHub class.
+class BluezEventHubTest : public testing::Test {
  protected:
-  BluetoothEventHubTest() = default;
-  BluetoothEventHubTest(const BluetoothEventHubTest&) = delete;
-  BluetoothEventHubTest& operator=(const BluetoothEventHubTest&) = delete;
+  BluezEventHubTest() = default;
+  BluezEventHubTest(const BluezEventHubTest&) = delete;
+  BluezEventHubTest& operator=(const BluezEventHubTest&) = delete;
 
-  FakeBluetoothEventHub* fake_bluetooth_event_hub() const {
-    return fake_bluetooth_event_hub_.get();
+  FakeBluezEventHub* fake_bluez_event_hub() const {
+    return fake_bluez_event_hub_.get();
   }
 
   // Getter of mock proxy.
@@ -43,8 +43,8 @@ class BluetoothEventHubTest : public testing::Test {
 
  private:
   base::test::TaskEnvironment task_environment_;
-  std::unique_ptr<FakeBluetoothEventHub> fake_bluetooth_event_hub_ =
-      std::make_unique<FakeBluetoothEventHub>();
+  std::unique_ptr<FakeBluezEventHub> fake_bluez_event_hub_ =
+      std::make_unique<FakeBluezEventHub>();
   // Mock proxy.
   std::unique_ptr<org::bluez::Adapter1ProxyMock> adapter_proxy_ =
       std::make_unique<StrictMock<org::bluez::Adapter1ProxyMock>>();
@@ -56,23 +56,23 @@ class BluetoothEventHubTest : public testing::Test {
 
 // Test that we will observe adapter property changed events when an adapter is
 // added.
-TEST_F(BluetoothEventHubTest, ObserveAdapterPropertyChanged) {
+TEST_F(BluezEventHubTest, ObserveAdapterPropertyChanged) {
   base::test::TestFuture<void> future;
   EXPECT_CALL(*mock_adapter_proxy(), SetPropertyChangedCallback)
       .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
-  fake_bluetooth_event_hub()->SendAdapterAdded(mock_adapter_proxy());
+  fake_bluez_event_hub()->SendAdapterAdded(mock_adapter_proxy());
   EXPECT_TRUE(future.Wait());
 }
 
 // Test that we will observe device property changed events when an device is
 // added.
-TEST_F(BluetoothEventHubTest, ObserveDevicePropertyChanged) {
+TEST_F(BluezEventHubTest, ObserveDevicePropertyChanged) {
   base::test::TestFuture<void> future;
   EXPECT_CALL(*mock_device_proxy(), SetPropertyChangedCallback)
       .WillOnce(base::test::RunOnceClosure(future.GetCallback()));
 
-  fake_bluetooth_event_hub()->SendDeviceAdded(mock_device_proxy());
+  fake_bluez_event_hub()->SendDeviceAdded(mock_device_proxy());
   EXPECT_TRUE(future.Wait());
 }
 

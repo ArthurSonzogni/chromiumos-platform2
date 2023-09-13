@@ -11,7 +11,7 @@
 #include <base/functional/callback_helpers.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/bluez_controller.h"
 
 namespace diagnostics {
 namespace {
@@ -23,7 +23,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 BluetoothRoutineBase::BluetoothRoutineBase(Context* context)
     : context_(context) {
   CHECK(context_);
-  adapters_ = context->bluetooth_info_manager()->GetAdapters();
+  adapters_ = context->bluez_controller()->GetAdapters();
 }
 
 BluetoothRoutineBase::~BluetoothRoutineBase() = default;

@@ -57,8 +57,8 @@ class bluezProxy;
 }  // namespace org
 
 namespace diagnostics {
-class BluetoothEventHub;
-class BluetoothInfoManager;
+class BluezController;
+class BluezEventHub;
 class FlossController;
 
 // A context class for holding the helper objects used in cros_healthd, which
@@ -147,19 +147,14 @@ class Context {
   }
   // Use the object returned by system_utils() to access system utilities.
   SystemUtilities* system_utils() const { return system_utils_.get(); }
-  // Use the object returned by bluetooth_info_manager() to access Bluetooth
-  // adapter and device information from the Bluetooth proxy.
-  BluetoothInfoManager* bluetooth_info_manager() const {
-    return bluetooth_info_manager_.get();
-  }
+  // Use the object returned by bluez_controller() to access Bluetooth instances
+  // from the Bluez proxy.
+  BluezController* bluez_controller() const { return bluez_controller_.get(); }
+  // Use the object returned by bluez_event_hub() to subscribe Bluetooth events.
+  BluezEventHub* bluez_event_hub() const { return bluez_event_hub_.get(); }
   // Use the object returned by floss_controller() to access Bluetooth instances
   // via Floss proxy.
   FlossController* floss_controller() const { return floss_controller_.get(); }
-  // Use the object returned by bluetooth_event_hub() to subscribe Bluetooth
-  // events.
-  BluetoothEventHub* bluetooth_event_hub() const {
-    return bluetooth_event_hub_.get();
-  }
   // Use the object returned by tick_clock() to track the passage of time.
   base::TickClock* tick_clock() const { return tick_clock_.get(); }
   // Use the object returned by tpm_manager_proxy() to get the tpm information
@@ -218,8 +213,8 @@ class Context {
   std::unique_ptr<SystemConfigInterface> system_config_;
   mojo::Remote<ash::cros_healthd::mojom::Executor> executor_;
   std::unique_ptr<SystemUtilities> system_utils_;
-  std::unique_ptr<BluetoothEventHub> bluetooth_event_hub_;
-  std::unique_ptr<BluetoothInfoManager> bluetooth_info_manager_;
+  std::unique_ptr<BluezController> bluez_controller_;
+  std::unique_ptr<BluezEventHub> bluez_event_hub_;
   std::unique_ptr<FlossController> floss_controller_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;

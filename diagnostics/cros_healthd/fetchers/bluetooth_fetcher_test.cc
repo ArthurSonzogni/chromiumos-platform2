@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
-#include "diagnostics/cros_healthd/system/mock_bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/system/mock_floss_controller.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
@@ -116,8 +116,8 @@ class BluetoothFetcherTest : public ::testing::Test {
   const dbus::ObjectPath& device_path() { return device_path_; }
 
   MockContext* mock_context() { return &mock_context_; }
-  MockBluetoothInfoManager* mock_bluetooth_info_manager() {
-    return mock_context_.mock_bluetooth_info_manager();
+  MockBluezController* mock_bluez_controller() {
+    return mock_context_.mock_bluez_controller();
   }
   MockFlossController* mock_floss_controller() {
     return mock_context_.mock_floss_controller();
@@ -315,17 +315,17 @@ TEST_F(BluetoothFetcherTest, FetchBluetoothInfo) {
   SetMockOtherProxyCall(admin_policy_properties, battery_properties);
   SetMockManagerProxyCall();
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
       .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
           mock_adapter_proxy()}));
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           mock_device_proxy()}));
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdminPolicies())
+  EXPECT_CALL(*mock_bluez_controller(), GetAdminPolicies())
       .WillOnce(
           Return(std::vector<org::bluez::AdminPolicyStatus1ProxyInterface*>{
               mock_admin_policy_proxy()}));
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetBatteries())
+  EXPECT_CALL(*mock_bluez_controller(), GetBatteries())
       .WillOnce(Return(std::vector<org::bluez::Battery1ProxyInterface*>{
           mock_battery_proxy()}));
   auto bluetooth_result = FetchBluetoothInfoSync();
@@ -386,10 +386,10 @@ TEST_F(BluetoothFetcherTest, NumConnectedDevices) {
   SetMockDeviceProxyCall(device_properties, 2);
   SetMockManagerProxyCall();
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
       .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
           mock_adapter_proxy()}));
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           mock_device_proxy(), mock_device_proxy()}));
   auto bluetooth_result = FetchBluetoothInfoSync();
@@ -410,10 +410,10 @@ TEST_F(BluetoothFetcherTest, DisconnectedDevice) {
   // Set as disconnected device.
   EXPECT_CALL(*mock_device_proxy(), connected()).WillOnce(Return(false));
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
       .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
           mock_adapter_proxy()}));
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           mock_device_proxy()}));
   auto bluetooth_result = FetchBluetoothInfoSync();
@@ -432,10 +432,10 @@ TEST_F(BluetoothFetcherTest, DeviceWithInvalidProperties) {
   SetMockDeviceProxyCallWithInvalidProperties(device_properties);
   SetMockManagerProxyCall();
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
       .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
           mock_adapter_proxy()}));
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           mock_device_proxy()}));
   auto bluetooth_result = FetchBluetoothInfoSync();

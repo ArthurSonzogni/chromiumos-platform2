@@ -12,7 +12,7 @@
 #include <base/check.h>
 #include <dbus/object_path.h>
 
-#include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/bluez_controller.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
@@ -125,8 +125,8 @@ void FetchBluetoothInfoInner(Context* context,
     return;
   }
 
-  const auto bluetooth_info_manager = context->bluetooth_info_manager();
-  if (!bluetooth_info_manager) {
+  const auto bluez_controller = context->bluez_controller();
+  if (!bluez_controller) {
     std::move(callback).Run(mojom::BluetoothResult::NewError(
         CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable,
                                "Bluez proxy is not ready")));
@@ -136,17 +136,17 @@ void FetchBluetoothInfoInner(Context* context,
 
   // Map from the adapter's ObjectPath to the service allow list.
   std::map<dbus::ObjectPath, std::vector<std::string>> service_allow_list;
-  ParseServiceAllowList(bluetooth_info_manager->GetAdminPolicies(),
+  ParseServiceAllowList(bluez_controller->GetAdminPolicies(),
                         service_allow_list);
 
   // Map from the adapter's ObjectPath to the connected devices.
   std::map<dbus::ObjectPath, std::vector<mojom::BluetoothDeviceInfoPtr>>
       connected_devices;
-  ParseDevicesInfo(bluetooth_info_manager->GetDevices(),
-                   bluetooth_info_manager->GetBatteries(), connected_devices);
+  ParseDevicesInfo(bluez_controller->GetDevices(),
+                   bluez_controller->GetBatteries(), connected_devices);
 
   // Fetch adapters' info.
-  for (const auto& adapter : bluetooth_info_manager->GetAdapters()) {
+  for (const auto& adapter : bluez_controller->GetAdapters()) {
     if (!adapter)
       continue;
     mojom::BluetoothAdapterInfo info;

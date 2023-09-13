@@ -18,7 +18,7 @@
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
+#include "diagnostics/cros_healthd/system/bluez_event_hub.h"
 
 namespace diagnostics {
 namespace {
@@ -46,7 +46,7 @@ void BluetoothDiscoveryRoutine::Start() {
       kRoutineDiscoveryTimeout);
 
   event_subscriptions_.push_back(
-      context_->bluetooth_event_hub()->SubscribeAdapterPropertyChanged(
+      context_->bluez_event_hub()->SubscribeAdapterPropertyChanged(
           base::BindRepeating(
               &BluetoothDiscoveryRoutine::OnAdapterPropertyChanged,
               weak_ptr_factory_.GetWeakPtr())));

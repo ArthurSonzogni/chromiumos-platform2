@@ -21,8 +21,8 @@
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/address_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
-#include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/bluez_controller.h"
+#include "diagnostics/cros_healthd/system/bluez_event_hub.h"
 
 namespace diagnostics {
 namespace {
@@ -51,11 +51,11 @@ void BluetoothPairingRoutine::Start() {
       kRoutinePairingTimeout);
 
   event_subscriptions_.push_back(
-      context_->bluetooth_event_hub()->SubscribeDeviceAdded(
+      context_->bluez_event_hub()->SubscribeDeviceAdded(
           base::BindRepeating(&BluetoothPairingRoutine::OnDeviceAdded,
                               weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
-      context_->bluetooth_event_hub()->SubscribeDevicePropertyChanged(
+      context_->bluez_event_hub()->SubscribeDevicePropertyChanged(
           base::BindRepeating(&BluetoothPairingRoutine::OnDevicePropertyChanged,
                               weak_ptr_factory_.GetWeakPtr())));
 
@@ -219,7 +219,7 @@ void BluetoothPairingRoutine::HandleAdapterPoweredOn(bool is_success) {
 }
 
 void BluetoothPairingRoutine::RemoveCachedDeviceIfNeeded() {
-  for (const auto& device : context_->bluetooth_info_manager()->GetDevices()) {
+  for (const auto& device : context_->bluez_controller()->GetDevices()) {
     if (!device)
       continue;
 

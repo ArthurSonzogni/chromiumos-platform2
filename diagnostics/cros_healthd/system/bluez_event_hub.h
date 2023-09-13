@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_BLUETOOTH_EVENT_HUB_H_
-#define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_BLUETOOTH_EVENT_HUB_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_BLUEZ_EVENT_HUB_H_
+#define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_BLUEZ_EVENT_HUB_H_
 
 #include <string>
 
@@ -31,12 +31,12 @@ using OnBluetoothDevicePropertyChangedCallback =
                                  const std::string& property_name)>;
 
 // Interface for subscribing Bluetooth events.
-class BluetoothEventHub {
+class BluezEventHub {
  public:
-  explicit BluetoothEventHub(org::bluezProxy* bluez_proxy = nullptr);
-  BluetoothEventHub(const BluetoothEventHub&) = delete;
-  BluetoothEventHub& operator=(const BluetoothEventHub&) = delete;
-  ~BluetoothEventHub() = default;
+  explicit BluezEventHub(org::bluezProxy* bluez_proxy = nullptr);
+  BluezEventHub(const BluezEventHub&) = delete;
+  BluezEventHub& operator=(const BluezEventHub&) = delete;
+  ~BluezEventHub() = default;
 
   base::CallbackListSubscription SubscribeAdapterAdded(
       OnBluetoothAdapterAddedCallback callback);
@@ -80,9 +80,9 @@ class BluetoothEventHub {
       device_property_changed_observers_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<BluetoothEventHub> weak_ptr_factory_{this};
+  base::WeakPtrFactory<BluezEventHub> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_SYSTEM_BLUETOOTH_EVENT_HUB_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_SYSTEM_BLUEZ_EVENT_HUB_H_

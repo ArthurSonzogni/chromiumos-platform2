@@ -19,7 +19,7 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
-#include "diagnostics/cros_healthd/system/mock_bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
@@ -44,16 +44,16 @@ class BluetoothScanningRoutineTest : public testing::Test {
 
   void SetUp() override { SetUpRoutine(std::nullopt); }
 
-  MockBluetoothInfoManager* mock_bluetooth_info_manager() {
-    return mock_context_.mock_bluetooth_info_manager();
+  MockBluezController* mock_bluez_controller() {
+    return mock_context_.mock_bluez_controller();
   }
 
-  FakeBluetoothEventHub* fake_bluetooth_event_hub() {
-    return mock_context_.fake_bluetooth_event_hub();
+  FakeBluezEventHub* fake_bluez_event_hub() {
+    return mock_context_.fake_bluez_event_hub();
   }
 
   void SetUpRoutine(const std::optional<base::TimeDelta>& exec_duration) {
-    EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
         .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
             &mock_adapter_proxy_}));
     routine_ = std::make_unique<BluetoothScanningRoutine>(&mock_context_,
@@ -61,7 +61,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
   }
 
   void SetUpNullAdapter() {
-    EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
         .WillOnce(
             Return(std::vector<org::bluez::Adapter1ProxyInterface*>{nullptr}));
     routine_ = std::make_unique<BluetoothScanningRoutine>(&mock_context_,
@@ -86,10 +86,10 @@ class BluetoothScanningRoutineTest : public testing::Test {
           std::move(on_success).Run();
           for (const auto& [device_path, device] : fake_devices_) {
             auto mock_device = mock_device_proxies_[device_path].get();
-            fake_bluetooth_event_hub()->SendDeviceAdded(mock_device);
+            fake_bluez_event_hub()->SendDeviceAdded(mock_device);
             // Send out the rest RSSIs.
             for (int i = 1; i < device.rssi_history.size(); i++) {
-              fake_bluetooth_event_hub()->SendDevicePropertyChanged(
+              fake_bluez_event_hub()->SendDevicePropertyChanged(
                   mock_device, mock_device->RSSIName());
             }
           }
@@ -108,7 +108,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
                           const ScannedPeripheralDevice& device) {
     auto mock_device = mock_device_proxies_[device_path].get();
 
-    // Function call in BluetoothEventHub::OnDeviceAdded.
+    // Function call in BluezEventHub::OnDeviceAdded.
     EXPECT_CALL(*mock_device, SetPropertyChangedCallback(_));
 
     EXPECT_CALL(*mock_device, GetObjectPath()).WillOnce(ReturnRef(device_path));

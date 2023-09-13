@@ -18,7 +18,7 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
-#include "diagnostics/cros_healthd/system/mock_bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
@@ -43,7 +43,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
       delete;
 
   void SetUp() override {
-    EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
         .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
             &mock_adapter_proxy_}));
     routine_ = std::make_unique<BluetoothPairingRoutine>(
@@ -52,16 +52,16 @@ class BluetoothPairingRoutineTest : public testing::Test {
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
-  MockBluetoothInfoManager* mock_bluetooth_info_manager() {
-    return mock_context_.mock_bluetooth_info_manager();
+  MockBluezController* mock_bluez_controller() {
+    return mock_context_.mock_bluez_controller();
   }
 
-  FakeBluetoothEventHub* fake_bluetooth_event_hub() {
-    return mock_context_.fake_bluetooth_event_hub();
+  FakeBluezEventHub* fake_bluez_event_hub() {
+    return mock_context_.fake_bluez_event_hub();
   }
 
   void SetUpNullAdapter() {
-    EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+    EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
         .WillOnce(
             Return(std::vector<org::bluez::Adapter1ProxyInterface*>{nullptr}));
     routine_ = std::make_unique<BluetoothPairingRoutine>(
@@ -91,7 +91,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
             std::move(on_success).Run();
             // Send out peripheral in |added_devices|.
             for (const auto& device : added_devices)
-              fake_bluetooth_event_hub()->SendDeviceAdded(device);
+              fake_bluez_event_hub()->SendDeviceAdded(device);
           }));
     } else {
       EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
@@ -118,7 +118,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
   // The |mock_target_device_| with the address |target_address_| is expected to
   // be added.
   void SetDeviceAddedCall() {
-    // Function call in BluetoothEventHub::OnDeviceAdded.
+    // Function call in BluezEventHub::OnDeviceAdded.
     EXPECT_CALL(mock_target_device_, SetPropertyChangedCallback(_));
 
     // Function call in device added callback.
@@ -154,7 +154,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
         .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
           // Send out connected status changed event.
-          fake_bluetooth_event_hub()->SendDevicePropertyChanged(
+          fake_bluez_event_hub()->SendDevicePropertyChanged(
               &mock_target_device_, mock_target_device_.ConnectedName());
         }));
     EXPECT_CALL(mock_target_device_, connected())
@@ -169,7 +169,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
         .WillOnce(WithArg<0>([&](base::OnceCallback<void()> on_success) {
           std::move(on_success).Run();
           // Send out paired status changed event.
-          fake_bluetooth_event_hub()->SendDevicePropertyChanged(
+          fake_bluez_event_hub()->SendDevicePropertyChanged(
               &mock_target_device_, mock_target_device_.PairedName());
         }));
     // Return false to monitor paired changed event.
@@ -261,7 +261,7 @@ TEST_F(BluetoothPairingRoutineTest, RoutineSuccess) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
   // Check if the target peripheral is cached. If so, remove it.
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           &mock_target_device_, nullptr}));
   EXPECT_CALL(mock_target_device_, address())
@@ -300,7 +300,7 @@ TEST_F(BluetoothPairingRoutineTest, RoutineSuccessOnlyConnect) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
   // Check existing devices when the target peripheral is cached.
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Start discovery.
@@ -354,7 +354,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemoveCachedPeripheral) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
   // Check cached devices.
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           &mock_target_device_}));
   EXPECT_CALL(mock_target_device_, address())
@@ -386,7 +386,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedPeripheralAlreadyPaired) {
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
   // Check cached devices.
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           &mock_target_device_}));
   EXPECT_CALL(mock_target_device_, address())
@@ -410,7 +410,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedStartDiscovery) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Failed to start and stop discovery.
@@ -433,7 +433,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedFindTargetPeripheral) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Start discovery but not sending target peripheral.
@@ -461,7 +461,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedTagTargetPeripheral) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Start discovery.
@@ -490,7 +490,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedCreateBasebandConnection) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Start discovery.
@@ -530,7 +530,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedVerifyConnected) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Start discovery.
@@ -561,7 +561,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedToPair) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Start discovery.
@@ -604,7 +604,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedVerifyPaired) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Start discovery.
@@ -635,7 +635,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemovePairedPeripheral) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Start discovery.
@@ -679,7 +679,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedStopDiscovery) {
   // Ensure adapter is powered on.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
-  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
+  EXPECT_CALL(*mock_bluez_controller(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 
   // Start discovery.
