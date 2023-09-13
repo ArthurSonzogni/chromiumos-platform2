@@ -5,6 +5,7 @@
 #ifndef FLEX_HWIS_TELEMETRY_FOR_TESTING_H_
 #define FLEX_HWIS_TELEMETRY_FOR_TESTING_H_
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -52,21 +53,35 @@ namespace mojom = ::ash::cros_healthd::mojom;
 // Builds a mojom::TelemetryInfoPtr for use in tests.
 class TelemetryForTesting {
  public:
-  // Fill in fake system information.
+  // Fill in default fake system information.
   void AddSystemInfo();
-  // Fill in fake cpu information.
+  // Fill in default fake cpu information.
   void AddCpuInfo();
-  // Fill in fake memory information.
+  // Fill in default fake memory information.
   void AddMemoryInfo();
+  // Fill in default fake pci bus information with a specified device class.
+  void AddPciBusInfo(const mojom::BusDeviceClass dev_class);
   // Fill in fake pci bus information.
-  void AddPciBusInfo(const mojom::BusDeviceClass controller, bool is_multiple);
+  void AddPciBusInfo(const mojom::BusDeviceClass dev_class,
+                     const std::string& vendor,
+                     const std::string& product,
+                     uint16_t vendor_id,
+                     uint16_t device_id,
+                     const std::string& driver);
+  // Fill in default fake usb bus information with a specified device class.
+  void AddUsbBusInfo(const mojom::BusDeviceClass dev_class);
   // Fill in fake usb bus information.
-  void AddUsbBusInfo(const mojom::BusDeviceClass controller);
-  // Fill in fake graphics information.
+  void AddUsbBusInfo(const mojom::BusDeviceClass dev_class,
+                     const std::string& vendor,
+                     const std::string& product,
+                     uint16_t vendor_id,
+                     uint16_t product_id,
+                     const std::string& driver);
+  // Fill in default fake graphics information.
   void AddGraphicsInfo();
-  // Fill in fake input information.
+  // Fill in default fake input information.
   void AddInputInfo();
-  // Fill in fake tpm information.
+  // Fill in default fake tpm information.
   void AddTpmInfo();
   // Fill in all the information.
   void AddTelemetryInfo();
@@ -76,6 +91,9 @@ class TelemetryForTesting {
 
  private:
   mojom::TelemetryInfoPtr info_ = mojom::TelemetryInfo::New();
+  // Manipulating the bus_result directly is difficult.
+  // Collect devices to add at the last minute.
+  std::vector<mojom::BusDevicePtr> devices_;
 };
 
 }  // namespace flex_hwis

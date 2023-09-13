@@ -66,7 +66,7 @@ TEST_F(FlexHwisMojoTest, MojoMemory) {
 
 TEST_F(FlexHwisMojoTest, MojoBusEthernet) {
   hwis_proto::Device data;
-  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kEthernetController, false);
+  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kEthernetController);
   flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetBusInfo(&data);
 
@@ -78,7 +78,7 @@ TEST_F(FlexHwisMojoTest, MojoBusEthernet) {
 
 TEST_F(FlexHwisMojoTest, MojoBusWireless) {
   hwis_proto::Device data;
-  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kWirelessController, false);
+  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kWirelessController);
   flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetBusInfo(&data);
 
@@ -102,8 +102,14 @@ TEST_F(FlexHwisMojoTest, MojoBusBluetooth) {
 
 TEST_F(FlexHwisMojoTest, MojoBusDisplay) {
   hwis_proto::Device data;
-  // Some flex devices have multiple graphics adapter.
-  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kDisplayController, true);
+  // Some flex devices have multiple graphics adapters.
+  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kDisplayController,
+                           kPciVendorName, kBusProductName, kPciBusVendorId,
+                           kPciBusDeviceId, kPciBusDriver);
+  telemetry_.AddPciBusInfo(mojom::BusDeviceClass::kDisplayController,
+                           kPciVendorName, kBusProductName,
+                           kSecondPciBusVendorId, kSecondPciBusDeviceId,
+                           kPciBusDriver);
   flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetBusInfo(&data);
 

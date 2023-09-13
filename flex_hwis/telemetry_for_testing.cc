@@ -47,54 +47,55 @@ void TelemetryForTesting::AddMemoryInfo() {
       mojom::MemoryResult::NewMemoryInfo({std::move(memory_info)});
 }
 
-void TelemetryForTesting::AddPciBusInfo(const mojom::BusDeviceClass controller,
-                                        bool is_multiple) {
-  auto bus_devices = std::vector<mojom::BusDevicePtr>(is_multiple ? 2 : 1);
-
-  for (int i = 0; i < (is_multiple ? 2 : 1); i++) {
-    auto& bus_device = bus_devices[i];
-    bus_device = mojom::BusDevice::New();
-    bus_device->vendor_name = kPciVendorName;
-    bus_device->product_name = kBusProductName;
-    bus_device->device_class = controller;
-
-    auto pci_bus_info = mojom::PciBusInfo::New();
-    pci_bus_info->vendor_id = i == 0 ? kPciBusVendorId : kSecondPciBusVendorId;
-    pci_bus_info->device_id = i == 0 ? kPciBusDeviceId : kSecondPciBusDeviceId;
-    pci_bus_info->driver = kPciBusDriver;
-
-    auto& bus_info = bus_device->bus_info;
-    bus_info = mojom::BusInfo::NewPciBusInfo({std::move(pci_bus_info)});
-  }
-
-  info_->bus_result = mojom::BusResult::NewBusDevices({std::move(bus_devices)});
+void TelemetryForTesting::AddPciBusInfo(const mojom::BusDeviceClass dev_class) {
+  AddPciBusInfo(dev_class, kPciVendorName, kBusProductName, kPciBusVendorId,
+                kPciBusDeviceId, kPciBusDriver);
 }
 
-void TelemetryForTesting::AddUsbBusInfo(
-    const mojom::BusDeviceClass controller) {
-  auto bus_devices = std::vector<mojom::BusDevicePtr>(1);
-  auto& bus_device = bus_devices[0];
+void TelemetryForTesting::AddPciBusInfo(const mojom::BusDeviceClass dev_class,
+                                        const std::string& vendor,
+                                        const std::string& product,
+                                        uint16_t vendor_id,
+                                        uint16_t device_id,
+                                        const std::string& driver) {
+  // We don't use these three, just leave them blank;
+  uint8_t class_id = 0;
+  uint8_t subclass_id = 0;
+  uint8_t prog_if_id = 0;
+  auto bus_info = mojom::PciBusInfo::New(class_id, subclass_id, prog_if_id,
+                                         vendor_id, device_id, driver);
 
-  bus_device = mojom::BusDevice::New();
-  bus_device->vendor_name = kUsbVendorName;
-  bus_device->product_name = kBusProductName;
-  bus_device->device_class = controller;
+  devices_.push_back(mojom::BusDevice::New(
+      vendor, product, dev_class,
+      mojom::BusInfo::NewPciBusInfo(std::move(bus_info))));
+}
 
-  auto usb_bus_info = mojom::UsbBusInfo::New();
-  usb_bus_info->vendor_id = kPciBusVendorId;
-  usb_bus_info->product_id = kPciBusDeviceId;
+void TelemetryForTesting::AddUsbBusInfo(const mojom::BusDeviceClass dev_class) {
+  AddUsbBusInfo(dev_class, kUsbVendorName, kBusProductName, kPciBusVendorId,
+                kPciBusDeviceId, kPciBusDriver);
+}
 
-  auto& interfaces = usb_bus_info->interfaces;
-  interfaces = std::vector<mojom::UsbBusInterfaceInfoPtr>(1);
+void TelemetryForTesting::AddUsbBusInfo(const mojom::BusDeviceClass dev_class,
+                                        const std::string& vendor,
+                                        const std::string& product,
+                                        uint16_t vendor_id,
+                                        uint16_t product_id,
+                                        const std::string& driver) {
+  // We don't use these four, just leave them blank;
+  uint8_t interface_number = 0;
+  uint8_t class_id = 0;
+  uint8_t subclass_id = 0;
+  uint8_t protocol_id = 0;
+  std::vector<mojom::UsbBusInterfaceInfoPtr> interfaces;
+  interfaces.push_back(mojom::UsbBusInterfaceInfo::New(
+      interface_number, class_id, subclass_id, protocol_id, driver));
+  auto bus_info =
+      mojom::UsbBusInfo::New(class_id, subclass_id, protocol_id, vendor_id,
+                             product_id, std::move(interfaces));
 
-  auto& interface = interfaces[0];
-  interface = mojom::UsbBusInterfaceInfo::New();
-  interface->driver = kPciBusDriver;
-
-  auto& bus_info = bus_device->bus_info;
-  bus_info = mojom::BusInfo::NewUsbBusInfo({std::move(usb_bus_info)});
-
-  info_->bus_result = mojom::BusResult::NewBusDevices({std::move(bus_devices)});
+  devices_.push_back(mojom::BusDevice::New(
+      vendor, product, dev_class,
+      mojom::BusInfo::NewUsbBusInfo(std::move(bus_info))));
 }
 
 void TelemetryForTesting::AddGraphicsInfo() {
@@ -147,13 +148,18 @@ void TelemetryForTesting::AddTelemetryInfo() {
   AddSystemInfo();
   AddCpuInfo();
   AddMemoryInfo();
-  AddPciBusInfo(mojom::BusDeviceClass::kEthernetController, false);
+  AddPciBusInfo(mojom::BusDeviceClass::kEthernetController);
   AddGraphicsInfo();
   AddInputInfo();
   AddTpmInfo();
 }
 
 mojom::TelemetryInfoPtr TelemetryForTesting::Get() const {
+  std::vector<mojom::BusDevicePtr> devices_copy;
+  for (auto& dev : devices_) {
+    devices_copy.push_back(dev.Clone());
+  }
+  info_->bus_result = mojom::BusResult::NewBusDevices(std::move(devices_copy));
   return info_.Clone();
 }
 
