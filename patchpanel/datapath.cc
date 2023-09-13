@@ -58,8 +58,8 @@ constexpr uint16_t kAdbServerPort = 5555;
 constexpr char kGuestIPv4Subnet[] = "100.115.92.0/23";
 // Interface name patterns matching all Cellular physical and virtual interfaces
 // supported on ChromeOS.
-constexpr std::array<const char*, 4> kCellularIfnamePrefixes{
-    {"wwan+", "rmnet+", "mbimmux+", "qmapmux+"}};
+constexpr std::array<const char*, 3> kCellularIfnamePrefixes{
+    {"wwan+", "mbimmux+", "qmapmux+"}};
 // Same as |kCellularIfnamePrefixes| but for other network technologies.
 constexpr std::array<const char*, 4> kOtherPhysicalIfnamePrefixes{
     {"eth+", "wlan+", "mlan+", "usb+"}};

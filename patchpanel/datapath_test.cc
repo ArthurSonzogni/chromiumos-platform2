@@ -355,10 +355,6 @@ TEST(DatapathTest, Start) {
       {IpFamily::kIPv4,
        "filter -I drop_guest_invalid_ipv4 -s 100.115.92.0/23 -p tcp "
        "--tcp-flags FIN,PSH "
-       "FIN,PSH -o rmnet+ -j DROP -w"},
-      {IpFamily::kIPv4,
-       "filter -I drop_guest_invalid_ipv4 -s 100.115.92.0/23 -p tcp "
-       "--tcp-flags FIN,PSH "
        "FIN,PSH -o wwan+ -j DROP -w"},
       {IpFamily::kIPv4,
        "filter -I drop_guest_invalid_ipv4 -s 100.115.92.0/23 -p tcp "
@@ -391,9 +387,6 @@ TEST(DatapathTest, Start) {
        "-w"},
       {IpFamily::kIPv4,
        "filter -I drop_guest_ipv4_prefix -o wwan+ -s 100.115.92.0/23 -j DROP "
-       "-w"},
-      {IpFamily::kIPv4,
-       "filter -I drop_guest_ipv4_prefix -o rmnet+ -s 100.115.92.0/23 -j DROP "
        "-w"},
       {IpFamily::kIPv4,
        "filter -I drop_guest_ipv4_prefix -o mbimmux+ -s 100.115.92.0/23 -j "
