@@ -126,7 +126,7 @@ pub fn set_game_mode(
             Err(_) => warn!("Failed to get power state"),
         };
 
-        if intel_device::is_intel_device(root.clone().into()) && power_is_ac {
+        if intel_device::is_intel_device(root.clone()) && power_is_ac {
             match set_rps_thresholds(GAMEMODE_RPS_UP, GAMEMODE_RPS_DOWN) {
                 Ok(_) => {
                     info! {"Set RPS up/down freq to {:?}/{:?}",GAMEMODE_RPS_UP,GAMEMODE_RPS_DOWN}
@@ -158,7 +158,7 @@ pub fn set_game_mode(
             swappiness: TUNED_SWAPPINESS_VALUE,
         }));
     } else if old_mode == GameMode::Borealis && mode != GameMode::Borealis {
-        if intel_device::is_intel_device(root.clone().into()) {
+        if intel_device::is_intel_device(root.clone()) {
             match reset_rps_thresholds(&root) {
                 Ok(_) => {
                     info! {"reset RPS up/down freq to defaults"}
@@ -419,13 +419,13 @@ pub fn set_vm_boot_mode(
 
 fn reset_rps_thresholds(root: &Path) -> Result<()> {
     let mut default_up_rps = 95;
-    if let Ok(val) = read_file_to_u64(&root.join(DEVICE_RPS_DEFAULT_PATH_UP)) {
+    if let Ok(val) = read_file_to_u64(root.join(DEVICE_RPS_DEFAULT_PATH_UP)) {
         default_up_rps = val;
     } else {
         warn!("Could not read rps up value.");
     };
     let mut default_down_rps = 85;
-    if let Ok(val) = read_file_to_u64(&root.join(DEVICE_RPS_DEFAULT_PATH_DOWN)) {
+    if let Ok(val) = read_file_to_u64(root.join(DEVICE_RPS_DEFAULT_PATH_DOWN)) {
         default_down_rps = val;
     } else {
         warn!("Could not read rps down value.");

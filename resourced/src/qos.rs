@@ -118,7 +118,7 @@ static SUPPORTS_UCLAMP: Lazy<bool> = Lazy::new(|| {
     };
 
     // shed_util_max is only filled in if uclamp is supported.
-    return temp_attr.sched_util_max != 0;
+    temp_attr.sched_util_max != 0
 });
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
