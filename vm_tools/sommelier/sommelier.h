@@ -459,6 +459,12 @@ struct sl_host_gamepad {
 };
 #endif
 
+struct sl_idle_inhibit_manager {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct sl_global* host_global;
+};
+
 struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
                                              struct wl_client* client,
                                              uint32_t id,
@@ -532,6 +538,8 @@ struct sl_global* sl_pointer_constraints_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_fractional_scale_manager_global_create(
     struct sl_context* ctx);
+
+struct sl_global* sl_idle_inhibit_manager_global_create(struct sl_context* ctx);
 
 void sl_set_display_implementation(struct sl_context* ctx,
                                    struct wl_client* client);

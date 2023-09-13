@@ -44,6 +44,7 @@
 #ifdef GAMEPAD_SUPPORT
 #include "gaming-input-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 #endif
+#include "idle-inhibit-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "keyboard-extension-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-explicit-synchronization-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
@@ -791,6 +792,16 @@ void sl_registry_handler(void* data,
     ctx->fractional_scale_manager = fractional_scale_manager;
     fractional_scale_manager->host_fractional_scale_manager_global =
         sl_fractional_scale_manager_global_create(ctx);
+  } else if (strcmp(interface, "zwp_idle_inhibit_manager_v1") == 0) {
+    struct sl_idle_inhibit_manager* idle_inhibit =
+        static_cast<sl_idle_inhibit_manager*>(
+            malloc(sizeof(struct sl_idle_inhibit_manager)));
+    assert(idle_inhibit);
+    idle_inhibit->ctx = ctx;
+    idle_inhibit->id = id;
+    assert(!ctx->idle_inhibit_manager);
+    ctx->idle_inhibit_manager = idle_inhibit;
+    idle_inhibit->host_global = sl_idle_inhibit_manager_global_create(ctx);
   }
 }
 
@@ -920,6 +931,12 @@ void sl_registry_remover(void* data,
     sl_global_destroy(ctx->pointer_constraints->host_global);
     free(ctx->pointer_constraints);
     ctx->pointer_constraints = nullptr;
+    return;
+  }
+  if (ctx->idle_inhibit_manager && ctx->idle_inhibit_manager->id == id) {
+    sl_global_destroy(ctx->idle_inhibit_manager->host_global);
+    free(ctx->idle_inhibit_manager);
+    ctx->idle_inhibit_manager = nullptr;
     return;
   }
   wl_list_for_each(output, &ctx->outputs, link) {
