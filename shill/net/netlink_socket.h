@@ -31,6 +31,7 @@
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/socket.h>
 
@@ -79,7 +80,7 @@ class SHILL_EXPORT NetlinkSocket {
   // Returns 0 if timeout.
   // Returns -1 if error occurs, and errno is set. The caller should use PLOG to
   // print errno.
-  virtual int WaitForRead(struct timeval* timeout) const;
+  virtual int WaitForRead(base::TimeDelta timeout) const;
 
   // Sets the value of |sequence_number_| for testing.
   void set_sequence_number_for_test(uint32_t sequence_number) {

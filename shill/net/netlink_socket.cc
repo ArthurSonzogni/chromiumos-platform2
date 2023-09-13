@@ -6,6 +6,7 @@
 
 #include <linux/if_packet.h>
 #include <linux/netlink.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 
 #include <memory>
@@ -70,7 +71,7 @@ bool NetlinkSocket::SubscribeToEvents(uint32_t group_id) {
   return true;
 }
 
-int NetlinkSocket::WaitForRead(struct timeval* timeout) const {
+int NetlinkSocket::WaitForRead(base::TimeDelta timeout) const {
   fd_set read_fds;
   FD_ZERO(&read_fds);
   if (socket_->Get() >= FD_SETSIZE) {
@@ -79,8 +80,14 @@ int NetlinkSocket::WaitForRead(struct timeval* timeout) const {
   }
   FD_SET(socket_->Get(), &read_fds);
 
+  DCHECK(!timeout.is_negative());
+  struct timeval time = {
+      .tv_sec = static_cast<time_t>(timeout.InSeconds()),
+      .tv_usec = static_cast<suseconds_t>(
+          (timeout - base::Seconds(timeout.InSeconds())).InMicroseconds()),
+  };
   return HANDLE_EINTR(
-      select(socket_->Get() + 1, &read_fds, nullptr, nullptr, timeout));
+      select(socket_->Get() + 1, &read_fds, nullptr, nullptr, &time));
 }
 
 uint32_t NetlinkSocket::GetSequenceNumber() {

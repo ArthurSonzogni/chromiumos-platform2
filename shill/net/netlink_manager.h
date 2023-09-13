@@ -74,7 +74,6 @@
 #include "shill/net/netlink_message.h"
 #include "shill/net/netlink_socket.h"
 #include "shill/net/shill_export.h"
-#include "shill/net/shill_time.h"
 
 namespace shill {
 
@@ -144,8 +143,8 @@ class SHILL_EXPORT NetlinkManager {
     void HandleError(AuxiliaryMessageType type,
                      const NetlinkMessage* netlink_message) const;
     virtual bool HandleAck() const;
-    void set_delete_after(const timeval& time) { delete_after_ = time; }
-    const struct timeval& delete_after() const { return delete_after_; }
+    void set_delete_after(base::TimeTicks time) { delete_after_ = time; }
+    base::TimeTicks delete_after() const { return delete_after_; }
 
    protected:
     NetlinkResponseHandler();
@@ -156,7 +155,7 @@ class SHILL_EXPORT NetlinkManager {
 
    private:
     NetlinkAuxiliaryMessageHandler error_handler_;
-    struct timeval delete_after_;
+    base::TimeTicks delete_after_;
   };
 
   // Encapsulates all the different things we know about a specific message
@@ -321,10 +320,8 @@ class SHILL_EXPORT NetlinkManager {
 
   // These need to be member variables, even though they're only used once in
   // the code, since they're needed for unittests.
-  static const long kMaximumNewFamilyWaitSeconds;       // NOLINT
-  static const long kMaximumNewFamilyWaitMicroSeconds;  // NOLINT
-  static const long kResponseTimeoutSeconds;            // NOLINT
-  static const long kResponseTimeoutMicroSeconds;       // NOLINT
+  static constexpr base::TimeDelta kMaximumNewFamilyTimeout = base::Seconds(1);
+  static constexpr base::TimeDelta kResponseTimeout = base::Seconds(5);
   static constexpr base::TimeDelta kPendingDumpTimeout = base::Seconds(1);
   static constexpr base::TimeDelta kNlMessageRetryDelay =
       base::Milliseconds(300);
@@ -370,9 +367,8 @@ class SHILL_EXPORT NetlinkManager {
 
   // Sends a netlink message if |pending_dump_| is false. Otherwise, post
   // a message to |pending_messages_| to be sent later.
-  bool SendOrPostMessage(
-      NetlinkMessage* message,
-      NetlinkResponseHandler* message_wrapper);  // Passes ownership.
+  bool SendOrPostMessage(NetlinkMessage* message,
+                         NetlinkResponseHandlerRefPtr message_wrapper);
 
   // Install a handler to deal with kernel's response to the message contained
   // in |pending_message|, then sends the message by calling
@@ -435,7 +431,6 @@ class SHILL_EXPORT NetlinkManager {
 
   std::map<const std::string, MessageType> message_types_;
   NetlinkMessageFactory message_factory_;
-  Time* time_;
   bool dump_pending_;
 };
 

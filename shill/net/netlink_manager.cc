@@ -6,16 +6,16 @@
 
 #include <errno.h>
 #include <sys/select.h>
-#include <sys/time.h>
+
+#include <memory>
+#include <utility>
+#include <vector>
 
 #include <base/containers/contains.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
-
-#include <memory>
-#include <vector>
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/netlink_packet.h"
@@ -32,11 +32,7 @@ const char NetlinkManager::kEventTypeConfig[] = "config";
 const char NetlinkManager::kEventTypeScan[] = "scan";
 const char NetlinkManager::kEventTypeRegulatory[] = "regulatory";
 const char NetlinkManager::kEventTypeMlme[] = "mlme";
-const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;       // NOLINT
-const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;  // NOLINT
-const long NetlinkManager::kResponseTimeoutSeconds = 5;            // NOLINT
-const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;       // NOLINT
-const int NetlinkManager::kMaxNlMessageRetries = 1;                // NOLINT
+const int NetlinkManager::kMaxNlMessageRetries = 1;
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
     const NetlinkManager::NetlinkAckHandler& ack_handler,
@@ -155,9 +151,7 @@ NetlinkManager::MessageType::MessageType()
     : family_id(NetlinkMessage::kIllegalMessageType) {}
 
 NetlinkManager::NetlinkManager()
-    : weak_ptr_factory_(this),
-      time_(Time::GetInstance()),
-      dump_pending_(false) {}
+    : weak_ptr_factory_(this), dump_pending_(false) {}
 
 NetlinkManager::~NetlinkManager() = default;
 
@@ -349,17 +343,17 @@ uint16_t NetlinkManager::GetFamily(
   // GETFAMILY / NEWFAMILY transaction to transpire (this transaction was timed
   // over 20 times and found a maximum duration of 11.1 microseconds and an
   // average of 4.0 microseconds).
-  struct timeval now, end_time;
-  struct timeval maximum_wait_duration = {kMaximumNewFamilyWaitSeconds,
-                                          kMaximumNewFamilyWaitMicroSeconds};
-  time_->GetTimeMonotonic(&now);
-  timeradd(&now, &maximum_wait_duration, &end_time);
+  const base::TimeTicks end_time =
+      base::TimeTicks::Now() + kMaximumNewFamilyTimeout;
 
-  do {
+  while (true) {
+    const base::TimeDelta timeout = end_time - base::TimeTicks::Now();
+    if (!timeout.is_positive()) {
+      break;
+    }
+
     // Wait with timeout for a message from the netlink socket.
-    struct timeval wait_duration;
-    timersub(&end_time, &now, &wait_duration);
-    const int result = sock_->WaitForRead(&wait_duration);
+    const int result = sock_->WaitForRead(timeout);
     if (result < 0) {
       PLOG(ERROR) << "Select failed";
       return NetlinkMessage::kIllegalMessageType;
@@ -381,8 +375,7 @@ uint16_t NetlinkManager::GetFamily(
       }
       return message_type.family_id;
     }
-    time_->GetTimeMonotonic(&now);
-  } while (timercmp(&now, &end_time, <));
+  }
 
   LOG(ERROR) << "Timed out waiting for family_id for family '" << name << "'.";
   return NetlinkMessage::kIllegalMessageType;
@@ -448,13 +441,12 @@ bool NetlinkManager::SendNl80211Message(
     const NetlinkAckHandler& ack_handler,
     const NetlinkAuxiliaryMessageHandler& error_handler) {
   return SendOrPostMessage(
-      message,
-      new Nl80211ResponseHandler(ack_handler, error_handler, message_handler));
+      message, NetlinkResponseHandlerRefPtr(new Nl80211ResponseHandler(
+                   ack_handler, error_handler, message_handler)));
 }
 
 bool NetlinkManager::SendOrPostMessage(
-    NetlinkMessage* message,
-    NetlinkManager::NetlinkResponseHandler* response_handler) {
+    NetlinkMessage* message, NetlinkResponseHandlerRefPtr response_handler) {
   if (!message) {
     LOG(ERROR) << "Message is NULL.";
     return false;
@@ -462,9 +454,9 @@ bool NetlinkManager::SendOrPostMessage(
 
   const uint32_t sequence_number = this->GetSequenceNumber();
   const bool is_dump_msg = message->flags() & NLM_F_DUMP;
-  NetlinkPendingMessage pending_message(
-      sequence_number, is_dump_msg, message->Encode(sequence_number),
-      NetlinkResponseHandlerRefPtr(response_handler));
+  NetlinkPendingMessage pending_message(sequence_number, is_dump_msg,
+                                        message->Encode(sequence_number),
+                                        std::move(response_handler));
 
   // TODO(samueltan): print this debug message above the actual call to
   // NetlinkSocket::SendMessage in NetlinkManager::SendMessageInternal.
@@ -489,12 +481,10 @@ bool NetlinkManager::RegisterHandlersAndSendMessage(
   // Clean out timed-out message handlers.  The list of outstanding messages
   // should be small so the time wasted by looking through all of them should
   // be small.
-  struct timeval now;
-  time_->GetTimeMonotonic(&now);
-  std::map<uint32_t, NetlinkResponseHandlerRefPtr>::iterator handler_it =
-      message_handlers_.begin();
+  const base::TimeTicks now = base::TimeTicks::Now();
+  auto handler_it = message_handlers_.begin();
   while (handler_it != message_handlers_.end()) {
-    if (timercmp(&now, &handler_it->second->delete_after(), >)) {
+    if (now > handler_it->second->delete_after()) {
       // A timeout isn't always unexpected so this is not a warning.
       VLOG(2) << "Removing timed-out handler for sequence number "
               << handler_it->first;
@@ -514,12 +504,7 @@ bool NetlinkManager::RegisterHandlersAndSendMessage(
                << pending_message.sequence_number;
     return false;
   } else {
-    struct timeval response_timeout = {kResponseTimeoutSeconds,
-                                       kResponseTimeoutMicroSeconds};
-    struct timeval delete_after;
-    timeradd(&now, &response_timeout, &delete_after);
-    pending_message.handler->set_delete_after(delete_after);
-
+    pending_message.handler->set_delete_after(now + kResponseTimeout);
     message_handlers_[pending_message.sequence_number] =
         pending_message.handler;
   }

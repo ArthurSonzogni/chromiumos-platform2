@@ -19,17 +19,18 @@
 #include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
 
 #include "shill/net/mock_netlink_socket.h"
-#include "shill/net/mock_time.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 
 using testing::_;
 using testing::Invoke;
+using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
 using testing::SetArgPointee;
@@ -245,56 +246,19 @@ class NetlinkManagerTest : public Test {
 
   void Reset() { netlink_manager_->Reset(false); }
 
+  base::test::TaskEnvironment task_environment_{
+      // required by base::FileDescriptorWatcher.
+      base::test::TaskEnvironment::MainThreadType::IO,
+      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY,
+      // required by mocking base::TimeTicks::Now().
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME,
+  };
+
   NetlinkManager* netlink_manager_;
   MockNetlinkSocket* netlink_socket_;  // Owned by |netlink_manager_|.
   std::vector<uint8_t> saved_message_;
   uint32_t saved_sequence_number_ = 0;
-  base::test::TaskEnvironment task_environment_{
-      // required by base::FileDescriptorWatcher.
-      base::test::TaskEnvironment::MainThreadType::IO,
-      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
 };
-
-namespace {
-
-class TimeFunctor {
- public:
-  TimeFunctor(time_t tv_sec, suseconds_t tv_usec) {
-    return_value_.tv_sec = tv_sec;
-    return_value_.tv_usec = tv_usec;
-  }
-
-  TimeFunctor() {
-    return_value_.tv_sec = 0;
-    return_value_.tv_usec = 0;
-  }
-
-  TimeFunctor(const TimeFunctor& other) {
-    return_value_.tv_sec = other.return_value_.tv_sec;
-    return_value_.tv_usec = other.return_value_.tv_usec;
-  }
-
-  TimeFunctor& operator=(const TimeFunctor& rhs) {
-    return_value_.tv_sec = rhs.return_value_.tv_sec;
-    return_value_.tv_usec = rhs.return_value_.tv_usec;
-    return *this;
-  }
-
-  // Replaces GetTimeMonotonic.
-  int operator()(struct timeval* answer) {
-    if (answer) {
-      *answer = return_value_;
-    }
-    return 0;
-  }
-
- private:
-  struct timeval return_value_;
-
-  // No DISALLOW_COPY_AND_ASSIGN since testing::Invoke uses copy.
-};
-
-}  // namespace
 
 TEST_F(NetlinkManagerTest, SubscribeToEvents) {
   // Family not registered.
@@ -372,24 +336,18 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
 }
 
 TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
+  const base::TimeDelta kLargePeriod =
+      NetlinkManager::kMaximumNewFamilyTimeout + base::Seconds(1);
+
   Reset();
-  MockTime time;
-  Time* old_time = netlink_manager_->time_;
-  netlink_manager_->time_ = &time;
 
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
-  time_t kStartSeconds = 1234;  // Arbitrary.
-  suseconds_t kSmallUsec = 100;
-  EXPECT_CALL(time, GetTimeMonotonic(_))
-      .WillOnce(Invoke(TimeFunctor(kStartSeconds, 0)))
-      .  // Initial time.
-      WillOnce(Invoke(TimeFunctor(kStartSeconds, kSmallUsec)))
-      .WillOnce(Invoke(TimeFunctor(kStartSeconds, 2 * kSmallUsec)))
-      .WillOnce(Invoke(TimeFunctor(
-          kStartSeconds + NetlinkManager::kMaximumNewFamilyWaitSeconds + 1,
-          NetlinkManager::kMaximumNewFamilyWaitMicroSeconds)));
   EXPECT_CALL(*netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
-  EXPECT_CALL(*netlink_socket_, WaitForRead).WillRepeatedly(Return(1));
+  EXPECT_CALL(*netlink_socket_, WaitForRead)
+      .WillRepeatedly(InvokeWithoutArgs([&]() {
+        task_environment_.FastForwardBy(kLargePeriod);
+        return 1;
+      }));
   EXPECT_CALL(*netlink_socket_, RecvMessage(_))
       .WillRepeatedly(
           Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage));
@@ -398,7 +356,6 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
   const std::string kSampleMessageName = "SampleMessageName";
   EXPECT_EQ(NetlinkMessage::kIllegalMessageType,
             netlink_manager_->GetFamily(kSampleMessageName, null_factory));
-  netlink_manager_->time_ = old_time;
 }
 
 TEST_F(NetlinkManagerTest, BroadcastHandler) {
@@ -678,6 +635,10 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
 }
 
 TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
+  const base::TimeDelta kSmallPeriod = base::Microseconds(100);
+  const base::TimeDelta kLargePeriod =
+      NetlinkManager::kResponseTimeout + base::Seconds(1);
+
   Reset();
   MockHandlerNetlink broadcast_handler;
   EXPECT_TRUE(netlink_manager_->AddBroadcastHandler(
@@ -696,24 +657,6 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   const auto new_scan_results_bytes =
       new_scan_results.Encode(kRandomSequenceNumber);
 
-  // Setup the timestamps of various messages
-  MockTime time;
-  Time* old_time = netlink_manager_->time_;
-  netlink_manager_->time_ = &time;
-
-  time_t kStartSeconds = 1234;  // Arbitrary.
-  suseconds_t kSmallUsec = 100;
-  EXPECT_CALL(time, GetTimeMonotonic(_))
-      .WillOnce(Invoke(TimeFunctor(kStartSeconds, 0)))
-      .  // Initial time.
-      WillOnce(Invoke(TimeFunctor(kStartSeconds, kSmallUsec)))
-      .
-
-      WillOnce(Invoke(TimeFunctor(kStartSeconds, 0)))
-      .  // Initial time.
-      WillOnce(Invoke(TimeFunctor(
-          kStartSeconds + NetlinkManager::kResponseTimeoutSeconds + 1,
-          NetlinkManager::kResponseTimeoutMicroSeconds)));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
 
   GetWiphyMessage get_wiphy_message;
@@ -732,6 +675,7 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
       &get_wiphy_message, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
       auxiliary_handler.on_netlink_message()));
+  task_environment_.FastForwardBy(kSmallPeriod);
   received_message.SetMessageSequence(netlink_socket_->GetLastSequenceNumber());
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_reg_message, null_message_handler, null_ack_handler,
@@ -752,15 +696,13 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   EXPECT_CALL(
       auxiliary_handler,
       OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, nullptr));
+  task_environment_.FastForwardBy(kLargePeriod);
   EXPECT_TRUE(netlink_manager_->SendNl80211Message(
       &get_reg_message, null_message_handler, null_ack_handler,
       null_error_handler));
   EXPECT_CALL(response_handler, OnNetlinkMessage(_)).Times(0);
   EXPECT_CALL(broadcast_handler, OnNetlinkMessage(_));
   netlink_manager_->OnNlMessageReceived(&received_message);
-
-  // Put the state of the singleton back where it was.
-  netlink_manager_->time_ = old_time;
 }
 
 TEST_F(NetlinkManagerTest, PendingDump) {

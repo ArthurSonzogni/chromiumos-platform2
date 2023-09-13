@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 namespace shill {
@@ -29,7 +30,7 @@ class MockNetlinkSocket : public NetlinkSocket {
   MOCK_METHOD(int, file_descriptor, (), (const, override));
   MOCK_METHOD(bool, SendMessage, (base::span<const uint8_t>), (override));
   MOCK_METHOD(bool, SubscribeToEvents, (uint32_t), (override));
-  MOCK_METHOD(int, WaitForRead, (struct timeval*), (const, override));
+  MOCK_METHOD(int, WaitForRead, (base::TimeDelta), (const, override));
   MOCK_METHOD(bool, RecvMessage, (std::vector<uint8_t>*), (override));
 };
 
