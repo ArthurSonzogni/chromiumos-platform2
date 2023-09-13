@@ -19,9 +19,9 @@
 #include <base/time/time.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/process/process.h>
+#include <libcrossystem/crossystem.h>
 
 #include "init/clobber_ui.h"
-#include "init/crossystem.h"
 
 constexpr char kThinpool[] = "thinpool";
 constexpr char kUnencrypted[] = "unencrypted";
@@ -177,7 +177,7 @@ class ClobberState {
                    const PreserveLogicalVolumesWipeInfo& info);
 
   ClobberState(const Arguments& args,
-               std::unique_ptr<CrosSystem> cros_system,
+               std::unique_ptr<crossystem::Crossystem> cros_system,
                std::unique_ptr<ClobberUi> ui,
                std::unique_ptr<brillo::LogicalVolumeManager> lvm);
 
@@ -272,7 +272,7 @@ class ClobberState {
   PreserveLogicalVolumesWipeInfos PreserveLogicalVolumesWipeArgs();
 
   Arguments args_;
-  std::unique_ptr<CrosSystem> cros_system_;
+  std::unique_ptr<crossystem::Crossystem> cros_system_;
   std::unique_ptr<ClobberUi> ui_;
   base::FilePath stateful_;
   base::FilePath dev_;

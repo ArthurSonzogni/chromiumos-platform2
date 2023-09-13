@@ -23,9 +23,9 @@
 #include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <gtest/gtest.h>
+#include <libcrossystem/crossystem.h>
+#include <libcrossystem/crossystem_fake.h>
 
-#include "init/crossystem.h"
-#include "init/crossystem_fake.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/fake_platform_impl.h"
 #include "init/startup/mock_platform_impl.h"
@@ -246,7 +246,7 @@ class HibernateResumeBootTest : public ::testing::Test {
   HibernateResumeBootTest() {}
 
   void SetUp() override {
-    cros_system_ = std::make_unique<CrosSystemFake>();
+    cros_system_ = std::make_unique<crossystem::fake::CrossystemFake>();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir_ = temp_dir_.GetPath();
     mock_platform_ = std::make_unique<StrictMock<startup::MockPlatform>>();
@@ -261,7 +261,7 @@ class HibernateResumeBootTest : public ::testing::Test {
     hiber_init_log_ = base_dir_.Append(kHiberResumeInitLog);
   }
 
-  std::unique_ptr<CrosSystemFake> cros_system_;
+  std::unique_ptr<crossystem::fake::CrossystemFake> cros_system_;
   startup::Flags flags_;
   std::unique_ptr<startup::MockPlatform> mock_platform_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
@@ -304,7 +304,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
   DevUpdateStatefulTest() {}
 
   void SetUp() override {
-    cros_system_ = std::make_unique<CrosSystemFake>();
+    cros_system_ = std::make_unique<crossystem::fake::CrossystemFake>();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
@@ -325,7 +325,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
         mount_helper_.get());
   }
 
-  std::unique_ptr<CrosSystemFake> cros_system_;
+  std::unique_ptr<crossystem::fake::CrossystemFake> cros_system_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   base::FilePath stateful;
@@ -437,7 +437,7 @@ class DevGatherLogsTest : public ::testing::Test {
   DevGatherLogsTest() {}
 
   void SetUp() override {
-    cros_system_ = std::make_unique<CrosSystemFake>();
+    cros_system_ = std::make_unique<crossystem::fake::CrossystemFake>();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
@@ -458,7 +458,7 @@ class DevGatherLogsTest : public ::testing::Test {
     ASSERT_TRUE(base::CreateDirectory(home_chronos_));
   }
 
-  std::unique_ptr<CrosSystemFake> cros_system_;
+  std::unique_ptr<crossystem::fake::CrossystemFake> cros_system_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
   base::FilePath stateful;

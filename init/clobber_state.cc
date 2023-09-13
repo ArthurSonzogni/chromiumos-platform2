@@ -46,10 +46,10 @@
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <crypto/random.h>
+#include <libcrossystem/crossystem.h>
 #include <rootdev/rootdev.h>
 #include <chromeos/secure_erase_file/secure_erase_file.h>
 
-#include "init/crossystem.h"
 #include "init/utils.h"
 
 namespace {
@@ -831,7 +831,7 @@ void ClobberState::RemoveVpdKeys() {
 }
 
 ClobberState::ClobberState(const Arguments& args,
-                           std::unique_ptr<CrosSystem> cros_system,
+                           std::unique_ptr<crossystem::Crossystem> cros_system,
                            std::unique_ptr<ClobberUi> ui,
                            std::unique_ptr<brillo::LogicalVolumeManager> lvm)
     : args_(args),
@@ -911,9 +911,9 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
   // important recovery behaviors (cf. the recover_duts upstart job).
   // We need those behaviors to survive across power wash, otherwise,
   // the current boot could wind up as a black hole.
-  int debug_build;
-  if (cros_system_->GetInt(CrosSystem::kDebugBuild, &debug_build) &&
-      debug_build == 1) {
+  std::optional<int> debug_build =
+      cros_system_->VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
+  if (debug_build == 1) {
     stateful_paths.push_back(".labmachine");
   }
 
@@ -1266,7 +1266,8 @@ int ClobberState::Run() {
   // Most effective means of destroying user data is run at the start: Throwing
   // away the key to encrypted stateful by requesting the TPM to be cleared at
   // next boot.
-  if (!cros_system_->SetInt(CrosSystem::kClearTpmOwnerRequest, 1)) {
+  if (!cros_system_->VbSetSystemPropertyInt(
+          crossystem::Crossystem::kClearTpmOwnerRequest, 1)) {
     LOG(ERROR) << "Requesting TPM wipe via crossystem failed";
   }
 
@@ -1538,13 +1539,16 @@ int ClobberState::Run() {
 }
 
 bool ClobberState::IsInDeveloperMode() {
-  std::string firmware_name;
-  int dev_mode_flag;
-  return cros_system_->GetInt(CrosSystem::kDevSwitchBoot, &dev_mode_flag) &&
-         dev_mode_flag == 1 &&
-         cros_system_->GetString(CrosSystem::kMainFirmwareActive,
-                                 &firmware_name) &&
-         firmware_name != "recovery";
+  std::optional<int> dev_mode_flag = cros_system_->VbGetSystemPropertyInt(
+      crossystem::Crossystem::kDevSwitchBoot);
+  // No flag or not in dev mode:
+  if (!dev_mode_flag || *dev_mode_flag != 1)
+    return false;
+  std::optional<std::string> firmware_name =
+      cros_system_->VbGetSystemPropertyString(
+          crossystem::Crossystem::kMainFirmwareActive);
+  // We are running ChromeOS firmware and we are not in recovery:
+  return firmware_name && *firmware_name != "recovery";
 }
 
 bool ClobberState::MarkDeveloperMode() {

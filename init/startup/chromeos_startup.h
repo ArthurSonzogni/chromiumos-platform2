@@ -12,9 +12,9 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
+#include <libcrossystem/crossystem.h>
 #include <metrics/bootstat.h>
 
-#include "init/crossystem.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
@@ -33,7 +33,7 @@ class ChromeosStartup {
   static void ParseFlags(Flags* flags);
 
   // Constructor for the class
-  ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
+  ChromeosStartup(std::unique_ptr<crossystem::Crossystem> cros_system,
                   const Flags& flags,
                   const base::FilePath& root,
                   const base::FilePath& stateful,
@@ -139,7 +139,7 @@ class ChromeosStartup {
   // Create directories inside run_ds based on etc_ds directory structure.
   void CreateDaemonStore(base::FilePath run_ds, base::FilePath etc_ds);
 
-  std::unique_ptr<CrosSystem> cros_system_;
+  std::unique_ptr<crossystem::Crossystem> cros_system_;
   const Flags flags_;
   const base::FilePath lsb_file_;
   const base::FilePath proc_;

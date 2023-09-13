@@ -8,9 +8,8 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
+#include <libcrossystem/crossystem.h>
 
-#include "init/crossystem.h"
-#include "init/crossystem_impl.h"
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -22,13 +21,11 @@
 namespace startup {
 
 MountHelperFactory::MountHelperFactory(std::unique_ptr<Platform> platform,
-                                       const CrosSystem& cros_system,
                                        const Flags& flags,
                                        const base::FilePath& root,
                                        const base::FilePath& stateful,
                                        const base::FilePath& lsb_file)
     : platform_(std::move(platform)),
-      cros_system_(cros_system),
       flags_(flags),
       root_(root),
       stateful_(stateful),
@@ -41,10 +38,11 @@ MountHelperFactory::MountHelperFactory(std::unique_ptr<Platform> platform,
 // In the previous bash version of chromeos_startup, these different function
 // implementations came from loading dev_utils.sh, test_utils.sh,
 // factory_utils.sh and factory_utils.sh.
-std::unique_ptr<MountHelper> MountHelperFactory::Generate() {
-  bool dev_mode = platform_->InDevMode(cros_system_);
+std::unique_ptr<MountHelper> MountHelperFactory::Generate(
+    const crossystem::Crossystem& cros_system) {
+  bool dev_mode = platform_->InDevMode(cros_system);
   bool is_test_image = IsTestImage(lsb_file_);
-  bool is_factory_mode = IsFactoryMode(cros_system_, root_);
+  bool is_factory_mode = IsFactoryMode(cros_system, root_);
 
   // Use factory mount helper.
   if (dev_mode && is_test_image && is_factory_mode) {

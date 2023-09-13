@@ -44,6 +44,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libcrossystem",
     "libcrypto",
     "libmetrics",
     "libselinux",
@@ -55,15 +56,6 @@ pkg_config("target_defaults") {
     "rootdev",
     "secure_erase_file",
   ]
-}
-
-static_library("libcrossystem") {
-  sources = [
-    "crossystem.cc",
-    "crossystem_fake.cc",
-    "crossystem_impl.cc",
-  ]
-  configs += [ ":target_defaults" ]
 }
 
 static_library("utils") {
@@ -89,7 +81,6 @@ static_library("libcrosstartup") {
   deps = [
     ":file_attrs_cleaner_lib",
     ":libclobber",
-    ":libcrossystem",
     ":utils",
   ]
 }
@@ -109,7 +100,6 @@ executable("chromeos_startup") {
   deps = [
     ":libclobber",
     ":libcrosstartup",
-    ":libcrossystem",
   ]
 }
 
@@ -118,7 +108,6 @@ executable("clobber-state") {
   configs += [ ":target_defaults" ]
   deps = [
     ":libclobber",
-    ":libcrossystem",
     ":utils",
   ]
 }
@@ -216,6 +205,7 @@ if (use.test) {
       ":libcrosstartup",
       "//common-mk/testrunner",
     ]
+    pkg_deps = [ "libcrossystem-test" ]
   }
 
   executable("clobber_state_test") {
@@ -231,10 +221,10 @@ if (use.test) {
     run_test = true
     deps = [
       ":libclobber",
-      ":libcrossystem",
       ":utils",
       "//common-mk/testrunner",
     ]
+    pkg_deps = [ "libcrossystem-test" ]
   }
 
   executable("file_attrs_cleaner_test") {

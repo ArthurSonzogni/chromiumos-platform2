@@ -21,8 +21,8 @@
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
-#include "init/crossystem.h"
-#include "init/crossystem_fake.h"
+#include <libcrossystem/crossystem.h>
+#include <libcrossystem/crossystem_fake.h>
 
 namespace {
 using ::testing::_;
@@ -470,9 +470,11 @@ TEST(GetDevicePathComponents, ValidCases) {
 class MarkDeveloperModeTest : public ::testing::Test {
  protected:
   MarkDeveloperModeTest()
-      : cros_system_(new CrosSystemFake()),
+      : crossystem_fake_(std::make_unique<crossystem::fake::CrossystemFake>()),
+        cros_system_(crossystem_fake_.get()),
         clobber_(ClobberState::Arguments(),
-                 std::unique_ptr<CrosSystem>(cros_system_),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::move(crossystem_fake_)),
                  std::make_unique<ClobberUi>(DevNull()),
                  std::make_unique<brillo::MockLogicalVolumeManager>()) {}
 
@@ -482,7 +484,8 @@ class MarkDeveloperModeTest : public ::testing::Test {
     clobber_.SetStatefulForTest(fake_stateful_);
   }
 
-  CrosSystemFake* cros_system_;
+  std::unique_ptr<crossystem::fake::CrossystemFake> crossystem_fake_;
+  crossystem::fake::CrossystemFake* cros_system_;
   ClobberState clobber_;
   base::ScopedTempDir temp_dir_;
   base::FilePath fake_stateful_;
@@ -492,24 +495,32 @@ TEST_F(MarkDeveloperModeTest, NotDeveloper) {
   clobber_.MarkDeveloperMode();
   EXPECT_FALSE(base::PathExists(fake_stateful_.Append(".developer_mode")));
 
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDevSwitchBoot, 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDevSwitchBoot, 0));
   clobber_.MarkDeveloperMode();
   EXPECT_FALSE(base::PathExists(fake_stateful_.Append(".developer_mode")));
 
-  ASSERT_TRUE(
-      cros_system_->SetString(CrosSystem::kMainFirmwareActive, "recovery"));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareActive, "recovery"));
   clobber_.MarkDeveloperMode();
   EXPECT_FALSE(base::PathExists(fake_stateful_.Append(".developer_mode")));
 
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDevSwitchBoot, 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDevSwitchBoot, 1));
+  clobber_.MarkDeveloperMode();
+  EXPECT_FALSE(base::PathExists(fake_stateful_.Append(".developer_mode")));
+
+  cros_system_->UnsetSystemPropertyValue(
+      crossystem::Crossystem::kMainFirmwareActive);
   clobber_.MarkDeveloperMode();
   EXPECT_FALSE(base::PathExists(fake_stateful_.Append(".developer_mode")));
 }
 
 TEST_F(MarkDeveloperModeTest, IsDeveloper) {
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDevSwitchBoot, 1));
-  ASSERT_TRUE(
-      cros_system_->SetString(CrosSystem::kMainFirmwareActive, "not_recovery"));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDevSwitchBoot, 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareActive, "not_recovery"));
   clobber_.MarkDeveloperMode();
   EXPECT_TRUE(base::PathExists(fake_stateful_.Append(".developer_mode")));
 }
@@ -517,9 +528,11 @@ TEST_F(MarkDeveloperModeTest, IsDeveloper) {
 class GetPreservedFilesListTest : public ::testing::Test {
  protected:
   GetPreservedFilesListTest()
-      : cros_system_(new CrosSystemFake()),
+      : crossystem_fake_(std::make_unique<crossystem::fake::CrossystemFake>()),
+        cros_system_(crossystem_fake_.get()),
         clobber_(ClobberState::Arguments(),
-                 std::unique_ptr<CrosSystem>(cros_system_),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::move(crossystem_fake_)),
                  std::make_unique<ClobberUi>(DevNull()),
                  std::make_unique<brillo::MockLogicalVolumeManager>()) {}
 
@@ -563,17 +576,20 @@ class GetPreservedFilesListTest : public ::testing::Test {
     }
   }
 
-  CrosSystemFake* cros_system_;
+  std::unique_ptr<crossystem::fake::CrossystemFake> crossystem_fake_;
+  crossystem::fake::CrossystemFake* cros_system_;
   ClobberState clobber_;
   base::ScopedTempDir temp_dir_;
   base::FilePath fake_stateful_;
 };
 
 TEST_F(GetPreservedFilesListTest, NoOptions) {
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDebugBuild, 0));
   EXPECT_EQ(clobber_.GetPreservedFilesList().size(), 0);
 
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDebugBuild, 1));
   std::vector<base::FilePath> preserved_files =
       clobber_.GetPreservedFilesList();
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
@@ -587,7 +603,8 @@ TEST_F(GetPreservedFilesListTest, SafeWipe) {
   args.safe_wipe = true;
   clobber_.SetArgsForTest(args);
 
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDebugBuild, 0));
   std::vector<base::FilePath> preserved_files =
       clobber_.GetPreservedFilesList();
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
@@ -620,7 +637,8 @@ TEST_F(GetPreservedFilesListTest, SafeAndRollbackWipe) {
   args.safe_wipe = true;
   args.rollback_wipe = true;
   clobber_.SetArgsForTest(args);
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDebugBuild, 0));
 
   std::vector<base::FilePath> preserved_files =
       clobber_.GetPreservedFilesList();
@@ -657,7 +675,8 @@ TEST_F(GetPreservedFilesListTest, SafeAndAdMigrationWipe) {
   args.ad_migration_wipe = true;
   clobber_.SetArgsForTest(args);
 
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDebugBuild, 0));
   std::vector<base::FilePath> preserved_files =
       clobber_.GetPreservedFilesList();
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
@@ -691,7 +710,8 @@ TEST_F(GetPreservedFilesListTest, FactoryWipe) {
   args.factory_wipe = true;
   clobber_.SetArgsForTest(args);
 
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDebugBuild, 0));
   std::vector<base::FilePath> preserved_files =
       clobber_.GetPreservedFilesList();
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
@@ -711,7 +731,8 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
   args.factory_wipe = true;
   clobber_.SetArgsForTest(args);
 
-  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt(
+      crossystem::Crossystem::kDebugBuild, 0));
   std::vector<base::FilePath> preserved_files =
       clobber_.GetPreservedFilesList();
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
@@ -749,7 +770,7 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
 class ClobberStateMock : public ClobberState {
  public:
   ClobberStateMock(const Arguments& args,
-                   std::unique_ptr<CrosSystem> cros_system,
+                   std::unique_ptr<crossystem::Crossystem> cros_system,
                    std::unique_ptr<ClobberUi> ui)
       : ClobberState(args,
                      std::move(cros_system),
@@ -812,7 +833,8 @@ class IsRotationalTest : public ::testing::Test {
  protected:
   IsRotationalTest()
       : clobber_(ClobberState::Arguments(),
-                 std::make_unique<CrosSystemFake>(),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::make_unique<crossystem::fake::CrossystemFake>()),
                  std::make_unique<ClobberUi>(DevNull())) {}
 
   void SetUp() override {
@@ -961,7 +983,8 @@ class AttemptSwitchToFastWipeTest : public ::testing::Test {
  protected:
   AttemptSwitchToFastWipeTest()
       : clobber_(ClobberState::Arguments(),
-                 std::make_unique<CrosSystemFake>(),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::make_unique<crossystem::fake::CrossystemFake>()),
                  std::make_unique<ClobberUi>(DevNull())) {}
 
   void SetUp() override {
@@ -1158,7 +1181,8 @@ class ShredRotationalStatefulFilesTest : public ::testing::Test {
  protected:
   ShredRotationalStatefulFilesTest()
       : clobber_(ClobberState::Arguments(),
-                 std::make_unique<CrosSystemFake>(),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::make_unique<crossystem::fake::CrossystemFake>()),
                  std::make_unique<ClobberUi>(DevNull())) {}
 
   void SetUp() override {
@@ -1244,7 +1268,8 @@ class WipeCryptohomeTest : public ::testing::Test {
  protected:
   WipeCryptohomeTest()
       : clobber_(ClobberState::Arguments(),
-                 std::make_unique<CrosSystemFake>(),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::make_unique<crossystem::fake::CrossystemFake>()),
                  std::make_unique<ClobberUi>(DevNull())) {}
 
   void SetUp() override {
@@ -1540,7 +1565,8 @@ class LogicalVolumeStatefulPartitionTest : public ::testing::Test {
             {.stateful_partition_device = base::FilePath("/dev/mmcblk0p1")}),
         lvm_command_runner_(std::make_shared<brillo::MockLvmCommandRunner>()),
         clobber_(ClobberState::Arguments(),
-                 std::make_unique<CrosSystemFake>(),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::make_unique<crossystem::fake::CrossystemFake>()),
                  std::make_unique<ClobberUi>(DevNull())) {
     std::unique_ptr<brillo::LogicalVolumeManager> lvm =
         std::make_unique<brillo::LogicalVolumeManager>(lvm_command_runner_);
@@ -1653,7 +1679,8 @@ class LogicalVolumeStatefulPartitionMockedTest : public ::testing::Test {
  public:
   LogicalVolumeStatefulPartitionMockedTest()
       : clobber_(ClobberState::Arguments(),
-                 std::make_unique<CrosSystemFake>(),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::make_unique<crossystem::fake::CrossystemFake>()),
                  std::make_unique<ClobberUi>(DevNull())),
         mock_lvm_command_runner_(
             std::make_shared<brillo::MockLvmCommandRunner>()) {}

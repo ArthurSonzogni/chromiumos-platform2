@@ -24,9 +24,8 @@
 #include <brillo/process/process.h>
 #include <brillo/strings/string_utils.h>
 #include <brillo/userdb_utils.h>
+#include <libcrossystem/crossystem.h>
 
-#include "init/crossystem.h"
-#include "init/crossystem_impl.h"
 #include "init/file_attrs_cleaner.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
@@ -206,13 +205,17 @@ bool ChromeosStartup::NeedsClobberWithoutDevModeFile() {
   return false;
 }
 
-// Returns if the device is in transitioning between verified boot and dev mode.
-// devsw_boot is the expected value of devsw_boot.
+// Returns true if the device is in transitioning between verified boot and dev
+// mode. devsw_boot is the expected value of devsw_boot.
 bool ChromeosStartup::IsDevToVerifiedModeTransition(int devsw_boot) {
-  int boot;
-  std::string dstr;
-  return (cros_system_->GetInt("devsw_boot", &boot) && boot == devsw_boot) &&
-         (cros_system_->GetString("mainfw_type", &dstr) && dstr != "recovery");
+  std::optional<int> boot = cros_system_->VbGetSystemPropertyInt(
+      crossystem::Crossystem::kDevSwitchBoot);
+  if (!boot || *boot != devsw_boot)
+    return false;
+
+  std::optional<std::string> dstr = cros_system_->VbGetSystemPropertyString(
+      crossystem::Crossystem::kMainFirmwareType);
+  return dstr && dstr != "recovery";
 }
 
 // Walk the specified path and reset any file attributes (like immutable bit).
@@ -248,14 +251,15 @@ bool ChromeosStartup::IsVarFull() {
   return (st.f_bavail < kVarFullThreshold / st.f_bsize || st.f_favail < 100);
 }
 
-ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
-                                 const Flags& flags,
-                                 const base::FilePath& root,
-                                 const base::FilePath& stateful,
-                                 const base::FilePath& lsb_file,
-                                 const base::FilePath& proc_file,
-                                 std::unique_ptr<Platform> platform,
-                                 std::unique_ptr<MountHelper> mount_helper)
+ChromeosStartup::ChromeosStartup(
+    std::unique_ptr<crossystem::Crossystem> cros_system,
+    const Flags& flags,
+    const base::FilePath& root,
+    const base::FilePath& stateful,
+    const base::FilePath& lsb_file,
+    const base::FilePath& proc_file,
+    std::unique_ptr<Platform> platform,
+    std::unique_ptr<MountHelper> mount_helper)
     : cros_system_(std::move(cros_system)),
       flags_(flags),
       lsb_file_(lsb_file),
@@ -727,7 +731,7 @@ int ChromeosStartup::Run() {
         stbuf.st_uid != getuid()) {
       base::WriteFile(encrypted_failed, "");
     } else {
-      cros_system_->SetInt("recovery_request", 1);
+      cros_system_->VbSetSystemPropertyInt("recovery_request", 1);
     }
 
     utils::Reboot();
@@ -852,12 +856,13 @@ void ChromeosStartup::DevCheckBlockDevMode(
   if (!dev_mode_) {
     return;
   }
-  int devsw;
-  int debug;
-  int rec_reason;
-  if (!cros_system_->GetInt("devsw_boot", &devsw) ||
-      !cros_system_->GetInt("debug_build", &debug) ||
-      !cros_system_->GetInt("recovery_reason", &rec_reason)) {
+  std::optional<int> devsw = cros_system_->VbGetSystemPropertyInt(
+      crossystem::Crossystem::kDevSwitchBoot);
+  std::optional<int> debug =
+      cros_system_->VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
+  std::optional<int> rec_reason = cros_system_->VbGetSystemPropertyInt(
+      crossystem::Crossystem::kRecoveryReason);
+  if (!devsw || !debug || !rec_reason) {
     LOG(WARNING) << "Failed to get boot information from crossystem";
     return;
   }
@@ -878,20 +883,24 @@ void ChromeosStartup::DevCheckBlockDevMode(
   // 3. Re-read VPD directly from SPI flash (slow!) but only for systems
   //    that don't have VPD in sysplatform and only when NVRAM indicates that it
   //    has been cleared.
-  int crossys_block;
-  int nvram;
   int val;
   if (utils::ReadFileToInt(vpd_block_file, &val) && val == 1) {
     block_devmode = true;
-  } else if (cros_system_->GetInt("block_devmode", &crossys_block) &&
-             crossys_block == 1) {
-    block_devmode = true;
-  } else if (!base::DirectoryExists(vpd_block_dir) &&
-             cros_system_->GetInt("nvram_cleared", &nvram) && nvram == 1) {
-    std::string output;
-    std::vector<std::string> args = {"-i", "RW_VPD", "-g", "block_devmode"};
-    if (platform_->VpdSlow(args, &output) && output == "1") {
+  } else {
+    std::optional<int> crossys_block = cros_system_->VbGetSystemPropertyInt(
+        crossystem::Crossystem::kBlockDevmode);
+    if (crossys_block == 1) {
       block_devmode = true;
+    } else {
+      std::optional<int> nvram = cros_system_->VbGetSystemPropertyInt(
+          crossystem::Crossystem::kNvramCleared);
+      if (!base::DirectoryExists(vpd_block_dir) && nvram == 1) {
+        std::string output;
+        std::vector<std::string> args = {"-i", "RW_VPD", "-g", "block_devmode"};
+        if (platform_->VpdSlow(args, &output) && output == "1") {
+          block_devmode = true;
+        }
+      }
     }
   }
 

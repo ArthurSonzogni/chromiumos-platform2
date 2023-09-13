@@ -11,9 +11,8 @@
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
+#include <libcrossystem/crossystem.h>
 
-#include "init/crossystem.h"
-#include "init/crossystem_impl.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -41,18 +40,17 @@ int main(int argc, char* argv[]) {
 
   startup::Flags flags;
   startup::ChromeosStartup::ParseFlags(&flags);
-  std::unique_ptr<CrosSystemImpl> cros_system =
-      std::make_unique<CrosSystemImpl>();
+  std::unique_ptr<crossystem::Crossystem> cros_system =
+      std::make_unique<crossystem::Crossystem>();
   startup::MountHelperFactory mount_helper_factory(
-      std::make_unique<startup::Platform>(), *cros_system, flags,
-      base::FilePath("/"), base::FilePath(kStatefulPartition),
-      base::FilePath(kLsbRelease));
+      std::make_unique<startup::Platform>(), flags, base::FilePath("/"),
+      base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<startup::MountHelper> mount_helper =
-      mount_helper_factory.Generate();
+      mount_helper_factory.Generate(*cros_system);
   std::unique_ptr<startup::ChromeosStartup> startup =
       std::make_unique<startup::ChromeosStartup>(
-          std::unique_ptr<CrosSystem>(std::move(cros_system)), flags,
-          base::FilePath("/"), base::FilePath(kStatefulPartition),
+          std::unique_ptr<crossystem::Crossystem>(std::move(cros_system)),
+          flags, base::FilePath("/"), base::FilePath(kStatefulPartition),
           base::FilePath(kLsbRelease), base::FilePath(kProcPath),
           std::make_unique<startup::Platform>(), std::move(mount_helper));
 

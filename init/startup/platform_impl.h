@@ -14,8 +14,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-
-#include "init/crossystem.h"
+#include <libcrossystem/crossystem.h>
 
 namespace startup {
 
@@ -23,7 +22,7 @@ namespace startup {
 bool IsTestImage(const base::FilePath& lsb_file);
 
 // Determines if the device is in factory test mode.
-bool IsFactoryTestMode(const CrosSystem& cros_system,
+bool IsFactoryTestMode(const crossystem::Crossystem& cros_system,
                        const base::FilePath& base_dir);
 
 // Determines if the device is in factory installer mode.
@@ -31,7 +30,7 @@ bool IsFactoryInstallMode(const base::FilePath& base_dir);
 
 // Determines if the device is in either factory test mode or in factory
 // installer mode.
-bool IsFactoryMode(const CrosSystem& cros_system,
+bool IsFactoryMode(const crossystem::Crossystem& cros_system,
                    const base::FilePath& base_dir);
 
 // Determines if a filesystem is supported.
@@ -127,8 +126,8 @@ class Platform {
   void ClobberLogRepair(const base::FilePath& dev, const std::string& msg);
 
   // Determine if the device is in dev mode.
-  bool InDevMode(const CrosSystem& cros_system);
-  bool IsDebugBuild(const CrosSystem& cros_system);
+  bool InDevMode(const crossystem::Crossystem& cros_system);
+  bool IsDebugBuild(const crossystem::Crossystem& cros_system);
 };
 
 }  // namespace startup

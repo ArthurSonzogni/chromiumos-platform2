@@ -10,9 +10,8 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
+#include <libcrossystem/crossystem.h>
 
-#include "init/crossystem.h"
-#include "init/crossystem_impl.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
@@ -26,7 +25,6 @@ namespace startup {
 class MountHelperFactory {
  public:
   explicit MountHelperFactory(std::unique_ptr<Platform> platform,
-                              const CrosSystem& cros_system,
                               const Flags& flags,
                               const base::FilePath& root,
                               const base::FilePath& stateful,
@@ -37,14 +35,11 @@ class MountHelperFactory {
   // is in dev mode, running a test image, and in factory mode. These different
   // possible device configurations need different implementations of the
   // functions DoMountVarAndHomeChronos and DoUmountVarAndHomeChronos.
-  // In the previous bash version of chromeos_startup, these different function
-  // implementations came from loading dev_utils.sh, test_utils.sh,
-  // factory_utils.sh and factory_utils.sh.
-  virtual std::unique_ptr<MountHelper> Generate();
+  virtual std::unique_ptr<MountHelper> Generate(
+      const crossystem::Crossystem& cros_system);
 
  private:
   std::unique_ptr<Platform> platform_;
-  const CrosSystem& cros_system_;
   const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;

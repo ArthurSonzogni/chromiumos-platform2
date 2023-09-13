@@ -21,9 +21,9 @@
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
 #include <gtest/gtest.h>
+#include <libcrossystem/crossystem.h>
+#include <libcrossystem/crossystem_fake.h>
 
-#include "init/crossystem.h"
-#include "init/crossystem_fake.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
 #include "init/startup/factory_mode_mount_helper.h"
@@ -91,19 +91,11 @@ void RestoreconTestFunc(const base::FilePath& path,
 
 }  // namespace
 
-class CrosSystemFakeTest : public ::testing::Test {
- protected:
-  CrosSystemFakeTest() : cros_system_(new CrosSystemFake()) {}
-
-  CrosSystemFake* cros_system_;
-};
-
 class EarlySetupTest : public ::testing::Test {
  protected:
-  EarlySetupTest() : cros_system_(new CrosSystemFake()) {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir_ = temp_dir_.GetPath();
     kernel_debug_ = base_dir_.Append("sys/kernel/debug");
     kernel_config_ = base_dir_.Append("sys/kernel/config");
@@ -114,14 +106,14 @@ class EarlySetupTest : public ::testing::Test {
     namespaces_ = base_dir_.Append("run/namespaces");
     platform_ = new startup::FakePlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir_, base_dir_,
-        base_dir_, base_dir_, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir_, base_dir_, base_dir_, base_dir_,
+        std::unique_ptr<startup::FakePlatform>(platform_),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir_,
             base_dir_, true));
   }
 
-  CrosSystemFake* cros_system_;
   startup::Flags flags_;
   startup::FakePlatform* platform_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
@@ -149,27 +141,28 @@ TEST_F(EarlySetupTest, EarlySetup) {
 
 class DevCheckBlockTest : public ::testing::Test {
  protected:
-  DevCheckBlockTest() : cros_system_(new CrosSystemFake()) {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    cros_system_ = crossystem_fake.get();
     base_dir = temp_dir_.GetPath();
     vpd_dir = base_dir.Append("sys/firmware/vpd/rw");
     vpd_file = vpd_dir.Append("block_devmode");
     dev_mode_file = base_dir.Append(".developer_mode");
     platform_ = new startup::FakePlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir,
+        std::unique_ptr<startup::FakePlatform>(platform_),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, true));
-    ASSERT_TRUE(cros_system_->SetInt("cros_debug", 1));
+    ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
     base::CreateDirectory(dev_mode_file.DirName());
     startup_->SetDevMode(true);
   }
 
-  CrosSystemFake* cros_system_;
+  crossystem::fake::CrossystemFake* cros_system_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -181,9 +174,9 @@ class DevCheckBlockTest : public ::testing::Test {
 };
 
 TEST_F(DevCheckBlockTest, DevSWBoot) {
-  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 0));
-  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
-  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("recovery_reason", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(vpd_file, "1"));
   struct stat st;
   st.st_mode = S_IFREG;
@@ -194,9 +187,9 @@ TEST_F(DevCheckBlockTest, DevSWBoot) {
 }
 
 TEST_F(DevCheckBlockTest, SysFsVpdSlow) {
-  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 1));
-  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
-  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("recovery_reason", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(vpd_file, "1"));
   struct stat st;
   st.st_mode = S_IFREG;
@@ -207,21 +200,21 @@ TEST_F(DevCheckBlockTest, SysFsVpdSlow) {
 }
 
 TEST_F(DevCheckBlockTest, CrosSysBlockDev) {
-  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 1));
-  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
-  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
-  ASSERT_TRUE(cros_system_->SetInt("block_devmode", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("recovery_reason", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("block_devmode", 1));
 
   startup_->DevCheckBlockDevMode(dev_mode_file);
   EXPECT_EQ(PathExists(dev_mode_file), true);
 }
 
 TEST_F(DevCheckBlockTest, ReadVpdSlowFail) {
-  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 1));
-  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
-  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
-  ASSERT_TRUE(cros_system_->SetInt("block_devmode", 0));
-  ASSERT_TRUE(cros_system_->SetInt("nvram_cleared", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("recovery_reason", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("block_devmode", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("nvram_cleared", 1));
 
   platform_->SetVpdResult(-1);
 
@@ -230,11 +223,11 @@ TEST_F(DevCheckBlockTest, ReadVpdSlowFail) {
 }
 
 TEST_F(DevCheckBlockTest, ReadVpdSlowPass) {
-  ASSERT_TRUE(cros_system_->SetInt("devsw_boot", 1));
-  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
-  ASSERT_TRUE(cros_system_->SetInt("recovery_reason", 0));
-  ASSERT_TRUE(cros_system_->SetInt("block_devmode", 0));
-  ASSERT_TRUE(cros_system_->SetInt("nvram_cleared", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("recovery_reason", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("block_devmode", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("nvram_cleared", 1));
 
   platform_->SetVpdResult(1);
   std::string res;
@@ -249,21 +242,20 @@ TEST_F(DevCheckBlockTest, ReadVpdSlowPass) {
 
 class TPMTest : public ::testing::Test {
  protected:
-  TPMTest() : cros_system_(new CrosSystemFake()) {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir = temp_dir_.GetPath();
     platform_ = new startup::FakePlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir,
+        std::unique_ptr<startup::FakePlatform>(platform_),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, false));
   }
 
-  CrosSystemFake* cros_system_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -322,15 +314,14 @@ TEST_F(TPMTest, NeedsClobberCryptohomeKeyFile) {
 
 class TpmCleanupTest : public ::testing::Test {
  protected:
-  TpmCleanupTest() : cros_system_(new CrosSystemFake()) {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir = temp_dir_.GetPath();
     mock_platform_ = new startup::MockPlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir,
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir,
         std::unique_ptr<startup::MockPlatform>(mock_platform_),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
@@ -339,7 +330,6 @@ class TpmCleanupTest : public ::testing::Test {
     tpm_cleanup_ = base_dir.Append(kTpmFirmwareUpdateCleanup);
   }
 
-  CrosSystemFake* cros_system_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -372,7 +362,9 @@ class ConfigTest : public ::testing::Test {
   ConfigTest() {}
 
   void SetUp() override {
-    cros_system_ = std::make_unique<CrosSystemFake>();
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    cros_system_ =
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake));
     CreateBaseAndSetNames(&base_dir_, &lsb_file_, &stateful_);
     platform_ = std::make_unique<startup::FakePlatform>();
   }
@@ -380,12 +372,12 @@ class ConfigTest : public ::testing::Test {
   std::unique_ptr<startup::MountHelper> GenerateMountHelper() {
     startup::Flags flags;
     startup::ChromeosStartup::ParseFlags(&flags);
-    startup::MountHelperFactory factory(std::move(platform_), *cros_system_,
-                                        flags, base_dir_, stateful_, lsb_file_);
-    return factory.Generate();
+    startup::MountHelperFactory factory(std::move(platform_), flags, base_dir_,
+                                        stateful_, lsb_file_);
+    return factory.Generate(*cros_system_);
   }
 
-  std::unique_ptr<CrosSystemFake> cros_system_;
+  std::unique_ptr<crossystem::Crossystem> cros_system_;
   base::FilePath base_dir_;
   base::FilePath lsb_file_;
   base::FilePath stateful_;
@@ -393,7 +385,7 @@ class ConfigTest : public ::testing::Test {
 };
 
 TEST_F(ConfigTest, NoDevMode) {
-  ASSERT_TRUE(cros_system_->SetInt("cros_debug", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(lsb_file_,
                                     "CHROMEOS_RELEASE_TRACK=stable-channel\n"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
@@ -402,7 +394,7 @@ TEST_F(ConfigTest, NoDevMode) {
 }
 
 TEST_F(ConfigTest, DevMode) {
-  ASSERT_TRUE(cros_system_->SetInt("cros_debug", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
   ASSERT_TRUE(CreateDirAndWriteFile(lsb_file_,
                                     "CHROMEOS_RELEASE_TRACK=stable-channel\n"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
@@ -411,8 +403,8 @@ TEST_F(ConfigTest, DevMode) {
 }
 
 TEST_F(ConfigTest, DevModeTest) {
-  ASSERT_TRUE(cros_system_->SetInt("cros_debug", 1));
-  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=testimage-channel\n"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
@@ -420,8 +412,8 @@ TEST_F(ConfigTest, DevModeTest) {
 }
 
 TEST_F(ConfigTest, DevModeTestFactoryTest) {
-  ASSERT_TRUE(cros_system_->SetInt("cros_debug", 1));
-  ASSERT_TRUE(cros_system_->SetInt("debug_build", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 1));
   ASSERT_TRUE(CreateDirAndWriteFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=testimage-channel\n"));
   base::FilePath factory_en = stateful_.Append("dev_image/factory/enabled");
@@ -432,8 +424,8 @@ TEST_F(ConfigTest, DevModeTestFactoryTest) {
 }
 
 TEST_F(ConfigTest, DevModeTestFactoryInstaller) {
-  ASSERT_TRUE(cros_system_->SetInt("cros_debug", 1));
-  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=testimage-channel\n"));
   base::FilePath cmdline = base_dir_.Append(kProcCmdLine);
@@ -444,8 +436,8 @@ TEST_F(ConfigTest, DevModeTestFactoryInstaller) {
 }
 
 TEST_F(ConfigTest, DevModeTestFactoryInstallerUsingFile) {
-  ASSERT_TRUE(cros_system_->SetInt("cros_debug", 1));
-  ASSERT_TRUE(cros_system_->SetInt("debug_build", 0));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("cros_debug", 1));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 0));
   ASSERT_TRUE(CreateDirAndWriteFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=testimage-channel\n"));
   base::FilePath cmdline = base_dir_.Append(kProcCmdLine);
@@ -746,21 +738,20 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
 
 class IsVarFullTest : public ::testing::Test {
  protected:
-  IsVarFullTest() : cros_system_(new CrosSystemFake()) {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir = temp_dir_.GetPath();
     platform_ = new startup::FakePlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir,
+        std::unique_ptr<startup::FakePlatform>(platform_),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, false));
   }
 
-  CrosSystemFake* cros_system_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -814,15 +805,15 @@ TEST_F(IsVarFullTest, TrueFavail) {
 
 class DeviceSettingsTest : public ::testing::Test {
  protected:
-  DeviceSettingsTest() : cros_system_(new CrosSystemFake()) {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir = temp_dir_.GetPath();
     platform_ = new startup::FakePlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir,
+        std::unique_ptr<startup::FakePlatform>(platform_),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, false));
@@ -831,7 +822,6 @@ class DeviceSettingsTest : public ::testing::Test {
     devicesettings_ = var_lib.Append("devicesettings");
   }
 
-  CrosSystemFake* cros_system_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -878,17 +868,17 @@ TEST_F(DeviceSettingsTest, NeitherPathEmpty) {
   EXPECT_EQ(base::PathExists(devicesettings_test), true);
 }
 
-class DaemonStoreTest : public CrosSystemFakeTest {
+class DaemonStoreTest : public ::testing::Test {
  protected:
-  DaemonStoreTest() {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir = temp_dir_.GetPath();
     platform_ = new startup::FakePlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir,
+        std::unique_ptr<startup::FakePlatform>(platform_),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, true));
@@ -934,20 +924,19 @@ TEST_F(DaemonStoreTest, NonEmptyEtc) {
 
 class RemoveVarEmptyTest : public ::testing::Test {
  protected:
-  RemoveVarEmptyTest() : cros_system_(new CrosSystemFake()) {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir = temp_dir_.GetPath();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir, std::make_unique<startup::FakePlatform>(),
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir,
+        std::make_unique<startup::FakePlatform>(),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, true));
   }
 
-  CrosSystemFake* cros_system_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -973,10 +962,12 @@ class CheckVarLogTest : public ::testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir = temp_dir_.GetPath();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<CrosSystemFake>(), flags_, base_dir, base_dir,
-        base_dir, base_dir, std::make_unique<startup::FakePlatform>(),
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir,
+        std::make_unique<startup::FakePlatform>(),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, true));
@@ -1154,22 +1145,20 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
 
 class RestoreContextsForVarTest : public ::testing::Test {
  protected:
-  RestoreContextsForVarTest() : cros_system_(new CrosSystemFake()) {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir = temp_dir_.GetPath();
     platform_ = std::make_unique<startup::FakePlatform>();
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir,
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, base_dir, base_dir, base_dir,
         std::make_unique<startup::FakePlatform>(*platform_.get()),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, true));
   }
 
-  CrosSystemFake* cros_system_;
   startup::Flags flags_;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir;
@@ -1198,16 +1187,16 @@ TEST_F(RestoreContextsForVarTest, Restorecon) {
 
 class RestorePreservedPathsTest : public ::testing::Test {
  protected:
-  RestorePreservedPathsTest() {}
-
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
     base_dir = temp_dir_.GetPath();
     stateful_ = base_dir.Append("stateful_test");
     base::CreateDirectory(stateful_);
     startup_ = std::make_unique<startup::ChromeosStartup>(
-        std::make_unique<CrosSystemFake>(), flags_, base_dir, stateful_,
-        base_dir, base_dir, std::make_unique<startup::FakePlatform>(),
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, stateful_, base_dir, base_dir,
+        std::make_unique<startup::FakePlatform>(),
         std::make_unique<startup::StandardMountHelper>(
             std::make_unique<startup::FakePlatform>(), flags_, base_dir,
             base_dir, true));

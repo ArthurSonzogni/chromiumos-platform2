@@ -25,10 +25,9 @@
 #include <brillo/files/file_util.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
+#include <libcrossystem/crossystem.h>
 
 #include "init/clobber_state.h"
-#include "init/crossystem.h"
-#include "init/crossystem_impl.h"
 #include "init/startup/platform_impl.h"
 #include "init/utils.h"
 
@@ -269,21 +268,19 @@ void Platform::ClobberLogRepair(const base::FilePath& dev,
 }
 
 // Returns if we are running on a debug build.
-bool Platform::IsDebugBuild(const CrosSystem& cros_system) {
-  int debug;
-  if (cros_system.GetInt("debug_build", &debug) && debug == 1) {
-    return true;
-  } else {
-    return false;
-  }
+bool Platform::IsDebugBuild(const crossystem::Crossystem& cros_system) {
+  std::optional<int> debug =
+      cros_system.VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
+  return debug == 1;
 }
 
 // Determine if the device is in dev mode.
-bool Platform::InDevMode(const CrosSystem& cros_system) {
+bool Platform::InDevMode(const crossystem::Crossystem& cros_system) {
   // cros_debug equals one if we've booted in developer mode or we've booted
   // a developer image.
-  int debug;
-  return (cros_system.GetInt("cros_debug", &debug) && debug == 1);
+  std::optional<int> debug =
+      cros_system.VbGetSystemPropertyInt(crossystem::Crossystem::kCrosDebug);
+  return debug == 1;
 }
 
 // Determine if the device is using a test image.
@@ -302,16 +299,16 @@ bool IsTestImage(const base::FilePath& lsb_file) {
 }
 
 // Return if the device is in factory test mode.
-bool IsFactoryTestMode(const CrosSystem& cros_system,
+bool IsFactoryTestMode(const crossystem::Crossystem& cros_system,
                        const base::FilePath& base_dir) {
   // The path to factory enabled tag. If this path exists in a debug build,
   // we assume factory test mode.
   base::FilePath factory_dir = base_dir.Append(kFactoryDir);
   base::FilePath factory_tag = factory_dir.Append("enabled");
   struct stat statbuf;
-  int res;
-  if (cros_system.GetInt("debug_build", &res) && res == 1 &&
-      stat(factory_tag.value().c_str(), &statbuf) == 0 &&
+  std::optional<int> res =
+      cros_system.VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
+  if (res == 1 && stat(factory_tag.value().c_str(), &statbuf) == 0 &&
       S_ISREG(statbuf.st_mode)) {
     return true;
   }
@@ -343,7 +340,7 @@ bool IsFactoryInstallerMode(const base::FilePath& base_dir) {
 
 // Return if the device is in either in factory test mode or in factory
 // installer mode.
-bool IsFactoryMode(const CrosSystem& cros_system,
+bool IsFactoryMode(const crossystem::Crossystem& cros_system,
                    const base::FilePath& base_dir) {
   return (IsFactoryTestMode(cros_system, base_dir) ||
           IsFactoryInstallerMode(base_dir));
