@@ -1,0 +1,76 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":install_header",
+    ":install_pkgconfig",
+    ":libdlcservice-metadata",
+  ]
+  if (use.test) {
+    deps += [ ":metadata_tests" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "zlib",
+  ]
+}
+
+# DLC metadata shared library, pkgconfig and headers.
+shared_library("libdlcservice-metadata") {
+  sources = [
+    "metadata.cc",
+    "zlib_compressor.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  install_path = "lib"
+}
+
+install_config("install_pkgconfig") {
+  sources = [ "libdlcservice-metadata.pc" ]
+  install_path = "${libdir}/pkgconfig"
+}
+
+install_config("install_header") {
+  sources = [
+    "compressor_interface.h",
+    "metadata.h",
+    "metadata_interface.h",
+    "mock_metadata.h",
+  ]
+  install_path = "/usr/include/dlcservice/metadata"
+}
+
+# For test:
+if (use.test) {
+  pkg_config("metadata_tests_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
+  }
+
+  executable("metadata_tests") {
+    sources = [
+      "compressor_test.cc",
+      "metadata_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":metadata_tests_config",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
+      ":libdlcservice-metadata",
+      "//common-mk/testrunner",
+    ]
+  }
+}

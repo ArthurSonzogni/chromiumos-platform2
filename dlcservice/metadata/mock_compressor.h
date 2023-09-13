@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_MOCK_COMPRESSOR_H_
-#define DLCSERVICE_MOCK_COMPRESSOR_H_
+#ifndef DLCSERVICE_METADATA_MOCK_COMPRESSOR_H_
+#define DLCSERVICE_METADATA_MOCK_COMPRESSOR_H_
 
 #include <memory>
 #include <optional>
@@ -11,9 +11,9 @@
 
 #include <gmock/gmock.h>
 
-#include "dlcservice/compressor_interface.h"
+#include "dlcservice/metadata/compressor_interface.h"
 
-namespace dlcservice {
+namespace dlcservice::metadata {
 
 class MockCompressor : public CompressorInterface {
  public:
@@ -31,6 +31,6 @@ class MockCompressor : public CompressorInterface {
   MOCK_METHOD(bool, Reset, (), (override));
 };
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata
 
-#endif  // DLCSERVICE_MOCK_COMPRESSOR_H_
+#endif  // DLCSERVICE_METADATA_MOCK_COMPRESSOR_H_

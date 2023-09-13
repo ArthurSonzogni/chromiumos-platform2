@@ -7,11 +7,11 @@
 
 #include <gtest/gtest.h>
 
-#include "dlcservice/compressor_interface.h"
-#include "dlcservice/metadata.h"
-#include "dlcservice/zlib_compressor.h"
+#include "dlcservice/metadata/compressor_interface.h"
+#include "dlcservice/metadata/metadata.h"
+#include "dlcservice/metadata/zlib_compressor.h"
 
-namespace dlcservice {
+namespace dlcservice::metadata {
 
 class CompressorTest : public testing::Test {
  public:
@@ -92,4 +92,4 @@ TEST_F(CompressorTest, EmptyFlush) {
   EXPECT_TRUE(flushed);
 }
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_ZLIB_COMPRESSOR_H_
-#define DLCSERVICE_ZLIB_COMPRESSOR_H_
+#ifndef DLCSERVICE_METADATA_ZLIB_COMPRESSOR_H_
+#define DLCSERVICE_METADATA_ZLIB_COMPRESSOR_H_
 
 #include <zlib.h>
 
@@ -13,9 +13,9 @@
 
 #include <brillo/brillo_export.h>
 
-#include "dlcservice/compressor_interface.h"
+#include "dlcservice/metadata/compressor_interface.h"
 
-namespace dlcservice {
+namespace dlcservice::metadata {
 
 class BRILLO_EXPORT ZlibCompressor : public CompressorInterface {
  public:
@@ -53,6 +53,6 @@ class BRILLO_EXPORT ZlibDecompressor : public CompressorInterface {
   z_stream zstream_;
 };
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata
 
-#endif  // DLCSERVICE_ZLIB_COMPRESSOR_H_
+#endif  // DLCSERVICE_METADATA_ZLIB_COMPRESSOR_H_

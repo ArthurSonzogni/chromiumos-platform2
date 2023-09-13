@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_COMPRESSOR_INTERFACE_H_
-#define DLCSERVICE_COMPRESSOR_INTERFACE_H_
+#ifndef DLCSERVICE_METADATA_COMPRESSOR_INTERFACE_H_
+#define DLCSERVICE_METADATA_COMPRESSOR_INTERFACE_H_
 
 #include <memory>
 #include <optional>
 #include <string>
 
-namespace dlcservice {
+namespace dlcservice::metadata {
 
 class CompressorInterface {
  public:
@@ -38,6 +38,6 @@ class CompressorInterface {
   virtual bool Reset() = 0;
 };
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata
 
-#endif  // DLCSERVICE_COMPRESSOR_INTERFACE_H_
+#endif  // DLCSERVICE_METADATA_COMPRESSOR_INTERFACE_H_

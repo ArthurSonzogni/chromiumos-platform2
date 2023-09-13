@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_METADATA_H_
-#define DLCSERVICE_METADATA_H_
+#ifndef DLCSERVICE_METADATA_METADATA_H_
+#define DLCSERVICE_METADATA_METADATA_H_
 
 #include <cstddef>
 #include <memory>
@@ -16,11 +16,10 @@
 #include <base/values.h>
 #include <brillo/brillo_export.h>
 
-#include "dlcservice/compressor_interface.h"
-#include "dlcservice/metadata_interface.h"
-#include "dlcservice/types.h"
+#include "dlcservice/metadata/compressor_interface.h"
+#include "dlcservice/metadata/metadata_interface.h"
 
-namespace dlcservice {
+namespace dlcservice::metadata {
 
 // The default maximum size of metadata files.
 BRILLO_EXPORT extern const size_t kMaxMetadataFileSize;
@@ -76,6 +75,6 @@ class BRILLO_EXPORT Metadata : public MetadataInterface {
   std::unique_ptr<CompressorInterface> decompressor_;
 };
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata
 
-#endif  // DLCSERVICE_METADATA_H_
+#endif  // DLCSERVICE_METADATA_METADATA_H_

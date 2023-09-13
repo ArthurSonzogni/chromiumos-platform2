@@ -13,11 +13,8 @@ group("all") {
     ":dlcservice_adaptors",
     ":dlcservice_util",
     ":dlcverify",
-    ":install_header",
     ":install_minijail_conf",
-    ":install_pkgconfig",
     ":libdlcservice",
-    ":libdlcservice-metadata",
     ":libdlcservice_utils",
   ]
   if (use.test) {
@@ -43,6 +40,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libchrome",
     "libbrillo",
+    "libdlcservice-metadata",
     "libimageloader-client",
     "libmetrics",
     "libimageloader-manifest",
@@ -77,31 +75,6 @@ generate_dbus_adaptors("dlcservice_adaptors") {
   sources = [ "dbus_adaptors/org.chromium.DlcServiceInterface.xml" ]
 }
 
-# DLC metadata shared library, pkgconfig and headers.
-shared_library("libdlcservice-metadata") {
-  sources = [
-    "metadata.cc",
-    "zlib_compressor.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  pkg_deps = [ "zlib" ]
-  install_path = "lib"
-}
-
-install_config("install_pkgconfig") {
-  sources = [ "libdlcservice-metadata.pc" ]
-  install_path = "${libdir}/pkgconfig"
-}
-
-install_config("install_header") {
-  sources = [
-    "metadata.h",
-    "metadata_interface.h",
-    "mock_metadata.h",
-  ]
-  install_path = "/usr/include/libdlcservice"
-}
-
 # DLC utils related files.
 static_library("libdlcservice_utils") {
   sources = [
@@ -120,10 +93,7 @@ static_library("libdlcservice_utils") {
 # DLC verify related files.
 static_library("libdlcverify") {
   configs += [ ":target_defaults" ]
-  deps = [
-    ":libdlcservice-metadata",
-    ":libdlcservice_utils",
-  ]
+  deps = [ ":libdlcservice_utils" ]
 }
 
 # DLC service related files.
@@ -141,7 +111,6 @@ static_library("libdlcservice") {
   libs = [ "rootdev" ]
   deps = [
     ":dlcservice_adaptors",
-    ":libdlcservice-metadata",
     ":libdlcservice_utils",
   ]
   if (use.lvm_stateful_partition) {
@@ -182,8 +151,6 @@ executable("dlcverify") {
 executable("dlc_metadata_util") {
   sources = [ "tools/dlc_metadata_util.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libdlcservice-metadata" ]
-  install_path = "/usr/local/bin"
 }
 
 # For test:
@@ -204,12 +171,10 @@ if (use.test) {
     sources = [
       "boot/boot_device_test.cc",
       "boot/boot_slot_test.cc",
-      "compressor_test.cc",
       "dbus_adaptors/dbus_adaptor_test.cc",
       "dlc_service_test.cc",
       "dlc_test.cc",
       "error_test.cc",
-      "metadata_test.cc",
       "metrics_test.cc",
       "prefs_test.cc",
       "system_state_test.cc",

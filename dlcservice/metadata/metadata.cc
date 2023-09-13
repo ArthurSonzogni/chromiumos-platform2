@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dlcservice/metadata.h"
+#include "dlcservice/metadata/metadata.h"
 
 #include <cstddef>
 #include <memory>
@@ -19,11 +19,10 @@
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 
-#include "dlcservice/compressor_interface.h"
-#include "dlcservice/types.h"
-#include "dlcservice/zlib_compressor.h"
+#include "dlcservice/metadata/compressor_interface.h"
+#include "dlcservice/metadata/zlib_compressor.h"
 
-namespace dlcservice {
+namespace dlcservice::metadata {
 
 namespace {
 constexpr char kMetadataFilePattern[] = "_metadata_*";
@@ -259,4 +258,4 @@ bool Metadata::LoadMetadata(const DlcId& id) {
   return true;
 }
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata

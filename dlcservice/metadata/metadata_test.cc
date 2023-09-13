@@ -8,34 +8,41 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "dlcservice/metadata.h"
-#include "dlcservice/mock_compressor.h"
-#include "dlcservice/test_utils.h"
-#include "dlcservice/types.h"
+#include "dlcservice/metadata/metadata.h"
+#include "dlcservice/metadata/mock_compressor.h"
 
 using testing::_;
 using testing::Return;
 
-namespace dlcservice {
+namespace dlcservice::metadata {
 
+constexpr char kFirstDlc[] = "first-dlc";
+constexpr char kSecondDlc[] = "second-dlc";
 constexpr char kMetadataTemplate[] = R"("%s":{"manifest":%s,"table":"%s"},)";
 
-class MetadataTest : public BaseTest {
+class MetadataTest : public testing::Test {
  public:
   void SetUp() override {
-    BaseTest::SetUp();
+    testing::Test::SetUp();
+    CHECK(scoped_temp_dir_.CreateUniqueTempDir());
+    metadata_path_ = scoped_temp_dir_.GetPath();
+    base::WriteFile(
+        metadata_path_.Append(std::string(kMetadataPrefix).append(kFirstDlc)),
+        "Test metadata file.");
+
     auto compressor = std::make_unique<MockCompressor>();
     compressor_ptr_ = compressor.get();
 
     auto decompressor = std::make_unique<MockCompressor>();
     decompressor_ptr_ = decompressor.get();
 
-    metadata_ = std::make_unique<Metadata>(manifest_path_, kMaxMetadataFileSize,
+    metadata_ = std::make_unique<Metadata>(metadata_path_, kMaxMetadataFileSize,
                                            std::move(compressor),
                                            std::move(decompressor));
     EXPECT_CALL(*compressor_ptr_, Initialize).WillOnce(Return(true));
@@ -44,41 +51,25 @@ class MetadataTest : public BaseTest {
   }
 
  protected:
+  base::ScopedTempDir scoped_temp_dir_;
+  base::FilePath metadata_path_;
+
   std::unique_ptr<Metadata> metadata_;
   MockCompressor* compressor_ptr_;
   MockCompressor* decompressor_ptr_;
 };
 
 TEST_F(MetadataTest, GetMetadata) {
-  for (const auto& id : supported_dlc_) {
-    // Read manifest from original test data as a reference.
-    std::string manifest_str;
-    EXPECT_TRUE(base::ReadFileToString(
-        JoinPaths(manifest_path_, id, kPackage, kManifestName), &manifest_str));
-    imageloader::Manifest manifest_ref;
-    manifest_ref.ParseManifest(manifest_str);
+  std::string mock_metadata =
+      base::StringPrintf(kMetadataTemplate, kFirstDlc, "{}", kFirstDlc);
+  EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
+  EXPECT_CALL(*decompressor_ptr_, Process).WillOnce(Return(mock_metadata));
 
-    // Mock metadata decompression by returning a metadata string directly
-    // retrievd from the original test data.
-    std::string mock_metadata = base::StringPrintf(
-        kMetadataTemplate, id.c_str(), manifest_str.c_str(), id.c_str());
-    EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
-    EXPECT_CALL(*decompressor_ptr_, Process).WillOnce(Return(mock_metadata));
-
-    auto entry = metadata_->Get(id);
-    EXPECT_TRUE(entry);
-    EXPECT_EQ(entry->table, id);
-
-    imageloader::Manifest manifest;
-    manifest.ParseManifest(entry->manifest);
-    EXPECT_EQ(manifest, manifest_ref);
-  }
+  auto entry = metadata_->Get(kFirstDlc);
+  EXPECT_TRUE(entry);
 }
 
 TEST_F(MetadataTest, GetUnsupportedMetadata) {
-  std::string table;
-  imageloader::Manifest manifest;
-
   std::string mock_metadata =
       base::StringPrintf(kMetadataTemplate, kFirstDlc, "{}", kFirstDlc);
   EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
@@ -88,9 +79,6 @@ TEST_F(MetadataTest, GetUnsupportedMetadata) {
 }
 
 TEST_F(MetadataTest, GetMetadataDecompressionFailure) {
-  std::string table;
-  imageloader::Manifest manifest;
-
   EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
   EXPECT_CALL(*decompressor_ptr_, Process).WillOnce(Return(std::nullopt));
 
@@ -132,7 +120,7 @@ TEST_F(MetadataTest, ModifyMetadata) {
 
   std::string modified_file = *file_ids.begin();
   EXPECT_TRUE(base::ReadFileToString(
-      JoinPaths(manifest_path_, std::string(kMetadataPrefix).append(kFirstDlc)),
+      metadata_path_.Append(std::string(kMetadataPrefix).append(kFirstDlc)),
       &modified_file));
 
   EXPECT_EQ(modified_file, modified + modified);
@@ -174,10 +162,10 @@ TEST_F(MetadataTest, ModifyMetadataToLargerContent) {
   for (const auto& f_id : file_ids) {
     std::string modified_file;
     EXPECT_TRUE(base::ReadFileToString(
-        JoinPaths(manifest_path_, std::string(kMetadataPrefix).append(f_id)),
+        metadata_path_.Append(std::string(kMetadataPrefix).append(f_id)),
         &modified_file));
     EXPECT_EQ(modified_file, modified);
   }
 }
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata

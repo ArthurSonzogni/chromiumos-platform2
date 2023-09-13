@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_METADATA_INTERFACE_H_
-#define DLCSERVICE_METADATA_INTERFACE_H_
+#ifndef DLCSERVICE_METADATA_METADATA_INTERFACE_H_
+#define DLCSERVICE_METADATA_METADATA_INTERFACE_H_
 
 #include <optional>
 #include <set>
@@ -11,9 +11,9 @@
 
 #include <base/values.h>
 
-#include "dlcservice/types.h"
+namespace dlcservice::metadata {
 
-namespace dlcservice {
+using DlcId = std::string;
 
 class MetadataInterface {
  public:
@@ -52,6 +52,6 @@ class MetadataInterface {
   virtual const std::set<DlcId>& GetFileIds() const = 0;
 };
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata
 
-#endif  // DLCSERVICE_METADATA_INTERFACE_H_
+#endif  // DLCSERVICE_METADATA_METADATA_INTERFACE_H_

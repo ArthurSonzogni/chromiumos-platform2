@@ -18,9 +18,10 @@
 #include <base/values.h>
 #include <brillo/flag_helper.h>
 #include <chromeos/constants/imageloader.h>
+#include <dlcservice/metadata/metadata.h>
 #include <libimageloader/manifest.h>
 
-#include "dlcservice/metadata.h"
+using dlcservice::metadata::Metadata;
 
 namespace {
 bool CheckExclusiveFlags(const std::vector<bool>& flags) {
@@ -47,7 +48,7 @@ class DlcMetadataUtil {
   bool ParseFlags();
   int SetMetadata();
   int GetMetadata();
-  std::optional<dlcservice::Metadata::Entry> ReadMetadataEntry();
+  std::optional<Metadata::Entry> ReadMetadataEntry();
 
   int argc_;
   const char** argv_;
@@ -56,8 +57,7 @@ class DlcMetadataUtil {
   std::string id_;
   base::FilePath file_path_;
 
-  dlcservice::Metadata metadata_{
-      base::FilePath(imageloader::kDlcManifestRootpath)};
+  Metadata metadata_{base::FilePath(imageloader::kDlcManifestRootpath)};
 };
 
 int DlcMetadataUtil::Run() {
@@ -138,8 +138,7 @@ int DlcMetadataUtil::SetMetadata() {
   return metadata_.Set(id_, *entry) ? EX_OK : EX_SOFTWARE;
 }
 
-std::optional<dlcservice::Metadata::Entry>
-DlcMetadataUtil::ReadMetadataEntry() {
+std::optional<Metadata::Entry> DlcMetadataUtil::ReadMetadataEntry() {
   std::string metadata_str;
   if (file_path_.empty()) {
     // Read metadata entry from stdin.
@@ -164,7 +163,7 @@ DlcMetadataUtil::ReadMetadataEntry() {
     return std::nullopt;
   }
 
-  dlcservice::Metadata::Entry entry;
+  Metadata::Entry entry;
   auto* manifest_val = metadata_val->GetDict().FindDict("manifest");
   if (!manifest_val) {
     LOG(ERROR) << "Could not get manifest from the input";

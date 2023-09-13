@@ -6,7 +6,7 @@
 #define ZLIB_CONST
 #endif
 
-#include "dlcservice/zlib_compressor.h"
+#include "dlcservice/metadata/zlib_compressor.h"
 
 #include <zconf.h>
 #include <zlib.h>
@@ -18,10 +18,10 @@
 
 #include <base/logging.h>
 
-#include "dlcservice/compressor_interface.h"
-#include "dlcservice/metadata.h"
+#include "dlcservice/metadata/compressor_interface.h"
+#include "dlcservice/metadata/metadata.h"
 
-namespace dlcservice {
+namespace dlcservice::metadata {
 
 namespace {
 // The common processing loop for compression and decompression.
@@ -153,4 +153,4 @@ bool ZlibDecompressor::Reset() {
   return Z_OK == inflateReset(&zstream_);
 }
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata

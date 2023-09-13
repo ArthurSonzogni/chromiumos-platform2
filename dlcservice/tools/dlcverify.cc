@@ -9,9 +9,9 @@
 #include <base/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <chromeos/constants/imageloader.h>
+#include <dlcservice/metadata/metadata.h>
 #include <libimageloader/manifest.h>
 
-#include "dlcservice/metadata.h"
 #include "dlcservice/utils.h"
 
 namespace dlcservice {
@@ -69,7 +69,7 @@ class DlcVerify {
   }
 
   bool ParseManifest() {
-    Metadata metadata(
+    metadata::Metadata metadata(
         rootfs_mount_.Append(imageloader::kRelativeDlcManifestRootpath));
     if (!metadata.Initialize()) {
       LOG(ERROR) << "Unable to initialize DLC metadata.";

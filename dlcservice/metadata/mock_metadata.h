@@ -2,20 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_MOCK_METADATA_H_
-#define DLCSERVICE_MOCK_METADATA_H_
+#ifndef DLCSERVICE_METADATA_MOCK_METADATA_H_
+#define DLCSERVICE_METADATA_MOCK_METADATA_H_
 
 #include <optional>
 #include <set>
-#include <string>
 
 #include <base/values.h>
 #include <gmock/gmock.h>
 
-#include "dlcservice/metadata_interface.h"
-#include "dlcservice/types.h"
+#include "dlcservice/metadata/metadata_interface.h"
 
-namespace dlcservice {
+namespace dlcservice::metadata {
 
 class MockMetadata : public MetadataInterface {
  public:
@@ -41,6 +39,6 @@ class MockMetadata : public MetadataInterface {
   std::set<DlcId> file_ids_;
 };
 
-}  // namespace dlcservice
+}  // namespace dlcservice::metadata
 
-#endif  // DLCSERVICE_MOCK_METADATA_H_
+#endif  // DLCSERVICE_METADATA_MOCK_METADATA_H_
