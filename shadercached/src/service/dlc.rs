@@ -192,7 +192,7 @@ pub async fn mount_dlc<D: DbusConnectionTrait>(
         if shader_cache_mount.is_pending_mount(&steam_app_id) {
             debug!("Mounting for {:?}", vm_id);
             let mount_result = shader_cache_mount
-                .setup_mount_destination(vm_id, steam_app_id, dbus_conn.clone())
+                .setup_mount_destination(vm_id, steam_app_id)
                 .await
                 .and_then(|_| shader_cache_mount.bind_mount_dlc(steam_app_id))
                 .and_then(|_| shader_cache_mount.add_game_to_db_list(steam_app_id));
