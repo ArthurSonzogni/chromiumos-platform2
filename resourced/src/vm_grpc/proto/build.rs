@@ -3,11 +3,16 @@
 // found in the LICENSE file.
 
 #[cfg(feature = "vm_grpc")]
+use std::env;
+#[cfg(feature = "vm_grpc")]
+use std::fs;
+#[cfg(feature = "vm_grpc")]
+use std::path::Path;
+#[cfg(feature = "vm_grpc")]
+use std::path::PathBuf;
+
+#[cfg(feature = "vm_grpc")]
 use anyhow::Result;
-#[cfg(feature = "vm_grpc")]
-use std::path::{Path, PathBuf};
-#[cfg(feature = "vm_grpc")]
-use std::{env, fs};
 #[cfg(feature = "vm_grpc")]
 extern crate protoc_grpcio;
 

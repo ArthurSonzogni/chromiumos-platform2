@@ -2,12 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use anyhow::{bail, Context, Result};
-use glob::glob;
 use std::fs::read_to_string;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
+use std::io::BufReader;
 use std::path::Path;
 use std::str::FromStr;
+
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
+use glob::glob;
 
 use crate::common;
 
@@ -246,14 +250,16 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::tests::{
-        test_check_online_cpu, test_check_smt_control, test_write_cpu_max_freq,
-        test_write_cpuset_root_cpus, test_write_online_cpu, test_write_smt_control,
-        test_write_ui_use_flags,
-    };
     use tempfile::TempDir;
 
     use super::*;
+    use crate::test_utils::tests::test_check_online_cpu;
+    use crate::test_utils::tests::test_check_smt_control;
+    use crate::test_utils::tests::test_write_cpu_max_freq;
+    use crate::test_utils::tests::test_write_cpuset_root_cpus;
+    use crate::test_utils::tests::test_write_online_cpu;
+    use crate::test_utils::tests::test_write_smt_control;
+    use crate::test_utils::tests::test_write_ui_use_flags;
 
     #[test]
     fn test_hotplug_cpus() {

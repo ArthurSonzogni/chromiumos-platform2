@@ -2,24 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::arch::x86_64::{CpuidResult, __cpuid, __cpuid_count};
-use std::io::{BufRead, BufReader};
+use std::arch::x86_64::CpuidResult;
+use std::arch::x86_64::__cpuid;
+use std::arch::x86_64::__cpuid_count;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::path::Path;
 use std::sync::Mutex;
 
-use anyhow::{bail, Context, Result};
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
+#[cfg(feature = "chromeos")]
+use featured::CheckFeature; // Trait CheckFeature is for is_feature_enabled_blocking
 use glob::glob;
 use log::info;
 use once_cell::sync::Lazy;
+#[cfg(feature = "chromeos")]
+use once_cell::sync::OnceCell;
 
 use crate::common;
 use crate::cpu_utils;
-
-#[cfg(feature = "chromeos")]
-use featured::CheckFeature; // Trait CheckFeature is for is_feature_enabled_blocking
-
-#[cfg(feature = "chromeos")]
-use once_cell::sync::OnceCell;
 
 const MEDIA_MIN_ECORE_NUM: u32 = 4;
 
@@ -332,11 +335,12 @@ pub fn media_dynamic_cgroup(action: MediaDynamicCgroupAction) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::tests::*;
     use std::path::PathBuf;
+
     use tempfile::TempDir;
 
     use super::*;
+    use crate::test_utils::tests::*;
 
     #[test]
     fn test_power_is_intel_hybrid_system() -> Result<()> {

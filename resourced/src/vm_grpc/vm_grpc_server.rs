@@ -2,25 +2,41 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use anyhow::{bail, Result};
-use futures_util::future::{FutureExt as _, TryFutureExt as _};
-use grpcio::{ChannelBuilder, Environment, ResourceQuota, RpcContext, ServerBuilder, UnarySink};
-use log::{error, info, warn};
-use protobuf::RepeatedField;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicI64;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+use anyhow::bail;
+use anyhow::Result;
+use futures_util::future::FutureExt as _;
+use futures_util::future::TryFutureExt as _;
+use grpcio::ChannelBuilder;
+use grpcio::Environment;
+use grpcio::ResourceQuota;
+use grpcio::RpcContext;
+use grpcio::ServerBuilder;
+use grpcio::UnarySink;
+use log::error;
+use log::info;
+use log::warn;
+use protobuf::RepeatedField;
+
 use crate::cpu_scaling::DeviceCpuStatus;
-use crate::vm_grpc::proto::resourced_bridge::{
-    CpuInfoCoreData, CpuInfoData, EmptyMessage, RequestedInterval, ReturnCode, ReturnCode_Status,
-};
-use crate::vm_grpc::proto::resourced_bridge_grpc::{
-    create_resourced_comm_listener, ResourcedCommListener,
-};
-use crate::vm_grpc::vm_grpc_util::{vm_server_stop_req_reset, vm_server_stop_requested};
+use crate::vm_grpc::proto::resourced_bridge::CpuInfoCoreData;
+use crate::vm_grpc::proto::resourced_bridge::CpuInfoData;
+use crate::vm_grpc::proto::resourced_bridge::EmptyMessage;
+use crate::vm_grpc::proto::resourced_bridge::RequestedInterval;
+use crate::vm_grpc::proto::resourced_bridge::ReturnCode;
+use crate::vm_grpc::proto::resourced_bridge::ReturnCode_Status;
+use crate::vm_grpc::proto::resourced_bridge_grpc::create_resourced_comm_listener;
+use crate::vm_grpc::proto::resourced_bridge_grpc::ResourcedCommListener;
+use crate::vm_grpc::vm_grpc_util::vm_server_stop_req_reset;
+use crate::vm_grpc::vm_grpc_util::vm_server_stop_requested;
 
 // Polling interval for grpc_server to check for a server stop request.
 const VM_GRPC_SERVER_STOP_POLLING_INTERVAL_SEC: u64 = 1;
@@ -266,10 +282,13 @@ impl ResourcedCommListener for ResourcedCommListenerService {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
+    use std::path::PathBuf;
+
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_service_create() {

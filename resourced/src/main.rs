@@ -27,10 +27,12 @@ mod cpu_scaling;
 #[cfg(feature = "vm_grpc")]
 mod vm_grpc;
 
-use anyhow::{bail, Result};
+use anyhow::bail;
+use anyhow::Result;
 use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::syslog;
-use log::{error, info};
+use log::error;
+use log::info;
 use tokio::runtime::Builder;
 
 const IDENT: &str = "resourced";

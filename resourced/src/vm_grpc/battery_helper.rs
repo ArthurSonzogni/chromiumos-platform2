@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::fs;
+use std::path::Path;
+use std::path::PathBuf;
+
+use anyhow::bail;
+use anyhow::Result;
+
 use crate::common;
-use anyhow::{bail, Result};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
 
 const DEVICE_BATTERY_PATH: &str = "sys/class/power_supply/BAT0";
 
@@ -75,10 +77,12 @@ impl DeviceBatteryStatus {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
     use std::path::Path;
+
     use tempfile::tempdir;
+
+    use super::*;
 
     fn write_mock_battery(root: &Path, status: &str, charge_now: u64, charge_full: u64) {
         let batt_path = root.join(super::DEVICE_BATTERY_PATH);

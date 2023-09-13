@@ -5,11 +5,12 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use anyhow::{bail, Context, Result};
-use once_cell::sync::OnceCell;
-
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
 #[cfg(feature = "chromeos")]
-use featured::CheckFeature; // Trait CheckFeature is for is_feature_enabled_blocking
+use featured::CheckFeature;
+use once_cell::sync::OnceCell; // Trait CheckFeature is for is_feature_enabled_blocking
 
 // Only use featured in ebuild as using featured makes "cargo build" fail.
 //

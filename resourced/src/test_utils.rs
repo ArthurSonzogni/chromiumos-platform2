@@ -4,13 +4,18 @@
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use anyhow::Result;
     use std::fs;
     use std::path::Path;
     use std::path::PathBuf;
     use std::str;
 
-    use crate::common::{BatterySaverMode, FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};
+    use anyhow::Result;
+
+    use crate::common::BatterySaverMode;
+    use crate::common::FullscreenVideo;
+    use crate::common::GameMode;
+    use crate::common::RTCAudioActive;
+    use crate::common::VmBootMode;
     use crate::cpu_utils::SMT_CONTROL_PATH;
     use crate::power;
 

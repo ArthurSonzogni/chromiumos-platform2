@@ -11,7 +11,9 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::AsRawFd;
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
 use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
 use tokio::time::timeout;

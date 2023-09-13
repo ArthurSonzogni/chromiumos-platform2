@@ -1,15 +1,18 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-use anyhow::{bail, Result};
-use glob::glob;
-use log::info;
-use regex::Regex;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::str;
+
+use anyhow::bail;
+use anyhow::Result;
+use glob::glob;
+use log::info;
+use regex::Regex;
 
 use crate::common;
 
@@ -442,10 +445,11 @@ impl DeviceCpuStatus {
 mod tests {
     use std::collections::HashSet;
 
-    use super::*;
-    use crate::test_utils::tests::*;
     use anyhow::Result;
     use tempfile::tempdir;
+
+    use super::*;
+    use crate::test_utils::tests::*;
 
     const MOCK_NUM_CPU: i32 = 16;
 

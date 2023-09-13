@@ -2,27 +2,31 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use crate::vm_grpc::proto::concierge_service::{
-    GetVmInfoRequest, GetVmInfoResponse, VmStartedSignal, VmStoppedSignal,
-};
-use crate::vm_grpc::vm_grpc_client::VmGrpcClient;
-use crate::vm_grpc::vm_grpc_server::VmGrpcServer;
-
-use anyhow::{bail, Result};
-use dbus::channel::MatchingReceiver;
-use dbus::message::MatchRule;
-use dbus::nonblock::Proxy;
-use dbus::nonblock::SyncConnection;
-use dbus::Message;
-use libchromeos::sys::{info, warn};
-use once_cell::sync::Lazy;
-use protobuf::CodedInputStream;
-use protobuf::Message as protoMessage;
 use std::path::Path;
 use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
+
+use anyhow::bail;
+use anyhow::Result;
+use dbus::channel::MatchingReceiver;
+use dbus::message::MatchRule;
+use dbus::nonblock::Proxy;
+use dbus::nonblock::SyncConnection;
+use dbus::Message;
+use libchromeos::sys::info;
+use libchromeos::sys::warn;
+use once_cell::sync::Lazy;
+use protobuf::CodedInputStream;
+use protobuf::Message as protoMessage;
+
+use crate::vm_grpc::proto::concierge_service::GetVmInfoRequest;
+use crate::vm_grpc::proto::concierge_service::GetVmInfoResponse;
+use crate::vm_grpc::proto::concierge_service::VmStartedSignal;
+use crate::vm_grpc::proto::concierge_service::VmStoppedSignal;
+use crate::vm_grpc::vm_grpc_client::VmGrpcClient;
+use crate::vm_grpc::vm_grpc_server::VmGrpcServer;
 
 // VSOCK port to use for accepting GRPC socket connections.
 const RESOURCED_GRPC_SERVER_PORT: u16 = 5551;

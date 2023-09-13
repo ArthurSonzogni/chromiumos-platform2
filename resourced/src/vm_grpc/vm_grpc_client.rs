@@ -2,20 +2,30 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicI64;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{bail, Result};
+use anyhow::bail;
+use anyhow::Result;
 use futures_executor::block_on;
-use grpcio::{CallOption, ChannelBuilder, EnvBuilder};
-use libchromeos::sys::{debug, info, warn};
+use grpcio::CallOption;
+use grpcio::ChannelBuilder;
+use grpcio::EnvBuilder;
+use libchromeos::sys::debug;
+use libchromeos::sys::info;
+use libchromeos::sys::warn;
 use protobuf::RepeatedField;
 
 use crate::cpu_scaling::DeviceCpuStatus;
-use crate::vm_grpc::proto::resourced_bridge::{CpuInfoCoreData, CpuInfoData, CpuRaplPowerData};
+use crate::vm_grpc::proto::resourced_bridge::CpuInfoCoreData;
+use crate::vm_grpc::proto::resourced_bridge::CpuInfoData;
+use crate::vm_grpc::proto::resourced_bridge::CpuRaplPowerData;
 use crate::vm_grpc::proto::resourced_bridge_grpc::ResourcedCommClient;
 
 // Polling interval used when checking if connection is alive.
@@ -303,10 +313,13 @@ impl VmGrpcClient {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
+    use std::path::PathBuf;
+
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_client_create() {

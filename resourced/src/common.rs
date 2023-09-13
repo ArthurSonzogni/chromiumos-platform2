@@ -4,28 +4,36 @@
 
 use std::convert::TryFrom;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::io::BufRead;
+use std::io::BufReader;
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Mutex;
 
-use anyhow::{bail, Context, Result};
-use log::{error, info, warn};
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
+use log::error;
+use log::info;
+use log::warn;
 use once_cell::sync::Lazy;
 
-use crate::config;
-use crate::power;
-use crate::power::PowerSourceProvider;
-
 #[cfg(target_arch = "x86_64")]
-use crate::cpu_scaling::{double_min_freq, intel_i7_or_above, set_min_cpu_freq};
-
+use crate::cgroup_x86_64::media_dynamic_cgroup;
+#[cfg(target_arch = "x86_64")]
+use crate::cgroup_x86_64::MediaDynamicCgroupAction;
+use crate::config;
+#[cfg(target_arch = "x86_64")]
+use crate::cpu_scaling::double_min_freq;
+#[cfg(target_arch = "x86_64")]
+use crate::cpu_scaling::intel_i7_or_above;
+#[cfg(target_arch = "x86_64")]
+use crate::cpu_scaling::set_min_cpu_freq;
 #[cfg(target_arch = "x86_64")]
 use crate::gpu_freq_scaling::intel_device;
-
-#[cfg(target_arch = "x86_64")]
-use crate::cgroup_x86_64::{media_dynamic_cgroup, MediaDynamicCgroupAction};
-
 use crate::memory;
+use crate::power;
+use crate::power::PowerSourceProvider;
 
 // Paths for RPS up/down threshold relative to rootdir.
 const DEVICE_RPS_PATH_UP: &str = "sys/class/drm/card0/gt/gt0/rps_up_threshold_pct";
@@ -487,16 +495,22 @@ fn set_thp(mode: THPMode) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::tests::{get_intel_gpu_boost, MockPowerPreferencesManager};
-    use crate::test_utils::tests::{
-        set_intel_gpu_boost, set_intel_gpu_max, set_intel_gpu_min, setup_mock_cpu_dev_dirs,
-        setup_mock_cpu_files, setup_mock_intel_gpu_dev_dirs, setup_mock_intel_gpu_files,
-        test_write_cpuset_root_cpus, write_mock_cpuinfo,
-    };
+    use std::fs;
+
+    use tempfile::tempdir;
 
     use super::*;
-    use std::fs;
-    use tempfile::tempdir;
+    use crate::test_utils::tests::get_intel_gpu_boost;
+    use crate::test_utils::tests::set_intel_gpu_boost;
+    use crate::test_utils::tests::set_intel_gpu_max;
+    use crate::test_utils::tests::set_intel_gpu_min;
+    use crate::test_utils::tests::setup_mock_cpu_dev_dirs;
+    use crate::test_utils::tests::setup_mock_cpu_files;
+    use crate::test_utils::tests::setup_mock_intel_gpu_dev_dirs;
+    use crate::test_utils::tests::setup_mock_intel_gpu_files;
+    use crate::test_utils::tests::test_write_cpuset_root_cpus;
+    use crate::test_utils::tests::write_mock_cpuinfo;
+    use crate::test_utils::tests::MockPowerPreferencesManager;
 
     #[test]
     fn test_parse_file_to_u64() {

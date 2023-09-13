@@ -8,21 +8,30 @@ mod resourced_bridge;
 #[path = "../proto/resourced_bridge_grpc.rs"]
 mod resourced_bridge_grpc;
 
-use futures_util::future::{FutureExt as _, TryFutureExt as _};
-use grpcio::{
-    ChannelBuilder, EnvBuilder, Environment, ResourceQuota, RpcContext, ServerBuilder, UnarySink,
-};
-use once_cell::sync::Lazy;
 use std::env;
 use std::sync::Arc;
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
-use crate::resourced_bridge::{
-    CpuRaplPowerData, EmptyMessage, RequestedCpuFrequency, RequestedInterval,
-};
+use futures_util::future::FutureExt as _;
+use futures_util::future::TryFutureExt as _;
+use grpcio::ChannelBuilder;
+use grpcio::EnvBuilder;
+use grpcio::Environment;
+use grpcio::ResourceQuota;
+use grpcio::RpcContext;
+use grpcio::ServerBuilder;
+use grpcio::UnarySink;
+use once_cell::sync::Lazy;
+
+use crate::resourced_bridge::CpuRaplPowerData;
+use crate::resourced_bridge::EmptyMessage;
+use crate::resourced_bridge::RequestedCpuFrequency;
+use crate::resourced_bridge::RequestedInterval;
+use crate::resourced_bridge_grpc::create_resourced_comm;
+use crate::resourced_bridge_grpc::ResourcedComm;
 use crate::resourced_bridge_grpc::ResourcedCommListenerClient;
-use crate::resourced_bridge_grpc::{create_resourced_comm, ResourcedComm};
 
 static mut VM_INIT_RX: Lazy<bool> = Lazy::new(|| false);
 

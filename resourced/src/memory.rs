@@ -3,11 +3,15 @@
 // found in the LICENSE file.
 
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Write;
 use std::path::Path;
 use std::sync::Mutex;
 
-use anyhow::{bail, Context, Result};
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
 use log::error;
 use once_cell::sync::Lazy;
 
@@ -587,11 +591,11 @@ fn init_memory_configs_impl(root: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use std::fs::OpenOptions;
 
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_calculate_reserved_free_kb() {

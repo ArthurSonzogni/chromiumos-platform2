@@ -4,19 +4,29 @@
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::os::fd::{FromRawFd, OwnedFd};
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicI32, AtomicUsize, Ordering};
+use std::os::fd::FromRawFd;
+use std::os::fd::OwnedFd;
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicI32;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
+use anyhow::anyhow;
+use anyhow::bail;
 use anyhow::Result;
-use anyhow::{anyhow, bail};
 use dbus::channel::MatchingReceiver;
 use dbus::channel::Sender;
-use dbus::message::{MatchRule, Message};
-use dbus::nonblock::{Proxy, SyncConnection};
-use dbus_crossroads::{Crossroads, IfaceBuilder, IfaceToken, MethodErr};
+use dbus::message::MatchRule;
+use dbus::message::Message;
+use dbus::nonblock::Proxy;
+use dbus::nonblock::SyncConnection;
+use dbus_crossroads::Crossroads;
+use dbus_crossroads::IfaceBuilder;
+use dbus_crossroads::IfaceToken;
+use dbus_crossroads::MethodErr;
 use dbus_tokio::connection;
 use log::error;
 use log::LevelFilter;

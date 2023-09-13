@@ -5,11 +5,14 @@
 // APIs to adjust the Quality of Service (QoS) expected for a thread or a
 // process. QoS definitions map to performance characteristics.
 
-use anyhow::{anyhow, bail, Context, Result};
+use std::fs::write;
+
+use anyhow::anyhow;
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
 use once_cell::sync::Lazy;
 use procfs::process::Process;
-
-use std::fs::write;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ProcessSchedulerState {

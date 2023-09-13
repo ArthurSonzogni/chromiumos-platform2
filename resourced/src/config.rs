@@ -6,7 +6,9 @@ use std::fs::DirEntry;
 use std::path::Path;
 use std::path::PathBuf;
 
-use anyhow::{bail, Context, Result};
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
 
 use crate::common::read_file_to_u64;
 
@@ -296,9 +298,11 @@ impl ConfigProvider for DirectoryConfigProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_config_provider_empty_root() -> Result<()> {

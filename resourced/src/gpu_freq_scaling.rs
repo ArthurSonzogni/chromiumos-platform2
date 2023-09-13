@@ -3,21 +3,25 @@
 // found in the LICENSE file.
 
 pub mod intel_device {
-    use crate::{
-        common::{self, GameMode},
-        cpu_scaling::DeviceCpuStatus,
-    };
-    use anyhow::{bail, Context, Result};
-    use log::{info, warn};
+    use std::fs::File;
+    use std::fs::{self};
+    use std::io::BufRead;
+    use std::io::BufReader;
+    use std::path::PathBuf;
+    use std::sync::Mutex;
+    use std::thread;
+    use std::time::Duration;
+
+    use anyhow::bail;
+    use anyhow::Context;
+    use anyhow::Result;
+    use log::info;
+    use log::warn;
     use regex::Regex;
-    use std::{
-        fs::{self, File},
-        io::{BufRead, BufReader},
-        path::PathBuf,
-        sync::Mutex,
-        thread,
-        time::Duration,
-    };
+
+    use crate::common::GameMode;
+    use crate::common::{self};
+    use crate::cpu_scaling::DeviceCpuStatus;
 
     // Device path for cpuinfo.
     const CPUINFO_PATH: &str = "proc/cpuinfo";
@@ -349,13 +353,19 @@ pub mod amd_device {
     // TODO: removeme once other todos addressed.
     #![allow(dead_code)]
 
-    use anyhow::{bail, Context, Result};
-    use glob::glob;
-    use log::{error, info};
     use std::fs;
     use std::fs::File;
-    use std::io::{BufRead, BufReader};
-    use std::path::{Path, PathBuf};
+    use std::io::BufRead;
+    use std::io::BufReader;
+    use std::path::Path;
+    use std::path::PathBuf;
+
+    use anyhow::bail;
+    use anyhow::Context;
+    use anyhow::Result;
+    use glob::glob;
+    use log::error;
+    use log::info;
 
     pub struct AmdDeviceConfig {
         /// Device path gpu mode control (auto/manual).
@@ -600,15 +610,18 @@ pub mod amd_device {
 #[cfg(test)]
 mod tests {
 
-    use std::{path::PathBuf, thread, time::Duration};
+    use std::path::PathBuf;
+    use std::thread;
+    use std::time::Duration;
+
     use tempfile::tempdir;
 
-    use super::{intel_device::IntelGpuDeviceConfig, *};
-
+    use super::intel_device::IntelGpuDeviceConfig;
+    use super::*;
+    use crate::common;
+    use crate::cpu_scaling::DeviceCpuStatus;
+    use crate::gpu_freq_scaling::amd_device::AmdDeviceConfig;
     use crate::test_utils::tests::*;
-    use crate::{
-        common, cpu_scaling::DeviceCpuStatus, gpu_freq_scaling::amd_device::AmdDeviceConfig,
-    };
 
     #[test]
     fn test_intel_malformed_root() {

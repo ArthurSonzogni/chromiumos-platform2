@@ -3,18 +3,27 @@
 // found in the LICENSE file.
 
 use std::fs::read_to_string;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::vec::Vec;
 
-use anyhow::{bail, Context, Result};
+use anyhow::bail;
+use anyhow::Context;
+use anyhow::Result;
 use glob::glob;
-use log::{error, info};
+use log::error;
+use log::info;
 
 use crate::common;
-use crate::common::{BatterySaverMode, FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};
+use crate::common::BatterySaverMode;
+use crate::common::FullscreenVideo;
+use crate::common::GameMode;
+use crate::common::RTCAudioActive;
+use crate::common::VmBootMode;
 use crate::config;
-use crate::cpu_utils::{hotplug_cpus, HotplugCpuAction};
+use crate::cpu_utils::hotplug_cpus;
+use crate::cpu_utils::HotplugCpuAction;
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 const POWER_SUPPLY_ONLINE: &str = "online";
@@ -457,16 +466,20 @@ pub fn new_directory_power_preferences_manager(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test_utils::tests::{
-        test_check_online_cpu, test_check_smt_control, test_write_cpu_max_freq,
-        test_write_cpuset_root_cpus, test_write_online_cpu, test_write_smt_control,
-        test_write_ui_use_flags,
-    };
-    use anyhow::bail;
     use std::fs;
     use std::path::Path;
+
+    use anyhow::bail;
     use tempfile::tempdir;
+
+    use super::*;
+    use crate::test_utils::tests::test_check_online_cpu;
+    use crate::test_utils::tests::test_check_smt_control;
+    use crate::test_utils::tests::test_write_cpu_max_freq;
+    use crate::test_utils::tests::test_write_cpuset_root_cpus;
+    use crate::test_utils::tests::test_write_online_cpu;
+    use crate::test_utils::tests::test_write_smt_control;
+    use crate::test_utils::tests::test_write_ui_use_flags;
 
     #[test]
     fn test_parse_power_supply_status() -> anyhow::Result<()> {
