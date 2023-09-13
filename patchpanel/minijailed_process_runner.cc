@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <csignal>
 #include <utility>
 
 #include <base/check.h>
