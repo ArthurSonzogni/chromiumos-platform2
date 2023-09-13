@@ -8,8 +8,10 @@ namespace diagnostics {
 
 FlossController::FlossController(
     org::chromium::bluetooth::Manager::ObjectManagerProxy*
-        bluetooth_manager_proxy)
-    : bluetooth_manager_proxy_(bluetooth_manager_proxy) {}
+        bluetooth_manager_proxy,
+    org::chromium::bluetooth::ObjectManagerProxy* bluetooth_proxy)
+    : bluetooth_manager_proxy_(bluetooth_manager_proxy),
+      bluetooth_proxy_(bluetooth_proxy) {}
 
 org::chromium::bluetooth::ManagerProxyInterface* FlossController::GetManager()
     const {
@@ -18,6 +20,11 @@ org::chromium::bluetooth::ManagerProxyInterface* FlossController::GetManager()
     return nullptr;
   }
   return managers[0];
+}
+
+std::vector<org::chromium::bluetooth::BluetoothProxyInterface*>
+FlossController::GetAdapters() const {
+  return bluetooth_proxy_->GetBluetoothInstances();
 }
 
 }  // namespace diagnostics

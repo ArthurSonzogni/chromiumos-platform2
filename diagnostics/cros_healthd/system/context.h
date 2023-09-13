@@ -35,14 +35,19 @@ class Udev;
 namespace org {
 namespace chromium {
 class AttestationProxyInterface;
+class bluetoothProxy;
 class debugdProxyInterface;
 class PowerManagerProxyInterface;
 class TpmManagerProxyInterface;
 class SpacedProxyInterface;
 
-namespace bluetooth::Manager {
+namespace bluetooth {
 class ObjectManagerProxy;
-}  // namespace bluetooth::Manager
+
+namespace Manager {
+class ObjectManagerProxy;
+}  // namespace Manager
+}  // namespace bluetooth
 
 namespace cras {
 class ControlProxyInterface;
@@ -60,6 +65,7 @@ namespace diagnostics {
 class BluezController;
 class BluezEventHub;
 class FlossController;
+class FlossEventHub;
 
 // A context class for holding the helper objects used in cros_healthd, which
 // simplifies the passing of the helper objects to other objects. For instance,
@@ -155,6 +161,9 @@ class Context {
   // Use the object returned by floss_controller() to access Bluetooth instances
   // via Floss proxy.
   FlossController* floss_controller() const { return floss_controller_.get(); }
+  // Use the object returned by floss_event_hub() to subscribe Bluetooth events
+  // via Floss proxy.
+  FlossEventHub* floss_event_hub() const { return floss_event_hub_.get(); }
   // Use the object returned by tick_clock() to track the passage of time.
   base::TickClock* tick_clock() const { return tick_clock_.get(); }
   // Use the object returned by tpm_manager_proxy() to get the tpm information
@@ -198,6 +207,8 @@ class Context {
   std::unique_ptr<org::bluezProxy> bluez_proxy_;
   std::unique_ptr<org::chromium::bluetooth::Manager::ObjectManagerProxy>
       bluetooth_manager_proxy_;
+  std::unique_ptr<org::chromium::bluetooth::ObjectManagerProxy>
+      bluetooth_proxy_;
 
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
@@ -216,6 +227,7 @@ class Context {
   std::unique_ptr<BluezController> bluez_controller_;
   std::unique_ptr<BluezEventHub> bluez_event_hub_;
   std::unique_ptr<FlossController> floss_controller_;
+  std::unique_ptr<FlossEventHub> floss_event_hub_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   std::unique_ptr<brillo::Udev> udev_;

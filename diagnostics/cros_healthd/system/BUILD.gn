@@ -54,6 +54,7 @@ source_set("libcros_healthd_system") {
     "bluez_event_hub.cc",
     "context.cc",
     "floss_controller.cc",
+    "floss_event_hub.cc",
     "ground_truth.cc",
     "mojo_service_impl.cc",
     "powerd_adapter_impl.cc",
@@ -107,6 +108,7 @@ if (use.test || use.fuzzer) {
     ]
     sources = [
       "fake_bluez_event_hub.cc",
+      "fake_floss_event_hub.cc",
       "fake_mojo_service.cc",
       "fake_pci_util.cc",
       "fake_powerd_adapter.cc",

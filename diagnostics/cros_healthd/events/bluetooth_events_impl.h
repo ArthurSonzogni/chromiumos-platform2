@@ -16,6 +16,7 @@
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
+#include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -33,14 +34,19 @@ class BluetoothEventsImpl final : public BluetoothEvents {
                        observer) override;
 
  private:
-  void AdapterAdded(org::bluez::Adapter1ProxyInterface* adapter);
-  void AdapterRemoved(const dbus::ObjectPath& adapter_path);
-  void AdapterPropertyChanged(org::bluez::Adapter1ProxyInterface* adapter,
-                              const std::string& property_name);
-  void DeviceAdded(org::bluez::Device1ProxyInterface* device);
-  void DeviceRemoved(const dbus::ObjectPath& device_path);
-  void DevicePropertyChanged(org::bluez::Device1ProxyInterface* device,
-                             const std::string& property_name);
+  void OnBluezAdapterAdded(org::bluez::Adapter1ProxyInterface* adapter);
+  void OnBluezAdapterRemoved(const dbus::ObjectPath& adapter_path);
+  void OnBluezAdapterPropertyChanged(
+      org::bluez::Adapter1ProxyInterface* adapter,
+      const std::string& property_name);
+  void OnBluezDeviceAdded(org::bluez::Device1ProxyInterface* device);
+  void OnBluezDeviceRemoved(const dbus::ObjectPath& device_path);
+  void OnBluezDevicePropertyChanged(org::bluez::Device1ProxyInterface* device,
+                                    const std::string& property_name);
+
+  void OnFlossAdapterAdded(
+      org::chromium::bluetooth::BluetoothProxyInterface* adapter);
+  void OnFlossAdapterRemoved(const dbus::ObjectPath& adapter_path);
 
   // Each observer in |observers_| will be notified of any Bluetooth event in
   // the ash::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.

@@ -20,6 +20,7 @@
 #include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
+#include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
 #include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
@@ -77,6 +78,7 @@ class MockContext final : public Context {
   MockBluezController* mock_bluez_controller() const;
   FakeBluezEventHub* fake_bluez_event_hub() const;
   MockFlossController* mock_floss_controller() const;
+  FakeFlossEventHub* fake_floss_event_hub() const;
   MockExecutor* mock_executor();
   base::SimpleTestTickClock* mock_tick_clock() const;
   org::chromium::TpmManagerProxyMock* mock_tpm_manager_proxy() const;

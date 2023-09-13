@@ -32,6 +32,7 @@
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
 #include "diagnostics/cros_healthd/system/bluez_event_hub.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
+#include "diagnostics/cros_healthd/system/floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/powerd_adapter_impl.h"
@@ -39,6 +40,7 @@
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
+#include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
 
 namespace diagnostics {
 
@@ -84,6 +86,8 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   bluetooth_manager_proxy_ =
       std::make_unique<org::chromium::bluetooth::Manager::ObjectManagerProxy>(
           dbus_bus);
+  bluetooth_proxy_ =
+      std::make_unique<org::chromium::bluetooth::ObjectManagerProxy>(dbus_bus);
   cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
       dbus_bus, cras::kCrasServiceName,
       dbus::ObjectPath(cras::kCrasServicePath));
@@ -129,8 +133,9 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   system_utils_ = std::make_unique<SystemUtilitiesImpl>();
   bluez_controller_ = std::make_unique<BluezController>(bluez_proxy_.get());
   bluez_event_hub_ = std::make_unique<BluezEventHub>(bluez_proxy_.get());
-  floss_controller_ =
-      std::make_unique<FlossController>(bluetooth_manager_proxy_.get());
+  floss_controller_ = std::make_unique<FlossController>(
+      bluetooth_manager_proxy_.get(), bluetooth_proxy_.get());
+  floss_event_hub_ = std::make_unique<FlossEventHub>(bluetooth_proxy_.get());
   tick_clock_ = std::make_unique<base::DefaultTickClock>();
   udev_ = brillo::Udev::Create();
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();

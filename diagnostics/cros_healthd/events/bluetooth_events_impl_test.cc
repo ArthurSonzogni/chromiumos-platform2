@@ -30,6 +30,10 @@ class BluetoothEventsImplTest : public testing::Test {
     return mock_context_.fake_bluez_event_hub();
   }
 
+  FakeFlossEventHub* fake_floss_event_hub() const {
+    return mock_context_.fake_floss_event_hub();
+  }
+
   void WaitAndCheckEvent(mojom::BluetoothEventInfo::State state) {
     auto info = observer_.WaitForEvent();
     ASSERT_TRUE(info->is_bluetooth_event_info());
@@ -46,40 +50,52 @@ class BluetoothEventsImplTest : public testing::Test {
 
 }  // namespace
 
-// Test that we can receive an adapter added event.
-TEST_F(BluetoothEventsImplTest, ReceiveAdapterAddedEvent) {
+// Test that we can receive an adapter added event via Bluez proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveBluezAdapterAddedEvent) {
   fake_bluez_event_hub()->SendAdapterAdded();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterAdded);
 }
 
-// Test that we can receive an adapter removed event.
-TEST_F(BluetoothEventsImplTest, ReceiveAdapterRemovedEvent) {
+// Test that we can receive an adapter removed event via Bluez proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveBluezAdapterRemovedEvent) {
   fake_bluez_event_hub()->SendAdapterRemoved();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterRemoved);
 }
 
-// Test that we can receive an adapter property changed event.
-TEST_F(BluetoothEventsImplTest, ReceiveAdapterPropertyChangedEvent) {
+// Test that we can receive an adapter property changed event via Bluez proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveBluezAdapterPropertyChangedEvent) {
   fake_bluez_event_hub()->SendAdapterPropertyChanged();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterPropertyChanged);
 }
 
-// Test that we can receive a device added event.
-TEST_F(BluetoothEventsImplTest, ReceiveDeviceAddedEvent) {
+// Test that we can receive a device added event via Bluez proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveBluezDeviceAddedEvent) {
   fake_bluez_event_hub()->SendDeviceAdded();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDeviceAdded);
 }
 
-// Test that we can receive a device removed event.
-TEST_F(BluetoothEventsImplTest, ReceiveDeviceRemovedEvent) {
+// Test that we can receive a device removed event via Bluez proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveBluezDeviceRemovedEvent) {
   fake_bluez_event_hub()->SendDeviceRemoved();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDeviceRemoved);
 }
 
-// Test that we can receive a device property changed event.
-TEST_F(BluetoothEventsImplTest, ReceiveDevicePropertyChangedEvent) {
+// Test that we can receive a device property changed event via Bluez proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveBluezDevicePropertyChangedEvent) {
   fake_bluez_event_hub()->SendDevicePropertyChanged();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
+}
+
+// Test that we can receive an adapter added event via Floss proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveFlossAdapterAddedEvent) {
+  fake_floss_event_hub()->SendAdapterAdded();
+  WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterAdded);
+}
+
+// Test that we can receive an adapter removed event via Floss proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveFlossAdapterRemovedEvent) {
+  fake_floss_event_hub()->SendAdapterRemoved();
+  WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterRemoved);
 }
 
 }  // namespace diagnostics

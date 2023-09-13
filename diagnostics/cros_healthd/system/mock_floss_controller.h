@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_FLOSS_CONTROLLER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_FLOSS_CONTROLLER_H_
 
+#include <vector>
+
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 
 namespace diagnostics {
@@ -18,6 +20,10 @@ class MockFlossController final : public FlossController {
 
   MOCK_METHOD(org::chromium::bluetooth::ManagerProxyInterface*,
               GetManager,
+              (),
+              (const, override));
+  MOCK_METHOD(std::vector<org::chromium::bluetooth::BluetoothProxyInterface*>,
+              GetAdapters,
               (),
               (const, override));
 };

@@ -13,6 +13,7 @@ group("dbus-proxies") {
     ":bluetooth-manager-proxies",
     ":bluez-proxies",
     ":cras-proxies",
+    ":floss-proxies",
     ":fwupd-proxies",
   ]
 }
@@ -47,6 +48,15 @@ generate_dbus_proxies("cras-proxies") {
       [ "${sysroot}/usr/share/dbus-1/interfaces/org.chromium.cras.Control.xml" ]
   proxy_output_file = "include/cras/dbus-proxies.h"
   mock_output_file = "include/cras/dbus-proxy-mocks.h"
+}
+
+generate_dbus_proxies("floss-proxies") {
+  dbus_service_config = "floss/dbus-service-config.json"
+  proxy_output_file = "include/diagnostics/dbus_bindings/floss/dbus-proxies.h"
+  mock_output_file =
+      "include/diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "diagnostics/dbus_bindings/floss/dbus-proxies.h"
+  sources = [ "floss/org.chromium.bluetooth.Bluetooth.xml" ]
 }
 
 generate_dbus_proxies("fwupd-proxies") {
