@@ -526,10 +526,17 @@ class Platform2Test:
         with osutils.UmaskContext(0):
             # Populate the few nodes we care about.
             for node, (major, minor, perm) in NODES.items():
-                perm |= stat.S_IFCHR
-                os.mknod(
-                    os.path.join(path, node), perm, os.makedev(major, minor)
-                )
+                if self.strategy == "sudo":
+                    perm |= stat.S_IFCHR
+                    os.mknod(
+                        os.path.join(path, node), perm, os.makedev(major, minor)
+                    )
+                else:
+                    # We cannot execute os.mknod if the strategy
+                    # is "unprivileged", so bind mount the selected devices.
+                    old_path = os.path.join("/dev/", node)
+                    new_path = os.path.join(new_sysroot, "dev", node)
+                    self._bind_mount_file(old_path, new_path)
 
             # Setup some symlinks for common paths.
             for source, target in SYMLINKS.items():
@@ -1115,10 +1122,6 @@ def main(argv):
             argv.insert(0, f"--pid-gid={options.pid_gid}")
 
     if options.strategy == "unprivileged":
-        if not options.bind_mount_dev:
-            parser.error(
-                message="unprivileged strategy requires --bind-mount-dev"
-            )
         if options.user != "root":
             parser.error(message="unprivileged strategy requires --user=root")
 
