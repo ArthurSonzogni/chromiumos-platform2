@@ -530,21 +530,8 @@ class BRILLO_EXPORT Platform {
   //   path - Path to the file to delete
   virtual bool DeleteFileSecurely(const base::FilePath& path);
 
-  // Create a directory with the given path (including parent directories, if
-  // missing). All created directories will have 0700 permissions (modulo
-  // umask). Returns true on success without modifying |error|. Returns false on
-  // failure and sets |error| appropriately. See
-  // base::CreateDirectoryAndGetError() for details.
-  //
-  // Parameters
-  //   path - Absolute path to the directory to create.
-  //   error - Pointer to store the error code on failures. This can be null.
-  virtual bool CreateDirectoryAndGetError(const base::FilePath& path,
-                                          base::File::Error* error);
-
   // Backward-compatible convenience method for the above. Note that this does
   // not set |errno| correctly when it fails.
-  // TODO(b/272704660): Set |errno| correctly.
   virtual bool CreateDirectory(const base::FilePath& path);
 
   // Enumerate all directory entries in a given directory

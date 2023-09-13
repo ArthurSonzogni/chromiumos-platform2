@@ -278,11 +278,6 @@ int FakePlatform::Access(const base::FilePath& path, uint32_t flag) {
   return 0;
 }
 
-bool FakePlatform::CreateDirectoryAndGetError(const base::FilePath& path,
-                                              base::File::Error* error) {
-  return real_platform_.CreateDirectoryAndGetError(TestFilePath(path), error);
-}
-
 bool FakePlatform::CreateDirectory(const base::FilePath& path) {
   return real_platform_.CreateDirectory(TestFilePath(path));
 }

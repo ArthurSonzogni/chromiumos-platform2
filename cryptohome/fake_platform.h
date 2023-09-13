@@ -62,8 +62,6 @@ class FakePlatform final : public Platform {
   bool FileExists(const base::FilePath& path) const override;
   bool DirectoryExists(const base::FilePath& path) override;
   int Access(const base::FilePath& path, uint32_t flag) override;
-  bool CreateDirectoryAndGetError(const base::FilePath& path,
-                                  base::File::Error* error) override;
   bool CreateDirectory(const base::FilePath& path) override;
   bool CreateSparseFile(const base::FilePath& path, int64_t size) override;
 

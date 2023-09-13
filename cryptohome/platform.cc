@@ -681,13 +681,6 @@ bool Platform::ReadFileToSecureBlob(const FilePath& path,
   return ReadFileToBlob<brillo::SecureBlob>(path, sblob);
 }
 
-bool Platform::CreateDirectoryAndGetError(const FilePath& path,
-                                          base::File::Error* error) {
-  DCHECK(path.IsAbsolute()) << "path=" << path;
-
-  return base::CreateDirectoryAndGetError(path, error);
-}
-
 bool Platform::CreateDirectory(const FilePath& path) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 

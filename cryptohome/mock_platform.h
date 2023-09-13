@@ -99,10 +99,6 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool, FileExists, (const base::FilePath&), (const, override));
   MOCK_METHOD(bool, DirectoryExists, (const base::FilePath&), (override));
   MOCK_METHOD(int, Access, (const base::FilePath&, uint32_t), (override));
-  MOCK_METHOD(bool,
-              CreateDirectoryAndGetError,
-              (const base::FilePath&, base::File::Error*),
-              (override));
   MOCK_METHOD(bool, CreateDirectory, (const base::FilePath&), (override));
   MOCK_METHOD(bool,
               CreateSparseFile,
