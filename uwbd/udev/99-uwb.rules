@@ -1,0 +1,6 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Limit access to the /dev/sr1xx device to the UWB daemon user and group.
+SUBSYSTEM=="misc", KERNEL=="sr1xx", OWNER="uwbd", GROUP="uwbd"
