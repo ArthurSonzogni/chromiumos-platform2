@@ -4,11 +4,11 @@
 
 #include "init/crossystem_fake.h"
 
-bool CrosSystemFake::GetInt(const std::string& name, int* value_out) {
-  if (int_map_.count(name) == 0)
+bool CrosSystemFake::GetInt(const std::string& name, int* value_out) const {
+  const auto it = int_map_.find(name);
+  if (it == int_map_.end())
     return false;
-
-  *value_out = int_map_[name];
+  *value_out = it->second;
   return true;
 }
 
@@ -18,11 +18,11 @@ bool CrosSystemFake::SetInt(const std::string& name, int value) {
 }
 
 bool CrosSystemFake::GetString(const std::string& name,
-                               std::string* value_out) {
-  if (string_map_.count(name) == 0)
+                               std::string* value_out) const {
+  const auto it = string_map_.find(name);
+  if (it == string_map_.end())
     return false;
-
-  *value_out = string_map_[name];
+  *value_out = it->second;
   return true;
 }
 

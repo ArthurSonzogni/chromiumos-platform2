@@ -11,9 +11,9 @@
 
 class CrosSystemImpl : public CrosSystem {
  public:
-  bool GetInt(const std::string& name, int* value_out);
+  bool GetInt(const std::string& name, int* value_out) const;
   bool SetInt(const std::string& name, int value);
-  bool GetString(const std::string& name, std::string* value_out);
+  bool GetString(const std::string& name, std::string* value_out) const;
   bool SetString(const std::string& name, const std::string& value);
 };
 

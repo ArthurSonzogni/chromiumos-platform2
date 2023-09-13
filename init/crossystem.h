@@ -28,7 +28,7 @@ class CrosSystem {
   // Reads a system property integer into `value_out`.
   //
   // Returns true on sucess
-  virtual bool GetInt(const std::string& name, int* value_out) = 0;
+  virtual bool GetInt(const std::string& name, int* value_out) const = 0;
 
   // Sets the system property integer `name` to `value`.
   //
@@ -38,7 +38,8 @@ class CrosSystem {
   // Reads a system property string and stores it in `value_out`.
   //
   // Returns true on success.
-  virtual bool GetString(const std::string& name, std::string* value_out) = 0;
+  virtual bool GetString(const std::string& name,
+                         std::string* value_out) const = 0;
 
   // Sets a system property string.
   //

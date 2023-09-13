@@ -8,7 +8,7 @@
 
 #include <vboot/crossystem.h>
 
-bool CrosSystemImpl::GetInt(const std::string& name, int* value_out) {
+bool CrosSystemImpl::GetInt(const std::string& name, int* value_out) const {
   int value = ::VbGetSystemPropertyInt(name.c_str());
   if (value == -1)
     return false;
@@ -21,7 +21,7 @@ bool CrosSystemImpl::SetInt(const std::string& name, int value) {
 }
 
 bool CrosSystemImpl::GetString(const std::string& name,
-                               std::string* value_out) {
+                               std::string* value_out) const {
   char buf[VB_MAX_STRING_PROPERTY];
   if (::VbGetSystemPropertyString(name.c_str(), buf, sizeof(buf)) != 0)
     return false;
