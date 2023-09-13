@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<CrosSystemImpl> cros_system =
       std::make_unique<CrosSystemImpl>();
   startup::MountHelperFactory mount_helper_factory(
-      std::make_unique<startup::Platform>(), cros_system.get(), flags,
+      std::make_unique<startup::Platform>(), *cros_system, flags,
       base::FilePath("/"), base::FilePath(kStatefulPartition),
       base::FilePath(kLsbRelease));
   std::unique_ptr<startup::MountHelper> mount_helper =

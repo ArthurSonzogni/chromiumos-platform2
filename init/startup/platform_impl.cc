@@ -269,9 +269,9 @@ void Platform::ClobberLogRepair(const base::FilePath& dev,
 }
 
 // Returns if we are running on a debug build.
-bool Platform::IsDebugBuild(CrosSystem* const cros_system) {
+bool Platform::IsDebugBuild(const CrosSystem& cros_system) {
   int debug;
-  if (cros_system->GetInt("debug_build", &debug) && debug == 1) {
+  if (cros_system.GetInt("debug_build", &debug) && debug == 1) {
     return true;
   } else {
     return false;
@@ -279,11 +279,11 @@ bool Platform::IsDebugBuild(CrosSystem* const cros_system) {
 }
 
 // Determine if the device is in dev mode.
-bool Platform::InDevMode(CrosSystem* cros_system) {
+bool Platform::InDevMode(const CrosSystem& cros_system) {
   // cros_debug equals one if we've booted in developer mode or we've booted
   // a developer image.
   int debug;
-  return (cros_system->GetInt("cros_debug", &debug) && debug == 1);
+  return (cros_system.GetInt("cros_debug", &debug) && debug == 1);
 }
 
 // Determine if the device is using a test image.
@@ -302,7 +302,7 @@ bool IsTestImage(const base::FilePath& lsb_file) {
 }
 
 // Return if the device is in factory test mode.
-bool IsFactoryTestMode(CrosSystem* cros_system,
+bool IsFactoryTestMode(const CrosSystem& cros_system,
                        const base::FilePath& base_dir) {
   // The path to factory enabled tag. If this path exists in a debug build,
   // we assume factory test mode.
@@ -310,7 +310,7 @@ bool IsFactoryTestMode(CrosSystem* cros_system,
   base::FilePath factory_tag = factory_dir.Append("enabled");
   struct stat statbuf;
   int res;
-  if (cros_system->GetInt("debug_build", &res) && res == 1 &&
+  if (cros_system.GetInt("debug_build", &res) && res == 1 &&
       stat(factory_tag.value().c_str(), &statbuf) == 0 &&
       S_ISREG(statbuf.st_mode)) {
     return true;
@@ -343,7 +343,8 @@ bool IsFactoryInstallerMode(const base::FilePath& base_dir) {
 
 // Return if the device is in either in factory test mode or in factory
 // installer mode.
-bool IsFactoryMode(CrosSystem* cros_system, const base::FilePath& base_dir) {
+bool IsFactoryMode(const CrosSystem& cros_system,
+                   const base::FilePath& base_dir) {
   return (IsFactoryTestMode(cros_system, base_dir) ||
           IsFactoryInstallerMode(base_dir));
 }

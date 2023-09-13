@@ -26,7 +26,7 @@ namespace startup {
 class MountHelperFactory {
  public:
   explicit MountHelperFactory(std::unique_ptr<Platform> platform,
-                              CrosSystem* cros_system,
+                              const CrosSystem& cros_system,
                               const Flags& flags,
                               const base::FilePath& root,
                               const base::FilePath& stateful,
@@ -44,7 +44,7 @@ class MountHelperFactory {
 
  private:
   std::unique_ptr<Platform> platform_;
-  CrosSystem* const cros_system_;
+  const CrosSystem& cros_system_;
   const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;

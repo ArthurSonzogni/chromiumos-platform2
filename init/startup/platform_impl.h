@@ -23,14 +23,16 @@ namespace startup {
 bool IsTestImage(const base::FilePath& lsb_file);
 
 // Determines if the device is in factory test mode.
-bool IsFactoryTestMode(CrosSystem* cros_system, const base::FilePath& base_dir);
+bool IsFactoryTestMode(const CrosSystem& cros_system,
+                       const base::FilePath& base_dir);
 
 // Determines if the device is in factory installer mode.
 bool IsFactoryInstallMode(const base::FilePath& base_dir);
 
 // Determines if the device is in either factory test mode or in factory
 // installer mode.
-bool IsFactoryMode(CrosSystem* cros_system, const base::FilePath& base_dir);
+bool IsFactoryMode(const CrosSystem& cros_system,
+                   const base::FilePath& base_dir);
 
 // Determines if a filesystem is supported.
 // False if there's an error checking or if the filesystem isn't supported,
@@ -125,8 +127,8 @@ class Platform {
   void ClobberLogRepair(const base::FilePath& dev, const std::string& msg);
 
   // Determine if the device is in dev mode.
-  bool InDevMode(CrosSystem* cros_system);
-  bool IsDebugBuild(CrosSystem* const cros_system);
+  bool InDevMode(const CrosSystem& cros_system);
+  bool IsDebugBuild(const CrosSystem& cros_system);
 };
 
 }  // namespace startup

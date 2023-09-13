@@ -22,7 +22,7 @@
 namespace startup {
 
 MountHelperFactory::MountHelperFactory(std::unique_ptr<Platform> platform,
-                                       CrosSystem* cros_system,
+                                       const CrosSystem& cros_system,
                                        const Flags& flags,
                                        const base::FilePath& root,
                                        const base::FilePath& stateful,

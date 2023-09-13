@@ -380,9 +380,8 @@ class ConfigTest : public ::testing::Test {
   std::unique_ptr<startup::MountHelper> GenerateMountHelper() {
     startup::Flags flags;
     startup::ChromeosStartup::ParseFlags(&flags);
-    startup::MountHelperFactory factory(std::move(platform_),
-                                        cros_system_.get(), flags, base_dir_,
-                                        stateful_, lsb_file_);
+    startup::MountHelperFactory factory(std::move(platform_), *cros_system_,
+                                        flags, base_dir_, stateful_, lsb_file_);
     return factory.Generate();
   }
 
