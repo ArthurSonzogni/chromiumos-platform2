@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Generates the Rust D-Bus bindings for uwbd.
+// Generates the Rust D-Bus bindings for uwbd, builds the nxp hal source
+// to a static archive and generates the FFI bindings to it as well.
 
 use chromeos_dbus_bindings::{generate_module, BindingsType, CROSSROADS_SERVER_OPTS};
+use std::env;
 use std::path::Path;
+use std::path::PathBuf;
 
 // The parent path of uwbd.
 const SOURCE_DIR: &str = ".";
@@ -107,9 +110,42 @@ fn build_nxp_hal() {
     builder.compile("nxphal");
 }
 
+/// Generates the FFI bindings to the nxphal lib using Bindgen
+fn generate_bindings_to_libnxphal() {
+    let target_dir = std::env::var_os("OUT_DIR").unwrap();
+
+    println!("cargo:rustc-link-lib=static=nxphal");
+    println!(
+        "cargo:rustc-link-search=native={}",
+        target_dir.clone().into_string().unwrap()
+    );
+
+    let clang_args: Vec<&str> = vec!["-x", "c++", "-std=c++17"];
+
+    let libnxphal_include_paths: Vec<&str> = vec!["-Inxp_hal/extns/inc", "-Inxp_hal/halimpl/inc"];
+
+    // Use the bingen::Builder to build up the options to generate
+    // the required bindings.
+    let bindings = bindgen::Builder::default()
+        .clang_args(libnxphal_include_paths)
+        .clang_args(clang_args)
+        .header("hal_bindings/wrapper.h")
+        .generate()
+        .expect("Unable to generate bindings");
+
+    // Write the bindings to the $OUT_DIR/bindings.rs file.
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("Couldn't write bindings!");
+}
+
 fn main() {
     // Build the NXP middleware/HAL as a static library.
     build_nxp_hal();
+
+    // Generate FFI bindings to libnxphal
+    generate_bindings_to_libnxphal();
 
     // Generate the D-Bus bindings to "src/bindings/include_modules.rs".
     generate_module(Path::new(SOURCE_DIR), BINDINGS_TO_GENERATE).unwrap();
