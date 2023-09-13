@@ -1281,8 +1281,8 @@ TEST_F(DeviceInfoTechnologyTest, Ifb) {
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology("ifb"));
 }
 
-TEST_F(DeviceInfoTechnologyTest, RmnetData) {
-  test_device_name_ = "rmnet_data0";
+TEST_F(DeviceInfoTechnologyTest, Qmapmux) {
+  test_device_name_ = "qmapmux0.0";
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology("rmnet"));
 }
 
