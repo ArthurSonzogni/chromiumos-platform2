@@ -104,11 +104,15 @@ const UNENCRYPTED_SNAPSHOT_SIZE: u64 = SIZE_1G;
 /// complete.
 const MERGE_TIMEOUT_MS: u32 = 20 * 60 * 1000;
 
-/// AES-GCM uses a fixed 12 byte IV. The other 12 bytes are auth tag.
-const AES_GCM_INTEGRITY_BYTES_PER_BLOCK: u64 = 12 + 12;
-
 /// Logical disk sector size (512 bytes).
 const SECTOR_SIZE: u64 = 512;
+
+/// AES-GCM uses a fixed 12 byte IV. The other 12 bytes are auth tag.
+const AES_GCM_INTEGRITY_BYTES_PER_BLOCK: u64 = 12 + 12;
+const DM_INTEGRITY_BUF_SIZE: u64 = 65536;
+const DM_INTEGRITY_SUPERBLOCK_SIZE: u64 = 4096;
+const DM_INTEGRITY_JOURNAL_SIZE: u64 = SECTOR_SIZE * 328;
+const DM_INITIAL_SEGMENT_SIZE: u64 = DM_INTEGRITY_SUPERBLOCK_SIZE + DM_INTEGRITY_JOURNAL_SIZE;
 
 lazy_static! {
     pub static ref VOLUME_MANAGER: RwLock<VolumeManager> =
@@ -656,13 +660,10 @@ impl VolumeManager {
 
             HibernateVolume::Integrity => {
                 let num_pages = hiberimage_size / get_page_size() as u64;
-
-                // Eight 512 byte sectors are required for the superblock and eight
-                // padding sectors.
-                let initial_size = (8 + 8) * SECTOR_SIZE;
-
+                let data_area_size = roundup_mutiple(num_pages * AES_GCM_INTEGRITY_BYTES_PER_BLOCK,
+                                                     DM_INTEGRITY_BUF_SIZE);
                 roundup_mutiple(
-                    initial_size + num_pages * AES_GCM_INTEGRITY_BYTES_PER_BLOCK,
+                    DM_INITIAL_SEGMENT_SIZE + data_area_size,
                     SIZE_1M,
                 )
             }
@@ -786,10 +787,11 @@ impl VolumeManager {
 
         let table = format!(
             "0 {backing_dev_nr_sectors} integrity {} 0 \
-                             {AES_GCM_INTEGRITY_BYTES_PER_BLOCK} D 2 block_size:{SIZE_4K} \
-                             meta_device:{}",
+                             {AES_GCM_INTEGRITY_BYTES_PER_BLOCK} D 4 block_size:{SIZE_4K} \
+                             meta_device:{} journal_sectors:1 buffer_sectors:{}",
             backing_dev.display(),
-            meta_data_dev.display()
+            meta_data_dev.display(),
+            DM_INTEGRITY_BUF_SIZE / SECTOR_SIZE
         );
 
         DeviceMapper::create_device(Self::HIBERIMAGE_INTEGRITY, &table)
@@ -806,9 +808,9 @@ impl VolumeManager {
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
         let table = format!(
             "0 {backing_dev_nr_sectors} crypt capi:gcm(aes)-random :32:logon:{key_desc} \
-                             0 {} 0 5 allow_discards no_read_workqueue \
+                             0 {} 0 5 no_read_workqueue \
                              no_write_workqueue sector_size:{SIZE_4K} \
-                             integrity:{AES_GCM_INTEGRITY_BYTES_PER_BLOCK}:aead",
+                             integrity:{AES_GCM_INTEGRITY_BYTES_PER_BLOCK}:aead iv_large_sectors",
             backing_dev.display()
         );
 
