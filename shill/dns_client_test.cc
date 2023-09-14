@@ -20,7 +20,6 @@
 #include "shill/error.h"
 #include "shill/mock_ares.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/net/mock_time.h"
 
 using testing::_;
 using testing::DoAll;
@@ -68,21 +67,12 @@ MATCHER_P2(IsError, error_type, error_message, "") {
 class DnsClientTest : public Test {
  public:
   DnsClientTest() : ares_result_(ARES_SUCCESS), address_result_(std::nullopt) {
-    time_val_.tv_sec = 0;
-    time_val_.tv_usec = 0;
-    ares_timeout_.tv_sec = kAresWait.InSeconds();
-    ares_timeout_.tv_usec =
-        kAresWait.InMicroseconds() % base::Time::kMicrosecondsPerSecond;
     hostent_.h_addrtype = net_base::ToSAFamily(net_base::IPFamily::kIPv4);
     hostent_.h_length = sizeof(kReturnAddressList0);
     hostent_.h_addr_list = kReturnAddressList;
   }
 
-  void SetUp() override {
-    EXPECT_CALL(time_, GetTimeMonotonic(_))
-        .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
-    SetInActive();
-  }
+  void SetUp() override { SetInActive(); }
 
   void TearDown() override {
     // We need to make sure the dns_client instance releases ares_
@@ -90,16 +80,6 @@ class DnsClientTest : public Test {
     if (dns_client_) {
       dns_client_->Stop();
     }
-  }
-
-  void AdvanceTime(base::TimeDelta time) {
-    struct timeval adv_time = {
-        static_cast<time_t>(time.InSeconds()),
-        static_cast<suseconds_t>(time.InMicroseconds() %
-                                 base::Time::kMicrosecondsPerSecond)};
-    timeradd(&time_val_, &adv_time, &time_val_);
-    EXPECT_CALL(time_, GetTimeMonotonic(_))
-        .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
   }
 
   void CallReplyCB() {
@@ -117,19 +97,24 @@ class DnsClientTest : public Test {
 
   void CreateClient(base::TimeDelta timeout) {
     dns_client_ = std::make_unique<DnsClient>(
-        net_base::IPFamily::kIPv4, kNetworkInterface, timeout.InMilliseconds(),
-        &dispatcher_, callback_target_.callback());
+        net_base::IPFamily::kIPv4, kNetworkInterface, timeout, &dispatcher_,
+        callback_target_.callback());
     dns_client_->ares_ = &ares_;
-    dns_client_->time_ = &time_;
   }
 
   void SetActive() {
+    const struct timeval ares_timeout = {
+        .tv_sec = static_cast<time_t>(kAresWait.InSeconds()),
+        .tv_usec = static_cast<suseconds_t>(kAresWait.InMicroseconds() %
+                                            base::Time::kMicrosecondsPerSecond),
+    };
+
     // Returns that ares socket is readable.
     EXPECT_CALL(ares_, GetSock(_, _, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<1>(fake_ares_socket_.Get()), Return(1)));
     EXPECT_CALL(ares_, Timeout(_, _, _))
-        .WillRepeatedly(DoAll(SetArgPointee<2>(ares_timeout_), ReturnArg<2>()));
+        .WillRepeatedly(DoAll(SetArgPointee<2>(ares_timeout), ReturnArg<2>()));
   }
 
   void SetInActive() {
@@ -214,9 +199,12 @@ class DnsClientTest : public Test {
     DnsClient::ClientCallback callback_;
   };
 
-  // required by base::FileDescriptorWatcher.
   base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::MainThreadType::IO};
+      // required by base::FileDescriptorWatcher.
+      base::test::TaskEnvironment::MainThreadType::IO,
+
+      // required by base::TimeTicks::Now().
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   net_base::MockSocket fake_ares_socket_;
 
   std::unique_ptr<DnsClient> dns_client_;
@@ -224,9 +212,6 @@ class DnsClientTest : public Test {
   std::string queued_request_;
   StrictMock<DnsCallbackTarget> callback_target_;
   StrictMock<MockAres> ares_;
-  StrictMock<MockTime> time_;
-  struct timeval time_val_;
-  struct timeval ares_timeout_;
   struct hostent hostent_;
   int ares_result_;
   Error error_result_;
@@ -302,35 +287,35 @@ TEST_F(DnsClientTest, GoodRequest) {
 TEST_F(DnsClientTest, GoodRequestWithTimeout) {
   StartValidRequest();
   // Insert an intermediate HandleTimeout callback.
-  AdvanceTime(kAresWait);
+  task_environment_.FastForwardBy(kAresWait);
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, ARES_SOCKET_BAD));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
   CallTimeout();
-  AdvanceTime(kAresWait);
+  task_environment_.FastForwardBy(kAresWait);
   TestValidCompletion();
 }
 
 TEST_F(DnsClientTest, GoodRequestWithDnsRead) {
   StartValidRequest();
   // Insert an intermediate HandleDnsRead callback.
-  AdvanceTime(kAresWait);
+  task_environment_.FastForwardBy(kAresWait);
   EXPECT_CALL(
       ares_, ProcessFd(kAresChannel, fake_ares_socket_.Get(), ARES_SOCKET_BAD));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
   CallDnsRead();
-  AdvanceTime(kAresWait);
+  task_environment_.FastForwardBy(kAresWait);
   TestValidCompletion();
 }
 
 TEST_F(DnsClientTest, GoodRequestWithDnsWrite) {
   StartValidRequest();
   // Insert an intermediate HandleDnsWrite callback.
-  AdvanceTime(kAresWait);
+  task_environment_.FastForwardBy(kAresWait);
   EXPECT_CALL(
       ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, fake_ares_socket_.Get()));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
   CallDnsWrite();
-  AdvanceTime(kAresWait);
+  task_environment_.FastForwardBy(kAresWait);
   TestValidCompletion();
 }
 
@@ -343,12 +328,11 @@ TEST_F(DnsClientTest, TimeoutFirstRefresh) {
       .Times(1);
   EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kGoodServer)))
       .WillOnce(Return(ARES_SUCCESS));
-  EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
-  struct timeval init_time_val = time_val_;
-  AdvanceTime(kAresTimeout);
-  EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgPointee<0>(init_time_val), Return(0)))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(time_val_), Return(0)));
+  EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _))
+      .WillOnce([&]() {
+        // Simulate the function call takes a long time.
+        task_environment_.FastForwardBy(kAresTimeout);
+      });
   EXPECT_CALL(callback_target_, CallTarget(Not(HasValue()))).Times(0);
   EXPECT_CALL(ares_, Destroy(kAresChannel));
   Error error;
@@ -367,7 +351,7 @@ TEST_F(DnsClientTest, TimeoutFirstRefresh) {
 TEST_F(DnsClientTest, TimeoutDispatcherEvent) {
   StartValidRequest();
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, ARES_SOCKET_BAD));
-  AdvanceTime(kAresTimeout);
+  task_environment_.FastForwardBy(kAresTimeout);
   ExpectPostCompletionTask();
   CallTimeout();
   EXPECT_CALL(callback_target_, CallTarget(IsError(Error::kOperationTimeout,
@@ -378,7 +362,7 @@ TEST_F(DnsClientTest, TimeoutDispatcherEvent) {
 // Failed request due to timeout reported by ARES.
 TEST_F(DnsClientTest, TimeoutFromARES) {
   StartValidRequest();
-  AdvanceTime(kAresWait);
+  task_environment_.FastForwardBy(kAresWait);
   ares_result_ = ARES_ETIMEOUT;
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, ARES_SOCKET_BAD))
       .WillOnce(InvokeWithoutArgs(this, &DnsClientTest::CallReplyCB));
@@ -392,7 +376,7 @@ TEST_F(DnsClientTest, TimeoutFromARES) {
 // Failed request due to "host not found" reported by ARES.
 TEST_F(DnsClientTest, HostNotFound) {
   StartValidRequest();
-  AdvanceTime(kAresWait);
+  task_environment_.FastForwardBy(kAresWait);
   ares_result_ = ARES_ENOTFOUND;
   EXPECT_CALL(ares_,
               ProcessFd(kAresChannel, fake_ares_socket_.Get(), ARES_SOCKET_BAD))

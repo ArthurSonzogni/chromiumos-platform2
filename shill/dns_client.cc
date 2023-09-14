@@ -23,7 +23,6 @@
 #include <base/strings/string_util.h>
 
 #include "shill/logging.h"
-#include "shill/net/shill_time.h"
 #include "shill/shill_ares.h"
 
 namespace shill {
@@ -63,30 +62,27 @@ const char DnsClient::kErrorUnknown[] = "DNS Resolver unknown internal error";
 
 // Private to the implementation of resolver so callers don't include ares.h
 struct DnsClientState {
-  DnsClientState() : channel(nullptr), start_time{} {}
-
-  ares_channel channel;
+  ares_channel channel = nullptr;
   std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       read_handlers;
   std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       write_handlers;
-  struct timeval start_time;
+  base::TimeTicks start_time;
 };
 
 DnsClient::DnsClient(net_base::IPFamily family,
                      const std::string& interface_name,
-                     int timeout_ms,
+                     base::TimeDelta timeout,
                      EventDispatcher* dispatcher,
                      const ClientCallback& callback)
     : address_(family),
       interface_name_(interface_name),
       dispatcher_(dispatcher),
       callback_(callback),
-      timeout_ms_(timeout_ms),
+      timeout_(timeout),
       running_(false),
       weak_ptr_factory_(this),
-      ares_(Ares::GetInstance()),
-      time_(Time::GetInstance()) {}
+      ares_(Ares::GetInstance()) {}
 
 DnsClient::~DnsClient() {
   Stop();
@@ -113,7 +109,7 @@ bool DnsClient::Start(const std::vector<std::string>& dns_list,
       return false;
     }
 
-    options.timeout = timeout_ms_ / filtered_dns_list.size();
+    options.timeout = timeout_.InMilliseconds() / filtered_dns_list.size();
 
     resolver_state_ = std::make_unique<DnsClientState>();
     int status = ares_->InitOptions(&resolver_state_->channel, &options,
@@ -146,7 +142,7 @@ bool DnsClient::Start(const std::vector<std::string>& dns_list,
   }
 
   running_ = true;
-  time_->GetTimeMonotonic(&resolver_state_->start_time);
+  resolver_state_->start_time = base::TimeTicks::Now();
   ares_->GetHostByName(resolver_state_->channel, hostname.c_str(),
                        net_base::ToSAFamily(address_.GetFamily()),
                        ReceiveDnsReplyCB, this);
@@ -331,14 +327,11 @@ bool DnsClient::RefreshHandles() {
 
   // Schedule timer event for the earlier of our timeout or one requested by
   // the resolver library.
-  struct timeval now, elapsed_time, timeout_tv;
-  time_->GetTimeMonotonic(&now);
-  timersub(&now, &resolver_state_->start_time, &elapsed_time);
-  timeout_tv.tv_sec = timeout_ms_ / 1000;
-  timeout_tv.tv_usec = (timeout_ms_ % 1000) * 1000;
+  const base::TimeDelta elapsed_time =
+      base::TimeTicks::Now() - resolver_state_->start_time;
   timeout_closure_.Cancel();
 
-  if (timercmp(&elapsed_time, &timeout_tv, >=)) {
+  if (elapsed_time >= timeout_) {
     // There are 3 cases of interest:
     //  - If we got here from Start(), when we return, Stop() will be
     //    called, so our cleanup task will not run, so we will not have the
@@ -356,10 +349,16 @@ bool DnsClient::RefreshHandles() {
                                          weak_ptr_factory_.GetWeakPtr()));
     return false;
   } else {
-    struct timeval max, ret_tv;
-    timersub(&timeout_tv, &elapsed_time, &max);
+    const base::TimeDelta max = timeout_ - elapsed_time;
+    struct timeval max_tv = {
+        .tv_sec = static_cast<time_t>(max.InSeconds()),
+        .tv_usec = static_cast<suseconds_t>(
+            (max - base::Seconds(max.InSeconds())).InMicroseconds()),
+    };
+
+    struct timeval ret_tv;
     struct timeval* tv =
-        ares_->Timeout(resolver_state_->channel, &max, &ret_tv);
+        ares_->Timeout(resolver_state_->channel, &max_tv, &ret_tv);
     timeout_closure_.Reset(base::BindOnce(&DnsClient::HandleTimeout,
                                           weak_ptr_factory_.GetWeakPtr()));
     dispatcher_->PostDelayedTask(

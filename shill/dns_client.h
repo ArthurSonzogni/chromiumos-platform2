@@ -12,6 +12,7 @@
 #include <base/cancelable_callback.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <base/types/expected.h>
 #include <net-base/ip_address.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -24,7 +25,6 @@ struct hostent;
 namespace shill {
 
 class Ares;
-class Time;
 struct DnsClientState;
 
 // Implements a DNS resolution client that can run asynchronously.
@@ -44,11 +44,11 @@ class DnsClient {
   static const char kErrorTimedOut[];
   static const char kErrorUnknown[];
 
-  static const int kDnsTimeoutMilliseconds = 8000;
+  static constexpr base::TimeDelta kDnsTimeout = base::Milliseconds(8000);
 
   DnsClient(net_base::IPFamily family,
             const std::string& interface_name,
-            int timeout_ms,
+            base::TimeDelta timeout,
             EventDispatcher* dispatcher,
             const ClientCallback& callback);
   DnsClient(const DnsClient&) = delete;
@@ -95,13 +95,12 @@ class DnsClient {
   std::string interface_name_;
   EventDispatcher* dispatcher_;
   ClientCallback callback_;
-  int timeout_ms_;
+  base::TimeDelta timeout_;
   bool running_;
   std::unique_ptr<DnsClientState> resolver_state_;
   base::CancelableOnceClosure timeout_closure_;
   base::WeakPtrFactory<DnsClient> weak_ptr_factory_;
   Ares* ares_;
-  Time* time_;
 };
 
 }  // namespace shill

@@ -4,10 +4,16 @@
 
 #include "shill/mock_dns_client.h"
 
+#include <base/time/time.h>
+
 namespace shill {
 
 MockDnsClient::MockDnsClient()
-    : DnsClient(net_base::IPFamily::kIPv4, "", 0, nullptr, ClientCallback()) {}
+    : DnsClient(net_base::IPFamily::kIPv4,
+                "",
+                base::Seconds(0),
+                nullptr,
+                ClientCallback()) {}
 
 MockDnsClient::~MockDnsClient() = default;
 
