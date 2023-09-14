@@ -1067,9 +1067,18 @@ void CameraDeviceAdapter::NotifyClient(const camera3_callback_ops_t* ops,
       InflightRequestInfo& info = it->second;
       switch (msg.message.error.error_code) {
         case CAMERA3_MSG_ERROR_REQUEST:
+          // Some partial metadata won't be available, so stop tracking it.
+          info.has_pending_metadata = false;
+
+          // If the buffer management APIs are enabled, buffers are not
+          // associated with specific requests. Otherwise, HAL still returns
+          // buffers with capture results.
+          if (self->IsBufferManagementSupported()) {
+            info.pending_streams.clear();
+          }
+          break;
         case CAMERA3_MSG_ERROR_RESULT:
           // Some partial metadata won't be available, so stop tracking it.
-          // For request error, HAL still returns buffers with capture results.
           info.has_pending_metadata = false;
           break;
         case CAMERA3_MSG_ERROR_BUFFER:
