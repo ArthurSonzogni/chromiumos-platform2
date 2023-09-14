@@ -1285,14 +1285,10 @@ void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {
   DeregisterLocalDevice(device);
 }
 
-void WiFiProvider::SetRegDomain(std::string country, bool is_cellular) {
+void WiFiProvider::SetRegDomain(std::string country) {
   CHECK(!country.empty()) << "Missing alpha2";
 
   ReqSetRegMessage set_reg;
-  if (is_cellular) {
-    set_reg.attributes()->SetU32AttributeValue(NL80211_ATTR_USER_REG_HINT_TYPE,
-                                               NL80211_USER_REG_HINT_CELL_BASE);
-  }
   set_reg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2,
                                                 country);
   LOG(INFO) << "Requesting region change from: " << country_.value_or("none")
@@ -1323,7 +1319,7 @@ void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
        base::CompareCaseInsensitiveASCII(cellular_country.value(),
                                          country_.value()))) {
     phy_info_ready_cb_ = std::move(phy_ready_callback);
-    SetRegDomain(cellular_country.value(), true);
+    SetRegDomain(cellular_country.value());
     phy_update_timeout_cb_.Reset(
         base::BindOnce(&WiFiProvider::PhyUpdateTimeout,
                        weak_ptr_factory_while_started_.GetWeakPtr()));

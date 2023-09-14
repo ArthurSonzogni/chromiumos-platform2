@@ -325,10 +325,8 @@ class WiFiProvider : public ProviderInterface {
   // we request phy info for that phy index.
   void HandleNetlinkBroadcast(const shill::NetlinkMessage& message);
 
-  // Set regulatory domain to |country|, include and set
-  // NL80211_ATTR_USER_REG_HINT_TYPE to NL80211_USER_REG_HINT_CELL_BASE if
-  // |is_cellular| is true.
-  mockable void SetRegDomain(std::string country, bool is_cellular);
+  // Set regulatory domain to |country|
+  mockable void SetRegDomain(std::string country);
   // Utility function handling timeout for setting of regulatory domain.
   void PhyUpdateTimeout();
   // Utility function used to detect the end of PHY info dump and responsible
