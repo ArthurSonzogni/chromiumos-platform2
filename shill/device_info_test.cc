@@ -47,7 +47,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/net/mock_time.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_message.h"
@@ -119,7 +118,6 @@ class DeviceInfoTest : public Test {
 
     device_info_.rtnl_handler_ = &rtnl_handler_;
     device_info_.netlink_manager_ = &netlink_manager_;
-    device_info_.time_ = &time_;
     patchpanel_client_ = new patchpanel::FakeClient();
     manager_.patchpanel_client_.reset(patchpanel_client_);
     CreateSysfsRoot();
@@ -185,7 +183,6 @@ class DeviceInfoTest : public Test {
   EventDispatcherForTest dispatcher_;
   MockNetlinkManager netlink_manager_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
-  MockTime time_;
   patchpanel::FakeClient* patchpanel_client_;  // Owned by Manager
   NiceMock<MockNetworkApplier> network_applier_;
   net_base::MockSocketFactory* socket_factory_;  // Owned by DeviceInfo

@@ -62,7 +62,6 @@
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/net/shill_time.h"
 #include "shill/network/network.h"
 #include "shill/power_manager.h"
 #include "shill/vpn/vpn_provider.h"
@@ -237,8 +236,7 @@ DeviceInfo::DeviceInfo(Manager* manager)
     : manager_(manager),
       device_info_root_(kDeviceInfoRoot),
       rtnl_handler_(RTNLHandler::GetInstance()),
-      netlink_manager_(NetlinkManager::GetInstance()),
-      time_(Time::GetInstance()) {
+      netlink_manager_(NetlinkManager::GetInstance()) {
   if (manager) {
     // |manager| may be null in tests.
     dispatcher_ = manager->dispatcher();

@@ -24,7 +24,6 @@
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/net/shill_time.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 
@@ -323,7 +322,6 @@ class DeviceInfo {
   std::unique_ptr<net_base::SocketFactory> socket_factory_ =
       std::make_unique<net_base::SocketFactory>();
 
-  Time* time_;
   base::WeakPtrFactory<DeviceInfo> weak_factory_{this};
 };
 
