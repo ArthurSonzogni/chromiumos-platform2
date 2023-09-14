@@ -63,6 +63,8 @@ const char kVmStoppedSignal[] = "VmStoppedSignal";
 const char kVmStoppingSignal[] = "VmStoppingSignal";
 const char kVmSwappingSignal[] = "VmSwappingSignal";
 
+const char kArcVmName[] = "arcvm";
+
 }  // namespace concierge
 }  // namespace vm_tools
 

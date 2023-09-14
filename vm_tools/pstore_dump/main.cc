@@ -2,10 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_tools/common/naming.h"
-#include "vm_tools/common/pstore.h"
-#include "vm_tools/pstore_dump/persistent_ram_buffer.h"
-
 #include <string>
 
 #include <base/check.h>
@@ -18,6 +14,10 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <dbus/vm_concierge/dbus-constants.h>
+
+#include "vm_tools/common/naming.h"
+#include "vm_tools/pstore_dump/persistent_ram_buffer.h"
 
 namespace {
 
@@ -78,7 +78,8 @@ bool FindARCVMPstorePath(base::FilePath* out_path) {
   base::FilePath cryptohome_pstore_path =
       base::FilePath("/run/daemon-store/crosvm")
           .Append(sanitized_primary_username)
-          .Append(vm_tools::GetEncodedName("arcvm") + ".pstore");
+          .Append(vm_tools::GetEncodedName(vm_tools::concierge::kArcVmName) +
+                  ".pstore");
   if (base::PathExists(cryptohome_pstore_path)) {
     *out_path = cryptohome_pstore_path;
     return true;

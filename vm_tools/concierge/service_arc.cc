@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <dbus/vm_concierge/dbus-constants.h>
 #include <vboot/crossystem.h>
 #include <libcrossystem/crossystem.h>
 #include <metrics/metrics_library.h>
@@ -55,7 +56,6 @@ constexpr char kRamdiskPath[] = "/opt/google/vms/android/ramdisk.img";
 // Path to the VM fstab file.
 constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
 
-constexpr char kArcVmName[] = "arcvm";
 // /home/root/<hash>/crosvm is bind-mounted to /run/daemon-store/crosvm on
 // sign-in.
 constexpr char kCryptohomeRoot[] = "/run/daemon-store/crosvm";
