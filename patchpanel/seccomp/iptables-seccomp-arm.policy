@@ -44,3 +44,4 @@ rt_sigreturn: 1
 brk: 1
 recvfrom: 1
 uname: 1
+sysinfo: 1

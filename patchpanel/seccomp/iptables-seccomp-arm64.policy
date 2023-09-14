@@ -42,3 +42,4 @@ brk: 1
 recvfrom: 1
 clock_gettime: 1
 uname: 1
+sysinfo: 1
