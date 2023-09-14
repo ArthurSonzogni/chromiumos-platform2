@@ -18,7 +18,6 @@
 #include "shill/error.h"
 #include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
-#include "shill/net/shill_time.h"
 #include "shill/technology.h"
 #include "shill/vpn/vpn_types.h"
 
@@ -2366,7 +2365,6 @@ class Metrics {
   std::unique_ptr<chromeos_metrics::Timer>
       time_between_rekey_and_connection_failure_timer_;
   DeviceMetricsLookupMap devices_metrics_;
-  Time* time_;
 };
 
 }  // namespace shill

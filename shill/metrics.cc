@@ -56,6 +56,14 @@ bool IsInvalidTag(uint64_t tag) {
   return tag == WiFiService::kSessionTagInvalid;
 }
 
+int64_t GetMicroSecondsMonotonic() {
+  // base::TimeTicks doesn't provide a method to convert to the internal value.
+  // So we get the base::TimeDelta by subtracting epoch first, then convert it
+  // to the microseconds.
+  return (base::TimeTicks::Now() - base::TimeTicks::UnixEpoch())
+      .InMicroseconds();
+}
+
 Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
     const Error::Type& error) {
   switch (error) {
@@ -130,8 +138,7 @@ Metrics::Metrics()
     : library_(&metrics_library_),
       time_suspend_actions_timer(new chromeos_metrics::Timer),
       time_between_rekey_and_connection_failure_timer_(
-          new chromeos_metrics::Timer),
-      time_(Time::GetInstance()) {
+          new chromeos_metrics::Timer) {
   char salt[kPseudoTagSaltLen];
   crypto::RandBytes(salt, kPseudoTagSaltLen);
   pseudo_tag_salt_ = std::string(salt, kPseudoTagSaltLen);
@@ -1025,11 +1032,6 @@ void Metrics::NotifyWiFiBadPassphrase(bool ever_connected, bool user_initiate) {
 
 void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
                                             const WiFiAdapterInfo& info) {
-  int64_t usecs;
-  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
-    LOG(ERROR) << "Failed to read timestamp";
-    usecs = kWiFiStructuredMetricsErrorValue;
-  }
   metrics::structured::events::wi_fi_chipset::WiFiChipsetInfo()
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetVendorId(info.vendor_id)
@@ -1053,7 +1055,7 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
                                : Metrics::kWiFiStructuredMetricsErrorValue;
   metrics::structured::events::wi_fi::WiFiAdapterStateChanged()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(usecs)
+      .SetSystemTime(GetMicroSecondsMonotonic())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetAdapterState(enabled)
       .SetVendorId(v_id)
@@ -1064,11 +1066,6 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
 
 void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
                                           uint64_t session_tag) {
-  int64_t usecs;
-  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
-    LOG(ERROR) << "Failed to read timestamp";
-    usecs = kWiFiStructuredMetricsErrorValue;
-  }
   metrics::structured::events::wi_fi_ap::WiFiAPInfo()
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetAPOUI(info.ap_oui)
@@ -1082,7 +1079,7 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
       << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
   metrics::structured::events::wi_fi::WiFiConnectionAttempt()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(usecs)
+      .SetSystemTime(GetMicroSecondsMonotonic())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetAttemptType(info.type)
@@ -1116,11 +1113,6 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
 
 void Metrics::NotifyWiFiConnectionAttemptResult(
     Metrics::NetworkServiceError result_code, uint64_t session_tag) {
-  int64_t usecs;
-  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
-    LOG(ERROR) << "Failed to read timestamp";
-    usecs = kWiFiStructuredMetricsErrorValue;
-  }
   // Do NOT modify the verbosity of the Session Tag log without a privacy
   // review.
   SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
@@ -1128,7 +1120,7 @@ void Metrics::NotifyWiFiConnectionAttemptResult(
   SLOG(2) << __func__ << ": ResultCode " << result_code;
   metrics::structured::events::wi_fi::WiFiConnectionAttemptResult()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(usecs)
+      .SetSystemTime(GetMicroSecondsMonotonic())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetResultCode(result_code)
@@ -1138,11 +1130,6 @@ void Metrics::NotifyWiFiConnectionAttemptResult(
 void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
                                       IEEE_80211::WiFiReasonCode reason,
                                       uint64_t session_tag) {
-  int64_t usecs;
-  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
-    LOG(ERROR) << "Failed to read timestamp";
-    usecs = kWiFiStructuredMetricsErrorValue;
-  }
   // Do NOT modify the verbosity of the Session Tag log without a privacy
   // review.
   SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
@@ -1150,7 +1137,7 @@ void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
   SLOG(2) << __func__ << ": Type " << type << " Reason " << reason;
   metrics::structured::events::wi_fi::WiFiConnectionEnd()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(usecs)
+      .SetSystemTime(GetMicroSecondsMonotonic())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetDisconnectionType(type)
@@ -1160,11 +1147,6 @@ void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
 
 void Metrics::NotifyWiFiLinkQualityTrigger(WiFiLinkQualityTrigger trigger,
                                            uint64_t session_tag) {
-  int64_t usecs;
-  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
-    LOG(ERROR) << "Failed to read timestamp";
-    usecs = kWiFiStructuredMetricsErrorValue;
-  }
   // Do NOT modify the verbosity of the Session Tag log without a privacy
   // review.
   SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
@@ -1172,7 +1154,7 @@ void Metrics::NotifyWiFiLinkQualityTrigger(WiFiLinkQualityTrigger trigger,
   SLOG(2) << __func__ << ": Trigger " << trigger;
   metrics::structured::events::wi_fi::WiFiLinkQualityTrigger()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(usecs)
+      .SetSystemTime(GetMicroSecondsMonotonic())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetType(trigger)
@@ -1181,11 +1163,6 @@ void Metrics::NotifyWiFiLinkQualityTrigger(WiFiLinkQualityTrigger trigger,
 
 void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
                                           uint64_t session_tag) {
-  int64_t usecs;
-  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
-    LOG(ERROR) << "Failed to read timestamp";
-    usecs = kWiFiStructuredMetricsErrorValue;
-  }
   // Do NOT modify the verbosity of the Session Tag log without a privacy
   // review.
   SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
@@ -1196,7 +1173,7 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
   metrics::structured::events::wi_fi::WiFiLinkQualityReport sm_report =
       metrics::structured::events::wi_fi::WiFiLinkQualityReport();
   sm_report.SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(usecs)
+      .SetSystemTime(GetMicroSecondsMonotonic())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetRXPackets(report.rx.packets)
