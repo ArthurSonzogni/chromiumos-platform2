@@ -25,6 +25,8 @@ class FakeFlossEventHub final : public FlossEventHub {
       org::chromium::bluetooth::BluetoothProxyInterface* adapter = nullptr);
   void SendAdapterRemoved(
       const dbus::ObjectPath& adapter_path = dbus::ObjectPath(""));
+  void SendManagerAdded(
+      org::chromium::bluetooth::ManagerProxyInterface* manager);
 };
 
 }  // namespace diagnostics

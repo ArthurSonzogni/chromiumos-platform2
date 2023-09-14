@@ -12,5 +12,8 @@
     <method name="GetFlossEnabled">
       <arg name="enabled" direction="out" type="b"/>
     </method>
+    <method name="RegisterCallback">
+      <arg name="callback_path" direction="in" type="o" />
+    </method>
   </interface>
 </node>

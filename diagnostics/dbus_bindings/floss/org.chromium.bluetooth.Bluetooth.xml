@@ -8,5 +8,10 @@
                       "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.bluetooth.Bluetooth">
+    <!-- Methods -->
+    <method name="RegisterCallback">
+      <arg name="callback_path" direction="in" type="o" />
+      <arg name="callback_id" direction="out" type="u"/>
+    </method>
   </interface>
 </node>

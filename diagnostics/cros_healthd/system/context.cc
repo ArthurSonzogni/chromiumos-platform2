@@ -135,7 +135,8 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   bluez_event_hub_ = std::make_unique<BluezEventHub>(bluez_proxy_.get());
   floss_controller_ = std::make_unique<FlossController>(
       bluetooth_manager_proxy_.get(), bluetooth_proxy_.get());
-  floss_event_hub_ = std::make_unique<FlossEventHub>(bluetooth_proxy_.get());
+  floss_event_hub_ = std::make_unique<FlossEventHub>(
+      dbus_bus, bluetooth_manager_proxy_.get(), bluetooth_proxy_.get());
   tick_clock_ = std::make_unique<base::DefaultTickClock>();
   udev_ = brillo::Udev::Create();
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();

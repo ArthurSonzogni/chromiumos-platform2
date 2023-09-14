@@ -53,6 +53,7 @@ source_set("libcros_healthd_system") {
     "bluez_controller.cc",
     "bluez_event_hub.cc",
     "context.cc",
+    "floss_callback_services.cc",
     "floss_controller.cc",
     "floss_event_hub.cc",
     "ground_truth.cc",
@@ -135,6 +136,7 @@ if (use.test) {
   source_set("libcros_healthd_system_test") {
     sources = [
       "bluez_event_hub_test.cc",
+      "floss_event_hub_test.cc",
       "ground_truth_test.cc",
       "powerd_adapter_impl_test.cc",
       "system_config_test.cc",

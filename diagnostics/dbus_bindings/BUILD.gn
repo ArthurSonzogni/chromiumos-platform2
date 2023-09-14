@@ -2,10 +2,26 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/generate-dbus-proxies.gni")
 
 group("dbus_bindings") {
-  deps = [ ":dbus-proxies" ]
+  deps = [
+    ":dbus-adaptors",
+    ":dbus-proxies",
+  ]
+}
+
+group("dbus-adaptors") {
+  deps = [ ":floss-callback-adaptors" ]
+}
+
+generate_dbus_adaptors("floss-callback-adaptors") {
+  dbus_adaptors_out_dir = "include/diagnostics/dbus_bindings/floss_callback"
+  sources = [
+    "bluetooth_manager/org.chromium.bluetooth.ManagerCallback.xml",
+    "floss/org.chromium.bluetooth.BluetoothCallback.xml",
+  ]
 }
 
 group("dbus-proxies") {

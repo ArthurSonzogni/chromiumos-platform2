@@ -16,4 +16,9 @@ void FakeFlossEventHub::SendAdapterRemoved(
   OnAdapterRemoved(adapter_path);
 }
 
+void FakeFlossEventHub::SendManagerAdded(
+    org::chromium::bluetooth::ManagerProxyInterface* manager) {
+  OnManagerAdded(manager);
+}
+
 }  // namespace diagnostics
