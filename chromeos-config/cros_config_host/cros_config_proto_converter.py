@@ -2623,9 +2623,9 @@ def _build_modem(config):
     result = {}
     result["firmware-variant"] = firmware_variant
     if hw_features.cellular.wedge_timeout_in_ms:
-        result[
-            "wedge-reboot-delay-ms"
-        ] = hw_features.cellular.wedge_timeout_in_ms
+        result["wedge-reboot-delay-ms"] = str(
+            hw_features.cellular.wedge_timeout_in_ms
+        )
 
     return result
 

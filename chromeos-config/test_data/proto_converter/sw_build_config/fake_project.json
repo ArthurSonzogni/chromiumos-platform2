@@ -213,7 +213,7 @@
         },
         "modem": {
           "firmware-variant": "fake_ref_design",
-          "wedge-reboot-delay-ms": 120000
+          "wedge-reboot-delay-ms": "120000"
         },
         "name": "fake_ref_design",
         "nnpalm": {
@@ -969,7 +969,7 @@
         },
         "modem": {
           "firmware-variant": "project_a",
-          "wedge-reboot-delay-ms": 120000
+          "wedge-reboot-delay-ms": "120000"
         },
         "name": "project_a",
         "power": {
@@ -5023,7 +5023,7 @@
         },
         "modem": {
           "firmware-variant": "project_wl",
-          "wedge-reboot-delay-ms": 210000
+          "wedge-reboot-delay-ms": "210000"
         },
         "name": "project_wl",
         "power": {
@@ -5238,7 +5238,7 @@
         },
         "modem": {
           "firmware-variant": "project_wl",
-          "wedge-reboot-delay-ms": 210000
+          "wedge-reboot-delay-ms": "210000"
         },
         "name": "project_wl",
         "power": {
@@ -5453,7 +5453,7 @@
         },
         "modem": {
           "firmware-variant": "project_wl",
-          "wedge-reboot-delay-ms": 210000
+          "wedge-reboot-delay-ms": "210000"
         },
         "name": "project_wl",
         "power": {
@@ -5668,7 +5668,7 @@
         },
         "modem": {
           "firmware-variant": "project_wl",
-          "wedge-reboot-delay-ms": 210000
+          "wedge-reboot-delay-ms": "210000"
         },
         "name": "project_wl",
         "power": {
@@ -5896,7 +5896,7 @@
         },
         "modem": {
           "firmware-variant": "project_rebrand",
-          "wedge-reboot-delay-ms": 180000
+          "wedge-reboot-delay-ms": "180000"
         },
         "name": "project_rebrand",
         "power": {
