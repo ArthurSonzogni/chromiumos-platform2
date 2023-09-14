@@ -186,6 +186,7 @@
           "signature-id": "fake_ref_design"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CLAMSHELL",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -444,6 +445,7 @@
           "signature-id": "fake_ref_design_0db_1custom_2cameras"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CLAMSHELL",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -687,6 +689,7 @@
           "signature-id": "fake_ref_design_0db_1custom_2cameras"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CLAMSHELL",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -948,6 +951,7 @@
           "signature-id": "project_a"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CONVERTIBLE",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -1320,6 +1324,7 @@
           "signature-id": "project_b"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "DETACHABLE",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -1541,6 +1546,7 @@
           "signature-id": "project_b"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "DETACHABLE",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -1801,6 +1807,7 @@
           "signature-id": "project_b"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "DETACHABLE",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -2038,6 +2045,7 @@
           "signature-id": "project_c"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CHROMESLATE",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -2257,6 +2265,7 @@
           "signature-id": "project_d"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CHROMESLATE",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -5003,6 +5012,7 @@
           "signature-id": "project_wl"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CLAMSHELL",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -5217,6 +5227,7 @@
           "signature-id": "project_wl-loema"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CLAMSHELL",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -5432,6 +5443,7 @@
           "signature-id": "project_wl-loemb"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CLAMSHELL",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -5647,6 +5659,7 @@
           "signature-id": "project_wl-loemc"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CLAMSHELL",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -5875,6 +5888,7 @@
           "signature-id": "project_rebrand-branda"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CLAMSHELL",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -6061,6 +6075,7 @@
           "signature-id": "project_box"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CHROMEBOX",
           "has-audio-jack": true,
           "has-backlight": false,
@@ -6246,6 +6261,7 @@
           "signature-id": "project_box"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CHROMEBASE",
           "has-audio-jack": true,
           "has-backlight": true,
@@ -6427,6 +6443,7 @@
           "signature-id": "project_box"
         },
         "hardware-properties": {
+          "fan-count": 2,
           "form-factor": "CHROMEBASE",
           "has-audio-jack": true,
           "has-backlight": true,

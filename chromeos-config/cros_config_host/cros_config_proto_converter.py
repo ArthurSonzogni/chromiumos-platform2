@@ -1830,6 +1830,9 @@ def _build_hardware_properties(hw_features):
     if light_sensor.camera_lightsensor == topology_pb2.HardwareFeatures.PRESENT:
         result["has-camera-light-sensor"] = True
 
+    if hw_features.HasField("fan"):
+        result["fan-count"] = hw_features.fan.fan_count
+
     return result
 
 

@@ -814,6 +814,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | display-type | string |  | False |  | False | Denotes the type of display this device contains. |
+| fan-count | integer |  | False |  | False | The number of fan in the device. Minimum value: 0x0. Maximum value: 0x7. |
 | form-factor | string |  | False |  | False | Denotes the form factor of the device. |
 | has-audio-jack | boolean |  | False |  | False | True if the device has an audio jack. |
 | has-backlight | boolean |  | False |  | False | Does the device have a backlight. |

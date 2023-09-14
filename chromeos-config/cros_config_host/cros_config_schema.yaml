@@ -1361,6 +1361,11 @@ properties:
                 has-side-volume-button:
                   description: True if the device has a side volume button.
                   type: boolean
+                fan-count:
+                  description: The number of fan in the device.
+                  type: integer
+                  minimum: 0
+                  maximum: 7
                 display-type: *display-type
                 stylus-category: *stylus-category
                 psu-type: *psu-type
