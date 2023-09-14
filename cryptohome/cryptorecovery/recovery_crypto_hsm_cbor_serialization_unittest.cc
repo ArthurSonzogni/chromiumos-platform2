@@ -246,10 +246,11 @@ class HsmPayloadCborHelperTest : public testing::Test {
 class AeadPayloadHelper {
  public:
   AeadPayloadHelper() {
-    fake_aead_payload_.cipher_text = brillo::SecureBlob(kFakePayloadCipherText);
+    fake_aead_payload_.cipher_text =
+        brillo::BlobFromString(kFakePayloadCipherText);
     fake_aead_payload_.associated_data = brillo::SecureBlob(kFakePayloadAd);
-    fake_aead_payload_.iv = brillo::SecureBlob(kFakePayloadIv);
-    fake_aead_payload_.tag = brillo::SecureBlob(kFakePayloadTag);
+    fake_aead_payload_.iv = brillo::BlobFromString(kFakePayloadIv);
+    fake_aead_payload_.tag = brillo::BlobFromString(kFakePayloadTag);
   }
 
   const AeadPayload& GetFakePayload() const { return fake_aead_payload_; }
@@ -264,14 +265,18 @@ class AeadPayloadHelper {
   }
 
   void ExpectEqualsToFakeAeadPayload(const brillo::SecureBlob& payload) const {
-    EXPECT_THAT(payload, SerializedCborMapContainsSecureBlobValue(
-                             kAeadCipherText, fake_aead_payload_.cipher_text));
+    EXPECT_THAT(payload,
+                SerializedCborMapContainsSecureBlobValue(
+                    kAeadCipherText,
+                    brillo::SecureBlob(fake_aead_payload_.cipher_text)));
     EXPECT_THAT(payload, SerializedCborMapContainsSecureBlobValue(
                              kAeadAd, fake_aead_payload_.associated_data));
-    EXPECT_THAT(payload, SerializedCborMapContainsSecureBlobValue(
-                             kAeadIv, fake_aead_payload_.iv));
-    EXPECT_THAT(payload, SerializedCborMapContainsSecureBlobValue(
-                             kAeadTag, fake_aead_payload_.tag));
+    EXPECT_THAT(payload,
+                SerializedCborMapContainsSecureBlobValue(
+                    kAeadIv, brillo::SecureBlob(fake_aead_payload_.iv)));
+    EXPECT_THAT(payload,
+                SerializedCborMapContainsSecureBlobValue(
+                    kAeadTag, brillo::SecureBlob(fake_aead_payload_.tag)));
   }
 
   void ExpectEqualsToFakeAeadPayload(const AeadPayload& payload) const {
@@ -283,14 +288,18 @@ class AeadPayloadHelper {
 
   void ExpectEqualsToFakeAeadPayload(
       const cbor::Value::MapValue& cbor_map) const {
-    EXPECT_THAT(cbor_map, CborMapContainsSecureBlobValue(
-                              kAeadCipherText, fake_aead_payload_.cipher_text));
+    EXPECT_THAT(cbor_map,
+                CborMapContainsSecureBlobValue(
+                    kAeadCipherText,
+                    brillo::SecureBlob(fake_aead_payload_.cipher_text)));
     EXPECT_THAT(cbor_map, CborMapContainsSecureBlobValue(
                               kAeadAd, fake_aead_payload_.associated_data));
     EXPECT_THAT(cbor_map,
-                CborMapContainsSecureBlobValue(kAeadIv, fake_aead_payload_.iv));
-    EXPECT_THAT(cbor_map, CborMapContainsSecureBlobValue(
-                              kAeadTag, fake_aead_payload_.tag));
+                CborMapContainsSecureBlobValue(
+                    kAeadIv, brillo::SecureBlob(fake_aead_payload_.iv)));
+    EXPECT_THAT(cbor_map,
+                CborMapContainsSecureBlobValue(
+                    kAeadTag, brillo::SecureBlob(fake_aead_payload_.tag)));
   }
 
  private:
@@ -632,10 +641,10 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
   brillo::SecureBlob cbor_output;
 
   HsmPayload hsm_payload;
-  hsm_payload.cipher_text = brillo::SecureBlob(kFakeHsmPayloadCipherText);
+  hsm_payload.cipher_text = brillo::BlobFromString(kFakeHsmPayloadCipherText);
   hsm_payload.associated_data = brillo::SecureBlob(kFakeHsmPayloadAd);
-  hsm_payload.iv = brillo::SecureBlob(kFakeHsmPayloadIv);
-  hsm_payload.tag = brillo::SecureBlob(kFakeHsmPayloadTag);
+  hsm_payload.iv = brillo::BlobFromString(kFakeHsmPayloadIv);
+  hsm_payload.tag = brillo::BlobFromString(kFakeHsmPayloadTag);
 
   RecoveryRequestAssociatedData request_ad;
   request_ad.hsm_payload = std::move(hsm_payload);
@@ -648,12 +657,14 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
   HsmPayload deserialized_hsm_payload;
   ASSERT_TRUE(GetHsmPayloadFromRequestAdForTesting(cbor_output,
                                                    &deserialized_hsm_payload));
-  EXPECT_EQ(deserialized_hsm_payload.cipher_text.to_string(),
+  EXPECT_EQ(brillo::BlobToString(deserialized_hsm_payload.cipher_text),
             kFakeHsmPayloadCipherText);
   EXPECT_EQ(deserialized_hsm_payload.associated_data.to_string(),
             kFakeHsmPayloadAd);
-  EXPECT_EQ(deserialized_hsm_payload.iv.to_string(), kFakeHsmPayloadIv);
-  EXPECT_EQ(deserialized_hsm_payload.tag.to_string(), kFakeHsmPayloadTag);
+  EXPECT_EQ(brillo::BlobToString(deserialized_hsm_payload.iv),
+            kFakeHsmPayloadIv);
+  EXPECT_EQ(brillo::BlobToString(deserialized_hsm_payload.tag),
+            kFakeHsmPayloadTag);
 
   EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
                                kRequestPayloadSalt, salt));

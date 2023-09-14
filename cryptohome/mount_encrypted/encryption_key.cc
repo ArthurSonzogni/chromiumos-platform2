@@ -52,8 +52,8 @@ bool ReadKeyFile(const base::FilePath& path,
   }
 
   if (!hwsec_foundation::AesDecryptSpecifyBlockMode(
-          brillo::SecureBlob(ciphertext), 0, ciphertext.size(), encryption_key,
-          brillo::SecureBlob(hwsec_foundation::kAesBlockSize),
+          brillo::BlobFromString(ciphertext), 0, ciphertext.size(),
+          encryption_key, brillo::Blob(hwsec_foundation::kAesBlockSize),
           hwsec_foundation::PaddingScheme::kPaddingStandard,
           hwsec_foundation::BlockMode::kCbc, plaintext)) {
     LOG(ERROR) << "Decryption failed for data from " << path;
@@ -88,10 +88,10 @@ bool WriteKeyFile(const base::FilePath& path,
   // Ideally, we'd generate a random IV and stored it to disk as well, but
   // switching over to the safer scheme would have to be done in a
   // backwards-compatible way, so for now it isn't worth it.
-  brillo::SecureBlob ciphertext;
+  brillo::Blob ciphertext;
   if (!hwsec_foundation::AesEncryptSpecifyBlockMode(
           plaintext, 0, plaintext.size(), encryption_key,
-          brillo::SecureBlob(hwsec_foundation::kAesBlockSize),
+          brillo::Blob(hwsec_foundation::kAesBlockSize),
           hwsec_foundation::PaddingScheme::kPaddingStandard,
           hwsec_foundation::BlockMode::kCbc, &ciphertext)) {
     LOG(ERROR) << "Encryption failed for " << path;

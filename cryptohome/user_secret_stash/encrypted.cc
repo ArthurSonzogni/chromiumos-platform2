@@ -225,9 +225,8 @@ CryptohomeStatusOr<brillo::SecureBlob> EncryptedUss::DecryptPayload(
 
   // Use the main key to decrypt the USS payload.
   brillo::SecureBlob serialized_payload;
-  if (!AesGcmDecrypt(brillo::SecureBlob(container_.ciphertext), std::nullopt,
-                     brillo::SecureBlob(container_.gcm_tag), main_key,
-                     brillo::SecureBlob(container_.iv), &serialized_payload)) {
+  if (!AesGcmDecrypt(container_.ciphertext, std::nullopt, container_.gcm_tag,
+                     main_key, container_.iv, &serialized_payload)) {
     LOG(ERROR) << "Failed to decrypt UserSecretStash payload";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSAesGcmFailedInFromEncPayload),
@@ -322,10 +321,9 @@ CryptohomeStatusOr<brillo::SecureBlob> EncryptedUss::UnwrapMainKey(
 
   // Attempt the unwrapping.
   brillo::SecureBlob main_key;
-  if (!AesGcmDecrypt(
-          brillo::SecureBlob(wrapped_key_block.encrypted_key),
-          /*ad=*/std::nullopt, brillo::SecureBlob(wrapped_key_block.gcm_tag),
-          wrapping_key, brillo::SecureBlob(wrapped_key_block.iv), &main_key)) {
+  if (!AesGcmDecrypt(wrapped_key_block.encrypted_key,
+                     /*ad=*/std::nullopt, wrapped_key_block.gcm_tag,
+                     wrapping_key, wrapped_key_block.iv, &main_key)) {
     LOG(ERROR) << "Failed to unwrap UserSecretStash main key";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSDecryptFailedInUnwrapMKFromBlocks),

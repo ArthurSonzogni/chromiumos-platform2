@@ -79,8 +79,8 @@ PasskeyToAesKey(const brillo::SecureBlob& passkey,
 bool HWSEC_FOUNDATION_EXPORT
 AesEncryptDeprecated(const brillo::SecureBlob& plaintext,
                      const brillo::SecureBlob& key,
-                     const brillo::SecureBlob& iv,
-                     brillo::SecureBlob* ciphertext);
+                     const brillo::Blob& iv,
+                     brillo::Blob* ciphertext);
 
 // Decrypts data encrypted with AesEncrypt.
 //
@@ -90,9 +90,9 @@ AesEncryptDeprecated(const brillo::SecureBlob& plaintext,
 //   iv - The initialization vector to use
 //   plaintext - The unwrapped (decrypted) data
 bool HWSEC_FOUNDATION_EXPORT
-AesDecryptDeprecated(const brillo::SecureBlob& ciphertext,
+AesDecryptDeprecated(const brillo::Blob& ciphertext,
                      const brillo::SecureBlob& key,
-                     const brillo::SecureBlob& iv,
+                     const brillo::Blob& iv,
                      brillo::SecureBlob* plaintext);
 
 // AES-GCM decrypts the |ciphertext| using the |key| and |iv|. |key| must be
@@ -106,11 +106,11 @@ AesDecryptDeprecated(const brillo::SecureBlob& ciphertext,
 //   iv - The IV to decrypt with.
 //   plaintext - On success, the decrypted data.
 bool HWSEC_FOUNDATION_EXPORT
-AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
+AesGcmDecrypt(const brillo::Blob& ciphertext,
               const std::optional<brillo::SecureBlob>& ad,
-              const brillo::SecureBlob& tag,
+              const brillo::Blob& tag,
               const brillo::SecureBlob& key,
-              const brillo::SecureBlob& iv,
+              const brillo::Blob& iv,
               brillo::SecureBlob* plaintext);
 
 // AES-GCM encrypts the |plaintext| using the |key|. A random initialization
@@ -128,17 +128,17 @@ bool HWSEC_FOUNDATION_EXPORT
 AesGcmEncrypt(const brillo::SecureBlob& plaintext,
               const std::optional<brillo::SecureBlob>& ad,
               const brillo::SecureBlob& key,
-              brillo::SecureBlob* iv,
-              brillo::SecureBlob* tag,
-              brillo::SecureBlob* ciphertext);
+              brillo::Blob* iv,
+              brillo::Blob* tag,
+              brillo::Blob* ciphertext);
 
 // Same as AesDecrypt, but allows using either CBC or ECB
 bool HWSEC_FOUNDATION_EXPORT
-AesDecryptSpecifyBlockMode(const brillo::SecureBlob& ciphertext,
+AesDecryptSpecifyBlockMode(const brillo::Blob& ciphertext,
                            unsigned int start,
                            unsigned int count,
                            const brillo::SecureBlob& key,
-                           const brillo::SecureBlob& iv,
+                           const brillo::Blob& iv,
                            PaddingScheme padding,
                            BlockMode mode,
                            brillo::SecureBlob* plaintext);
@@ -149,10 +149,10 @@ AesEncryptSpecifyBlockMode(const brillo::SecureBlob& plaintext,
                            unsigned int start,
                            unsigned int count,
                            const brillo::SecureBlob& key,
-                           const brillo::SecureBlob& iv,
+                           const brillo::Blob& iv,
                            PaddingScheme padding,
                            BlockMode mode,
-                           brillo::SecureBlob* ciphertext);
+                           brillo::Blob* ciphertext);
 }  // namespace hwsec_foundation
 
 #endif  // LIBHWSEC_FOUNDATION_CRYPTO_AES_H_

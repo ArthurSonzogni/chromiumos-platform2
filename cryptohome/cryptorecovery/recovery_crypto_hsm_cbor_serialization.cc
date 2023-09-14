@@ -130,7 +130,7 @@ cbor::Value::MapValue ConvertAeadPayloadToCborMap(const AeadPayload& payload) {
 
 bool ConvertCborMapToAeadPayload(const cbor::Value::MapValue& aead_payload_map,
                                  AeadPayload* aead_payload) {
-  brillo::SecureBlob cipher_text;
+  brillo::Blob cipher_text;
   if (!FindBytestringValueInCborMap(aead_payload_map, kAeadCipherText,
                                     &cipher_text)) {
     LOG(ERROR) << "Failed to get cipher text from the AEAD CBOR map.";
@@ -144,13 +144,13 @@ bool ConvertCborMapToAeadPayload(const cbor::Value::MapValue& aead_payload_map,
     return false;
   }
 
-  brillo::SecureBlob iv;
+  brillo::Blob iv;
   if (!FindBytestringValueInCborMap(aead_payload_map, kAeadIv, &iv)) {
     LOG(ERROR) << "Failed to get iv from the AEAD CBOR map.";
     return false;
   }
 
-  brillo::SecureBlob tag;
+  brillo::Blob tag;
   if (!FindBytestringValueInCborMap(aead_payload_map, kAeadTag, &tag)) {
     LOG(ERROR) << "Failed to get tag from the AEAD CBOR map.";
     return false;
@@ -1102,7 +1102,7 @@ bool GetHsmPayloadFromRequestAdForTesting(
 
   const cbor::Value::MapValue& hsm_map = hsm_payload_entry->second.GetMap();
 
-  brillo::SecureBlob cipher_text;
+  brillo::Blob cipher_text;
   if (!FindBytestringValueInCborMap(hsm_map, kAeadCipherText, &cipher_text)) {
     LOG(ERROR) << "Failed to get cipher text from the HSM payload map.";
     return false;
@@ -1112,12 +1112,12 @@ bool GetHsmPayloadFromRequestAdForTesting(
     LOG(ERROR) << "Failed to get associated data from the HSM payload map.";
     return false;
   }
-  brillo::SecureBlob iv;
+  brillo::Blob iv;
   if (!FindBytestringValueInCborMap(hsm_map, kAeadIv, &iv)) {
     LOG(ERROR) << "Failed to get iv from the HSM payload map.";
     return false;
   }
-  brillo::SecureBlob tag;
+  brillo::Blob tag;
   if (!FindBytestringValueInCborMap(hsm_map, kAeadTag, &tag)) {
     LOG(ERROR) << "Failed to get tag from the HSM payload map.";
     return false;

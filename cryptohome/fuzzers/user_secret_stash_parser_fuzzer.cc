@@ -97,7 +97,7 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
   uss_main_key.resize(hwsec_foundation::kAesGcm256KeySize);
 
   // Encrypt the mutated USS payload flatbuffer.
-  SecureBlob iv, tag, ciphertext;
+  Blob iv, tag, ciphertext;
   CHECK(hwsec_foundation::AesGcmEncrypt(
       SecureBlob(mutated_uss_payload),
       /*ad=*/std::nullopt, SecureBlob(uss_main_key), &iv, &tag, &ciphertext));
@@ -107,13 +107,13 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
   uss_container_struct.encryption_algorithm =
       cryptohome::UserSecretStashEncryptionAlgorithm::AES_GCM_256;
   uss_container_struct.ciphertext =
-      MutateBlob(Blob(ciphertext.begin(), ciphertext.end()),
+      MutateBlob(ciphertext,
                  /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider);
   uss_container_struct.iv =
-      MutateBlob(Blob(iv.begin(), iv.end()),
+      MutateBlob(iv,
                  /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider);
   uss_container_struct.gcm_tag =
-      MutateBlob(Blob(tag.begin(), tag.end()), /*min_length=*/0,
+      MutateBlob(tag, /*min_length=*/0,
                  /*max_length=*/1000, fuzzed_data_provider);
 
   // Serialize the USS container to flatbuffer and mutate it.

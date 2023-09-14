@@ -23,10 +23,10 @@ namespace hwsec_foundation {
 // This is not a known vector but a very simple test against the API.
 TEST(AesTest, AesGcmTestSimple) {
   brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
+  brillo::Blob iv(kAesGcmIVSize);
+  brillo::Blob tag(kAesGcmTagSize);
 
-  brillo::SecureBlob ciphertext(4096, '\0');
+  brillo::Blob ciphertext(4096, '\0');
 
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
@@ -37,7 +37,7 @@ TEST(AesTest, AesGcmTestSimple) {
                             &ciphertext));
 
   // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_NE(ciphertext, brillo::Blob(plaintext.begin(), plaintext.end()));
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
@@ -49,10 +49,10 @@ TEST(AesTest, AesGcmTestSimple) {
 
 TEST(AesTest, AesGcmTestWithAd) {
   brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
+  brillo::Blob iv(kAesGcmIVSize);
+  brillo::Blob tag(kAesGcmTagSize);
 
-  brillo::SecureBlob ciphertext(4096, '\0');
+  brillo::Blob ciphertext(4096, '\0');
 
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
@@ -65,7 +65,7 @@ TEST(AesTest, AesGcmTestWithAd) {
   EXPECT_TRUE(AesGcmEncrypt(plaintext, ad, key, &iv, &tag, &ciphertext));
 
   // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_NE(ciphertext, brillo::Blob(plaintext.begin(), plaintext.end()));
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
@@ -77,10 +77,10 @@ TEST(AesTest, AesGcmTestWithAd) {
 
 TEST(AesTest, AesGcmTestWrongAd) {
   brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
+  brillo::Blob iv(kAesGcmIVSize);
+  brillo::Blob tag(kAesGcmTagSize);
 
-  brillo::SecureBlob ciphertext(4096, '\0');
+  brillo::Blob ciphertext(4096, '\0');
 
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
@@ -93,7 +93,7 @@ TEST(AesTest, AesGcmTestWrongAd) {
   EXPECT_TRUE(AesGcmEncrypt(plaintext, ad, key, &iv, &tag, &ciphertext));
 
   // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_NE(ciphertext, brillo::Blob(plaintext.begin(), plaintext.end()));
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   std::string new_ad_value = "Wrong authentication data.";
@@ -114,10 +114,10 @@ TEST(AesTest, AesGcmTestWrongAd) {
 
 TEST(AesTest, AesGcmTestWrongKey) {
   brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
+  brillo::Blob iv(kAesGcmIVSize);
+  brillo::Blob tag(kAesGcmTagSize);
 
-  brillo::SecureBlob ciphertext(4096, '\0');
+  brillo::Blob ciphertext(4096, '\0');
 
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
@@ -128,7 +128,7 @@ TEST(AesTest, AesGcmTestWrongKey) {
                             &ciphertext));
 
   // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_NE(ciphertext, brillo::Blob(plaintext.begin(), plaintext.end()));
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   brillo::SecureBlob wrong_key(kAesGcm256KeySize);
@@ -142,10 +142,10 @@ TEST(AesTest, AesGcmTestWrongKey) {
 
 TEST(AesTest, AesGcmTestWrongIV) {
   brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
+  brillo::Blob iv(kAesGcmIVSize);
+  brillo::Blob tag(kAesGcmTagSize);
 
-  brillo::SecureBlob ciphertext(4096, '\0');
+  brillo::Blob ciphertext(4096, '\0');
 
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
@@ -156,10 +156,10 @@ TEST(AesTest, AesGcmTestWrongIV) {
                             &ciphertext));
 
   // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_NE(ciphertext, brillo::Blob(plaintext.begin(), plaintext.end()));
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
-  brillo::SecureBlob wrong_iv(kAesGcmIVSize);
+  brillo::Blob wrong_iv(kAesGcmIVSize);
   GetSecureRandom(wrong_iv.data(), wrong_iv.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
@@ -170,10 +170,10 @@ TEST(AesTest, AesGcmTestWrongIV) {
 
 TEST(AesTest, AesGcmTestWrongTag) {
   brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
+  brillo::Blob iv(kAesGcmIVSize);
+  brillo::Blob tag(kAesGcmTagSize);
 
-  brillo::SecureBlob ciphertext(4096, '\0');
+  brillo::Blob ciphertext(4096, '\0');
 
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
@@ -184,10 +184,10 @@ TEST(AesTest, AesGcmTestWrongTag) {
                             &ciphertext));
 
   // Validity check that the encryption actually did something.
-  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_NE(ciphertext, brillo::Blob(plaintext.begin(), plaintext.end()));
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
-  brillo::SecureBlob wrong_tag(kAesGcmTagSize);
+  brillo::Blob wrong_tag(kAesGcmTagSize);
   GetSecureRandom(wrong_tag.data(), wrong_tag.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
@@ -202,24 +202,24 @@ TEST(AesTest, AesGcmTestWrongTag) {
 // test, and see that AesGcmEncrypt *must* return random IVs.
 TEST(AesTest, AesGcmTestUniqueIVs) {
   brillo::SecureBlob key(kAesGcm256KeySize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
+  brillo::Blob tag(kAesGcmTagSize);
 
-  brillo::SecureBlob ciphertext(4096, '\0');
+  brillo::Blob ciphertext(4096, '\0');
 
   std::string message = "I am encrypting this message.";
   brillo::SecureBlob plaintext(message.begin(), message.end());
 
   GetSecureRandom(key.data(), key.size());
 
-  brillo::SecureBlob iv(kAesGcmIVSize);
+  brillo::Blob iv(kAesGcmIVSize);
   EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv, &tag,
                             &ciphertext));
 
-  brillo::SecureBlob iv2(kAesGcmIVSize);
+  brillo::Blob iv2(kAesGcmIVSize);
   EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv2, &tag,
                             &ciphertext));
 
-  brillo::SecureBlob iv3(kAesGcmIVSize);
+  brillo::Blob iv3(kAesGcmIVSize);
   EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv3, &tag,
                             &ciphertext));
 
@@ -232,8 +232,8 @@ TEST(AesTest, AesGcmTestUniqueIVs) {
 TEST(AesTest, SimpleAesCtrEncryption) {
   std::string message = "ENCRYPT ME";
   brillo::SecureBlob key(32, 'A');
-  brillo::SecureBlob iv(16, 'B');
-  brillo::SecureBlob ciphertext;
+  brillo::Blob iv(16, 'B');
+  brillo::Blob ciphertext;
 
   EXPECT_TRUE(AesEncryptSpecifyBlockMode(
       brillo::SecureBlob(message.begin(), message.end()), 0, message.size(),
@@ -256,7 +256,7 @@ TEST(AesTest, AesCTRKnownVector1) {
       0x42, 0xC8, 0x69, 0x6F, 0x6C, 0x6A, 0x81, 0xAF, 0x1E, 0xEC, 0x96,
       0xB4, 0xD3, 0x7F, 0xC1, 0xD6, 0x89, 0xE6, 0xC1, 0xC1, 0x04,
   };
-  brillo::SecureBlob iv = {
+  brillo::Blob iv = {
       0x00, 0x00, 0x00, 0x60, 0xDB, 0x56, 0x72, 0xC9,
       0x7A, 0xA8, 0xF0, 0xB2, 0x00, 0x00, 0x00, 0x01,
   };
@@ -264,11 +264,11 @@ TEST(AesTest, AesCTRKnownVector1) {
       0x53, 0x69, 0x6E, 0x67, 0x6C, 0x65, 0x20, 0x62,
       0x6C, 0x6F, 0x63, 0x6B, 0x20, 0x6D, 0x73, 0x67,
   };
-  brillo::SecureBlob expected_ciphertext = {
+  brillo::Blob expected_ciphertext = {
       0x14, 0x5A, 0xD0, 0x1D, 0xBF, 0x82, 0x4E, 0xC7,
       0x56, 0x08, 0x63, 0xDC, 0x71, 0xE3, 0xE0, 0xC0,
   };
-  brillo::SecureBlob ciphertext;
+  brillo::Blob ciphertext;
 
   EXPECT_TRUE(AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(), key,
                                          iv, PaddingScheme::kPaddingStandard,
@@ -289,7 +289,7 @@ TEST(AesTest, AesCTRKnownVector2) {
       0x58, 0x79, 0xEF, 0xF8, 0x86, 0xC6, 0x6D, 0xD5, 0x1A, 0x5B, 0x6A,
       0x99, 0x74, 0x4B, 0x50, 0x59, 0x0C, 0x87, 0xA2, 0x38, 0x84,
   };
-  brillo::SecureBlob iv = {
+  brillo::Blob iv = {
       0x00, 0xFA, 0xAC, 0x24, 0xC1, 0x58, 0x5E, 0xF1,
       0x5A, 0x43, 0xD8, 0x75, 0x00, 0x00, 0x00, 0x01,
   };
@@ -298,12 +298,12 @@ TEST(AesTest, AesCTRKnownVector2) {
       0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
       0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
   };
-  brillo::SecureBlob expected_ciphertext = {
+  brillo::Blob expected_ciphertext = {
       0xF0, 0x5E, 0x23, 0x1B, 0x38, 0x94, 0x61, 0x2C, 0x49, 0xEE, 0x00,
       0x0B, 0x80, 0x4E, 0xB2, 0xA9, 0xB8, 0x30, 0x6B, 0x50, 0x8F, 0x83,
       0x9D, 0x6A, 0x55, 0x30, 0x83, 0x1D, 0x93, 0x44, 0xAF, 0x1C,
   };
-  brillo::SecureBlob ciphertext;
+  brillo::Blob ciphertext;
 
   EXPECT_TRUE(AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(), key,
                                          iv, PaddingScheme::kPaddingStandard,
@@ -324,7 +324,7 @@ TEST(AesTest, AesCTRKnownVector3) {
       0x2F, 0x43, 0x58, 0x1D, 0xE2, 0xAA, 0x62, 0xD9, 0xF8, 0x05, 0x53,
       0x2E, 0xDF, 0xF1, 0xEE, 0xD6, 0x87, 0xFB, 0x54, 0x15, 0x3D,
   };
-  brillo::SecureBlob iv = {
+  brillo::Blob iv = {
       0x00, 0x1C, 0xC5, 0xB7, 0x51, 0xA5, 0x1D, 0x70,
       0xA1, 0xC1, 0x11, 0x48, 0x00, 0x00, 0x00, 0x01,
   };
@@ -333,12 +333,12 @@ TEST(AesTest, AesCTRKnownVector3) {
       0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
       0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23,
   };
-  brillo::SecureBlob expected_ciphertext = {
+  brillo::Blob expected_ciphertext = {
       0xEB, 0x6C, 0x52, 0x82, 0x1D, 0x0B, 0xBB, 0xF7, 0xCE, 0x75, 0x94, 0x46,
       0x2A, 0xCA, 0x4F, 0xAA, 0xB4, 0x07, 0xDF, 0x86, 0x65, 0x69, 0xFD, 0x07,
       0xF4, 0x8C, 0xC0, 0xB5, 0x83, 0xD6, 0x07, 0x1F, 0x1E, 0xC0, 0xE6, 0xB8,
   };
-  brillo::SecureBlob ciphertext;
+  brillo::Blob ciphertext;
 
   EXPECT_TRUE(AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(), key,
                                          iv, PaddingScheme::kPaddingStandard,

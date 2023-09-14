@@ -148,8 +148,8 @@ bool LibScryptCompat::Encrypt(const brillo::SecureBlob& derived_key,
   // libscrypt mixes the passphrase with a new salt, generating a new derived
   // key, FOR EACH ENCRYPTION. DO NOT CALL THIS ENCRYPTION method multiple times
   // with the same key, it is only safe under this limited circumstances.
-  brillo::SecureBlob iv(kLibScryptIVSize, 0);
-  brillo::SecureBlob aes_ciphertext;
+  brillo::Blob iv(kLibScryptIVSize, 0);
+  brillo::Blob aes_ciphertext;
 
   if (!AesEncryptSpecifyBlockMode(data_to_encrypt, 0, data_to_encrypt.size(),
                                   aes_key, iv, PaddingScheme::kPaddingStandard,
@@ -245,10 +245,9 @@ bool LibScryptCompat::Decrypt(const brillo::SecureBlob& encrypted_data,
   // libscrypt uses a 0 IV for every message. This is safe _ONLY_ because
   // libscrypt mixes the passphrase with a new salt, generating a new derived
   // key, FOR EACH ENCRYPTION.
-  brillo::SecureBlob iv(kLibScryptIVSize, 0);
-  brillo::SecureBlob data_to_decrypt(
-      encrypted_data.begin() + kLibScryptHeaderSize,
-      encrypted_data.end() - kLibScryptHMACSize);
+  brillo::Blob iv(kLibScryptIVSize, 0);
+  brillo::Blob data_to_decrypt(encrypted_data.begin() + kLibScryptHeaderSize,
+                               encrypted_data.end() - kLibScryptHMACSize);
 
   if (!AesDecryptSpecifyBlockMode(data_to_decrypt, 0, data_to_decrypt.size(),
                                   aes_key, iv, PaddingScheme::kPaddingStandard,

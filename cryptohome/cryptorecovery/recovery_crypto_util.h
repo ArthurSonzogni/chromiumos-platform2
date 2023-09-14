@@ -18,13 +18,13 @@ namespace cryptorecovery {
 // AEAD-encrypted payload.
 struct AeadPayload {
   // AES-GCM tag for encryption.
-  brillo::SecureBlob tag;
+  brillo::Blob tag;
   // AES-GCM iv for encryption.
-  brillo::SecureBlob iv;
+  brillo::Blob iv;
   // Additional authentication data, passed in clear. Serialized in cbor.
   brillo::SecureBlob associated_data;
   // Encrypted plain text. Plain text is serialized in cbor.
-  brillo::SecureBlob cipher_text;
+  brillo::Blob cipher_text;
 };
 
 // HSM Payload is created at onboarding and contains all the data that are

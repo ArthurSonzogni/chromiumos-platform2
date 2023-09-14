@@ -162,10 +162,10 @@ bool ObscureRsaMessage(const brillo::SecureBlob& plaintext,
   }
   unsigned int offset = plaintext.size() - aes_block_size;
 
-  brillo::SecureBlob obscured_chunk;
-  if (!AesEncryptSpecifyBlockMode(
-          plaintext, offset, aes_block_size, key, brillo::SecureBlob(0),
-          PaddingScheme::kPaddingNone, BlockMode::kEcb, &obscured_chunk)) {
+  brillo::Blob obscured_chunk;
+  if (!AesEncryptSpecifyBlockMode(plaintext, offset, aes_block_size, key,
+                                  brillo::Blob(0), PaddingScheme::kPaddingNone,
+                                  BlockMode::kEcb, &obscured_chunk)) {
     LOG(ERROR) << "AES encryption failed.";
     return false;
   }
@@ -188,8 +188,9 @@ bool UnobscureRsaMessage(const brillo::SecureBlob& ciphertext,
 
   brillo::SecureBlob unobscured_chunk;
   if (!AesDecryptSpecifyBlockMode(
-          ciphertext, offset, aes_block_size, key, brillo::SecureBlob(0),
-          PaddingScheme::kPaddingNone, BlockMode::kEcb, &unobscured_chunk)) {
+          brillo::Blob(ciphertext.begin(), ciphertext.end()), offset,
+          aes_block_size, key, brillo::Blob(0), PaddingScheme::kPaddingNone,
+          BlockMode::kEcb, &unobscured_chunk)) {
     LOG(ERROR) << "AES decryption failed.";
     return false;
   }

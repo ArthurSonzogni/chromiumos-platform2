@@ -107,9 +107,9 @@ TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
       *ec, *shared_secret_point_sender, eph_pub_key_blob, info, salt, kHkdfHash,
       kEcdhHkdfKeySize, &aes_gcm_key1));
 
-  brillo::SecureBlob iv(kAesGcmIVSize);
-  brillo::SecureBlob tag(kAesGcmTagSize);
-  brillo::SecureBlob ciphertext;
+  brillo::Blob iv(kAesGcmIVSize);
+  brillo::Blob tag(kAesGcmTagSize);
+  brillo::Blob ciphertext;
   brillo::SecureBlob plaintext("I am encrypting this message.");
 
   // Encrypt using sender's `aes_gcm_key1`.
@@ -125,7 +125,7 @@ TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
   // Symmetric keys generated for sender and recipient should be equal.
   EXPECT_EQ(aes_gcm_key1, aes_gcm_key2);
 
-  EXPECT_NE(ciphertext, plaintext);
+  EXPECT_NE(ciphertext, brillo::Blob(plaintext.begin(), plaintext.end()));
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   // Decrypt using recipient's `aes_gcm_key2`.

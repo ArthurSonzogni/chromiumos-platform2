@@ -61,17 +61,17 @@ bool PasskeyToAesKey(const brillo::SecureBlob& passkey,
 
 bool AesEncryptDeprecated(const brillo::SecureBlob& plaintext,
                           const brillo::SecureBlob& key,
-                          const brillo::SecureBlob& iv,
-                          brillo::SecureBlob* ciphertext) {
+                          const brillo::Blob& iv,
+                          brillo::Blob* ciphertext) {
   return AesEncryptSpecifyBlockMode(
       plaintext, 0, plaintext.size(), key, iv,
       PaddingScheme::kPaddingCryptohomeDefaultDeprecated, BlockMode::kCbc,
       ciphertext);
 }
 
-bool AesDecryptDeprecated(const brillo::SecureBlob& ciphertext,
+bool AesDecryptDeprecated(const brillo::Blob& ciphertext,
                           const brillo::SecureBlob& key,
-                          const brillo::SecureBlob& iv,
+                          const brillo::Blob& iv,
                           brillo::SecureBlob* plaintext) {
   return AesDecryptSpecifyBlockMode(
       ciphertext, 0, ciphertext.size(), key, iv,
@@ -79,11 +79,11 @@ bool AesDecryptDeprecated(const brillo::SecureBlob& ciphertext,
       plaintext);
 }
 
-bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
+bool AesGcmDecrypt(const brillo::Blob& ciphertext,
                    const std::optional<brillo::SecureBlob>& ad,
-                   const brillo::SecureBlob& tag,
+                   const brillo::Blob& tag,
                    const brillo::SecureBlob& key,
-                   const brillo::SecureBlob& iv,
+                   const brillo::Blob& iv,
                    brillo::SecureBlob* plaintext) {
   if (ciphertext.empty()) {
     NOTREACHED() << "Empty ciphertext passed to AesGcmDecrypt.";
@@ -178,9 +178,9 @@ bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
 bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
                    const std::optional<brillo::SecureBlob>& ad,
                    const brillo::SecureBlob& key,
-                   brillo::SecureBlob* iv,
-                   brillo::SecureBlob* tag,
-                   brillo::SecureBlob* ciphertext) {
+                   brillo::Blob* iv,
+                   brillo::Blob* tag,
+                   brillo::Blob* ciphertext) {
   if (plaintext.empty()) {
     NOTREACHED() << "Empty plaintext passed to AesGcmEncrypt.";
     return false;
@@ -234,7 +234,7 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
       return false;
     }
   }
-  brillo::SecureBlob result;
+  brillo::Blob result;
   result.resize(plaintext.size());
   int processed_bytes = 0;
   if (EVP_EncryptUpdate(ctx.get(), result.data(), &processed_bytes,
@@ -275,11 +275,11 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
 // will drastically alter the decryption.  And an incorrect PaddingScheme will
 // result in the padding verification failing, for which the method call fails,
 // even if the key and initialization vector were correct.
-bool AesDecryptSpecifyBlockMode(const brillo::SecureBlob& encrypted,
+bool AesDecryptSpecifyBlockMode(const brillo::Blob& encrypted,
                                 unsigned int start,
                                 unsigned int count,
                                 const brillo::SecureBlob& key,
-                                const brillo::SecureBlob& iv,
+                                const brillo::Blob& iv,
                                 PaddingScheme padding,
                                 BlockMode block_mode,
                                 brillo::SecureBlob* plain_text) {
@@ -434,10 +434,10 @@ bool AesEncryptSpecifyBlockMode(const brillo::SecureBlob& plain_text,
                                 unsigned int start,
                                 unsigned int count,
                                 const brillo::SecureBlob& key,
-                                const brillo::SecureBlob& iv,
+                                const brillo::Blob& iv,
                                 PaddingScheme padding,
                                 BlockMode block_mode,
-                                brillo::SecureBlob* encrypted) {
+                                brillo::Blob* encrypted) {
   // Verify that the range is within the data passed
   if ((start > plain_text.size()) || ((start + count) > plain_text.size()) ||
       ((start + count) < start)) {
@@ -479,7 +479,7 @@ bool AesEncryptSpecifyBlockMode(const brillo::SecureBlob& plain_text,
       return false;
       break;
   }
-  brillo::SecureBlob cipher_text(needed_size);
+  brillo::Blob cipher_text(needed_size);
 
   // Set the block mode
   const EVP_CIPHER* cipher;

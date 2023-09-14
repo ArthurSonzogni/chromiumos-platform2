@@ -1448,8 +1448,7 @@ int HandleBiometricsSelfTest(
           *pk_fp));
   brillo::SecureBlob label_seed;
   if (!hwsec_foundation::AesDecryptSpecifyBlockMode(
-          brillo::SecureBlob(encrypted_hec), 0, encrypted_hec.size(),
-          session_key, brillo::SecureBlob(iv),
+          encrypted_hec, 0, encrypted_hec.size(), session_key, iv,
           hwsec_foundation::PaddingScheme::kPaddingNone,
           hwsec_foundation::BlockMode::kCtr, &label_seed)) {
     LOG(ERROR) << "decrypting label_seed failed!";
@@ -1531,8 +1530,7 @@ int HandleBiometricsSelfTest(
       brillo::SecureBlob(brillo::CombineBlobs({auth_nonce, gsc_nonce})),
       *pk_fp));
   if (!hwsec_foundation::AesDecryptSpecifyBlockMode(
-          brillo::SecureBlob(encrypted_hec), 0, encrypted_hec.size(),
-          session_key, brillo::SecureBlob(iv),
+          encrypted_hec, 0, encrypted_hec.size(), session_key, iv,
           hwsec_foundation::PaddingScheme::kPaddingNone,
           hwsec_foundation::BlockMode::kCtr, &label_seed)) {
     LOG(ERROR) << "decrypting label_seed failed!";
@@ -1633,8 +1631,7 @@ int HandleBiometricsSelfTest(
       brillo::SecureBlob(brillo::CombineBlobs({auth_nonce, gsc_nonce})),
       *pk_fp));
   if (!hwsec_foundation::AesDecryptSpecifyBlockMode(
-          brillo::SecureBlob(encrypted_hec), 0, encrypted_hec.size(),
-          session_key, brillo::SecureBlob(iv),
+          encrypted_hec, 0, encrypted_hec.size(), session_key, iv,
           hwsec_foundation::PaddingScheme::kPaddingNone,
           hwsec_foundation::BlockMode::kCtr, &label_seed)) {
     LOG(ERROR) << "decrypting label_seed failed!";

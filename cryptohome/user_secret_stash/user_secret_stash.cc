@@ -264,7 +264,7 @@ CryptohomeStatus UserSecretStash::AddWrappedMainKey(
   }
 
   // Perform the wrapping.
-  brillo::SecureBlob iv, gcm_tag, encrypted_key;
+  brillo::Blob iv, gcm_tag, encrypted_key;
   if (!AesGcmEncrypt(main_key, /*ad=*/std::nullopt, wrapping_key, &iv, &gcm_tag,
                      &encrypted_key)) {
     LOG(ERROR) << "Failed to wrap UserSecretStash main key.";
@@ -276,9 +276,9 @@ CryptohomeStatus UserSecretStash::AddWrappedMainKey(
 
   wrapped_key_blocks_[wrapping_id] = EncryptedUss::WrappedKeyBlock{
       .encryption_algorithm = UserSecretStashEncryptionAlgorithm::AES_GCM_256,
-      .encrypted_key = brillo::Blob(encrypted_key.begin(), encrypted_key.end()),
-      .iv = brillo::Blob(iv.begin(), iv.end()),
-      .gcm_tag = brillo::Blob(gcm_tag.begin(), gcm_tag.end()),
+      .encrypted_key = encrypted_key,
+      .iv = iv,
+      .gcm_tag = gcm_tag,
   };
   return OkStatus<CryptohomeError>();
 }
@@ -352,9 +352,9 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
-  brillo::SecureBlob tag, iv, ciphertext;
+  brillo::Blob gcm_tag, iv, ciphertext;
   if (!AesGcmEncrypt(serialized_payload.value(), /*ad=*/std::nullopt, main_key,
-                     &iv, &tag, &ciphertext)) {
+                     &iv, &gcm_tag, &ciphertext)) {
     LOG(ERROR) << "Failed to encrypt UserSecretStash";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSPayloadEncryptFailedInGetEncContainer),
@@ -365,9 +365,9 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
 
   UserSecretStashContainer container = {
       .encryption_algorithm = UserSecretStashEncryptionAlgorithm::AES_GCM_256,
-      .ciphertext = brillo::Blob(ciphertext.begin(), ciphertext.end()),
-      .iv = brillo::Blob(iv.begin(), iv.end()),
-      .gcm_tag = brillo::Blob(tag.begin(), tag.end()),
+      .ciphertext = ciphertext,
+      .iv = iv,
+      .gcm_tag = gcm_tag,
       .created_on_os_version = created_on_os_version_,
       .user_metadata = user_metadata_,
   };

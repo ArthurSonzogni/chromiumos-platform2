@@ -45,6 +45,7 @@
 #include "cryptohome/vault_keyset.pb.h"
 
 using base::FilePath;
+using brillo::Blob;
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
@@ -326,11 +327,13 @@ CryptoStatus VaultKeyset::DecryptVaultKeysetEx(const KeyBlobs& key_blobs) {
 CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
     const SerializedVaultKeyset& serialized, const KeyBlobs& vkk_data) {
   const SecureBlob& vkk_key = vkk_data.vkk_key.value();
-  const SecureBlob& vkk_iv = vkk_data.vkk_iv.value();
-  const SecureBlob& chaps_iv = vkk_data.chaps_iv.value();
+  const Blob& vkk_iv =
+      Blob(vkk_data.vkk_iv.value().begin(), vkk_data.vkk_iv.value().end());
+  const Blob& chaps_iv =
+      Blob(vkk_data.chaps_iv.value().begin(), vkk_data.chaps_iv.value().end());
   // Decrypt the keyset protobuf.
-  SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().begin(),
-                                    serialized.wrapped_keyset().end());
+  brillo::Blob local_encrypted_keyset(serialized.wrapped_keyset().begin(),
+                                      serialized.wrapped_keyset().end());
   SecureBlob plain_text;
 
   if (!AesDecryptDeprecated(local_encrypted_keyset, vkk_key, vkk_iv,
@@ -358,7 +361,8 @@ CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
 
   // Decrypt the chaps key.
   if (serialized.has_wrapped_chaps_key()) {
-    SecureBlob local_wrapped_chaps_key(serialized.wrapped_chaps_key());
+    Blob local_wrapped_chaps_key(serialized.wrapped_chaps_key().begin(),
+                                 serialized.wrapped_chaps_key().end());
     SecureBlob unwrapped_chaps_key;
 
     if (!AesDecryptDeprecated(local_wrapped_chaps_key, vkk_key, chaps_iv,
@@ -379,9 +383,9 @@ CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
       serialized.flags() & SerializedVaultKeyset::LE_CREDENTIAL;
   if (serialized.has_wrapped_reset_seed() && !is_le_credential) {
     SecureBlob unwrapped_reset_seed;
-    SecureBlob local_wrapped_reset_seed =
-        SecureBlob(serialized.wrapped_reset_seed());
-    SecureBlob local_reset_iv = SecureBlob(serialized.reset_iv());
+    Blob local_wrapped_reset_seed =
+        brillo::BlobFromString(serialized.wrapped_reset_seed());
+    Blob local_reset_iv = brillo::BlobFromString(serialized.reset_iv());
 
     if (!AesDecryptDeprecated(local_wrapped_reset_seed, vkk_key, local_reset_iv,
                               &unwrapped_reset_seed)) {
@@ -491,35 +495,40 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
-  SecureBlob vault_cipher_text;
-  if (!AesEncryptDeprecated(vault_blob, blobs.vkk_key.value(),
-                            blobs.vkk_iv.value(), &vault_cipher_text)) {
+  Blob vault_cipher_text;
+  if (!AesEncryptDeprecated(
+          vault_blob, blobs.vkk_key.value(),
+          Blob(blobs.vkk_iv.value().begin(), blobs.vkk_iv.value().end()),
+          &vault_cipher_text)) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptFailedInWrapAESD),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
-  wrapped_keyset_ = vault_cipher_text;
-  le_fek_iv_ = blobs.vkk_iv;
+  wrapped_keyset_ = brillo::SecureBlob(vault_cipher_text);
+  le_fek_iv_ = SecureBlob(blobs.vkk_iv.value());
 
   if (GetChapsKey().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
-    SecureBlob wrapped_chaps_key;
-    if (!AesEncryptDeprecated(GetChapsKey(), blobs.vkk_key.value(),
-                              blobs.chaps_iv.value(), &wrapped_chaps_key)) {
+    Blob wrapped_chaps_key;
+    if (!AesEncryptDeprecated(
+            GetChapsKey(), blobs.vkk_key.value(),
+            Blob(blobs.chaps_iv.value().begin(), blobs.chaps_iv.value().end()),
+            &wrapped_chaps_key)) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptChapsFailedInWrapAESD),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
-    wrapped_chaps_key_ = wrapped_chaps_key;
-    le_chaps_iv_ = blobs.chaps_iv;
+    wrapped_chaps_key_ = SecureBlob(wrapped_chaps_key);
+    le_chaps_iv_ = SecureBlob(blobs.chaps_iv.value());
   }
 
   // If a reset seed is present, encrypt and store it, else clear the field.
   if (!IsLECredential() && GetResetSeed().size() != 0) {
     const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
-    SecureBlob wrapped_reset_seed;
-    if (!AesEncryptDeprecated(GetResetSeed(), blobs.vkk_key.value(), reset_iv,
+    Blob wrapped_reset_seed;
+    if (!AesEncryptDeprecated(GetResetSeed(), blobs.vkk_key.value(),
+                              brillo::Blob(reset_iv.begin(), reset_iv.end()),
                               &wrapped_reset_seed)) {
       LOG(ERROR) << "AES encryption of Reset seed failed.";
       return MakeStatus<CryptohomeError>(
@@ -527,7 +536,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
-    wrapped_reset_seed_ = wrapped_reset_seed;
+    wrapped_reset_seed_ = SecureBlob(wrapped_reset_seed);
     reset_iv_ = reset_iv;
   }
 

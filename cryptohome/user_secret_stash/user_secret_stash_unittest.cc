@@ -655,10 +655,10 @@ class UserSecretStashInternalsTest : public UserSecretStashTest {
 
     // Decrypt and unpack the USS flatbuffer to |uss_payload_struct_|.
     brillo::SecureBlob uss_payload;
-    ASSERT_TRUE(AesGcmDecrypt(
-        brillo::SecureBlob(uss_container_struct_.ciphertext),
-        /*ad=*/std::nullopt, brillo::SecureBlob(uss_container_struct_.gcm_tag),
-        kMainKey, brillo::SecureBlob(uss_container_struct_.iv), &uss_payload));
+    ASSERT_TRUE(AesGcmDecrypt(uss_container_struct_.ciphertext,
+                              /*ad=*/std::nullopt,
+                              uss_container_struct_.gcm_tag, kMainKey,
+                              uss_container_struct_.iv, &uss_payload));
     std::optional<UserSecretStashPayload> uss_payload_struct =
         UserSecretStashPayload::Deserialize(uss_payload);
     ASSERT_TRUE(uss_payload_struct);
@@ -697,7 +697,7 @@ class UserSecretStashInternalsTest : public UserSecretStashTest {
   brillo::Blob GetFlatbufferFromUssPayloadBlob(
       const brillo::SecureBlob& uss_payload) const {
     // Encrypt the packed |uss_payload_struct_|.
-    brillo::SecureBlob iv, tag, ciphertext;
+    brillo::Blob iv, tag, ciphertext;
     EXPECT_TRUE(AesGcmEncrypt(uss_payload, /*ad=*/std::nullopt, kMainKey, &iv,
                               &tag, &ciphertext));
 

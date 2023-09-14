@@ -93,9 +93,9 @@ StatusOr<brillo::Blob> OobeConfigFrontendImpl::Encrypt(
                       Space::kEnterpriseRollback, secret_blob))
       .WithStatus<TPMError>("Failed to store enterprise rollback space");
 
-  brillo::SecureBlob iv;
-  brillo::SecureBlob tag;
-  brillo::SecureBlob ciphertext;
+  brillo::Blob iv;
+  brillo::Blob tag;
+  brillo::Blob ciphertext;
   if (!hwsec_foundation::AesGcmEncrypt(plain_data, std::nullopt, derived_key,
                                        &iv, &tag, &ciphertext)) {
     return MakeStatus<TPMError>("Failed to encrypt the data",
@@ -104,9 +104,9 @@ StatusOr<brillo::Blob> OobeConfigFrontendImpl::Encrypt(
 
   OobeConfigEncryptedData encrypted;
   encrypted.set_version(kEncrypteDataVersion);
-  encrypted.set_iv(iv.to_string());
-  encrypted.set_tag(tag.to_string());
-  encrypted.set_ciphertext(ciphertext.to_string());
+  encrypted.set_iv(brillo::BlobToString(iv));
+  encrypted.set_tag(brillo::BlobToString(tag));
+  encrypted.set_ciphertext(brillo::BlobToString(ciphertext));
 
   return brillo::BlobFromString(encrypted.SerializeAsString());
 }
@@ -143,9 +143,13 @@ StatusOr<brillo::SecureBlob> OobeConfigFrontendImpl::Decrypt(
 
   brillo::SecureBlob plain_data;
   if (!hwsec_foundation::AesGcmDecrypt(
-          brillo::SecureBlob(encrypted.ciphertext()), std::nullopt,
-          brillo::SecureBlob(encrypted.tag()), derived_key,
-          brillo::SecureBlob(encrypted.iv()), &plain_data)) {
+          brillo::Blob(encrypted.ciphertext().begin(),
+                       encrypted.ciphertext().end()),
+          std::nullopt,
+          brillo::Blob(encrypted.tag().begin(), encrypted.tag().end()),
+          derived_key,
+          brillo::Blob(encrypted.iv().begin(), encrypted.iv().end()),
+          &plain_data)) {
     return MakeStatus<TPMError>("Failed to decrypt the data",
                                 TPMRetryAction::kNoRetry);
   }

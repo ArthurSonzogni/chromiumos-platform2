@@ -191,8 +191,7 @@ CryptohomeStatusOr<brillo::SecureBlob> DecryptSecret(
   brillo::SecureBlob aes_key = hwsec_foundation::Sha256(shared_secret);
   brillo::SecureBlob secret;
   if (!hwsec_foundation::AesDecryptSpecifyBlockMode(
-          brillo::SecureBlob(encrypted_secret), 0, encrypted_secret.size(),
-          aes_key, brillo::SecureBlob(iv),
+          encrypted_secret, 0, encrypted_secret.size(), aes_key, iv,
           hwsec_foundation::PaddingScheme::kPaddingNone,
           hwsec_foundation::BlockMode::kCtr, &secret)) {
     LOG(ERROR) << "Failed to decrypt encrypted_secret.";
