@@ -851,7 +851,7 @@ TEST_F(Camera3ModuleFixture, RequiredFormats) {
     }
 
     std::vector<ResolutionInfo> diff;
-    std::set_difference(jpeg_resolutions.begin(), jpeg_resolutions.end(),
+    std::set_difference(yuv_resolutions.begin(), yuv_resolutions.end(),
                         private_resolutions.begin(), private_resolutions.end(),
                         std::inserter(diff, diff.begin()));
     EXPECT_TRUE(diff.empty())
