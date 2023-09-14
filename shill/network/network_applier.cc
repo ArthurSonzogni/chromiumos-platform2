@@ -302,8 +302,12 @@ void NetworkApplier::ApplyRoute(
     const std::vector<net_base::IPCIDR>& included_routes,
     const std::vector<std::pair<net_base::IPv4CIDR, net_base::IPv4Address>>&
         rfc3442_routes) {
+  if (gateway && gateway->GetFamily() != family) {
+    LOG(DFATAL) << "Gateway address [" << *gateway << "] unmatched with family "
+                << family;
+    return;
+  }
   const uint32_t table_id = RoutingTable::GetInterfaceTableId(interface_index);
-  CHECK(!gateway || gateway->GetFamily() == family);
   auto empty_ip = net_base::IPCIDR(family);
 
   // 0. Flush existing routes set by shill.
