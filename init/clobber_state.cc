@@ -68,9 +68,9 @@ constexpr char kRollbackFileForPstorePath[] =
     "/var/lib/oobe_config_save/data_for_pstore";
 constexpr char kPstoreInputPath[] = "/dev/pmsg0";
 // Keep file names in sync with update_engine prefs.
-constexpr char kLastPingDate[] = "last-active-ping-day";
-constexpr char kLastRollcallDate[] = "last-roll-call-ping-day";
-constexpr char kUpdateEnginePrefsPath[] = "/var/lib/update_engine/prefs/";
+const char* kUpdateEnginePrefsFiles[] = {"last-active-ping-day",
+                                         "last-roll-call-ping-day"};
+constexpr char kUpdateEnginePrefsPath[] = "var/lib/update_engine/prefs/";
 constexpr char kUpdateEnginePreservePath[] =
     "unencrypted/preserve/update_engine/prefs/";
 constexpr char kChromadMigrationSkipOobePreservePath[] =
@@ -78,7 +78,7 @@ constexpr char kChromadMigrationSkipOobePreservePath[] =
 // CrOS Private Computing (go/chromeos-data-pc) will save the device last
 // active dates in different use cases into a file.
 constexpr char kPsmDeviceActiveLocalPrefPath[] =
-    "/var/lib/private_computing/last_active_dates";
+    "var/lib/private_computing/last_active_dates";
 constexpr char kPsmDeviceActivePreservePath[] =
     "unencrypted/preserve/last_active_dates";
 
@@ -838,6 +838,7 @@ ClobberState::ClobberState(const Arguments& args,
       cros_system_(std::move(cros_system)),
       ui_(std::move(ui)),
       stateful_(kStatefulPath),
+      root_path_("/"),
       dev_("/dev"),
       sys_("/sys"),
       lvm_(std::move(lvm)),
@@ -861,10 +862,10 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
     stateful_paths.push_back(std::string(kUpdateEnginePreservePath) +
                              "rollback-version");
 
-    stateful_paths.push_back(std::string(kUpdateEnginePreservePath) +
-                             std::string(kLastPingDate));
-    stateful_paths.push_back(std::string(kUpdateEnginePreservePath) +
-                             std::string(kLastRollcallDate));
+    for (const auto* ue_prefs_filename : kUpdateEnginePrefsFiles) {
+      stateful_paths.push_back(std::string(kUpdateEnginePreservePath) +
+                               std::string(ue_prefs_filename));
+    }
     // Preserve the device last active dates to Private Set Computing (psm).
     stateful_paths.push_back(kPsmDeviceActivePreservePath);
 
@@ -1215,6 +1216,34 @@ int ClobberState::CreateStatefulFileSystem(
   return ret;
 }
 
+void ClobberState::PreserveEncryptedFiles() {
+  // Preserve Update Engine prefs when the device is powerwashed.
+  base::FilePath ue_prefs_path(root_path_.Append(kUpdateEnginePrefsPath));
+  base::FilePath ue_preserve_prefs_path(
+      stateful_.Append(kUpdateEnginePreservePath));
+  if (base::CreateDirectory(ue_preserve_prefs_path)) {
+    for (const auto* ue_prefs_filename : kUpdateEnginePrefsFiles) {
+      base::FilePath ue_prefs_file(ue_prefs_path.Append(ue_prefs_filename));
+      base::FilePath ue_preserved_prefs_file(
+          ue_preserve_prefs_path.Append(ue_prefs_filename));
+      if (!base::CopyFile(ue_prefs_file, ue_preserved_prefs_file))
+        LOG(ERROR) << "Error copying file. Source: " << ue_prefs_file
+                   << " Target: " << ue_preserved_prefs_file;
+    }
+  } else {
+    LOG(ERROR) << "Error creating directory: " << ue_preserve_prefs_path;
+  }
+
+  // Preserve the psm device active dates when the device is powerwashed.
+  base::FilePath psm_local_pref_file(
+      root_path_.Append(kPsmDeviceActiveLocalPrefPath));
+  base::FilePath psm_preserved_pref_file(
+      stateful_.Append(kPsmDeviceActivePreservePath));
+  if (!base::CopyFile(psm_local_pref_file, psm_preserved_pref_file))
+    LOG(ERROR) << "Error copying file. Source: " << psm_local_pref_file
+               << " Target: " << psm_preserved_pref_file;
+}
+
 int ClobberState::Run() {
   DCHECK(cros_system_);
 
@@ -1294,21 +1323,8 @@ int ClobberState::Run() {
 
   if (args_.safe_wipe) {
     IncrementFileCounter(stateful_.Append(kPowerWashCountPath));
-    if (encrypted_stateful_mounted) {
-      base::FilePath preserve_path =
-          stateful_.Append(kUpdateEnginePreservePath);
-      base::FilePath prefs_path(kUpdateEnginePrefsPath);
-      base::CopyFile(prefs_path.Append(kLastPingDate),
-                     preserve_path.Append(kLastPingDate));
-      base::CopyFile(prefs_path.Append(kLastRollcallDate),
-                     preserve_path.Append(kLastRollcallDate));
-
-      // Preserve the psm device active dates when the device is powerwashed.
-      base::FilePath psm_local_pref_file(kPsmDeviceActiveLocalPrefPath);
-      base::FilePath psm_preserved_pref_file(
-          stateful_.Append(kPsmDeviceActivePreservePath));
-      base::CopyFile(psm_local_pref_file, psm_preserved_pref_file);
-    }
+    if (encrypted_stateful_mounted)
+      PreserveEncryptedFiles();
   }
 
   // Clear clobber log if needed.
@@ -1757,6 +1773,10 @@ ClobberState::Arguments ClobberState::GetArgsForTest() {
 
 void ClobberState::SetStatefulForTest(const base::FilePath& stateful_path) {
   stateful_ = stateful_path;
+}
+
+void ClobberState::SetRootPathForTest(const base::FilePath& root_path) {
+  root_path_ = root_path;
 }
 
 void ClobberState::SetDevForTest(const base::FilePath& dev_path) {

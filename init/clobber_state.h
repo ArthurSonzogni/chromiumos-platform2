@@ -215,9 +215,13 @@ class ClobberState {
   // otherwise false.
   bool IsRotational(const base::FilePath& device_path);
 
+  // Copies encrypted stateful files to the unencrypted preserve directory.
+  void PreserveEncryptedFiles();
+
   void SetArgsForTest(const Arguments& args);
   Arguments GetArgsForTest();
   void SetStatefulForTest(const base::FilePath& stateful_path);
+  void SetRootPathForTest(const base::FilePath& root_path);
   void SetDevForTest(const base::FilePath& dev_path);
   void SetSysForTest(const base::FilePath& sys_path);
 
@@ -275,6 +279,7 @@ class ClobberState {
   std::unique_ptr<crossystem::Crossystem> cros_system_;
   std::unique_ptr<ClobberUi> ui_;
   base::FilePath stateful_;
+  base::FilePath root_path_;
   base::FilePath dev_;
   base::FilePath sys_;
   PartitionNumbers partitions_;

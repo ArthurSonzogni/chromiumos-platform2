@@ -1987,3 +1987,58 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
 
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 1);
 }
+
+class PreserveEncryptedFilesTest : public ::testing::Test {
+ protected:
+  PreserveEncryptedFilesTest()
+      : crossystem_fake_(std::make_unique<crossystem::fake::CrossystemFake>()),
+        cros_system_(crossystem_fake_.get()),
+        clobber_(ClobberState::Arguments(),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::move(crossystem_fake_)),
+                 std::make_unique<ClobberUi>(DevNull()),
+                 std::make_unique<brillo::MockLogicalVolumeManager>()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_stateful_.CreateUniqueTempDir());
+    fake_stateful_ = temp_stateful_.GetPath();
+    clobber_.SetStatefulForTest(fake_stateful_);
+
+    ASSERT_TRUE(temp_root_.CreateUniqueTempDir());
+    fake_root_ = temp_root_.GetPath();
+    clobber_.SetRootPathForTest(fake_root_);
+  }
+
+  std::unique_ptr<crossystem::fake::CrossystemFake> crossystem_fake_;
+  crossystem::fake::CrossystemFake* cros_system_;
+  ClobberState clobber_;
+  base::ScopedTempDir temp_root_;
+  base::ScopedTempDir temp_stateful_;
+  base::FilePath fake_root_;
+  base::FilePath fake_stateful_;
+};
+
+TEST_F(PreserveEncryptedFilesTest, UpdateEnginePrefsArePreserved) {
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(
+      fake_root_.Append("var/lib/update_engine/prefs/last-active-ping-day"),
+      "1234"));
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(
+      fake_root_.Append("var/lib/update_engine/prefs/last-roll-call-ping-day"),
+      "5678"));
+  clobber_.PreserveEncryptedFiles();
+  ASSERT_TRUE(base::PathExists(
+      fake_stateful_.Append("unencrypted/preserve/update_engine/prefs/")));
+  ASSERT_TRUE(base::PathExists(fake_stateful_.Append(
+      "unencrypted/preserve/update_engine/prefs/last-active-ping-day")));
+  ASSERT_TRUE(base::PathExists(fake_stateful_.Append(
+      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day")));
+}
+
+TEST_F(PreserveEncryptedFilesTest, PsmPrefsArePreserved) {
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(
+      fake_root_.Append("var/lib/private_computing/last_active_dates"),
+      "1234"));
+  clobber_.PreserveEncryptedFiles();
+  ASSERT_TRUE(base::PathExists(
+      fake_stateful_.Append("unencrypted/preserve/last_active_dates")));
+}
