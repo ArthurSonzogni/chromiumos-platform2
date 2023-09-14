@@ -256,6 +256,9 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     ("ArcvmForeground", margins.arcvm_foreground),
                     ("ArcvmPerceptible", margins.arcvm_perceptible),
                     ("ArcvmCached", margins.arcvm_cached),
+                    ("ArcContainerForeground", margins.arc_container_foreground),
+                    ("ArcContainerPerceptible", margins.arc_container_perceptible),
+                    ("ArcContainerCached", margins.arc_container_cached),
                 ]);
                 Ok((result,))
             },
@@ -878,6 +881,14 @@ pub async fn service_main() -> Result<()> {
                     "MemoryPressureArcvm",
                     pressure_status.arcvm_level as u8,
                     pressure_status.arcvm_reclaim_target_kb,
+                );
+            }
+            if pressure_status.arc_container_level != memory::PressureLevelArcContainer::None {
+                send_pressure_signal(
+                    &conn,
+                    "MemoryPressureArcContainer",
+                    pressure_status.arc_container_level as u8,
+                    pressure_status.arc_container_reclaim_target_kb,
                 );
             }
         }

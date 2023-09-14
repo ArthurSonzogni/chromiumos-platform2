@@ -379,16 +379,33 @@ pub struct ComponentMarginsKb {
     pub arcvm_foreground: u64,
     pub arcvm_perceptible: u64,
     pub arcvm_cached: u64,
+    pub arc_container_foreground: u64,
+    pub arc_container_perceptible: u64,
+    pub arc_container_cached: u64,
 }
 
 pub fn get_component_margins_kb() -> ComponentMarginsKb {
     let (critical, moderate) = get_memory_margins_kb();
     ComponentMarginsKb {
         chrome_critical: critical,
+
         chrome_moderate: moderate,
-        arcvm_foreground: critical * 3 / 4,  // 75 % of critical
-        arcvm_perceptible: critical * 3 / 2, // 150 % of critical
+
+        // 75 % of critical.
+        arcvm_foreground: critical * 3 / 4,
+
+        // 150 % of critical.
+        arcvm_perceptible: critical * 3 / 2,
+
         arcvm_cached: moderate,
+
+        // Don't kill ARC container foreground process. It might be supported in the future.
+        arc_container_foreground: 0,
+
+        arc_container_perceptible: critical,
+
+        // Minimal of moderate and 200 % of critical.
+        arc_container_cached: std::cmp::min(moderate, 2 * critical),
     }
 }
 
@@ -415,12 +432,26 @@ pub enum PressureLevelArcvm {
     Foreground = 3,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
+pub enum PressureLevelArcContainer {
+    // There is enough memory to use.
+    None = 0,
+    // ARC container is advised to kill cached processes to free memory.
+    Cached = 1,
+    // ARC container is advised to kill perceptible processes to free memory.
+    Perceptible = 2,
+    // ARC container is advised to kill foreground processes to free memory.
+    Foreground = 3,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct PressureStatus {
     pub chrome_level: PressureLevelChrome,
     pub chrome_reclaim_target_kb: u64,
     pub arcvm_level: PressureLevelArcvm,
     pub arcvm_reclaim_target_kb: u64,
+    pub arc_container_level: PressureLevelArcContainer,
+    pub arc_container_reclaim_target_kb: u64,
 }
 
 pub fn get_memory_pressure_status() -> Result<PressureStatus> {
@@ -468,11 +499,33 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
             raw_arcvm_level
         };
 
+    let (arc_container_level, arc_container_reclaim_target_kb) =
+        if available < margins.arc_container_foreground {
+            (
+                PressureLevelArcContainer::Foreground,
+                margins.arc_container_foreground - available,
+            )
+        } else if available < margins.arc_container_perceptible {
+            (
+                PressureLevelArcContainer::Perceptible,
+                margins.arc_container_perceptible - available,
+            )
+        } else if available < margins.arc_container_cached {
+            (
+                PressureLevelArcContainer::Cached,
+                margins.arc_container_cached - available,
+            )
+        } else {
+            (PressureLevelArcContainer::None, 0)
+        };
+
     Ok(PressureStatus {
         chrome_level,
         chrome_reclaim_target_kb,
         arcvm_level,
         arcvm_reclaim_target_kb,
+        arc_container_level,
+        arc_container_reclaim_target_kb,
     })
 }
 
