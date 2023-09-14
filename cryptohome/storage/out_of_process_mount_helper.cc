@@ -68,6 +68,11 @@ constexpr base::TimeDelta kOutOfProcessHelperReapTimeout =
     base::Seconds(USE_SLOW_MOUNT ? 120 : 1);
 
 bool WaitForHelper(int read_from_helper, const base::TimeDelta& timeout) {
+  if (read_from_helper < 0) {
+    LOG(ERROR) << "WaitForHelper called with an invalid descriptor";
+    return false;
+  }
+
   struct pollfd poll_fd = {};
   poll_fd.fd = read_from_helper;
   poll_fd.events = POLLIN;
