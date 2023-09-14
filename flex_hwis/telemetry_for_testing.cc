@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "flex_hwis/mock_mojo.h"
+#include "flex_hwis/telemetry_for_testing.h"
 
 #include <string>
 
 namespace flex_hwis {
 
-mojom::TelemetryInfoPtr MockMojo::MockSystemInfo() {
+mojom::TelemetryInfoPtr TelemetryForTesting::MockSystemInfo() {
   auto system_info = mojom::SystemInfo::New();
 
   auto& dmi_info = system_info->dmi_info;
@@ -27,7 +27,7 @@ mojom::TelemetryInfoPtr MockMojo::MockSystemInfo() {
   return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr MockMojo::MockCpuInfo() {
+mojom::TelemetryInfoPtr TelemetryForTesting::MockCpuInfo() {
   auto cpu_info = mojom::CpuInfo::New();
 
   auto& physical_cpus = cpu_info->physical_cpus;
@@ -41,7 +41,7 @@ mojom::TelemetryInfoPtr MockMojo::MockCpuInfo() {
   return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr MockMojo::MockMemoryInfo() {
+mojom::TelemetryInfoPtr TelemetryForTesting::MockMemoryInfo() {
   auto memory_info = mojom::MemoryInfo::New();
   memory_info->total_memory_kib = kMemoryKib;
 
@@ -50,7 +50,7 @@ mojom::TelemetryInfoPtr MockMojo::MockMemoryInfo() {
   return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr MockMojo::MockPciBusInfo(
+mojom::TelemetryInfoPtr TelemetryForTesting::MockPciBusInfo(
     const mojom::BusDeviceClass controller, bool is_multiple) {
   auto bus_devices = std::vector<mojom::BusDevicePtr>(is_multiple ? 2 : 1);
 
@@ -74,7 +74,7 @@ mojom::TelemetryInfoPtr MockMojo::MockPciBusInfo(
   return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr MockMojo::MockUsbBusInfo(
+mojom::TelemetryInfoPtr TelemetryForTesting::MockUsbBusInfo(
     const mojom::BusDeviceClass controller) {
   auto bus_devices = std::vector<mojom::BusDevicePtr>(1);
   auto& bus_device = bus_devices[0];
@@ -102,7 +102,7 @@ mojom::TelemetryInfoPtr MockMojo::MockUsbBusInfo(
   return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr MockMojo::MockGraphicsInfo() {
+mojom::TelemetryInfoPtr TelemetryForTesting::MockGraphicsInfo() {
   auto graphics_info = mojom::GraphicsInfo::New();
   auto& gles_info = graphics_info->gles_info;
   gles_info = mojom::GLESInfo::New();
@@ -120,7 +120,7 @@ mojom::TelemetryInfoPtr MockMojo::MockGraphicsInfo() {
   return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr MockMojo::MockInputInfo() {
+mojom::TelemetryInfoPtr TelemetryForTesting::MockInputInfo() {
   auto input_info = mojom::InputInfo::New();
   input_info->touchpad_library_name = kTouchpadLibraryName;
 
@@ -129,7 +129,7 @@ mojom::TelemetryInfoPtr MockMojo::MockInputInfo() {
   return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr MockMojo::MockTpmInfo() {
+mojom::TelemetryInfoPtr TelemetryForTesting::MockTpmInfo() {
   auto tpm_info = mojom::TpmInfo::New();
   auto& version = tpm_info->version;
   version = mojom::TpmVersion::New();
@@ -151,7 +151,7 @@ mojom::TelemetryInfoPtr MockMojo::MockTpmInfo() {
   return std::move(info_);
 }
 
-mojom::TelemetryInfoPtr MockMojo::MockTelemetryInfo() {
+mojom::TelemetryInfoPtr TelemetryForTesting::MockTelemetryInfo() {
   info_ = MockSystemInfo();
   info_ = MockCpuInfo();
   info_ = MockMemoryInfo();

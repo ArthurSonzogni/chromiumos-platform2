@@ -4,7 +4,7 @@
 
 #include "flex_hwis/flex_hwis_mojo.h"
 #include "flex_hwis/hwis_data.pb.h"
-#include "flex_hwis/mock_mojo.h"
+#include "flex_hwis/telemetry_for_testing.h"
 
 #include <optional>
 #include <utility>
@@ -30,12 +30,12 @@ class FlexHwisMojoTest : public ::testing::Test {
 
   std::optional<flex_hwis::FlexHwisMojo> flex_hwis_mojo_;
   base::ScopedTempDir test_dir_;
-  flex_hwis::MockMojo mock_mojo_;
+  flex_hwis::TelemetryForTesting telemetry_;
 };
 
 TEST_F(FlexHwisMojoTest, MojoSystem) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = mock_mojo_.MockSystemInfo();
+  mojom::TelemetryInfoPtr info = telemetry_.MockSystemInfo();
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetSystemInfo(&data);
 
@@ -48,7 +48,7 @@ TEST_F(FlexHwisMojoTest, MojoSystem) {
 
 TEST_F(FlexHwisMojoTest, MojoCpu) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = mock_mojo_.MockCpuInfo();
+  mojom::TelemetryInfoPtr info = telemetry_.MockCpuInfo();
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetCpuInfo(&data);
 
@@ -57,7 +57,7 @@ TEST_F(FlexHwisMojoTest, MojoCpu) {
 
 TEST_F(FlexHwisMojoTest, MojoMemory) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = mock_mojo_.MockMemoryInfo();
+  mojom::TelemetryInfoPtr info = telemetry_.MockMemoryInfo();
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetMemoryInfo(&data);
 
@@ -66,7 +66,7 @@ TEST_F(FlexHwisMojoTest, MojoMemory) {
 
 TEST_F(FlexHwisMojoTest, MojoBusEthernet) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = mock_mojo_.MockPciBusInfo(
+  mojom::TelemetryInfoPtr info = telemetry_.MockPciBusInfo(
       mojom::BusDeviceClass::kEthernetController, false);
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetBusInfo(&data);
@@ -79,7 +79,7 @@ TEST_F(FlexHwisMojoTest, MojoBusEthernet) {
 
 TEST_F(FlexHwisMojoTest, MojoBusWireless) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = mock_mojo_.MockPciBusInfo(
+  mojom::TelemetryInfoPtr info = telemetry_.MockPciBusInfo(
       mojom::BusDeviceClass::kWirelessController, false);
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetBusInfo(&data);
@@ -93,7 +93,7 @@ TEST_F(FlexHwisMojoTest, MojoBusWireless) {
 TEST_F(FlexHwisMojoTest, MojoBusBluetooth) {
   hwis_proto::Device data;
   mojom::TelemetryInfoPtr info =
-      mock_mojo_.MockUsbBusInfo(mojom::BusDeviceClass::kBluetoothAdapter);
+      telemetry_.MockUsbBusInfo(mojom::BusDeviceClass::kBluetoothAdapter);
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetBusInfo(&data);
 
@@ -106,7 +106,7 @@ TEST_F(FlexHwisMojoTest, MojoBusBluetooth) {
 TEST_F(FlexHwisMojoTest, MojoBusDisplay) {
   hwis_proto::Device data;
   // Some flex devices have multiple graphics adapter.
-  mojom::TelemetryInfoPtr info = mock_mojo_.MockPciBusInfo(
+  mojom::TelemetryInfoPtr info = telemetry_.MockPciBusInfo(
       mojom::BusDeviceClass::kDisplayController, true);
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetBusInfo(&data);
@@ -120,7 +120,7 @@ TEST_F(FlexHwisMojoTest, MojoBusDisplay) {
 
 TEST_F(FlexHwisMojoTest, MojoGraphics) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = mock_mojo_.MockGraphicsInfo();
+  mojom::TelemetryInfoPtr info = telemetry_.MockGraphicsInfo();
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetGraphicInfo(&data);
 
@@ -134,7 +134,7 @@ TEST_F(FlexHwisMojoTest, MojoGraphics) {
 
 TEST_F(FlexHwisMojoTest, MojoInput) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = mock_mojo_.MockInputInfo();
+  mojom::TelemetryInfoPtr info = telemetry_.MockInputInfo();
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetInputInfo(&data);
 
@@ -143,7 +143,7 @@ TEST_F(FlexHwisMojoTest, MojoInput) {
 
 TEST_F(FlexHwisMojoTest, MojoTpm) {
   hwis_proto::Device data;
-  mojom::TelemetryInfoPtr info = mock_mojo_.MockTpmInfo();
+  mojom::TelemetryInfoPtr info = telemetry_.MockTpmInfo();
   flex_hwis_mojo_->SetTelemetryInfoForTesting(std::move(info));
   flex_hwis_mojo_->SetTpmInfo(&data);
 

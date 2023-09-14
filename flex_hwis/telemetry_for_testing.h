@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef FLEX_HWIS_MOCK_MOJO_H_
-#define FLEX_HWIS_MOCK_MOJO_H_
+#ifndef FLEX_HWIS_TELEMETRY_FOR_TESTING_H_
+#define FLEX_HWIS_TELEMETRY_FOR_TESTING_H_
 
 #include <utility>
 #include <vector>
@@ -49,7 +49,7 @@ inline constexpr char kUuid[] = "reven-uuid";
 namespace flex_hwis {
 namespace mojom = ::ash::cros_healthd::mojom;
 
-class MockMojo {
+class TelemetryForTesting {
  public:
   // Create a mock system information for testing purposes.
   mojom::TelemetryInfoPtr MockSystemInfo();
@@ -78,4 +78,4 @@ class MockMojo {
 
 }  // namespace flex_hwis
 
-#endif  // FLEX_HWIS_MOCK_MOJO_H_
+#endif  // FLEX_HWIS_TELEMETRY_FOR_TESTING_H_

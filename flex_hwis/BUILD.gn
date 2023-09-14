@@ -49,7 +49,7 @@ static_library("libflex_hwis") {
     "flex_hwis.cc",
     "flex_hwis_check.cc",
     "flex_hwis_mojo.cc",
-    "mock_mojo.cc",
+    "telemetry_for_testing.cc",
   ]
   configs += [
     ":target_defaults",

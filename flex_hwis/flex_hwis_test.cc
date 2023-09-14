@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "flex_hwis/flex_hwis.h"
-#include "flex_hwis/mock_mojo.h"
+#include "flex_hwis/telemetry_for_testing.h"
 
 #include <string>
 #include <utility>
@@ -80,7 +80,7 @@ class FlexHwisTest : public ::testing::Test {
         .WillOnce(Return(true));
 
     CreateUuid(kUuid);
-    info_ = mock_mojo_.MockTelemetryInfo();
+    info_ = telemetry_.MockTelemetryInfo();
   }
 
   void CreateTimeStamp(const std::string& timestamp) {
@@ -114,7 +114,7 @@ class FlexHwisTest : public ::testing::Test {
   MetricsLibraryMock library_;
   base::ScopedTempDir test_dir_;
   base::FilePath test_path_;
-  flex_hwis::MockMojo mock_mojo_;
+  flex_hwis::TelemetryForTesting telemetry_;
 };
 
 TEST_F(FlexHwisTest, FailToGetUuid) {
