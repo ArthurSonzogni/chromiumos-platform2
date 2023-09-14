@@ -7,6 +7,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -54,7 +55,7 @@ PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed)
 
 PropertyStore::~PropertyStore() = default;
 
-bool PropertyStore::Contains(base::StringPiece prop) const {
+bool PropertyStore::Contains(std::string_view prop) const {
   return (base::Contains(bool_properties_, prop) ||
           base::Contains(int16_properties_, prop) ||
           base::Contains(int32_properties_, prop) ||
@@ -74,7 +75,7 @@ bool PropertyStore::Contains(base::StringPiece prop) const {
           base::Contains(rpc_identifiers_properties_, prop));
 }
 
-void PropertyStore::SetAnyProperty(base::StringPiece name,
+void PropertyStore::SetAnyProperty(std::string_view name,
                                    const brillo::Any& value,
                                    Error* error) {
   if (value.IsTypeCompatible<bool>()) {
@@ -168,203 +169,203 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
   return true;
 }
 
-bool PropertyStore::GetBoolProperty(base::StringPiece name,
+bool PropertyStore::GetBoolProperty(std::string_view name,
                                     bool* value,
                                     Error* error) const {
   return GetProperty(name, value, error, bool_properties_, "a bool");
 }
 
-bool PropertyStore::GetInt16Property(base::StringPiece name,
+bool PropertyStore::GetInt16Property(std::string_view name,
                                      int16_t* value,
                                      Error* error) const {
   return GetProperty(name, value, error, int16_properties_, "an int16_t");
 }
 
-bool PropertyStore::GetInt32Property(base::StringPiece name,
+bool PropertyStore::GetInt32Property(std::string_view name,
                                      int32_t* value,
                                      Error* error) const {
   return GetProperty(name, value, error, int32_properties_, "an int32_t");
 }
 
-bool PropertyStore::GetKeyValueStoreProperty(base::StringPiece name,
+bool PropertyStore::GetKeyValueStoreProperty(std::string_view name,
                                              KeyValueStore* value,
                                              Error* error) const {
   return GetProperty(name, value, error, key_value_store_properties_,
                      "a key value store");
 }
 
-bool PropertyStore::GetKeyValueStoresProperty(base::StringPiece name,
+bool PropertyStore::GetKeyValueStoresProperty(std::string_view name,
                                               KeyValueStores* value,
                                               Error* error) const {
   return GetProperty(name, value, error, key_value_stores_properties_,
                      "a key value stores");
 }
 
-bool PropertyStore::GetRpcIdentifierProperty(base::StringPiece name,
+bool PropertyStore::GetRpcIdentifierProperty(std::string_view name,
                                              RpcIdentifier* value,
                                              Error* error) const {
   return GetProperty(name, value, error, rpc_identifier_properties_,
                      "an rpc_identifier");
 }
 
-bool PropertyStore::GetStringProperty(base::StringPiece name,
+bool PropertyStore::GetStringProperty(std::string_view name,
                                       std::string* value,
                                       Error* error) const {
   return GetProperty(name, value, error, string_properties_, "a string");
 }
 
-bool PropertyStore::GetStringmapProperty(base::StringPiece name,
+bool PropertyStore::GetStringmapProperty(std::string_view name,
                                          Stringmap* values,
                                          Error* error) const {
   return GetProperty(name, values, error, stringmap_properties_,
                      "a string map");
 }
 
-bool PropertyStore::GetStringmapsProperty(base::StringPiece name,
+bool PropertyStore::GetStringmapsProperty(std::string_view name,
                                           Stringmaps* values,
                                           Error* error) const {
   return GetProperty(name, values, error, stringmaps_properties_,
                      "a string map list");
 }
 
-bool PropertyStore::GetStringsProperty(base::StringPiece name,
+bool PropertyStore::GetStringsProperty(std::string_view name,
                                        Strings* values,
                                        Error* error) const {
   return GetProperty(name, values, error, strings_properties_, "a string list");
 }
 
-bool PropertyStore::GetUint8Property(base::StringPiece name,
+bool PropertyStore::GetUint8Property(std::string_view name,
                                      uint8_t* value,
                                      Error* error) const {
   return GetProperty(name, value, error, uint8_properties_, "a uint8_t");
 }
 
-bool PropertyStore::GetByteArrayProperty(base::StringPiece name,
+bool PropertyStore::GetByteArrayProperty(std::string_view name,
                                          ByteArray* value,
                                          Error* error) const {
   return GetProperty(name, value, error, bytearray_properties_, "a byte array");
 }
 
-bool PropertyStore::GetUint16Property(base::StringPiece name,
+bool PropertyStore::GetUint16Property(std::string_view name,
                                       uint16_t* value,
                                       Error* error) const {
   return GetProperty(name, value, error, uint16_properties_, "a uint16_t");
 }
 
-bool PropertyStore::GetUint16sProperty(base::StringPiece name,
+bool PropertyStore::GetUint16sProperty(std::string_view name,
                                        Uint16s* value,
                                        Error* error) const {
   return GetProperty(name, value, error, uint16s_properties_,
                      "a uint16_t list");
 }
 
-bool PropertyStore::GetUint32Property(base::StringPiece name,
+bool PropertyStore::GetUint32Property(std::string_view name,
                                       uint32_t* value,
                                       Error* error) const {
   return GetProperty(name, value, error, uint32_properties_, "a uint32_t");
 }
 
-bool PropertyStore::GetUint64Property(base::StringPiece name,
+bool PropertyStore::GetUint64Property(std::string_view name,
                                       uint64_t* value,
                                       Error* error) const {
   return GetProperty(name, value, error, uint64_properties_, "a uint64_t");
 }
 
-void PropertyStore::SetBoolProperty(base::StringPiece name,
+void PropertyStore::SetBoolProperty(std::string_view name,
                                     bool value,
                                     Error* error) {
   SetProperty(name, value, error, &bool_properties_, "a bool");
 }
 
-void PropertyStore::SetInt16Property(base::StringPiece name,
+void PropertyStore::SetInt16Property(std::string_view name,
                                      int16_t value,
                                      Error* error) {
   SetProperty(name, value, error, &int16_properties_, "an int16_t");
 }
 
-void PropertyStore::SetInt32Property(base::StringPiece name,
+void PropertyStore::SetInt32Property(std::string_view name,
                                      int32_t value,
                                      Error* error) {
   SetProperty(name, value, error, &int32_properties_, "an int32_t.");
 }
 
-void PropertyStore::SetKeyValueStoreProperty(base::StringPiece name,
+void PropertyStore::SetKeyValueStoreProperty(std::string_view name,
                                              const KeyValueStore& value,
                                              Error* error) {
   SetProperty(name, value, error, &key_value_store_properties_,
               "a key value store");
 }
 
-void PropertyStore::SetKeyValueStoresProperty(base::StringPiece name,
+void PropertyStore::SetKeyValueStoresProperty(std::string_view name,
                                               const KeyValueStores& value,
                                               Error* error) {
   SetProperty(name, value, error, &key_value_stores_properties_,
               "a key value stores");
 }
 
-void PropertyStore::SetStringProperty(base::StringPiece name,
+void PropertyStore::SetStringProperty(std::string_view name,
                                       const std::string& value,
                                       Error* error) {
   SetProperty(name, value, error, &string_properties_, "a string");
 }
 
 void PropertyStore::SetStringmapProperty(
-    base::StringPiece name,
+    std::string_view name,
     const std::map<std::string, std::string>& values,
     Error* error) {
   SetProperty(name, values, error, &stringmap_properties_, "a string map");
 }
 
 void PropertyStore::SetStringmapsProperty(
-    base::StringPiece name,
+    std::string_view name,
     const std::vector<std::map<std::string, std::string>>& values,
     Error* error) {
   SetProperty(name, values, error, &stringmaps_properties_, "a stringmaps");
 }
 
-void PropertyStore::SetStringsProperty(base::StringPiece name,
+void PropertyStore::SetStringsProperty(std::string_view name,
                                        const std::vector<std::string>& values,
                                        Error* error) {
   SetProperty(name, values, error, &strings_properties_, "a string list");
 }
 
-void PropertyStore::SetUint8Property(base::StringPiece name,
+void PropertyStore::SetUint8Property(std::string_view name,
                                      uint8_t value,
                                      Error* error) {
   SetProperty(name, value, error, &uint8_properties_, "a uint8_t");
 }
 
-void PropertyStore::SetByteArrayProperty(base::StringPiece name,
+void PropertyStore::SetByteArrayProperty(std::string_view name,
                                          const ByteArray& value,
                                          Error* error) {
   SetProperty(name, value, error, &bytearray_properties_, "a byte array");
 }
 
-void PropertyStore::SetUint16Property(base::StringPiece name,
+void PropertyStore::SetUint16Property(std::string_view name,
                                       uint16_t value,
                                       Error* error) {
   SetProperty(name, value, error, &uint16_properties_, "a uint16_t");
 }
 
-void PropertyStore::SetUint16sProperty(base::StringPiece name,
+void PropertyStore::SetUint16sProperty(std::string_view name,
                                        const std::vector<uint16_t>& value,
                                        Error* error) {
   SetProperty(name, value, error, &uint16s_properties_, "a uint16_t list");
 }
 
-void PropertyStore::SetUint32Property(base::StringPiece name,
+void PropertyStore::SetUint32Property(std::string_view name,
                                       uint32_t value,
                                       Error* error) {
   SetProperty(name, value, error, &uint32_properties_, "a uint32_t");
 }
 
-void PropertyStore::SetUint64Property(base::StringPiece name,
+void PropertyStore::SetUint64Property(std::string_view name,
                                       uint64_t value,
                                       Error* error) {
   SetProperty(name, value, error, &uint64_properties_, "a uint64_t");
 }
 
-void PropertyStore::SetRpcIdentifierProperty(base::StringPiece name,
+void PropertyStore::SetRpcIdentifierProperty(std::string_view name,
                                              const RpcIdentifier& value,
                                              Error* error) {
   SetProperty(name, value, error, &rpc_identifier_properties_,
@@ -375,7 +376,7 @@ namespace {
 // Helper function used in ClearProperty(). Returns true if |name| is found in
 // |property_map|.
 template <class V>
-bool TryClearProperty(base::StringPiece name, Error* error, V* property_map) {
+bool TryClearProperty(std::string_view name, Error* error, V* property_map) {
   const auto it = property_map->find(name);
   if (it == property_map->end()) {
     return false;
@@ -385,7 +386,7 @@ bool TryClearProperty(base::StringPiece name, Error* error, V* property_map) {
 }
 }  // namespace
 
-bool PropertyStore::ClearProperty(base::StringPiece name, Error* error) {
+bool PropertyStore::ClearProperty(std::string_view name, Error* error) {
   SLOG(2) << "Clearing " << name << ".";
 
   if (!(TryClearProperty(name, error, &bool_properties_) ||
@@ -415,343 +416,342 @@ bool PropertyStore::ClearProperty(base::StringPiece name, Error* error) {
   return error->IsSuccess();
 }
 
-void PropertyStore::RegisterBool(base::StringPiece name, bool* prop) {
+void PropertyStore::RegisterBool(std::string_view name, bool* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   bool_properties_[std::string(name)].reset(new PropertyAccessor<bool>(prop));
 }
 
-void PropertyStore::RegisterConstBool(base::StringPiece name,
-                                      const bool* prop) {
+void PropertyStore::RegisterConstBool(std::string_view name, const bool* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   bool_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<bool>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyBool(base::StringPiece name, bool* prop) {
+void PropertyStore::RegisterWriteOnlyBool(std::string_view name, bool* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   bool_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<bool>(prop));
 }
 
-void PropertyStore::RegisterInt16(base::StringPiece name, int16_t* prop) {
+void PropertyStore::RegisterInt16(std::string_view name, int16_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   int16_properties_[std::string(name)].reset(
       new PropertyAccessor<int16_t>(prop));
 }
 
-void PropertyStore::RegisterConstInt16(base::StringPiece name,
+void PropertyStore::RegisterConstInt16(std::string_view name,
                                        const int16_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   int16_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<int16_t>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyInt16(base::StringPiece name,
+void PropertyStore::RegisterWriteOnlyInt16(std::string_view name,
                                            int16_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   int16_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<int16_t>(prop));
 }
-void PropertyStore::RegisterInt32(base::StringPiece name, int32_t* prop) {
+void PropertyStore::RegisterInt32(std::string_view name, int32_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   int32_properties_[std::string(name)].reset(
       new PropertyAccessor<int32_t>(prop));
 }
 
-void PropertyStore::RegisterConstInt32(base::StringPiece name,
+void PropertyStore::RegisterConstInt32(std::string_view name,
                                        const int32_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   int32_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<int32_t>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyInt32(base::StringPiece name,
+void PropertyStore::RegisterWriteOnlyInt32(std::string_view name,
                                            int32_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   int32_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<int32_t>(prop));
 }
 
-void PropertyStore::RegisterUint64(base::StringPiece name, uint64_t* prop) {
+void PropertyStore::RegisterUint64(std::string_view name, uint64_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint64_properties_[std::string(name)].reset(
       new PropertyAccessor<uint64_t>(prop));
 }
 
-void PropertyStore::RegisterString(base::StringPiece name, std::string* prop) {
+void PropertyStore::RegisterString(std::string_view name, std::string* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   string_properties_[std::string(name)].reset(
       new PropertyAccessor<std::string>(prop));
 }
 
-void PropertyStore::RegisterConstString(base::StringPiece name,
+void PropertyStore::RegisterConstString(std::string_view name,
                                         const std::string* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   string_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<std::string>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyString(base::StringPiece name,
+void PropertyStore::RegisterWriteOnlyString(std::string_view name,
                                             std::string* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   string_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<std::string>(prop));
 }
 
-void PropertyStore::RegisterStringmap(base::StringPiece name, Stringmap* prop) {
+void PropertyStore::RegisterStringmap(std::string_view name, Stringmap* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   stringmap_properties_[std::string(name)].reset(
       new PropertyAccessor<Stringmap>(prop));
 }
 
-void PropertyStore::RegisterConstStringmap(base::StringPiece name,
+void PropertyStore::RegisterConstStringmap(std::string_view name,
                                            const Stringmap* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   stringmap_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<Stringmap>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyStringmap(base::StringPiece name,
+void PropertyStore::RegisterWriteOnlyStringmap(std::string_view name,
                                                Stringmap* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   stringmap_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<Stringmap>(prop));
 }
 
-void PropertyStore::RegisterStringmaps(base::StringPiece name,
+void PropertyStore::RegisterStringmaps(std::string_view name,
                                        Stringmaps* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   stringmaps_properties_[std::string(name)].reset(
       new PropertyAccessor<Stringmaps>(prop));
 }
 
-void PropertyStore::RegisterConstStringmaps(base::StringPiece name,
+void PropertyStore::RegisterConstStringmaps(std::string_view name,
                                             const Stringmaps* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   stringmaps_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<Stringmaps>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyStringmaps(base::StringPiece name,
+void PropertyStore::RegisterWriteOnlyStringmaps(std::string_view name,
                                                 Stringmaps* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   stringmaps_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<Stringmaps>(prop));
 }
 
-void PropertyStore::RegisterStrings(base::StringPiece name, Strings* prop) {
+void PropertyStore::RegisterStrings(std::string_view name, Strings* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   strings_properties_[std::string(name)].reset(
       new PropertyAccessor<Strings>(prop));
 }
 
-void PropertyStore::RegisterConstStrings(base::StringPiece name,
+void PropertyStore::RegisterConstStrings(std::string_view name,
                                          const Strings* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   strings_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<Strings>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyStrings(base::StringPiece name,
+void PropertyStore::RegisterWriteOnlyStrings(std::string_view name,
                                              Strings* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   strings_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<Strings>(prop));
 }
 
-void PropertyStore::RegisterUint8(base::StringPiece name, uint8_t* prop) {
+void PropertyStore::RegisterUint8(std::string_view name, uint8_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint8_properties_[std::string(name)].reset(
       new PropertyAccessor<uint8_t>(prop));
 }
 
-void PropertyStore::RegisterConstUint8(base::StringPiece name,
+void PropertyStore::RegisterConstUint8(std::string_view name,
                                        const uint8_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint8_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<uint8_t>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyUint8(base::StringPiece name,
+void PropertyStore::RegisterWriteOnlyUint8(std::string_view name,
                                            uint8_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint8_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<uint8_t>(prop));
 }
 
-void PropertyStore::RegisterByteArray(base::StringPiece name, ByteArray* prop) {
+void PropertyStore::RegisterByteArray(std::string_view name, ByteArray* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   bytearray_properties_[std::string(name)].reset(
       new PropertyAccessor<ByteArray>(prop));
 }
 
-void PropertyStore::RegisterConstByteArray(base::StringPiece name,
+void PropertyStore::RegisterConstByteArray(std::string_view name,
                                            const ByteArray* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   bytearray_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<ByteArray>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyByteArray(base::StringPiece name,
+void PropertyStore::RegisterWriteOnlyByteArray(std::string_view name,
                                                ByteArray* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   bytearray_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<ByteArray>(prop));
 }
 
-void PropertyStore::RegisterKeyValueStore(base::StringPiece name,
+void PropertyStore::RegisterKeyValueStore(std::string_view name,
                                           KeyValueStore* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   key_value_store_properties_[std::string(name)].reset(
       new PropertyAccessor<KeyValueStore>(prop));
 }
 
-void PropertyStore::RegisterConstKeyValueStore(base::StringPiece name,
+void PropertyStore::RegisterConstKeyValueStore(std::string_view name,
                                                const KeyValueStore* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   key_value_store_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<KeyValueStore>(prop));
 }
 
-void PropertyStore::RegisterKeyValueStores(base::StringPiece name,
+void PropertyStore::RegisterKeyValueStores(std::string_view name,
                                            KeyValueStores* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   key_value_stores_properties_[std::string(name)].reset(
       new PropertyAccessor<KeyValueStores>(prop));
 }
 
-void PropertyStore::RegisterConstKeyValueStores(base::StringPiece name,
+void PropertyStore::RegisterConstKeyValueStores(std::string_view name,
                                                 const KeyValueStores* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   key_value_stores_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<KeyValueStores>(prop));
 }
 
-void PropertyStore::RegisterUint16(base::StringPiece name, uint16_t* prop) {
+void PropertyStore::RegisterUint16(std::string_view name, uint16_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint16_properties_[std::string(name)].reset(
       new PropertyAccessor<uint16_t>(prop));
 }
 
-void PropertyStore::RegisterUint16s(base::StringPiece name, Uint16s* prop) {
+void PropertyStore::RegisterUint16s(std::string_view name, Uint16s* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint16s_properties_[std::string(name)].reset(
       new PropertyAccessor<Uint16s>(prop));
 }
 
-void PropertyStore::RegisterUint32(base::StringPiece name, uint32_t* prop) {
+void PropertyStore::RegisterUint32(std::string_view name, uint32_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint32_properties_[std::string(name)].reset(
       new PropertyAccessor<uint32_t>(prop));
 }
 
-void PropertyStore::RegisterConstUint32(base::StringPiece name,
+void PropertyStore::RegisterConstUint32(std::string_view name,
                                         const uint32_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint32_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<uint32_t>(prop));
 }
 
-void PropertyStore::RegisterConstUint16(base::StringPiece name,
+void PropertyStore::RegisterConstUint16(std::string_view name,
                                         const uint16_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint16_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<uint16_t>(prop));
 }
 
-void PropertyStore::RegisterConstUint16s(base::StringPiece name,
+void PropertyStore::RegisterConstUint16s(std::string_view name,
                                          const Uint16s* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint16s_properties_[std::string(name)].reset(
       new ConstPropertyAccessor<Uint16s>(prop));
 }
 
-void PropertyStore::RegisterWriteOnlyUint16(base::StringPiece name,
+void PropertyStore::RegisterWriteOnlyUint16(std::string_view name,
                                             uint16_t* prop) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint16_properties_[std::string(name)].reset(
       new WriteOnlyPropertyAccessor<uint16_t>(prop));
 }
 
-void PropertyStore::RegisterDerivedBool(base::StringPiece name,
+void PropertyStore::RegisterDerivedBool(std::string_view name,
                                         BoolAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   bool_properties_[std::string(name)] = std::move(accessor);
 }
 
-void PropertyStore::RegisterDerivedInt32(base::StringPiece name,
+void PropertyStore::RegisterDerivedInt32(std::string_view name,
                                          Int32Accessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   int32_properties_[std::string(name)] = std::move(accessor);
 }
 
 void PropertyStore::RegisterDerivedKeyValueStore(
-    base::StringPiece name, KeyValueStoreAccessor accessor) {
+    std::string_view name, KeyValueStoreAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   key_value_store_properties_[std::string(name)] = std::move(accessor);
 }
 
 void PropertyStore::RegisterDerivedKeyValueStores(
-    base::StringPiece name, KeyValueStoresAccessor accessor) {
+    std::string_view name, KeyValueStoresAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   key_value_stores_properties_[std::string(name)] = std::move(accessor);
 }
 
 void PropertyStore::RegisterDerivedRpcIdentifier(
-    base::StringPiece name, RpcIdentifierAccessor accessor) {
+    std::string_view name, RpcIdentifierAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   rpc_identifier_properties_[std::string(name)] = std::move(accessor);
 }
 
 void PropertyStore::RegisterDerivedRpcIdentifiers(
-    base::StringPiece name, RpcIdentifiersAccessor accessor) {
+    std::string_view name, RpcIdentifiersAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   rpc_identifiers_properties_[std::string(name)] = std::move(accessor);
 }
 
-void PropertyStore::RegisterDerivedString(base::StringPiece name,
+void PropertyStore::RegisterDerivedString(std::string_view name,
                                           StringAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   string_properties_[std::string(name)] = std::move(accessor);
 }
 
-void PropertyStore::RegisterDerivedStrings(base::StringPiece name,
+void PropertyStore::RegisterDerivedStrings(std::string_view name,
                                            StringsAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   strings_properties_[std::string(name)] = std::move(accessor);
 }
 
-void PropertyStore::RegisterDerivedStringmap(base::StringPiece name,
+void PropertyStore::RegisterDerivedStringmap(std::string_view name,
                                              StringmapAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   stringmap_properties_[std::string(name)] = std::move(accessor);
 }
 
-void PropertyStore::RegisterDerivedStringmaps(base::StringPiece name,
+void PropertyStore::RegisterDerivedStringmaps(std::string_view name,
                                               StringmapsAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   stringmaps_properties_[std::string(name)] = std::move(accessor);
 }
 
-void PropertyStore::RegisterDerivedUint16(base::StringPiece name,
+void PropertyStore::RegisterDerivedUint16(std::string_view name,
                                           Uint16Accessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint16_properties_[std::string(name)] = std::move(accessor);
 }
 
-void PropertyStore::RegisterDerivedUint64(base::StringPiece name,
+void PropertyStore::RegisterDerivedUint64(std::string_view name,
                                           Uint64Accessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint64_properties_[std::string(name)] = std::move(accessor);
 }
 
-void PropertyStore::RegisterDerivedUint16s(base::StringPiece name,
+void PropertyStore::RegisterDerivedUint16s(std::string_view name,
                                            Uint16sAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   uint16s_properties_[std::string(name)] = std::move(accessor);
 }
 
-void PropertyStore::RegisterDerivedByteArray(base::StringPiece name,
+void PropertyStore::RegisterDerivedByteArray(std::string_view name,
                                              ByteArrayAccessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";
   bytearray_properties_[std::string(name)] = std::move(accessor);
@@ -760,11 +760,11 @@ void PropertyStore::RegisterDerivedByteArray(base::StringPiece name,
 // private methods
 
 template <class V>
-bool PropertyStore::GetProperty(base::StringPiece name,
+bool PropertyStore::GetProperty(std::string_view name,
                                 V* value,
                                 Error* error,
                                 const AccessorMap<V>& collection,
-                                base::StringPiece value_type_english) const {
+                                std::string_view value_type_english) const {
   SLOG(2) << "Getting " << name << " as " << value_type_english << ".";
   auto it = collection.find(name);
   if (it != collection.end()) {
@@ -786,11 +786,11 @@ bool PropertyStore::GetProperty(base::StringPiece name,
 }
 
 template <class V>
-bool PropertyStore::SetProperty(base::StringPiece name,
+bool PropertyStore::SetProperty(std::string_view name,
                                 const V& value,
                                 Error* error,
                                 AccessorMap<V>* collection,
-                                base::StringPiece value_type_english) {
+                                std::string_view value_type_english) {
   SLOG(2) << "Setting " << name << " as " << value_type_english << ".";
   if (const auto it = collection->find(name); it != collection->end()) {
     bool ret = it->second->Set(value, error);
