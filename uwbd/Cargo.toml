@@ -28,9 +28,11 @@ async-trait = "0.1.32"
 dbus = "0.9.3"
 dbus-crossroads = "0.5.0"
 futures = "0.3.13"
+lazy_static = "1.4.0"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 log = "0.4.14"
 protobuf = "2.24.1"
+scopeguard = "1.1.0"
 syslog = "6.0.1"
 tokio = { version = "1.14.0", features = ["sync"] }
 uwb_core = { path = "../../aosp/external/uwb/local/src/rust/uwb_core", features=["proto"] } # provided by ebuild

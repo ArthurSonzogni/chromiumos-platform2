@@ -6,4 +6,5 @@ pub mod common;
 pub mod dbus_bindings;
 pub mod dbus_uwb_service;
 pub mod dbus_uwb_service_callback;
+pub mod hal_bindings;
 pub mod uci_hal_impl;
