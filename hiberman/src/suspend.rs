@@ -4,13 +4,16 @@
 
 //! Implements hibernate suspend functionality.
 
+use std::io::BufRead;
 use std::mem;
+use std::process::Command;
 use std::sync::RwLockReadGuard;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 use std::time::UNIX_EPOCH;
 
+use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use libc::reboot;
@@ -20,6 +23,7 @@ use log::debug;
 use log::error;
 use log::info;
 use log::warn;
+use regex::Regex;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
@@ -30,7 +34,9 @@ use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
 use crate::hiberlog::LogRedirectGuard;
+use crate::hiberutil::checked_command_output;
 use crate::hiberutil::get_kernel_restore_time;
+use crate::hiberutil::get_page_size;
 use crate::hiberutil::get_ram_size;
 use crate::hiberutil::intel_keylocker_enabled;
 use crate::hiberutil::path_to_stateful_block;
@@ -240,6 +246,7 @@ impl SuspendConductor<'_> {
             // Suspend path. Everything after this point is invisible to the
             // hibernated kernel.
 
+            let pages_with_zeroes = get_number_of_dropped_pages_with_zeroes()?;
             // Briefly remount 'hibermeta' to write logs and metrics.
             let mut hibermeta_mount = self.volume_manager.mount_hibermeta()?;
             let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
@@ -258,12 +265,22 @@ impl SuspendConductor<'_> {
             log_metric_event(HibernateEvent::SuspendSuccess);
 
             {
+                let image_size = snap_dev.get_image_size()?;
+                let page_size = get_page_size() as u64;
                 let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
 
                 metrics_logger.metrics_send_io_sample(
                     "WriteHibernateImage",
-                    snap_dev.get_image_size()?,
+                    image_size,
                     io_duration,
+                );
+
+                let pages_with_zeroes_percent = ((pages_with_zeroes * 100)
+                    / ((image_size / page_size) + pages_with_zeroes))
+                    as usize;
+                metrics_logger.log_percent_metric(
+                    "Platform.Hibernate.DroppedPagesWithZeroesPercent",
+                    pages_with_zeroes_percent,
                 );
 
                 // Flush the metrics file before unmounting hibermeta. The metrics will be
@@ -427,4 +444,37 @@ impl SuspendConductor<'_> {
 fn log_metric_event(event: HibernateEvent) {
     let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
     metrics_logger.log_event(event);
+}
+
+/// Get the number of pages that were not included in the hibernate image
+/// by the kernel because they only contain zeroes.
+fn get_number_of_dropped_pages_with_zeroes() -> Result<u64> {
+    let output =
+        checked_command_output(Command::new("/bin/dmesg").args(["-P", "--since", "1 minute ago"]))
+            .context("Failed to execute 'dmesg'")?;
+
+    // regular expression for extracting the number of pages with zeroes
+    let re = Regex::new(r"Image created \(\d+ pages copied, (\d+) zero pages\)").unwrap();
+
+    for line in output.stdout.lines() {
+        if line.is_err() {
+            continue;
+        }
+
+        let line = line.unwrap();
+
+        // limit regex matching to eligible lines.
+        if !line.contains("Image created") {
+            continue;
+        }
+
+        let cap = re.captures(&line);
+        if let Some(cap) = cap {
+            return Ok(cap[1].parse::<u64>()?);
+        }
+    }
+
+    Err(anyhow!(
+        "Could not determine number of dropped pages with only zeroes"
+    ))
 }

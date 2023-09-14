@@ -101,6 +101,17 @@ impl MetricsLogger {
         self.log_metric_internal(HistogramType::Linear, name, value, -1, max, 0);
     }
 
+    pub fn log_percent_metric(&mut self, name: &str, value: usize) {
+        self.log_metric_internal(
+            HistogramType::Linear,
+            name,
+            value.try_into().unwrap(),
+            0,
+            100,
+            0,
+        );
+    }
+
     /// Write the MetricsLogger buffer to the MetricsLogger file.
     pub fn flush(&mut self) -> Result<()> {
         if self.buf.is_empty() {
