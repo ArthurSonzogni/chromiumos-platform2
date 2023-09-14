@@ -63,7 +63,6 @@
 #include "cryptohome/error/reap.h"
 #include "cryptohome/error/reporting.h"
 #include "cryptohome/error/utilities.h"
-#include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"

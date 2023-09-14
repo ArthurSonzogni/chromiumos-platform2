@@ -41,25 +41,21 @@
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <metrics/metrics_library_mock.h>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
-#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
-#include "cryptohome/auth_factor/auth_factor_storage_type.h"
-#include "cryptohome/auth_intent.h"
-#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_disk_cleanup.h"
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/common/print_UserDataAuth_proto.h"
-#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/features.h"
@@ -79,7 +75,6 @@
 #include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
-#include "cryptohome/protobuf_test_utils.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_homedirs.h"
@@ -89,7 +84,6 @@
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/username.h"
-#include "libhwsec-foundation/crypto/aes.h"
 
 using base::FilePath;
 using base::test::TestFuture;
@@ -144,8 +138,6 @@ namespace {
 // Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr int kAuthSessionExtensionDuration = 60;
 constexpr auto kAuthSessionTimeout = base::Minutes(5);
-constexpr auto kAuthSessionExtension =
-    base::Seconds(kAuthSessionExtensionDuration);
 
 // Fake labels to be in used in this test suite.
 constexpr char kFakeLabel[] = "test_label";
@@ -2956,8 +2948,7 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
       userdataauth_->auth_session_manager_->FindAuthSession(
           auth_session_id.value());
   auto requested_delay = auth_session.GetRemainingTime();
-  auto time_difference =
-      (kAuthSessionTimeout + kAuthSessionExtension) - requested_delay;
+  auto time_difference = kAuthSessionTimeout - requested_delay;
   EXPECT_LT(time_difference, base::Seconds(1));
 }
 

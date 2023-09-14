@@ -229,23 +229,53 @@ TEST_F(AuthSessionManagerTest, ExtendExpire) {
         AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
   }
 
-  // Extend the first session by two minutes.
+  // Extend the first session to seven minutes.
   {
     InUseAuthSession in_use_auth_session =
         auth_session_manager_.FindAuthSession(tokens[0]);
     ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
-    EXPECT_THAT(in_use_auth_session.ExtendTimeout(base::Minutes(2)), IsOk());
+    EXPECT_THAT(in_use_auth_session.ExtendTimeout(
+                    AuthSessionManager::kAuthTimeout + base::Minutes(2)),
+                IsOk());
     EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
                 AllOf(Gt(base::TimeDelta()),
                       Le(AuthSessionManager::kAuthTimeout + base::Minutes(2))));
   }
 
-  // Move the time forward by timeout plus one minute. This should timeout the
-  // second session (original timeout) but not the first (added two minutes).
-  task_environment_.FastForwardBy(AuthSessionManager::kAuthTimeout +
-                                  base::Minutes(1));
+  // Extend the second session to two minutes (this is a no-op)
+  {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(tokens[1]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.ExtendTimeout(base::Minutes(2)), IsOk());
+    EXPECT_THAT(
+        in_use_auth_session.GetRemainingTime(),
+        AllOf(Gt(base::TimeDelta()), Le(AuthSessionManager::kAuthTimeout)));
+  }
 
-  // Only the first session should be good.
+  // Move the time forward by timeout plus one minute.
+  task_environment_.FastForwardBy(base::Minutes(2));
+
+  // Both Session should be good be good.
+  {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(tokens[0]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()), Le(base::Minutes(5))));
+  }
+  {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(tokens[1]);
+    ASSERT_THAT(in_use_auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(in_use_auth_session.GetRemainingTime(),
+                AllOf(Gt(base::TimeDelta()), Le(base::Minutes(3))));
+  }
+
+  // Move the time forward by timeout by another four minutes. This should
+  // timeout the second session (original timeout) but not the first (added two
+  // minutes).
+  task_environment_.FastForwardBy(base::Minutes(4));
   {
     InUseAuthSession in_use_auth_session =
         auth_session_manager_.FindAuthSession(tokens[0]);

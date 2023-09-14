@@ -655,7 +655,8 @@ message ExtendAuthSessionRequest {
   // to be extended.
   bytes auth_session_id = 1;
   // Duration of the extension requested in seconds, with a default of
-  // 60 seconds if not specified.
+  // 60 seconds if not specified. The API will extend AuthSessions validity to
+  // this duration or the current expiration time, whichever is higher.
   uint32 extension_duration = 2;
 }
 

@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_session_manager.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -387,7 +388,8 @@ CryptohomeStatus InUseAuthSession::ExtendTimeout(base::TimeDelta extension) {
         user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
   // Remove the existing expiration entry and add a new one with the new time.
-  base::Time new_time = iter->first + extension;
+  base::Time new_time =
+      std::max(iter->first, (manager_->clock_->Now() + extension));
   manager_->expiration_map_.erase(iter);
   manager_->expiration_map_.emplace(new_time, session_->token());
   manager_->ResetExpirationTimer();
