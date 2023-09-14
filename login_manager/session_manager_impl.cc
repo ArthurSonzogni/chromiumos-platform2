@@ -1756,6 +1756,7 @@ void SessionManagerImpl::IsDevModeBlockedForCarrierLock(
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
+  LOG(INFO) << "Policy persisted result: " << success;
   device_local_account_manager_->UpdateDeviceSettings(
       device_policy_->GetSettings());
   adaptor_.SendPropertyChangeCompleteSignal(ToSuccessSignal(success));

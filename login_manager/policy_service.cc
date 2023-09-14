@@ -195,10 +195,12 @@ void PolicyService::OnPolicyPersisted(Completion completion,
     error = CreateError(dbus_error_code, kMessage);
   }
 
-  if (!completion.is_null())
+  if (!completion.is_null()) {
     std::move(completion).Run(std::move(error));
-  else
+  } else {
+    LOG(ERROR) << "Policy persisted but no completion. Reset the error.";
     error.reset();
+  }
 
   if (delegate_)
     delegate_->OnPolicyPersisted(dbus_error_code == dbus_error::kNone);
