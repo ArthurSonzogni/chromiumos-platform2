@@ -246,7 +246,7 @@ TEST_F(DHCPControllerTest, StartWithoutArpGateway) {
 TEST_F(DHCPControllerTest, TimeToLeaseExpiry_Success) {
   NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
-  dhcp_data.lease_duration_seconds = kLeaseDuration;
+  dhcp_data.lease_duration = base::Seconds(kLeaseDuration);
   SetCurrentTimeToSecond(kTimeNow);
   InvokeOnIPConfigUpdated(network_config, dhcp_data, true);
 
@@ -270,7 +270,7 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
   SetDHCPVerboseLog();
   NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
-  dhcp_data.lease_duration_seconds = kLeaseDuration;
+  dhcp_data.lease_duration = base::Seconds(kLeaseDuration);
   SetCurrentTimeToSecond(kTimeNow);
   InvokeOnIPConfigUpdated(network_config, dhcp_data, true);
 
@@ -288,7 +288,7 @@ TEST_F(DHCPControllerTest, ExpiryMetrics) {
   // triggered right after 1 second.
   NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
-  dhcp_data.lease_duration_seconds = 1;
+  dhcp_data.lease_duration = base::Seconds(1);
   SetCurrentTimeToSecond(kTimeNow);
   InvokeOnIPConfigUpdated(network_config, dhcp_data, true);
 

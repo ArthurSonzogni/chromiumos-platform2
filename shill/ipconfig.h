@@ -113,6 +113,8 @@ class IPConfig {
 
   const RpcIdentifier& GetRpcIdentifier() const;
 
+  uint32_t GetLeaseDurationSeconds(Error* /*error*/);
+
   void set_properties(const Properties& props) { properties_ = props; }
 
   // Update DNS servers setting for this ipconfig, this allows Chrome

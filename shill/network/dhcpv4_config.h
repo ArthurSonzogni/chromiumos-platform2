@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/time/time.h>
+
 #include "shill/network/network_config.h"
 #include "shill/store/key_value_store.h"
 
@@ -25,7 +27,7 @@ class DHCPv4Config {
     // Web Proxy Auto Discovery (WPAD) URL gained from DHCP.
     std::string web_proxy_auto_discovery;
     // Length of time the lease was granted.
-    uint32_t lease_duration_seconds = 0;
+    base::TimeDelta lease_duration;
   };
 
   // Constants used as keys in the configuration got from dhcpcd. Used only

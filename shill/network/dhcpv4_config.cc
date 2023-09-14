@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
@@ -152,7 +153,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
     } else if (key == kConfigurationKeyWebProxyAutoDiscoveryUrl) {
       dhcp_data->web_proxy_auto_discovery = value.Get<std::string>();
     } else if (key == kConfigurationKeyLeaseTime) {
-      dhcp_data->lease_duration_seconds = value.Get<uint32_t>();
+      dhcp_data->lease_duration = base::Seconds(value.Get<uint32_t>());
     } else if (key == kConfigurationKeyiSNSOptionData) {
       dhcp_data->isns_option_data = value.Get<ByteArray>();
     } else {

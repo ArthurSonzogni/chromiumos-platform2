@@ -243,6 +243,7 @@ class PropertyStore {
                                  StringmapsAccessor accessor);
   void RegisterDerivedStrings(std::string_view name, StringsAccessor accessor);
   void RegisterDerivedUint16(std::string_view name, Uint16Accessor accessor);
+  void RegisterDerivedUint32(std::string_view name, Uint32Accessor accessor);
   void RegisterDerivedUint64(std::string_view name, Uint64Accessor accessor);
   void RegisterDerivedUint16s(std::string_view name, Uint16sAccessor accessor);
   void RegisterDerivedByteArray(std::string_view name,

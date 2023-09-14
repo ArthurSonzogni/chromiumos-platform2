@@ -242,9 +242,9 @@ void DHCPController::OnIPConfigUpdated(const NetworkConfig& network_config,
                                        bool new_lease_acquired) {
   if (new_lease_acquired) {
     StopAcquisitionTimeout();
-    if (dhcp_data.lease_duration_seconds) {
-      UpdateLeaseExpirationTime(dhcp_data.lease_duration_seconds);
-      StartExpirationTimeout(base::Seconds(dhcp_data.lease_duration_seconds));
+    if (dhcp_data.lease_duration.is_positive()) {
+      UpdateLeaseExpirationTime(dhcp_data.lease_duration.InSeconds());
+      StartExpirationTimeout(dhcp_data.lease_duration);
     } else {
       LOG(WARNING)
           << "Lease duration is zero; not starting an expiration timer.";

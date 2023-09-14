@@ -739,6 +739,12 @@ void PropertyStore::RegisterDerivedUint16(std::string_view name,
   uint16_properties_[std::string(name)] = std::move(accessor);
 }
 
+void PropertyStore::RegisterDerivedUint32(std::string_view name,
+                                          Uint32Accessor accessor) {
+  DCHECK(!Contains(name)) << "(Already registered " << name << ")";
+  uint32_properties_[std::string(name)] = std::move(accessor);
+}
+
 void PropertyStore::RegisterDerivedUint64(std::string_view name,
                                           Uint64Accessor accessor) {
   DCHECK(!Contains(name)) << "(Already registered " << name << ")";

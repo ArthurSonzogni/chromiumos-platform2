@@ -24,6 +24,7 @@
 #include "shill/control_interface.h"
 #include "shill/logging.h"
 #include "shill/network/network_config.h"
+#include "shill/store/property_accessor.h"
 
 namespace shill {
 
@@ -363,10 +364,12 @@ IPConfig::IPConfig(ControlInterface* control_interface,
       &properties_.dhcp_data.vendor_encapsulated_options);
   store_.RegisterConstString(kWebProxyAutoDiscoveryUrlProperty,
                              &properties_.dhcp_data.web_proxy_auto_discovery);
-  store_.RegisterConstUint32(kLeaseDurationSecondsProperty,
-                             &properties_.dhcp_data.lease_duration_seconds);
   store_.RegisterConstByteArray(kiSNSOptionDataProperty,
                                 &properties_.dhcp_data.isns_option_data);
+  store_.RegisterDerivedUint32(
+      kLeaseDurationSecondsProperty,
+      Uint32Accessor(new CustomAccessor<IPConfig, uint32_t>(
+          this, &IPConfig::GetLeaseDurationSeconds, nullptr)));
   SLOG(this, 2) << __func__ << " device: " << device_name_;
 }
 
@@ -376,6 +379,10 @@ IPConfig::~IPConfig() {
 
 const RpcIdentifier& IPConfig::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
+}
+
+uint32_t IPConfig::GetLeaseDurationSeconds(Error* /*error*/) {
+  return properties_.dhcp_data.lease_duration.InSeconds();
 }
 
 void IPConfig::ApplyNetworkConfig(const NetworkConfig& config,
@@ -438,8 +445,7 @@ bool operator==(const IPConfig::Properties& lhs,
          lhs.dhcp_data.isns_option_data == rhs.dhcp_data.isns_option_data &&
          lhs.dhcp_data.web_proxy_auto_discovery ==
              rhs.dhcp_data.web_proxy_auto_discovery &&
-         lhs.dhcp_data.lease_duration_seconds ==
-             rhs.dhcp_data.lease_duration_seconds;
+         lhs.dhcp_data.lease_duration == rhs.dhcp_data.lease_duration;
 }
 
 std::ostream& operator<<(std::ostream& stream, const IPConfig& config) {
@@ -484,8 +490,8 @@ std::ostream& operator<<(std::ostream& stream,
   if (properties.mtu != IPConfig::kUndefinedMTU) {
     stream << ", mtu: " << properties.mtu;
   }
-  if (properties.dhcp_data.lease_duration_seconds != 0) {
-    stream << ", lease: " << properties.dhcp_data.lease_duration_seconds << "s";
+  if (properties.dhcp_data.lease_duration.is_positive()) {
+    stream << ", lease: " << properties.dhcp_data.lease_duration;
   }
   return stream << "}";
 }
