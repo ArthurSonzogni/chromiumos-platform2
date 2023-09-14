@@ -817,13 +817,13 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
   std::unique_ptr<ImageReader> image_reader;
   switch (scan_state->format) {
     case IMAGE_FORMAT_PNG: {
-      image_reader = PngReader::Create(error, params.value(), resolution,
-                                       std::move(out_file));
+      image_reader =
+          PngReader::Create(error, params.value(), resolution, out_file.get());
       break;
     }
     case IMAGE_FORMAT_JPEG: {
-      image_reader = JpegReader::Create(error, params.value(), resolution,
-                                        std::move(out_file));
+      image_reader =
+          JpegReader::Create(error, params.value(), resolution, out_file.get());
       break;
     }
     default: {

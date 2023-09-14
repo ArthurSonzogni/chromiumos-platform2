@@ -20,9 +20,8 @@ std::unique_ptr<ImageReader> JpegReader::Create(
     brillo::ErrorPtr* error,
     const ScanParameters& params,
     const std::optional<int>& resolution,
-    base::ScopedFILE out_file) {
-  std::unique_ptr<JpegReader> reader(
-      new JpegReader(params, std::move(out_file)));
+    FILE* out_file) {
+  std::unique_ptr<JpegReader> reader(new JpegReader(params, out_file));
 
   if (!reader->ValidateParams(error) ||
       !reader->Initialize(error, resolution)) {
@@ -59,6 +58,7 @@ bool JpegReader::ReadRow(brillo::ErrorPtr* error, uint8_t* data) {
   }
 
   jpeg_write_scanlines(&cinfo_, row_pointer, 1);
+  fflush(out_file_);
 
   return true;
 }
@@ -75,8 +75,8 @@ bool JpegReader::Finalize(brillo::ErrorPtr* error) {
   return true;
 }
 
-JpegReader::JpegReader(const ScanParameters& params, base::ScopedFILE out_file)
-    : ImageReader(params, std::move(out_file)) {}
+JpegReader::JpegReader(const ScanParameters& params, FILE* out_file)
+    : ImageReader(params, out_file) {}
 
 bool JpegReader::ValidateParams(brillo::ErrorPtr* error) {
   if (!ImageReader::ValidateParams(error)) {
@@ -97,7 +97,7 @@ bool JpegReader::Initialize(brillo::ErrorPtr* error,
                             const std::optional<int>& resolution) {
   cinfo_.err = jpeg_std_error(&jerr_);
   jpeg_create_compress(&cinfo_);
-  jpeg_stdio_dest(&cinfo_, out_file_.get());
+  jpeg_stdio_dest(&cinfo_, out_file_);
 
   switch (params_.format) {
     case kGrayscale:

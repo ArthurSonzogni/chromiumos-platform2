@@ -7,6 +7,7 @@
 #include <optional>
 #include <utility>
 
+#include <base/check.h>
 #include <dbus/lorgnette/dbus-constants.h>
 
 #include "lorgnette/constants.h"
@@ -52,8 +53,8 @@ std::unique_ptr<ImageReader> PngReader::Create(
     brillo::ErrorPtr* error,
     const ScanParameters& params,
     const std::optional<int>& resolution,
-    base::ScopedFILE out_file) {
-  std::unique_ptr<PngReader> reader(new PngReader(params, std::move(out_file)));
+    FILE* out_file) {
+  std::unique_ptr<PngReader> reader(new PngReader(params, out_file));
 
   if (!reader->ValidateParams(error) ||
       !reader->Initialize(error, resolution)) {
@@ -82,6 +83,7 @@ bool PngReader::ReadRow(brillo::ErrorPtr* error, uint8_t* data) {
                                "Writing PNG row failed with result %d", ret);
     return false;
   }
+  fflush(out_file_);
 
   return true;
 }
@@ -104,8 +106,8 @@ bool PngReader::Finalize(brillo::ErrorPtr* error) {
   return true;
 }
 
-PngReader::PngReader(const ScanParameters& params, base::ScopedFILE out_file)
-    : ImageReader(params, std::move(out_file)) {}
+PngReader::PngReader(const ScanParameters& params, FILE* out_file)
+    : ImageReader(params, out_file) {}
 
 bool PngReader::ValidateParams(brillo::ErrorPtr* error) {
   if (!ImageReader::ValidateParams(error)) {
@@ -155,7 +157,7 @@ bool PngReader::Initialize(brillo::ErrorPtr* error,
                  PNG_RESOLUTION_METER);
   }
 
-  png_init_io(png_, out_file_.get());
+  png_init_io(png_, out_file_);
   int ret = LibpngErrorWrap(error, png_write_info, png_, info_);
   if (ret != 0) {
     brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,

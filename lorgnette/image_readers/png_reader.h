@@ -22,14 +22,14 @@ class PngReader final : public ImageReader {
       brillo::ErrorPtr* error,
       const ScanParameters& params,
       const std::optional<int>& resolution,
-      base::ScopedFILE out_file);
+      FILE* out_file);
   ~PngReader();
 
   bool ReadRow(brillo::ErrorPtr* error, uint8_t* data) override;
   bool Finalize(brillo::ErrorPtr* error) override;
 
  private:
-  PngReader(const ScanParameters& params, base::ScopedFILE out_file);
+  PngReader(const ScanParameters& params, FILE* out_file);
   bool ValidateParams(brillo::ErrorPtr* error) override;
   bool Initialize(brillo::ErrorPtr* error,
                   const std::optional<int>& resolution) override;
