@@ -40,6 +40,16 @@ namespace lorgnette {
 
 namespace {
 
+ScanParameters MakeScanParameters(int width, int height) {
+  return {
+      .format = FrameFormat::kRGB,
+      .bytes_per_line = 3 * width,
+      .pixels_per_line = width,
+      .lines = height,
+      .depth = 8,
+  };
+}
+
 class MockFirewallManager : public FirewallManager {
  public:
   explicit MockFirewallManager(const std::string& interface)
@@ -683,6 +693,7 @@ TEST(DeviceTrackerTest, StartPreparedScanMissingImageFormatFails) {
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
   auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
   sane_client->SetDeviceForName("Test", std::move(scanner));
 
   OpenScannerRequest open_request;
@@ -707,6 +718,7 @@ TEST(DeviceTrackerTest, StartPreparedScanDeviceStartFails) {
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
   auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
   scanner->SetStartScanResult(SANE_STATUS_JAMMED);
   sane_client->SetDeviceForName("Test", std::move(scanner));
 
@@ -733,6 +745,7 @@ TEST(DeviceTrackerTest, StartPreparedScanDeviceMissingJob) {
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
   auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
   scanner->SetCallStartJob(false);
   sane_client->SetDeviceForName("Test", std::move(scanner));
 
@@ -752,6 +765,32 @@ TEST(DeviceTrackerTest, StartPreparedScanDeviceMissingJob) {
   EXPECT_FALSE(sps_response.has_job_handle());
 }
 
+TEST(DeviceTrackerTest, StartPreparedScanFailsWithoutImageReader) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  // No parameters set, so image reader creation will fail.
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = open_response.config().scanner();
+  sps_request.set_image_format("image/jpeg");
+  StartPreparedScanResponse sps_response =
+      tracker->StartPreparedScan(sps_request);
+  EXPECT_THAT(sps_response.scanner(), EqualsProto(sps_request.scanner()));
+  EXPECT_NE(sps_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_FALSE(sps_response.has_job_handle());
+}
+
 TEST(DeviceTrackerTest, StartPreparedScanCreatesJob) {
   auto sane_client = std::make_unique<SaneClientFake>();
   auto libusb = std::make_unique<LibusbWrapperFake>();
@@ -759,6 +798,7 @@ TEST(DeviceTrackerTest, StartPreparedScanCreatesJob) {
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
   auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
   sane_client->SetDeviceForName("Test", std::move(scanner));
 
   OpenScannerRequest open_request;
@@ -829,6 +869,7 @@ TEST(DeviceTrackerTest, CancelScanClosedScanner) {
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
   auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
   sane_client->SetDeviceForName("Test", std::move(scanner));
 
   OpenScannerRequest open_request;
@@ -875,6 +916,7 @@ TEST(DeviceTrackerTest, CancelScanNotCurrentJob) {
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
   auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
   SaneDeviceFake* raw_scanner = scanner.get();
   sane_client->SetDeviceForName("Test", std::move(scanner));
 
@@ -928,6 +970,7 @@ TEST(DeviceTrackerTest, CancelScanDeviceCancelFails) {
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
   auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
   scanner->SetCancelScanResult(false);
   sane_client->SetDeviceForName("Test", std::move(scanner));
 
@@ -961,6 +1004,7 @@ TEST(DeviceTrackerTest, CancelScanNoErrors) {
       std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
   auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
   sane_client->SetDeviceForName("Test", std::move(scanner));
 
   OpenScannerRequest open_request;
@@ -992,6 +1036,180 @@ TEST(DeviceTrackerTest, CancelScanNoErrors) {
   EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_INVALID);
   EXPECT_THAT(cancel_response.job_handle(),
               EqualsProto(cancel_request.job_handle()));
+}
+
+TEST(DeviceTrackerTest, ReadScanDataRequiresJobHandle) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  ReadScanDataRequest request;
+  request.mutable_job_handle()->set_token("");
+  ReadScanDataResponse response = tracker->ReadScanData(request);
+  EXPECT_EQ(response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_THAT(response.job_handle(), EqualsProto(request.job_handle()));
+  EXPECT_FALSE(response.has_data());
+  EXPECT_FALSE(response.has_estimated_completion());
+}
+
+TEST(DeviceTrackerTest, ReadScanDataFailsForInvalidJob) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  ReadScanDataRequest request;
+  request.mutable_job_handle()->set_token("no_job");
+  ReadScanDataResponse response = tracker->ReadScanData(request);
+  EXPECT_EQ(response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_THAT(response.job_handle(), EqualsProto(request.job_handle()));
+  EXPECT_FALSE(response.has_data());
+  EXPECT_FALSE(response.has_estimated_completion());
+}
+
+TEST(DeviceTrackerTest, ReadScanDataFailsForClosedScanner) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = open_response.config().scanner();
+  sps_request.set_image_format("image/jpeg");
+  StartPreparedScanResponse sps_response =
+      tracker->StartPreparedScan(sps_request);
+  ASSERT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
+
+  // Close device, leaving a dangling job handle.
+  CloseScannerRequest close_request;
+  *close_request.mutable_scanner() = open_response.config().scanner();
+  CloseScannerResponse close_response = tracker->CloseScanner(close_request);
+  ASSERT_EQ(close_response.result(), OPERATION_RESULT_SUCCESS);
+
+  ReadScanDataRequest rsd_request;
+  *rsd_request.mutable_job_handle() = sps_response.job_handle();
+  ReadScanDataResponse rsd_response = tracker->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_MISSING);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_FALSE(rsd_response.has_data());
+  EXPECT_FALSE(rsd_response.has_estimated_completion());
+
+  // Job handle itself is no longer valid.
+  rsd_response = tracker->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_FALSE(rsd_response.has_data());
+  EXPECT_FALSE(rsd_response.has_estimated_completion());
+}
+
+TEST(DeviceTrackerTest, ReadScanDataFailsForBadRead) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
+  scanner->SetReadScanDataResult(SANE_STATUS_NO_DOCS);
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = open_response.config().scanner();
+  sps_request.set_image_format("image/jpeg");
+  StartPreparedScanResponse sps_response =
+      tracker->StartPreparedScan(sps_request);
+  ASSERT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
+
+  ReadScanDataRequest rsd_request;
+  *rsd_request.mutable_job_handle() = sps_response.job_handle();
+  ReadScanDataResponse rsd_response = tracker->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_ADF_EMPTY);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_FALSE(rsd_response.has_data());
+  EXPECT_FALSE(rsd_response.has_estimated_completion());
+}
+
+TEST(DeviceTrackerTest, ReadScanDataSuccess) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(100, 100));
+  std::vector<uint8_t> page1(3 * 100 * 100, 0);
+  scanner->SetScanData({page1});
+  scanner->SetMaxReadSize(3 * 100 * 60 + 5);  // 60 lines plus leftover.
+  scanner->SetInitialEmptyReads(2);
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = open_response.config().scanner();
+  sps_request.set_image_format("image/png");
+  StartPreparedScanResponse sps_response =
+      tracker->StartPreparedScan(sps_request);
+  ASSERT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
+
+  // First request will read nothing, but header data is available.
+  ReadScanDataRequest rsd_request;
+  *rsd_request.mutable_job_handle() = sps_response.job_handle();
+  ReadScanDataResponse rsd_response = tracker->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_EQ(rsd_response.data().length(), 54);  // Magic + header chunks.
+  EXPECT_EQ(rsd_response.estimated_completion(), 0);
+
+  // Second request will read nothing.
+  rsd_response = tracker->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_EQ(rsd_response.data().size(), 0);
+  EXPECT_EQ(rsd_response.estimated_completion(), 0);
+
+  // Next request will read 60 full lines, but the encoder might not write them
+  // yet.
+  rsd_response = tracker->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_TRUE(rsd_response.has_data());
+  EXPECT_EQ(rsd_response.estimated_completion(), 60);
+
+  // Next request will read the remaining data.
+  rsd_response = tracker->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_GT(rsd_response.data().length(), 9);  // IDAT + data.
+  EXPECT_EQ(rsd_response.estimated_completion(), 100);
+
+  // Last request will get EOF plus the IEND chunk.
+  rsd_response = tracker->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_EOF);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_EQ(rsd_response.data().length(), 12);  // IEND.
+  EXPECT_EQ(rsd_response.estimated_completion(), 100);
 }
 
 }  // namespace

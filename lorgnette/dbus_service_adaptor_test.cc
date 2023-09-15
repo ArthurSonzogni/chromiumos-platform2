@@ -89,6 +89,10 @@ class MockDeviceTracker : public DeviceTracker {
               CancelScan,
               (const CancelScanRequest& cancel_scan_request),
               (override));
+  MOCK_METHOD(ReadScanDataResponse,
+              ReadScanData,
+              (const ReadScanDataRequest& read_scan_data_request),
+              (override));
 };
 
 class DBusServiceAdaptorTest : public ::testing::Test {
@@ -253,7 +257,7 @@ TEST_F(DBusServiceAdaptorTest, ReadScanData) {
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
                                          tracker_.get(), {});
   ReadScanDataRequest request;
-  // TODO(b/297443322): Implement check for real behavior once implemented.
+  EXPECT_CALL(*tracker_.get(), ReadScanData(EqualsProto(request)));
   ReadScanDataResponse response = dbus_service.ReadScanData(request);
   EXPECT_THAT(response, EqualsProto(ReadScanDataResponse()));
 }

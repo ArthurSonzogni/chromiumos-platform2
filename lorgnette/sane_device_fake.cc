@@ -26,7 +26,10 @@ SaneDeviceFake::SaneDeviceFake()
       read_scan_data_result_(SANE_STATUS_GOOD),
       cancel_scan_result_(true),
       scan_running_(false),
-      cancelled_(false) {}
+      cancelled_(false),
+      max_read_size_(-1),
+      initial_empty_reads_(0),
+      num_empty_reads_(0) {}
 
 SaneDeviceFake::~SaneDeviceFake() {}
 
@@ -146,7 +149,14 @@ SANE_Status SaneDeviceFake::ReadScanData(brillo::ErrorPtr* error,
     return SANE_STATUS_EOF;
   }
 
+  if (num_empty_reads_ < initial_empty_reads_) {
+    ++num_empty_reads_;
+    *read_out = 0;
+    return SANE_STATUS_GOOD;
+  }
+
   size_t to_copy = std::min(count, page.size() - scan_data_offset_);
+  to_copy = std::min(to_copy, max_read_size_);
   memcpy(buf, page.data() + scan_data_offset_, to_copy);
   *read_out = to_copy;
 
@@ -179,6 +189,7 @@ void SaneDeviceFake::ClearScanJob() {
   scan_running_ = false;
   current_page_ = 0;
   scan_data_offset_ = 0;
+  num_empty_reads_ = 0;
 }
 
 void SaneDeviceFake::SetCallStartJob(bool call) {
@@ -216,6 +227,14 @@ void SaneDeviceFake::SetReadScanDataResult(SANE_Status result) {
 void SaneDeviceFake::SetScanData(
     const std::vector<std::vector<uint8_t>>& scan_data) {
   scan_data_ = scan_data;
+}
+
+void SaneDeviceFake::SetMaxReadSize(size_t read_size) {
+  max_read_size_ = read_size;
+}
+
+void SaneDeviceFake::SetInitialEmptyReads(size_t num_empty) {
+  initial_empty_reads_ = num_empty;
 }
 
 }  // namespace lorgnette

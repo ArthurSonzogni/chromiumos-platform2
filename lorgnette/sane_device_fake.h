@@ -59,6 +59,8 @@ class SaneDeviceFake : public SaneDevice {
   void SetScanParameters(const std::optional<ScanParameters>& params);
   void SetReadScanDataResult(SANE_Status result);
   void SetScanData(const std::vector<std::vector<uint8_t>>& scan_data);
+  void SetMaxReadSize(size_t read_size);
+  void SetInitialEmptyReads(size_t num_empty);
   void SetCancelScanResult(bool result);
   void ClearScanJob();
   void SetCallStartJob(bool call);
@@ -77,6 +79,9 @@ class SaneDeviceFake : public SaneDevice {
   bool cancelled_;
   std::optional<ScanParameters> params_;
   std::vector<std::vector<uint8_t>> scan_data_;
+  size_t max_read_size_;
+  size_t initial_empty_reads_;
+  size_t num_empty_reads_;
   size_t current_page_;
   size_t scan_data_offset_;
 };

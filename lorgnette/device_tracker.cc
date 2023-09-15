@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/containers/contains.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
@@ -16,6 +17,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
+#include "lorgnette/constants.h"
 #include "lorgnette/firewall_manager.h"
 #include "lorgnette/manager.h"
 #include "lorgnette/sane_client.h"
@@ -62,6 +64,18 @@ lorgnette::OperationResult ToOperationResult(SANE_Status status) {
 }
 
 }  // namespace
+
+DeviceTracker::ScanBuffer::ScanBuffer()
+    : data(nullptr), len(0), pos(0), writer(nullptr) {}
+
+DeviceTracker::ScanBuffer::~ScanBuffer() {
+  if (writer) {
+    fclose(writer);
+  }
+  if (data) {
+    free(data);
+  }
+}
 
 DeviceTracker::DeviceTracker(SaneClient* sane_client, LibusbWrapper* libusb)
     : sane_client_(sane_client), libusb_(libusb) {
@@ -483,6 +497,8 @@ OpenScannerResponse DeviceTracker::OpenScanner(
   state.connection_string = connection_string;
   state.handle = GenerateUUID();
   state.start_time = base::Time::Now();
+  state.completed_lines = 0;
+  state.expected_lines = 0;
   // TODO(bmgordon): Request the PortToken from the firewall if needed.
   brillo::ErrorPtr error;
   SANE_Status status;
@@ -595,6 +611,30 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
     active_jobs_.erase(job_id.value());
   }
 
+  state.completed_lines = 0;
+  state.expected_lines = 0;
+
+  auto buffer = std::make_unique<ScanBuffer>();
+  buffer->writer = open_memstream(&buffer->data, &buffer->len);
+  if (!buffer->writer) {
+    LOG(ERROR) << __func__ << ": Failed to allocate scan buffer";
+    response.set_result(OPERATION_RESULT_NO_MEMORY);
+    return response;
+  }
+
+  ImageFormat format;
+  if (request.image_format() == kJpegMimeType) {
+    format = IMAGE_FORMAT_JPEG;
+  } else if (request.image_format() == kPngMimeType) {
+    format = IMAGE_FORMAT_PNG;
+  } else {
+    // TODO(bmgordon): Support additional pass-through image formats.
+    LOG(ERROR) << __func__ << ": Unrecognized image format "
+               << request.image_format();
+    response.set_result(OPERATION_RESULT_INTERNAL_ERROR);
+    return response;
+  }
+
   brillo::ErrorPtr error;
   SANE_Status status = state.device->StartScan(&error);
   if (status != SANE_STATUS_GOOD) {
@@ -611,13 +651,31 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
 
     // Try to cancel the scan since the user can't do anything with it.  We're
     // already returning an error, so don't do anything with the result.
-    state.device->CancelScan(&error);
+    state.device->CancelScan(nullptr);
 
     return response;
   }
+
+  size_t expected_lines;
+  status = state.device->PrepareImageReader(&error, format, buffer->writer,
+                                            &expected_lines);
+  if (status != SANE_STATUS_GOOD) {
+    LOG(ERROR) << __func__ << ": Failed to create image reader for device "
+               << handle << ": " << sane_strstatus(status);
+    response.set_result(ToOperationResult(status));
+
+    // Try to cancel the scan since the user can't do anything with it.  We're
+    // already returning an error, so don't do anything with the result.
+    state.device->CancelScan(nullptr);
+
+    return response;
+  }
+
   JobHandle job;
   job.set_token(job_id.value());
   active_jobs_[job_id.value()] = handle;
+  state.buffer = std::move(buffer);
+  state.expected_lines = expected_lines;
 
   LOG(INFO) << __func__ << ": Started scan job " << job_id.value()
             << " on device " << handle;
@@ -689,6 +747,78 @@ CancelScanResponse DeviceTracker::CancelScan(const CancelScanRequest& request) {
   active_jobs_.erase(job_handle);
   response.set_success(true);
   response.set_result(OPERATION_RESULT_SUCCESS);
+  return response;
+}
+
+ReadScanDataResponse DeviceTracker::ReadScanData(
+    const ReadScanDataRequest& request) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  VLOG(1) << __func__ << ": next chunk requested for "
+          << request.job_handle().token();
+
+  ReadScanDataResponse response;
+  *response.mutable_job_handle() = request.job_handle();
+  response.set_result(OPERATION_RESULT_UNKNOWN);
+
+  if (request.job_handle().token().empty()) {
+    LOG(ERROR) << __func__ << ": ReadScanData request is missing job handle";
+    response.set_result(OPERATION_RESULT_INVALID);
+    return response;
+  }
+  const std::string& job_handle = request.job_handle().token();
+
+  if (!base::Contains(active_jobs_, job_handle)) {
+    LOG(ERROR) << __func__ << ": No job found for handle " << job_handle;
+    response.set_result(OperationResult::OPERATION_RESULT_INVALID);
+    return response;
+  }
+  const std::string& device_handle = active_jobs_[job_handle];
+
+  if (!base::Contains(open_scanners_, device_handle)) {
+    LOG(ERROR) << __func__ << ": No open scanner handle: " << device_handle;
+    response.set_result(OPERATION_RESULT_MISSING);
+    active_jobs_.erase(job_handle);
+    return response;
+  }
+  OpenScannerState& state = open_scanners_[device_handle];
+  state.last_activity = base::Time::Now();
+
+  brillo::ErrorPtr error;
+  size_t read;
+  size_t rows;
+  SANE_Status status = state.device->ReadEncodedData(&error, &read, &rows);
+  response.set_result(ToOperationResult(status));
+  state.completed_lines += rows;
+  switch (status) {
+    case SANE_STATUS_EOF:
+      // EOF needs the same data handling as GOOD because there may be image
+      // footers that haven't been transmitted yet.
+      [[fallthrough]];
+    case SANE_STATUS_GOOD: {
+      fflush(state.buffer->writer);
+      size_t encoded_len = state.buffer->len - state.buffer->pos;
+      VLOG(1) << __func__ << ": Encoded bytes available: " << encoded_len;
+      response.set_data(
+          std::string(state.buffer->data + state.buffer->pos, encoded_len));
+      response.set_estimated_completion(state.completed_lines * 100 /
+                                        state.expected_lines);
+      state.buffer->pos = state.buffer->len;
+      if (encoded_len == 0) {
+        // Rate-limit polling from the client if no data was available yet.
+        base::PlatformThread::Sleep(base::Milliseconds(100));
+      }
+      break;
+    }
+    default:
+      LOG(ERROR) << __func__
+                 << ": Failed to read encoded data: " << error->GetMessage();
+      return response;
+  }
+
+  LOG(INFO) << __func__ << ": Returning " << response.data().size()
+            << " encoded bytes";
+  state.last_activity = base::Time::Now();
   return response;
 }
 

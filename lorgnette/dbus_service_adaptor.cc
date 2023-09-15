@@ -183,8 +183,7 @@ ReadScanDataResponse DBusServiceAdaptor::ReadScanData(
     const ReadScanDataRequest& request) {
   ScopeLogger scope("DBusServiceAdaptor::ReadScanData");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // TODO(b/297443322): Implement ReadScanData.
-  return {};
+  return device_tracker_->ReadScanData(request);
 }
 
 }  // namespace lorgnette

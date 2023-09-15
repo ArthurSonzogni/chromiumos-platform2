@@ -110,6 +110,10 @@ class DeviceTracker {
   // CancelScan cancels a scan that was previously started by StartPreparedScan.
   virtual CancelScanResponse CancelScan(const CancelScanRequest& request);
 
+  // ReadScanData gets the next chunk of available data from a scan job
+  // previously started by StartPreparedScan.
+  virtual ReadScanDataResponse ReadScanData(const ReadScanDataRequest& request);
+
  private:
   struct DiscoverySessionState {
     std::string client_id;
@@ -121,6 +125,16 @@ class DeviceTracker {
     bool preferred_only;
   };
 
+  struct ScanBuffer {
+    char* data;
+    size_t len;
+    size_t pos;
+    FILE* writer;
+
+    ScanBuffer();
+    ~ScanBuffer();
+  };
+
   struct OpenScannerState {
     std::string client_id;
     std::string connection_string;
@@ -130,6 +144,9 @@ class DeviceTracker {
     base::Time last_activity;
     std::unique_ptr<PortToken> port_token;
     std::unique_ptr<SaneDevice> device;
+    std::unique_ptr<ScanBuffer> buffer;
+    size_t completed_lines;
+    size_t expected_lines;
   };
 
   std::optional<DiscoverySessionState*> GetSession(
