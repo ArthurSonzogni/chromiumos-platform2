@@ -541,7 +541,7 @@ TEST(VMUtilTest, CreateArcVMAffinitySMP4Core) {
   EXPECT_EQ(package[0], "0,1,2,3,4");
 }
 
-TEST(VMUtilTest, SharedDataParamSimple) {
+TEST(VMUtilTest, SharedDataParamCacheAlways) {
   SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
                         .tag = "usr_local_bin",
                         .uid_map = kAndroidUidMap,
@@ -556,6 +556,20 @@ TEST(VMUtilTest, SharedDataParamSimple) {
             "1994950:timeout=3600:rewrite-security-xattrs=true:writeback=true");
 }
 
+TEST(VMUtilTest, SharedDataParamCacheAuto) {
+  SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
+                        .tag = "usr_local_bin",
+                        .uid_map = kAndroidUidMap,
+                        .gid_map = kAndroidGidMap,
+                        .enable_caches = SharedDataParam::Cache::kAuto,
+                        .ascii_casefold = false,
+                        .posix_acl = true};
+  ASSERT_EQ(param.to_string(),
+            "/usr/local/bin:usr_local_bin:type=fs:cache=auto:uidmap=0 655360 "
+            "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
+            "20119 1,1066 656426 3934,5000 600 50,5050 660410 "
+            "1994950:timeout=1:rewrite-security-xattrs=true:writeback=false");
+}
 // privileged_quota_uids is passed in.
 TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
   SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
