@@ -52,7 +52,7 @@ class ScanHandler : public AsyncHandler {
   std::string output_pattern_;
   std::string format_extension_;
   std::optional<std::string> scan_uuid_;
-  int current_page_;
+  int current_page_ = 1;
 
   // Keep as the last member variable.
   base::WeakPtrFactory<ScanHandler> weak_factory_{this};
