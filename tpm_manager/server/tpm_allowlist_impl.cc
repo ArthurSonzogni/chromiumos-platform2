@@ -31,6 +31,8 @@ constexpr char kTpmEnabledFile[] = "/sys/class/tpm/tpm0/enabled";
 constexpr uint32_t kVendorIdSimulator = 0x53494d55;
 // STMicroelectronics Vendor ID ("STM ").
 constexpr uint32_t kVendorIdStm = 0x53544D20;
+// Nuvoton Vendor ID ("NTC ").
+constexpr uint32_t kVendorIdNtc = 0x4e544300;
 
 // The location of TPM DID & VID information.
 constexpr char kTpmDidVidPath[] = "/sys/class/tpm/tpm0/did_vid";
@@ -83,6 +85,12 @@ struct DeviceFamily {
   uint32_t tpm_vendor_id;
 };
 
+struct DeviceName {
+  const char* sys_vendor;
+  const char* product_name;
+  uint32_t tpm_vendor_id;
+};
+
 constexpr DeviceModel kTpm2ModelsAllowlist[] = {
     DeviceModel{"Dell Inc.", "Latitude 7490", TpmVidDid{kTpmVidWinbond, 0xFC}},
 };
@@ -90,6 +98,13 @@ constexpr DeviceModel kTpm2ModelsAllowlist[] = {
 constexpr DeviceFamily kTpm2FamiliesAllowlist[] = {
     DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 8", kVendorIdStm},
     DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 9", kVendorIdStm},
+};
+
+constexpr DeviceName kTpm2DeviceNameAllowlist[] = {
+    DeviceName{"HP", "HP Elite x360 830 13 inch G10 2-in-1 Notebook PC",
+               kVendorIdNtc},
+    DeviceName{"HP", "HP EliteBook 640 14 inch G10 Notebook PC", kVendorIdNtc},
+    DeviceName{"HP", "HP EliteBook 645 14 inch G10 Notebook PC", kVendorIdNtc},
 };
 
 std::optional<bool> IsTpmFileEnabled() {
@@ -296,6 +311,14 @@ bool TpmAllowlistImpl::IsAllowed() {
       }
     }
 
+    for (const DeviceName& match : kTpm2DeviceNameAllowlist) {
+      if (sys_vendor == match.sys_vendor &&
+          product_name == match.product_name &&
+          manufacturer == match.tpm_vendor_id) {
+        return true;
+      }
+    }
+
     uint16_t device_id;
     uint16_t vendor_id;
 
@@ -324,6 +347,7 @@ bool TpmAllowlistImpl::IsAllowed() {
     LOG(INFO) << "  System Vendor: " << sys_vendor;
     LOG(INFO) << "  Product Name: " << product_name;
     LOG(INFO) << "  Product Family: " << product_family;
+    LOG(INFO) << "  TPM Manufacturer: " << std::hex << manufacturer;
     LOG(INFO) << "  TPM Vendor ID: " << std::hex << vendor_id;
     LOG(INFO) << "  TPM Device ID: " << std::hex << device_id;
 
