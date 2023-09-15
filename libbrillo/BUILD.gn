@@ -250,6 +250,7 @@ if (use.udev) {
         "brillo/udev/udev_enumerate.cc",
         "brillo/udev/udev_list_entry.cc",
         "brillo/udev/udev_monitor.cc",
+        "brillo/udev/utils.cc",
       ]
     },
   ]
@@ -563,7 +564,10 @@ if (use.test) {
       ]
     }
     if (use.udev) {
-      sources += [ "brillo/blkdev_utils/get_backing_block_device_test.cc" ]
+      sources += [
+        "brillo/blkdev_utils/get_backing_block_device_test.cc",
+        "brillo/udev/utils_test.cc",
+      ]
     }
     if (use.usb && use.udev) {
       sources += [
