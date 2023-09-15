@@ -9,7 +9,7 @@ die() {
 }
 
 context_exists() {
-  printf "$1" > /sys/fs/selinux/context 2>/dev/null
+  printf "%s" "$1" > /sys/fs/selinux/context 2>/dev/null
 }
 
 nsenter_flags=
@@ -44,11 +44,13 @@ if [ -n "${pid}" ]; then
 else
   # Support all pidfile locations, use the first usable one in the odd case
   # where more than one exists.
-  for candidatefile in $(find /run/containers/android*/ \
-      -maxdepth 1 -name container.pid -print); do
+  for candidatefile in /run/containers/android*/container.pid; do
+    if [ ! -f "${candidatefile}" ]; then
+      break
+    fi
     candidate="$(cat "${candidatefile}")"
     container_root="$(dirname "${candidatefile}")/root"
-    if [ "${candidate}" != "" -a -d "/proc/${candidate}" ]; then
+    if [ -n "${candidate}" ] && [ -d "/proc/${candidate}" ]; then
       pid="${candidate}"
       break
     fi
@@ -67,6 +69,7 @@ if context_exists "${su_context}" && \
   context=${su_context}
 fi
 
+# shellcheck disable=SC2086
 /usr/bin/env -i \
   ANDROID_ASSETS=/assets \
   ANDROID_DATA=/data \
