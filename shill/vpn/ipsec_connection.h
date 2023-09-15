@@ -98,6 +98,12 @@ class IPsecConnection : public VPNConnection {
     kIPsecStatusRead,
   };
 
+  // OpenSSL 3 moved weak crypto primitives into the legacy provider. Since
+  // MSCHAPV2 requires MD4 we need to set a custom config file to enable the
+  // legacy provider (as well as the default provider). This represents the path
+  // to the custom config.
+  static const char kOpensslConfFilename[];
+
   // Parses the cipher suite from an string output by swanctl or stroke. |input|
   // is like "AES_CBC-128/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/MODP_3072".
   using CipherSuite = std::tuple<Metrics::VpnIpsecEncryptionAlgorithm,

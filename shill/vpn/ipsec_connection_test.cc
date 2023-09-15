@@ -347,7 +347,9 @@ TEST_F(IPsecConnectionTest, StartCharon) {
   const base::FilePath kExpectedProgramPath("/usr/libexec/ipsec/charon");
   const std::vector<std::string> kExpectedArgs = {};
   const std::map<std::string, std::string> kExpectedEnv = {
-      {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
+      {"STRONGSWAN_CONF", kStrongSwanConfPath.value()},
+      {"OPENSSL_CONF", IPsecConnection::kOpensslConfFilename},
+  };
   constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN) |
                                         CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
                                         CAP_TO_MASK(CAP_NET_RAW);

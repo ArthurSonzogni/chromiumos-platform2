@@ -313,6 +313,9 @@ bool TestUnixSocketConnectable(const base::FilePath& path) {
 
 }  // namespace
 
+constexpr char IPsecConnection::kOpensslConfFilename[] =
+    "/etc/ssl/openssl.cnf.compat";
+
 // static
 IPsecConnection::CipherSuite IPsecConnection::ParseCipherSuite(
     const std::string& input) {
@@ -739,6 +742,7 @@ void IPsecConnection::StartCharon() {
   std::vector<std::string> args = {};
   std::map<std::string, std::string> env = {
       {"STRONGSWAN_CONF", strongswan_conf_path_.value()},
+      {"OPENSSL_CONF", IPsecConnection::kOpensslConfFilename},
   };
   constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN) |
                                 CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
