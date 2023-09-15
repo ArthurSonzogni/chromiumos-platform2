@@ -115,6 +115,7 @@ socket: arg0 == AF_UNIX || arg0 == AF_NETLINK && arg2 == 15
 socketpair: 1
 stat: 1
 statfs: 1
+statx: 1
 symlink: 1
 sysinfo: 1
 time: 1
