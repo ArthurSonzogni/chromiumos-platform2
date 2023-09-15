@@ -9,10 +9,13 @@ group("all") {
     ":install_headers",
     ":install_pkg_config",
     ":libmems",
-    ":libmems_test_support",
   ]
   if (use.test) {
-    deps += [ ":libmems_testrunner" ]
+    deps += [
+      ":install_test_pkg_config",
+      ":libmems_test_support",
+      ":libmems_testrunner",
+    ]
   }
 }
 
@@ -40,13 +43,6 @@ shared_library("libmems") {
   install_path = "lib"
 }
 
-shared_library("libmems_test_support") {
-  sources = [ "test_fakes.cc" ]
-  configs += [ ":target_defaults_pkg_deps" ]
-  install_path = "lib"
-  deps = [ ":libmems" ]
-}
-
 install_config("install_headers") {
   sources = [
     "common_types.h",
@@ -64,14 +60,23 @@ install_config("install_headers") {
 }
 
 install_config("install_pkg_config") {
-  sources = [
-    "libmems.pc",
-    "libmems_test_support.pc",
-  ]
+  sources = [ "libmems.pc" ]
   install_path = "${libdir}/pkgconfig"
 }
 
 if (use.test) {
+  shared_library("libmems_test_support") {
+    sources = [ "test_fakes.cc" ]
+    configs += [ ":target_defaults_pkg_deps" ]
+    install_path = "lib"
+    deps = [ ":libmems" ]
+  }
+
+  install_config("install_test_pkg_config") {
+    sources = [ "libmems_test_support.pc" ]
+    install_path = "${libdir}/pkgconfig"
+  }
+
   pkg_config("libmems_testrunner_pkg_deps") {
     pkg_deps = [
       "libbrillo-test",
