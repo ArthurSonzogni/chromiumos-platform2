@@ -193,7 +193,9 @@ EffectsConfig ConvertMojoConfig(
 
 bool ParseSegmentationModelType(const std::string& model,
                                 SegmentationModelType& output) {
-  if (model == "hd") {
+  if (model == "auto") {
+    output = SegmentationModelType::kAuto;
+  } else if (model == "hd") {
     output = SegmentationModelType::kHd;
   } else if (model == "effnet256") {
     output = SegmentationModelType::kEffnet256;
@@ -1340,6 +1342,11 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     if (ParseSegmentationModelType(segmentation_model_type,
                                    new_config.segmentation_model_type)) {
       LOGF(INFO) << "Segmentation Model Type: " << segmentation_model_type;
+      if (new_config.segmentation_model_type == SegmentationModelType::kAuto) {
+        LOGF(INFO) << "Using segmentation model type: "
+                   << static_cast<int>(default_segmentation_model_type_);
+        new_config.segmentation_model_type = default_segmentation_model_type_;
+      }
     }
   }
 
