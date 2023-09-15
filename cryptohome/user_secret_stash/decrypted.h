@@ -13,6 +13,8 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
+#include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -103,10 +105,18 @@ class DecryptedUss {
     // and error will be returned an none of the changes from the transaction
     // will have been applied.
     //
+    // If the commit is supplied with a storage object then writing the
+    // resulting changes out to storage will also be considered a part of the
+    // commit sequence and the commit will only succeed if the changes are able
+    // to be persisted. If the commit fails in that case than both the in-memory
+    // and in-storage copies should remain unmodified.
+    //
     // Note that there is no equivalent "rollback" operation. To abandon a
     // transaction without committing any modifications you can simply discard
     // the Transaction object.
     CryptohomeStatus Commit() &&;
+    CryptohomeStatus Commit(const ObfuscatedUsername& username,
+                            UssStorage& storage) &&;
 
    private:
     // The DecryptedUss class needs to be able to construct Transaction objects.

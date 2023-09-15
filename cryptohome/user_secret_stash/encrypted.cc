@@ -368,4 +368,10 @@ CryptohomeStatusOr<brillo::Blob> EncryptedUss::ToBlob() const {
   return *serialized_container;
 }
 
+CryptohomeStatus EncryptedUss::ToStorage(const ObfuscatedUsername& username,
+                                         UssStorage& storage) const {
+  ASSIGN_OR_RETURN(brillo::Blob flatbuffer, ToBlob());
+  return storage.Persist(flatbuffer, username);
+}
+
 }  // namespace cryptohome

@@ -94,15 +94,36 @@ TEST(EncryptedUssTest, FromValidFile) {
   UserSecretStashContainer fb_container = MakeFlatbufferForTest();
   auto flatbuffer = fb_container.Serialize();
   ASSERT_THAT(flatbuffer, Optional(_));
-  ASSERT_THAT(uss_storage.Persist(*flatbuffer, username), IsOk());
+  auto blob_uss = EncryptedUss::FromBlob(*flatbuffer);
+  ASSERT_THAT(blob_uss, IsOk());
+  ASSERT_THAT(blob_uss->ToStorage(username, uss_storage), IsOk());
 
   // The test flatbuffer should be loadable.
-  auto encrypted_uss = EncryptedUss::FromStorage(username, uss_storage);
-  ASSERT_THAT(encrypted_uss, IsOk());
-  EXPECT_THAT(encrypted_uss->WrappedMainKeyIds(),
+  auto storage_uss = EncryptedUss::FromStorage(username, uss_storage);
+  ASSERT_THAT(storage_uss, IsOk());
+  EXPECT_THAT(storage_uss->WrappedMainKeyIds(),
               UnorderedElementsAre("password", "pin"));
-  EXPECT_THAT(encrypted_uss->created_on_os_version(), Eq("1.2.3.4"));
-  EXPECT_THAT(encrypted_uss->fingerprint_rate_limiter_id(), Eq(std::nullopt));
+  EXPECT_THAT(storage_uss->created_on_os_version(), Eq("1.2.3.4"));
+  EXPECT_THAT(storage_uss->fingerprint_rate_limiter_id(), Eq(std::nullopt));
+}
+
+TEST(EncryptedUssTest, ToStorageFails) {
+  const ObfuscatedUsername username =
+      SanitizeUserName(Username{"user@example.com"});
+  NiceMock<MockPlatform> platform;
+  UssStorage uss_storage{&platform};
+
+  // Disable all writes.
+  EXPECT_CALL(platform, WriteFileAtomicDurable(_, _, _))
+      .WillRepeatedly(Return(false));
+
+  // Construct a flatbuffer attempt write it out.
+  UserSecretStashContainer fb_container = MakeFlatbufferForTest();
+  auto flatbuffer = fb_container.Serialize();
+  ASSERT_THAT(flatbuffer, Optional(_));
+  auto blob_uss = EncryptedUss::FromBlob(*flatbuffer);
+  ASSERT_THAT(blob_uss, IsOk());
+  ASSERT_THAT(blob_uss->ToStorage(username, uss_storage), NotOk());
 }
 
 }  // namespace

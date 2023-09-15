@@ -23,6 +23,8 @@
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
+#include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 namespace {
@@ -333,6 +335,23 @@ CryptohomeStatus DecryptedUss::Transaction::Commit() && {
       uss_.main_key_, uss_.file_system_keyset_, reset_secrets_,
       rate_limiter_reset_secrets_, container_));
   uss_.encrypted_ = EncryptedUss(std::move(container_));
+  uss_.reset_secrets_ = std::move(reset_secrets_);
+  uss_.rate_limiter_reset_secrets_ = std::move(rate_limiter_reset_secrets_);
+  return OkStatus<CryptohomeError>();
+}
+
+CryptohomeStatus DecryptedUss::Transaction::Commit(
+    const ObfuscatedUsername& username, UssStorage& storage) && {
+  // Build a new EncryptedUss with new ciphertext that reflects all of the
+  // changes in the transaction.
+  RETURN_IF_ERROR(EncryptIntoContainer(
+      uss_.main_key_, uss_.file_system_keyset_, reset_secrets_,
+      rate_limiter_reset_secrets_, container_));
+  EncryptedUss encrypted_uss(std::move(container_));
+  // Persist the new encrypted data out to storage.
+  RETURN_IF_ERROR(encrypted_uss.ToStorage(username, storage));
+  // The stored USS is updated so push the updates in-memory as well.
+  uss_.encrypted_ = std::move(encrypted_uss);
   uss_.reset_secrets_ = std::move(reset_secrets_);
   uss_.rate_limiter_reset_secrets_ = std::move(rate_limiter_reset_secrets_);
   return OkStatus<CryptohomeError>();

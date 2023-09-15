@@ -124,6 +124,9 @@ class EncryptedUss {
   // Convert the container to a raw flatbuffer. This produces output that can be
   // used with FromBlob.
   CryptohomeStatusOr<brillo::Blob> ToBlob() const;
+  // Attempt to write the encrypted to a user's persistent storage.
+  CryptohomeStatus ToStorage(const ObfuscatedUsername& username,
+                             UssStorage& storage) const;
 
  private:
   Container container_;
