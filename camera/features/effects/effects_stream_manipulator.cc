@@ -197,8 +197,6 @@ bool ParseSegmentationModelType(const std::string& model,
     output = SegmentationModelType::kAuto;
   } else if (model == "hd") {
     output = SegmentationModelType::kHd;
-  } else if (model == "effnet256") {
-    output = SegmentationModelType::kEffnet256;
   } else if (model == "effnet384") {
     output = SegmentationModelType::kEffnet384;
   } else if (model == "full") {
