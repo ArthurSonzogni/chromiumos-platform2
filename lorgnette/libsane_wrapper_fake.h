@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "lorgnette/libsane_wrapper.h"
@@ -51,6 +52,16 @@ class LibsaneWrapperFake : public LibsaneWrapper {
   void SetDescriptors(SANE_Handle handle,
                       const std::vector<SANE_Option_Descriptor>& descriptors);
 
+  // Sets parameters that will be returned by sane_get_parameters().
+  void SetParameters(SANE_Handle handle,
+                     const std::optional<SANE_Parameters>& parameters);
+
+  // Adds a response for a sane_read() call.  At most `len` bytes will be
+  // produced when the matching call happens.
+  void AddSaneReadResponse(SANE_Handle handle,
+                           SANE_Status status,
+                           SANE_Int len);
+
   // Assigns memory for option `field` on `handle`.  The memory pointed to by
   // `value` must be large enough to contain whatever the option type demands
   // and must remain valid until this object is destroyed.  The contents of
@@ -61,6 +72,8 @@ class LibsaneWrapperFake : public LibsaneWrapper {
   void SetSupportsNonBlocking(SANE_Handle handle, bool support);
 
  protected:
+  using SaneReadResponse = std::pair<SANE_Status, SANE_Int>;
+
   struct FakeScanner {
     std::string name;
     SANE_Handle handle;
@@ -68,6 +81,10 @@ class LibsaneWrapperFake : public LibsaneWrapper {
     std::vector<std::optional<void*>> values;
     SANE_Status sane_start_result;
     bool supports_nonblocking;
+    std::optional<SANE_Parameters> parameters;
+    uint8_t current_data_val;
+    std::vector<SaneReadResponse> read_responses;
+    size_t current_read_response;
   };
 
   std::unordered_map<SANE_Handle, FakeScanner> scanners_;

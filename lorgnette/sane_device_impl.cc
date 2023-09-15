@@ -337,12 +337,17 @@ SANE_Status SaneDeviceImpl::StartScan(brillo::ErrorPtr* error) {
   return SANE_STATUS_GOOD;
 }
 
-std::optional<ScanParameters> SaneDeviceImpl::GetScanParameters(
-    brillo::ErrorPtr* error) {
+SANE_Status SaneDeviceImpl::GetScanParameters(brillo::ErrorPtr* error,
+                                              ScanParameters* parameters) {
   if (!handle_) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "No scanner connected");
-    return std::nullopt;
+    return SANE_STATUS_IO_ERROR;
+  }
+  if (!parameters) {
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "Non-NULL ScanParameters required");
+    return SANE_STATUS_INVAL;
   }
 
   SANE_Parameters params;
@@ -351,28 +356,27 @@ std::optional<ScanParameters> SaneDeviceImpl::GetScanParameters(
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Failed to read scan parameters: %s", sane_strstatus(status));
-    return std::nullopt;
+    return status;
   }
 
-  ScanParameters parameters;
   switch (params.format) {
     case SANE_FRAME_GRAY:
-      parameters.format = kGrayscale;
+      parameters->format = kGrayscale;
       break;
     case SANE_FRAME_RGB:
-      parameters.format = kRGB;
+      parameters->format = kRGB;
       break;
     default:
       brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                            "Unsupported scan frame format");
-      return std::nullopt;
+      return SANE_STATUS_INVAL;
   }
 
-  parameters.bytes_per_line = params.bytes_per_line;
-  parameters.pixels_per_line = params.pixels_per_line;
-  parameters.lines = params.lines;
-  parameters.depth = params.depth;
-  return parameters;
+  parameters->bytes_per_line = params.bytes_per_line;
+  parameters->pixels_per_line = params.pixels_per_line;
+  parameters->lines = params.lines;
+  parameters->depth = params.depth;
+  return SANE_STATUS_GOOD;
 }
 
 SANE_Status SaneDeviceImpl::ReadScanData(brillo::ErrorPtr* error,

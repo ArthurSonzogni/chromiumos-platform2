@@ -82,6 +82,9 @@ SANE_Status SaneDeviceFake::StartScan(brillo::ErrorPtr* error) {
     // No more scan data left.
     return SANE_STATUS_NO_DOCS;
   } else if (scan_running_) {
+    if (call_start_job_) {
+      StartJob();
+    }
     current_page_++;
     scan_data_offset_ = 0;
   } else {
@@ -97,14 +100,16 @@ SANE_Status SaneDeviceFake::StartScan(brillo::ErrorPtr* error) {
   return SANE_STATUS_GOOD;
 }
 
-std::optional<ScanParameters> SaneDeviceFake::GetScanParameters(
-    brillo::ErrorPtr* error) {
+SANE_Status SaneDeviceFake::GetScanParameters(brillo::ErrorPtr* error,
+                                              ScanParameters* params) {
   if (!params_.has_value()) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "No parameters");
+                         "Parameters not set");
+    return SANE_STATUS_INVAL;
   }
 
-  return params_;
+  *params = params_.value();
+  return SANE_STATUS_GOOD;
 }
 
 SANE_Status SaneDeviceFake::ReadScanData(brillo::ErrorPtr* error,

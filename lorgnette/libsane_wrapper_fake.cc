@@ -4,6 +4,8 @@
 
 #include "lorgnette/libsane_wrapper_fake.h"
 
+#include <algorithm>
+
 #include <base/check.h>
 #include <base/notreached.h>
 
@@ -88,7 +90,18 @@ SANE_Status LibsaneWrapperFake::sane_control_option(
 
 SANE_Status LibsaneWrapperFake::sane_get_parameters(SANE_Handle h,
                                                     SANE_Parameters* p) {
-  return SANE_STATUS_IO_ERROR;
+  auto elem = scanners_.find(h);
+  if (elem == scanners_.end()) {
+    return SANE_STATUS_INVAL;
+  }
+  FakeScanner& scanner = elem->second;
+  if (scanner.parameters.has_value()) {
+    *p = scanner.parameters.value();
+    return SANE_STATUS_GOOD;
+  } else {
+    p = nullptr;
+    return SANE_STATUS_IO_ERROR;
+  }
 }
 
 SANE_Status LibsaneWrapperFake::sane_start(SANE_Handle h) {
@@ -104,7 +117,36 @@ SANE_Status LibsaneWrapperFake::sane_read(SANE_Handle h,
                                           SANE_Byte* buf,
                                           SANE_Int maxlen,
                                           SANE_Int* len) {
-  return SANE_STATUS_IO_ERROR;
+  if (!buf || !len) {
+    return SANE_STATUS_INVAL;
+  }
+
+  *len = 0;  // Required for any non-GOOD status.
+
+  auto elem = scanners_.find(h);
+  if (elem == scanners_.end()) {
+    return SANE_STATUS_INVAL;
+  }
+  FakeScanner& scanner = elem->second;
+
+  if (scanner.current_read_response >= scanner.read_responses.size()) {
+    return SANE_STATUS_IO_ERROR;
+  }
+  auto [status, want_len] =
+      scanner.read_responses[scanner.current_read_response++];
+
+  // Clamp to minimum available data and buffer space.
+  SANE_Int to_read = std::min(maxlen, want_len);
+
+  // Write `to_read` bytes of the current value.  The caller can verify each
+  // sane_read() call by pairing up the counts in `buf`.
+  for (SANE_Int i = 0; i < to_read; i++) {
+    *buf++ = scanner.current_data_val;
+  }
+  ++scanner.current_data_val;  // Next read will return the next byte value.
+
+  *len = to_read;
+  return status;
 }
 
 void LibsaneWrapperFake::sane_cancel(SANE_Handle h) {}
@@ -127,6 +169,8 @@ SANE_Handle LibsaneWrapperFake::CreateScanner(const std::string& name) {
       .handle = h,
       .sane_start_result = SANE_STATUS_IO_ERROR,
       .supports_nonblocking = true,  // Match the most popular backends.
+      .current_data_val = 0,
+      .current_read_response = 0,
   };
   return h;
 }
@@ -139,6 +183,23 @@ void LibsaneWrapperFake::SetDescriptors(
   FakeScanner& scanner = elem->second;
   scanner.descriptors = descriptors;
   scanner.values = std::vector<std::optional<void*>>(descriptors.size());
+}
+
+void LibsaneWrapperFake::SetParameters(
+    SANE_Handle handle, const std::optional<SANE_Parameters>& parameters) {
+  auto elem = scanners_.find(handle);
+  CHECK(elem != scanners_.end());
+  FakeScanner& scanner = elem->second;
+  scanner.parameters = parameters;
+}
+
+void LibsaneWrapperFake::AddSaneReadResponse(SANE_Handle handle,
+                                             SANE_Status status,
+                                             SANE_Int maxread) {
+  auto elem = scanners_.find(handle);
+  CHECK(elem != scanners_.end());
+  FakeScanner& scanner = elem->second;
+  scanner.read_responses.emplace_back(status, maxread);
 }
 
 void LibsaneWrapperFake::SetOptionValue(SANE_Handle handle,

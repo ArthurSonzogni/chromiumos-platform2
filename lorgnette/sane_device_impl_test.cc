@@ -4,12 +4,18 @@
 
 #include "lorgnette/sane_device_impl.h"
 
+#include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <vector>
 
 #include <base/containers/contains.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -23,7 +29,9 @@
 #include "lorgnette/sane_client_impl.h"
 #include "lorgnette/test_util.h"
 
+using ::testing::ContainsRegex;
 using ::testing::ElementsAre;
+using ::testing::HasSubstr;
 
 namespace lorgnette {
 
@@ -47,6 +55,33 @@ SANE_Option_Descriptor MakeGroupOptionDescriptor(const char* title) {
       .type = SANE_TYPE_GROUP,
       .size = 0,
   };
+}
+
+SANE_Parameters MakeParameters() {
+  return {
+      .format = SANE_FRAME_RGB,
+      .last_frame = SANE_TRUE,
+      .bytes_per_line = 100,
+      .pixels_per_line = 10,
+      .lines = 10,
+      .depth = 8,
+  };
+}
+
+void CheckPngHeader(FILE* file) {
+  // File must start with the PNG magic signature.
+  char buf[8];
+  rewind(file);
+  ASSERT_EQ(fread(buf, 1, 8, file), 8);
+  EXPECT_EQ(memcmp(buf, "\211PNG\r\n\032\n", 8), 0);
+}
+
+void CheckPngFooter(FILE* file) {
+  // File must end with IEND chunk.
+  char buf[12];
+  ASSERT_EQ(fseek(file, -12, SEEK_END), 0);
+  ASSERT_EQ(fread(buf, 1, 12, file), 12);
+  EXPECT_EQ(memcmp(buf, "\x00\x00\x00\x00IEND\xAE\x42\x60\x82", 12), 0);
 }
 
 }  // namespace
@@ -208,18 +243,18 @@ TEST_F(SaneDeviceImplTest, GetScanParameters) {
   region.set_bottom_right_y(height);
   EXPECT_TRUE(device_->SetScanRegion(nullptr, region));
 
-  std::optional<ScanParameters> params = device_->GetScanParameters(nullptr);
-  EXPECT_TRUE(params.has_value());
-  EXPECT_TRUE(params->format == kGrayscale);
+  ScanParameters params;
+  SANE_Status status = device_->GetScanParameters(nullptr, &params);
+  ASSERT_EQ(status, SANE_STATUS_GOOD);
+  EXPECT_TRUE(params.format == kGrayscale);
 
   const double mms_per_inch = 25.4;
-  EXPECT_EQ(params->bytes_per_line,
+  EXPECT_EQ(params.bytes_per_line,
             static_cast<int>(width / mms_per_inch * resolution));
-  EXPECT_EQ(params->pixels_per_line,
+  EXPECT_EQ(params.pixels_per_line,
             static_cast<int>(width / mms_per_inch * resolution));
-  EXPECT_EQ(params->lines,
-            static_cast<int>(height / mms_per_inch * resolution));
-  EXPECT_EQ(params->depth, 8);
+  EXPECT_EQ(params.lines, static_cast<int>(height / mms_per_inch * resolution));
+  EXPECT_EQ(params.depth, 8);
 }
 
 // Check that ReadScanData fails when we haven't started a scan.
@@ -785,6 +820,498 @@ TEST(SaneDeviceImplFakeSaneTest, CreateCancelScanJobSuccessNonBlocking) {
   EXPECT_TRUE(device.CancelScan(&error));
   EXPECT_EQ(error, nullptr);
   EXPECT_FALSE(device.GetCurrentJob().has_value());
+}
+
+TEST(SaneDeviceImplFakeSaneTest, PrepareImageReaderFailsWithoutJob) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_NE(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+  brillo::DeleteFile(path);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), HasSubstr("No scan job"));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, PrepareImageReaderFailsWithoutParameters) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_NE(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+  brillo::DeleteFile(path);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), ContainsRegex("Failed.*parameters"));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, PrepareImageReaderFailsForZeroLines) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  SANE_Parameters params = MakeParameters();
+  params.lines = 0;
+  libsane.SetParameters(h, params);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_NE(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+  brillo::DeleteFile(path);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), HasSubstr("invalid height"));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, PrepareImageReaderFailsForUnknownHeight) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  SANE_Parameters params = MakeParameters();
+  params.lines = -1;
+  libsane.SetParameters(h, params);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_NE(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+  brillo::DeleteFile(path);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), HasSubstr("invalid height"));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, PrepareImageReaderFailsForUnknownFormat) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  libsane.SetParameters(h, MakeParameters());
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_NE(device.PrepareImageReader(&error,
+                                      static_cast<lorgnette::ImageFormat>(3000),
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+  brillo::DeleteFile(path);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), HasSubstr("image format"));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, PrepareImageReaderFailsForImpossibleJPEG) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  SANE_Parameters params = MakeParameters();
+  params.depth = 4;
+  libsane.SetParameters(h, params);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_NE(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_JPEG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+  brillo::DeleteFile(path);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), ContainsRegex("image reader.*JPEG"));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, PrepareImageReaderFailsForImpossiblePNG) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  SANE_Parameters params = MakeParameters();
+  params.depth = 4;
+  libsane.SetParameters(h, params);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_NE(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+  brillo::DeleteFile(path);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), ContainsRegex("image reader.*PNG"));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, PrepareImageReaderSuccess) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  libsane.SetParameters(h, MakeParameters());
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_EQ(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+  brillo::DeleteFile(path);
+  EXPECT_EQ(error, nullptr);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, ReadEncodedDataFailsWithoutPreparation) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  libsane.SetParameters(h, MakeParameters());
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  size_t bytes = -1;
+  size_t lines = -1;
+  EXPECT_NE(device.ReadEncodedData(&error, &bytes, &lines), SANE_STATUS_GOOD);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), HasSubstr("parameters"));
+  EXPECT_EQ(bytes, 0);
+  EXPECT_EQ(lines, 0);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, ReadEncodedDataPropagatesCancellation) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  libsane.SetParameters(h, MakeParameters());
+  libsane.AddSaneReadResponse(h, SANE_STATUS_CANCELLED, 0);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_EQ(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+
+  size_t bytes = -1;
+  size_t lines = -1;
+  EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines),
+            SANE_STATUS_CANCELLED);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), HasSubstr("cancel"));
+  EXPECT_EQ(bytes, 0);
+  EXPECT_EQ(lines, 0);
+
+  CheckPngHeader(out_file.get());
+  brillo::DeleteFile(path);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, ReadEncodedDataFailsIfFinalizationFails) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  libsane.SetParameters(h, MakeParameters());
+  libsane.AddSaneReadResponse(h, SANE_STATUS_EOF, 0);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_EQ(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+
+  size_t bytes = -1;
+  size_t lines = -1;
+  EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines),
+            SANE_STATUS_IO_ERROR);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), ContainsRegex("Finalizing PNG.*fail"));
+  EXPECT_EQ(bytes, 0);
+  EXPECT_EQ(lines, 0);
+
+  CheckPngHeader(out_file.get());
+  brillo::DeleteFile(path);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, ReadEncodedDataPropagatesEOF) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  libsane.SetParameters(h, MakeParameters());
+  libsane.AddSaneReadResponse(h, SANE_STATUS_GOOD, 1000);
+  libsane.AddSaneReadResponse(h, SANE_STATUS_EOF, 0);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_EQ(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+
+  size_t bytes = -1;
+  size_t lines = -1;
+  EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+  EXPECT_GT(bytes, 0);
+  EXPECT_EQ(lines, 10);
+
+  EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines), SANE_STATUS_EOF);
+  EXPECT_EQ(error, nullptr);
+  EXPECT_EQ(bytes, 0);
+  EXPECT_EQ(lines, 0);
+
+  CheckPngHeader(out_file.get());
+  CheckPngFooter(out_file.get());
+  brillo::DeleteFile(path);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, ReadEncodedDataPropagatesFailures) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  libsane.SetParameters(h, MakeParameters());
+  libsane.AddSaneReadResponse(h, SANE_STATUS_GOOD, 100);
+  libsane.AddSaneReadResponse(h, SANE_STATUS_JAMMED, 0);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_EQ(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+
+  size_t bytes = -1;
+  size_t lines = -1;
+  EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+  EXPECT_GT(bytes, 0);
+  EXPECT_EQ(lines, 1);
+
+  EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines), SANE_STATUS_JAMMED);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), HasSubstr("Failed to read"));
+  EXPECT_EQ(bytes, 0);
+  EXPECT_EQ(lines, 0);
+
+  CheckPngHeader(out_file.get());
+  brillo::DeleteFile(path);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, ReadEncodedDataCombinesChunks) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  libsane.SetParameters(h, MakeParameters());
+  libsane.AddSaneReadResponse(h, SANE_STATUS_GOOD, 250);
+  libsane.AddSaneReadResponse(h, SANE_STATUS_GOOD, 250);
+  libsane.AddSaneReadResponse(h, SANE_STATUS_GOOD, 250);
+  libsane.AddSaneReadResponse(h, SANE_STATUS_GOOD, 250);
+  libsane.AddSaneReadResponse(h, SANE_STATUS_EOF, 0);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_EQ(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+
+  size_t bytes = -1;
+  size_t lines = -1;
+  size_t total_lines = 0;
+  for (size_t i = 0; i < 4; i++) {
+    EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines), SANE_STATUS_GOOD);
+    EXPECT_EQ(error, nullptr);
+    EXPECT_GT(bytes, 0);
+    EXPECT_GT(lines, 1);
+    total_lines += lines;
+  }
+
+  EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines), SANE_STATUS_EOF);
+  EXPECT_EQ(error, nullptr);
+  EXPECT_EQ(bytes, 0);
+  EXPECT_EQ(lines, 0);
+  EXPECT_EQ(total_lines, 10);
+
+  CheckPngHeader(out_file.get());
+  CheckPngFooter(out_file.get());
+  brillo::DeleteFile(path);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, ReadEncodedFailsWithExcessLines) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  libsane.SetSaneStartResult(h, SANE_STATUS_GOOD);
+  libsane.SetSupportsNonBlocking(h, true);
+  libsane.SetParameters(h, MakeParameters());
+  libsane.AddSaneReadResponse(h, SANE_STATUS_GOOD, 750);
+  libsane.AddSaneReadResponse(h, SANE_STATUS_GOOD, 260);
+  libsane.AddSaneReadResponse(h, SANE_STATUS_EOF, 0);
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_EQ(device.StartScan(&error), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+
+  base::FilePath path;
+  base::ScopedFILE out_file = base::CreateAndOpenTemporaryStream(&path);
+  ASSERT_NE(out_file.get(), nullptr);
+
+  EXPECT_EQ(device.PrepareImageReader(&error, lorgnette::IMAGE_FORMAT_PNG,
+                                      out_file.get(), nullptr),
+            SANE_STATUS_GOOD);
+
+  size_t bytes = -1;
+  size_t lines = -1;
+  EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+  EXPECT_GT(bytes, 0);
+  EXPECT_EQ(lines, 7);
+
+  EXPECT_EQ(device.ReadEncodedData(&error, &bytes, &lines),
+            SANE_STATUS_IO_ERROR);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), HasSubstr("bytes left over"));
+  EXPECT_GT(bytes, 0);
+  EXPECT_GT(lines, 0);
+
+  CheckPngHeader(out_file.get());
+  brillo::DeleteFile(path);
 }
 
 }  // namespace lorgnette

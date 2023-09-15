@@ -508,13 +508,33 @@ void Manager::GetNextImage(
     return;
   }
 
-  LOG(INFO) << __func__ << ": Finished prep to save next scanner image for "
-            << uuid;
+  size_t expected_lines;
+  SANE_Status status = scan_state->device->PrepareImageReader(
+      &error, scan_state->format, out_file.get(), &expected_lines);
+  if (status != SANE_STATUS_GOOD) {
+    LOG(ERROR) << __func__
+               << ": Failed to prepare image reader: " << error->GetMessage();
+    ReportScanFailed(scan_state->device_name, GetScanFailureMode(status));
+    response.set_failure_reason("Failed to prepare for reading scan data: " +
+                                SerializeError(error));
+    method_response->Return(response);
+    return;
+  }
+  if (expected_lines == 0) {
+    LOG(ERROR) << "Scanner returned 0 expected lines";
+    ReportScanFailed(scan_state->device_name, SCAN_FAILURE_MODE_UNKNOWN);
+    response.set_failure_reason("Cannot scan an image with invalid height (0)");
+    method_response->Return(response);
+    return;
+  }
+
+  LOG(INFO) << __func__ << ": Ready to save next scanner image with height "
+            << expected_lines << " for " << uuid;
   response.set_success(true);
   response.set_scan_failure_mode(SCAN_FAILURE_MODE_NO_FAILURE);
   method_response->Return(response);
 
-  GetNextImageInternal(uuid, scan_state, std::move(out_file));
+  GetNextImageInternal(uuid, scan_state, std::move(out_file), expected_lines);
 }
 
 CancelScanResponse Manager::CancelScan(const CancelScanRequest& request) {
@@ -703,11 +723,14 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
 
 void Manager::GetNextImageInternal(const std::string& uuid,
                                    ScanJobState* scan_state,
-                                   base::ScopedFILE out_file) {
+                                   base::ScopedFILE out_file,
+                                   size_t expected_lines) {
+  DCHECK(expected_lines);
+
   brillo::ErrorPtr error;
   ScanFailureMode failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
-  ScanState result =
-      RunScanLoop(&error, &failure_mode, scan_state, std::move(out_file), uuid);
+  ScanState result = RunScanLoop(&error, &failure_mode, scan_state,
+                                 std::move(out_file), expected_lines, uuid);
   LOG(INFO) << __func__ << ": Scanner page read loop for " << uuid
             << " ended with status " << ScanState_Name(result);
   switch (result) {
@@ -797,84 +820,33 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
                                ScanFailureMode* failure_mode,
                                ScanJobState* scan_state,
                                base::ScopedFILE out_file,
+                               size_t expected_lines,
                                const std::string& scan_uuid) {
   DCHECK(scan_state);
+  DCHECK(expected_lines);
 
   SaneDevice* device = scan_state->device.get();
-  std::optional<ScanParameters> params = device->GetScanParameters(error);
-  if (!params.has_value()) {
-    return SCAN_STATE_FAILED;  // brillo::Error::AddTo already called.
-  }
-
-  // Get resolution value in DPI so that we can record it in the image.
-  brillo::ErrorPtr resolution_error;
-  std::optional<int> resolution = device->GetScanResolution(&resolution_error);
-  if (!resolution.has_value()) {
-    LOG(WARNING) << __func__ << ": Failed to get scan resolution: "
-                 << SerializeError(resolution_error);
-  }
-
-  std::unique_ptr<ImageReader> image_reader;
-  switch (scan_state->format) {
-    case IMAGE_FORMAT_PNG: {
-      image_reader =
-          PngReader::Create(error, params.value(), resolution, out_file.get());
-      break;
-    }
-    case IMAGE_FORMAT_JPEG: {
-      image_reader =
-          JpegReader::Create(error, params.value(), resolution, out_file.get());
-      break;
-    }
-    default: {
-      brillo::Error::AddToPrintf(
-          error, FROM_HERE, kDbusDomain, kManagerServiceError,
-          "Unrecognized image format: %d", scan_state->format);
-      return SCAN_STATE_FAILED;
-    }
-  }
-
-  if (!image_reader) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Failed to create image reader for format: %d", scan_state->format);
-    return SCAN_STATE_FAILED;
-  }
 
   base::TimeTicks last_progress_sent_time = base::TimeTicks::Now();
   uint32_t last_progress_value = 0;
-  size_t rows_written = 0;
-  const size_t kMaxBuffer = 1024 * 1024;
-  const size_t buffer_length = std::max(static_cast<size_t>(base::bits::AlignUp(
-                                            params->bytes_per_line, 4 * 1024)),
-                                        kMaxBuffer);
-  std::vector<uint8_t> image_buffer(buffer_length, '\0');
-  // The offset within image_buffer to read to. This will be used within the
-  // loop for when we've read a partial image line and need to track data that
-  // is saved between loop iterations.
-  //
-  // We maintain the invariant at the start of each loop iteration that indices
-  // [0, buffer_offset) hold previously read data.
-  size_t buffer_offset = 0;
+  size_t lines_written = 0;
   while (true) {
-    // Get next chunk of scan data from the device.
-    size_t read = 0;
-    SANE_Status result =
-        device->ReadScanData(error, image_buffer.data() + buffer_offset,
-                             image_buffer.size() - buffer_offset, &read);
+    size_t bytes;
+    size_t lines;
+    SANE_Status result = device->ReadEncodedData(error, &bytes, &lines);
+    lines_written += lines;
 
-    // Handle non-standard results.
     if (result == SANE_STATUS_GOOD) {
       // If the handle supports non-blocking I/O, it may return SANE_STATUS_GOOD
       // with no bytes when data is not ready.  In that case, wait a short time
       // and try again.
-      if (read == 0) {
+      if (bytes == 0) {
         // TODO(b/223811174): Return control to the event loop instead of
         // sleeping so asynchronous cancel requests can arrive.
         base::PlatformThread::Sleep(base::Milliseconds(100));
         continue;
       }
-      if (rows_written >= params->lines) {
+      if (lines_written > expected_lines) {
         brillo::Error::AddTo(
             error, FROM_HERE, kDbusDomain, kManagerServiceError,
             "Whole image has been written, but scanner is still sending data.");
@@ -897,47 +869,24 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
       return SCAN_STATE_FAILED;
     }
 
-    // Write as many lines of the image as we can with the data we've received.
-    // Indices [buffer_offset, buffer_offset + read) hold the data we just read.
-    size_t bytes_available = buffer_offset + read;
-    size_t bytes_converted = 0;
-    while (bytes_available - bytes_converted >= params->bytes_per_line &&
-           rows_written < params->lines) {
-      if (!image_reader->ReadRow(error,
-                                 image_buffer.data() + bytes_converted)) {
-        return SCAN_STATE_FAILED;  // brillo::Error::AddTo already called.
-      }
-      bytes_converted += params->bytes_per_line;
-      rows_written++;
-      uint32_t progress = rows_written * 100 / params->lines;
-      base::TimeTicks now = base::TimeTicks::Now();
-      if (progress != last_progress_value &&
-          now - last_progress_sent_time >= progress_signal_interval_) {
-        SendStatusSignal(scan_uuid, SCAN_STATE_IN_PROGRESS,
-                         scan_state->current_page, progress, false);
-        last_progress_value = progress;
-        last_progress_sent_time = now;
-      }
+    uint32_t progress = lines_written * 100 / expected_lines;
+    base::TimeTicks now = base::TimeTicks::Now();
+    if (progress != last_progress_value &&
+        now - last_progress_sent_time >= progress_signal_interval_) {
+      SendStatusSignal(scan_uuid, SCAN_STATE_IN_PROGRESS,
+                       scan_state->current_page, progress, false);
+      last_progress_value = progress;
+      last_progress_sent_time = now;
     }
-
-    // Shift any unconverted data in image_buffer to the start of image_buffer.
-    size_t remaining_bytes = bytes_available - bytes_converted;
-    memmove(image_buffer.data(), image_buffer.data() + bytes_converted,
-            remaining_bytes);
-    buffer_offset = remaining_bytes;
   }
 
-  if (rows_written < params->lines || buffer_offset != 0) {
+  if (lines_written < expected_lines) {
     brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
                                kManagerServiceError,
-                               "Received incomplete scan data, %zu unused "
-                               "bytes, %zu of %d rows written",
-                               buffer_offset, rows_written, params->lines);
+                               "Received incomplete scan data, %zu of %zu "
+                               "lines written",
+                               lines_written, expected_lines);
     return SCAN_STATE_FAILED;
-  }
-
-  if (!image_reader->Finalize(error)) {
-    return SCAN_STATE_FAILED;  // brillo::Error::AddTo already called.
   }
 
   return SCAN_STATE_PAGE_COMPLETED;

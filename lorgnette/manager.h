@@ -145,12 +145,14 @@ class Manager {
 
   void GetNextImageInternal(const std::string& uuid,
                             ScanJobState* scan_state,
-                            base::ScopedFILE out_file);
+                            base::ScopedFILE out_file,
+                            size_t expected_lines);
 
   ScanState RunScanLoop(brillo::ErrorPtr* error,
                         ScanFailureMode* failure_mode,
                         ScanJobState* scan_state,
                         base::ScopedFILE out_file,
+                        size_t expected_lines,
                         const std::string& scan_uuid);
 
   void ReportScanRequested(const std::string& device_name);

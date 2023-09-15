@@ -11,7 +11,7 @@
 
 #include <brillo/errors/error.h>
 
-#include "lorgnette/sane_client.h"
+#include "lorgnette/scan_parameters.h"
 
 namespace lorgnette {
 

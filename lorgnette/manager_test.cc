@@ -635,6 +635,13 @@ TEST_F(ManagerTest, StartScanFlatbedOpen) {
 }
 
 TEST_F(ManagerTest, StartScanFailToRead) {
+  ScanParameters parameters = {
+      .format = kRGB,
+      .bytes_per_line = 4095,
+      .pixels_per_line = 1365,
+      .lines = 100,
+      .depth = 8,
+  };
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(base::FilePath("./test_images/color.pnm"),
                                      &contents));
@@ -642,11 +649,12 @@ TEST_F(ManagerTest, StartScanFailToRead) {
   std::unique_ptr<SaneDeviceFake> device = std::make_unique<SaneDeviceFake>();
   device->SetScanData({image_data});
   device->SetReadScanDataResult(SANE_STATUS_IO_ERROR);
+  device->SetScanParameters(parameters);
   sane_client_->SetDeviceForName("TestDevice", std::move(device));
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
-  ExpectScanFailureReason(ScanJobFailureReason::kUnknownScannerError);
+  ExpectScanFailureReason(ScanJobFailureReason::kIoError);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -657,11 +665,11 @@ TEST_F(ManagerTest, StartScanFailToRead) {
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
 
-  EXPECT_EQ(signals_.size(), 1);
+  ASSERT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
-  EXPECT_NE(signals_[0].failure_reason(), "");
-  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
+  EXPECT_THAT(signals_[0].failure_reason(), ContainsRegex("Reading.*failed"));
+  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_IO_ERROR);
 }
 
 TEST_F(ManagerTest, GetNextImageDeviceBusy) {
@@ -687,7 +695,7 @@ TEST_F(ManagerTest, GetNextImageDeviceBusy) {
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
 
-  EXPECT_EQ(signals_.size(), 1);
+  ASSERT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_NE(signals_[0].failure_reason(), "");
@@ -717,7 +725,7 @@ TEST_F(ManagerTest, GetNextImageAdfJammed) {
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
 
-  EXPECT_EQ(signals_.size(), 1);
+  ASSERT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_NE(signals_[0].failure_reason(), "");
@@ -747,7 +755,7 @@ TEST_F(ManagerTest, GetNextImageFlatbedOpen) {
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
 
-  EXPECT_EQ(signals_.size(), 1);
+  ASSERT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_NE(signals_[0].failure_reason(), "");
@@ -777,7 +785,7 @@ TEST_F(ManagerTest, GetNextImageIoError) {
       GetNextImage(response.scan_uuid(), scan_fd_);
   EXPECT_TRUE(get_next_image_response.success());
 
-  EXPECT_EQ(signals_.size(), 1);
+  ASSERT_EQ(signals_.size(), 1);
   EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
   EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
   EXPECT_NE(signals_[0].failure_reason(), "");
@@ -857,16 +865,13 @@ TEST_F(ManagerTest, GetNextImageNegativeWidth) {
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
-  EXPECT_TRUE(get_next_image_response.success());
-  EXPECT_EQ(get_next_image_response.failure_reason(), "");
+  EXPECT_FALSE(get_next_image_response.success());
+  EXPECT_THAT(get_next_image_response.failure_reason(),
+              ContainsRegex("invalid width"));
   EXPECT_EQ(get_next_image_response.scan_failure_mode(),
-            SCAN_FAILURE_MODE_NO_FAILURE);
+            SCAN_FAILURE_MODE_UNKNOWN);
 
-  EXPECT_EQ(signals_.size(), 1);
-  EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
-  EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
-  EXPECT_THAT(signals_[0].failure_reason(), ContainsRegex("invalid width"));
-  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
+  EXPECT_EQ(signals_.size(), 0);
 }
 
 TEST_F(ManagerTest, GetNextImageExcessWidth) {
@@ -892,22 +897,19 @@ TEST_F(ManagerTest, GetNextImageExcessWidth) {
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
-  EXPECT_TRUE(get_next_image_response.success());
-  EXPECT_EQ(get_next_image_response.failure_reason(), "");
+  EXPECT_FALSE(get_next_image_response.success());
+  EXPECT_THAT(get_next_image_response.failure_reason(),
+              ContainsRegex("invalid width"));
   EXPECT_EQ(get_next_image_response.scan_failure_mode(),
-            SCAN_FAILURE_MODE_NO_FAILURE);
+            SCAN_FAILURE_MODE_UNKNOWN);
 
-  EXPECT_EQ(signals_.size(), 1);
-  EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
-  EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
-  EXPECT_THAT(signals_[0].failure_reason(), ContainsRegex("invalid width"));
-  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
+  EXPECT_EQ(signals_.size(), 0);
 }
 
-TEST_F(ManagerTest, GetNextImageInvalidHeight) {
+TEST_F(ManagerTest, GetNextImageExcessHeight) {
   ScanParameters parameters;
   parameters.format = kRGB;
-  parameters.bytes_per_line = 0x40000000 + (0x10 * 0x08);
+  parameters.bytes_per_line = 0x30;
   parameters.pixels_per_line = 0x10;
   parameters.lines = 0x02000000;
   parameters.depth = 8;
@@ -927,16 +929,45 @@ TEST_F(ManagerTest, GetNextImageInvalidHeight) {
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
-  EXPECT_TRUE(get_next_image_response.success());
-  EXPECT_EQ(get_next_image_response.failure_reason(), "");
+  EXPECT_FALSE(get_next_image_response.success());
+  EXPECT_THAT(get_next_image_response.failure_reason(),
+              ContainsRegex("invalid height"));
   EXPECT_EQ(get_next_image_response.scan_failure_mode(),
-            SCAN_FAILURE_MODE_NO_FAILURE);
+            SCAN_FAILURE_MODE_UNKNOWN);
 
-  EXPECT_EQ(signals_.size(), 1);
-  EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
-  EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
-  EXPECT_THAT(signals_[0].failure_reason(), ContainsRegex("invalid height"));
-  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
+  EXPECT_EQ(signals_.size(), 0);
+}
+
+TEST_F(ManagerTest, GetNextImageZeroHeight) {
+  ScanParameters parameters;
+  parameters.format = kRGB;
+  parameters.bytes_per_line = 0x30;
+  parameters.pixels_per_line = 0x10;
+  parameters.lines = 0;
+  parameters.depth = 8;
+  SetUpTestDevice("TestDevice", {base::FilePath("./test_images/color.pnm")},
+                  parameters);
+
+  ExpectScanRequest(kOtherBackend);
+  ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kUnknownScannerError);
+  StartScanResponse response =
+      StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
+
+  EXPECT_EQ(response.state(), SCAN_STATE_IN_PROGRESS);
+  EXPECT_EQ(response.failure_reason(), "");
+  EXPECT_EQ(response.scan_failure_mode(), SCAN_FAILURE_MODE_NO_FAILURE);
+  EXPECT_NE(response.scan_uuid(), "");
+
+  GetNextImageResponse get_next_image_response =
+      GetNextImage(response.scan_uuid(), scan_fd_);
+  EXPECT_FALSE(get_next_image_response.success());
+  EXPECT_THAT(get_next_image_response.failure_reason(),
+              ContainsRegex("invalid height"));
+  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
+            SCAN_FAILURE_MODE_UNKNOWN);
+
+  EXPECT_EQ(signals_.size(), 0);
 }
 
 TEST_F(ManagerTest, GetNextImageMismatchedSizes) {
@@ -962,17 +993,13 @@ TEST_F(ManagerTest, GetNextImageMismatchedSizes) {
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
-  EXPECT_TRUE(get_next_image_response.success());
-  EXPECT_EQ(get_next_image_response.failure_reason(), "");
-  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
-            SCAN_FAILURE_MODE_NO_FAILURE);
-
-  EXPECT_EQ(signals_.size(), 1);
-  EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
-  EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
-  EXPECT_THAT(signals_[0].failure_reason(),
+  EXPECT_FALSE(get_next_image_response.success());
+  EXPECT_THAT(get_next_image_response.failure_reason(),
               ContainsRegex("bytes_per_line.*too small"));
-  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
+  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
+            SCAN_FAILURE_MODE_UNKNOWN);
+
+  EXPECT_EQ(signals_.size(), 0);
 }
 
 TEST_F(ManagerTest, GetNextImageTooLarge) {
@@ -998,17 +1025,13 @@ TEST_F(ManagerTest, GetNextImageTooLarge) {
 
   GetNextImageResponse get_next_image_response =
       GetNextImage(response.scan_uuid(), scan_fd_);
-  EXPECT_TRUE(get_next_image_response.success());
-  EXPECT_EQ(get_next_image_response.failure_reason(), "");
-  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
-            SCAN_FAILURE_MODE_NO_FAILURE);
-
-  EXPECT_EQ(signals_.size(), 1);
-  EXPECT_EQ(signals_[0].scan_uuid(), response.scan_uuid());
-  EXPECT_EQ(signals_[0].state(), SCAN_STATE_FAILED);
-  EXPECT_THAT(signals_[0].failure_reason(),
+  EXPECT_FALSE(get_next_image_response.success());
+  EXPECT_THAT(get_next_image_response.failure_reason(),
               ContainsRegex("scan buffer.*too large"));
-  EXPECT_EQ(signals_[0].scan_failure_mode(), SCAN_FAILURE_MODE_UNKNOWN);
+  EXPECT_EQ(get_next_image_response.scan_failure_mode(),
+            SCAN_FAILURE_MODE_UNKNOWN);
+
+  EXPECT_EQ(signals_.size(), 0);
 }
 
 TEST_F(ManagerTest, RemoveDupNoRepeats) {

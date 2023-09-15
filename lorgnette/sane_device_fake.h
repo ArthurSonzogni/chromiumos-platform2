@@ -43,8 +43,8 @@ class SaneDeviceFake : public SaneDevice {
   bool SetScanRegion(brillo::ErrorPtr* error,
                      const ScanRegion& region) override;
   SANE_Status StartScan(brillo::ErrorPtr* error) override;
-  std::optional<ScanParameters> GetScanParameters(
-      brillo::ErrorPtr* error) override;
+  SANE_Status GetScanParameters(brillo::ErrorPtr* error,
+                                ScanParameters* params) override;
   SANE_Status ReadScanData(brillo::ErrorPtr* error,
                            uint8_t* buf,
                            size_t count,
