@@ -47,6 +47,7 @@ lazy_static! {
         const DLC_VARIANT_AXE: &str = "-axe";
         const DLC_VARIANT_BATRIDER: &str = "-batrider";
         const DLC_VARIANT_CLINKZ: &str = "-clinkz";
+        const DLC_VARIANT_DAZZLE: &str = "-dazzle";
 
         let variant_mapping: HashMap<u16, &str> = HashMap::from([
             // axe variant
@@ -60,6 +61,9 @@ lazy_static! {
             // clinkz variant
             (u16::from_str_radix("9a78", 16).unwrap(), DLC_VARIANT_CLINKZ),  // volteer
             (u16::from_str_radix("a7a0", 16).unwrap(), DLC_VARIANT_CLINKZ),  // brya
+
+            // dazzle variant
+            (u16::from_str_radix("a7a9", 16).unwrap(), DLC_VARIANT_DAZZLE),  // brya
         ]);
 
         // If no device id is detected or not found in |variant_mapping|,
