@@ -8,3 +8,6 @@ disable_scan_offload=1
 # have the required CMAC support.
 pmf=1
 sae_check_mfp=1
+# Configure P2P Interface MAC address policy by default.
+# use random MAC address on creating the interface.
+p2p_interface_random_mac_addr=1
