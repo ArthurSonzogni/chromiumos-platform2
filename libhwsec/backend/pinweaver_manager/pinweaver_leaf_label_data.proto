@@ -8,7 +8,7 @@ option optimize_for = LITE_RUNTIME;
 
 package hwsec;
 
-message HashTreeLeafData {
+message PinWeaverLeafLabelData {
   // Contains the MAC calculated on the leaf credential_metadata.
   optional bytes mac = 1;
   // Contains an encrypted version of credential metadata. Includes

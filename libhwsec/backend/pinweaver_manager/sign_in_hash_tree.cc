@@ -17,7 +17,7 @@
 #include <libhwsec-foundation/crypto/sha.h>
 
 #include "base/check_op.h"
-#include "libhwsec/hash_tree_leaf_data.pb.h"
+#include "libhwsec/pinweaver_leaf_label_data.pb.h"
 
 using ::hwsec_foundation::GetSecureRandom;
 using ::hwsec_foundation::Sha256;
@@ -171,7 +171,7 @@ bool SignInHashTree::StoreLabel(const Label& label,
 
   if (IsLeafLabel(label)) {
     // Place the data in a protobuf and then write out to storage.
-    HashTreeLeafData leaf_data;
+    PinWeaverLeafLabelData leaf_data;
     leaf_data.set_mac(hmac.data(), hmac.size());
     leaf_data.set_metadata_lost(metadata_lost);
     leaf_data.set_credential_metadata(cred_metadata.data(),
@@ -232,7 +232,7 @@ bool SignInHashTree::GetLabelData(const Label& label,
       return false;
     }
 
-    HashTreeLeafData leaf_data;
+    PinWeaverLeafLabelData leaf_data;
     if (!leaf_data.ParseFromArray(merged_blob.data(), merged_blob.size())) {
       LOG(WARNING) << "Couldn't deserialize leaf data for label "
                    << label.value();

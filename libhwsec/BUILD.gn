@@ -543,5 +543,5 @@ if (use.test) {
 proto_library("pinweaver_manager_proto") {
   proto_in_dir = "backend/pinweaver_manager"
   proto_out_dir = "include/libhwsec"
-  sources = [ "${proto_in_dir}/hash_tree_leaf_data.proto" ]
+  sources = [ "${proto_in_dir}/pinweaver_leaf_label_data.proto" ]
 }
