@@ -534,6 +534,7 @@ Check out the their [docs][1] for more details (especially on minidumps).
 [crash-reporter.conf]: ./init/crash-reporter.conf
 [crash_sender]: ./crash_sender.cc
 [crash-sender.conf]: ./init/crash-sender.conf
+[crash-sender-login.conf]: ./init/crash-sender-login.conf
 [crash_serializer]: ./crash_serializer.cc
 [init/]: ./init/
 [kernel_warning_collector]: ../kernel_warning_collector.cc
