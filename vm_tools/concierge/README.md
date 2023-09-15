@@ -17,13 +17,13 @@ cros_workon --board ${BOARD} start chromeos-base/system_api chromeos-base/vm_hos
 Then it is possible to iterate on `vm_concierge`.
 
 ```
-cros_workon_make --test --board=brya \
+cros_workon_make --test --board=${BOARD} \
   chromeos-base/system_api \
   --install  # If system_api changed.
-cros_workon_make --test --board=brya \
+cros_workon_make --test --board=${BOARD} \
   chromeos-base/vm_protos \
   --install  # If vm_protos changed.
-cros_workon_make --test --board=brya chromeos-base/vm_host_tools
+cros_workon_make --test --board=${BOARD} chromeos-base/vm_host_tools
 ```
 
 ### Obtaining backtrace on crash
