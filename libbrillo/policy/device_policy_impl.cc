@@ -526,6 +526,9 @@ bool DevicePolicyImpl::GetTargetVersionPrefix(
 
 bool DevicePolicyImpl::GetRollbackToTargetVersion(
     int* rollback_to_target_version) const {
+  if (!IsEnterpriseEnrolled())
+    return false;
+
   if (!device_policy_->has_auto_update_settings())
     return false;
 
