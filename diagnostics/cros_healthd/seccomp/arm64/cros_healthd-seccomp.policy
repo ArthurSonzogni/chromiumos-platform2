@@ -93,6 +93,7 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == SIOCSIFFLAGS || arg1 == BLKSSZGET || \
        arg1 == 0xc05064a7 || arg1 == 0xc01464a6 || arg1 == 0xc06864a1 || \
        arg1 == 0xc0186440 || arg1 == 0xc01064ac || arg1 == 0x40088026 || \
        arg1 == 0xc0018036 || arg1 == 0x4018800e
+kcmp: 1
 kill: 1
 lseek: 1
 madvise: 1

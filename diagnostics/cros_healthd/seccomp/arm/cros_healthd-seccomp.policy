@@ -120,6 +120,7 @@ ioctl: arg1 == TCGETS || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || \
        arg1 == 0xc0018036 || arg1 == 0xc0186440 || arg1 == 0xc01064ac || \
        arg1 == 0x40046445 || arg1 == 0xc0306443 || arg1 == 0x80086444 || \
        arg1 == 0x6442 || arg1 == 0x40206441
+kcmp: 1
 kill: 1
 lstat64: 1
 madvise: 1
