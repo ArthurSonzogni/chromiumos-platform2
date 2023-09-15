@@ -88,6 +88,7 @@ constexpr char kRequestSpaceArg[] = "request_space";
 constexpr char kReleaseSpaceArg[] = "release_space";
 constexpr char kSftpServer[] = "/usr/lib/openssh/sftp-server";
 constexpr char kMetricsSwitch[] = "metrics";
+constexpr char kNoStartupNotifySwitch[] = "no_startup_notify";
 constexpr uint32_t kVsockPortStart = 10000;
 constexpr uint32_t kVsockPortEnd = 20000;
 constexpr int kSecurityTokenLength = 36;
@@ -185,7 +186,8 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
                       std::shared_ptr<grpc::Server>* server_copy,
                       int* vsock_listen_port,
                       scoped_refptr<base::TaskRunner> task_runner,
-                      vm_tools::garcon::HostNotifier* host_notifier) {
+                      vm_tools::garcon::HostNotifier* host_notifier,
+                      bool startup_notify_allowed) {
   // We don't want to receive SIGTERM on this thread.
   BlockSigterm();
 
@@ -206,8 +208,8 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
         base::StringPrintf("vsock:%u:%d", VMADDR_CID_ANY, *vsock_listen_port),
         grpc::InsecureServerCredentials(), nullptr);
 
-    vm_tools::garcon::ServiceImpl garcon_service(pk_proxy, task_runner.get(),
-                                                 host_notifier);
+    vm_tools::garcon::ServiceImpl garcon_service(
+        pk_proxy, task_runner.get(), host_notifier, startup_notify_allowed);
     builder.RegisterService(&garcon_service);
 
     std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
@@ -620,6 +622,11 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  bool startup_notify_allowed = true;
+  if (cl->HasSwitch(kNoStartupNotifySwitch)) {
+    startup_notify_allowed = false;
+  }
+
   // Note on the threading model: There are 5 threads used in garcon:
   //
   // - incoming gRPC requests
@@ -718,7 +725,7 @@ int main(int argc, char** argv) {
       FROM_HERE, base::BindOnce(&RunGarconService, pk_proxy.get(), &event,
                                 &server_copy, &vsock_listen_port,
                                 garcon_service_tasks_thread.task_runner(),
-                                host_notifier.get()));
+                                host_notifier.get(), startup_notify_allowed));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return -1;

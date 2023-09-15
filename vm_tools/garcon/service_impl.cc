@@ -84,10 +84,12 @@ void SetEnvForContainerFeatures(std::map<std::string, std::string>& env,
 
 ServiceImpl::ServiceImpl(PackageKitProxy* package_kit_proxy,
                          base::TaskRunner* task_runner,
-                         HostNotifier* host_notifier)
+                         HostNotifier* host_notifier,
+                         bool startup_notify_allowed)
     : package_kit_proxy_(package_kit_proxy),
       task_runner_(task_runner),
-      host_notifier_(host_notifier) {
+      host_notifier_(host_notifier),
+      startup_notify_allowed_(startup_notify_allowed) {
   CHECK(package_kit_proxy_);
 }
 
@@ -148,7 +150,11 @@ grpc::Status ServiceImpl::LaunchApplication(
   }
 
   std::map<std::string, std::string> env;
-  if (desktop_file->startup_notify()) {
+  // TODO(b/286917197): Workaround for GTK+3 crash. The check for
+  // startup_notify_alowed_ can be removed once
+  // https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1043000 is fixed in
+  // bookworm.
+  if (desktop_file->startup_notify() && startup_notify_allowed_) {
     env[kStartupIDEnv] = request->desktop_file_id();
   }
 
