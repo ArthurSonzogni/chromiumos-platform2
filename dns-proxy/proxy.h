@@ -224,6 +224,7 @@ class Proxy : public brillo::DBusDaemon {
   // Return the property accessor, creating it if needed.
   shill::Client::ManagerPropertyAccessor* shill_props();
 
+  friend class ProxyTest;
   FRIEND_TEST(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill);
   FRIEND_TEST(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill);
   FRIEND_TEST(ProxyTest,
@@ -272,6 +273,7 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest,
               DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted);
+  FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleGuest);
   FRIEND_TEST(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added);
