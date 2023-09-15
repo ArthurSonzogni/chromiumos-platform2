@@ -16,6 +16,8 @@
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 
+#include "featured/feature_library.h"
+
 namespace swap_management {
 
 class LoopDev {
@@ -61,6 +63,7 @@ class DmDev {
 class SwapTool {
  public:
   SwapTool() = default;
+  explicit SwapTool(feature::PlatformFeatures*);
   SwapTool(const SwapTool&) = delete;
   SwapTool& operator=(const SwapTool&) = delete;
 
@@ -90,14 +93,20 @@ class SwapTool {
 
  private:
   absl::StatusOr<bool> IsZramSwapOn();
-  absl::StatusOr<uint64_t> GetMemTotal();
-  absl::StatusOr<uint64_t> GetZramSize(uint64_t mem_total);
-  void SetRecompAlgo();
+  absl::StatusOr<uint64_t> GetMemTotalKiB();
+  absl::StatusOr<uint64_t> GetUserConfigZramSizeBytes();
+  absl::StatusOr<uint64_t> GetZramSizeBytes();
+  void SetRecompAlgorithms();
+  void SetCompAlgorithmIfOverriden();
   absl::Status EnableZramSwapping();
+  std::optional<std::string> GetFeatureParam(const VariationsFeature& vf,
+                                             const std::string& key);
 
   uint64_t wb_size_bytes_ = 0;
   uint64_t wb_nr_blocks_ = 0;
   uint64_t stateful_block_size_ = 0;
+
+  feature::PlatformFeatures* platform_features_ = nullptr;
 
   void CleanupWriteback();
   absl::Status ZramWritebackPrerequisiteCheck(uint32_t size);

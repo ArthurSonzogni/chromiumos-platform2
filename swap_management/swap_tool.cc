@@ -3,12 +3,11 @@
 // found in the LICENSE file.
 
 #include "swap_management/swap_tool.h"
+#include "featured/c_feature_library.h"
 #include "swap_management/swap_tool_util.h"
 
 #include <cinttypes>
-#include <string>
 #include <utility>
-#include <vector>
 
 #include <absl/status/status.h>
 #include <base/files/dir_reader_posix.h>
@@ -37,9 +36,19 @@ constexpr char kStatefulPartitionDir[] =
     "/mnt/stateful_partition/unencrypted/userspace_swap.tmp";
 constexpr uint32_t kMiB = 1048576;
 constexpr uint32_t kSectorSize = 512;
+// The default size of zram is twice the device's memory size.
+constexpr float kDefaultZramSizeToMemTotalMultiplier = 2.0;
 
 constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
-constexpr uint64_t kMinFilelistDefaultValueKB = 1000000;
+constexpr uint64_t kMinFilelistDefaultValueKiB = 1000000;
+
+constexpr char kSwapZramCompAlgorithmFeatureName[] =
+    "CrOSLateBootSwapZramCompAlgorithm";
+constexpr VariationsFeature kSwapZramCompAlgorithmFeature{
+    kSwapZramCompAlgorithmFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+constexpr char kSwapZramDisksizeFeatureName[] = "CrOSLateBootSwapZramDisksize";
+constexpr VariationsFeature kSwapZramDisksizeFeature{
+    kSwapZramDisksizeFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
 // Round up multiple will round the first argument |number| up to the next
 // multiple of the second argument |alignment|.
@@ -147,6 +156,9 @@ std::string DmDev::GetPath() {
   return "/dev/mapper/" + name_;
 }
 
+SwapTool::SwapTool(feature::PlatformFeatures* platform_features)
+    : platform_features_(platform_features) {}
+
 // Check if swap is already turned on.
 absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
   std::string swaps;
@@ -169,7 +181,7 @@ absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
 
 // Extract second field of MemTotal entry in /proc/meminfo. The unit for
 // MemTotal is KiB.
-absl::StatusOr<uint64_t> SwapTool::GetMemTotal() {
+absl::StatusOr<uint64_t> SwapTool::GetMemTotalKiB() {
   std::string mem_info;
   absl::Status status = SwapToolUtil::Get()->ReadFileToString(
       base::FilePath("/proc/meminfo"), &mem_info);
@@ -195,29 +207,26 @@ absl::StatusOr<uint64_t> SwapTool::GetMemTotal() {
   return absl::NotFoundError("Could not get MemTotal in /proc/meminfo");
 }
 
-// Return zram (compressed ram disk) size in byte for swap.
+// Return user runtime config zram size in byte for swap.
 // kSwapSizeFile contains the zram size in MiB.
-// Empty or missing kSwapSizeFile means use default size, which is
-// mem_total
-// * 2.
-// 0 means do not enable zram.
-absl::StatusOr<uint64_t> SwapTool::GetZramSize(uint64_t mem_total) {
+// Return 0 if swap is disabled, and NotFoundError if kSwapSizeFile is empty.
+// Otherwise propagate error back, and the following code should calculate zram
+// size based on MemTotal/features instead.
+absl::StatusOr<uint64_t> SwapTool::GetUserConfigZramSizeBytes() {
   // For security, only read first few bytes of kSwapSizeFile.
   std::string buf;
   absl::Status status = SwapToolUtil::Get()->ReadFileToStringWithMaxSize(
       base::FilePath(kSwapSizeFile), &buf, 5);
-  // If the file doesn't exist we use default zram size, other errors we must
-  // propagate back.
-  if (!status.ok() && !absl::IsNotFound(status))
+  if (!status.ok())
     return status;
 
   // Trim the potential leading/trailing ASCII whitespaces.
   // Note that TrimWhitespaceASCII can safely use the same variable for inputs
   // and outputs.
   base::TrimWhitespaceASCII(buf, base::TRIM_ALL, &buf);
-
-  if (absl::IsNotFound(status) || buf.empty())
-    return mem_total * 1024 * 2;
+  if (buf.empty())
+    return absl::InvalidArgumentError(std::string(kSwapSizeFile) +
+                                      " is empty.");
 
   uint64_t requested_size_mib = 0;
   if (!absl::SimpleAtoi(buf, &requested_size_mib))
@@ -232,10 +241,66 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSize(uint64_t mem_total) {
   return requested_size_mib * 1024 * 1024;
 }
 
+// Set comp_algorithm if kSwapZramCompAlgorithmFeature is enabled.
+void SwapTool::SetCompAlgorithmIfOverriden() {
+  std::optional<std::string> comp_algorithm =
+      GetFeatureParam(kSwapZramCompAlgorithmFeature, "comp_algorithm");
+  if (comp_algorithm.has_value()) {
+    LOG(INFO) << "Setting zram comp_algorithm to " << *comp_algorithm;
+    absl::Status status = SwapToolUtil::Get()->WriteFile(
+        base::FilePath(kZramSysfsDir).Append("comp_algorithm"),
+        *comp_algorithm);
+    LOG_IF(WARNING, !status.ok()) << status;
+  }
+}
+// Get zram size in byte.
+// There are two factor to decide the size: user runtime config and
+// feature.
+// 1. User runtime config:
+//    Read size in MiB in kSwapSizeFile (programmed by SwapSetSize).
+//    0 means disable zram.
+// 2. Feature (kSwapZramDisksizeFeature):
+//    If the feature is available, load multiplier from features.
+//    Then size = mem_total * multiplier (2 by default).
+// We first check if user runtime config is available, if not then
+// feature, if not then finally using default zram size.
+absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
+  // 1. User runtime config
+  absl::StatusOr<uint64_t> size_byte = GetUserConfigZramSizeBytes();
+  // Return since user has runtime config for zram size, or swap is disabled.
+  if (size_byte.ok())
+    return size_byte;
+  // Let's provide log for errors other than NotFoundError which is valid, and
+  // continue.
+  LOG_IF(WARNING, !absl::IsNotFound(size_byte.status())) << size_byte.status();
+
+  // 2. Feature
+  // First, read the MemTotal from /proc/meminfo
+  absl::StatusOr<uint64_t> mem_total = GetMemTotalKiB();
+  if (!mem_total.ok())
+    return mem_total.status();
+
+  // Then check if feature kSwapZramDisksizeFeature is available.
+  float multiplier = kDefaultZramSizeToMemTotalMultiplier;
+  std::optional<std::string> feature_multiplier =
+      GetFeatureParam(kSwapZramDisksizeFeature, "multiplier");
+  if (feature_multiplier.has_value()) {
+    if (!absl::SimpleAtof(*feature_multiplier, &multiplier)) {
+      LOG(WARNING) << absl::OutOfRangeError(
+          "Failed to convert " + *feature_multiplier +
+          " to float. Using default zram size multiplier.");
+      multiplier = kDefaultZramSizeToMemTotalMultiplier;
+    }
+  }
+
+  // Should roundup with page size.
+  return RoundupMultiple(*mem_total * 1024 * multiplier, 4096);
+}
+
 // Program /sys/block/zram0/recomp_algorithm.
 // For the format of |kSwapRecompAlgorithmFile|, please refer to the
 // description in SwapZramSetRecompAlgorithms.
-void SwapTool::SetRecompAlgo() {
+void SwapTool::SetRecompAlgorithms() {
   std::string buf;
   absl::Status status = SwapToolUtil::Get()->ReadFileToString(
       base::FilePath(kSwapRecompAlgorithmFile), &buf);
@@ -243,10 +308,30 @@ void SwapTool::SetRecompAlgo() {
       buf, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (uint8_t i = 0; i < algos.size(); i++) {
     absl::Status status = SwapToolUtil::Get()->WriteFile(
-        base::FilePath("/sys/block/zram0/recomp_algorithm"),
+        base::FilePath(kZramSysfsDir).Append("recomp_algorithm"),
         "algo=" + algos[i] + " priority=" + std::to_string(i + 1));
     LOG_IF(WARNING, !status.ok()) << status;
   }
+}
+
+// Return value for params in feature if feature is enabled.
+std::optional<std::string> SwapTool::GetFeatureParam(
+    const VariationsFeature& vf, const std::string& key) {
+  if (platform_features_) {
+    feature::PlatformFeaturesInterface::ParamsResult result =
+        platform_features_->GetParamsAndEnabledBlocking({&vf});
+    if (result.find(vf.name) != result.end()) {
+      // If not enabled.
+      if (!result[vf.name].enabled)
+        return std::nullopt;
+
+      auto params = result[vf.name].params;
+      if (params.find(key) != params.end())
+        return params[key];
+    }
+  }
+
+  return std::nullopt;
 }
 
 // Run swapon to enable zram swapping.
@@ -338,7 +423,7 @@ absl::Status SwapTool::GetZramWritebackInfo(uint32_t size) {
       100 * (*stateful_statfs).f_bfree / (*stateful_statfs).f_blocks;
   if (stateful_free_pct < kMinFreeStatefulPct)
     return absl::ResourceExhaustedError(
-        "zram writeback cannot be enabled free disk space" +
+        "Zram writeback cannot be enabled free disk space" +
         std::to_string(stateful_free_pct) + "% is less than the minimum 15%");
 
   stateful_block_size_ = (*stateful_statfs).f_bsize;
@@ -351,7 +436,7 @@ absl::Status SwapTool::GetZramWritebackInfo(uint32_t size) {
     uint64_t old_size = size;
     wb_nr_blocks_ = kMinFreeStatefulPct * (*stateful_statfs).f_bfree / 100;
     size = wb_nr_blocks_ * stateful_block_size_ / kMiB;
-    LOG(WARNING) << "zram writeback, requested size of " << old_size << " is "
+    LOG(WARNING) << "Zram writeback, requested size of " << old_size << " is "
                  << wb_pct_of_stateful
                  << "% of the free disk space. Size will be reduced to " << size
                  << "MiB";
@@ -416,7 +501,7 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
   // (tag size), and then roundup with the size of dm-integrity buffer. The
   // default number of sector in a dm-integrity buffer is 128 so the size is
   // 65536 bytes.
-  // The size of initial segment is (superblock size == 4KB) + (size of
+  // The size of initial segment is (superblock size == 4KiB) + (size of
   // journal). dm-integrity requires at least one journal section even with
   // direct write mode. As for now, the size of a single journal section is
   // 167936 bytes (328 sectors)
@@ -494,36 +579,37 @@ absl::Status SwapTool::SwapStart() {
   if (!on.ok())
     return on.status();
   if (*on) {
-    LOG(WARNING) << "swap is already on.";
+    LOG(WARNING) << "Swap is already on.";
     return absl::OkStatus();
   }
 
   // Initialize min_filelist_kbytes.
   if (!SwapToolUtil::Get()
            ->WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
-                       std::to_string(kMinFilelistDefaultValueKB))
+                       std::to_string(kMinFilelistDefaultValueKiB))
            .ok())
     LOG(WARNING) << status;
 
-  absl::StatusOr<uint64_t> mem_total = GetMemTotal();
-  if (!mem_total.ok())
-    return mem_total.status();
-
-  absl::StatusOr<uint64_t> size_byte = GetZramSize(*mem_total);
+  // Get zram size.
+  absl::StatusOr<uint64_t> size_byte = GetZramSizeBytes();
   if (!size_byte.ok() || *size_byte == 0)
-    return size_byte.status();
+    return status;
 
   // Load zram module. Ignore failure (it could be compiled in the kernel).
   if (!SwapToolUtil::Get()->RunProcessHelper({"/sbin/modprobe", "zram"}).ok())
     LOG(WARNING) << "modprobe zram failed (compiled?)";
 
   // Set zram recompress algorithm if user has config.
-  SetRecompAlgo();
+  SetRecompAlgorithms();
 
-  // Set zram disksize.
-  LOG(INFO) << "setting zram size to " << *size_byte << " bytes";
+  // Set zram compress algorithm if feature is available.
+  SetCompAlgorithmIfOverriden();
+
+  // Set zram size.
+  LOG(INFO) << "Setting zram disksize to " << *size_byte << " bytes";
   status = SwapToolUtil::Get()->WriteFile(
-      base::FilePath("/sys/block/zram0/disksize"), std::to_string(*size_byte));
+      base::FilePath(kZramSysfsDir).Append("disksize"),
+      std::to_string(*size_byte));
   if (!status.ok())
     return status;
 
@@ -562,7 +648,7 @@ absl::Status SwapTool::SwapStop() {
   // If there was a backing device being used, it will be automatically
   // removed because after it's created it was removed with deferred remove.
   return SwapToolUtil::Get()->WriteFile(
-      base::FilePath("/sys/block/zram0/reset"), "1");
+      base::FilePath(kZramSysfsDir).Append("reset"), "1");
 }
 
 // Set zram disksize in MiB.

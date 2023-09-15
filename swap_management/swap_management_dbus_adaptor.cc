@@ -4,6 +4,7 @@
 
 #include "swap_management/swap_management_dbus_adaptor.h"
 #include "dbus/swap_management/dbus-constants.h"
+#include "featured/feature_library.h"
 #include "swap_management/swap_tool_metrics.h"
 
 #include <memory>
@@ -15,13 +16,29 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
 
+namespace {
+feature::PlatformFeatures* GetPlatformFeatures() {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+
+  if (!feature::PlatformFeatures::Initialize(bus)) {
+    LOG(WARNING) << "Unable to initialize PlatformFeatures framework, will not "
+                    "be able to check for system flags.";
+    return nullptr;
+  }
+
+  return feature::PlatformFeatures::Get();
+}
+}  // namespace
+
 namespace swap_management {
 
 SwapManagementDBusAdaptor::SwapManagementDBusAdaptor(
     scoped_refptr<dbus::Bus> bus)
     : org::chromium::SwapManagementAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kSwapManagementServicePath)),
-      swap_tool_(std::make_unique<SwapTool>()) {}
+      swap_tool_(std::make_unique<SwapTool>(GetPlatformFeatures())) {}
 
 void SwapManagementDBusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {

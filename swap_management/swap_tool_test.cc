@@ -177,7 +177,7 @@ TEST_F(SwapToolTest, SwapIsAlreadyOnOrOff) {
   EXPECT_THAT(swap_tool_->SwapStop(), absl::OkStatus());
 }
 
-TEST_F(SwapToolTest, SwapStartWithoutSwapEnabled) {
+TEST_F(SwapToolTest, SwapStart) {
   // IsZramSwapOn
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
@@ -186,19 +186,20 @@ TEST_F(SwapToolTest, SwapStartWithoutSwapEnabled) {
       mock_util_,
       WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
       .WillOnce(Return(absl::OkStatus()));
-  // GetMemTotal
-  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
-                      Return(absl::OkStatus())));
-  // GetZramSize
+  // GetZramSizeBytes
+  // GetUserConfigZramSizeBytes
   EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
                               base::FilePath("/var/lib/swap/swap_size"), _, _))
       .WillOnce(Return(
           absl::NotFoundError("Failed to read /var/lib/swap/swap_size")));
+  // GetMemTotalKiB
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
+      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
+                      Return(absl::OkStatus())));
   EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
       .WillOnce(Return(absl::OkStatus()));
-  // SetRecompAlgo
+  // SetRecompAlgorithms
   EXPECT_CALL(mock_util_,
               ReadFileToString(
                   base::FilePath("/var/lib/swap/swap_recomp_algorithm"), _))
@@ -235,53 +236,11 @@ TEST_F(SwapToolTest, SwapStartButSwapIsDisabled) {
       mock_util_,
       WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
       .WillOnce(Return(absl::OkStatus()));
-  // GetMemTotal
-  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
-                      Return(absl::OkStatus())));
-  // GetZramSize
+  // GetZramSizeBytes
+  // GetUserConfigZramSizeBytes
   EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
                               base::FilePath("/var/lib/swap/swap_size"), _, _))
       .WillOnce(DoAll(SetArgPointee<1>("0"), Return(absl::OkStatus())));
-
-  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
-}
-
-TEST_F(SwapToolTest, SwapStartWithEmptySwapZramSize) {
-  // IsZramSwapOn
-  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
-      .WillOnce(
-          DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
-  EXPECT_CALL(
-      mock_util_,
-      WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
-      .WillOnce(Return(absl::OkStatus()));
-  // GetMemTotal
-  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
-                      Return(absl::OkStatus())));
-  // GetZramSize
-  EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
-                              base::FilePath("/var/lib/swap/swap_size"), _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(""), Return(absl::OkStatus())));
-  EXPECT_CALL(mock_util_,
-              RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
-      .WillOnce(Return(absl::OkStatus()));
-  // SetRecompAlgo
-  EXPECT_CALL(mock_util_,
-              ReadFileToString(
-                  base::FilePath("/var/lib/swap/swap_recomp_algorithm"), _))
-      .WillOnce(DoAll(SetArgPointee<1>(""), Return(absl::OkStatus())));
-  EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
-                                    kZramDisksize8G))
-      .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(mock_util_,
-              RunProcessHelper(ElementsAre("/sbin/mkswap", "/dev/zram0")))
-      .WillOnce(Return(absl::OkStatus()));
-  // EnableZramSwapping
-  EXPECT_CALL(mock_util_,
-              RunProcessHelper(ElementsAre("/sbin/swapon", "/dev/zram0")))
-      .WillOnce(Return(absl::OkStatus()));
 
   EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
 }
@@ -454,7 +413,7 @@ TEST_F(SwapToolTest, SwapZramEnableWriteback) {
   EXPECT_THAT(swap_tool_->SwapZramEnableWriteback(128), absl::OkStatus());
 }
 
-TEST_F(SwapToolTest, ZramRecompression) {
+TEST_F(SwapToolTest, SwapZramRecompression) {
   // SwapZramSetRecompAlgorithms
   EXPECT_CALL(mock_util_,
               WriteFile(base::FilePath("/var/lib/swap/swap_recomp_algorithm"),
