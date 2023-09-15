@@ -421,12 +421,17 @@ class Platform2Test:
         The kernel doesn't allow specifying ro when creating the bind mount, so
         add a helper to remount it with the ro flag.
         """
-        osutils.Mount(
-            None,
-            path,
-            None,
-            osutils.MS_REMOUNT | osutils.MS_BIND | osutils.MS_RDONLY,
-        )
+        st = os.statvfs(path)
+        remount_flags = osutils.MS_REMOUNT | osutils.MS_BIND | osutils.MS_RDONLY
+        # Remount will fail if we attempt to unset these MS_NO* flags under
+        # unprivileged strategy.
+        if st.f_flag & os.ST_NODEV:
+            remount_flags |= osutils.MS_NODEV
+        if st.f_flag & os.ST_NOEXEC:
+            remount_flags |= osutils.MS_NOEXEC
+        if st.f_flag & os.ST_NOSUID:
+            remount_flags |= osutils.MS_NOSUID
+        osutils.Mount(None, path, None, remount_flags)
 
     def _bind_mount_file(
         self, old_path: str, new_path: str, *, readonly: bool = False
