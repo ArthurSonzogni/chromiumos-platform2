@@ -384,22 +384,13 @@ class Platform2:
         )
         return os.path.isfile(build_gn)
 
-    def configure(self, args):
+    def configure(self, _args):
         """Runs the configure step of the Platform2 build.
 
         Creates the build root if it doesn't already exists.  Then runs the
         appropriate configure tool. Currently only GN is supported.
         """
         assert self.can_use_gn()
-        # The args was used only for gyp.
-        # TODO(crbug.com/767517): remove code for handling args.
-        # There is a logic to in the platform eclass file, which detects a .gyp
-        # file under project root and passes it to here an arg.
-        if args:
-            print(
-                "Warning: Args for GYP was given. We will no longer use GYP. "
-                "Ignoring it and continuing configuration with GN."
-            )
 
         if not os.path.isdir(self.get_buildroot()):
             os.makedirs(self.get_buildroot())
