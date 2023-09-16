@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/test/task_environment.h>
+#include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
@@ -96,6 +97,18 @@ TEST_F(BluetoothEventsImplTest, ReceiveFlossAdapterAddedEvent) {
 TEST_F(BluetoothEventsImplTest, ReceiveFlossAdapterRemovedEvent) {
   fake_floss_event_hub()->SendAdapterRemoved();
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterRemoved);
+}
+
+// Test that we can receive a device added event via Floss proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveFlossDeviceAddedEvent) {
+  fake_floss_event_hub()->SendDeviceAdded(brillo::VariantDictionary());
+  WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDeviceAdded);
+}
+
+// Test that we can receive a device removed event via Floss proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveFlossDeviceRemovedEvent) {
+  fake_floss_event_hub()->SendDeviceRemoved(brillo::VariantDictionary());
+  WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDeviceRemoved);
 }
 
 }  // namespace diagnostics

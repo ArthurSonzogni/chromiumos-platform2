@@ -47,6 +47,8 @@ class BluetoothEventsImpl final : public BluetoothEvents {
   void OnFlossAdapterAdded(
       org::chromium::bluetooth::BluetoothProxyInterface* adapter);
   void OnFlossAdapterRemoved(const dbus::ObjectPath& adapter_path);
+  void OnFlossDeviceAdded(const brillo::VariantDictionary& device);
+  void OnFlossDeviceRemoved(const brillo::VariantDictionary& device);
 
   // Each observer in |observers_| will be notified of any Bluetooth event in
   // the ash::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.

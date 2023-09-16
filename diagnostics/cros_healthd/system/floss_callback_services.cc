@@ -37,10 +37,20 @@ void BluetoothCallbackService::OnDiscoveringChanged(bool discovering) {
 }
 
 void BluetoothCallbackService::OnDeviceFound(
-    const brillo::VariantDictionary& device) {}
+    const brillo::VariantDictionary& device) {
+  // The |device| dictionary should contain the following keys:
+  // * "name": string
+  // * "address": string
+  event_hub_->OnDeviceAdded(device);
+}
 
 void BluetoothCallbackService::OnDeviceCleared(
-    const brillo::VariantDictionary& device) {}
+    const brillo::VariantDictionary& device) {
+  // The |device| dictionary should contain the following keys:
+  // * "name": string
+  // * "address": string
+  event_hub_->OnDeviceRemoved(device);
+}
 
 void BluetoothCallbackService::OnDevicePropertiesChanged(
     const brillo::VariantDictionary& device,

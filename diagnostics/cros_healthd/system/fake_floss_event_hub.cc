@@ -16,6 +16,16 @@ void FakeFlossEventHub::SendAdapterRemoved(
   OnAdapterRemoved(adapter_path);
 }
 
+void FakeFlossEventHub::SendDeviceAdded(
+    const brillo::VariantDictionary& device) {
+  OnDeviceAdded(device);
+}
+
+void FakeFlossEventHub::SendDeviceRemoved(
+    const brillo::VariantDictionary& device) {
+  OnDeviceRemoved(device);
+}
+
 void FakeFlossEventHub::SendManagerAdded(
     org::chromium::bluetooth::ManagerProxyInterface* manager) {
   OnManagerAdded(manager);

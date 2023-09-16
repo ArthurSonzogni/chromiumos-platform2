@@ -25,6 +25,8 @@ class FakeFlossEventHub final : public FlossEventHub {
       org::chromium::bluetooth::BluetoothProxyInterface* adapter = nullptr);
   void SendAdapterRemoved(
       const dbus::ObjectPath& adapter_path = dbus::ObjectPath(""));
+  void SendDeviceAdded(const brillo::VariantDictionary& device);
+  void SendDeviceRemoved(const brillo::VariantDictionary& device);
   void SendManagerAdded(
       org::chromium::bluetooth::ManagerProxyInterface* manager);
 };

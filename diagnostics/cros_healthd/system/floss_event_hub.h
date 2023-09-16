@@ -25,6 +25,10 @@ using OnFlossAdapterPoweredChangedCallback =
     base::RepeatingCallback<void(int32_t hci_interface, bool powered)>;
 using OnFlossAdapterDiscoveringChangedCallback = base::RepeatingCallback<void(
     const dbus::ObjectPath& adapter_path, bool discovering)>;
+using OnFlossDeviceAddedCallback =
+    base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
+using OnFlossDeviceRemovedCallback =
+    base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
 
 // Interface for subscribing Bluetooth events via Floss proxies.
 class FlossEventHub {
@@ -46,9 +50,12 @@ class FlossEventHub {
       OnFlossAdapterPoweredChangedCallback callback);
   base::CallbackListSubscription SubscribeAdapterDiscoveringChanged(
       OnFlossAdapterDiscoveringChangedCallback callback);
+  base::CallbackListSubscription SubscribeDeviceAdded(
+      OnFlossDeviceAddedCallback callback);
+  base::CallbackListSubscription SubscribeDeviceRemoved(
+      OnFlossDeviceRemovedCallback callback);
 
-  // TODO(b/300239296): Support adapter property changed and device added,
-  // removed and property changed events.
+  // TODO(b/300239296): Support adapter and device property changed events.
 
  protected:
   // Interfaces for subclass to send events.
@@ -65,6 +72,8 @@ class FlossEventHub {
   void OnAdapterPoweredChanged(int32_t hci_interface, bool powered);
   void OnAdapterDiscoveringChanged(const dbus::ObjectPath& adapter_path,
                                    bool discovering);
+  void OnDeviceAdded(const brillo::VariantDictionary& device);
+  void OnDeviceRemoved(const brillo::VariantDictionary& device);
 
  private:
   void HandleRegisterBluetoothCallbackResponse(
@@ -86,6 +95,10 @@ class FlossEventHub {
       adapter_powered_changed_observers_;
   base::RepeatingCallbackList<void(const dbus::ObjectPath&, bool)>
       adapter_discovering_changed_observers_;
+  base::RepeatingCallbackList<void(const brillo::VariantDictionary& device)>
+      device_added_observers_;
+  base::RepeatingCallbackList<void(const brillo::VariantDictionary& device)>
+      device_removed_observers_;
 
   // Used to create Floss callback services.
   scoped_refptr<dbus::Bus> bus_;

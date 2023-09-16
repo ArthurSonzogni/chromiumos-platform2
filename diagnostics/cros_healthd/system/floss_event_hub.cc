@@ -65,6 +65,16 @@ FlossEventHub::SubscribeAdapterDiscoveringChanged(
   return adapter_discovering_changed_observers_.Add(callback);
 }
 
+base::CallbackListSubscription FlossEventHub::SubscribeDeviceAdded(
+    OnFlossDeviceAddedCallback callback) {
+  return device_added_observers_.Add(callback);
+}
+
+base::CallbackListSubscription FlossEventHub::SubscribeDeviceRemoved(
+    OnFlossDeviceRemovedCallback callback) {
+  return device_removed_observers_.Add(callback);
+}
+
 void FlossEventHub::OnAdapterAdded(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter) {
   if (adapter) {
@@ -112,6 +122,14 @@ void FlossEventHub::OnAdapterPoweredChanged(int32_t hci_interface,
 void FlossEventHub::OnAdapterDiscoveringChanged(
     const dbus::ObjectPath& adapter_path, bool discovering) {
   adapter_discovering_changed_observers_.Notify(adapter_path, discovering);
+}
+
+void FlossEventHub::OnDeviceAdded(const brillo::VariantDictionary& device) {
+  device_added_observers_.Notify(device);
+}
+
+void FlossEventHub::OnDeviceRemoved(const brillo::VariantDictionary& device) {
+  device_removed_observers_.Notify(device);
 }
 
 void FlossEventHub::HandleRegisterBluetoothCallbackResponse(
