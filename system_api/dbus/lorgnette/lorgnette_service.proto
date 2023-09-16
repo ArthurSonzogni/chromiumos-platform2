@@ -753,4 +753,9 @@ message ReadScanDataResponse {
   // If result is OPERATION_RESULT_SUCCESS or OPERATION_RESULT_EOF, zero or more
   // bytes.  Unset for other result codes.
   optional bytes data = 3;
+
+  // If result is OPERATION_RESULT_SUCCESS, an estimate of how much of the total
+  // scan data has been delivered so far, in the range 0-100.  Unset for other
+  // result codes.
+  optional uint32 estimated_completion = 4;
 }
