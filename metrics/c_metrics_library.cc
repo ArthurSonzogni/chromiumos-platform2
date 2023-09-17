@@ -22,12 +22,6 @@ extern "C" void CMetricsLibraryDelete(CMetricsLibrary handle) {
   delete lib;
 }
 
-extern "C" void CMetricsLibraryInit(CMetricsLibrary handle) {
-  MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
-  if (lib != NULL)
-    lib->Init();
-}
-
 extern "C" int CMetricsLibrarySendToUMA(CMetricsLibrary handle,
                                         const char* name,
                                         int sample,

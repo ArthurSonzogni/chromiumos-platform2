@@ -177,8 +177,6 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
 
   int GetTimesSent() const { return times_sent_; }
 
-  void Init() override {}
-
   bool IsGuestMode() override { return false; }
 
   bool AreMetricsEnabled() override { return true; }

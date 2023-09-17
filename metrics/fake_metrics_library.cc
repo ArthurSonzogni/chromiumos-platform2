@@ -6,8 +6,6 @@
 
 #include "base/time/time.h"
 
-void FakeMetricsLibrary::Init() {}
-
 bool FakeMetricsLibrary::AreMetricsEnabled() {
   return true;
 }

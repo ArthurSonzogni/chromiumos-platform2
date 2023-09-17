@@ -334,11 +334,6 @@ bool MetricsLibrary::DisableMetrics() {
   return base::DeleteFile(base::FilePath(consent_file_));
 }
 
-void MetricsLibrary::Init() {
-  // Deprecated.  Initialization code should go in constructor.
-  // Remove this function when it is no longer used.
-}
-
 void MetricsLibrary::SetOutputFile(const std::string& output_file) {
   metrics_writer_->SetOutputFile(output_file);
 }

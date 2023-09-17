@@ -38,7 +38,6 @@ int main(int argc, char* argv[]) {
 
   std::shared_ptr<MetricsLibrary> metrics_lib =
       std::make_shared<MetricsLibrary>();
-  metrics_lib->Init();
 
   base::TimeDelta minimum_age = base::Seconds(FLAGS_minimum_age * 1000 * 1000);
   if (!machineidregen::regen_machine_id(

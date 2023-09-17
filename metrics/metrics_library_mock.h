@@ -14,9 +14,6 @@
 
 class MetricsLibraryMock : public MetricsLibraryInterface {
  public:
-  // TODO(chromium:940343): Remove this function.
-  MOCK_METHOD(void, Init, (), (override));
-
   MOCK_METHOD(bool,
               SendToUMA,
               (const std::string&, int, int, int, int),

@@ -23,7 +23,6 @@
 
 class MetricsLibraryInterface {
  public:
-  virtual void Init() = 0;  // TODO(chromium:940343): Remove this function.
   virtual bool AreMetricsEnabled() = 0;
   virtual bool IsAppSyncEnabled() = 0;
   virtual bool IsGuestMode() = 0;
@@ -150,10 +149,6 @@ class MetricsLibrary : public MetricsLibraryInterface {
   MetricsLibrary& operator=(const MetricsLibrary&) = delete;
 
   ~MetricsLibrary() override;
-
-  // Formerly used to initialize the library.
-  // TODO(chromium:940343): Remove this function.
-  void Init() override;
 
   // Returns whether or not the machine is running in guest mode.
   bool IsGuestMode() override;

@@ -24,7 +24,6 @@ class FakeMetricsLibrary : public MetricsLibraryInterface {
   FakeMetricsLibrary& operator=(const FakeMetricsLibrary&) = delete;
 
   // MetricsLibraryInterface
-  void Init() override;
   bool AreMetricsEnabled() override;
   bool IsAppSyncEnabled() override;
   bool IsGuestMode() override;
