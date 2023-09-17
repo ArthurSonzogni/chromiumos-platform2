@@ -22,13 +22,11 @@ get_stateful_lifetime_writes() {
 
 # Get the percentage of space used on the stateful partition.
 get_stateful_usage_percent() {
-  local stateful_space
-  stateful_space="$(get_stateful_df_data)"
-  # Remove everything after and including the "%"
-  stateful_space="${stateful_space%%%*}"
-  # Remove all fields except the last one.
-  stateful_space="${stateful_space##* }"
-  echo "${stateful_space}"
+  local total free used
+  total=$(get_stateful_total_space_blocks)
+  free=$(get_stateful_free_space_blocks "${bs}")
+  used=$(( total - free ))
+  echo $(( used * 100 / total ))
 }
 
 # Get the free space on the stateful partition.
@@ -36,8 +34,11 @@ get_stateful_usage_percent() {
 # inputs:
 #   bs        -- size of block as understood by strosize (suffixes allowed)
 get_stateful_free_space_blocks() {
-  local bs="${1:-1K}"
-  get_stateful_df_data "${bs}" | awk '{print $4}'
+  local bs bs_bytes size
+  bs="${1:-1K}"
+  bs_bytes=$(numfmt --from=iec "${bs}")
+  size=$(spaced_cli --get_free_disk_space="${STATEFUL}")
+  echo $(( size / bs_bytes ))
 }
 
 # Get the total space on the stateful partition.
@@ -45,8 +46,11 @@ get_stateful_free_space_blocks() {
 # inputs:
 #   bs        -- size of block as understood by strosize (suffixes allowed)
 get_stateful_total_space_blocks() {
-  local bs="${1:-1K}"
-  get_stateful_df_data "${bs}" | awk '{print $2}'
+  local bs bs_bytes size
+  bs="${1:-1K}"
+  bs_bytes=$(numfmt --from=iec "${bs}")
+  size=$(spaced_cli --get_total_disk_space="${STATEFUL}")
+  echo $(( size / bs_bytes ))
 }
 
 # Get the used space on the stateful partition.
@@ -54,8 +58,11 @@ get_stateful_total_space_blocks() {
 # inputs:
 #   bs        -- size of block as understood by strosize (suffixes allowed)
 get_stateful_used_space_blocks() {
-  local bs="${1:-1K}"
-  get_stateful_df_data "${bs}" | awk '{print $3}'
+  local bs total free
+  bs="${1:-1K}"
+  total=$(get_stateful_total_space_blocks "${bs}")
+  free=$(get_stateful_free_space_blocks "${bs}")
+  echo $(( total - free ))
 }
 
 # Gets enum for stateful partition's format.
