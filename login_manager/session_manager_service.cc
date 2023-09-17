@@ -371,6 +371,7 @@ void SessionManagerService::SetBrowserAdditionalEnvironmentalVariables(
 }
 
 void SessionManagerService::RestartBrowser() {
+  browser_restart_requested_ = true;
   // Waiting for Chrome to shutdown takes too much time.
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
@@ -431,6 +432,9 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
   if (!IsBrowser(status.si_pid))
     return false;
 
+  bool browser_restart_requested =
+      std::exchange(browser_restart_requested_, false);
+
   // The browser process is terminated. Stop the aborting process.
   abort_timer_.Stop();
   LOG(INFO) << "Browser process " << status.si_pid << " exited with "
@@ -457,12 +461,16 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
 
   liveness_checker_->Stop();
 
-  std::string end_reason;
-  if (impl_->ShouldEndSession(&end_reason)) {
-    LOG(ERROR) << "Ending session rather than restarting browser: "
-               << end_reason << ".";
-    SetExitAndScheduleShutdown(CRASH_WHILE_RESTART_DISABLED);
-    return true;
+  if (browser_restart_requested) {
+    LOG(INFO) << "Browser is trying to be restarted...";
+  } else {
+    std::string end_reason;
+    if (impl_->ShouldEndSession(&end_reason)) {
+      LOG(ERROR) << "Ending session rather than restarting browser: "
+                 << end_reason << ".";
+      SetExitAndScheduleShutdown(CRASH_WHILE_RESTART_DISABLED);
+      return true;
+    }
   }
 
   if (browser_->ShouldStop()) {
