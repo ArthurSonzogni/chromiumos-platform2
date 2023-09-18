@@ -221,11 +221,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "enable-virtgpu-native-context",
             "when starting the vm, enable virtgpu native context support (implies --enable-gpu)",
         );
-        opts.optflag(
-            "",
-            "software-tpm",
-            "provide software-based virtual Trusted Platform Module",
-        );
         opts.optflag("", "vtpm-proxy", "connect the virtio-tpm to vtpm daemon");
         opts.optflag(
             "",
@@ -345,7 +340,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             vulkan,
             big_gl,
             virtgpu_native_context,
-            software_tpm: matches.opt_present("software-tpm"),
             vtpm_proxy: matches.opt_present("vtpm-proxy"),
             audio_capture: matches.opt_present("enable-audio-capture"),
             run_as_untrusted: matches.opt_present("untrusted"),
@@ -1187,8 +1181,6 @@ mod tests {
                 "--enable-vulkan",
                 "--enable-big-gl",
             ],
-            &["vmc", "start", "termina", "--software-tpm"],
-            &["vmc", "start", "termina", "--enable-gpu", "--software-tpm"],
             &["vmc", "start", "termina", "--vtpm-proxy"],
             &["vmc", "start", "termina", "--enable-audio-capture"],
             &["vmc", "start", "termina", "--untrusted"],

@@ -283,9 +283,6 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     }
   }
 
-  if (features_.software_tpm)
-    vm_builder.EnableSoftwareTpm(true /* enable */);
-
   if (features_.vtpm_proxy)
     vm_builder.EnableVtpmProxy(true /* enable */);
 
@@ -1110,7 +1107,6 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     VmBuilder vm_builder) {
   VmFeatures features{
       .gpu = false,
-      .software_tpm = false,
       .vtpm_proxy = false,
       .audio_capture = false,
   };

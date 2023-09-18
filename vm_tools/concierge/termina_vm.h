@@ -62,9 +62,6 @@ struct VmFeatures {
   bool virtgpu_native_context;
   bool render_server;
 
-  // Provide software-based virtual Trusted Platform Module to the VM.
-  bool software_tpm;
-
   // Provide vtpm connection to the VM.
   bool vtpm_proxy;
 

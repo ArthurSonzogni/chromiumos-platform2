@@ -2016,7 +2016,6 @@ StartVmResponse Service::StartVmInternal(
       .big_gl = request.enable_big_gl(),
       .virtgpu_native_context = request.enable_virtgpu_native_context(),
       .render_server = enable_render_server,
-      .software_tpm = request.software_tpm(),
       .vtpm_proxy = request.vtpm_proxy(),
       .audio_capture = request.enable_audio_capture(),
   };

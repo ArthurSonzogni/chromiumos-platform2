@@ -81,7 +81,6 @@ class VmBuilder {
   VmBuilder& SetFozDbListPath(base::FilePath foz_db_list_path);
   VmBuilder& SetRenderServerCacheSize(std::string render_server_cache_size_str);
 
-  VmBuilder& EnableSoftwareTpm(bool enable);
   VmBuilder& EnableVtpmProxy(bool enable);
   VmBuilder& EnableVideoDecoder(bool enable);
   VmBuilder& EnableVideoEncoder(bool enable);
@@ -149,7 +148,6 @@ class VmBuilder {
   base::FilePath precompiled_cache_path_;
   std::string render_server_cache_size_str_;
 
-  bool enable_software_tpm_ = false;
   bool enable_vtpm_proxy_ = false;
   bool enable_video_decoder_ = false;
   bool enable_video_encoder_ = false;

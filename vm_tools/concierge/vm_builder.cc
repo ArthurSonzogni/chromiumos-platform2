@@ -249,11 +249,6 @@ VmBuilder& VmBuilder::SetRenderServerCacheSize(
   return *this;
 }
 
-VmBuilder& VmBuilder::EnableSoftwareTpm(bool enable) {
-  enable_software_tpm_ = enable;
-  return *this;
-}
-
 VmBuilder& VmBuilder::EnableVtpmProxy(bool enable) {
   enable_vtpm_proxy_ = enable;
   return *this;
@@ -563,9 +558,6 @@ base::StringPairs VmBuilder::BuildRunParams() const {
       args.emplace_back("--ac-adapter", "");
     }
   }
-
-  if (enable_software_tpm_)
-    args.emplace_back("--software-tpm", "");
 
   if (enable_vtpm_proxy_)
     args.emplace_back("--vtpm-proxy", "");

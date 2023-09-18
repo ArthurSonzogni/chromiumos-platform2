@@ -276,7 +276,6 @@ pub struct VmFeatures {
     pub vulkan: bool,
     pub big_gl: bool,
     pub virtgpu_native_context: bool,
-    pub software_tpm: bool,
     pub vtpm_proxy: bool,
     pub audio_capture: bool,
     pub run_as_untrusted: bool,
@@ -1344,7 +1343,6 @@ impl Methods {
         request.enable_vulkan = features.vulkan;
         request.enable_big_gl = features.big_gl;
         request.enable_virtgpu_native_context = features.virtgpu_native_context;
-        request.software_tpm = features.software_tpm;
         request.vtpm_proxy = features.vtpm_proxy;
         request.enable_audio_capture = features.audio_capture;
         request.run_as_untrusted = features.run_as_untrusted;
