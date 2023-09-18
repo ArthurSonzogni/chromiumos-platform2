@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
 # Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -28,7 +26,7 @@ def die(message):
     sys.exit(1)
 
 
-class Extractor(object):
+class Extractor:
     """Methods to reconstruct memd logs from a feedback report."""
 
     def __init__(self, args):
@@ -66,7 +64,7 @@ class Extractor(object):
         for line in list_output.splitlines():
             if re.match(r".*system_logs.txt$", str(line, encoding="utf-8")):
                 subprocess.check_call(["unzip", "-o", filename])
-                return open("system_logs.txt", "r")
+                return open("system_logs.txt", "r", encoding="utf-8")
         die("%s does not contain system_logs.txt" % filename)
 
     def extract_sections(self, filename):
@@ -78,10 +76,13 @@ class Extractor(object):
         files from the feedback log.  The clips are expected to appear first (as
         per alphabetical order of the filenames).
         """
+        input_lines = []
         if re.match(r"^.*\.zip", filename):
             input_file = self.unzip_and_open(filename)
+            input_lines = input_file.readlines()
         else:
-            input_file = open(filename, "r")
+            with open(filename, "r", encoding="utf-8") as input_file:
+                input_lines = input_file.readlines()
 
         # |memd_parameters| is an array of lines.
         memd_parameters = []
@@ -89,7 +90,7 @@ class Extractor(object):
         memd_clip_lines = []
         scan_state_start, scan_state_clips, scan_state_parameters = range(3)
         scan_state = scan_state_start
-        for line in input_file:
+        for line in input_lines:
             # In the START state look for beginning of sections.
             if scan_state == scan_state_start:
                 if line.startswith("memd clips=<multiline>"):
@@ -151,12 +152,16 @@ class Extractor(object):
         outdir = self._args["outdir"]
         self.setup_outdir(outdir)
         (parameters, clips) = self.extract_sections(self._args["input-file"])
-        with open("%s/memd.parameters" % outdir, "w") as f:
+        with open("%s/memd.parameters" % outdir, "w", encoding="utf-8") as f:
             for line in parameters:
                 f.write(line)
         clip_number = 0
         for clip in clips:
-            with open("%s/memd.clip%03d.log" % (outdir, clip_number), "w") as f:
+            with open(
+                "%s/memd.clip%03d.log" % (outdir, clip_number),
+                "w",
+                encoding="utf-8",
+            ) as f:
                 clip_number += 1
                 for line in clip:
                     f.write(line)
