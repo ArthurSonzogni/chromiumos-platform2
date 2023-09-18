@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_factor/types/manager.h"
-#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/userdataauth.h"
 
 #include <memory>
@@ -15,6 +13,7 @@
 #include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -29,6 +28,7 @@
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
@@ -37,7 +37,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_features.h"
-#include "cryptohome/features.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_install_attributes.h"
@@ -59,13 +59,16 @@
 namespace cryptohome {
 
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::An;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Eq;
+using ::testing::Gt;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
 using ::testing::IsNull;
+using ::testing::Le;
 using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Return;
@@ -99,13 +102,15 @@ using AuthenticateAuthFactorCallback = base::OnceCallback<void(
 using AddAuthFactorCallback =
     base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>;
 
+// Time in seconds.
 constexpr char kPassword[] = "password";
 constexpr char kPassword2[] = "password2";
 constexpr char kPassword3[] = "password3";
 constexpr char kPasswordLabel[] = "fake-password-label";
-// 300 seconds should be left right as we authenticate.
-constexpr int time_left_after_authenticate = 300;
 constexpr char kPasswordLabel2[] = "fake-password-label2";
+// 300 seconds should be left right as we authenticate.
+constexpr base::TimeDelta kDefaultTimeAfterAuthenticate = base::Seconds(300);
+constexpr base::TimeDelta kDefaultExtensionDuration = base::Seconds(60);
 
 SerializedVaultKeyset CreateFakePasswordVk(const std::string& label) {
   SerializedVaultKeyset serialized_vk;
@@ -229,7 +234,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         &user_activity_timestamp_manager_);
     userdataauth_.set_install_attrs(&install_attrs_);
     userdataauth_.set_mount_task_runner(
-        task_environment.GetMainThreadTaskRunner());
+        task_environment_.GetMainThreadTaskRunner());
     userdataauth_.set_pinweaver(&pinweaver_);
     // TODO(hardikgoyal): Rewrite tests to work with USS.
     SetUserSecretStashExperimentForTesting(false);
@@ -269,7 +274,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   const Username kUsername2{"foo2@example.com"};
   const Username kUsername3{"foo3@example.com"};
 
-  TaskEnvironment task_environment{
+  TaskEnvironment task_environment_{
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
   NiceMock<MockPlatform> platform_;
@@ -342,6 +347,16 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
       InUseAuthSession& auth_session,
       user_data_auth::GetAuthSessionStatusReply& reply) {
     userdataauth_.GetAuthSessionStatusImpl(auth_session, reply);
+  }
+
+  user_data_auth::ExtendAuthSessionReply ExtendAuthSession(
+      const user_data_auth::ExtendAuthSessionRequest& request) {
+    TestFuture<user_data_auth::ExtendAuthSessionReply> reply_future;
+    userdataauth_.ExtendAuthSession(
+        request,
+        reply_future
+            .GetCallback<const user_data_auth::ExtendAuthSessionReply&>());
+    return reply_future.Get();
   }
 
   FakeFeaturesForTesting features_;
@@ -628,7 +643,7 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
               Eq(user_data_auth::AUTH_SESSION_STATUS_AUTHENTICATED));
 
   // Finally move time forward to time out the session.
-  task_environment.FastForwardBy(auth_session.GetRemainingTime() * 2);
+  task_environment_.FastForwardBy(auth_session.GetRemainingTime() * 2);
   GetAuthSessionStatusImpl(auth_session, reply);
   ASSERT_THAT(reply.status(),
               Eq(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION));
@@ -648,6 +663,73 @@ TEST_F(AuthSessionInterfaceTest, GetHibernateSecretUnauthenticatedTest) {
       userdataauth_.GetHibernateSecret(request);
   ASSERT_NE(hs_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   ASSERT_FALSE(hs_reply.hibernate_secret().length());
+}
+
+TEST_F(AuthSessionInterfaceTest, ExtendAuthSessionDefaultValue) {
+  // Setup.
+  std::string token;
+  {
+    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+        auth_session_manager_->CreateAuthSession(kUsername, 0,
+                                                 AuthIntent::kDecrypt);
+    EXPECT_THAT(auth_session_status, IsOk());
+
+    // Get the session into an authenticated state by treating it as if we just
+    // freshly created the user.
+    // Then create the user which should authenticate the session.
+    ASSERT_TRUE(auth_session_status.value()->OnUserCreated().ok());
+    token = auth_session_status.value().Get()->serialized_token();
+  }
+  // Fast forward by four minutes and thirty seconds to see effect of default
+  // value.
+  task_environment_.FastForwardBy(base::Seconds(270));
+
+  // Test 0 value.
+  {
+    user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
+    ext_auth_session_req.set_auth_session_id(token);
+    ext_auth_session_req.set_extension_duration(0);
+
+    // Extend the AuthSession.
+    user_data_auth::ExtendAuthSessionReply reply =
+        ExtendAuthSession(ext_auth_session_req);
+    EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+    EXPECT_TRUE(reply.has_seconds_left());
+    EXPECT_LE(base::Seconds(reply.seconds_left()), kDefaultExtensionDuration);
+
+    // Verify that timer has changed, within a resaonsable degree of error.
+    InUseAuthSession auth_session =
+        auth_session_manager_->FindAuthSession(token);
+    EXPECT_THAT(
+        auth_session.GetRemainingTime(),
+        AllOf(Gt(base::TimeDelta(base::Seconds(30))), Le(base::Minutes(1))));
+  }
+
+  // Fast forward by thirty seconds to see effect of default value when no value
+  // is set.
+  task_environment_.FastForwardBy(base::Seconds(30));
+
+  // Test no value.
+  {
+    user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
+    ext_auth_session_req.set_auth_session_id(token);
+    // The following line should be set, but for this test it is intentionally
+    // ext_auth_session_req.set_extension_duration(0);
+
+    // Extend the AuthSession.
+    user_data_auth::ExtendAuthSessionReply reply =
+        ExtendAuthSession(ext_auth_session_req);
+    EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+    EXPECT_TRUE(reply.has_seconds_left());
+    EXPECT_LE(base::Seconds(reply.seconds_left()), kDefaultExtensionDuration);
+
+    // Verify that timer has changed, within a resaonsable degree of error.
+    InUseAuthSession auth_session =
+        auth_session_manager_->FindAuthSession(token);
+    EXPECT_THAT(
+        auth_session.GetRemainingTime(),
+        AllOf(Gt(base::TimeDelta(base::Seconds(30))), Le(base::Minutes(1))));
+  }
 }
 
 }  // namespace
@@ -1079,8 +1161,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
     EXPECT_THAT(
         auth_session->authorized_intents(),
         UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-    EXPECT_EQ(auth_session.GetRemainingTime().InSeconds(),
-              time_left_after_authenticate);
+    EXPECT_EQ(auth_session.GetRemainingTime(), kDefaultTimeAfterAuthenticate);
   }
 
   // Set up expectation for add credential callback success.
@@ -1654,8 +1735,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
     EXPECT_THAT(
         auth_session->authorized_intents(),
         UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-    EXPECT_EQ(auth_session.GetRemainingTime().InSeconds(),
-              time_left_after_authenticate);
+    EXPECT_EQ(auth_session.GetRemainingTime(), kDefaultTimeAfterAuthenticate);
     EXPECT_THAT(
         auth_session->authorized_intents(),
         UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -2639,8 +2719,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(serialized_token);
-  EXPECT_EQ(auth_session.GetRemainingTime().InSeconds(),
-            time_left_after_authenticate);
+  EXPECT_EQ(auth_session.GetRemainingTime(), kDefaultTimeAfterAuthenticate);
   EXPECT_THAT(reply.authorized_for(),
               UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY,
                                    AUTH_INTENT_WEBAUTHN));

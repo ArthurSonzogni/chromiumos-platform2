@@ -389,7 +389,7 @@ CryptohomeStatus InUseAuthSession::ExtendTimeout(base::TimeDelta extension) {
   }
   // Remove the existing expiration entry and add a new one with the new time.
   base::Time new_time =
-      std::max(iter->first, (manager_->clock_->Now() + extension));
+      std::max(iter->first, manager_->clock_->Now() + extension);
   manager_->expiration_map_.erase(iter);
   manager_->expiration_map_.emplace(new_time, session_->token());
   manager_->ResetExpirationTimer();

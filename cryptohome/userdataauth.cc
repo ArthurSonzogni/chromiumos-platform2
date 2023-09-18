@@ -11,7 +11,6 @@
 #include <set>
 #include <string>
 #include <string_view>
-#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -30,6 +29,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/time/time.h>
 #include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
 #include <bootlockbox/boot_lockbox_client.h>
 #include <brillo/cryptohome.h>
@@ -111,11 +111,12 @@ using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
+namespace {
+
 constexpr char kMountThreadName[] = "MountThread";
 constexpr char kNotFirstBootFilePath[] = "/run/cryptohome/not_first_boot";
 constexpr char kDeviceMapperDevicePrefix[] = "/dev/mapper/dmcrypt";
-
-namespace {
+constexpr base::TimeDelta kDefaultExtensionTime = base::Seconds(60);
 // Some utility functions used by UserDataAuth.
 
 // Wrapper function for the ReplyWithError. |unused_auth_session| parameter is
@@ -2516,7 +2517,9 @@ void UserDataAuth::ExtendAuthSession(
   InUseAuthSession& auth_session = *auth_session_status;
 
   // Extend specified AuthSession.
-  auto timer_extension = base::Seconds(request.extension_duration());
+  auto timer_extension = request.extension_duration() != 0
+                             ? base::Seconds(request.extension_duration())
+                             : kDefaultExtensionTime;
   CryptohomeStatus ret = auth_session.ExtendTimeout(timer_extension);
 
   CryptohomeStatus err = OkStatus<CryptohomeError>();
