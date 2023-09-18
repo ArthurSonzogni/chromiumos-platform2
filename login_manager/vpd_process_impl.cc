@@ -71,9 +71,16 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
 }
 
 bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
-  if (!subprocess_ || subprocess_->GetPid() <= 0 ||
-      subprocess_->GetPid() != info.si_pid) {
-    LOG(ERROR) << "Failed VPD subprocess";
+  if (!subprocess_) {
+    LOG(ERROR) << "Update VPD fail, no subprocess";
+    return false;
+  }
+  if (subprocess_->GetPid() <= 0) {
+    LOG(ERROR) << "Update VPD fail, pid = " << subprocess_->GetPid();
+    return false;
+  }
+  if (subprocess_->GetPid() != info.si_pid) {
+    LOG(ERROR) << "Update VPD notification from wrong process";
     return false;
   }
 
@@ -81,7 +88,13 @@ bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
   metrics.SendSparseToUMA(kVpdUpdateMetric, info.si_status);
 
   const bool success = (info.si_status == 0);
-  LOG_IF(ERROR, !success) << "Failed to update VPD, code = " << info.si_status;
+  if (success) {
+    LOG(INFO) << "Update VPD success, has completion = "
+              << (!completion_.is_null());
+  } else {
+    LOG_IF(ERROR, !success)
+        << "Failed to update VPD, code = " << info.si_status;
+  }
 
   // Reset the completion to ensure we won't call it again.
   if (!completion_.is_null())
