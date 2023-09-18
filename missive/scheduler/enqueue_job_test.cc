@@ -95,7 +95,7 @@ TEST_F(EnqueueJobTest, CompletesSuccessfully) {
         EXPECT_THAT(response.status().code(), Eq(error::OK));
       }));
   auto delegate = std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
-      std::move(response_));
+      health_module_, std::move(response_));
 
   EnqueueRecordRequest request;
   *request.mutable_record() = record_;
@@ -126,7 +126,7 @@ TEST_F(EnqueueJobTest, CancelsSuccessfully) {
       },
       failure_status));
   auto delegate = std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
-      std::move(response_));
+      health_module_, std::move(response_));
 
   EnqueueRecordRequest request;
   *request.mutable_record() = std::move(record_);

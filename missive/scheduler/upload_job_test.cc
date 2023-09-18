@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 
 #include "missive/dbus/mock_upload_client.h"
+#include "missive/health/health_module.h"
+#include "missive/health/health_module_delegate_mock.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
@@ -84,6 +86,8 @@ class TestRecordUploader {
 class UploadJobTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    health_module_ =
+        HealthModule::Create(std::make_unique<HealthModuleDelegateMock>());
     upload_client_ = base::MakeRefCounted<test::MockUploadClient>();
     memory_resource_ =
         base::MakeRefCounted<ResourceManager>(4u * 1024LLu * 1024LLu);  // 4 MiB
@@ -98,6 +102,7 @@ class UploadJobTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   scoped_refptr<ResourceManager> memory_resource_;
+  scoped_refptr<HealthModule> health_module_;
   scoped_refptr<test::MockUploadClient> upload_client_;
 };
 
@@ -141,8 +146,7 @@ TEST_F(UploadJobTest, UploadsRecords) {
   test::TestEvent<StatusOr<UploadEncryptedRecordResponse>> upload_responded;
   auto job_result =
       UploadJob::Create(upload_client_,
-                        /*need_encryption_keys=*/false,
-                        /*health_data=*/std::nullopt,
+                        /*need_encryption_key=*/false, health_module_,
                         /*remaining_storage_capacity=*/3000U,
                         /*new_events_rate=*/300U,
                         base::BindOnce(&TestRecordUploader::StartUpload,

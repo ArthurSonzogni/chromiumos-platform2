@@ -376,9 +376,17 @@ void Storage::Write(Priority priority,
                   [](HealthModule::Recorder recorder,
                      base::OnceCallback<void(Status)> completion_cb,
                      Status status) {
-                    if (!status.ok()) {
-                      status.SaveTo(recorder->mutable_enqueue_record_call()
-                                        ->mutable_status());
+                    if (recorder) {
+                      if (!status.ok()) {
+                        status.SaveTo(recorder->mutable_enqueue_record_call()
+                                          ->mutable_status());
+                      }
+                      // Move `recorder` into local variable, so that it
+                      // destructs. After that it is no longer necessary anyway,
+                      // but being destructed here, it will be included in
+                      // health history and attached to write response request
+                      // and thus immediately visible on Chrome.
+                      const auto finished_recording = std::move(recorder);
                     }
                     std::move(completion_cb).Run(status);
                   },
@@ -462,9 +470,14 @@ void Storage::WriteToQueue(Record record,
            base::OnceCallback<void(Status)> completion_cb, Status status) {
           if (!status.ok()) {
             if (recorder) {
-              auto* const write_queue_record =
-                  recorder->mutable_storage_queue_action();
-              status.SaveTo(write_queue_record->mutable_status());
+              status.SaveTo(
+                  recorder->mutable_storage_queue_action()->mutable_status());
+              // Move `recorder` into local variable, so that it destructs.
+              // After that it is no longer necessary anyway, but being
+              // destructed here, it will be included in health history and
+              // attached to write response request and thus immediately visible
+              // on Chrome.
+              const auto finished_recording = std::move(recorder);
             }
             std::move(completion_cb).Run(status);
             return;
@@ -499,9 +512,17 @@ void Storage::Confirm(SequenceInformation sequence_information,
     completion_cb = base::BindOnce(
         [](HealthModule::Recorder recorder,
            base::OnceCallback<void(Status)> completion_cb, Status status) {
-          if (!status.ok()) {
-            status.SaveTo(recorder->mutable_confirm_record_upload_call()
-                              ->mutable_status());
+          if (recorder) {
+            if (!status.ok()) {
+              status.SaveTo(recorder->mutable_confirm_record_upload_call()
+                                ->mutable_status());
+            }
+            // Move `recorder` into local variable, so that it destructs.
+            // After that it is no longer necessary anyway, but being
+            // destructed here, it will be included in health history and
+            // attached to write response request and thus immediately visible
+            // on Chrome.
+            const auto finished_recording = std::move(recorder);
           }
           std::move(completion_cb).Run(status);
         },
@@ -593,6 +614,28 @@ class FlushContext : public TaskRunnerContext<Status> {
 
 void Storage::Flush(Priority priority,
                     base::OnceCallback<void(Status)> completion_cb) {
+  if (auto recorder = health_module_->NewRecorder()) {
+    recorder->mutable_flush_priority_call()->set_priority(priority);
+    completion_cb = base::BindOnce(
+        [](HealthModule::Recorder recorder,
+           base::OnceCallback<void(Status)> completion_cb, Status status) {
+          if (recorder) {
+            if (!status.ok()) {
+              status.SaveTo(
+                  recorder->mutable_flush_priority_call()->mutable_status());
+            }
+            // Move `recorder` into local variable, so that it destructs.
+            // After that it is no longer necessary anyway, but being
+            // destructed here, it will be included in health history and
+            // attached to write response request and thus immediately visible
+            // on Chrome.
+            const auto finished_recording = std::move(recorder);
+          }
+          std::move(completion_cb).Run(status);
+        },
+        std::move(recorder), std::move(completion_cb));
+  }
+
   Start<FlushContext>(base::WrapRefCounted(this), priority,
                       std::move(completion_cb));
 }

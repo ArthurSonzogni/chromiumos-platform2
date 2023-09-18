@@ -19,6 +19,7 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
+#include "missive/health/health_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/disconnectable_client.h"
 #include "missive/util/statusor.h"
@@ -38,7 +39,7 @@ class UploadClientImpl : public UploadClient {
   void SendEncryptedRecords(
       std::vector<EncryptedRecord> records,
       bool need_encryption_keys,
-      std::optional<ERPHealthData> health_data,
+      scoped_refptr<HealthModule> health_module,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
       HandleUploadResponseCallback response_callback) override;
@@ -61,7 +62,7 @@ class UploadClientImpl : public UploadClient {
   friend class base::DeleteHelper<UploadClientImpl>;
   void MaybeMakeCall(std::vector<EncryptedRecord> records,
                      const bool need_encryption_keys,
-                     std::optional<ERPHealthData> health_data,
+                     scoped_refptr<HealthModule> health_module,
                      uint64_t remaining_storage_capacity,
                      std::optional<uint64_t> new_events_rate,
                      HandleUploadResponseCallback response_callback);

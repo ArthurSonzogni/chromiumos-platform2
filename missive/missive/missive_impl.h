@@ -150,7 +150,7 @@ class MissiveImpl : public MissiveService {
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 
   void CreateUploadJob(
-      std::optional<ERPHealthData> health_data,
+      scoped_refptr<HealthModule> health_module,
       UploaderInterface::UploadReason reason,
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 

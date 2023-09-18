@@ -5,7 +5,6 @@
 #include "missive/missive/missive_impl.h"
 
 #include <cstdlib>
-#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -49,12 +48,33 @@ constexpr CompressionInformation::CompressionAlgorithm kCompressionType =
     CompressionInformation::COMPRESSION_SNAPPY;
 constexpr size_t kCompressionThreshold = 512U;
 
-void HandleFlushResponse(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                             FlushPriorityResponse>> out_response,
-                         Status status) {
-  FlushPriorityResponse response_body;
+template <class Response>
+void HandleResponse(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Response>>
+        out_response,
+    Response response_body,
+    scoped_refptr<HealthModule> health_module,
+    Status status) {
   status.SaveTo(response_body.mutable_status());
-  out_response->Return(response_body);
+
+  if (!health_module->is_debugging()) {
+    out_response->Return(response_body);
+    return;
+  }
+
+  // Attach health data to response.
+  auto response_cb = base::BindPostTaskToCurrentDefault(base::BindOnce(
+      [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Response>>
+             out_response,
+         Response response_body) { out_response->Return(response_body); },
+      std::move(out_response)));
+  health_module->GetHealthData(base::BindOnce(
+      [](base::OnceCallback<void(Response)> response_cb, Response response_body,
+         ERPHealthData health_data) {
+        *response_body.mutable_health_data() = std::move(health_data);
+        std::move(response_cb).Run(response_body);
+      },
+      std::move(response_cb), std::move(response_body)));
 }
 
 template <typename ResponseType>
@@ -329,32 +349,11 @@ void MissiveImpl::AsyncStartUploadInternal(
                     "Missive service not yet ready"));
     return;
   }
-  if (health_module_->is_debugging()) {
-    health_module_->GetHealthData(
-        base::BindPostTaskToCurrentDefault(base::BindOnce(
-            [](base::WeakPtr<MissiveImpl> missive,
-               UploaderInterface::UploadReason reason,
-               UploaderInterface::UploaderInterfaceResultCb uploader_result_cb,
-               ERPHealthData health_data) {
-              if (!missive) {
-                std::move(uploader_result_cb)
-                    .Run(Status(error::UNAVAILABLE,
-                                "Missive service has been shut down"));
-                return;
-              }
-              missive->CreateUploadJob(std::move(health_data), reason,
-                                       std::move(uploader_result_cb));
-            },
-            weak_ptr_factory_.GetWeakPtr(), reason,
-            std::move(uploader_result_cb))));
-  } else {
-    CreateUploadJob(/*health_data=*/std::nullopt, reason,
-                    std::move(uploader_result_cb));
-  }
+  CreateUploadJob(health_module_, reason, std::move(uploader_result_cb));
 }
 
 void MissiveImpl::CreateUploadJob(
-    std::optional<ERPHealthData> health_data,
+    scoped_refptr<HealthModule> health_module,
     UploaderInterface::UploadReason reason,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -363,7 +362,7 @@ void MissiveImpl::CreateUploadJob(
       /*need_encryption_key=*/
       (encryption_module_->is_enabled() &&
        reason == UploaderInterface::UploadReason::KEY_DELIVERY),
-      std::move(health_data),
+      std::move(health_module),
       /*remaining_storage_capacity=*/disk_space_resource_->GetTotal() -
           disk_space_resource_->GetUsed(),
       /*new_events_rate=*/enqueuing_record_tallier_->GetAverage(),
@@ -415,7 +414,7 @@ void MissiveImpl::EnqueueRecord(
   scheduler_.EnqueueJob(
       EnqueueJob::Create(storage_module_, health_module_, in_request,
                          std::make_unique<EnqueueJob::EnqueueResponseDelegate>(
-                             std::move(out_response))));
+                             health_module_, std::move(out_response))));
 }
 
 void MissiveImpl::FlushPriority(
@@ -428,9 +427,17 @@ void MissiveImpl::FlushPriority(
     out_response->Return(RespondMissiveDisabled<FlushPriorityResponse>());
     return;
   }
-  storage_module_->Flush(in_request.priority(),
-                         base::BindPostTaskToCurrentDefault(base::BindOnce(
-                             &HandleFlushResponse, std::move(out_response))));
+
+  if (in_request.has_health_data_logging_enabled()) {
+    health_module_->set_debugging(in_request.health_data_logging_enabled());
+  }
+
+  FlushPriorityResponse response_body;
+  storage_module_->Flush(
+      in_request.priority(),
+      base::BindPostTaskToCurrentDefault(base::BindOnce(
+          &HandleResponse<FlushPriorityResponse>, std::move(out_response),
+          std::move(response_body), health_module_)));
 }
 
 void MissiveImpl::ConfirmRecordUpload(
@@ -452,9 +459,24 @@ void MissiveImpl::ConfirmRecordUpload(
     return;
   }
 
-  storage_module_->ReportSuccess(in_request.sequence_information(),
-                                 in_request.force_confirm());
-  out_response->Return(response_body);
+  if (in_request.has_health_data_logging_enabled()) {
+    health_module_->set_debugging(in_request.health_data_logging_enabled());
+  }
+
+  storage_module_->ReportSuccess(
+      in_request.sequence_information(), in_request.force_confirm(),
+      base::BindPostTaskToCurrentDefault(base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 ConfirmRecordUploadResponse>> out_response,
+             ConfirmRecordUploadResponse response_body,
+             scoped_refptr<HealthModule> health_module, Status status) {
+            LOG_IF(ERROR, !status.ok())
+                << "Unable to confirm record deletion: " << status;
+            HandleResponse<ConfirmRecordUploadResponse>(
+                std::move(out_response), std::move(response_body),
+                health_module, Status::StatusOK());
+          },
+          std::move(out_response), std::move(response_body), health_module_)));
 }
 
 void MissiveImpl::UpdateConfigInMissive(

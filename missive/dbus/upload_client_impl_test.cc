@@ -5,7 +5,6 @@
 #include "missive/dbus/upload_client_impl.h"
 
 #include <limits>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -24,6 +23,8 @@
 #include <gtest/gtest.h>
 
 #include "missive/dbus/dbus_test_environment.h"
+#include "missive/health/health_module.h"
+#include "missive/health/health_module_delegate_mock.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/test_support_callbacks.h"
@@ -52,6 +53,8 @@ class UploadClientTest : public ::testing::Test {
         .Times(AtLeast(1))
         .WillRepeatedly(Return(true));
 
+    health_module_ =
+        HealthModule::Create(std::make_unique<HealthModuleDelegateMock>());
     test::TestEvent<StatusOr<scoped_refptr<UploadClientImpl>>> client_waiter;
     UploadClientImpl::Create(dbus_test_environment_.mock_bus(),
                              dbus_test_environment_.mock_chrome_proxy().get(),
@@ -72,6 +75,7 @@ class UploadClientTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_;
   test::DBusTestEnvironment dbus_test_environment_;
+  scoped_refptr<HealthModule> health_module_;
   scoped_refptr<UploadClientImpl> upload_client_;
 };
 
@@ -142,8 +146,7 @@ TEST_F(UploadClientTest, SuccessfulCall) {
 
   upload_client_->SendEncryptedRecords(
       std::vector<EncryptedRecord>(1, encrypted_record),
-      /*need_encryption_keys=*/false,
-      /*health_data=*/std::nullopt,
+      /*need_encryption_keys=*/false, health_module_,
       /*remaining_storage_capacity=*/0U,
       /*new_events_rate=*/1U, std::move(response_callback));
   waiter.Wait();
@@ -187,8 +190,7 @@ TEST_F(UploadClientTest, CallUnavailable) {
 
   upload_client_->SendEncryptedRecords(
       std::vector<EncryptedRecord>(1, encrypted_record),
-      /*need_encryption_keys=*/false,
-      /*health_data=*/std::nullopt,
+      /*need_encryption_keys=*/false, health_module_,
       /*remaining_storage_capacity=*/std::numeric_limits<uint64_t>::max(),
       /*new_events_rate=*/10U, std::move(response_callback));
   waiter.Wait();
@@ -232,8 +234,7 @@ TEST_F(UploadClientTest, CallBecameUnavailable) {
 
   upload_client_->SendEncryptedRecords(
       std::vector<EncryptedRecord>(1, encrypted_record),
-      /*need_encryption_keys=*/false,
-      /*health_data=*/std::nullopt,
+      /*need_encryption_keys=*/false, health_module_,
       /*remaining_storage_capacity=*/3000U,
       /*new_events_rate=*/std::nullopt, std::move(response_callback));
 

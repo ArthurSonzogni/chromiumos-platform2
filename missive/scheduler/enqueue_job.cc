@@ -22,9 +22,11 @@
 namespace reporting {
 
 EnqueueJob::EnqueueResponseDelegate::EnqueueResponseDelegate(
+    scoped_refptr<HealthModule> health_module,
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<EnqueueRecordResponse>> response)
     : task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
+      health_module_(health_module),
       response_(std::move(response)) {
   CHECK(task_runner_);
   CHECK(response_);
@@ -41,11 +43,24 @@ Status EnqueueJob::EnqueueResponseDelegate::Cancel(Status status) {
 Status EnqueueJob::EnqueueResponseDelegate::SendResponse(Status status) {
   EnqueueRecordResponse response_body;
   status.SaveTo(response_body.mutable_status());
-  task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&brillo::dbus_utils::DBusMethodResponse<
-                         EnqueueRecordResponse>::Return,
-                     std::move(response_), std::move(response_body)));
+
+  auto response_cb = base::BindPostTask(
+      task_runner_, base::BindOnce(&brillo::dbus_utils::DBusMethodResponse<
+                                       EnqueueRecordResponse>::Return,
+                                   std::move(response_)));
+  if (!health_module_->is_debugging()) {
+    std::move(response_cb).Run(std::move(response_body));
+    return Status::StatusOK();
+  }
+
+  health_module_->GetHealthData(
+      base::BindPostTaskToCurrentDefault(base::BindOnce(
+          [](base::OnceCallback<void(const EnqueueRecordResponse&)> response_cb,
+             EnqueueRecordResponse response_body, ERPHealthData health_data) {
+            *response_body.mutable_health_data() = std::move(health_data);
+            std::move(response_cb).Run(std::move(response_body));
+          },
+          std::move(response_cb), std::move(response_body))));
   return Status::StatusOK();
 }
 

@@ -23,6 +23,7 @@ class EnqueueJob : public Scheduler::Job {
   class EnqueueResponseDelegate : public Job::JobDelegate {
    public:
     EnqueueResponseDelegate(
+        scoped_refptr<HealthModule> health_module,
         std::unique_ptr<
             brillo::dbus_utils::DBusMethodResponse<EnqueueRecordResponse>>
             response);
@@ -36,6 +37,8 @@ class EnqueueJob : public Scheduler::Job {
     // Task runner for final operations to take place on.
     // Matches the thread constructor was called on.
     scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+    scoped_refptr<HealthModule> health_module_;
 
     // response_ can only be used once - the logic in Scheduler::Job ensures
     // that only Complete or Cancel are every called once.

@@ -1992,6 +1992,12 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       if (!status.ok()) {
         status.SaveTo(write_queue_record->mutable_status());
       }
+      // Move recorder_ into local variable, so that it destructs.
+      // After that it is no longer necessary anyway, but being
+      // destructed here, it will be included in health history and
+      // attached to write response request and thus immediately visible
+      // on Chrome.
+      const auto finished_recording = std::move(recorder_);
     }
     if (storage_queue_->active_write_reservation_size_ > 0u) {
       CHECK(!status.ok());
@@ -2258,6 +2264,12 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
       if (!status.ok()) {
         status.SaveTo(write_queue_record->mutable_status());
       }
+      // Move recorder_ into local variable, so that it destructs.
+      // After that it is no longer necessary anyway, but being
+      // destructed here, it will be included in health history and
+      // attached to write response request and thus immediately visible
+      // on Chrome.
+      const auto finished_recording = std::move(recorder_);
     }
   }
 

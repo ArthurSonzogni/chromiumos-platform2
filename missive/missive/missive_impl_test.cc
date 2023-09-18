@@ -38,6 +38,7 @@
 
 using ::testing::_;
 using ::testing::Eq;
+using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Property;
 using ::testing::Return;
@@ -69,7 +70,9 @@ class MockStorageModule : public StorageModule {
 
   MOCK_METHOD(void,
               ReportSuccess,
-              (SequenceInformation sequence_information, bool force),
+              (SequenceInformation sequence_information,
+               bool force,
+               base::OnceCallback<void(Status)> done_cb),
               (override));
 
   MOCK_METHOD(void,
@@ -277,8 +280,10 @@ TEST_F(MissiveImplTest, ConfirmRecordUploadTest) {
 
   EXPECT_CALL(*storage_module_,
               ReportSuccess(EqualsProto(request.sequence_information()),
-                            Eq(request.force_confirm())))
-      .Times(1);
+                            Eq(request.force_confirm()), _))
+      .WillOnce(WithArg<2>(Invoke([](base::OnceCallback<void(Status)> done_cb) {
+        std::move(done_cb).Run(Status::StatusOK());
+      })));
 
   auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
       ConfirmRecordUploadResponse>>();

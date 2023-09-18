@@ -10,8 +10,10 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/memory/weak_ptr.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
 #include <base/task/bind_post_task.h>
@@ -114,7 +116,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
   UploadEncryptedRecordDelegate(
       std::vector<EncryptedRecord> records,
       const bool need_encryption_keys,
-      std::optional<ERPHealthData> health_data,
+      scoped_refptr<HealthModule> health_module,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
       scoped_refptr<dbus::Bus> bus,
@@ -122,6 +124,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
       UploadClient::HandleUploadResponseCallback response_callback)
       : bus_(bus),
         chrome_proxy_(chrome_proxy),
+        health_module_(std::move(health_module)),
         response_callback_(std::move(response_callback)) {
     bus_->AssertOnOriginThread();
     // Build the request.
@@ -135,15 +138,35 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     if (new_events_rate.has_value()) {
       request_.set_new_events_rate(new_events_rate.value());
     }
-    // Add health data if provided.
-    if (health_data.has_value()) {
-      *request_.mutable_health_data() = std::move(health_data.value());
-    }
   }
 
   // Implementation of DisconnectableClient::Delegate
   void DoCall(base::OnceClosure cb) final {
     bus_->AssertOnOriginThread();
+    if (!health_module_->is_debugging()) {
+      // No health data, send right away.
+      DbusCall(std::move(cb), /*health_data=*/std::nullopt);
+      return;
+    }
+    // Add health data if provided.
+    auto call_cb =
+        base::BindOnce(&UploadEncryptedRecordDelegate::DbusCall,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(cb));
+    health_module_->GetHealthData(
+        base::BindPostTaskToCurrentDefault(base::BindOnce(
+            [](base::OnceCallback<void(std::optional<ERPHealthData>)> call_cb,
+               ERPHealthData health_data) {
+              std::move(call_cb).Run(std::move(health_data));
+            },
+            std::move(call_cb))));
+  }
+
+  void DbusCall(base::OnceClosure cb,
+                std::optional<ERPHealthData> health_data) {
+    bus_->AssertOnOriginThread();
+    if (health_data.has_value()) {
+      *request_.mutable_health_data() = std::move(health_data.value());
+    }
     base::ScopedClosureRunner autorun(std::move(cb));
     dbus::MethodCall method_call(
         chromeos::kChromeReportingServiceInterface,
@@ -211,6 +234,8 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
   scoped_refptr<dbus::Bus> const bus_;
   dbus::ObjectProxy* const chrome_proxy_;
 
+  const scoped_refptr<HealthModule> health_module_;
+
   UploadEncryptedRecordRequest request_;
   UploadClient::HandleUploadResponseCallback response_callback_;
 
@@ -221,13 +246,13 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
 void UploadClientImpl::MaybeMakeCall(
     std::vector<EncryptedRecord> records,
     const bool need_encryption_keys,
-    std::optional<ERPHealthData> health_data,
+    scoped_refptr<HealthModule> health_module,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
     HandleUploadResponseCallback response_callback) {
   bus_->AssertOnOriginThread();
   auto delegate = std::make_unique<UploadEncryptedRecordDelegate>(
-      std::move(records), need_encryption_keys, std::move(health_data),
+      std::move(records), need_encryption_keys, std::move(health_module),
       remaining_storage_capacity, new_events_rate, bus_, chrome_proxy_,
       std::move(response_callback));
   GetDisconnectableClient()->MaybeMakeCall(std::move(delegate));
@@ -246,7 +271,7 @@ DisconnectableClient* UploadClientImpl::GetDisconnectableClient() {
 void UploadClientImpl::SendEncryptedRecords(
     std::vector<EncryptedRecord> records,
     const bool need_encryption_keys,
-    std::optional<ERPHealthData> health_data,
+    scoped_refptr<HealthModule> health_module,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
     HandleUploadResponseCallback response_callback) {
@@ -254,7 +279,7 @@ void UploadClientImpl::SendEncryptedRecords(
       FROM_HERE,
       base::BindOnce(&UploadClientImpl::MaybeMakeCall,
                      weak_ptr_factory_.GetWeakPtr(), std::move(records),
-                     need_encryption_keys, std::move(health_data),
+                     need_encryption_keys, std::move(health_module),
                      remaining_storage_capacity, new_events_rate,
                      std::move(response_callback)));
 }

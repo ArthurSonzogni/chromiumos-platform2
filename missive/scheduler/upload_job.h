@@ -15,6 +15,7 @@
 #include <base/task/sequenced_task_runner.h>
 
 #include "missive/dbus/upload_client.h"
+#include "missive/health/health_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/scheduler/scheduler.h"
@@ -35,7 +36,7 @@ class UploadJob : public Scheduler::Job {
    public:
     UploadDelegate(scoped_refptr<UploadClient> upload_client,
                    bool need_encryption_key,
-                   std::optional<ERPHealthData> health_data,
+                   scoped_refptr<HealthModule> health_module,
                    uint64_t remaining_storage_capacity,
                    std::optional<uint64_t> new_events_rate,
                    UploadClient::HandleUploadResponseCallback response_cb);
@@ -53,7 +54,7 @@ class UploadJob : public Scheduler::Job {
 
     const scoped_refptr<UploadClient> upload_client_;
     const bool need_encryption_key_;
-    std::optional<ERPHealthData> health_data_;
+    scoped_refptr<HealthModule> health_module_;
 
     EncryptedRecords encrypted_records_;
     ScopedReservation encrypted_records_reservation_;
@@ -98,7 +99,7 @@ class UploadJob : public Scheduler::Job {
   static StatusOr<SmartPtr<UploadJob>> Create(
       scoped_refptr<UploadClient> upload_client,
       bool need_encryption_key,
-      std::optional<ERPHealthData> health_data,
+      scoped_refptr<HealthModule> health_module,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
       UploaderInterface::UploaderInterfaceResultCb start_cb,

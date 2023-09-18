@@ -74,7 +74,8 @@ class StorageModule : public StorageModuleInterface {
   // otherwise it is accepted unconditionally.
   // Declared virtual for testing purposes.
   virtual void ReportSuccess(SequenceInformation sequence_information,
-                             bool force);
+                             bool force,
+                             base::OnceCallback<void(Status)> done_cb);
 
   // If the server attached signed encryption key to the response, it needs to
   // be paased here.

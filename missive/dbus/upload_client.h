@@ -14,7 +14,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 
-#include "missive/proto/health.pb.h"
+#include "missive/health/health_module.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/statusor.h"
@@ -47,7 +47,7 @@ class UploadClient : public base::RefCountedDeleteOnSequence<UploadClient> {
   virtual void SendEncryptedRecords(
       std::vector<EncryptedRecord> records,
       bool need_encryption_keys,
-      std::optional<ERPHealthData> health_data,
+      scoped_refptr<HealthModule> health_module,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
       HandleUploadResponseCallback response_callback) = 0;

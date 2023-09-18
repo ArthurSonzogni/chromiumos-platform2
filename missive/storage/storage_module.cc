@@ -37,8 +37,8 @@
 namespace reporting {
 
 namespace {
-const Status kStorageUnavailableStatus =
-    Status(error::UNAVAILABLE, "Storage unavailable");
+const Status kStorageUnavailableStatus{error::UNAVAILABLE,
+                                       "Storage unavailable"};
 }  // namespace
 
 // Tracker class is used in SequenceBound, and as such its state is guarded by
@@ -84,7 +84,7 @@ StorageModule::~StorageModule() = default;
 void StorageModule::AddRecord(Priority priority,
                               Record record,
                               EnqueueCallback callback) {
-  if (!(storage_)) {
+  if (!storage_) {
     std::move(callback).Run(kStorageUnavailableStatus);
     return;
   }
@@ -92,7 +92,7 @@ void StorageModule::AddRecord(Priority priority,
 }
 
 void StorageModule::Flush(Priority priority, FlushCallback callback) {
-  if (!(storage_)) {
+  if (!storage_) {
     std::move(callback).Run(kStorageUnavailableStatus);
     return;
   }
@@ -100,8 +100,9 @@ void StorageModule::Flush(Priority priority, FlushCallback callback) {
 }
 
 void StorageModule::ReportSuccess(SequenceInformation sequence_information,
-                                  bool force) {
-  if (!(storage_)) {
+                                  bool force,
+                                  base::OnceCallback<void(Status)> done_cb) {
+  if (!storage_) {
     LOG(ERROR) << kStorageUnavailableStatus.error_message();
     return;
   }
@@ -109,16 +110,12 @@ void StorageModule::ReportSuccess(SequenceInformation sequence_information,
   upload_progress_tracker_.AsyncCall(&UploadProgressTracker::Record)
       .WithArgs(sequence_information, storage_upload_success_cb_);
   // Hand over to the Storage.
-  storage_->Confirm(std::move(sequence_information), force,
-                    base::BindOnce([](Status status) {
-                      LOG_IF(ERROR, !status.ok())
-                          << "Unable to confirm record deletion: " << status;
-                    }));
+  storage_->Confirm(std::move(sequence_information), force, std::move(done_cb));
 }
 
 void StorageModule::UpdateEncryptionKey(
     SignedEncryptionInfo signed_encryption_key) {
-  if (!(storage_)) {
+  if (!storage_) {
     LOG(ERROR) << kStorageUnavailableStatus.error_message();
     return;
   }

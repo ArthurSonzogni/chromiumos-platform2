@@ -21,7 +21,6 @@
 #include <base/task/thread_pool.h>
 
 #include "missive/dbus/upload_client.h"
-#include "missive/proto/health.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/scheduler/scheduler.h"
@@ -41,13 +40,13 @@ constexpr size_t kMaxUploadSize = 10UL * 1024UL * 1024UL;  // 10MiB
 UploadJob::UploadDelegate::UploadDelegate(
     scoped_refptr<UploadClient> upload_client,
     bool need_encryption_key,
-    std::optional<ERPHealthData> health_data,
+    scoped_refptr<HealthModule> health_module,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
     UploadClient::HandleUploadResponseCallback response_cb)
     : upload_client_(upload_client),
       need_encryption_key_(need_encryption_key),
-      health_data_(std::move(health_data)),
+      health_module_(std::move(health_module)),
       remaining_storage_capacity_(remaining_storage_capacity),
       new_events_rate_(new_events_rate),
       response_cb_(std::move(response_cb)) {}
@@ -59,9 +58,8 @@ UploadJob::SetRecordsCb UploadJob::UploadDelegate::GetSetRecordsCb() {
 
 Status UploadJob::UploadDelegate::Complete() {
   upload_client_->SendEncryptedRecords(
-      std::move(encrypted_records_), need_encryption_key_,
-      std::move(health_data_), remaining_storage_capacity_, new_events_rate_,
-      std::move(response_cb_));
+      std::move(encrypted_records_), need_encryption_key_, health_module_,
+      remaining_storage_capacity_, new_events_rate_, std::move(response_cb_));
   return Status::StatusOK();
 }
 
@@ -133,7 +131,7 @@ void UploadJob::RecordProcessor::Completed(Status final_status) {
 StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
     scoped_refptr<UploadClient> upload_client,
     bool need_encryption_key,
-    std::optional<ERPHealthData> health_data,
+    scoped_refptr<HealthModule> health_module,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
     UploaderInterface::UploaderInterfaceResultCb start_cb,
@@ -146,7 +144,7 @@ StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
   }
 
   auto upload_delegate = std::make_unique<UploadDelegate>(
-      upload_client, need_encryption_key, std::move(health_data),
+      upload_client, need_encryption_key, std::move(health_module),
       remaining_storage_capacity, new_events_rate, std::move(response_cb));
   SetRecordsCb set_records_callback = upload_delegate->GetSetRecordsCb();
 
