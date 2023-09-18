@@ -13,6 +13,9 @@ group("all") {
       "driver_common:driver_common_test",
     ]
   }
+  if (use.ml_benchmark_drivers) {
+    deps += [ "//ml:libml_for_benchmark" ]
+  }
 }
 
 pkg_config("target_defaults") {
