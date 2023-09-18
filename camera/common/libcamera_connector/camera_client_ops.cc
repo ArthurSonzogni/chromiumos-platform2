@@ -95,6 +95,8 @@ void CameraClientOps::ProcessCaptureResult(
       return;
     }
 
+    // Map the buffer. We use mmap instead of CameraBufferManager since minigbm
+    // is blocked in the Guest VM sandbox.
     int64_t page_size = sysconf(_SC_PAGE_SIZE);
     const auto* buffer_handle_ptr = buffer_manager_.GetBufferHandle(
         result->output_buffers->at(0)->buffer_id);
@@ -109,8 +111,8 @@ void CameraClientOps::ProcessCaptureResult(
       uint32_t mapped_size = buffer_handle->sizes->at(0) + unaligned_offset;
       uint32_t aligned_offset = buffer_handle->offsets[0] - unaligned_offset;
       CHECK_NE(fds_ptr, nullptr);
-      void* data = mmap(NULL, mapped_size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                        fds_ptr->at(0).get(), aligned_offset);
+      void* data = mmap(nullptr, mapped_size, PROT_READ | PROT_WRITE,
+                        MAP_SHARED, fds_ptr->at(0).get(), aligned_offset);
       CHECK_NE(data, MAP_FAILED);
       auto* blob = reinterpret_cast<camera3_jpeg_blob_t*>(
           static_cast<char*>(data) + unaligned_offset + jpeg_max_size_ -
@@ -135,39 +137,54 @@ void CameraClientOps::ProcessCaptureResult(
       CHECK_EQ(buffer_handle->fds.size(), 2);
 
       const auto* fds_ptr = buffer_manager_.GetFds(output_buffer->buffer_id);
+      uint8_t* y_ptr = nullptr;
+      uint8_t* cb_ptr = nullptr;
+      base::ScopedClosureRunner y_unmapper, cb_unmapper;
 
-      uint32_t y_unaligned_offset = buffer_handle->offsets[0] % page_size;
-      uint32_t y_mapped_size = buffer_handle->sizes->at(0) + y_unaligned_offset;
-      uint32_t y_aligned_offset =
-          buffer_handle->offsets[0] - y_unaligned_offset;
-      void* y_ptr = mmap(NULL, y_mapped_size, PROT_READ | PROT_WRITE,
-                         MAP_SHARED, fds_ptr->at(0).get(), y_aligned_offset);
-      CHECK_NE(y_ptr, MAP_FAILED);
-
-      uint32_t cb_unaligned_offset = buffer_handle->offsets[1] % page_size;
-      uint32_t cb_mapped_size =
-          buffer_handle->sizes->at(1) + cb_unaligned_offset;
-      uint32_t cb_aligned_offset =
-          buffer_handle->offsets[1] - cb_unaligned_offset;
-      void* cb_ptr = mmap(NULL, cb_mapped_size, PROT_READ | PROT_WRITE,
-                          MAP_SHARED, fds_ptr->at(1).get(), cb_aligned_offset);
-      CHECK_NE(cb_ptr, MAP_FAILED);
+      CHECK_EQ(buffer_handle->offsets[0], 0);
+      if (buffer_handle->offsets[1] != 0) {
+        // Some platforms don't handle offset correctly in mmap(). We assume the
+        // UV plane lies on the same buffer of Y plane, and add offset to the
+        // mapped address manually.
+        CHECK_GE(buffer_handle->offsets[1], buffer_handle->sizes->at(0));
+        const size_t y_mapped_size =
+            buffer_handle->offsets[1] + buffer_handle->sizes->at(1);
+        y_ptr = static_cast<uint8_t*>(mmap(nullptr, y_mapped_size,
+                                           PROT_READ | PROT_WRITE, MAP_SHARED,
+                                           fds_ptr->at(0).get(), 0));
+        CHECK_NE(y_ptr, MAP_FAILED);
+        y_unmapper.ReplaceClosure(
+            base::BindOnce(base::IgnoreResult(&munmap), y_ptr, y_mapped_size));
+        cb_ptr = y_ptr + buffer_handle->offsets[1];
+      } else {
+        const size_t y_mapped_size = buffer_handle->sizes->at(0);
+        y_ptr = static_cast<uint8_t*>(mmap(nullptr, y_mapped_size,
+                                           PROT_READ | PROT_WRITE, MAP_SHARED,
+                                           fds_ptr->at(0).get(), 0));
+        CHECK_NE(y_ptr, MAP_FAILED);
+        y_unmapper.ReplaceClosure(
+            base::BindOnce(base::IgnoreResult(&munmap), y_ptr, y_mapped_size));
+        const size_t cb_mapped_size = buffer_handle->sizes->at(1);
+        cb_ptr = static_cast<uint8_t*>(mmap(nullptr, cb_mapped_size,
+                                            PROT_READ | PROT_WRITE, MAP_SHARED,
+                                            fds_ptr->at(1).get(), 0));
+        CHECK_NE(cb_ptr, MAP_FAILED);
+        cb_unmapper.ReplaceClosure(base::BindOnce(base::IgnoreResult(&munmap),
+                                                  cb_ptr, cb_mapped_size));
+      }
 
       cros_cam_frame_t frame = {
           .format = request_format_,
-          .planes = {
-              {.stride = static_cast<int>(buffer_handle->strides[0]),
-               .size = static_cast<int>(buffer_handle->sizes->at(0)),
-               .data = static_cast<uint8_t*>(y_ptr) + y_unaligned_offset},
-              {.stride = static_cast<int>(buffer_handle->strides[1]),
-               .size = static_cast<int>(buffer_handle->sizes->at(1)),
-               .data = static_cast<uint8_t*>(cb_ptr) + cb_unaligned_offset},
-              {.size = 0},
-              {.size = 0}}};
+          .planes = {{.stride = static_cast<int>(buffer_handle->strides[0]),
+                      .size = static_cast<int>(buffer_handle->sizes->at(0)),
+                      .data = y_ptr},
+                     {.stride = static_cast<int>(buffer_handle->strides[1]),
+                      .size = static_cast<int>(buffer_handle->sizes->at(1)),
+                      .data = cb_ptr},
+                     {.size = 0},
+                     {.size = 0}}};
       SendCaptureResult(0, &frame);
 
-      munmap(y_ptr, y_mapped_size);
-      munmap(cb_ptr, cb_mapped_size);
       buffer_manager_.ReleaseBuffer(output_buffer->buffer_id);
     }
   }

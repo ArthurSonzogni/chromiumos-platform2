@@ -43,7 +43,7 @@ class I420Buffer {
         expect_empty(planes[3]);
         int ret = libyuv::NV12ToI420(
             planes[0].data, planes[0].stride, planes[1].data, planes[1].stride,
-            buf.DataY(), buf.StrideY(), buf.DataU(), buf.StrideU(), buf.DataY(),
+            buf.DataY(), buf.StrideY(), buf.DataU(), buf.StrideU(), buf.DataV(),
             buf.StrideV(), buf.Width(), buf.Height());
         EXPECT_EQ(ret, 0) << "invalid NV12 frame";
         break;
