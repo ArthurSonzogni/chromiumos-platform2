@@ -60,6 +60,11 @@ constexpr uint32_t kArcvmVendorTagHostTime = kArcvmVendorTagStart;
 
 // File format: the first line contains "on" or "off".
 const base::FilePath kSWPrivacySwitchFilePath("/run/camera/sw_privacy_switch");
+// Override the SW privacy switch state set by the OS.
+// Valid key and its values: "state" -> "on" or "off"
+// E.g. { "state" : "on" }
+const base::FilePath kSWPrivacySwitchOverrideFilePath(
+    "/run/camera/sw_privacy_switch_override.json");
 // File format: each line contains one public camera id.
 const base::FilePath kCameraIdsWithFallbackSolutionFilePath(
     "/run/camera/camera_ids_with_sw_privacy_switch_fallback");
@@ -83,7 +88,9 @@ CameraHalAdapter::CameraHalAdapter(
       vendor_tag_ops_id_(0),
       camera_metrics_(CameraMetrics::New()),
       mojo_manager_token_(token),
-      activity_callback_(activity_callback) {}
+      activity_callback_(activity_callback),
+      sw_privacy_switch_override_watcher_(ReloadableConfigFile::Options{
+          .override_config_file_path = kSWPrivacySwitchOverrideFilePath}) {}
 
 CameraHalAdapter::~CameraHalAdapter() {
   camera_module_thread_.task_runner()->PostTask(
@@ -151,6 +158,9 @@ bool CameraHalAdapter::Start() {
   if (state.has_value()) {
     SetCameraSWPrivacySwitchState(state.value());
   }
+  sw_privacy_switch_override_watcher_.SetCallback(
+      base::BindRepeating(&CameraHalAdapter::SWPrivacySwitchOverrideChange,
+                          base::Unretained(this)));
 
   return future->Get();
 }
@@ -330,7 +340,8 @@ void CameraHalAdapter::SetAutoFramingState(
 
 mojom::CameraPrivacySwitchState
 CameraHalAdapter::GetCameraSWPrivacySwitchState() {
-  return stream_manipulator_runtime_options_.sw_privacy_switch_state();
+  base::AutoLock lock(sw_privacy_switch_state_lock_);
+  return sw_privacy_switch_state_;
 }
 
 void CameraHalAdapter::SetCameraSWPrivacySwitchState(
@@ -340,12 +351,24 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchState(
   // switch state changes to take effect in HAL. For example, we want to avoid
   // accidentally disabling stream manipulator effects before the SW state
   // change from OFF to ON takes effect.
-  stream_manipulator_runtime_options_.SetSWPrivacySwitchState(state);
-  camera_module_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          &CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread,
-          base::Unretained(this), state));
+  {
+    base::AutoLock lock(sw_privacy_switch_state_lock_);
+    sw_privacy_switch_state_ = state;
+  }
+  if (!sw_privacy_switch_state_override_.has_value()) {
+    stream_manipulator_runtime_options_.SetSWPrivacySwitchState(state);
+    camera_module_thread_.task_runner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&CameraHalAdapter::
+                           SetCameraSWPrivacySwitchStateOnCameraModuleThread,
+                       base::Unretained(this), state));
+  } else {
+    LOGF(INFO) << "The SW privacy switch state was set to " << state
+               << " by the client, but "
+               << std::quoted(kSWPrivacySwitchOverrideFilePath.value())
+               << " is overriding the state with "
+               << *sw_privacy_switch_state_override_;
+  }
   CacheCameraSWPrivacySwitchState(state);
 }
 
@@ -582,6 +605,43 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread(
       }
     }
   }
+}
+
+void CameraHalAdapter::SWPrivacySwitchOverrideChange(
+    const base::Value::Dict& json_values) {
+  constexpr char kStateKey[] = "state";
+  const base::Value* value = json_values.Find(kStateKey);
+  if (value == nullptr) {
+    sw_privacy_switch_state_override_.reset();
+  } else {
+    if (value->GetString() == kSWPrivacySwitchOn) {
+      sw_privacy_switch_state_override_ = mojom::CameraPrivacySwitchState::ON;
+    } else if (value->GetString() == kSWPrivacySwitchOff) {
+      sw_privacy_switch_state_override_ = mojom::CameraPrivacySwitchState::OFF;
+    } else {
+      LOGF(ERROR) << "Invalid value for key " << std::quoted(kStateKey) << ": "
+                  << std::quoted(value->GetString());
+      sw_privacy_switch_state_override_.reset();
+    }
+  }
+  mojom::CameraPrivacySwitchState new_state;
+  if (sw_privacy_switch_state_override_.has_value()) {
+    new_state = *sw_privacy_switch_state_override_;
+    LOGF(INFO) << "Override the SW privacy switch value with " << new_state;
+  } else {
+    base::AutoLock lock(sw_privacy_switch_state_lock_);
+    new_state = sw_privacy_switch_state_;
+  }
+  if (new_state ==
+      stream_manipulator_runtime_options_.sw_privacy_switch_state()) {
+    return;
+  }
+  stream_manipulator_runtime_options_.SetSWPrivacySwitchState(new_state);
+  camera_module_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread,
+          base::Unretained(this), new_state));
 }
 
 const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(

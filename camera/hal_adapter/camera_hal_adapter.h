@@ -27,6 +27,7 @@
 
 #include "camera/mojo/camera3.mojom.h"
 #include "camera/mojo/camera_common.mojom.h"
+#include "common/reloadable_config_file.h"
 #include "common/stream_manipulator.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
@@ -154,6 +155,7 @@ class CameraHalAdapter {
   void CacheCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
   void SetCameraSWPrivacySwitchStateOnCameraModuleThread(
       mojom::CameraPrivacySwitchState state);
+  void SWPrivacySwitchOverrideChange(const base::Value::Dict& json_values);
 
   // Gets the static metadata of a camera given the original static metadata
   // with updated metadata modifications from the camera service such as vendor
@@ -294,6 +296,18 @@ class CameraHalAdapter {
 
   // TODO(pihsun): Should this be per CameraDeviceAdapter?
   StreamManipulator::RuntimeOptions stream_manipulator_runtime_options_;
+
+  // SW privacy switch state.
+  base::Lock sw_privacy_switch_state_lock_;
+  mojom::CameraPrivacySwitchState sw_privacy_switch_state_ GUARDED_BY(
+      sw_privacy_switch_state_lock_) = mojom::CameraPrivacySwitchState::UNKNOWN;
+
+  // SW privacy switch state overriding |sw_privacy_switch_state_|.
+  std::optional<mojom::CameraPrivacySwitchState>
+      sw_privacy_switch_state_override_;
+
+  // Watch changes in |kSWPrivacySwitchOverrideFilePath|.
+  ReloadableConfigFile sw_privacy_switch_override_watcher_;
 
   std::unique_ptr<GpuResources> root_gpu_resources_;
 
