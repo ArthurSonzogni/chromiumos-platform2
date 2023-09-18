@@ -217,8 +217,8 @@ libbrillo_sublibs = [
 
   {
     library_name = "brillo-grpc"
-    public_pkg_deps = [ "grpc" ]
     all_dependent_pkg_deps = [
+      "grpc",
       "grpc++",
       "protobuf",
     ]
