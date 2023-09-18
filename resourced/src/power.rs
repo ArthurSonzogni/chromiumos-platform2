@@ -317,13 +317,16 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> DirectoryPowerPreference
     fn set_epp(&self, epp: config::EnergyPerformancePreference) -> Result<()> {
         const EPP_PATTERN: &str =
             "sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
-        let pattern = self
-            .root
-            .join(EPP_PATTERN)
-            .to_str()
-            .context("Cannot convert epp path to string")?
-            .to_owned();
-        write_to_cpu_policy_patterns(&pattern, epp.to_name())
+        if self.has_epp()? {
+            let pattern = self
+                .root
+                .join(EPP_PATTERN)
+                .to_str()
+                .context("Cannot convert epp path to string")?
+                .to_owned();
+            return write_to_cpu_policy_patterns(&pattern, epp.to_name());
+        }
+        Ok(())
     }
 
     fn apply_power_preferences(&self, preferences: config::PowerPreferences) -> Result<()> {
@@ -378,21 +381,6 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
             preferences = self
                 .config_provider
                 .read_power_preferences(power_source, config::PowerPreferencesType::BatterySaver)?;
-            if preferences.is_none() {
-                preferences = if self.has_epp()? {
-                    Some(config::PowerPreferences {
-                        governor: None,
-                        epp: Some(config::EnergyPerformancePreference::BalancePower),
-                        cpu_offline: None,
-                    })
-                } else {
-                    Some(config::PowerPreferences {
-                        governor: Some(config::Governor::Conservative),
-                        epp: None,
-                        cpu_offline: None,
-                    })
-                };
-            }
         } else if game == GameMode::Borealis {
             preferences = self.config_provider.read_power_preferences(
                 power_source,
@@ -433,9 +421,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
             self.apply_power_preferences(preferences)?
         }
 
-        if batterysaver == BatterySaverMode::Active {
-            return Ok(());
-        } else if power_source == config::PowerSourceType::DC
+        if power_source == config::PowerSourceType::DC
             && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active)
         {
             if let Err(err) = self.set_epp(config::EnergyPerformancePreference::BalancePower) {
@@ -1126,7 +1112,20 @@ mod tests {
                     cpu_offline: None,
                 }))
             },
-            battery_saver_power_preferences: |_| Ok(None),
+            battery_saver_power_preferences: |_| {
+                Ok(Some(config::PowerPreferences {
+                    governor: Some(config::Governor::Conservative),
+                    epp: None,
+                    cpu_offline: None,
+                }))
+            },
+            default_power_preferences: |_| {
+                Ok(Some(config::PowerPreferences {
+                    governor: Some(config::Governor::Schedutil),
+                    epp: None,
+                    cpu_offline: None,
+                }))
+            },
             ..Default::default()
         };
 
@@ -1139,7 +1138,7 @@ mod tests {
         let tests = [
             (
                 BatterySaverMode::Active,
-                "balance_power",
+                "balance_performance",
                 config::Governor::Conservative,
                 AFFECTED_CPU0, // policy0 affected_cpus
                 AFFECTED_CPU1, // policy1 affected_cpus
@@ -1153,7 +1152,7 @@ mod tests {
             ),
             (
                 BatterySaverMode::Active,
-                "balance_power",
+                "balance_performance",
                 config::Governor::Conservative,
                 AFFECTED_CPU_NONE, // policy0 affected_cpus, which has no affected cpus
                 AFFECTED_CPU1,     // policy1 affected_cpus
@@ -1496,7 +1495,13 @@ mod tests {
         for test in tests {
             // Let's assume we have no config
             let config_provider = FakeConfigProvider {
-                default_power_preferences: |_| Ok(None),
+                default_power_preferences: |_| {
+                    Ok(Some(config::PowerPreferences {
+                        governor: Some(config::Governor::Schedutil),
+                        epp: None,
+                        cpu_offline: None,
+                    }))
+                },
                 web_rtc_power_preferences: |_| Ok(None),
                 fullscreen_power_preferences: |_| Ok(None),
                 ..Default::default()
