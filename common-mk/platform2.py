@@ -97,6 +97,7 @@ _IUSE = [
     "feature_management",
     "feedback",
     "floss",
+    "floss_rootcanal",
     "force_breakpad",
     "fp_on_power_button",
     "fsverity",
