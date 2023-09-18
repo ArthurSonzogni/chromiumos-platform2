@@ -195,7 +195,7 @@ message StartVmRequest {
   // physical TPM on the host device. TPM state does not persist across VM
   // launches. In order for the VM to see the virtual TPM, the guest kernel must
   // contain a virtio TPM driver.
-  bool software_tpm = 9;
+  bool software_tpm = 9 [deprecated = true];
 
   // This flag is only respected in developer mode and offers two things -
   // - It can treat a trusted VM as untrusted and run it on insecure host
