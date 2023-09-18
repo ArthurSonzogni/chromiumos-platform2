@@ -20,7 +20,9 @@
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/device.h"
@@ -111,6 +113,47 @@ std::optional<patchpanel::Client::DHCPOptions> GetDHCPOptions(
   // Set the flag for "ANDROID_METERED" option.
   options.is_android_metered = service.IsMetered();
   return options;
+}
+
+// b/294287313: When the uplink Network is a Cellular secondary multiplexed PDN,
+// TetheringManager must pass to patchpanel the IPv6 configuration of the uplink
+// Network explicitly.
+std::optional<patchpanel::Client::UplinkIPv6Configuration>
+GetUplinkIPv6Configuration(const Network& network, const Service& service) {
+  // Only consider uplink Cellular Networks.
+  if (network.technology() != Technology::kCellular) {
+    return std::nullopt;
+  }
+  if (!service.attached_network()) {
+    return std::nullopt;
+  }
+  // If the Network attached to the Service is the same as the uplink network,
+  // this means the uplink Network is not a secondary multiplexed PDN and
+  // patchpanel is already tracking it.
+  if (service.attached_network()->interface_index() ==
+      network.interface_index()) {
+    return std::nullopt;
+  }
+  std::optional<net_base::IPv6CIDR> uplink_ipv6_cidr;
+  for (const auto& addr : network.GetAddresses()) {
+    if (addr.GetFamily() == net_base::IPFamily::kIPv6) {
+      uplink_ipv6_cidr = addr.ToIPv6CIDR();
+      break;
+    }
+  }
+  // Check if the secondary multiplexed PDN has an IPv6 configuration.
+  if (!uplink_ipv6_cidr) {
+    return std::nullopt;
+  }
+  patchpanel::Client::UplinkIPv6Configuration uplink_ipv6_config;
+  uplink_ipv6_config.uplink_address = *uplink_ipv6_cidr;
+  for (const auto& dns_server : network.GetDNSServers()) {
+    if (dns_server.GetFamily() == net_base::IPFamily::kIPv6) {
+      uplink_ipv6_config.dns_server_addresses.push_back(
+          *dns_server.ToIPv6Address());
+    }
+  }
+  return uplink_ipv6_config;
 }
 
 }  // namespace
@@ -470,10 +513,13 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
     return;
   }
 
+  auto dhcp_options = GetDHCPOptions(*upstream_network_, *upstream_service_);
+  auto uplink_ipv6_config =
+      GetUplinkIPv6Configuration(*upstream_network_, *upstream_service_);
   downstream_network_started_ =
       manager_->patchpanel_client()->CreateTetheredNetwork(
-          downstream_ifname, upstream_ifname,
-          GetDHCPOptions(*upstream_network_, *upstream_service_), mtu,
+          downstream_ifname, upstream_ifname, dhcp_options, uplink_ipv6_config,
+          mtu,
           base::BindOnce(&TetheringManager::OnDownstreamNetworkReady,
                          base::Unretained(this)));
   if (!downstream_network_started_) {

@@ -59,6 +59,15 @@ message IPv4Subnet {
   uint32 prefix_len = 2;
 }
 
+// Represents an IPv4 or IPv6 CIDR address with a prefix length.
+message IPAddrCIDR {
+  // The base address represented as 4 or 16 bytes in network order.
+  bytes addr = 1;
+
+  // The prefix length.
+  int32 prefix_len = 2;
+}
+
 // Represents a virtual network device created and managed by patchpanel and
 // used for one of the hosted guest platforms.
 message NetworkDevice {
@@ -629,6 +638,19 @@ message IPv4Configuration {
   repeated string domain_searches = 8;
 }
 
+// b/294287313: IPv6 configuration for a L3 network created with
+// CreateTetheredNetwork. This message is only needed temporarily until
+// patchpanel can track all Cellular Networks directly.
+message UplinkIPv6Configuration {
+  // IPv6 address and prefix length of the Chromebook on the uplink network.
+  // Required.
+  optional IPAddrCIDR uplink_ipv6_cidr = 1;
+
+  // The IPv6 addresses of the uplink DNS servers represented as 16 bytes in
+  // network order.
+  repeated bytes dns_servers = 2;
+}
+
 // Describes possible errors when creating a downstream network for
 // CreateTetheredNetwork or CreateLocalOnlyNetwork requests.
 enum DownstreamNetworkResult {
@@ -715,6 +737,15 @@ message TetheredNetworkRequest {
   // enabled between the upstream and downstream networks. The implementation
   // will automatically choose between NDProxy mode and RA server mode.
   bool enable_ipv6 = 5;
+
+  // b/294287313: if the tethering request specifies using for the uplink a
+  // Cellular multiplexed PDN, patchpanel has no knowledge of the associated
+  // Network as there are no shill Device associated with the Network that
+  // patchpanel can track. To support IPv6 tethering, shill must pass the IPv6
+  // configuration of the multiplexed PDN explicitly in the tethering request.
+  // This field is only needed temporarily until patchpanel can track all
+  // Cellular Networks directly.
+  optional UplinkIPv6Configuration uplink_ipv6_config = 7;
 
   // The MTU of the upstream. Set the value when it is not the default value
   // (i.e. 1500). When the value is set, we should:

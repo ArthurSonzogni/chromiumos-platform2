@@ -190,6 +190,15 @@ class BRILLO_EXPORT Client {
     bool is_android_metered = false;
   };
 
+  // b/294287313: Helper struct to notify patchpanel about the IPv6
+  // configuration of an uplink network that patchpanel cannot track with a
+  // shill Device. This is necessary when a secondary multiplexed PDN connection
+  // is used for tethering.
+  struct UplinkIPv6Configuration {
+    net_base::IPv6CIDR uplink_address;
+    std::vector<net_base::IPv6Address> dns_server_addresses;
+  };
+
   // Contains the network IPv4 subnets assigned to a Termina VM and to its inner
   // LXD container, and the name of the tap device created by patchpanel for the
   // VM. See TerminaVmStartupResponse in patchpanel_service.proto.
@@ -388,10 +397,14 @@ class BRILLO_EXPORT Client {
   // descriptor controlling the lifetime of the tethering setup. The tethering
   // setup is torn down when the file descriptor is closed by the client. If the
   // request failed, |callback| is ran with an invalid ScopedFD value.
+  // The additional argument |uplink_ipv6_config| should only be used to specify
+  // the IPv6 configuration of a secondary PDN used as the uplink network where
+  // patchpanel is not able to track the uplink network directly.
   virtual bool CreateTetheredNetwork(
       const std::string& downstream_ifname,
       const std::string& upstream_ifname,
       const std::optional<DHCPOptions>& dhcp_options,
+      const std::optional<UplinkIPv6Configuration>& uplink_ipv6_config,
       const std::optional<int>& mtu,
       CreateTetheredNetworkCallback callback) = 0;
 

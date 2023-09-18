@@ -137,6 +137,7 @@ class MockPatchpanelClient : public patchpanel::FakeClient {
               (const std::string&,
                const std::string&,
                const std::optional<DHCPOptions>&,
+               const std::optional<UplinkIPv6Configuration>&,
                const std::optional<int>& mtu,
                patchpanel::Client::CreateTetheredNetworkCallback),
               (override));
@@ -276,7 +277,7 @@ class TetheringManagerTest : public testing::Test {
       TetheringManager::SetEnabledResult expected_result) {
     SetEnabled(tethering_manager, enabled);
     if (enabled) {
-      ON_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _))
+      ON_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
           .WillByDefault(Return(true));
       // Send upstream downstream ready events.
       DownStreamDeviceEvent(tethering_manager,
@@ -948,7 +949,7 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
   SetEnabled(tethering_manager_, true);
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringStarting);
-  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _))
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
       .WillOnce(Return(true));
 
   // Downstream device event service up.
@@ -981,7 +982,7 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithEthernetUpstream) {
   EXPECT_CALL(manager_, FindActiveNetworkFromService(_))
       .WillOnce(Return(&eth_network));
 
-  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "eth0", _, _, _))
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "eth0", _, _, _, _))
       .WillOnce(Return(true));
 
   // TetheringManager will evaluate the downstream service readiness as soon as
@@ -1026,7 +1027,7 @@ TEST_F(TetheringManagerTest,
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringStarting);
   // Tethering network creation request fails.
-  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _))
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
       .WillOnce(Return(false));
 
   // Downstream device event service up.
@@ -1051,7 +1052,7 @@ TEST_F(TetheringManagerTest,
   SetEnabled(tethering_manager_, true);
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringStarting);
-  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _))
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
       .WillOnce(Return(true));
 
   // Downstream device event service up.
@@ -1088,7 +1089,7 @@ TEST_F(TetheringManagerTest,
                         hotspot_device_.get());
 
   // Upstream network fetched.
-  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _))
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
       .Times(1)
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(0);
@@ -1134,7 +1135,7 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotReady) {
   SetEnabled(tethering_manager_, true);
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringStarting);
-  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _))
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
       .WillOnce(Return(true));
 
   // Downstream device event service up.
@@ -1305,7 +1306,7 @@ TEST_F(TetheringManagerTest, DISABLED_UpstreamNetworkValidationFailed) {
   // Upstream network fetched. Network not ready.
   EXPECT_CALL(*network_, HasInternetConnectivity())
       .WillRepeatedly(Return(false));
-  ON_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _))
+  ON_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "wwan0", _, _, _, _))
       .WillByDefault(Return(true));
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);

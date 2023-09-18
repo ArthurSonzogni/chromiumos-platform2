@@ -691,11 +691,13 @@ class ClientImpl : public Client {
   void RegisterNeighborReachabilityEventHandler(
       NeighborReachabilityEventHandler handler) override;
 
-  bool CreateTetheredNetwork(const std::string& downstream_ifname,
-                             const std::string& upstream_ifname,
-                             const std::optional<DHCPOptions>& dhcp_options,
-                             const std::optional<int>& mtu,
-                             CreateTetheredNetworkCallback callback) override;
+  bool CreateTetheredNetwork(
+      const std::string& downstream_ifname,
+      const std::string& upstream_ifname,
+      const std::optional<DHCPOptions>& dhcp_options,
+      const std::optional<UplinkIPv6Configuration>& uplink_ipv6_config,
+      const std::optional<int>& mtu,
+      CreateTetheredNetworkCallback callback) override;
 
   bool CreateLocalOnlyNetwork(const std::string& ifname,
                               CreateLocalOnlyNetworkCallback callback) override;
@@ -1313,6 +1315,7 @@ bool ClientImpl::CreateTetheredNetwork(
     const std::string& downstream_ifname,
     const std::string& upstream_ifname,
     const std::optional<DHCPOptions>& dhcp_options,
+    const std::optional<UplinkIPv6Configuration>& uplink_ipv6_config,
     const std::optional<int>& mtu,
     CreateTetheredNetworkCallback callback) {
   TetheredNetworkRequest request;
@@ -1338,6 +1341,17 @@ bool ClientImpl::CreateTetheredNetwork(
     }
   }
   request.set_enable_ipv6(true);
+  if (uplink_ipv6_config.has_value()) {
+    auto* ipv6_config = request.mutable_uplink_ipv6_config();
+    auto* uplink_ipv6_cidr = ipv6_config->mutable_uplink_ipv6_cidr();
+    uplink_ipv6_cidr->set_addr(
+        uplink_ipv6_config->uplink_address.address().ToByteString());
+    uplink_ipv6_cidr->set_prefix_len(
+        uplink_ipv6_config->uplink_address.prefix_length());
+    for (const auto& dns_server : uplink_ipv6_config->dns_server_addresses) {
+      ipv6_config->add_dns_servers(dns_server.ToByteString());
+    }
+  }
 
   // Prepare an fd pair and append one fd directly after the serialized request.
   auto [fd_local, fd_remote] = CreateLifelineFd();

@@ -773,10 +773,6 @@ std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
   upstream_network.ifindex = ifindex;
   upstream_network.ifname = upstream_ifname;
 
-  // TODO(b/294287313): copy the IPv6 configuration of the upstream Network
-  // directly from shill's tethering request and notify GuestIPv6Service about
-  // the prefix of the upstream Network.
-
   // Setup the datapath for this interface, as if the device was advertised in
   // OnShillDevicesChanged. We skip services or setup that don'tr apply to
   // cellular (multicast traffic counters) or that are not interacting with the
@@ -786,9 +782,31 @@ std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
             << upstream_network;
   counters_svc_->OnPhysicalDeviceAdded(upstream_ifname);
   datapath_->StartConnectionPinning(upstream_network);
-  // TODO(b/294287313): Also call Datapath::StartSourceIPv6PrefixEnforcement()
-  // once it can support multiple different IPv6 prefixes for different
-  // interfaces at the same time.
+
+  // b/294287313: copy the IPv6 configuration of the upstream Network
+  // directly from shill's tethering request, notify GuestIPv6Service about
+  // the prefix of the upstream Network.
+  if (request.has_uplink_ipv6_config()) {
+    upstream_network.ipconfig.ipv6_cidr =
+        net_base::IPv6CIDR::CreateFromBytesAndPrefix(
+            request.uplink_ipv6_config().uplink_ipv6_cidr().addr(),
+            request.uplink_ipv6_config().uplink_ipv6_cidr().prefix_len());
+    for (const auto& dns : request.uplink_ipv6_config().dns_servers()) {
+      auto addr = net_base::IPv6Address::CreateFromBytes(dns);
+      if (addr) {
+        upstream_network.ipconfig.ipv6_dns_addresses.push_back(
+            addr->ToString());
+      }
+    }
+    if (upstream_network.ipconfig.ipv6_cidr) {
+      ipv6_svc_->OnUplinkIPv6Changed(upstream_network);
+      ipv6_svc_->UpdateUplinkIPv6DNS(upstream_network);
+      // TODO(b/294287313): Also start IPv6 src prefix enforcement
+    } else {
+      LOG(WARNING) << __func__ << ": failed to parse uplink IPv6 configuration";
+    }
+  }
+
   return upstream_network;
 }
 
@@ -796,11 +814,9 @@ void Manager::StopTetheringUpstreamNetwork(
     const ShillClient::Device& upstream_network) {
   LOG(INFO) << __func__ << ": Tearing down datapath for fake shill Device "
             << upstream_network;
+  ipv6_svc_->StopUplink(upstream_network);
   datapath_->StopConnectionPinning(upstream_network);
   counters_svc_->OnPhysicalDeviceRemoved(upstream_network.ifname);
-  // TODO(b/294287313): Also call Datapath::StopSourceIPv6PrefixEnforcement()
-  // once it can support multiple different IPv6 prefixes for different
-  // interfaces at the same time.
 }
 
 void Manager::OnNeighborReachabilityEvent(

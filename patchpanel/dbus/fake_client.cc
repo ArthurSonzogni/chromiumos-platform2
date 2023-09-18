@@ -139,6 +139,7 @@ bool FakeClient::CreateTetheredNetwork(
     const std::string& downstream_ifname,
     const std::string& upstream_ifname,
     const std::optional<DHCPOptions>& dhcp_options,
+    const std::optional<UplinkIPv6Configuration>& uplink_ipv6_config,
     const std::optional<int>& mtu,
     CreateTetheredNetworkCallback callback) {
   // TODO(b/239559602) Run synchronously or schedule |callback| to run if

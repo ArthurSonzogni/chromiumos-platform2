@@ -194,6 +194,7 @@ class Network {
 
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
+  Technology technology() const { return technology_; }
 
   // Interfaces between Service and Network.
   // Callback invoked when the static IP properties configured on the selected
