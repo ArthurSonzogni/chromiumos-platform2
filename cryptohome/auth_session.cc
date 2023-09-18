@@ -382,8 +382,9 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
     // Load the USS so that we can use it to check the validity of any auth
     // factors being loaded.
     std::set<std::string_view> uss_labels;
-    auto encrypted_uss = EncryptedUss::FromStorage(
-        obfuscated_username, *backing_apis.user_secret_stash_storage);
+    UserUssStorage uss_storage(*backing_apis.user_secret_stash_storage,
+                               obfuscated_username);
+    auto encrypted_uss = EncryptedUss::FromStorage(uss_storage);
     if (encrypted_uss.ok()) {
       uss_labels = encrypted_uss->WrappedMainKeyIds();
     }
@@ -425,6 +426,8 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_factor_status_update_timer_(
           std::move(params.auth_factor_status_update_timer)),
       auth_session_creation_time_(base::TimeTicks::Now()),
+      uss_storage_(*backing_apis.user_secret_stash_storage,
+                   obfuscated_username_),
       crypto_(backing_apis.crypto),
       platform_(backing_apis.platform),
       user_session_map_(backing_apis.user_session_map),
@@ -433,7 +436,6 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_block_utility_(backing_apis.auth_block_utility),
       auth_factor_driver_manager_(backing_apis.auth_factor_driver_manager),
       auth_factor_manager_(backing_apis.auth_factor_manager),
-      uss_storage_(backing_apis.user_secret_stash_storage),
       user_metadata_reader_(backing_apis.user_metadata_reader),
       features_(backing_apis.features),
       converter_(keyset_management_),
@@ -452,7 +454,6 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
   CHECK(keyset_management_);
   CHECK(auth_block_utility_);
   CHECK(auth_factor_manager_);
-  CHECK(uss_storage_);
   CHECK(features_);
   auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
   RecordAuthSessionStart();
@@ -821,7 +822,7 @@ void AuthSession::MigrateToUssDuringUpdateVaultKeyset(
     // FilesystemKeyset is the same for all VaultKeysets hence the session's
     // |file_system_keyset_| is what we need for the migrator.
     migrator.MigrateVaultKeysetToUss(
-        *uss_storage_, auth_factor_label, file_system_keyset_.value(),
+        uss_storage_, auth_factor_label, file_system_keyset_.value(),
         base::BindOnce(&AuthSession::OnMigrationUssCreatedForUpdate,
                        weak_factory_.GetWeakPtr(), auth_factor_type,
                        auth_factor_label, auth_factor_metadata, auth_input,
@@ -1007,7 +1008,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     UssMigrator migrator(username_);
 
     migrator.MigrateVaultKeysetToUss(
-        *uss_storage_, vault_keyset_->GetLabel(), file_system_keyset_.value(),
+        uss_storage_, vault_keyset_->GetLabel(), file_system_keyset_.value(),
         base::BindOnce(
             &AuthSession::OnMigrationUssCreated, weak_factory_.GetWeakPtr(),
             auth_block_type_for_resaved_vk, request_auth_factor_type, metadata,
@@ -1139,9 +1140,7 @@ bool AuthSession::PersistResetSecretToUss() {
   }
 
   // Persist the USS.
-  if (!uss_storage_
-           ->Persist(encrypted_uss_container.value(), obfuscated_username_)
-           .ok()) {
+  if (!uss_storage_.Persist(*encrypted_uss_container).ok()) {
     LOG(ERROR) << "Failed to persist user secret stash after "
                   "updating reset_secret.";
     return false;
@@ -1784,8 +1783,7 @@ void AuthSession::ResaveUssWithFactorRemoved(
     return;
   }
 
-  status = uss_storage_->Persist(encrypted_uss_container.value(),
-                                 obfuscated_username_);
+  status = uss_storage_.Persist(*encrypted_uss_container);
   if (!status.ok()) {
     LOG(ERROR) << "AuthSession: Failed to persist user secret stash after auth "
                   "factor removal.";
@@ -2069,7 +2067,7 @@ void AuthSession::ResaveUssWithFactorUpdated(
   // chance of ending in an inconsistent state on the disk: a created/updated
   // USS and a missing auth factor (note that we're using file system syncs to
   // have best-effort ordering guarantee).
-  status = uss_storage_->Persist(encrypted_uss_container, obfuscated_username_);
+  status = uss_storage_.Persist(encrypted_uss_container);
   if (!status.ok()) {
     LOG(ERROR)
         << "Failed to persist user secret stash after auth factor creation";
@@ -2310,8 +2308,7 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
             .Wrap(std::move(encrypted_uss_container).err_status()));
     return;
   }
-  if (auto status = session_->uss_storage_->Persist(
-          encrypted_uss_container.value(), session_->obfuscated_username_);
+  if (auto status = session_->uss_storage_.Persist(*encrypted_uss_container);
       !status.ok()) {
     LOG(ERROR)
         << "Failed to persist user secret stash after changing labels from: "
@@ -2733,8 +2730,8 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
   // Write out the new USS with the new factor added and the original one
   // removed. If this succeeds the then Replace operation is committed and the
   // overall operation is "complete" once we do all the in-memory swaps.
-  if (CryptohomeStatus status = session_->uss_storage_->Persist(
-          *encrypted_uss_container, session_->obfuscated_username_);
+  if (CryptohomeStatus status =
+          session_->uss_storage_.Persist(*encrypted_uss_container);
       !status.ok()) {
     LOG(ERROR) << "Failed to persist user secret stash after the creation of "
                   "auth factor with label: "
@@ -3486,8 +3483,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
   // chance of ending in an inconsistent state on the disk: a created/updated
   // USS and a missing auth factor (note that we're using file system syncs to
   // have best-effort ordering guarantee).
-  status = uss_storage_->Persist(encrypted_uss_container.value(),
-                                 obfuscated_username_);
+  status = uss_storage_.Persist(*encrypted_uss_container);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to persist user secret stash after the creation of "
                   "auth factor with label: "
@@ -3980,8 +3976,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   // Load the USS container with the encrypted payload.
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      uss_storage_->LoadPersisted(obfuscated_username_);
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss_storage_.LoadPersisted();
   if (!encrypted_uss.ok()) {
     LOG(ERROR) << "Failed to load the user secret stash";
     std::move(on_done).Run(

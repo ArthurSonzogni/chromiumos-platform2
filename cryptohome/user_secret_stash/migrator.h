@@ -37,7 +37,7 @@ class UssMigrator {
 
   // The function that migrates the VaultKeyset with |label| and
   // |filesystem_keyset| to AuthFactor and USS.
-  void MigrateVaultKeysetToUss(const UssStorage& user_secret_stash_storage,
+  void MigrateVaultKeysetToUss(const UserUssStorage& user_secret_stash_storage,
                                const std::string& label,
                                const FileSystemKeyset& filesystem_keyset,
                                CompletionCallback completion_callback);

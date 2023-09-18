@@ -17,7 +17,6 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -77,7 +76,7 @@ class EncryptedUss {
       const brillo::Blob& flatbuffer);
   // Attempt to construct an encrypted USS from a user's persistent storage.
   static CryptohomeStatusOr<EncryptedUss> FromStorage(
-      const ObfuscatedUsername& username, const UssStorage& storage);
+      const UserUssStorage& storage);
 
   // Create a stash backed by the given container.
   explicit EncryptedUss(Container container);
@@ -125,8 +124,7 @@ class EncryptedUss {
   // used with FromBlob.
   CryptohomeStatusOr<brillo::Blob> ToBlob() const;
   // Attempt to write the encrypted to a user's persistent storage.
-  CryptohomeStatus ToStorage(const ObfuscatedUsername& username,
-                             UssStorage& storage) const;
+  CryptohomeStatus ToStorage(UserUssStorage& storage) const;
 
  private:
   Container container_;

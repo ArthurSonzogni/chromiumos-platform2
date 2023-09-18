@@ -3512,8 +3512,8 @@ void UserDataAuth::ListAuthFactors(
     // Load the USS so that we can use it to check the validity of any auth
     // factors being loaded.
     std::set<std::string_view> uss_labels;
-    auto encrypted_uss =
-        EncryptedUss::FromStorage(obfuscated_username, *uss_storage_);
+    UserUssStorage user_uss_storage(*uss_storage_, obfuscated_username);
+    auto encrypted_uss = EncryptedUss::FromStorage(user_uss_storage);
     if (encrypted_uss.ok()) {
       uss_labels = encrypted_uss->WrappedMainKeyIds();
     }

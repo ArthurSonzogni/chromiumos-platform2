@@ -71,9 +71,9 @@ class UssMigratorTest : public ::testing::Test {
     auto iter = vk_map_.find(label);
     std::unique_ptr<VaultKeyset> vault_keyset = std::move(iter->second);
     TestFuture<std::unique_ptr<UserSecretStash>> migrate_future;
-    migrator_.MigrateVaultKeysetToUss(uss_storage_, vault_keyset->GetLabel(),
-                                      file_system_keyset_,
-                                      migrate_future.GetCallback());
+    migrator_.MigrateVaultKeysetToUss(
+        user_uss_storage_, vault_keyset->GetLabel(), file_system_keyset_,
+        migrate_future.GetCallback());
     user_secret_stash_ = migrate_future.Take();
   }
 
@@ -111,6 +111,8 @@ class UssMigratorTest : public ::testing::Test {
   FileSystemKeyset file_system_keyset_;
   std::unique_ptr<UserSecretStash> user_secret_stash_;
   UssStorage uss_storage_{&platform_};
+  UserUssStorage user_uss_storage_{uss_storage_,
+                                   SanitizeUserName(Username(kUser))};
   std::map<std::string, std::unique_ptr<VaultKeyset>> vk_map_;
   std::unique_ptr<VaultKeyset> pin_vault_keyset_;
   const Username username_;

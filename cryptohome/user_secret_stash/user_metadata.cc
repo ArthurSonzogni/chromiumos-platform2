@@ -9,7 +9,6 @@
 
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 
 namespace cryptohome {
 
@@ -18,8 +17,8 @@ UserMetadataReader::UserMetadataReader(UssStorage* storage)
 
 CryptohomeStatusOr<UserMetadata> UserMetadataReader::Load(
     const ObfuscatedUsername& username) {
-  ASSIGN_OR_RETURN(EncryptedUss uss,
-                   EncryptedUss::FromStorage(username, *storage_));
+  UserUssStorage user_storage(*storage_, username);
+  ASSIGN_OR_RETURN(EncryptedUss uss, EncryptedUss::FromStorage(user_storage));
   return uss.user_metadata();
 }
 

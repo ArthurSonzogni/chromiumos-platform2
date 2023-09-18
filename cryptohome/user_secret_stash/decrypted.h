@@ -115,8 +115,7 @@ class DecryptedUss {
     // transaction without committing any modifications you can simply discard
     // the Transaction object.
     CryptohomeStatus Commit() &&;
-    CryptohomeStatus Commit(const ObfuscatedUsername& username,
-                            UssStorage& storage) &&;
+    CryptohomeStatus Commit(UserUssStorage& storage) &&;
 
    private:
     // The DecryptedUss class needs to be able to construct Transaction objects.

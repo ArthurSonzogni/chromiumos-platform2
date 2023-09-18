@@ -867,6 +867,8 @@ class AuthSession final {
   // The decrypted UserSecretStash. Only populated for users who have it (legacy
   // users who only have vault keysets will have this field equal to null).
   std::unique_ptr<UserSecretStash> user_secret_stash_;
+  UserUssStorage uss_storage_;
+
   Crypto* const crypto_;
   Platform* const platform_;
   // The user session map and a verifier forwarder associated with it.
@@ -877,7 +879,6 @@ class AuthSession final {
   AuthBlockUtility* const auth_block_utility_;
   AuthFactorDriverManager* const auth_factor_driver_manager_;
   AuthFactorManager* const auth_factor_manager_;
-  UssStorage* const uss_storage_;
   UserMetadataReader* const user_metadata_reader_;
   // Unowned pointer.
   AsyncInitFeatures* const features_;

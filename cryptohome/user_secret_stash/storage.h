@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_USER_SECRET_STASH_STORAGE_H_
 #define CRYPTOHOME_USER_SECRET_STASH_STORAGE_H_
 
+#include <utility>
+
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/error/cryptohome_error.h"
@@ -35,6 +37,31 @@ class UssStorage final {
 
  private:
   Platform* const platform_;
+};
+
+// Wrapper around UssStorage binds it to a specific user. Individual instances
+// of USS are generally tied to a user and so it's useful to have a single
+// object to pass around.
+class UserUssStorage final {
+ public:
+  UserUssStorage(UssStorage& storage, ObfuscatedUsername username)
+      : storage_(&storage), username_(std::move(username)) {}
+
+  UserUssStorage(const UserUssStorage&) = delete;
+  UserUssStorage& operator=(const UserUssStorage&) = delete;
+
+  // These functions are the same was as the UssStorage versions minus the
+  // username parameter.
+  CryptohomeStatus Persist(const brillo::Blob& uss_container_flatbuffer) {
+    return storage_->Persist(uss_container_flatbuffer, username_);
+  }
+  CryptohomeStatusOr<brillo::Blob> LoadPersisted() const {
+    return storage_->LoadPersisted(username_);
+  }
+
+ private:
+  UssStorage* const storage_;
+  const ObfuscatedUsername username_;
 };
 
 }  // namespace cryptohome

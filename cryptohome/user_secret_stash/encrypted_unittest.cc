@@ -75,20 +75,20 @@ TEST(EncryptedUssTest, FromEmptyBlob) {
 }
 
 TEST(EncryptedUssTest, FromMissingFile) {
-  const ObfuscatedUsername username =
-      SanitizeUserName(Username{"user@example.com"});
   NiceMock<MockPlatform> platform;
   UssStorage uss_storage{&platform};
+  UserUssStorage user_uss_storage{
+      uss_storage, SanitizeUserName(Username("user@example.com"))};
 
   // No file has been set up so this should fail.
-  EXPECT_THAT(EncryptedUss::FromStorage(username, uss_storage), NotOk());
+  EXPECT_THAT(EncryptedUss::FromStorage(user_uss_storage), NotOk());
 }
 
 TEST(EncryptedUssTest, FromValidFile) {
-  const ObfuscatedUsername username =
-      SanitizeUserName(Username{"user@example.com"});
   NiceMock<MockPlatform> platform;
   UssStorage uss_storage{&platform};
+  UserUssStorage user_uss_storage{
+      uss_storage, SanitizeUserName(Username("user@example.com"))};
 
   // Construct a flatbuffer and write it out.
   UserSecretStashContainer fb_container = MakeFlatbufferForTest();
@@ -96,10 +96,10 @@ TEST(EncryptedUssTest, FromValidFile) {
   ASSERT_THAT(flatbuffer, Optional(_));
   auto blob_uss = EncryptedUss::FromBlob(*flatbuffer);
   ASSERT_THAT(blob_uss, IsOk());
-  ASSERT_THAT(blob_uss->ToStorage(username, uss_storage), IsOk());
+  ASSERT_THAT(blob_uss->ToStorage(user_uss_storage), IsOk());
 
   // The test flatbuffer should be loadable.
-  auto storage_uss = EncryptedUss::FromStorage(username, uss_storage);
+  auto storage_uss = EncryptedUss::FromStorage(user_uss_storage);
   ASSERT_THAT(storage_uss, IsOk());
   EXPECT_THAT(storage_uss->WrappedMainKeyIds(),
               UnorderedElementsAre("password", "pin"));
@@ -108,10 +108,10 @@ TEST(EncryptedUssTest, FromValidFile) {
 }
 
 TEST(EncryptedUssTest, ToStorageFails) {
-  const ObfuscatedUsername username =
-      SanitizeUserName(Username{"user@example.com"});
   NiceMock<MockPlatform> platform;
   UssStorage uss_storage{&platform};
+  UserUssStorage user_uss_storage{
+      uss_storage, SanitizeUserName(Username("user@example.com"))};
 
   // Disable all writes.
   EXPECT_CALL(platform, WriteFileAtomicDurable(_, _, _))
@@ -123,7 +123,7 @@ TEST(EncryptedUssTest, ToStorageFails) {
   ASSERT_THAT(flatbuffer, Optional(_));
   auto blob_uss = EncryptedUss::FromBlob(*flatbuffer);
   ASSERT_THAT(blob_uss, IsOk());
-  ASSERT_THAT(blob_uss->ToStorage(username, uss_storage), NotOk());
+  ASSERT_THAT(blob_uss->ToStorage(user_uss_storage), NotOk());
 }
 
 }  // namespace

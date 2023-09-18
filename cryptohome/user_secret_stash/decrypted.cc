@@ -340,8 +340,7 @@ CryptohomeStatus DecryptedUss::Transaction::Commit() && {
   return OkStatus<CryptohomeError>();
 }
 
-CryptohomeStatus DecryptedUss::Transaction::Commit(
-    const ObfuscatedUsername& username, UssStorage& storage) && {
+CryptohomeStatus DecryptedUss::Transaction::Commit(UserUssStorage& storage) && {
   // Build a new EncryptedUss with new ciphertext that reflects all of the
   // changes in the transaction.
   RETURN_IF_ERROR(EncryptIntoContainer(
@@ -349,7 +348,7 @@ CryptohomeStatus DecryptedUss::Transaction::Commit(
       rate_limiter_reset_secrets_, container_));
   EncryptedUss encrypted_uss(std::move(container_));
   // Persist the new encrypted data out to storage.
-  RETURN_IF_ERROR(encrypted_uss.ToStorage(username, storage));
+  RETURN_IF_ERROR(encrypted_uss.ToStorage(storage));
   // The stored USS is updated so push the updates in-memory as well.
   uss_.encrypted_ = std::move(encrypted_uss);
   uss_.reset_secrets_ = std::move(reset_secrets_);

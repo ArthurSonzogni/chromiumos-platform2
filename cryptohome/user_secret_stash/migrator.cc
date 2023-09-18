@@ -40,7 +40,7 @@ constexpr char kMigrationSecretLabel[] = "vk_to_uss_migration_secret_label";
 UssMigrator::UssMigrator(Username username) : username_(std::move(username)) {}
 
 void UssMigrator::MigrateVaultKeysetToUss(
-    const UssStorage& user_secret_stash_storage,
+    const UserUssStorage& user_secret_stash_storage,
     const std::string& label,
     const FileSystemKeyset& filesystem_keyset,
     CompletionCallback completion_callback) {
@@ -55,7 +55,7 @@ void UssMigrator::MigrateVaultKeysetToUss(
   // Load the USS container with the encrypted payload.
   std::unique_ptr<UserSecretStash> user_secret_stash;
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      user_secret_stash_storage.LoadPersisted(SanitizeUserName(username_));
+      user_secret_stash_storage.LoadPersisted();
   if (!encrypted_uss.ok()) {
     // If no UserSecretStash file found for the user create a new
     // UserSecretStash from the passed VaultKeyset and add the migration_secret

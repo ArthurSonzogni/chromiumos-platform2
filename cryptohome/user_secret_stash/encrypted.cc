@@ -203,8 +203,8 @@ CryptohomeStatusOr<EncryptedUss> EncryptedUss::FromBlob(
 }
 
 CryptohomeStatusOr<EncryptedUss> EncryptedUss::FromStorage(
-    const ObfuscatedUsername& username, const UssStorage& storage) {
-  ASSIGN_OR_RETURN(brillo::Blob flatbuffer, storage.LoadPersisted(username));
+    const UserUssStorage& storage) {
+  ASSIGN_OR_RETURN(brillo::Blob flatbuffer, storage.LoadPersisted());
   return FromBlob(flatbuffer);
 }
 
@@ -368,10 +368,9 @@ CryptohomeStatusOr<brillo::Blob> EncryptedUss::ToBlob() const {
   return *serialized_container;
 }
 
-CryptohomeStatus EncryptedUss::ToStorage(const ObfuscatedUsername& username,
-                                         UssStorage& storage) const {
+CryptohomeStatus EncryptedUss::ToStorage(UserUssStorage& storage) const {
   ASSIGN_OR_RETURN(brillo::Blob flatbuffer, ToBlob());
-  return storage.Persist(flatbuffer, username);
+  return storage.Persist(flatbuffer);
 }
 
 }  // namespace cryptohome
