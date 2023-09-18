@@ -31,6 +31,7 @@ A list of current devices with detachable base mappings is as follows:
 |Homestar              |Star
 |Wormdingler           |Eel
 |Quackingstick         |Duck
+|Starmie               |Jewel
 
 ## On Host
 
@@ -47,14 +48,15 @@ before RO is locked in the firmware branch].
 
 4.  Select board name.
 
-5.  Download the `firmware_from_source.tar` file and unzip.
+5.  Download the `firmware_from_source.tar` file and unzip via
+`mkdir -p firmware_from_source && tar xvf firmware_from_source.tar -C firmware_from_source`.
 
-6.  Change directory into the unzipped folder then cd into the base ec firmware
-folder (e.g. staff).
+6.  Export a variable `BASE_KB_BOARD` to specify the base keyboard board you
+want to run during the test. For example, `export BASE_KB_BOARD=hammer`.
 
-7.  Inside the base ec firmware folder, copy `ec.bin` into the
-chroot created in step 1. You can rename this file if you wish
-to indicate that it’s base firmware e.g. `staff_ec.bin`.
+7.  Copy the `firmware_from_source/${BASE_KB_BOARD}/ec.bin` into the chroot
+created in step 1. You can rename this file if you wish to indicate that it’s
+base firmware, e.g., `${BASE_KB_BOARD}_ec.bin`.
 
 8.  Flash the keyboard EC with the image obtained in step 2, following the steps
 in this [document](https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/hammer.md#Flash-EC)
@@ -66,15 +68,15 @@ step 5 following the steps below:
     [gen_test_images.sh](https://chromium.googlesource.com/chromiumos/third_party/autotest/+/HEAD/server/cros/faft/gen_test_images.sh) that generates the necessary
     images, supplying ec.bin as the first argument for the BOARD name
     (where board is the name of the detachable base) and the IMAGE name as
-    the second argument e.g. for staff:
+    the second argument:
 
-        ~/chromiumos/src/third_party/autotest/files/server/cros/faft/gen_test_images.sh staff staff_ec.bin
+        ~/chromiumos/src/third_party/autotest/files/server/cros/faft/gen_test_images.sh "${BASE_KB_BOARD}" "${BASE_KB_BOARD}_ec.bin"
 
     **The above script needs to run inside chroot of the DUT host**
 
     *For devices without fingerprint sensor, if you see error message like `Unable to open
-    /mnt/host/source/src/third_party/autotest/files/server/cros/faft/fingerprint_dev_keys/magnemite/dev_key.pem`,
-    please create a symlink from any existing key to the missing path manually.*
+    /mnt/host/source/src/third_party/autotest/files/server/cros/faft/fingerprint_dev_keys/${BASE_KB_BOARD}/dev_key.pem`,
+    please create a placeholder for that folder and file, a symlink from any existing key to the missing path manually is ok.*
 
     Ensure that the ec.bin image used above is the same image running on the
     base ec of the DUT. If they are different, RW verification will fail
@@ -83,31 +85,30 @@ step 5 following the steps below:
     You should then see the following 17 images created:
 
     1.  EC_RW.bin
-    2.  staff_corrupt_first_byte.bin
-    3.  staff.dev.hex
-    4.  staff.dev.rb9
+    2.  ${BASE_KB_BOARD}_corrupt_first_byte.bin
+    3.  ${BASE_KB_BOARD}.dev.hex
+    4.  ${BASE_KB_BOARD}.dev.rb9
     5.  key.vbprik2
-    6.  staff_corrupt_first_byte.bin.hex
-    7.  staff.dev.rb0
-    8.  staff.dev.rb9.hex
+    6.  ${BASE_KB_BOARD}_corrupt_first_byte.bin.hex
+    7.  ${BASE_KB_BOARD}.dev.rb0
+    8.  ${BASE_KB_BOARD}.dev.rb9.hex
     9.  key.vbpubk2
-    10. staff_corrupt_last_byte.bin
-    11. staff.dev.rb0.hex
-    12. staff.bin
-    13. staff_corrupt_last_byte.bin.hex
-    14. staff.dev.rb1
-    15. staff.bin.hex
-    16. staff.dev
-    17. staff.dev.rb1.hex
+    10. ${BASE_KB_BOARD}_corrupt_last_byte.bin
+    11. ${BASE_KB_BOARD}.dev.rb0.hex
+    12. ${BASE_KB_BOARD}.bin
+    13. ${BASE_KB_BOARD}_corrupt_last_byte.bin.hex
+    14. ${BASE_KB_BOARD}.dev.rb1
+    15. ${BASE_KB_BOARD}.bin.hex
+    16. ${BASE_KB_BOARD}.dev
+    17. ${BASE_KB_BOARD}.dev.rb1.hex
 
     There is one image file that must be **manually** included in the images
     folder. For first-time firmware qualification e.g. of a new keyboard,
-    include a copy of the firmware and name it `BASE_NAME_older.bin` where
-    BASE_NAME is the keyboard name e.g. `staff_older.bin`.
+    include a copy of the firmware and name it `${BASE_KB_BOARD}_older.bin`.
     For revised firmware qualifications i.e. qualifying new version of
     RO/RW but not the first RO/RW, include an image of the older firmware
-    and also name it `BASE_NAME_older.bin`. The image
-    `BASE_NAME_older.bin` is used to test that RW updates can happen with
+    and also name it `${BASE_KB_BOARD}_older.bin`. The image
+    `${BASE_KB_BOARD}_older.bin` is used to test that RW updates can happen with
     the new firmware. In the case of first time firmware, the tests still
     check that RW region is updatable even though the older image is the
     same as the newer image.
@@ -142,7 +143,7 @@ You should also see the following control files
 # Test Execution
 
 To run the tests, simply run each of the **control files** in the DUT from the
-`/usr/local/bin/hammertestsi` directory. You can do this directly on the DUT or
+`/usr/local/bin/hammertests` directory. You can do this directly on the DUT or
 ssh via the host. E.g.
 
     ./hammertests_control.py
@@ -166,14 +167,12 @@ Image that should be flashed on DUT for hammertests_control.py:
 This **locked** image should be supplied by the dev who requests the testing and
 attached in the testing request bug.
 
-|       Control file     |Tests executed      |
-|------------------------|--------------------|
+|       Control file      |Tests executed      |
+|-------------------------|--------------------|
 |hammertests_control_rb.py|rb_protection.py
 
 Image that should be flashed on DUT for hammertests_control_rb.py:
-`$BASE_NAME.dev.rb1` *(rollback version = 1)*.
-This image is in the ‘images’ folder which is generated by the script
-[gen_test_images.sh](https://chromium.googlesource.com/chromiumos/third_party/autotest/+/HEAD/server/cros/faft/gen_test_images.sh)
+`${BASE_KB_BOARD}.dev.rb1` *(rollback version = 1)*.
 
 |       Control file      |Tests executed             |
 |-------------------------|---------------------------|
@@ -190,7 +189,7 @@ After running all the tests, **attach the log files** to the request bug.
 
 ## RO cannot update RW with dev signed image:
 
--   Flash the image `staff.dev` generated by ./genimages_staff.sh and verify on
+-   Flash the image `${BASE_KB_BOARD}.dev` generated by ./gen_test_images.sh and verify on
 the ec console that RW update fails due to failed signature verification.
 
 ## Keyboard
