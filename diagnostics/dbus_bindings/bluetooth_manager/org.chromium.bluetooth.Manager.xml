@@ -12,6 +12,31 @@
     <method name="GetFlossEnabled">
       <arg name="enabled" direction="out" type="b"/>
     </method>
+    <method name="GetDefaultAdapter">
+      <tp:docstring>
+        Gets the default adapter's HCI interface number.
+      </tp:docstring>
+      <arg name="hci_interface" direction="out" type="i"/>
+    </method>
+    <method name="GetAdapterEnabled">
+      <tp:docstring>
+        Gets the specific adapter's powered/enabled state.
+      </tp:docstring>
+      <arg name="hci_interface" direction="in" type="i"/>
+      <arg name="enabled" direction="out" type="b"/>
+    </method>
+    <method name="Start">
+      <tp:docstring>
+        Powers on the specific adapter.
+      </tp:docstring>
+      <arg name="hci_interface" direction="in" type="i" />
+    </method>
+    <method name="Stop">
+      <tp:docstring>
+        Powers off the specific adapter.
+      </tp:docstring>
+      <arg name="hci_interface" direction="in" type="i" />
+    </method>
     <method name="RegisterCallback">
       <arg name="callback_path" direction="in" type="o" />
     </method>

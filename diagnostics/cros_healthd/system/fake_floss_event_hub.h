@@ -29,6 +29,8 @@ class FakeFlossEventHub final : public FlossEventHub {
   void SendDeviceRemoved(const brillo::VariantDictionary& device);
   void SendManagerAdded(
       org::chromium::bluetooth::ManagerProxyInterface* manager);
+  void SendManagerRemoved(
+      const dbus::ObjectPath& manager_path = dbus::ObjectPath(""));
 };
 
 }  // namespace diagnostics

@@ -29,6 +29,8 @@ using OnFlossDeviceAddedCallback =
     base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
 using OnFlossDeviceRemovedCallback =
     base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
+using OnFlossManagerRemovedCallback =
+    base::RepeatingCallback<void(const dbus::ObjectPath& manager_path)>;
 
 // Interface for subscribing Bluetooth events via Floss proxies.
 class FlossEventHub {
@@ -54,6 +56,8 @@ class FlossEventHub {
       OnFlossDeviceAddedCallback callback);
   base::CallbackListSubscription SubscribeDeviceRemoved(
       OnFlossDeviceRemovedCallback callback);
+  base::CallbackListSubscription SubscribeManagerRemoved(
+      OnFlossManagerRemovedCallback callback);
 
   // TODO(b/300239296): Support adapter and device property changed events.
 
@@ -99,6 +103,8 @@ class FlossEventHub {
       device_added_observers_;
   base::RepeatingCallbackList<void(const brillo::VariantDictionary& device)>
       device_removed_observers_;
+  base::RepeatingCallbackList<void(const dbus::ObjectPath& adapter_path)>
+      manager_removed_observers_;
 
   // Used to create Floss callback services.
   scoped_refptr<dbus::Bus> bus_;

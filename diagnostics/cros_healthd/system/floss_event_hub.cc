@@ -75,6 +75,11 @@ base::CallbackListSubscription FlossEventHub::SubscribeDeviceRemoved(
   return device_removed_observers_.Add(callback);
 }
 
+base::CallbackListSubscription FlossEventHub::SubscribeManagerRemoved(
+    OnFlossManagerRemovedCallback callback) {
+  return manager_removed_observers_.Add(callback);
+}
+
 void FlossEventHub::OnAdapterAdded(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter) {
   if (adapter) {
@@ -112,6 +117,7 @@ void FlossEventHub::OnManagerAdded(
 
 void FlossEventHub::OnManagerRemoved(const dbus::ObjectPath& manager_path) {
   manager_callback_.reset();
+  manager_removed_observers_.Notify(manager_path);
 }
 
 void FlossEventHub::OnAdapterPoweredChanged(int32_t hci_interface,

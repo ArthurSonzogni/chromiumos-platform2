@@ -31,4 +31,9 @@ void FakeFlossEventHub::SendManagerAdded(
   OnManagerAdded(manager);
 }
 
+void FakeFlossEventHub::SendManagerRemoved(
+    const dbus::ObjectPath& manager_path) {
+  OnManagerRemoved(manager_path);
+}
+
 }  // namespace diagnostics
