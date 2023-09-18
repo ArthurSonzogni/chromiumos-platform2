@@ -5,22 +5,13 @@
 #include "rmad/udev/udev_device.h"
 
 #include <blkid/blkid.h>
-#include <string.h>
 
 #include <memory>
 #include <string>
 #include <utility>
 
 #include <brillo/udev/udev_device.h>
-
-namespace {
-
-bool ContainsRemovableAttribute(const brillo::UdevDevice& device) {
-  const char* value = device.GetSysAttributeValue("removable");
-  return value && strncmp(value, "1", 1) == 0;
-}
-
-}  // namespace
+#include <brillo/udev/utils.h>
 
 namespace rmad {
 
@@ -35,16 +26,7 @@ UdevDeviceImpl::~UdevDeviceImpl() {
 }
 
 bool UdevDeviceImpl::IsRemovable() const {
-  if (ContainsRemovableAttribute(*dev_)) {
-    return true;
-  }
-  for (std::unique_ptr<brillo::UdevDevice> parent = dev_->GetParent(); parent;
-       parent = parent->GetParent()) {
-    if (ContainsRemovableAttribute(*parent)) {
-      return true;
-    }
-  }
-  return false;
+  return brillo::IsRemovable(*dev_);
 }
 
 std::string UdevDeviceImpl::GetSysPath() const {

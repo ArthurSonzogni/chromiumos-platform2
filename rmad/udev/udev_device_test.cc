@@ -12,8 +12,8 @@
 #include <gtest/gtest.h>
 
 using testing::ByMove;
-using testing::Eq;
 using testing::Return;
+using testing::StrEq;
 using testing::StrictMock;
 
 namespace rmad {
@@ -26,7 +26,7 @@ class UdevDeviceTest : public testing::Test {
 
 TEST_F(UdevDeviceTest, IsRemovable) {
   auto dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
-  EXPECT_CALL(*dev, GetSysAttributeValue(Eq("removable")))
+  EXPECT_CALL(*dev, GetSysAttributeValue(StrEq("removable")))
       .WillOnce(Return("1"));
 
   auto udev_device = std::make_unique<UdevDeviceImpl>(std::move(dev));
@@ -35,7 +35,7 @@ TEST_F(UdevDeviceTest, IsRemovable) {
 
 TEST_F(UdevDeviceTest, IsNotRemovable) {
   auto dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
-  EXPECT_CALL(*dev, GetSysAttributeValue(Eq("removable")))
+  EXPECT_CALL(*dev, GetSysAttributeValue(StrEq("removable")))
       .WillOnce(Return("0"));
   EXPECT_CALL(*dev, GetParent()).WillOnce(Return(ByMove(nullptr)));
 
@@ -45,11 +45,11 @@ TEST_F(UdevDeviceTest, IsNotRemovable) {
 
 TEST_F(UdevDeviceTest, IsRemovable_MultiLayer) {
   auto parent_dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
-  EXPECT_CALL(*parent_dev, GetSysAttributeValue(Eq("removable")))
+  EXPECT_CALL(*parent_dev, GetSysAttributeValue(StrEq("removable")))
       .WillOnce(Return("1"));
 
   auto dev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
-  EXPECT_CALL(*dev, GetSysAttributeValue(Eq("removable")))
+  EXPECT_CALL(*dev, GetSysAttributeValue(StrEq("removable")))
       .WillOnce(Return("0"));
   EXPECT_CALL(*dev, GetParent())
       .WillOnce(Return(ByMove(std::move(parent_dev))));
