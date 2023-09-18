@@ -8,6 +8,7 @@
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -17,12 +18,14 @@
 namespace brillo {
 
 // Storage balloon is a construct that artificially restricts writes to the
-// filesystem. By fallocate()ing space, storage balloons place an upper bound on
-// the available space for other users on the filesystem.
+// filesystem. By using ext4 reserved clusters, we can reserve space for
+// filesystem metadata that will not be used for any file allocations.
 class BRILLO_EXPORT StorageBalloon {
  public:
-  explicit StorageBalloon(const base::FilePath& path);
-  virtual ~StorageBalloon() = default;
+  virtual ~StorageBalloon();
+
+  static std::unique_ptr<StorageBalloon> GenerateStorageBalloon(
+      const base::FilePath& path);
 
   // Checks if the storage balloon is still in a valid state.
   bool IsValid();
@@ -31,27 +34,28 @@ class BRILLO_EXPORT StorageBalloon {
   bool Adjust(int64_t target_space);
   // Resizes the balloon to zero.
   bool Deflate();
+
   // Get the current balloon size.
-  int64_t GetCurrentBalloonSize();
-  // Disable provisioning when fallocate() is called.
-  bool DisableProvisioning();
+  virtual int64_t GetCurrentBalloonSize();
 
  protected:
-  virtual bool Fallocate(int64_t offset, int64_t len);
+  // Only used by factory method.
+  StorageBalloon(const base::FilePath& path,
+                 const base::FilePath& reserved_clusters_path);
 
-  virtual bool Ftruncate(int64_t length);
+  // Set the balloon size.
+  virtual bool SetBalloonSize(int64_t size);
 
-  virtual bool FstatFs(struct statfs* buf);
+  virtual int64_t GetClusterSize();
 
-  virtual bool Fstat(struct stat* buf);
-
-  virtual bool Setxattr(const char* name, const std::string& value);
+  virtual bool StatVfs(struct statvfs* buf);
 
  private:
   bool CalculateBalloonInflationSize(int64_t target_space,
                                      int64_t* inflation_size);
 
-  base::ScopedFD balloon_fd_;
+  base::FilePath filesystem_path_;
+  base::FilePath sysfs_reserved_clusters_path_;
 };
 
 }  // namespace brillo
