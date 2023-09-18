@@ -2289,7 +2289,7 @@ bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
+    LOG(ERROR) << "Requested VM " << vm_id.name() << " does not exist";
     // This is not an error to Chrome
     return true;
   }
@@ -2402,7 +2402,7 @@ SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
 
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
+    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
     // This is not an error to Chrome
     response.set_success(true);
     return response;
@@ -2437,7 +2437,7 @@ ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
 
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
+    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
     // This is not an error to Chrome
     response.set_success(true);
     return response;
@@ -2481,7 +2481,7 @@ GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
 
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
+    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
 
     return response;
   }
@@ -2514,9 +2514,8 @@ GetVmEnterpriseReportingInfoResponse Service::GetVmEnterpriseReportingInfo(
 
   auto iter = FindVm(request.owner_id(), request.vm_name());
   if (iter == vms_.end()) {
-    const std::string error_message = "Requested VM does not exist";
-    LOG(ERROR) << error_message;
-    response.set_failure_reason(error_message);
+    LOG(ERROR) << "Requested VM " << request.vm_name() << " does not exist";
+    response.set_failure_reason("Requested VM does not exist");
     return response;
   }
 
@@ -3050,7 +3049,7 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
   // Stop the associated VM if it is still running.
   auto iter = FindVm(request.cryptohome_id(), request.vm_name());
   if (iter != vms_.end()) {
-    LOG(INFO) << "Shutting down VM";
+    LOG(INFO) << "Shutting down VM " << request.vm_name();
 
     if (!StopVmInternal(VmId(request.cryptohome_id(), request.vm_name()),
                         DESTROY_DISK_IMAGE_REQUESTED)) {
@@ -3065,7 +3064,7 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
   // Delete shader cache best-effort. Shadercached is only distributed to boards
   // if borealis enabled. There is no way to check VM type easily unless we turn
   // it up.
-  // TODO(endlesspring): Deal with errors once we distriute to all boards.
+  // TODO(endlesspring): Deal with errors once we distribute to all boards.
   auto _ = PurgeShaderCache(request.cryptohome_id(), request.vm_name(), bus_,
                             shadercached_proxy_);
 
@@ -3368,7 +3367,7 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
 
   if (!request.force()) {
     if (FindVm(vm_id) != vms_.end()) {
-      LOG(ERROR) << "VM is currently running";
+      LOG(ERROR) << "VM " << request.vm_name() << " is currently running";
       response.set_failure_reason("VM is currently running");
       return response;
     }
@@ -3668,7 +3667,7 @@ DetachUsbDeviceResponse Service::DetachUsbDevice(
 
   auto iter = FindVm(request.owner_id(), request.vm_name());
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
+    LOG(ERROR) << "Requested VM " << request.vm_name() << " does not exist";
     response.set_reason("Requested VM does not exist");
     return response;
   }
@@ -3701,7 +3700,7 @@ ListUsbDeviceResponse Service::ListUsbDevices(
 
   auto iter = FindVm(request.owner_id(), request.vm_name());
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
+    LOG(ERROR) << "Requested VM " << request.vm_name() << " does not exist";
     return response;
   }
 
@@ -3837,7 +3836,7 @@ void Service::ReclaimVmMemory(
 
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
+    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
     response_sender->Return(response);
     return;
@@ -3872,7 +3871,7 @@ void Service::AggressiveBalloon(
 
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
+    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
     response_sender->Return(response);
     return;
@@ -4218,7 +4217,7 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
   auto iter = FindVm(tremplin_started_signal.owner_id(),
                      tremplin_started_signal.vm_name());
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Received signal from an unknown vm."
+    LOG(ERROR) << "Received signal from an unknown VM "
                << VmId(tremplin_started_signal.owner_id(),
                        tremplin_started_signal.vm_name());
     return;
@@ -4238,7 +4237,7 @@ void Service::OnVmToolsStateChangedSignal(dbus::Signal* signal) {
 
   auto iter = FindVm(owner_id, vm_name);
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Received signal from an unknown vm "
+    LOG(ERROR) << "Received signal from an unknown VM "
                << VmId(owner_id, vm_name);
     return;
   }
@@ -4720,7 +4719,7 @@ void Service::SwapVm(
 
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist";
+    LOG(ERROR) << "Requested VM " << request.name() << " does not exist";
     response.set_failure_reason("Requested VM does not exist");
     response_sender->Return(response);
     return;
