@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Generate the overalls class and mock."""
 from __future__ import print_function
 
@@ -74,10 +74,11 @@ def build_filter(wd):
     using |git grep|. The content of |overalls| project itself is ignored.
 
     Args:
-      wd: String of the woring directory where |git grep| is run.
+        wd: String of the woring directory where |git grep| is run.
 
     Returns:
-      A filter function that returns |True| iff the usage is found by |git grep|.
+        A filter function that returns |True| iff the usage is found by
+        |git grep|.
     """
     cmd = [
         "git",
@@ -97,23 +98,24 @@ def build_filter(wd):
 def parse_trousers_input_args(s):
     """Parses Trspi family's input arguments.
 
-    Given a string from of input arguments of a trousers API, the input arguments
-    parsed into tokens and then convert to tuples. For example:
+    Given a string from of input arguments of a trousers API, the input
+    arguments parsed into tokens and then convert to tuples. For example:
     "BYTE *s, unsigned *len"
     ->
     [("BYTE *", "s"), ("unsigned *", "len")]
 
     Args:
-      s: String representation of the input arguments of a certain Trspi function.
+        s: String representation of the input arguments of a certain Trspi
+            function.
 
     Returns:
-      A list of tuples in form of (data type, variable name).
+        A list of tuples in form of (data type, variable name).
     """
     arr = s.split(",")
     for i, p in enumerate(arr):
         p = p.strip()
-        # are stick with the variable name, e.g., UINT64 *offset, so the separator
-        # could be last ' ' or '*'.
+        # are stick with the variable name, e.g., UINT64 *offset, so the
+        # separator could be last ' ' or '*'.
         pos = p.strip().rfind("*")
         if pos == -1:
             pos = p.rfind(" ")
@@ -128,15 +130,15 @@ def process_function_macro(args1, args2, arr2):
     """Parses Trspi family's input arguments for those implemented by macros.
 
     Args:
-      args1: String representation of the input arguments of a certain the
-        function as the caller.
-      args2: String representation of the input arguments of a certain the
-        function as the callee.
-      arr2: List returned by |parse_trousers_input_args| when processing the
-        callee.
+        args1: String representation of the input arguments of a certain the
+            function as the caller.
+        args2: String representation of the input arguments of a certain the
+            function as the callee.
+        arr2: List returned by |parse_trousers_input_args| when processing the
+            callee.
 
     Returns:
-      A list of tuples in form of (type, name).
+        A list of tuples in form of (type, name).
     """
     tokens1 = args1.replace(" ", "").split(",")
     tokens2 = args2.replace(" ", "").split(",")
@@ -156,14 +158,14 @@ def process_trousers_h(input_string):
     ("BYTE *", "Trspi_Native_To_UNICODE",
     [("BYTE *", "s"), ("unsigned *", "len")])
 
-    Note: the macro-style implementaions is also parsed into the same form.
+    Note: the macro-style implementations is also parsed into the same form.
 
     Args:
-      input_string: the file content of trousers.h in a string.
+        input_string: the file content of trousers.h in a string.
 
     Returns:
-      A list of 3-tuples where the data is in order of return type, function name,
-      and a list of 2-tuple in form of (data type, variable name)
+        A list of 3-tuples where the data is in order of return type, function
+        name, and a list of 2-tuple in form of (data type, variable name)
     """
     input_string = input_string.replace("\\\n", "").replace(",\n", ", ")
     r = re.compile(
@@ -219,11 +221,11 @@ def process_tspi_h(input_string):
     ("TSS_RESULT", "Tspi_Context_Create", [("TSS_HCONTEXT*", "phContext")])
 
     Args:
-      input_string: the file content of tspi.h in a string.
+        input_string: the file content of tspi.h in a string.
 
     Returns:
-      A list of 3-tuples of return type, function name, a list of 2-tuple in form
-      of (data type, variable name)
+        A list of 3-tuples of return type, function name, a list of 2-tuple in
+        form of (data type, variable name)
     """
     r = re.compile(r"^TSPICALL[\s\S]*?;", flags=re.M)
     arr = []
@@ -244,10 +246,10 @@ def process_tspi_h(input_string):
 
 
 def tuples_to_wrapper_class(wrapper_class_name, functions):
-    """Generates a wrapper class as a string from the parsed result of headers."""
+    """Generates wrapper class as a string from the parsed result of headers."""
 
     def to_virtual_member_function(return_type, name, arguments):
-        """Generates the function declaraion from a parsed API information."""
+        """Generates the function declaration from a parsed API information."""
         for i, a in enumerate(arguments):
             if not a[1]:
                 arguments[i] = (a[0], "arg%d" % i)
@@ -317,14 +319,14 @@ def generate_source_code_string(include_guard, includes, namespaces, body):
     """Composes the inputs to a source file content.
 
     Args:
-      include_guard: The string used as one-time includ guard.
-      includes: The string of '#include ...' fields.
-      namespaces: A iterable object that contains a series of namespaces.
-      body: source code that put inside the nested namespaces depecified in the
-        last argument.
+        include_guard: The string used as one-time include guard.
+        includes: The string of '#include ...' fields.
+        namespaces: A iterable object that contains a series of namespaces.
+        body: source code that put inside the nested namespaces depecified in
+            the last argument.
 
     Returns:
-      The file content string that is composed of the input parameters.
+        The file content string that is composed of the input parameters.
     """
     include_guard_begin = ""
     if include_guard:
@@ -358,7 +360,7 @@ def generate_source_code_file(
     content = generate_source_code_string(
         include_guard, includes, namespaces, body
     )
-    with open(file_path, "w") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
     cmd = ["clang-format", "-sort-includes=0", "-i", file_path]
     subprocess.check_call(cmd)
@@ -368,12 +370,12 @@ def generate_include_guard(subdir, filename):
     """Generates the include guard for a C++ header.
 
     Args:
-      subdir: the directory whare we put the generated file; it's relavtie to
-        |platform2| repository.
-      filename: the name of the file
+        subdir: the directory whare we put the generated file; it's relavtie to
+            |platform2| repository.
+        filename: the name of the file
 
     Returns:
-      The macro used as the include guard.
+        The macro used as the include guard.
     """
     subdir = subdir.strip("/\\")
     s = subdir.strip("/") + "_" + filename + "_"
@@ -423,12 +425,12 @@ def main(args):
 
     trousers_dir = os.path.join(os.path.abspath(opts.include_dir), "trousers")
     trousers_h_path = os.path.join(trousers_dir, "trousers.h")
-    with open(trousers_h_path, "r") as f:
+    with open(trousers_h_path, "r", encoding="utf-8") as f:
         input_string = f.read()
     result = process_trousers_h(input_string)
     tss_dir = os.path.join(os.path.abspath(opts.include_dir), "tss")
     tss_h_path = os.path.join(tss_dir, "tspi.h")
-    with open(tss_h_path, "r") as f:
+    with open(tss_h_path, "r", encoding="utf-8") as f:
         input_string = f.read()
     result += process_tspi_h(input_string)
     result += _EXTENDED_APIS
