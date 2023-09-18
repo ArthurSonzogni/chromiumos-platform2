@@ -1874,6 +1874,14 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
     return false;
   }
 
+  // Ensure any prior tethering iptables setup that might not have been
+  // properly torn down is removed.
+  if (!FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
+                  kAcceptDownstreamNetworkChain)) {
+    LOG(ERROR) << __func__ << " " << info << ": Failed to flush "
+               << kAcceptDownstreamNetworkChain;
+  }
+
   // Accept DHCP traffic if DHCP is used.
   if (info.enable_ipv4_dhcp &&
       !ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
@@ -1893,11 +1901,6 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
                << ": Failed to create jump rule from INPUT to "
                << kAcceptDownstreamNetworkChain << " for ingress traffic on "
                << info.downstream_ifname;
-    if (!FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
-                    kAcceptDownstreamNetworkChain)) {
-      LOG(ERROR) << __func__ << " " << info << ": Failed to flush "
-                 << kAcceptDownstreamNetworkChain;
-    }
     return false;
   }
 

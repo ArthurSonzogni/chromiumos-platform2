@@ -1123,6 +1123,8 @@ TEST(DatapathTest, StartDownstreamTetheredNetwork) {
 
   EXPECT_CALL(system, IfNametoindex("wwan0")).WillRepeatedly(Return(4));
   Verify_iptables(*runner, IpFamily::kDual,
+                  "filter -F accept_downstream_network -w");
+  Verify_iptables(*runner, IpFamily::kDual,
                   "filter -I INPUT -i ap0 -j accept_downstream_network -w");
   Verify_iptables(*runner, IpFamily::kIPv4,
                   "filter -I accept_downstream_network -p udp --dport 67 "
