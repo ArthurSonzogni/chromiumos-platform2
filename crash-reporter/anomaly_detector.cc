@@ -508,7 +508,7 @@ constexpr LazyRE2 btrfs_extent_corruption = {
     R"(csum 0x[[:xdigit:]]+ mirror [[:digit:]]+)"};
 constexpr LazyRE2 btrfs_tree_node_corruption = {
     R"(BTRFS warning \(device .*\): .*checksum verify failed on )"
-    R"([[:digit:]]+ wanted (0x)?[[:xdigit:]]+ found (0x)?[[:xdigit:]]+ level )"
+    R"(.* wanted (0x)?[[:xdigit:]]+ found (0x)?[[:xdigit:]]+ level )"
     R"([[:digit:]]+)"};
 
 MaybeCrashReport TerminaParser::ParseLogEntryForBtrfs(int cid,
