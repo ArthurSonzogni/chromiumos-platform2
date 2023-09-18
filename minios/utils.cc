@@ -19,6 +19,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/kernel_config_utils.h>
+#include <brillo/udev/udev.h>
+#include <brillo/udev/udev_device.h>
+#include <brillo/udev/udev_enumerate.h>
+#include <brillo/udev/utils.h>
 
 #include "minios/minios.h"
 #include "minios/process_manager.h"
@@ -43,6 +47,10 @@ const char kKernelPreambleSizePrefix[] = "kernel::preamble::size::";
 const char kKernelBodySizePrefix[] = "kernel::body::size::";
 
 const char kMiniOsVersionKey[] = "cros_minios_version";
+
+const char kBlockSubsystem[] = "block";
+const char kFileSystemProperty[] = "ID_FS_USAGE";
+const char kFilesystem[] = "filesystem";
 }  // namespace
 
 namespace minios {
@@ -333,6 +341,40 @@ std::optional<std::string> GetMiniOSVersion() {
                << kMiniOsVersionKey;
   }
   return version;
+}
+
+bool GetRemovableDevices(std::vector<base::FilePath>& devices,
+                         std::unique_ptr<brillo::Udev> udev) {
+  devices.clear();
+  auto udev_enumerate = udev->CreateEnumerate();
+  // Look for all block devices with a filesystem.
+  if (!udev_enumerate->AddMatchSubsystem(kBlockSubsystem)) {
+    LOG(ERROR) << "Failed to add udev match subsystem";
+    return false;
+  }
+
+  if (!udev_enumerate->AddMatchProperty(kFileSystemProperty, kFilesystem)) {
+    LOG(ERROR) << "Failed to add udev match property";
+    return false;
+  }
+
+  if (!udev_enumerate->ScanDevices()) {
+    LOG(ERROR) << "Failed to scan for block devices";
+    return false;
+  }
+
+  // Step through removable devices and look for removable property, only
+  // store devices that are removable.
+  for (auto entry = udev_enumerate->GetListEntry(); entry;
+       entry = entry->GetNext()) {
+    auto dev = udev->CreateDeviceFromSysPath(entry->GetName());
+    if (!dev) {
+      LOG(WARNING) << "No device found at path: " << entry->GetName();
+    } else if (brillo::IsRemovable(*dev)) {
+      devices.emplace_back(dev->GetDeviceNode());
+    }
+  }
+  return true;
 }
 
 }  // namespace minios

@@ -10,6 +10,10 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/mock_log.h>
+#include <brillo/udev/mock_udev.h>
+#include <brillo/udev/mock_udev_device.h>
+#include <brillo/udev/mock_udev_enumerate.h>
+#include <brillo/udev/mock_udev_list_entry.h>
 #include <gtest/gtest.h>
 
 #include "gmock/gmock.h"
@@ -20,9 +24,13 @@ namespace minios {
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::ElementsAre;
 using ::testing::HasSubstr;
+using ::testing::NiceMock;
 using ::testing::Optional;
+using ::testing::Return;
 using ::testing::SetArgPointee;
+using ::testing::StrEq;
 using ::testing::StrictMock;
 
 class UtilTest : public ::testing::Test {
@@ -282,6 +290,39 @@ TEST(UtilsTest, KernelSizeFailuresTest) {
   EXPECT_EQ(
       KernelSize(std::move(mock_process_manager), base::FilePath{device_path}),
       std::nullopt);
+}
+
+TEST(UtilsTest, GetRemovableDevices) {
+  auto device_list_entry =
+      std::make_unique<NiceMock<brillo::MockUdevListEntry>>();
+  auto device = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
+
+  auto mock_udev_enumerate =
+      std::make_unique<StrictMock<brillo::MockUdevEnumerate>>();
+  auto mock_udev = std::make_unique<StrictMock<brillo::MockUdev>>();
+  constexpr auto& device_node = "/dev/sda1";
+
+  EXPECT_CALL(*mock_udev_enumerate, AddMatchSubsystem(StrEq("block")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_udev_enumerate,
+              AddMatchProperty(StrEq("ID_FS_USAGE"), StrEq("filesystem")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_udev_enumerate, ScanDevices()).WillOnce(Return(true));
+
+  // Setup device to be removable.
+  EXPECT_CALL(*device, GetSysAttributeValue(_)).WillOnce(Return("1"));
+  EXPECT_CALL(*device, GetDeviceNode()).WillOnce(Return(device_node));
+  EXPECT_CALL(*mock_udev_enumerate, GetListEntry())
+      .WillOnce(Return(std::move(device_list_entry)));
+  EXPECT_CALL(*mock_udev, CreateDeviceFromSysPath(_))
+      .WillOnce(Return(std::move(device)));
+  EXPECT_CALL(*mock_udev, CreateEnumerate())
+      .WillOnce(Return(std::move(mock_udev_enumerate)));
+
+  std::vector<base::FilePath> removable_devices;
+  EXPECT_TRUE(GetRemovableDevices(removable_devices, std::move(mock_udev)));
+  // Expect to get back the one device path we have setup.
+  EXPECT_THAT(removable_devices, ElementsAre(base::FilePath{device_node}));
 }
 
 }  // namespace minios

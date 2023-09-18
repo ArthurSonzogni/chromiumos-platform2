@@ -10,8 +10,10 @@
 #include <optional>
 #include <string>
 #include <tuple>
+#include <vector>
 
 #include <base/files/file_path.h>
+#include <brillo/udev/udev.h>
 
 #include "minios/process_manager.h"
 
@@ -92,6 +94,13 @@ std::optional<uint64_t> KernelSize(
 
 // Read the kernel cmdline and get the current version.
 std::optional<std::string> GetMiniOSVersion();
+
+// Enumerate udev devices and query for removable storage devices. Returns true
+// on success and devices will be added to the passed in vector. Vector will be
+// cleared before any devices are possibly added to it.
+bool GetRemovableDevices(
+    std::vector<base::FilePath>& devices,
+    std::unique_ptr<brillo::Udev> udev = brillo::Udev::Create());
 
 }  // namespace minios
 #endif  // MINIOS_UTILS_H__
