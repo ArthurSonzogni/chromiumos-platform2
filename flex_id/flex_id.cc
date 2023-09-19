@@ -30,26 +30,28 @@ constexpr char kDmiSerialPath[] = "sys/devices/virtual/dmi/id/product_serial";
 constexpr char kNetworkInterfacesPath[] = "sys/class/net";
 constexpr int kMinSerialLength = 2;
 // Case of these values doesn't matter as they are compared case-insensitively.
-const char* kBadSerials[] = {"to be filled by o.e.m.",
-                             "to be filled by o.e.m",
-                             "123456789",
-                             "system serial number",
-                             "system_serial_number",
-                             "invalid",
-                             "none",
-                             "default string",
-                             "not applicable",
-                             "na",
-                             "n/a",
-                             "ssn12345678901234567",
-                             "system serial#",
-                             "1234567",
-                             "systemserialnumb",
-                             "serial#",
-                             "oem",
-                             "default_string",
-                             "91.WTx00.xPxx",  // This is a device model number.
-                             "$serialnumber$"};
+const char* kBadSerials[] = {
+    "91.WTx00.xPxx",   // This is a device model number.
+    "123490EN400015",  // Common serial used by Samsung Kiosk KM24a devices.
+    "to be filled by o.e.m.",
+    "to be filled by o.e.m",
+    "123456789",
+    "system serial number",
+    "system_serial_number",
+    "invalid",
+    "none",
+    "default string",
+    "not applicable",
+    "na",
+    "n/a",
+    "ssn12345678901234567",
+    "system serial#",
+    "1234567",
+    "systemserialnumb",
+    "serial#",
+    "oem",
+    "default_string",
+    "$serialnumber$"};
 constexpr char kInterfaceAddressFile[] = "address";
 constexpr char kInterfaceModAliasFile[] = "device/modalias";
 constexpr char kInterfaceUsbPrefix[] = "usb:";
