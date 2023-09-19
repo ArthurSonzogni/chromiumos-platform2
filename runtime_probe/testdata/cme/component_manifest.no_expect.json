@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "component_list": [
+    {
+      "component_type": "charger",
+      "component_name": "charger_1",
+      "i2c": {
+        "port": 2,
+        "addr": "0x9"
+      },
+      "usbc": {
+        "port": 0
+      }
+    },
+    {
+      "component_type": "bc12",
+      "component_name": "bc12_1",
+      "i2c": {
+        "port": 2,
+        "addr": "0x5f"
+      },
+      "usbc": {
+        "port": 0
+      }
+    },
+    {
+      "component_type": "bc12",
+      "component_name": "bc12_2",
+      "i2c": {
+        "port": 3,
+        "addr": "0x5f"
+      },
+      "usbc": {
+        "port": 1
+      }
+    }
+  ]
+}
+
