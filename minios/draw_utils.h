@@ -107,7 +107,9 @@ class DrawUtils : public DrawInterface {
 
   void ShowLanguageMenu(bool is_selected) override;
 
-  void ShowAdvancedOptionsButtons(bool focused) override;
+  void ShowAdvancedOptionsButton(bool focused) override;
+
+  void ShowPowerButton(bool focused) override;
 
   void LocaleChange(int selected_locale) override;
 
@@ -205,6 +207,16 @@ class DrawUtils : public DrawInterface {
 
   // Show minios version in UI.
   void ShowVersion();
+
+  // Show non navigational buttons. These buttons don't have a box, and can have
+  // icons or arrows next to them.
+  void ShowControlButton(const std::optional<std::string>& icon,
+                         const std::string& token,
+                         int x_offset,
+                         int y_offset,
+                         int button_width,
+                         bool show_arrow,
+                         bool focused);
 
   ProcessManagerInterface* process_manager_;
 

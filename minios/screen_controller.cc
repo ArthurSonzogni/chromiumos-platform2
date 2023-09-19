@@ -172,14 +172,11 @@ void ScreenController::OnBackward(ScreenInterface* screen) {
       break;
     case ScreenType::kDebugOptionsScreen:
       // Back to previous screen, reset index.
-      // Back to original error screen, reset index.
-      if (previous_screen_ &&
-          dynamic_cast<ScreenError*>(previous_screen_.get())) {
+      if (previous_screen_) {
         current_screen_ = std::move(previous_screen_);
         current_screen_->Reset();
       } else {
-        // No error screen saved. Go back to beginning.
-        previous_screen_ = nullptr;
+        // No screen saved. Go back to beginning.
         current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
       }
       break;

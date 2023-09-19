@@ -56,7 +56,8 @@ class MockDrawInterface : public DrawInterface {
                int inner_width,
                bool is_text));
   MOCK_METHOD(void, ShowStepper, (const std::vector<std::string>& steps));
-  MOCK_METHOD(void, ShowAdvancedOptionsButtons, (bool focused));
+  MOCK_METHOD(void, ShowAdvancedOptionsButton, (bool focused));
+  MOCK_METHOD(void, ShowPowerButton, (bool focused));
   MOCK_METHOD(void, MessageBaseScreen, ());
   MOCK_METHOD(void, ShowLanguageDropdown, (int current_index));
   MOCK_METHOD(int, FindLocaleIndex, (int current_index));

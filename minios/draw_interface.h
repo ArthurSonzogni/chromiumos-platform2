@@ -65,8 +65,11 @@ class DrawInterface {
   // Defaults to done if requested icon not found.
   virtual void ShowStepper(const std::vector<std::string>& steps) = 0;
 
-  // Shows advanced options buttons at the bottom of the screen.
-  virtual void ShowAdvancedOptionsButtons(bool focused) = 0;
+  // Shows advanced options button at the bottom of the screen.
+  virtual void ShowAdvancedOptionsButton(bool focused) = 0;
+
+  // Shows power button at the bottom of the screen.
+  virtual void ShowPowerButton(bool focused) = 0;
 
   // Clears screen and shows footer and language drop down menu.
   virtual void MessageBaseScreen() = 0;

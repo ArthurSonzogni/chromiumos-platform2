@@ -72,7 +72,7 @@ void ScreenError::ShowButtons() {
   draw_utils_->ShowButton("btn_MiniOS_advanced_options", kBtnY + kBtnYStep,
                           index_ == 2, draw_utils_->GetDefaultButtonWidth(),
                           false);
-  draw_utils_->ShowAdvancedOptionsButtons(index_ == 3);
+  draw_utils_->ShowPowerButton(index_ == 3);
 }
 
 void ScreenError::OnKeyPress(int key_changed) {

@@ -16,7 +16,7 @@ namespace minios {
 ScreenPermission::ScreenPermission(std::shared_ptr<DrawInterface> draw_utils,
                                    ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/4,
+          /*button_count=*/5,
           /*index_=*/1,
           State::CONNECTED,
           draw_utils,
@@ -39,7 +39,8 @@ void ScreenPermission::ShowButtons() {
                           false);
   draw_utils_->ShowButton("btn_back", kBtnY + kBtnYStep, (index_ == 2),
                           default_width, false);
-  draw_utils_->ShowAdvancedOptionsButtons(index_ == 3);
+  draw_utils_->ShowAdvancedOptionsButton(index_ == 3);
+  draw_utils_->ShowPowerButton(index_ == 4);
 }
 
 void ScreenPermission::OnKeyPress(int key_changed) {
@@ -57,6 +58,9 @@ void ScreenPermission::OnKeyPress(int key_changed) {
         screen_controller_->OnBackward(this);
         break;
       case 3:
+        screen_controller_->GoToScreen(ScreenType::kDebugOptionsScreen, true);
+        break;
+      case 4:
         TriggerShutdown();
         break;
       default:

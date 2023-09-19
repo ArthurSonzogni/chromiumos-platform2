@@ -25,7 +25,7 @@ ScreenNetwork::ScreenNetwork(
     KeyReader* key_reader,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/4,
+          /*button_count=*/5,
           /*index_=*/1,
           State::NETWORK_SCANNING,
           draw_utils,
@@ -81,7 +81,8 @@ void ScreenNetwork::ShowButtons() {
       ShowCollapsedNetworkDropDown(index_ == 1);
       draw_utils_->ShowButton("btn_back", kOffsetY, (index_ == 2), btn_width,
                               false);
-      draw_utils_->ShowAdvancedOptionsButtons(index_ == 3);
+      draw_utils_->ShowAdvancedOptionsButton(index_ == 3);
+      draw_utils_->ShowPowerButton(index_ == 4);
       break;
     }
     case NetworkState::kDropdownOpen: {
@@ -105,7 +106,8 @@ void ScreenNetwork::ShowButtons() {
                               btn_width * 4, true);
       draw_utils_->ShowButton("btn_back", kBtnY + kBtnYStep, index_ == 2,
                               btn_width, false);
-      draw_utils_->ShowAdvancedOptionsButtons(index_ == 3);
+      draw_utils_->ShowAdvancedOptionsButton(index_ == 3);
+      draw_utils_->ShowPowerButton(index_ == 4);
       break;
     }
     default:
@@ -156,6 +158,9 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
           screen_controller_->OnBackward(this);
           break;
         case 3:
+          screen_controller_->GoToScreen(ScreenType::kDebugOptionsScreen, true);
+          break;
+        case 4:
           TriggerShutdown();
           break;
       }
@@ -206,6 +211,9 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
           Show();
           break;
         case 3:
+          screen_controller_->GoToScreen(ScreenType::kDebugOptionsScreen, true);
+          break;
+        case 4:
           TriggerShutdown();
           break;
       }
@@ -232,7 +240,7 @@ void ScreenNetwork::Reset() {
     state_ = NetworkState::kDropdownClosed;
   }
   index_ = 1;
-  button_count_ = 4;
+  button_count_ = 5;
 }
 
 ScreenType ScreenNetwork::GetType() {

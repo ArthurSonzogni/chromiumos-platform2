@@ -5,6 +5,7 @@
 #include "minios/draw_utils.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/logging.h>
@@ -49,6 +50,9 @@ constexpr char kConsole0[] = "run/frecon/vt0";
 constexpr int kNewLineChar = 10;
 
 constexpr char kButtonWidthToken[] = "DEBUG_OPTIONS_BTN_WIDTH";
+
+constexpr char kPngExtension[] = ".png";
+constexpr char kFocusedSuffix[] = "_focused";
 
 // The index for en-US in `supported_locales`.
 constexpr int kEnglishIndex = 9;
@@ -465,16 +469,17 @@ void DrawUtils::ShowLanguageMenu(bool is_selected) {
   ShowMessage("language_folded", kTextX, kOffsetY);
 }
 
-void DrawUtils::ShowAdvancedOptionsButtons(bool focused) {
-  const int kOffsetY = frecon_canvas_size_ / 2 - 222;
-
-  int power_btn_width;
-  GetDimension("BUTTON_btn_power_off_WIDTH", &power_btn_width);
-  const int kInnerWidth = power_btn_width + 60;
+void DrawUtils::ShowControlButton(const std::optional<std::string>& icon,
+                                  const std::string& token,
+                                  int x_offset,
+                                  int y_offset,
+                                  int button_width,
+                                  bool show_arrow,
+                                  bool focused) {
+  const int kInnerWidth = button_width + 60;
   const int kBtnCenter = (-frecon_canvas_size_ + kInnerWidth) / 2;
-
   // Clear previous state.
-  ShowBox(kBtnCenter, kOffsetY, kInnerWidth + 40, kButtonHeight, kMenuBlack);
+  ShowBox(kBtnCenter, y_offset, kInnerWidth + 40, kButtonHeight, kMenuBlack);
 
   int left_padding_x = (-frecon_canvas_size_ - 12) / 2;
   int right_padding_x = (-frecon_canvas_size_ + 8) / 2 + kInnerWidth;
@@ -483,30 +488,55 @@ void DrawUtils::ShowAdvancedOptionsButtons(bool focused) {
 
   if (focused) {
     ShowImage(GetScreensPath().Append("adv_btn_bg_left.png"), left_padding_x,
-              kOffsetY);
+              y_offset);
     ShowImage(GetScreensPath().Append("adv_btn_bg_right.png"), right_padding_x,
-              kOffsetY);
+              y_offset);
     // Box outline created when button is focused.
-    ShowBox(kBtnCenter - 4, kOffsetY, kInnerWidth + 2, kButtonHeight,
+    ShowBox(kBtnCenter - 4, y_offset, kInnerWidth + 2, kButtonHeight,
             kMenuBlue);
-    ShowBox(kBtnCenter - 4, kOffsetY, kInnerWidth + 2, kButtonHeight - 4,
+    ShowBox(kBtnCenter - 4, y_offset, kInnerWidth + 2, kButtonHeight - 4,
             kAdvancedBtnBackground);
   }
+  if (icon) {
+    // Draw an icon on the button.
+    const auto& icon_file =
+        icon.value() + (focused ? kFocusedSuffix : "") + kPngExtension;
+    ShowImage(GetScreensPath().Append(icon_file), x_offset + 10, y_offset);
+    x_offset += 10;
+  }
 
-  std::string power_icon = focused ? "power_focused.png" : "power.png";
-  ShowImage(GetScreensPath().Append(power_icon), -frecon_canvas_size_ / 2 + 10,
-            kOffsetY);
+  const auto& token_with_focus = token + (focused ? kFocusedSuffix : "");
+  ShowMessage(token_with_focus, x_offset + 26 + button_width / 2, y_offset);
 
-  std::string power_token = focused ? "btn_power_off_focused" : "btn_power_off";
-  ShowMessage(power_token, -frecon_canvas_size_ / 2 + 36 + power_btn_width / 2,
-              kOffsetY);
+  if (show_arrow) {
+    // Show arrow on the rightmost (or leftmost) edge of the button to imply
+    // additional details in the next page.
+    const std::string& arrow =
+        (IsLocaleRightToLeft() ? "ic_dropleft-blue" : "ic_dropright-blue") +
+        std::string{focused ? kFocusedSuffix : ""} + std::string{kPngExtension};
 
-  std::string arrow =
-      IsLocaleRightToLeft() ? "ic_dropleft-blue" : "ic_dropright-blue";
-  arrow = focused ? arrow.append("_focused.png") : arrow.append(".png");
+    ShowImage(GetScreensPath().Append(arrow), x_offset + 48 + button_width,
+              y_offset);
+  }
+}
 
-  ShowImage(GetScreensPath().Append(arrow),
-            -frecon_canvas_size_ / 2 + 58 + power_btn_width, kOffsetY);
+void DrawUtils::ShowAdvancedOptionsButton(bool focused) {
+  const int kOffsetY = frecon_canvas_size_ / 2 - 272;
+  int button_width;
+  GetDimension("BUTTON_btn_MiniOS_advanced_options_WIDTH", &button_width);
+
+  ShowControlButton("settings", "btn_debug_options", -frecon_canvas_size_ / 2,
+                    kOffsetY, button_width, /*show_arrow=*/true, focused);
+}
+
+void DrawUtils::ShowPowerButton(bool focused) {
+  const int kOffsetY = frecon_canvas_size_ / 2 - 222;
+
+  int power_btn_width;
+  GetDimension("BUTTON_btn_power_off_WIDTH", &power_btn_width);
+
+  ShowControlButton("power", "btn_power_off", -frecon_canvas_size_ / 2,
+                    kOffsetY, power_btn_width, /*show_arrow=*/false, focused);
 }
 
 void DrawUtils::ShowFooter() {

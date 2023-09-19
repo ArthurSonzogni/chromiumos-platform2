@@ -13,7 +13,7 @@ namespace minios {
 ScreenWelcome::ScreenWelcome(std::shared_ptr<DrawInterface> draw_utils,
                              ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/3,
+          /*button_count=*/4,
           /*index_=*/1,
           State::IDLE,
           draw_utils,
@@ -33,7 +33,9 @@ void ScreenWelcome::ShowButtons() {
       (-draw_utils_->GetFreconCanvasSize() / 2) + 318 + kBtnYStep * 2;
   draw_utils_->ShowButton("btn_next", kBtnY, (index_ == 1),
                           draw_utils_->GetDefaultButtonWidth(), false);
-  draw_utils_->ShowAdvancedOptionsButtons(index_ == 2);
+
+  draw_utils_->ShowAdvancedOptionsButton(index_ == 2);
+  draw_utils_->ShowPowerButton(index_ == 3);
 }
 
 void ScreenWelcome::OnKeyPress(int key_changed) {
@@ -48,6 +50,9 @@ void ScreenWelcome::OnKeyPress(int key_changed) {
         screen_controller_->OnForward(this);
         break;
       case 2:
+        screen_controller_->GoToScreen(ScreenType::kDebugOptionsScreen, true);
+        break;
+      case 3:
         TriggerShutdown();
         break;
     }

@@ -10,6 +10,7 @@
 #include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/draw_utils.h"
+#include "minios/screen_types.h"
 #include "minios/utils.h"
 
 namespace minios {
@@ -43,7 +44,8 @@ void ScreenDebugOptions::ShowButtons() {
                           default_width, false);
   draw_utils_->ShowButton("btn_back", kYOffset + kYStep, index_ == 2,
                           default_width, false);
-  draw_utils_->ShowAdvancedOptionsButtons(index_ == 3);
+
+  draw_utils_->ShowPowerButton(index_ == 3);
 }
 
 void ScreenDebugOptions::OnKeyPress(int key_changed) {
