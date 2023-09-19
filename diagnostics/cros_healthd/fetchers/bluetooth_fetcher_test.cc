@@ -475,11 +475,13 @@ TEST_F(BluetoothFetcherTest, GetFlossEnabledError) {
 TEST_F(BluetoothFetcherTest, GetBluetoothManagerError) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
       .WillRepeatedly(Return(nullptr));
+  EXPECT_CALL(*mock_bluez_controller(), GetAdapters())
+      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{}));
 
   auto bluetooth_result = FetchBluetoothInfoSync();
-  ASSERT_TRUE(bluetooth_result->is_error());
-  EXPECT_EQ(bluetooth_result->get_error()->msg,
-            "Bluetooth manager proxy is not ready");
+  ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
+  const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
+  EXPECT_EQ(adapter_info.size(), 0);
 }
 
 }  // namespace

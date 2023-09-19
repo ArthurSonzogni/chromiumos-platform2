@@ -107,24 +107,8 @@ void ParseDevicesInfo(
   }
 }
 
-void FetchBluetoothInfoInner(Context* context,
-                             FetchBluetoothInfoCallback callback,
-                             brillo::Error* err,
-                             bool floss_enabled) {
-  if (err) {
-    std::move(callback).Run(mojom::BluetoothResult::NewError(
-        CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
-                               "Failed to get floss enabled state")));
-    return;
-  }
-
-  if (floss_enabled) {
-    // TODO(b/300007763): Support Bluetooth telemetry via Floss.
-    std::move(callback).Run(
-        mojom::BluetoothResult::NewBluetoothAdapterInfo({}));
-    return;
-  }
-
+void FetchBluetoothInfoFromBluez(Context* context,
+                                 FetchBluetoothInfoCallback callback) {
   const auto bluez_controller = context->bluez_controller();
   if (!bluez_controller) {
     std::move(callback).Run(mojom::BluetoothResult::NewError(
@@ -177,21 +161,49 @@ void FetchBluetoothInfoInner(Context* context,
       std::move(adapter_infos)));
 }
 
+void CheckBluetoothStack(Context* context,
+                         FetchBluetoothInfoCallback callback,
+                         brillo::Error* err,
+                         bool floss_enabled) {
+  if (err) {
+    std::move(callback).Run(mojom::BluetoothResult::NewError(
+        CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                               "Failed to get floss enabled state")));
+    return;
+  }
+
+  if (floss_enabled) {
+    // TODO(b/300007763): Support Bluetooth telemetry via Floss.
+    std::move(callback).Run(
+        mojom::BluetoothResult::NewBluetoothAdapterInfo({}));
+    return;
+  }
+
+  FetchBluetoothInfoFromBluez(context, std::move(callback));
+}
+
 }  // namespace
 
 void FetchBluetoothInfo(Context* context, FetchBluetoothInfoCallback callback) {
   const auto floss_controller = context->floss_controller();
-  if (!floss_controller || !floss_controller->GetManager()) {
+  if (!floss_controller) {
     std::move(callback).Run(mojom::BluetoothResult::NewError(
         CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable,
-                               "Bluetooth manager proxy is not ready")));
+                               "Floss proxy is not ready")));
+    return;
+  }
+
+  const auto manager = floss_controller->GetManager();
+  if (!manager) {
+    // Floss is not installed on device with 2GiB rootfs, which will always use
+    // Bluez as Bluetooth stack.
+    FetchBluetoothInfoFromBluez(context, std::move(callback));
     return;
   }
 
   auto [on_success, on_error] = SplitDbusCallback(
-      base::BindOnce(&FetchBluetoothInfoInner, context, std::move(callback)));
-  floss_controller->GetManager()->GetFlossEnabledAsync(std::move(on_success),
-                                                       std::move(on_error));
+      base::BindOnce(&CheckBluetoothStack, context, std::move(callback)));
+  manager->GetFlossEnabledAsync(std::move(on_success), std::move(on_error));
 }
 
 }  // namespace diagnostics
