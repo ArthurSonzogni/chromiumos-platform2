@@ -299,11 +299,9 @@ message EvictDeviceKeyReply {
 }
 
 // Input parameters to EvictDeviceKey()
-message EvictDeviceKeyRequest {
-  // Id of the auth session associated with the user we aim to evict the
-  // in-memory device (For example: dmcrypt) keyset for.
-  bytes auth_session_id = 1;
-}
+// Currently key eviction operates on all actively mounted user
+// cryptohomes.
+message EvictDeviceKeyRequest {}
 
 message RestoreDeviceKeyRequest {
   // The id of a running AuthSession, which also identifies the user whose
