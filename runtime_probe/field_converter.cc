@@ -159,7 +159,7 @@ std::string StringFieldConverter::ToString() const {
 }
 
 std::string IntegerFieldConverter::ToString() const {
-  return base::StringPrintf("IntegerFieldConverter(%s, %d)",
+  return base::StringPrintf("IntegerFieldConverter(%s, %" PRIx64 ")",
                             ::runtime_probe::ToString(operator_), operand_);
 }
 
@@ -252,26 +252,32 @@ ReturnCode IntegerFieldConverter::Convert(const std::string& field_name,
   if (!value)
     return ReturnCode::FIELD_NOT_FOUND;
 
+  OperandType int_value;
   switch (value->type()) {
     case base::Value::Type::DOUBLE:
-      dict.Set(field_name, static_cast<int>(value->GetDouble()));
-      return ReturnCode::OK;
+      int_value = static_cast<OperandType>(value->GetDouble());
+      break;
     case base::Value::Type::INTEGER:
-      return ReturnCode::OK;
+      int_value = value->GetInt();
+      break;
     case base::Value::Type::STRING: {
-      const auto& string_value = value->GetString();
-      OperandType int_value;
-      if (StringToOperand(string_value, &int_value)) {
-        dict.Set(field_name, int_value);
-        return ReturnCode::OK;
-      } else {
-        LOG(ERROR) << "Failed to convert '" << string_value << "' to integer.";
+      const auto& string_value_ = value->GetString();
+      if (!StringToOperand(string_value_, &int_value)) {
+        LOG(ERROR) << "Failed to convert '" << string_value_ << "' to integer.";
         return ReturnCode::INCOMPATIBLE_VALUE;
       }
+      break;
     }
     default:
       return ReturnCode::INCOMPATIBLE_VALUE;
   }
+  // Since base::Value only supports 32-bit integer, we use string field to
+  // store large integers.  We convert values to decimal strings to make
+  // google::protobuf::util::JsonStringToMessage parse strings to integers
+  // correctly.
+  const auto string_value = base::NumberToString(int_value);
+  dict.Set(field_name, string_value);
+  return ReturnCode::OK;
 }
 
 ReturnCode HexFieldConverter::Convert(const std::string& field_name,
@@ -394,9 +400,21 @@ ReturnCode IntegerFieldConverter::Validate(const std::string& field_name,
   auto* value_ = dict.Find(field_name);
   if (!value_)
     return ReturnCode::FIELD_NOT_FOUND;
-  if (!value_->is_int())
-    return ReturnCode::INCOMPATIBLE_VALUE;
-  const auto value = value_->GetInt();
+  OperandType value;
+  switch (value_->type()) {
+    case base::Value::Type::INTEGER: {
+      value = value_->GetInt();
+      break;
+    }
+    case base::Value::Type::STRING: {
+      const auto& string_value = value_->GetString();
+      if (!StringToInt64(string_value, &value))
+        return ReturnCode::INCOMPATIBLE_VALUE;
+      break;
+    }
+    default:
+      return ReturnCode::INCOMPATIBLE_VALUE;
+  }
 
   return CheckNumber(operator_, value, operand_);
 }

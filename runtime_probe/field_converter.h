@@ -124,7 +124,7 @@ class StringFieldConverter : public FieldConverter {
 class IntegerFieldConverter : public FieldConverter {
  public:
   using FieldConverter::FieldConverter;
-  using OperandType = int;
+  using OperandType = int64_t;
 
   ReturnCode Convert(const std::string& field_name,
                      base::Value* dict_value) const override;
@@ -141,7 +141,7 @@ class IntegerFieldConverter : public FieldConverter {
       : operator_(op), operand_(operand) {}
 
   static bool StringToOperand(base::StringPiece s, OperandType* output) {
-    return runtime_probe::StringToInt(s, output);
+    return runtime_probe::StringToInt64(s, output);
   }
 
  private:

@@ -44,19 +44,29 @@ TEST(StringFieldConverterTest, TestInvalidRegexPattern) {
 }
 
 TEST(IntegerFieldConverterTest, TestStringToInt) {
-  for (const auto s : {"123", "  123", "123  ", "  123  "}) {
+  static const struct {
+    std::string input;
+    std::string output;
+  } cases[] = {
+      {"123", "123"},
+      {"  123", "123"},
+      {"123  ", "123"},
+      {"  123  ", "123"},
+      {"2147483648", "2147483648"},
+      {"-2147483648", "-2147483648"},
+  };
+  for (const auto& [in, out] : cases) {
     base::Value dict_value(base::Value::Type::DICT);
-    auto& dict = dict_value.GetDict();
-    dict.Set("key", s);
+    dict_value.GetDict().Set("key", in);
 
     auto converter = IntegerFieldConverter::Build("");
 
     ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
-        << "failed to convert string: " << s;
+        << "failed to convert string: " << in;
 
-    auto int_value = dict.FindInt("key");
-    ASSERT_TRUE(int_value.has_value());
-    ASSERT_EQ(*int_value, 123) << s << " is not converted to 123";
+    auto string_value = dict_value.GetDict().FindString("key");
+    ASSERT_NE(string_value, nullptr);
+    ASSERT_EQ(*string_value, out) << in << " is not converted to " << out;
   }
 }
 
@@ -123,9 +133,9 @@ TEST(IntegerFieldConverterTest, TestDoubleToInt) {
   ASSERT_EQ(converter->Convert("key", &value), ReturnCode::OK)
       << "failed to convert double";
 
-  auto int_value = value.GetDict().FindInt("key");
-  ASSERT_TRUE(int_value.has_value());
-  ASSERT_EQ(*int_value, 123) << v << " is not converted to 123";
+  auto string_value = value.GetDict().FindString("key");
+  ASSERT_NE(string_value, nullptr);
+  ASSERT_EQ(*string_value, "123") << v << " is not converted to 123";
 }
 
 TEST(DoubleFieldConverterTest, TestStringToDouble) {

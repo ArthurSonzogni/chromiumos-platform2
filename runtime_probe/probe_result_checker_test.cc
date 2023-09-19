@@ -103,9 +103,9 @@ TEST(ProbeResultCheckerDictTest, TestApplySuccess) {
   ASSERT_NE(str_value, nullptr);
   ASSERT_EQ(*str_value, "string result");
 
-  auto int_value = probe_result_dict.FindInt("int");
-  ASSERT_TRUE(int_value.has_value());
-  ASSERT_EQ(*int_value, 1024);
+  auto int_value = probe_result_dict.FindString("int");
+  ASSERT_NE(int_value, nullptr);
+  ASSERT_EQ(*int_value, "1024");
 
   auto* hex_value = probe_result_dict.FindString("hex");
   ASSERT_NE(hex_value, nullptr);
@@ -149,9 +149,9 @@ TEST(ProbeResultCheckerDictTest, TestApplyWithLimitsSuccess) {
   ASSERT_NE(str_value, nullptr);
   ASSERT_EQ(*str_value, "string result");
 
-  auto int_value = probe_result_dict.FindInt("int");
-  ASSERT_TRUE(int_value.has_value());
-  ASSERT_EQ(*int_value, 1024);
+  auto int_value = probe_result_dict.FindString("int");
+  ASSERT_NE(int_value, nullptr);
+  ASSERT_EQ(*int_value, "1024");
 
   auto* hex_value = probe_result_dict.FindString("hex");
   ASSERT_NE(hex_value, nullptr);
