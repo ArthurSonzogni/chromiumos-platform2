@@ -18,11 +18,15 @@ namespace shill {
 
 class KeyValueStore;
 
+using Boolean = bool;
 using ByteArray = std::vector<uint8_t>;
 using ByteArrays = std::vector<ByteArray>;
+using Integer = int;
+using Integers = std::vector<int>;
 using KeyValueStores = std::vector<KeyValueStore>;
 using RpcIdentifier = dbus::ObjectPath;
 using RpcIdentifiers = std::vector<RpcIdentifier>;
+using String = std::string;
 using Strings = std::vector<std::string>;
 using Stringmap = std::map<std::string, std::string>;
 using Stringmaps = std::vector<Stringmap>;
