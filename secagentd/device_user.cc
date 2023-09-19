@@ -4,8 +4,11 @@
 
 #include "secagentd/device_user.h"
 
+#include <unistd.h>
+
 #include <list>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -16,12 +19,10 @@
 #include "base/files/important_file_writer.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
-#include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
 #include "base/uuid.h"
-#include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "brillo/errors/error.h"
 #include "policy/device_local_account_policy_util.h"
@@ -147,6 +148,7 @@ void DeviceUser::HandleRegistrationResult(const std::string& interface,
 void DeviceUser::OnSessionStateChange(const std::string& state) {
   device_user_ready_ = false;
   if (state == kStarted || state == kInit) {
+    flush_cb_.Run();
     UpdateDeviceId();
     if (!UpdateDeviceUser()) {
       return;
@@ -257,9 +259,10 @@ bool DeviceUser::UpdateDeviceUser() {
         FROM_HERE,
         base::BindOnce(&DeviceUser::HandleUserPolicyAndNotifyListeners,
                        weak_ptr_factory_.GetWeakPtr(), username, username_file),
-        kDelayForFirstUserInit);
-    return false;
+        base::Seconds(2));
   }
+
+  return false;
 }
 
 absl::StatusOr<enterprise_management::PolicyData> DeviceUser::RetrievePolicy(
@@ -369,4 +372,18 @@ void DeviceUser::HandleUserPolicyAndNotifyListeners(
   }
 }
 
+bool DeviceUser::GetIsUnaffiliated() {
+  // If there is no device user or it is one of the managed local accounts then
+  // it is considered affiliated.
+  const std::unordered_set<std::string> reporting_values = {
+      "", "ManagedGuest", "KioskApp", "KioskAndroidApp"};
+  // If the user is unaffiliated their name will be a UUID. If they are
+  // affiliated it will be their email which contains the @ symbol.
+  return (!reporting_values.contains(device_user_) &&
+          device_user_.find("@") == std::string::npos);
+}
+
+void DeviceUser::SetFlushCallback(base::RepeatingCallback<void()> cb) {
+  flush_cb_ = std::move(cb);
+}
 }  // namespace secagentd

@@ -47,6 +47,8 @@ class BatchSenderInterface {
       typename AtomicVariantMessage::VariantTypeCase variant_type,
       const KeyType& key,
       VisitCallback cb) = 0;
+  // Sends all enqueued messages.
+  virtual void Flush() = 0;
 };
 
 template <typename KeyType, typename XdrMessage, typename AtomicVariantMessage>
@@ -116,7 +118,7 @@ class BatchSender
   }
 
  protected:
-  void Flush() {
+  void Flush() override {
     if (events_byte_size_) {
       base::AutoLock lock(events_lock_);
       VLOG(1) << "Flushing Batch for Destination " << destination_

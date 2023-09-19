@@ -61,6 +61,7 @@ class MockPlugin : public PluginInterface {
   MOCK_METHOD(std::string, GetName, (), (const override));
   MOCK_METHOD(absl::Status, MockDeactivate, ());
   MOCK_METHOD(bool, IsActive, (), (const override));
+  MOCK_METHOD(void, Flush, (), (override));
   bool is_active_{false};
 };
 

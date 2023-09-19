@@ -27,11 +27,14 @@ namespace secagentd {
 
 Daemon::Daemon(bool bypass_policy_for_testing,
                bool bypass_enq_ok_wait_for_testing,
+               bool stop_reporting_for_unaffiliated_users,
                uint32_t heartbeat_period_s,
                uint32_t plugin_batch_interval_s,
                uint32_t feature_polling_interval_s)
     : bypass_policy_for_testing_(bypass_policy_for_testing),
       bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing),
+      stop_reporting_for_unaffiliated_users_(
+          stop_reporting_for_unaffiliated_users),
       heartbeat_period_s_(heartbeat_period_s),
       plugin_batch_interval_s_(plugin_batch_interval_s),
       feature_polling_interval_s_(feature_polling_interval_s),
@@ -46,6 +49,7 @@ int Daemon::OnInit() {
   common::SetDBus(bus_);
   auto device_user = base::MakeRefCounted<DeviceUser>(
       std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus_));
+
   secagent_ = std::make_unique<SecAgent>(
       base::BindOnce(&Daemon::QuitDaemon, weak_ptr_factory_.GetWeakPtr()),
       base::MakeRefCounted<MessageSender>(),
@@ -54,8 +58,9 @@ int Daemon::OnInit() {
       std::make_unique<org::chromium::AttestationProxy>(bus_),
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
       feature::PlatformFeatures::Get(), bypass_policy_for_testing_,
-      bypass_enq_ok_wait_for_testing_, heartbeat_period_s_,
-      plugin_batch_interval_s_, feature_polling_interval_s_);
+      bypass_enq_ok_wait_for_testing_, stop_reporting_for_unaffiliated_users_,
+      heartbeat_period_s_, plugin_batch_interval_s_,
+      feature_polling_interval_s_);
 
   // Set up ERP.
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams(

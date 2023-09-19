@@ -20,6 +20,9 @@ int main(int argc, char** argv) {
       bypass_enq_ok_wait_for_testing, false,
       "Set to true to skip waiting for an Agent Start event to be "
       "enqueued successfully before attempting to enqueue subsequent events");
+  DEFINE_bool(
+      stop_reporting_for_unaffiliated_users, false,
+      "Set to true to stop reporting XDR events for unaffiliated users");
   DEFINE_uint32(
       set_heartbeat_period_s_for_testing,
       secagentd::Daemon::kDefaultHeartbeatPeriodS,
@@ -37,6 +40,7 @@ int main(int argc, char** argv) {
   logging::SetMinLogLevel(FLAGS_log_level);
   auto daemon = secagentd::Daemon(FLAGS_bypass_policy_for_testing,
                                   FLAGS_bypass_enq_ok_wait_for_testing,
+                                  FLAGS_stop_reporting_for_unaffiliated_users,
                                   FLAGS_set_heartbeat_period_s_for_testing,
                                   FLAGS_plugin_batch_interval_s_for_testing,
                                   FLAGS_feature_poll_interval_s_for_testing);

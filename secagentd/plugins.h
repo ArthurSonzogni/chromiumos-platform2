@@ -63,6 +63,8 @@ class PluginInterface {
   // Is the plugin currently activated?
   virtual bool IsActive() const = 0;
   virtual std::string GetName() const = 0;
+  // Flushes the batch sender if it exists.
+  virtual void Flush() = 0;
   virtual ~PluginInterface() = default;
 };
 template <typename HashT,
@@ -210,6 +212,11 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
                   batch_interval_s) {}
 
   std::string GetName() const override;
+  void Flush() override {
+    if (batch_sender_) {
+      batch_sender_->Flush();
+    }
+  }
 
   /* Given a set of addresses (in network byte order)
    * ,a set of ports and a protocol ID compute the
@@ -278,6 +285,11 @@ class ProcessPlugin : public PluginInterface {
   absl::Status Deactivate() override;
   bool IsActive() const override;
   std::string GetName() const override;
+  void Flush() override {
+    if (batch_sender_) {
+      batch_sender_->Flush();
+    }
+  }
 
   // Handles an individual incoming Process BPF event.
   void HandleRingBufferEvent(const bpf::cros_event& bpf_event);
@@ -335,6 +347,11 @@ class AuthenticationPlugin : public PluginInterface {
   absl::Status Deactivate() override;
   bool IsActive() const override;
   std::string GetName() const override;
+  void Flush() override {
+    if (batch_sender_) {
+      batch_sender_->Flush();
+    }
+  }
 
  private:
   friend class testing::AuthenticationPluginTestFixture;
@@ -428,6 +445,7 @@ class AgentPlugin : public PluginInterface {
   absl::Status Deactivate() override;
   std::string GetName() const override;
   bool IsActive() const override { return is_active_; }
+  void Flush() override {}
 
  private:
   friend class testing::AgentPluginTestFixture;

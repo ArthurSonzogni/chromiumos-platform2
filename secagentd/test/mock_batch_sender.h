@@ -30,6 +30,7 @@ class MockBatchSender
                const KeyType&,
                VisitCallback),
               (override));
+  MOCK_METHOD(void, Flush, (), (override));
 };
 
 }  // namespace secagentd::testing

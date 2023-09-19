@@ -52,6 +52,10 @@ PoliciesFeaturesBroker::PoliciesFeaturesBroker(
           {Feature::kCrOSLateBootSecagentdXDRAuthenticateEventsControl,
            {{.name = "CrOSLateBootSecagentdXDRAuthenticateEventsControl",
              .default_state = FEATURE_DISABLED_BY_DEFAULT},
+            false}},
+          {Feature::kCrosLateBootSecagentdXDRStopReportingForUnaffiliated,
+           {{.name = "CrOSLateBootSecagentdXDRStopReportingForUnaffiliated",
+             .default_state = FEATURE_DISABLED_BY_DEFAULT},
             false}}} {
   for (const auto& [k, v] : feature_values_) {
     variations_to_query_.push_back(&v.variation);

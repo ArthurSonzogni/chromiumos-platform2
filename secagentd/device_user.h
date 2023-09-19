@@ -15,6 +15,7 @@
 #include "absl/status/statusor.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback_forward.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
@@ -52,6 +53,8 @@ class DeviceUserInterface : public base::RefCounted<DeviceUserInterface> {
   virtual void GetDeviceUserAsync(
       base::OnceCallback<void(const std::string& device_user)> cb) = 0;
   virtual std::list<std::string> GetUsernamesForRedaction() = 0;
+  virtual bool GetIsUnaffiliated() = 0;
+  virtual void SetFlushCallback(base::RepeatingCallback<void()>) = 0;
 
   virtual ~DeviceUserInterface() = default;
 };
@@ -88,6 +91,12 @@ class DeviceUser : public DeviceUserInterface {
       base::OnceCallback<void(const std::string& device_user)> cb) override;
   // Returns the most recently used usernames so they can be redacted.
   std::list<std::string> GetUsernamesForRedaction() override;
+  // Returns if the user is unaffilaited to determine if events should be
+  // reported.
+  bool GetIsUnaffiliated() override;
+  // The flush callback to be called when a new sign in occurs to avoid
+  // reporting unaffiliated events.
+  void SetFlushCallback(base::RepeatingCallback<void()>) override;
 
   DeviceUser(const DeviceUser&) = delete;
   DeviceUser(DeviceUser&&) = delete;
@@ -131,6 +140,8 @@ class DeviceUser : public DeviceUserInterface {
                                           base::FilePath username_file);
 
   base::WeakPtrFactory<DeviceUser> weak_ptr_factory_;
+  // Flushes all plugin batches.
+  base::RepeatingCallback<void()> flush_cb_ = base::DoNothing();
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_;
   std::vector<base::RepeatingCallback<void(const std::string&)>>

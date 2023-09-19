@@ -31,6 +31,7 @@ class Daemon : public brillo::DBusDaemon {
   explicit Daemon(struct Inject);
   Daemon(bool bypass_policy_for_testing,
          bool bypass_enq_ok_wait_for_testing,
+         bool stop_reporting_for_unaffiliated_users,
          uint32_t heartbeat_period_s,
          uint32_t plugin_batch_interval_s,
          uint32_t policy_polling_interval_s);
@@ -46,6 +47,7 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<SecAgent> secagent_;
   bool bypass_policy_for_testing_ = false;
   bool bypass_enq_ok_wait_for_testing_ = false;
+  bool stop_reporting_for_unaffiliated_users_ = false;
   uint32_t heartbeat_period_s_ = kDefaultHeartbeatPeriodS;
   uint32_t plugin_batch_interval_s_ = kDefaultPluginBatchIntervalS;
   uint32_t feature_polling_interval_s_ =

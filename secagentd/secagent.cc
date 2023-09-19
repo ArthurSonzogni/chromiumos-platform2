@@ -5,8 +5,8 @@
 #include "secagentd/secagent.h"
 
 #include <unistd.h>
-
 #include <cstdlib>
+
 #include <memory>
 #include <string>
 #include <sysexits.h>
@@ -14,10 +14,12 @@
 
 #include "absl/status/status.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
+#include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
@@ -37,6 +39,7 @@ SecAgent::SecAgent(
     feature::PlatformFeaturesInterface* platform_features,
     bool bypass_policy_for_testing,
     bool bypass_enq_ok_wait_for_testing,
+    bool stop_reporting_for_unaffiliated_users,
     uint32_t heartbeat_period_s,
     uint32_t plugin_batch_interval_s,
     uint32_t feature_poll_interval_s_for_testing)
@@ -49,6 +52,8 @@ SecAgent::SecAgent(
       platform_features_(platform_features),
       bypass_policy_for_testing_(bypass_policy_for_testing),
       bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing),
+      stop_reporting_for_unaffiliated_users_(
+          stop_reporting_for_unaffiliated_users),
       heartbeat_period_s_(heartbeat_period_s),
       plugin_batch_interval_s_(plugin_batch_interval_s),
       feature_poll_interval_s_(feature_poll_interval_s_for_testing),
@@ -63,20 +68,33 @@ SecAgent::SecAgent(
 void SecAgent::Activate() {
   LOG(INFO) << absl::StrFormat(
       "BypassPolicyForTesting:%d,"
-      "BypassEnqOkWaitForTesting:%d,HeartbeatPeriodSeconds:%d,"
+      "BypassEnqOkWaitForTesting:%d,StopReportingForUnaffiliatedUsers:%d,"
+      "HeartbeatPeriodSeconds:%d,"
       "PluginBatchIntervalSeconds:%d,FeaturePollIntervalSeconds:%d",
       bypass_policy_for_testing_, bypass_enq_ok_wait_for_testing_,
-      heartbeat_period_s_, plugin_batch_interval_s_, feature_poll_interval_s_);
+      stop_reporting_for_unaffiliated_users_, heartbeat_period_s_,
+      plugin_batch_interval_s_, feature_poll_interval_s_);
   absl::Status result = message_sender_->Initialize();
   if (result != absl::OkStatus()) {
     LOG(ERROR) << result.message();
     std::move(quit_daemon_cb_).Run(EX_SOFTWARE);
     return;
   }
+
+  if (stop_reporting_for_unaffiliated_users_) {
+    device_user_->SetFlushCallback(base::BindRepeating(
+        &SecAgent::FlushAllPluginEvents, weak_ptr_factory_.GetWeakPtr()));
+    // The session change listener will indirectly call CheckPolicyAndFeature
+    // to start polling.
+    device_user_->RegisterSessionChangeListener(base::BindRepeating(
+        &SecAgent::HandleSessionStateChange, weak_ptr_factory_.GetWeakPtr()));
+    device_user_->RegisterSessionChangeHandler();
+  } else {
+    policies_features_broker_->StartAndBlockForSync(
+        base::Seconds(feature_poll_interval_s_));
+  }
+
   process_cache_->InitializeFilter();
-  // This will post a task to run CheckPolicyAndFeature.
-  policies_features_broker_->StartAndBlockForSync(
-      base::Seconds(feature_poll_interval_s_));
 }
 
 void SecAgent::CheckPolicyAndFeature() {
@@ -91,6 +109,18 @@ void SecAgent::CheckPolicyAndFeature() {
     LOG(INFO) << "DeviceReportXDREventsPolicy: " << xdr_reporting_policy
               << (bypass_policy_for_testing_ ? " (set by flag)" : "");
     LOG(INFO) << "CrOSLateBootSecagentdXDRReporting: " << xdr_reporting_feature;
+  }
+
+  stop_reporting_for_unaffiliated_users_ =
+      policies_features_broker_->GetFeature(
+          PoliciesFeaturesBroker::Feature::
+              kCrosLateBootSecagentdXDRStopReportingForUnaffiliated);
+  if (stop_reporting_for_unaffiliated_users_ &&
+      device_user_->GetIsUnaffiliated() && !reporting_events_) {
+    if (first_visit) {
+      LOG(INFO) << "Not starting reporting because unaffiliated user signed in";
+    }
+    return;
   }
 
   // If either policy is false do not report.
@@ -124,7 +154,9 @@ void SecAgent::CheckPolicyAndFeature() {
 }
 
 void SecAgent::StartXDRReporting() {
-  device_user_->RegisterSessionChangeHandler();
+  if (!stop_reporting_for_unaffiliated_users_) {
+    device_user_->RegisterSessionChangeHandler();
+  }
   MetricsSender::GetInstance().InitBatchedMetrics();
 
   using CbType = base::OnceCallback<void()>;
@@ -216,4 +248,38 @@ void SecAgent::CreateAndActivatePlugins() {
   }
   ActivateOrDeactivatePlugins();
 }
+
+void SecAgent::HandleSessionStateChange(const std::string& state) {
+  static bool started_polling = false;
+
+  // Make sure device user is updated before starting reporting.
+  if (!started_polling) {
+    policies_features_broker_->StartAndBlockForSync(
+        base::Seconds(feature_poll_interval_s_));
+    started_polling = true;
+  }
+
+  if (stop_reporting_for_unaffiliated_users_) {
+    device_user_->GetDeviceUserAsync(base::BindOnce(
+        &SecAgent::OnDeviceUserRetrieved, weak_ptr_factory_.GetWeakPtr()));
+  }
+}
+
+void SecAgent::OnDeviceUserRetrieved(const std::string& user) {
+  if (reporting_events_) {
+    if (device_user_->GetIsUnaffiliated()) {
+      LOG(INFO) << "Stopping reporting: Unaffiliated user signed in";
+      std::move(quit_daemon_cb_).Run(EX_OK);
+    }
+  } else {
+    CheckPolicyAndFeature();
+  }
+}
+
+void SecAgent::FlushAllPluginEvents() {
+  for (auto& plugin : plugins_) {
+    plugin.plugin->Flush();
+  }
+}
+
 }  // namespace secagentd

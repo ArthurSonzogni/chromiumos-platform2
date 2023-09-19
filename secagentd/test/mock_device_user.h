@@ -38,6 +38,11 @@ class MockDeviceUser : public DeviceUserInterface {
               GetUsernamesForRedaction,
               (),
               (override));
+  MOCK_METHOD(bool, GetIsUnaffiliated, (), (override));
+  MOCK_METHOD(void,
+              SetFlushCallback,
+              (base::RepeatingCallback<void()> cb),
+              (override));
 };
 }  // namespace secagentd::testing
 

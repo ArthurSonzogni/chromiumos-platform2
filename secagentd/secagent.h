@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "base/memory/scoped_refptr.h"
@@ -23,7 +24,8 @@ namespace secagentd {
 
 namespace testing {
 class SecAgentTestFixture;
-}
+class DisableUnaffiliatedSecAgentTestFixture;
+}  // namespace testing
 
 class SecAgent {
  public:
@@ -38,6 +40,7 @@ class SecAgent {
            feature::PlatformFeaturesInterface*,
            bool bypass_policy_for_testing,
            bool bypass_enq_ok_wait_for_testing,
+           bool stop_reporting_for_unaffiliated_users,
            uint32_t heartbeat_period_s,
            uint32_t plugin_batch_interval_s,
            uint32_t feature_poll_interval_s_for_testing);
@@ -58,9 +61,18 @@ class SecAgent {
   // waits for a successfully sent heartbeat before creating and running
   // the BPF plugins.
   void StartXDRReporting();
+  // When the device user is retrieved it checks for affiliation and if
+  // the user is affiliated reporting will start.
+  void OnDeviceUserRetrieved(const std::string& state);
+  // If the device user is unaffiliated restart secagentd and stop reporting.
+  void HandleSessionStateChange(const std::string& state);
+  // Flush all plugins after new sign in to avoid mixing old events with
+  // unaffiliated ones.
+  void FlushAllPluginEvents();
 
  private:
   friend class testing::SecAgentTestFixture;
+  friend class testing::DisableUnaffiliatedSecAgentTestFixture;
 
   struct PluginConfig {
     std::optional<PoliciesFeaturesBrokerInterface::Feature> gated_by_feature;
@@ -79,6 +91,7 @@ class SecAgent {
   feature::PlatformFeaturesInterface* platform_features_;
   bool bypass_policy_for_testing_ = false;
   bool bypass_enq_ok_wait_for_testing_ = false;
+  bool stop_reporting_for_unaffiliated_users_ = false;
   bool reporting_events_ = false;
   uint32_t heartbeat_period_s_;
   uint32_t plugin_batch_interval_s_;

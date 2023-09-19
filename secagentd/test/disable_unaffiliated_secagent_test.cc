@@ -1,10 +1,10 @@
-// Copyright 2023 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/functional/callback_forward.h"
 #include "secagentd/secagent.h"
 
-#include <cstring>
 #include <memory>
 #include <sysexits.h>
 
@@ -17,6 +17,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "secagentd/common.h"
+#include "secagentd/device_user.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"
@@ -47,10 +48,14 @@ class MockSystemQuit {
   MOCK_METHOD(void, Quit, (int rv));
   base::WeakPtrFactory<MockSystemQuit> weak_factory_{this};
 };
-class SecAgentTestFixture
+
+constexpr char kAffiliatedUser[] = "deviceUser@managedchrome.com";
+constexpr char kUnaffiliatedUser[] = "67d834ce-a6ec-4df6-bcc7-0fa926edf432";
+
+class DisableUnaffiliatedSecAgentTestFixture
     : public ::testing::TestWithParam<XdrFeatureAndPolicy> {
  protected:
-  SecAgentTestFixture() = default;
+  DisableUnaffiliatedSecAgentTestFixture() = default;
   void SetUp() override {
     agent_plugin_ = std::make_unique<MockPlugin>();
     agent_plugin_ref_ = agent_plugin_.get();
@@ -79,7 +84,7 @@ class SecAgentTestFixture
         std::move(plugin_factory_),
         // attestation and tpm proxies.
         nullptr /* Attestation */, nullptr /* Tpm */,
-        nullptr /* PlatformFeatures */, 0, 0, 0, 300, 120, 10);
+        nullptr /* PlatformFeatures */, 0, 0, 1, 300, 120, 10);
     secagent_->policies_features_broker_ = this->policies_features_broker_;
 
     ON_CALL(*process_plugin_ref_, GetName())
@@ -150,10 +155,20 @@ class SecAgentTestFixture
     EXPECT_CALL(*message_sender_, Initialize)
         .WillOnce(Return(absl::OkStatus()));
     EXPECT_CALL(*process_cache_, InitializeFilter);
-    EXPECT_CALL(*policies_features_broker_, StartAndBlockForSync);
+    EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+    EXPECT_CALL(*device_user_, SetFlushCallback);
+  }
+
+  void SaveSessionStateChangeCb() {
+    EXPECT_CALL(*device_user_, RegisterSessionChangeListener)
+        .WillOnce(WithArg<0>(Invoke([this](const base::RepeatingCallback<void(
+                                               const std::string& state)>& cb) {
+          state_changed_cb_ = cb;
+        })));
   }
 
   base::OnceCallback<void()> agent_activation_callback_;
+  base::RepeatingCallback<void(const std::string& user)> state_changed_cb_;
   std::unique_ptr<SecAgent> secagent_;
   std::unique_ptr<MockPluginFactory> plugin_factory_;
   std::unique_ptr<MockPlugin> agent_plugin_;
@@ -173,10 +188,18 @@ class SecAgentTestFixture
   base::test::TaskEnvironment task_environment_;
 };
 
-TEST_F(SecAgentTestFixture, TestReportingEnabled) {
+TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestReportingEnabled) {
   InstallActivateExpectations();
   InstallDontCarePluginIsActive();
   InstallDontCarePluginGetName();
+  SaveSessionStateChangeCb();
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kAffiliatedUser);
+          })));
+
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
       .WillOnce(Return(true));
   EXPECT_CALL(
@@ -184,7 +207,7 @@ TEST_F(SecAgentTestFixture, TestReportingEnabled) {
       GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                      kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
       .Times(AtLeast(1))
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       *policies_features_broker_,
       GetFeature(
@@ -201,7 +224,7 @@ TEST_F(SecAgentTestFixture, TestReportingEnabled) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillOnce(Return(false));
   // All plugins should be created.
   EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin);
   EXPECT_CALL(*plugin_factory_ref,
@@ -217,13 +240,26 @@ TEST_F(SecAgentTestFixture, TestReportingEnabled) {
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate);
   EXPECT_CALL(*agent_plugin_ref_, MockActivate);
   secagent_->Activate();
-  secagent_->CheckPolicyAndFeature();
+  state_changed_cb_.Run(kInit);
 }
 
-TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
+TEST_F(DisableUnaffiliatedSecAgentTestFixture,
+       TestReportingToUnaffiliatedSignin) {
   InstallActivateExpectations();
   InstallDontCarePluginIsActive();
   InstallDontCarePluginGetName();
+  SaveSessionStateChangeCb();
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kAffiliatedUser);
+          })))
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kUnaffiliatedUser);
+          })));
+
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
       .WillOnce(Return(true));
   EXPECT_CALL(
@@ -231,7 +267,7 @@ TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
       GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                      kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
       .Times(AtLeast(1))
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       *policies_features_broker_,
       GetFeature(
@@ -248,7 +284,150 @@ TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillOnce(Return(false));
+  // All plugins should be created.
+  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin);
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kAuthenticate, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _));
+
+  // Everything is enabled so all plugins should be activated.
+  EXPECT_CALL(*process_plugin_ref_, MockActivate);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate);
+  EXPECT_CALL(*authentication_plugin_ref_, MockActivate);
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate);
+  secagent_->Activate();
+  state_changed_cb_.Run(kInit);
+
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillOnce(Return(true));
+  // Retire expectations.
+  ::testing::Mock::VerifyAndClearExpectations(process_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(agent_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(network_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(authentication_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(policies_features_broker_.get());
+
+  // If no plugins were activated then no XDR events are being generated.
+  EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*authentication_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(mock_system_quit_, Quit(EX_OK));
+  state_changed_cb_.Run(kStarted);
+}
+
+TEST_F(DisableUnaffiliatedSecAgentTestFixture,
+       TestDisabledBecauseUnaffiliatedToReporting) {
+  InstallActivateExpectations();
+  InstallDontCarePluginIsActive();
+  InstallDontCarePluginGetName();
+  SaveSessionStateChangeCb();
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kAffiliatedUser);
+          })))
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kUnaffiliatedUser);
+          })));
+
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                     kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRNetworkEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRAuthenticateEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillOnce(Return(true));
+  // All plugins should be created.
+  EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin);
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kAuthenticate, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kNetwork, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref,
+              Create(Types::Plugin::kProcess, _, _, _, _, _));
+
+  EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*authentication_plugin_ref_, MockActivate()).Times(0);
+  secagent_->Activate();
+  state_changed_cb_.Run(kInit);
+
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillOnce(Return(false));
+  // Retire expectations.
+  ::testing::Mock::VerifyAndClearExpectations(process_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(agent_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(network_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(authentication_plugin_ref_);
+
+  EXPECT_CALL(*process_plugin_ref_, MockActivate);
+  EXPECT_CALL(*network_plugin_ref_, MockActivate);
+  EXPECT_CALL(*authentication_plugin_ref_, MockActivate);
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate);
+  state_changed_cb_.Run(kStarted);
+}
+
+TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestEnabledToDisabled) {
+  InstallActivateExpectations();
+  InstallDontCarePluginIsActive();
+  InstallDontCarePluginGetName();
+  SaveSessionStateChangeCb();
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kAffiliatedUser);
+          })));
+
+  EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                     kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRNetworkEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRAuthenticateEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillRepeatedly(Return(false));
   // All plugins should be created.
   EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin);
   EXPECT_CALL(*plugin_factory_ref,
@@ -264,7 +443,7 @@ TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate);
   EXPECT_CALL(*agent_plugin_ref_, MockActivate);
   secagent_->Activate();
-  secagent_->CheckPolicyAndFeature();
+  state_changed_cb_.Run(kInit);
   // Retire expectations.
   ::testing::Mock::VerifyAndClearExpectations(process_plugin_ref_);
   ::testing::Mock::VerifyAndClearExpectations(agent_plugin_ref_);
@@ -280,7 +459,7 @@ TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
       GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                      kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
       .Times(AtLeast(1))
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       *policies_features_broker_,
       GetFeature(
@@ -295,13 +474,20 @@ TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
   secagent_->CheckPolicyAndFeature();
 }
 
-TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
+TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestDisabledToEnabled) {
   // Standard expectations of a just launched secagentd.
   InstallActivateExpectations();
   InstallDontCarePluginIsActive();
   InstallDontCarePluginGetName();
+  SaveSessionStateChangeCb();
 
-  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kAffiliatedUser);
+          })));
+
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillRepeatedly(Return(false));
   // Reporting is disabled.
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
       .WillOnce(Return(false));
@@ -310,7 +496,7 @@ TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
       GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                      kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
       .Times(AtLeast(1))
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       *policies_features_broker_,
       GetFeature(
@@ -334,7 +520,7 @@ TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
   EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate()).Times(0);
   secagent_->Activate();
-  secagent_->CheckPolicyAndFeature();
+  state_changed_cb_.Run(kInit);
   // Retire expectations.
   ::testing::Mock::VerifyAndClearExpectations(plugin_factory_ref);
   ::testing::Mock::VerifyAndClearExpectations(process_plugin_ref_);
@@ -350,7 +536,7 @@ TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
       GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                      kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
       .Times(AtLeast(1))
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       *policies_features_broker_,
       GetFeature(
@@ -379,12 +565,13 @@ TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
   EXPECT_CALL(*process_plugin_ref_, MockActivate());
   EXPECT_CALL(*network_plugin_ref_, MockActivate());
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate());
-  secagent_->CheckPolicyAndFeature();
+  state_changed_cb_.Run(kInit);
 }
 
-TEST_F(SecAgentTestFixture, TestFailedInitialization) {
+TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestFailedInitialization) {
   InstallDontCarePluginIsActive();
   InstallDontCarePluginGetName();
+
   EXPECT_CALL(*message_sender_, Initialize)
       .WillOnce(Return(absl::InternalError(
           "InitializeQueues: Report queue failed to create")));
@@ -407,11 +594,19 @@ TEST_F(SecAgentTestFixture, TestFailedInitialization) {
   secagent_->Activate();
 }
 
-TEST_F(SecAgentTestFixture, TestFailedPluginCreation) {
+TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestFailedPluginCreation) {
   InstallActivateExpectations();
   InstallDontCarePluginIsActive();
   InstallDontCarePluginGetName();
-  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  SaveSessionStateChangeCb();
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kAffiliatedUser);
+          })));
+
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillOnce(Return(false));
 
   // It's fine if plugins are created very early and we never get to
   // instantiating the policy manager, grabbing device policies etc..
@@ -434,7 +629,7 @@ TEST_F(SecAgentTestFixture, TestFailedPluginCreation) {
       GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                      kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
       .Times(AtLeast(1))
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       *policies_features_broker_,
       GetFeature(
@@ -448,13 +643,21 @@ TEST_F(SecAgentTestFixture, TestFailedPluginCreation) {
   EXPECT_CALL(mock_system_quit_, Quit(EX_SOFTWARE));
 
   secagent_->Activate();
-  secagent_->CheckPolicyAndFeature();
+  state_changed_cb_.Run(kInit);
 }
 
-TEST_F(SecAgentTestFixture, TestFailedPluginActivation) {
+TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestFailedPluginActivation) {
   InstallActivateExpectations();
   InstallDontCarePluginIsActive();
   InstallDontCarePluginGetName();
+  SaveSessionStateChangeCb();
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kAffiliatedUser);
+          })));
+
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
       .WillRepeatedly(Return(true));
   EXPECT_CALL(
@@ -462,7 +665,7 @@ TEST_F(SecAgentTestFixture, TestFailedPluginActivation) {
       GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                      kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
       .Times(AtLeast(1))
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       *policies_features_broker_,
       GetFeature(
@@ -479,7 +682,7 @@ TEST_F(SecAgentTestFixture, TestFailedPluginActivation) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillOnce(Return(false));
   // All plugins should be created.
   EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin);
   EXPECT_CALL(*plugin_factory_ref,
@@ -498,13 +701,26 @@ TEST_F(SecAgentTestFixture, TestFailedPluginActivation) {
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate).Times(1);
 
   secagent_->Activate();
-  secagent_->CheckPolicyAndFeature();
+  state_changed_cb_.Run(kInit);
 }
 
-TEST_P(SecAgentTestFixture, TestReportingDisabled) {
+TEST_P(DisableUnaffiliatedSecAgentTestFixture, TestReportingDisabled) {
   const XdrFeatureAndPolicy param = GetParam();
 
-  InstallActivateExpectations();
+  EXPECT_CALL(*message_sender_, Initialize).WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(*process_cache_, InitializeFilter);
+  EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
+  EXPECT_CALL(*device_user_, SetFlushCallback);
+
+  SaveSessionStateChangeCb();
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kAffiliatedUser);
+          })));
+
+  EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillRepeatedly(Return(false));
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
       .WillOnce(Return(param.xdr_policy_enabled));
   EXPECT_CALL(
@@ -512,7 +728,7 @@ TEST_P(SecAgentTestFixture, TestReportingDisabled) {
       GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                      kCrosLateBootSecagentdXDRStopReportingForUnaffiliated))
       .Times(AtLeast(1))
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       *policies_features_broker_,
       GetFeature(
@@ -541,16 +757,17 @@ TEST_P(SecAgentTestFixture, TestReportingDisabled) {
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate()).Times(0);
 
   secagent_->Activate();
-  secagent_->CheckPolicyAndFeature();
+  state_changed_cb_.Run(kInit);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    SecAgentTestFixture,
-    SecAgentTestFixture,
+    DisableUnaffiliatedSecAgentTestFixture,
+    DisableUnaffiliatedSecAgentTestFixture,
     // {featured, policy}
     ::testing::ValuesIn<XdrFeatureAndPolicy>(
         {{false, false}, {false, true}, {true, false}}),
-    [](const ::testing::TestParamInfo<SecAgentTestFixture::ParamType>& info) {
+    [](const ::testing::TestParamInfo<
+        DisableUnaffiliatedSecAgentTestFixture::ParamType>& info) {
       std::string featured = info.param.xdr_feature_enabled
                                  ? "FeaturedEnabled"
                                  : "FeaturedDisabled";
