@@ -14,6 +14,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -25,6 +26,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "secanomalyd/daemon.h"
 #include "secanomalyd/mounts.h"
 #include "secanomalyd/processes.h"
 
@@ -234,19 +236,41 @@ TEST(SignatureTest, SignatureForMultipleProcs) {
               AnyOf(Eq(init_proc.comm), Eq(agetty_proc.comm)));
 }
 
+TEST(SignatureTest, SignatureForEmptyPaths) {
+  FilePaths paths = {};
+  std::optional<std::string> signature = GeneratePathSignature(paths);
+  ASSERT_EQ(signature, std::nullopt);
+}
+
+TEST(SignatureTest, SignatureForOnePath) {
+  FilePaths paths = {base::FilePath("/usr/sbin/bad_exe")};
+  std::optional<std::string> signature = GeneratePathSignature(paths);
+  ASSERT_TRUE(signature.has_value());
+  EXPECT_EQ(signature.value(), "/usr/sbin/bad_exe");
+}
+
+TEST(SignatureTest, SignatureForMultiplePaths) {
+  FilePaths paths = {base::FilePath("/usr/sbin/bad_exe_1"),
+                     base::FilePath("/usr/sbin/bad_exe_2")};
+  std::optional<std::string> signature = GeneratePathSignature(paths);
+  ASSERT_TRUE(signature.has_value());
+  EXPECT_EQ(signature.value(), paths.begin()->value());
+}
+
 // A simple W+X mount report will only contain one W+X mount and empty
 // accompanying sections.
 TEST(ReporterTest, SimpleWxMountReport) {
   MountEntryMap wx_mounts;
   wx_mounts.emplace(kUsrLocal, kWxMountUsrLocal);
   ProcEntries proc_entries;
+  FilePaths memfd_execs;
 
   MaybeReport report = GenerateAnomalousSystemReport(
-      wx_mounts, proc_entries, std::nullopt, std::nullopt);
+      wx_mounts, proc_entries, memfd_execs, std::nullopt, std::nullopt);
 
   ASSERT_TRUE(report.has_value());
 
-  std::vector<base::StringPiece> lines = base::SplitStringPiece(
+  std::vector<std::string_view> lines = base::SplitStringPiece(
       report.value(), "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // One signature line, one metadata line, four headers, one anomalous mount
@@ -294,13 +318,14 @@ TEST(ReporterTest, SimpleForbiddenIntersectionReport) {
   anomalous_procs.emplace_back(ProcEntry(
       init_proc.pid, init_proc.ppid, init_proc.pidns, init_proc.mntns,
       init_proc.userns, init_proc.comm, init_proc.args, init_proc.sandbox));
+  FilePaths memfd_execs;
 
   MaybeReport report = GenerateAnomalousSystemReport(
-      wx_mounts, anomalous_procs, std::nullopt, std::nullopt);
+      wx_mounts, anomalous_procs, memfd_execs, std::nullopt, std::nullopt);
 
   ASSERT_TRUE(report.has_value());
 
-  std::vector<base::StringPiece> lines = base::SplitStringPiece(
+  std::vector<std::string_view> lines = base::SplitStringPiece(
       report.value(), "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // One signature line, one metadata line, four headers, one anomalous
@@ -339,9 +364,60 @@ TEST(ReporterTest, SimpleForbiddenIntersectionReport) {
   EXPECT_EQ(std::string(lines[8]), "Could not obtain processes");
 }
 
-// A full report will contain at least one instance of each anomaly type,
+// A simple memfd exec report will only contain one memfd execution attempt and
+// empty accompanying sections.
+TEST(ReporterTest, SimpleMemfdExecReport) {
+  MountEntryMap wx_mounts;
+  ProcEntries proc_entries;
+  FilePaths memfd_execs = {base::FilePath("/usr/sbin/bad_exe")};
+
+  MaybeReport report = GenerateAnomalousSystemReport(
+      wx_mounts, proc_entries, memfd_execs, std::nullopt, std::nullopt);
+
+  ASSERT_TRUE(report.has_value());
+
+  std::vector<std::string_view> lines = base::SplitStringPiece(
+      report.value(), "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  // One signature line, one metadata line, four headers, one memfd exec attempt
+  // and two "empty section" messages.
+  ASSERT_EQ(lines.size(), 9u);
+
+  // Signature.
+  EXPECT_THAT(std::string(lines[0]), "/usr/sbin/bad_exe");
+
+  // Metadata.
+  base::StringPairs kvpairs;
+  ASSERT_TRUE(
+      base::SplitStringIntoKeyValuePairs(lines[1], '\x01', '\x02', &kvpairs));
+  for (const auto& kv : kvpairs) {
+    if (kv.first == "signal") {
+      // The anomaly was a memfd execution attempt so the signal is
+      // "memfd-exec-attempt".
+      EXPECT_EQ(kv.second, "memfd-exec-attempt");
+    } else if (kv.first == "executable") {
+      // Metadata 'executable' key matches signature.
+      EXPECT_EQ(kv.second, "/usr/sbin/bad_exe");
+    }
+  }
+
+  // Headers.
+  EXPECT_EQ(std::string(lines[2]), "=== Anomalous conditions ===");
+  EXPECT_EQ(std::string(lines[3]), "=== Executables attempting memfd exec ===");
+  EXPECT_EQ(std::string(lines[5]), "=== All mounts ===");
+  EXPECT_EQ(std::string(lines[7]), "=== All processes ===");
+
+  // Anomalous mount.
+  EXPECT_EQ(std::string(lines[4]), "/usr/sbin/bad_exe");
+
+  // Empty sections.
+  EXPECT_EQ(std::string(lines[6]), "Could not obtain mounts");
+  EXPECT_EQ(std::string(lines[8]), "Could not obtain processes");
+}
+
+// Test reports with W+X mount and forbidden intersection process anomalies,
 // complete with the accompanying sections for all mounts and all processes.
-TEST(ReporterTest, FullReport) {
+TEST(ReporterTest, MountAndProcessAnomalyReport) {
   MountEntryMap wx_mounts;
   wx_mounts.emplace(kUsrLocal, kWxMountUsrLocal);
 
@@ -374,12 +450,14 @@ TEST(ReporterTest, FullReport) {
                                    chrome_proc.args, chrome_proc.sandbox));
   MaybeProcEntries maybe_procs = MaybeProcEntries(all_procs);
 
+  FilePaths memfd_execs;
+
   MaybeReport report = GenerateAnomalousSystemReport(
-      wx_mounts, anomalous_procs, uploadable_mounts, maybe_procs);
+      wx_mounts, anomalous_procs, memfd_execs, uploadable_mounts, maybe_procs);
 
   ASSERT_TRUE(report.has_value());
 
-  std::vector<base::StringPiece> lines = base::SplitStringPiece(
+  std::vector<std::string_view> lines = base::SplitStringPiece(
       report.value(), "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // One signature line, one metadata line, four headers, one W+X mount
@@ -429,6 +507,106 @@ TEST(ReporterTest, FullReport) {
   EXPECT_EQ(std::string(lines[14]), init_proc.args);
   EXPECT_EQ(std::string(lines[15]), agetty_proc.args);
   EXPECT_EQ(std::string(lines[16]), chrome_proc.args);
+}
+
+// A full report will contain at least one instance of each anomaly type,
+// complete with the accompanying sections for all mounts and all processes.
+TEST(ReporterTest, FullReport) {
+  MountEntryMap wx_mounts;
+  wx_mounts.emplace(kUsrLocal, kWxMountUsrLocal);
+
+  MaybeMountEntries all_mounts = ReadMountsFromString(kMounts);
+  MaybeMountEntries uploadable_mounts = FilterPrivateMounts(all_mounts);
+
+  ProcEntries anomalous_procs;
+  Process init_proc = kProcesses["init"];
+  Process agetty_proc = kProcesses["agetty"];
+  anomalous_procs.emplace_back(ProcEntry(
+      init_proc.pid, init_proc.ppid, init_proc.pidns, init_proc.mntns,
+      init_proc.userns, init_proc.comm, init_proc.args, init_proc.sandbox));
+  anomalous_procs.emplace_back(
+      ProcEntry(agetty_proc.pid, agetty_proc.ppid, agetty_proc.pidns,
+                agetty_proc.mntns, agetty_proc.userns, agetty_proc.comm,
+                agetty_proc.args, agetty_proc.sandbox));
+
+  ProcEntries all_procs;
+  Process chrome_proc = kProcesses["chrome"];
+  all_procs.emplace_back(ProcEntry(
+      init_proc.pid, init_proc.ppid, init_proc.pidns, init_proc.mntns,
+      init_proc.userns, init_proc.comm, init_proc.args, init_proc.sandbox));
+  all_procs.emplace_back(ProcEntry(agetty_proc.pid, agetty_proc.ppid,
+                                   agetty_proc.pidns, agetty_proc.mntns,
+                                   agetty_proc.userns, agetty_proc.comm,
+                                   agetty_proc.args, agetty_proc.sandbox));
+  all_procs.emplace_back(ProcEntry(chrome_proc.pid, chrome_proc.ppid,
+                                   chrome_proc.pidns, chrome_proc.mntns,
+                                   chrome_proc.userns, chrome_proc.comm,
+                                   chrome_proc.args, chrome_proc.sandbox));
+  MaybeProcEntries maybe_procs = MaybeProcEntries(all_procs);
+
+  FilePaths memfd_execs = {base::FilePath("/usr/sbin/bad_exe")};
+
+  MaybeReport report = GenerateAnomalousSystemReport(
+      wx_mounts, anomalous_procs, memfd_execs, uploadable_mounts, maybe_procs);
+
+  ASSERT_TRUE(report.has_value());
+
+  std::vector<std::string_view> lines = base::SplitStringPiece(
+      report.value(), "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  // One signature line, one metadata line, four headers, one W+X mount, two
+  // process anomalies, one memfd exec attempt, four regular mounts and three
+  // regular processes.
+  ASSERT_EQ(lines.size(), 19u);
+
+  // Signature.
+  EXPECT_THAT(std::string(lines[0]), "/usr/sbin/bad_exe");
+
+  // Metadata.
+  base::StringPairs kvpairs;
+  ASSERT_TRUE(
+      base::SplitStringIntoKeyValuePairs(lines[1], '\x01', '\x02', &kvpairs));
+  for (const auto& kv : kvpairs) {
+    if (kv.first == "signal") {
+      // All anomaly types are present so the signal is "multiple-anomalies" and
+      // the memfd exec attempt is used for the signature.
+      EXPECT_EQ(kv.second, "multiple-anomalies");
+    } else if (kv.first == "executable") {
+      EXPECT_EQ(kv.second, "/usr/sbin/bad_exe");
+    }
+  }
+
+  // Headers.
+  EXPECT_EQ(std::string(lines[2]), "=== Anomalous conditions ===");
+  EXPECT_EQ(std::string(lines[3]), "=== W+X mounts ===");
+  EXPECT_EQ(std::string(lines[5]), "=== Forbidden intersection processes ===");
+  EXPECT_EQ(std::string(lines[8]), "=== Executables attempting memfd exec ===");
+  EXPECT_EQ(std::string(lines[10]), "=== All mounts ===");
+  EXPECT_EQ(std::string(lines[15]), "=== All processes ===");
+
+  // Anomalous mount.
+  EXPECT_EQ(std::string(lines[4]), kWxMountUsrLocal_FullDescription);
+
+  // Anomalous processes.
+  EXPECT_EQ(std::string(lines[6]), kInit_FullDescription);
+  EXPECT_EQ(std::string(lines[7]), kAgetty_FullDescription);
+
+  // Memfd execution attempts.
+  EXPECT_EQ(std::string(lines[9]), "/usr/sbin/bad_exe");
+
+  // Actual mounts.
+  EXPECT_EQ(std::string(lines[11]), "/dev/root / ext2 rw,seclabel,relatime");
+  EXPECT_EQ(std::string(lines[12]),
+            "proc /proc proc rw,nosuid,nodev,noexec,relatime");
+  EXPECT_EQ(std::string(lines[13]),
+            "tmpfs /run/namespaces tmpfs "
+            "rw,seclabel,nosuid,nodev,noexec,relatime,mode=755");
+  EXPECT_EQ(std::string(lines[14]), kWxMountUsrLocal_FullDescription);
+
+  // Actual processes.
+  EXPECT_EQ(std::string(lines[16]), init_proc.args);
+  EXPECT_EQ(std::string(lines[17]), agetty_proc.args);
+  EXPECT_EQ(std::string(lines[18]), chrome_proc.args);
 }
 
 TEST(ReporterTest, CrashReporterSuceeds) {

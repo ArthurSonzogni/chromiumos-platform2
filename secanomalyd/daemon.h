@@ -6,7 +6,6 @@
 #define SECANOMALYD_DAEMON_H_
 
 #include <memory>
-#include <set>
 
 #include <base/files/file_path.h>
 
@@ -67,6 +66,7 @@ class Daemon : public brillo::DBusDaemon {
   // crash report due to an anomaly. Attempts are capped at 1 per anomaly type.
   bool has_attempted_wx_mount_report_ = false;
   bool has_attempted_forbidden_intersection_report_ = false;
+  bool has_attempted_memfd_exec_report_ = false;
 
   // Forbidden intersection process count is sent once per boot.
   bool has_emitted_forbidden_intersection_uma_ = false;
@@ -101,7 +101,7 @@ class Daemon : public brillo::DBusDaemon {
   MaybeProcEntries all_procs_;
   MaybeProcEntry init_proc_;
 
-  std::set<base::FilePath> executables_attempting_memfd_exec_;
+  FilePaths executables_attempting_memfd_exec_;
 
   // Used for reading and parsing the audit log file.
   std::unique_ptr<AuditLogReader> audit_log_reader_;

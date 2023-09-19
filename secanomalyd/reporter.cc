@@ -7,7 +7,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -21,6 +21,7 @@
 #include <crypto/sha2.h>
 #include <vboot/crossystem.h>
 
+#include "secanomalyd/daemon.h"
 #include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
 #include "secanomalyd/processes.h"
@@ -82,23 +83,36 @@ std::optional<std::string> GenerateProcSignature(const ProcEntries& procs) {
   return std::optional<std::string>(signature);
 }
 
+std::optional<std::string> GeneratePathSignature(const FilePaths& paths) {
+  if (paths.empty()) {
+    return std::nullopt;
+  }
+  base::FilePath signature_path = *paths.begin();
+  return std::optional<std::string>(signature_path.value());
+}
+
 MaybeReport GenerateAnomalousSystemReport(
     const MountEntryMap& wx_mounts,
     const ProcEntries& forbidden_intersection_procs,
+    const FilePaths& executables_attempting_memfd_exec,
     const MaybeMountEntries& all_mounts,
     const MaybeProcEntries& all_procs) {
   // First line: signature
   // Second line: metadata
-  //    signals: wx-mount|forbidden-intersection-violation|multiple-anomalies
+  //    signals: wx-mount | forbidden-intersection-violation |
+  //      memfd-exec-attempt | multiple-anomalies
   //    dest: /usr/local, e.g.
   // Third+ line: content
   std::vector<std::string> lines;
 
   // Generate signature based on the anomaly type. If multiple anomaly types are
-  // present, the W+X mount anomaly is used to generate the signature. At least
-  // one anomaly has to be preset to proceed.
+  // present, the order of preference for signature generation is memfd exec
+  // attempt, then W+X mount, then forbidden intersection process. At least one
+  // anomaly has to be preset to proceed.
   std::optional<std::string> signature;
-  if (!wx_mounts.empty()) {
+  if (!executables_attempting_memfd_exec.empty()) {
+    signature = GeneratePathSignature(executables_attempting_memfd_exec);
+  } else if (!wx_mounts.empty()) {
     signature = GenerateMountSignature(wx_mounts);
   } else if (!forbidden_intersection_procs.empty()) {
     signature = GenerateProcSignature(forbidden_intersection_procs);
@@ -114,23 +128,31 @@ MaybeReport GenerateAnomalousSystemReport(
   // Metadata are a set of key-value pairs where keys and values are separated
   // by \x01 and pairs are separated by \x02:
   // 'signals\x01wx-mount\x02dest\x01/usr/local'
-  // Right now we only support specifying which anomaly type triggered the
-  // upload of this report, and signalling which specific anomaly was used for
-  // the signature.
-  std::string metadata;
-  if (!wx_mounts.empty() && !forbidden_intersection_procs.empty()) {
-    base::FilePath dest = wx_mounts.begin()->first;
-    base::StrAppend(&metadata, {"\x01", "multiple-anomalies", "\x02", "dest",
-                                "\x01", dest.value()});
+  //
+  // Signal which anomaly type triggered the report generation, or whether
+  // the report was generated due to multiple anomalies.
+  std::string metadata = "signals\x01";
+  if (wx_mounts.empty() && executables_attempting_memfd_exec.empty()) {
+    base::StrAppend(&metadata, {"forbidden-intersection-violation"});
+  } else if (executables_attempting_memfd_exec.empty() &&
+             forbidden_intersection_procs.empty()) {
+    base::StrAppend(&metadata, {"wx-mount"});
+  } else if (forbidden_intersection_procs.empty() && wx_mounts.empty()) {
+    base::StrAppend(&metadata, {"memfd-exec-attempt"});
+  } else {
+    base::StrAppend(&metadata, {"multiple-anomalies"});
+  }
+  // Indicate the specific anomaly used for the signature generation.
+  base::StrAppend(&metadata, {"\x02"});
+  if (!executables_attempting_memfd_exec.empty()) {
+    base::StrAppend(&metadata, {"executable", "\x01", signature.value()});
   } else if (!wx_mounts.empty()) {
     base::FilePath dest = wx_mounts.begin()->first;
-    base::StrAppend(&metadata, {"\x01", "wx-mount", "\x02",
-                                "dest"
+    base::StrAppend(&metadata, {"dest"
                                 "\x01",
                                 dest.value()});
-  } else {
-    base::StrAppend(&metadata, {"\x01", "forbidden-intersection-violation",
-                                "\x02", "comm", "\x01", signature.value()});
+  } else if (!forbidden_intersection_procs.empty()) {
+    base::StrAppend(&metadata, {"comm", "\x01", signature.value()});
   }
   lines.emplace_back(metadata);
 
@@ -146,6 +168,12 @@ MaybeReport GenerateAnomalousSystemReport(
     lines.emplace_back("=== Forbidden intersection processes ===");
     for (const auto& e : forbidden_intersection_procs) {
       lines.push_back(e.comm() + " " + e.args());
+    }
+  }
+  if (!executables_attempting_memfd_exec.empty()) {
+    lines.emplace_back("=== Executables attempting memfd exec ===");
+    for (const auto& e : executables_attempting_memfd_exec) {
+      lines.push_back(e.value());
     }
   }
 
@@ -220,6 +248,7 @@ bool SendReport(base::StringPiece report,
 
 bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
                            const ProcEntries& forbidden_intersection_procs,
+                           const FilePaths& executables_attempting_memfd_exec,
                            const MaybeMountEntries& all_mounts,
                            const MaybeProcEntries& all_procs,
                            int weight,
@@ -234,7 +263,8 @@ bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
   }
 
   MaybeReport anomaly_report = GenerateAnomalousSystemReport(
-      wx_mounts, forbidden_intersection_procs, uploadable_mounts,
+      wx_mounts, forbidden_intersection_procs,
+      executables_attempting_memfd_exec, uploadable_mounts,
       MaybeProcEntries(init_pidns_procs));
 
   if (!anomaly_report) {

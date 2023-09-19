@@ -9,6 +9,7 @@
 
 #include <bitset>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,7 @@
 #include <brillo/process/process.h>
 
 namespace secanomalyd {
+using FilePaths = std::set<base::FilePath>;
 const base::FilePath kProcPathBase("/proc");
 
 namespace testing {
@@ -58,6 +60,7 @@ class ProcEntry {
   FRIEND_TEST(SignatureTest, SignatureForOneProc);
   FRIEND_TEST(SignatureTest, SignatureForMultipleProcs);
   FRIEND_TEST(ReporterTest, SimpleForbiddenIntersectionReport);
+  FRIEND_TEST(ReporterTest, MountAndProcessAnomalyReport);
   FRIEND_TEST(ReporterTest, FullReport);
 
   ProcEntry(pid_t pid,

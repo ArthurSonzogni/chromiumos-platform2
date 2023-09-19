@@ -61,8 +61,7 @@ constexpr base::TimeDelta kUmaReportInterval = base::Hours(2);
 // element is a unique instance of a certain path type denoted by a `prefix`.
 // For example, unknown executable paths are recorded as:
 // {"unknown_executable_1", "unknown_executable_2", etc...}
-std::string GetNextUniquePath(const std::set<base::FilePath>& set,
-                              const std::string& prefix) {
+std::string GetNextUniquePath(const FilePaths& set, const std::string& prefix) {
   int num_common_elements = 0;
   for (base::FilePath element : set) {
     if (absl::StartsWith(element.value(), prefix))
@@ -333,13 +332,13 @@ void Daemon::DoProcScan() {
 }
 
 void Daemon::DoAnomalousSystemReporting() {
-  // TODO(b/255818130): Check for and append the details of any discovered memfd
-  // execution events so that they appear in the report.
   // Skip reporting if for all anomaly types either the daemon has previously
   // attempted to send a report or the anomaly does not exist.
   if ((has_attempted_wx_mount_report_ || wx_mounts_.empty()) &&
       (has_attempted_forbidden_intersection_report_ ||
-       forbidden_intersection_procs_.value().empty())) {
+       forbidden_intersection_procs_.value().empty()) &&
+      (has_attempted_memfd_exec_report_ ||
+       executables_attempting_memfd_exec_.empty())) {
     return;
   }
 
@@ -355,6 +354,9 @@ void Daemon::DoAnomalousSystemReporting() {
   if (!anomalous_procs.empty()) {
     has_attempted_forbidden_intersection_report_ = true;
   }
+  if (!executables_attempting_memfd_exec_.empty()) {
+    has_attempted_memfd_exec_report_ = true;
+  }
 
   if (!ShouldReport(dev_)) {
     VLOG(1) << "Not reporting anomalous system due to dev mode";
@@ -364,11 +366,13 @@ void Daemon::DoAnomalousSystemReporting() {
 
   int range = 0;
   int weight = 1;
-  // If |dev_| is set, always send the report. Otherwise, if W+X anomalies
-  // exist, send one in every |CalculateSampleFrequency(wx_mounts_.size())|
-  // reports. Finally, if only forbidden intersection violations exist, send one
-  // in every |kProcAnomalySampleFrequency| reports.
-  if (dev_) {
+  // If |dev_| is set or there are memfd execution attempts, always send the
+  // report (memfd execution attempts are exceedingly rare so we can afford to
+  // upload them all). Otherwise, if W+X anomalies exist, send one in every
+  // |CalculateSampleFrequency(wx_mounts_.size())| reports. Finally, if only
+  // forbidden intersection violations exist, send one in every
+  // |kProcAnomalySampleFrequency| reports.
+  if (dev_ || !executables_attempting_memfd_exec_.empty()) {
     range = 1;
   } else if (!wx_mounts_.empty()) {
     range = CalculateSampleFrequency(wx_mounts_.size());
@@ -383,8 +387,9 @@ void Daemon::DoAnomalousSystemReporting() {
     return;
   }
 
-  bool success = ReportAnomalousSystem(wx_mounts_, anomalous_procs, all_mounts_,
-                                       all_procs_, weight, dev_);
+  bool success = ReportAnomalousSystem(wx_mounts_, anomalous_procs,
+                                       executables_attempting_memfd_exec_,
+                                       all_mounts_, all_procs_, weight, dev_);
   if (!success) {
     // Reporting is best-effort so on failure we just print a warning.
     LOG(WARNING) << "Failed to report anomalous system";
