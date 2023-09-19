@@ -78,6 +78,34 @@ TEST_F(P2PDeviceTest, DeviceOnOff) {
   CHECK_EQ(device->state_, P2PDevice::P2PDeviceState::kUninitialized);
 }
 
+TEST_F(P2PDeviceTest, GroupInfo) {
+  scoped_refptr<P2PDevice> device =
+      new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,
+                    kPrimaryInterfaceName, kPhyIndex, kSHillID, cb.Get());
+
+  KeyValueStore groupInfo = device->GetGroupInfo();
+  EXPECT_TRUE(groupInfo.Contains<Integer>(kP2PGroupInfoShillIDProperty));
+  EXPECT_TRUE(groupInfo.Contains<String>(kP2PGroupInfoStateProperty));
+
+  EXPECT_EQ(groupInfo.Get<Integer>(kP2PGroupInfoShillIDProperty), kSHillID);
+  EXPECT_EQ(groupInfo.Get<String>(kP2PGroupInfoStateProperty),
+            kP2PGroupInfoStateIdle);
+}
+
+TEST_F(P2PDeviceTest, ClientInfo) {
+  scoped_refptr<P2PDevice> device =
+      new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PClient,
+                    kPrimaryInterfaceName, kPhyIndex, kSHillID, cb.Get());
+
+  KeyValueStore clientInfo = device->GetClientInfo();
+  EXPECT_TRUE(clientInfo.Contains<Integer>(kP2PGroupInfoShillIDProperty));
+  EXPECT_TRUE(clientInfo.Contains<String>(kP2PGroupInfoStateProperty));
+
+  EXPECT_EQ(clientInfo.Get<Integer>(kP2PGroupInfoShillIDProperty), kSHillID);
+  EXPECT_EQ(clientInfo.Get<String>(kP2PGroupInfoStateProperty),
+            kP2PGroupInfoStateIdle);
+}
+
 TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   scoped_refptr<P2PDevice> device =
       new P2PDevice(&manager_, LocalDevice::IfaceType::kP2PGO,

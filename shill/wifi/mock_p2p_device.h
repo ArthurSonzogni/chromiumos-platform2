@@ -35,6 +35,8 @@ class MockP2PDevice : public P2PDevice {
 
   bool Stop() override { return true; }
 
+  MOCK_METHOD(KeyValueStore, GetGroupInfo, (), (const));
+  MOCK_METHOD(KeyValueStore, GetClientInfo, (), (const));
   MOCK_METHOD(bool, CreateGroup, (std::unique_ptr<P2PService>), ());
   MOCK_METHOD(bool, Connect, (std::unique_ptr<P2PService>), ());
 };

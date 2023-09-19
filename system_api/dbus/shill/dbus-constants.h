@@ -110,6 +110,9 @@ constexpr char kExperimentalTetheringFunctionality[] =
     "ExperimentalTetheringFunctionality";
 constexpr char kLOHSConfigProperty[] = "LOHSConfig";
 constexpr char kP2PAllowedProperty[] = "P2PAllowed";
+constexpr char kP2PCapabilitiesProperty[] = "P2PCapabilities";
+constexpr char kP2PGroupInfosProperty[] = "P2PGroupInfos";
+constexpr char kP2PClientInfosProperty[] = "P2PClientInfos";
 constexpr char kPortalFallbackHttpUrlsProperty[] = "PortalFallbackHttpUrls";
 constexpr char kPortalFallbackHttpsUrlsProperty[] = "PortalFallbackHttpsUrls";
 constexpr char kPortalHttpUrlProperty[] = "PortalHttpUrl";
@@ -1074,6 +1077,75 @@ constexpr char kP2PDeviceStateGOStarting[] = "go_starting";
 constexpr char kP2PDeviceStateGOConfiguring[] = "go_configuring";
 constexpr char kP2PDeviceStateGOActive[] = "go_active";
 constexpr char kP2PDeviceStateGOStopping[] = "go_stopping";
+
+// Manager kP2PCapabilitiesProperty dictionary key names.
+constexpr char kP2PCapabilitiesP2PSupportedProperty[] = "P2PSupported";
+constexpr char kP2PCapabilitiesGroupReadinessProperty[] = "GroupReadiness";
+constexpr char kP2PCapabilitiesClientReadinessProperty[] = "ClientReadiness";
+constexpr char kP2PCapabilitiesSupportedChannelsProperty[] =
+    "SupportedChannels";
+constexpr char kP2PCapapabilitiesPreferredChannelsProperty[] =
+    "PreferredChannels";
+
+// kP2PCapabilitiesGroupReadinessProperty values
+constexpr char kP2PCapabilitiesGroupReadinessReady[] = "kReady";
+constexpr char kP2PCapabilitiesGroupReadinessNotReady[] = "kNotReady";
+
+// kP2PCapabilitiesClientReadinessProperty values
+constexpr char kP2PCapabilitiesClientReadinessReady[] = "kReady";
+constexpr char kP2PCapabilitiesClientReadinessNotReady[] = "kNotReady";
+
+// Manager kP2PGroupInfosProperty dictionary key names.
+constexpr char kP2PGroupInfoShillIDProperty[] = "shill_id";
+constexpr char kP2PGroupInfoStateProperty[] = "state";
+constexpr char kP2PGroupInfoSSIDProperty[] = "ssid";
+constexpr char kP2PGroupInfoPassphraseProperty[] = "passphrase";
+constexpr char kP2PGroupInfoBSSIDProperty[] = "bssid";
+constexpr char kP2PGroupInfoIPv4AddressProperty[] = "ipv4_address";
+constexpr char kP2PGroupInfoIPv6AddressProperty[] = "ipv6_address";
+constexpr char kP2PGroupInfoMACAddressProperty[] = "mac_address";
+constexpr char kP2PGroupInfoFrequencyProperty[] = "frequency";
+constexpr char kP2PGroupInfoClientsProperty[] = "clients";
+
+// kP2PGroupInfoStateProperty values
+constexpr char kP2PGroupInfoStateIdle[] = "kIdle";
+constexpr char kP2PGroupInfoStateStarting[] = "kStarting";
+constexpr char kP2PGroupInfoStateConfiguring[] = "kConfiguring";
+constexpr char kP2PGroupInfoStateActive[] = "kActive";
+constexpr char kP2PGroupInfoStateStopping[] = "kStopping";
+
+// Manager kP2PGroupInfoClientsProperty dictionary key names
+constexpr char kP2PGroupInfoClientMACAddressProperty[] = "mac_address";
+constexpr char kP2PGroupInfoClientIPv4AddressProperty[] = "ipv4_address";
+constexpr char kP2PGroupInfoClientIPv6AddressProperty[] = "ipv6_address";
+constexpr char kP2PGroupInfoClientHostnameProperty[] = "hostname";
+constexpr char kP2PGroupInfoClientVendorClassProperty[] = "vendor_class";
+
+// Manager kP2PClientInfoProperty dictionary key names.
+constexpr char kP2PClientInfoShillIDProperty[] = "shill_id";
+constexpr char kP2PClientInfoStateProperty[] = "state";
+constexpr char kP2PClientInfoSSIDProperty[] = "ssid";
+constexpr char kP2PClientInfoPassphraseProperty[] = "passphrase";
+constexpr char kP2PClientInfoGroupBSSIDProperty[] = "group_bssid";
+constexpr char kP2PClientInfoIPv4AddressProperty[] = "ipv4_address";
+constexpr char kP2PClientInfoIPv6AddressProperty[] = "ipv6_address";
+constexpr char kP2PClientInfoMACAddressProperty[] = "mac_address";
+constexpr char kP2PClientInfoFrequencyProperty[] = "frequency";
+constexpr char kP2PClientInfoGroupOwnerProperty[] = "group_owner";
+
+// kP2PClientInfoStateProperty values
+constexpr char kP2PClientInfoStateIdle[] = "kIdle";
+constexpr char kP2PClientInfoStateAssociating[] = "kAssociating";
+constexpr char kP2PClientInfoStateConfiguring[] = "kConfiguring";
+constexpr char kP2PClientInfoStateConnected[] = "kConnected";
+constexpr char kP2PClientInfoStateDisconnecting[] = "kDisconnecting";
+
+// Manager kP2PClientInfoGroupOwnerProperty dictionary key names
+constexpr char kP2PClientInfoGroupOwnerMACAddressProperty[] = "mac_address";
+constexpr char kP2PClientInfoGroupOwnerIPv4AddressProperty[] = "ipv4_address";
+constexpr char kP2PClientInfoGroupOwnerIPv6AddressProperty[] = "ipv6_address";
+constexpr char kP2PClientInfoGroupOwnerHostnameProperty[] = "hostname";
+constexpr char kP2PClientInfoGroupOwnerVendorClassProperty[] = "vendor_class";
 
 // Manager CreateP2PGroup and ConnectToP2PGroup dictionary argument key names
 constexpr char kP2PDeviceSSID[] = "ssid";

@@ -54,6 +54,29 @@ class P2PManagerTest : public testing::Test {
     EXPECT_TRUE(error.IsSuccess());
   }
 
+  KeyValueStore GetCapabilities(P2PManager* p2p_manager) {
+    Error error;
+    KeyValueStore caps = p2p_manager->GetCapabilities(&error);
+    EXPECT_TRUE(error.IsSuccess());
+    return caps;
+  }
+
+  KeyValueStores GetGroupInfos(P2PManager* p2p_manager) {
+    Error error;
+    KeyValueStores groupInfos = p2p_manager->GetGroupInfos(&error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(groupInfos.size(), p2p_manager_->p2p_group_owners_.size());
+    return groupInfos;
+  }
+
+  KeyValueStores GetClientInfos(P2PManager* p2p_manager) {
+    Error error;
+    KeyValueStores clientInfos = p2p_manager->GetClientInfos(&error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(clientInfos.size(), p2p_manager_->p2p_clients_.size());
+    return clientInfos;
+  }
+
   base::ScopedTempDir MakeTempDir() {
     base::ScopedTempDir temp_dir;
     EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -87,6 +110,87 @@ TEST_F(P2PManagerTest, SetP2PAllowed) {
   EXPECT_EQ(p2p_manager_->allowed_, false);
 }
 
+TEST_F(P2PManagerTest, GetP2PCapabilities) {
+  KeyValueStore caps = GetCapabilities(p2p_manager_);
+  EXPECT_TRUE(caps.Contains<Boolean>(kP2PCapabilitiesP2PSupportedProperty));
+  auto supported = caps.Get<Boolean>(kP2PCapabilitiesP2PSupportedProperty);
+
+  // TODO(b/295050788): it requires wifi phy to have
+  // ability to get hardware support for Wifi Direct.
+  EXPECT_TRUE(supported);
+
+  EXPECT_TRUE(caps.Contains<String>(kP2PCapabilitiesGroupReadinessProperty));
+  EXPECT_TRUE(caps.Contains<String>(kP2PCapabilitiesClientReadinessProperty));
+  EXPECT_TRUE(
+      caps.Contains<Integers>(kP2PCapabilitiesSupportedChannelsProperty));
+  EXPECT_TRUE(
+      caps.Contains<Integers>(kP2PCapapabilitiesPreferredChannelsProperty));
+
+  auto groupReadiness =
+      caps.Get<String>(kP2PCapabilitiesGroupReadinessProperty);
+  auto clientReadiness =
+      caps.Get<String>(kP2PCapabilitiesClientReadinessProperty);
+  auto supportedChannels =
+      caps.Get<Integers>(kP2PCapabilitiesSupportedChannelsProperty);
+  auto preferredChannels =
+      caps.Get<Integers>(kP2PCapapabilitiesPreferredChannelsProperty);
+
+  // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
+  // and interface combination checking to be supported by wifi phy.
+  EXPECT_EQ(groupReadiness, kP2PCapabilitiesGroupReadinessNotReady);
+  EXPECT_EQ(clientReadiness, kP2PCapabilitiesClientReadinessNotReady);
+  EXPECT_TRUE(supportedChannels.empty());
+  EXPECT_TRUE(preferredChannels.empty());
+}
+
+TEST_F(P2PManagerTest, GetP2PGroupInfos) {
+  KeyValueStore pattern;
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
+                                  "wlan0", 0, 0, event_cb_.Get());
+  for (int i = 0; i < 10; i++) {
+    pattern.Set<Integer>(kP2PGroupInfoShillIDProperty, i);
+    pattern.Set<String>(kP2PGroupInfoStateProperty, kP2PGroupInfoStateIdle);
+
+    p2p_manager_->p2p_group_owners_[i] = p2p_device;
+    EXPECT_CALL(*p2p_device, GetGroupInfo())
+        .Times(i + 1)
+        .WillRepeatedly(Return(pattern));
+
+    KeyValueStores groupInfos = GetGroupInfos(p2p_manager_);
+    EXPECT_EQ(groupInfos.size(), i + 1);
+    for (auto& result : groupInfos) {
+      EXPECT_EQ(result.Get<Integer>(kP2PGroupInfoShillIDProperty), i);
+      EXPECT_EQ(result.Get<String>(kP2PGroupInfoStateProperty),
+                kP2PGroupInfoStateIdle);
+    }
+  }
+}
+
+TEST_F(P2PManagerTest, GetP2PClientInfos) {
+  KeyValueStore pattern;
+  MockP2PDevice* p2p_device =
+      new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PClient,
+                                  "wlan0", 0, 0, event_cb_.Get());
+  for (int i = 0; i < 10; i++) {
+    pattern.Set<Integer>(kP2PClientInfoShillIDProperty, i);
+    pattern.Set<String>(kP2PClientInfoStateProperty, kP2PClientInfoStateIdle);
+
+    p2p_manager_->p2p_clients_[i] = p2p_device;
+    EXPECT_CALL(*p2p_device, GetClientInfo())
+        .Times(i + 1)
+        .WillRepeatedly(Return(pattern));
+
+    KeyValueStores clientInfos = GetClientInfos(p2p_manager_);
+    EXPECT_EQ(clientInfos.size(), i + 1);
+    for (auto& result : clientInfos) {
+      EXPECT_EQ(result.Get<Integer>(kP2PClientInfoShillIDProperty), i);
+      EXPECT_EQ(result.Get<String>(kP2PClientInfoStateProperty),
+                kP2PClientInfoStateIdle);
+    }
+  }
+}
+
 TEST_F(P2PManagerTest, ConnectAndDisconnectClient) {
   KeyValueStore properties;
   properties.Set<std::string>(kP2PDeviceSSID, "DIRECT-ab");
@@ -99,6 +203,15 @@ TEST_F(P2PManagerTest, ConnectAndDisconnectClient) {
   KeyValueStore response_dict;
   uint32_t expected_shill_id = p2p_manager_->next_unique_id_;
 
+  KeyValueStore info_pattern;
+  info_pattern.Set<Integer>(kP2PClientInfoShillIDProperty, expected_shill_id);
+  info_pattern.Set<String>(kP2PClientInfoStateProperty,
+                           kP2PClientInfoStateConnected);
+  KeyValueStores info_result;
+
+  info_result = GetClientInfos(p2p_manager_);
+  ASSERT_EQ(info_result.size(), 0);
+
   EXPECT_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
       .WillOnce(Return(p2p_device));
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
@@ -109,12 +222,23 @@ TEST_F(P2PManagerTest, ConnectAndDisconnectClient) {
             kConnectToP2PGroupResultSuccess);
   ASSERT_EQ(p2p_manager_->p2p_clients_[expected_shill_id], p2p_device);
 
+  EXPECT_CALL(*p2p_device, GetClientInfo()).WillOnce(Return(info_pattern));
+  info_result = GetClientInfos(p2p_manager_);
+  ASSERT_EQ(info_result.size(), 1);
+  EXPECT_EQ(info_result[0].Get<Integer>(kP2PClientInfoShillIDProperty),
+            expected_shill_id);
+  EXPECT_EQ(info_result[0].Get<String>(kP2PClientInfoStateProperty),
+            kP2PClientInfoStateConnected);
+
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
   p2p_manager_->DisconnectFromP2PGroup(cb.Get(), expected_shill_id);
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kDisconnectFromP2PGroupResultSuccess);
   ASSERT_EQ(p2p_manager_->p2p_clients_.count(expected_shill_id), 0);
+
+  info_result = GetClientInfos(p2p_manager_);
+  ASSERT_EQ(info_result.size(), 0);
 }
 
 TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
@@ -129,6 +253,15 @@ TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
   KeyValueStore response_dict;
   uint32_t expected_shill_id = p2p_manager_->next_unique_id_;
 
+  KeyValueStore info_pattern;
+  info_pattern.Set<Integer>(kP2PGroupInfoShillIDProperty, expected_shill_id);
+  info_pattern.Set<String>(kP2PGroupInfoStateProperty,
+                           kP2PGroupInfoStateActive);
+  KeyValueStores info_result;
+
+  info_result = GetGroupInfos(p2p_manager_);
+  ASSERT_EQ(info_result.size(), 0);
+
   EXPECT_CALL(*wifi_provider_, CreateP2PDevice(_, _, _))
       .WillOnce(Return(p2p_device));
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
@@ -139,12 +272,23 @@ TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
             kCreateP2PGroupResultSuccess);
   ASSERT_EQ(p2p_manager_->p2p_group_owners_[expected_shill_id], p2p_device);
 
+  EXPECT_CALL(*p2p_device, GetGroupInfo()).WillOnce(Return(info_pattern));
+  info_result = GetGroupInfos(p2p_manager_);
+  ASSERT_EQ(info_result.size(), 1);
+  EXPECT_EQ(info_result[0].Get<Integer>(kP2PGroupInfoShillIDProperty),
+            expected_shill_id);
+  EXPECT_EQ(info_result[0].Get<String>(kP2PGroupInfoStateProperty),
+            kP2PGroupInfoStateActive);
+
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
   p2p_manager_->DestroyP2PGroup(cb.Get(), expected_shill_id);
   DispatchPendingEvents();
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kDestroyP2PGroupResultSuccess);
   ASSERT_EQ(p2p_manager_->p2p_group_owners_.count(expected_shill_id), 0);
+
+  info_result = GetGroupInfos(p2p_manager_);
+  ASSERT_EQ(info_result.size(), 0);
 }
 
 TEST_F(P2PManagerTest, DisconnectWithoutConnect) {

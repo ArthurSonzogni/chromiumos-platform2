@@ -61,6 +61,24 @@ const char* P2PDevice::P2PDeviceStateName(P2PDeviceState state) {
   return "Invalid";
 }
 
+KeyValueStore P2PDevice::GetGroupInfo() const {
+  // TODO(b/301049348): integration with supplicant D-Bus is required
+  // to provide properties of active p2p group.
+  KeyValueStore groupInfo;
+  groupInfo.Set<Integer>(kP2PGroupInfoShillIDProperty, shill_id());
+  groupInfo.Set<String>(kP2PGroupInfoStateProperty, kP2PGroupInfoStateIdle);
+  return groupInfo;
+}
+
+KeyValueStore P2PDevice::GetClientInfo() const {
+  // TODO(b/301049348): integration with supplicant D-Bus is required
+  // to provide properties of connected p2p client.
+  KeyValueStore clientInfo;
+  clientInfo.Set<Integer>(kP2PClientInfoShillIDProperty, shill_id());
+  clientInfo.Set<String>(kP2PClientInfoStateProperty, kP2PClientInfoStateIdle);
+  return clientInfo;
+}
+
 bool P2PDevice::Start() {
   SetState(P2PDeviceState::kReady);
   return true;

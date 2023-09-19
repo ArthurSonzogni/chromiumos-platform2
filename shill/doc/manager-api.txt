@@ -709,6 +709,203 @@ Properties	object ActiveProfile [readonly]
 			The list of technologies for which auto-connect is disabled. This is
 			a comma-separated string, e.g. "cellular,wifi".
 
+		dict P2PCapabilities [readonly]
+
+			A property that indicates the hardware capabilities and state
+			information for P2P operation on the platform. Callers should
+			request this property before utilizing the P2P API.
+
+			boolean P2PSupported
+				Whether the platform supports P2P operations.
+
+			string GroupReadiness
+				Indicates whether the platform is currently able to support
+				a new P2P Group Owner interface. Options: "kReady", "kNotReady".
+
+			string ClientReadiness
+				Indicates whether the platform is currently able to support
+				a new P2P Client interface. Options: "kReady", "kNotReady".
+
+			array{int} SupportedChannels
+				This provides the list of supported channel frequencies in MHZ.
+				Note: On Android the GC can use indoor channels by GO cannot,
+				so sending the supported channels for GO role should be done
+				here.
+
+			array{int} PreferredChannels
+				This provides a list of channels that the platform would
+				prefer the P2P link to be created on. An empty list indicates
+				no preference. These are not ordered, so all “preferred”
+				channels should have equal priority.
+
+		array{dict} P2PClientInfos [readonly]
+
+			List of all P2P Client interfaces that are active on the platform.
+			The format for representation of a local P2P Client interface:
+
+			int shill_id
+				Unique ID to represent the P2P Client, provided by Shill.
+				This is only used to disambiguate the group against other
+				P2P Clients on the platform and has no relation to any other
+				identifiers such as P2P Group ID, BSSID, mac address,
+				interface index, etc.
+
+			string state
+				Current state of a local P2P Client interface. Possible values:
+
+				"kIdle"
+					No connectivity with the Group has been established.
+
+				"kAssociating"
+					In the process of associating and establishing
+					L2 connectivity to the Group.
+
+				"kConfiguring"
+					L2 connectivity established, in the process of
+					configuring L3 connectivity.
+
+				"kConnected"
+					Device has established L3 connectivity.
+
+				"kDisconnecting"
+					In the process of disconnecting from the Group.
+
+			string ssid
+				The SSID of the network to which the Client is connected,
+				or connecting.
+
+			string passphrase (type:string)
+				The passphrase of the network to which the Client is connected,
+				or connecting.
+
+			string group_bssid
+				The BSSID of the P2P Group Owner.
+
+			string ipv4_address [optional]
+				This represents the ipv4 address of the local client interface
+				in its textual representation.
+
+			string ipv6_address [optional]
+				This represents the ipv6 addresses of the local client interface
+				in its textual representation.
+
+			string mac_address
+				The MAC address of the local client interface with format
+				in its textual representation.
+
+			int frequency
+				This represents the selected channel on which the network
+				is hosted.
+
+			dict group_owner
+				Representation of the Group Owner to which the Client is
+				connecting, or connected. This dictionary has the following
+				entries:
+
+				string mac_address
+					The MAC address of the Group Owner interface
+					in its textual representation.
+
+				string ipv4_address
+					The IPv4 address of the Group Owner interface
+					in its textual representation.
+
+				array{string} ipv6_addresses
+					The IPv6 addresses of the Group Owner interface.
+					Unused in the MVP, but defined here for forward
+					compatibility.
+
+				string hostname [optional]
+					This represents the host name of the Group Owner
+					which may or may not be NULL.
+
+				string vendor_class [optional]
+					The vendor class value that the client may choose
+					to advertise. For example Chrome OS devices advertise
+					“chromeos”.
+
+		array{dict} P2PGroupInfos [readonly]
+			List of all local P2P Group Owner interfaces that are active
+			on the platform. The format for representation of a local
+			P2P Group Owner interface:
+
+			shill_id (type:int)
+				Unique ID to represent the Group, provided by Shill.
+				This is only used to disambiguate the group against other
+				P2P Groups on the platform and has no relation to any other
+				identifiers such as P2P Group ID, BSSID, mac address,
+				interface index, etc.
+
+			string state
+				Current state of a local P2P Group Owner interface.
+				Possible values:
+
+				"kIdle"
+					The interface is not ready to accept clients.
+
+				"kStarting"
+					The interface is in the process of forming the group.
+
+				"kConfiguring"
+					The group is formed at link layer, in the process
+					of setting up network configuration.
+
+				"kActive"
+					The group is fully formed and ready to accept clients.
+
+				"kStopping"
+					The group is in the process of being torn down
+					and destroyed.
+
+			string ssid
+				The SSID of the group hosted by the local interface.
+
+			string passphrase
+				The passphrase of the group hosted by the local interface.
+
+			string bssid
+				The BSSID of the P2P Group Owner.
+
+			string ipv4_address [optional]
+				This represents the ipv4 address of the local interface
+				in its textual representation.
+
+			array{string} ipv6_addresses
+				This represents the ipv6 addresses of the local interface
+				in its textual representation.
+
+			string mac_address
+				The MAC address of the local interface with format
+				in its textual representation.
+
+			int frequency
+				This represents the selected channel on which the group
+				is hosted.
+
+			array{dict} clients
+				A list of clients of the P2P group. Each of these dictionaries
+				has the following entries:
+
+				string mac_address
+					The MAC address of the client interface
+					in its textual representation.
+
+				string ipv4_address
+					The IPv4 address of the client interface
+					in its textual representation.
+
+				string ipv6_address [optional]
+					The IPv6 addresses of the P2P Client. Unused in the MVP,
+					but defined here for forward compatibility.
+
+				string hostname [optional]
+					This represents the client host name.
+
+				string vendor_class [optional]
+					The vendor class value that the client may choose
+					to advertise. For example Chrome OS devices advertise
+					“chromeos”.
+
 		string PortalFallbackHttpUrls [readwrite]
 
 			Comma-separated string of URLs used for HTTP connectivity

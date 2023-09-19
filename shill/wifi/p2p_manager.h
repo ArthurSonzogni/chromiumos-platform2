@@ -67,6 +67,9 @@ class P2PManager {
  private:
   friend class P2PManagerTest;
   FRIEND_TEST(P2PManagerTest, SetP2PAllowed);
+  FRIEND_TEST(P2PManagerTest, GetP2PCapabilities);
+  FRIEND_TEST(P2PManagerTest, GetP2PGroupInfos);
+  FRIEND_TEST(P2PManagerTest, GetP2PClientInfos);
   FRIEND_TEST(P2PManagerTest, ConnectAndDisconnectClient);
   FRIEND_TEST(P2PManagerTest, CreateAndDestroyGroup);
   FRIEND_TEST(P2PManagerTest, DisconnectWithoutConnect);
@@ -75,13 +78,49 @@ class P2PManager {
   FRIEND_TEST(P2PManagerTest, MissingArgs_CreateGroup);
   FRIEND_TEST(P2PManagerTest, MissingArgs_ConnectClient);
 
+  // This checks whether the platform supports P2P operations.
+  bool IsP2PSupported();
+
+  // This checks whether the platform is currently able to support
+  // a new P2P Group Owner interface.
+  String GroupReadiness();
+
+  // This checks whether the platform is currently able to support
+  // a new P2P Client interface.
+  String ClientReadiness();
+
+  // This provides the list of supported channel frequencies in MHZ.
+  Integers SupportedChannels();
+
+  // This provides a list of channels that the platform would prefer
+  // the P2P link to be created on.
+  Integers PreferredChannels();
+
   void HelpRegisterDerivedBool(PropertyStore* store,
                                std::string_view name,
                                bool (P2PManager::*get)(Error* error),
                                bool (P2PManager::*set)(const bool&, Error*));
+
+  void HelpRegisterDerivedKeyValueStore(
+      PropertyStore* store,
+      std::string_view name,
+      KeyValueStore (P2PManager::*get)(Error* error),
+      bool (P2PManager::*set)(const KeyValueStore&, Error*));
+
+  void HelpRegisterDerivedKeyValueStores(
+      PropertyStore* store,
+      std::string_view name,
+      KeyValueStores (P2PManager::*get)(Error* error),
+      bool (P2PManager::*set)(const KeyValueStores&, Error*));
+
   // D-Bus accessors.
   bool SetAllowed(const bool& value, Error* error);
   bool GetAllowed(Error* /*error*/) { return allowed_; }
+
+  // P2P properties get handlers.
+  KeyValueStore GetCapabilities(Error* error);
+  KeyValueStores GetGroupInfos(Error* error);
+  KeyValueStores GetClientInfos(Error* error);
 
   // Stubbed P2P device event handler.
   void OnP2PDeviceEvent(LocalDevice::DeviceEvent event,

@@ -29,6 +29,77 @@ P2PManager::~P2PManager() = default;
 void P2PManager::InitPropertyStore(PropertyStore* store) {
   HelpRegisterDerivedBool(store, kP2PAllowedProperty, &P2PManager::GetAllowed,
                           &P2PManager::SetAllowed);
+  HelpRegisterDerivedKeyValueStore(store, kP2PCapabilitiesProperty,
+                                   &P2PManager::GetCapabilities, nullptr);
+  HelpRegisterDerivedKeyValueStores(store, kP2PGroupInfosProperty,
+                                    &P2PManager::GetGroupInfos, nullptr);
+  HelpRegisterDerivedKeyValueStores(store, kP2PClientInfosProperty,
+                                    &P2PManager::GetClientInfos, nullptr);
+}
+
+bool P2PManager::IsP2PSupported() {
+  // TODO(b/295050788): it requires wifi phy to have
+  // ability to get hardware support for Wifi Direct.
+  return true;
+}
+
+String P2PManager::GroupReadiness() {
+  // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
+  // and interface combination checking to be supported by wifi phy.
+  return kP2PCapabilitiesGroupReadinessNotReady;
+}
+
+String P2PManager::ClientReadiness() {
+  // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
+  // and interface combination checking to be supported by wifi phy.
+  return kP2PCapabilitiesClientReadinessNotReady;
+}
+
+Integers P2PManager::SupportedChannels() {
+  // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
+  // and interface combination checking to be supported by wifi phy.
+  Integers channels;
+  return channels;
+}
+
+Integers P2PManager::PreferredChannels() {
+  // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
+  // and interface combination checking to be supported by wifi phy.
+  Integers channels;
+  return channels;
+}
+
+KeyValueStore P2PManager::GetCapabilities(Error* /* error */) {
+  KeyValueStore caps;
+  if (IsP2PSupported()) {
+    caps.Set<Boolean>(kP2PCapabilitiesP2PSupportedProperty, true);
+    caps.Set<String>(kP2PCapabilitiesGroupReadinessProperty, GroupReadiness());
+    caps.Set<String>(kP2PCapabilitiesClientReadinessProperty,
+                     ClientReadiness());
+    caps.Set<Integers>(kP2PCapabilitiesSupportedChannelsProperty,
+                       SupportedChannels());
+    caps.Set<Integers>(kP2PCapapabilitiesPreferredChannelsProperty,
+                       PreferredChannels());
+  } else {
+    caps.Set<Boolean>(kP2PCapabilitiesP2PSupportedProperty, false);
+  }
+  return caps;
+}
+
+KeyValueStores P2PManager::GetGroupInfos(Error* /* error */) {
+  KeyValueStores groupInfos;
+  for (const auto& it : p2p_group_owners_) {
+    groupInfos.push_back(it.second->GetGroupInfo());
+  }
+  return groupInfos;
+}
+
+KeyValueStores P2PManager::GetClientInfos(Error* /* error */) {
+  KeyValueStores clientInfos;
+  for (const auto& it : p2p_clients_) {
+    clientInfos.push_back(it.second->GetClientInfo());
+  }
+  return clientInfos;
 }
 
 void P2PManager::Start() {}
@@ -189,6 +260,27 @@ void P2PManager::HelpRegisterDerivedBool(PropertyStore* store,
                                                                  Error*)) {
   store->RegisterDerivedBool(
       name, BoolAccessor(new CustomAccessor<P2PManager, bool>(this, get, set)));
+}
+
+void P2PManager::HelpRegisterDerivedKeyValueStore(
+    PropertyStore* store,
+    std::string_view name,
+    KeyValueStore (P2PManager::*get)(Error* error),
+    bool (P2PManager::*set)(const KeyValueStore&, Error*)) {
+  store->RegisterDerivedKeyValueStore(
+      name, KeyValueStoreAccessor(
+                new CustomAccessor<P2PManager, KeyValueStore>(this, get, set)));
+}
+
+void P2PManager::HelpRegisterDerivedKeyValueStores(
+    PropertyStore* store,
+    std::string_view name,
+    KeyValueStores (P2PManager::*get)(Error* error),
+    bool (P2PManager::*set)(const KeyValueStores&, Error*)) {
+  store->RegisterDerivedKeyValueStores(
+      name,
+      KeyValueStoresAccessor(
+          new CustomAccessor<P2PManager, KeyValueStores>(this, get, set)));
 }
 
 bool P2PManager::SetAllowed(const bool& value, Error* error) {

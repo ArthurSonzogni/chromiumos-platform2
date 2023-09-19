@@ -57,6 +57,12 @@ class P2PDevice : public LocalDevice {
 
   static const char* P2PDeviceStateName(P2PDeviceState state);
 
+  // Get properties of group managed by this device (GO only).
+  mockable KeyValueStore GetGroupInfo() const;
+
+  // Get properties of client connection managed by this device (GC only).
+  mockable KeyValueStore GetClientInfo() const;
+
   // P2PDevice start routine. Override the base class Start.
   bool Start() override;
 
@@ -88,7 +94,7 @@ class P2PDevice : public LocalDevice {
   void SetState(P2PDeviceState state);
 
   // Get shill_id_.
-  uint32_t shill_id() { return shill_id_; }
+  uint32_t shill_id() const { return shill_id_; }
 
  private:
   friend class P2PDeviceTest;
