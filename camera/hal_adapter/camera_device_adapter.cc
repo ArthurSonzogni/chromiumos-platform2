@@ -885,7 +885,8 @@ void CameraDeviceAdapter::SignalStreamFlush(
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
-  if (camera_device_->ops->signal_stream_flush == nullptr) {
+  if (device_closed_ || camera_device_ == nullptr ||
+      camera_device_->ops->signal_stream_flush == nullptr) {
     return;
   }
 
