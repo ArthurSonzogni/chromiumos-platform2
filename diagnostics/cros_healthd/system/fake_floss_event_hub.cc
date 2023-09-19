@@ -36,4 +36,9 @@ void FakeFlossEventHub::SendManagerRemoved(
   OnManagerRemoved(manager_path);
 }
 
+void FakeFlossEventHub::SendAdapterGattAdded(
+    org::chromium::bluetooth::BluetoothGattProxyInterface* adapter_gatt) {
+  OnAdapterGattAdded(adapter_gatt);
+}
+
 }  // namespace diagnostics

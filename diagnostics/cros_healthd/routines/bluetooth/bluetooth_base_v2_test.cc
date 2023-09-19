@@ -366,6 +366,7 @@ TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOnSuccess) {
   EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
       .WillOnce(ReturnRef(kDefaultAdapterPath));
   EXPECT_CALL(mock_adapter_proxy_, RegisterCallbackAsync);
+  EXPECT_CALL(mock_adapter_proxy_, RegisterConnectionCallbackAsync);
 
   EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
       .WillOnce(ReturnRef(kDefaultAdapterPath));

@@ -208,6 +208,8 @@ bool PopArrayValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
   else if (signature == "aa{ss}")
     return PopTypedArrayFromReader<std::map<std::string, std::string>>(reader,
                                                                        value);
+  else if (signature == "aay")
+    return PopTypedArrayFromReader<std::vector<uint8_t>>(reader, value);
   else if (signature == "aa{sv}")
     return PopTypedArrayFromReader<brillo::VariantDictionary>(reader, value);
   else if (signature == "a{sa{ss}}")
@@ -217,6 +219,8 @@ bool PopArrayValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
   else if (signature == "a{sa{sv}}")
     return PopTypedMapFromReader<std::string, brillo::VariantDictionary>(reader,
                                                                          value);
+  else if (signature == "a{qay}")
+    return PopTypedMapFromReader<uint16_t, std::vector<uint8_t>>(reader, value);
   else if (signature == "a{say}")
     return PopTypedMapFromReader<std::string, std::vector<uint8_t>>(reader,
                                                                     value);

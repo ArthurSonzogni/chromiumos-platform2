@@ -42,5 +42,11 @@
       <arg name="device" direction="in" type="a{sv}"/>
       <arg name="props" direction="in" type="au"/>
     </method>
+    <method name="OnBondStateChanged">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="status" direction="in" type="u"/>
+      <arg name="address" direction="in" type="s"/>
+      <arg name="state" direction="in" type="u"/>
+    </method>
   </interface>
 </node>

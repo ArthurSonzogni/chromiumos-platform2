@@ -13,7 +13,9 @@
 #include <brillo/any.h>
 
 #include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.BluetoothCallback.h"
+#include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.BluetoothConnectionCallback.h"
 #include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.ManagerCallback.h"
+#include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.ScannerCallback.h"
 
 namespace diagnostics {
 
@@ -31,7 +33,7 @@ class BluetoothCallbackService
                                     const dbus::ObjectPath& object_path);
   BluetoothCallbackService(const BluetoothCallbackService&) = delete;
   BluetoothCallbackService& operator=(const BluetoothCallbackService&) = delete;
-  ~BluetoothCallbackService() = default;
+  ~BluetoothCallbackService();
 
  private:
   // org::chromium::bluetooth::BluetoothCallbackInterface overrides:
@@ -45,6 +47,9 @@ class BluetoothCallbackService
   void OnDevicePropertiesChanged(
       const brillo::VariantDictionary& device,
       const std::vector<uint32_t>& properties) override;
+  void OnBondStateChanged(uint32_t in_status,
+                          const std::string& in_address,
+                          uint32_t in_state) override;
 
   // Unowned pointer. Used to send Bluetooth events.
   FlossEventHub* const event_hub_;
@@ -69,7 +74,7 @@ class ManagerCallbackService
                                   const dbus::ObjectPath& object_path);
   ManagerCallbackService(const ManagerCallbackService&) = delete;
   ManagerCallbackService& operator=(const ManagerCallbackService&) = delete;
-  ~ManagerCallbackService() = default;
+  ~ManagerCallbackService();
 
  private:
   // org::chromium::bluetooth::ManagerCallbackInterface overrides:
@@ -85,6 +90,58 @@ class ManagerCallbackService
 
   // Must be the last class member.
   base::WeakPtrFactory<ManagerCallbackService> weak_ptr_factory_{this};
+};
+
+// Supports org.chromium.bluetooth.BluetoothConnectionCallback registration.
+class BluetoothConnectionCallbackService
+    : public org::chromium::bluetooth::BluetoothConnectionCallbackInterface,
+      public org::chromium::bluetooth::BluetoothConnectionCallbackAdaptor {
+ public:
+  explicit BluetoothConnectionCallbackService(
+      const scoped_refptr<dbus::Bus>& bus, const dbus::ObjectPath& object_path);
+  BluetoothConnectionCallbackService(
+      const BluetoothConnectionCallbackService&) = delete;
+  BluetoothConnectionCallbackService& operator=(
+      const BluetoothConnectionCallbackService&) = delete;
+  ~BluetoothConnectionCallbackService();
+
+ private:
+  // org::chromium::bluetooth::BluetoothConnectionCallbackInterface overrides:
+  void OnDeviceConnected(const brillo::VariantDictionary& device) override;
+  void OnDeviceDisconnected(const brillo::VariantDictionary& device) override;
+
+  // D-Bus helper when registering callback service.
+  brillo::dbus_utils::DBusObject dbus_object_;
+
+  // Must be the last class member.
+  base::WeakPtrFactory<BluetoothConnectionCallbackService> weak_ptr_factory_{
+      this};
+};
+
+// Supports org.chromium.bluetooth.ScannerCallback registration.
+class ScannerCallbackService
+    : public org::chromium::bluetooth::ScannerCallbackInterface,
+      public org::chromium::bluetooth::ScannerCallbackAdaptor {
+ public:
+  explicit ScannerCallbackService(FlossEventHub* event_hub,
+                                  const scoped_refptr<dbus::Bus>& bus,
+                                  const dbus::ObjectPath& object_path);
+  ScannerCallbackService(const ScannerCallbackService&) = delete;
+  ScannerCallbackService& operator=(const ScannerCallbackService&) = delete;
+  ~ScannerCallbackService();
+
+ private:
+  // org::chromium::bluetooth::ScannerCallbackInterface overrides:
+  void OnScanResult(const brillo::VariantDictionary& in_scan_result) override;
+
+  // Unowned pointer. Used to notify Bluetooth events.
+  FlossEventHub* const event_hub_;
+
+  // D-Bus helper when registering callback service.
+  brillo::dbus_utils::DBusObject dbus_object_;
+
+  // Must be the last class member.
+  base::WeakPtrFactory<ScannerCallbackService> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

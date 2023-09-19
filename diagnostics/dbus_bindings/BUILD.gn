@@ -21,6 +21,8 @@ generate_dbus_adaptors("floss-callback-adaptors") {
   sources = [
     "bluetooth_manager/org.chromium.bluetooth.ManagerCallback.xml",
     "floss/org.chromium.bluetooth.BluetoothCallback.xml",
+    "floss/org.chromium.bluetooth.BluetoothConnectionCallback.xml",
+    "floss/org.chromium.bluetooth.ScannerCallback.xml",
   ]
 }
 
@@ -72,7 +74,10 @@ generate_dbus_proxies("floss-proxies") {
   mock_output_file =
       "include/diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
   proxy_path_in_mocks = "diagnostics/dbus_bindings/floss/dbus-proxies.h"
-  sources = [ "floss/org.chromium.bluetooth.Bluetooth.xml" ]
+  sources = [
+    "floss/org.chromium.bluetooth.Bluetooth.xml",
+    "floss/org.chromium.bluetooth.BluetoothGatt.xml",
+  ]
 }
 
 generate_dbus_proxies("fwupd-proxies") {
