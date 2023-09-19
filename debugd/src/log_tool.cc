@@ -179,11 +179,9 @@ const std::array kCommandLogs {
     "find /home/root/*/android-data/data/ -xdev -type d -maxdepth 3 "
     "-exec ls -dlZ --time-style='+' {} + | tr -s ' ' '\t' \"",
     kRoot, kDebugfsGroup},
-#if USE_ARCVM
   Log{kCommand, "arcvm_console_output", "/usr/bin/vm_pstore_dump", "crosvm",
     "crosvm", Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
     true /* access_root_mount_ns */},
-#endif  // USE_ARCVM
   Log{kCommand, "atmel_tp_deltas",
     "/opt/google/touch/scripts/atmel_tools.sh tp d", kRoot, kRoot},
   Log{kCommand, "atmel_tp_refs",
@@ -480,7 +478,6 @@ const std::array kFeedbackLogs {
   Log{kCommand, "amd_stb", "hexdump -e '2/4 \"%08x \" \"\n\"' "
     "/sys/kernel/debug/amd_pmc/stb_read",
     kRoot, kRoot},
-#if USE_ARCVM
   Log{kCommand, "arcvm_psi", "/usr/bin/nsenter -t1 -m /usr/sbin/android-sh -c "
         "'cat /proc/pressure/memory'", kRoot, kRoot, Log::kDefaultMaxBytes,
         LogTool::Encoding::kUtf8},
@@ -488,7 +485,6 @@ const std::array kFeedbackLogs {
     "/usr/sbin/android-sh -c 'cat /sys/block/zram0/mm_stat'", kRoot, kRoot},
   Log{kCommand, "arcvm_zram_stat", "/usr/bin/nsenter -t1 -m "
     "/usr/sbin/android-sh -c 'cat /sys/block/zram0/stat'", kRoot, kRoot},
-#endif  // USE_ARCVM
   Log{kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
   Log{kCommand, "borealis_frames_summary", "timeout -s KILL 5s "
