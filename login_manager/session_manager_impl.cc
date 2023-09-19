@@ -118,6 +118,8 @@ constexpr char SessionManagerImpl::kStopArcInstanceImpulse[] =
 constexpr char SessionManagerImpl::kContinueArcBootImpulse[] =
     "continue-arc-boot";
 constexpr char SessionManagerImpl::kArcBootedImpulse[] = "arc-booted";
+constexpr char SessionManagerImpl::kStopArcVmInstanceImpulse[] =
+    "stop-arcvm-instance";
 
 // Lock state related impulse (systemd unit start or Upstart signal).
 constexpr char SessionManagerImpl::kScreenLockedImpulse[] = "screen-locked";
@@ -532,6 +534,14 @@ bool SessionManagerImpl::ShouldEndSession(std::string* reason_out) {
 
   set_reason("");
   return false;
+}
+
+void SessionManagerImpl::EmitStopArcVmInstanceImpulse() {
+  if (!init_controller_->TriggerImpulse(
+          kStopArcVmInstanceImpulse, {},
+          InitDaemonController::TriggerMode::SYNC)) {
+    LOG(ERROR) << "Emitting stop-arcvm-instance impulse failed.";
+  }
 }
 
 bool SessionManagerImpl::Initialize() {

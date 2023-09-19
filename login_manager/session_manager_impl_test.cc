@@ -3326,6 +3326,15 @@ TEST_F(SessionManagerImplTest, ArcUnavailable) {
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 }
+
+TEST_F(SessionManagerImplTest, EmitStopArcVmInstanceImpulse) {
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulse(SessionManagerImpl::kStopArcVmInstanceImpulse,
+                     ElementsAre(), InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+  impl_->EmitStopArcVmInstanceImpulse();
+}
 #endif
 
 TEST_F(SessionManagerImplTest, SetArcCpuRestrictionFails) {

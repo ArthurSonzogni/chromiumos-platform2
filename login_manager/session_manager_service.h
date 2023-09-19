@@ -238,6 +238,9 @@ class SessionManagerService
   // Stops all running VMs if the vm_concierge D-Bus service is available.
   void MaybeStopAllVms();
 
+  // Stops ARCVM if the vm_concierge D-Bus service is available.
+  void MaybeStopArcVm();
+
   // Writes the PID of the browser to a file for the crash reporter to read in
   // preparation for the killing the browser.
   void WriteBrowserPidFile(base::FilePath path);

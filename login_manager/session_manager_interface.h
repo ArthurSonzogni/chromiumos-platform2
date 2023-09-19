@@ -43,6 +43,9 @@ class SessionManagerInterface {
   // to annotate the cause of the powerwash.  |reason| must not exceed 50 bytes
   // in length and may only contain alphanumeric characters and underscores.
   virtual void InitiateDeviceWipe(const std::string& reason) = 0;
+
+  // Emits stop-arcvm-instance D-Bus event in a blocking manner.
+  virtual void EmitStopArcVmInstanceImpulse() = 0;
 };
 
 }  // namespace login_manager

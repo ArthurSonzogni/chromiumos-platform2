@@ -125,6 +125,9 @@ class SessionManagerImpl
   static const char kContinueArcBootImpulse[];
   static const char kArcBootedImpulse[];
 
+  // ARCVM messages.
+  static const char kStopArcVmInstanceImpulse[];
+
   // TODO(b/205032502): Because upgrading the container from mini to full often
   // takes more than 25 seconds, increasing it to accommodate P99.9.
   // Considering its cyclic nature setting it to 40 sec should cover majority
@@ -209,6 +212,7 @@ class SessionManagerImpl
   std::vector<std::string> GetFeatureFlags() override {
     return device_policy_->GetFeatureFlags();
   }
+  void EmitStopArcVmInstanceImpulse() override;
 
   // Starts a 'Powerwash' of the device by touching a flag file, then
   // rebooting to allow early-boot code to wipe parts of stateful we
@@ -219,7 +223,7 @@ class SessionManagerImpl
   //////////////////////////////////////////////////////////////////////////////
   // Methods exposed via RPC are defined below.
 
-  // org::chromium::SessionManagerInterfaceInterface implementation.
+  // org::chromium::SessionManagerInterface implementation.
   void EmitLoginPromptVisible() override;
   void EmitAshInitialized() override;
   bool EnableChromeTesting(

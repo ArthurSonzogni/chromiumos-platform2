@@ -34,12 +34,14 @@
 #include <brillo/files/file_util.h>
 #include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/vm_concierge/dbus-constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <dbus/bus.h>
 #include <dbus/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 #include "login_manager/browser_job.h"
 #include "login_manager/child_exit_dispatcher.h"
@@ -86,6 +88,9 @@ const char kShutdownBrowserPidPath[] = "/run/chrome/shutdown_browser_pid";
 // cleanly shut down.
 constexpr int kStopAllVmsTimeoutMs = 120000;
 
+// Timeout for StopVm request for ARCVM.
+constexpr int kStopArcVmTimeoutMs = 60000;
+
 // Long kill time out. Used instead of the default one when chrome feature
 // 'SessionManagerLongKillTimeout' is enabled. Note that this must be less than
 // the 20-second kill timeout granted to session_manager in ui.conf.
@@ -105,10 +110,6 @@ constexpr char kFeatureNameSessionManagerLivenessCheck[] =
 
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {}
-
-// Nothing to do for handling a response to a StopAllVms D-Bus request. We
-// should replace this with base::DoNothing() if we ever uprev libchrome.
-void HandleStopAllVmsResponse(dbus::Response*) {}
 
 const char* ExitCodeToString(SessionManagerService::ExitCode code) {
   switch (code) {
@@ -447,9 +448,14 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
   }
   browser_->ClearPid();
 
-  // Also ensure all containers are gone.
+  // TODO(b/286485820): Stop ARC in parallel with the shutdown of other crosvm
+  // instances.
+  // Ensure ARC containers are gone.
   android_container_->RequestJobExit(ArcContainerStopReason::BROWSER_SHUTDOWN);
   android_container_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
+  // Ensure ARCVM and related Upstart jobs are stopped (b/290194650).
+  MaybeStopArcVm();
+  impl_->EmitStopArcVmInstanceImpulse();
 
   // Do nothing if already shutting down.
   if (shutting_down_)
@@ -712,9 +718,41 @@ void SessionManagerService::MaybeStopAllVms() {
   // for the VMs to exit before restarting chrome.
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
                                vm_tools::concierge::kStopAllVmsMethod);
-  vm_concierge_dbus_proxy_->CallMethod(
-      &method_call, kStopAllVmsTimeoutMs,
-      base::BindOnce(&HandleStopAllVmsResponse));
+  vm_concierge_dbus_proxy_->CallMethod(&method_call, kStopAllVmsTimeoutMs,
+                                       base::DoNothing());
+}
+
+void SessionManagerService::MaybeStopArcVm() {
+  if (!vm_concierge_available_) {
+    return;
+  }
+
+  vm_tools::concierge::StopVmRequest request;
+  request.set_name(vm_tools::concierge::kArcVmName);
+
+  dbus::MethodCall method_call(
+      vm_tools::concierge::kVmConciergeInterface,
+      vm_tools::concierge::kStopVmWithoutOwnerIdMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendProtoAsArrayOfBytes(request);
+
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> dbus_response(
+      vm_concierge_dbus_proxy_->CallMethodAndBlock(&method_call,
+                                                   kStopArcVmTimeoutMs));
+  if (!dbus_response.has_value() || !dbus_response.value()) {
+    LOG(ERROR) << "Failed to stop ARCVM: empty response";
+    return;
+  }
+
+  dbus::MessageReader reader(dbus_response.value().get());
+  vm_tools::concierge::StopVmResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response";
+    return;
+  }
+  if (!response.success()) {
+    LOG(ERROR) << "Failed to stop ARCVM: " << response.failure_reason();
+  }
 }
 
 void SessionManagerService::WriteBrowserPidFile(base::FilePath path) {
