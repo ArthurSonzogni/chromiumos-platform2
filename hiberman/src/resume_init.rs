@@ -20,6 +20,8 @@ use crate::cookie::HibernateCookieValue;
 use crate::files::create_resume_in_progress_file;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::ResumeInitOptions;
+use crate::metrics::HibernateEvent;
+use crate::metrics::METRICS_LOGGER;
 use crate::volume::VOLUME_MANAGER;
 
 pub struct ResumeInitConductor {
@@ -36,7 +38,14 @@ impl ResumeInitConductor {
             get_hibernate_cookie::<PathBuf>(None).context("Failed to get hibernate cookie")?;
 
         if cookie == HibernateCookieValue::ResumeReady || self.options.force {
-            if cookie != HibernateCookieValue::ResumeReady {
+            if cookie == HibernateCookieValue::ResumeReady {
+                let volume_manager = VOLUME_MANAGER.read().unwrap();
+                let _hibermeta_mount = volume_manager.setup_hibermeta_lv(false)?;
+
+                let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+                metrics_logger.log_event(HibernateEvent::ResumePending);
+                metrics_logger.flush()?;
+            } else {
                 info!("Hibernate cookie was not set, continuing anyway due to --force");
             }
 
