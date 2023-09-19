@@ -4,12 +4,14 @@
 
 #include "imageloader/dlc.h"
 
-#include <set>
+#include <memory>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dlcservice/metadata/metadata_interface.h>
 
 #include "imageloader/component.h"
 #include "imageloader/manifest.h"
@@ -39,8 +41,12 @@ AOrB GetImageAOrB(const std::string& a_or_b) {
 
 Dlc::Dlc(const std::string& id,
          const std::string& package,
-         const base::FilePath& mount_base)
-    : id_(id), package_(package), mount_base_(mount_base) {}
+         const base::FilePath& mount_base,
+         std::shared_ptr<MetadataInterface> metadata)
+    : id_(id),
+      package_(package),
+      mount_base_(mount_base),
+      metadata_(metadata) {}
 
 base::FilePath Dlc::GetManifestPath() {
   return base::FilePath(kDlcManifestRootpath)
@@ -87,12 +93,26 @@ bool Dlc::Mount(HelperProcessProxy* proxy, const std::string& a_or_b_str) {
     return false;
   }
 
-  return Mount(proxy, GetImagePath(a_or_b), GetManifestPath(), GetTablePath(),
-               GetMountPoint());
+  return Mount(proxy, GetImagePath(a_or_b));
 }
 
 bool Dlc::Mount(HelperProcessProxy* proxy, const base::FilePath& path) {
-  return Mount(proxy, path, GetManifestPath(), GetTablePath(), GetMountPoint());
+  if (!metadata_) {
+    LOG(ERROR) << "The compressed metadata is not initialized, fallback to "
+                  "uncompressed.";
+    return Mount(proxy, path, GetManifestPath(), GetTablePath(),
+                 GetMountPoint());
+  }
+
+  const auto& entry = metadata_->Get(id_);
+  Manifest manifest;
+  if (!entry || !manifest.ParseManifest(entry->manifest)) {
+    LOG(ERROR) << "Could not get compressed metadata for DLC=" << id_
+               << "fallback to uncompressed.";
+    return Mount(proxy, path, GetManifestPath(), GetTablePath(),
+                 GetMountPoint());
+  }
+  return MountInternal(proxy, path, GetMountPoint(), manifest, entry->table);
 }
 
 bool Dlc::Mount(HelperProcessProxy* proxy,
@@ -116,6 +136,14 @@ bool Dlc::Mount(HelperProcessProxy* proxy,
     LOG(ERROR) << "Could not read table.";
     return false;
   }
+  return MountInternal(proxy, image_path, mount_point, manifest, table);
+}
+
+bool Dlc::MountInternal(HelperProcessProxy* proxy,
+                        const base::FilePath& image_path,
+                        const base::FilePath& mount_point,
+                        const Manifest& manifest,
+                        const std::string& table) {
   base::File image(image_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!image.IsValid()) {
     LOG(ERROR) << "Could not open image file '" << image_path.value()

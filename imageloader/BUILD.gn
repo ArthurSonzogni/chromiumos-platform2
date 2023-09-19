@@ -36,6 +36,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcrypto",
+    "libdlcservice-metadata",
     "libminijail",
     "system_api",
     "vboot_host",

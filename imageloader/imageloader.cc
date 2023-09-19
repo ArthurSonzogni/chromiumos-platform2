@@ -69,6 +69,8 @@ int ImageLoader::OnInit() {
       base::BindOnce(&ImageLoader::OnSubprocessExited,
                      weak_factory_.GetWeakPtr(), helper_process_proxy_->pid()));
 
+  impl_.Initialize();
+
   PostponeShutdown();
 
   return EX_OK;

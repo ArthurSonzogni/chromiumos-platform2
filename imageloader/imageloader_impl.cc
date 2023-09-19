@@ -20,7 +20,10 @@
 #include <base/values.h>
 #include <base/version.h>
 #include <brillo/files/file_util.h>
+#include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dlcservice/metadata/metadata.h>
+#include <dlcservice/metadata/metadata_interface.h>
 
 #include "imageloader/component.h"
 #include "imageloader/dlc.h"
@@ -75,6 +78,15 @@ bool ImageLoaderImpl::IsIdValid(const std::string& id) {
   return true;
 }
 
+void ImageLoaderImpl::Initialize() {
+  dlc_metadata_ = std::make_shared<dlcservice::metadata::Metadata>(
+      base::FilePath(kDlcManifestRootpath));
+  if (!dlc_metadata_->Initialize()) {
+    LOG(ERROR) << "Failed to initialize the DLC metadata.";
+    dlc_metadata_.reset();
+  }
+}
+
 bool ImageLoaderImpl::LoadComponent(const std::string& name,
                                     const std::string& mount_point_str,
                                     HelperProcessProxy* proxy) {
@@ -120,7 +132,7 @@ std::string ImageLoaderImpl::LoadDlcImage(const std::string& id,
     return kBadResult;
   }
 
-  Dlc dlc(id, package, config_.mount_path);
+  Dlc dlc(id, package, config_.mount_path, dlc_metadata_);
   return dlc.Mount(proxy, a_or_b) ? dlc.GetMountPoint().value() : kBadResult;
 }
 
@@ -134,7 +146,7 @@ std::string ImageLoaderImpl::LoadDlc(const LoadDlcRequest& request,
     return kBadResult;
   }
 
-  Dlc dlc(request.id(), request.package(), config_.mount_path);
+  Dlc dlc(request.id(), request.package(), config_.mount_path, dlc_metadata_);
   return dlc.Mount(proxy, base::FilePath(request.path()))
              ? dlc.GetMountPoint().value()
              : kBadResult;

@@ -5,6 +5,7 @@
 #define IMAGELOADER_IMAGELOADER_IMPL_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,11 +13,13 @@
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
 #include <imageloader/proto_bindings/imageloader.pb.h>
+#include <dlcservice/metadata/metadata_interface.h>
 
 #include "imageloader/helper_process_proxy.h"
 
 namespace imageloader {
 
+using dlcservice::metadata::MetadataInterface;
 using Keys = std::vector<std::vector<uint8_t>>;
 
 struct ImageLoaderConfig {
@@ -37,6 +40,9 @@ class ImageLoaderImpl {
       : config_(std::move(config)) {}
   ImageLoaderImpl(const ImageLoaderImpl&) = delete;
   ImageLoaderImpl& operator=(const ImageLoaderImpl&) = delete;
+
+  // Initialize internal states.
+  void Initialize();
 
   // Register a component.
   bool RegisterComponent(const std::string& name,
@@ -126,6 +132,8 @@ class ImageLoaderImpl {
 
   // The configuration traits.
   ImageLoaderConfig config_;
+  // The DLC metadata.
+  std::shared_ptr<MetadataInterface> dlc_metadata_;
 
   // Remove component if removable.
   bool RemoveComponentAtPath(const std::string& name,

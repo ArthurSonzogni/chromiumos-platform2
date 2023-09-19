@@ -14,14 +14,18 @@
 #ifndef IMAGELOADER_DLC_H_
 #define IMAGELOADER_DLC_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
+#include <dlcservice/metadata/metadata_interface.h>
 
 #include "imageloader/helper_process_proxy.h"
 
 namespace imageloader {
+
+using dlcservice::metadata::MetadataInterface;
 
 // Enum on the two images (A/B) for one DLC module.
 // We keep two copies (A/B) for each DLC module in order to sync with platform
@@ -32,7 +36,8 @@ class Dlc {
  public:
   explicit Dlc(const std::string& id,
                const std::string& package,
-               const base::FilePath& mount_base);
+               const base::FilePath& mount_base,
+               std::shared_ptr<MetadataInterface> metadata);
   Dlc(const Dlc&) = delete;
   Dlc& operator=(const Dlc&) = delete;
 
@@ -60,6 +65,12 @@ class Dlc {
              const base::FilePath& table_path,
              const base::FilePath& mount_point);
 
+  bool MountInternal(HelperProcessProxy* proxy,
+                     const base::FilePath& image_path,
+                     const base::FilePath& mount_point,
+                     const Manifest& manifest,
+                     const std::string& table);
+
   // Get the path to the DLC manifest (imageloader.json)
   base::FilePath GetManifestPath();
 
@@ -78,6 +89,9 @@ class Dlc {
   // The base directory where we need to mount the image. The DLC image will be
   // mounted at |mount_base|/|id_|/|package_|/a_or_b.
   base::FilePath mount_base_;
+
+  // The DLC metadata.
+  std::shared_ptr<MetadataInterface> metadata_;
 };
 
 }  // namespace imageloader
