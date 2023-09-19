@@ -136,6 +136,43 @@ TEST(DecryptedUssTest, RenameWrappedKeySuccess) {
               UnorderedElementsAre("c", "d"));
 }
 
+TEST(DecryptedUssTest, RenameWrappedKeyWithResetSecret) {
+  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+  ASSERT_THAT(decrypted_uss, IsOk());
+
+  // Set up some initial wrapped keys with secrets.
+  const brillo::SecureBlob kWrappingKey1(kAesGcm256KeySize, 0xA);
+  const brillo::SecureBlob kWrappingKey2(kAesGcm256KeySize, 0xB);
+  const brillo::SecureBlob kSecret1(kAesGcm256KeySize, 0xE);
+  const brillo::SecureBlob kSecret2(kAesGcm256KeySize, 0xF);
+  {
+    auto transaction = decrypted_uss->StartTransaction();
+    EXPECT_THAT(transaction.InsertWrappedMainKey("a", kWrappingKey1), IsOk());
+    EXPECT_THAT(transaction.InsertResetSecret("a", kSecret1), IsOk());
+    EXPECT_THAT(transaction.InsertWrappedMainKey("b", kWrappingKey2), IsOk());
+    EXPECT_THAT(transaction.InsertResetSecret("b", kSecret2), IsOk());
+    EXPECT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+  EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              UnorderedElementsAre("a", "b"));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("a"), Optional(kSecret1));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("b"), Optional(kSecret2));
+
+  // Rename both of them.
+  {
+    auto transaction = decrypted_uss->StartTransaction();
+    EXPECT_THAT(transaction.RenameWrappedMainKey("a", "c"), IsOk());
+    EXPECT_THAT(transaction.RenameWrappedMainKey("b", "d"), IsOk());
+    EXPECT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+  EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              UnorderedElementsAre("c", "d"));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("a"), Eq(std::nullopt));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("b"), Eq(std::nullopt));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("c"), Optional(kSecret1));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("d"), Optional(kSecret2));
+}
+
 TEST(DecryptedUssTest, RenameWrappedKeyFailures) {
   auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
@@ -190,6 +227,41 @@ TEST(DecryptedUssTest, RemoveWrappedKey) {
               UnorderedElementsAre("b"));
 }
 
+TEST(DecryptedUssTest, RemoveWrappedKeyWithResetSecret) {
+  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+  ASSERT_THAT(decrypted_uss, IsOk());
+
+  // Set up some initial wrapped keys with secrets.
+  const brillo::SecureBlob kWrappingKey1(kAesGcm256KeySize, 0xA);
+  const brillo::SecureBlob kWrappingKey2(kAesGcm256KeySize, 0xB);
+  const brillo::SecureBlob kSecret1(kAesGcm256KeySize, 0xE);
+  const brillo::SecureBlob kSecret2(kAesGcm256KeySize, 0xF);
+  {
+    auto transaction = decrypted_uss->StartTransaction();
+    EXPECT_THAT(transaction.InsertWrappedMainKey("a", kWrappingKey1), IsOk());
+    EXPECT_THAT(transaction.InsertResetSecret("a", kSecret1), IsOk());
+    EXPECT_THAT(transaction.InsertWrappedMainKey("b", kWrappingKey2), IsOk());
+    EXPECT_THAT(transaction.InsertResetSecret("b", kSecret2), IsOk());
+    EXPECT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+  EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              UnorderedElementsAre("a", "b"));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("a"), Optional(kSecret1));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("b"), Optional(kSecret2));
+
+  // Remove one element, and try to remove an element that doesn't exist.
+  {
+    auto transaction = decrypted_uss->StartTransaction();
+    EXPECT_THAT(transaction.RemoveWrappedMainKey("c"), NotOk());
+    EXPECT_THAT(transaction.RemoveWrappedMainKey("a"), IsOk());
+    EXPECT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+  EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              UnorderedElementsAre("b"));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("a"), Eq(std::nullopt));
+  EXPECT_THAT(decrypted_uss->GetResetSecret("b"), Optional(kSecret2));
+}
+
 TEST(DecryptedUssTest, AddResetSecrets) {
   auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
@@ -228,6 +300,25 @@ TEST(DecryptedUssTest, InsertResetSecretRejectsDuplicates) {
     EXPECT_THAT(std::move(transaction).Commit(), IsOk());
   }
   EXPECT_THAT(decrypted_uss->GetResetSecret("a"), Optional(kSecret1));
+}
+
+TEST(DecryptedUssTest, AssignResetSecretAllowsDuplicates) {
+  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+  ASSERT_THAT(decrypted_uss, IsOk());
+
+  // Check for the initial secrets.
+  EXPECT_THAT(decrypted_uss->GetResetSecret("a"), Eq(std::nullopt));
+
+  // Inject some secrets.
+  const brillo::SecureBlob kSecret1(kAesGcm256KeySize, 0xA);
+  const brillo::SecureBlob kSecret2(kAesGcm256KeySize, 0xB);
+  {
+    auto transaction = decrypted_uss->StartTransaction();
+    EXPECT_THAT(transaction.AssignResetSecret("a", kSecret1), IsOk());
+    EXPECT_THAT(transaction.AssignResetSecret("a", kSecret2), IsOk());
+    EXPECT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+  EXPECT_THAT(decrypted_uss->GetResetSecret("a"), Optional(kSecret2));
 }
 
 TEST(DecryptedUssTest, AddRateLimiterResetSecrets) {

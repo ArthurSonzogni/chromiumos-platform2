@@ -176,8 +176,10 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
       CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
   brillo::SecureBlob reset_secret3 =
       CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
-  ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
-  ASSERT_TRUE(stash_->SetResetSecretForLabel("label2", reset_secret2));
+  ASSERT_TRUE(stash_->SetResetSecretForLabel(
+      "label1", reset_secret1, OverwriteExistingKeyBlock::kDisabled));
+  ASSERT_TRUE(stash_->SetResetSecretForLabel(
+      "label2", reset_secret2, OverwriteExistingKeyBlock::kDisabled));
   ASSERT_TRUE(stash_->SetRateLimiterResetSecret(AuthFactorType::kFingerprint,
                                                 reset_secret3));
 
@@ -194,7 +196,8 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
 }
 
 TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
-  ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", {0xAA, 0xBB}));
+  ASSERT_TRUE(stash_->SetResetSecretForLabel(
+      "label1", {0xAA, 0xBB}, OverwriteExistingKeyBlock::kDisabled));
   ASSERT_TRUE(stash_->SetRateLimiterResetSecret(AuthFactorType::kFingerprint,
                                                 {0xCC, 0xDD}));
 
@@ -496,11 +499,30 @@ TEST_F(UserSecretStashTest, DoubleInsertResetSecret) {
   brillo::SecureBlob reset_secret2 = {0xDD, 0xEE, 0x11};
   brillo::SecureBlob reset_secret3 = {0x22, 0x33, 0x44};
 
-  EXPECT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
-  EXPECT_TRUE(stash_->SetResetSecretForLabel("label2", reset_secret2));
-  EXPECT_FALSE(stash_->SetResetSecretForLabel("label1", reset_secret3));
+  EXPECT_TRUE(stash_->SetResetSecretForLabel(
+      "label1", reset_secret1, OverwriteExistingKeyBlock::kDisabled));
+  EXPECT_TRUE(stash_->SetResetSecretForLabel(
+      "label2", reset_secret2, OverwriteExistingKeyBlock::kDisabled));
+  EXPECT_FALSE(stash_->SetResetSecretForLabel(
+      "label1", reset_secret3, OverwriteExistingKeyBlock::kDisabled));
 
   EXPECT_EQ(reset_secret1, stash_->GetResetSecretForLabel("label1").value());
+}
+
+// Test that SetResetSecretForLabel does overwrite when clobber is enabled.
+TEST_F(UserSecretStashTest, DoubleInsertResetSecretWithClobber) {
+  brillo::SecureBlob reset_secret1 = {0xAA, 0xBB, 0xCC};
+  brillo::SecureBlob reset_secret2 = {0xDD, 0xEE, 0x11};
+  brillo::SecureBlob reset_secret3 = {0x22, 0x33, 0x44};
+
+  EXPECT_TRUE(stash_->SetResetSecretForLabel(
+      "label1", reset_secret1, OverwriteExistingKeyBlock::kEnabled));
+  EXPECT_TRUE(stash_->SetResetSecretForLabel(
+      "label2", reset_secret2, OverwriteExistingKeyBlock::kEnabled));
+  EXPECT_TRUE(stash_->SetResetSecretForLabel(
+      "label1", reset_secret3, OverwriteExistingKeyBlock::kEnabled));
+
+  EXPECT_EQ(reset_secret3, stash_->GetResetSecretForLabel("label1").value());
 }
 
 // Test that SetRateLimiterResetSecret does not overwrite if a reset secret
@@ -520,23 +542,6 @@ TEST_F(UserSecretStashTest, DoubleInsertRateLimiterResetSecret) {
   EXPECT_EQ(
       reset_secret1,
       stash_->GetRateLimiterResetSecret(AuthFactorType::kFingerprint).value());
-}
-
-// Test that RemoveResetSecretForLabel successfully removes the reset secret,
-// and afterwards it can be inserted again.
-TEST_F(UserSecretStashTest, RemoveResetSecretForLabel) {
-  brillo::SecureBlob reset_secret1 = {0xAA, 0xBB, 0xCC};
-  brillo::SecureBlob reset_secret2 = {0xDD, 0xEE, 0x11};
-
-  EXPECT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
-  EXPECT_TRUE(stash_->SetResetSecretForLabel("label2", reset_secret2));
-
-  EXPECT_TRUE(stash_->RemoveResetSecretForLabel("label1"));
-  // No reset secret for label1.
-  ASSERT_FALSE(stash_->GetResetSecretForLabel("label1").has_value());
-  EXPECT_EQ(reset_secret2, stash_->GetResetSecretForLabel("label2").value());
-  // Reset secret for label1 can be inserted again.
-  EXPECT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
 }
 
 TEST_F(UserSecretStashTest, GetInitializeFingerprintRateLimiterId) {
@@ -569,7 +574,8 @@ TEST_F(UserSecretStashTest, SnapshotRestoreRevertsChanges) {
                   ->AddWrappedMainKey(kWrappingId1, kWrappingKey1,
                                       OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  EXPECT_TRUE(stash_->SetResetSecretForLabel(kWrappingId1, reset_secret1));
+  EXPECT_TRUE(stash_->SetResetSecretForLabel(
+      kWrappingId1, reset_secret1, OverwriteExistingKeyBlock::kDisabled));
 
   // We should see the first key and secret, not the second.
   EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId1));
@@ -586,7 +592,8 @@ TEST_F(UserSecretStashTest, SnapshotRestoreRevertsChanges) {
                   ->AddWrappedMainKey(kWrappingId2, kWrappingKey2,
                                       OverwriteExistingKeyBlock::kDisabled)
                   .ok());
-  EXPECT_TRUE(stash_->SetResetSecretForLabel(kWrappingId2, reset_secret2));
+  EXPECT_TRUE(stash_->SetResetSecretForLabel(
+      kWrappingId2, reset_secret2, OverwriteExistingKeyBlock::kDisabled));
   EXPECT_TRUE(stash_->InitializeFingerprintRateLimiterId(fake_id));
 
   // We should see both keys and secrets.

@@ -1182,8 +1182,9 @@ bool AuthSession::MigrateResetSecretToUss() {
 
     if (!(user_secret_stash_->GetResetSecretForLabel(auth_factor.label())
               .has_value()) &&
-        user_secret_stash_->SetResetSecretForLabel(auth_factor.label(),
-                                                   reset_secret.value())) {
+        user_secret_stash_->SetResetSecretForLabel(
+            auth_factor.label(), reset_secret.value(),
+            OverwriteExistingKeyBlock::kDisabled)) {
       updated = true;
     }
   }
@@ -1806,10 +1807,6 @@ CryptohomeStatus AuthSession::RemoveAuthFactorFromUssInMemory(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
   }
-
-  // Note: we may or may not have a reset secret for this auth factor -
-  // therefore we don't check the return value.
-  user_secret_stash_->RemoveResetSecretForLabel(auth_factor_label);
 
   return OkStatus<CryptohomeError>();
 }
@@ -3607,21 +3604,8 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
       return OkStatus<CryptohomeError>();
     }
 
-    if ((reset_secret_exists) &&
-        clobber == OverwriteExistingKeyBlock::kEnabled) {
-      if (!user_secret_stash_->RemoveResetSecretForLabel(auth_factor.label())) {
-        LOG(ERROR) << "AuthSession: Failed to add reset secret for auth factor "
-                      "since clobbering failed removing existing secret.";
-        return MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionClobberResetSecretFailedInAddSecretToUSS),
-            ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry}),
-            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
-      }
-    }
-
     if (!user_secret_stash_->SetResetSecretForLabel(
-            auth_factor.label(), key_blobs.reset_secret.value())) {
+            auth_factor.label(), key_blobs.reset_secret.value(), clobber)) {
       LOG(ERROR)
           << "AuthSession: Failed to insert reset secret for auth factor.";
       // TODO(b/229834676): Migrate USS and wrap the error.

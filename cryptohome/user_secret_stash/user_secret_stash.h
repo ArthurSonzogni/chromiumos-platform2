@@ -124,16 +124,12 @@ class UserSecretStash {
       const std::string& label) const;
 
   // This sets the reset secret for an auth factor with the associated |label|.
-  // This does not overwrite an existing reset secret. It returns if the
-  // insertion succeeded.
+  // The behavior when there is an existing secret depends on the value of
+  // |clobber|. If clobber is disabled then this will return false and do
+  // nothing; if it is enabled then this will replace the existing secret.
   [[nodiscard]] bool SetResetSecretForLabel(const std::string& label,
-                                            const brillo::SecureBlob& secret);
-
-  // This removes the reset secret for an auth factor with the associated
-  // |label|. Returns false if reset secret wasn't present for provided |label|,
-  // true otherwise.
-  // TODO(b/238897234): Move this to RemoveWrappedMainKey.
-  bool RemoveResetSecretForLabel(const std::string& label);
+                                            const brillo::SecureBlob& secret,
+                                            OverwriteExistingKeyBlock clobber);
 
   // This gets the reset secret for the rate limiter of the |auth_factor_type|.
   std::optional<brillo::SecureBlob> GetRateLimiterResetSecret(
@@ -179,12 +175,13 @@ class UserSecretStash {
 
   // Changes the wrapping ID for an existing key. This does not modify the key
   // itself in any way. Returns false if either the old ID doesn't exist or the
-  // new ID already does.
+  // new ID already does. If there is a reset secret labelled with the same ID
+  // it will also be renamed.
   bool RenameWrappedMainKey(const std::string& old_wrapping_id,
                             const std::string& new_wrapping_id);
 
   // Removes the wrapped key with the given ID. If it doesn't exist, returns
-  // false.
+  // false. This will also remove any reset secrets with the same label.
   bool RemoveWrappedMainKey(const std::string& wrapping_id);
 
   // The object is converted to a UserSecretStashPayload table, serialized,

@@ -131,16 +131,19 @@ std::optional<brillo::SecureBlob> UserSecretStash::GetResetSecretForLabel(
   return decrypted_.GetResetSecret(label);
 }
 
-bool UserSecretStash::SetResetSecretForLabel(const std::string& label,
-                                             const brillo::SecureBlob& secret) {
+bool UserSecretStash::SetResetSecretForLabel(
+    const std::string& label,
+    const brillo::SecureBlob& secret,
+    OverwriteExistingKeyBlock clobber) {
   auto transaction = decrypted_.StartTransaction();
-  RETURN_IF_ERROR(transaction.InsertResetSecret(label, secret)).As(false);
-  return std::move(transaction).Commit().ok();
-}
-
-bool UserSecretStash::RemoveResetSecretForLabel(const std::string& label) {
-  auto transaction = decrypted_.StartTransaction();
-  RETURN_IF_ERROR(transaction.RemoveResetSecret(label)).As(false);
+  switch (clobber) {
+    case OverwriteExistingKeyBlock::kEnabled:
+      RETURN_IF_ERROR(transaction.AssignResetSecret(label, secret)).As(false);
+      break;
+    case OverwriteExistingKeyBlock::kDisabled:
+      RETURN_IF_ERROR(transaction.InsertResetSecret(label, secret)).As(false);
+      break;
+  }
   return std::move(transaction).Commit().ok();
 }
 
