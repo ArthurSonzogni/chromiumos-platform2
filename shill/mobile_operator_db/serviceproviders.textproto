@@ -7349,7 +7349,6 @@ mno {
     mccmnc : "44017"
     mccmnc : "44018"
     mccmnc : "44019"
-    mccmnc : "44021"
     mccmnc : "44022"
     mccmnc : "44023"
     mccmnc : "44024"
@@ -7465,6 +7464,7 @@ mno {
       name : "SoftBank"
     }
     mccmnc : "44020"
+    mccmnc : "44021"
     tethering_allowed: true
     mobile_apn {
       apn_filter {
