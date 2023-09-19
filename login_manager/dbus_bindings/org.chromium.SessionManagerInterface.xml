@@ -361,27 +361,6 @@
     </method>
 
     <!--
-	HandleSupervisedUserCreationStarting:
-
-        Handle notification from Chrome that creation of a supervised user is
-        underway. Browser crashes will trigger session termination until
-        someone calls HandleSupervisedUserCreationFinished.
-    -->
-    <method name="HandleSupervisedUserCreationStarting">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-    </method>
-
-    <!--
-	HandleSupervisedUserCreationFinished:
-
-        Handle notification from Chrome that creation of a supervised user is
-        completed. Browser crashes will once again trigger a browser restart.
-    -->
-    <method name="HandleSupervisedUserCreationFinished">
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-    </method>
-
-    <!--
         LockScreen:
 
         Allows other processes to request screen locking.

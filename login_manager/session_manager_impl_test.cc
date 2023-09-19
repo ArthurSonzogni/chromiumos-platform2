@@ -2008,13 +2008,6 @@ TEST_F(SessionManagerImplTest, RestartJobForNonGuestUserFailure) {
   EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
 }
 
-TEST_F(SessionManagerImplTest, SupervisedUserCreation) {
-  impl_->HandleSupervisedUserCreationStarting();
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-  impl_->HandleSupervisedUserCreationFinished();
-  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
-}
-
 TEST_F(SessionManagerImplTest, LockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
@@ -2022,44 +2015,6 @@ TEST_F(SessionManagerImplTest, LockScreen) {
   EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-}
-
-TEST_F(SessionManagerImplTest, LockScreen_DuringSupervisedUserCreation) {
-  ExpectAndRunStartSession(kSaneEmail);
-  ExpectLockScreen();
-  EXPECT_CALL(*exported_object(), SendSignal(_)).Times(AnyNumber());
-
-  impl_->HandleSupervisedUserCreationStarting();
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->LockScreen(&error));
-  EXPECT_FALSE(error.get());
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-  impl_->HandleLockScreenShown();
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-  impl_->HandleLockScreenDismissed();
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-  impl_->HandleSupervisedUserCreationFinished();
-  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
-}
-
-TEST_F(SessionManagerImplTest, LockScreen_InterleavedSupervisedUserCreation) {
-  ExpectAndRunStartSession(kSaneEmail);
-  ExpectLockScreen();
-  EXPECT_CALL(*exported_object(), SendSignal(_)).Times(AnyNumber());
-
-  impl_->HandleSupervisedUserCreationStarting();
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->LockScreen(&error));
-  EXPECT_FALSE(error.get());
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-  impl_->HandleLockScreenShown();
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-  impl_->HandleSupervisedUserCreationFinished();
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-  impl_->HandleLockScreenDismissed();
-  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {

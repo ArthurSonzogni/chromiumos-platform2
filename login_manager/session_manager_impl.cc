@@ -516,11 +516,6 @@ bool SessionManagerImpl::ShouldEndSession(std::string* reason_out) {
     return true;
   }
 
-  if (supervised_user_creation_ongoing_) {
-    set_reason("supervised user creation ongoing");
-    return true;
-  }
-
   if (suspend_ongoing_) {
     set_reason("suspend ongoing");
     return true;
@@ -984,14 +979,6 @@ void SessionManagerImpl::RetrievePrimarySession(
 
 bool SessionManagerImpl::IsGuestSessionActive() {
   return !user_sessions_.empty() && AllSessionsAreIncognito();
-}
-
-void SessionManagerImpl::HandleSupervisedUserCreationStarting() {
-  supervised_user_creation_ongoing_ = true;
-}
-
-void SessionManagerImpl::HandleSupervisedUserCreationFinished() {
-  supervised_user_creation_ongoing_ = false;
 }
 
 bool SessionManagerImpl::LockScreen(brillo::ErrorPtr* error) {

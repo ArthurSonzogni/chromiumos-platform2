@@ -275,9 +275,6 @@ class SessionManagerImpl
                               std::string* out_sanitized_username) override;
   bool IsGuestSessionActive() override;
 
-  void HandleSupervisedUserCreationStarting() override;
-  void HandleSupervisedUserCreationFinished() override;
-
   bool LockScreen(brillo::ErrorPtr* error) override;
   void HandleLockScreenShown() override;
   void HandleLockScreenDismissed() override;
@@ -473,7 +470,6 @@ class SessionManagerImpl
   bool session_started_ = false;
   bool session_stopping_ = false;
   bool screen_locked_ = false;
-  bool supervised_user_creation_ongoing_ = false;
   bool system_clock_synchronized_ = false;
   std::string cookie_;
 
