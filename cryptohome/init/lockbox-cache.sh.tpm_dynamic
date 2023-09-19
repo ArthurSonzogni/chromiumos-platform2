@@ -29,7 +29,8 @@ if [ -z "${NEW_INSTALL_ATTRS_FILE}" ]; then
 fi
 
 umask 022
-mkdir -p -m 0711 "${LOCKBOX_CACHE_DIR}"
+mkdir -p "${LOCKBOX_CACHE_DIR}"
+chmod 0711 "${LOCKBOX_CACHE_DIR}"
 
 if [ "$(tpm_version_client)" -eq 2 ]; then
   LOCKBOX_INDEX=0x9da5b0
@@ -45,19 +46,19 @@ tpm_manager_client read_space --index="${LOCKBOX_INDEX}" \
 # Look for the existing install attributes.
 # If there's any, move them to new path.
 # Note: this whole process is kept as much fault-tolerant as possible.
-if [ -f $OLD_INSTALL_ATTRS_FILE ]; then
-  if [ ! -f $NEW_INSTALL_ATTRS_FILE ]; then
+if [ -f "${OLD_INSTALL_ATTRS_FILE}" ]; then
+  if [ ! -f "${NEW_INSTALL_ATTRS_FILE}" ]; then
     # First, create a copy to the new location, then rename it.
     # If the copy/rename operation somehow gets interrupted (sudden
     # reboot), the old install_attributes.pb file will still be there at
     # the next reboot.
     # So, it will reach this step again and eventually continue from here.
-    mkdir -p $INSTALL_ATTRS_NEW_PATH
-    cp $OLD_INSTALL_ATTRS_FILE $COPY_INSTALL_ATTRS_FILE
-    mv $COPY_INSTALL_ATTRS_FILE $NEW_INSTALL_ATTRS_FILE
+    mkdir -p "${INSTALL_ATTRS_NEW_DIR}"
+    cp "${OLD_INSTALL_ATTRS_FILE}" "${DUP_INSTALL_ATTRS_FILE}"
+    mv "${DUP_INSTALL_ATTRS_FILE}" "${NEW_INSTALL_ATTRS_FILE}"
   fi
   # It's time for removal.
-  rm $OLD_INSTALL_ATTRS_FILE
+  rm "${OLD_INSTALL_ATTRS_FILE}"
 fi
 
 # If the nvram file is not empty.
