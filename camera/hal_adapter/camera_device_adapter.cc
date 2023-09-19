@@ -1277,6 +1277,8 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
     uint64_t modifier) {
   size_t num_planes = fds.size();
   CHECK_LE(num_planes, kMaxPlanes);
+  CHECK_EQ(num_planes, strides.size());
+  CHECK_EQ(num_planes, offsets.size());
   std::unique_ptr<camera_buffer_handle_t> buffer_handle =
       std::make_unique<camera_buffer_handle_t>();
   buffer_handle->base.version = sizeof(buffer_handle->base);
