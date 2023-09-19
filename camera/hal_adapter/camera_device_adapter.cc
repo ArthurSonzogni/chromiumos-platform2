@@ -1384,7 +1384,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
     // TODO(lnishan): Handle the errors here.
     std::vector<mojom::Camera3PhyscamMetadataPtr> phys_metadata;
     for (int i = 0; i < result.num_physcam_metadata(); ++i) {
-      phys_metadata[i] = mojom::Camera3PhyscamMetadata::New();
+      auto m = mojom::Camera3PhyscamMetadata::New();
       int internal_camera_id = 0;
       if (!base::StringToInt(result.physcam_ids()[i], &internal_camera_id)) {
         LOGF(ERROR) << "Invalid physical camera ID: "
@@ -1396,9 +1396,10 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
         LOGF(ERROR) << "Failed to find public camera ID for internal camera "
                     << internal_camera_id;
       }
-      phys_metadata[i]->id = public_camera_id;
-      phys_metadata[i]->metadata =
+      m->id = public_camera_id;
+      m->metadata =
           internal::SerializeCameraMetadata(result.physcam_metadata()[i]);
+      phys_metadata.emplace_back(std::move(m));
     }
     r->physcam_metadata = std::move(phys_metadata);
   }
