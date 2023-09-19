@@ -133,3 +133,4 @@ unlinkat: 1
 readlinkat: 1
 socketpair: 1
 gettimeofday: 1
+sendfile: 1
