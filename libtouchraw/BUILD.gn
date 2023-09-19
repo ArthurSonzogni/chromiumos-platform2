@@ -29,6 +29,7 @@ shared_library("libtouchraw") {
     "defragmenter.cc",
     "parser.cc",
     "reader.cc",
+    "touchraw_interface.cc",
   ]
   configs += [ ":target_defaults_pkg_deps" ]
   install_path = "lib"
