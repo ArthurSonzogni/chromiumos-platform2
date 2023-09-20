@@ -12,6 +12,7 @@ pkg_config("libcros_healthd_executor_pkg_deps") {
     "libdlcservice-client",
     "libec",
     "libmojo",
+    "re2",
   ]
 }
 

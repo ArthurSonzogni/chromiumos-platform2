@@ -10,6 +10,7 @@ pkg_config("target_default") {
     "libchrome",
     "libdrm",
     "libmojo",
+    "re2",
   ]
 }
 
