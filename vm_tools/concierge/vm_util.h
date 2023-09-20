@@ -134,6 +134,13 @@ bool SetUpCrosvmProcess(const base::FilePath& cpu_cgroup);
 // function can be called as brillo::ProcessImpl's PreExecCallback.
 bool SetPgid();
 
+// Waits for the |pid| to exit.  Returns true if |pid| successfully exited and
+// false if it did not exit in time.
+bool WaitForChild(pid_t child, base::TimeDelta timeout);
+
+// Returns true if a process with |pid| exists.
+bool CheckProcessExists(pid_t pid);
+
 // Returns balloon stats info retrieved from virtio-balloon device.
 std::optional<BalloonStats> GetBalloonStats(
     const std::string& socket_path, std::optional<base::TimeDelta> timeout);

@@ -59,6 +59,9 @@ namespace {
 // Name of the control socket used for controlling crosvm.
 constexpr char kCrosvmSocket[] = "arcvm.sock";
 
+// How long to wait before timing out on child process exits.
+constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
+
 // How long to sleep between arc-powerctl connection attempts.
 constexpr base::TimeDelta kArcPowerctlConnectDelay = base::Milliseconds(250);
 
@@ -191,15 +194,20 @@ std::pair<base::ScopedFD, bool> ConnectVSock(int cid) {
   return {std::move(fd), false};
 }
 
-bool ConnectVsockAndPowerOff(int cid) {
+bool ShutdownArcVm(int cid) {
   base::ScopedFD vsock;
-
-  bool vm_is_dead = false;
-  std::tie(vsock, vm_is_dead) = ConnectVSock(cid);
-
-  if (vm_is_dead) {
-    DLOG(INFO) << "ARCVM is already gone.";
-    return true;
+  const base::Time connect_deadline =
+      base::Time::Now() + kArcPowerctlConnectTimeout;
+  while (base::Time::Now() < connect_deadline) {
+    bool vm_is_dead = false;
+    std::tie(vsock, vm_is_dead) = ConnectVSock(cid);
+    if (vsock.is_valid())
+      break;
+    if (vm_is_dead) {
+      DLOG(INFO) << "ARCVM is already gone.";
+      return true;
+    }
+    base::PlatformThread::Sleep(kArcPowerctlConnectDelay);
   }
 
   if (!vsock.is_valid())
@@ -280,7 +288,10 @@ ArcVm::ArcVm(Config config)
 
 ArcVm::~ArcVm() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  ResourceCleanup(base::DoNothing());
+  vmm_swap_usage_policy_.OnDestroy();
+  vmm_swap_metrics_->OnDestroy();
+
+  Shutdown();
 }
 
 std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
@@ -516,37 +527,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   return true;
 }
 
-std::vector<VmBaseImpl::StopStep> ArcVm::GetStopSteps(StopType) {
-  // For ArcVM the stop reason doesn't matter. The Stop sequence is always the
-  // same.
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  std::vector<StopStep> steps;
-  steps.emplace_back(
-      base::BindOnce(&ArcVm::ResourceCleanup, weak_ptr_factory_.GetWeakPtr()),
-      base::Milliseconds(0));
-  steps.emplace_back(
-      base::BindOnce(&ArcVm::ShutdownViaVsock, weak_ptr_factory_.GetWeakPtr(),
-                     std::nullopt),
-      kChildExitTimeout);
-  steps.emplace_back(
-      base::BindOnce(&ArcVm::StopViaCrosvm, weak_ptr_factory_.GetWeakPtr()),
-      kChildExitTimeout);
-  steps.emplace_back(base::BindOnce(&ArcVm::KillVmProcess,
-                                    weak_ptr_factory_.GetWeakPtr(), SIGTERM),
-                     kChildExitTimeout);
-  steps.emplace_back(base::BindOnce(&ArcVm::KillVmProcess,
-                                    weak_ptr_factory_.GetWeakPtr(), SIGKILL),
-                     kChildExitTimeout);
-  return steps;
-}
-
-void ArcVm::ResourceCleanup(base::OnceClosure callback) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  vmm_swap_usage_policy_.OnDestroy();
-  vmm_swap_metrics_->OnDestroy();
-
+bool ArcVm::Shutdown() {
   // Notify arc-patchpanel that ARCVM is down.
   // This should run before the process existence check below since we still
   // want to release the network resources on crash.
@@ -554,35 +535,55 @@ void ArcVm::ResourceCleanup(base::OnceClosure callback) {
     LOG(WARNING) << "Unable to notify networking services";
   }
 
-  std::move(callback).Run();
-}
-
-void ArcVm::ShutdownViaVsock(std::optional<base::TimeTicks> deadline,
-                             base::OnceClosure callback) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  if (!deadline) {
-    deadline = base::TimeTicks::Now() + kArcPowerctlConnectTimeout;
+  // Do a check here to make sure the process is still around.  It may have
+  // crashed and we don't want to be waiting around for an RPC response that's
+  // never going to come.  kill with a signal value of 0 is explicitly
+  // documented as a way to check for the existence of a process.
+  if (!CheckProcessExists(process_.pid())) {
+    LOG(INFO) << "ARCVM process is already gone. Do nothing";
+    process_.Release();
+    return true;
   }
 
-  if (!ConnectVsockAndPowerOff(vsock_cid_) &&
-      base::TimeTicks::Now() < deadline) {
-    // Failed to connect, try again soon if the deadline is not yet met.
-    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&ArcVm::ShutdownViaVsock, weak_ptr_factory_.GetWeakPtr(),
-                       deadline, std::move(callback)),
-        kArcPowerctlConnectDelay);
-    return;
+  LOG(INFO) << "Shutting down ARCVM";
+  if (ShutdownArcVm(vsock_cid_)) {
+    if (WaitForChild(process_.pid(), kChildExitTimeout)) {
+      LOG(INFO) << "ARCVM is shut down";
+      process_.Release();
+      return true;
+    }
+    LOG(WARNING) << "Timed out waiting for ARCVM to shut down.";
+  }
+  LOG(WARNING) << "Failed to shut down ARCVM gracefully.";
+
+  LOG(WARNING) << "Trying to shut ARCVM down via the crosvm socket.";
+  Stop();
+
+  // We can't actually trust the exit codes that crosvm gives us so just see if
+  // it exited.
+  if (WaitForChild(process_.pid(), kChildExitTimeout)) {
+    process_.Release();
+    return true;
   }
 
-  if (base::TimeTicks::Now() > deadline) {
-    LOG(WARNING) << "Timed out attempting graceful ARCVM shutdown.";
+  LOG(WARNING) << "Failed to stop VM " << vsock_cid_ << " via crosvm socket";
+
+  // Kill the process with SIGTERM.
+  if (process_.Kill(SIGTERM, kChildExitTimeout.InSeconds())) {
+    process_.Release();
+    return true;
   }
 
-  // Either timed out, or ARC should be stopped now. Either way, run the
-  // callback to indicate this step is finished.
-  std::move(callback).Run();
+  LOG(WARNING) << "Failed to kill VM " << vsock_cid_ << " with SIGTERM";
+
+  // Kill it with fire.
+  if (process_.Kill(SIGKILL, kChildExitTimeout.InSeconds())) {
+    process_.Release();
+    return true;
+  }
+
+  LOG(ERROR) << "Failed to kill VM " << vsock_cid_ << " with SIGKILL";
+  return false;
 }
 
 bool ArcVm::AttachUsbDevice(uint8_t bus,

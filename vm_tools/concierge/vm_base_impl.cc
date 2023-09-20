@@ -4,143 +4,29 @@
 
 #include "vm_tools/concierge/vm_base_impl.h"
 
-#include <sys/wait.h>
-
 #include <optional>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/functional/bind.h>
-#include <base/functional/callback.h>
-#include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/task/sequenced_task_runner.h>
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/crosvm_control.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {
-namespace {
-
-// How long to wait between checking if the VM process has exited.
-constexpr base::TimeDelta kExitCheckRepeatDelay = base::Milliseconds(250);
-
-}  // namespace
 
 VmBaseImpl::VmBaseImpl(Config config)
     : network_client_(std::move(config.network_client)),
       seneschal_server_proxy_(std::move(config.seneschal_server_proxy)),
       vsock_cid_(config.vsock_cid),
       control_socket_path_(
-          config.runtime_dir.Append(config.cros_vm_socket).value()),
-      weak_ptr_factory_(this) {
+          config.runtime_dir.Append(config.cros_vm_socket).value()) {
   // Take ownership of the runtime directory.
   CHECK(base::DirectoryExists(config.runtime_dir));
   CHECK(runtime_dir_.Set(config.runtime_dir));
-}
-
-VmBaseImpl::~VmBaseImpl() {
-  CHECK(!IsRunning());
-}
-
-void VmBaseImpl::PerformStopSequence(
-    StopType type, base::OnceCallback<void(StopResult)> callback) {
-  // Nothing is running.
-  if (process_.pid() == 0) {
-    std::move(callback).Run(StopResult::SUCCESS);
-    return;
-  }
-
-  // If the VM is currently stopping a new sequence cannot be started.
-  if (IsStopping()) {
-    std::move(callback).Run(StopResult::STOPPING);
-    return;
-  }
-
-  stop_complete_callback_ = std::move(callback);
-
-  // Get the list of tasks to be performed to stop the VM.
-  stop_steps_ = GetStopSteps(type);
-
-  // Send -1 as the previous step to indicate that this is the beginning of a
-  // new stop sequence.
-  PerformStopSequenceInternal(type, stop_steps_.begin());
-}
-
-void VmBaseImpl::OnStopSequenceComplete(StopResult result) {
-  stop_steps_.clear();
-
-  // If the VM was stopped, callbacks may destroy this instance.
-  // Post a task to run the callback outside the scope of this
-  // instance.
-  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(stop_complete_callback_), result));
-}
-
-void VmBaseImpl::PerformStopSequenceInternal(
-    StopType type, std::vector<StopStep>::iterator next_step) {
-  // No more steps and the VM is still alive. This stop sequence failed.
-  if (next_step == stop_steps_.end()) {
-    OnStopSequenceComplete(StopResult::FAILURE);
-  }
-
-  // If the VM doesn't stop after this step, run PerformStopSequenceInternal
-  // again to move on to the next step.
-  base::OnceClosure timeout_callback =
-      base::BindOnce(&VmBaseImpl::PerformStopSequenceInternal,
-                     weak_ptr_factory_.GetWeakPtr(), type, next_step + 1);
-
-  // Run the step and then check if the process exits. After completion,
-  // the stop sequence will either be finished or move on to the next step.
-  std::move(next_step->task)
-      .Run(base::BindOnce(&VmBaseImpl::CheckForExit,
-                          weak_ptr_factory_.GetWeakPtr(),
-                          base::TimeTicks::Now() + next_step->exit_timeout,
-                          std::move(timeout_callback)));
-}
-
-void VmBaseImpl::CheckForExit(base::TimeTicks deadline,
-                              base::OnceClosure timeout_callback) {
-  if (!IsRunning()) {
-    LOG(INFO) << "VM: " << vsock_cid_ << " stopped successfully";
-    process_.Release();
-    OnStopSequenceComplete(StopResult::SUCCESS);
-    return;
-  }
-
-  // Timed out waiting for the VM to exit. Stop checking.
-  if (base::TimeTicks::Now() > deadline) {
-    std::move(timeout_callback).Run();
-    return;
-  }
-
-  // The VM is still alive. Check again in the near future and forward the
-  // timeout callback to the next check.
-  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&VmBaseImpl::CheckForExit, weak_ptr_factory_.GetWeakPtr(),
-                     deadline, std::move(timeout_callback)),
-      kExitCheckRepeatDelay);
-}
-
-bool VmBaseImpl::IsRunning() {
-  pid_t ret = HANDLE_EINTR(waitpid(process_.pid(), nullptr, WNOHANG));
-
-  // ret == 0 means that the child is still alive
-
-  // The VM process exited.
-  if (ret == process_.pid() || (ret < 0 && errno == ECHILD)) {
-    return false;
-  }
-
-  if (ret < 0) {
-    PLOG(ERROR) << "Failed to wait for child process";
-  }
-
-  return true;
 }
 
 std::optional<BalloonStats> VmBaseImpl::GetBalloonStats(
@@ -246,10 +132,8 @@ const std::string& VmBaseImpl::GetVmSocketPath() const {
   return control_socket_path_;
 }
 
-void VmBaseImpl::StopViaCrosvm(base::OnceClosure callback) {
-  // Stop via the crosvm control socket
-  CrosvmControl::Get()->StopVm(GetVmSocketPath());
-  std::move(callback).Run();
+bool VmBaseImpl::Stop() const {
+  return CrosvmControl::Get()->StopVm(GetVmSocketPath());
 }
 
 bool VmBaseImpl::SuspendCrosvm() const {
@@ -287,13 +171,6 @@ void VmBaseImpl::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
 void VmBaseImpl::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
   response.set_success(false);
   response.set_failure_reason("Unsupported by target VM");
-}
-
-void VmBaseImpl::KillVmProcess(int signal, base::OnceClosure callback) {
-  // Use a timeout of 0 to not block until the process exits.
-  process_.Kill(signal, 0);
-
-  std::move(callback).Run();
 }
 
 }  // namespace vm_tools::concierge

@@ -114,11 +114,10 @@ class TerminaVm final : public VmBaseImpl {
     std::unique_ptr<ScopedWlSocket> socket;
   };
 
-  ~TerminaVm() override;
-
   // Starts a new virtual machine.  Returns nullptr if the virtual machine
   // failed to start for any reason.
   static std::unique_ptr<TerminaVm> Create(Config config);
+  ~TerminaVm() override;
 
   // Configures the network interfaces inside the VM.  Returns true iff
   // successful.
@@ -200,6 +199,14 @@ class TerminaVm final : public VmBaseImpl {
   // Whether a TremplinStartedSignal has been received for the VM.
   bool IsTremplinStarted() const { return is_tremplin_started_; }
 
+  // VmBaseImpl overrides.
+  // Shuts down the VM.  First attempts a clean shutdown of the VM by sending
+  // a Shutdown RPC to maitre'd.  If that fails, attempts to shut down the VM
+  // using the control socket for the hypervisor.  If that fails, then sends a
+  // SIGTERM to the hypervisor.  Finally, if nothing works forcibly stops the VM
+  // by sending it a SIGKILL.  Returns true if the VM was shut down and false
+  // otherwise.
+  bool Shutdown() override;
   VmBaseImpl::Info GetInfo() const override;
   bool AttachUsbDevice(uint8_t bus,
                        uint8_t addr,
@@ -241,10 +248,6 @@ class TerminaVm final : public VmBaseImpl {
       std::unique_ptr<vm_tools::Maitred::Stub> stub,
       VmBuilder vm_builder);
 
- protected:
-  // VmBaseImpl overrides
-  std::vector<StopStep> GetStopSteps(StopType type) override;
-
  private:
   explicit TerminaVm(Config config);
 
@@ -253,13 +256,6 @@ class TerminaVm final : public VmBaseImpl {
 
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
-
-  // Cleans up resources used by the VM. Called before shutdown or if the VM
-  // exited unexpectedly.
-  void ResourceCleanup(base::OnceClosure callback);
-
-  // Attempts to send the shutdown request to maitred via grpc.
-  void SendShutdownToMaitred(base::OnceClosure callback);
 
   // Returns the string value of the 'serial' arg passed to crosvm.
   // If |log_path_| is empty, syslog will be used.
@@ -277,7 +273,8 @@ class TerminaVm final : public VmBaseImpl {
   bool ResizeDiskImage(uint64_t new_size);
   bool ResizeFilesystem(uint64_t new_size);
 
-  void OnGrpcShutdownResponseOrTimeout(grpc::Status status);
+  // Sends a gRPC message to the VM to shutdown.
+  grpc::Status SendVMShutdownMessage();
 
   void set_kernel_version_for_testing(std::string kernel_version);
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
@@ -343,23 +340,6 @@ class TerminaVm final : public VmBaseImpl {
   //
   // TODO(b/237960042): this should be in vm_base once all VMs use it.
   std::unique_ptr<ScopedWlSocket> socket_;
-
-  // Grpc context for the async shutdown request.
-  std::unique_ptr<grpc::ClientContext> shutdown_request_context_;
-
-  // Grpc message for the async shutdown request.
-  std::unique_ptr<vm_tools::EmptyMessage> shutdown_request_message_;
-
-  // Called when a response is received from the shutdown request sent to
-  // maitred.
-  base::OnceClosure on_maitred_shutdown_response_received_;
-
-  // Runs tasks on the sequence on which this was instantiated.
-  const scoped_refptr<base::SequencedTaskRunner> main_thread_task_runner_ =
-      base::SequencedTaskRunner::GetCurrentDefault();
-
-  // This should be the last member of the class.
-  base::WeakPtrFactory<TerminaVm> weak_ptr_factory_;
 };
 
 }  // namespace vm_tools::concierge

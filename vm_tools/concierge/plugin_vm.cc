@@ -42,6 +42,48 @@ namespace {
 // How long we give VM to suspend.
 constexpr base::TimeDelta kVmSuspendTimeout = base::Seconds(25);
 
+// How long to wait before timing out on child process exits.
+constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
+
+void TrySuspendVm(scoped_refptr<dbus::Bus> bus,
+                  dbus::ObjectProxy* vmplugin_service_proxy,
+                  const VmId& id) {
+  bool dispatcher_shutting_down = false;
+  base::TimeTicks suspend_start_time(base::TimeTicks::Now());
+  do {
+    pvm::dispatcher::VmOpResult result =
+        pvm::dispatcher::SuspendVm(bus, vmplugin_service_proxy, id);
+
+    switch (result) {
+      case pvm::dispatcher::VmOpResult::SUCCESS:
+        return;
+
+      case pvm::dispatcher::VmOpResult::DISPATCHER_SHUTTING_DOWN:
+        // The dispatcher is in process of shutting down, and is supposed
+        // to suspend all running VMs. Wait a second, and try again, until we
+        // get "dispatcher not available" response.
+        if (!dispatcher_shutting_down) {
+          LOG(INFO) << "Dispatcher is shutting down, will retry suspend";
+          dispatcher_shutting_down = true;
+        }
+        base::PlatformThread::Sleep(base::Seconds(1));
+        break;
+
+      case pvm::dispatcher::VmOpResult::DISPATCHER_NOT_AVAILABLE:
+        if (!dispatcher_shutting_down)
+          LOG(ERROR) << "Failed to suspend VM: dispatcher is not available";
+        return;
+
+      default:
+        // TODO(dtor): handle cases when suspend fails because VM is already
+        // transitioning into some state, such as suspending or shutting down,
+        // in which case dispatcher will reject our request.
+        LOG(ERROR) << "Failed to suspend VM: " << static_cast<int>(result);
+        return;
+    }
+  } while (base::TimeTicks::Now() - suspend_start_time < kVmSuspendTimeout);
+}
+
 }  // namespace
 
 // static
@@ -63,51 +105,13 @@ std::unique_ptr<PluginVm> PluginVm::Create(Config config) {
 }
 
 PluginVm::~PluginVm() {
-  ResourceCleanup(base::DoNothing());
+  StopVm();
 }
 
-std::vector<VmBaseImpl::StopStep> PluginVm::GetStopSteps(StopType type) {
-  // If the plugin VM is specifically targeted for shutdown, then cleanly
-  // shutdown the VM.
-  if (type == StopType::GRACEFUL) {
-    return GetShutdownSteps();
-  }
-
-  // For all other reasons, the plugin VM should be suspended to disk.
-  return GetSuspendSteps();
-}
-
-std::vector<VmBaseImpl::StopStep> PluginVm::GetShutdownSteps() {
-  std::vector<StopStep> steps;
-  steps.emplace_back(base::BindOnce(&PluginVm::ResourceCleanup,
-                                    weak_ptr_factory_.GetWeakPtr()),
-                     base::Milliseconds(0));
-  steps.emplace_back(base::BindOnce(&PluginVm::InitiateShutdownViaPvmDispatcher,
-                                    weak_ptr_factory_.GetWeakPtr()),
-                     kChildExitTimeout);
-  return steps;
-}
-
-std::vector<VmBaseImpl::StopStep> PluginVm::GetSuspendSteps() {
-  std::vector<StopStep> steps;
-  steps.emplace_back(base::BindOnce(&PluginVm::ResourceCleanup,
-                                    weak_ptr_factory_.GetWeakPtr()),
-                     base::Milliseconds(0));
-  steps.emplace_back(
-      base::BindOnce(&PluginVm::InitiateSuspendViaPvmDispatcher,
-                     weak_ptr_factory_.GetWeakPtr(), std::nullopt),
-      kChildExitTimeout);
-  steps.emplace_back(base::BindOnce(&PluginVm::KillVmProcess,
-                                    weak_ptr_factory_.GetWeakPtr(), SIGTERM),
-                     kChildExitTimeout);
-  steps.emplace_back(base::BindOnce(&PluginVm::KillVmProcess,
-                                    weak_ptr_factory_.GetWeakPtr(), SIGKILL),
-                     kChildExitTimeout);
-  return steps;
-}
-
-void PluginVm::ResourceCleanup(base::OnceClosure callback) {
+bool PluginVm::StopVm() {
   // Notify arc-patchpanel that the VM is down.
+  // This should run before the process existence check below since we still
+  // want to release the network resources on crash.
   // Note the client will only be null during testing.
   if (network_client_ &&
       !network_client_->NotifyParallelsVmShutdown(id_hash_)) {
@@ -119,67 +123,49 @@ void PluginVm::ResourceCleanup(base::OnceClosure callback) {
     vm_permission::UnregisterVm(bus_, vm_permission_service_proxy_, id_);
   }
 
-  std::move(callback).Run();
-}
-
-void PluginVm::InitiateShutdownViaPvmDispatcher(base::OnceClosure callback) {
-  pvm::dispatcher::ShutdownVm(
-      bus_, vmplugin_service_proxy_, id_,
-      base::BindOnce(&PluginVm::OnDispatcherShutdownResponse,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
-  return;
-}
-
-void PluginVm::OnDispatcherShutdownResponse(
-    base::OnceClosure callback, pvm::dispatcher::VmOpResult result) {
-  if (result != pvm::dispatcher::VmOpResult::SUCCESS) {
-    LOG(ERROR) << "Failed to dispatch plugin VM Shutdown request: "
-               << static_cast<uint32_t>(result);
+  // Do a check here to make sure the process is still around.
+  if (!CheckProcessExists(process_.pid())) {
+    // The process is already gone.
+    process_.Release();
+    return true;
   }
 
-  std::move(callback).Run();
+  TrySuspendVm(bus_, vmplugin_service_proxy_, id_);
+  if (!CheckProcessExists(process_.pid())) {
+    process_.Release();
+    return true;
+  }
+
+  // Kill the process with SIGTERM. For Plugin VMs this will cause plugin to
+  // try to suspend the VM.
+  if (process_.Kill(SIGTERM, kChildExitTimeout.InSeconds())) {
+    return true;
+  }
+
+  LOG(WARNING) << "Failed to kill plugin VM with SIGTERM";
+
+  // Kill it with fire.
+  if (process_.Kill(SIGKILL, kChildExitTimeout.InSeconds())) {
+    return true;
+  }
+
+  LOG(ERROR) << "Failed to kill plugin VM with SIGKILL";
+  return false;
 }
 
-void PluginVm::InitiateSuspendViaPvmDispatcher(
-    std::optional<base::TimeTicks> deadline, base::OnceClosure callback) {
-  if (!deadline) {
-    deadline = base::TimeTicks::Now() + kVmSuspendTimeout;
+bool PluginVm::Shutdown() {
+  // Notify arc-patchpanel that the VM is down.
+  // This should run before the process existence check below since we still
+  // want to release the network resources on crash.
+  // Note the client will only be null during testing.
+  if (network_client_ &&
+      !network_client_->NotifyParallelsVmShutdown(id_hash_)) {
+    LOG(WARNING) << "Unable to notify networking services";
   }
 
-  if (base::TimeTicks::Now() > deadline) {
-    // Timed out.
-    LOG(INFO) << "Plugin VM suspend timed out";
-    std::move(callback).Run();
-    return;
-  }
-
-  // Initiate request
-  pvm::dispatcher::SuspendVm(
-      bus_, vmplugin_service_proxy_, id_,
-      base::BindOnce(&PluginVm::OnDispatcherSuspendResponse,
-                     weak_ptr_factory_.GetWeakPtr(), *deadline,
-                     std::move(callback)));
-}
-
-void PluginVm::OnDispatcherSuspendResponse(base::TimeTicks deadline,
-                                           base::OnceClosure callback,
-                                           pvm::dispatcher::VmOpResult result) {
-  if (result == pvm::dispatcher::VmOpResult::SUCCESS ||
-      result == pvm::dispatcher::VmOpResult::DISPATCHER_NOT_AVAILABLE) {
-    // Either success or the dispatcher is not available. Either way stop trying
-    // to suspend.
-    std::move(callback).Run();
-    return;
-  }
-
-  // Wait a bit then try to suspend again until success or the dispatcher is not
-  // available.
-  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&PluginVm::InitiateSuspendViaPvmDispatcher,
-                     weak_ptr_factory_.GetWeakPtr(), deadline,
-                     std::move(callback)),
-      base::Seconds(1));
+  return !CheckProcessExists(process_.pid()) ||
+         pvm::dispatcher::ShutdownVm(bus_, vmplugin_service_proxy_, id_) ==
+             pvm::dispatcher::VmOpResult::SUCCESS;
 }
 
 VmBaseImpl::Info PluginVm::GetInfo() const {
@@ -614,8 +600,7 @@ PluginVm::PluginVm(Config config)
       iso_dir_(std::move(config.iso_dir)),
       bus_(std::move(config.bus)),
       vm_permission_service_proxy_(config.vm_permission_service_proxy),
-      vmplugin_service_proxy_(config.vmplugin_service_proxy),
-      weak_ptr_factory_(this) {
+      vmplugin_service_proxy_(config.vmplugin_service_proxy) {
   CHECK(vm_permission_service_proxy_);
   CHECK(vmplugin_service_proxy_);
   CHECK(base::DirectoryExists(iso_dir_));

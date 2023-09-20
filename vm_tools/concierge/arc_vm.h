@@ -126,6 +126,7 @@ class ArcVm final : public VmBaseImpl {
   uint32_t IPv4Address() const;
 
   // VmBaseImpl overrides.
+  bool Shutdown() override;
   VmBaseImpl::Info GetInfo() const override;
   // Currently only implemented for termina, returns "Not implemented".
   bool GetVmEnterpriseReportingInfo(
@@ -186,10 +187,6 @@ class ArcVm final : public VmBaseImpl {
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
                                   int quota);
 
- protected:
-  // VmBaseImpl overrides
-  std::vector<StopStep> GetStopSteps(StopType reason) override;
-
  private:
   explicit ArcVm(Config config);
 
@@ -214,14 +211,6 @@ class ArcVm final : public VmBaseImpl {
     // available.
     kLowDisk,
   };
-
-  // Cleans up resources used by the VM. Called before shutdown or if the VM
-  // exited unexpectedly.
-  void ResourceCleanup(base::OnceClosure callback);
-
-  // Attempts to shutdown ARCVM through the power control VSOCK.
-  void ShutdownViaVsock(std::optional<base::TimeTicks> deadline,
-                        base::OnceClosure callback);
 
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
@@ -360,7 +349,6 @@ class ArcVm final : public VmBaseImpl {
       GUARDED_BY_CONTEXT(sequence_checker_);
   base::Thread balloon_request_thread_{"balloon_request_thread"};
 
-  // This should be the last member of the class.
   base::WeakPtrFactory<ArcVm> weak_ptr_factory_;
 };
 
