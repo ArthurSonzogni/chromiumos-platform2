@@ -229,9 +229,9 @@ const std::array kCommandLogs {
       "echo \"-----------\"; "
       "ectool typecstatus \"${port}\" 2>/dev/null || break; "
       "echo \"Port C${port} SOP Discovery\"; "
-      "ectool typecdiscovery \"${port}\" 0 2>/dev/null || break; "
+      "ectool typecdiscovery \"${port}\" 0 2>/dev/null || continue; "
       "echo \"Port C${port} SOP' Discovery\"; "
-      "ectool typecdiscovery \"${port}\" 1 2>/dev/null || break; "
+      "ectool typecdiscovery \"${port}\" 1 2>/dev/null || continue; "
     "done", kRoot, kRoot},
   Log{kCommand, "cros_fp_panicinfo", "ectool --name=cros_fp panicinfo",
     kRoot, kRoot},
