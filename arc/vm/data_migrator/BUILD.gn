@@ -56,6 +56,7 @@ static_library("libarcvm_data_migrator") {
   pkg_deps = [
     "libcryptohome_platform",
     "libmetrics",
+    "re2",
   ]
 }
 
