@@ -790,7 +790,8 @@ std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
 
   // b/294287313: copy the IPv6 configuration of the upstream Network
   // directly from shill's tethering request, notify GuestIPv6Service about
-  // the prefix of the upstream Network.
+  // the prefix of the upstream Network, and also call
+  // Datapath::StartSourceIPv6PrefixEnforcement()
   if (request.has_uplink_ipv6_config()) {
     upstream_network.ipconfig.ipv6_cidr =
         net_base::IPv6CIDR::CreateFromBytesAndPrefix(
@@ -806,7 +807,12 @@ std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
     if (upstream_network.ipconfig.ipv6_cidr) {
       ipv6_svc_->OnUplinkIPv6Changed(upstream_network);
       ipv6_svc_->UpdateUplinkIPv6DNS(upstream_network);
-      // TODO(b/294287313): Also start IPv6 src prefix enforcement
+      datapath_->StartSourceIPv6PrefixEnforcement(upstream_network);
+      // TODO(b/279871350): Support prefix shorter than /64.
+      const auto ipv6_prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
+          upstream_network.ipconfig.ipv6_cidr->address());
+      datapath_->UpdateSourceEnforcementIPv6Prefix(upstream_network,
+                                                   ipv6_prefix);
     } else {
       LOG(WARNING) << __func__ << ": failed to parse uplink IPv6 configuration";
     }
@@ -820,6 +826,7 @@ void Manager::StopTetheringUpstreamNetwork(
   LOG(INFO) << __func__ << ": Tearing down datapath for fake shill Device "
             << upstream_network;
   ipv6_svc_->StopUplink(upstream_network);
+  datapath_->StopSourceIPv6PrefixEnforcement(upstream_network);
   datapath_->StopConnectionPinning(upstream_network);
   counters_svc_->OnPhysicalDeviceRemoved(upstream_network.ifname);
 }
