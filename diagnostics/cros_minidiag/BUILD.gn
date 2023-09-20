@@ -20,6 +20,7 @@ pkg_config("libcros-minidiag-tool-pkg-deps") {
     "libbrillo",
     "libchrome",
     "libmetrics",
+    "re2",
   ]
 }
 
