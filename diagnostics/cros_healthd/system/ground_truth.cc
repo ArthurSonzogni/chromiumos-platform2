@@ -243,6 +243,7 @@ void GroundTruth::IsRoutineArgumentSupported(
     case mojom::RoutineArgument::Tag::kCpuCache:
     case mojom::RoutineArgument::Tag::kPrimeSearch:
     case mojom::RoutineArgument::Tag::kFloatingPoint:
+    case mojom::RoutineArgument::Tag::kFan:
       status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
       std::move(callback).Run(std::move(status));
       return;

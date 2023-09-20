@@ -12,6 +12,7 @@
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery_v2.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power_v2.h"
+#include "diagnostics/cros_healthd/routines/fan/fan.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
@@ -98,6 +99,8 @@ std::unique_ptr<BaseRoutineControl> RoutineService::CreateRoutineControl(
     case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
       return std::make_unique<BluetoothDiscoveryRoutineV2>(
           context_, std::move(routine_arg->get_bluetooth_discovery()));
+    case mojom::RoutineArgument::Tag::kFan:
+      return std::make_unique<FanRoutine>(context_, routine_arg->get_fan());
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {
       LOG(ERROR) << "Routine Argument not recognized/supported";
       routine_receiver.ResetWithReason(

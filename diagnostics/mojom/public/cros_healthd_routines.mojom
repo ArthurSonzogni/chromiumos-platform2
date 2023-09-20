@@ -71,7 +71,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 13, NextIndex: 13
+// NextMinVersion: 14, NextIndex: 14
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -101,6 +101,8 @@ union RoutineArgument {
   [MinVersion=11] BluetoothPowerRoutineArgument bluetooth_power@11;
   // Arguments to create a Bluetooth discovery routine.
   [MinVersion=12] BluetoothDiscoveryRoutineArgument bluetooth_discovery@12;
+  // Arguments to create a fan routine.
+  [MinVersion=13] FanRoutineArgument fan@13;
 };
 
 // This routine checks whether there is any memory problem by
@@ -260,6 +262,11 @@ struct BluetoothPowerRoutineArgument {};
 // NextMinVersion: 1, NextIndex: 0
 struct BluetoothDiscoveryRoutineArgument {};
 
+// This routine checks whether the fan is controllable.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct FanRoutineArgument {};
+
 // Interface exposed to clients for controlling a routine.
 //
 // Error Handling:
@@ -377,6 +384,7 @@ union RoutineDetail {
   FloatingPointRoutineDetail floating_point;
   BluetoothPowerRoutineDetail bluetooth_power;
   BluetoothDiscoveryRoutineDetail bluetooth_discovery;
+  FanRoutineDetail fan;
 };
 
 // Details regarding memory routine.
@@ -594,4 +602,31 @@ enum LedColor {
   kYellow = 4,
   kWhite = 5,
   kAmber = 6,
+};
+
+// Whether the given hardware probed matches the hardware description recorded.
+//
+// NextMinVersion: 1, NextIndex: 4
+[Extensible]
+enum HardwarePresenceStatus {
+  // The default value is for backward compatibility, should not be used.
+  [Default] kUnmappedEnumField = 0,
+  // The hardware presence matches the description.
+  kMatched = 1,
+  // The hardware presence does not match the description.
+  kNotMatched = 2,
+  // There is no description available, skipping check.
+  kNotConfigured = 3,
+};
+
+// Details regarding fan routine.
+//
+// NextMinVersion: 1, NextIndex: 3
+struct FanRoutineDetail {
+  // The ids of fans that can be controlled.
+  array<uint8> passed_fan_ids@0;
+  // The ids of fans that cannot be controlled.
+  array<uint8> failed_fan_ids@1;
+  // Whether the number of fan probed is matched.
+  HardwarePresenceStatus fan_count_status@2;
 };
