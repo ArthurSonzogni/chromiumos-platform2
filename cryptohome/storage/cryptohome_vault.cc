@@ -55,8 +55,8 @@ StorageStatus CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
                                MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED);
   }
 
-  // If there is a migrating data container, we need to set up the existing
-  // data container.
+  // Set up the data container. During migration, this container is also used
+  // as the source for user data.
   if (!container_->Setup(filesystem_key)) {
     // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced with
     // a more specific type.
@@ -158,6 +158,33 @@ StorageStatus CryptohomeVault::EvictKey() {
       return StorageStatus::Make(
           FROM_HERE, "Failed to evict key from app container: " + name,
           MOUNT_ERROR_REMOVE_FAILED);
+    }
+  }
+  return StorageStatus::Ok();
+}
+
+StorageStatus CryptohomeVault::RestoreKey(const FileSystemKey& filesystem_key) {
+  if (container_->GetType() != EncryptedContainerType::kDmcrypt) {
+    return StorageStatus::Make(FROM_HERE,
+                               "Not supported: container type is not dm-crypt.",
+                               MOUNT_ERROR_INVALID_ARGS);
+  }
+  if (!container_->RestoreKey(filesystem_key)) {
+    return StorageStatus::Make(FROM_HERE, "Failed to restore container key.",
+                               MOUNT_ERROR_KEYRING_FAILED);
+  }
+  if (cache_container_ && !cache_container_->RestoreKey(filesystem_key)) {
+    return StorageStatus::Make(FROM_HERE,
+                               "Failed to restore cache container key.",
+                               MOUNT_ERROR_KEYRING_FAILED);
+  }
+  for (auto& [name, container] : application_containers_) {
+    if (!container->RestoreKey(filesystem_key)) {
+      LOG(ERROR) << "Failed to restore key for an application container "
+                 << name;
+      return StorageStatus::Make(
+          FROM_HERE, "Failed to restore key for an application container.",
+          MOUNT_ERROR_KEYRING_FAILED);
     }
   }
   return StorageStatus::Ok();

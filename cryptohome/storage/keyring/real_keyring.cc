@@ -91,9 +91,8 @@ bool RemoveFscryptV2Key(const FileSystemKeyReference& key_reference) {
 }
 
 bool AddDmcryptKey(const FileSystemKey& key,
-                   FileSystemKeyReference* key_reference) {
-  *key_reference = dmcrypt::GenerateKeyringDescription(key_reference->fek_sig);
-  return dmcrypt::AddLogonKey(key.fek, key_reference->fek_sig);
+                   const FileSystemKeyReference& key_reference) {
+  return dmcrypt::AddLogonKey(key.fek, key_reference.fek_sig);
 }
 
 bool RemoveDmcryptKey(const FileSystemKeyReference& key_reference) {
@@ -113,7 +112,7 @@ bool RealKeyring::AddKey(Keyring::KeyType type,
     case Keyring::KeyType::kFscryptV2Key:
       return AddFscryptV2Key(key, key_reference);
     case Keyring::KeyType::kDmcryptKey:
-      return AddDmcryptKey(key, key_reference);
+      return AddDmcryptKey(key, *key_reference);
   }
 }
 

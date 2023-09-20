@@ -43,10 +43,10 @@ class DmcryptContainerTest : public ::testing::Test {
         backing_device_(std::make_unique<FakeBackingDevice>(
             BackingDeviceType::kLogicalVolumeBackingDevice,
             base::FilePath("/dev/VG/LV"))) {
-    key_reference_ =
+    auto keyring_key_reference =
         dmcrypt::GenerateKeyringDescription(key_reference_.fek_sig);
     key_descriptor_ = dmcrypt::GenerateDmcryptKeyDescriptor(
-        key_reference_.fek_sig, key_.fek.size());
+        keyring_key_reference.fek_sig, key_.fek.size());
   }
   ~DmcryptContainerTest() override = default;
 
@@ -192,6 +192,29 @@ TEST_F(DmcryptContainerTest, EvictKeyCheck) {
   // Check that the key in memory has been zeroed from the table
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
             brillo::SecureBlob("0"));
+}
+
+// Tests that RestoreKey resume the device with a key.
+TEST_F(DmcryptContainerTest, RestoreKeyCheck) {
+  EXPECT_CALL(platform_, GetBlkSize(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
+  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
+
+  backing_device_->Create();
+  GenerateContainer();
+
+  EXPECT_TRUE(container_->Setup(key_));
+  EXPECT_TRUE(container_->EvictKey());
+  // Check that the key in memory has been zeroed from the table
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
+            brillo::SecureBlob("0"));
+
+  EXPECT_TRUE(container_->RestoreKey(key_));
+
+  // Check that the key in memory has been restored from the table
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
+            key_descriptor_);
 }
 
 // Tests that the dmcrypt container cannot be reset if it is set up with a

@@ -64,6 +64,9 @@ class EncryptedContainer {
   // Evict all copies of encryption keys from memory. Returns whether key
   // eviction has been done.
   virtual bool EvictKey() { return false; }
+  // Restore the in-memory encryption keys. Returns whether key restoration
+  // has been done.
+  virtual bool RestoreKey(const FileSystemKey& encryption_key) { return false; }
   // Tears down the container, removing the encryption key if it was added.
   virtual bool Teardown() = 0;
   // Checks if the container exists on disk.

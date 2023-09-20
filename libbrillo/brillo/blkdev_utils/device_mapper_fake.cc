@@ -70,6 +70,56 @@ SecureBlob ClearKeysParameter(const DmTarget& dmt) {
       allow_discard);
 }
 
+// Parses the parameters of a DmTarget, sets the key field and returns the
+// updated parameters as a SecureBlob.
+SecureBlob SetKeysParameter(const DmTarget& dmt,
+                            const std::string& key_descriptor) {
+  std::string cipher;
+  brillo::SecureBlob enc_key(key_descriptor);
+  base::FilePath device;
+  int iv_offset, device_offset;
+  uint64_t allow_discard;
+  // Parse dmt parameters, copy existing values and only remove key reference
+  SecureBlobTokenizer tokenizer(dmt.parameters.begin(), dmt.parameters.end(),
+                                " ");
+
+  // First field is the cipher.
+  if (!tokenizer.GetNext())
+    return SecureBlob();
+  cipher = std::string(tokenizer.token_begin(), tokenizer.token_end());
+
+  // The key should be cleared, the next field should be iv_offset.
+  if (!tokenizer.GetNext() ||
+      !base::StringToInt(
+          std::string(tokenizer.token_begin(), tokenizer.token_end()),
+          &iv_offset))
+    return SecureBlob();
+
+  // The next field is const base::FilePath& device
+  if (!tokenizer.GetNext())
+    return SecureBlob();
+  device = base::FilePath(
+      std::string(tokenizer.token_begin(), tokenizer.token_end()));
+
+  // The next field is int device_offset
+  if (!tokenizer.GetNext() ||
+      !base::StringToInt(
+          std::string(tokenizer.token_begin(), tokenizer.token_end()),
+          &device_offset))
+    return SecureBlob();
+
+  // The next field is bool allow_discard
+  if (!tokenizer.GetNext() ||
+      !base::StringToUint64(
+          std::string(tokenizer.token_begin(), tokenizer.token_end()),
+          &allow_discard))
+    return SecureBlob();
+
+  // Construct one SecureBlob from the parameters and return it.
+  return DevmapperTable::CryptCreateParameters(
+      cipher, enc_key, iv_offset, device, device_offset, allow_discard);
+}
+
 // Stub DmTask runs into a map for easy reference.
 bool StubDmRunTask(DmTask* task, bool udev_sync) {
   std::string dev_name = task->name;
@@ -106,23 +156,37 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
       break;
     case DM_DEVICE_TARGET_MSG: {
       CHECK_EQ(udev_sync, false);
-      // Parse message for key wipe, written to mimic behaviour of:
+      // Parse message, written to mimic behaviours of the following:
       // dmsetup message <device> 0 key wipe
+      // dmsetup message <device> 0 key set <key_reference>
 
       if (dm_target_map_.find(dev_name) == dm_target_map_.end())
         return false;
 
-      LOG(ERROR) << task->message;
-      // Fetch the DmTarget from the dm_target_map and wipe the key from
-      // that target.
-      DmTarget dmt = dm_target_map_.find(dev_name)->second.front();
-      dmt.parameters = ClearKeysParameter(dmt);
+      if (task->message.starts_with("key wipe")) {
+        // Fetch the DmTarget from the dm_target_map and wipe the key from
+        // that target.
+        DmTarget dmt = dm_target_map_.find(dev_name)->second.front();
+        dmt.parameters = ClearKeysParameter(dmt);
+        // Update the DmTargets within |task| as well.
+        task->targets = std::vector<DmTarget>{dmt};
+        // Clear and refresh dm_target_map_ to reflect changes.
+        dm_target_map_.erase(dev_name);
+        dm_target_map_.insert(std::make_pair(dev_name, task->targets));
+      } else if (task->message.starts_with("key set ") &&
+                 task->message.size() > 8) {
+        std::string key_desc = task->message.substr(8);
+        // Fetch the DmTarget from the dm_target_map and set the key for
+        // that target.
+        DmTarget dmt = dm_target_map_.find(dev_name)->second.front();
+        dmt.parameters = SetKeysParameter(dmt, key_desc);
+        // Update the DmTargets within |task| as well.
+        task->targets = std::vector<DmTarget>{dmt};
+        // Update dm_target_map_ to reflect changes.
+        dm_target_map_.erase(dev_name);
+        dm_target_map_.insert(std::make_pair(dev_name, task->targets));
+      }
 
-      // Clear and refresh dm_target_map_ to reflect changes
-      // Updaste the DmTargets within |task| as well.
-      dm_target_map_.erase(dev_name);
-      task->targets = std::vector<DmTarget>{dmt};
-      dm_target_map_.insert(std::make_pair(dev_name, task->targets));
       break;
     }
     case DM_DEVICE_SUSPEND:

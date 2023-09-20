@@ -26,7 +26,7 @@ bool RemoveEcryptfsAuthToken(const std::string& key_sig);
 }  // namespace ecryptfs
 
 namespace dmcrypt {
-// Generate the keyring description.
+// Generate the key reference to be used by keyring related functions.
 FileSystemKeyReference GenerateKeyringDescription(
     const brillo::SecureBlob& key_reference);
 

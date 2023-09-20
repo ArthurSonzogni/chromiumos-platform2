@@ -31,6 +31,7 @@ namespace {
 
 constexpr uint64_t kSectorSize = 512;
 constexpr uint64_t kExt4BlockSize = 4096;
+constexpr char kDeviceMapperPathPrefix[] = "/dev/mapper";
 
 }  // namespace
 
@@ -48,7 +49,8 @@ DmcryptContainer::DmcryptContainer(
       mkfs_opts_(config.mkfs_opts),
       tune2fs_opts_(config.tune2fs_opts),
       backing_device_(std::move(backing_device)),
-      key_reference_(key_reference),
+      key_reference_(
+          dmcrypt::GenerateKeyringDescription(key_reference.fek_sig)),
       platform_(platform),
       keyring_(keyring),
       device_mapper_(std::move(device_mapper)) {}
@@ -133,7 +135,7 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
       key_reference_.fek_sig, encryption_key.fek.size());
 
   base::FilePath dmcrypt_device_path =
-      base::FilePath("/dev/mapper").Append(dmcrypt_device_name_);
+      base::FilePath(kDeviceMapperPathPrefix).Append(dmcrypt_device_name_);
   uint64_t sectors = blkdev_size / kSectorSize;
   brillo::SecureBlob dm_parameters =
       brillo::DevmapperTable::CryptCreateParameters(
@@ -204,6 +206,40 @@ bool DmcryptContainer::EvictKey() {
   return true;
 }
 
+bool DmcryptContainer::RestoreKey(const FileSystemKey& encryption_key) {
+  if (!backing_device_->Exists()) {
+    return false;
+  }
+
+  if (!keyring_->AddKey(Keyring::KeyType::kDmcryptKey, encryption_key,
+                        &key_reference_)) {
+    LOG(ERROR) << "Failed to insert logon key to session keyring.";
+    return false;
+  }
+
+  // Once the key is inserted, generate the key descriptor and restore
+  // the key and resume the device.
+  brillo::SecureBlob key_descriptor = dmcrypt::GenerateDmcryptKeyDescriptor(
+      key_reference_.fek_sig, encryption_key.fek.size());
+  std::string key_set_message = "key set " + key_descriptor.to_string();
+  if (!device_mapper_->Message(dmcrypt_device_name_, key_set_message)) {
+    LOG(ERROR) << "Failed to restore key on device " << dmcrypt_device_name_;
+    return false;
+  }
+  if (!device_mapper_->Resume(dmcrypt_device_name_)) {
+    LOG(ERROR) << "Failed to resume dmcrypt device " << dmcrypt_device_name_;
+    return false;
+  }
+
+  // Once the key has been used by dmcrypt, remove it from the keyring.
+  LOG(INFO) << "Removing provisioned dmcrypt key from kernel keyring.";
+  if (!keyring_->RemoveKey(Keyring::KeyType::kDmcryptKey, key_reference_)) {
+    LOG(ERROR) << "Failed to remove key from keyring";
+  }
+
+  return true;
+}
+
 bool DmcryptContainer::Reset() {
   // Only allow resets for raw devices; discard will otherwise remove the
   // filesystem as well.
@@ -213,7 +249,7 @@ bool DmcryptContainer::Reset() {
   }
 
   base::FilePath dmcrypt_device_path =
-      base::FilePath("/dev/mapper").Append(dmcrypt_device_name_);
+      base::FilePath(kDeviceMapperPathPrefix).Append(dmcrypt_device_name_);
 
   // Discard the entire device.
   if (!platform_->DiscardDevice(dmcrypt_device_path)) {

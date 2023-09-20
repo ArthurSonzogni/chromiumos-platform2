@@ -50,6 +50,8 @@ class DmcryptContainer : public EncryptedContainer {
 
   bool Setup(const FileSystemKey& encryption_key) override;
 
+  bool RestoreKey(const FileSystemKey& encryption_key) override;
+
   bool Teardown() override;
 
   bool EvictKey() override;

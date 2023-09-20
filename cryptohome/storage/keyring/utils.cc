@@ -71,9 +71,9 @@ FileSystemKeyReference GenerateKeyringDescription(
 // kernel keyring is supported.
 brillo::SecureBlob GenerateDmcryptKeyDescriptor(
     const brillo::SecureBlob key_reference, uint64_t key_size) {
-  brillo::SecureBlob key_desc(
+  brillo::SecureBlob key_prefix(
       base::StringPrintf(":%" PRIu64 ":%s:", key_size, kKeyring));
-  return brillo::SecureBlob::Combine(key_desc, key_reference);
+  return brillo::SecureBlob::Combine(key_prefix, key_reference);
 }
 
 // For dm-crypt, we use the process keyring to ensure that the key is unlinked

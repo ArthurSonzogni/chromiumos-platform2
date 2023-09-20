@@ -496,4 +496,37 @@ TEST_P(CryptohomeVaultTest, EvictKeyContainer) {
   CheckContainersExist();
 }
 
+// Tests the restore-key path for all contains in a cryptohome vault.
+TEST_P(CryptohomeVaultTest, RestoreKeyContainer) {
+  GenerateVault(/*create_container=*/true, /*create_migrating_container=*/false,
+                /*create_cache_container=*/true,
+                /*create_app_container=*/true);
+
+  ExpectVaultSetup();
+  ExpectContainerSetup(ContainerType());
+  ExpectContainerSetup(MigratingContainerType());
+  ExpectCacheContainerSetup(CacheContainerType());
+  ExpectApplicationContainerSetup(ContainerType());
+
+  EXPECT_THAT(vault_->Setup(key_), IsOk());
+
+  switch (ContainerType()) {
+    case EncryptedContainerType::kDmcrypt:
+      EXPECT_THAT(vault_->EvictKey(), IsOk());
+      break;
+    default:
+      EXPECT_THAT(vault_->EvictKey(), IsError(MOUNT_ERROR_INVALID_ARGS));
+  }
+
+  switch (ContainerType()) {
+    case EncryptedContainerType::kDmcrypt:
+      EXPECT_THAT(vault_->RestoreKey(key_), IsOk());
+      break;
+    default:
+      EXPECT_THAT(vault_->RestoreKey(key_), IsError(MOUNT_ERROR_INVALID_ARGS));
+  }
+
+  CheckContainersExist();
+}
+
 }  // namespace cryptohome

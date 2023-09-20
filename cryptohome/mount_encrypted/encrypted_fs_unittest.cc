@@ -58,10 +58,11 @@ class EncryptedFsTest : public ::testing::Test {
     brillo::SecureBlob secret;
     brillo::SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
     key_.fek = secret;
-    key_reference_ = cryptohome::dmcrypt::GenerateKeyringDescription(
-        brillo::SecureBlob("some ref"));
+    key_reference_ = {.fek_sig = brillo::SecureBlob("some_ref")};
+    auto keyring_key_reference =
+        cryptohome::dmcrypt::GenerateKeyringDescription(key_reference_.fek_sig);
     key_descriptor_ = cryptohome::dmcrypt::GenerateDmcryptKeyDescriptor(
-        key_reference_.fek_sig, key_.fek.size());
+        keyring_key_reference.fek_sig, key_.fek.size());
 
     auto container = std::make_unique<cryptohome::DmcryptContainer>(
         config_, std::move(fake_backing_device), key_reference_, &platform_,

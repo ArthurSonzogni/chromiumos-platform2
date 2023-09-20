@@ -53,6 +53,10 @@ class CryptohomeVault {
   // Dmcrypt container based vault supports this operation.
   StorageStatus EvictKey();
 
+  // Restore the in-memory cryptohome filesystem key. Currently only
+  // dmcrypt container based vault supports this operation.
+  StorageStatus RestoreKey(const FileSystemKey& filesystem_key);
+
   // Removes the vault.
   bool Purge();
 
