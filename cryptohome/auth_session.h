@@ -47,6 +47,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
@@ -187,7 +188,7 @@ class AuthSession final {
   const AuthFactorMap& auth_factor_map() const { return auth_factor_map_; }
 
   // Indicates if the session has a User Secret Stash enabled.
-  bool has_user_secret_stash() const { return user_secret_stash_ != nullptr; }
+  bool has_user_secret_stash() const { return decrypted_uss_.has_value(); }
 
   // Indicates if the session has migration to User Secret Stash enabled.
   bool has_migrate_to_user_secret_stash() const {
@@ -197,8 +198,7 @@ class AuthSession final {
   // Indicates if there is a reset_secret in session's User Secret Stash for
   // the given label.
   inline bool HasResetSecretInUssForTesting(const std::string& label) const {
-    return user_secret_stash_ &&
-           user_secret_stash_->GetResetSecretForLabel(label).has_value();
+    return decrypted_uss_ && decrypted_uss_->GetResetSecret(label);
   }
 
   // OnUserCreated is called when the user and their homedir are newly created.
@@ -381,14 +381,13 @@ class AuthSession final {
   // OnMigrationUssCreated is the callback function to be called after
   // migration secret is generated and added to UserSecretStash during the
   // AuthenticateViaVaultKeysetAndMigrateToUss() operation.
-  void OnMigrationUssCreated(
-      AuthBlockType auth_block_type,
-      AuthFactorType auth_factor_type,
-      const AuthFactorMetadata& auth_factor_metadata,
-      const AuthInput& auth_input,
-      CryptohomeStatus pre_migration_status,
-      StatusCallback on_done,
-      std::unique_ptr<UserSecretStash> user_secret_stash);
+  void OnMigrationUssCreated(AuthBlockType auth_block_type,
+                             AuthFactorType auth_factor_type,
+                             const AuthFactorMetadata& auth_factor_metadata,
+                             const AuthInput& auth_input,
+                             CryptohomeStatus pre_migration_status,
+                             StatusCallback on_done,
+                             std::optional<DecryptedUss> loaded_uss);
 
   // OnMigrationUssCreatedForUpdate is the callback function to be called after
   // migration secret is generated and added to UserSecretStash during the
@@ -402,7 +401,7 @@ class AuthSession final {
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_state,
-      std::unique_ptr<UserSecretStash> user_secret_stash);
+      std::optional<DecryptedUss> loaded_uss);
 
   // Sets |vault_keyset_| for testing purpose.
   void set_vault_keyset_for_testing(std::unique_ptr<VaultKeyset> value) {
@@ -601,9 +600,6 @@ class AuthSession final {
   // to USS in memory.
   bool MigrateResetSecretToUss();
 
-  // Adds reset secret to USS for not-migrated keysets and persist to disk.
-  bool PersistResetSecretToUss();
-
   // Process the completion of a verify-only authentication attempt. The
   // |on_done| callback will be called after the results of the verification are
   // processed. This takes |auth_factor_type| parameter because it needs to
@@ -616,11 +612,12 @@ class AuthSession final {
       AuthFactorType auth_factor_type,
       CryptohomeStatus error);
 
-  // Add the new factor into the USS in-memory.
-  CryptohomeStatus AddAuthFactorToUssInMemory(
+  // Add the given auth factor to an ongoing transaction.
+  CryptohomeStatus AddAuthFactorToUssTransaction(
       AuthFactor& auth_factor,
       const KeyBlobs& key_blobs,
-      OverwriteExistingKeyBlock override);
+      OverwriteExistingKeyBlock override,
+      DecryptedUss::Transaction& transaction);
 
   // Returns the callback function to add and AuthFactor for the right key store
   // type.
@@ -792,10 +789,6 @@ class AuthSession final {
                                   StatusCallback on_done,
                                   CryptohomeStatus status);
 
-  // Remove the factor from the USS in-memory.
-  CryptohomeStatus RemoveAuthFactorFromUssInMemory(
-      const std::string& auth_factor_label);
-
   // Creates a new per-credential secret, updates the secret in the USS and
   // updates the auth block state on disk.
   void UpdateAuthFactorViaUserSecretStash(
@@ -814,10 +807,10 @@ class AuthSession final {
   // re-creates the related credential verifier if applicable.
   void ResaveUssWithFactorUpdated(AuthFactorType auth_factor_type,
                                   AuthFactor auth_factor,
+                                  std::unique_ptr<KeyBlobs> key_blobs,
                                   const AuthInput& auth_input,
                                   std::unique_ptr<AuthSessionPerformanceTimer>
                                       auth_session_performance_timer,
-                                  const brillo::Blob& encrypted_uss_container,
                                   StatusCallback on_done,
                                   CryptohomeStatus status);
 
@@ -864,9 +857,9 @@ class AuthSession final {
   // The repeating callback to send AuthFactorStatusUpdateSignal.
   AuthFactorStatusUpdateCallback auth_factor_status_update_callback_;
 
-  // The decrypted UserSecretStash. Only populated for users who have it (legacy
-  // users who only have vault keysets will have this field equal to null).
-  std::unique_ptr<UserSecretStash> user_secret_stash_;
+  // The decrypted USS. Only populated if the session is able to decrypt the USS
+  // which generally requires it to have been decrypt-authorized.
+  std::optional<DecryptedUss> decrypted_uss_;
   UserUssStorage uss_storage_;
 
   Crypto* const crypto_;

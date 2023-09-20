@@ -418,12 +418,6 @@ CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromBlobUsingWrappedKey(
   return FromEncryptedUss(std::move(encrypted), std::move(main_key));
 }
 
-DecryptedUss DecryptedUss::CreateCopyForSnapshot() const {
-  return DecryptedUss(EncryptedUss(encrypted_.container({})), main_key_,
-                      file_system_keyset_, reset_secrets_,
-                      rate_limiter_reset_secrets_);
-}
-
 CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromEncryptedUss(
     EncryptedUss encrypted, brillo::SecureBlob main_key) {
   // Use the main key to decrypt the USS payload.

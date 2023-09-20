@@ -26,6 +26,8 @@
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/user_secret_stash/decrypted.h"
+#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/username.h"
 
@@ -131,10 +133,11 @@ class AuthFactorDriver {
   virtual bool NeedsRateLimiter() const = 0;
 
   // This checks if the rate-limiter of |username| for this factor exists. And
-  // if not, tries to create it and persist it into |user_secret_stash|.
+  // if not, tries to create it and persist it into the USS.
   virtual CryptohomeStatus TryCreateRateLimiter(
       const ObfuscatedUsername& username,
-      UserSecretStash& user_secret_stash) = 0;
+      DecryptedUss& decrypted_uss,
+      UserUssStorage& uss_storage) = 0;
 
   // This returns if a type supports delayed availability.
   virtual bool IsDelaySupported() const = 0;

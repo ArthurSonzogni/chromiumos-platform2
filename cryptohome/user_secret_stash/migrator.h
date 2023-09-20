@@ -12,10 +12,9 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
-#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -30,14 +29,14 @@ class UssMigrator {
   UssMigrator(const UssMigrator&) = delete;
   UssMigrator& operator=(const UssMigrator&) = delete;
 
-  // Completes the UserSecretStash migration by persisting AuthFactor to
-  // UserSecretStash and converting the VaultKeyset to a backup VaultKeyset.
-  using CompletionCallback = base::OnceCallback<void(
-      std::unique_ptr<UserSecretStash> user_secret_stash)>;
+  // Called upon completion of USS migration with the DecryptedUss being
+  // provided when successful and null otherwise.
+  using CompletionCallback =
+      base::OnceCallback<void(std::optional<DecryptedUss>)>;
 
   // The function that migrates the VaultKeyset with |label| and
   // |filesystem_keyset| to AuthFactor and USS.
-  void MigrateVaultKeysetToUss(const UserUssStorage& user_secret_stash_storage,
+  void MigrateVaultKeysetToUss(UserUssStorage& user_secret_stash_storage,
                                const std::string& label,
                                const FileSystemKeyset& filesystem_keyset,
                                CompletionCallback completion_callback);
@@ -45,14 +44,6 @@ class UssMigrator {
  private:
   // Generates migration secret from the filesystem keyset.
   void GenerateMigrationSecret(const FileSystemKeyset& filesystem_keyset);
-
-  // Adds the migration secret as a |wrapped_key_block| to the given
-  // user secret stash.
-  bool AddMigrationSecretToUss(UserSecretStash& user_secret_stash);
-
-  // Removes the |wrapped_key_block| corresponding to the migration secret from
-  // the given user secret stash.
-  bool RemoveMigrationSecretFromUss(UserSecretStash& user_secret_stash);
 
   Username username_;
   std::unique_ptr<brillo::SecureBlob> migration_secret_;

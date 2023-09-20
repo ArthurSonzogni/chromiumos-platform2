@@ -255,9 +255,9 @@ class AfDriverNoExpiration : public virtual AuthFactorDriver {
 class AfDriverNoRateLimiter : public virtual AuthFactorDriver {
  private:
   bool NeedsRateLimiter() const final { return false; }
-  CryptohomeStatus TryCreateRateLimiter(
-      const ObfuscatedUsername& username,
-      UserSecretStash& user_secret_stash) final;
+  CryptohomeStatus TryCreateRateLimiter(const ObfuscatedUsername& username,
+                                        DecryptedUss& decrypted_uss,
+                                        UserUssStorage& uss_storage) final;
 };
 
 }  // namespace cryptohome

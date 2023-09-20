@@ -4,9 +4,12 @@
 
 #include "cryptohome/user_secret_stash/decrypted.h"
 
+#include <algorithm>
 #include <optional>
 #include <utility>
 
+#include <base/test/scoped_chromeos_version_info.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -47,6 +50,33 @@ FileSystemKeyset CreateTestFsk() {
           .fnek_sig = brillo::SecureBlob("fnek-sig"),
       },
       brillo::SecureBlob("chaps-key"));
+}
+
+// Matcher that checks if a given secure blob is NOT contained in the specified
+// blob. This is useful for making sure that a secret plaintext is not showing
+// up in a (supposedly encrypted) ciphertext.
+class IsNotInBlobMatcher {
+ public:
+  using is_gtest_matcher = void;
+
+  explicit IsNotInBlobMatcher(brillo::Blob blob) : blob_(std::move(blob)) {}
+
+  bool MatchAndExplain(const brillo::SecureBlob& secure_blob,
+                       std::ostream*) const {
+    return std::search(blob_.begin(), blob_.end(), secure_blob.begin(),
+                       secure_blob.end()) == blob_.end();
+  }
+
+  void DescribeTo(std::ostream* os) const { *os << "is not contained in blob"; }
+  void DescribeNegationTo(std::ostream* os) const {
+    *os << "is contained in blob";
+  }
+
+ private:
+  brillo::Blob blob_;
+};
+::testing::Matcher<brillo::SecureBlob> IsNotInBlob(brillo::Blob blob) {
+  return IsNotInBlobMatcher(std::move(blob));
 }
 
 TEST(DecryptedUssTest, AddWrappedKeys) {
@@ -433,6 +463,13 @@ TEST(DecryptedUssTest, CreateFailsWithEmptyMainKey) {
   EXPECT_THAT(decrypted_uss, NotOk());
 }
 
+TEST(DecryptedUssTest, CreateFailsWithShortMainKey) {
+  brillo::SecureBlob short_main_key(kAesGcm256KeySize / 2, 0xA);
+  auto decrypted_uss =
+      DecryptedUss::CreateWithMainKey(CreateTestFsk(), short_main_key);
+  EXPECT_THAT(decrypted_uss, NotOk());
+}
+
 TEST(DecryptedUssTest, CreateToBlobWorksWithFromBlob) {
   brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
 
@@ -474,6 +511,130 @@ TEST(DecryptedUssTest, CreateToBlobWorksWithFromBlobWithWrapping) {
   ASSERT_THAT(redecrypted_uss, IsOk());
   EXPECT_THAT(redecrypted_uss->file_system_keyset(),
               FileSystemKeysetEquals(CreateTestFsk()));
+}
+
+TEST(DecryptedUssTest, FromBlobFailsWithBadKey) {
+  brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
+  brillo::SecureBlob wrong_key(kAesGcm256KeySize, 0xB);
+
+  auto decrypted_uss =
+      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  ASSERT_THAT(decrypted_uss, IsOk());
+  EXPECT_THAT(decrypted_uss->file_system_keyset(),
+              FileSystemKeysetEquals(CreateTestFsk()));
+
+  auto blob = decrypted_uss->encrypted().ToBlob();
+  ASSERT_THAT(blob, IsOk());
+
+  auto redecrypted_uss = DecryptedUss::FromBlobUsingMainKey(*blob, wrong_key);
+  ASSERT_THAT(redecrypted_uss, NotOk());
+}
+
+// Do a basic check that the secret parts of USS don't just show up in the clear
+// in the encrypted blob. This isn't perfect because of course you could have
+// the secrets poorly encrypted in the output but there's no test for that.
+TEST(DecryptedUssTest, NoSecretsInEncryptedBlob) {
+  brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
+  brillo::SecureBlob wrapping_key(kAesGcm256KeySize, 0xB);
+
+  const brillo::SecureBlob kSecret1(kAesGcm256KeySize, 0xD);
+  const brillo::SecureBlob kSecret2(kAesGcm256KeySize, 0xE);
+  const brillo::SecureBlob kSecret3(kAesGcm256KeySize, 0xF);
+
+  auto decrypted_uss =
+      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  ASSERT_THAT(decrypted_uss, IsOk());
+  EXPECT_THAT(decrypted_uss->file_system_keyset(),
+              FileSystemKeysetEquals(CreateTestFsk()));
+  {
+    auto transaction = decrypted_uss->StartTransaction();
+    EXPECT_THAT(transaction.InsertWrappedMainKey("a", wrapping_key), IsOk());
+    EXPECT_THAT(transaction.InsertResetSecret("a", kSecret1), IsOk());
+    EXPECT_THAT(transaction.InsertResetSecret("b", kSecret2), IsOk());
+    EXPECT_THAT(transaction.InsertRateLimiterResetSecret(
+                    AuthFactorType::kPassword, kSecret3),
+                IsOk());
+    EXPECT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+
+  auto blob = decrypted_uss->encrypted().ToBlob();
+  ASSERT_THAT(blob, IsOk());
+
+  EXPECT_THAT(CreateTestFsk().Key().fek, IsNotInBlob(*blob));
+  EXPECT_THAT(kSecret1, IsNotInBlob(*blob));
+  EXPECT_THAT(kSecret2, IsNotInBlob(*blob));
+  EXPECT_THAT(kSecret3, IsNotInBlob(*blob));
+}
+
+TEST(DecryptedUssTest, OsVersion) {
+  constexpr char kLsbRelease[] =
+      "CHROMEOS_RELEASE_NAME=Chrome "
+      "OS\nCHROMEOS_RELEASE_VERSION=11012.0.2018_08_28_1422\n";
+  base::test::ScopedChromeOSVersionInfo scoped_version(
+      kLsbRelease, /*lsb_release_time=*/base::Time());
+  brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
+
+  auto decrypted_uss =
+      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  ASSERT_THAT(decrypted_uss, IsOk());
+
+  EXPECT_THAT(decrypted_uss->encrypted().created_on_os_version(),
+              Eq("11012.0.2018_08_28_1422"));
+}
+
+TEST(DecryptedUssTest, OsVersionStays) {
+  constexpr char kLsbRelease1[] =
+      "CHROMEOS_RELEASE_NAME=Chrome "
+      "OS\nCHROMEOS_RELEASE_VERSION=11012.0.2018_08_28_1422\n";
+  constexpr char kLsbRelease2[] =
+      "CHROMEOS_RELEASE_NAME=Chrome "
+      "OS\nCHROMEOS_RELEASE_VERSION=22222.0.2028_01_01_9999\n";
+  brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
+
+  // Create the USS on version 1.
+  brillo::Blob v1_blob;
+  {
+    base::test::ScopedChromeOSVersionInfo scoped_version1(
+        kLsbRelease1, /*lsb_release_time=*/base::Time());
+
+    auto decrypted_uss =
+        DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+    ASSERT_THAT(decrypted_uss, IsOk());
+
+    // Save the blob to re-decrypt afterwards.
+    auto blob = decrypted_uss->encrypted().ToBlob();
+    ASSERT_THAT(blob, IsOk());
+    v1_blob = std::move(*blob);
+  }
+
+  // Decrypt the USS on the version 2. The field should be the release 1 version
+  // even if the version at decrypt time was version 2.
+  {
+    base::test::ScopedChromeOSVersionInfo scoped_version2(
+        kLsbRelease2, /*lsb_release_time=*/base::Time());
+
+    auto decrypted_uss = DecryptedUss::FromBlobUsingMainKey(v1_blob, main_key);
+    ASSERT_THAT(decrypted_uss, IsOk());
+
+    EXPECT_THAT(decrypted_uss->encrypted().created_on_os_version(),
+                Eq("11012.0.2018_08_28_1422"));
+  }
+}
+
+TEST(DecryptedUssTest, MissingOsVersion) {
+  // Note: Normally unit tests don't have access to a CrOS /etc/lsb-release
+  // anyway, but this override guarantees that the test passes regardless of
+  // that.
+  base::test::ScopedChromeOSVersionInfo scoped_version(
+      /*lsb_release=*/"", /*lsb_release_time=*/base::Time());
+
+  brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
+
+  auto decrypted_uss =
+      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  ASSERT_THAT(decrypted_uss, IsOk());
+
+  EXPECT_THAT(decrypted_uss->encrypted().created_on_os_version(), IsEmpty());
 }
 
 }  // namespace

@@ -76,7 +76,9 @@ CryptohomeStatusOr<bool> AfDriverNoExpiration::IsExpired(
 }
 
 CryptohomeStatus AfDriverNoRateLimiter::TryCreateRateLimiter(
-    const ObfuscatedUsername& username, UserSecretStash& user_secret_stash) {
+    const ObfuscatedUsername& username,
+    DecryptedUss& decrypted_uss,
+    UserUssStorage& uss_storage) {
   return MakeStatus<CryptohomeError>(
       CRYPTOHOME_ERR_LOC(kLocAuthFactorCommonIsCreateRateLimiterUnsupported),
       ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),

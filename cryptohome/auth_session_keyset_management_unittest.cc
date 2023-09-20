@@ -59,6 +59,7 @@
 #include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/mock_homedirs.h"
+#include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
@@ -71,6 +72,7 @@ namespace cryptohome {
 namespace {
 
 using ::testing::_;
+using ::testing::Contains;
 using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::NiceMock;
@@ -1048,16 +1050,16 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
-  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-      user_secret_stash_status =
-          UserSecretStash::FromEncryptedContainerWithWrappingKey(
-              *uss_serialized_container_status, kDefaultLabel,
-              *uss_credential_secret);
-  ASSERT_TRUE(user_secret_stash_status.ok());
+  CryptohomeStatusOr<DecryptedUss> decrypted_uss =
+      DecryptedUss::FromBlobUsingWrappedKey(*uss_serialized_container_status,
+                                            kDefaultLabel,
+                                            *uss_credential_secret);
+  ASSERT_THAT(decrypted_uss, IsOk());
+
   // Verify that the user_secret_stash has the wrapped_key_block for
   // the default label.
-  ASSERT_TRUE(
-      user_secret_stash_status.value()->HasWrappedMainKey(kDefaultLabel));
+  ASSERT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              Contains(kDefaultLabel));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
   std::map<std::string, AuthFactorType> factor_map =
@@ -1107,17 +1109,16 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
-  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-      user_secret_stash_status =
-          UserSecretStash::FromEncryptedContainerWithWrappingKey(
-              *uss_serialized_container_status, kPasswordLabel,
-              *uss_credential_secret);
-  ASSERT_TRUE(user_secret_stash_status.ok());
+  CryptohomeStatusOr<DecryptedUss> decrypted_uss =
+      DecryptedUss::FromBlobUsingWrappedKey(*uss_serialized_container_status,
+                                            kPasswordLabel,
+                                            *uss_credential_secret);
+  ASSERT_THAT(decrypted_uss, IsOk());
 
   // Verify that the user_secret_stash has the wrapped_key_blocks for the
   // AuthFactor label.
-  ASSERT_TRUE(
-      user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel));
+  ASSERT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              Contains(kPasswordLabel));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
   ASSERT_EQ(
@@ -1176,19 +1177,18 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
-  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-      user_secret_stash_status =
-          UserSecretStash::FromEncryptedContainerWithWrappingKey(
-              *uss_serialized_container_status, kPasswordLabel,
-              *uss_credential_secret);
-  ASSERT_TRUE(user_secret_stash_status.ok());
+  CryptohomeStatusOr<DecryptedUss> decrypted_uss =
+      DecryptedUss::FromBlobUsingWrappedKey(*uss_serialized_container_status,
+                                            kPasswordLabel,
+                                            *uss_credential_secret);
+  ASSERT_THAT(decrypted_uss, IsOk());
 
   // Verify that the user_secret_stash has the wrapped_key_blocks for the
   // AuthFactor labels.
-  ASSERT_TRUE(
-      user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel));
-  ASSERT_TRUE(
-      user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel2));
+  ASSERT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              Contains(kPasswordLabel));
+  ASSERT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              Contains(kPasswordLabel2));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
   ASSERT_EQ(
@@ -1234,18 +1234,18 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
-  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-      user_secret_stash_status =
-          UserSecretStash::FromEncryptedContainerWithWrappingKey(
-              *uss_serialized_container_status, kPasswordLabel,
-              *uss_credential_secret);
-  ASSERT_TRUE(user_secret_stash_status.ok());
+  CryptohomeStatusOr<DecryptedUss> decrypted_uss =
+      DecryptedUss::FromBlobUsingWrappedKey(*uss_serialized_container_status,
+                                            kPasswordLabel,
+                                            *uss_credential_secret);
+  ASSERT_THAT(decrypted_uss, IsOk());
+
   // Verify that the user_secret_stash has the wrapped_key_blocks for both
   // AuthFactor labels.
-  ASSERT_TRUE(
-      user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel));
-  ASSERT_TRUE(
-      user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel2));
+  ASSERT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              Contains(kPasswordLabel));
+  ASSERT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              Contains(kPasswordLabel2));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
   std::map<std::string, AuthFactorType> factor_map =

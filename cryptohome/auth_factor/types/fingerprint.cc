@@ -13,6 +13,7 @@
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
@@ -128,9 +129,11 @@ bool FingerprintAuthFactorDriver::NeedsRateLimiter() const {
 }
 
 CryptohomeStatus FingerprintAuthFactorDriver::TryCreateRateLimiter(
-    const ObfuscatedUsername& username, UserSecretStash& user_secret_stash) {
+    const ObfuscatedUsername& username,
+    DecryptedUss& decrypted_uss,
+    UserUssStorage& uss_storage) {
   std::optional<uint64_t> rate_limiter_label =
-      user_secret_stash.GetFingerprintRateLimiterId();
+      decrypted_uss.encrypted().fingerprint_rate_limiter_id();
   if (rate_limiter_label.has_value()) {
     return OkStatus<CryptohomeError>();
   }
@@ -151,17 +154,14 @@ CryptohomeStatus FingerprintAuthFactorDriver::TryCreateRateLimiter(
   if (!ret.ok()) {
     return ret;
   }
-  if (!user_secret_stash.InitializeFingerprintRateLimiterId(label)) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAddRateLimiterLabelToUSSFailed),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
-  }
-  if (!user_secret_stash.SetRateLimiterResetSecret(type(), reset_secret)) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAddRateLimiterResetSecretToUSSFailed),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+
+  // Attempt to populate the USS with the values.
+  {
+    auto transaction = decrypted_uss.StartTransaction();
+    RETURN_IF_ERROR(transaction.InitializeFingerprintRateLimiterId(label));
+    RETURN_IF_ERROR(transaction.InsertRateLimiterResetSecret(
+        type(), std::move(reset_secret)));
+    RETURN_IF_ERROR(std::move(transaction).Commit(uss_storage));
   }
   return OkStatus<CryptohomeError>();
 }

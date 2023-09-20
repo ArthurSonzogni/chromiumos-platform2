@@ -20,13 +20,13 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
+#include "cryptohome/user_secret_stash/decrypted.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::SecureBlob;
+using cryptohome::DecryptedUss;
 using cryptohome::ResetSecretMapping;
-using cryptohome::UserSecretStash;
 using cryptohome::UserSecretStashContainer;
 using cryptohome::UserSecretStashPayload;
 using hwsec_foundation::AesGcmEncrypt;
@@ -130,35 +130,36 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
                             fuzzed_data_provider));
 }
 
-void AssertStashesEqual(const UserSecretStash& first,
-                        const UserSecretStash& second) {
-  CHECK(first.GetFileSystemKeyset().Key().fek ==
-        second.GetFileSystemKeyset().Key().fek);
-  CHECK(first.GetFileSystemKeyset().Key().fnek ==
-        second.GetFileSystemKeyset().Key().fnek);
-  CHECK(first.GetFileSystemKeyset().Key().fek_salt ==
-        second.GetFileSystemKeyset().Key().fek_salt);
-  CHECK(first.GetFileSystemKeyset().Key().fnek_salt ==
-        second.GetFileSystemKeyset().Key().fnek_salt);
-  CHECK(first.GetFileSystemKeyset().KeyReference().fek_sig ==
-        second.GetFileSystemKeyset().KeyReference().fek_sig);
-  CHECK(first.GetFileSystemKeyset().KeyReference().fnek_sig ==
-        second.GetFileSystemKeyset().KeyReference().fnek_sig);
-  CHECK(first.GetFileSystemKeyset().chaps_key() ==
-        second.GetFileSystemKeyset().chaps_key());
-  CHECK_EQ(first.GetCreatedOnOsVersion(), second.GetCreatedOnOsVersion());
+void AssertStashesEqual(const DecryptedUss& first, const DecryptedUss& second) {
+  CHECK(first.file_system_keyset().Key().fek ==
+        second.file_system_keyset().Key().fek);
+  CHECK(first.file_system_keyset().Key().fnek ==
+        second.file_system_keyset().Key().fnek);
+  CHECK(first.file_system_keyset().Key().fek_salt ==
+        second.file_system_keyset().Key().fek_salt);
+  CHECK(first.file_system_keyset().Key().fnek_salt ==
+        second.file_system_keyset().Key().fnek_salt);
+  CHECK(first.file_system_keyset().KeyReference().fek_sig ==
+        second.file_system_keyset().KeyReference().fek_sig);
+  CHECK(first.file_system_keyset().KeyReference().fnek_sig ==
+        second.file_system_keyset().KeyReference().fnek_sig);
+  CHECK(first.file_system_keyset().chaps_key() ==
+        second.file_system_keyset().chaps_key());
+  CHECK_EQ(first.encrypted().created_on_os_version(),
+           second.encrypted().created_on_os_version());
 
   // Check the reset secrets. Do not assert the reset secrets are present,
   // because the fuzzer could've dropped them while mutating the blobs.
-  CHECK(first.GetResetSecretForLabel(kResetSecretLabelOne) ==
-        second.GetResetSecretForLabel(kResetSecretLabelOne));
-  CHECK(first.GetResetSecretForLabel(kResetSecretLabelTwo) ==
-        second.GetResetSecretForLabel(kResetSecretLabelTwo));
+  CHECK(first.GetResetSecret(kResetSecretLabelOne) ==
+        second.GetResetSecret(kResetSecretLabelOne));
+  CHECK(first.GetResetSecret(kResetSecretLabelTwo) ==
+        second.GetResetSecret(kResetSecretLabelTwo));
 }
 
 }  // namespace
 
-// Fuzzes the |UserSecretStash::FromEncryptedContainer()| function.
+// Fuzzes the |DecryptedUss::FromBlob()| function.
+//
 // It starts of a semantically correct USS with a corresponding USS main key,
 // and mutates all parameters before passing them to the tested function.
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
@@ -175,24 +176,24 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                           &mutated_uss_main_key);
 
   // The USS decryption may succeed or fail, but never crash.
-  cryptohome::CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-      stash_status = UserSecretStash::FromEncryptedContainer(
-          mutated_uss_container, mutated_uss_main_key);
+  cryptohome::CryptohomeStatusOr<DecryptedUss> stash_status =
+      DecryptedUss::FromBlobUsingMainKey(mutated_uss_container,
+                                         mutated_uss_main_key);
 
   if (stash_status.ok()) {
     // If the USS was decrypted successfully, its reencryption must succeed as
     // well.
     cryptohome::CryptohomeStatusOr<Blob> reencrypted =
-        stash_status.value()->GetEncryptedContainer();
+        stash_status->encrypted().ToBlob();
     CHECK(reencrypted.ok());
 
     // Decryption of the reencrypted USS must succeed as well, and the result
     // must be equal to the original USS.
-    cryptohome::CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-        stash2_status = UserSecretStash::FromEncryptedContainer(
-            reencrypted.HintOk().value(), mutated_uss_main_key);
+    cryptohome::CryptohomeStatusOr<DecryptedUss> stash2_status =
+        DecryptedUss::FromBlobUsingMainKey(*reencrypted.HintOk(),
+                                           mutated_uss_main_key);
     CHECK(stash2_status.ok());
-    AssertStashesEqual(*stash_status.value(), *stash2_status.HintOk().value());
+    AssertStashesEqual(*stash_status, *stash2_status.HintOk());
   }
 
   return 0;

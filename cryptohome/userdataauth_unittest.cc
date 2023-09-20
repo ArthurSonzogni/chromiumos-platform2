@@ -80,6 +80,7 @@
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/storage/mock_mount_factory.h"
+#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
@@ -2465,39 +2466,36 @@ class UserDataAuthExTest : public UserDataAuthTest {
   void MakeUssWithLabels(const ObfuscatedUsername& obfuscated_username,
                          const std::vector<std::string>& labels) {
     // Create a random USS.
-    auto uss_ptr =
-        UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
-    if (!uss_ptr.ok()) {
+    auto uss =
+        DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+    if (!uss.ok()) {
       ADD_FAILURE() << "Making a test USS failed at CreateRandom: "
-                    << uss_ptr.status();
+                    << uss.status();
       return;
     }
-    UserSecretStash& uss = **uss_ptr;
-    // Generate a main key and some wrap it for each label. Note that we just
-    // make up junk wrapping keys because we don't actually plan to decrypt the
-    // container.
-    for (const std::string& label : labels) {
-      SecureBlob wrapping_key(kAesGcm256KeySize, 0xC0);
-      CryptohomeStatus status = uss.AddWrappedMainKey(
-          label, wrapping_key, OverwriteExistingKeyBlock::kDisabled);
+    {
+      auto transaction = uss->StartTransaction();
+      // Generate a main key and some wrap it for each label. Note that we just
+      // make up junk wrapping keys because we don't actually plan to decrypt
+      // the container.
+      for (const std::string& label : labels) {
+        SecureBlob wrapping_key(kAesGcm256KeySize, 0xC0);
+        CryptohomeStatus status =
+            transaction.InsertWrappedMainKey(label, std::move(wrapping_key));
+        if (!status.ok()) {
+          ADD_FAILURE() << "Making a test USS failed adding label " << label
+                        << ": " << status;
+          return;
+        }
+      }
+      // Persist the changes.
+      UserUssStorage user_storage(*userdataauth_->uss_storage_,
+                                  obfuscated_username);
+      auto status = std::move(transaction).Commit(user_storage);
       if (!status.ok()) {
-        ADD_FAILURE() << "Making a test USS failed adding label " << label
-                      << ": " << status;
+        ADD_FAILURE() << "Making a test USS failed during Commit: " << status;
         return;
       }
-    }
-    // Persist the USS we constructed.
-    auto container = uss.GetEncryptedContainer();
-    if (!container.ok()) {
-      ADD_FAILURE() << "Making a test USS failed at GetEncryptedContainer: "
-                    << container.status();
-      return;
-    }
-    if (auto status = userdataauth_->uss_storage_->Persist(*container,
-                                                           obfuscated_username);
-        !status.ok()) {
-      ADD_FAILURE() << "Making a test USS failed during Persist: " << status;
-      return;
     }
   }
 

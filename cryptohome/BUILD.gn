@@ -431,7 +431,6 @@ if (use.test) {
       "user_secret_stash/encrypted_unittest.cc",
       "user_secret_stash/migrator_unittest.cc",
       "user_secret_stash/storage_unittest.cc",
-      "user_secret_stash/user_secret_stash_unittest.cc",
       "user_session/real_user_session_unittest.cc",
       "user_session/user_session_map_unittest.cc",
       "userdataauth_auth_session_unittest.cc",
@@ -599,7 +598,7 @@ if (use.fuzzer) {
   }
 
   executable("cryptohome_user_secret_stash_parser_fuzzer") {
-    sources = [ "fuzzers/user_secret_stash_parser_fuzzer.cc" ]
+    sources = [ "fuzzers/decrypted_uss_parser_fuzzer.cc" ]
     libs = [ "hwsec-foundation" ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [

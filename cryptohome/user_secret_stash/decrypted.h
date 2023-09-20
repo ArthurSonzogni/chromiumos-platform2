@@ -14,7 +14,6 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/encrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -165,15 +164,6 @@ class DecryptedUss {
   DecryptedUss& operator=(const DecryptedUss&) = delete;
   DecryptedUss(DecryptedUss&&) = default;
   DecryptedUss& operator=(DecryptedUss&&) = default;
-
-  // Makes a full copy of this object. This is not implemented as a copy
-  // constructor because in general we don't want this object to be copyable;
-  // this function is just available as a transitional feature for moving from
-  // UserSecretStash::Snapshot to direct use of DecryptedUss transactions.
-  //
-  // TODO(b/295898583): Remove this once UserSecretStash::Snapshot is no longer
-  // needed.
-  DecryptedUss CreateCopyForSnapshot() const;
 
   const EncryptedUss& encrypted() const { return encrypted_; }
 

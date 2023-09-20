@@ -18,8 +18,8 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/reap.h"
 #include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -40,7 +40,7 @@ constexpr char kMigrationSecretLabel[] = "vk_to_uss_migration_secret_label";
 UssMigrator::UssMigrator(Username username) : username_(std::move(username)) {}
 
 void UssMigrator::MigrateVaultKeysetToUss(
-    const UserUssStorage& user_secret_stash_storage,
+    UserUssStorage& user_secret_stash_storage,
     const std::string& label,
     const FileSystemKeyset& filesystem_keyset,
     CompletionCallback completion_callback) {
@@ -53,50 +53,68 @@ void UssMigrator::MigrateVaultKeysetToUss(
   // credentials are migrated to AuthFactors and USS.
 
   // Load the USS container with the encrypted payload.
-  std::unique_ptr<UserSecretStash> user_secret_stash;
+  std::optional<DecryptedUss> decrypted_uss;
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       user_secret_stash_storage.LoadPersisted();
   if (!encrypted_uss.ok()) {
     // If no UserSecretStash file found for the user create a new
     // UserSecretStash from the passed VaultKeyset and add the migration_secret
     // block.
-    auto uss_status = UserSecretStash::CreateRandom(filesystem_keyset);
-    if (!uss_status.ok()) {
+    auto new_uss = DecryptedUss::CreateWithRandomMainKey(filesystem_keyset);
+    if (!new_uss.ok()) {
       LOG(ERROR) << "UserSecretStash creation failed during migration of "
                     "VaultKeyset with label: "
                  << label;
-      ReapAndReportError(std::move(uss_status).status(),
+      ReapAndReportError(std::move(new_uss).status(),
                          kCryptohomeErrorUssMigrationErrorBucket);
       ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssCreation);
-      std::move(completion_callback).Run(/*user_secret_stash=*/nullptr);
+      std::move(completion_callback).Run(std::nullopt);
       return;
     }
-    user_secret_stash = std::move(uss_status).value();
-    if (!AddMigrationSecretToUss(*user_secret_stash)) {
-      ReportVkToUssMigrationStatus(
-          VkToUssMigrationStatus::kFailedAddingMigrationSecret);
-      std::move(completion_callback).Run(/*user_secret_stash=*/nullptr);
-      return;
+    {
+      auto transaction = new_uss->StartTransaction();
+      if (auto status = transaction.InsertWrappedMainKey(kMigrationSecretLabel,
+                                                         *migration_secret_);
+          !status.ok()) {
+        LOG(ERROR)
+            << "Failed to add the migration secret to the UserSecretStash.";
+        ReapAndReportError(std::move(status),
+                           kCryptohomeErrorUssMigrationErrorBucket);
+        ReportVkToUssMigrationStatus(
+            VkToUssMigrationStatus::kFailedAddingMigrationSecret);
+        std::move(completion_callback).Run(std::nullopt);
+        return;
+      }
+      if (auto status =
+              std::move(transaction).Commit(user_secret_stash_storage);
+          !status.ok()) {
+        LOG(ERROR) << "Failed to persist the new UserSecretStash.";
+        ReapAndReportError(std::move(status),
+                           kCryptohomeErrorUssMigrationErrorBucket);
+        ReportVkToUssMigrationStatus(
+            VkToUssMigrationStatus::kFailedAddingMigrationSecret);
+        std::move(completion_callback).Run(std::nullopt);
+        return;
+      }
     }
+    decrypted_uss = std::move(*new_uss);
   } else {
     // Decrypt the existing UserSecretStash payload with the migration secret
     // and obtain the main key.
-    auto uss_status = UserSecretStash::FromEncryptedContainerWithWrappingKey(
-        encrypted_uss.value(),
-        /*wrapping_id=*/kMigrationSecretLabel,
-        /*wrapping_key=*/*migration_secret_);
-    if (!uss_status.ok()) {
+    auto existing_uss = DecryptedUss::FromBlobUsingWrappedKey(
+        *encrypted_uss, kMigrationSecretLabel, *migration_secret_);
+    if (!existing_uss.ok()) {
       LOG(ERROR) << "Failed to decrypt the UserSecretStash during migration.";
-      ReapAndReportError(std::move(uss_status).status(),
+      ReapAndReportError(std::move(existing_uss).status(),
                          kCryptohomeErrorUssMigrationErrorBucket);
       ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssDecrypt);
-      std::move(completion_callback).Run(/*user_secret_stash=*/nullptr);
+      std::move(completion_callback).Run(std::nullopt);
       return;
     }
-    user_secret_stash = std::move(uss_status).value();
+    decrypted_uss = std::move(*existing_uss);
   }
 
-  std::move(completion_callback).Run(std::move(user_secret_stash));
+  std::move(completion_callback).Run(std::move(*decrypted_uss));
 }
 
 void UssMigrator::GenerateMigrationSecret(
@@ -105,28 +123,6 @@ void UssMigrator::GenerateMigrationSecret(
       HmacSha256(brillo::SecureBlob::Combine(filesystem_keyset.Key().fek,
                                              filesystem_keyset.Key().fnek),
                  brillo::BlobFromString(kMigrationSecretDerivationPublicInfo)));
-}
-
-bool UssMigrator::AddMigrationSecretToUss(UserSecretStash& user_secret_stash) {
-  // This wraps the USS Main Key with the migration_secret and adds the
-  // migration_secret key block to USS in memory.
-  CryptohomeStatus status = user_secret_stash.AddWrappedMainKey(
-      /*wrapping_id=*/kMigrationSecretLabel, *migration_secret_,
-      OverwriteExistingKeyBlock::kDisabled);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to add the migration secret to the UserSecretStash.";
-    ReapAndReportError(std::move(status),
-                       kCryptohomeErrorUssMigrationErrorBucket);
-    return false;
-  }
-
-  return true;
-}
-
-bool UssMigrator::RemoveMigrationSecretFromUss(
-    UserSecretStash& user_secret_stash) {
-  return user_secret_stash.RemoveWrappedMainKey(
-      /*wrapping_id=*/kMigrationSecretLabel);
 }
 
 }  // namespace cryptohome
