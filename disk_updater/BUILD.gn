@@ -17,6 +17,6 @@ install_config("install_init") {
 
 install_config("install_script") {
   sources = [ "scripts/chromeos-disk-firmware-update.sh" ]
-  install_path = "/usr/sbin"
+  install_path = "sbin"
   type = "executable"
 }

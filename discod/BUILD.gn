@@ -68,7 +68,7 @@ executable("discod") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libdiscod" ]
-  install_path = "/usr/sbin"
+  install_path = "sbin"
 }
 
 if (use.test) {

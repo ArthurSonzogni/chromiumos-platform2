@@ -43,7 +43,7 @@ pkg_config("bootlockbox_dependent_config") {
 
 # Main programs.
 executable("bootlockboxtool") {
-  install_path = "/usr/sbin"
+  install_path = "sbin"
 
   sources = [ "boot_lockbox_tool.cc" ]
 
@@ -53,7 +53,7 @@ executable("bootlockboxtool") {
 }
 
 executable("bootlockboxd") {
-  install_path = "/usr/sbin"
+  install_path = "sbin"
 
   sources = [
     "boot_lockbox_dbus_adaptor.cc",

@@ -500,7 +500,7 @@ install_config("install_production_scripts") {
     "tools/send_metrics_on_resume",
     "tools/thermal_zone_config",
   ]
-  install_path = "/usr/bin"
+  install_path = "bin"
   options = "-m0755"
 }
 
@@ -512,7 +512,7 @@ install_config("install_testing_scripts") {
     "tools/set_short_powerd_timeouts",
     "tools/suspend_stress_test",
   ]
-  install_path = "/usr/bin"
+  install_path = "bin"
   options = "-m0755"
 }
 

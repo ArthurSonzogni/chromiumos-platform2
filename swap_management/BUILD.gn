@@ -56,7 +56,7 @@ generate_dbus_adaptors("swap-management-adaptors") {
 executable("swap_management") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
-  install_path = "/usr/sbin"
+  install_path = "sbin"
   deps = [ ":libswapmanagement" ]
 }
 

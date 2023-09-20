@@ -44,13 +44,13 @@ install_config("install_bootstat_sbin_scripts") {
     "bootstat_archive",
     "bootstat_get_last",
   ]
-  install_path = "/usr/sbin"
+  install_path = "sbin"
   type = "executable"
 }
 
 install_config("install_bootstat_summary") {
   sources = [ "bootstat_summary" ]
-  install_path = "/usr/bin"
+  install_path = "bin"
   type = "executable"
 }
 

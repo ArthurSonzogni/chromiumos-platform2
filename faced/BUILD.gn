@@ -110,7 +110,7 @@ source_set("libfaced") {
 executable("faced") {
   sources = [ "main.cc" ]
   deps = [ ":libfaced" ]
-  install_path = "/usr/sbin"
+  install_path = "sbin"
 }
 
 executable("faced_cli") {
@@ -119,7 +119,7 @@ executable("faced_cli") {
     ":libfaced",
     "faced_cli",
   ]
-  install_path = "/usr/sbin"
+  install_path = "sbin"
 }
 
 if (use.test) {

@@ -110,13 +110,13 @@ executable("tpm_version_client") {
   sources = [ "tool/tpm_version_client.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libhwsec-foundation" ]
-  install_path = "/usr/sbin"
+  install_path = "sbin"
 }
 
 install_config("install_tpm_version") {
   sources = [ "tool/tpm_version" ]
   type = "executable"
-  install_path = "/usr/sbin"
+  install_path = "sbin"
 }
 
 install_config("install_no_tpm_checker") {

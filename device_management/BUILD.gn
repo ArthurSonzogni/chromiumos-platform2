@@ -144,7 +144,7 @@ executable("device_management_client") {
   ]
   libs = [ "hwsec-foundation" ]
   deps = [ ":proto_library" ]
-  install_path = "/usr/sbin"
+  install_path = "sbin"
 }
 
 # Main programs.
@@ -166,7 +166,7 @@ executable("device_managementd") {
     ":proto_library",
   ]
 
-  install_path = "/usr/sbin"
+  install_path = "sbin"
 }
 
 if (use.test) {

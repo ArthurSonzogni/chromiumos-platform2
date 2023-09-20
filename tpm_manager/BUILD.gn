@@ -155,7 +155,7 @@ executable("local_data_migration") {
 
 # Determine whether to touch NoPreinitFlagFile.
 executable("check_tpm_preinit_condition") {
-  install_path = "/usr/sbin"
+  install_path = "sbin"
   sources = [ "server/check_tpm_preinit_condition.cc" ]
   configs += [ ":target_defaults" ]
   libs = [ "rootdev" ]
