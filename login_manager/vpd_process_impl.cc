@@ -34,8 +34,10 @@ void VpdProcessImpl::RequestJobExit(const std::string& reason) {
 
 void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
   if (subprocess_) {
-    if (subprocess_->GetPid() < 0)
+    if (subprocess_->GetPid() < 0) {
+      subprocess_.reset();
       return;
+    }
     if (!system_utils_->ProcessGroupIsGone(subprocess_->GetPid(), timeout)) {
       subprocess_->KillEverything(SIGABRT);
       DLOG(INFO) << "Child process was killed.";
@@ -46,6 +48,8 @@ void VpdProcessImpl::EnsureJobExit(base::TimeDelta timeout) {
 bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
                                      bool ignore_cache,
                                      CompletionCallback completion) {
+  DUMP_WILL_BE_CHECK(!subprocess_ || subprocess_->GetPid() <= 0)
+      << "Another subprocess is running";
   subprocess_.reset(new Subprocess(0 /*root*/, system_utils_));
 
   std::vector<std::string> argv = {"/usr/sbin/update_rw_vpd"};
@@ -61,6 +65,7 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
 
   if (!subprocess_->ForkAndExec(argv, env)) {
     LOG(ERROR) << "Failed to fork the process";
+    subprocess_.reset();
     // The caller remains responsible for running |completion|.
     return false;
   }
@@ -77,6 +82,7 @@ bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
   }
   if (subprocess_->GetPid() <= 0) {
     LOG(ERROR) << "Update VPD fail, pid = " << subprocess_->GetPid();
+    subprocess_.reset();
     return false;
   }
   if (subprocess_->GetPid() != info.si_pid) {
@@ -84,6 +90,7 @@ bool VpdProcessImpl::HandleExit(const siginfo_t& info) {
     return false;
   }
 
+  subprocess_.reset();
   MetricsLibrary metrics;
   metrics.SendSparseToUMA(kVpdUpdateMetric, info.si_status);
 
