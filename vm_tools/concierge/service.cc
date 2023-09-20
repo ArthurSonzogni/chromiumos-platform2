@@ -1008,7 +1008,8 @@ std::optional<ComponentMemoryMargins> Service::GetComponentMemoryMargins() {
       } else if (key == kArcvmCachedKey) {
         margins.arcvm_cached = value;
       } else {
-        LOG(ERROR) << "Unrecognized dict entry for component memory margins";
+        LOG(ERROR) << "Unrecognized dict entry '" << key
+                   << "' for component memory margins";
       }
     }
   }
