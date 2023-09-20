@@ -386,6 +386,7 @@ class DlcServiceUtil : public brillo::Daemon {
     dict.Set("progress", state.progress());
     dict.Set("root_path", state.root_path());
     dict.Set("state", state.state());
+    dict.Set("is_verified", state.is_verified());
     PrintToFileOrStdout(dump, Value(std::move(dict)));
   }
 
