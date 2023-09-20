@@ -84,6 +84,7 @@ shared_library("libdlcservice-metadata") {
     "zlib_compressor.cc",
   ]
   configs += [ ":target_defaults" ]
+  pkg_deps = [ "zlib" ]
   install_path = "lib"
 }
 
