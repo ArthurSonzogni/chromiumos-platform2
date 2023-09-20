@@ -388,6 +388,7 @@ source_set("libbattery_saver_tool") {
     ":target_defaults",
     ":libpower_manager_client_config",
   ]
+  pkg_deps = [ "absl" ]
 }
 
 executable("battery_saver_tool") {
