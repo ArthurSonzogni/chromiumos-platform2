@@ -176,6 +176,10 @@ class Network {
     kEthernetGatewayReachable,
   };
 
+  // Returns true if |reason| requires that the state of |portal_detector_|
+  // should be reset and network validation should be restarted.
+  static bool ShouldResetPortalDetection(ValidationReason reason);
+
   explicit Network(
       int interface_index,
       const std::string& interface_name,
@@ -294,10 +298,10 @@ class Network {
 
   // Starts a new network validation cycle and starts a first portal detection
   // attempt. If portal detection was already running, a new network validation
-  // cycle is started only if |reset| is true, otherwise the call does nothing.
-  // Returns true if portal detection starts successfully or was already running
-  // and |reset| is false.
-  mockable bool StartPortalDetection(ValidationReason reason, bool reset);
+  // cycle is started only if ShouldResetPortalDetection(|request|) is true,
+  // otherwise the call does nothing. Returns true if portal detection starts
+  // successfully or was already running and should not be restarted.
+  mockable bool StartPortalDetection(ValidationReason reason);
   // Schedules the next portal detection attempt for the current network
   // validation cycle. Returns true if portal detection restarts successfully.
   // If portal detection fails to restart, it is stopped.

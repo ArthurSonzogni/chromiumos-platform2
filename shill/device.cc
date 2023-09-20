@@ -479,8 +479,7 @@ void Device::OnConnectionUpdated(int interface_index) {
   // when IPv4 provisioning completes after IPv6 provisioning. Note that
   // currently SetupConnection() is never called a second time if IPv6
   // provisioning completes after IPv4 provisioning.
-  UpdatePortalDetector(Network::ValidationReason::kNetworkConnectionUpdate,
-                       /*restart=*/true);
+  UpdatePortalDetector(Network::ValidationReason::kNetworkConnectionUpdate);
 }
 
 void Device::OnNetworkStopped(int interface_index, bool is_failure) {
@@ -602,10 +601,8 @@ void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   }
 }
 
-bool Device::UpdatePortalDetector(Network::ValidationReason reason,
-                                  bool restart) {
-  SLOG(this, 1) << LoggingTag() << ": " << __func__ << " reason=" << reason
-                << " restart=" << restart;
+bool Device::UpdatePortalDetector(Network::ValidationReason reason) {
+  SLOG(this, 1) << LoggingTag() << ": " << __func__ << " reason=" << reason;
 
   if (!selected_service_) {
     LOG(INFO) << LoggingTag() << ": Skipping portal detection: no Service";
@@ -634,7 +631,7 @@ bool Device::UpdatePortalDetector(Network::ValidationReason reason,
     return false;
   }
 
-  if (!GetPrimaryNetwork()->StartPortalDetection(reason, restart)) {
+  if (!GetPrimaryNetwork()->StartPortalDetection(reason)) {
     SetServiceState(Service::kStateOnline);
     return false;
   }

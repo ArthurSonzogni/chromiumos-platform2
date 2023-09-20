@@ -1753,8 +1753,7 @@ void Manager::SortServicesTask() {
     if (device && IsPrimaryConnectivityTechnology(device->technology()) &&
         new_logical->IsPortalled()) {
       SLOG(2) << "Restarting portal detection for the new primary device.";
-      device->UpdatePortalDetector(Network::ValidationReason::kServiceReorder,
-                                   /*restart=*/true);
+      device->UpdatePortalDetector(Network::ValidationReason::kServiceReorder);
     }
   }
 
@@ -2274,7 +2273,7 @@ bool Manager::SetCheckPortalList(const std::string& portal_list, Error* error) {
   props_.check_portal_list = portal_list;
   for (const auto& device : devices_) {
     device->UpdatePortalDetector(
-        Network::ValidationReason::kManagerPropertyUpdate, /*restart=*/false);
+        Network::ValidationReason::kManagerPropertyUpdate);
   }
   return true;
 }
@@ -2669,8 +2668,7 @@ void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device) {
 void Manager::RecheckPortal(Error* /*error*/) {
   SLOG(2) << __func__;
   for (const auto& device : devices_) {
-    device->UpdatePortalDetector(Network::ValidationReason::kDBusRequest,
-                                 /*restart=*/false);
+    device->UpdatePortalDetector(Network::ValidationReason::kDBusRequest);
   }
 }
 

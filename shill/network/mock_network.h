@@ -82,7 +82,7 @@ class MockNetwork : public Network {
   MOCK_METHOD(bool, ipv6_gateway_found, (), (const, override));
   MOCK_METHOD(bool,
               StartPortalDetection,
-              (Network::ValidationReason, bool),
+              (Network::ValidationReason),
               (override));
   MOCK_METHOD(bool, RestartPortalDetection, (), (override));
   MOCK_METHOD(void, StopPortalDetection, (), (override));

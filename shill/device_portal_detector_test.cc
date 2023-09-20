@@ -74,8 +74,7 @@ class TestNetwork : public Network {
   bool IsConnected() const override { return true; }
   void StartConnectionDiagnostics() override {}
 
-  bool StartPortalDetection(Network::ValidationReason reason,
-                            bool reset) override {
+  bool StartPortalDetection(Network::ValidationReason reason) override {
     portal_detection_delayed_ = false;
     portal_detection_started_ = true;
     portal_detection_running_ = true;
@@ -241,9 +240,8 @@ class DevicePortalDetectorTest : public testing::Test {
     device_->SelectService(service_);
   }
 
-  void UpdatePortalDetector(bool restart = true) {
-    device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest,
-                                  restart);
+  void UpdatePortalDetector() {
+    device_->UpdatePortalDetector(Network::ValidationReason::kDBusRequest);
   }
 
   TestNetwork* GetTestNetwork() { return device_->test_network(); }

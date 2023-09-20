@@ -1691,7 +1691,7 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
     // have been connected.
     CHECK(apn_connected);
     multiplexed_tethering_pdn_->network()->StartPortalDetection(
-        Network::ValidationReason::kNetworkConnectionUpdate, true);
+        Network::ValidationReason::kNetworkConnectionUpdate);
   }
 
   // Report success.

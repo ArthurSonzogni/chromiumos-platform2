@@ -742,10 +742,7 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
   ON_CALL(*network_p, IsConnected()).WillByDefault(Return(true));
 
   // Service state is 'online', REACHABLE neighbor events are ignored.
-  EXPECT_CALL(*network_p,
-              StartPortalDetection(
-                  Network::ValidationReason::kEthernetGatewayReachable, _))
-      .Times(0);
+  EXPECT_CALL(*network_p, StartPortalDetection).Times(0);
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv4Addr, Role::kGateway,
                                          Status::kReachable);
@@ -756,19 +753,17 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
 
   // Service state is 'online', FAILED gateway neighbor events triggers network
   // validation.
-  EXPECT_CALL(
-      *network_p,
-      StartPortalDetection(
-          Network::ValidationReason::kEthernetGatewayUnreachable, false))
+  EXPECT_CALL(*network_p,
+              StartPortalDetection(
+                  Network::ValidationReason::kEthernetGatewayUnreachable))
       .WillOnce(Return(true));
   ethernet_->OnNeighborReachabilityEvent(
       ethernet_->interface_index(), kIPv4Addr, Role::kGateway, Status::kFailed);
   Mock::VerifyAndClearExpectations(network_p);
 
-  EXPECT_CALL(
-      *network_p,
-      StartPortalDetection(
-          Network::ValidationReason::kEthernetGatewayUnreachable, false));
+  EXPECT_CALL(*network_p,
+              StartPortalDetection(
+                  Network::ValidationReason::kEthernetGatewayUnreachable));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kGatewayAndDnsServer,
                                          Status::kFailed);
@@ -810,7 +805,7 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
   // triggers network validation.
   EXPECT_CALL(*network_p,
               StartPortalDetection(
-                  Network::ValidationReason::kEthernetGatewayReachable, true));
+                  Network::ValidationReason::kEthernetGatewayReachable));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv4Addr, Role::kGateway,
                                          Status::kReachable);
@@ -818,7 +813,7 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
 
   EXPECT_CALL(*network_p,
               StartPortalDetection(
-                  Network::ValidationReason::kEthernetGatewayReachable, true));
+                  Network::ValidationReason::kEthernetGatewayReachable));
   ethernet_->OnNeighborReachabilityEvent(ethernet_->interface_index(),
                                          kIPv6Addr, Role::kGatewayAndDnsServer,
                                          Status::kReachable);

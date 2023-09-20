@@ -145,13 +145,13 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   //      - There is no proxy configuration defined on |selected_service_|.
   //      - Portal detection is enabled for the |selected_service_| itself or
   //      for its link technology.
-  //   - Portal detection was not already running. If |restart| is true this
-  //   check is ignored. This allows the caller to force the creation of a new
-  //   PortalDetector instance with the latest network layer properties.
+  //   - Portal detection was not already running. If |request| requires that
+  //   portal detection should be restarted, this check is ignored. This allows
+  //   the caller to force the creation of a new PortalDetector instance with
+  //   the latest network layer properties.
   // If the Service is connected and portal detection should not be running, it
   // is stopped and the connection state of the Service is set to "online".
-  mockable bool UpdatePortalDetector(Network::ValidationReason reason,
-                                     bool restart);
+  mockable bool UpdatePortalDetector(Network::ValidationReason reason);
 
   const RpcIdentifier& GetRpcIdentifier() const;
   virtual std::string GetStorageIdentifier() const;

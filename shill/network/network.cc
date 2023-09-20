@@ -50,6 +50,21 @@ namespace {
 constexpr char kAndroidMeteredHotspotVendorOption[] = "ANDROID_METERED";
 }  // namespace
 
+// static
+bool Network::ShouldResetPortalDetection(Network::ValidationReason reason) {
+  switch (reason) {
+    case Network::ValidationReason::kDBusRequest:
+    case Network::ValidationReason::kEthernetGatewayReachable:
+    case Network::ValidationReason::kNetworkConnectionUpdate:
+    case Network::ValidationReason::kServiceReorder:
+      return true;
+    case Network::ValidationReason::kEthernetGatewayUnreachable:
+    case Network::ValidationReason::kManagerPropertyUpdate:
+    case Network::ValidationReason::kServicePropertyUpdate:
+      return false;
+  }
+}
+
 Network::Network(int interface_index,
                  const std::string& interface_name,
                  Technology technology,
@@ -953,14 +968,14 @@ std::optional<net_base::IPAddress> Network::gateway() const {
   return std::nullopt;
 }
 
-bool Network::StartPortalDetection(ValidationReason reason, bool reset) {
+bool Network::StartPortalDetection(ValidationReason reason) {
   if (!IsConnected()) {
     LOG(INFO) << *this << " " << __func__ << "(" << reason
               << "): Cannot start portal detection: Network is not connected";
     return false;
   }
 
-  if (!reset && IsPortalDetectionInProgress()) {
+  if (!ShouldResetPortalDetection(reason) && IsPortalDetectionInProgress()) {
     LOG(INFO) << *this << " " << __func__ << "(" << reason
               << "): Portal detection is already running.";
     return true;

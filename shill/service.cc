@@ -1271,8 +1271,7 @@ void Service::RequestPortalDetection(Error* error) {
                           "Failed to find device from service: " + log_name());
     return;
   }
-  if (!device->UpdatePortalDetector(Network::ValidationReason::kDBusRequest,
-                                    /*restart=*/true)) {
+  if (!device->UpdatePortalDetector(Network::ValidationReason::kDBusRequest)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         "Failed to restart portal detection for service: " + log_name());
@@ -2200,11 +2199,11 @@ bool Service::SetCheckPortal(const std::string& check_portal, Error* error) {
     return false;
   }
   check_portal_ = check_portal;
-  OnPortalDetectionConfigurationChange(/*restart=*/false);
+  OnPortalDetectionConfigurationChange();
   return true;
 }
 
-void Service::OnPortalDetectionConfigurationChange(bool restart) {
+void Service::OnPortalDetectionConfigurationChange() {
   if (!IsConnected()) {
     return;
   }
@@ -2220,7 +2219,7 @@ void Service::OnPortalDetectionConfigurationChange(bool restart) {
   // Service transitions to the "online" state now that portal detection has
   // stopped.
   device->UpdatePortalDetector(
-      Network::ValidationReason::kServicePropertyUpdate, restart);
+      Network::ValidationReason::kServicePropertyUpdate);
 }
 
 std::string Service::GetGuid(Error* error) {
@@ -2315,7 +2314,7 @@ bool Service::SetProxyConfig(const std::string& proxy_config, Error* error) {
   proxy_config_ = proxy_config;
   // Force portal detection to restart if it was already running: the new
   // Proxy settings could change validation results.
-  OnPortalDetectionConfigurationChange(/*restart=*/true);
+  OnPortalDetectionConfigurationChange();
   adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
   return true;
 }
