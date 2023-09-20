@@ -1445,7 +1445,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
               OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   // Release DHCP should be called since we have static IP now.
   EXPECT_CALL(*dhcp_controller_,
-              ReleaseIP(DHCPController::kReleaseReasonStaticIP));
+              ReleaseIP(DHCPController::ReleaseReason::kStaticIP));
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4DHCPWithStatic, IPConfigType::kNone);

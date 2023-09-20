@@ -269,7 +269,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
       state_ != State::kIdle && trigger_callback;
   bool ipconfig_changed = false;
   if (dhcp_controller_) {
-    dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
+    dhcp_controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect);
     dhcp_controller_ = nullptr;
   }
   if (ipconfig()) {
@@ -340,7 +340,7 @@ void Network::OnIPv4ConfigUpdated() {
     // available from a DHCP server and not overridden by static parameters, but
     // at the same time we avoid taking up a dynamic IP address the DHCP server
     // could assign to someone else who might actually use it.
-    dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
+    dhcp_controller_->ReleaseIP(DHCPController::ReleaseReason::kStaticIP);
   }
   SetupConnection(net_base::IPFamily::kIPv4, /*is_slaac=*/false);
   for (auto* ev : event_handlers_) {

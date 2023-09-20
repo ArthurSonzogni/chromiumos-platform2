@@ -34,7 +34,7 @@ class ProcessManager;
 
 // This class provides a DHCP client instance for the device |device_name|.
 //
-// The DHPCConfig instance asks the DHCP client to create a lease file
+// The DHCPController instance asks the DHCP client to create a lease file
 // containing the name |lease_file_suffix|.  If this suffix is the same as
 // |device_name|, the lease is considered to be ephemeral, and the lease
 // file is removed whenever this DHCPController instance is no longer needed.
@@ -58,7 +58,7 @@ class DHCPController {
   // failure.
   using DropCallback = base::RepeatingCallback<void(bool is_voluntary)>;
 
-  enum ReleaseReason { kReleaseReasonDisconnect, kReleaseReasonStaticIP };
+  enum class ReleaseReason { kDisconnect, kStaticIP };
 
   enum class ClientEventReason {
     kUnknown,

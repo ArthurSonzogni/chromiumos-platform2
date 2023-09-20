@@ -513,7 +513,8 @@ TEST_F(DHCPControllerTest, ReleaseIP) {
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
   SetShouldKeepLeaseOnDisconnect(false);
   controller_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(controller_->ReleaseIP(DHCPController::kReleaseReasonDisconnect));
+  EXPECT_TRUE(
+      controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect));
   controller_->pid_ = 0;
 }
 
@@ -524,7 +525,8 @@ TEST_F(DHCPControllerTest, KeepLeaseOnDisconnect) {
   SetShouldKeepLeaseOnDisconnect(true);
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   controller_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(controller_->ReleaseIP(DHCPController::kReleaseReasonDisconnect));
+  EXPECT_TRUE(
+      controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect));
   controller_->pid_ = 0;
 }
 
@@ -535,7 +537,8 @@ TEST_F(DHCPControllerTest, ReleaseLeaseOnDisconnect) {
   SetShouldKeepLeaseOnDisconnect(false);
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
   controller_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(controller_->ReleaseIP(DHCPController::kReleaseReasonDisconnect));
+  EXPECT_TRUE(
+      controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect));
   controller_->pid_ = 0;
 }
 
@@ -544,7 +547,7 @@ TEST_F(DHCPControllerTest, ReleaseIPStaticIPWithLease) {
   controller_->is_lease_active_ = true;
   EXPECT_CALL(*proxy_, Release(kDeviceName));
   controller_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(controller_->ReleaseIP(DHCPController::kReleaseReasonStaticIP));
+  EXPECT_TRUE(controller_->ReleaseIP(DHCPController::ReleaseReason::kStaticIP));
   EXPECT_EQ(nullptr, controller_->proxy_);
   controller_->pid_ = 0;
 }
@@ -555,7 +558,7 @@ TEST_F(DHCPControllerTest, ReleaseIPStaticIPWithoutLease) {
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   MockDHCPProxy* proxy_pointer = proxy_.get();
   controller_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(controller_->ReleaseIP(DHCPController::kReleaseReasonStaticIP));
+  EXPECT_TRUE(controller_->ReleaseIP(DHCPController::ReleaseReason::kStaticIP));
   // Expect that proxy has not been released.
   EXPECT_EQ(proxy_pointer, controller_->proxy_.get());
   controller_->pid_ = 0;

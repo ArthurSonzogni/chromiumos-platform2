@@ -136,14 +136,14 @@ bool DHCPController::ReleaseIP(ReleaseReason reason) {
 
   // If we are using static IP and haven't retrieved a lease yet, we should
   // allow the DHCP process to continue until we have a lease.
-  if (!is_lease_active_ && reason == kReleaseReasonStaticIP) {
+  if (!is_lease_active_ && reason == ReleaseReason::kStaticIP) {
     return true;
   }
 
   // If we are using gateway unicast ARP to speed up re-connect, don't
   // give up our leases when we disconnect.
   bool should_keep_lease =
-      reason == kReleaseReasonDisconnect && ShouldKeepLeaseOnDisconnect();
+      reason == ReleaseReason::kDisconnect && ShouldKeepLeaseOnDisconnect();
 
   if (!should_keep_lease && proxy_.get()) {
     proxy_->Release(device_name());
