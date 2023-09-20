@@ -551,7 +551,8 @@ class EfiBootManager {
   //    - Pick the lowest available boot number.
   //    - Write an entry pointing at our install to that number.
   //    - Add it to the boot order.
-  bool UpdateEfiBootEntries(const InstallConfig& install_config, int efi_size) {
+  bool UpdateEfiBootEntriesImpl(const InstallConfig& install_config,
+                                int efi_size) {
     if (!LoadBootEntries()) {
       LOG(ERROR) << kCantEnsureBoot << "need to know what boot entries exist.";
       return false;
@@ -637,6 +638,32 @@ class EfiBootManager {
         return false;
       }
       LOG(WARNING) << "Couldn't add entry to boot order. Proceeding anyway.";
+    }
+
+    return true;
+  }
+
+  // A thin wrapper around UpdateEfiBootEntriesImpl to handle sending UMAs and
+  // choosing an appropriate return code.
+  bool UpdateEfiBootEntries(const InstallConfig& install_config,
+                            base::Environment& env,
+                            int efi_size) {
+    if (!UpdateEfiBootEntriesImpl(install_config, efi_size)) {
+      // On install if we can't manage efi entries we can't be sure that we've
+      // created a system that will boot (some firmware can't find the default
+      // location).
+      const bool management_required = env.HasVar(kEnvIsInstall);
+      if (management_required) {
+        SendEfiManagementEvent(
+            EfiManagementEvent::kRequiredEntryManagementFailed);
+        LOG(ERROR) << "Failed to manage EFI boot entries, can't continue.";
+        return false;
+      } else {
+        SendEfiManagementEvent(
+            EfiManagementEvent::kOptionalEntryManagementFailed);
+        LOG(WARNING) << "Failed to manage EFI boot entries, "
+                     << "safe because we're updating.";
+      }
     }
 
     return true;
@@ -730,28 +757,10 @@ bool UpdateEfiBootEntries(const InstallConfig& install_config) {
 
   std::unique_ptr<MetricsInterface> metrics =
       MetricsInterface::GetMetricsInstance();
+  auto env = base::Environment::Create();
 
   EfiBootManager efi_boot_manager(std::move(efivar), std::move(metrics),
                                   EfiDescription());
-  if (!efi_boot_manager.UpdateEfiBootEntries(install_config,
-                                             efi_size.value())) {
-    // On install if we can't manage efi entries we can't be sure that we've
-    // created a system that will boot (some firmware can't find the default
-    // location).
-    auto env = base::Environment::Create();
-    const bool management_required = env->HasVar(kEnvIsInstall);
-    if (management_required) {
-      efi_boot_manager.SendEfiManagementEvent(
-          EfiManagementEvent::kRequiredEntryManagementFailed);
-      LOG(ERROR) << "Failed to manage EFI boot entries, can't continue.";
-      return false;
-    } else {
-      efi_boot_manager.SendEfiManagementEvent(
-          EfiManagementEvent::kOptionalEntryManagementFailed);
-      LOG(WARNING) << "Failed to manage EFI boot entries, "
-                   << "safe because we're updating.";
-    }
-  }
-
-  return true;
+  return efi_boot_manager.UpdateEfiBootEntries(install_config, *env,
+                                               efi_size.value());
 }

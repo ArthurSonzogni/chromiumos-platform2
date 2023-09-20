@@ -47,20 +47,6 @@ struct ComparePartitionNum {
   }
 };
 
-class MockEnvironment : public base::Environment {
- public:
-  MOCK_METHOD(bool,
-              GetVar,
-              (base::StringPiece variable_name, std::string* result),
-              (override));
-  MOCK_METHOD(bool, HasVar, (base::StringPiece variable_name), (override));
-  MOCK_METHOD(bool,
-              SetVar,
-              (base::StringPiece variable_name, const std::string& new_value),
-              (override));
-  MOCK_METHOD(bool, UnSetVar, (base::StringPiece variable_name), (override));
-};
-
 class PartitionMigrationTest : public ::testing::Test {
  protected:
   void SetUp() {

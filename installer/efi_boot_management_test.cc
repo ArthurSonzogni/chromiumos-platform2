@@ -19,6 +19,8 @@ using testing::Key;
 using testing::NiceMock;
 using testing::Pair;
 using testing::Return;
+using testing::StrEq;
+using testing::StrictMock;
 using testing::UnorderedElementsAre;
 
 namespace {
@@ -199,6 +201,22 @@ std::vector<uint8_t> BootOrderData(const std::vector<uint16_t>& input) {
                               reinterpret_cast<const uint8_t*>(input.data()) +
                                   (input.size() * sizeof(uint16_t)));
 }
+
+class MockEnvironment : public base::Environment {
+ public:
+  // Some of these mock methods are unused right now, but we have to implement
+  // the pure virtual methods of base::Environment.
+  MOCK_METHOD(bool,
+              GetVar,
+              (std::string_view variable_name, std::string* result),
+              (override));
+  MOCK_METHOD(bool, HasVar, (std::string_view variable_name), (override));
+  MOCK_METHOD(bool,
+              SetVar,
+              (std::string_view variable_name, const std::string& new_value),
+              (override));
+  MOCK_METHOD(bool, UnSetVar, (std::string_view variable_name), (override));
+};
 
 }  // namespace
 
@@ -546,18 +564,19 @@ TEST_F(EfiBootManagerTest, RemoveAllManagedEntries) {
   EXPECT_TRUE(efi_boot_manager_->Order().Data().empty());
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_NoBootEntries) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_NoBootEntries) {
   efivar_->SetData({{"BootOrder", {}}});
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_TRUE(success);
   EXPECT_THAT(efivar_->data_, Contains(Pair("BootOrder", BootOrderData({0}))));
   EXPECT_THAT(efivar_->data_, Contains(Key("Boot0000")));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_NoCrosEntry) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_NoCrosEntry) {
   efivar_->SetData({
       {"BootOrder", BootOrderData({0})},
       {"Boot0000", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
@@ -565,7 +584,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_NoCrosEntry) {
   });
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_TRUE(success);
   EXPECT_THAT(efivar_->data_,
@@ -578,7 +598,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_NoCrosEntry) {
                   Key("Boot0002")));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosEntryNotInBootOrder) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_CrosEntryNotInBootOrder) {
   efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0})},
       {"Boot0000", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
@@ -587,7 +607,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosEntryNotInBootOrder) {
   });
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_TRUE(success);
   EXPECT_THAT(efivar_->data_,
@@ -601,7 +622,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosEntryNotInBootOrder) {
                        VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosInBootOrder) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_CrosInBootOrder) {
   efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0, 2})},
       {"Boot0000", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
@@ -610,7 +631,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosInBootOrder) {
   });
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_TRUE(success);
   EXPECT_THAT(efivar_->data_,
@@ -624,7 +646,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosInBootOrder) {
                        VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_ExcessCrosEntries) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_ExcessCrosEntries) {
   efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0, 2})},
       {"Boot0001", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
@@ -635,7 +657,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_ExcessCrosEntries) {
   });
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_TRUE(success);
   EXPECT_THAT(efivar_->data_,
@@ -649,50 +672,54 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_ExcessCrosEntries) {
                        VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_WriteFail) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_WriteFail) {
   efivar_->SetData({{"BootOrder", {}}});
   efivar_->set_variable_result_ = {EPERM};
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_FALSE(success);
   EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(Pair("BootOrder", BootOrderData({}))));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableWriteFail) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_AcceptableWriteFail) {
   efivar_->SetData({{"BootOrder", {}}});
   // ENOSPC is an acceptable fail, says b/226935367.
   efivar_->set_variable_result_ = {ENOSPC};
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_TRUE(success);
   EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(Pair("BootOrder", BootOrderData({}))));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableWriteEintrFail) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_AcceptableWriteEintrFail) {
   efivar_->SetData({{"BootOrder", {}}});
   // EINTR is an acceptable fail says b/264907147.
   efivar_->set_variable_result_ = {EINTR};
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_TRUE(success);
   EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(Pair("BootOrder", BootOrderData({}))));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_BootWriteFail) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_BootWriteFail) {
   efivar_->SetData({{"BootOrder", {}}});
   efivar_->set_variable_result_ = {std::nullopt, EPERM};
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_FALSE(success);
   EXPECT_THAT(efivar_->data_,
@@ -702,13 +729,14 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_BootWriteFail) {
                        VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableBootWriteFail) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_AcceptableBootWriteFail) {
   efivar_->SetData({{"BootOrder", {}}});
   // ENOSPC is an acceptable fail, says b/226935367.
   efivar_->set_variable_result_ = {std::nullopt, ENOSPC};
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  bool success =
+      efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
   EXPECT_TRUE(success);
   EXPECT_THAT(efivar_->data_,
@@ -718,7 +746,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableBootWriteFail) {
                        VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_EntryCountMetrics) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_EntryCountMetrics) {
   efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0, 2})},
       {"Boot0001", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
@@ -745,10 +773,10 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_EntryCountMetrics) {
               SendLinearMetric(kUMAManagedEfiEntryCountName, managed_entries,
                                kUMAManagedEfiEntryCountMax));
 
-  efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 }
 
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_LoadFailMetrics) {
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_LoadFailMetrics) {
   efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0, 2})},
       {"Boot0001", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
@@ -757,7 +785,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_LoadFailMetrics) {
       {"Boot0004", VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))},
       {"Boot0005", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
   });
-  // Simulate a filed load.
+  // Simulate a failed load.
   efivar_->variable_names_.push_back("Boot0BAD");
 
   const int total_boot_entries = 6;
@@ -774,7 +802,66 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_LoadFailMetrics) {
                          kUMAEfiEntryFailedLoadBuckets));
   EXPECT_CALL(*metrics_, SendLinearMetric).Times(0);
 
-  efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+  efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
+}
+
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_InstallFailure) {
+  const bool is_install = true;
+
+  StrictMock<MockEnvironment> env;
+  EXPECT_CALL(env, HasVar(StrEq(kEnvIsInstall))).WillOnce(Return(is_install));
+
+  // Simulate a failed load.
+  efivar_->variable_names_.push_back("Boot0BAD");
+
+  InstallConfig install_config;
+
+  EXPECT_CALL(
+      *metrics_,
+      SendEnumMetric(
+          kUMAEfiManagementEventName,
+          static_cast<int>(EfiManagementEvent::kRequiredEntryManagementFailed),
+          static_cast<int>(EfiManagementEvent::kMaxValue)));
+
+  bool continue_postinst =
+      efi_boot_manager_->UpdateEfiBootEntries(install_config, env, 64);
+  EXPECT_FALSE(continue_postinst);
+}
+
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_UpdateFailure) {
+  const bool is_install = false;
+
+  StrictMock<MockEnvironment> env;
+  EXPECT_CALL(env, HasVar(StrEq(kEnvIsInstall))).WillOnce(Return(is_install));
+
+  // Simulate a failed load.
+  efivar_->variable_names_.push_back("Boot0BAD");
+
+  InstallConfig install_config;
+
+  EXPECT_CALL(
+      *metrics_,
+      SendEnumMetric(
+          kUMAEfiManagementEventName,
+          static_cast<int>(EfiManagementEvent::kOptionalEntryManagementFailed),
+          static_cast<int>(EfiManagementEvent::kMaxValue)));
+
+  bool continue_postinst =
+      efi_boot_manager_->UpdateEfiBootEntries(install_config, env, 64);
+  EXPECT_TRUE(continue_postinst);
+}
+
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_Success) {
+  InstallConfig install_config;
+  StrictMock<MockEnvironment> env;
+
+  EXPECT_CALL(*metrics_, SendEnumMetric(kUMAEfiManagementEventName, testing::_,
+                                        testing::_))
+      .Times(0);
+
+  bool continue_postinst =
+      efi_boot_manager_->UpdateEfiBootEntries(install_config, env, 64);
+  EXPECT_TRUE(continue_postinst);
 }
 
 TEST(EfiVarTest, IsEfiGlobalGUID) {
