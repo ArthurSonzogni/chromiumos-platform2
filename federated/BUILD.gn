@@ -87,7 +87,10 @@ static_library("federated_common") {
   ]
   defines = [ "USE_LOCAL_FEDERATED_SERVER=${use.local_federated_server}" ]
   all_dependent_configs = [ ":federated_common_pkg_deps" ]
-  pkg_deps = [ "protobuf" ]
+  pkg_deps = [
+    "protobuf",
+    "re2",
+  ]
   deps = [
     ":cros_fcp_proto",
     ":federated_mojo_bindings",
