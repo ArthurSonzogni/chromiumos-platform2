@@ -116,6 +116,7 @@ bool PortalDetector::Start(const std::string& ifname,
   https_url_ = *https_url;
 
   attempt_count_++;
+  delay_backoff_exponent_++;
   // TODO(hugobenichi) Network properties like src address and DNS should be
   // obtained exactly at the time that the trial starts if |delay| > 0.
   http_request_ =
@@ -202,6 +203,7 @@ void PortalDetector::CleanupTrial() {
 void PortalDetector::Stop() {
   SLOG(this, 3) << "In " << __func__;
   attempt_count_ = 0;
+  delay_backoff_exponent_ = 0;
   CleanupTrial();
 }
 
@@ -297,21 +299,25 @@ bool PortalDetector::IsInProgress() {
   return is_active_;
 }
 
+void PortalDetector::ResetAttemptDelays() {
+  delay_backoff_exponent_ = 0;
+}
+
 base::TimeDelta PortalDetector::GetNextAttemptDelay() const {
-  if (attempt_count_ == 0)
+  if (delay_backoff_exponent_ == 0) {
     return base::TimeDelta();
-
+  }
   base::TimeDelta next_interval =
-      kPortalCheckInterval * (1 << (attempt_count_ - 1));
-  if (next_interval > kMaxPortalCheckInterval)
+      kPortalCheckInterval * (1 << (delay_backoff_exponent_ - 1));
+  if (next_interval > kMaxPortalCheckInterval) {
     next_interval = kMaxPortalCheckInterval;
-
+  }
   const auto next_attempt = last_attempt_start_time_ + next_interval;
   const auto now = base::Time::NowFromSystemTime();
   auto next_delay = next_attempt - now;
-  if (next_delay < kMinPortalCheckDelay)
+  if (next_delay < kMinPortalCheckDelay) {
     next_delay = kMinPortalCheckDelay;
-
+  }
   return next_delay;
 }
 

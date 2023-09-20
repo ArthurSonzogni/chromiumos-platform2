@@ -225,6 +225,14 @@ class PortalDetector {
   // the callback.
   virtual void Stop();
 
+  // Resets the delay calculation for scheduling retries requested with
+  // Restart(). This has no impact on probe rotation logic.
+  virtual void ResetAttemptDelays();
+
+  // Returns the time delay for scheduling the next portal detection attempt
+  // with Restart().
+  base::TimeDelta GetNextAttemptDelay() const;
+
   // Returns whether portal request is "in progress".
   virtual bool IsInProgress();
 
@@ -259,6 +267,8 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, RequestRedirect);
   FRIEND_TEST(PortalDetectorTest, RequestSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestTempRedirect);
+  FRIEND_TEST(PortalDetectorTest, ResetAttemptDelays);
+  FRIEND_TEST(PortalDetectorTest, ResetAttemptDelaysAndRestart);
   FRIEND_TEST(PortalDetectorTest, Restart);
 
   static constexpr base::TimeDelta kZeroTimeDelta = base::TimeDelta();
@@ -269,10 +279,6 @@ class PortalDetector {
   const std::string& PickProbeUrl(
       const std::string& default_url,
       const std::vector<std::string>& fallback_urls) const;
-
-  // Returns the time delay for scheduling the next portal detection attempt
-  // with Restart().
-  base::TimeDelta GetNextAttemptDelay() const;
 
   // Internal method used to start the actual connectivity trial, called after
   // the start delay completes.
@@ -303,7 +309,13 @@ class PortalDetector {
   EventDispatcher* dispatcher_;
   std::string logging_tag_;
   bool is_active_ = false;
+  // The total number of detection attempts scheduled so far. Only used in logs
+  // for debugging purposes, and for selecting the URL of detection and
+  // validation probes.
   int attempt_count_ = 0;
+  // The power-of-two exponent used for computing exponentially increasing
+  // delays between portal detection attempts.
+  int delay_backoff_exponent_ = 0;
   base::Time last_attempt_start_time_ = base::Time();
   base::RepeatingCallback<void(const Result&)> portal_result_callback_;
   std::unique_ptr<HttpRequest> http_request_;

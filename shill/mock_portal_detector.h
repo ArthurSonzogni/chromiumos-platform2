@@ -41,6 +41,7 @@ class MockPortalDetector : public PortalDetector {
               (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool, IsInProgress, (), (override));
+  MOCK_METHOD(void, ResetAttemptDelays, (), (override));
 };
 
 }  // namespace shill

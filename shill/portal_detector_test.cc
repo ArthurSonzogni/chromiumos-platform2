@@ -327,6 +327,23 @@ TEST_F(PortalDetectorTest, GetNextAttemptDelay) {
   EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
 }
 
+TEST_F(PortalDetectorTest, ResetAttemptDelays) {
+  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+  EXPECT_TRUE(StartPortalRequest());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  portal_detector_->ResetAttemptDelays();
+  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+  EXPECT_TRUE(StartPortalRequest());
+  EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+}
+
 TEST_F(PortalDetectorTest, DelayedAttempt) {
   const auto delay = base::Seconds(123);
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay)).Times(1);
@@ -347,6 +364,33 @@ TEST_F(PortalDetectorTest, Restart) {
   auto next_delay = portal_detector()->GetNextAttemptDelay();
   EXPECT_GT(next_delay, base::TimeDelta());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
+  EXPECT_TRUE(RestartPortalRequest());
+  EXPECT_EQ(2, portal_detector()->attempt_count());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  portal_detector()->Stop();
+  ExpectReset();
+}
+
+TEST_F(PortalDetectorTest, ResetAttemptDelaysAndRestart) {
+  EXPECT_FALSE(portal_detector()->IsInProgress());
+
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
+  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_EQ(0, portal_detector()->attempt_count());
+  EXPECT_TRUE(StartPortalRequest());
+  EXPECT_EQ(portal_detector()->http_url_.ToString(), kHttpUrl);
+  EXPECT_EQ(1, portal_detector()->attempt_count());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  auto next_delay = portal_detector()->GetNextAttemptDelay();
+  EXPECT_GT(next_delay, base::TimeDelta());
+
+  portal_detector()->ResetAttemptDelays();
+  auto reset_delay = portal_detector()->GetNextAttemptDelay();
+  EXPECT_EQ(reset_delay, base::TimeDelta());
+
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, reset_delay)).Times(1);
   EXPECT_TRUE(RestartPortalRequest());
   EXPECT_EQ(2, portal_detector()->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
