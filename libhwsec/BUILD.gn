@@ -345,6 +345,7 @@ source_set("hardware_abstraction_internal_library") {
   }
 
   public_deps = [ ":signature-sealed-data-flatbuffers-binding-generate" ]
+  pkg_deps = [ "re2" ]
   deps = [
     ":oobe_config_encrypted_data_proto",
     ":pinweaver_manager_proto",
