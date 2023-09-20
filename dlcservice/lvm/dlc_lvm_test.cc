@@ -7,6 +7,7 @@
 
 #include "dlcservice/boot/mock_boot_slot.h"
 #include "dlcservice/lvm/dlc_lvm.h"
+#include "dlcservice/lvm/lvm_utils.h"
 #include "dlcservice/test_utils.h"
 
 using testing::_;
@@ -122,6 +123,19 @@ TEST_F(DlcLvmTest, MountDlcEmptyMountPoint) {
   EXPECT_FALSE(dlc.MountInternal(&mount_point, &err_));
   EXPECT_EQ(mount_point, "");
   EXPECT_NE(err_.get(), nullptr);
+}
+
+TEST_F(DlcLvmTest, IsActiveImagePresent) {
+  // Fourth DLC has `use-logical-volume` set to true.
+  DlcLvm dlc(kFourthDlc);
+  dlc.Initialize();
+
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_,
+              ActivateLogicalVolume(
+                  LogicalVolumeName(kFourthDlc, BootSlotInterface::Slot::A)))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(dlc.IsActiveImagePresent());
 }
 
 }  // namespace dlcservice

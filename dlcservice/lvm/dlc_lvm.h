@@ -33,6 +33,7 @@ class DlcLvm : public DlcBase {
   FRIEND_TEST(DlcLvmTest, MountDlc);
   FRIEND_TEST(DlcLvmTest, MountDlcImageLoaderFailed);
   FRIEND_TEST(DlcLvmTest, MountDlcEmptyMountPoint);
+  FRIEND_TEST(DlcLvmTest, IsActiveImagePresent);
 
   // `DlcBase` overrides.
   bool CreateDlc(brillo::ErrorPtr* err) override;
@@ -42,6 +43,7 @@ class DlcLvm : public DlcBase {
   bool VerifyInternal(const base::FilePath& image_path,
                       std::vector<uint8_t>* image_sha256) override;
   base::FilePath GetImagePath(BootSlot::Slot slot) const override;
+  bool IsActiveImagePresent() const override;
 
   virtual bool UseLogicalVolume() const;
 

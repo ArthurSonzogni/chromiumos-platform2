@@ -171,6 +171,7 @@ bool LvmdProxyWrapper::CreateLogicalVolumes(
                    << lv_name;
         return false;
       }
+      LOG(INFO) << "Activated name=" << lv_name;
     } else if (SystemState::Get()->resuming_from_hibernate()) {
       LOG(ERROR) << "Failed to CreateLogicalVolume "
                     "during resume from hibernate, name="

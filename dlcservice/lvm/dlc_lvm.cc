@@ -160,6 +160,17 @@ base::FilePath DlcLvm::GetImagePath(BootSlot::Slot slot) const {
       SystemState::Get()->lvmd_wrapper()->GetLogicalVolumePath(lv_name));
 }
 
+bool DlcLvm::IsActiveImagePresent() const {
+  if (!UseLogicalVolume()) {
+    return DlcBase::IsActiveImagePresent();
+  }
+
+  auto active_lv_name =
+      LogicalVolumeName(id_, SystemState::Get()->active_boot_slot());
+  return SystemState::Get()->lvmd_wrapper()->ActivateLogicalVolume(
+      active_lv_name);
+}
+
 bool DlcLvm::UseLogicalVolume() const {
   return manifest_->use_logical_volume() &&
          SystemState::Get()->IsLvmStackEnabled();

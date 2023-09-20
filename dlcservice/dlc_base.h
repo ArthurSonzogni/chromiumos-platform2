@@ -133,7 +133,7 @@ class DlcBase : public DlcInterface {
   bool Unmount(brillo::ErrorPtr* err);
 
   // Returns true if the active DLC image is present.
-  bool IsActiveImagePresent() const;
+  virtual bool IsActiveImagePresent() const;
 
   // Deletes DLC and performs related cleanups.
   bool Delete(brillo::ErrorPtr* err);
