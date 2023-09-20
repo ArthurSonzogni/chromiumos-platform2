@@ -168,6 +168,7 @@ static_library("libdebugd") {
     ":debugd-adaptors",
     ":scheduler_configuration_utils",
   ]
+  pkg_deps = [ "re2" ]
 }
 
 static_library("debugd_dbus_utils") {
@@ -324,10 +325,17 @@ executable("generate_logs") {
   configs += [ ":target_defaults" ]
 }
 
+pkg_config("icmp_config") {
+  pkg_deps = [ "re2" ]
+}
+
 executable("icmp") {
   sources = [ "src/helpers/icmp.cc" ]
   install_path = debugd_helpers_install_path
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":target_defaults",
+    ":icmp_config",
+  ]
 }
 
 executable("modetest_helper") {
@@ -454,6 +462,7 @@ if (use.test) {
     run_test = true
     configs += [
       "//common-mk:test",
+      ":audit_log_utils_config",
       ":debugd_testrunner_config",
       ":target_defaults",
     ]
