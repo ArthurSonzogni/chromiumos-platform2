@@ -598,6 +598,7 @@ type cros_tz_data_file, file_type, cros_file_type, cros_var_file_type; # It's cr
 
 type cros_iioservice_test_exec, exec_type, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_python_exec, exec_type, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_factory_runtime_probe_exec, file_type, exec_type, cros_file_type, cros_uncategorized_file_type;
 
 r_dir_file(chromeos_domain, cros_tz_data_file)
 

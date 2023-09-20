@@ -246,7 +246,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 # partition.
 /usr/local/bin/[^/]+            u:object_r:cros_dev_image_exec:s0
 
-/usr/local/bin/factory_runtime_probe    u:object_r:cros_runtime_probe_exec:s0
+/usr/local/bin/factory_runtime_probe    u:object_r:cros_factory_runtime_probe_exec:s0
 /usr/local/bin/recover_duts     u:object_r:cros_recover_duts_script:s0
 
 # To allow test tools to access Mojo Service Manager.

@@ -7,3 +7,9 @@ domain_auto_trans({
   cros_init
   cros_ssh_session
   minijail}, cros_runtime_probe_exec, cros_runtime_probe)
+
+domain_auto_trans({
+  cros_agetty
+  cros_init
+  cros_ssh_session},
+  cros_factory_runtime_probe_exec, cros_runtime_probe)
