@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -80,8 +81,8 @@ class MulticastCountersService {
   // Installs jump rules for an interface to count ingress multicast traffic
   // of |ifname|.
   virtual void SetupJumpRules(Iptables::Command command,
-                              base::StringPiece ifname,
-                              base::StringPiece technology);
+                              std::string_view ifname,
+                              std::string_view technology);
   // Parses the output of `iptables -L -x -v` (or `ip6tables`) and adds the
   // parsed values into the corresponding counters in |counters|.
   // This function will try to find the pattern of:
@@ -92,7 +93,7 @@ class MulticastCountersService {
   // values extracted from the counter line will be added into the counter
   // for that interface. Note that this function will not fully validate
   // if |output| is an output from iptables.
-  virtual bool ParseIptableOutput(base::StringPiece output,
+  virtual bool ParseIptableOutput(std::string_view output,
                                   std::map<CounterKey, uint64_t>* counter);
 
   Datapath* datapath_;

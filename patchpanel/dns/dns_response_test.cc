@@ -8,6 +8,7 @@
 #include <iterator>
 #include <memory>
 #include <optional>
+#include <string_view>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
@@ -273,7 +274,7 @@ TEST(DnsRecordParserTest, ReadRecord) {
   EXPECT_EQ(dns_protocol::kClassIN, record.klass);
   EXPECT_EQ(0x00201355u, record.ttl);
   EXPECT_EQ(4u, record.rdata.length());
-  EXPECT_EQ(base::StringPiece("\x7f\x02\x04\x01"), record.rdata);
+  EXPECT_EQ(std::string_view("\x7f\x02\x04\x01"), record.rdata);
   EXPECT_TRUE(parser.AtEnd());
 
   // Test truncated record.

@@ -8,8 +8,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <string_view>
+
 #include "base/base_export.h"
-#include "base/strings/string_piece.h"
 
 namespace base {
 
@@ -60,8 +61,8 @@ class BASE_EXPORT BigEndianReader {
 
   bool Skip(size_t len);
   bool ReadBytes(void* out, size_t len);
-  // Creates a StringPiece in |out| that points to the underlying buffer.
-  bool ReadPiece(base::StringPiece* out, size_t len);
+  // Creates a string_view in |out| that points to the underlying buffer.
+  bool ReadPiece(std::string_view* out, size_t len);
   bool ReadU8(uint8_t* value);
   bool ReadU16(uint16_t* value);
   bool ReadU32(uint32_t* value);

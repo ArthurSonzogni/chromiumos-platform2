@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/containers/contains.h>
@@ -16,7 +17,6 @@
 #include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
 #include <base/logging.h>
-#include "base/strings/string_piece.h"
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
@@ -62,7 +62,7 @@ std::string MulticastMetricsTypeToString(MulticastMetrics::Type type) {
 // Map of multicast protocol to Ethernet metrics name.
 static constexpr auto kEthernetMetricNames = base::MakeFixedFlatMap<
     std::optional<MulticastCountersService::MulticastProtocolType>,
-    base::StringPiece>({
+    std::string_view>({
     {std::nullopt, kMulticastEthernetConnectedCountMetrics},
     {MulticastCountersService::MulticastProtocolType::kMdns,
      kMulticastEthernetMDNSConnectedCountMetrics},
@@ -73,7 +73,7 @@ static constexpr auto kEthernetMetricNames = base::MakeFixedFlatMap<
 // Map of multicast protocol to WiFi metrics name.
 static constexpr auto kWiFiMetricNames = base::MakeFixedFlatMap<
     std::optional<MulticastCountersService::MulticastProtocolType>,
-    base::StringPiece>({
+    std::string_view>({
     {std::nullopt, kMulticastWiFiConnectedCountMetrics},
     {MulticastCountersService::MulticastProtocolType::kMdns,
      kMulticastWiFiMDNSConnectedCountMetrics},
@@ -85,7 +85,7 @@ static constexpr auto kWiFiMetricNames = base::MakeFixedFlatMap<
 // metrics name.
 static constexpr auto kARCMetricNames = base::MakeFixedFlatMap<
     std::pair<bool, MulticastCountersService::MulticastProtocolType>,
-    base::StringPiece>({
+    std::string_view>({
     {{/*arc_fwd_enabled=*/true,
       MulticastCountersService::MulticastProtocolType::kMdns},
      kMulticastARCWiFiMDNSActiveCountMetrics},
@@ -101,7 +101,7 @@ static constexpr auto kARCMetricNames = base::MakeFixedFlatMap<
 });
 
 // Get metrics name for UMA.
-std::optional<base::StringPiece> GetMetricsName(
+std::optional<std::string_view> GetMetricsName(
     MulticastMetrics::Type type,
     std::optional<MulticastCountersService::MulticastProtocolType> protocol,
     std::optional<bool> arc_fwd_enabled) {
@@ -166,12 +166,12 @@ MulticastMetrics::MulticastMetrics(MulticastCountersService* counters_service,
 }
 
 void MulticastMetrics::Start(MulticastMetrics::Type type,
-                             base::StringPiece ifname) {
+                             std::string_view ifname) {
   pollers_[type]->Start(ifname);
 }
 
 void MulticastMetrics::Stop(MulticastMetrics::Type type,
-                            base::StringPiece ifname) {
+                            std::string_view ifname) {
   pollers_[type]->Stop(ifname);
 }
 
@@ -322,7 +322,7 @@ MulticastMetrics::Poller::Poller(MulticastMetrics::Type type,
                                  MulticastMetrics* metrics)
     : type_(type), metrics_(metrics) {}
 
-void MulticastMetrics::Poller::Start(base::StringPiece ifname) {
+void MulticastMetrics::Poller::Start(std::string_view ifname) {
   // Do nothing if poll is already started.
   if (base::Contains(ifnames_, ifname)) {
     return;
@@ -342,7 +342,7 @@ void MulticastMetrics::Poller::Start(base::StringPiece ifname) {
   total_arc_wifi_connection_duration_ = base::Seconds(0);
 }
 
-void MulticastMetrics::Poller::Stop(base::StringPiece ifname) {
+void MulticastMetrics::Poller::Stop(std::string_view ifname) {
   // Do nothing if poll is already stopped.
   auto num_removed = ifnames_.erase(std::string(ifname));
   if (num_removed == 0 || !ifnames_.empty()) {

@@ -10,6 +10,7 @@
 #include <sys/utsname.h>
 
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -17,7 +18,6 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/system/sys_info.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/constants/vm_tools.h>
@@ -184,7 +184,7 @@ std::unique_ptr<Device::Config> AllocateArc0Config(
       std::move(host_ipv4_addr), std::move(guest_ipv4_addr));
 }
 
-std::string PrefixIfname(base::StringPiece prefix, base::StringPiece ifname) {
+std::string PrefixIfname(std::string_view prefix, std::string_view ifname) {
   std::string n;
   n.append(prefix);
   n.append(ifname);

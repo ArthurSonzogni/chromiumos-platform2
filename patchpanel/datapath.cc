@@ -19,6 +19,7 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <base/check.h>
 #include <base/files/scoped_file.h>
@@ -2112,7 +2113,7 @@ bool Datapath::FlushChain(IpFamily family,
 bool Datapath::ModifyChain(IpFamily family,
                            Iptables::Table table,
                            Iptables::Command command,
-                           base::StringPiece chain,
+                           std::string_view chain,
                            bool log_failures) {
   return ModifyIptables(family, table, command, chain, {"-w"}, log_failures);
 }
@@ -2120,7 +2121,7 @@ bool Datapath::ModifyChain(IpFamily family,
 bool Datapath::ModifyIptables(IpFamily family,
                               Iptables::Table table,
                               Iptables::Command command,
-                              base::StringPiece chain,
+                              std::string_view chain,
                               const std::vector<std::string>& argv,
                               bool log_failures,
                               std::optional<base::TimeDelta> timeout) {

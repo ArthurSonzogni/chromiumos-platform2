@@ -5,9 +5,9 @@
 #include "patchpanel/firewall.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -40,7 +40,7 @@ class MockProcessRunner : public MinijailedProcessRunner {
               iptables,
               (Iptables::Table table,
                Iptables::Command command,
-               base::StringPiece chain,
+               std::string_view chain,
                const std::vector<std::string>& argv,
                bool log_failures,
                std::optional<base::TimeDelta> timeout,
@@ -50,7 +50,7 @@ class MockProcessRunner : public MinijailedProcessRunner {
               ip6tables,
               (Iptables::Table table,
                Iptables::Command command,
-               base::StringPiece chain,
+               std::string_view chain,
                const std::vector<std::string>& argv,
                bool log_failures,
                std::optional<base::TimeDelta> timeout,

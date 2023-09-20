@@ -4,6 +4,7 @@
 
 #include "patchpanel/dns/dns_query.h"
 
+#include <string_view>
 #include <utility>
 
 #include "base/logging.h"
@@ -83,8 +84,8 @@ uint16_t DnsQuery::id() const {
   return base::NetToHost16(header_->id);
 }
 
-base::StringPiece DnsQuery::qname() const {
-  return base::StringPiece(io_buffer_->data() + kHeaderSize, qname_size_);
+std::string_view DnsQuery::qname() const {
+  return std::string_view(io_buffer_->data() + kHeaderSize, qname_size_);
 }
 
 uint16_t DnsQuery::qtype() const {
@@ -96,9 +97,9 @@ uint16_t DnsQuery::qtype() const {
   return type;
 }
 
-base::StringPiece DnsQuery::question() const {
-  return base::StringPiece(io_buffer_->data() + kHeaderSize,
-                           QuestionSize(qname_size_));
+std::string_view DnsQuery::question() const {
+  return std::string_view(io_buffer_->data() + kHeaderSize,
+                          QuestionSize(qname_size_));
 }
 
 size_t DnsQuery::question_size() const {
@@ -123,7 +124,7 @@ bool DnsQuery::ReadName(base::BigEndianReader* reader, std::string* out) {
   }
   out->append(reinterpret_cast<char*>(&label_length), 1);
   while (label_length) {
-    base::StringPiece label;
+    std::string_view label;
     if (!reader->ReadPiece(&label, label_length)) {
       return false;
     }

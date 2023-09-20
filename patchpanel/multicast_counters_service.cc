@@ -7,6 +7,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/logging.h>
@@ -37,7 +38,7 @@ constexpr LazyRE2 kChainLine = {R"(Chain rx_(ethernet|wifi)_(mdns|ssdp).*)"};
 constexpr LazyRE2 kCounterLine = {R"( *(\d+).*)"};
 
 std::optional<MulticastCountersService::MulticastProtocolType>
-StringToMulticastProtocolType(base::StringPiece protocol) {
+StringToMulticastProtocolType(std::string_view protocol) {
   if (protocol == kMdns) {
     return MulticastCountersService::MulticastProtocolType::kMdns;
   }
@@ -48,7 +49,7 @@ StringToMulticastProtocolType(base::StringPiece protocol) {
 }
 
 std::optional<MulticastCountersService::MulticastTechnologyType>
-StringToMulticastTechnologyType(base::StringPiece technology) {
+StringToMulticastTechnologyType(std::string_view technology) {
   if (technology == kTechnologyEthernet) {
     return MulticastCountersService::MulticastTechnologyType::kEthernet;
   }
@@ -59,7 +60,7 @@ StringToMulticastTechnologyType(base::StringPiece technology) {
 }
 
 std::optional<MulticastCountersService::CounterKey> GetCounterKey(
-    base::StringPiece technology, base::StringPiece protocol) {
+    std::string_view technology, std::string_view protocol) {
   MulticastCountersService::CounterKey key;
   if (!StringToMulticastProtocolType(protocol).has_value()) {
     LOG(ERROR) << "Unknown multicast protocol type: " << protocol;
@@ -201,8 +202,8 @@ void MulticastCountersService::OnPhysicalDeviceRemoved(
 }
 
 void MulticastCountersService::SetupJumpRules(Iptables::Command command,
-                                              base::StringPiece ifname,
-                                              base::StringPiece technology) {
+                                              std::string_view ifname,
+                                              std::string_view technology) {
   std::vector<std::string> args;
   for (const std::string& protocol : {"mdns", "ssdp"}) {
     std::string chain = "rx_" + protocol;
@@ -261,7 +262,7 @@ MulticastCountersService::GetCounters() {
 }
 
 bool MulticastCountersService::ParseIptableOutput(
-    base::StringPiece output,
+    std::string_view output,
     std::map<MulticastCountersService::CounterKey, uint64_t>* counter) {
   const std::vector<std::string> lines = base::SplitString(
       output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);

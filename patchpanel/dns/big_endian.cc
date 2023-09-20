@@ -4,7 +4,7 @@
 
 #include "patchpanel/dns/big_endian.h"
 
-#include "base/strings/string_piece.h"
+#include <string_view>
 
 namespace base {
 
@@ -26,10 +26,10 @@ bool BigEndianReader::ReadBytes(void* out, size_t len) {
   return true;
 }
 
-bool BigEndianReader::ReadPiece(base::StringPiece* out, size_t len) {
+bool BigEndianReader::ReadPiece(std::string_view* out, size_t len) {
   if (ptr_ + len > end_)
     return false;
-  *out = base::StringPiece(ptr_, len);
+  *out = std::string_view(ptr_, len);
   ptr_ += len;
   return true;
 }

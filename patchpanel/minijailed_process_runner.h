@@ -12,7 +12,6 @@
 #include <string_view>
 #include <vector>
 
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <brillo/minijail/minijail.h>
 
@@ -57,7 +56,7 @@ class MinijailedProcessRunner {
   //   of iptables command.
   virtual int iptables(Iptables::Table table,
                        Iptables::Command command,
-                       base::StringPiece chain,
+                       std::string_view chain,
                        const std::vector<std::string>& argv,
                        bool log_failures = true,
                        std::optional<base::TimeDelta> timeout = std::nullopt,
@@ -65,7 +64,7 @@ class MinijailedProcessRunner {
 
   virtual int ip6tables(Iptables::Table table,
                         Iptables::Command command,
-                        base::StringPiece chain,
+                        std::string_view chain,
                         const std::vector<std::string>& argv,
                         bool log_failures = true,
                         std::optional<base::TimeDelta> timeout = std::nullopt,

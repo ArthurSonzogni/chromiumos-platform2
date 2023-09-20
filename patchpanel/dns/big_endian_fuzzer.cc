@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string_view>
+
 #include <base/check.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
@@ -20,7 +22,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   static constexpr size_t kLen = 16;
   char buf[kLen];
-  base::StringPiece s;
+  std::string_view s;
   uint8_t u8;
   uint16_t u16;
   uint32_t u32;

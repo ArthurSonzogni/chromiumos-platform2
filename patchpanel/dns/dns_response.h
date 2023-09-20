@@ -10,12 +10,12 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #include "base/memory/ref_counted.h"
-#include "base/strings/string_piece.h"
 #include "base/time/time.h"
 #pragma GCC diagnostic pop
 #include "brillo/brillo_export.h"
@@ -61,7 +61,7 @@ struct BRILLO_EXPORT DnsResourceRecord {
   uint16_t klass = 0;
   uint32_t ttl = 0;
   // Points to the original response buffer or otherwise to |owned_rdata|.
-  base::StringPiece rdata;
+  std::string_view rdata;
   // Used to construct a DnsResponse from data. This field is empty if |rdata|
   // points to the response buffer.
   std::string owned_rdata;
@@ -200,7 +200,7 @@ class BRILLO_EXPORT DnsResponse {
   unsigned additional_answer_count() const;
 
   // Accessors to the question. The qname is unparsed.
-  base::StringPiece qname() const;
+  std::string_view qname() const;
   uint16_t qtype() const;
 
   // Returns qname in dotted format.

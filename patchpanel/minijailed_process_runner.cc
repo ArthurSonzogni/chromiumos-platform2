@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <csignal>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
@@ -276,7 +277,7 @@ int MinijailedProcessRunner::ip6(const std::string& obj,
 
 int MinijailedProcessRunner::iptables(Iptables::Table table,
                                       Iptables::Command command,
-                                      base::StringPiece chain,
+                                      std::string_view chain,
                                       const std::vector<std::string>& argv,
                                       bool log_failures,
                                       std::optional<base::TimeDelta> timeout,
@@ -287,7 +288,7 @@ int MinijailedProcessRunner::iptables(Iptables::Table table,
 
 int MinijailedProcessRunner::ip6tables(Iptables::Table table,
                                        Iptables::Command command,
-                                       base::StringPiece chain,
+                                       std::string_view chain,
                                        const std::vector<std::string>& argv,
                                        bool log_failures,
                                        std::optional<base::TimeDelta> timeout,

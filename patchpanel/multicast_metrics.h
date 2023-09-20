@@ -9,10 +9,10 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
-#include "base/strings/string_piece.h"
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
@@ -24,7 +24,7 @@ namespace patchpanel {
 
 // Placeholder interface name to be used for metrics poller which does not need
 // to track active interface.
-constexpr base::StringPiece kPlaceholderIfname = "placeholder0";
+constexpr std::string_view kPlaceholderIfname = "placeholder0";
 
 // Poll delay to fetch multicast packet count and report to UMA.
 constexpr base::TimeDelta kMulticastPollDelay = base::Minutes(2);
@@ -64,8 +64,8 @@ class MulticastMetrics {
   // Start or stop polling for multicast packet count. When it is used for
   // network technology metrics, the interface name |ifname| needs to be set.
   // These methods are idempotent, calling the methods multiple times is safe.
-  void Start(Type type, base::StringPiece ifname = kPlaceholderIfname);
-  void Stop(Type type, base::StringPiece ifname = kPlaceholderIfname);
+  void Start(Type type, std::string_view ifname = kPlaceholderIfname);
+  void Stop(Type type, std::string_view ifname = kPlaceholderIfname);
 
   // Start or stop polling for multicast packet count on device events.
   void OnIPConfigsChanged(const ShillClient::Device& device);
@@ -116,8 +116,8 @@ class MulticastMetrics {
     // - allow metrics to be reported correctly on suspend resume.
     // - allow metrics to be reported as a count as opposed to rate, meaning the
     // polling time must be constant.
-    void Start(base::StringPiece ifname);
-    void Stop(base::StringPiece ifname);
+    void Start(std::string_view ifname);
+    void Stop(std::string_view ifname);
 
     // Multicast metrics are only emitted when ARC is running.
     void UpdateARCState(bool running);

@@ -9,6 +9,7 @@
 #include <numeric>
 #include <openssl/sha.h>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #pragma GCC diagnostic push
@@ -47,7 +48,7 @@ static const size_t kIPv6AddressSize = 16;
 static constexpr size_t kIntegrityMinimumSize =
     sizeof(uint16_t) + SHA256_DIGEST_LENGTH;
 
-bool RecordRdataHasValidSize(const base::StringPiece& data, uint16_t type) {
+bool RecordRdataHasValidSize(std::string_view data, uint16_t type) {
   switch (type) {
     case dns_protocol::kTypeSRV:
       return data.size() >= kSrvRecordMinimumSize;
@@ -412,7 +413,7 @@ DnsResponse& DnsResponse::operator=(DnsResponse&& other) = default;
 DnsResponse::~DnsResponse() = default;
 
 bool DnsResponse::InitParse(size_t nbytes, const DnsQuery& query) {
-  const base::StringPiece question = query.question();
+  const std::string_view question = query.question();
 
   // Response includes question, it should be at least that size.
   if (nbytes < kHeaderSize + question.size() || nbytes > io_buffer_size_) {
@@ -438,7 +439,7 @@ bool DnsResponse::InitParse(size_t nbytes, const DnsQuery& query) {
 
   // Match the question section.
   if (question !=
-      base::StringPiece(io_buffer_->data() + kHeaderSize, question.size())) {
+      std::string_view(io_buffer_->data() + kHeaderSize, question.size())) {
     return false;
   }
 
@@ -507,14 +508,14 @@ unsigned DnsResponse::additional_answer_count() const {
   return base::NetToHost16(header()->arcount);
 }
 
-base::StringPiece DnsResponse::qname() const {
+std::string_view DnsResponse::qname() const {
   DCHECK(parser_.IsValid());
   // The response is HEADER QNAME QTYPE QCLASS ANSWER.
   // |parser_| is positioned at the beginning of ANSWER, so the end of QNAME is
   // two uint16_ts before it.
   const size_t qname_size =
       parser_.GetOffset() - 2 * sizeof(uint16_t) - kHeaderSize;
-  return base::StringPiece(io_buffer_->data() + kHeaderSize, qname_size);
+  return std::string_view(io_buffer_->data() + kHeaderSize, qname_size);
 }
 
 uint16_t DnsResponse::qtype() const {
@@ -551,13 +552,13 @@ bool DnsResponse::WriteHeader(base::BigEndianWriter* writer,
 
 bool DnsResponse::WriteQuestion(base::BigEndianWriter* writer,
                                 const DnsQuery& query) {
-  const base::StringPiece& question = query.question();
+  std::string_view question = query.question();
   return writer->WriteBytes(question.data(), question.size());
 }
 
 bool DnsResponse::WriteRecord(base::BigEndianWriter* writer,
                               const DnsResourceRecord& record) {
-  if (record.rdata != base::StringPiece(record.owned_rdata)) {
+  if (record.rdata != std::string_view(record.owned_rdata)) {
     LOG(ERROR) << "record.rdata should point to record.owned_rdata.";
     return false;
   }

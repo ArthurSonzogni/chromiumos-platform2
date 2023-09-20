@@ -13,9 +13,9 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
-#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
@@ -427,14 +427,14 @@ class Datapath {
   virtual bool ModifyChain(IpFamily family,
                            Iptables::Table table,
                            Iptables::Command command,
-                           base::StringPiece chain,
+                           std::string_view chain,
                            bool log_failures = true);
   // Sends an iptables command for table |table|.
   virtual bool ModifyIptables(
       IpFamily family,
       Iptables::Table table,
       Iptables::Command command,
-      base::StringPiece chain,
+      std::string_view chain,
       const std::vector<std::string>& argv,
       bool log_failures = true,
       std::optional<base::TimeDelta> timeout = std::nullopt);

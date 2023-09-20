@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/functional/bind.h>
@@ -360,7 +361,7 @@ bool Firewall::ModifyLoopbackLockdownRule(IpFamily ip_family,
 bool Firewall::RunIptables(IpFamily ip_family,
                            Iptables::Table table,
                            Iptables::Command command,
-                           base::StringPiece chain,
+                           std::string_view chain,
                            const std::vector<std::string>& argv) {
   if (ip_family == IpFamily::kIPv4)
     return process_runner_->iptables(table, command, chain, argv, false) == 0;

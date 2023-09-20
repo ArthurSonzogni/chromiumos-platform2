@@ -12,12 +12,12 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <dbus/object_path.h>
@@ -81,7 +81,7 @@ class MockProcessRunner : public MinijailedProcessRunner {
               iptables,
               (Iptables::Table table,
                Iptables::Command command,
-               base::StringPiece chain,
+               std::string_view chain,
                const std::vector<std::string>& argv,
                bool log_failures,
                std::optional<base::TimeDelta> timeout,
@@ -91,7 +91,7 @@ class MockProcessRunner : public MinijailedProcessRunner {
               ip6tables,
               (Iptables::Table table,
                Iptables::Command command,
-               base::StringPiece chain,
+               std::string_view chain,
                const std::vector<std::string>& argv,
                bool log_failures,
                std::optional<base::TimeDelta> timeout,

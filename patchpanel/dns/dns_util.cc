@@ -9,6 +9,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include "patchpanel/dns/dns_protocol.h"
 
@@ -39,7 +40,7 @@ namespace patchpanel {
 namespace {
 
 // Based on DJB's public domain code.
-bool DNSDomainFromDot(const base::StringPiece& dotted,
+bool DNSDomainFromDot(std::string_view dotted,
                       bool is_unrestricted,
                       std::string* out) {
   const char* buf = dotted.data();
@@ -97,7 +98,7 @@ bool DNSDomainFromDot(const base::StringPiece& dotted,
 
 }  // namespace
 
-bool DNSDomainFromDot(const base::StringPiece& dotted, std::string* out) {
+bool DNSDomainFromDot(std::string_view dotted, std::string* out) {
   return DNSDomainFromDot(dotted, false /* is_unrestricted */, out);
 }
 
@@ -106,7 +107,7 @@ bool IsValidHostLabelCharacter(char c, bool is_first_char) {
          (c >= '0' && c <= '9') || (!is_first_char && c == '-') || c == '_';
 }
 
-std::optional<std::string> DnsDomainToString(base::StringPiece domain) {
+std::optional<std::string> DnsDomainToString(std::string_view domain) {
   std::string ret;
 
   for (unsigned i = 0; i < domain.size() && domain[i];

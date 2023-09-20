@@ -7,8 +7,8 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
-#include "base/strings/string_piece.h"
 #include "brillo/brillo_export.h"
 
 namespace patchpanel {
@@ -19,8 +19,7 @@ namespace patchpanel {
 //
 //   dotted: a string in dotted form: "www.google.com"
 //   out: a result in DNS form: "\x03www\x06google\x03com\x00"
-BRILLO_EXPORT bool DNSDomainFromDot(const base::StringPiece& dotted,
-                                    std::string* out);
+BRILLO_EXPORT bool DNSDomainFromDot(std::string_view dotted, std::string* out);
 
 // Returns true if the character is valid in a DNS hostname label, whether in
 // the first position or later in the label.
@@ -41,7 +40,7 @@ BRILLO_EXPORT bool IsValidHostLabelCharacter(char c, bool is_first_char);
 // end. Assumes the standard terminating zero-length label at the end if not
 // included in the input. Returns nullopt on malformed input.
 BRILLO_EXPORT std::optional<std::string> DnsDomainToString(
-    base::StringPiece dns_name);
+    std::string_view dns_name);
 
 }  // namespace patchpanel
 

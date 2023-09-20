@@ -5,6 +5,7 @@
 #include "patchpanel/dns/dns_query.h"
 
 #include <iterator>
+#include <string_view>
 #include <tuple>
 
 #include "testing/gmock/include/gmock/gmock.h"
@@ -56,7 +57,7 @@ TEST(DnsQueryParseTest, SingleQuestionForTypeARecord) {
   EXPECT_TRUE(ParseAndCreateDnsQueryFromRawPacket(query_data,
                                                   sizeof(query_data), &query));
   EXPECT_EQ(0x1234, query->id());
-  base::StringPiece qname(kQNameData, sizeof(kQNameData));
+  std::string_view qname(kQNameData, sizeof(kQNameData));
   EXPECT_EQ(qname, query->qname());
   EXPECT_EQ(dns_protocol::kTypeA, query->qtype());
 }
@@ -79,7 +80,7 @@ TEST(DnsQueryParseTest, SingleQuestionForTypeAAAARecord) {
   EXPECT_TRUE(ParseAndCreateDnsQueryFromRawPacket(query_data,
                                                   sizeof(query_data), &query));
   EXPECT_EQ(0x1234, query->id());
-  base::StringPiece qname(kQNameData, sizeof(kQNameData));
+  std::string_view qname(kQNameData, sizeof(kQNameData));
   EXPECT_EQ(qname, query->qname());
   EXPECT_EQ(dns_protocol::kTypeAAAA, query->qtype());
 }

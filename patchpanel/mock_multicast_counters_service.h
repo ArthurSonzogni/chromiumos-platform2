@@ -8,8 +8,8 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 
-#include <base/strings/string_piece.h>
 #include <gmock/gmock.h>
 
 #include "patchpanel/multicast_counters_service.h"
@@ -39,12 +39,12 @@ class MockMulticastCountersService : public MulticastCountersService {
   MOCK_METHOD(void,
               SetupJumpRules,
               (Iptables::Command command,
-               base::StringPiece ifname,
-               base::StringPiece technology),
+               std::string_view ifname,
+               std::string_view technology),
               (override));
   MOCK_METHOD(bool,
               ParseIptableOutput,
-              (base::StringPiece output,
+              (std::string_view output,
                (std::map<CounterKey, uint64_t> * counter)),
               (override));
 };
