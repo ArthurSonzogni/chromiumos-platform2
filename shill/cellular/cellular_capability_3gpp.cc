@@ -2534,7 +2534,8 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
         scaled_quality = kRscpBounds.GetAsPercentage(signal_quality);
       } else if (tech_props.Contains<double>(kRssiProperty) &&
                  (signal_property == MM_MODEM_SIGNAL_PROPERTY_UMTS ||
-                  signal_property == MM_MODEM_SIGNAL_PROPERTY_GSM)) {
+                  signal_property == MM_MODEM_SIGNAL_PROPERTY_GSM ||
+                  IsModemFM101())) {  // TODO(b/274882743): Revert for FM101 MR2
         signal_measurement = kRssiProperty;
         signal_quality = tech_props.Get<double>(kRssiProperty);
         scaled_quality = kRssiBounds.GetAsPercentage(signal_quality);
