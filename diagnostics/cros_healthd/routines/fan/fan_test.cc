@@ -76,6 +76,11 @@ class FanRoutineTest : public FanRoutineTestBase {
     run_loop.Run();
   }
 
+  void SetFanCrosConfig(const std::string& value) {
+    mock_context_.fake_cros_config()->SetString("/hardware-properties",
+                                                "fan-count", value);
+  }
+
   std::unique_ptr<FanRoutine> routine_;
   std::unique_ptr<RoutineObserverForTesting> observer_;
 };
@@ -611,5 +616,107 @@ TEST_F(FanRoutineTest, MultipleFanRoutinePartialFailure) {
   EXPECT_EQ(fan_detail->fan_count_status,
             mojom::HardwarePresenceStatus::kNotConfigured);
 }
+
+// Test that the routine can pass with the correct number of fan.
+TEST_F(FanRoutineTest, RoutineSuccessWithCorrectFanConfig) {
+  constexpr int kFanSpeed = 1000;
+  EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
+      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+        std::move(callback).Run({kFanSpeed}, std::nullopt);
+      })
+      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+        std::move(callback).Run({kFanSpeed + FanRoutine::kFanRpmChange},
+                                std::nullopt);
+      });
+
+  EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
+      .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
+                    Executor::SetFanSpeedCallback callback) {
+        // Set fan to be increasing
+        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+                                  0, kFanSpeed + FanRoutine::kFanRpmChange)));
+        std::move(callback).Run(std::nullopt);
+      });
+  SetFanCrosConfig("1");
+
+  base::RunLoop run_loop;
+  SetupAndStartRoutine(true, &run_loop);
+  run_loop.Run();
+  mojom::RoutineStatePtr result = std::move(observer_->state_);
+
+  EXPECT_EQ(result->percentage, 100);
+  EXPECT_TRUE(result->state_union->is_finished());
+  EXPECT_TRUE(result->state_union->get_finished()->has_passed);
+  const auto& fan_detail =
+      result->state_union->get_finished()->detail->get_fan();
+  EXPECT_THAT(fan_detail->passed_fan_ids,
+              testing::UnorderedElementsAreArray({0}));
+  EXPECT_EQ(fan_detail->failed_fan_ids.size(), 0);
+  EXPECT_EQ(fan_detail->fan_count_status,
+            mojom::HardwarePresenceStatus::kMatched);
+}
+
+// Test that the routine will fail if there is no fan, but expected a fan.
+TEST_F(FanRoutineTest, RoutineFailureByTooLittleFan) {
+  EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
+      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+        std::move(callback).Run({}, std::nullopt);
+      });
+  SetFanCrosConfig("1");
+
+  base::RunLoop run_loop;
+  SetupAndStartRoutine(true, &run_loop);
+  run_loop.Run();
+  mojom::RoutineStatePtr result = std::move(observer_->state_);
+
+  EXPECT_EQ(result->percentage, 100);
+  EXPECT_TRUE(result->state_union->is_finished());
+  EXPECT_FALSE(result->state_union->get_finished()->has_passed);
+  const auto& fan_detail =
+      result->state_union->get_finished()->detail->get_fan();
+  EXPECT_EQ(fan_detail->passed_fan_ids.size(), 0);
+  EXPECT_EQ(fan_detail->failed_fan_ids.size(), 0);
+  EXPECT_EQ(fan_detail->fan_count_status,
+            mojom::HardwarePresenceStatus::kNotMatched);
+}
+
+// Test that the routine will fail if there is more fan than expected.
+TEST_F(FanRoutineTest, RoutineFailureByTooManyFan) {
+  constexpr int kFanSpeed = 1000;
+  EXPECT_CALL(*mock_context_.mock_executor(), GetAllFanSpeed(_))
+      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+        std::move(callback).Run({kFanSpeed}, std::nullopt);
+      })
+      .WillOnce([=](Executor::GetAllFanSpeedCallback callback) {
+        std::move(callback).Run({kFanSpeed + FanRoutine::kFanRpmChange},
+                                std::nullopt);
+      });
+
+  EXPECT_CALL(*mock_context_.mock_executor(), SetFanSpeed(_, _))
+      .WillOnce([=](const base::flat_map<uint8_t, uint16_t>& fan_rpms,
+                    Executor::SetFanSpeedCallback callback) {
+        // Set fan to be increasing
+        EXPECT_THAT(fan_rpms, testing::UnorderedElementsAre(testing::Pair(
+                                  0, kFanSpeed + FanRoutine::kFanRpmChange)));
+        std::move(callback).Run(std::nullopt);
+      });
+  SetFanCrosConfig("3");
+
+  base::RunLoop run_loop;
+  SetupAndStartRoutine(true, &run_loop);
+  run_loop.Run();
+  mojom::RoutineStatePtr result = std::move(observer_->state_);
+
+  EXPECT_EQ(result->percentage, 100);
+  EXPECT_TRUE(result->state_union->is_finished());
+  EXPECT_FALSE(result->state_union->get_finished()->has_passed);
+  const auto& fan_detail =
+      result->state_union->get_finished()->detail->get_fan();
+  EXPECT_EQ(fan_detail->passed_fan_ids.size(), 1);
+  EXPECT_EQ(fan_detail->failed_fan_ids.size(), 0);
+  EXPECT_EQ(fan_detail->fan_count_status,
+            mojom::HardwarePresenceStatus::kNotMatched);
+}
+
 }  // namespace
 }  // namespace diagnostics

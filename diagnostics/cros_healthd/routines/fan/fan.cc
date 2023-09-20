@@ -14,9 +14,12 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/notreached.h>
+#include <base/numerics/safe_conversions.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -203,8 +206,12 @@ void FanRoutine::HandleSetFanSpeed(const std::optional<std::string>& error) {
 }
 
 std::optional<uint8_t> FanRoutine::GetExpectedFanCount() {
-  // Not implemented yet.
-  return std::nullopt;
+  GroundTruth ground_truth = GroundTruth{context_};
+  uint32_t fan_count;
+  if (!base::StringToUint(ground_truth.FanCount(), &fan_count)) {
+    return std::nullopt;
+  }
+  return base::checked_cast<uint8_t>(fan_count);
 }
 
 mojom::HardwarePresenceStatus FanRoutine::CheckFanCount() {

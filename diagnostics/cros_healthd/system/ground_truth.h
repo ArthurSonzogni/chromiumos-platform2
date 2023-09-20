@@ -38,6 +38,7 @@ class GroundTruth final {
   std::string HasSdReader();
   std::string HasSideVolumeButton();
   std::string StorageType();
+  std::string FanCount();
 
  private:
   ash::cros_healthd::mojom::SupportStatusPtr GetEventSupportStatus(

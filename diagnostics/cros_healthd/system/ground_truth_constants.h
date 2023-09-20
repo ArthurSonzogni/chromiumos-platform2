@@ -26,6 +26,7 @@ inline constexpr char kHasAudioJack[] = "has-audio-jack";
 inline constexpr char kHasSdReader[] = "has-sd-reader";
 inline constexpr char kHasSideVolumeButton[] = "has-side-volume-button";
 inline constexpr char kStorageType[] = "storage-type";
+inline constexpr char kFanCount[] = "fan-count";
 
 }  // namespace cros_config_property
 

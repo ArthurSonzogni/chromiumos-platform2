@@ -243,7 +243,6 @@ void GroundTruth::IsRoutineArgumentSupported(
     case mojom::RoutineArgument::Tag::kCpuCache:
     case mojom::RoutineArgument::Tag::kPrimeSearch:
     case mojom::RoutineArgument::Tag::kFloatingPoint:
-    case mojom::RoutineArgument::Tag::kFan:
       status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
       std::move(callback).Run(std::move(status));
       return;
@@ -258,6 +257,23 @@ void GroundTruth::IsRoutineArgumentSupported(
                                   storage_type),
             nullptr));
       }
+      std::move(callback).Run(std::move(status));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kFan: {
+      auto fan_count = FanCount();
+      // We support testing either when the fan count is larger than 0, or when
+      // the cros config is not set. We intentionally allow empty cros config
+      // since fan routine can handle both fans are present and absent cases.
+      if (fan_count != "0") {
+        status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
+        std::move(callback).Run(std::move(status));
+        return;
+      }
+
+      status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+          WrapUnsupportedString(cros_config_property::kFanCount, fan_count),
+          nullptr));
       std::move(callback).Run(std::move(status));
       return;
     }
@@ -332,6 +348,11 @@ std::string GroundTruth::HasSideVolumeButton() {
 std::string GroundTruth::StorageType() {
   return ReadCrosConfig(cros_config_path::kHardwareProperties,
                         cros_config_property::kStorageType);
+}
+
+std::string GroundTruth::FanCount() {
+  return ReadCrosConfig(cros_config_path::kHardwareProperties,
+                        cros_config_property::kFanCount);
 }
 
 std::string GroundTruth::ReadCrosConfig(const std::string& path,

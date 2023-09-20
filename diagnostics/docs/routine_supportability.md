@@ -138,7 +138,16 @@ Supported only when ChromeOS uses Floss as Bluetooth stack.
 
 ### Fan
 
-Always supported.
+Supported when `fan-count` is not set, or is set and have a non-zero value.
+
+You can run the following commands on your DUT:
+1. `cros_config /hardware-properties fan-count` This is helpful to understand
+   what the value of `fan-count` is.
+2. `cros-health-tool diag fan --check_supported` Use this to see if
+   healthd reports the correct support status.
+
+To configure `fan-count` in Boxster, you can use the `create_fan` function
+defined in [hw_topology.star] to set it up.
 
 [team-contact]: mailto:cros-tdm-tpe-eng@google.com
 [cros_healthd_routines.mojom]: /diagnostics/mojom/public/cros_healthd_routines.mojom
