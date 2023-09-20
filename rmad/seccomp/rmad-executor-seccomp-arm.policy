@@ -80,3 +80,4 @@ rt_sigreturn: 1
 gettimeofday: 1
 chown32: 1
 fsync: 1
+futex: 1

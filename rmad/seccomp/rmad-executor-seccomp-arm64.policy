@@ -100,3 +100,4 @@ gettimeofday: 1
 # AF_UNIX = 0x1
 socket: arg0 == 0x1
 fsync: 1
+futex: 1

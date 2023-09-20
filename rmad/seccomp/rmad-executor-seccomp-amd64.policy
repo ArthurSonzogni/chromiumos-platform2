@@ -83,3 +83,4 @@ sendfile: 1
 gettimeofday: 1
 chown: 1
 fsync: 1
+futex: 1
