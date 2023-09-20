@@ -220,10 +220,18 @@ CrashCollector::ComputedCrashSeverity UserCollector::ComputeSeverity(
     };
   }
 
-  // When `handling_early_chrome_crash_` is true, the crash is a Chrome_ChromeOS
-  // crash. Thus, the computed product group here is `kUi` and the severity is
-  // `kFatal`.
+  // When `handling_early_chrome_crash_` is true, the crash can either be
+  // an ash or lacros chrome crash which is decided by the value
+  // of `early_crash_chrome_product_key_`. The appropriate product group value
+  // is associated with the returned ComputedCrashSeverity.
   if (handling_early_chrome_crash_) {
+    if (early_crash_chrome_product_key_ ==
+        constants::kProductNameChromeLacros) {
+      return ComputedCrashSeverity{
+          .crash_severity = CrashSeverity::kFatal,
+          .product_group = Product::kLacros,
+      };
+    }
     return ComputedCrashSeverity{
         .crash_severity = CrashSeverity::kFatal,
         .product_group = Product::kUi,
@@ -673,8 +681,9 @@ void UserCollector::BeginHandlingCrash(pid_t pid,
       ShouldCaptureEarlyChromeCrash(exec, pid)) {
     handling_early_chrome_crash_ = true;
     // Change product name to Chrome_ChromeOS or Chrome_Lacros.
-    std::string product_key = GuessChromeProductName(exec_directory);
-    AddCrashMetaUploadData(constants::kUploadDataKeyProductKey, product_key);
+    early_crash_chrome_product_key_ = GuessChromeProductName(exec_directory);
+    AddCrashMetaUploadData(constants::kUploadDataKeyProductKey,
+                           early_crash_chrome_product_key_);
     AddCrashMetaUploadData("early_chrome_crash", "true");
 
     // Add the "ptype=browser" normally added by InitializeCrashpadImpl(). Since
@@ -696,7 +705,8 @@ void UserCollector::BeginHandlingCrash(pid_t pid,
     // it here if appropriate. Otherwise we risk losing crashes if there's an
     // early crash loading a user's profile info.
 
-    LOG(INFO) << "Activating early Chrome crash mode for " << product_key;
+    LOG(INFO) << "Activating early Chrome crash mode for "
+              << early_crash_chrome_product_key_;
   }
 }
 

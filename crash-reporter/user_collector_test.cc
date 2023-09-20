@@ -702,7 +702,7 @@ TEST_F(UserCollectorTest, ComputeSeverity_NotSessionManagerExecutable) {
             CrashCollector::Product::kPlatform);
 }
 
-TEST_F(UserCollectorTest, ComputeSeverity_HandleEarlyChromeCrashes) {
+TEST_F(UserCollectorTest, ComputeSeverity_HandleEarlyChromeCrashes_Ash) {
   collector_.SetHandlingEarlyChromeCrashForTesting(true);
 
   CrashCollector::ComputedCrashSeverity computed_severity =
@@ -1412,4 +1412,20 @@ TEST_F(BeginHandlingCrashTest, NoEffectIfNotChrome) {
               AllOf(Not(HasSubstr("upload_var_prod=Chrome_ChromeOS\n")),
                     Not(HasSubstr("upload_var_early_chrome_crash=true\n")),
                     Not(HasSubstr("upload_var_ptype=browser\n"))));
+}
+
+TEST_F(BeginHandlingCrashTest,
+       ComputeSeverity_HandleEarlyChromeCrashes_Lacros) {
+  EXPECT_TRUE(collector_.ShouldCaptureEarlyChromeCrash("chrome",
+                                                       kEarlyBrowserProcessID));
+  collector_.SetHandlingEarlyChromeCrashForTesting(true);
+  collector_.BeginHandlingCrash(kEarlyBrowserProcessID, "chrome",
+                                paths::Get("/run/lacros"));
+
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("test exec name");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kFatal);
+  EXPECT_EQ(computed_severity.product_group, CrashCollector::Product::kLacros);
 }
