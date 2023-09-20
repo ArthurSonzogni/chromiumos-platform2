@@ -25,7 +25,6 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
@@ -112,9 +111,6 @@ constexpr char kSNATUserDnsChain[] = "snat_user_dns";
 // mangle OUTPUT and PREROUTING chain for applying fwmarks on both ingress and
 // egress traffic for QoS.
 constexpr char kQoSDetectChain[] = "qos_detect";
-// mangle chain for holding the dynamic matching rules for DoH. Referenced in
-// the qos_detect chain.
-constexpr char kQoSDetectDoHChain[] = "qos_detect_doh";
 // mangle POSTROUTING chain for applying DSCP fields based on fwmarks for egress
 // traffic.
 constexpr char kQoSApplyDSCPChain[] = "qos_apply_dscp";
@@ -223,7 +219,6 @@ void Datapath::Start() {
       // fwmarks for QoS. QoSService controls when to add the jump rules to this
       // chain.
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectDoHChain},
       // Set up a mangle chain used in POSTROUTING for applying DSCP values for
       // QoS. QoSService controls when to add the jump rules to this chain.
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain},
@@ -588,7 +583,6 @@ void Datapath::ResetIptables() {
       {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain, true},
-      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectDoHChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain, true},
       {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain,
        true},
@@ -2419,10 +2413,6 @@ void Datapath::SetupQoSDetectChain() {
                {"-p", "tcp", "--dport", "53", "-j", "MARK", "--set-xmark",
                 QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
 
-  // Add a jump rule to the DoH detection chain. Rules in this chain will be
-  // installed dynamically in UpdateDoHProvidersForQoS().
-  install_rule(IpFamily::kDual, {"-j", kQoSDetectDoHChain, "-w"});
-
   // TODO(b/296952085): Add rules for WebRTC detection. Also need to add an
   // early-return rule above for packets marked by rules for network control, to
   // avoid marks on TCP handshake packets being persisted into connmark.
@@ -2478,64 +2468,6 @@ void Datapath::ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
   ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command,
                  "POSTROUTING",
                  {"-o", std::string(ifname), "-j", kQoSApplyDSCPChain, "-w"});
-}
-
-void Datapath::UpdateDoHProvidersForQoS(
-    const ShillClient::DoHProviders& doh_providers) {
-  // Clear all the rules for the previous DoH providers.
-  FlushChain(IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectDoHChain);
-
-  // iptables can take a hostname (instead of an IP address) in a rule and it
-  // will resolve it to IP address(es) and add one rule for each result. We need
-  // to trim the "https://" prefix and the path after the hostname before
-  // passing it to the iptables.
-  //
-  // Currently, Chrome checks that each entry must contain the "https://"
-  // prefix. See net/dns/public/dns_over_https_server_config.cc:GetHttpsHost()
-  // in the Chromium code. It's possible that the url may contain a port. We
-  // will just ignore it since it's uncommon to use non-443 port.
-  //
-  // We only need a preliminary preprocessing instead of checking whether it is
-  // a valid hostname carefully.
-  const auto get_hostname = [](std::string_view url) -> std::string_view {
-    static constexpr std::string_view kHTTPSPrefix = "https://";
-    if (!base::StartsWith(url, kHTTPSPrefix)) {
-      return {};
-    }
-    const auto segments =
-        base::SplitStringPiece(url.substr(kHTTPSPrefix.size()), "/",
-                               base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-    return segments.size() > 0 ? segments[0] : "";
-  };
-
-  // Get the list of valid hostnames.
-  std::vector<std::string_view> hostnames;
-  for (const auto& provider : doh_providers) {
-    const auto hostname = get_hostname(provider);
-    if (hostname.empty()) {
-      // The value can be input by users so use WARNING instead of ERROR here.
-      LOG(WARNING) << "Invalid DoH provider URL: " << provider;
-      continue;
-    }
-    hostnames.push_back(hostname);
-  }
-
-  // Mark all the TCP and UDP traffic to the 443 port of the DoH servers. This
-  // may have false positives if the server is also used for non-DNS HTTPS
-  // traffic.
-  for (std::string_view protocol : {"udp", "tcp"}) {
-    // Note that DoH servers can be v4- or v6-only, in which cases the iptables
-    // will return an error, disable |log_failures| to avoid WARNING logs in
-    // those cases. Since iptables will do the name resolving, set 5 seconds
-    // timeout to avoid patchpanel being blocked by any chance.
-    ModifyIptables(
-        IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
-        kQoSDetectDoHChain,
-        {"-p", std::string(protocol), "--dport", "443", "-d",
-         base::JoinString(hostnames, ","), "-j", "MARK", "--set-xmark",
-         QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"},
-        /*log_failures=*/false, /*timeout=*/base::Seconds(5));
-  }
 }
 
 std::ostream& operator<<(std::ostream& stream,

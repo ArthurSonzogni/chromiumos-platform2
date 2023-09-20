@@ -196,7 +196,6 @@ class Manager {
                              const std::vector<ShillClient::Device>& removed);
   void OnIPConfigsChanged(const ShillClient::Device& shill_device);
   void OnIPv6NetworkChanged(const ShillClient::Device& shill_device);
-  void OnDoHProvidersChanged(const ShillClient::DoHProviders& doh_providers);
 
   // Callbacks from |arc_svc_| and |cros_svc_| to notify Manager about new
   // or removed virtual Devices.
