@@ -147,6 +147,7 @@ source_set("base") {
     ":target_defaults",
   ]
 
+  pkg_deps = [ "re2" ]
   deps = [ ":tracing" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
