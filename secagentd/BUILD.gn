@@ -110,6 +110,7 @@ static_library("libsecagent") {
     "proto:security_xdr_events_proto",
     "//common-mk/external_dependencies:policy-protos",
   ]
+  pkg_deps = [ "re2" ]
 }
 
 executable("secagentd") {
