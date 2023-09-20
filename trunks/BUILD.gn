@@ -149,6 +149,7 @@ shared_library("trunks") {
     libs += [ "ftdi1" ]
     defines += [ "SPI_OVER_FTDI=1" ]
   }
+  pkg_deps = [ "absl" ]
   deps = [
     ":interface_proto",
     ":pinweaver_csme_lib",
