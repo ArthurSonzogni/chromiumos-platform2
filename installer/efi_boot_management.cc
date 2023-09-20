@@ -63,8 +63,8 @@ const char kUMAEfiManagementEventName[] =
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum class EfiManagementEvent {
-  kRequiredEntryManagementFailed = 0,
-  kOptionalEntryManagementFailed = 1,
+  kRequiredEntryManagementFailed = 1,
+  kOptionalEntryManagementFailed = 2,
   kMaxValue = kOptionalEntryManagementFailed,
 };
 
