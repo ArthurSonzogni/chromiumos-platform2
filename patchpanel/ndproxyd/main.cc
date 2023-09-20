@@ -75,9 +75,9 @@ int main(int argc, char* argv[]) {
       usleep(10 * 1000 * 1000 /* 10 seconds */);
     }
     ifid_guest = system.IfNametoindex(args[1]);
-    if (ifid_guest == 0) {
-      // Guest bridge doesn't exist yet, try again later.
-      continue;
+    if (ifid_guest > 0) {
+      // Guest bridge now exists.
+      break;
     }
   }
   if (ifid_guest == 0) {
