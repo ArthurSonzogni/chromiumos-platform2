@@ -7,6 +7,7 @@
 #include <pcrecpp.h>
 
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/containers/fixed_flat_set.h>
@@ -32,11 +33,11 @@ constexpr auto kSysfsExpectedType = "Battery";
 constexpr uint32_t kmAhTouAhMultiplier = 1000;
 
 // These keys are expected to present no matter what types of battery is:
-constexpr auto kBatteryKeys = base::MakeFixedFlatSet<base::StringPiece>(
+constexpr auto kBatteryKeys = base::MakeFixedFlatSet<std::string_view>(
     {"manufacturer", "model_name", "technology", "type"});
 
 // These keys are optional
-constexpr auto kBatteryOptionalKeys = base::MakeFixedFlatSet<base::StringPiece>(
+constexpr auto kBatteryOptionalKeys = base::MakeFixedFlatSet<std::string_view>(
     {"capacity", "capacity_level", "charge_full", "charge_full_design",
      "present", "serial_number", "voltage_min_design"});
 

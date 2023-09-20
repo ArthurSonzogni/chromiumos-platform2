@@ -6,6 +6,7 @@
 #define RUNTIME_PROBE_UTILS_FILE_TEST_UTILS_H_
 
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -32,7 +33,7 @@ class BaseFileTest : public ::testing::Test {
         : file_path_(path) {}
     PathType(const std::string& path)  // NOLINT(runtime/explicit)
         : file_path_(path) {}
-    PathType(base::StringPiece path)  // NOLINT(runtime/explicit)
+    PathType(std::string_view path)  // NOLINT(runtime/explicit)
         : file_path_(path) {}
     PathType(const base::FilePath& path)  // NOLINT(runtime/explicit)
         : file_path_(path) {}

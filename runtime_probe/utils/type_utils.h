@@ -6,8 +6,7 @@
 #define RUNTIME_PROBE_UTILS_TYPE_UTILS_H_
 
 #include <string>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 namespace runtime_probe {
 // The following functions are helper functions to convert a string to numeric
@@ -20,19 +19,19 @@ namespace runtime_probe {
 // - Perfect conversion after leading and trailing spaces are removed.
 
 // Converts a string to double.
-bool StringToDouble(base::StringPiece input, double* output);
+bool StringToDouble(std::string_view input, double* output);
 
 // Converts a string to int.
-bool StringToInt(base::StringPiece input, int* output);
+bool StringToInt(std::string_view input, int* output);
 
 // Converts a string to int64.
-bool StringToInt64(base::StringPiece input, int64_t* output);
+bool StringToInt64(std::string_view input, int64_t* output);
 
 // Converts a hex string to int.
-bool HexStringToInt(base::StringPiece input, int* output);
+bool HexStringToInt(std::string_view input, int* output);
 
 // Converts a hex string to int64.
-bool HexStringToInt64(base::StringPiece input, int64_t* output);
+bool HexStringToInt64(std::string_view input, int64_t* output);
 
 // Converts a byte to hex string.
 std::string ByteToHexString(const uint8_t byte);

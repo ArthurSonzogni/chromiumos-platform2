@@ -5,17 +5,17 @@
 #ifndef RUNTIME_PROBE_FUNCTIONS_AUDIO_CODEC_H_
 #define RUNTIME_PROBE_FUNCTIONS_AUDIO_CODEC_H_
 
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 #include "runtime_probe/probe_function.h"
 
 namespace runtime_probe {
 
-inline constexpr const base::StringPiece kKnownInvalidCodecNames[] = {
+inline constexpr const std::string_view kKnownInvalidCodecNames[] = {
     "dw-hdmi-audio",
     "snd-soc-dummy",
 };
-inline constexpr const base::StringPiece kAsocPaths[] = {
+inline constexpr const std::string_view kAsocPaths[] = {
     "/sys/kernel/debug/asoc/components",  // for kernel version >= 4.14
     "/sys/kernel/debug/asoc/codecs",      // for kernel version <= 4.4
 };

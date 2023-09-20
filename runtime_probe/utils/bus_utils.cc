@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -14,7 +15,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/values.h>
 
 #include "runtime_probe/utils/file_utils.h"
@@ -25,19 +25,19 @@ namespace runtime_probe {
 namespace {
 
 constexpr auto kPciFields =
-    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+    base::MakeFixedFlatMap<std::string_view, std::string_view>(
         {{"vendor_id", "vendor"}, {"device_id", "device"}, {"class", "class"}});
 constexpr auto kPciOptionalFields =
-    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+    base::MakeFixedFlatMap<std::string_view, std::string_view>(
         {{"revision", "revision"}, {"subsystem", "subsystem_device"}});
 constexpr auto kSdioFields =
-    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+    base::MakeFixedFlatMap<std::string_view, std::string_view>(
         {{"vendor_id", "vendor"}, {"device_id", "device"}});
 constexpr auto kUsbFields =
-    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+    base::MakeFixedFlatMap<std::string_view, std::string_view>(
         {{"vendor_id", "idVendor"}, {"product_id", "idProduct"}});
 constexpr auto kUsbOptionalFields =
-    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+    base::MakeFixedFlatMap<std::string_view, std::string_view>(
         {{"bcd_device", "bcdDevice"}});
 
 constexpr int PCI_REVISION_ID_OFFSET = 0x08;

@@ -7,11 +7,11 @@
 #include <inttypes.h>
 
 #include <memory>
+#include <string_view>
 
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 
@@ -68,9 +68,9 @@ constexpr const char* ToString(ValidatorOperator op) {
   return nullptr;
 }
 
-bool SplitValidateRuleString(const base::StringPiece& validate_rule,
+bool SplitValidateRuleString(std::string_view validate_rule,
                              ValidatorOperator* operator_,
-                             base::StringPiece* operand) {
+                             std::string* operand) {
   if (validate_rule.empty()) {
     *operator_ = ValidatorOperator::NOP;
     *operand = "";
@@ -95,9 +95,9 @@ bool SplitValidateRuleString(const base::StringPiece& validate_rule,
 
 template <typename ConverterType>
 std::unique_ptr<ConverterType> BuildNumericConverter(
-    const base::StringPiece& validate_rule) {
+    std::string_view validate_rule) {
   ValidatorOperator op;
-  base::StringPiece rest;
+  std::string rest;
 
   if (SplitValidateRuleString(validate_rule, &op, &rest)) {
     if (op == ValidatorOperator::NOP)
@@ -174,9 +174,9 @@ std::string DoubleFieldConverter::ToString() const {
 }
 
 std::unique_ptr<StringFieldConverter> StringFieldConverter::Build(
-    const base::StringPiece& validate_rule) {
+    std::string_view validate_rule) {
   ValidatorOperator op;
-  base::StringPiece pattern;
+  std::string pattern;
 
   if (SplitValidateRuleString(validate_rule, &op, &pattern)) {
     if (op == ValidatorOperator::NOP)
@@ -203,17 +203,17 @@ std::unique_ptr<StringFieldConverter> StringFieldConverter::Build(
 }
 
 std::unique_ptr<IntegerFieldConverter> IntegerFieldConverter::Build(
-    const base::StringPiece& validate_rule) {
+    std::string_view validate_rule) {
   return BuildNumericConverter<IntegerFieldConverter>(validate_rule);
 }
 
 std::unique_ptr<HexFieldConverter> HexFieldConverter::Build(
-    const base::StringPiece& validate_rule) {
+    std::string_view validate_rule) {
   return BuildNumericConverter<HexFieldConverter>(validate_rule);
 }
 
 std::unique_ptr<DoubleFieldConverter> DoubleFieldConverter::Build(
-    const base::StringPiece& validate_rule) {
+    std::string_view validate_rule) {
   return BuildNumericConverter<DoubleFieldConverter>(validate_rule);
 }
 

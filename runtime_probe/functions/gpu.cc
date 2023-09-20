@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -13,7 +14,6 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <minigbm/minigbm_helpers.h>
 
@@ -24,7 +24,7 @@ namespace runtime_probe {
 namespace {
 
 constexpr char kPCIDevicesPath[] = "sys/bus/pci/devices";
-constexpr auto kGPUFields = base::MakeFixedFlatSet<base::StringPiece>(
+constexpr auto kGPUFields = base::MakeFixedFlatSet<std::string_view>(
     {"vendor", "device", "subsystem_vendor", "subsystem_device"});
 
 }  // namespace

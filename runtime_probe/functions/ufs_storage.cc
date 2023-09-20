@@ -5,14 +5,11 @@
 #include "runtime_probe/functions/ufs_storage.h"
 
 #include <optional>
-#include <utility>
+#include <string_view>
 
 #include <base/containers/fixed_flat_set.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
-#include <brillo/strings/string_utils.h>
 
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/value_utils.h"
@@ -21,7 +18,7 @@ namespace runtime_probe {
 namespace {
 // Storage-specific fields to probe for UFS.
 constexpr auto kUfsFields =
-    base::MakeFixedFlatSet<base::StringPiece>({"vendor", "model"});
+    base::MakeFixedFlatSet<std::string_view>({"vendor", "model"});
 constexpr auto kUfsType = "UFS";
 constexpr auto kUfsPrefix = "ufs_";
 

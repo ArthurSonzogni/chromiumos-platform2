@@ -5,25 +5,24 @@
 #ifndef RUNTIME_PROBE_UTILS_FILE_UTILS_H_
 #define RUNTIME_PROBE_UTILS_FILE_UTILS_H_
 
-#include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 #include <base/values.h>
 
 namespace runtime_probe {
 namespace internal {
 
 bool ReadFileToDict(const base::FilePath& dir_path,
-                    base::StringPiece key,
+                    std::string_view key,
                     bool log_error,
                     base::Value& result);
 bool ReadFileToDict(const base::FilePath& dir_path,
-                    const std::pair<base::StringPiece, base::StringPiece>& key,
+                    const std::pair<std::string_view, std::string_view>& key,
                     bool log_error,
                     base::Value& result);
 
@@ -73,7 +72,7 @@ std::vector<base::FilePath> Glob(const std::string& pattern);
 // Gets the path under the root directory provided by the `Context`. The path
 // should be absolute.
 base::FilePath GetRootedPath(const base::FilePath& path);
-base::FilePath GetRootedPath(base::StringPiece path);
+base::FilePath GetRootedPath(std::string_view path);
 
 }  // namespace runtime_probe
 

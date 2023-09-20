@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <string_view>
 
-#include <base/strings/string_piece.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
@@ -12,32 +12,32 @@
 
 namespace runtime_probe {
 
-bool StringToDouble(base::StringPiece input, double* output) {
-  base::StringPiece trimmed_input =
+bool StringToDouble(std::string_view input, double* output) {
+  std::string_view trimmed_input =
       TrimWhitespaceASCII(input, base::TrimPositions::TRIM_ALL);
   return base::StringToDouble(trimmed_input, output);
 }
 
-bool StringToInt(base::StringPiece input, int* output) {
-  base::StringPiece trimmed_input =
+bool StringToInt(std::string_view input, int* output) {
+  std::string_view trimmed_input =
       TrimWhitespaceASCII(input, base::TrimPositions::TRIM_ALL);
   return base::StringToInt(trimmed_input, output);
 }
 
-bool StringToInt64(base::StringPiece input, int64_t* output) {
-  base::StringPiece trimmed_input =
+bool StringToInt64(std::string_view input, int64_t* output) {
+  std::string_view trimmed_input =
       TrimWhitespaceASCII(input, base::TrimPositions::TRIM_ALL);
   return base::StringToInt64(trimmed_input, output);
 }
 
-bool HexStringToInt(base::StringPiece input, int* output) {
-  base::StringPiece trimmed_input =
+bool HexStringToInt(std::string_view input, int* output) {
+  std::string_view trimmed_input =
       TrimWhitespaceASCII(input, base::TrimPositions::TRIM_ALL);
   return base::HexStringToInt(trimmed_input, output);
 }
 
-bool HexStringToInt64(base::StringPiece input, int64_t* output) {
-  base::StringPiece trimmed_input =
+bool HexStringToInt64(std::string_view input, int64_t* output) {
+  std::string_view trimmed_input =
       TrimWhitespaceASCII(input, base::TrimPositions::TRIM_ALL);
   return base::HexStringToInt64(trimmed_input, output);
 }

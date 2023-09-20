@@ -3,16 +3,14 @@
 // found in the LICENSE file.
 
 #include <algorithm>
-#include <optional>
 #include <string>
-#include <tuple>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 
 #include "runtime_probe/system/context.h"
@@ -25,7 +23,7 @@ constexpr int kReadFileMaxSize = 1024;
 constexpr int kGlobIterateCountLimit = 32768;
 
 bool ReadFile(const base::FilePath& dir_path,
-              base::StringPiece file_name,
+              std::string_view file_name,
               std::string& out) {
   if (base::FilePath{file_name}.IsAbsolute()) {
     LOG(ERROR) << "file_name " << file_name << " is absolute";
@@ -87,23 +85,23 @@ std::vector<base::FilePath> GlobInternal(
 namespace internal {
 
 bool ReadFileToDict(const base::FilePath& dir_path,
-                    base::StringPiece key,
+                    std::string_view key,
                     bool log_error,
                     base::Value& result) {
   return ReadFileToDict(dir_path, {key, key}, log_error, result);
 }
 
 bool ReadFileToDict(const base::FilePath& dir_path,
-                    const std::pair<base::StringPiece, base::StringPiece>& key,
+                    const std::pair<std::string_view, std::string_view>& key,
                     bool log_error,
                     base::Value& result) {
-  base::StringPiece file_name = key.second;
+  std::string_view file_name = key.second;
   std::string content;
   if (!ReadFile(dir_path, file_name, content)) {
     LOG_IF(ERROR, log_error) << "file \"" << file_name << "\" is required.";
     return false;
   }
-  base::StringPiece key_name = key.first;
+  std::string_view key_name = key.first;
   result.GetDict().Set(key_name, content);
   return true;
 }
@@ -152,7 +150,7 @@ base::FilePath GetRootedPath(const base::FilePath& path) {
   return res;
 }
 
-base::FilePath GetRootedPath(base::StringPiece path) {
+base::FilePath GetRootedPath(std::string_view path) {
   return GetRootedPath(base::FilePath{path});
 }
 
