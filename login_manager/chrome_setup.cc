@@ -252,6 +252,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
 
   if (builder->UseFlagIsSet("arc_adb_sideloading"))
     builder->AddFeatureEnableOverride("ArcAdbSideloading");
+  if (builder->UseFlagIsSet("arc_container_app_killer"))
+    builder->AddFeatureEnableOverride("ContainerAppKiller");
   if (builder->UseFlagIsSet("arc_transition_m_to_n"))
     builder->AddArg("--arc-transition-migration-required");
   if (builder->UseFlagIsSet("arc_force_2x_scaling"))
