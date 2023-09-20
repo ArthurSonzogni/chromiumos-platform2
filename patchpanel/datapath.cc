@@ -163,6 +163,10 @@ std::string PreroutingSubChainName(const std::string& int_ifname) {
   return "PREROUTING_" + int_ifname;
 }
 
+std::string EgressSubChainName(const std::string& ext_ifname) {
+  return "egress_" + ext_ifname;
+}
+
 }  // namespace
 
 Datapath::Datapath(System* system)
@@ -498,6 +502,24 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to add jump rule to VPN chain in mangle OUTPUT chain";
   }
 
+  // Add default IPv6 DROP rules to OUTPUT for any shill managed network
+  // interface configured with StartSourceIPv6PrefixEnforcement. These rules
+  // DROP any packet with global unicast or unique local source addresses that
+  // did not match the specific prefix configured with
+  // StartSourceIPv6PrefixEnforcement.
+  if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
+                      Iptables::Command::kA, kEnforceSourcePrefixChain,
+                      {"-s", "2000::/3", "-j", "DROP", "-w"})) {
+    LOG(ERROR) << "Fail to add 2000::/3 DROP rule in "
+               << kEnforceSourcePrefixChain;
+  }
+  if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
+                      Iptables::Command::kA, kEnforceSourcePrefixChain,
+                      {"-s", "fc00::/7", "-j", "DROP", "-w"})) {
+    LOG(ERROR) << "Fail to add fc00::/7 DROP rule in "
+               << kEnforceSourcePrefixChain;
+  }
+
   SetupQoSDetectChain();
   SetupQoSApplyDSCPChain();
 }
@@ -592,6 +614,8 @@ void Datapath::ResetIptables() {
       {IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain, true},
       {IpFamily::kDual, Iptables::Table::kFilter, kVpnLockdownChain, true},
       {IpFamily::kDual, Iptables::Table::kFilter, kAcceptDownstreamNetworkChain,
+       true},
+      {IpFamily::kIPv6, Iptables::Table::kFilter, kEnforceSourcePrefixChain,
        true},
       {IpFamily::kDual, Iptables::Table::kNat, "OUTPUT", false},
       {IpFamily::kDual, Iptables::Table::kNat, "POSTROUTING", false},
@@ -1802,20 +1826,39 @@ void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
 void Datapath::StartSourceIPv6PrefixEnforcement(
     const ShillClient::Device& shill_device) {
   VLOG(2) << __func__ << ": " << shill_device;
-  ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
-                 Iptables::Command::kI, "OUTPUT", kEnforceSourcePrefixChain,
-                 /*iif=*/"", /*oif=*/shill_device.ifname);
+  std::string subchain = EgressSubChainName(shill_device.ifname);
+  if (!AddChain(IpFamily::kIPv6, Iptables::Table::kFilter, subchain)) {
+    LOG(ERROR) << __func__ << ": Failed to create chain " << subchain;
+    return;
+  }
+  if (!ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
+                      Iptables::Command::kI, "OUTPUT", subchain,
+                      /*iif=*/"", /*oif=*/shill_device.ifname)) {
+    LOG(ERROR) << __func__ << ": Failed to add jump rule from OUTPUT to "
+               << subchain;
+    return;
+  }
+  // By default, immediately start jumping to "enforce_ipv6_src_prefix" to drop
+  // traffic until the prefix RETURN rule is installed.
+  UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
 }
 
 void Datapath::StopSourceIPv6PrefixEnforcement(
     const ShillClient::Device& shill_device) {
   VLOG(2) << __func__ << ": " << shill_device;
-  if (ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
-                     Iptables::Command::kD, "OUTPUT", kEnforceSourcePrefixChain,
-                     /*iif=*/"", /*oif=*/shill_device.ifname)) {
-    // if we removed the jump rule, also clear the prefix RETURN rule in the
-    // chain to prepare for the next time when that jump rule will be added.
-    UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
+  std::string subchain = EgressSubChainName(shill_device.ifname);
+  if (!FlushChain(IpFamily::kIPv6, Iptables::Table::kFilter, subchain)) {
+    LOG(ERROR) << __func__ << ": Failed to flush " << subchain;
+  }
+  if (!ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
+                      Iptables::Command::kD, "OUTPUT", subchain,
+                      /*iif=*/"", /*oif=*/shill_device.ifname)) {
+    LOG(ERROR) << __func__ << ": Failed to remove jump rule from OUTPUT to "
+               << subchain;
+    return;
+  }
+  if (!RemoveChain(IpFamily::kIPv6, Iptables::Table::kFilter, subchain)) {
+    LOG(ERROR) << __func__ << ": Failed to remove chain " << subchain;
   }
 }
 
@@ -1824,31 +1867,25 @@ void Datapath::UpdateSourceEnforcementIPv6Prefix(
     const std::optional<net_base::IPv6CIDR>& prefix) {
   VLOG(2) << __func__ << ": " << shill_device << ", {"
           << (prefix ? prefix->ToString() : "") << "}";
-  if (!FlushChain(IpFamily::kIPv6, Iptables::Table::kFilter,
-                  kEnforceSourcePrefixChain)) {
-    LOG(ERROR) << "Failed to flush " << kEnforceSourcePrefixChain;
+  std::string subchain = EgressSubChainName(shill_device.ifname);
+  if (!FlushChain(IpFamily::kIPv6, Iptables::Table::kFilter, subchain)) {
+    LOG(ERROR) << __func__ << ": Failed to flush " << subchain;
   }
   if (prefix) {
     if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
-                        Iptables::Command::kA, kEnforceSourcePrefixChain,
+                        Iptables::Command::kA, subchain,
                         {"-s", prefix->ToString(), "-j", "RETURN", "-w"})) {
-      LOG(ERROR) << "Fail to add " + prefix->ToString() + " RETURN rule in "
-                 << kEnforceSourcePrefixChain;
+      LOG(ERROR) << __func__
+                 << ": Failed to add " + prefix->ToString() + " RETURN rule in "
+                 << subchain;
     }
   }
-  // Adding default DROP rule to DROP any packet with global unicast or unique
-  // local source addresses.
-  if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
-                      Iptables::Command::kA, kEnforceSourcePrefixChain,
-                      {"-s", "2000::/3", "-j", "DROP", "-w"})) {
-    LOG(ERROR) << "Fail to add 2000::/3 DROP rule in "
-               << kEnforceSourcePrefixChain;
-  }
-  if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
-                      Iptables::Command::kA, kEnforceSourcePrefixChain,
-                      {"-s", "fc00::/7", "-j", "DROP", "-w"})) {
-    LOG(ERROR) << "Fail to add fc00::/7 DROP rule in "
-               << kEnforceSourcePrefixChain;
+  if (!ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
+                      Iptables::Command::kA, subchain,
+                      kEnforceSourcePrefixChain,
+                      /*iif=*/"", /*oif=*/"")) {
+    LOG(ERROR) << __func__ << ": Failed to add jump rule from " << subchain
+               << " to " << kEnforceSourcePrefixChain;
   }
 }
 

@@ -312,6 +312,9 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual, "filter -L accept_downstream_network -w"},
       {IpFamily::kDual, "filter -F accept_downstream_network -w"},
       {IpFamily::kDual, "filter -X accept_downstream_network -w"},
+      {IpFamily::kIPv6, "filter -L enforce_ipv6_src_prefix -w"},
+      {IpFamily::kIPv6, "filter -F enforce_ipv6_src_prefix -w"},
+      {IpFamily::kIPv6, "filter -X enforce_ipv6_src_prefix -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_arc -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_crostini -w"},
@@ -538,6 +541,10 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual,
        "mangle -A qos_apply_dscp -m mark --mark 0x00000080/0x000000e0 -j DSCP "
        "--set-dscp 34 -w"},
+      {IpFamily::kIPv6,
+       "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w"},
+      {IpFamily::kIPv6,
+       "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w"},
   };
   for (const auto& c : iptables_commands) {
     Verify_iptables(*runner, c.family, c.args);
@@ -607,6 +614,9 @@ TEST(DatapathTest, Stop) {
       {IpFamily::kDual, "filter -X accept_downstream_network -w"},
       {IpFamily::kDual, "filter -D INPUT -j ingress_port_firewall -w"},
       {IpFamily::kDual, "filter -D OUTPUT -j egress_port_firewall -w"},
+      {IpFamily::kIPv6, "filter -L enforce_ipv6_src_prefix -w"},
+      {IpFamily::kIPv6, "filter -F enforce_ipv6_src_prefix -w"},
+      {IpFamily::kIPv6, "filter -X enforce_ipv6_src_prefix -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_arc -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_crostini -w"},
@@ -2250,52 +2260,41 @@ TEST(DatapathTest, PrefixEnforcement) {
   ShillClient::Device cell_device;
   cell_device.ifname = "wwan0";
 
+  Verify_iptables(*runner, IpFamily::kIPv6, "filter -N egress_wwan0 -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -I OUTPUT -o wwan0 -j enforce_ipv6_src_prefix -w");
+                  "filter -I OUTPUT -o wwan0 -j egress_wwan0 -w");
+  Verify_iptables(*runner, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath.StartSourceIPv6PrefixEnforcement(cell_device);
 
+  Verify_iptables(*runner, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -F enforce_ipv6_src_prefix -w");
-  Verify_iptables(
-      *runner, IpFamily::kIPv6,
-      "filter -A enforce_ipv6_src_prefix -s 2001:db8:1:1::/64 -j RETURN -w");
+                  "filter -A egress_wwan0 -s 2001:db8:1:1::/64 -j RETURN -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
-  Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
+                  "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath.UpdateSourceEnforcementIPv6Prefix(
       cell_device,
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:1::/64"));
 
+  Verify_iptables(*runner, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -F enforce_ipv6_src_prefix -w");
-  Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
-  Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
+                  "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath.UpdateSourceEnforcementIPv6Prefix(cell_device, std::nullopt);
 
+  Verify_iptables(*runner, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -F enforce_ipv6_src_prefix -w");
-  Verify_iptables(
-      *runner, IpFamily::kIPv6,
-      "filter -A enforce_ipv6_src_prefix -s 2001:db8:1:2::/64 -j RETURN -w");
+                  "filter -A egress_wwan0 -s 2001:db8:1:2::/64 -j RETURN -w");
   Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
-  Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
+                  "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath.UpdateSourceEnforcementIPv6Prefix(
       cell_device,
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:2::/64"));
 
   Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -D OUTPUT -o wwan0 -j enforce_ipv6_src_prefix -w");
-  Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -F enforce_ipv6_src_prefix -w");
-  Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
-  Verify_iptables(*runner, IpFamily::kIPv6,
-                  "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
+                  "filter -D OUTPUT -o wwan0 -j egress_wwan0 -w");
+  Verify_iptables(*runner, IpFamily::kIPv6, "filter -F egress_wwan0 -w");
+  Verify_iptables(*runner, IpFamily::kIPv6, "filter -X egress_wwan0 -w");
   datapath.StopSourceIPv6PrefixEnforcement(cell_device);
 }
 
