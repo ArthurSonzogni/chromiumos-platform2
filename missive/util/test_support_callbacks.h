@@ -66,9 +66,8 @@ class TestMultiEvent {
 
   // Completion callback to hand over to the processing method.
   [[nodiscard]] base::OnceCallback<void(ResType... res)> cb() {
-    return base::BindPostTask(base::SequencedTaskRunner::GetCurrentDefault(),
-                              base::BindOnce(&TestMultiEvent::SetResult,
-                                             weak_ptr_factory_.GetWeakPtr()));
+    return base::BindPostTaskToCurrentDefault(base::BindOnce(
+        &TestMultiEvent::SetResult, weak_ptr_factory_.GetWeakPtr()));
   }
 
   // Repeating completion callback to hand over to the processing method.
@@ -76,10 +75,18 @@ class TestMultiEvent {
   // `result` only waits for one value; repeating declaration is only needed
   // for cases when the caller requires it.
   [[nodiscard]] base::RepeatingCallback<void(ResType... res)> repeating_cb() {
-    return base::BindPostTask(
-        base::SequencedTaskRunner::GetCurrentDefault(),
-        base::BindRepeating(&TestMultiEvent::SetResult,
-                            weak_ptr_factory_.GetWeakPtr()));
+    return base::BindPostTaskToCurrentDefault(base::BindRepeating(
+        [](base::WeakPtr<TestMultiEvent<ResType...>> self, ResType... res) {
+          if (!self) {
+            return;
+          }
+          ASSERT_FALSE(self->repeated_cb_called_)
+              << "repeating_cb() called more than once, but it is only "
+                 "intended to be called once.";
+          self->SetResult(std::forward<ResType>(res)...);
+          self->repeated_cb_called_ = true;
+        },
+        weak_ptr_factory_.GetWeakPtr()));
   }
 
  protected:
@@ -110,6 +117,7 @@ class TestMultiEvent {
 
   base::Lock lock_;
   std::optional<TupleType> result_;
+  bool repeated_cb_called_{false};
   base::WeakPtrFactory<TestMultiEvent<ResType...>> weak_ptr_factory_{this};
 };
 
