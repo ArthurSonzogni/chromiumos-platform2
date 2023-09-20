@@ -965,6 +965,9 @@ std::optional<ComponentMemoryMargins> Service::GetComponentMemoryMargins() {
   static constexpr char kArcvmForegroundKey[] = "ArcvmForeground";
   static constexpr char kArcvmPerceptibleKey[] = "ArcvmPerceptible";
   static constexpr char kArcvmCachedKey[] = "ArcvmCached";
+  static constexpr char kArcContainerForeground[] = "ArcContainerForeground";
+  static constexpr char kArcContainerPerceptible[] = "ArcContainerPerceptible";
+  static constexpr char kArcContainerCached[] = "ArcContainerCached";
 
   dbus::MethodCall method_call(
       resource_manager::kResourceManagerInterface,
@@ -1007,6 +1010,12 @@ std::optional<ComponentMemoryMargins> Service::GetComponentMemoryMargins() {
         margins.arcvm_perceptible = value;
       } else if (key == kArcvmCachedKey) {
         margins.arcvm_cached = value;
+      } else if (key == kArcContainerForeground) {
+        margins.arc_container_foreground = value;
+      } else if (key == kArcContainerPerceptible) {
+        margins.arc_container_perceptible = value;
+      } else if (key == kArcContainerCached) {
+        margins.arc_container_cached = value;
       } else {
         LOG(ERROR) << "Unrecognized dict entry '" << key
                    << "' for component memory margins";

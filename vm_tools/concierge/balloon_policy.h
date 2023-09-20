@@ -68,6 +68,9 @@ struct ComponentMemoryMargins {
   uint64_t arcvm_foreground;
   uint64_t arcvm_perceptible;
   uint64_t arcvm_cached;
+  uint64_t arc_container_foreground;
+  uint64_t arc_container_perceptible;
+  uint64_t arc_container_cached;
 };
 
 struct BalloonDeflationLimit {
