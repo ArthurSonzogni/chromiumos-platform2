@@ -79,10 +79,9 @@ std::unique_ptr<DHCPController> DHCPProvider::CreateController(
     const Options& opts,
     Technology technology) {
   SLOG(2) << __func__ << " device: " << device_name;
-  return std::make_unique<DHCPController>(
-      control_interface_, dispatcher_, this, device_name, opts.lease_name,
-      opts.use_arp_gateway, opts.use_rfc_8925, opts.hostname, technology,
-      metrics_);
+  return std::make_unique<DHCPController>(control_interface_, dispatcher_, this,
+                                          device_name, opts, technology,
+                                          metrics_);
 }
 
 DHCPController* DHCPProvider::GetController(int pid) {

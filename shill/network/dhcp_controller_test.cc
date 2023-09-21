@@ -69,10 +69,12 @@ class DHCPControllerTest : public PropertyStoreTest {
                                        dispatcher(),
                                        &provider_,
                                        kDeviceName,
-                                       kLeaseFileSuffix,
-                                       kArpGateway,
-                                       kEnableRFC8925,
-                                       kHostName,
+                                       DHCPController::Options{
+                                           .use_arp_gateway = kArpGateway,
+                                           .use_rfc_8925 = kEnableRFC8925,
+                                           .lease_name = kLeaseFileSuffix,
+                                           .hostname = kHostName,
+                                       },
                                        Technology::kUnknown,
                                        &metrics_)) {
     controller_->time_ = &time_;
@@ -145,10 +147,15 @@ void DHCPControllerTest::CreateMockMinijailConfig(
     const std::string& hostname,
     const std::string& lease_suffix,
     bool arp_gateway) {
-  controller_.reset(new DHCPController(
-      control_interface(), dispatcher(), &provider_, kDeviceName, lease_suffix,
-      arp_gateway, /*enable_rfc_8925=*/false, hostname, Technology::kUnknown,
-      metrics()));
+  controller_.reset(new DHCPController(control_interface(), dispatcher(),
+                                       &provider_, kDeviceName,
+                                       DHCPController::Options{
+                                           .use_arp_gateway = arp_gateway,
+                                           .use_rfc_8925 = false,
+                                           .lease_name = lease_suffix,
+                                           .hostname = hostname,
+                                       },
+                                       Technology::kUnknown, metrics()));
   controller_->process_manager_ = &process_manager_;
 }
 

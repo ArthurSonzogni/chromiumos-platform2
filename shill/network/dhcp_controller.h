@@ -94,10 +94,7 @@ class DHCPController {
                  EventDispatcher* dispatcher,
                  DHCPProvider* provider,
                  const std::string& device_name,
-                 const std::string& lease_file_suffix,
-                 bool arp_gateway,
-                 bool enable_rfc_8925,
-                 const std::string& hostname,
+                 const Options& opts,
                  Technology technology,
                  Metrics* metrics);
   DHCPController(const DHCPController&) = delete;
