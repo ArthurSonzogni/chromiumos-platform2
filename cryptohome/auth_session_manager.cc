@@ -244,6 +244,7 @@ void AuthSessionManager::RunWhenAvailable(
     LOG(ERROR) << "Unparsable AuthSession token for find";
     std::move(callback).Run(
         InUseAuthSession(*this, /*is_session_active=*/false, nullptr));
+    return;
   }
   RunWhenAvailable(token.value(), std::move(callback));
 }
