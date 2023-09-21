@@ -200,7 +200,9 @@ int dm_bht_create(struct dm_bht* bht,
     goto bad_node_count;
   }
 
-  bht->depth = DIV_ROUND_UP(fls(block_count - 1), bht->node_count_shift);
+  // Special handle only for single block_count.
+  bht->depth =
+      DIV_ROUND_UP(fls(std::max(block_count, 2U) - 1), bht->node_count_shift);
   DLOG(INFO) << "Setting depth to " << bht->depth;
 
   /* Ensure that we can safely shift by this value. */
