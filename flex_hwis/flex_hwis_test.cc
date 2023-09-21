@@ -10,6 +10,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -131,7 +132,9 @@ TEST_F(FlexHwisTest, HasRunRecently) {
   auto flex_hwis_sender_ =
       flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
   flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
-  CreateTimeStamp(base::TimeFormatHTTP(base::Time::Now()));
+  const auto current_from_epoch =
+      (base::Time::Now() - base::Time::UnixEpoch()).InSeconds();
+  CreateTimeStamp(base::NumberToString(current_from_epoch));
 
   EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
             Result::HasRunRecently);

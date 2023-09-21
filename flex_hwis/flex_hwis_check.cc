@@ -7,6 +7,7 @@
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 
@@ -34,6 +35,10 @@ bool CheckPolicy(const std::function<bool(bool*)> policy_member,
     return false;
   }
   return true;
+}
+
+int64_t NowToEpochInSeconds() {
+  return (base::Time::Now() - base::Time::UnixEpoch()).InSeconds();
 }
 
 }  // namespace
@@ -97,24 +102,28 @@ bool FlexHwisCheck::WriteHwisFile(const base::FilePath& file_path,
 }
 
 bool FlexHwisCheck::HasRunRecently() {
-  base::Time current = base::Time::Now(), last;
   std::optional<std::string> last_str;
   const base::FilePath file_path = base_path_.Append(kHwisTimeStampFile);
   if ((last_str = ReadHwisFile(file_path))) {
-    if (base::Time::FromString(last_str.value().c_str(), &last)) {
+    int64_t last_from_epoch = 0;
+    if (base::StringToInt64(last_str.value(), &last_from_epoch)) {
       // The service must wait at least 24 hours between sending hardware data.
-      if ((current - last) < base::Days(1)) {
+      if ((NowToEpochInSeconds() - last_from_epoch) <
+          base::Days(1).InSeconds()) {
         return true;
       }
+    } else {
+      LOG(INFO) << "Failed to convert timestamp: " << last_str.value()
+                << " to integer.";
     }
   }
   return false;
 }
 
 void FlexHwisCheck::RecordSendTime() {
-  base::Time current = base::Time::Now();
   const base::FilePath file_path = base_path_.Append(kHwisTimeStampFile);
-  if (!(WriteHwisFile(file_path, base::TimeFormatHTTP(current)))) {
+  if (!(WriteHwisFile(file_path,
+                      base::NumberToString(NowToEpochInSeconds())))) {
     LOG(INFO) << "Failed to write the timestamp";
   }
 }
