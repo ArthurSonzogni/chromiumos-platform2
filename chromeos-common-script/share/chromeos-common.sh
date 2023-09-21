@@ -395,13 +395,11 @@ rootdev_removable() {
 
 edit_mbr() {
   locate_gpt
-  # TODO(icoolidge): Get this from disk_layout somehow.
-  local PARTITION_NUM_EFI_SYSTEM=12
   local start_esp
   local num_esp_sectors
 
-  start_esp="$(partoffset "$1" "${PARTITION_NUM_EFI_SYSTEM}")"
-  num_esp_sectors="$(partsize "$1" "${PARTITION_NUM_EFI_SYSTEM}")"
+  start_esp="$(partoffset "$1" "$2")"
+  num_esp_sectors="$(partsize "$1" "$2")"
   maybe_sudo sfdisk -w never -X dos "${1}" <<EOF
 unit: sectors
 
@@ -423,7 +421,7 @@ install_hybrid_mbr() {
   # cf. crbug.com/343681.
 
   echo "Creating hybrid MBR"
-  if ! edit_mbr "${1}"; then
+  if ! edit_mbr "${1}" "${2}"; then
     udevadm settle
     maybe_sudo blockdev --rereadpt "${1}"
   fi
