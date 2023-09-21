@@ -20,6 +20,10 @@ namespace lorgnette::cli {
 
 namespace {
 
+// Some scanners do not respond to sane_start() or sane_read() until the
+// hardware has scanned a page.  Wait extra time for the related d-bus calls.
+constexpr int kScanTimeoutMs = 300000;
+
 std::string ExtensionForFormat(lorgnette::ImageFormat image_format) {
   switch (image_format) {
     case lorgnette::IMAGE_FORMAT_PNG:
@@ -70,7 +74,7 @@ bool ScanHandler::StartScan(
 
   brillo::ErrorPtr error;
   lorgnette::StartScanResponse response;
-  if (!manager_->StartScan(request, &response, &error)) {
+  if (!manager_->StartScan(request, &response, &error, kScanTimeoutMs)) {
     LOG(ERROR) << "StartScan failed: " << error->GetMessage();
     return false;
   }
@@ -131,7 +135,7 @@ std::optional<lorgnette::GetNextImageResponse> ScanHandler::GetNextImage(
   lorgnette::GetNextImageResponse response;
   if (!manager_->GetNextImage(request,
                               base::ScopedFD(output_file.TakePlatformFile()),
-                              &response, &error)) {
+                              &response, &error, kScanTimeoutMs)) {
     LOG(ERROR) << "GetNextImage failed: " << error->GetMessage();
     return std::nullopt;
   }

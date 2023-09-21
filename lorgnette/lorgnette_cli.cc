@@ -43,6 +43,9 @@ using org::chromium::lorgnette::ManagerProxy;
 
 namespace {
 
+// ListScanners can take a long time if many USB scanners are plugged in.
+constexpr int kListScannersTimeoutMs = 60000;
+
 enum class Command {
   kList,
   kScan,
@@ -103,7 +106,7 @@ std::optional<lorgnette::CancelScanResponse> CancelScan(
 std::optional<std::vector<std::string>> ListScanners(ManagerProxy* manager) {
   brillo::ErrorPtr error;
   lorgnette::ListScannersResponse scanner_list;
-  if (!manager->ListScanners(&scanner_list, &error)) {
+  if (!manager->ListScanners(&scanner_list, &error, kListScannersTimeoutMs)) {
     LOG(ERROR) << "ListScanners failed: " << error->GetMessage();
     return std::nullopt;
   }
