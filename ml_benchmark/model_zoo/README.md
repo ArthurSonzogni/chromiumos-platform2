@@ -41,16 +41,19 @@ Example usage:
 ### Video Conferencing
 
 * **Note 1 : These models are CNN based.**
-* **Note 2 : selfie_segmentation_landscape_256x256 has an F16 and F32 variant, indicated by the filename.**
+* **Note 2 : selfie_* have an F16 and F32 variant, indicated by the filename.**
 
-The `convolution_benchmark_*_144x256` models are production model graphs with
+The `convolution_benchmark_*` and `segmentation_benchmark_512x512*` models are production model graphs with
 randomized weights, so we don't measure the accuracy of these models.
 
-| Model                                     | Latency (ms)  | Accuracy                                    | Power Usage | Max Memory |
-|-------------------------------------------|--------------:|--------------------------------------------:|-------------|------------|
-| selfie_segmentation_landscape_256x256     |          <= 6 | avg_err <=0.0000003<br/> std_dev<=5e-06     |         TBD |    <=100MB |
-| convolution_benchmark_1_144x256           |          <= 4 | -                                           |         TBD |    <=100MB |
-| convolution_benchmark_2_144x256           |          <= 4 | -                                           |         TBD |    <=100MB |
+| Model                                     | Target Latency (ms)  | Accuracy                                    | Power Usage | Max Memory |
+|-------------------------------------------|---------------------:|--------------------------------------------:|-------------|------------|
+| selfie_segmentation_landscape_256x256     |                 <= 6 | avg_err <=0.0000003<br/> std_dev<=5e-06     |         TBD |    <=100MB |
+| segmentation_benchmark_512x512            |                 <= 10|                                             |         TBD |    <=100MB |
+| convolution_benchmark_144_256_1           |                 <= 4 | -                                           |         TBD |    <=100MB |
+| convolution_benchmark_144_256_2           |                 <= 4 | -                                           |         TBD |    <=100MB |
+| convolution_benchmark_288_512_1           |                 <= 6 | -                                           |         TBD |    <=100MB |
+| convolution_benchmark_288_512_2           |                 <= 6 | -                                           |         TBD |    <=100MB |
 
 ### Image Search
 
