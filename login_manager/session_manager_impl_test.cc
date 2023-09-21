@@ -2008,17 +2008,6 @@ TEST_F(SessionManagerImplTest, RestartJobForNonGuestUserFailure) {
   EXPECT_EQ(dbus_error::kInvalidParameter, error->GetCode());
 }
 
-TEST_F(SessionManagerImplTest, ShouldEndSession) {
-  // SessionManager should be recreated if session is not started
-  // to clean up any stale state.
-  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
-
-  // After session starts, browser process may be just recreated
-  // to start from logged in state.
-  ExpectAndRunStartSession(kSaneEmail);
-  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
-}
-
 TEST_F(SessionManagerImplTest, LockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
@@ -2127,7 +2116,6 @@ TEST_F(SessionManagerImplTest, EndSessionBeforeSuspend) {
 }
 
 TEST_F(SessionManagerImplTest, EndSessionDuringAndAfterSuspend) {
-  ExpectAndRunStartSession(kSaneEmail);
   EXPECT_CALL(manager_, GetLastBrowserRestartTime())
       .WillRepeatedly(Return(base::TimeTicks()));
 

@@ -259,8 +259,6 @@ class SessionManagerService
   std::optional<base::FilePath> chrome_mount_ns_path_;
   base::TimeTicks last_browser_restart_time_;
   bool exit_on_child_done_ = false;
-  // Latches whether browser restart is explicitly made.
-  bool browser_restart_requested_ = false;
   const base::TimeDelta kill_timeout_;
 
   scoped_refptr<dbus::Bus> bus_;

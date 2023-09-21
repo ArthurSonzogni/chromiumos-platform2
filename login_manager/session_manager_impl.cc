@@ -511,11 +511,6 @@ bool SessionManagerImpl::ShouldEndSession(std::string* reason_out) {
       *reason_out = reason;
   };
 
-  if (!session_started_) {
-    set_reason("session is not yet started");
-    return true;
-  }
-
   if (screen_locked_) {
     set_reason("screen is locked");
     return true;
