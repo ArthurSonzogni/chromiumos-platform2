@@ -660,12 +660,11 @@ impl VolumeManager {
 
             HibernateVolume::Integrity => {
                 let num_pages = hiberimage_size / get_page_size() as u64;
-                let data_area_size = roundup_mutiple(num_pages * AES_GCM_INTEGRITY_BYTES_PER_BLOCK,
-                                                     DM_INTEGRITY_BUF_SIZE);
-                roundup_mutiple(
-                    DM_INITIAL_SEGMENT_SIZE + data_area_size,
-                    SIZE_1M,
-                )
+                let data_area_size = roundup_mutiple(
+                    num_pages * AES_GCM_INTEGRITY_BYTES_PER_BLOCK,
+                    DM_INTEGRITY_BUF_SIZE,
+                );
+                roundup_mutiple(DM_INITIAL_SEGMENT_SIZE + data_area_size, SIZE_1M)
             }
 
             HibernateVolume::Meta => 16 * SIZE_1M,
