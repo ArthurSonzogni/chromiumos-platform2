@@ -51,7 +51,7 @@ class MissiveArgs {
   static constexpr char kCompressionEnabledParameter[] = "compression_enabled";
   static constexpr bool kEncryptionEnabledDefault = true;
   static constexpr char kEncryptionEnabledParameter[] = "encryption_enabled";
-  static constexpr bool kControlledDegradationDefault = false;
+  static constexpr bool kControlledDegradationDefault = true;
   static constexpr char kControlledDegradationParameter[] =
       "controlled_degradation";
   static const char* kLegacyStorageEnabledDefault;
