@@ -22,7 +22,7 @@
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
-#include "cryptohome/auth_session.h"
+#include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/username.h"
@@ -326,10 +326,10 @@ bool StatefulRecovery::Mount(const Username& username,
     return false;
   }
 
-  if (std::find(authenticate_reply.authorized_for().begin(),
-                authenticate_reply.authorized_for().end(),
+  if (std::find(authenticate_reply.auth_properties().authorized_for().begin(),
+                authenticate_reply.auth_properties().authorized_for().end(),
                 user_data_auth::AUTH_INTENT_DECRYPT) ==
-      authenticate_reply.authorized_for().end()) {
+      authenticate_reply.auth_properties().authorized_for().end()) {
     LOG(ERROR) << "AuthenticateAuthFactor returned success but failed to "
                   "authenticate.";
     InvalidateAuthSession(auth_session_reply.auth_session_id());

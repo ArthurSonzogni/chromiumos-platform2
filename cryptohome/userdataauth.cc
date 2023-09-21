@@ -276,7 +276,7 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
       username, verifier->auth_factor_type(), *auth_factor_driver_manager,
       GetAuthFactorPolicyFromUserPolicy(user_policy_file->GetUserPolicy(),
                                         verifier->auth_factor_type()),
-      /*light_auth_only=*/true);
+      /*only_light_auth=*/true);
   for (const auto& auth_intent : supported_intents) {
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
@@ -406,22 +406,18 @@ void GroupDmcryptDeviceMounts(
   }
 }
 
-void ReplyWithAuthenticationResult(
-    const InUseAuthSession& auth_session,
-    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
-        on_done,
-    CryptohomeStatus status) {
-  CHECK(!on_done.is_null());
-  user_data_auth::AuthenticateAuthFactorReply reply;
-  for (AuthIntent auth_intent : auth_session->authorized_intents()) {
-    reply.add_authorized_for(AuthIntentToProto(auth_intent));
+// Fill AuthSessionProperties in auth_session_props.
+void PopulateAuthSessionProperties(
+    InUseAuthSession& auth_session,
+    user_data_auth::AuthSessionProperties* auth_session_props) {
+  for (const AuthIntent auth_intent : auth_session->authorized_intents()) {
+    auth_session_props->add_authorized_for(AuthIntentToProto(auth_intent));
   }
 
   if (auth_session->authorized_intents().contains(AuthIntent::kDecrypt)) {
-    reply.set_seconds_left(auth_session.GetRemainingTime().InSeconds());
+    auth_session_props->set_seconds_left(
+        auth_session.GetRemainingTime().InSeconds());
   }
-
-  ReplyWithError(std::move(on_done), std::move(reply), status);
 }
 
 void HandleAuthenticationResult(
@@ -431,8 +427,18 @@ void HandleAuthenticationResult(
         on_done,
     const AuthSession::PostAuthAction& post_auth_action,
     CryptohomeStatus status) {
-  ReplyWithAuthenticationResult(auth_session, std::move(on_done),
-                                std::move(status));
+  user_data_auth::AuthenticateAuthFactorReply reply;
+  PopulateAuthSessionProperties(auth_session, reply.mutable_auth_properties());
+  // TODO(b/301078137): Remove the following after ash adopts new APIs.
+  *reply.mutable_authorized_for() = {
+      reply.auth_properties().authorized_for().begin(),
+      reply.auth_properties().authorized_for().end()};
+  // TODO(b/301078137): Remove the following after ash adopts new APIs.
+  if (reply.auth_properties().has_seconds_left()) {
+    reply.set_seconds_left(reply.auth_properties().seconds_left());
+  }
+  ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
+
   switch (post_auth_action.action_type) {
     case AuthSession::PostAuthActionType::kNone:
       return;
@@ -2679,14 +2685,21 @@ void UserDataAuth::PrepareEphemeralVault(
     base::OnceCallback<void(const user_data_auth::PrepareEphemeralVaultReply&)>
         on_done) {
   AssertOnMountThread();
+  user_data_auth::PrepareEphemeralVaultReply reply;
 
   LOG(INFO) << "Preparing ephemeral vault";
-  user_data_auth::PrepareEphemeralVaultReply reply;
   CryptohomeStatus status =
       PrepareEphemeralVaultImpl(request.auth_session_id());
-  reply.set_sanitized_username(
-      *SanitizedUserNameForSession(request.auth_session_id()));
-  ReplyWithError(std::move(on_done), reply, status);
+
+  if (status.ok()) {
+    InUseAuthSession auth_session =
+        auth_session_manager_->FindAuthSession(request.auth_session_id());
+    PopulateAuthSessionProperties(auth_session,
+                                  reply.mutable_auth_properties());
+    reply.set_sanitized_username(*auth_session->obfuscated_username());
+  }
+
+  ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
 }
 
 void UserDataAuth::PreparePersistentVault(
@@ -2738,10 +2751,9 @@ void UserDataAuth::CreatePersistentUser(
     base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
         on_done) {
   AssertOnMountThread();
-
-  LOG(INFO) << "Creating persistent user";
   user_data_auth::CreatePersistentUserReply reply;
 
+  LOG(INFO) << "Creating persistent user";
   // Record current time for timing how long CreatePersistentUserImpl will
   // take.
   auto start_time = base::TimeTicks::Now();
@@ -2751,9 +2763,14 @@ void UserDataAuth::CreatePersistentUser(
 
   ReportTimerDuration(kCreatePersistentUserTimer, start_time, "");
 
-  reply.set_sanitized_username(
-      *SanitizedUserNameForSession(request.auth_session_id()));
-  ReplyWithError(std::move(on_done), reply, ret);
+  if (ret.ok()) {
+    InUseAuthSession auth_session =
+        auth_session_manager_->FindAuthSession(request.auth_session_id());
+    PopulateAuthSessionProperties(auth_session,
+                                  reply.mutable_auth_properties());
+    reply.set_sanitized_username(*auth_session->obfuscated_username());
+  }
+  ReplyWithError(std::move(on_done), std::move(reply), std::move(ret));
 }
 
 CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
@@ -3952,27 +3969,21 @@ void UserDataAuth::GetAuthSessionStatus(
       auth_session_manager_->FindAuthSession(request.auth_session_id());
   CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
   if (!auth_session_status.ok()) {
-    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-    LOG(ERROR) << "GetAuthSessionStatus: AuthSession not found.";
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthGetAuthSessionStatusNoAuthSession),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
+            .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
-  GetAuthSessionStatusImpl(auth_session, reply);
-}
 
-void UserDataAuth::GetAuthSessionStatusImpl(
-    InUseAuthSession& auth_session,
-    user_data_auth::GetAuthSessionStatusReply& reply) {
-  // Default is invalid unless there is evidence otherwise.
-  reply.set_status(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION);
-
-  base::TimeDelta remaining_time = auth_session.GetRemainingTime();
-  if (remaining_time.is_max()) {
-    reply.set_status(
-        user_data_auth::AUTH_SESSION_STATUS_FURTHER_FACTOR_REQUIRED);
-  } else if (!remaining_time.is_zero()) {
-    reply.set_time_left(remaining_time.InSeconds());
-    reply.set_status(user_data_auth::AUTH_SESSION_STATUS_AUTHENTICATED);
-  }
+  PopulateAuthSessionProperties(auth_session, reply.mutable_auth_properties());
+  ReplyWithError(std::move(on_done), std::move(reply),
+                 OkStatus<CryptohomeError>());
 }
 
 void UserDataAuth::GetRecoveryRequest(

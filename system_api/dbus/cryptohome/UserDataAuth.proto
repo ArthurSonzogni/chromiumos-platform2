@@ -615,6 +615,21 @@ message AuthFactorStatusUpdate {
   AuthFactorWithStatus auth_factor_with_status = 2;
 }
 
+// AuthSessionProperties object contains information about the user's current
+// authentication session, identified by the ID in the request. This object is
+// returned along with replies to calls that can potentially change the
+// authentication session properties. The properties that are necessary for the
+// user today are the intents that the authentication session is authorized for
+// and the amount of time remaining in the authentication session.
+message AuthSessionProperties {
+  // The intents that the Auth Session has been authorized for. This starts from
+  // an empty set when the session is created, and is updated when a factor is
+  // successfully authenticated.
+  repeated AuthIntent authorized_for = 4;
+  // The time left in the current AuthSession after authentication.
+  optional uint32 seconds_left = 5;
+}
+
 message StartAuthSessionReply {
   reserved 4, 7;
 
@@ -680,6 +695,9 @@ message CreatePersistentUserReply {
   // The sanitized username, this is basically a hashed representation
   // of the username used in the paths of user's home directory.
   string sanitized_username = 2;
+
+  // Properties for the auth_session_id after the current call.
+  AuthSessionProperties auth_properties = 4;
 }
 
 message PrepareGuestVaultRequest {}
@@ -706,6 +724,9 @@ message PrepareEphemeralVaultReply {
   // The sanitized username, this is basically a hashed representation
   // of the username used in the paths of user's home directory.
   string sanitized_username = 2;
+
+  // Properties for the auth_session_id after the current call.
+  AuthSessionProperties auth_properties = 4;
 }
 
 message GetAuthSessionStatusRequest {
@@ -723,16 +744,21 @@ enum AuthSessionStatus {
 
 message GetAuthSessionStatusReply {
   CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 5;
 
   // Status for the valid AuthSession.
   AuthSessionStatus status = 2;
   // The time left (in sec) in the current AuthSession. This is only set if
   // AuthSession is authenticated.
+  // TODO(b/301078137): Remove the following after ash adopts new APIs.
   uint32 time_left = 3;
   // The intents that the Auth Session has been authorized for. This starts from
   // an empty set when the session is created, and is updated when a factor is
   // successfully authenticated.
   repeated AuthIntent authorized_for = 4;
+
+  // Properties for the auth_session_id after the current call.
+  AuthSessionProperties auth_properties = 6;
 }
 
 enum VaultEncryptionType {
@@ -1169,13 +1195,16 @@ message AuthenticateAuthFactorReply {
 
   CryptohomeErrorCode error = 1;
   CryptohomeErrorInfo error_info = 2;
-
+  // TODO(b/301078137): Remove the following two after ash adopts new APIs.
   // The intents that the Auth Session has been authorized for. This starts from
   // an empty set when the session is created, and is updated when a factor is
   // successfully authenticated.
   repeated AuthIntent authorized_for = 4;
   // The time left in the current AuthSession after authentication.
   optional uint32 seconds_left = 5;
+
+  // Properties for the auth_session_id after the current call.
+  AuthSessionProperties auth_properties = 6;
 }
 
 // UpdateAuthFactorRequest is built when a user is trying to

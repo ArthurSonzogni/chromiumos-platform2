@@ -4908,6 +4908,9 @@ class UserDataAuthApiTest : public UserDataAuthTest {
           << GetProtoDebugString(create_reply.value());
       return false;
     }
+    EXPECT_THAT(create_reply->auth_properties().authorized_for(),
+                UnorderedElementsAre(user_data_auth::AUTH_INTENT_DECRYPT,
+                                     user_data_auth::AUTH_INTENT_VERIFY_ONLY));
 
     // Add the password auth factor.
     user_data_auth::AddAuthFactorRequest add_factor_request;
@@ -5311,6 +5314,7 @@ TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
                   {user_data_auth::PossibleAction::POSSIBLY_RETRY,
                    user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
+  EXPECT_THAT(prepare_reply->auth_properties().authorized_for(), IsEmpty());
 }
 
 // This is designed to trigger the unrecoverable vault flow.
@@ -5381,6 +5385,7 @@ TEST_F(UserDataAuthApiTest, CreatePeristentUserAlreadyExist) {
       HasPossibleActions(std::set(
           {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
            user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT})));
+  EXPECT_THAT(create_reply->auth_properties().authorized_for(), IsEmpty());
 }
 
 // This is designed to check if modifying auth factor intents results in
@@ -5483,6 +5488,7 @@ TEST_F(UserDataAuthApiTest, EphemeralMountWithRegularSession) {
           {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
            user_data_auth::PossibleAction::POSSIBLY_REBOOT,
            user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
+  EXPECT_THAT(prepare_reply->auth_properties().authorized_for(), IsEmpty());
 }
 
 // This is designed to trigger FailureReason::COULD_NOT_MOUNT_CRYPTOHOME on
