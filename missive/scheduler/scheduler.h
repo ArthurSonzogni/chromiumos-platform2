@@ -123,7 +123,7 @@ class Scheduler {
     base::OnceCallback<void(Status)> complete_cb_;
   };
 
-  // SchedulerObserver allows introspection into the goings on of the Scheudler.
+  // SchedulerObserver allows introspection into the goings on of the Scheduler.
   class SchedulerObserver {
    public:
     enum class Notification {

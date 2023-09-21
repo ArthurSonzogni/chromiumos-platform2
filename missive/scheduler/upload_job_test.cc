@@ -7,11 +7,14 @@
 #include <utility>
 #include <vector>
 
-#include <base/run_loop.h>
+#include <base/location.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/memory/weak_ptr.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
+#include <base/thread_annotations.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -35,20 +38,28 @@ namespace {
 
 class TestRecordUploader {
  public:
-  TestRecordUploader(std::vector<EncryptedRecord> records,
-                     scoped_refptr<ResourceManager> memory_resource)
-      : records_(std::move(records)),
-        memory_resource_(memory_resource),
-        sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
-            {base::TaskPriority::BEST_EFFORT})) {
+  TestRecordUploader(
+      scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
+      std::vector<EncryptedRecord> records,
+      scoped_refptr<ResourceManager> memory_resource)
+      : sequenced_task_runner_(sequenced_task_runner),
+        records_(std::move(records)),
+        memory_resource_(memory_resource) {
     DETACH_FROM_SEQUENCE(sequence_checker_);
   }
 
+  ~TestRecordUploader() { DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_); }
+
   void StartUpload(
-      StatusOr<std::unique_ptr<UploaderInterface>> uploader_interface) {
-    EXPECT_TRUE(uploader_interface.ok());
-    uploader_interface_ = std::move(uploader_interface.ValueOrDie());
-    PostNextUpload(/*next=*/true);
+      StatusOr<std::unique_ptr<UploaderInterface>> uploader_interface_result) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    EXPECT_OK(uploader_interface_result) << uploader_interface_result.status();
+    uploader_interface_ = std::move(uploader_interface_result.ValueOrDie());
+    Upload(/*send_next_record=*/true);
+  }
+
+  base::WeakPtr<TestRecordUploader> GetWeakPtr() {
+    return weak_ptr_factory_.GetWeakPtr();
   }
 
  private:
@@ -59,28 +70,28 @@ class TestRecordUploader {
       uploader_interface_.reset();  // Do not need it anymore.
       return;
     }
+
     ScopedReservation record_reservation(records_.front().ByteSizeLong(),
                                          memory_resource_);
-    uploader_interface_->ProcessRecord(
-        std::move(records_.front()), std::move(record_reservation),
-        base::BindOnce(&TestRecordUploader::PostNextUpload,
-                       base::Unretained(this)));
+    auto first_record = std::move(*records_.begin());
     records_.erase(records_.begin());
+    uploader_interface_->ProcessRecord(
+        std::move(first_record), std::move(record_reservation),
+        base::BindPostTaskToCurrentDefault(
+            base::BindOnce(&TestRecordUploader::Upload, GetWeakPtr())));
   }
-
-  void PostNextUpload(bool next) {
-    sequenced_task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(&TestRecordUploader::Upload,
-                                  base::Unretained(this), next));
-  }
-
-  std::vector<EncryptedRecord> records_;
-  const scoped_refptr<ResourceManager> memory_resource_;
-  std::unique_ptr<UploaderInterface> uploader_interface_;
 
   // To protect |records_| running uploads on sequence.
+  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
-  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+
+  std::vector<EncryptedRecord> records_ GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<UploaderInterface> uploader_interface_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  const scoped_refptr<ResourceManager> memory_resource_;
+
+  base::WeakPtrFactory<TestRecordUploader> weak_ptr_factory_{this};
 };
 
 class UploadJobTest : public ::testing::Test {
@@ -88,14 +99,14 @@ class UploadJobTest : public ::testing::Test {
   void SetUp() override {
     health_module_ =
         HealthModule::Create(std::make_unique<HealthModuleDelegateMock>());
-    upload_client_ = base::MakeRefCounted<test::MockUploadClient>();
     memory_resource_ =
         base::MakeRefCounted<ResourceManager>(4u * 1024LLu * 1024LLu);  // 4 MiB
   }
 
   void TearDown() override {
-    // Let everything ongoing to finish.
+    // Let all scheduled actions finish.
     task_environment_.RunUntilIdle();
+
     EXPECT_THAT(memory_resource_->GetUsed(), Eq(0uL));
   }
 
@@ -103,7 +114,6 @@ class UploadJobTest : public ::testing::Test {
 
   scoped_refptr<ResourceManager> memory_resource_;
   scoped_refptr<HealthModule> health_module_;
-  scoped_refptr<test::MockUploadClient> upload_client_;
 };
 
 TEST_F(UploadJobTest, UploadsRecords) {
@@ -125,9 +135,11 @@ TEST_F(UploadJobTest, UploadsRecords) {
     sequence_information->set_priority(kPriority);
   }
 
-  // Create a copy of the records to ensure they are passed correctly.
+  // Create mock client and a copy of the records to ensure they are passed
+  // correctly.
+  auto upload_client = base::MakeRefCounted<test::MockUploadClient>();
   const std::vector<EncryptedRecord> expected_records(records);
-  EXPECT_CALL(*upload_client_, SendEncryptedRecords(_, _, _, _, _, _))
+  EXPECT_CALL(*upload_client, SendEncryptedRecords(_, _, _, _, _, _))
       .WillOnce(WithArgs<0, 5>(Invoke(
           [&expected_records](
               std::vector<EncryptedRecord> records,
@@ -141,18 +153,26 @@ TEST_F(UploadJobTest, UploadsRecords) {
             std::move(response_callback).Run(std::move(upload_response));
           })));
 
-  TestRecordUploader record_uploader(std::move(records), memory_resource_);
+  const auto test_sequenced_task_runner =
+      base::ThreadPool::CreateSequencedTaskRunner(
+          {base::TaskPriority::BEST_EFFORT});
+  std::unique_ptr<TestRecordUploader, base::OnTaskRunnerDeleter>
+      record_uploader{
+          new TestRecordUploader(test_sequenced_task_runner, std::move(records),
+                                 memory_resource_),
+          base::OnTaskRunnerDeleter(test_sequenced_task_runner)};
 
   test::TestEvent<StatusOr<UploadEncryptedRecordResponse>> upload_responded;
-  auto job_result =
-      UploadJob::Create(upload_client_,
-                        /*need_encryption_key=*/false, health_module_,
-                        /*remaining_storage_capacity=*/3000U,
-                        /*new_events_rate=*/300U,
-                        base::BindOnce(&TestRecordUploader::StartUpload,
-                                       base::Unretained(&record_uploader)),
-                        upload_responded.cb());
-  ASSERT_TRUE(job_result.ok()) << job_result.status();
+  auto job_result = UploadJob::Create(
+      upload_client,
+      /*need_encryption_key=*/false, health_module_,
+      /*remaining_storage_capacity=*/3000U,
+      /*new_events_rate=*/300U,
+      base::BindPostTask(test_sequenced_task_runner,
+                         base::BindOnce(&TestRecordUploader::StartUpload,
+                                        record_uploader->GetWeakPtr())),
+      upload_responded.cb());
+  ASSERT_OK(job_result) << job_result.status();
   Scheduler::Job::SmartPtr<Scheduler::Job> job =
       std::move(job_result.ValueOrDie());
 
@@ -160,7 +180,7 @@ TEST_F(UploadJobTest, UploadsRecords) {
   job->Start(upload_started.cb());
   const Status status = upload_started.result();
   EXPECT_OK(status) << status;
-  // Let everything finish before record_uploader destructs.
+  // Let everything finish before `record_uploader` destructs.
   const auto upload_result = upload_responded.result();
   EXPECT_OK(upload_result) << upload_result.status();
 }
