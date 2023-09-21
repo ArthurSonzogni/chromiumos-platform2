@@ -26,7 +26,10 @@ pkg_config("target_defaults") {
 }
 
 pkg_config("libsecanomaly_config") {
-  pkg_deps = [ "re2" ]
+  pkg_deps = [
+    "absl",
+    "re2",
+  ]
 }
 
 source_set("landlock") {
