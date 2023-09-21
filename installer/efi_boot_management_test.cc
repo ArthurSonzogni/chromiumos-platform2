@@ -348,10 +348,33 @@ class EfiBootManagerTest : public ::testing::Test {
   void SetUp() override {
     efi_boot_manager_ = std::make_unique<EfiBootManager>(
         std::make_unique<EfiVarFake>(),
-        std::make_unique<NiceMock<MockMetrics>>(), kCrosEfiDefaultDescription);
+        std::make_unique<StrictMock<MockMetrics>>(),
+        kCrosEfiDefaultDescription);
     // We know these casts are safe because we just created the objects.
     efivar_ = static_cast<EfiVarFake*>(efi_boot_manager_->EfiVar());
     metrics_ = static_cast<MockMetrics*>(efi_boot_manager_->Metrics());
+  }
+
+  void ExpectEntryCountMetric(int count) {
+    EXPECT_CALL(*metrics_,
+                SendMetric(kUMAEfiEntryCountName, count, kUMAEfiEntryCountMin,
+                           kUMAEfiEntryCountMax, kUMAEfiEntryCountBuckets));
+  }
+  void ExpectFailedLoadMetric(int count) {
+    EXPECT_CALL(
+        *metrics_,
+        SendMetric(kUMAEfiEntryFailedLoadName, count, kUMAEfiEntryFailedLoadMin,
+                   kUMAEfiEntryFailedLoadMax, kUMAEfiEntryFailedLoadBuckets));
+  }
+  void ExpectManagedEntriesMetric(int count) {
+    EXPECT_CALL(*metrics_, SendLinearMetric(kUMAManagedEfiEntryCountName, count,
+                                            kUMAManagedEfiEntryCountMax));
+  }
+  // Common case in tests -- no entries to start.
+  void ExpectEntriesMetricsZero() {
+    ExpectEntryCountMetric(0);
+    ExpectFailedLoadMetric(0);
+    ExpectManagedEntriesMetric(0);
   }
 
   // Store as a pointer because we can't reassign in SetUp: EfiBootManager has
@@ -568,6 +591,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_NoBootEntries) {
   efivar_->SetData({{"BootOrder", {}}});
   InstallConfig install_config;
 
+  ExpectEntriesMetricsZero();
+
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
@@ -583,6 +608,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_NoCrosEntry) {
       {"Boot0001", VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))},
   });
   InstallConfig install_config;
+
+  // Two entries, no failures, none managed.
+  ExpectEntryCountMetric(2);
+  ExpectFailedLoadMetric(0);
+  ExpectManagedEntriesMetric(0);
 
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
@@ -607,6 +637,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_CrosEntryNotInBootOrder) {
   });
   InstallConfig install_config;
 
+  // Three entries, no failed loads, one managed.
+  ExpectEntryCountMetric(3);
+  ExpectFailedLoadMetric(0);
+  ExpectManagedEntriesMetric(1);
+
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
@@ -630,6 +665,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_CrosInBootOrder) {
       {"Boot0002", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
   });
   InstallConfig install_config;
+
+  // Three entries, no failed loads, one managed.
+  ExpectEntryCountMetric(3);
+  ExpectFailedLoadMetric(0);
+  ExpectManagedEntriesMetric(1);
 
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
@@ -657,6 +697,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_ExcessCrosEntries) {
   });
   InstallConfig install_config;
 
+  // Five entries, no failed loads, three managed.
+  ExpectEntryCountMetric(5);
+  ExpectFailedLoadMetric(0);
+  ExpectManagedEntriesMetric(3);
+
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
@@ -677,6 +722,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_WriteFail) {
   efivar_->set_variable_result_ = {EPERM};
   InstallConfig install_config;
 
+  ExpectEntriesMetricsZero();
+
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
@@ -690,6 +737,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_AcceptableWriteFail) {
   // ENOSPC is an acceptable fail, says b/226935367.
   efivar_->set_variable_result_ = {ENOSPC};
   InstallConfig install_config;
+
+  ExpectEntriesMetricsZero();
 
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
@@ -705,6 +754,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_AcceptableWriteEintrFail) {
   efivar_->set_variable_result_ = {EINTR};
   InstallConfig install_config;
 
+  ExpectEntriesMetricsZero();
+
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
@@ -717,6 +768,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_BootWriteFail) {
   efivar_->SetData({{"BootOrder", {}}});
   efivar_->set_variable_result_ = {std::nullopt, EPERM};
   InstallConfig install_config;
+
+  ExpectEntriesMetricsZero();
 
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
@@ -735,6 +788,8 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_AcceptableBootWriteFail) {
   efivar_->set_variable_result_ = {std::nullopt, ENOSPC};
   InstallConfig install_config;
 
+  ExpectEntriesMetricsZero();
+
   bool success =
       efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 
@@ -744,36 +799,6 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_AcceptableBootWriteFail) {
                   Pair("BootOrder", BootOrderData({})),
                   Pair("Boot0000",
                        VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
-}
-
-TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_EntryCountMetrics) {
-  efivar_->SetData({
-      {"BootOrder", BootOrderData({1, 0, 2})},
-      {"Boot0001", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
-      {"Boot0002", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
-      {"Boot0003", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
-      {"Boot0004", VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))},
-      {"Boot0005", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
-  });
-
-  const int total_boot_entries = 5;
-  const int failed_loads = 0;
-  const int managed_entries = 3;
-
-  InstallConfig install_config;
-
-  EXPECT_CALL(*metrics_, SendMetric(kUMAEfiEntryCountName, total_boot_entries,
-                                    kUMAEfiEntryCountMin, kUMAEfiEntryCountMax,
-                                    kUMAEfiEntryCountBuckets));
-  EXPECT_CALL(*metrics_,
-              SendMetric(kUMAEfiEntryFailedLoadName, failed_loads,
-                         kUMAEfiEntryFailedLoadMin, kUMAEfiEntryFailedLoadMax,
-                         kUMAEfiEntryFailedLoadBuckets));
-  EXPECT_CALL(*metrics_,
-              SendLinearMetric(kUMAManagedEfiEntryCountName, managed_entries,
-                               kUMAManagedEfiEntryCountMax));
-
-  efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_LoadFailMetrics) {
@@ -787,20 +812,14 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntriesImpl_LoadFailMetrics) {
   });
   // Simulate a failed load.
   efivar_->variable_names_.push_back("Boot0BAD");
+  efivar_->variable_names_.push_back("BootDAB0");
 
-  const int total_boot_entries = 6;
-  const int failed_loads = 1;
+  // Seven total entries, two will fail. We don't know if the failed loads
+  // are managed, so don't report that count.
+  ExpectEntryCountMetric(7);
+  ExpectFailedLoadMetric(2);
 
   InstallConfig install_config;
-
-  EXPECT_CALL(*metrics_, SendMetric(kUMAEfiEntryCountName, total_boot_entries,
-                                    kUMAEfiEntryCountMin, kUMAEfiEntryCountMax,
-                                    kUMAEfiEntryCountBuckets));
-  EXPECT_CALL(*metrics_,
-              SendMetric(kUMAEfiEntryFailedLoadName, failed_loads,
-                         kUMAEfiEntryFailedLoadMin, kUMAEfiEntryFailedLoadMax,
-                         kUMAEfiEntryFailedLoadBuckets));
-  EXPECT_CALL(*metrics_, SendLinearMetric).Times(0);
 
   efi_boot_manager_->UpdateEfiBootEntriesImpl(install_config, 64);
 }
@@ -816,6 +835,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_InstallFailure) {
 
   InstallConfig install_config;
 
+  // We don't care about the details here, but these will be sent.
+  ExpectEntryCountMetric(1);
+  ExpectFailedLoadMetric(1);
+
+  // If it's an install failure send a "required entry management failed" event.
   EXPECT_CALL(
       *metrics_,
       SendEnumMetric(
@@ -839,6 +863,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_UpdateFailure) {
 
   InstallConfig install_config;
 
+  // We don't care about the details here, but these will be sent.
+  ExpectEntryCountMetric(1);
+  ExpectFailedLoadMetric(1);
+
+  // If it's an update failure send an "optional entry management failed" event.
   EXPECT_CALL(
       *metrics_,
       SendEnumMetric(
@@ -855,9 +884,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_Success) {
   InstallConfig install_config;
   StrictMock<MockEnvironment> env;
 
-  EXPECT_CALL(*metrics_, SendEnumMetric(kUMAEfiManagementEventName, testing::_,
-                                        testing::_))
-      .Times(0);
+  // We don't care about the details here, but these will be sent.
+  ExpectEntriesMetricsZero();
+
+  // If it's a success we don't send a "entry management failed" event.
+  // Not actively checking, just implied by the StrictMock.
 
   bool continue_postinst =
       efi_boot_manager_->UpdateEfiBootEntries(install_config, env, 64);
