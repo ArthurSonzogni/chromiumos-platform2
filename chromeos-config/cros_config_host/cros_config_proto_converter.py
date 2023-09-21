@@ -26,6 +26,7 @@ from chromiumos.config.api import component_pb2
 from chromiumos.config.api import device_brand_id_pb2
 from chromiumos.config.api import device_brand_pb2
 from chromiumos.config.api import proximity_config_pb2
+from chromiumos.config.api import resource_config_pb2
 from chromiumos.config.api import topology_pb2
 from chromiumos.config.api.software import brand_config_pb2
 from chromiumos.config.api.software import ui_config_pb2
@@ -793,8 +794,16 @@ def _build_displays(hw_features: topology_pb2.HardwareFeatures) -> list:
 def _build_resource(config: Config) -> dict:
     """Builds the 'resource' property for cros_config_schema."""
 
+    resource_config = resource_config_pb2.ResourceConfig()
+
+    resource_config.MergeFrom(config.program.platform.resource_config)
+    resource_config.MergeFrom(config.sw_config.resource_config)
+    resource_config.MergeFrom(
+        config.hw_design_config.hardware_features.soc.resource_config
+    )
+
     return json_format.MessageToDict(
-        config.sw_config.resource_config, including_default_value_fields=True
+        resource_config, including_default_value_fields=True
     )
 
 
