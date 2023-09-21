@@ -72,7 +72,7 @@ class DHCPController {
   };
   enum class ClientStatus { kUnknown, kIPv6Preferred };
 
-  // Options to create a DHCP controller.
+  // Options to control the behavior of the DHCP client (dhcpcd).
   struct Options {
     // If true, the DHCP client will ARP for the gateway IP address as an
     // additional safeguard against the issued IP address being in-use by
@@ -82,7 +82,8 @@ class DHCPController {
     // capable network.
     bool use_rfc_8925 = false;
     // The DHCP lease file will contain the suffix supplied in |lease_name| if
-    // non-empty, otherwise the interface name will be used.
+    // non-empty, otherwise the interface name will be used. This is for
+    // differentiating the lease of one interface from another.
     std::string lease_name;
     // Hostname to be used in DHCP request. If it is not empty, it is placed in
     // the DHCP request to allow the server to map the request to a specific
@@ -263,10 +264,6 @@ class DHCPController {
   // The name of interface which this DHCP instance is running on.
   std::string device_name_;
 
-  // DHCP lease file suffix, used to differentiate the lease of one interface
-  // or network from another.
-  std::string lease_file_suffix_;
-
   // The technology of device which DHCP is running on.
   Technology technology_;
 
@@ -277,19 +274,11 @@ class DHCPController {
   // Whether a lease has been acquired from the DHCP server or gateway ARP.
   bool is_lease_active_;
 
-  // Specifies whether to supply an argument to the DHCP client to validate
-  // the acquired IP address using an ARP request to the gateway IP address.
-  bool arp_gateway_;
-
-  // Specifies whether request option 108 to prefer IPv6-only on a capable
-  // network.
-  bool enable_rfc_8925_;
-
   // Whether it is valid to retain the lease acquired via gateway ARP.
   bool is_gateway_arp_active_;
 
-  // Hostname to be used in DHCP request.
-  std::string hostname_;
+  // Options for starting dhcpcd.
+  Options options_;
 
   // The proxy for communicating with the DHCP client.
   std::unique_ptr<DHCPProxyInterface> proxy_;

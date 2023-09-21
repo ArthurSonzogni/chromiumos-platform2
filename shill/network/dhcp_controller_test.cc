@@ -123,7 +123,7 @@ class DHCPControllerTest : public PropertyStoreTest {
   }
 
   void SetShouldKeepLeaseOnDisconnect(bool value) {
-    controller_->arp_gateway_ = value;
+    controller_->options_.use_arp_gateway = value;
   }
 
   void CreateMockMinijailConfig(const std::string& hostname,

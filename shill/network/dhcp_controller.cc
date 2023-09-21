@@ -14,6 +14,7 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -64,14 +65,11 @@ DHCPController::DHCPController(ControlInterface* control_interface,
     : control_interface_(control_interface),
       provider_(provider),
       device_name_(device_name),
-      lease_file_suffix_(opts.lease_name),
       technology_(technology),
       pid_(0),
       is_lease_active_(false),
-      arp_gateway_(opts.use_arp_gateway),
-      enable_rfc_8925_(opts.use_rfc_8925),
       is_gateway_arp_active_(false),
-      hostname_(opts.hostname),
+      options_(opts),
       lease_acquisition_timeout_(kAcquisitionTimeout),
       root_("/"),
       weak_ptr_factory_(this),
@@ -80,8 +78,8 @@ DHCPController::DHCPController(ControlInterface* control_interface,
       metrics_(metrics),
       time_(Time::GetInstance()) {
   SLOG(this, 2) << __func__ << ": " << device_name;
-  if (lease_file_suffix_.empty()) {
-    lease_file_suffix_ = device_name;
+  if (options_.lease_name.empty()) {
+    options_.lease_name = device_name;
   }
 }
 
@@ -267,7 +265,7 @@ void DHCPController::NotifyFailure() {
 }
 
 bool DHCPController::IsEphemeralLease() const {
-  return lease_file_suffix_ == device_name();
+  return options_.lease_name == device_name();
 }
 
 bool DHCPController::Start() {
@@ -279,9 +277,8 @@ bool DHCPController::Start() {
   // Setup program arguments.
   auto args = GetFlags();
   std::string interface_arg(device_name());
-  if (lease_file_suffix_ != device_name()) {
-    interface_arg = base::StringPrintf("%s=%s", device_name().c_str(),
-                                       lease_file_suffix_.c_str());
+  if (options_.lease_name != device_name()) {
+    interface_arg = base::StrCat({device_name(), "=", options_.lease_name});
   }
   args.push_back(interface_arg);
 
@@ -373,7 +370,7 @@ bool DHCPController::ShouldFailOnAcquisitionTimeout() const {
 bool DHCPController::ShouldKeepLeaseOnDisconnect() const {
   // If we are using gateway unicast ARP to speed up re-connect, don't
   // give up our leases when we disconnect.
-  return arp_gateway_;
+  return options_.use_arp_gateway;
 }
 
 std::vector<std::string> DHCPController::GetFlags() {
@@ -385,17 +382,17 @@ std::vector<std::string> DHCPController::GetFlags() {
   flags.push_back("-4");  // IPv4 only.
 
   // Apply options from DhcpProperties when applicable.
-  if (!hostname_.empty()) {
+  if (!options_.hostname.empty()) {
     flags.push_back("-h");  // Request hostname from server
-    flags.push_back(hostname_);
+    flags.push_back(options_.hostname);
   }
 
-  if (arp_gateway_) {
+  if (options_.use_arp_gateway) {
     flags.push_back("-R");         // ARP for default gateway.
     flags.push_back("--unicast");  // Enable unicast ARP on renew.
   }
 
-  if (enable_rfc_8925_) {
+  if (options_.use_rfc_8925) {
     // Request option 108 to prefer IPv6-only. If server also supports this, no
     // dhcp lease will be assigned and dhcpcd will notify shill with an
     // IPv6OnlyPreferred StatusChanged event.
