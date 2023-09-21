@@ -18,8 +18,6 @@
 
 namespace diagnostics {
 
-constexpr base::TimeDelta kPowerRoutineTimeout = base::Seconds(15);
-
 // The Bluetooth power routine checks that the Bluetooth adapter's power
 // functionality is working correctly by checking the off and on powered status
 // in D-Bus level and in HCI level.

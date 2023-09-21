@@ -71,7 +71,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 11, NextIndex: 11
+// NextMinVersion: 12, NextIndex: 12
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -97,6 +97,8 @@ union RoutineArgument {
   [MinVersion=9] LedLitUpRoutineArgument led_lit_up@9;
   // Arguments to create a floating point routine.
   [MinVersion=10] FloatingPointRoutineArgument floating_point@10;
+  // Arguments to create a Bluetooth power routine.
+  [MinVersion=11] BluetoothPowerRoutineArgument bluetooth_power@11;
 };
 
 // This routine checks whether there is any memory problem by
@@ -244,6 +246,12 @@ struct FloatingPointRoutineArgument {
   ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
 };
 
+// This routine checks whether the Bluetooth adapter can be powered off/on and
+// the powered status is consistent in both HCI and D-Bus levels.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct BluetoothPowerRoutineArgument {};
+
 // Interface exposed to clients for controlling a routine.
 //
 // Error Handling:
@@ -359,6 +367,7 @@ union RoutineDetail {
   VolumeButtonRoutineDetail volume_button;
   LedLitUpRoutineDetail led_lit_up;
   FloatingPointRoutineDetail floating_point;
+  BluetoothPowerRoutineDetail bluetooth_power;
 };
 
 // Details regarding memory routine.
@@ -495,6 +504,26 @@ struct VolumeButtonRoutineDetail {};
 //
 // NextMinVersion: 1, NextIndex: 0
 struct LedLitUpRoutineDetail {};
+
+// Details regarding Bluetooth powered state.
+//
+// NextMinVersion: 1, NextIndex: 2
+struct BluetoothPoweredDetail {
+  // Bluetooth powered state in HCI level.
+  bool hci_powered@0;
+  // Bluetooth powered state in D-Bus level.
+  bool dbus_powered@1;
+};
+
+// Details regarding Bluetooth power routine.
+//
+// NextMinVersion: 1, NextIndex: 2
+struct BluetoothPowerRoutineDetail {
+  // Result of powering off Bluetooth adapter, or null if error occurs.
+  BluetoothPoweredDetail? power_off_result@0;
+  // Result of powering on Bluetooth adapter, or null if error occurs.
+  BluetoothPoweredDetail? power_on_result@1;
+};
 
 // Enumeration of the possible DiskRead routine's command type.
 //

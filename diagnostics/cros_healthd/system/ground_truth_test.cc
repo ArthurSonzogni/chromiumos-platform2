@@ -7,7 +7,9 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/test_future.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
@@ -15,19 +17,31 @@
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
+using ::testing::_;
+using ::testing::DoAll;
+using ::testing::Return;
+using ::testing::StrictMock;
+using ::testing::WithArg;
+
 class GroundTruthTest : public testing::Test {
  protected:
   GroundTruthTest() = default;
   GroundTruthTest(const GroundTruthTest&) = delete;
   GroundTruthTest& operator=(const GroundTruthTest&) = delete;
+
+  MockFlossController* mock_floss_controller() {
+    return mock_context_.mock_floss_controller();
+  }
 
   void ExpectEventSupported(mojom::EventCategoryEnum category) {
     ExpectEventStatus(category, mojom::SupportStatus::Tag::kSupported);
@@ -50,11 +64,17 @@ class GroundTruthTest : public testing::Test {
                         mojom::SupportStatus::Tag::kUnsupported);
   }
 
+  void ExpectRoutineException(mojom::RoutineArgumentPtr arg) {
+    ExpectRoutineStatus(std::move(arg), mojom::SupportStatus::Tag::kException);
+  }
+
   void SetCrosConfig(const std::string& path,
                      const std::string& property,
                      const std::string& value) {
     mock_context_.fake_cros_config()->SetString(path, property, value);
   }
+
+  StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
 
  private:
   // This makes debugging easier when there is an error in unittest.
@@ -447,6 +467,48 @@ TEST_F(GroundTruthTest, LedLitUpRoutineUnsupportedWithoutCrosEc) {
   arg->name = mojom::LedName::kBattery;
   arg->color = mojom::LedColor::kRed;
   ExpectRoutineUnsupported(mojom::RoutineArgument::NewLedLitUp(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, BluetoothPowerRoutineFlossEnabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(true));
+
+  auto arg = mojom::BluetoothPowerRoutineArgument::New();
+  ExpectRoutineSupported(
+      mojom::RoutineArgument::NewBluetoothPower(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, BluetoothPowerRoutineFlossDisabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(false));
+
+  auto arg = mojom::BluetoothPowerRoutineArgument::New();
+  ExpectRoutineUnsupported(
+      mojom::RoutineArgument::NewBluetoothPower(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, BluetoothRoutineNoBluetoothManager) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
+
+  auto arg = mojom::BluetoothPowerRoutineArgument::New();
+  ExpectRoutineUnsupported(
+      mojom::RoutineArgument::NewBluetoothPower(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, BluetoothRoutineGetFlossEnabledError) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+
+  auto arg = mojom::BluetoothPowerRoutineArgument::New();
+  ExpectRoutineException(
+      mojom::RoutineArgument::NewBluetoothPower(std::move(arg)));
 }
 
 }  // namespace

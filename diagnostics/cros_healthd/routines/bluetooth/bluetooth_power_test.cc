@@ -308,7 +308,7 @@ TEST_F(BluetoothPowerRoutineTest, UnexpectedHciDeviceConfigError) {
   // Power off.
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
-  // Set error return code.
+  // Set unexpected output.
   auto result = mojom::ExecutedProcessResult::New();
   result->return_code = EXIT_SUCCESS;
   result->out = "DOWN UP RUNNING";

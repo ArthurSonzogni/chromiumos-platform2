@@ -33,6 +33,7 @@ class FakeFlossEventHub final : public FlossEventHub {
       const dbus::ObjectPath& manager_path = dbus::ObjectPath(""));
   void SendAdapterGattAdded(
       org::chromium::bluetooth::BluetoothGattProxyInterface* adapter_gatt);
+  void SendAdapterPoweredChanged(int32_t hci_interface, bool powered);
 };
 
 }  // namespace diagnostics

@@ -62,6 +62,30 @@ base::Value::Dict ParseUfsLifetimeDetail(
   return output;
 }
 
+base::Value::Dict ParseBluetoothPowerDetail(
+    const mojom::BluetoothPowerRoutineDetailPtr& bluetooth_power_detail) {
+  base::Value::Dict output;
+
+  if (bluetooth_power_detail->power_off_result) {
+    base::Value::Dict power_off_result;
+    SET_DICT(hci_powered, bluetooth_power_detail->power_off_result,
+             &power_off_result);
+    SET_DICT(dbus_powered, bluetooth_power_detail->power_off_result,
+             &power_off_result);
+    output.Set("power_off_result", std::move(power_off_result));
+  }
+
+  if (bluetooth_power_detail->power_on_result) {
+    base::Value::Dict power_on_result;
+    SET_DICT(hci_powered, bluetooth_power_detail->power_on_result,
+             &power_on_result);
+    SET_DICT(dbus_powered, bluetooth_power_detail->power_on_result,
+             &power_on_result);
+    output.Set("power_on_result", std::move(power_on_result));
+  }
+  return output;
+}
+
 void FormatJsonOutput(bool single_line_json, const base::Value::Dict& output) {
   if (single_line_json) {
     std::cout << "Output: ";
@@ -121,6 +145,9 @@ void RoutineV2Client::OnRoutineStateChange(
           break;
         case mojom::RoutineDetail::Tag::kUfsLifetime:
           PrintOutput(ParseUfsLifetimeDetail(detail->get_ufs_lifetime()));
+          break;
+        case mojom::RoutineDetail::Tag::kBluetoothPower:
+          PrintOutput(ParseBluetoothPowerDetail(detail->get_bluetooth_power()));
           break;
       }
       run_loop_.Quit();

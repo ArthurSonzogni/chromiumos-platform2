@@ -10,9 +10,12 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/errors/error.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
+#include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
@@ -59,6 +62,45 @@ mojom::SupportStatusPtr GetDiskReadArgSupportStatus(
         mojom::Unsupported::New("Unexpected disk read type", nullptr));
   }
   return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+}
+
+void HandleFlossEnabledResponse(
+    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
+        callback,
+    brillo::Error* error,
+    bool enabled) {
+  if (error) {
+    LOG(ERROR) << "Failed to get floss enabled state, err: "
+               << error->GetMessage();
+    std::move(callback).Run(mojom::SupportStatus::NewException(
+        mojom::Exception::New(mojom::Exception::Reason::kUnexpected,
+                              "Got error when checking floss enabled state")));
+    return;
+  }
+  if (!enabled) {
+    std::move(callback).Run(mojom::SupportStatus::NewUnsupported(
+        mojom::Unsupported::New("Floss is not enabled", nullptr)));
+    return;
+  }
+  std::move(callback).Run(
+      mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+}
+
+void GetFlossSupportStatus(
+    FlossController* floss_controller,
+    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
+        callback) {
+  CHECK(floss_controller);
+  auto manager = floss_controller->GetManager();
+  if (!manager) {
+    std::move(callback).Run(mojom::SupportStatus::NewUnsupported(
+        mojom::Unsupported::New("Floss is not enabled", nullptr)));
+    return;
+  }
+
+  auto [on_success, on_error] = SplitDbusCallback(
+      base::BindOnce(&HandleFlossEnabledResponse, std::move(callback)));
+  manager->GetFlossEnabledAsync(std::move(on_success), std::move(on_error));
 }
 
 }  // namespace
@@ -256,6 +298,10 @@ void GroundTruth::IsRoutineArgumentSupported(
             "Not supported on a non-CrosEC device", nullptr));
       }
       std::move(callback).Run(std::move(status));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kBluetoothPower: {
+      GetFlossSupportStatus(context_->floss_controller(), std::move(callback));
       return;
     }
   }

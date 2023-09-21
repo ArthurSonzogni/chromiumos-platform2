@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_CONSTANTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_CONSTANTS_H_
 
+#include <base/time/time.h>
+
 namespace diagnostics {
 
 // Put the common and important message here to make it clear for our clients.
@@ -44,6 +46,9 @@ inline constexpr char kBluetoothRoutineFailedCreateBasebandConnection[] =
     "Bluetooth routine failed to create baseband connection.";
 inline constexpr char kBluetoothRoutineFailedFinishPairing[] =
     "Bluetooth routine failed to finish pairing.";
+
+// Bluetooth power routine timeout.
+constexpr base::TimeDelta kPowerRoutineTimeout = base::Seconds(15);
 
 }  // namespace diagnostics
 

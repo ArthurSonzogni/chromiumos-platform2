@@ -128,6 +128,10 @@ You can run the following commands on your DUT:
 2. `cros-health-tool diag led_lit_up --led_name=power --led_color=red --check_supported`
    Use this to see if healthd reports the correct support status.
 
+### Bluetooth power
+
+Supported only when ChromeOS uses Floss as Bluetooth stack.
+
 [team-contact]: mailto:cros-tdm-tpe-eng@google.com
 [cros_healthd_routines.mojom]: /diagnostics/mojom/public/cros_healthd_routines.mojom
 [hw_topology.star]: https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star

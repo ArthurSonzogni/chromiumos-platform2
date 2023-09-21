@@ -41,4 +41,9 @@ void FakeFlossEventHub::SendAdapterGattAdded(
   OnAdapterGattAdded(adapter_gatt);
 }
 
+void FakeFlossEventHub::SendAdapterPoweredChanged(int32_t hci_interface,
+                                                  bool powered) {
+  OnAdapterPoweredChanged(hci_interface, powered);
+}
+
 }  // namespace diagnostics
