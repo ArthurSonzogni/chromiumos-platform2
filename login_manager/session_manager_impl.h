@@ -471,7 +471,6 @@ class SessionManagerImpl
   bool session_stopping_ = false;
   bool screen_locked_ = false;
   bool system_clock_synchronized_ = false;
-  std::string cookie_;
 
   // True if a SuspendImminent D-Bus signal was received from |powerd_proxy_|
   // but the corresponding SuspendDone signal hasn't been received yet.

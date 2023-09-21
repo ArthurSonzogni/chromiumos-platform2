@@ -188,18 +188,18 @@ void PolicyService::OnKeyPersisted(bool status) {
 
 void PolicyService::OnPolicyPersisted(Completion completion,
                                       const std::string& dbus_error_code) {
-  brillo::ErrorPtr error;
-  if (dbus_error_code != dbus_error::kNone) {
-    constexpr char kMessage[] = "Failed to persist policy to disk.";
-    LOG(ERROR) << kMessage << ": " << dbus_error_code;
-    error = CreateError(dbus_error_code, kMessage);
-  }
-
-  if (!completion.is_null()) {
-    std::move(completion).Run(std::move(error));
+  if (completion.is_null()) {
+    LOG(INFO) << "Policy persisted with no completion, result: "
+              << dbus_error_code;
   } else {
-    LOG(ERROR) << "Policy persisted but no completion. Reset the error.";
-    error.reset();
+    brillo::ErrorPtr error;
+    if (dbus_error_code != dbus_error::kNone) {
+      constexpr char kMessage[] = "Failed to persist policy to disk.";
+      LOG(ERROR) << kMessage << ": " << dbus_error_code;
+      error = CreateError(dbus_error_code, kMessage);
+    }
+
+    std::move(completion).Run(std::move(error));
   }
 
   if (delegate_)

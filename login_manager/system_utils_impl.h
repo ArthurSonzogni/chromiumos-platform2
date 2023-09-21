@@ -99,7 +99,6 @@ class SystemUtilsImpl : public SystemUtils {
 
   DevModeState dev_mode_state_ = DevModeState::DEV_MODE_UNKNOWN;
   VmState vm_state_ = VmState::UNKNOWN;
-  base::ScopedTempDir temp_dir_;
   base::FilePath base_dir_for_testing_;
 };
 
