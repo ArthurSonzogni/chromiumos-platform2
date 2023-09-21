@@ -192,6 +192,10 @@ class MockDatapath : public Datapath {
                bool log_failures),
               (override));
   MOCK_METHOD(bool,
+              ModifyClatAcceptRules,
+              (Iptables::Command command, const std::string& ifname),
+              (override));
+  MOCK_METHOD(bool,
               ModifyIptables,
               (IpFamily family,
                Iptables::Table table,

@@ -27,6 +27,8 @@
 #include <shill/net/process_manager.h>
 
 #include "patchpanel/address_manager.h"
+#include "patchpanel/datapath.h"
+#include "patchpanel/iptables.h"
 #include "patchpanel/system.h"
 
 namespace patchpanel {
@@ -212,6 +214,13 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
     return;
   }
 
+  if (!datapath_->ModifyClatAcceptRules(Iptables::Command::kA,
+                                        kTunnelDeviceIfName)) {
+    LOG(ERROR) << "Failed to add rules for CLAT in ip6tables";
+    StopClat();
+    return;
+  }
+
   // The prefix length has to be /128 to add a route for only one IPv6 address.
   if (!datapath_->AddIPv6HostRoute(
           kTunnelDeviceIfName, *net_base::IPv6CIDR::CreateFromAddressAndPrefix(
@@ -261,6 +270,8 @@ void ClatService::StopClat(bool clear_running_device) {
 
   datapath_->RemoveIPv6NeighborProxy(clat_running_device_->ifname,
                                      clat_ipv6_addr_.value());
+
+  datapath_->ModifyClatAcceptRules(Iptables::Command::kD, kTunnelDeviceIfName);
 
   StopTayga();
 

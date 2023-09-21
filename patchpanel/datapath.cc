@@ -2490,6 +2490,16 @@ void Datapath::ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
                  {"-o", std::string(ifname), "-j", kQoSApplyDSCPChain, "-w"});
 }
 
+bool Datapath::ModifyClatAcceptRules(Iptables::Command command,
+                                     const std::string& ifname) {
+  bool success = true;
+  success &= ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter, command,
+                            "FORWARD", "ACCEPT", /*iif=*/ifname, /*oif=*/"");
+  success &= ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter, command,
+                            "FORWARD", "ACCEPT", /*iif=*/"", /*oif=*/ifname);
+  return success;
+}
+
 std::ostream& operator<<(std::ostream& stream,
                          const ConnectedNamespace& nsinfo) {
   stream << "{ pid: " << nsinfo.pid

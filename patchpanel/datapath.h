@@ -437,6 +437,11 @@ class Datapath {
                            Iptables::Command command,
                            std::string_view chain,
                            bool log_failures = true);
+  // Manipulates rules of the FORWARD chain in filter table that accept incoming
+  // packets from and outgoing packets to interface |ifname|. The manipulated
+  // rules only affect IPv6 packets.
+  virtual bool ModifyClatAcceptRules(Iptables::Command command,
+                                     const std::string& ifname);
   // Sends an iptables command for table |table|.
   virtual bool ModifyIptables(
       IpFamily family,

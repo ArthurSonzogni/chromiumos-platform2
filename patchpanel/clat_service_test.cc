@@ -19,6 +19,7 @@
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/fake_system.h"
+#include "patchpanel/iptables.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/system.h"
@@ -398,6 +399,9 @@ TEST_F(ClatServiceTest, VerifyStartAndStopClat) {
                 net_base::IPv4CIDR::CreateFromCIDRString("192.0.0.1/29"),
                 IsEmpty(), DeviceMode::kTun))
       .WillOnce(Return("tun_nat64"));
+  EXPECT_CALL(datapath_,
+              ModifyClatAcceptRules(Iptables::Command::kA, StrEq("tun_nat64")))
+      .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddIPv6HostRoute(StrEq("tun_nat64"),
                                           CIDRHasPrefix("2001:db8::/64"),
                                           Eq(std::nullopt)))
@@ -417,6 +421,8 @@ TEST_F(ClatServiceTest, VerifyStartAndStopClat) {
   EXPECT_CALL(datapath_,
               RemoveIPv6NeighborProxy(StrEq("v6only"),
                                       AddressHasPrefix("2001:db8::/64")));
+  EXPECT_CALL(datapath_,
+              ModifyClatAcceptRules(Iptables::Command::kD, StrEq("tun_nat64")));
   EXPECT_CALL(datapath_, RemoveIPv6HostRoute(CIDRHasPrefix("2001:db8::/64")));
   EXPECT_CALL(datapath_, RemoveTunTap(StrEq("tun_nat64"), DeviceMode::kTun));
   // StopClat() is called.

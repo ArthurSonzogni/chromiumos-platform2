@@ -2416,4 +2416,18 @@ TEST(DatapathTest, DisableQoSApplyingDSCP) {
   datapath.DisableQoSApplyingDSCP("wlan0");
 }
 
+TEST(DatapathTest, ModifyClatAcceptRules) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Datapath datapath(runner, firewall, &system);
+
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A FORWARD -i tun_nat64 -j ACCEPT -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A FORWARD -o tun_nat64 -j ACCEPT -w");
+  datapath.ModifyClatAcceptRules(Iptables::Command::kA, "tun_nat64");
+}
+
 }  // namespace patchpanel
