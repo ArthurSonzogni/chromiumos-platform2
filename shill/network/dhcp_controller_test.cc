@@ -19,6 +19,7 @@
 #include <net-base/ipv4_address.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/mock_control.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_process_manager.h"
@@ -26,7 +27,6 @@
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_dhcp_proxy.h"
-#include "shill/store/property_store_test.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -61,12 +61,12 @@ MATCHER_P(IsWeakPtrTo, address, "") {
 }
 }  // namespace
 
-class DHCPControllerTest : public PropertyStoreTest {
+class DHCPControllerTest : public ::testing::Test {
  public:
   DHCPControllerTest()
       : proxy_(new MockDHCPProxy()),
-        controller_(new DHCPController(control_interface(),
-                                       dispatcher(),
+        controller_(new DHCPController(&control_interface_,
+                                       &dispatcher_,
                                        &provider_,
                                        kDeviceName,
                                        DHCPController::Options{
@@ -78,9 +78,8 @@ class DHCPControllerTest : public PropertyStoreTest {
                                        Technology::kUnknown,
                                        &metrics_)) {
     controller_->time_ = &time_;
+    controller_->process_manager_ = &process_manager_;
   }
-
-  void SetUp() override { controller_->process_manager_ = &process_manager_; }
 
   void SetDHCPVerboseLog() {
     ScopeLogger::GetInstance()->EnableScopesByName("dhcp");
@@ -133,6 +132,8 @@ class DHCPControllerTest : public PropertyStoreTest {
  protected:
   static constexpr int kPID = 123456;
 
+  MockControl control_interface_;
+  EventDispatcherForTest dispatcher_;
   std::unique_ptr<MockDHCPProxy> proxy_;
   MockProcessManager process_manager_;
   MockTime time_;
@@ -147,7 +148,7 @@ void DHCPControllerTest::CreateMockMinijailConfig(
     const std::string& hostname,
     const std::string& lease_suffix,
     bool arp_gateway) {
-  controller_.reset(new DHCPController(control_interface(), dispatcher(),
+  controller_.reset(new DHCPController(&control_interface_, &dispatcher_,
                                        &provider_, kDeviceName,
                                        DHCPController::Options{
                                            .use_arp_gateway = arp_gateway,
@@ -155,7 +156,7 @@ void DHCPControllerTest::CreateMockMinijailConfig(
                                            .lease_name = lease_suffix,
                                            .hostname = hostname,
                                        },
-                                       Technology::kUnknown, metrics()));
+                                       Technology::kUnknown, &metrics_));
   controller_->process_manager_ = &process_manager_;
 }
 
@@ -163,7 +164,7 @@ TEST_F(DHCPControllerTest, InitProxy) {
   static const char kService[] = ":1.200";
   EXPECT_NE(nullptr, proxy_);
   EXPECT_EQ(nullptr, controller_->proxy_);
-  EXPECT_CALL(*control_interface(), CreateDHCPProxy(kService))
+  EXPECT_CALL(control_interface_, CreateDHCPProxy(kService))
       .WillOnce(Return(ByMove(std::move(proxy_))));
   controller_->InitProxy(kService);
   EXPECT_EQ(nullptr, proxy_);
@@ -299,11 +300,11 @@ TEST_F(DHCPControllerTest, ExpiryMetrics) {
   SetCurrentTimeToSecond(kTimeNow);
   InvokeOnIPConfigUpdated(network_config, dhcp_data, true);
 
-  dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
+  dispatcher_.task_environment().FastForwardBy(base::Milliseconds(500));
 
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricExpiredLeaseLengthSeconds,
                                   Technology(Technology::kUnknown), 1));
-  dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
+  dispatcher_.task_environment().FastForwardBy(base::Milliseconds(500));
 }
 
 namespace {
@@ -328,13 +329,13 @@ class DHCPControllerCallbackTest : public DHCPControllerTest {
     EXPECT_CALL(*this, UpdateCallback(_, _, new_lease_acquired))
         .WillOnce(SaveArg<0>(&updated_network_config_));
     EXPECT_CALL(*this, DropCallback(_)).Times(0);
-    dispatcher()->task_environment().RunUntilIdle();
+    dispatcher_.task_environment().RunUntilIdle();
   }
 
   void ExpectFailureCallback() {
     EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
     EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false));
-    dispatcher()->task_environment().RunUntilIdle();
+    dispatcher_.task_environment().RunUntilIdle();
   }
 
  protected:
@@ -448,7 +449,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessStatusChangedSignalUnknown) {
   EXPECT_CALL(*this, DropCallback(_)).Times(0);
   controller_->ProcessStatusChangedSignal(
       DHCPController::ClientStatus::kUnknown);
-  dispatcher()->task_environment().RunUntilIdle();
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(DHCPControllerCallbackTest,
@@ -457,7 +458,7 @@ TEST_F(DHCPControllerCallbackTest,
   EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/true));
   controller_->ProcessStatusChangedSignal(
       DHCPController::ClientStatus::kIPv6Preferred);
-  dispatcher()->task_environment().RunUntilIdle();
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(DHCPControllerCallbackTest, StoppedDuringFailureCallback) {
@@ -471,7 +472,7 @@ TEST_F(DHCPControllerCallbackTest, StoppedDuringFailureCallback) {
                                   conf);
   EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false))
       .WillOnce(InvokeWithoutArgs(this, &DHCPControllerTest::StopInstance));
-  dispatcher()->task_environment().RunUntilIdle();
+  dispatcher_.task_environment().RunUntilIdle();
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(controller_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(controller_->lease_expiration_callback_.IsCancelled());
@@ -492,7 +493,7 @@ TEST_F(DHCPControllerCallbackTest, StoppedDuringSuccessCallback) {
                                   conf);
   EXPECT_CALL(*this, UpdateCallback(_, _, true))
       .WillOnce(InvokeWithoutArgs(this, &DHCPControllerTest::StopInstance));
-  dispatcher()->task_environment().RunUntilIdle();
+  dispatcher_.task_environment().RunUntilIdle();
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(controller_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(controller_->lease_expiration_callback_.IsCancelled());
@@ -503,7 +504,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessAcquisitionTimeout) {
   SetShouldFailOnAcquisitionTimeout(false);
   EXPECT_CALL(*this, DropCallback(_)).Times(0);
   controller_->ProcessAcquisitionTimeout();
-  dispatcher()->task_environment().RunUntilIdle();
+  dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(this);
   Mock::VerifyAndClearExpectations(controller_.get());
 
