@@ -27,6 +27,7 @@ mod volume;
 
 use crate::resume_dbus::send_abort;
 
+pub use hiberutil::record_user_logout;
 pub use hiberutil::AbortResumeOptions;
 pub use hiberutil::HibernateOptions;
 pub use hiberutil::ResumeInitOptions;
@@ -82,6 +83,11 @@ pub fn teardown_hiberimage() -> Result<()> {
         SnapshotDevice::new(SnapshotMode::Read)?.release_block_device()?;
 
         volume_manager.teardown_hiberimage()?;
+
+        // A teardown of the hiberimage is usually triggered by a logout of the
+        // user. Record the logout, so we can report it if a later hibernation
+        // attempt fails because the hiberimage does not exist.
+        record_user_logout();
     }
 
     Ok(())

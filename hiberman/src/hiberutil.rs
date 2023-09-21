@@ -9,10 +9,12 @@ use std::ffi::CString;
 use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::mem::MaybeUninit;
 use std::os::unix::ffi::OsStrExt;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
 use std::process::Command;
@@ -22,6 +24,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
+use lazy_static::lazy_static;
 use libc::c_ulong;
 use libc::c_void;
 use log::debug;
@@ -34,12 +37,20 @@ use thiserror::Error as ThisError;
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
 use crate::files::HIBERMETA_DIR;
+use crate::files::TMPFS_DIR;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::HiberlogOut;
 use crate::metrics::METRICS_LOGGER;
 use crate::mmapbuf::MmapBuffer;
 
 const KEYCTL_PATH: &str = "/bin/keyctl";
+
+lazy_static! {
+    static ref USER_LOGGED_OUT_PATH: PathBuf = {
+        let path = Path::new(TMPFS_DIR);
+        path.join("user_logged_out")
+    };
+}
 
 /// Define the hibernate stages.
 pub enum HibernateStage {
@@ -618,6 +629,26 @@ pub fn get_kernel_restore_time() -> Result<Duration> {
     Err(anyhow!(
         "Could not find log entries to determine kernel restore time"
     ))
+}
+
+/// Records a user logout.
+pub fn record_user_logout() {
+    // create (empty) sentinel file
+    if let Err(e) = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(USER_LOGGED_OUT_PATH.as_path())
+    {
+        warn!(
+            "Failed to open/create '{}': {e:?}",
+            USER_LOGGED_OUT_PATH.display()
+        );
+    }
+}
+
+/// Returns true if the hiberimage was torn down because the user logged out.
+pub fn has_user_logged_out() -> bool {
+    USER_LOGGED_OUT_PATH.exists()
 }
 
 /// Add a logon key to the kernel key ring

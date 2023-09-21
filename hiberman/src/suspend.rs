@@ -40,6 +40,7 @@ use crate::hiberutil::checked_command_output;
 use crate::hiberutil::get_kernel_restore_time;
 use crate::hiberutil::get_page_size;
 use crate::hiberutil::get_ram_size;
+use crate::hiberutil::has_user_logged_out;
 use crate::hiberutil::intel_keylocker_enabled;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
@@ -71,7 +72,8 @@ enum SuspendAbortReason {
     InsufficientDiskSpace = 2,
     UpdateEngineActive = 3,
     NoHiberimage = 4,
-    Count = 5,
+    PriorUserLogout = 5,
+    Count = 6,
 }
 
 /// The SuspendConductor weaves a delicate baton to guide us through the
@@ -121,8 +123,16 @@ impl SuspendConductor<'_> {
         let hibermeta_mount = self.volume_manager.setup_hibermeta_lv(true)?;
 
         if !self.volume_manager.hiberimage_exists() {
-            Self::log_suspend_abort(SuspendAbortReason::NoHiberimage);
-            info!("'hiberimage' does not exist, aborting hibernate attempt");
+            if has_user_logged_out() {
+                info!(
+                    "'hiberimage' does not exist (prior user logout), aborting hibernate attempt"
+                );
+                Self::log_suspend_abort(SuspendAbortReason::PriorUserLogout);
+            } else {
+                info!("'hiberimage' does not exist, aborting hibernate attempt");
+                Self::log_suspend_abort(SuspendAbortReason::NoHiberimage);
+            }
+
             return Err(HibernateError::NoHiberimageError().into());
         }
 
