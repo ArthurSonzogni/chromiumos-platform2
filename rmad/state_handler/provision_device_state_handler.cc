@@ -58,7 +58,7 @@ constexpr double kProgressSetBoardId = kProgressComplete;
 
 constexpr char kEmptyBoardIdType[] = "ffffffff";
 constexpr char kTestBoardIdType[] = "5a5a4352";  // ZZCR.
-constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";
+constexpr char kTwoStagePvtBoardIdFlags[] = "00003f80";
 
 const std::vector<std::string> kResetGbbFlagsArgv = {
     "/usr/bin/futility", "gbb", "--set", "--flash", "--flags=0"};
@@ -486,22 +486,21 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
     return;
   }
   if (board_id_type == kEmptyBoardIdType) {
-    bool is_custom_label = false;
+    bool is_two_stage = false;
     if (gsc_utils_->GetBoardIdFlags(&board_id_flags) &&
-        board_id_flags == kCustomLabelPvtBoardIdFlags) {
-      is_custom_label = true;
-      // TODO(chenghan): Custom label board ID flags should not be used on a
-      //                 non custom label device, but technically GSC still
-      //                 works. Record a metric for it.
+        board_id_flags == kTwoStagePvtBoardIdFlags) {
+      // For two-stage cases (LOEM projects and spare MLB for RMA), the board ID
+      // type are left empty and be set in LOEM or during RMA.
+      is_two_stage = true;
       if (!cros_config_utils_->HasCustomLabel()) {
-        LOG(ERROR) << "GSC board ID flags for custom label should not be used "
-                   << "on a non custom label device";
+        // It's a spare MLB for RMA.
+        DLOG(INFO) << "Setting GSC board ID type for spare MLB.";
       }
     } else {
       // TODO(chenghan): This is a security violation. Record a metric for it.
       LOG(ERROR) << "GSC board ID type is empty in RMA";
     }
-    if (!gsc_utils_->SetBoardId(is_custom_label)) {
+    if (!gsc_utils_->SetBoardId(is_two_stage)) {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                    kProgressFailedBlocking,
                    ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
