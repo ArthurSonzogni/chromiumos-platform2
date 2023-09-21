@@ -1102,6 +1102,21 @@ void InstallAttributesAdaptor::GetFirmwareManagementParameters(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetFirmwareManagementParametersReply>> response,
     const user_data_auth::GetFirmwareManagementParametersRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &InstallAttributesAdaptor::DoGetFirmwareManagementParameters,
+          base::Unretained(this),
+          ThreadSafeDBusMethodResponse<
+              user_data_auth::GetFirmwareManagementParametersReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void InstallAttributesAdaptor::DoGetFirmwareManagementParameters(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetFirmwareManagementParametersReply>> response,
+    const user_data_auth::GetFirmwareManagementParametersRequest& in_request) {
   user_data_auth::GetFirmwareManagementParametersReply reply;
   user_data_auth::FirmwareManagementParameters fwmp;
   auto status = service_->GetFirmwareManagementParameters(&fwmp);
@@ -1120,6 +1135,22 @@ void InstallAttributesAdaptor::RemoveFirmwareManagementParameters(
         user_data_auth::RemoveFirmwareManagementParametersReply>> response,
     const user_data_auth::RemoveFirmwareManagementParametersRequest&
         in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &InstallAttributesAdaptor::DoRemoveFirmwareManagementParameters,
+          base::Unretained(this),
+          ThreadSafeDBusMethodResponse<
+              user_data_auth::RemoveFirmwareManagementParametersReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void InstallAttributesAdaptor::DoRemoveFirmwareManagementParameters(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::RemoveFirmwareManagementParametersReply>> response,
+    const user_data_auth::RemoveFirmwareManagementParametersRequest&
+        in_request) {
   user_data_auth::RemoveFirmwareManagementParametersReply reply;
   if (!service_->RemoveFirmwareManagementParameters()) {
     reply.set_error(
@@ -1130,6 +1161,21 @@ void InstallAttributesAdaptor::RemoveFirmwareManagementParameters(
 }
 
 void InstallAttributesAdaptor::SetFirmwareManagementParameters(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::SetFirmwareManagementParametersReply>> response,
+    const user_data_auth::SetFirmwareManagementParametersRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &InstallAttributesAdaptor::DoSetFirmwareManagementParameters,
+          base::Unretained(this),
+          ThreadSafeDBusMethodResponse<
+              user_data_auth::SetFirmwareManagementParametersReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void InstallAttributesAdaptor::DoSetFirmwareManagementParameters(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::SetFirmwareManagementParametersReply>> response,
     const user_data_auth::SetFirmwareManagementParametersRequest& in_request) {

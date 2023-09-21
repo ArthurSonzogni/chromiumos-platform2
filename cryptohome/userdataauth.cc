@@ -2158,7 +2158,7 @@ user_data_auth::GetEncryptionInfoReply UserDataAuth::GetEncryptionInfo(
 user_data_auth::CryptohomeErrorCode
 UserDataAuth::GetFirmwareManagementParameters(
     user_data_auth::FirmwareManagementParameters* fwmp) {
-  AssertOnOriginThread();
+  AssertOnMountThread();
   if (!firmware_management_parameters_->Load()) {
     return user_data_auth::
         CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID;
@@ -2190,7 +2190,7 @@ UserDataAuth::GetFirmwareManagementParameters(
 user_data_auth::CryptohomeErrorCode
 UserDataAuth::SetFirmwareManagementParameters(
     const user_data_auth::FirmwareManagementParameters& fwmp) {
-  AssertOnOriginThread();
+  AssertOnMountThread();
 
   if (!firmware_management_parameters_->Create()) {
     return user_data_auth::
@@ -2214,7 +2214,7 @@ UserDataAuth::SetFirmwareManagementParameters(
 }
 
 bool UserDataAuth::RemoveFirmwareManagementParameters() {
-  AssertOnOriginThread();
+  AssertOnMountThread();
   return firmware_management_parameters_->Destroy();
 }
 

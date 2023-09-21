@@ -545,16 +545,29 @@ class InstallAttributesAdaptor
           user_data_auth::GetFirmwareManagementParametersReply>> response,
       const user_data_auth::GetFirmwareManagementParametersRequest& in_request)
       override;
+  void DoGetFirmwareManagementParameters(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetFirmwareManagementParametersReply>> response,
+      const user_data_auth::GetFirmwareManagementParametersRequest& in_request);
   void RemoveFirmwareManagementParameters(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::RemoveFirmwareManagementParametersReply>> response,
       const user_data_auth::RemoveFirmwareManagementParametersRequest&
           in_request) override;
+  void DoRemoveFirmwareManagementParameters(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::RemoveFirmwareManagementParametersReply>> response,
+      const user_data_auth::RemoveFirmwareManagementParametersRequest&
+          in_request);
   void SetFirmwareManagementParameters(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::SetFirmwareManagementParametersReply>> response,
       const user_data_auth::SetFirmwareManagementParametersRequest& in_request)
       override;
+  void DoSetFirmwareManagementParameters(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::SetFirmwareManagementParametersReply>> response,
+      const user_data_auth::SetFirmwareManagementParametersRequest& in_request);
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;
