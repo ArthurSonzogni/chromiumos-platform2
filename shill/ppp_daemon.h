@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "shill/external_task.h"
+#include "shill/ipconfig.h"
 #include "shill/service.h"
 
 namespace shill {

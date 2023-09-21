@@ -30,7 +30,6 @@
 #include "shill/event_history.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/network/network.h"
 #include "shill/refptr_types.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/store/pkcs11_slot_getter.h"

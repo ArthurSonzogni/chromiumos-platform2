@@ -15,6 +15,7 @@
 
 #include "shill/callbacks.h"
 #include "shill/eap_credentials.h"
+#include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/service.h"

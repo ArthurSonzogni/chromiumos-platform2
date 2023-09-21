@@ -40,6 +40,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/network/network.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store/pkcs11_slot_getter.h"

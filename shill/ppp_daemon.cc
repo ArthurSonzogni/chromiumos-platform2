@@ -22,6 +22,7 @@ extern "C" {
 #undef class
 }
 
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_number_conversions.h>

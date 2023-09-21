@@ -61,6 +61,7 @@
 #include "shill/http_url.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/network/network.h"
 #include "shill/network/network_priority.h"
 #include "shill/profile.h"
 #include "shill/resolver.h"

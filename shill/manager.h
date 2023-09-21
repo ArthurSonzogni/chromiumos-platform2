@@ -33,7 +33,6 @@
 #include "shill/hook_table.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/network/network.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/profile.h"
@@ -58,6 +57,7 @@ class EthernetProvider;
 class EventDispatcher;
 class ManagerAdaptorInterface;
 class ModemInfo;
+class Network;
 class Resolver;
 class Throttler;
 class VPNProvider;
