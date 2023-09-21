@@ -9,6 +9,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "libec/ec_command.h"
 #include "libec/i2c_passthru_command.h"
 
 namespace ec {
@@ -24,7 +25,7 @@ constexpr uint8_t kI2cAddr = 0x30;
 constexpr size_t kI2cReadLen = 16;
 constexpr size_t kI2cResponseHeaderSize = 2;
 
-TEST(I2cPassthruCommand, I2cPassthruCommandWrite) {
+TEST(I2cPassthruCommand, I2cPassthruCommandWriteSuccess) {
   const std::vector<uint8_t> kData{0xaa, 0xbb, 0xcc, 0xdd};
   struct ec_params_i2c_passthru_msg expected_write_info {
     .addr_flags = kI2cAddr, .len = static_cast<uint16_t>(kData.size())
@@ -35,18 +36,25 @@ TEST(I2cPassthruCommand, I2cPassthruCommandWrite) {
   expected_msg_and_payload.insert(expected_msg_and_payload.end(), kData.begin(),
                                   kData.end());
 
-  I2cPassthruCommand cmd(kI2cBus, kI2cAddr, kData, 0);
-  EXPECT_EQ(cmd.Command(), EC_CMD_I2C_PASSTHRU);
-  EXPECT_EQ(cmd.Version(), 0);
-  EXPECT_EQ(cmd.Req()->req.port, kI2cBus);
-  EXPECT_EQ(cmd.Req()->req.num_msgs, 1);
+  auto cmd = I2cPassthruCommand::Create(kI2cBus, kI2cAddr, kData, 0);
+  EXPECT_NE(cmd, nullptr);
+  EXPECT_EQ(cmd->Command(), EC_CMD_I2C_PASSTHRU);
+  EXPECT_EQ(cmd->Version(), 0);
+  EXPECT_EQ(cmd->Req()->req.port, kI2cBus);
+  EXPECT_EQ(cmd->Req()->req.num_msgs, 1);
   EXPECT_THAT(expected_msg_and_payload,
-              ElementsAreArray(cmd.Req()->msg_and_payload.begin(),
+              ElementsAreArray(cmd->Req()->msg_and_payload.begin(),
                                expected_msg_and_payload.size()));
-  EXPECT_EQ(cmd.RespSize(), kI2cResponseHeaderSize);
+  EXPECT_EQ(cmd->RespSize(), kI2cResponseHeaderSize);
 }
 
-TEST(I2cPassthruCommand, I2cPassthruCommandRead) {
+TEST(I2cPassthruCommand, I2cPassthruCommandWriteFailure) {
+  const std::vector<uint8_t> kData(kMaxPacketSize + 1, 0xaa);
+  auto cmd = I2cPassthruCommand::Create(kI2cBus, kI2cAddr, kData, 0);
+  EXPECT_EQ(cmd, nullptr);
+}
+
+TEST(I2cPassthruCommand, I2cPassthruCommandReadSuccess) {
   struct ec_params_i2c_passthru_msg expected_read_info {
     .addr_flags = kI2cAddr | EC_I2C_FLAG_READ, .len = kI2cReadLen
   };
@@ -54,15 +62,22 @@ TEST(I2cPassthruCommand, I2cPassthruCommandRead) {
   std::vector<uint8_t> expected_msg_and_payload(
       ptr, ptr + sizeof(expected_read_info));
 
-  I2cPassthruCommand cmd(kI2cBus, kI2cAddr, {}, kI2cReadLen);
-  EXPECT_EQ(cmd.Command(), EC_CMD_I2C_PASSTHRU);
-  EXPECT_EQ(cmd.Version(), 0);
-  EXPECT_EQ(cmd.Req()->req.port, kI2cBus);
-  EXPECT_EQ(cmd.Req()->req.num_msgs, 1);
+  auto cmd = I2cPassthruCommand::Create(kI2cBus, kI2cAddr, {}, kI2cReadLen);
+  EXPECT_NE(cmd, nullptr);
+  EXPECT_EQ(cmd->Command(), EC_CMD_I2C_PASSTHRU);
+  EXPECT_EQ(cmd->Version(), 0);
+  EXPECT_EQ(cmd->Req()->req.port, kI2cBus);
+  EXPECT_EQ(cmd->Req()->req.num_msgs, 1);
   EXPECT_THAT(expected_msg_and_payload,
-              ElementsAreArray(cmd.Req()->msg_and_payload.begin(),
+              ElementsAreArray(cmd->Req()->msg_and_payload.begin(),
                                expected_msg_and_payload.size()));
-  EXPECT_EQ(cmd.RespSize(), kI2cResponseHeaderSize + kI2cReadLen);
+  EXPECT_EQ(cmd->RespSize(), kI2cResponseHeaderSize + kI2cReadLen);
+}
+
+TEST(I2cPassthruCommand, I2cPassthruCommandReadFail) {
+  auto cmd = I2cPassthruCommand::Create(kI2cBus, kI2cAddr, {},
+                                        i2c_passthru::kResponseDataMaxSize + 1);
+  EXPECT_EQ(cmd, nullptr);
 }
 
 TEST(I2cPassthruCommand, I2cPassthruCommandWriteAndRead) {
@@ -83,24 +98,26 @@ TEST(I2cPassthruCommand, I2cPassthruCommandWriteAndRead) {
   expected_msg_and_payload.insert(expected_msg_and_payload.end(), kData.begin(),
                                   kData.end());
 
-  I2cPassthruCommand cmd(kI2cBus, kI2cAddr, kData, kI2cReadLen);
-  EXPECT_EQ(cmd.Command(), EC_CMD_I2C_PASSTHRU);
-  EXPECT_EQ(cmd.Version(), 0);
-  EXPECT_EQ(cmd.Req()->req.port, kI2cBus);
-  EXPECT_EQ(cmd.Req()->req.num_msgs, 2);
+  auto cmd = I2cPassthruCommand::Create(kI2cBus, kI2cAddr, kData, kI2cReadLen);
+  EXPECT_NE(cmd, nullptr);
+  EXPECT_EQ(cmd->Command(), EC_CMD_I2C_PASSTHRU);
+  EXPECT_EQ(cmd->Version(), 0);
+  EXPECT_EQ(cmd->Req()->req.port, kI2cBus);
+  EXPECT_EQ(cmd->Req()->req.num_msgs, 2);
   EXPECT_THAT(expected_msg_and_payload,
-              ElementsAreArray(cmd.Req()->msg_and_payload.begin(),
+              ElementsAreArray(cmd->Req()->msg_and_payload.begin(),
                                expected_msg_and_payload.size()));
-  EXPECT_EQ(cmd.RespSize(), kI2cResponseHeaderSize + kI2cReadLen);
+  EXPECT_EQ(cmd->RespSize(), kI2cResponseHeaderSize + kI2cReadLen);
 }
 
 TEST(I2cPassthruCommand, I2cPassthruCommandNoOp) {
-  I2cPassthruCommand cmd(kI2cBus, kI2cAddr, {}, 0);
-  EXPECT_EQ(cmd.Command(), EC_CMD_I2C_PASSTHRU);
-  EXPECT_EQ(cmd.Version(), 0);
-  EXPECT_EQ(cmd.Req()->req.port, kI2cBus);
-  EXPECT_EQ(cmd.Req()->req.num_msgs, 0);
-  EXPECT_EQ(cmd.RespSize(), kI2cResponseHeaderSize);
+  auto cmd = I2cPassthruCommand::Create(kI2cBus, kI2cAddr, {}, 0);
+  EXPECT_NE(cmd, nullptr);
+  EXPECT_EQ(cmd->Command(), EC_CMD_I2C_PASSTHRU);
+  EXPECT_EQ(cmd->Version(), 0);
+  EXPECT_EQ(cmd->Req()->req.port, kI2cBus);
+  EXPECT_EQ(cmd->Req()->req.num_msgs, 0);
+  EXPECT_EQ(cmd->RespSize(), kI2cResponseHeaderSize);
 }
 
 // Mock the underlying EcCommand to test.
@@ -108,8 +125,6 @@ class I2cPassthruCommandTest : public testing::Test {
  public:
   class MockI2cPassthruCommand : public I2cPassthruCommand {
    public:
-    using I2cPassthruCommand::I2cPassthruCommand;
-    MockI2cPassthruCommand() : I2cPassthruCommand(0, 0, {}, 0) {}
     MOCK_METHOD(struct i2c_passthru::Response*, Resp, (), (const, override));
     MOCK_METHOD(uint32_t, RespSize, (), (const, override));
   };
@@ -120,24 +135,26 @@ TEST_F(I2cPassthruCommandTest, I2cPassthruCommandResponseSucceed) {
   i2c_passthru::Response response{.resp = {.i2c_status = 0, .num_msgs = 1}};
   std::copy(kData.begin(), kData.end(), response.data.begin());
 
-  NiceMock<MockI2cPassthruCommand> mock_cmd;
-  ON_CALL(mock_cmd, Resp).WillByDefault(Return(&response));
-  ON_CALL(mock_cmd, RespSize)
+  auto mock_cmd =
+      I2cPassthruCommand::Create<NiceMock<MockI2cPassthruCommand>>(0, 0, {}, 0);
+  ON_CALL(*mock_cmd, Resp).WillByDefault(Return(&response));
+  ON_CALL(*mock_cmd, RespSize)
       .WillByDefault(Return(kI2cResponseHeaderSize + kData.size()));
-  EXPECT_EQ(mock_cmd.I2cStatus(), 0);
-  EXPECT_THAT(mock_cmd.RespData(), ElementsAreArray(kData));
+  EXPECT_EQ(mock_cmd->I2cStatus(), 0);
+  EXPECT_THAT(mock_cmd->RespData(), ElementsAreArray(kData));
 }
 
 TEST_F(I2cPassthruCommandTest, I2cPassthruCommandResponseFailed) {
-  NiceMock<MockI2cPassthruCommand> mock_cmd;
+  auto mock_cmd =
+      I2cPassthruCommand::Create<NiceMock<MockI2cPassthruCommand>>(0, 0, {}, 0);
 
   i2c_passthru::Response response{
       .resp = {.i2c_status = EC_I2C_STATUS_NAK, .num_msgs = 0}, .data = {}};
 
-  ON_CALL(mock_cmd, Resp).WillByDefault(Return(&response));
-  ON_CALL(mock_cmd, RespSize).WillByDefault(Return(kI2cResponseHeaderSize));
-  EXPECT_EQ(mock_cmd.I2cStatus(), EC_I2C_STATUS_NAK);
-  EXPECT_TRUE(mock_cmd.RespData().empty());
+  ON_CALL(*mock_cmd, Resp).WillByDefault(Return(&response));
+  ON_CALL(*mock_cmd, RespSize).WillByDefault(Return(kI2cResponseHeaderSize));
+  EXPECT_EQ(mock_cmd->I2cStatus(), EC_I2C_STATUS_NAK);
+  EXPECT_TRUE(mock_cmd->RespData().empty());
 }
 
 }  // namespace

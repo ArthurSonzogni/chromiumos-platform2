@@ -44,7 +44,6 @@ class I2cReadCommandTest : public testing::Test {
  public:
   class MockI2cReadCommand : public I2cReadCommand {
    public:
-    using I2cReadCommand::I2cReadCommand;
     MOCK_METHOD(struct i2c_passthru::Response*, Resp, (), (const, override));
     MOCK_METHOD(uint32_t, RespSize, (), (const, override));
   };

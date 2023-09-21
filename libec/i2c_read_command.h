@@ -17,6 +17,11 @@ namespace ec {
 // The command to read data over I2C buses.
 class BRILLO_EXPORT I2cReadCommand : public I2cPassthruCommand {
  public:
+  // Use factory method instead.
+  I2cReadCommand() = default;
+
+  ~I2cReadCommand() override = default;
+
   // Factory method.
   // @param port I2C port number
   // @param addr8 I2C target address in 8-bit
@@ -35,17 +40,14 @@ class BRILLO_EXPORT I2cReadCommand : public I2cPassthruCommand {
       return nullptr;
     }
 
-    // Using new to access non-public constructor.
-    return base::WrapUnique(new T(port, addr8, offset, read_len));
+    auto cmd =
+        I2cPassthruCommand::Create<T>(port, addr8 >> 1, {offset}, read_len);
+
+    cmd->read_len_ = read_len;
+    return cmd;
   }
-  ~I2cReadCommand() override = default;
 
   virtual uint32_t Data() const;
-
- protected:
-  I2cReadCommand(uint8_t port, uint8_t addr8, uint8_t offset, uint8_t read_len)
-      : I2cPassthruCommand(port, addr8 >> 1, {offset}, read_len),
-        read_len_(read_len) {}
 
  private:
   uint8_t read_len_;

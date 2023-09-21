@@ -31,16 +31,18 @@ class EcI2cFunctionTest : public BaseFunctionTest {
  public:
   class MockI2cReadCommand : public ec::I2cReadCommand {
    public:
-    MockI2cReadCommand(uint8_t read_len,
-                       bool success,
-                       uint32_t result,
-                       uint8_t i2c_status,
-                       uint16_t data)
-        : ec::I2cReadCommand(0, 0, 0, read_len) {
-      ON_CALL(*this, Run).WillByDefault(Return(success));
-      ON_CALL(*this, Result).WillByDefault(Return(result));
-      ON_CALL(*this, I2cStatus).WillByDefault(Return(i2c_status));
-      ON_CALL(*this, Data).WillByDefault(Return(data));
+    template <typename T = MockI2cReadCommand>
+    static std::unique_ptr<T> Create(uint8_t read_len,
+                                     bool success,
+                                     uint32_t result,
+                                     uint8_t i2c_status,
+                                     uint16_t data) {
+      auto cmd = ec::I2cReadCommand::Create<T>(0, 0, 0, read_len);
+      ON_CALL(*cmd, Run).WillByDefault(Return(success));
+      ON_CALL(*cmd, Result).WillByDefault(Return(result));
+      ON_CALL(*cmd, I2cStatus).WillByDefault(Return(i2c_status));
+      ON_CALL(*cmd, Data).WillByDefault(Return(data));
+      return cmd;
     }
 
     MOCK_METHOD(bool, Run, (int), (override));
@@ -76,7 +78,7 @@ TEST_F(EcI2cFunctionTest, ProbeSucceed) {
   EXPECT_CALL(*probe_function, GetEcDevice)
       .WillOnce(Return(ByMove(base::ScopedFD{})));
 
-  auto cmd = std::make_unique<NiceMock<MockI2cReadCommand>>(
+  auto cmd = MockI2cReadCommand::Create<NiceMock<MockI2cReadCommand>>(
       1, true, kEcResultSuccess, kEcI2cStatusSuccess, kResult);
   EXPECT_CALL(*probe_function, GetI2cReadCommand)
       .WillOnce(Return(ByMove(std::move(cmd))));
@@ -107,7 +109,7 @@ TEST_F(EcI2cFunctionTest, Probe16bitDataSucceed) {
   EXPECT_CALL(*probe_function, GetEcDevice)
       .WillOnce(Return(ByMove(base::ScopedFD{})));
 
-  auto cmd = std::make_unique<NiceMock<MockI2cReadCommand>>(
+  auto cmd = MockI2cReadCommand::Create<NiceMock<MockI2cReadCommand>>(
       2, true, kEcResultSuccess, kEcI2cStatusSuccess, kResult);
   EXPECT_CALL(*probe_function, GetI2cReadCommand)
       .WillOnce(Return(ByMove(std::move(cmd))));
@@ -149,7 +151,7 @@ TEST_F(EcI2cFunctionTest, EcFailed) {
   EXPECT_CALL(*probe_function, GetEcDevice)
       .WillOnce(Return(ByMove(base::ScopedFD{})));
 
-  auto cmd = std::make_unique<NiceMock<MockI2cReadCommand>>(
+  auto cmd = MockI2cReadCommand::Create<NiceMock<MockI2cReadCommand>>(
       1, false, kEcResultTimeout, kEcI2cStatusSuccess, 0);
   EXPECT_CALL(*cmd, Data).Times(0);
   EXPECT_CALL(*probe_function, GetI2cReadCommand)
@@ -175,7 +177,7 @@ TEST_F(EcI2cFunctionTest, EcI2cFailed) {
   EXPECT_CALL(*probe_function, GetEcDevice)
       .WillOnce(Return(ByMove(base::ScopedFD{})));
 
-  auto cmd = std::make_unique<NiceMock<MockI2cReadCommand>>(
+  auto cmd = MockI2cReadCommand::Create<NiceMock<MockI2cReadCommand>>(
       1, true, kEcResultSuccess, kEcI2cStatusError, 0);
   EXPECT_CALL(*cmd, Data).Times(0);
   EXPECT_CALL(*probe_function, GetI2cReadCommand)
