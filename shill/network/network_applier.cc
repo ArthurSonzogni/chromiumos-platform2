@@ -12,6 +12,7 @@
 
 #include <base/memory/ptr_util.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
 
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/address_service.h"
@@ -28,8 +29,20 @@ namespace {
 // to patchpanel.
 constexpr const uint32_t kFwmarkRoutingMask = 0xffff0000;
 
-constexpr RoutingPolicyEntry::FwMark kCrosVmFwmark = {.value = 0x2100,
-                                                      .mask = 0x3f00};
+// kCrosVmFwmark = {.value = 0x2100, .mask = 0x3f00} should be the preferred
+// method to match traffic from crosvm. This is a workaround before b/300033608
+// is fixed.
+// From patchpanel/address_manager.cc:
+//   100.115.92.24 - 100.115.92.127 for CrosVM;
+//   100.115.92.192 - 100.115.92.255 for Crostini containers.
+const auto kCrosVmSrcIP = {*net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+                               net_base::IPv4Address(100, 115, 92, 24), 29),
+                           *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+                               net_base::IPv4Address(100, 115, 92, 32), 27),
+                           *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+                               net_base::IPv4Address(100, 115, 92, 64), 26),
+                           *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+                               net_base::IPv4Address(100, 115, 92, 192), 26)};
 
 RoutingPolicyEntry::FwMark GetFwmarkRoutingTag(int interface_index) {
   return {.value = RoutingTable::GetInterfaceTableId(interface_index) << 16,
@@ -186,11 +199,13 @@ void NetworkApplier::ApplyRoutingPolicy(
   if (priority.is_primary_logical) {
     // Add a routing rule for IPv4 traffic to look up CLAT table first before it
     // get to catch-all rule.
-    auto clat_table_rule = RoutingPolicyEntry(net_base::IPFamily::kIPv4);
-    clat_table_rule.priority = kClatRulePriority;
-    clat_table_rule.table = RoutingTable::kClatRoutingTableId;
-    clat_table_rule.fw_mark = kCrosVmFwmark;
-    rule_table_->AddRule(-1, clat_table_rule);
+    for (const auto& src : kCrosVmSrcIP) {
+      auto clat_table_rule = RoutingPolicyEntry(net_base::IPFamily::kIPv4);
+      clat_table_rule.priority = kClatRulePriority;
+      clat_table_rule.table = RoutingTable::kClatRoutingTableId;
+      clat_table_rule.src = net_base::IPCIDR(src);
+      rule_table_->AddRule(-1, clat_table_rule);
+    }
   }
 
   if (technology != Technology::kVPN) {
