@@ -374,30 +374,30 @@ bool DHCPController::ShouldKeepLeaseOnDisconnect() const {
 }
 
 std::vector<std::string> DHCPController::GetFlags() {
-  std::vector<std::string> flags;
-  flags.push_back("-B");  // Run in foreground.
-  flags.push_back("-i");  // Static value for Vendor class info.
-  flags.push_back("chromeos");
-  flags.push_back("-q");  // Only warnings+errors to stderr.
-  flags.push_back("-4");  // IPv4 only.
+  std::vector<std::string> flags = {
+      "-B",              // Run in foreground.
+      "-i", "chromeos",  // Static value for Vendor class info.
+      "-q",              // Only warnings+errors to stderr.
+      "-4",              // IPv4 only.
+  };
 
-  // Apply options from DhcpProperties when applicable.
+  // Request hostname from server.
   if (!options_.hostname.empty()) {
-    flags.push_back("-h");  // Request hostname from server
-    flags.push_back(options_.hostname);
+    flags.insert(flags.end(), {"-h", options_.hostname});
   }
 
   if (options_.use_arp_gateway) {
-    flags.push_back("-R");         // ARP for default gateway.
-    flags.push_back("--unicast");  // Enable unicast ARP on renew.
+    flags.insert(flags.end(), {
+                                  "-R",         // ARP for default gateway.
+                                  "--unicast",  // Enable unicast ARP on renew.
+                              });
   }
 
   if (options_.use_rfc_8925) {
     // Request option 108 to prefer IPv6-only. If server also supports this, no
     // dhcp lease will be assigned and dhcpcd will notify shill with an
     // IPv6OnlyPreferred StatusChanged event.
-    flags.push_back("-o");
-    flags.push_back("ipv6_only_preferred");
+    flags.insert(flags.end(), {"-o", "ipv6_only_preferred"});
   }
 
   return flags;
