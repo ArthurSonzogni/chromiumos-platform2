@@ -72,6 +72,24 @@ class DHCPController {
   };
   enum class ClientStatus { kUnknown, kIPv6Preferred };
 
+  // Options to create a DHCP controller.
+  struct Options {
+    // If true, the DHCP client will ARP for the gateway IP address as an
+    // additional safeguard against the issued IP address being in-use by
+    // another station.
+    bool use_arp_gateway = false;
+    // If true, the DHCP client will request option 108 to prefer IPv6-only on a
+    // capable network.
+    bool use_rfc_8925 = false;
+    // The DHCP lease file will contain the suffix supplied in |lease_name| if
+    // non-empty, otherwise the interface name will be used.
+    std::string lease_name;
+    // Hostname to be used in DHCP request. If it is not empty, it is placed in
+    // the DHCP request to allow the server to map the request to a specific
+    // user-named origin.
+    std::string hostname;
+  };
+
   DHCPController(ControlInterface* control_interface,
                  EventDispatcher* dispatcher,
                  DHCPProvider* provider,
