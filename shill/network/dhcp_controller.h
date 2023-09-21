@@ -81,6 +81,10 @@ class DHCPController {
     // If true, the DHCP client will request option 108 to prefer IPv6-only on a
     // capable network.
     bool use_rfc_8925 = false;
+    // If true, the DHCP client will set the DSCP field of the egress packets to
+    // 48 (the Network Control category) for better QoS. Currently, this option
+    // is limited to the WiFi networks.
+    bool apply_dscp = false;
     // The DHCP lease file will contain the suffix supplied in |lease_name| if
     // non-empty, otherwise the interface name will be used. This is for
     // differentiating the lease of one interface from another.

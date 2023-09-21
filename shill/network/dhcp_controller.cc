@@ -400,6 +400,13 @@ std::vector<std::string> DHCPController::GetFlags() {
     flags.insert(flags.end(), {"-o", "ipv6_only_preferred"});
   }
 
+  // TODO(jiejiang): This will also include the WiFi Direct GC mode now. We may
+  // want to check if we should enable it in the future.
+  if (options_.apply_dscp && technology_ == Technology::kWiFi) {
+    // This flag is added by https://crrev.com/c/4861699.
+    flags.push_back("--apply_dscp");
+  }
+
   return flags;
 }
 

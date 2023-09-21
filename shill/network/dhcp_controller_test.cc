@@ -49,6 +49,7 @@ namespace {
 constexpr bool kArpGateway = true;
 constexpr char kDeviceName[] = "eth0";
 constexpr bool kEnableRFC8925 = false;
+constexpr bool kEnableDSCP = false;
 constexpr char kHostName[] = "hostname";
 constexpr char kLeaseFileSuffix[] = "leasefilesuffix";
 constexpr bool kHasHostname = true;
@@ -125,9 +126,15 @@ class DHCPControllerTest : public ::testing::Test {
     controller_->options_.use_arp_gateway = value;
   }
 
-  void CreateMockMinijailConfig(const std::string& hostname,
-                                const std::string& lease_suffix,
-                                bool arp_gateway);
+  // Resets |controller_| to an instance initiated with the given parameters,
+  // which can be used in the tests for verifying parameters to invoke minijail.
+  void CreateMockMinijailConfig(DHCPController::Options options,
+                                Technology technology = Technology::kUnknown) {
+    controller_.reset(new DHCPController(&control_interface_, &dispatcher_,
+                                         &provider_, kDeviceName, options,
+                                         technology, &metrics_));
+    controller_->process_manager_ = &process_manager_;
+  }
 
  protected:
   static constexpr int kPID = 123456;
@@ -141,24 +148,6 @@ class DHCPControllerTest : public ::testing::Test {
   MockDHCPProvider provider_;
   MockMetrics metrics_;
 };
-
-// Resets |controller_| to an instance initiated with the given parameters,
-// which can be used in the tests for verifying parameters to invoke minijail.
-void DHCPControllerTest::CreateMockMinijailConfig(
-    const std::string& hostname,
-    const std::string& lease_suffix,
-    bool arp_gateway) {
-  controller_.reset(new DHCPController(&control_interface_, &dispatcher_,
-                                       &provider_, kDeviceName,
-                                       DHCPController::Options{
-                                           .use_arp_gateway = arp_gateway,
-                                           .use_rfc_8925 = false,
-                                           .lease_name = lease_suffix,
-                                           .hostname = hostname,
-                                       },
-                                       Technology::kUnknown, &metrics_));
-  controller_->process_manager_ = &process_manager_;
-}
 
 TEST_F(DHCPControllerTest, InitProxy) {
   static const char kService[] = ":1.200";
@@ -180,73 +169,115 @@ TEST_F(DHCPControllerTest, StartFail) {
   EXPECT_EQ(0, controller_->pid_);
 }
 
-MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
-  if (arg[0] != "-B" || arg[1] != "-i" || arg[2] != "chromeos" ||
-      arg[3] != "-q" || arg[4] != "-4") {
-    return false;
-  }
+// Creates a Options object containing the default values in the tests.
+DHCPController::Options BuildDefaultOptions() {
+  return DHCPController::Options{
+      .use_arp_gateway = kArpGateway,
+      .use_rfc_8925 = kEnableRFC8925,
+      .apply_dscp = kEnableDSCP,
+      .lease_name = kLeaseFileSuffix,
+      .hostname = kHostName,
+  };
+}
 
-  int end_offset = 5;
+std::vector<std::string> BuildExpectedDHCPCDArgs(bool has_hostname,
+                                                 bool has_arp_gateway,
+                                                 bool has_lease_suffix,
+                                                 bool enable_dscp) {
+  std::vector<std::string> ret = {"-B", "-i", "chromeos", "-q", "-4"};
   if (has_hostname) {
-    if (arg[end_offset] != "-h" || arg[end_offset + 1] != kHostName) {
-      return false;
-    }
-    end_offset += 2;
+    ret.insert(ret.end(), {"-h", kHostName});
   }
-
   if (has_arp_gateway) {
-    if (arg[end_offset] != "-R" || arg[end_offset + 1] != "--unicast") {
-      return false;
-    }
-    end_offset += 2;
+    ret.insert(ret.end(), {"-R", "--unicast"});
   }
-
-  std::string device_arg = has_lease_suffix ? std::string(kDeviceName) + "=" +
-                                                  std::string(kLeaseFileSuffix)
-                                            : kDeviceName;
-  return arg[end_offset] == device_arg;
+  if (enable_dscp) {
+    ret.push_back("--apply_dscp");
+  }
+  ret.push_back(has_lease_suffix ? std::string(kDeviceName) + "=" +
+                                       std::string(kLeaseFileSuffix)
+                                 : kDeviceName);
+  return ret;
 }
 
 TEST_F(DHCPControllerTest, StartWithoutLeaseSuffix) {
-  CreateMockMinijailConfig(kHostName, kDeviceName, kArpGateway);
-  EXPECT_CALL(
-      process_manager_,
-      StartProcessInMinijail(
-          _, _, IsDHCPCDArgs(kHasHostname, kArpGateway, !kHasLeaseSuffix), _, _,
-          _))
+  auto opts = BuildDefaultOptions();
+  opts.lease_name = kDeviceName;
+  CreateMockMinijailConfig(opts);
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(
+                  _, _,
+                  BuildExpectedDHCPCDArgs(kHasHostname, kArpGateway,
+                                          !kHasLeaseSuffix, kEnableDSCP),
+                  _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance());
 }
 
 TEST_F(DHCPControllerTest, StartWithHostname) {
-  CreateMockMinijailConfig(kHostName, kLeaseFileSuffix, kArpGateway);
-  EXPECT_CALL(
-      process_manager_,
-      StartProcessInMinijail(
-          _, _, IsDHCPCDArgs(kHasHostname, kArpGateway, kHasLeaseSuffix), _, _,
-          _))
+  CreateMockMinijailConfig(BuildDefaultOptions());
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(
+                  _, _,
+                  BuildExpectedDHCPCDArgs(kHasHostname, kArpGateway,
+                                          kHasLeaseSuffix, kEnableDSCP),
+                  _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance());
 }
 
 TEST_F(DHCPControllerTest, StartWithEmptyHostname) {
-  CreateMockMinijailConfig("", kLeaseFileSuffix, kArpGateway);
-  EXPECT_CALL(
-      process_manager_,
-      StartProcessInMinijail(
-          _, _, IsDHCPCDArgs(!kHasHostname, kArpGateway, kHasLeaseSuffix), _, _,
-          _))
+  auto opts = BuildDefaultOptions();
+  opts.hostname = "";
+  CreateMockMinijailConfig(opts);
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(
+                  _, _,
+                  BuildExpectedDHCPCDArgs(!kHasHostname, kArpGateway,
+                                          kHasLeaseSuffix, kEnableDSCP),
+                  _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance());
 }
 
 TEST_F(DHCPControllerTest, StartWithoutArpGateway) {
-  CreateMockMinijailConfig(kHostName, kLeaseFileSuffix, !kArpGateway);
-  EXPECT_CALL(
-      process_manager_,
-      StartProcessInMinijail(
-          _, _, IsDHCPCDArgs(kHasHostname, !kArpGateway, kHasLeaseSuffix), _, _,
-          _))
+  auto opts = BuildDefaultOptions();
+  opts.use_arp_gateway = false;
+  CreateMockMinijailConfig(opts);
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(
+                                    _, _,
+                                    BuildExpectedDHCPCDArgs(
+                                        kHasHostname, /*has_arp_gateway=*/false,
+                                        kHasLeaseSuffix, kEnableDSCP),
+                                    _, _, _))
+      .WillOnce(Return(-1));
+  EXPECT_FALSE(StartInstance());
+}
+
+TEST_F(DHCPControllerTest, StartWithDSCPOnWiFi) {
+  auto opts = BuildDefaultOptions();
+  opts.apply_dscp = true;
+  CreateMockMinijailConfig(opts, Technology::kWiFi);
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _,
+                                     BuildExpectedDHCPCDArgs(
+                                         kHasHostname, kArpGateway,
+                                         kHasLeaseSuffix, /*enable_dscp=*/true),
+                                     _, _, _))
+      .WillOnce(Return(-1));
+  EXPECT_FALSE(StartInstance());
+}
+
+TEST_F(DHCPControllerTest, StartWithDSCPOnEthernet) {
+  auto opts = BuildDefaultOptions();
+  opts.apply_dscp = true;
+  CreateMockMinijailConfig(opts, Technology::kEthernet);
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(
+                                    _, _,
+                                    BuildExpectedDHCPCDArgs(
+                                        kHasHostname, kArpGateway,
+                                        kHasLeaseSuffix, /*enable_dscp=*/false),
+                                    _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance());
 }
@@ -734,14 +765,16 @@ class DHCPControllerDHCPCDStoppedTest : public DHCPControllerTest {
 };
 
 TEST_F(DHCPControllerDHCPCDStoppedTest, StopEphemral) {
-  CreateMockMinijailConfig(kHostName, kDeviceName, kArpGateway);
+  auto opts = BuildDefaultOptions();
+  opts.lease_name = kDeviceName;
+  CreateMockMinijailConfig(opts);
   StartAndSaveExitCallback();
   PrepareFiles();
   StopAndExpect(false);
 }
 
 TEST_F(DHCPControllerDHCPCDStoppedTest, StopPersistent) {
-  CreateMockMinijailConfig(kHostName, kLeaseFileSuffix, kArpGateway);
+  CreateMockMinijailConfig(BuildDefaultOptions());
   StartAndSaveExitCallback();
   PrepareFiles();
   StopAndExpect(true);
