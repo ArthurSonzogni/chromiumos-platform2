@@ -651,12 +651,14 @@ void ArcService::StartArcDeviceDatapath(
                  << "): Invalid ARC container pid " << pid;
       return;
     }
+    // ARC requires multicast capability at all times. This is tested as part of
+    // CTS and CDD.
     if (!datapath_->ConnectVethPair(
             pid, kArcNetnsName, arc_device.arc_device_ifname(),
             arc_device.guest_device_ifname(),
             arc_device.arc_device_mac_address(), arc_device.arc_ipv4_address(),
             /*remote_ipv6_cidr=*/std::nullopt,
-            /*remote_multicast_flag=*/false)) {
+            /*remote_multicast_flag=*/true)) {
       LOG(ERROR) << __func__ << "(" << arc_device
                  << "): Cannot create virtual ethernet pair";
       return;
