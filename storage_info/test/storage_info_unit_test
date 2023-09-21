@@ -13,7 +13,7 @@
 # shellcheck source=../share/storage-info-common.sh
 . share/storage-info-common.sh
 
-TEST_COUNT=11
+TEST_COUNT=12
 
 # stout - old fw  crbug.com/328587#c11
 MODEL_1="SanDisk_SSD_U100_16GB"
@@ -69,6 +69,11 @@ RESULT_10="MATCH"
 MODEL_11="LITEON_LMH-256V2M-11_MSATA_256GBFM8110C"
 VERSION_11="F88110B"
 RESULT_11="MATCH"
+
+# reven b/296060669
+MODEL_12="LITEON_LCH-128V2S-HP"
+VERSION_12="2C03"
+RESULT_12="MATCH"
 
 get_is_ssd_ignorelist_result() {
   if is_ssd_ignorelist "$1" "$2"; then
