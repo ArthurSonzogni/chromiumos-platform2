@@ -108,6 +108,8 @@ struct ManagerProperties {
   KeyValueStore dns_proxy_doh_providers;
   // Hostname to be used in DHCP request.
   std::string dhcp_hostname;
+  // Whether apply DSCP values on egress DHCP packets as a DHCP client.
+  bool enable_dhcp_qos = false;
   std::optional<bool> ft_enabled;
   bool scan_allow_roam = true;
 };
