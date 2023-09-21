@@ -45,6 +45,7 @@ executable("arc-keymintd") {
     "keymint_server.cc",
     "main.cc",
   ]
+  configs += [ ":boringssl_config" ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
