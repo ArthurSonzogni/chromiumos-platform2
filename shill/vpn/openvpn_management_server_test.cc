@@ -519,7 +519,13 @@ TEST_F(OpenVPNManagementServerTest, SupplyTPMToken) {
 
 TEST_F(OpenVPNManagementServerTest, Send) {
   constexpr char kMessage[] = "foo\n";
+
+  // Even |connected_socket_| is not set, Send() should not crash.
   SetSocket(std::make_unique<net_base::MockSocket>());
+  server_.Send(kMessage);
+
+  // After |connected_socket_| is set, Send() method should send the message
+  // through the socket.
   auto connected_socket = std::make_unique<net_base::MockSocket>();
   ExpectSend(*connected_socket, kMessage);
   SetConnectedSocket(std::move(connected_socket));

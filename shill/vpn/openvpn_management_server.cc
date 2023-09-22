@@ -461,8 +461,8 @@ std::string OpenVPNManagementServer::EscapeToQuote(const std::string& str) {
 
 void OpenVPNManagementServer::Send(const std::string& data) {
   SLOG(2) << __func__;
-  if (!IsStarted()) {
-    LOG(DFATAL) << "Send() is called but the management server is not started";
+  if (!connected_socket_) {
+    LOG(ERROR) << "Send() is called but the socket is not accepted yet";
     return;
   }
   const auto len = connected_socket_->Send(
