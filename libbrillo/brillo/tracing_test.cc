@@ -55,7 +55,9 @@ TEST_F(TracingTest, RunLoopTracing) {
   // Start and immediately stop a run loop to cause libchrome to emit some trace
   // events (e.g., "RunLoop::Run").
   base::RunLoop run_loop;
-  run_loop.RunUntilIdle();
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, run_loop.QuitClosure());
+  run_loop.Run();
 
   tracing_session->StopBlocking();
   std::vector<char> trace_data(tracing_session->ReadTraceBlocking());
