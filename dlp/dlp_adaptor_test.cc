@@ -16,6 +16,9 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/process/process_handle.h>
 #include <base/run_loop.h>
+#include <base/test/scoped_run_loop_timeout.h>
+#include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
@@ -103,7 +106,7 @@ std::vector<uint8_t> RandomProtoBlob() {
 
 class DlpAdaptorTest : public ::testing::Test {
  public:
-  DlpAdaptorTest() {
+  DlpAdaptorTest() : timeout_(FROM_HERE, base::Seconds(10)) {
     // By passing true to SetFanotifyWatcherStartedForTesting,
     // DlpAdaptor won't try to start Fanotify. And given that these tests are
     // meant to test DlpAdaptor and don't depend on Fanotify, so Fanotify
@@ -359,7 +362,10 @@ class DlpAdaptorTest : public ::testing::Test {
   std::vector<std::pair<FileMetadata, RestrictionLevel>> files_restrictions_;
   std::unique_ptr<base::ScopedTempDir> database_directory_;
 
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
   DlpAdaptorTestHelper helper_;
+  base::test::ScopedRunLoopTimeout timeout_;
 };
 
 TEST_F(DlpAdaptorTest, AllowedWithoutDatabase) {
