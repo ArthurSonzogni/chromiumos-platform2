@@ -7,6 +7,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>

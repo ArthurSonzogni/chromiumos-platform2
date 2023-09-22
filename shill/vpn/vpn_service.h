@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -67,7 +68,7 @@ class VPNService : public Service,
   // Inherited from VPNDriver::EventHandler. Callbacks from VPNDriver.
   void OnDriverConnected(const std::string& if_name, int if_index) override;
   void OnDriverFailure(ConnectFailure failure,
-                       base::StringPiece error_details) override;
+                       std::string_view error_details) override;
   void OnDriverReconnecting(base::TimeDelta timeout) override;
 
   const NetworkConfig& static_network_config_for_testing() {

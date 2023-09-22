@@ -7,6 +7,7 @@
 #include <iterator>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <arpa/inet.h>  // for inet_ntop
@@ -118,7 +119,7 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
 // KeyValueStore stores bool value as string "true" or "false". This function
 // converts it to bool type, or returns |default_value|.
 bool GetBool(const KeyValueStore& args,
-             base::StringPiece key,
+             std::string_view key,
              bool default_value) {
   if (args.Contains<std::string>(key)) {
     return args.Get<std::string>(key) == "true";

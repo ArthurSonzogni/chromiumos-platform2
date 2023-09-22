@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -64,7 +65,7 @@ class VPNDriver {
     // event is supposed to be triggered only once before the next call of
     // ConnectAsync().
     virtual void OnDriverFailure(Service::ConnectFailure failure,
-                                 base::StringPiece error_details) = 0;
+                                 std::string_view error_details) = 0;
 
     // Indicates the driver is trying reconnecting now. Note that this event
     // might be triggered multiple times before OnConnected or OnFailure

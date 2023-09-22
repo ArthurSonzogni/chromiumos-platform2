@@ -545,7 +545,7 @@ std::unique_ptr<IPConfig::Properties> ThirdPartyVpnDriver::GetIPv6Properties()
 }
 
 void ThirdPartyVpnDriver::FailService(Service::ConnectFailure failure,
-                                      base::StringPiece error_details) {
+                                      std::string_view error_details) {
   SLOG(2) << __func__ << "(" << error_details << ")";
   Cleanup();
   if (event_handler_) {

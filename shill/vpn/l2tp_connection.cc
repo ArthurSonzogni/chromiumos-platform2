@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -14,7 +15,6 @@
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -210,7 +210,7 @@ bool L2TPConnection::WritePPPDConfig() {
   // MUST be alive until the end of this function. Unit tests are supposed to
   // catch the issue if this condition is not met.
   // TODO(b/200636771): Use proper mtu and mru.
-  std::vector<base::StringPiece> lines = {
+  std::vector<std::string_view> lines = {
       "ipcp-accept-local",
       "ipcp-accept-remote",
       "refuse-eap",
@@ -261,7 +261,7 @@ bool L2TPConnection::WriteL2TPDConfig() {
   lines.push_back(base::StringPrintf("[lac %s]", kL2TPConnectionName));
 
   // Fills in bool properties.
-  auto bool_property = [](base::StringPiece key, bool value) -> std::string {
+  auto bool_property = [](std::string_view key, bool value) -> std::string {
     return base::StrCat({key, " = ", value ? "yes" : "no"});
   };
   lines.push_back(bool_property("require chap", config_->require_chap));
@@ -278,7 +278,7 @@ bool L2TPConnection::WriteL2TPDConfig() {
   // properties in the config file does not matter, we use a vector instead of
   // map just for the ease of unit tests. Using StringPiece is safe here since
   // because there is no temporary string object when constructing this vector.
-  const std::vector<std::pair<base::StringPiece, base::StringPiece>>
+  const std::vector<std::pair<std::string_view, std::string_view>>
       string_properties = {
           {"lns", config_->remote_ip},
           {"name", config_->user},

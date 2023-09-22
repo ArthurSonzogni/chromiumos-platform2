@@ -7,6 +7,8 @@
 #include <iterator>
 #include <memory>
 #include <set>
+#include <string>
+#include <string_view>
 
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -224,7 +226,7 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
 TEST_F(VPNProviderTest, CreateService) {
   static constexpr char kName[] = "test-vpn-service";
   static constexpr char kStorageID[] = "test_vpn_storage_id";
-  static constexpr base::StringPiece kTypes[] = {
+  static constexpr std::string_view kTypes[] = {
       kProviderOpenVpn, kProviderL2tpIpsec, kProviderThirdPartyVpn,
       kProviderWireGuard};
   const size_t kTypesCount = std::size(kTypes);

@@ -10,6 +10,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -418,7 +419,7 @@ void WireGuardDriver::UnloadCredentials() {
 void WireGuardDriver::CreateKernelWireGuardInterface() {
   auto link_ready_callback = base::BindOnce(
       &WireGuardDriver::ConfigureInterface, weak_factory_.GetWeakPtr());
-  constexpr base::StringPiece kErrMsg = "Failed to create wireguard interface";
+  constexpr std::string_view kErrMsg = "Failed to create wireguard interface";
   auto failure_callback =
       base::BindOnce(&WireGuardDriver::FailService, weak_factory_.GetWeakPtr(),
                      Service::kFailureInternal, kErrMsg);
@@ -626,7 +627,7 @@ bool WireGuardDriver::PopulateIPProperties() {
 }
 
 void WireGuardDriver::FailService(Service::ConnectFailure failure,
-                                  base::StringPiece error_details) {
+                                  std::string_view error_details) {
   LOG(ERROR) << "Driver error: " << error_details;
   Cleanup();
   if (event_handler_) {

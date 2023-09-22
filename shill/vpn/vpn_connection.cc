@@ -7,6 +7,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -105,7 +106,7 @@ void VPNConnection::NotifyConnected(
 }
 
 void VPNConnection::NotifyFailure(Service::ConnectFailure reason,
-                                  base::StringPiece detail) {
+                                  std::string_view detail) {
   CheckCallWithState(__func__, state_,
                      {State::kConnecting, State::kConnected,
                       State::kDisconnecting, State::kStopped});

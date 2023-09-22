@@ -4,15 +4,18 @@
 
 #include "shill/vpn/vpn_types.h"
 
+#include <string>
+#include <string_view>
+
 #include <base/containers/fixed_flat_map.h>
 #include <base/notreached.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
 namespace shill {
 
-std::optional<VPNType> VPNTypeStringToEnum(base::StringPiece type) {
+std::optional<VPNType> VPNTypeStringToEnum(std::string_view type) {
   static constexpr auto dict =
-      base::MakeFixedFlatMap<base::StringPiece, VPNType>({
+      base::MakeFixedFlatMap<std::string_view, VPNType>({
           {kProviderArcVpn, VPNType::kARC},
           {kProviderIKEv2, VPNType::kIKEv2},
           {kProviderL2tpIpsec, VPNType::kL2TPIPsec},

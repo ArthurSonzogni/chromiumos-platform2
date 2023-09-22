@@ -6,9 +6,9 @@
 #define SHILL_VPN_VPN_PROVIDER_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
-#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
@@ -26,7 +26,7 @@ class Manager;
 class VPNProvider : public ProviderInterface {
  public:
   // Interface name of the ARC bridge.
-  static constexpr base::StringPiece kArcBridgeIfName = "arcbr0";
+  static constexpr std::string_view kArcBridgeIfName = "arcbr0";
 
   explicit VPNProvider(Manager* manager);
   VPNProvider(const VPNProvider&) = delete;

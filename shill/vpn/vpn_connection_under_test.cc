@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <gmock/gmock.h>
@@ -31,7 +32,7 @@ void VPNConnectionUnderTest::TriggerConnected(
 }
 
 void VPNConnectionUnderTest::TriggerFailure(Service::ConnectFailure reason,
-                                            base::StringPiece detail) {
+                                            std::string_view detail) {
   NotifyFailure(reason, detail);
 }
 

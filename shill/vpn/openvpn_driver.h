@@ -64,23 +64,23 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
 
   // Append zero-valued, single-valued and double-valued options to the
   // |options| array.
-  static void AppendOption(base::StringPiece option,
+  static void AppendOption(std::string_view option,
                            std::vector<std::vector<std::string>>* options);
-  static void AppendOption(base::StringPiece option,
-                           base::StringPiece value,
+  static void AppendOption(std::string_view option,
+                           std::string_view value,
                            std::vector<std::vector<std::string>>* options);
-  static void AppendOption(base::StringPiece option,
-                           base::StringPiece value0,
-                           base::StringPiece value1,
+  static void AppendOption(std::string_view option,
+                           std::string_view value0,
+                           std::string_view value1,
                            std::vector<std::vector<std::string>>* options);
 
   // Appends remote option to the |options| array.
-  void AppendRemoteOption(base::StringPiece host,
+  void AppendRemoteOption(std::string_view host,
                           std::vector<std::vector<std::string>>* options);
 
   // Returns true if an option was appended.
-  bool AppendValueOption(base::StringPiece property,
-                         base::StringPiece option,
+  bool AppendValueOption(std::string_view property,
+                         std::string_view option,
                          std::vector<std::vector<std::string>>* options);
 
   // If |property| exists, split its value up using |delimiter|.  Each element
@@ -167,7 +167,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
 
   // If |host| is in the "name:port" format, sets up |name| and |port|
   // appropriately and returns true. Otherwise, returns false.
-  static bool SplitPortFromHost(base::StringPiece host,
+  static bool SplitPortFromHost(std::string_view host,
                                 std::string* name,
                                 std::string* port);
 

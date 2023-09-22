@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/functional/callback.h>
@@ -112,7 +113,7 @@ class VPNConnection {
   // class (by a PostTask()), and thus the derived class don't need to do any
   // clean up other than calling this function on failures.
   mockable void NotifyFailure(Service::ConnectFailure reason,
-                              base::StringPiece detail);
+                              std::string_view detail);
   void NotifyStopped();
 
   EventDispatcher* dispatcher() { return dispatcher_; }

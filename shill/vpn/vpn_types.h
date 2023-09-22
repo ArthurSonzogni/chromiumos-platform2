@@ -7,8 +7,7 @@
 
 #include <optional>
 #include <string>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 namespace shill {
 
@@ -24,7 +23,7 @@ enum class VPNType {
 // Maps the VPN type between strings and enums. Note that the strings are
 // mainly used in D-Bus interface and profile storage, and we a different set
 // of strings in metrics.
-std::optional<VPNType> VPNTypeStringToEnum(base::StringPiece type);
+std::optional<VPNType> VPNTypeStringToEnum(std::string_view type);
 std::string VPNTypeEnumToString(VPNType type);
 
 }  // namespace shill

@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -23,7 +24,6 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -118,15 +118,15 @@ constexpr char kTPMDefaultPin[] = "111111";
 // https://wiki.strongswan.org/projects/strongswan/wiki/Strongswanconf
 class StrongSwanConfSection {
  public:
-  explicit StrongSwanConfSection(base::StringPiece name) : name_(name) {}
+  explicit StrongSwanConfSection(std::string_view name) : name_(name) {}
 
-  StrongSwanConfSection* AddSection(base::StringPiece name) {
+  StrongSwanConfSection* AddSection(std::string_view name) {
     auto section = new StrongSwanConfSection(name);
     sections_.emplace_back(section);
     return section;
   }
 
-  void AddKeyValue(base::StringPiece key, base::StringPiece value) {
+  void AddKeyValue(std::string_view key, std::string_view value) {
     key_values_.insert_or_assign(std::string(key), std::string(value));
   }
 
@@ -203,7 +203,7 @@ Metrics::VpnIpsecEncryptionAlgorithm ParseEncryptionAlgorithm(
   std::string algo_str;
   base::ReplaceChars(input, "-", "_", &algo_str);
   static constexpr auto str2enum = base::MakeFixedFlatMap<
-      base::StringPiece, Metrics::VpnIpsecEncryptionAlgorithm>({
+      std::string_view, Metrics::VpnIpsecEncryptionAlgorithm>({
       {"AES_CBC_128", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128},
       {"AES_CBC_192", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_192},
       {"AES_CBC_256", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_256},
@@ -243,7 +243,7 @@ Metrics::VpnIpsecIntegrityAlgorithm ParseIntegrityAlgorithm(
   std::string algo_str;
   base::ReplaceChars(input, "-", "_", &algo_str);
   static constexpr auto str2enum =
-      base::MakeFixedFlatMap<base::StringPiece,
+      base::MakeFixedFlatMap<std::string_view,
                              Metrics::VpnIpsecIntegrityAlgorithm>({
           {"HMAC_SHA2_256_128",
            Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128},
@@ -267,7 +267,7 @@ Metrics::VpnIpsecIntegrityAlgorithm ParseIntegrityAlgorithm(
 // - libstrongswan/crypto/diffie_hellman.c
 Metrics::VpnIpsecDHGroup ParseDHGroup(const std::string& input) {
   static constexpr auto str2enum =
-      base::MakeFixedFlatMap<base::StringPiece, Metrics::VpnIpsecDHGroup>({
+      base::MakeFixedFlatMap<std::string_view, Metrics::VpnIpsecDHGroup>({
           {"ECP_256", Metrics::kVpnIpsecDHGroup_ECP_256},
           {"ECP_384", Metrics::kVpnIpsecDHGroup_ECP_384},
           {"ECP_521", Metrics::kVpnIpsecDHGroup_ECP_521},

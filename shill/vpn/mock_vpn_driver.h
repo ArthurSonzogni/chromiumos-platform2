@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <gmock/gmock.h>
 
@@ -63,7 +64,7 @@ class MockVPNDriverEventHandler : public VPNDriver::EventHandler {
   MOCK_METHOD(void, OnDriverConnected, (const std::string&, int), (override));
   MOCK_METHOD(void,
               OnDriverFailure,
-              (Service::ConnectFailure, base::StringPiece),
+              (Service::ConnectFailure, std::string_view),
               (override));
   MOCK_METHOD(void, OnDriverReconnecting, (base::TimeDelta), (override));
 };

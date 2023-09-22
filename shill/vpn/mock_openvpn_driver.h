@@ -6,6 +6,7 @@
 #define SHILL_VPN_MOCK_OPENVPN_DRIVER_H_
 
 #include <string>
+#include <string_view>
 
 #include <gmock/gmock.h>
 
@@ -24,7 +25,7 @@ class MockOpenVPNDriver : public OpenVPNDriver {
   MOCK_METHOD(void, OnReconnecting, (ReconnectReason), (override));
   MOCK_METHOD(void,
               FailService,
-              (Service::ConnectFailure, base::StringPiece),
+              (Service::ConnectFailure, std::string_view),
               (override));
   MOCK_METHOD(void, ReportCipherMetrics, (const std::string&), (override));
 };

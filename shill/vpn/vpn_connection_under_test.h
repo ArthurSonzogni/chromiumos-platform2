@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -36,7 +37,7 @@ class VPNConnectionUnderTest : public VPNConnection {
                         int interface_index,
                         std::unique_ptr<IPConfig::Properties> ipv4_properties,
                         std::unique_ptr<IPConfig::Properties> ipv6_properties);
-  void TriggerFailure(Service::ConnectFailure reason, base::StringPiece detail);
+  void TriggerFailure(Service::ConnectFailure reason, std::string_view detail);
   void TriggerStopped();
 
   void set_state(State state) { state_ = state; }

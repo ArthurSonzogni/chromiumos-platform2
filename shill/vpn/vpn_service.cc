@@ -5,6 +5,8 @@
 #include "shill/vpn/vpn_service.h"
 
 #include <algorithm>
+#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -164,7 +166,7 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
 }
 
 void VPNService::OnDriverFailure(ConnectFailure failure,
-                                 base::StringPiece error_details) {
+                                 std::string_view error_details) {
   StopDriverConnectTimeout();
   CleanupDevice();
   SetErrorDetails(error_details);

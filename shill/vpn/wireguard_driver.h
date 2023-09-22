@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -87,7 +88,7 @@ class WireGuardDriver : public VPNDriver {
   // Calls Cleanup(), and if there is a service associated through
   // ConnectAsync(), notifies it of the failure.
   void FailService(Service::ConnectFailure failure,
-                   base::StringPiece error_details);
+                   std::string_view error_details);
   // Resets states and deallocate all resources.
   void Cleanup();
 
