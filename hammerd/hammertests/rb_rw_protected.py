@@ -59,11 +59,11 @@ def main(argv):
 
     common.disable_hammerd()
     common.connect_usb(updater)
-    print("PDU Response: %s" % updater.GetFirstResponsePdu().contents)
-    print("Current running section: %s" % updater.CurrentSection())
+    print(f"PDU Response: {updater.GetFirstResponsePdu().contents}")
+    print(f"Current running section: {updater.CurrentSection()}")
 
     protect = get_flash_protection(updater)
-    print("Protection: %04x == %04x?" % (protect, FLASH_PROTECT_INIT))
+    print(f"Protection: {protect:04x} == {FLASH_PROTECT_INIT:04x}?")
     assert protect == FLASH_PROTECT_INIT, "Initial WP status error"
     unlock_rw(updater)
     reset(updater)
@@ -71,10 +71,10 @@ def main(argv):
     time.sleep(0.5)
     # Catch it right after reset: RW is still unlocked and can be updated.
     common.connect_usb(updater)
-    print("PDU Response: %s" % updater.GetFirstResponsePdu().contents)
-    print("Current running section: %s" % updater.CurrentSection())
+    print(f"PDU Response: {updater.GetFirstResponsePdu().contents}")
+    print(f"Current running section: {updater.CurrentSection()}")
     protect = get_flash_protection(updater)
-    print("Protection: %04x == %04x?" % (protect, FLASH_PROTECT_NORW))
+    print(f"Protection: {protect:04x} == {FLASH_PROTECT_NORW:04x}?")
     assert protect == FLASH_PROTECT_NORW, "WP status after Unlock RW"
     updater.CloseUsb()
     time.sleep(2)
@@ -89,8 +89,8 @@ def main(argv):
     updater.CloseUsb()
     time.sleep(0.5)
     common.connect_usb(updater)
-    print("PDU Response: %s" % updater.GetFirstResponsePdu().contents)
-    print("Current running section: %s" % updater.CurrentSection())
+    print(f"PDU Response: {updater.GetFirstResponsePdu().contents}")
+    print(f"Current running section: {updater.CurrentSection()}")
     assert (
         get_flash_protection(updater) == FLASH_PROTECT_NORB
     ), "WP status after Unlock RB"
@@ -115,7 +115,7 @@ def reset(updater):
 def unlock_rw(updater):
     # Check if RW is locked and unlock if needed
     wp_rw = (get_flash_protection(updater) & common.EC_FLASH_PROTECT_RW_NOW) > 0
-    print("WP status:  %s" % str(wp_rw))
+    print(f"WP status:  {wp_rw}")
     if wp_rw:
         print("Need to unlock RW")
         unlocked = updater.UnlockRW()
