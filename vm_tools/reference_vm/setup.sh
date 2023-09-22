@@ -27,6 +27,7 @@ PACKAGES=(
   gpg
   grub-efi-amd64
   grub-efi-amd64-signed
+  gsettings-desktop-schemas
   linux-headers-amd64
   linux-image-amd64
   locales
