@@ -92,6 +92,7 @@ std::set<mojom::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojom::DiagnosticRoutineEnum::kBluetoothPairing,
       mojom::DiagnosticRoutineEnum::kPowerButton,
       mojom::DiagnosticRoutineEnum::kAudioDriver,
+      mojom::DiagnosticRoutineEnum::kUfsLifetime,
   };
 }
 
@@ -142,6 +143,9 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
     mock_context_.fake_system_config()->SetSmartCtrlSupported(true);
     mock_context_.fake_system_config()->SetIsWilcoDevice(true);
     mock_context_.fake_system_config()->SetMmcSupported(true);
+    mock_context_.fake_cros_config()->SetString(
+        cros_config_path::kHardwareProperties,
+        cros_config_property::kStorageType, cros_config_value::kStorageTypeUfs);
 
     CreateService();
   }
@@ -278,18 +282,18 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoMmc) {
 }
 
 // Test that GetAvailableRoutines returns the expected list of routines when
-// storage type is UFS.
-TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesStorageTypeUfs) {
+// storage type is not UFS.
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoUfs) {
   mock_context()->fake_cros_config()->SetString(
       cros_config_path::kHardwareProperties, cros_config_property::kStorageType,
-      cros_config_value::kStorageTypeUfs);
+      cros_config_value::kStorageTypeUnknown);
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
 
   auto expected_routines = GetAllAvailableRoutines();
   for (const auto r : GetUfsRoutines())
-    expected_routines.insert(r);
+    expected_routines.erase(r);
 
   EXPECT_EQ(reply_set, expected_routines);
 }
@@ -811,6 +815,253 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunArcHttpRoutine) {
 
   TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunArcHttpRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the ARC ping routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunArcPingRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunArcPingRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the ARC dns resolution routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunArcDnsResolutionRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunArcDnsResolutionRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the sensitive sensor routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunSensitiveSensorRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunSensitiveSensorRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the fingerprint routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunFingerprintRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunFingerprintRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the fingerprint alive routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunFingerprintAliveRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunFingerprintAliveRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the privacy screen routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunPrivacyScreenRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunPrivacyScreenRoutine(/*target_state=*/true,
+                                     future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the audio set volume routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunAudioSetVolumeRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunAudioSetVolumeRoutine(/*node_id=*/0, /*volume*/ 0,
+                                      /*mute_on=*/false, future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the audio set gain routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunAudioSetGainRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunAudioSetGainRoutine(/*node_id=*/0, /*gain*/ 0,
+                                    /*deprecated_mute_on=*/false,
+                                    future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth power routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothPowerRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothPowerRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth discovery routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothDiscoveryRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothDiscoveryRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth scanning routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothScanningRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothScanningRoutine(
+      /*length_seconds=*/mojom::NullableUint32::New(10), future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth pairing routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothPairingRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothPairingRoutine(/*peripheral_id=*/"",
+                                        future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the power button routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunPowerButtonRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunPowerButtonRoutine(/*timeout_seconds=*/10,
+                                   future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the audio driver routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunAudioDriverRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunAudioDriverRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the UFS lifetime routine can be run.
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunUfsLifetimeRoutine) {
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunUfsLifetimeRoutine(future.GetCallback());
 
   auto response = future.Take();
   EXPECT_EQ(response->id, 1);
