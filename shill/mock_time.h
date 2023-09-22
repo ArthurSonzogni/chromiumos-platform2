@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_MOCK_TIME_H_
-#define SHILL_NET_MOCK_TIME_H_
+#ifndef SHILL_MOCK_TIME_H_
+#define SHILL_MOCK_TIME_H_
 
-#include "shill/net/shill_time.h"
+#include "shill/time.h"
 
 #include <gmock/gmock.h>
 
@@ -34,4 +34,4 @@ class MockTime : public Time {
 
 }  // namespace shill
 
-#endif  // SHILL_NET_MOCK_TIME_H_
+#endif  // SHILL_MOCK_TIME_H_

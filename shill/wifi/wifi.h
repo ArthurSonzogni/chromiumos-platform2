@@ -100,12 +100,12 @@
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/rtnl_link_stats.h"
-#include "shill/net/shill_time.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/supplicant/supplicant_manager.h"
+#include "shill/time.h"
 #include "shill/wifi/wifi_link_statistics.h"
 #include "shill/wifi/wifi_state.h"
 

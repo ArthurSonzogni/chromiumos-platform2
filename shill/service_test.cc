@@ -42,7 +42,7 @@
 #include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
-#include "shill/net/mock_time.h"
+#include "shill/mock_time.h"
 #include "shill/network/mock_network.h"
 #include "shill/service_property_change_test.h"
 #include "shill/service_under_test.h"

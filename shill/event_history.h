@@ -12,7 +12,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/net/shill_export.h"
-#include "shill/net/shill_time.h"
+#include "shill/time.h"
 
 namespace shill {
 

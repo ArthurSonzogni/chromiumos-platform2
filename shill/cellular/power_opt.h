@@ -12,7 +12,6 @@
 #include "shill/cellular/cellular_consts.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/shill_time.h"
 #include "shill/service.h"
 
 namespace shill {

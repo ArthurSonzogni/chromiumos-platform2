@@ -26,12 +26,12 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/process_manager.h"
-#include "shill/net/shill_time.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_config.h"
 #include "shill/technology.h"
+#include "shill/time.h"
 
 namespace shill {
 

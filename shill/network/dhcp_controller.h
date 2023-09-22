@@ -20,9 +20,9 @@
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/net/shill_time.h"
 #include "shill/store/key_value_store.h"
 #include "shill/technology.h"
+#include "shill/time.h"
 
 namespace shill {
 

@@ -12,8 +12,8 @@
 
 #include <gtest/gtest.h>
 
-#include "shill/net/mock_time.h"
-#include "shill/net/shill_time.h"
+#include "shill/mock_time.h"
+#include "shill/time.h"
 
 using ::testing::Return;
 

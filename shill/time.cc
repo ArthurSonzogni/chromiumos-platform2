@@ -4,7 +4,7 @@
 
 #include <time.h>
 
-#include "shill/net/shill_time.h"
+#include "shill/time.h"
 
 #include <base/format_macros.h>
 #include <base/strings/stringprintf.h>

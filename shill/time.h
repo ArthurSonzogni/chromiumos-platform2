@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_SHILL_TIME_H_
-#define SHILL_NET_SHILL_TIME_H_
+#ifndef SHILL_TIME_H_
+#define SHILL_TIME_H_
 
 #include <sys/time.h>
 #include <time.h>
@@ -81,4 +81,4 @@ class SHILL_EXPORT Time {
 
 }  // namespace shill
 
-#endif  // SHILL_NET_SHILL_TIME_H_
+#endif  // SHILL_TIME_H_

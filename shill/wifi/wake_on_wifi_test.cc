@@ -28,14 +28,14 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_time.h"
 #include "shill/net/mock_netlink_manager.h"
-#include "shill/net/mock_time.h"
 #include "shill/net/netlink_message_matchers.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/net/shill_time.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
+#include "shill/time.h"
 
 using testing::_;
 using ::testing::AnyNumber;
