@@ -22,10 +22,12 @@
 
 #include "diagnostics/cros_healthd/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
+#include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -74,6 +76,19 @@ void ReportUnsupportedRoutine(
   std::move(callback).Run(mojom::RunRoutineResponse::New(
       mojom::kFailedToStartId,
       mojom::DiagnosticRoutineStatusEnum::kUnsupported));
+}
+
+void CheckFlossEnabled(
+    FlossController* floss_controller,
+    base::OnceCallback<void(brillo::Error*, bool)> callback) {
+  CHECK(floss_controller);
+  const auto manager = floss_controller->GetManager();
+  if (!manager) {
+    std::move(callback).Run(nullptr, /*floss_enabled=*/false);
+    return;
+  }
+  auto [on_success, on_error] = SplitDbusCallback(std::move(callback));
+  manager->GetFlossEnabledAsync(std::move(on_success), std::move(on_error));
 }
 
 }  // namespace
@@ -483,6 +498,24 @@ void CrosHealthdDiagnosticsService::RunAudioSetGainRoutine(
 
 void CrosHealthdDiagnosticsService::RunBluetoothPowerRoutine(
     RunBluetoothPowerRoutineCallback callback) {
+  CheckFlossEnabled(
+      context_->floss_controller(),
+      base::BindOnce(&CrosHealthdDiagnosticsService::
+                         RunBluetoothPowerRoutineBasedOnFlossEnabled,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void CrosHealthdDiagnosticsService::RunBluetoothPowerRoutineBasedOnFlossEnabled(
+    RunBluetoothPowerRoutineCallback callback,
+    brillo::Error* err,
+    bool floss_enabled) {
+  if (!err && floss_enabled) {
+    // TODO(300239430): Support Bluetooth routines using Floss.
+    ReportUnsupportedRoutine(mojom::DiagnosticRoutineEnum::kBluetoothPower,
+                             std::move(callback));
+    return;
+  }
+  // Fall back to using Bluez to run Bluetooth routine.
   RunRoutine(routine_factory_->MakeBluetoothPowerRoutine(),
              mojom::DiagnosticRoutineEnum::kBluetoothPower,
              std::move(callback));
@@ -490,6 +523,25 @@ void CrosHealthdDiagnosticsService::RunBluetoothPowerRoutine(
 
 void CrosHealthdDiagnosticsService::RunBluetoothDiscoveryRoutine(
     RunBluetoothDiscoveryRoutineCallback callback) {
+  CheckFlossEnabled(
+      context_->floss_controller(),
+      base::BindOnce(&CrosHealthdDiagnosticsService::
+                         RunBluetoothDiscoveryRoutineBasedOnFlossEnabled,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void CrosHealthdDiagnosticsService::
+    RunBluetoothDiscoveryRoutineBasedOnFlossEnabled(
+        RunBluetoothDiscoveryRoutineCallback callback,
+        brillo::Error* err,
+        bool floss_enabled) {
+  if (!err && floss_enabled) {
+    // TODO(300239430): Support Bluetooth routines using Floss.
+    ReportUnsupportedRoutine(mojom::DiagnosticRoutineEnum::kBluetoothDiscovery,
+                             std::move(callback));
+    return;
+  }
+  // Fall back to using Bluez to run Bluetooth routine.
   RunRoutine(routine_factory_->MakeBluetoothDiscoveryRoutine(),
              mojom::DiagnosticRoutineEnum::kBluetoothDiscovery,
              std::move(callback));
@@ -498,6 +550,27 @@ void CrosHealthdDiagnosticsService::RunBluetoothDiscoveryRoutine(
 void CrosHealthdDiagnosticsService::RunBluetoothScanningRoutine(
     mojom::NullableUint32Ptr length_seconds,
     RunBluetoothScanningRoutineCallback callback) {
+  CheckFlossEnabled(
+      context_->floss_controller(),
+      base::BindOnce(&CrosHealthdDiagnosticsService::
+                         RunBluetoothScanningRoutineBasedOnFlossEnabled,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(length_seconds),
+                     std::move(callback)));
+}
+
+void CrosHealthdDiagnosticsService::
+    RunBluetoothScanningRoutineBasedOnFlossEnabled(
+        ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+        RunBluetoothScanningRoutineCallback callback,
+        brillo::Error* err,
+        bool floss_enabled) {
+  if (!err && floss_enabled) {
+    // TODO(300239430): Support Bluetooth routines using Floss.
+    ReportUnsupportedRoutine(mojom::DiagnosticRoutineEnum::kBluetoothScanning,
+                             std::move(callback));
+    return;
+  }
+  // Fall back to using Bluez to run Bluetooth routine.
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
     exec_duration = base::Seconds(length_seconds->value);
@@ -509,6 +582,27 @@ void CrosHealthdDiagnosticsService::RunBluetoothScanningRoutine(
 void CrosHealthdDiagnosticsService::RunBluetoothPairingRoutine(
     const std::string& peripheral_id,
     RunBluetoothPairingRoutineCallback callback) {
+  CheckFlossEnabled(
+      context_->floss_controller(),
+      base::BindOnce(&CrosHealthdDiagnosticsService::
+                         RunBluetoothPairingRoutineBasedOnFlossEnabled,
+                     weak_ptr_factory_.GetWeakPtr(), peripheral_id,
+                     std::move(callback)));
+}
+
+void CrosHealthdDiagnosticsService::
+    RunBluetoothPairingRoutineBasedOnFlossEnabled(
+        const std::string& peripheral_id,
+        RunBluetoothPairingRoutineCallback callback,
+        brillo::Error* err,
+        bool floss_enabled) {
+  if (!err && floss_enabled) {
+    // TODO(300239430): Support Bluetooth routines using Floss.
+    ReportUnsupportedRoutine(mojom::DiagnosticRoutineEnum::kBluetoothPairing,
+                             std::move(callback));
+    return;
+  }
+  // Fall back to using Bluez to run Bluetooth routine.
   RunRoutine(routine_factory_->MakeBluetoothPairingRoutine(peripheral_id),
              mojom::DiagnosticRoutineEnum::kBluetoothPairing,
              std::move(callback));

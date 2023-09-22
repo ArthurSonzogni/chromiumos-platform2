@@ -15,6 +15,7 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/errors/error.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -186,6 +187,26 @@ class CrosHealthdDiagnosticsService final
   // available_routines_. Run |completion_callback| when all the checks are
   // done.
   void PopulateAvailableRoutines(base::OnceClosure completion_callback);
+
+  // Run Bluetooth routines based on Floss enabled state.
+  void RunBluetoothPowerRoutineBasedOnFlossEnabled(
+      RunBluetoothPowerRoutineCallback callback,
+      brillo::Error* err,
+      bool floss_enabled);
+  void RunBluetoothDiscoveryRoutineBasedOnFlossEnabled(
+      RunBluetoothDiscoveryRoutineCallback callback,
+      brillo::Error* err,
+      bool floss_enabled);
+  void RunBluetoothScanningRoutineBasedOnFlossEnabled(
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      RunBluetoothScanningRoutineCallback callback,
+      brillo::Error* err,
+      bool floss_enabled);
+  void RunBluetoothPairingRoutineBasedOnFlossEnabled(
+      const std::string& peripheral_id,
+      RunBluetoothPairingRoutineCallback callback,
+      brillo::Error* err,
+      bool floss_enabled);
 
   // Map from IDs to instances of diagnostics routines that have
   // been started.

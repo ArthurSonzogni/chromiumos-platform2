@@ -27,6 +27,7 @@ source_set("libcros_healthd") {
     "system:libcros_healthd_system",
     "wilco_ec:libcros_healthd_wilco_ec",
     "//diagnostics/base",
+    "//diagnostics/dbus_bindings",
     "//diagnostics/mojom/external:libcros_healthd_internal",
     "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
@@ -94,6 +95,7 @@ if (use.test) {
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
       "//diagnostics/cros_healthd/wilco_ec:libcros_healthd_wilco_ec_test",
+      "//diagnostics/dbus_bindings",
     ]
   }
 }

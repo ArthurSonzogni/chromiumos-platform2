@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>
@@ -23,6 +24,8 @@
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/cros_healthd/system/mock_floss_controller.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
@@ -31,6 +34,10 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
+using ::testing::_;
+using ::testing::Return;
+using ::testing::StrictMock;
 
 using base::test::TestFuture;
 
@@ -163,6 +170,10 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
 
   MockContext* mock_context() { return &mock_context_; }
 
+  MockFlossController* mock_floss_controller() {
+    return mock_context_.mock_floss_controller();
+  }
+
   std::vector<mojom::DiagnosticRoutineEnum> ExecuteGetAvailableRoutines() {
     TestFuture<const std::vector<mojom::DiagnosticRoutineEnum>&> future;
     service()->GetAvailableRoutines(future.GetCallback());
@@ -178,6 +189,8 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
                                 future.GetCallback());
     return future.Take();
   }
+
+  StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
 
  private:
   base::test::TaskEnvironment task_environment_;
@@ -953,8 +966,14 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunAudioSetGainRoutine) {
   EXPECT_EQ(response->status, kExpectedStatus);
 }
 
-// Test that the Bluetooth power routine can be run.
-TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothPowerRoutine) {
+// Test that the Bluetooth power routine can be run with Floss disabled.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothPowerRoutineFlossDisabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/false));
+
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -969,8 +988,80 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothPowerRoutine) {
   EXPECT_EQ(response->status, kExpectedStatus);
 }
 
-// Test that the Bluetooth discovery routine can be run.
-TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothDiscoveryRoutine) {
+// Test that the Bluetooth power routine can be run when there is no Bluetooth
+// manager proxy.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothPowerRoutineNoBluetoothManager) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothPowerRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth power routine can be run when an error occurs while
+// getting Floss enabled state.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothPowerRoutineGetFlossEnabledError) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothPowerRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth power routine can be run with Floss enabled.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothPowerRoutineFlossEnabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/true));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kUnsupported;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/0,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothPowerRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, mojom::kFailedToStartId);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth discovery routine can be run with Floss disabled.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothDiscoveryRoutineFlossDisabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/false));
+
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -985,8 +1076,80 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothDiscoveryRoutine) {
   EXPECT_EQ(response->status, kExpectedStatus);
 }
 
-// Test that the Bluetooth scanning routine can be run.
-TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothScanningRoutine) {
+// Test that the Bluetooth discovery routine can be run when there is no
+// Bluetooth manager proxy.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothDiscoveryRoutineNoBluetoothManager) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothDiscoveryRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth discovery routine can be run when an error occurs
+// while getting Floss enabled state.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothDiscoveryRoutineGetFlossEnabledError) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothDiscoveryRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth discovery routine can be run with Floss enabled.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothDiscoveryRoutineFlossEnabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/true));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kUnsupported;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/0,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothDiscoveryRoutine(future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, mojom::kFailedToStartId);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth scanning routine can be run with Floss disabled.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothScanningRoutineFlossDisabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/false));
+
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -1002,8 +1165,83 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothScanningRoutine) {
   EXPECT_EQ(response->status, kExpectedStatus);
 }
 
-// Test that the Bluetooth pairing routine can be run.
-TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothPairingRoutine) {
+// Test that the Bluetooth scanning routine can be run when there is no
+// Bluetooth manager proxy.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothScanningRoutineNoBluetoothManager) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothScanningRoutine(
+      /*length_seconds=*/mojom::NullableUint32::New(10), future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth scanning routine can be run when an error occurs
+// while getting Floss enabled state.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothScanningRoutineGetFlossEnabledError) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothScanningRoutine(
+      /*length_seconds=*/mojom::NullableUint32::New(10), future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth scanning routine can be run with Floss enabled.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothScanningRoutineFlossEnabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/true));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kUnsupported;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/0,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothScanningRoutine(
+      /*length_seconds=*/mojom::NullableUint32::New(10), future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, mojom::kFailedToStartId);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth pairing routine can be run with Floss disabled.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothPairingRoutineFlossDisabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/false));
+
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojom::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -1016,6 +1254,75 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBluetoothPairingRoutine) {
 
   auto response = future.Take();
   EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth pairing routine can be run when there is no
+// Bluetooth manager proxy.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothPairingRoutineNoBluetoothManager) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothPairingRoutine(/*peripheral_id=*/"",
+                                        future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth pairing routine can be run when an error occurs
+// while getting Floss enabled state.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothPairingRoutineGetFlossEnabledError) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothPairingRoutine(/*peripheral_id=*/"",
+                                        future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the Bluetooth pairing routine can be run with Floss enabled.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       RunBluetoothPairingRoutineFlossEnabled) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/true));
+
+  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojom::DiagnosticRoutineStatusEnum::kUnsupported;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/0,
+      /*output=*/"");
+
+  TestFuture<mojom::RunRoutineResponsePtr> future;
+  service()->RunBluetoothPairingRoutine(/*peripheral_id=*/"",
+                                        future.GetCallback());
+
+  auto response = future.Take();
+  EXPECT_EQ(response->id, mojom::kFailedToStartId);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
 
