@@ -2547,6 +2547,30 @@ TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_Success) {
   EXPECT_TRUE(provider_.phy_update_timeout_cb_.IsCancelled());
 }
 
+TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_NoCellularNoCountry) {
+  // If celluar cannot provide region code and WiFiProvider does not have coutry
+  // info yet, should request to do a sync.
+  EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
+      .WillOnce(Return(std::nullopt));
+  int times_called = 0;
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(false))).Times(1);
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+  provider_.UpdateRegAndPhyInfo(
+      base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
+
+  // Now simulate reception of region change, expect phy dump and simulate
+  // reception of "Done" message (signaling the end of "split messages" dump).
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(true)))
+      .WillOnce(WithArg<1>(Invoke([](auto cb) { std::move(cb).Run(); })));
+  provider_.OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  EXPECT_EQ(times_called, 1);
+  EXPECT_TRUE(provider_.phy_update_timeout_cb_.IsCancelled());
+}
+
 TEST_F(WiFiProviderTest2, UpdatePhyInfo_Timeout) {
   int times_called = 0;
   EXPECT_CALL(

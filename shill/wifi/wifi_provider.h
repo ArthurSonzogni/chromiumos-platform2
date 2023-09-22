@@ -259,6 +259,7 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);
   FRIEND_TEST(WiFiProviderTest, RegisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest2, UpdateRegAndPhyInfo_Success);
+  FRIEND_TEST(WiFiProviderTest2, UpdateRegAndPhyInfo_NoCellularNoCountry);
   FRIEND_TEST(WiFiProviderTest2, UpdatePhyInfo_Success);
 
   // Register a WiFi local device object to WiFiProvider and a WiFiPhy object.

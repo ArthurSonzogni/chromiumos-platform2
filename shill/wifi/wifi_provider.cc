@@ -1330,6 +1330,10 @@ void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
     manager_->dispatcher()->PostDelayedTask(
         FROM_HERE, phy_update_timeout_cb_.callback(), kPhyUpdateTimeout);
     return;
+  } else if (!country_.has_value()) {
+    // The WiFiPhy has not sync its phy info with kernel yet, request an update.
+    UpdatePhyInfo(std::move(phy_ready_callback));
+    return;
   }
 
   std::move(phy_ready_callback).Run();
