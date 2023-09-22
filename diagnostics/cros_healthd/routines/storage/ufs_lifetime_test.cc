@@ -18,6 +18,7 @@
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
+#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -75,10 +76,7 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
     TestFuture<void> signal;
     RoutineObserverForTesting observer{signal.GetCallback()};
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
-    routine_->SetOnExceptionCallback(
-        base::BindOnce([](uint32_t error, const std::string& reason) {
-          CHECK(false) << "An exception has occurred when it shouldn't have.";
-        }));
+    routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
     routine_->Start();
     EXPECT_TRUE(signal.Wait());
     return std::move(observer.state_);

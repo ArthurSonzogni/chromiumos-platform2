@@ -118,6 +118,7 @@ if (use.test) {
     sources = [
       "routine_observer_for_testing.cc",
       "routine_test_utils.cc",
+      "routine_v2_test_utils.cc",
     ]
   }
 

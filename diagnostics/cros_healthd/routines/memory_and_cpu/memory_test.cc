@@ -37,6 +37,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
+#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -258,10 +259,7 @@ class MemoryRoutineTest : public MemoryRoutineTestBase {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
     base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(
-        base::BindOnce([](uint32_t error, const std::string& reason) {
-          CHECK(false) << "An exception has occurred when it shouldn't have.";
-        }));
+    routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
     RoutineObserverForTesting observer{run_loop.QuitClosure()};
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
@@ -578,10 +576,7 @@ TEST_F(MemoryRoutineTest, IncrementalProgress) {
 
   SetExecutorOutputFromTestFile("progress_0_output");
 
-  routine_->SetOnExceptionCallback(
-      base::BindOnce([](uint32_t error, const std::string& reason) {
-        CHECK(false) << "An exception has occurred when it shouldn't have.";
-      }));
+  routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
   RoutineObserverForTesting observer{base::DoNothing()};
   routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine_->Start();

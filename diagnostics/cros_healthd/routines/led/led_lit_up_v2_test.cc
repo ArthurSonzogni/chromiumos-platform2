@@ -18,6 +18,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
+#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -47,10 +48,6 @@ mojom::RoutineStatePtr GetRoutineState(
   return future.Take();
 }
 
-void OnUnexpectedException(uint32_t error, const std::string& reason) {
-  CHECK(false) << "An exception has occurred when it shouldn't have.";
-}
-
 class MockLedLitUpRoutineReplier : public mojom::LedLitUpRoutineReplier {
  public:
   // mojom::LedLitUpRoutineReplier overrides:
@@ -77,7 +74,7 @@ class LedLitUpRoutineV2Test : public testing::Test {
   mojom::RoutineStatePtr StartRoutineAndWaitForResult() {
     base::RunLoop run_loop;
     RoutineObserverForTesting observer{run_loop.QuitClosure()};
-    routine->SetOnExceptionCallback(base::BindOnce(&OnUnexpectedException));
+    routine->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
     routine->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine->Start();
     run_loop.Run();

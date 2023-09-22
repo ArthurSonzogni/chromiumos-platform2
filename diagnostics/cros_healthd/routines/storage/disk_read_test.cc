@@ -26,6 +26,7 @@
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
+#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -107,10 +108,7 @@ class DiskReadRoutineTest : public testing::Test {
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
-    routine_->SetOnExceptionCallback(
-        base::BindOnce([](uint32_t error, const std::string& reason) {
-          CHECK(false) << "An exception has occurred when it shouldn't have.";
-        }));
+    routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
     base::test::TestFuture<void> signal;
     RoutineObserverForTesting observer{signal.GetCallback()};
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());

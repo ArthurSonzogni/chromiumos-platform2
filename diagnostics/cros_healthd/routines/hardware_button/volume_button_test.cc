@@ -14,6 +14,7 @@
 
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
+#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
@@ -43,10 +44,6 @@ mojom::RoutineStatePtr GetRoutineState(
   return future.Take();
 }
 
-void OnUnexpectedException(uint32_t error, const std::string& reason) {
-  CHECK(false) << "An exception has occurred when it shouldn't have.";
-}
-
 class VolumeButtonRoutineTest : public testing::Test {
  protected:
   VolumeButtonRoutineTest() = default;
@@ -74,7 +71,7 @@ class VolumeButtonRoutineTest : public testing::Test {
   // work.
   [[nodiscard]] std::unique_ptr<RoutineObserverForTesting>
   StartRoutineAndObserve(base::OnceClosure on_finished) {
-    routine->SetOnExceptionCallback(base::BindOnce(&OnUnexpectedException));
+    routine->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
     auto observer =
         std::make_unique<RoutineObserverForTesting>(std::move(on_finished));
     routine->SetObserver(observer->receiver_.BindNewPipeAndPassRemote());

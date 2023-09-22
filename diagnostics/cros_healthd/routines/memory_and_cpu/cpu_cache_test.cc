@@ -19,6 +19,7 @@
 #include "diagnostics/cros_healthd/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
+#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -90,10 +91,7 @@ class CpuCacheRoutineTest : public CpuCacheRoutineTestBase {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
     base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(
-        base::BindOnce([](uint32_t error, const std::string& reason) {
-          ADD_FAILURE() << "An exception has occurred when it shouldn't have.";
-        }));
+    routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
     RoutineObserverForTesting observer{run_loop.QuitClosure()};
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
@@ -253,10 +251,7 @@ TEST_F(CpuCacheRoutineTest, IncrementalProgress) {
   routine_ = std::make_unique<CpuCacheRoutine>(
       &mock_context_, mojom::CpuCacheRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
-  routine_->SetOnExceptionCallback(
-      base::BindOnce([](uint32_t error, const std::string& reason) {
-        ADD_FAILURE() << "An exception has occurred when it shouldn't have.";
-      }));
+  routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
   RoutineObserverForTesting observer{base::DoNothing()};
   routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine_->Start();

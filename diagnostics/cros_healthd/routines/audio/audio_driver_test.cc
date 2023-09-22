@@ -19,6 +19,7 @@
 #include "cras/dbus-proxy-mocks.h"
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
+#include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -87,10 +88,7 @@ class AudioDriverRoutineTest : public testing::Test {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
     base::RunLoop run_loop;
-    routine_->SetOnExceptionCallback(
-        base::BindOnce([](uint32_t error, const std::string& reason) {
-          CHECK(false) << "An exception has occurred when it shouldn't have.";
-        }));
+    routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
     RoutineObserverForTesting observer{run_loop.QuitClosure()};
     routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
