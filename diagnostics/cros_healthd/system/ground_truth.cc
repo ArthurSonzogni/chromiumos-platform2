@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/system/ground_truth.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -10,7 +12,6 @@
 #include <base/strings/stringprintf.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -33,6 +34,31 @@ std::string WrapUnsupportedString(const std::string& cros_config_property,
       "Not supported cros_config property [%s]: [%s]",
       cros_config_property.c_str(), cros_config_value.c_str());
   return msg;
+}
+
+bool HasCrosEC() {
+  return base::PathExists(GetRootedPath(kCrosEcSysPath));
+}
+
+mojom::SupportStatusPtr GetDiskReadArgSupportStatus(
+    mojom::DiskReadRoutineArgumentPtr& arg) {
+  if (arg->disk_read_duration.InSeconds() <= 0) {
+    return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+        "Disk read duration should not be zero after rounding towards zero to "
+        "the nearest second",
+        nullptr));
+  }
+
+  if (arg->file_size_mib == 0) {
+    return mojom::SupportStatus::NewUnsupported(
+        mojom::Unsupported::New("Test file size should not be zero", nullptr));
+  }
+
+  if (arg->type == mojom::DiskReadTypeEnum::kUnmappedEnumField) {
+    return mojom::SupportStatus::NewUnsupported(
+        mojom::Unsupported::New("Unexpected disk read type", nullptr));
+  }
+  return mojom::SupportStatus::NewSupported(mojom::Supported::New());
 }
 
 }  // namespace
@@ -164,16 +190,21 @@ void GroundTruth::IsEventSupported(
   std::move(callback).Run(std::move(status));
 }
 
-mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
-    mojom::RoutineArgumentPtr routine_arg) {
+void GroundTruth::IsRoutineArgumentSupported(
+    mojom::RoutineArgumentPtr routine_arg,
+    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
+        callback) {
   // Please update docs/routine_supportability.md.
   // Add "NO_IFTTT=<reason>" in the commit message if it's not applicable.
   // LINT.IfChange
+  mojom::SupportStatusPtr status;
   switch (routine_arg->which()) {
     // UnrecognizedArgument.
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
-      return mojom::SupportStatus::NewException(mojom::Exception::New(
-          mojom::Exception::Reason::kUnexpected, "Got kUnrecognizedArgument"));
+      std::move(callback).Run(mojom::SupportStatus::NewException(
+          mojom::Exception::New(mojom::Exception::Reason::kUnexpected,
+                                "Got kUnrecognizedArgument")));
+      return;
     // Always supported. There is no rule on the routine arguments.
     case mojom::RoutineArgument::Tag::kMemory:
     case mojom::RoutineArgument::Tag::kAudioDriver:
@@ -181,70 +212,54 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
     case mojom::RoutineArgument::Tag::kCpuCache:
     case mojom::RoutineArgument::Tag::kPrimeSearch:
     case mojom::RoutineArgument::Tag::kFloatingPoint:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      std::move(callback).Run(std::move(status));
+      return;
     // Need to be determined by boxster/cros_config.
     case mojom::RoutineArgument::Tag::kUfsLifetime: {
       auto storage_type = StorageType();
       if (storage_type == cros_config_value::kStorageTypeUfs) {
-        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+        status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      } else {
+        status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+            WrapUnsupportedString(cros_config_property::kStorageType,
+                                  storage_type),
+            nullptr));
       }
-
-      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kStorageType,
-                                storage_type),
-          nullptr));
+      std::move(callback).Run(std::move(status));
+      return;
     }
     // Need to check the routine arguments.
     case mojom::RoutineArgument::Tag::kDiskRead: {
-      auto& arg = routine_arg->get_disk_read();
-      if (arg->disk_read_duration.InSeconds() <= 0) {
-        return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-            "Disk read duration should not be zero after rounding towards zero "
-            "to the nearest second",
-            nullptr));
-      }
-
-      if (arg->file_size_mib == 0) {
-        return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-            "Test file size should not be zero", nullptr));
-      }
-
-      if (arg->type == mojom::DiskReadTypeEnum::kUnmappedEnumField) {
-        return mojom::SupportStatus::NewUnsupported(
-            mojom::Unsupported::New("Unexpected disk read type", nullptr));
-      }
-
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      std::move(callback).Run(
+          GetDiskReadArgSupportStatus(routine_arg->get_disk_read()));
+      return;
     }
     case mojom::RoutineArgument::Tag::kVolumeButton: {
       auto has_side_volume_button = HasSideVolumeButton();
       if (has_side_volume_button == "true") {
-        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+        status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      } else {
+        status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+            WrapUnsupportedString(cros_config_property::kHasSideVolumeButton,
+                                  has_side_volume_button),
+            nullptr));
       }
-
-      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          WrapUnsupportedString(cros_config_property::kHasSideVolumeButton,
-                                has_side_volume_button),
-          nullptr));
+      std::move(callback).Run(std::move(status));
+      return;
     }
     case mojom::RoutineArgument::Tag::kLedLitUp: {
       if (HasCrosEC()) {
-        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+        status = mojom::SupportStatus::NewSupported(mojom::Supported::New());
       } else {
-        return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+        status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
             "Not supported on a non-CrosEC device", nullptr));
       }
+      std::move(callback).Run(std::move(status));
+      return;
     }
   }
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
-}
-
-void GroundTruth::IsRoutineArgumentSupported(
-    mojom::RoutineArgumentPtr routine_arg,
-    mojom::CrosHealthdRoutinesService::IsRoutineArgumentSupportedCallback
-        callback) {
-  auto status = GetRoutineSupportStatus(std::move(routine_arg));
-  std::move(callback).Run(std::move(status));
 }
 
 std::string GroundTruth::FormFactor() {
@@ -285,10 +300,6 @@ std::string GroundTruth::HasSideVolumeButton() {
 std::string GroundTruth::StorageType() {
   return ReadCrosConfig(cros_config_path::kHardwareProperties,
                         cros_config_property::kStorageType);
-}
-
-bool GroundTruth::HasCrosEC() {
-  return base::PathExists(GetRootedPath(kCrosEcSysPath));
 }
 
 std::string GroundTruth::ReadCrosConfig(const std::string& path,

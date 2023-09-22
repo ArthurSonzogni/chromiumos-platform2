@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
@@ -72,13 +73,18 @@ class GroundTruthTest : public testing::Test {
 
   void ExpectEventStatus(mojom::EventCategoryEnum category,
                          mojom::SupportStatus::Tag expect_status) {
-    auto status = ground_truth_.GetEventSupportStatus(category);
+    base::test::TestFuture<mojom::SupportStatusPtr> future;
+    ground_truth_.IsEventSupported(category, future.GetCallback());
+    auto status = future.Take();
     EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
   }
 
   void ExpectRoutineStatus(mojom::RoutineArgumentPtr arg,
                            mojom::SupportStatus::Tag expect_status) {
-    auto status = ground_truth_.GetRoutineSupportStatus(std::move(arg));
+    base::test::TestFuture<mojom::SupportStatusPtr> future;
+    ground_truth_.IsRoutineArgumentSupported(std::move(arg),
+                                             future.GetCallback());
+    auto status = future.Take();
     EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
   }
 

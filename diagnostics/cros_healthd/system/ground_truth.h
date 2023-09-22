@@ -22,13 +22,9 @@ class GroundTruth final {
   GroundTruth& operator=(const GroundTruth&) = delete;
   ~GroundTruth();
 
-  ash::cros_healthd::mojom::SupportStatusPtr GetEventSupportStatus(
-      ash::cros_healthd::mojom::EventCategoryEnum category);
   void IsEventSupported(ash::cros_healthd::mojom::EventCategoryEnum category,
                         ash::cros_healthd::mojom::CrosHealthdEventService::
                             IsEventSupportedCallback callback);
-  ash::cros_healthd::mojom::SupportStatusPtr GetRoutineSupportStatus(
-      ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg);
   void IsRoutineArgumentSupported(
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
       ash::cros_healthd::mojom::CrosHealthdRoutinesService::
@@ -44,9 +40,10 @@ class GroundTruth final {
   std::string HasSideVolumeButton();
   std::string StorageType();
 
-  bool HasCrosEC();
-
  private:
+  ash::cros_healthd::mojom::SupportStatusPtr GetEventSupportStatus(
+      ash::cros_healthd::mojom::EventCategoryEnum category);
+
   std::string ReadCrosConfig(const std::string& path,
                              const std::string& property);
 
