@@ -21,7 +21,7 @@ import signal
 import stat
 import sys
 import tempfile
-from typing import List, Optional
+from typing import List, NamedTuple, Optional
 
 import capng  # pylint: disable=import-error
 import psutil  # pylint: disable=import-error
@@ -137,6 +137,19 @@ ENV_PASSTHRU_REGEX_LIST = list(
         r"^BAZEL_TEST$",
     )
 )
+
+
+class AccountDetails(NamedTuple):
+    """Basic fields from account database."""
+
+    user: str
+    uid: int
+    gid: int
+    home: str
+
+
+# Should we find a better home?
+NOBODY_ACCT = AccountDetails("nobody", 65534, 65534, "/tmp")
 
 
 class Platform2Test:
@@ -258,7 +271,7 @@ class Platform2Test:
         return path
 
     @staticmethod
-    def GetNonRootAccount(user):
+    def GetNonRootAccount(user) -> AccountDetails:
         """Return details about the non-root account we want to use.
 
         Args:
@@ -267,13 +280,11 @@ class Platform2Test:
         Returns:
             A tuple of (username, uid, gid, home).
         """
-        # Should we find a better home?
-        NOBODY = ("nobody", 65534, 65534, "/tmp")
 
         if user is not None:
             # Hardcode these accounts to avoid modification to the sysroot.
             if user == "nobody":
-                return NOBODY
+                return NOBODY_ACCT
 
             # Assume the account is a UID first.
             try:
@@ -286,13 +297,15 @@ class Platform2Test:
                     print("error: %s: %s" % (user, e), file=sys.stderr)
                     sys.exit(1)
 
-            return (acct.pw_name, acct.pw_uid, acct.pw_gid, acct.pw_dir)
+            return AccountDetails(
+                acct.pw_name, acct.pw_uid, acct.pw_gid, acct.pw_dir
+            )
 
-        return (
-            os.environ.get("SUDO_USER", NOBODY[0]),
-            int(os.environ.get("SUDO_UID", NOBODY[1])),
-            int(os.environ.get("SUDO_GID", NOBODY[2])),
-            NOBODY[3],
+        return AccountDetails(
+            os.environ.get("SUDO_USER", NOBODY_ACCT.user),
+            int(os.environ.get("SUDO_UID", NOBODY_ACCT.uid)),
+            int(os.environ.get("SUDO_GID", NOBODY_ACCT.gid)),
+            NOBODY_ACCT.home,
         )
 
     @staticmethod
@@ -954,6 +967,7 @@ def _SudoCommand():
 def _ReExecuteIfNeeded(
     argv: List[str],
     strategy: str,
+    user: str,
     ns_net: bool = True,
     ns_pid: bool = True,
     pid_uid: Optional[int] = None,
@@ -994,15 +1008,21 @@ def _ReExecuteIfNeeded(
             cmd = _SudoCommand() + ["--"] + argv
             os.execvp(cmd[0], cmd)
     else:
-        namespaces.CreateUserNs()
-        # We're now UID=GID=0, so fix up user-related environment variables.
-        # Note that we also modify other environment variables later.
-        os.environ.update(
-            {
-                "HOME": "/root",
-                "USER": "root",
-            }
-        )
+        if user == "root":
+            namespaces.CreateUserNs()
+            # We're now UID=GID=0, so fix up user-related environment variables.
+            # Note that we also modify other environment variables later.
+            os.environ.update(
+                {
+                    "HOME": "/root",
+                    "USER": "root",
+                }
+            )
+        elif user == "nobody":
+            namespaces.CreateUserNs(NOBODY_ACCT.uid, NOBODY_ACCT.gid)
+        else:
+            print(f"error: user not supported: {user}", file=sys.stderr)
+            sys.exit(1)
 
     namespaces.SimpleUnshare(
         net=ns_net, pid=ns_pid, pid_uid=pid_uid, pid_gid=pid_gid
@@ -1133,13 +1153,17 @@ def main(argv):
             argv.insert(0, f"--pid-gid={options.pid_gid}")
 
     if options.strategy == "unprivileged":
-        if options.user != "root":
-            parser.error(message="unprivileged strategy requires --user=root")
+        if options.user not in ("root", "nobody"):
+            parser.error(
+                message="unprivileged strategy requires "
+                "--user=root or --user=nobody"
+            )
 
     # Once we've finished checking args, make sure we have privileges.
     _ReExecuteIfNeeded(
         [sys.argv[0]] + argv,
         strategy=options.strategy,
+        user=options.user,
         ns_net=options.ns_net,
         ns_pid=options.ns_pid,
         pid_uid=options.pid_uid,
