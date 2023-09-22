@@ -139,8 +139,10 @@ void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
 }
 
 void WiFiPhy::PhyDumpComplete() {
+  SLOG(3) << __func__;
   std::swap(frequencies_, temp_freqs_);
   temp_freqs_.clear();
+  DumpFrequencies();
 }
 
 void WiFiPhy::ParseFrequencies(const Nl80211Message& nl80211_message) {
@@ -259,7 +261,19 @@ bool WiFiPhy::SupportAPSTAConcurrency() const {
   return SupportConcurrency(NL80211_IFTYPE_AP, NL80211_IFTYPE_STATION);
 }
 
+void WiFiPhy::DumpFrequencies() const {
+  SLOG(3) << "Available frequencies:";
+  for (auto band : frequencies_) {
+    for (auto& freq : band.second) {
+      SLOG(3) << "  Frequency " << freq.value << ", flag 0x" << std::hex
+              << freq.flags;
+    }
+  }
+}
+
 std::optional<int> WiFiPhy::SelectFrequency(WiFiBand band) const {
+  LOG(INFO) << "Select Frequency from band: " << band;
+  DumpFrequencies();
   if (frequencies_.empty()) {
     LOG(ERROR) << "No valid band found";
     return std::nullopt;

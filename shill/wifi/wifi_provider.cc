@@ -1291,7 +1291,7 @@ void WiFiProvider::SetRegDomain(std::string country) {
   ReqSetRegMessage set_reg;
   set_reg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2,
                                                 country);
-  LOG(INFO) << "Requesting region change from: " << country_.value_or("none")
+  LOG(INFO) << "Requesting region change from: " << country_.value_or("null")
             << " to: " << country;
   netlink_manager_->SendNl80211Message(
       &set_reg,
@@ -1314,6 +1314,9 @@ void WiFiProvider::ResetRegDomain() {
 
 void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
   auto cellular_country = manager_->GetCellularOperatorCountryCode();
+  LOG(INFO) << __func__ << ": cellular country is "
+            << cellular_country.value_or("null") << ", own country is "
+            << country_.value_or("null");
   if (cellular_country.has_value() &&
       (!country_.has_value() ||
        base::CompareCaseInsensitiveASCII(cellular_country.value(),
@@ -1333,6 +1336,7 @@ void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
 }
 
 void WiFiProvider::UpdatePhyInfo(base::OnceClosure phy_ready_callback) {
+  LOG(INFO) << __func__;
   phy_info_ready_cb_ = std::move(phy_ready_callback);
   phy_update_timeout_cb_.Reset(
       base::BindOnce(&WiFiProvider::PhyUpdateTimeout,
@@ -1349,7 +1353,7 @@ void WiFiProvider::PhyUpdateTimeout() {
 }
 
 void WiFiProvider::RegionChanged(const std::string& country) {
-  SLOG(2) << "Country notification: " << country;
+  LOG(INFO) << __func__ << ": Country notification: " << country;
   country_ = country;
   GetPhyInfo(kAllPhys);
 }

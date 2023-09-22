@@ -124,6 +124,8 @@ class WiFiPhy {
   void ParseConcurrency(const Nl80211Message& nl80211_message);
   void ParseFrequencies(const Nl80211Message& nl80211_message);
 
+  void DumpFrequencies() const;
+
   uint32_t phy_index_;
   bool reg_self_managed_;
   std::set<WiFiConstRefPtr> wifi_devices_;
