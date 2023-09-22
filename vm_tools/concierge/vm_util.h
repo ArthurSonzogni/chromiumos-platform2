@@ -42,6 +42,7 @@ namespace concierge {
 
 namespace internal {
 std::string GetDevConfPath(apps::VmType type);
+int64_t GetVmMemoryMiBInternal(int64_t system, bool is_32bit);
 }  // namespace internal
 
 enum VmInfo_VmType : int;

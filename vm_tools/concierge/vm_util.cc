@@ -75,6 +75,48 @@ std::string BooleanParameter(const char* parameter, bool value) {
 
 }  // namespace
 
+namespace internal {
+std::string GetDevConfPath(apps::VmType type) {
+  return base::StrCat({
+      "/usr/local/vms/etc/",
+      base::ToLowerASCII(apps::VmType_Name(type)),
+      "_dev.conf",
+  });
+}
+
+int64_t GetVmMemoryMiBInternal(int64_t sys_memory_mb, bool is_32bit) {
+  int64_t vm_memory_mb;
+  if (sys_memory_mb >= 4096) {
+    // On devices with >=4GB RAM, reserve 1GB for other processes.
+    vm_memory_mb = sys_memory_mb - kHostReservedNumMiB;
+  } else {
+    vm_memory_mb = sys_memory_mb / 4 * 3;
+  }
+
+  // Limit guest memory size to avoid running out of host process address space.
+  //
+  // A 32-bit process has 4GB address space, and some parts are not usable for
+  // various reasons including address space layout randomization (ASLR).
+  // In 32-bit crosvm address space, only ~3370MB is usable:
+  // - 256MB is not usable because of executable load bias ASLR.
+  // - 4MB is used for crosvm executable.
+  // - 32MB it not usable because of heap ASLR.
+  // - 16MB is used for mapped shared libraries.
+  // - 256MB is not usable because of mmap base address ASLR.
+  // - 132MB is used for gaps in the memory layout.
+  // - 30MB is used for other allocations.
+  //
+  // 3328 is chosen because it's a rounded number (i.e. 3328 % 256 == 0).
+  // TODO(hashimoto): Remove this once crosvm becomes 64-bit on ARM.
+  static constexpr int64_t k32bitVmMemoryMaxMb = 3328;
+  if (is_32bit) {
+    vm_memory_mb = std::min(vm_memory_mb, k32bitVmMemoryMaxMb);
+  }
+
+  return vm_memory_mb;
+}
+}  // namespace internal
+
 std::optional<AsyncExecutor> StringToAsyncExecutor(
     const std::string& async_executor) {
   if (async_executor == kUringAsyncExecutorString) {
@@ -143,36 +185,8 @@ base::StringPairs Disk::GetCrosvmArgs() const {
 }
 
 int64_t GetVmMemoryMiB() {
-  int64_t sys_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
-  int64_t vm_memory_mb;
-  if (sys_memory_mb >= 4096) {
-    // On devices with >=4GB RAM, reserve 1GB for other processes.
-    vm_memory_mb = sys_memory_mb - kHostReservedNumMiB;
-  } else {
-    vm_memory_mb = sys_memory_mb / 4 * 3;
-  }
-
-  // Limit guest memory size to avoid running out of host process address space.
-  //
-  // A 32-bit process has 4GB address space, and some parts are not usable for
-  // various reasons including address space layout randomization (ASLR).
-  // In 32-bit crosvm address space, only ~3370MB is usable:
-  // - 256MB is not usable because of executable load bias ASLR.
-  // - 4MB is used for crosvm executable.
-  // - 32MB it not usable because of heap ASLR.
-  // - 16MB is used for mapped shared libraries.
-  // - 256MB is not usable because of mmap base address ASLR.
-  // - 132MB is used for gaps in the memory layout.
-  // - 30MB is used for other allocations.
-  //
-  // 3328 is chosen because it's a rounded number (i.e. 3328 % 256 == 0).
-  // TODO(hashimoto): Remove this once crosvm becomes 64-bit on ARM.
-  static constexpr int64_t k32bitVmMemoryMaxMb = 3328;
-  if (sizeof(uintptr_t) == 4) {
-    vm_memory_mb = std::min(vm_memory_mb, k32bitVmMemoryMaxMb);
-  }
-
-  return vm_memory_mb;
+  return internal::GetVmMemoryMiBInternal(
+      base::SysInfo::AmountOfPhysicalMemoryMB(), sizeof(uintptr_t) == 4);
 }
 
 std::optional<int32_t> ReadFileToInt32(const base::FilePath& filename) {
@@ -622,16 +636,6 @@ std::vector<const std::string> CustomParametersForDev::ObtainSpecialParameters(
     return {};
   }
 }
-
-namespace internal {
-std::string GetDevConfPath(apps::VmType type) {
-  return base::StrCat({
-      "/usr/local/vms/etc/",
-      base::ToLowerASCII(apps::VmType_Name(type)),
-      "_dev.conf",
-  });
-}
-}  // namespace internal
 
 std::unique_ptr<CustomParametersForDev> MaybeLoadCustomParametersForDev(
     apps::VmType type, bool use_dev_conf) {

@@ -685,5 +685,23 @@ TEST(VMUtilTest, GetDevConfPath) {
             "/usr/local/vms/etc/bruschetta_dev.conf");
 }
 
+TEST(VMUtilTest, GetVmMemoryMiB) {
+  // elm 4GB SKUs.
+  EXPECT_EQ(internal::GetVmMemoryMiBInternal(3885, /* is_32bit */ true), 2913);
+
+  // trogdor 4GB SKUs.
+  EXPECT_EQ(internal::GetVmMemoryMiBInternal(3885, /* is_32bit */ false), 2913);
+
+  // jacuzzi 8GB SKUs.
+  EXPECT_EQ(internal::GetVmMemoryMiBInternal(7915, /* is_32bit */ true), 3328);
+
+  // corsola 8GB SKUs.
+  EXPECT_EQ(internal::GetVmMemoryMiBInternal(7915, /* is_32bit */ false), 6891);
+
+  // 16GB Brya
+  EXPECT_EQ(internal::GetVmMemoryMiBInternal(15785, /* is_32bit */ false),
+            14761);
+}
+
 }  // namespace concierge
 }  // namespace vm_tools
