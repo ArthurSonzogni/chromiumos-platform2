@@ -3672,7 +3672,9 @@ int sl_run_parent(int argc,
             strstr(arg, "--windowed-accelerators") == arg ||
             strstr(arg, "--drm-device") == arg ||
             strstr(arg, "--support-damage-buffer") == arg ||
-            strstr(arg, "--vm-identififer") == arg) {
+            strstr(arg, "--vm-identififer") == arg ||
+            strstr(arg, "--trace-system") == arg ||
+            strstr(arg, "--enable-linux-dmabuf") == arg) {
           args[i++] = arg;
         }
       }
