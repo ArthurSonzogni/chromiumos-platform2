@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/task/thread_pool/thread_pool_instance.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/dlp/dbus-constants.h>
@@ -43,6 +44,8 @@ void DlpDaemon::RegisterDBusObjectsAsync(
   } else {
     feature_lib = feature::PlatformFeatures::Get();
   }
+  base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
+      "dlp_daemon_thread_pool");
   adaptor_ = std::make_unique<DlpAdaptor>(std::move(dbus_object), feature_lib,
                                           fanotify_perm_fd_, fanotify_notif_fd_,
                                           home_path_);
