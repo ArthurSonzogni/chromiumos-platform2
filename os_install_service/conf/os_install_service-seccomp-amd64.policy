@@ -41,6 +41,9 @@ connect: 1
 creat: 1
 dup: 1
 dup2: 1
+epoll_create1: 1
+epoll_ctl: 1
+epoll_wait: 1
 execve: 1
 exit: 1
 exit_group: 1
@@ -96,6 +99,7 @@ openat: 1
 pipe2: 1
 pipe: 1
 poll: 1
+ppoll: 1
 prctl: arg0 == PR_GET_DUMPABLE || arg0 == PR_SET_NAME || arg0 == PR_SET_KEEPCAPS
 pread64: 1
 prlimit64: 1
@@ -125,6 +129,8 @@ statx: 1
 symlinkat: 1
 sync: 1
 sysinfo: 1
+timerfd_create: 1
+timerfd_settime: 1
 umask: 1
 umount2: 1
 uname: 1
