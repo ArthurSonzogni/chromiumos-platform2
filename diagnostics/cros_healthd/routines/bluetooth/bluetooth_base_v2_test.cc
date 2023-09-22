@@ -43,6 +43,17 @@ class BluetoothRoutineBaseV2Test : public testing::Test {
   BluetoothRoutineBaseV2Test& operator=(const BluetoothRoutineBaseV2Test&) =
       delete;
 
+  void SetUp() override {
+    ON_CALL(*mock_floss_controller(), GetManager())
+        .WillByDefault(Return(&mock_manager_proxy_));
+  }
+
+  void TearDown() override {
+    // Report null to ignore calls when routine is deconstructed.
+    ON_CALL(*mock_floss_controller(), GetManager())
+        .WillByDefault(Return(nullptr));
+  }
+
   MockFlossController* mock_floss_controller() {
     return mock_context_.mock_floss_controller();
   }
@@ -108,8 +119,6 @@ class BluetoothRoutineBaseV2Test : public testing::Test {
 
   // Setup all the required call for calling |Initialize| successfully.
   void SetupInitializeSuccessCall(bool initial_powered) {
-    EXPECT_CALL(*mock_floss_controller(), GetManager())
-        .WillOnce(Return(&mock_manager_proxy_));
     SetupGetDefaultAdapterCall();
     if (initial_powered) {
       SetupGetAdaptersCall();
@@ -144,7 +153,8 @@ TEST_F(BluetoothRoutineBaseV2Test, GetAdapterSuccess) {
 // proxy.
 TEST_F(BluetoothRoutineBaseV2Test, GetManagerProxyError) {
   InSequence s;
-  EXPECT_CALL(*mock_floss_controller(), GetManager()).WillOnce(Return(nullptr));
+  ON_CALL(*mock_floss_controller(), GetManager())
+      .WillByDefault(Return(nullptr));
 
   EXPECT_EQ(InitializeSync(), false);
   EXPECT_EQ(routine_base_.GetDefaultAdapter(), nullptr);
@@ -154,8 +164,6 @@ TEST_F(BluetoothRoutineBaseV2Test, GetManagerProxyError) {
 // adapter.
 TEST_F(BluetoothRoutineBaseV2Test, GetDefaultAdapterError) {
   InSequence s;
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
 
   // Fails to initialize.
   SetupGetDefaultAdapterCall(/*success=*/false);
@@ -168,8 +176,6 @@ TEST_F(BluetoothRoutineBaseV2Test, GetDefaultAdapterError) {
 // state of default adapter.
 TEST_F(BluetoothRoutineBaseV2Test, GetAdapterEnabledError) {
   InSequence s;
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
 
   // Fails to initialize.
   SetupGetDefaultAdapterCall();
@@ -192,9 +198,6 @@ TEST_F(BluetoothRoutineBaseV2Test, EmptyAdapter) {
 // Test that the BluetoothRoutineBaseV2 can handle null adapter and return null.
 TEST_F(BluetoothRoutineBaseV2Test, NullAdapter) {
   InSequence s;
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
-
   SetupGetDefaultAdapterCall(/*success=*/true);
   EXPECT_CALL(*mock_floss_controller(), GetAdapters())
       .WillOnce(Return(
@@ -210,8 +213,6 @@ TEST_F(BluetoothRoutineBaseV2Test, NullAdapter) {
 // the default one.
 TEST_F(BluetoothRoutineBaseV2Test, MultipleAdapter) {
   InSequence s;
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
   SetupGetDefaultAdapterCall(/*success=*/true);
 
   // Non-default adapter with HCI interface 1.
@@ -239,8 +240,6 @@ TEST_F(BluetoothRoutineBaseV2Test, MultipleAdapter) {
 // when getting adapter powered during initialization.
 TEST_F(BluetoothRoutineBaseV2Test, GetPoweredFailedMissingManagerProxy) {
   InSequence s;
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
 
   EXPECT_CALL(mock_manager_proxy_, GetDefaultAdapterAsync(_, _, _))
       .WillOnce(WithArg<0>([&](base::OnceCallback<void(int32_t)> on_success) {
@@ -280,8 +279,6 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckPassedPoweredOn) {
 // when the powered is on at first.
 TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedNoAdapter) {
   InSequence s;
-  EXPECT_CALL(*mock_floss_controller(), GetManager())
-      .WillOnce(Return(&mock_manager_proxy_));
   SetupGetDefaultAdapterCall();
   // The adapter is missing when the powered is on.
   EXPECT_CALL(*mock_floss_controller(), GetAdapters())
@@ -436,6 +433,40 @@ TEST_F(BluetoothRoutineBaseV2Test, ChangePoweredErrorMissingManagerProxy) {
   fake_floss_event_hub()->SendManagerRemoved();
   EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/false),
             base::unexpected("Failed to access Bluetooth manager proxy."));
+}
+
+// Test that the BluetoothRoutineBaseV2 can reset powered state to on when
+// deconstructed.
+TEST_F(BluetoothRoutineBaseV2Test, ResetPoweredOnDeconstructed) {
+  InSequence s;
+  auto routine_base = std::make_unique<BluetoothRoutineBaseV2>(&mock_context_);
+
+  SetupInitializeSuccessCall(/*initial_powered=*/true);
+  base::test::TestFuture<bool> future;
+  routine_base->Initialize(future.GetCallback());
+  EXPECT_EQ(future.Get(), true);
+
+  // Reset.
+  EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>());
+  routine_base.reset();
+}
+
+// Test that the BluetoothRoutineBaseV2 can reset powered state to off when
+// deconstructed.
+TEST_F(BluetoothRoutineBaseV2Test, ResetPoweredOffDeconstructed) {
+  InSequence s;
+  auto routine_base = std::make_unique<BluetoothRoutineBaseV2>(&mock_context_);
+
+  SetupInitializeSuccessCall(/*initial_powered=*/false);
+  base::test::TestFuture<bool> future;
+  routine_base->Initialize(future.GetCallback());
+  EXPECT_EQ(future.Get(), true);
+
+  // Reset.
+  EXPECT_CALL(mock_manager_proxy_, StopAsync(kDefaultHciInterface, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>());
+  routine_base.reset();
 }
 
 }  // namespace

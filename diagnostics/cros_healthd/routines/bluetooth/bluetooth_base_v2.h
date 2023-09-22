@@ -55,22 +55,22 @@ class BluetoothRoutineBaseV2 {
   // string when unexpected error occurs.
   void ChangeAdapterPoweredState(bool powered, ResultCallback on_finish);
 
-  // Set the adapter powered state back to |initial_powered_state_|.
-  void ResetPoweredState();
-
  protected:
   // Unowned pointer that should outlive this instance.
   Context* const context_;
   // The Bluetooth manager from Floss.
   org::chromium::bluetooth::ManagerProxyInterface* manager_;
   // The HCI interface number of default adapter, will be set in |Initialize|.
-  int32_t default_adapter_hci_;
+  int32_t default_adapter_hci_ = -1;
   // The default adapter from Floss, which is null when adapter is not enabled.
   org::chromium::bluetooth::BluetoothProxyInterface* default_adapter_ = nullptr;
   // The callback will be unregistered when the subscription is destructured.
   std::vector<base::CallbackListSubscription> event_subscriptions_;
   // Routine start time, used to calculate the progress percentage and timeout.
   base::TimeTicks start_ticks_;
+  // A callback that should be run regardless of the execution status. This
+  // callback will reset the adapter powered to |initial_powered_state_|.
+  base::ScopedClosureRunner reset_bluetooth_powered_;
 
  private:
   // Inner functions of |Initialize|.

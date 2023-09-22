@@ -28,6 +28,21 @@ dbus::ObjectPath GetAdapterPath(int32_t hci_interface) {
                           base::NumberToString(hci_interface) + "/adapter");
 }
 
+void ResetPoweredState(FlossController* floss_controller,
+                       bool initial_powered_state,
+                       int32_t hci_interface) {
+  auto manager = floss_controller->GetManager();
+  if (!manager) {
+    LOG(ERROR) << "Failed to access Bluetooth manager proxy when resetting.";
+    return;
+  }
+  if (initial_powered_state) {
+    manager->StartAsync(hci_interface, base::DoNothing(), base::DoNothing());
+  } else {
+    manager->StopAsync(hci_interface, base::DoNothing(), base::DoNothing());
+  }
+}
+
 }  // namespace
 
 BluetoothRoutineBaseV2::BluetoothRoutineBaseV2(Context* context)
@@ -110,6 +125,11 @@ void BluetoothRoutineBaseV2::CheckAdapterEnabledState(
   }
 
   initial_powered_state_ = powered;
+  // Set up scoped closure runner for resetting adapter powered back to initial
+  // powered state.
+  reset_bluetooth_powered_ = base::ScopedClosureRunner(
+      base::BindOnce(&ResetPoweredState, context_->floss_controller(), powered,
+                     default_adapter_hci_));
   std::move(on_finish).Run(true);
 }
 
@@ -234,13 +254,6 @@ void BluetoothRoutineBaseV2::OnManagerRemoved(
     const dbus::ObjectPath& manager_path) {
   LOG(ERROR) << "Bluetooth manager proxy is removed unexpectedly";
   manager_ = nullptr;
-}
-
-void BluetoothRoutineBaseV2::ResetPoweredState() {
-  if (!initial_powered_state_.has_value()) {
-    return;
-  }
-  ChangeAdapterPoweredState(initial_powered_state_.value(), base::DoNothing());
 }
 
 }  // namespace diagnostics
