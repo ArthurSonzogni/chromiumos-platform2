@@ -727,12 +727,31 @@ void Manager::GetNextImageInternal(const std::string& uuid,
                                    size_t expected_lines) {
   DCHECK(expected_lines);
 
+  // Give extra time to read the page data.
+  if (!activity_callback_.is_null())
+    activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
+
+  // Ensure the timeout is restored to normal no matter how this function exits.
+  base::ScopedClosureRunner restore_timeout(base::BindOnce(
+      [](base::WeakPtr<Manager> manager) {
+        if (manager && !manager->activity_callback_.is_null()) {
+          manager->activity_callback_.Run(Daemon::kNormalShutdownTimeout);
+        }
+      },
+      weak_factory_.GetWeakPtr()));
+
   brillo::ErrorPtr error;
   ScanFailureMode failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
   ScanState result = RunScanLoop(&error, &failure_mode, scan_state,
                                  std::move(out_file), expected_lines, uuid);
   LOG(INFO) << __func__ << ": Scanner page read loop for " << uuid
             << " ended with status " << ScanState_Name(result);
+
+  // Reading the page data may have taken a while.  There are several additional
+  // steps below that can take a few seconds, so extend the timeout again.
+  if (!activity_callback_.is_null())
+    activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
+
   switch (result) {
     case SCAN_STATE_PAGE_COMPLETED:
       // Do nothing.
@@ -776,11 +795,6 @@ void Manager::GetNextImageInternal(const std::string& uuid,
   SendStatusSignal(uuid, SCAN_STATE_PAGE_COMPLETED, scan_state->current_page,
                    100, !scan_complete);
 
-  // Reset activity timer back to normal now that the page is done.  If there
-  // are more pages, we'll extend it again below.
-  if (!activity_callback_.is_null())
-    activity_callback_.Run(Daemon::kNormalShutdownTimeout);
-
   if (scan_complete) {
     ReportScanSucceeded(scan_state->device_name);
     SendStatusSignal(uuid, SCAN_STATE_COMPLETED, scan_state->current_page, 100,
@@ -811,7 +825,10 @@ void Manager::GetNextImageInternal(const std::string& uuid,
     return;
   }
 
+  // Another page is coming, so intentionally exit the function with the longer
+  // timeout in place.
   scan_state->current_page++;
+  (void)restore_timeout.Release();
   if (!activity_callback_.is_null())
     activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
 }
