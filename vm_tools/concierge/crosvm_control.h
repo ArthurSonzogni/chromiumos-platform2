@@ -79,6 +79,29 @@ class CrosvmControl {
                           struct UsbDeviceEntry* entries,
                           ssize_t entries_length);
 
+  // Attaches a network tap device to crosvm instance whose control socket is
+  // listening on `socket_path`.
+  //
+  // Arguments
+  // `socket_path` - Path to the crosvm control socket
+  // `tap_name` - Interface name of tap device.
+  // `out_bus` - guest bus number will be written here.
+  //
+  // The function returns true on success or false if an error occurred.
+  virtual bool NetAttach(const std::string& socket_path,
+                         const std::string& tap_name,
+                         uint8_t* out_bus);
+
+  // Detaches a network tap device to crosvm instance whose control socket is
+  // listening on `socket_path`.
+  //
+  // Arguments
+  // `socket_path` - Path to the crosvm control socket
+  // `bus` - guest bus number of the device to remove
+  //
+  // The function returns true on success or false if an error occurred.
+  virtual bool NetDetach(const std::string& socket_path, uint8_t bus);
+
   // Attaches an USB device to crosvm instance whose control socket is listening
   // on `socket_path`.
   //

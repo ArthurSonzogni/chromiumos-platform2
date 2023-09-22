@@ -77,6 +77,17 @@ ssize_t CrosvmControl::UsbList(const std::string& socket_path,
   return crosvm_client_usb_list(socket_path.c_str(), entries, entries_length);
 }
 
+bool CrosvmControl::NetAttach(const std::string& socket_path,
+                              const std::string& tap_name,
+                              uint8_t* out_bus) {
+  return crosvm_client_net_tap_attach(socket_path.data(), tap_name.data(),
+                                      out_bus);
+}
+
+bool CrosvmControl::NetDetach(const std::string& socket_path, uint8_t bus) {
+  return crosvm_client_net_tap_detach(socket_path.data(), bus);
+}
+
 bool CrosvmControl::UsbAttach(const std::string& socket_path,
                               uint8_t bus,
                               uint8_t addr,

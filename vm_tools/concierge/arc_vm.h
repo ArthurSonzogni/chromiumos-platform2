@@ -138,6 +138,8 @@ class ArcVm final : public VmBaseImpl {
   // Currently only implemented for termina, returns "Not implemented".
   bool GetVmEnterpriseReportingInfo(
       GetVmEnterpriseReportingInfoResponse* response) override;
+  bool AttachNetDevice(const std::string& tap_name, uint8_t* out_bus) override;
+  bool DetachNetDevice(uint8_t bus) override;
   bool AttachUsbDevice(uint8_t bus,
                        uint8_t addr,
                        uint16_t vid,

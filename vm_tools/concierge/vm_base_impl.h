@@ -141,6 +141,12 @@ class VmBaseImpl {
   virtual const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
       const MemoryMargins& margins, const std::string& vm);
 
+  // Attach a host network tap device with tap_name.
+  virtual bool AttachNetDevice(const std::string& tap_name, uint8_t* out_bus);
+
+  // Detach a host network tap device on guest attached at bus.
+  virtual bool DetachNetDevice(uint8_t bus);
+
   // Attach an usb device at host bus:addr, with vid, pid and an opened fd.
   virtual bool AttachUsbDevice(uint8_t bus,
                                uint8_t addr,

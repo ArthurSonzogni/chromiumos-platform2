@@ -396,6 +396,16 @@ std::optional<BalloonStats> ParseBalloonStats(
   return stats;
 }
 
+bool AttachNetDevice(const std::string& socket_path,
+                     const std::string& tap_name,
+                     uint8_t* out_bus) {
+  return CrosvmControl::Get()->NetAttach(socket_path, tap_name, out_bus);
+}
+
+bool DetachNetDevice(const std::string& socket_path, uint8_t bus) {
+  return CrosvmControl::Get()->NetDetach(socket_path, bus);
+}
+
 bool AttachUsbDevice(const std::string& socket_path,
                      uint8_t bus,
                      uint8_t addr,

@@ -38,6 +38,12 @@ class FakeCrosvmControl : public CrosvmControl {
                   struct UsbDeviceEntry* entries,
                   ssize_t entries_length) override;
 
+  bool NetAttach(const std::string& socket_path,
+                 const std::string& tap_name,
+                 uint8_t* out_bus) override;
+
+  bool NetDetach(const std::string& socket_path, uint8_t bus) override;
+
   bool UsbAttach(const std::string& socket_path,
                  uint8_t bus,
                  uint8_t addr,

@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <csignal>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <optional>
@@ -585,6 +586,15 @@ bool ArcVm::Shutdown() {
 
   LOG(ERROR) << "Failed to kill VM " << vsock_cid_ << " with SIGKILL";
   return false;
+}
+
+bool ArcVm::AttachNetDevice(const std::string& tap_name, uint8_t* out_bus) {
+  return vm_tools::concierge::AttachNetDevice(GetVmSocketPath(), tap_name,
+                                              out_bus);
+}
+
+bool ArcVm::DetachNetDevice(uint8_t bus) {
+  return vm_tools::concierge::DetachNetDevice(GetVmSocketPath(), bus);
 }
 
 bool ArcVm::AttachUsbDevice(uint8_t bus,

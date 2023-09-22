@@ -3593,6 +3593,78 @@ ListVmDisksResponse Service::ListVmDisks(const ListVmDisksRequest& request) {
   return response;
 }
 
+AttachNetDeviceResponse Service::AttachNetDevice(
+    const AttachNetDeviceRequest& request) {
+  LOG(INFO) << "Received request: " << __func__;
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  AttachNetDeviceResponse response;
+
+  if (!CheckVmNameAndOwner(request, response)) {
+    return response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.vm_name());
+  if (iter == vms_.end()) {
+    response.set_failure_reason("Requested VM " + request.vm_name() +
+                                " with owner " + request.owner_id() +
+                                " does not exist");
+    LOG(ERROR) << response.failure_reason();
+    return response;
+  }
+
+  uint8_t out_bus;
+
+  if (!iter->second->AttachNetDevice(request.tap_name(), &out_bus)) {
+    response.set_failure_reason(
+        "Failed to attach tap device due to crosvm error.");
+    LOG(ERROR) << response.failure_reason();
+    return response;
+  }
+  response.set_success(true);
+  response.set_guest_bus(out_bus);
+  return response;
+}
+
+DetachNetDeviceResponse Service::DetachNetDevice(
+    const DetachNetDeviceRequest& request) {
+  LOG(INFO) << "Received request: " << __func__;
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  DetachNetDeviceResponse response;
+
+  if (!CheckVmNameAndOwner(request, response)) {
+    return response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.vm_name());
+  if (iter == vms_.end()) {
+    response.set_failure_reason("Requested VM " + request.vm_name() +
+                                " with owner " + request.owner_id() +
+                                " does not exist");
+    LOG(ERROR) << response.failure_reason();
+    return response;
+  }
+
+  if (request.guest_bus() == 0 || request.guest_bus() > 0xFF) {
+    response.set_failure_reason("PCI bus number " +
+                                std::to_string(request.guest_bus()) +
+                                " is out of valid range 1-255");
+    LOG(ERROR) << response.failure_reason();
+    return response;
+  }
+
+  if (!iter->second->DetachNetDevice(request.guest_bus())) {
+    response.set_failure_reason(
+        "Failed to detach tap device due to crosvm error.");
+    LOG(ERROR) << response.failure_reason();
+    return response;
+  }
+
+  response.set_success(true);
+  return response;
+}
+
 AttachUsbDeviceResponse Service::AttachUsbDevice(
     const AttachUsbDeviceRequest& request, const base::ScopedFD& fd) {
   LOG(INFO) << "Received request: " << __func__;

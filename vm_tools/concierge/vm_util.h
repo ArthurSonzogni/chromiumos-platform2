@@ -154,6 +154,14 @@ std::optional<BalloonWorkingSet> GetBalloonWorkingSet(
 std::optional<BalloonStats> ParseBalloonStats(
     const base::Value::Dict& balloon_stats);
 
+// Attach a host network tap device with tap_name.
+bool AttachNetDevice(const std::string& socket_path,
+                     const std::string& tap_name,
+                     uint8_t* out_bus);
+
+// Detach a host network tap device on guest attached at bus.
+bool DetachNetDevice(const std::string& socket_path, uint8_t bus);
+
 // Attaches an usb device at host |bus|:|addr|, with |vid|, |pid| and an
 // opened |fd|.
 bool AttachUsbDevice(const std::string& socket_path,

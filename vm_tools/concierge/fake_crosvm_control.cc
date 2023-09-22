@@ -61,6 +61,18 @@ ssize_t FakeCrosvmControl::UsbList(const std::string& socket_path,
   return 0;
 }
 
+bool FakeCrosvmControl::NetAttach(const std::string& socket_path,
+                                  const std::string& tap_name,
+                                  uint8_t* out_bus) {
+  target_socket_path_ = socket_path;
+  return true;
+}
+
+bool FakeCrosvmControl::NetDetach(const std::string& socket_path, uint8_t bus) {
+  target_socket_path_ = socket_path;
+  return true;
+}
+
 bool FakeCrosvmControl::UsbAttach(const std::string& socket_path,
                                   uint8_t bus,
                                   uint8_t addr,

@@ -219,6 +219,14 @@ class Service final : public org::chromium::VmConciergeInterface,
   ListUsbDeviceResponse ListUsbDevices(
       const ListUsbDeviceRequest& request) override;
 
+  // Attaches a net tap device
+  AttachNetDeviceResponse AttachNetDevice(
+      const AttachNetDeviceRequest& request) override;
+
+  // Detach a net tap device
+  DetachNetDeviceResponse DetachNetDevice(
+      const DetachNetDeviceRequest& request) override;
+
   DnsSettings GetDnsSettings() override;
 
   SetVmCpuRestrictionResponse SetVmCpuRestriction(

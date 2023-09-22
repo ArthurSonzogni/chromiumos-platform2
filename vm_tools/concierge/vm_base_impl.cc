@@ -61,6 +61,19 @@ const std::unique_ptr<BalloonPolicyInterface>& VmBaseImpl::GetBalloonPolicy(
   return balloon_policy_;
 }
 
+bool VmBaseImpl::AttachNetDevice(const std::string& tap_name,
+                                 uint8_t* out_bus) {
+  LOG(ERROR) << "Hotplugging a net device is not supported for "
+             << GetInfo().type;
+  return false;
+}
+
+bool VmBaseImpl::DetachNetDevice(uint8_t bus) {
+  LOG(ERROR) << "Removing a hotplugged net device is not supported for "
+             << GetInfo().type;
+  return false;
+}
+
 bool VmBaseImpl::AttachUsbDevice(uint8_t bus,
                                  uint8_t addr,
                                  uint16_t vid,

@@ -71,6 +71,23 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="AttachNetDevice">
+      <tp:docstring>
+        Attaches a net tap device to a VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::AttachNetDeviceRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::AttachNetDeviceResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see failure_reason when not.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="AttachUsbDevice">
       <tp:docstring>
         Attaches a USB device to a VM.
@@ -143,6 +160,23 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DestroyDiskImageResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see failure_reason when not.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="DetachNetDevice">
+      <tp:docstring>
+        Detaches a net tap device from a VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DetachNetDeviceRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DetachNetDeviceResponse"/>
         <tp:docstring>
           Returns success==true when successful, see failure_reason when not.
         </tp:docstring>
