@@ -19,8 +19,6 @@ class MockTime : public Time {
 
   ~MockTime() override;
 
-  MOCK_METHOD(bool, GetSecondsMonotonic, (time_t*), (override));
-  MOCK_METHOD(bool, GetMicroSecondsMonotonic, (int64_t*), (override));
   MOCK_METHOD(bool, GetSecondsBoottime, (time_t*), (override));
   MOCK_METHOD(int, GetTimeMonotonic, (struct timeval*), (override));
   MOCK_METHOD(int, GetTimeBoottime, (struct timeval*), (override));
@@ -29,7 +27,6 @@ class MockTime : public Time {
               (struct timeval*, struct timezone*),
               (override));
   MOCK_METHOD(Timestamp, GetNow, (), (override));
-  MOCK_METHOD(time_t, GetSecondsSinceEpoch, (), (const, override));
 };
 
 }  // namespace shill

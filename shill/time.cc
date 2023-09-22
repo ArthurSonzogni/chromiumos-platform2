@@ -27,25 +27,6 @@ Time* Time::GetInstance() {
   return instance.get();
 }
 
-bool Time::GetSecondsMonotonic(time_t* seconds) {
-  struct timeval now;
-  if (GetTimeMonotonic(&now) < 0) {
-    return false;
-  } else {
-    *seconds = now.tv_sec;
-    return true;
-  }
-}
-
-bool Time::GetMicroSecondsMonotonic(int64_t* usecs) {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-    return false;
-  }
-  *usecs = ConvertTimespecToMicros(ts);
-  return true;
-}
-
 bool Time::GetSecondsBoottime(time_t* seconds) {
   struct timeval now;
   if (GetTimeBoottime(&now) < 0) {
@@ -137,10 +118,6 @@ int64_t Time::ConvertTimespecToMicros(const struct timespec& ts) {
   result *= base::Time::kMicrosecondsPerSecond;
   result += (ts.tv_nsec / base::Time::kNanosecondsPerMicrosecond);
   return result.ValueOrDie();
-}
-
-time_t Time::GetSecondsSinceEpoch() const {
-  return time(nullptr);
 }
 
 }  // namespace shill
