@@ -11,6 +11,7 @@
 #include <optional>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -34,9 +35,7 @@ class NET_BASE_EXPORT IPv6Address {
   // Creates the IPv6Address from IPv6 network address format.
   // TODO(b/269983153): Add a fuzzer test for this method.
   static std::optional<IPv6Address> CreateFromString(
-      const std::string& address_string);
-  static std::optional<IPv6Address> CreateFromString(
-      const char* address_string);
+      std::string_view address_string);
 
   // Creates the IPv6Address from the raw byte buffer |bytes|.
   // Returns std::nullopt if |bytes|'s size is not the same as kAddressLength.

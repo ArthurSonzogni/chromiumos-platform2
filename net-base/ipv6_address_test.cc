@@ -60,6 +60,8 @@ TEST(IPv6AddressTest, ToString) {
 TEST(IPv6AddressTest, CreateFromString_Fail) {
   EXPECT_FALSE(IPv6Address::CreateFromString(""));
   EXPECT_FALSE(IPv6Address::CreateFromString("192.168.10.1"));
+  EXPECT_FALSE(IPv6Address::CreateFromString(
+      "0000:1111:2222:3333:4444:5555:6666:7777:8888:9999:AAAA:BBBB"));
 }
 
 TEST(IPv4AddressTest, ToBytes) {

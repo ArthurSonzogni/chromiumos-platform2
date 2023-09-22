@@ -9,6 +9,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -48,10 +49,7 @@ class NET_BASE_EXPORT IPAddress {
   // If |family| is not nullopt, then only returns the valid IP address with the
   // assigned IP family.
   static std::optional<IPAddress> CreateFromString(
-      const std::string& address_string,
-      std::optional<IPFamily> family = std::nullopt);
-  static std::optional<IPAddress> CreateFromString(
-      const char* address_string,
+      std::string_view address_string,
       std::optional<IPFamily> family = std::nullopt);
 
   // Creates the IPAddress from the raw byte buffer |bytes|.
@@ -123,7 +121,7 @@ class NET_BASE_EXPORT IPCIDR {
   // If |family| is not nullopt, then only returns the valid result with the
   // assigned IP family.
   static std::optional<IPCIDR> CreateFromCIDRString(
-      const std::string& cidr_string,
+      std::string_view cidr_string,
       std::optional<IPFamily> family = std::nullopt);
 
   // Creates the CIDR from the IP address notation string and the prefix length.
@@ -131,7 +129,7 @@ class NET_BASE_EXPORT IPCIDR {
   // If |family| is not nullopt, then only returns the valid result with the
   // assigned IP family.
   static std::optional<IPCIDR> CreateFromStringAndPrefix(
-      const std::string& address_string,
+      std::string_view address_string,
       int prefix_length,
       std::optional<IPFamily> family = std::nullopt);
 

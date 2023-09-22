@@ -5,6 +5,7 @@
 #include "net-base/ip_address.h"
 
 #include <algorithm>
+#include <string_view>
 
 namespace net_base {
 
@@ -38,13 +39,7 @@ std::string ToString(IPFamily family) {
 
 // static
 std::optional<IPAddress> IPAddress::CreateFromString(
-    const std::string& address_string, std::optional<IPFamily> family) {
-  return CreateFromString(address_string.c_str(), family);
-}
-
-// static
-std::optional<IPAddress> IPAddress::CreateFromString(
-    const char* address_string, std::optional<IPFamily> family) {
+    std::string_view address_string, std::optional<IPFamily> family) {
   if (family != net_base::IPFamily::kIPv6) {
     const auto ipv4 = IPv4Address::CreateFromString(address_string);
     if (ipv4) {
@@ -168,7 +163,7 @@ int IPCIDR::GetMaxPrefixLength(IPFamily family) {
 
 // static
 std::optional<IPCIDR> IPCIDR::CreateFromCIDRString(
-    const std::string& cidr_string, std::optional<IPFamily> family) {
+    std::string_view cidr_string, std::optional<IPFamily> family) {
   if (family != net_base::IPFamily::kIPv6) {
     const auto ipv4 = IPv4CIDR::CreateFromCIDRString(cidr_string);
     if (ipv4) {
@@ -188,7 +183,7 @@ std::optional<IPCIDR> IPCIDR::CreateFromCIDRString(
 
 // static
 std::optional<IPCIDR> IPCIDR::CreateFromStringAndPrefix(
-    const std::string& address_string,
+    std::string_view address_string,
     int prefix_length,
     std::optional<IPFamily> family) {
   if (family != net_base::IPFamily::kIPv6) {

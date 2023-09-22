@@ -11,6 +11,7 @@
 #include <optional>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -34,9 +35,7 @@ class NET_BASE_EXPORT IPv4Address {
   // Creates the IPv4Address from IPv4 dotted-decimal notation.
   // TODO(b/269983153): Add a fuzzer test for this method.
   static std::optional<IPv4Address> CreateFromString(
-      const std::string& address_string);
-  static std::optional<IPv4Address> CreateFromString(
-      const char* address_string);
+      std::string_view address_string);
 
   // Creates the IPv4Address from the raw byte buffer |bytes|.
   // Returns std::nullopt if |bytes|'s size is not the same as kAddressLength.

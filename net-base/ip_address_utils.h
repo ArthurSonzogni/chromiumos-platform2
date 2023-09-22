@@ -10,6 +10,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
@@ -21,8 +22,12 @@ namespace net_base {
 
 // Splits the CIDR-notation string into the pair of the address and the prefix
 // length. Returns std::nullopt if the format is invalid.
-NET_BASE_EXPORT std::optional<std::pair<std::string, int>> SplitCIDRString(
-    const std::string& address_string);
+NET_BASE_EXPORT std::optional<std::pair<std::string_view, int>> SplitCIDRString(
+    std::string_view address_string);
+
+// Same as `inet_pton()` from the standard C library, but takes a `string_view`
+// instead for the input.
+int inet_pton_string_view(int af, std::string_view src, void* dst);
 
 template <typename Address>
 std::optional<Address> CreateAddressFromBytes(base::span<const uint8_t> bytes) {
@@ -97,7 +102,7 @@ class NET_BASE_EXPORT CIDR {
   // Creates the CIDR from the CIDR notation.
   // Returns std::nullopt if the string format is invalid.
   static std::optional<CIDR> CreateFromCIDRString(
-      const std::string& cidr_string) {
+      std::string_view cidr_string) {
     const auto cidr_pair = SplitCIDRString(cidr_string);
     if (cidr_pair) {
       return CreateFromStringAndPrefix(cidr_pair->first, cidr_pair->second);
@@ -111,7 +116,7 @@ class NET_BASE_EXPORT CIDR {
   // Creates the CIDR from the CIDR notation string and the prefix length.
   // Returns std::nullopt if the string format or the prefix length is invalid.
   static std::optional<CIDR> CreateFromStringAndPrefix(
-      const std::string& address_string, int prefix_length) {
+      std::string_view address_string, int prefix_length) {
     const auto address = Address::CreateFromString(address_string);
     if (!address) {
       return std::nullopt;
