@@ -179,6 +179,11 @@ bool SaneDeviceFake::CancelScan(brillo::ErrorPtr* error) {
   return cancel_scan_result_;
 }
 
+SANE_Status SaneDeviceFake::SetOption(brillo::ErrorPtr* error,
+                                      const ScannerOption& option) {
+  return SANE_STATUS_UNSUPPORTED;
+}
+
 void SaneDeviceFake::SetCancelScanResult(bool result) {
   cancel_scan_result_ = result;
 }

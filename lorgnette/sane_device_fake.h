@@ -50,6 +50,8 @@ class SaneDeviceFake : public SaneDevice {
                            size_t count,
                            size_t* read_out) override;
   bool CancelScan(brillo::ErrorPtr* error) override;
+  SANE_Status SetOption(brillo::ErrorPtr* error,
+                        const ScannerOption& option) override;
   std::optional<ScannerConfig> GetCurrentConfig(
       brillo::ErrorPtr* error) override;
 

@@ -76,6 +76,9 @@ SANE_Status LibsaneWrapperFake::sane_control_option(
       memcpy(v, scanner.values[n].value(), scanner.descriptors[n].size);
       return SANE_STATUS_GOOD;
     case SANE_ACTION_SET_VALUE:
+      if (!(scanner.descriptors[n].cap & SANE_CAP_SOFT_SELECT)) {
+        return SANE_STATUS_UNSUPPORTED;
+      }
       memcpy(scanner.values[n].value(), v, scanner.descriptors[n].size);
       if (i) {
         *i = SANE_INFO_RELOAD_OPTIONS | SANE_INFO_RELOAD_PARAMS;

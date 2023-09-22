@@ -57,6 +57,8 @@ class SaneDeviceImpl : public SaneDevice {
                            size_t count,
                            size_t* read_out) override;
   bool CancelScan(brillo::ErrorPtr* error) override;
+  SANE_Status SetOption(brillo::ErrorPtr* error,
+                        const ScannerOption& option) override;
 
  private:
   friend class SaneDeviceImplTest;
@@ -80,7 +82,7 @@ class SaneDeviceImpl : public SaneDevice {
                  const std::string& name,
                  std::shared_ptr<DeviceSet> open_devices);
   bool LoadOptions(brillo::ErrorPtr* error);
-  bool UpdateDeviceOption(brillo::ErrorPtr* error, SaneOption* option);
+  SANE_Status UpdateDeviceOption(brillo::ErrorPtr* error, SaneOption* option);
   std::optional<ScannableArea> CalculateScannableArea(brillo::ErrorPtr* error);
   std::optional<double> GetOptionOffset(brillo::ErrorPtr* error,
                                         ScanOption option);

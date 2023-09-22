@@ -108,7 +108,7 @@ class SaneDeviceImplTest : public testing::Test {
 TEST_F(SaneDeviceImplTest, GetValidOptionValuesSuccess) {
   std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
-  EXPECT_TRUE(values.has_value());
+  ASSERT_TRUE(values.has_value());
   ASSERT_EQ(values->resolutions.size(), 1200);
   for (int i = 0; i < 1200; i++)
     EXPECT_EQ(values->resolutions[i], i + 1);
@@ -131,7 +131,7 @@ TEST_F(SaneDeviceImplTest, GetValidOptionValuesSuccess) {
 TEST_F(SaneDeviceImplTest, SetResolution) {
   std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
-  EXPECT_TRUE(values.has_value());
+  ASSERT_TRUE(values.has_value());
 
   for (int resolution : values->resolutions)
     EXPECT_TRUE(device_->SetScanResolution(nullptr, resolution));
@@ -145,7 +145,7 @@ TEST_F(SaneDeviceImplTest, SetSource) {
 
   std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
-  EXPECT_TRUE(values.has_value());
+  ASSERT_TRUE(values.has_value());
 
   // Test both with and without reloading options after setting option, since
   // it can surface different bugs.
@@ -160,7 +160,7 @@ TEST_F(SaneDeviceImplTest, SetSource) {
 
       std::optional<std::string> scanner_value =
           device_->GetDocumentSource(nullptr);
-      EXPECT_TRUE(scanner_value.has_value());
+      ASSERT_TRUE(scanner_value.has_value());
       EXPECT_EQ(scanner_value.value(), source.name());
     }
   }
@@ -174,7 +174,7 @@ TEST_F(SaneDeviceImplTest, SetColorMode) {
 
   std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
-  EXPECT_TRUE(values.has_value());
+  ASSERT_TRUE(values.has_value());
 
   // Test both with and without reloading options after setting option, since
   // it can surface different bugs.
@@ -192,7 +192,7 @@ TEST_F(SaneDeviceImplTest, SetColorMode) {
       }
 
       std::optional<ColorMode> scanner_value = device_->GetColorMode(nullptr);
-      EXPECT_TRUE(scanner_value.has_value());
+      ASSERT_TRUE(scanner_value.has_value());
       EXPECT_EQ(scanner_value.value(), mode);
     }
   }
@@ -213,7 +213,7 @@ TEST_F(SaneDeviceImplTest, SetScanRegionWithJustification) {
 
   std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
-  EXPECT_TRUE(values.has_value());
+  ASSERT_TRUE(values.has_value());
 
   for (const DocumentSource& source : values->sources) {
     EXPECT_TRUE(device_->SetDocumentSource(nullptr, source.name()));
@@ -1312,6 +1312,149 @@ TEST(SaneDeviceImplFakeSaneTest, ReadEncodedFailsWithExcessLines) {
 
   CheckPngHeader(out_file.get());
   brillo::DeleteFile(path);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, SetOptionUnknownNameFails) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  ScannerOption option;
+  option.set_name("nosuch-option");
+  option.set_option_type(OptionType::TYPE_BOOL);
+  option.set_bool_value(true);
+  EXPECT_EQ(device.SetOption(&error, option), SANE_STATUS_UNSUPPORTED);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), ContainsRegex("Option .* not found"));
+}
+
+TEST(SaneDeviceImplFakeSaneTest, SetOptionInvalidDataFails) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = "int-option",
+          .title = "Int Option",
+          .desc = "Int option description",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_NONE,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      }};
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 2;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int int_option = 42;
+  libsane.SetOptionValue(h, 1, &int_option);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+
+  ScannerOption option;
+  option.set_name("int-option");
+  option.set_option_type(OptionType::TYPE_BOOL);
+  option.set_bool_value(true);
+  EXPECT_EQ(device.SetOption(&error, option), SANE_STATUS_INVAL);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), HasSubstr("Unable to set"));
+  EXPECT_EQ(int_option, 42);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, SetOptionUnsettableOptionFails) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = "int-option",
+          .title = "Int Option",
+          .desc = "Int option description",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_NONE,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT,  // No SANE_CAP_SOFT_SELECT.
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      }};
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 2;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int int_option = 42;
+  libsane.SetOptionValue(h, 1, &int_option);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+
+  ScannerOption option;
+  option.set_name("int-option");
+  option.set_option_type(OptionType::TYPE_INT);
+  option.mutable_int_value()->add_value(24);
+  EXPECT_EQ(device.SetOption(&error, option), SANE_STATUS_UNSUPPORTED);
+  ASSERT_NE(error, nullptr);
+  EXPECT_THAT(error->GetMessage(), ContainsRegex("Failed to set .* to .*:"));
+  EXPECT_EQ(int_option, 42);
+}
+
+TEST(SaneDeviceImplFakeSaneTest, SetOptionValidUpdateSucceeds) {
+  LibsaneWrapperFake libsane;
+  SANE_Handle h = libsane.CreateScanner("TestScanner");
+  auto open_devices = std::make_shared<DeviceSet>();
+
+  std::vector<SANE_Option_Descriptor> sane_options = {
+      MakeOptionCountDescriptor(),
+      {
+          .name = "int-option",
+          .title = "Int Option",
+          .desc = "Int option description",
+          .type = SANE_TYPE_INT,
+          .unit = SANE_UNIT_NONE,
+          .size = sizeof(SANE_Word),
+          .cap = SANE_CAP_SOFT_DETECT | SANE_CAP_SOFT_SELECT,
+          .constraint_type = SANE_CONSTRAINT_NONE,
+      }};
+  libsane.SetDescriptors(h, sane_options);
+
+  SANE_Int option_count = 2;
+  libsane.SetOptionValue(h, 0, &option_count);
+
+  SANE_Int int_option = 42;
+  libsane.SetOptionValue(h, 1, &int_option);
+
+  brillo::ErrorPtr error;
+  ASSERT_EQ(libsane.sane_open("TestScanner", &h), SANE_STATUS_GOOD);
+  SaneDeviceImplPeer device(&libsane, h, "TestScanner", open_devices);
+
+  EXPECT_TRUE(device.LoadOptions(&error));
+  EXPECT_EQ(error, nullptr);
+
+  ScannerOption option;
+  option.set_name("int-option");
+  option.set_option_type(OptionType::TYPE_INT);
+  option.mutable_int_value()->add_value(24);
+  EXPECT_EQ(device.SetOption(&error, option), SANE_STATUS_GOOD);
+  EXPECT_EQ(error, nullptr);
+  EXPECT_EQ(int_option, 24);
 }
 
 }  // namespace lorgnette

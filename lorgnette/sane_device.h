@@ -92,6 +92,13 @@ class SaneDevice {
   // This function is thread-safe.
   virtual bool CancelScan(brillo::ErrorPtr* error) = 0;
 
+  // SetOption attempts to set the value referenced by `option`.  If needed, it
+  // will reload all the SANE options.  The return value will be
+  // SANE_STATUS_GOOD if everything succeeded.  Otherwise SetOption can return
+  // the error from setting the option or an error from reloading options.
+  virtual SANE_Status SetOption(brillo::ErrorPtr* error,
+                                const ScannerOption& option) = 0;
+
   // MIME types for image formats that can be returned from this scanner.
   std::vector<std::string> GetSupportedFormats() const;
   std::optional<std::string> GetCurrentJob() const;

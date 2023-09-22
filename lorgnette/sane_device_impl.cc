@@ -423,6 +423,29 @@ bool SaneDeviceImpl::CancelScan(brillo::ErrorPtr* error) {
   return true;
 }
 
+SANE_Status SaneDeviceImpl::SetOption(brillo::ErrorPtr* error,
+                                      const ScannerOption& option) {
+  auto kv = all_options_.find(option.name());
+  if (kv == all_options_.end()) {
+    LOG(ERROR) << __func__ << ": Didn't find index for option "
+               << option.name();
+    brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
+                               kManagerServiceError, "Option %s not found",
+                               option.name().c_str());
+    return SANE_STATUS_UNSUPPORTED;
+  }
+
+  SaneOption& sane_option = kv->second;
+  if (!sane_option.Set(option)) {
+    brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
+                               kManagerServiceError, "Unable to set option %s",
+                               option.name().c_str());
+    return SANE_STATUS_INVAL;
+  }
+
+  return UpdateDeviceOption(error, &sane_option);
+}
+
 SaneDeviceImpl::SaneDeviceImpl(LibsaneWrapper* libsane,
                                SANE_Handle handle,
                                const std::string& name,
@@ -580,8 +603,8 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
   return true;
 }
 
-bool SaneDeviceImpl::UpdateDeviceOption(brillo::ErrorPtr* error,
-                                        SaneOption* option) {
+SANE_Status SaneDeviceImpl::UpdateDeviceOption(brillo::ErrorPtr* error,
+                                               SaneOption* option) {
   SANE_Int result_flags;
   SANE_Action action = option->GetAction();
   SANE_Status status = libsane_->sane_control_option(
@@ -589,11 +612,11 @@ bool SaneDeviceImpl::UpdateDeviceOption(brillo::ErrorPtr* error,
   if (status != SANE_STATUS_GOOD) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Unable to set %s to %s: %s", option->GetName().c_str(),
+        "Failed to set %s to %s: %s", option->GetName().c_str(),
         option->DisplayValue().c_str(), sane_strstatus(status));
     // Reload options, to bring local value and device value back in sync.
     LoadOptions(error);
-    return false;
+    return status;
   }
 
   // Reload options if they're out of date:
@@ -606,7 +629,7 @@ bool SaneDeviceImpl::UpdateDeviceOption(brillo::ErrorPtr* error,
       action == SANE_ACTION_SET_AUTO) {
     LoadOptions(error);
   }
-  return true;
+  return SANE_STATUS_GOOD;
 }
 
 std::optional<ScannableArea> SaneDeviceImpl::CalculateScannableArea(
@@ -707,7 +730,7 @@ bool SaneDeviceImpl::SetOption(brillo::ErrorPtr* error,
         "Failed to set SaneOption %s", OptionDisplayName(option_type));
     return false;
   }
-  return UpdateDeviceOption(error, &option);
+  return UpdateDeviceOption(error, &option) == SANE_STATUS_GOOD;
 }
 
 template <typename T>
