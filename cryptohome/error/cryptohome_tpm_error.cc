@@ -14,6 +14,7 @@
 #include <libhwsec/error/tpm_retry_action.h>
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
+#include "cryptohome/error/action.h"
 
 namespace cryptohome {
 
@@ -42,11 +43,13 @@ ErrorActionSet PopulateActionFromRetry(const hwsec::TPMRetryAction retry) {
     case hwsec::TPMRetryAction::kPinWeaverLockedOut:
       return ErrorActionSet(PrimaryAction::kLeLockedOut);
     case hwsec::TPMRetryAction::kUserAuth:
-      return ErrorActionSet({PossibleAction::kAuth});
+      return ErrorActionSet(PrimaryAction::kIncorrectAuth);
     case hwsec::TPMRetryAction::kNoRetry:
     case hwsec::TPMRetryAction::kEllipticCurveScalarOutOfRange:
     case hwsec::TPMRetryAction::kUserPresence:
     case hwsec::TPMRetryAction::kSpaceNotFound:
+    // Receiving kPinWeaverOutOfSync means that the hash tree isn't recoverable
+    // by libhwsec's retry_handler.
     case hwsec::TPMRetryAction::kPinWeaverOutOfSync:
       return ErrorActionSet({PossibleAction::kPowerwash});
     case hwsec::TPMRetryAction::kNone:
