@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base_v2.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/system/mock_floss_controller.h"
@@ -68,8 +69,8 @@ class BluetoothRoutineBaseV2Test : public testing::Test {
     return future.Get();
   }
 
-  base::expected<bool, std::string> RunPreCheckSync() {
-    base::test::TestFuture<const base::expected<bool, std::string>&> future;
+  std::optional<std::string> RunPreCheckSync() {
+    base::test::TestFuture<std::optional<std::string>> future;
     routine_base_.RunPreCheck(future.GetCallback());
     return future.Get();
   }
@@ -258,7 +259,7 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckPassedPoweredOff) {
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   EXPECT_EQ(InitializeSync(), true);
 
-  EXPECT_EQ(RunPreCheckSync(), base::ok(true));
+  EXPECT_FALSE(RunPreCheckSync().has_value());
 }
 
 // Test that the BluetoothRoutineBaseV2 can pass the pre-check when the powered
@@ -272,7 +273,7 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckPassedPoweredOn) {
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
 
-  EXPECT_EQ(RunPreCheckSync(), base::ok(true));
+  EXPECT_FALSE(RunPreCheckSync().has_value());
 }
 
 // Test that the BluetoothRoutineBaseV2 can handle that the adapter is missing
@@ -288,8 +289,7 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedNoAdapter) {
 
   EXPECT_EQ(InitializeSync(), true);
 
-  EXPECT_EQ(RunPreCheckSync(),
-            base::unexpected("Failed to get default adapter."));
+  EXPECT_EQ(RunPreCheckSync(), "Failed to get default adapter.");
 }
 
 // Test that the BluetoothRoutineBaseV2 can handle that the adapter is already
@@ -303,7 +303,7 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedDiscoveringOn) {
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
 
-  EXPECT_EQ(RunPreCheckSync(), base::ok(false));
+  EXPECT_EQ(RunPreCheckSync(), kBluetoothRoutineFailedDiscoveryMode);
 }
 
 // Test that the BluetoothRoutineBaseV2 can handle the error when getting
@@ -318,8 +318,7 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedGetDiscoveringError) {
   EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
 
-  EXPECT_EQ(RunPreCheckSync(),
-            base::unexpected("Failed to get adapter discovering state."));
+  EXPECT_EQ(RunPreCheckSync(), "Failed to get adapter discovering state.");
 }
 
 // Test that the BluetoothRoutineBaseV2 can handle the missing manager proxy
@@ -330,8 +329,7 @@ TEST_F(BluetoothRoutineBaseV2Test, PreCheckFailedMissingManagerProxy) {
   EXPECT_EQ(InitializeSync(), true);
 
   fake_floss_event_hub()->SendManagerRemoved();
-  EXPECT_EQ(RunPreCheckSync(),
-            base::unexpected("Failed to access Bluetooth manager proxy."));
+  EXPECT_EQ(RunPreCheckSync(), "Failed to access Bluetooth manager proxy.");
 }
 
 // Test that the BluetoothRoutineBaseV2 can ensure the adapter is powered on

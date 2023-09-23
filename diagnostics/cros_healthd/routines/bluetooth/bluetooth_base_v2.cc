@@ -12,6 +12,7 @@
 #include <base/types/expected.h>
 #include <dbus/object_path.h>
 
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
@@ -145,24 +146,23 @@ bool BluetoothRoutineBaseV2::GetAdapterInitialPoweredState() const {
   return initial_powered_state_.value();
 }
 
-void BluetoothRoutineBaseV2::RunPreCheck(ResultCallback on_finish) {
+void BluetoothRoutineBaseV2::RunPreCheck(
+    base::OnceCallback<void(std::optional<std::string>)> on_finish) {
   if (!manager_) {
-    std::move(on_finish).Run(
-        base::unexpected("Failed to access Bluetooth manager proxy."));
+    std::move(on_finish).Run("Failed to access Bluetooth manager proxy.");
     return;
   }
 
   // The adapter must not be in discovery mode when powered is off.
   if (!GetAdapterInitialPoweredState()) {
-    std::move(on_finish).Run(base::ok(true));
+    std::move(on_finish).Run(std::nullopt);
     return;
   }
 
   // The adapter must be existing when powered is on.
   auto adapter = GetDefaultAdapter();
   if (!adapter) {
-    std::move(on_finish).Run(
-        base::unexpected("Failed to get default adapter."));
+    std::move(on_finish).Run("Failed to get default adapter.");
     return;
   }
 
@@ -172,12 +172,12 @@ void BluetoothRoutineBaseV2::RunPreCheck(ResultCallback on_finish) {
   adapter->IsDiscoveringAsync(std::move(on_success), std::move(on_error));
 }
 
-void BluetoothRoutineBaseV2::HandleDiscoveringResponse(ResultCallback on_finish,
-                                                       brillo::Error* error,
-                                                       bool discovering) {
+void BluetoothRoutineBaseV2::HandleDiscoveringResponse(
+    base::OnceCallback<void(std::optional<std::string>)> on_finish,
+    brillo::Error* error,
+    bool discovering) {
   if (error) {
-    std::move(on_finish).Run(
-        base::unexpected("Failed to get adapter discovering state."));
+    std::move(on_finish).Run("Failed to get adapter discovering state.");
     return;
   }
 
@@ -185,11 +185,11 @@ void BluetoothRoutineBaseV2::HandleDiscoveringResponse(ResultCallback on_finish,
     // The pre-check is not passed when the default adapter is in discovery
     // mode. We should avoid running Bluetooth routines when the adapter is
     // actively scaninng or pairing.
-    std::move(on_finish).Run(base::ok(false));
+    std::move(on_finish).Run(kBluetoothRoutineFailedDiscoveryMode);
     return;
   }
 
-  std::move(on_finish).Run(base::ok(true));
+  std::move(on_finish).Run(std::nullopt);
 }
 
 void BluetoothRoutineBaseV2::ChangeAdapterPoweredState(

@@ -46,9 +46,9 @@ class BluetoothRoutineBaseV2 {
 
   // Run pre-check for the Bluetooth routine. Bluetooth routine should not be
   // run when the adapter is already in discovery mode. The callback will return
-  // a bool state to report whether the pre-check is passed on completion, or a
-  // string when unexpected error occurs.
-  void RunPreCheck(ResultCallback on_finish);
+  // null when pre-check is passed, otherwise a error string.
+  void RunPreCheck(
+      base::OnceCallback<void(std::optional<std::string>)> on_finish);
 
   // Change adapter powered state to |powered|. The callback will return a bool
   // state to report whether the changing is succeeded on completion, or a
@@ -82,12 +82,10 @@ class BluetoothRoutineBaseV2 {
                                 bool powered);
 
   // Inner functions of |RunPreCheck|.
-  void CheckAdapterDiscoveringState(ResultCallback on_finish,
-                                    brillo::Error* error,
-                                    bool powered);
-  void HandleDiscoveringResponse(ResultCallback on_finish,
-                                 brillo::Error* error,
-                                 bool discovering);
+  void HandleDiscoveringResponse(
+      base::OnceCallback<void(std::optional<std::string>)> on_finish,
+      brillo::Error* error,
+      bool discovering);
 
   // Inner functions of |ChangeAdapterPoweredState|.
   void HandleChangePoweredResponse(bool powered,
