@@ -1,0 +1,23 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+option optimize_for = LITE_RUNTIME;
+
+package resourced;
+
+option go_package = "chromiumos/system_api/resource_manager_proto";
+
+message ReportBackgroundPids {
+  // The component reporting the background pids.
+  enum Component {
+    ASH = 0;
+    LACROS = 1;
+  }
+  Component component = 1;
+
+  // The list of the background pids.
+  repeated int32 pids = 2;
+}

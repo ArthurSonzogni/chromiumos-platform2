@@ -61,6 +61,8 @@ group("all") {
     ":system_api-privacy_screen-protos",
     ":system_api-private_computing-protos",
     ":system_api-protos",
+    ":system_api-resource_manager-goprotos",
+    ":system_api-resource_manager-protos",
     ":system_api-rmad-protos",
     ":system_api-runtime_probe-goprotos",
     ":system_api-runtime_probe-protos",
@@ -725,6 +727,20 @@ goproto_library("system_api-hps-goprotos") {
   proto_in_dir = "dbus/hps"
   proto_out_dir = "go/src/"
   sources = [ "${proto_in_dir}/hps_service.proto" ]
+}
+
+proto_library("system_api-resource_manager-protos") {
+  proto_in_dir = "dbus/resource_manager"
+  proto_out_dir = "include/resource_manager/proto_bindings"
+  sources = [ "${proto_in_dir}/resource_manager.proto" ]
+  standalone = true
+  install_package = true
+}
+
+goproto_library("system_api-resource_manager-goprotos") {
+  proto_in_dir = "dbus/resource_manager"
+  proto_out_dir = "go/src/"
+  sources = [ "${proto_in_dir}/resource_manager.proto" ]
 }
 
 proto_library("system_api-rmad-protos") {

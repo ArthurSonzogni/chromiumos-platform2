@@ -106,6 +106,10 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
         "printscanmgr_service",
         "system_api/dbus/printscanmgr/printscanmgr_service.proto",
     ),
+    (
+        "resource_manager",
+        "system_api/dbus/resource_manager/resource_manager.proto",
+    ),
     ("rpc", "system_api/dbus/cryptohome/rpc.proto"),
     (
         "shadercached",

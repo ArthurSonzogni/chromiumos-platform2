@@ -570,6 +570,45 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 }
             },
         );
+        b.method(
+            "ReportBackgroundPids",
+            ("raw_bytes",),
+            (),
+            move |_, _, (raw_bytes,): (Vec<u8>,)| {
+                use system_api::resource_manager::report_background_pids::Component;
+
+                let report_bk_pids: system_api::resource_manager::ReportBackgroundPids =
+                    match protobuf::Message::parse_from_bytes(&raw_bytes) {
+                        Ok(result) => result,
+                        Err(e) => {
+                            error!("Failed to parse ReportBackgroundPids protobuf: {:#}", e);
+                            return Err(MethodErr::failed(
+                                "Failed to parse ReportBackgroundPids protobuf",
+                            ));
+                        }
+                    };
+                let component: memory::Component = match report_bk_pids.component.enum_value() {
+                    Ok(Component::ASH) => memory::Component::Ash,
+                    Ok(Component::LACROS) => memory::Component::Lacros,
+                    Err(enum_raw) => {
+                        error!(
+                            "ReportBackgroundPids Component is unknown, enum_raw: {}",
+                            enum_raw
+                        );
+                        return Err(MethodErr::failed(
+                            "ReportBackgroundPids Component is unknown",
+                        ));
+                    }
+                };
+                match memory::set_background_pids(component, report_bk_pids.pids) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        error!("Failed to set background pids: {:#}", e);
+                        Err(MethodErr::failed("Failed to set background pids"))
+                    }
+                }
+            },
+        );
         // Advertise the signals.
         b.signal::<(u8, u64), _>(
             "MemoryPressureChrome",

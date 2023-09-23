@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::fmt;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Mutex;
+use std::time::SystemTime;
 
 use anyhow::bail;
 use anyhow::Context;
@@ -504,16 +506,29 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
         };
 
     let (arc_container_level, arc_container_reclaim_target_kb) =
-        if available < margins.arc_container_foreground {
-            (
-                PressureLevelArcContainer::Foreground,
-                margins.arc_container_foreground - available,
-            )
-        } else if available < margins.arc_container_perceptible {
-            (
-                PressureLevelArcContainer::Perceptible,
-                margins.arc_container_perceptible - available,
-            )
+        if available < margins.arc_container_perceptible {
+            let threshold = margins.arc_container_perceptible - available;
+            let result = has_enough_background_memory(threshold);
+            if let Err(ref e) = result {
+                error!("Failed to call has_enough_background_memory: {:#}", e);
+            }
+            if let Ok(true) = result {
+                // If there are enough background memory, only kill cached apps.
+                (
+                    PressureLevelArcContainer::Cached,
+                    margins.arc_container_cached - available,
+                )
+            } else if available < margins.arc_container_foreground {
+                (
+                    PressureLevelArcContainer::Foreground,
+                    margins.arc_container_foreground - available,
+                )
+            } else {
+                (
+                    PressureLevelArcContainer::Perceptible,
+                    margins.arc_container_perceptible - available,
+                )
+            }
         } else if available < margins.arc_container_cached {
             (
                 PressureLevelArcContainer::Cached,
@@ -587,6 +602,113 @@ fn init_memory_configs_impl(root: &Path) -> Result<()> {
     }
 
     Ok(())
+}
+
+// The component of the background pids.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Component {
+    // Ash Chrome.
+    Ash = 0,
+    // Lacros Chrome.
+    Lacros = 1,
+}
+
+impl fmt::Display for Component {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Component::Ash => write!(f, "Ash"),
+            Component::Lacros => write!(f, "Lacros"),
+        }
+    }
+}
+
+// Lists of the background pids to calculate background memory.
+static ASH_BACKGROUND_PIDS: Mutex<(Vec<i32>, SystemTime)> =
+    Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
+static LACROS_BACKGROUND_PIDS: Mutex<(Vec<i32>, SystemTime)> =
+    Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
+
+pub fn set_background_pids(component: Component, pids: Vec<i32>) -> Result<()> {
+    let component_pids = match component {
+        Component::Ash => &ASH_BACKGROUND_PIDS,
+        Component::Lacros => &LACROS_BACKGROUND_PIDS,
+    };
+
+    // Panic on poisoned mutex.
+    let mut pids_and_time = component_pids.lock().expect("Lock component_pids failed");
+
+    *pids_and_time = (pids, SystemTime::now());
+    Ok(())
+}
+
+// Returns the background pid list of a component.
+fn get_background_pids(component: Component) -> Result<Vec<i32>> {
+    let component_pids = match component {
+        Component::Ash => &ASH_BACKGROUND_PIDS,
+        Component::Lacros => &LACROS_BACKGROUND_PIDS,
+    };
+
+    // Panic on poisoned mutex.
+    let pids_and_time = component_pids.lock().expect("Lock component_pids failed");
+
+    const BACKGROUND_PIDS_STALL_TIME_SEC: u64 = 300;
+    if pids_and_time.1.elapsed()?.as_secs() > BACKGROUND_PIDS_STALL_TIME_SEC {
+        // Returns empty list if background pids is not updated for a component.
+        // E.g., When Lacros Chrome is not running.
+        return Ok(Vec::new());
+    }
+
+    Ok(pids_and_time.0.clone())
+}
+
+// Returns true if the sum of the background memory exceeds |threshold_kb|.
+fn has_enough_background_memory(threshold_kb: u64) -> Result<bool> {
+    let mut total_background_memory_kb = 0;
+    for component in [Component::Ash, Component::Lacros] {
+        for pid in get_background_pids(component)? {
+            match get_chrome_process_memory_usage(pid) {
+                Ok(result) => {
+                    total_background_memory_kb += result;
+                    if total_background_memory_kb > threshold_kb {
+                        return Ok(true);
+                    }
+                }
+                Err(e) => {
+                    // It's Ok to continue when failed to get memory usage for a pid.
+                    // When get_chrome_process_memory_usage() failed, total_background_memory_kb
+                    // would be less and has_enough_background_memory would tend to return
+                    // Ok(false) and the pressure level would not be modified.
+                    error!("Failed to get memory usage, pid: {}, error: {}", pid, e);
+                }
+            }
+        }
+    }
+    Ok(false)
+}
+
+// Memory usage estimation of |pid|, it's the sum of anonymous RSS and swap.
+// Returns error if the program name (Name in /proc/PID/status) is not chrome. The program name
+// should be chrome for both Ash and Lacros Chrome.
+fn get_chrome_process_memory_usage(pid: i32) -> Result<u64> {
+    let process = match procfs::process::Process::new(pid) {
+        Ok(p) => p,
+        Err(_) => {
+            // Returns 0 if the /proc/PID doesn't exist.
+            return Ok(0);
+        }
+    };
+
+    let status = process.status()?;
+    if status.name.ne("chrome") {
+        bail!("The program name {} is not chrome", status.name);
+    }
+    let rssanon = status
+        .rssanon
+        .with_context(|| format!("Couldn't get the RssAnon field in /proc/{}/status", pid))?;
+    let vmswap = status
+        .vmswap
+        .with_context(|| format!("Couldn't get the VmSwap field in /proc/{}/status", pid))?;
+    Ok(rssanon + vmswap)
 }
 
 #[cfg(test)]
