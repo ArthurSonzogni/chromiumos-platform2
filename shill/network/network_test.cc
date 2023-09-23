@@ -787,60 +787,102 @@ TEST_F(NetworkTest, PortalDetectionNotConnected) {
       network_->StartPortalDetection(Network::ValidationReason::kDBusRequest));
 }
 
-TEST_F(NetworkTest, PortalDetectionNoReset) {
+TEST_F(NetworkTest, PortalDetectionRequestsInitializesPortalDetector) {
+  int ifindex = network_->interface_index();
   SetNetworkStateForPortalDetection();
-  MockPortalDetector* portal_detector = new MockPortalDetector();
-  EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
-    return std::unique_ptr<MockPortalDetector>(portal_detector);
-  });
-  EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  EXPECT_CALL(*portal_detector, Start(_, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
-  EXPECT_CALL(event_handler_,
-              OnNetworkValidationStart(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnNetworkValidationStart(network_->interface_index()));
-  EXPECT_TRUE(network_->StartPortalDetection(
-      Network::ValidationReason::kServicePropertyUpdate));
-  EXPECT_TRUE(network_->IsPortalDetectionInProgress());
+
+  std::vector<Network::ValidationReason> all_reasons = {
+      Network::ValidationReason::kNetworkConnectionUpdate,
+      Network::ValidationReason::kServiceReorder,
+      Network::ValidationReason::kServicePropertyUpdate,
+      Network::ValidationReason::kManagerPropertyUpdate,
+      Network::ValidationReason::kDBusRequest,
+      Network::ValidationReason::kEthernetGatewayUnreachable,
+      Network::ValidationReason::kEthernetGatewayReachable,
+  };
+
+  for (auto request : all_reasons) {
+    MockPortalDetector* portal_detector = new MockPortalDetector();
+    EXPECT_CALL(*network_, CreatePortalDetector())
+        .WillOnce([portal_detector]() {
+          return std::unique_ptr<MockPortalDetector>(portal_detector);
+        });
+    EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
+    EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(false));
+    EXPECT_CALL(event_handler_, OnNetworkValidationStart(ifindex));
+    EXPECT_CALL(event_handler2_, OnNetworkValidationStart(ifindex));
+    EXPECT_FALSE(network_->IsPortalDetectionInProgress());
+    EXPECT_TRUE(network_->StartPortalDetection(request));
+    Mock::VerifyAndClearExpectations(portal_detector);
+
+    EXPECT_CALL(event_handler_, OnNetworkValidationStop(ifindex));
+    EXPECT_CALL(event_handler2_, OnNetworkValidationStop(ifindex));
+    EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
+    network_->StopPortalDetection();
+    Mock::VerifyAndClearExpectations(&event_handler_);
+    Mock::VerifyAndClearExpectations(&event_handler2_);
+  }
 }
 
-TEST_F(NetworkTest, PortalDetectionNoResetAndAlreadyRunning) {
+TEST_F(NetworkTest, PortalDetectionRequestDoesNotResetPortalDetector) {
   SetNetworkStateForPortalDetection();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   network_->set_portal_detector_for_testing(portal_detector);
-  EXPECT_CALL(*portal_detector, Start(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
-  EXPECT_TRUE(network_->IsPortalDetectionInProgress());
+
   EXPECT_CALL(*network_, CreatePortalDetector()).Times(0);
   EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
 
-  std::vector<Network::ValidationReason> validation_requests = {
+  std::vector<Network::ValidationReason> reasons = {
       Network::ValidationReason::kEthernetGatewayUnreachable,
       Network::ValidationReason::kManagerPropertyUpdate,
       Network::ValidationReason::kServicePropertyUpdate};
-  for (auto request : validation_requests) {
+  EXPECT_CALL(*portal_detector, Start).Times(0);
+  EXPECT_CALL(*portal_detector, ResetAttemptDelays).Times(0);
+  EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
+  for (auto request : reasons) {
+    EXPECT_TRUE(network_->IsPortalDetectionInProgress());
+    EXPECT_TRUE(network_->StartPortalDetection(request));
+  }
+  Mock::VerifyAndClearExpectations(portal_detector);
+}
+
+TEST_F(NetworkTest, PortalDetectionRequestResetPortalDetectorRestartDelay) {
+  SetNetworkStateForPortalDetection();
+  MockPortalDetector* portal_detector = new MockPortalDetector();
+  network_->set_portal_detector_for_testing(portal_detector);
+
+  EXPECT_CALL(*network_, CreatePortalDetector()).Times(0);
+  EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
+
+  std::vector<Network::ValidationReason> reasons = {
+      Network::ValidationReason::kDBusRequest,
+      Network::ValidationReason::kEthernetGatewayReachable,
+      Network::ValidationReason::kServiceReorder,
+  };
+  EXPECT_CALL(*portal_detector, Start).Times(0);
+  EXPECT_CALL(*portal_detector, ResetAttemptDelays).Times(reasons.size());
+  EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
+  for (auto request : reasons) {
     EXPECT_TRUE(network_->StartPortalDetection(request));
   }
 }
 
-TEST_F(NetworkTest, PortalDetectionWithReset) {
+TEST_F(NetworkTest, PortalDetectionRequestResetsPortalDetector) {
   SetNetworkStateForPortalDetection();
 
-  std::vector<Network::ValidationReason> validation_requests = {
-      Network::ValidationReason::kDBusRequest,
-      Network::ValidationReason::kEthernetGatewayReachable,
+  std::vector<Network::ValidationReason> validation_reasons = {
       Network::ValidationReason::kNetworkConnectionUpdate,
-      Network::ValidationReason::kServiceReorder};
-  for (auto request : validation_requests) {
+  };
+  for (auto request : validation_reasons) {
     MockPortalDetector* portal_detector = new MockPortalDetector();
     EXPECT_CALL(*network_, CreatePortalDetector())
         .WillRepeatedly([portal_detector]() {
           return std::unique_ptr<MockPortalDetector>(portal_detector);
         });
     EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*portal_detector, Start(_, _, _, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
     EXPECT_CALL(event_handler_,
                 OnNetworkValidationStart(network_->interface_index()));
     EXPECT_CALL(event_handler2_,
@@ -859,7 +901,7 @@ TEST_F(NetworkTest, PortalDetectionStartFailure) {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
   });
   EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  EXPECT_CALL(*portal_detector, Start(_, _, _, _, _)).WillOnce(Return(false));
+  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(false));
   EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
   EXPECT_FALSE(network_->StartPortalDetection(
@@ -875,7 +917,7 @@ TEST_F(NetworkTest, PortalDetectionStartSuccess) {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
   });
   EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  EXPECT_CALL(*portal_detector, Start(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
   EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
   EXPECT_CALL(event_handler_,
               OnNetworkValidationStart(network_->interface_index()));
@@ -894,7 +936,7 @@ TEST_F(NetworkTest, PortalDetectionStartStop) {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
   });
   EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  EXPECT_CALL(*portal_detector, Start(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
   EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
   EXPECT_CALL(event_handler_,
               OnNetworkValidationStart(network_->interface_index()));

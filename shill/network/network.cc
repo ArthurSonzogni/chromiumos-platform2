@@ -51,7 +51,14 @@ constexpr char kAndroidMeteredHotspotVendorOption[] = "ANDROID_METERED";
 }  // namespace
 
 // static
-bool Network::ShouldResetPortalDetection(Network::ValidationReason reason) {
+bool Network::ShouldResetNetworkValidation(Network::ValidationReason reason) {
+  // Only reset PortalDetector if there was an IP provisioning event.
+  return reason == Network::ValidationReason::kNetworkConnectionUpdate;
+}
+
+// static
+bool Network::ShouldScheduleNetworkValidationImmediately(
+    ValidationReason reason) {
   switch (reason) {
     case Network::ValidationReason::kDBusRequest:
     case Network::ValidationReason::kEthernetGatewayReachable:
@@ -975,34 +982,53 @@ bool Network::StartPortalDetection(ValidationReason reason) {
     return false;
   }
 
-  if (!ShouldResetPortalDetection(reason) && IsPortalDetectionInProgress()) {
+  // Create a new PortalDetector instance and start the first trial if portal
+  // detection:
+  //   - has not been initialized yet,
+  //   - or has stopped,
+  //   - or should be reset immediately entirely.
+  if (!portal_detector_ || ShouldResetNetworkValidation(reason)) {
+    const auto local_address = local();
+    if (!local_address) {
+      LOG(ERROR) << *this << " " << __func__ << "(" << reason
+                 << "): Cannot start portal detection: No valid IP address";
+      portal_detector_.reset();
+      return false;
+    }
+
+    portal_detector_ = CreatePortalDetector();
+    if (!portal_detector_->Start(interface_name_, local_address->GetFamily(),
+                                 dns_servers(), logging_tag_)) {
+      LOG(ERROR) << *this << " " << __func__ << "(" << reason
+                 << "): Portal detection failed to start.";
+      portal_detector_.reset();
+      return false;
+    }
+
+    LOG(INFO) << *this << " " << __func__ << "(" << reason
+              << "): Portal detection started.";
+    for (auto* ev : event_handlers_) {
+      ev->OnNetworkValidationStart(interface_index_);
+    }
+    return true;
+  }
+
+  // Otherwise, if the validation reason requires an immediate restart, reset
+  // the delay scheduled between attempts.
+  if (ShouldScheduleNetworkValidationImmediately(reason)) {
+    portal_detector_->ResetAttemptDelays();
+  }
+
+  // If portal detection is not running, reschedule the next a trial.
+  if (portal_detector_->IsInProgress()) {
     LOG(INFO) << *this << " " << __func__ << "(" << reason
               << "): Portal detection is already running.";
     return true;
   }
 
-  const auto local_address = local();
-  if (!local_address) {
-    LOG(ERROR) << *this << " " << __func__ << "(" << reason
-               << "): Cannot start portal detection: No valid IP address";
-    return false;
-  }
-
-  portal_detector_ = CreatePortalDetector();
-  if (!portal_detector_->Start(interface_name_, local_address->GetFamily(),
-                               dns_servers(), logging_tag_)) {
-    LOG(ERROR) << *this << " " << __func__ << "(" << reason
-               << "): Portal detection failed to start.";
-    portal_detector_.reset();
-    return false;
-  }
-
   LOG(INFO) << *this << " " << __func__ << "(" << reason
-            << "): Portal detection started.";
-  for (auto* ev : event_handlers_) {
-    ev->OnNetworkValidationStart(interface_index_);
-  }
-  return true;
+            << "): Restarting portal detection.";
+  return RestartPortalDetection();
 }
 
 bool Network::RestartPortalDetection() {
@@ -1025,7 +1051,6 @@ bool Network::RestartPortalDetection() {
     return false;
   }
 
-  LOG(INFO) << *this << ": Portal detection restarted.";
   // TODO(b/216351118): this ignores the portal detection retry delay. The
   // callback should be triggered when the next attempt starts, not when it
   // is scheduled.

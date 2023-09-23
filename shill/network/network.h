@@ -176,9 +176,14 @@ class Network {
     kEthernetGatewayReachable,
   };
 
-  // Returns true if |reason| requires that the state of |portal_detector_|
-  // should be reset and network validation should be restarted.
-  static bool ShouldResetPortalDetection(ValidationReason reason);
+  // Returns true if |reason| requires that network validation be entirely
+  // restarted with the latest IP configuration settings.
+  static bool ShouldResetNetworkValidation(ValidationReason reason);
+
+  // Returns true if |reason| requires that the next network validation attempt
+  // be scheduled immediately.
+  static bool ShouldScheduleNetworkValidationImmediately(
+      ValidationReason reason);
 
   explicit Network(
       int interface_index,
@@ -296,11 +301,31 @@ class Network {
   mockable void OnNeighborReachabilityEvent(
       const patchpanel::Client::NeighborReachabilityEvent& event);
 
-  // Starts a new network validation cycle and starts a first portal detection
-  // attempt. If portal detection was already running, a new network validation
-  // cycle is started only if ShouldResetPortalDetection(|request|) is true,
-  // otherwise the call does nothing. Returns true if portal detection starts
-  // successfully or was already running and should not be restarted.
+  // Starts or restarts network validation and reschedule a network validation
+  // attempt if necessary. Depending on the current stage of network validation
+  // (rows) and |reason| (columns), different effects are possible as summarized
+  // in the table:
+  //
+  //             |  IP provisioning   |  schedule attempt  |      do not
+  //             |       event        |    immediately     |     reschedule
+  // ----------- +--------------------+--------------------+--------------------
+  //  validation |                    |                    |
+  //   stopped   |         a)         |         a)         |         a)
+  // ------------+--------------------+--------------------+--------------------
+  //   attempt   |                    |                    |
+  //  scheduled  |         a)         |         b)         |         d)
+  // ------------+--------------------+--------------------+--------------------
+  //  currently  |                    |                    |
+  //   running   |         a)         |         c)         |         d)
+  // ------------+--------------------+--------------------+--------------------
+  //   a) reinitialize |portal_detector_| & start a network validation attempt
+  //      immediately.
+  //   b) reschedule the next network validation attempt to run immediately.
+  //   c) reschedule another network validation attempt immediately after the
+  //      current one if the result is not conclusive (the result was not
+  //      kInternetConnectivity or kPortalRedirect).
+  //   e) do nothing, wait for the network validation attempt scheduled next to
+  //      run.
   mockable bool StartPortalDetection(ValidationReason reason);
   // Schedules the next portal detection attempt for the current network
   // validation cycle. Returns true if portal detection restarts successfully.

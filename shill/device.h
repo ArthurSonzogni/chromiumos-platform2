@@ -136,21 +136,20 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // call up to the parent.
   virtual void OnSelectedServiceChanged(const ServiceRefPtr& old_service);
 
-  // Initiate or restart portal detection if all the following conditions are
+  // Initiate or restart network validation if all the following conditions are
   // met:
   //   - There is currently a |selected_service_| for this Device.
   //   - The Device has an active Network connection and |selected_service_| is
   //   in a connected state.
-  //   - Portal detection is not disabled (Service::IsPortalDetectioDisabled):
-  //      - There is no proxy configuration defined on |selected_service_|.
-  //      - Portal detection is enabled for the |selected_service_| itself or
+  //   - Network validation is not disabled (Service::IsPortalDetectioDisabled):
+  //      - The network is not a network defined by policies.
+  //      - Network validation is enabled for the |selected_service_| itself or
   //      for its link technology.
-  //   - Portal detection was not already running. If |request| requires that
-  //   portal detection should be restarted, this check is ignored. This allows
-  //   the caller to force the creation of a new PortalDetector instance with
-  //   the latest network layer properties.
-  // If the Service is connected and portal detection should not be running, it
-  // is stopped and the connection state of the Service is set to "online".
+  //   - Network validation was not already running. If |reason| requires that
+  //   network validation should be restarted, this check is ignored. For
+  //   details see Network::StartPortalDetection.
+  // If the Service is connected and network validation should not be running,
+  // it is stopped and the connection state of the Service is set to "online".
   mockable bool UpdatePortalDetector(Network::ValidationReason reason);
 
   const RpcIdentifier& GetRpcIdentifier() const;
