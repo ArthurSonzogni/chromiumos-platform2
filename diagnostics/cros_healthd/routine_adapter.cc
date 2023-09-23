@@ -100,7 +100,34 @@ mojo::ScopedHandle ConvertMemoryV2ResultToJson(
   std::string json;
   base::JSONWriter::Write(output_dict, &json);
 
-  return CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
+  return CreateReadOnlySharedMemoryRegionMojoHandle(std::string_view(json));
+}
+
+mojo::ScopedHandle ConvertBluetoothPowerV2ResultToJson(
+    const mojom::BluetoothPowerRoutineDetailPtr& bluetooth_power_detail) {
+  base::Value::Dict output;
+
+  if (bluetooth_power_detail->power_off_result) {
+    base::Value::Dict power_off_result;
+    power_off_result.Set("hci_powered",
+                         bluetooth_power_detail->power_off_result->hci_powered);
+    power_off_result.Set(
+        "dbus_powered", bluetooth_power_detail->power_off_result->dbus_powered);
+    output.Set("power_off_result", std::move(power_off_result));
+  }
+
+  if (bluetooth_power_detail->power_on_result) {
+    base::Value::Dict power_on_result;
+    power_on_result.Set("hci_powered",
+                        bluetooth_power_detail->power_on_result->hci_powered);
+    power_on_result.Set("dbus_powered",
+                        bluetooth_power_detail->power_on_result->dbus_powered);
+    output.Set("power_on_result", std::move(power_on_result));
+  }
+
+  std::string json;
+  base::JSONWriter::Write(output, &json);
+  return CreateReadOnlySharedMemoryRegionMojoHandle(std::string_view(json));
 }
 
 }  // namespace
@@ -290,6 +317,17 @@ void RoutineAdapter::PopulateStatusUpdate(
           } else {
             update->status = mojom::DiagnosticRoutineStatusEnum::kError;
             update->status_message = "Unrecognized output from memory routine.";
+          }
+        } else if (routine_type_ ==
+                   mojom::RoutineArgument::Tag::kBluetoothPower) {
+          if (!finished_ptr->detail.is_null() &&
+              finished_ptr->detail->is_bluetooth_power()) {
+            response->output = ConvertBluetoothPowerV2ResultToJson(
+                finished_ptr->detail->get_bluetooth_power());
+          } else {
+            update->status = mojom::DiagnosticRoutineStatusEnum::kError;
+            update->status_message =
+                "Unrecognized output from Bluetooth power routine.";
           }
         }
       }

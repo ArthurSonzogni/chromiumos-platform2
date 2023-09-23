@@ -510,9 +510,11 @@ void CrosHealthdDiagnosticsService::RunBluetoothPowerRoutineBasedOnFlossEnabled(
     brillo::Error* err,
     bool floss_enabled) {
   if (!err && floss_enabled) {
-    // TODO(300239430): Support Bluetooth routines using Floss.
-    ReportUnsupportedRoutine(mojom::DiagnosticRoutineEnum::kBluetoothPower,
-                             std::move(callback));
+    auto args = mojom::RoutineArgument::NewBluetoothPower(
+        mojom::BluetoothPowerRoutineArgument::New());
+    RunRoutineWithAdapter(std::move(args),
+                          mojom::DiagnosticRoutineEnum::kBluetoothPower,
+                          std::move(callback));
     return;
   }
   // Fall back to using Bluez to run Bluetooth routine.

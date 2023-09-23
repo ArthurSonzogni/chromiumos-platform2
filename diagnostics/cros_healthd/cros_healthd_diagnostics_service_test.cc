@@ -1041,16 +1041,16 @@ TEST_F(CrosHealthdDiagnosticsServiceTest,
       .WillOnce(base::test::RunOnceCallback<0>(/*enabled=*/true));
 
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojom::DiagnosticRoutineStatusEnum::kUnsupported;
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/0,
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
   TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunBluetoothPowerRoutine(future.GetCallback());
 
   auto response = future.Take();
-  EXPECT_EQ(response->id, mojom::kFailedToStartId);
+  EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
 
