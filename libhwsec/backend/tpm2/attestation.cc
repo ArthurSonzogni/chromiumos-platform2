@@ -312,12 +312,21 @@ StatusOr<attestation::CertifiedKey> AttestationTpm2::CreateCertifiedKey(
 
 StatusOr<Attestation::CreateIdentityResult> AttestationTpm2::CreateIdentity(
     attestation::KeyType key_type) {
+  trunks::TPM_ALG_ID algorithm;
+  switch (key_type) {
+    case attestation::KEY_TYPE_RSA:
+      algorithm = trunks::TPM_ALG_RSA;
+      break;
+    case attestation::KEY_TYPE_ECC:
+      algorithm = trunks::TPM_ALG_ECC;
+      break;
+    default:
+      return MakeStatus<TPMError>("Unsupported key algorithm type",
+                                  TPMRetryAction::kNoRetry);
+  }
+
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       context_.GetTrunksFactory().GetPasswordAuthorization("");
-  trunks::TPM_ALG_ID algorithm = (key_type == attestation::KEY_TYPE_RSA)
-                                     ? trunks::TPM_ALG_RSA
-                                     : trunks::TPM_ALG_ECC;
-
   std::string identity_key_blob;
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context_.GetTpmUtility().CreateIdentityKey(
