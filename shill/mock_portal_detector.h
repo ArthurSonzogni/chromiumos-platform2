@@ -40,7 +40,7 @@ class MockPortalDetector : public PortalDetector {
                const std::string& logging_tag),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
-  MOCK_METHOD(bool, IsInProgress, (), (override));
+  MOCK_METHOD(bool, IsInProgress, (), (const, override));
   MOCK_METHOD(void, ResetAttemptDelays, (), (override));
 };
 

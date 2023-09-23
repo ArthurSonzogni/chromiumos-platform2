@@ -234,7 +234,10 @@ class PortalDetector {
   base::TimeDelta GetNextAttemptDelay() const;
 
   // Returns whether portal request is "in progress".
-  virtual bool IsInProgress();
+  virtual bool IsInProgress() const;
+
+  // Returns true if a new trial is scheduled to run but has not started yet.
+  bool IsTrialScheduled() const;
 
   // Return |logging_tag_| appended with the |attempt_count_|.
   std::string LoggingTag() const;
@@ -257,10 +260,11 @@ class PortalDetector {
   friend class PortalDetectorTest;
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
-  FRIEND_TEST(PortalDetectorTest, GetNextAttemptDelay);
+  FRIEND_TEST(PortalDetectorTest, GetNextAttemptDelayUnchangedUntilTrialStarts);
   FRIEND_TEST(PortalDetectorTest, HttpStartAttemptFailed);
   FRIEND_TEST(PortalDetectorTest, HttpsStartAttemptFailed);
   FRIEND_TEST(PortalDetectorTest, IsInProgress);
+  FRIEND_TEST(PortalDetectorTest, MultipleRestarts);
   FRIEND_TEST(PortalDetectorTest, PickProbeUrlTest);
   FRIEND_TEST(PortalDetectorTest, RequestFail);
   FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
@@ -316,6 +320,8 @@ class PortalDetector {
   // The power-of-two exponent used for computing exponentially increasing
   // delays between portal detection attempts.
   int delay_backoff_exponent_ = 0;
+  // Timestamp updated when StartTrialTask runs and used to determine when to
+  // schedule the next portal detection attempt after this one.
   base::Time last_attempt_start_time_ = base::Time();
   base::RepeatingCallback<void(const Result&)> portal_result_callback_;
   std::unique_ptr<HttpRequest> http_request_;

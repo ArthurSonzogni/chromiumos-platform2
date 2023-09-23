@@ -73,13 +73,7 @@ bool PortalDetector::Restart(const std::string& ifname,
                              net_base::IPFamily ip_family,
                              const std::vector<std::string>& dns_list,
                              const std::string& logging_tag) {
-  auto next_delay = GetNextAttemptDelay();
-  if (!Start(ifname, ip_family, dns_list, logging_tag, next_delay)) {
-    LOG(ERROR) << logging_tag << ": Failed to restart";
-    return false;
-  }
-  LOG(INFO) << logging_tag << ": Retrying in " << next_delay;
-  return true;
+  return Start(ifname, ip_family, dns_list, logging_tag, GetNextAttemptDelay());
 }
 
 bool PortalDetector::Start(const std::string& ifname,
@@ -115,8 +109,14 @@ bool PortalDetector::Start(const std::string& ifname,
   }
   https_url_ = *https_url;
 
-  attempt_count_++;
-  delay_backoff_exponent_++;
+  if (!trial_.IsCancelled()) {
+    LOG(INFO) << LoggingTag() << ": Cancelling next scheduled trial";
+    trial_.Cancel();
+  }
+  if (delay.is_positive()) {
+    LOG(INFO) << logging_tag_ << ": Retrying in " << delay;
+  }
+
   // TODO(hugobenichi) Network properties like src address and DNS should be
   // obtained exactly at the time that the trial starts if |delay| > 0.
   http_request_ =
@@ -129,15 +129,12 @@ bool PortalDetector::Start(const std::string& ifname,
   trial_.Reset(base::BindOnce(&PortalDetector::StartTrialTask,
                               weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(), delay);
-  // |last_attempt_start_time_| is calculated based on the current time and
-  // |delay|.  This is used to determine when to schedule the next portal
-  // detection attempt after this one.
-  last_attempt_start_time_ = base::Time::NowFromSystemTime() + delay;
-
   return true;
 }
 
 void PortalDetector::StartTrialTask() {
+  attempt_count_++;
+  last_attempt_start_time_ = base::Time::NowFromSystemTime();
   LOG(INFO) << LoggingTag()
             << ": Starting trial. HTTP probe: " << http_url_.host()
             << ". HTTPS probe: " << https_url_.host();
@@ -176,6 +173,10 @@ void PortalDetector::StartTrialTask() {
     // To find the portal sign-in url, wait for the HTTP probe to complete
     // before completing the trial and calling |portal_result_callback_|.
   }
+
+  // Only update the delay backoff exponent if at least one probe started
+  // successfully.
+  delay_backoff_exponent_++;
   is_active_ = true;
 }
 
@@ -194,6 +195,7 @@ void PortalDetector::CompleteTrial(Result result) {
 }
 
 void PortalDetector::CleanupTrial() {
+  trial_.Cancel();
   result_.reset();
   http_request_.reset();
   https_request_.reset();
@@ -295,8 +297,12 @@ void PortalDetector::HttpsRequestErrorCallback(
     CompleteTrial(*result_);
 }
 
-bool PortalDetector::IsInProgress() {
+bool PortalDetector::IsInProgress() const {
   return is_active_;
+}
+
+bool PortalDetector::IsTrialScheduled() const {
+  return !is_active_ && !trial_.IsCancelled();
 }
 
 void PortalDetector::ResetAttemptDelays() {
