@@ -86,8 +86,8 @@ class BluetoothPowerRoutineTest : public testing::Test {
     } else {
       result->out = "DOWN\n";
     }
-    EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-        .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
+    EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_, _))
+        .WillOnce(base::test::RunOnceCallback<1>(std::move(result)));
     EXPECT_CALL(mock_adapter_proxy_, powered())
         .WillOnce(Return(dbus_result_powered));
   }
@@ -287,8 +287,8 @@ TEST_F(BluetoothPowerRoutineTest, GetHciDeviceConfigError) {
   auto result = mojom::ExecutedProcessResult::New();
   result->return_code = EXIT_FAILURE;
   result->err = "Failed to run hciconfig";
-  EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-      .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
+  EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_, _))
+      .WillOnce(base::test::RunOnceCallback<1>(std::move(result)));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 
@@ -312,8 +312,8 @@ TEST_F(BluetoothPowerRoutineTest, UnexpectedHciDeviceConfigError) {
   auto result = mojom::ExecutedProcessResult::New();
   result->return_code = EXIT_SUCCESS;
   result->out = "DOWN UP RUNNING";
-  EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-      .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
+  EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_, _))
+      .WillOnce(base::test::RunOnceCallback<1>(std::move(result)));
   // Reset powered.
   SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
 

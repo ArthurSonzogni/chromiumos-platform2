@@ -544,8 +544,10 @@ void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
   delegate_ptr->StartAsync();
 }
 
-void Executor::GetHciDeviceConfig(GetHciDeviceConfigCallback callback) {
-  std::vector<std::string> command = {path::kHciconfigBinary, "hci0"};
+void Executor::GetHciDeviceConfig(int32_t hci_interface,
+                                  GetHciDeviceConfigCallback callback) {
+  std::vector<std::string> command = {
+      path::kHciconfigBinary, "hci" + base::NumberToString(hci_interface)};
   auto process =
       std::make_unique<SandboxedProcess>(command, seccomp_file::kHciconfig,
                                          SandboxedProcess::Options{

@@ -108,8 +108,8 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
     } else {
       result->out = "\tUP RUNNING PSCAN ISCAN \n";
     }
-    EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-        .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
+    EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_, _))
+        .WillOnce(base::test::RunOnceCallback<1>(std::move(result)));
   }
 
   void CheckRoutineUpdate(uint32_t progress_percent,
@@ -356,8 +356,8 @@ TEST_F(BluetoothDiscoveryRoutineTest, GetHciDeviceConfigError) {
   auto result = mojom::ExecutedProcessResult::New();
   result->return_code = EXIT_FAILURE;
   result->err = "Failed to run hciconfig";
-  EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-      .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
+  EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_, _))
+      .WillOnce(base::test::RunOnceCallback<1>(std::move(result)));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
   // Reset powered.
@@ -383,8 +383,8 @@ TEST_F(BluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
   auto result = mojom::ExecutedProcessResult::New();
   result->return_code = EXIT_SUCCESS;
   result->out = "DOWN";
-  EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_))
-      .WillOnce(base::test::RunOnceCallback<0>(std::move(result)));
+  EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(_, _))
+      .WillOnce(base::test::RunOnceCallback<1>(std::move(result)));
   // Stop discovery.
   EXPECT_CALL(mock_adapter_proxy_, StopDiscoveryAsync(_, _, _));
   // Reset powered.

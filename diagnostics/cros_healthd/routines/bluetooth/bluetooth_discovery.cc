@@ -172,9 +172,11 @@ void BluetoothDiscoveryRoutine::OnAdapterPropertyChanged(
 
 void BluetoothDiscoveryRoutine::ValidateHciDiscovering(bool dbus_discovering,
                                                        int retry_count) {
-  context_->executor()->GetHciDeviceConfig(base::BindOnce(
-      &BluetoothDiscoveryRoutine::HandleHciConfigResponse,
-      weak_ptr_factory_.GetWeakPtr(), dbus_discovering, retry_count));
+  context_->executor()->GetHciDeviceConfig(
+      /*hci_interface=*/0,
+      base::BindOnce(&BluetoothDiscoveryRoutine::HandleHciConfigResponse,
+                     weak_ptr_factory_.GetWeakPtr(), dbus_discovering,
+                     retry_count));
 }
 
 void BluetoothDiscoveryRoutine::HandleHciConfigResponse(

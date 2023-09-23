@@ -80,7 +80,8 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
                    SetLedColorCallback callback) override;
   void ResetLedColor(ash::cros_healthd::mojom::LedName name,
                      ResetLedColorCallback callback) override;
-  void GetHciDeviceConfig(GetHciDeviceConfigCallback callback) override;
+  void GetHciDeviceConfig(int32_t hci_interface,
+                          GetHciDeviceConfigCallback callback) override;
   void MonitorAudioJack(
       mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>

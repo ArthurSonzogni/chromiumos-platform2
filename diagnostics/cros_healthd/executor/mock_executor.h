@@ -75,7 +75,7 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               (override));
   MOCK_METHOD(void,
               GetHciDeviceConfig,
-              (GetHciDeviceConfigCallback),
+              (int32_t hci_interface, GetHciDeviceConfigCallback callback),
               (override));
   MOCK_METHOD(void,
               MonitorAudioJack,

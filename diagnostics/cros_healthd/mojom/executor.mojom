@@ -281,12 +281,14 @@ interface Executor {
   // * |err| - Error message if existed.
   ResetLedColor(LedName name) => (string? err);
 
-  // Obtains HCI device configuration of hci0 by running hciconfig and returns
-  // the result.
+  // Obtains HCI device configuration by running hciconfig and returns result.
+  //
+  // The request:
+  // * |hci_interface| - The target HCI interface.
   //
   // The response:
   // * |result| - contains information of hci0 received from running the tool.
-  GetHciDeviceConfig() => (ExecutedProcessResult result);
+  GetHciDeviceConfig(int32 hci_interface) => (ExecutedProcessResult result);
 
   // Monitor audio jack events.
   //
