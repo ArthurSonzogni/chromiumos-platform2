@@ -66,7 +66,7 @@ class SessionMock : public Session {
                      int*,
                      int*));
   MOCK_METHOD1(SeedRandom, CK_RV(const std::string&));
-  MOCK_METHOD2(GenerateRandom, CK_RV(int, std::string*));
+  MOCK_METHOD2(GenerateRandom, CK_RV(size_t, std::string*));
   MOCK_METHOD0(IsPrivateLoaded, bool());
 };
 

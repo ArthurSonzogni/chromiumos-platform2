@@ -72,8 +72,12 @@ const int kMaxRSAOutputBytes = 2048;
 const int kMaxDigestOutputBytes = EVP_MAX_MD_SIZE;
 const int kMinRSAKeyBits = 512;
 const int kMaxRSAKeyBits = kMaxRSAOutputBytes * 8;
+// We are willing to generate random data up to 512MiB, this is a tradeoff
+// between servicing as much requests as possible and not causing out of memory
+// events.
+const size_t kMaxRandomBufferSize = 1024 * 1024 * 512;
 
-string GenerateRandomSoftware(int num_bytes) {
+string GenerateRandomSoftware(size_t num_bytes) {
   string random(num_bytes, 0);
   RAND_bytes(ConvertStringToByteBuffer(random.data()), num_bytes);
   return random;
@@ -1451,7 +1455,11 @@ CK_RV SessionImpl::SeedRandom(const string& seed) {
   return CKR_OK;
 }
 
-CK_RV SessionImpl::GenerateRandom(int num_bytes, string* random_data) {
+CK_RV SessionImpl::GenerateRandom(size_t num_bytes, string* random_data) {
+  if (num_bytes > kMaxRandomBufferSize) {
+    return CKR_HOST_MEMORY;
+  }
+
   *random_data = GenerateRandomSoftware(num_bytes);
   return CKR_OK;
 }

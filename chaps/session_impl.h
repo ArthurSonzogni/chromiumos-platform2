@@ -136,7 +136,7 @@ class SessionImpl : public Session {
 
   // Random number generation.
   CK_RV SeedRandom(const std::string& seed) override;
-  CK_RV GenerateRandom(int num_bytes, std::string* random_data) override;
+  CK_RV GenerateRandom(size_t num_bytes, std::string* random_data) override;
   bool IsPrivateLoaded() override;
 
   size_t get_object_key_map_size_for_testing() {
