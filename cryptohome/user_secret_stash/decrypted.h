@@ -173,6 +173,10 @@ class DecryptedUss {
     return file_system_keyset_;
   }
 
+  const brillo::SecureBlob key_derivation_seed() const {
+    return key_derivation_seed_;
+  }
+
   // Returns the reset secret associated with the given label, or null if there
   // is no such secret.
   std::optional<brillo::SecureBlob> GetResetSecret(
@@ -205,7 +209,8 @@ class DecryptedUss {
       brillo::SecureBlob main_key,
       FileSystemKeyset file_system_keyset,
       std::map<std::string, brillo::SecureBlob> reset_secrets,
-      std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets);
+      std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets,
+      brillo::SecureBlob key_derivation_seed);
 
   // The underlying storage of the decrypted USS instance.
   UserUssStorage* storage_;
@@ -220,6 +225,8 @@ class DecryptedUss {
   std::map<std::string, brillo::SecureBlob> reset_secrets_;
   // The reset secrets corresponding to each auth factor type's rate limiter.
   std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets_;
+  // The seed to derive other key materials.
+  brillo::SecureBlob key_derivation_seed_;
 };
 
 }  // namespace cryptohome

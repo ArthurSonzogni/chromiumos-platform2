@@ -515,7 +515,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionLoadUSSFailedInAuthUSS = 344,
   /* ./auth_session.cc */
   kLocAuthSessionDeriveUSSSecretFailedInLoadUSS = 345,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionLoadUSSFailedInLoadUSS = 346,
   /* ./auth_session.cc */
   kLocAuthSessionDecryptUSSFailedInLoadUSS = 347,

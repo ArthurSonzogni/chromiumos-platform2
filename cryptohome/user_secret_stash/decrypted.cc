@@ -38,6 +38,11 @@ using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 
+// We need at least 352 bits of entropy to support deriving a NIST P-256 private
+// key with modular reduction method. 512-bit is chosen here such that we can
+// use HMAC-SHA512 to derive keys with enough entropy.
+constexpr size_t kKeyDerivationSeedSize = 512 / CHAR_BIT;
+
 // Construct a FileSystemKeyset from a given USS payload. Returns an error if
 // any of the components of the keyset appear to be missing.
 CryptohomeStatusOr<FileSystemKeyset> GetFileSystemKeysetFromPayload(
@@ -125,6 +130,7 @@ CryptohomeStatus EncryptIntoContainer(
     const std::map<std::string, brillo::SecureBlob>& reset_secrets,
     const std::map<AuthFactorType, brillo::SecureBlob>&
         rate_limiter_reset_secrets,
+    const brillo::SecureBlob& key_derivation_seed,
     EncryptedUss::Container& container) {
   // Create a basic payload with the filesystem keys.
   UserSecretStashPayload payload = {
@@ -151,6 +157,8 @@ CryptohomeStatus EncryptIntoContainer(
         .reset_secret = reset_secret,
     });
   }
+
+  payload.key_derivation_seed = key_derivation_seed;
 
   // Serialize and then encrypt the payload.
   auto serialized_payload = payload.Serialize();
@@ -344,7 +352,7 @@ CryptohomeStatus DecryptedUss::Transaction::Commit() && {
   // changes in the transaction.
   RETURN_IF_ERROR(EncryptIntoContainer(
       uss_.main_key_, uss_.file_system_keyset_, reset_secrets_,
-      rate_limiter_reset_secrets_, container_));
+      rate_limiter_reset_secrets_, uss_.key_derivation_seed_, container_));
   EncryptedUss encrypted_uss(std::move(container_));
   // Persist the new encrypted data out to storage.
   RETURN_IF_ERROR(encrypted_uss.ToStorage(*uss_.storage_));
@@ -380,12 +388,14 @@ CryptohomeStatusOr<DecryptedUss> DecryptedUss::CreateWithMainKey(
   // Construct a new encrypted container with minimal data.
   EncryptedUss::Container container;
   container.created_on_os_version = GetCurrentOsVersion();
-  RETURN_IF_ERROR(
-      EncryptIntoContainer(main_key, file_system_keyset, {}, {}, container));
+  brillo::SecureBlob key_derivation_seed =
+      CreateSecureRandomBlob(kKeyDerivationSeedSize);
+  RETURN_IF_ERROR(EncryptIntoContainer(main_key, file_system_keyset, {}, {},
+                                       key_derivation_seed, container));
 
   return DecryptedUss(&storage, EncryptedUss(std::move(container)),
                       std::move(main_key), std::move(file_system_keyset), {},
-                      {});
+                      {}, key_derivation_seed);
 }
 
 CryptohomeStatusOr<DecryptedUss> DecryptedUss::CreateWithRandomMainKey(
@@ -477,10 +487,31 @@ CryptohomeStatusOr<DecryptedUss> DecryptedUss::FromEncryptedUss(
 
   // Backfill values for new fields, if they are missing in the existing USS. If
   // any changes are made, commit them.
-  // TODO(b/300578860): Populate the `key_derivation_seed` field.
-  return DecryptedUss(&storage, std::move(encrypted), std::move(main_key),
-                      std::move(file_system_keyset), std::move(reset_secrets),
-                      std::move(rate_limiter_reset_secrets));
+  bool needs_commit = false;
+
+  // Backfill |key_derivation_seed| field if it's empty.
+  brillo::SecureBlob key_derivation_seed;
+  if (payload->key_derivation_seed.empty()) {
+    needs_commit = true;
+    key_derivation_seed = CreateSecureRandomBlob(kKeyDerivationSeedSize);
+  } else {
+    key_derivation_seed = std::move(payload->key_derivation_seed);
+  }
+
+  DecryptedUss decrypted(
+      &storage, std::move(encrypted), std::move(main_key),
+      std::move(file_system_keyset), std::move(reset_secrets),
+      std::move(rate_limiter_reset_secrets), std::move(key_derivation_seed));
+  if (needs_commit) {
+    // Note that we don't need to use Transaction to keep in-memory and storage
+    // state consistent because we can make sure the DecryptedUss object is
+    // constructed successfully if and only if the `ToStorage` call below is
+    // successful, as long as it is the last possible error branch in this
+    // function.
+    RETURN_IF_ERROR(decrypted.encrypted().ToStorage(storage));
+  }
+
+  return decrypted;
 }
 
 std::optional<brillo::SecureBlob> DecryptedUss::GetResetSecret(
@@ -514,13 +545,15 @@ DecryptedUss::DecryptedUss(
     brillo::SecureBlob main_key,
     FileSystemKeyset file_system_keyset,
     std::map<std::string, brillo::SecureBlob> reset_secrets,
-    std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets)
+    std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets,
+    brillo::SecureBlob key_derivation_seed)
     : storage_(storage),
       encrypted_(std::move(encrypted)),
       main_key_(std::move(main_key)),
       file_system_keyset_(std::move(file_system_keyset)),
       reset_secrets_(std::move(reset_secrets)),
-      rate_limiter_reset_secrets_(std::move(rate_limiter_reset_secrets)) {
+      rate_limiter_reset_secrets_(std::move(rate_limiter_reset_secrets)),
+      key_derivation_seed_(key_derivation_seed) {
   CHECK(storage);
 }
 

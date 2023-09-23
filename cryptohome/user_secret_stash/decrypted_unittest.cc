@@ -18,6 +18,7 @@
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/fake_platform.h"
+#include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/file_system_keyset_test_utils.h"
@@ -27,6 +28,7 @@
 namespace cryptohome {
 namespace {
 
+using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
@@ -53,6 +55,44 @@ FileSystemKeyset CreateTestFsk() {
           .fnek_sig = brillo::SecureBlob("fnek-sig"),
       },
       brillo::SecureBlob("chaps-key"));
+}
+
+UserSecretStashPayload CreateBasicUssPayload() {
+  FileSystemKeyset file_system_keyset = CreateTestFsk();
+  // Create a basic payload with the filesystem keys.
+  UserSecretStashPayload payload = {
+      .fek = file_system_keyset.Key().fek,
+      .fnek = file_system_keyset.Key().fnek,
+      .fek_salt = file_system_keyset.Key().fek_salt,
+      .fnek_salt = file_system_keyset.Key().fnek_salt,
+      .fek_sig = file_system_keyset.KeyReference().fek_sig,
+      .fnek_sig = file_system_keyset.KeyReference().fnek_sig,
+      .chaps_key = file_system_keyset.chaps_key(),
+  };
+  return payload;
+}
+
+std::optional<EncryptedUss::Container> CreateUssContainer(
+    const brillo::SecureBlob& main_key, const UserSecretStashPayload& payload) {
+  EncryptedUss::Container container;
+
+  // Serialize and then encrypt the payload.
+  auto serialized_payload = payload.Serialize();
+  if (!serialized_payload) {
+    return std::nullopt;
+  }
+  brillo::Blob iv, tag, ciphertext;
+  if (!AesGcmEncrypt(serialized_payload.value(), /*ad=*/std::nullopt, main_key,
+                     &iv, &tag, &ciphertext)) {
+    return std::nullopt;
+  }
+
+  // Copy the resulting encrypted output into the container.
+  container.ciphertext = std::move(ciphertext);
+  container.iv = std::move(iv);
+  container.gcm_tag = std::move(tag);
+
+  return container;
 }
 
 // Matcher that checks if a given secure blob is NOT contained in the specified
@@ -679,6 +719,31 @@ TEST_F(DecryptedUssTest, MissingOsVersion) {
   ASSERT_THAT(decrypted_uss, IsOk());
 
   EXPECT_THAT(decrypted_uss->encrypted().created_on_os_version(), IsEmpty());
+}
+
+TEST_F(DecryptedUssTest, CreatedUssContainsKeyDerivationSeed) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
+  ASSERT_THAT(decrypted_uss, IsOk());
+  EXPECT_FALSE(decrypted_uss->key_derivation_seed().empty());
+}
+
+TEST_F(DecryptedUssTest, KeyDerivationSeedBackfilled) {
+  const brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
+
+  UserSecretStashPayload payload = CreateBasicUssPayload();
+  // Ensure that the basic payload doesn't contain the |key_derivation_seed|
+  // field, such that the backfill logic is tested.
+  EXPECT_TRUE(payload.key_derivation_seed.empty());
+  std::optional<EncryptedUss::Container> uss_container =
+      CreateUssContainer(main_key, payload);
+  ASSERT_THAT(uss_container, Optional(_));
+  ASSERT_THAT(EncryptedUss(*uss_container).ToStorage(user_uss_storage_),
+              IsOk());
+  auto decrypted_uss =
+      DecryptedUss::FromStorageUsingMainKey(user_uss_storage_, main_key);
+  ASSERT_THAT(decrypted_uss, IsOk());
+  EXPECT_FALSE(decrypted_uss->key_derivation_seed().empty());
 }
 
 }  // namespace
