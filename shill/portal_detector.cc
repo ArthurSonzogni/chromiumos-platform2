@@ -51,13 +51,9 @@ PortalDetector::PortalDetector(
     EventDispatcher* dispatcher,
     const ProbingConfiguration& probing_configuration,
     base::RepeatingCallback<void(const Result&)> callback)
-    : attempt_count_(0),
-      last_attempt_start_time_(),
-      dispatcher_(dispatcher),
-      weak_ptr_factory_(this),
+    : dispatcher_(dispatcher),
       portal_result_callback_(callback),
-      probing_configuration_(probing_configuration),
-      is_active_(false) {}
+      probing_configuration_(probing_configuration) {}
 
 PortalDetector::~PortalDetector() {
   Stop();

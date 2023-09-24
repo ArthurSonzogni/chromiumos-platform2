@@ -300,21 +300,20 @@ class PortalDetector {
   // HttpRequest.
   void CleanupTrial();
 
-  std::string logging_tag_;
-  int attempt_count_;
-  base::Time last_attempt_start_time_;
   EventDispatcher* dispatcher_;
-  base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
+  std::string logging_tag_;
+  bool is_active_ = false;
+  int attempt_count_ = 0;
+  base::Time last_attempt_start_time_ = base::Time();
   base::RepeatingCallback<void(const Result&)> portal_result_callback_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
   std::unique_ptr<Result> result_;
-
   HttpUrl http_url_;
   HttpUrl https_url_;
   ProbingConfiguration probing_configuration_;
   base::CancelableOnceClosure trial_;
-  bool is_active_;
+  base::WeakPtrFactory<PortalDetector> weak_ptr_factory_{this};
 };
 
 std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase);
