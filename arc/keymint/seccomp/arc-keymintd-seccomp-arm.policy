@@ -2,4 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(b/277369016): Add seccomp policy.
+# TODO(b/277369016): Since there's currently no ARC-T ARM board that runs CrOS
+# userland in 32-bit mode, we leave this policy file empty. In case there is
+# such a board in the future, we can add policy.
