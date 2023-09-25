@@ -574,6 +574,7 @@ static_library("libcrostpm") {
     "../cryptohome_keys_manager.cc",
     "../firmware_management_parameters.cc",
     "../install_attributes.cc",
+    "../install_attributes_proxy.cc",
     "../key_objects.cc",
     "../lockbox.cc",
     "../pinweaver_manager/le_credential_manager_impl.cc",
