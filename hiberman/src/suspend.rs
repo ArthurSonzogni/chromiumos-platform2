@@ -25,6 +25,7 @@ use log::debug;
 use log::error;
 use log::info;
 use log::warn;
+use nix::errno::Errno;
 use regex::Regex;
 
 use crate::cookie::set_hibernate_cookie;
@@ -241,6 +242,9 @@ impl SuspendConductor<'_> {
                     Self::log_suspend_abort(SuspendAbortReason::InsufficientFreeMemory);
                 } else {
                     Self::log_suspend_abort(SuspendAbortReason::Other);
+
+                    // Record the errno to learn more about the prevalent errors.
+                    Self::log_suspend_abort_errno(*err);
                 }
             }
 
@@ -457,6 +461,12 @@ impl SuspendConductor<'_> {
             reason as isize,
             SuspendAbortReason::Count as isize - 1,
         );
+    }
+
+    fn log_suspend_abort_errno(errno: Errno) {
+        let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+
+        metrics_logger.log_linear_metric("Platform.Hibernate.Abort.Errno", errno as isize, 1, 200);
     }
 }
 

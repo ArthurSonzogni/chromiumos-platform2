@@ -98,8 +98,13 @@ impl MetricsLogger {
         self.log_metric_internal(HistogramType::Exponential, name, value, min, max, buckets);
     }
 
+    /// Log a linear metric to the MetricsLogger buffer.
+    pub fn log_linear_metric(&mut self, name: &str, value: isize, min: isize, max: isize) {
+        self.log_metric_internal(HistogramType::Linear, name, value, min, max, 0);
+    }
+
     pub fn log_enum_metric(&mut self, name: &str, value: isize, max: isize) {
-        self.log_metric_internal(HistogramType::Linear, name, value, -1, max, 0);
+        self.log_linear_metric(name, value, -1, max);
     }
 
     pub fn log_percent_metric(&mut self, name: &str, value: usize) {
