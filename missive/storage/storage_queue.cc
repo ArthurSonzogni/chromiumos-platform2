@@ -97,6 +97,7 @@ size_t RoundUpToFrameSize(size_t size) {
 // Helper function is a substitute for std::ceil(value/scale) for integers (used
 // by UMA).
 int UmaCeil(uint64_t value, uint64_t scale) {
+  CHECK_GT(scale, 0uL);
   return static_cast<int>((value + scale - 1) / scale);
 }
 
@@ -1152,13 +1153,18 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void UploadingCompleted(Status status) {
+    if (!storage_queue_) {
+      return;
+    }
+    DCHECK_CALLED_ON_VALID_SEQUENCE(
+        storage_queue_->storage_queue_sequence_checker_);
     // Release all files.
     files_.clear();
     current_file_ = files_.end();
     // If uploader was created, notify it about completion.
     if (uploader_) {
       // In case of success, upload UMA.
-      if (status.ok() && storage_queue_) {
+      if (status.ok() && total_files_size_ > 0uL) {
         const auto res = analytics::Metrics::SendSparseToUMA(
             base::StrCat({kUploadToStorageRatePrefix, storage_queue_->uma_id_}),
             UmaCeil(total_upload_size_ * 100uL,  // per-cent
@@ -1174,8 +1180,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // If retry delay is specified, check back after the delay.
     // If the status was error, or if any events are still there,
     // retry the upload.
-    if (storage_queue_ &&
-        !storage_queue_->options_.upload_retry_delay().is_zero()) {
+    if (!storage_queue_->options_.upload_retry_delay().is_zero()) {
       DCHECK_CALLED_ON_VALID_SEQUENCE(
           storage_queue_->storage_queue_sequence_checker_);
       storage_queue_->check_back_timer_.Start(
@@ -1504,16 +1509,23 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   base::OnceCallback<void(Status)> completion_cb_;
 
   // Files that will be read (in order of sequencing ids).
-  std::map<int64_t, scoped_refptr<SingleFile>> files_;
-  SequenceInformation sequence_info_;
-  uint32_t current_pos_;
-  std::map<int64_t, scoped_refptr<SingleFile>>::iterator current_file_;
+  std::map<int64_t, scoped_refptr<SingleFile>> files_
+      GUARDED_BY(storage_queue_->storage_queue_sequence_checker_);
+  SequenceInformation sequence_info_
+      GUARDED_BY(storage_queue_->storage_queue_sequence_checker_);
+  uint32_t current_pos_
+      GUARDED_BY(storage_queue_->storage_queue_sequence_checker_);
+  std::map<int64_t, scoped_refptr<SingleFile>>::iterator current_file_
+      GUARDED_BY(storage_queue_->storage_queue_sequence_checker_);
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
-  std::unique_ptr<UploaderInterface> uploader_;
+  std::unique_ptr<UploaderInterface> uploader_
+      GUARDED_BY(storage_queue_->storage_queue_sequence_checker_);
 
   // Statistics collected for UMA.
-  uint64_t total_files_size_ = 0u;
-  uint64_t total_upload_size_ = 0u;
+  uint64_t total_files_size_
+      GUARDED_BY(storage_queue_->storage_queue_sequence_checker_) = 0u;
+  uint64_t total_upload_size_
+      GUARDED_BY(storage_queue_->storage_queue_sequence_checker_) = 0u;
 
   base::WeakPtr<StorageQueue> storage_queue_;
 };
