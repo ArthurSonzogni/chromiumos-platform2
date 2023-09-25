@@ -126,7 +126,7 @@ void DlcManager::HandleDlcInstallError(const std::string& dlc_id,
 
 void DlcManager::OnDlcStateChanged(const dlcservice::DlcState& state) {
   // Skipped state changed if there are no pending callbacks.
-  if (!pending_callbacks_map_.count(state.id())) {
+  if (!pending_callbacks_map_.contains(state.id())) {
     return;
   }
 

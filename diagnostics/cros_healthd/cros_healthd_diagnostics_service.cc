@@ -638,7 +638,7 @@ void CrosHealthdDiagnosticsService::RunRoutine(
     base::OnceCallback<void(mojom::RunRoutineResponsePtr)> callback) {
   DCHECK(routine);
 
-  if (!available_routines_.count(routine_enum)) {
+  if (!available_routines_.contains(routine_enum)) {
     ReportUnsupportedRoutine(routine_enum, std::move(callback));
     return;
   }

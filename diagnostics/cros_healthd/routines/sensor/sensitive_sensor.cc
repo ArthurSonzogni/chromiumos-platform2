@@ -471,9 +471,9 @@ base::Value::Dict SensitiveSensorRoutine::ConstructSensorOutput(
   const auto& result = existence_check_result_[sensor];
   sensor_dict.Set(kOutputDictExistenceCheckResultKey, Convert(result.state));
   for (const auto& sensor_id : result.sensor_ids) {
-    if (passed_sensors_.count(sensor_id))
+    if (passed_sensors_.contains(sensor_id))
       passed_sensors.Append(passed_sensors_[sensor_id].Clone());
-    if (failed_sensors_.count(sensor_id))
+    if (failed_sensors_.contains(sensor_id))
       failed_sensors.Append(failed_sensors_[sensor_id].Clone());
   }
   sensor_dict.Set(kOutputDictPassedSensorsKey, std::move(passed_sensors));

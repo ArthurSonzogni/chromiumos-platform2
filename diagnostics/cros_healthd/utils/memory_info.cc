@@ -59,7 +59,7 @@ std::optional<MemoryInfo> Parse(const std::string& raw_data) {
 
   for (const auto& memory_name :
        {kMemTotalName, kMemFreeName, kMemAvailableName}) {
-    if (!memory_map_kib.count(memory_name)) {
+    if (!memory_map_kib.contains(memory_name)) {
       LOG(ERROR) << memory_name << " not found in /proc/meminfo";
       return std::nullopt;
     }

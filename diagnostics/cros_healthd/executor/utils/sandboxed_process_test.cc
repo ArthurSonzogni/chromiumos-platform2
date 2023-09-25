@@ -75,7 +75,7 @@ class SandboxedProcessTest : public testing::Test {
               return;
             }
             minijail_args_.push_back(arg);
-            if (!kMinijailStringArgFlags.count(minijail_args_[0]) ||
+            if (!kMinijailStringArgFlags.contains(minijail_args_[0]) ||
                 minijail_args_.size() == 2) {
               auto [unused, success] =
                   minijail_args_set_.insert(minijail_args_);

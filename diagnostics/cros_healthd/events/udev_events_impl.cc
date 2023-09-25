@@ -129,7 +129,7 @@ void UdevEventsImpl::HandleGetConnectedHdmiConnectors(
   current_external_display_connectors_ = {};
   for (auto& [connector_id, display_info] : connected_displays) {
     current_external_display_connectors_.insert(connector_id);
-    if (connector_id_to_display_info_.count(connector_id) == 0) {
+    if (!connector_id_to_display_info_.contains(connector_id)) {
       connector_id_to_display_info_[connector_id] = std::move(display_info);
     }
   }
@@ -318,7 +318,7 @@ void UdevEventsImpl::UpdateExternalDisplayObservers() {
   for (auto connector_id : added_connectors) {
     auto info = mojom::ExternalDisplayEventInfo::New();
     info->state = mojom::ExternalDisplayEventInfo::State::kAdd;
-    if (connector_id_to_display_info_.count(connector_id) == 0) {
+    if (!connector_id_to_display_info_.contains(connector_id)) {
       LOG(ERROR) << "Cannot find display info for connector id: "
                  << connector_id;
       continue;
@@ -332,7 +332,7 @@ void UdevEventsImpl::UpdateExternalDisplayObservers() {
   for (auto connector_id : removed_connectors) {
     auto info = mojom::ExternalDisplayEventInfo::New();
     info->state = mojom::ExternalDisplayEventInfo::State::kRemove;
-    if (connector_id_to_display_info_.count(connector_id) == 0) {
+    if (!connector_id_to_display_info_.contains(connector_id)) {
       LOG(ERROR) << "Cannot find display info for connector id: "
                  << connector_id;
       continue;

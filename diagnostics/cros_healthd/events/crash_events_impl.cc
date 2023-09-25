@@ -179,7 +179,7 @@ void CrashEvents::HandleUnuploadedCrashCrashSenderResult(
                       /*init_offset=ignored*/ 0u);
 
   for (const auto& result : results) {
-    if (past_unuploaded_crashes_.count(result->local_id) > 0) {
+    if (past_unuploaded_crashes_.contains(result->local_id)) {
       continue;
     }
     for (auto& observer : observers_) {

@@ -85,7 +85,7 @@ class MemoryRoutineTestBase : public BaseFileTest {
     for (int i = static_cast<int>(mojom::MemtesterTestItemEnum::kUnknown) + 1;
          i <= static_cast<int>(mojom::MemtesterTestItemEnum::kMaxValue); i++) {
       auto subtest = static_cast<mojom::MemtesterTestItemEnum>(i);
-      if (!unexpected_subtests.count(subtest)) {
+      if (!unexpected_subtests.contains(subtest)) {
         expected_subtests.insert(subtest);
       }
     }

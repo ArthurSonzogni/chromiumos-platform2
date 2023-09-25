@@ -49,7 +49,7 @@ bool IsCid(uint32_t first_octet) {
 
 // Check if the first 3 octets of the address is in |exceptions|.
 bool IsKnownAuthorizedAddress(const std::string& manufacturer_id) {
-  return exceptions.count(manufacturer_id);
+  return exceptions.contains(manufacturer_id);
 }
 
 // Check if the public address is an IEEE Registration Authorized address.

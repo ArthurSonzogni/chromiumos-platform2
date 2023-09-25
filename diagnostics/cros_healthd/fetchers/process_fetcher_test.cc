@@ -648,9 +648,9 @@ TEST_F(ProcessFetcherTest, FetchMultipleProcessInfo) {
   EXPECT_EQ(process_result->process_infos.size(), 3);
   // Ensure all three process info match input process ids, and only verify
   // |kFirstPid|'s detailed content.
-  EXPECT_TRUE(process_result->process_infos.count(kFirstPid));
-  EXPECT_TRUE(process_result->process_infos.count(kSecondPid));
-  EXPECT_TRUE(process_result->process_infos.count(kThirdPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kFirstPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kSecondPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kThirdPid));
   auto& first_pid_process_info =
       process_result->process_infos.find(kFirstPid)->second;
   EXPECT_EQ(first_pid_process_info->command, kFakeProcPidCmdlineContents);
@@ -690,8 +690,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatFileMultipleProcessIgnoreError) {
 
   ASSERT_TRUE(process_result->errors.empty());
   EXPECT_EQ(process_result->process_infos.size(), 2);
-  EXPECT_TRUE(process_result->process_infos.count(kFirstPid));
-  EXPECT_TRUE(process_result->process_infos.count(kThirdPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kFirstPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kThirdPid));
 }
 
 // Test that we handle a missing /proc/|kSecondPid|/stat file while not ignoring
@@ -708,8 +708,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatFileMultipleProcess) {
   EXPECT_EQ(process_result->errors.find(kSecondPid)->second->type,
             mojom::ErrorType::kFileReadError);
   EXPECT_EQ(process_result->process_infos.size(), 2);
-  EXPECT_TRUE(process_result->process_infos.count(kFirstPid));
-  EXPECT_TRUE(process_result->process_infos.count(kThirdPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kFirstPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kThirdPid));
 }
 
 // Test that we handle a /proc/|kSecondPid|/io file with insufficient fields
@@ -728,8 +728,8 @@ TEST_F(ProcessFetcherTest, ProcPidIOFileInsufficientTokensMultipleProcess) {
   EXPECT_EQ(process_result->errors.find(kSecondPid)->second->type,
             mojom::ErrorType::kParseError);
   EXPECT_EQ(process_result->process_infos.size(), 2);
-  EXPECT_TRUE(process_result->process_infos.count(kFirstPid));
-  EXPECT_TRUE(process_result->process_infos.count(kThirdPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kFirstPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kThirdPid));
 }
 
 // Test that we handle a missing /proc/|kSecondPid|/io file while not ignoring
@@ -747,8 +747,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidIOFileMultipleProcess) {
   EXPECT_EQ(process_result->errors.find(kSecondPid)->second->type,
             mojom::ErrorType::kFileReadError);
   EXPECT_EQ(process_result->process_infos.size(), 2);
-  EXPECT_TRUE(process_result->process_infos.count(kFirstPid));
-  EXPECT_TRUE(process_result->process_infos.count(kThirdPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kFirstPid));
+  EXPECT_TRUE(process_result->process_infos.contains(kThirdPid));
 }
 
 // Tests that ProcessFetcher can correctly parse each process state.
