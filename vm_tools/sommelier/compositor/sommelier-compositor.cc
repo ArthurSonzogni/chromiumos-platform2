@@ -219,7 +219,8 @@ static void sl_host_surface_attach(struct wl_client* client,
         host->current_buffer->shape_image = nullptr;
       }
 
-      if (host->ctx->channel->supports_dmabuf()) {
+      if (host->ctx->channel->supports_dmabuf() &&
+          host->ctx->linux_dmabuf->proxy_v2) {
         int rv;
         size_t size;
         struct zwp_linux_buffer_params_v1* buffer_params;
@@ -240,7 +241,7 @@ static void sl_host_surface_attach(struct wl_client* client,
 
         size = create_output.host_size;
         buffer_params = zwp_linux_dmabuf_v1_create_params(
-            host->ctx->linux_dmabuf->internal);
+            host->ctx->linux_dmabuf->proxy_v2);
         zwp_linux_buffer_params_v1_add(buffer_params, create_output.fd, 0,
                                        create_output.offsets[0],
                                        create_output.strides[0], 0, 0);

@@ -15,11 +15,11 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "compositor/sommelier-mmap.h"  // NOLINT(build/include_directory)
-#include "sommelier-ctx.h"     // NOLINT(build/include_directory)
-#include "sommelier-global.h"  // NOLINT(build/include_directory)
-#include "sommelier-util.h"    // NOLINT(build/include_directory)
-#include "sommelier-window.h"  // NOLINT(build/include_directory)
-#include "weak-resource-ptr.h"  // NOLINT(build/include_directory)
+#include "sommelier-ctx.h"              // NOLINT(build/include_directory)
+#include "sommelier-global.h"           // NOLINT(build/include_directory)
+#include "sommelier-util.h"             // NOLINT(build/include_directory)
+#include "sommelier-window.h"           // NOLINT(build/include_directory)
+#include "weak-resource-ptr.h"          // NOLINT(build/include_directory)
 
 #define SOMMELIER_VERSION "0.20"
 #define XDG_SHELL_VERSION 3u
@@ -413,12 +413,34 @@ struct sl_aura_shell {
   struct zaura_shell* internal;
 };
 
+/* Support for zwp_linux_dmabuf_v1 is expected of the server and advertised at
+ * the same version to clients (up to SL_LINUX_DMABUF_MAX_VERSION).
+ *
+ * When used directly by a client, each client request is passed through to the
+ * server (with some having additional internal behaviors). In such cases, the
+ * bound global is used to create proxies on-demand.
+ *
+ * There are additional internal uses for zwp_linux_dmabuf_v1:
+ *   - Emulating client wl_drm requests as zwp_linux_dmabuf_v1 requests to the
+ *     server. Each client-facing wl_drm resource instantiates its own
+ *     zwp_linux_dmabuf_v1 (version 2) server proxy to use internally.
+ *   - Creating host-sharable dmabufs (via the virtualization channel) as
+ *     "copy-on-commit" targets for client wl_shm buffers. A server-facing
+ *     zwp_linux_dmabuf_v1 (version 2) proxy is created to facilitate wl_buffer
+ *     creation from these dmabufs.
+ *   - Querying and converting the list of supported dmabuf formats to wl_shm
+ *     formats to send to a client upon wl_shm binding. Each client-facing
+ *     wl_shm resource instantiates its own zwp_linux_dmabuf_v1 (version 1)
+ *     proxy to use internally.
+ */
 struct sl_linux_dmabuf {
   struct sl_context* ctx;
   uint32_t id;
   uint32_t version;
   struct sl_global* host_drm_global;
-  struct zwp_linux_dmabuf_v1* internal;
+
+  // binding (version 2) is only used for wl_shm copy-on-commit
+  struct zwp_linux_dmabuf_v1* proxy_v2;
 };
 
 struct sl_linux_explicit_synchronization {
@@ -550,7 +572,8 @@ struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 
-struct sl_global* sl_drm_global_create(struct sl_context* ctx);
+struct sl_global* sl_drm_global_create(struct sl_context* ctx,
+                                       struct sl_linux_dmabuf* linux_dmabuf);
 
 struct sl_global* sl_text_input_extension_global_create(struct sl_context* ctx,
                                                         uint32_t exo_version);

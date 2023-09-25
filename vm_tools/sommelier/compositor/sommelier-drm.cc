@@ -20,6 +20,8 @@
 #include "drm-server-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 
+#define SL_DRM_MAX_VERSION 2u
+
 struct sl_host_drm {
   struct sl_context* ctx;
   uint32_t version;
@@ -171,8 +173,7 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
     }
   }
 
-  buffer_params =
-      zwp_linux_dmabuf_v1_create_params(host->ctx->linux_dmabuf->internal);
+  buffer_params = zwp_linux_dmabuf_v1_create_params(host->linux_dmabuf_proxy);
   zwp_linux_buffer_params_v1_add(buffer_params, name, 0, offset0, stride0,
                                  format_modifier >> 32,
                                  format_modifier & 0xffffffff);
@@ -282,18 +283,24 @@ static void sl_bind_host_drm(struct wl_client* client,
                              void* data,
                              uint32_t version,
                              uint32_t id) {
-  struct sl_context* ctx = (struct sl_context*)data;
+  struct sl_linux_dmabuf* linux_dmabuf =
+      static_cast<struct sl_linux_dmabuf*>(data);
+  struct sl_context* ctx = linux_dmabuf->ctx;
+
   struct sl_host_drm* host = new sl_host_drm();
   host->ctx = ctx;
-  host->version = MIN(version, 2);
+  host->version = MIN(version, SL_DRM_MAX_VERSION);
   host->resource =
       wl_resource_create(client, &wl_drm_interface, host->version, id);
   wl_resource_set_implementation(host->resource, &sl_drm_implementation, host,
                                  sl_destroy_host_drm);
 
-  host->linux_dmabuf_proxy = static_cast<zwp_linux_dmabuf_v1*>(wl_registry_bind(
-      wl_display_get_registry(ctx->display), ctx->linux_dmabuf->id,
-      &zwp_linux_dmabuf_v1_interface, ctx->linux_dmabuf->version));
+  assert(linux_dmabuf->version >=
+         ZWP_LINUX_BUFFER_PARAMS_V1_CREATE_IMMED_SINCE_VERSION);
+  host->linux_dmabuf_proxy = static_cast<zwp_linux_dmabuf_v1*>(
+      wl_registry_bind(wl_display_get_registry(ctx->display), linux_dmabuf->id,
+                       &zwp_linux_dmabuf_v1_interface,
+                       ZWP_LINUX_BUFFER_PARAMS_V1_CREATE_IMMED_SINCE_VERSION));
   zwp_linux_dmabuf_v1_add_listener(host->linux_dmabuf_proxy,
                                    &sl_linux_dmabuf_listener, host);
 
@@ -301,12 +308,15 @@ static void sl_bind_host_drm(struct wl_client* client,
   wl_callback_add_listener(host->callback, &sl_drm_callback_listener, host);
 }
 
-struct sl_global* sl_drm_global_create(struct sl_context* ctx) {
-  assert(ctx->linux_dmabuf);
-
+struct sl_global* sl_drm_global_create(struct sl_context* ctx,
+                                       sl_linux_dmabuf* linux_dmabuf) {
   // Early out if DMABuf protocol version is not sufficient.
-  if (ctx->linux_dmabuf->version < 2)
+  if (linux_dmabuf->version <
+      ZWP_LINUX_BUFFER_PARAMS_V1_CREATE_IMMED_SINCE_VERSION) {
     return nullptr;
+  }
 
-  return sl_global_create(ctx, &wl_drm_interface, 2, ctx, sl_bind_host_drm);
+  return sl_global_create(ctx, &wl_drm_interface, SL_DRM_MAX_VERSION,
+                          reinterpret_cast<void*>(linux_dmabuf),
+                          sl_bind_host_drm);
 }
