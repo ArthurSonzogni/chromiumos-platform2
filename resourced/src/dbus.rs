@@ -16,6 +16,7 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use anyhow::bail;
+use anyhow::Context;
 use anyhow::Result;
 use dbus::channel::MatchingReceiver;
 use dbus::channel::Sender;
@@ -738,14 +739,19 @@ async fn memory_checker_wait(pressure_result: &Result<memory::PressureStatus>) {
 }
 
 fn report_notification_count(notification_count: i32) -> Result<()> {
-    metrics_rs::MetricsLibrary::new()?.send_to_uma(
-        "Platform.Resourced.MemoryNotificationCountTenMinutes", // Metric name
-        notification_count,                                     // Sample
-        0,                                                      // Min
-        1000,                                                   // Max
-        50,                                                     // Number of buckets
-    )?;
+    let metrics = metrics_rs::MetricsLibrary::get().context("MetricsLibrary::get() failed")?;
 
+    // Shall panic on poisoned mutex.
+    metrics
+        .lock()
+        .expect("Lock MetricsLibrary object failed")
+        .send_to_uma(
+            "Platform.Resourced.MemoryNotificationCountTenMinutes", // Metric name
+            notification_count,                                     // Sample
+            0,                                                      // Min
+            1000,                                                   // Max
+            50,                                                     // Number of buckets
+        )?;
     Ok(())
 }
 

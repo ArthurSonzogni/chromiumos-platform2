@@ -142,12 +142,10 @@ impl Dispatcher {
             return Err(Error::CommandNotImplemented(entry.get_command().join(" ")));
         }
 
-        let mut metrics = match MetricsLibrary::new() {
-            Ok(lib) => lib,
-            Err(e) => {
-                panic!("MetricsLibrary::new() failed: {}", e);
-            }
-        };
+        let metrics_mutex = MetricsLibrary::get().expect("MetricsLibrary::get() failed");
+        let mut metrics = metrics_mutex
+            .lock()
+            .expect("Lock MetricsLibrary object failed");
         let metrics_name: &str = &("Crosh_Run_{}".to_owned() + command.get_name());
         let _ = metrics.send_user_action_to_uma(metrics_name);
 

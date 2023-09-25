@@ -26,24 +26,19 @@ pub struct MetricsLibrary {
 unsafe impl Send for MetricsLibrary {}
 
 impl MetricsLibrary {
-    // Deprecated. It will be private when all the external references are removed.
-    pub fn new() -> Result<Self, Error> {
-        // Safety: Calls a C function.
-        let handle = unsafe { CMetricsLibraryNew() };
-        if handle.is_null() {
-            return Err(Error::new(ErrorKind::Other, "CMetricsLibraryNew failed"));
-        }
-        Ok(MetricsLibrary { handle })
-    }
-
     // It's not safe to use MetricsLibrary in multiple thread at the same time.
     // The user needs to lock the returned Mutex to use MetricsLibrary.
     pub fn get() -> Option<Arc<Mutex<Self>>> {
         static METRICS_LIBRARY: OnceLock<Option<Arc<Mutex<MetricsLibrary>>>> = OnceLock::new();
         METRICS_LIBRARY
-            .get_or_init(|| match MetricsLibrary::new() {
-                Ok(metrics) => Some(Arc::new(Mutex::new(metrics))),
-                Err(_err) => None,
+            .get_or_init(|| {
+                // Safety: Calls a C function.
+                let handle = unsafe { CMetricsLibraryNew() };
+                if handle.is_null() {
+                    None
+                } else {
+                    Some(Arc::new(Mutex::new(MetricsLibrary { handle })))
+                }
             })
             .clone()
     }
