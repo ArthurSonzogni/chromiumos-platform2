@@ -60,7 +60,6 @@ LEGACYLIST = {
     "croslog",
     "disk_updater",
     "dlp",
-    "dns-proxy",
     "easy-unlock",
     "glib-bridge",
     "goldfishd",
