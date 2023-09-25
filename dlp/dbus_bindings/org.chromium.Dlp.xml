@@ -23,6 +23,8 @@
     <method name="AddFiles">
       <tp:docstring>
         Adds files together with their sources to the database.
+        Rejects request if one of the resolved files is not on user's home dir
+        or created a long time ago.
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         Serialized AddFilesRequest message.

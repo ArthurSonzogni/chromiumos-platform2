@@ -16,6 +16,8 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/process/process_handle.h>
 #include <base/run_loop.h>
+#include "base/test/task_environment.h"
+#include "base/time/time.h"
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
@@ -359,6 +361,9 @@ class DlpAdaptorTest : public ::testing::Test {
   std::vector<std::pair<FileMetadata, RestrictionLevel>> files_restrictions_;
   std::unique_ptr<base::ScopedTempDir> database_directory_;
 
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO,
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   DlpAdaptorTestHelper helper_;
 };
 
@@ -388,7 +393,7 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
   InitDatabase();
 
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
                    /*expected_result=*/true);
 
@@ -410,7 +415,7 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndDlpPolicyMatched_BadProto) {
   InitDatabase();
 
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
                    /*expected_result=*/true);
 
@@ -434,7 +439,7 @@ TEST_F(DlpAdaptorTest,
   InitDatabase();
 
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
                    /*expected_result=*/true);
 
@@ -458,7 +463,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
   InitDatabase();
 
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
                    /*expected_result=*/true);
 
@@ -480,7 +485,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAllowedForItself) {
   InitDatabase();
 
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
                    /*expected_result=*/true);
 
@@ -506,10 +511,10 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
 
   // Create files to request access by ids.
   base::FilePath file_path1;
-  base::CreateTemporaryFile(&file_path1);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1);
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
-  base::CreateTemporaryFile(&file_path2);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2);
   const FileId id2 = GetFileId(file_path2.value());
 
   // Add the files to the database.
@@ -575,7 +580,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed) {
 
   // Create files to request access by ids.
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   const FileId id = GetFileId(file_path.value());
 
   // Add the files to the database.
@@ -649,7 +654,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileSystemRequestedAllowed) {
 
   // Create files to request access by ids.
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   const FileId id = GetFileId(file_path.value());
 
   // Add the files to the database.
@@ -723,7 +728,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedButBadProto) {
 
   // Create file to request access by ids.
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
 
   // Add the file to the database.
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
@@ -766,7 +771,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedButErrorResponse) {
 
   // Create file to request access by inodes.
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
 
   // Add the file to the database.
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
@@ -810,7 +815,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed) {
 
   // Create files to request access by ids.
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   const FileId id = GetFileId(file_path.value());
 
   // Add the files to the database.
@@ -878,10 +883,10 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
 
   // Create files to request access by ids.
   base::FilePath file_path1;
-  base::CreateTemporaryFile(&file_path1);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1);
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
-  base::CreateTemporaryFile(&file_path2);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2);
   const FileId id2 = GetFileId(file_path2.value());
 
   // Add only first file to the database.
@@ -937,7 +942,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
 
   // Create files to request access by ids.
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   const FileId id = GetFileId(file_path.value());
 
   // Access already allowed.
@@ -986,7 +991,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
 
   // Create file to request access by id.
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   const FileId id = GetFileId(file_path.value());
 
   // Add the file to the database.
@@ -1047,7 +1052,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
 
   // Create file to request access by id.
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
   const FileId id = GetFileId(file_path.value());
 
   // Add the file to the database.
@@ -1109,7 +1114,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
 TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
   // Create file to request access by id.
   base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
 
   // Request access to the file.
   auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
@@ -1139,10 +1144,10 @@ TEST_F(DlpAdaptorTest, GetFilesSources) {
 
   // Create files to request sources by ids.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
   const FileId id2 = GetFileId(file_path2.value());
 
   const std::string source1 = "source1";
@@ -1179,10 +1184,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesByPath) {
 
   // Create files to request sources.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
 
   const std::string source1 = "source1";
   const std::string referrer1 = "referrer1";
@@ -1209,10 +1214,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesMixed) {
 
   // Create files to request sources.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
   const FileId id2 = GetFileId(file_path2.value());
 
   const std::string source1 = "source1";
@@ -1321,10 +1326,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesDatabaseMigrated) {
 TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   // Create files to request sources by ids.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
   const FileId id2 = GetFileId(file_path2.value());
 
   const std::string source1 = "source1";
@@ -1372,10 +1377,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
 TEST_F(DlpAdaptorTest, DISABLED_GetFilesSourcesWithoutDatabaseNotAdded) {
   // Create files to request sources by ids.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
   const FileId id2 = GetFileId(file_path2.value());
 
   const std::string source1 = "source1";
@@ -1563,10 +1568,10 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesOverwrite) {
 
   // Create files to request sources by ids.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
   const FileId id2 = GetFileId(file_path2.value());
 
   const std::string source1 = "source1";
@@ -1749,6 +1754,22 @@ TEST_F(DlpAdaptorTest, AddFiles_NonExistentFile) {
                   static_cast<int>(AdaptorError::kInodeRetrievalError)));
 }
 
+TEST_F(DlpAdaptorTest, AddFiles_OldFile) {
+  base::FilePath file_path;
+  base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
+  const FileId id = GetFileId(file_path.value());
+  // Set to file creation time.
+  task_environment_.FastForwardBy(base::Time::FromTimeT(id.second) -
+                                  base::Time::Now());
+  // Advance by a minute.
+  task_environment_.FastForwardBy(base::Minutes(1));
+  AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
+                   /*expected_result=*/false);
+  EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+              ElementsAre(static_cast<int>(AdaptorError::kAddFileError),
+                          static_cast<int>(AdaptorError::kAddedFileIsTooOld)));
+}
+
 TEST_F(DlpAdaptorTest, RequestFileAccess_BadProto) {
   auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
       std::vector<uint8_t>, base::ScopedFD>>(nullptr);
@@ -1858,9 +1879,9 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer_DbNotInitialized) {
 
   // Create files.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";
@@ -1903,7 +1924,7 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer_IsFilesTransferRestrictedBadProto) {
 
   // Create file.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
 
   const std::string source1 = "source1";
 
@@ -1946,7 +1967,7 @@ TEST_F(DlpAdaptorTest,
 
   // Create file.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
 
   const std::string source1 = "source1";
 
@@ -2009,13 +2030,13 @@ TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
 
   // Create files.
   base::FilePath file_path1;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   const FileId id1 = GetFileId(file_path1.value());
   base::FilePath file_path2;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
   const FileId id2 = GetFileId(file_path2.value());
   base::FilePath file_path3;
-  ASSERT_TRUE(base::CreateTemporaryFile(&file_path3));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path3));
 
   const std::string source1 = "source1";
   const std::string source2 = "source2";

@@ -109,8 +109,12 @@ enum class AdaptorError {
   kAddFileNotCompleteBeforeDestruction = 10,
   // Error while migrating from legacy database.
   kDatabaseMigrationError = 11,
+  // Can't add file because it's too old.
+  kAddedFileIsTooOld = 12,
+  // Can't add file because it's not on observed user home directory.
+  kAddedFileIsNotOnUserHome = 13,
   // For SendEnumToUMA() usage.
-  kMaxValue = kDatabaseMigrationError,
+  kMaxValue = kAddedFileIsNotOnUserHome,
 };
 
 // Sends UMAs related to the DLP daemon.

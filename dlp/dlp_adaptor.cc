@@ -38,6 +38,9 @@
 
 namespace dlp {
 
+// The maximum delay in between file creation and adding file to database.
+constexpr base::TimeDelta kAddFileMaxDelay = base::Minutes(1);
+
 namespace {
 
 // Serializes |proto| to a vector of bytes. CHECKs for success (should
@@ -230,10 +233,25 @@ void DlpAdaptor::AddFiles(
       dlp_metrics_->SendAdaptorError(AdaptorError::kInodeRetrievalError);
       return;
     }
+    // If file is created too long time ago - do not allow addition to the
+    // database. DLP is only for new files.
+    const base::Time crtime = base::Time::FromTimeT(id.second);
+    if (base::Time::Now() - crtime >= kAddFileMaxDelay) {
+      ReplyOnAddFiles(std::move(response), "File is too old");
+      dlp_metrics_->SendAdaptorError(AdaptorError::kAddedFileIsTooOld);
+      return;
+    }
+
+    const base::FilePath file_path(add_file_request.file_path());
+    if (!home_path_.IsParent(file_path)) {
+      ReplyOnAddFiles(std::move(response), "File is not on user's home");
+      dlp_metrics_->SendAdaptorError(AdaptorError::kAddedFileIsNotOnUserHome);
+      return;
+    }
 
     FileEntry file_entry = ConvertToFileEntry(id, add_file_request);
     files_to_add.push_back(file_entry);
-    files_paths.emplace_back(add_file_request.file_path());
+    files_paths.push_back(file_path);
     files_ids.emplace_back(id);
   }
 
