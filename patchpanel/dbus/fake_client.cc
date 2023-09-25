@@ -161,6 +161,11 @@ bool FakeClient::GetDownstreamNetworkInfo(
   return true;
 }
 
+bool FakeClient::SendSetFeatureFlagRequest(Client::FeatureFlag flag,
+                                           bool enable) {
+  return true;
+}
+
 void FakeClient::TriggerNeighborReachabilityEvent(
     const NeighborReachabilityEvent& signal) {
   for (const auto& handler : neighbor_event_handlers_)

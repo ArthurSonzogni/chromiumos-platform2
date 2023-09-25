@@ -171,6 +171,12 @@ class BRILLO_EXPORT Client {
     kReachable,
   };
 
+  // See SetFeatureFlagRequest.FeatureFlag in patchpanel_service.proto.
+  enum class FeatureFlag {
+    kWiFiQoS,
+    kClat,
+  };
+
   // See NeighborReachabilityEventSignal in patchpanel_service.proto.
   struct NeighborReachabilityEvent {
     int ifindex;
@@ -424,6 +430,10 @@ class BRILLO_EXPORT Client {
   // sent, false otherwise. |callback| is ran after the request has completed.
   virtual bool GetDownstreamNetworkInfo(
       const std::string& ifname, GetDownstreamNetworkInfoCallback callback) = 0;
+
+  // Sends request for setting the feature flag of |flag| to |enable|.
+  // Returns true if the request was successfully sent, false otherwise.
+  virtual bool SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) = 0;
 
  protected:
   Client() = default;

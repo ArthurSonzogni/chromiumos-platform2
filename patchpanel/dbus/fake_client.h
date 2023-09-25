@@ -105,6 +105,9 @@ class BRILLO_EXPORT FakeClient : public Client {
       const std::string& ifname,
       Client::GetDownstreamNetworkInfoCallback callback) override;
 
+  bool SendSetFeatureFlagRequest(Client::FeatureFlag flag,
+                                 bool enable) override;
+
   // Triggers registered handlers for NeighborReachabilityEvent.
   void TriggerNeighborReachabilityEvent(
       const Client::NeighborReachabilityEvent& signal);

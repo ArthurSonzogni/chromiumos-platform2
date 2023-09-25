@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <ostream>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -17,6 +18,7 @@
 #include <base/task/bind_post_task.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_proxy_util.h>
+#include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
@@ -144,6 +146,18 @@ ConvertDnsRedirectionRequestType(Client::DnsRedirectionRequestType type) {
       return patchpanel::SetDnsRedirectionRuleRequest::USER;
     case Client::DnsRedirectionRequestType::kExcludeDestination:
       return patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
+  }
+}
+
+patchpanel::SetFeatureFlagRequest::FeatureFlag ConvertFeatureFlag(
+    Client::FeatureFlag flag) {
+  switch (flag) {
+    case Client::FeatureFlag::kWiFiQoS:
+      return patchpanel::SetFeatureFlagRequest::FeatureFlag::
+          SetFeatureFlagRequest_FeatureFlag_WIFI_QOS;
+    case Client::FeatureFlag::kClat:
+      return patchpanel::SetFeatureFlagRequest::FeatureFlag::
+          SetFeatureFlagRequest_FeatureFlag_CLAT;
   }
 }
 
@@ -479,6 +493,15 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
+std::ostream& operator<<(std::ostream& stream, const Client::FeatureFlag flag) {
+  switch (flag) {
+    case Client::FeatureFlag::kWiFiQoS:
+      return stream << "WiFiQoS";
+    case Client::FeatureFlag::kClat:
+      return stream << "Clat";
+  }
+}
+
 // Prepares a pair of ScopedFDs corresponding to the write end (pair first
 // element) and read end (pair second element) of a Linux pipe. The client must
 // keep the write end alive until the setup requested from patchpanel is not
@@ -705,6 +728,8 @@ class ClientImpl : public Client {
   bool GetDownstreamNetworkInfo(
       const std::string& ifname,
       GetDownstreamNetworkInfoCallback callback) override;
+
+  bool SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) override;
 
  private:
   // Runs the |task| on the DBus thread synchronously.
@@ -1433,6 +1458,30 @@ bool ClientImpl::GetDownstreamNetworkInfo(
       },
       proxy_.get(), request,
       base::BindPostTaskToCurrentDefault(std::move(callback))));
+
+  return true;
+}
+
+bool ClientImpl::SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) {
+  SetFeatureFlagRequest request;
+  request.set_enabled(enable);
+  request.set_flag(ConvertFeatureFlag(flag));
+
+  SetFeatureFlagResponse response;
+  brillo::ErrorPtr error;
+
+  const bool result = RunOnDBusThreadSync(base::BindOnce(
+      [](PatchPanelProxyInterface* proxy, const SetFeatureFlagRequest& request,
+         SetFeatureFlagResponse* response, brillo::ErrorPtr* error) {
+        return proxy->SetFeatureFlag(request, response, error);
+      },
+      proxy_.get(), request, &response, &error));
+
+  if (!result) {
+    LOG(ERROR) << "Failed to set feature flag of " << flag << ": "
+               << error->GetMessage();
+    return false;
+  }
 
   return true;
 }

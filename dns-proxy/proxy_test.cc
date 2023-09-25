@@ -203,6 +203,10 @@ class MockPatchpanelClient : public patchpanel::Client {
               GetDownstreamNetworkInfo,
               (const std::string&,
                patchpanel::Client::GetDownstreamNetworkInfoCallback));
+  MOCK_METHOD(bool,
+              SendSetFeatureFlagRequest,
+              (FeatureFlag flag, bool enable),
+              (override));
 };
 
 class MockResolver : public Resolver {

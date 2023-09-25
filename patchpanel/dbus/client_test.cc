@@ -369,5 +369,22 @@ TEST_F(ClientTest, NeighborStatusName) {
             Client::NeighborStatusName(Client::NeighborStatus::kFailed));
 }
 
+TEST_F(ClientTest, SendSetFeatureFlagRequest) {
+  bool enable = true;
+  auto flag = patchpanel::SetFeatureFlagRequest::FeatureFlag::
+      SetFeatureFlagRequest_FeatureFlag_WIFI_QOS;
+
+  EXPECT_CALL(
+      *proxy_,
+      SetFeatureFlag(AllOf(Property(&SetFeatureFlagRequest::enabled, enable),
+                           Property(&SetFeatureFlagRequest::flag, flag)),
+                     _, _, _))
+      .WillOnce(Return(true));
+
+  const bool result =
+      client_->SendSetFeatureFlagRequest(Client::FeatureFlag::kWiFiQoS, true);
+  EXPECT_TRUE(result);
+}
+
 }  // namespace
 }  // namespace patchpanel
