@@ -279,7 +279,7 @@ class Platform2Test:
                     print("error: %s: %s" % (user, e), file=sys.stderr)
                     sys.exit(1)
 
-                return (acct.pw_name, acct.pw_uid, acct.pw_gid, acct.pw_dir)
+            return (acct.pw_name, acct.pw_uid, acct.pw_gid, acct.pw_dir)
 
         return (
             os.environ.get("SUDO_USER", "nobody"),
