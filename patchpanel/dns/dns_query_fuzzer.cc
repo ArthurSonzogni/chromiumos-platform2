@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/big_endian.h>
 #include <base/check.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "patchpanel/dns/big_endian.h"
 #include "patchpanel/dns/dns_query.h"
 #include "patchpanel/dns/io_buffer.h"
 

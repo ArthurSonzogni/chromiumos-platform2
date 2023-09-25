@@ -17,7 +17,6 @@ proto_library("patchpanel_ipc_protos") {
 
 executable("mcastd") {
   sources = [
-    "../dns/big_endian.cc",
     "../dns/dns_query.cc",
     "../dns/dns_response.cc",
     "../dns/dns_util.cc",

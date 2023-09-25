@@ -17,7 +17,6 @@ group("all") {
   ]
   if (use.fuzzer) {
     deps += [
-      ":big_endian_fuzzer",
       ":broadcast_forwarder_fuzzer",
       ":counters_service_fuzzer",
       ":datapath_fuzzer",
@@ -95,7 +94,6 @@ generate_dbus_adaptors("patchpanel_dbus_adaptors") {
 source_set("util_sources") {
   sources = [
     "address_manager.cc",
-    "dns/big_endian.cc",
     "dns/dns_query.cc",
     "dns/dns_response.cc",
     "dns/dns_util.cc",
@@ -177,16 +175,6 @@ executable("patchpaneld") {
 if (use.fuzzer) {
   pkg_config("fuzzing_config") {
     pkg_deps = [ "libchrome-test" ]
-  }
-
-  executable("big_endian_fuzzer") {
-    sources = [ "dns/big_endian_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":target_defaults",
-      ":fuzzing_config",
-    ]
-    deps = [ ":libpatchpanel" ]
   }
 
   executable("broadcast_forwarder_fuzzer") {
