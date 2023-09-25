@@ -1185,17 +1185,17 @@ void sl_handle_map_request(struct sl_context* ctx,
 
   window->managed = 1;
   if (window->frame_id == XCB_WINDOW_NONE)
-    geometry_cookie = xcb_get_geometry(ctx->connection, window->id);
+    geometry_cookie = xcb()->get_geometry(ctx->connection, window->id);
 
   for (unsigned i = 0; i < ARRAY_SIZE(properties); ++i) {
     property_cookies[i] =
-        xcb_get_property(ctx->connection, 0, window->id, properties[i].atom,
-                         XCB_ATOM_ANY, 0, 2048);
+        xcb()->get_property(ctx->connection, 0, window->id, properties[i].atom,
+                            XCB_ATOM_ANY, 0, 2048);
   }
 
   if (window->frame_id == XCB_WINDOW_NONE) {
     xcb_get_geometry_reply_t* geometry_reply =
-        xcb_get_geometry_reply(ctx->connection, geometry_cookie, nullptr);
+        xcb()->get_geometry_reply(ctx->connection, geometry_cookie, nullptr);
     if (geometry_reply) {
       window->x = geometry_reply->x;
       window->y = geometry_reply->y;
@@ -1219,8 +1219,8 @@ void sl_handle_map_request(struct sl_context* ctx,
   window->dark_frame = 0;
 
   for (unsigned i = 0; i < ARRAY_SIZE(properties); ++i) {
-    xcb_get_property_reply_t* reply =
-        xcb_get_property_reply(ctx->connection, property_cookies[i], nullptr);
+    xcb_get_property_reply_t* reply = xcb()->get_property_reply(
+        ctx->connection, property_cookies[i], nullptr);
 
     if (!reply)
       continue;
@@ -1240,8 +1240,8 @@ void sl_handle_map_request(struct sl_context* ctx,
         // present or not yet processed, thus window->name is null.
         if (!window->has_net_wm_name) {
           window->name =
-              strndup(static_cast<char*>(xcb_get_property_value(reply)),
-                      xcb_get_property_value_length(reply));
+              strndup(static_cast<char*>(xcb()->get_property_value(reply)),
+                      xcb()->get_property_value_length(reply));
           value = window->name;
         }
         break;
@@ -1254,8 +1254,8 @@ void sl_handle_map_request(struct sl_context* ctx,
         }
         window->has_net_wm_name = true;
         window->name =
-            strndup(static_cast<char*>(xcb_get_property_value(reply)),
-                    xcb_get_property_value_length(reply));
+            strndup(static_cast<char*>(xcb()->get_property_value(reply)),
+                    xcb()->get_property_value_length(reply));
         value = window->name;
         break;
       case PROPERTY_WM_CLASS:
@@ -1264,29 +1264,30 @@ void sl_handle_map_request(struct sl_context* ctx,
           value = "<invalid>";
         break;
       case PROPERTY_WM_TRANSIENT_FOR:
-        if (xcb_get_property_value_length(reply) >= 4) {
+        if (xcb()->get_property_value_length(reply) >= 4) {
           window->transient_for =
-              *(reinterpret_cast<uint32_t*>(xcb_get_property_value(reply)));
+              *(reinterpret_cast<uint32_t*>(xcb()->get_property_value(reply)));
           value_int = window->transient_for;
         }
         break;
       case PROPERTY_WM_NORMAL_HINTS:
-        if (xcb_get_property_value_length(reply) >=
+        if (xcb()->get_property_value_length(reply) >=
             static_cast<int>(sizeof(size_hints)))
-          memcpy(&size_hints, xcb_get_property_value(reply),
+          memcpy(&size_hints, xcb()->get_property_value(reply),
                  sizeof(size_hints));
         break;
       case PROPERTY_WM_CLIENT_LEADER:
-        if (xcb_get_property_value_length(reply) >= 4) {
+        if (xcb()->get_property_value_length(reply) >= 4) {
           window->client_leader =
-              *(reinterpret_cast<uint32_t*>(xcb_get_property_value(reply)));
+              *(reinterpret_cast<uint32_t*>(xcb()->get_property_value(reply)));
           value_int = window->client_leader;
         }
         break;
       case PROPERTY_WM_PROTOCOLS:
-        reply_atoms = static_cast<xcb_atom_t*>(xcb_get_property_value(reply));
+        reply_atoms =
+            static_cast<xcb_atom_t*>(xcb()->get_property_value(reply));
         for (unsigned j = 0;
-             j < xcb_get_property_value_length(reply) / sizeof(xcb_atom_t);
+             j < xcb()->get_property_value_length(reply) / sizeof(xcb_atom_t);
              ++j) {
           if (reply_atoms[j] == ctx->atoms[ATOM_WM_TAKE_FOCUS].value) {
             window->focus_model_take_focus = 1;
@@ -1295,20 +1296,22 @@ void sl_handle_map_request(struct sl_context* ctx,
         }
         break;
       case PROPERTY_MOTIF_WM_HINTS:
-        if (xcb_get_property_value_length(reply) >=
+        if (xcb()->get_property_value_length(reply) >=
             static_cast<int>(sizeof(mwm_hints)))
-          memcpy(&mwm_hints, xcb_get_property_value(reply), sizeof(mwm_hints));
+          memcpy(&mwm_hints, xcb()->get_property_value(reply),
+                 sizeof(mwm_hints));
         break;
       case PROPERTY_NET_STARTUP_ID:
         window->startup_id =
-            strndup(static_cast<char*>(xcb_get_property_value(reply)),
-                    xcb_get_property_value_length(reply));
+            strndup(static_cast<char*>(xcb()->get_property_value(reply)),
+                    xcb()->get_property_value_length(reply));
         value = window->startup_id;
         break;
       case PROPERTY_NET_WM_STATE:
-        reply_atoms = static_cast<xcb_atom_t*>(xcb_get_property_value(reply));
+        reply_atoms =
+            static_cast<xcb_atom_t*>(xcb()->get_property_value(reply));
         for (unsigned j = 0;
-             j < xcb_get_property_value_length(reply) / sizeof(xcb_atom_t);
+             j < xcb()->get_property_value_length(reply) / sizeof(xcb_atom_t);
              ++j) {
           if (reply_atoms[j] ==
               ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value) {
@@ -1339,9 +1342,9 @@ void sl_handle_map_request(struct sl_context* ctx,
         }
         break;
       case PROPERTY_GTK_THEME_VARIANT:
-        if (xcb_get_property_value_length(reply) >= 4)
+        if (xcb()->get_property_value_length(reply) >= 4)
           window->dark_frame = !strcmp(
-              static_cast<char*>(xcb_get_property_value(reply)), "dark");
+              static_cast<char*>(xcb()->get_property_value(reply)), "dark");
         break;
       case PROPERTY_SPECIFIED_FOR_APP_ID:
         sl_set_application_id_from_atom(ctx, window, reply);
@@ -1393,17 +1396,17 @@ void sl_handle_map_request(struct sl_context* ctx,
 
   // If startup ID is not set, then try the client leader window.
   if (!window->startup_id && window->client_leader) {
-    xcb_get_property_reply_t* reply = xcb_get_property_reply(
+    xcb_get_property_reply_t* reply = xcb()->get_property_reply(
         ctx->connection,
-        xcb_get_property(ctx->connection, 0, window->client_leader,
-                         ctx->atoms[ATOM_NET_STARTUP_ID].value, XCB_ATOM_ANY, 0,
-                         2048),
+        xcb()->get_property(ctx->connection, 0, window->client_leader,
+                            ctx->atoms[ATOM_NET_STARTUP_ID].value, XCB_ATOM_ANY,
+                            0, 2048),
         nullptr);
     if (reply) {
       if (reply->type != XCB_ATOM_NONE) {
         window->startup_id =
-            strndup(static_cast<char*>(xcb_get_property_value(reply)),
-                    xcb_get_property_value_length(reply));
+            strndup(static_cast<char*>(xcb()->get_property_value(reply)),
+                    xcb()->get_property_value_length(reply));
       }
       free(reply);
     }
@@ -1427,10 +1430,10 @@ void sl_handle_map_request(struct sl_context* ctx,
   values[0] = window->width;
   values[1] = window->height;
   values[2] = 0;
-  xcb_configure_window(ctx->connection, window->id,
-                       XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
-                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
-                       values);
+  xcb()->configure_window(ctx->connection, window->id,
+                          XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                              XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                          values);
   // This needs to match the frame extents of the X11 frame window used
   // for reparenting or applications tend to be confused. The actual window
   // frame size used by the host compositor can be different.
@@ -1438,14 +1441,14 @@ void sl_handle_map_request(struct sl_context* ctx,
   values[1] = 0;
   values[2] = 0;
   values[3] = 0;
-  xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE, window->id,
-                      ctx->atoms[ATOM_NET_FRAME_EXTENTS].value,
-                      XCB_ATOM_CARDINAL, 32, 4, values);
+  xcb()->change_property(ctx->connection, XCB_PROP_MODE_REPLACE, window->id,
+                         ctx->atoms[ATOM_NET_FRAME_EXTENTS].value,
+                         XCB_ATOM_CARDINAL, 32, 4, values);
 
   // Remove weird gravities.
   values[0] = XCB_GRAVITY_NORTH_WEST;
-  xcb_change_window_attributes(ctx->connection, window->id, XCB_CW_WIN_GRAVITY,
-                               values);
+  xcb()->change_window_attributes(ctx->connection, window->id,
+                                  XCB_CW_WIN_GRAVITY, values);
 
   if (window->frame_id == XCB_WINDOW_NONE) {
     int depth = window->depth ? window->depth : ctx->screen->root_depth;
@@ -1455,23 +1458,23 @@ void sl_handle_map_request(struct sl_context* ctx,
                 XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
     values[2] = ctx->colormaps[depth];
 
-    window->frame_id = xcb_generate_id(ctx->connection);
-    xcb_create_window(
+    window->frame_id = xcb()->generate_id(ctx->connection);
+    xcb()->create_window(
         ctx->connection, depth, window->frame_id, ctx->screen->root, window->x,
         window->y, window->width, window->height, 0,
         XCB_WINDOW_CLASS_INPUT_OUTPUT, ctx->visual_ids[depth],
         XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP, values);
     values[0] = XCB_STACK_MODE_BELOW;
-    xcb_configure_window(ctx->connection, window->frame_id,
-                         XCB_CONFIG_WINDOW_STACK_MODE, values);
-    xcb_reparent_window(ctx->connection, window->id, window->frame_id, 0, 0);
+    xcb()->configure_window(ctx->connection, window->frame_id,
+                            XCB_CONFIG_WINDOW_STACK_MODE, values);
+    xcb()->reparent_window(ctx->connection, window->id, window->frame_id, 0, 0);
   } else {
     values[0] = window->x;
     values[1] = window->y;
     values[2] = window->width;
     values[3] = window->height;
     values[4] = XCB_STACK_MODE_BELOW;
-    xcb_configure_window(
+    xcb()->configure_window(
         ctx->connection, window->frame_id,
         XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH |
             XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_STACK_MODE,
@@ -1481,8 +1484,8 @@ void sl_handle_map_request(struct sl_context* ctx,
   sl_window_set_wm_state(window, WM_STATE_NORMAL);
   sl_send_configure_notify(window);
 
-  xcb_map_window(ctx->connection, window->id);
-  xcb_map_window(ctx->connection, window->frame_id);
+  xcb()->map_window(ctx->connection, window->id);
+  xcb()->map_window(ctx->connection, window->frame_id);
 }
 
 static void sl_handle_map_notify(struct sl_context* ctx,
@@ -2161,15 +2164,15 @@ void sl_handle_property_notify(struct sl_context* ctx,
       atom = XCB_ATOM_WM_NAME;
 
     if (atom != XCB_ATOM_NONE) {
-      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+      xcb_get_property_reply_t* reply = xcb()->get_property_reply(
           ctx->connection,
-          xcb_get_property(ctx->connection, 0, window->id, atom, XCB_ATOM_ANY,
-                           0, 2048),
+          xcb()->get_property(ctx->connection, 0, window->id, atom,
+                              XCB_ATOM_ANY, 0, 2048),
           nullptr);
       if (reply) {
         window->name =
-            strndup(static_cast<char*>(xcb_get_property_value(reply)),
-                    xcb_get_property_value_length(reply));
+            strndup(static_cast<char*>(xcb()->get_property_value(reply)),
+                    xcb()->get_property_value_length(reply));
         free(reply);
 
         if (atom == ctx->atoms[ATOM_NET_WM_NAME].value) {
@@ -2192,10 +2195,10 @@ void sl_handle_property_notify(struct sl_context* ctx,
       return;
 
     xcb_get_property_cookie_t cookie =
-        xcb_get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_CLASS,
-                         XCB_ATOM_ANY, 0, 2048);
+        xcb()->get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_CLASS,
+                            XCB_ATOM_ANY, 0, 2048);
     xcb_get_property_reply_t* reply =
-        xcb_get_property_reply(ctx->connection, cookie, nullptr);
+        xcb()->get_property_reply(ctx->connection, cookie, nullptr);
     if (reply) {
       sl_decode_wm_class(window, reply);
       free(reply);
@@ -2209,11 +2212,11 @@ void sl_handle_property_notify(struct sl_context* ctx,
     // TODO(cpelling): Support other atom types (e.g. strings) if/when a use
     // case arises. The current use case is for cardinals (uint32) but this
     // is easy enough to extend later.
-    xcb_get_property_cookie_t cookie = xcb_get_property(
+    xcb_get_property_cookie_t cookie = xcb()->get_property(
         ctx->connection, 0, window->id, ctx->application_id_property_atom,
         XCB_ATOM_CARDINAL, 0, 1);
     xcb_get_property_reply_t* reply =
-        xcb_get_property_reply(ctx->connection, cookie, nullptr);
+        xcb()->get_property_reply(ctx->connection, cookie, nullptr);
     if (reply) {
       sl_set_application_id_from_atom(ctx, window, reply);
       sl_update_application_id(ctx, window);
@@ -2228,14 +2231,15 @@ void sl_handle_property_notify(struct sl_context* ctx,
 
     if (event->state != XCB_PROPERTY_DELETE) {
       struct sl_wm_size_hints size_hints = {0};
-      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+      xcb_get_property_reply_t* reply = xcb()->get_property_reply(
           ctx->connection,
-          xcb_get_property(ctx->connection, 0, window->id,
-                           XCB_ATOM_WM_NORMAL_HINTS, XCB_ATOM_ANY, 0,
-                           sizeof(size_hints)),
+          xcb()->get_property(ctx->connection, 0, window->id,
+                              XCB_ATOM_WM_NORMAL_HINTS, XCB_ATOM_ANY, 0,
+                              sizeof(size_hints)),
           nullptr);
       if (reply) {
-        memcpy(&size_hints, xcb_get_property_value(reply), sizeof(size_hints));
+        memcpy(&size_hints, xcb()->get_property_value(reply),
+               sizeof(size_hints));
         free(reply);
       }
       TRACE_EVENT("x11wm", "XCB_PROPERTY_NOTIFY: XCB_ATOM_WM_NORMAL_HINTS",
@@ -2286,15 +2290,15 @@ void sl_handle_property_notify(struct sl_context* ctx,
     if (event->state == XCB_PROPERTY_DELETE)
       return;
     struct sl_wm_hints wm_hints = {0};
-    xcb_get_property_reply_t* reply = xcb_get_property_reply(
+    xcb_get_property_reply_t* reply = xcb()->get_property_reply(
         ctx->connection,
-        xcb_get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_HINTS,
-                         XCB_ATOM_ANY, 0, sizeof(wm_hints)),
+        xcb()->get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_HINTS,
+                            XCB_ATOM_ANY, 0, sizeof(wm_hints)),
         nullptr);
 
     if (!reply)
       return;
-    memcpy(&wm_hints, xcb_get_property_value(reply), sizeof(wm_hints));
+    memcpy(&wm_hints, xcb()->get_property_value(reply), sizeof(wm_hints));
     free(reply);
 
     if (wm_hints.flags & WM_HINTS_FLAG_URGENCY) {
@@ -2310,16 +2314,17 @@ void sl_handle_property_notify(struct sl_context* ctx,
 
     if (event->state != XCB_PROPERTY_DELETE) {
       struct sl_mwm_hints mwm_hints = {0};
-      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+      xcb_get_property_reply_t* reply = xcb()->get_property_reply(
           ctx->connection,
-          xcb_get_property(ctx->connection, 0, window->id,
-                           ctx->atoms[ATOM_MOTIF_WM_HINTS].value, XCB_ATOM_ANY,
-                           0, sizeof(mwm_hints)),
+          xcb()->get_property(ctx->connection, 0, window->id,
+                              ctx->atoms[ATOM_MOTIF_WM_HINTS].value,
+                              XCB_ATOM_ANY, 0, sizeof(mwm_hints)),
           nullptr);
       if (reply) {
-        if (xcb_get_property_value_length(reply) >=
+        if (xcb()->get_property_value_length(reply) >=
             static_cast<int>(sizeof(mwm_hints))) {
-          memcpy(&mwm_hints, xcb_get_property_value(reply), sizeof(mwm_hints));
+          memcpy(&mwm_hints, xcb()->get_property_value(reply),
+                 sizeof(mwm_hints));
         }
         free(reply);
         if (mwm_hints.flags & MWM_HINTS_DECORATIONS) {
@@ -2350,16 +2355,16 @@ void sl_handle_property_notify(struct sl_context* ctx,
     window->dark_frame = 0;
 
     if (event->state != XCB_PROPERTY_DELETE) {
-      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+      xcb_get_property_reply_t* reply = xcb()->get_property_reply(
           ctx->connection,
-          xcb_get_property(ctx->connection, 0, window->id,
-                           ctx->atoms[ATOM_GTK_THEME_VARIANT].value,
-                           XCB_ATOM_ANY, 0, 2048),
+          xcb()->get_property(ctx->connection, 0, window->id,
+                              ctx->atoms[ATOM_GTK_THEME_VARIANT].value,
+                              XCB_ATOM_ANY, 0, 2048),
           nullptr);
       if (reply) {
-        if (xcb_get_property_value_length(reply) >= 4)
+        if (xcb()->get_property_value_length(reply) >= 4)
           window->dark_frame = !strcmp(
-              static_cast<char*>(xcb_get_property_value(reply)), "dark");
+              static_cast<char*>(xcb()->get_property_value(reply)), "dark");
         free(reply);
       }
     }
@@ -2372,36 +2377,36 @@ void sl_handle_property_notify(struct sl_context* ctx,
                                    frame_color);
   } else if (event->atom ==
              ctx->atoms[ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS].value) {
-    TRACE_EVENT("x11wm",
-                "XCB_PROPERTY_NOTIFY: _XWAYLAND_RANDR_EMU_MONITOR_RECTS",
-                [&](perfetto::EventContext p) {
-                  xcb_get_property_cookie_t cookie = xcb_get_property(
-                      ctx->connection, 0, event->window,
-                      ctx->atoms[ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS].value,
-                      XCB_ATOM_ANY, 0, 2048);
+    TRACE_EVENT(
+        "x11wm", "XCB_PROPERTY_NOTIFY: _XWAYLAND_RANDR_EMU_MONITOR_RECTS",
+        [&](perfetto::EventContext p) {
+          xcb_get_property_cookie_t cookie = xcb()->get_property(
+              ctx->connection, 0, event->window,
+              ctx->atoms[ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS].value,
+              XCB_ATOM_ANY, 0, 2048);
 
-                  perfetto_annotate_window(ctx, p, "window", event->window);
+          perfetto_annotate_window(ctx, p, "window", event->window);
 
-                  xcb_get_property_reply_t* reply =
-                      xcb_get_property_reply(ctx->connection, cookie, nullptr);
-                  perfetto_annotate_cardinal_list(p, "value", reply);
-                  free(reply);
-                });
+          xcb_get_property_reply_t* reply =
+              xcb()->get_property_reply(ctx->connection, cookie, nullptr);
+          perfetto_annotate_cardinal_list(p, "value", reply);
+          free(reply);
+        });
   } else if (event->atom == ctx->atoms[ATOM_WL_SELECTION].value) {
     if (event->window == ctx->selection_window &&
         event->state == XCB_PROPERTY_NEW_VALUE &&
         ctx->selection_incremental_transfer) {
-      xcb_get_property_reply_t* reply = xcb_get_property_reply(
+      xcb_get_property_reply_t* reply = xcb()->get_property_reply(
           ctx->connection,
-          xcb_get_property(ctx->connection, 0, ctx->selection_window,
-                           ctx->atoms[ATOM_WL_SELECTION].value,
-                           XCB_GET_PROPERTY_TYPE_ANY, 0, 0x1fffffff),
+          xcb()->get_property(ctx->connection, 0, ctx->selection_window,
+                              ctx->atoms[ATOM_WL_SELECTION].value,
+                              XCB_GET_PROPERTY_TYPE_ANY, 0, 0x1fffffff),
           nullptr);
 
       if (!reply)
         return;
 
-      if (xcb_get_property_value_length(reply) > 0) {
+      if (xcb()->get_property_value_length(reply) > 0) {
         sl_write_selection_property(ctx, reply);
       } else {
         assert(!ctx->selection_send_event_source);

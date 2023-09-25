@@ -641,8 +641,8 @@ void sl_window_update(struct sl_window* window) {
   }
 
   if (!window->depth) {
-    xcb_get_geometry_reply_t* geometry_reply = xcb_get_geometry_reply(
-        ctx->connection, xcb_get_geometry(ctx->connection, window->id),
+    xcb_get_geometry_reply_t* geometry_reply = xcb()->get_geometry_reply(
+        ctx->connection, xcb()->get_geometry(ctx->connection, window->id),
         nullptr);
     if (geometry_reply) {
       window->depth = geometry_reply->depth;
