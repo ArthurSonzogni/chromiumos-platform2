@@ -817,7 +817,8 @@ std::string Datapath::AddTunTap(
 void Datapath::RemoveTunTap(const std::string& ifname, DeviceMode dev_mode) {
   const std::string dev_mode_str =
       (dev_mode == DeviceMode::kTun) ? "tun" : "tap";
-  process_runner_->ip("tuntap", "del", {ifname, "mode", dev_mode_str});
+  process_runner_->ip("tuntap", "del", {ifname, "mode", dev_mode_str},
+                      /*as_patchpanel_user=*/true);
 }
 
 bool Datapath::ConnectVethPair(pid_t netns_pid,
@@ -917,7 +918,8 @@ bool Datapath::ConfigureInterface(const std::string& ifname,
 }
 
 void Datapath::RemoveInterface(const std::string& ifname) {
-  process_runner_->ip("link", "delete", {ifname}, /*log_failures=*/false);
+  process_runner_->ip("link", "delete", {ifname}, /*as_patchpanel_user=*/false,
+                      /*log_failures=*/false);
 }
 
 bool Datapath::AddSourceIPv4DropRule(const std::string& oif,

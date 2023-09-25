@@ -68,6 +68,7 @@ class MockProcessRunner : public MinijailedProcessRunner {
               (const std::string& obj,
                const std::string& cmd,
                const std::vector<std::string>& args,
+               bool as_patchpanel_user,
                bool log_failures),
               (override));
   MOCK_METHOD(int,
@@ -75,6 +76,7 @@ class MockProcessRunner : public MinijailedProcessRunner {
               (const std::string& obj,
                const std::string& cmd,
                const std::vector<std::string>& args,
+               bool as_patchpanel_user,
                bool log_failures),
               (override));
   MOCK_METHOD(int,
@@ -157,7 +159,7 @@ void Verify_ip(MockProcessRunner& runner, const std::string& args) {
   argv.erase(argv.begin());
   argv.erase(argv.begin());
   EXPECT_CALL(runner,
-              ip(StrEq(object), StrEq(action), ElementsAreArray(argv), _));
+              ip(StrEq(object), StrEq(action), ElementsAreArray(argv), _, _));
 }
 
 void Verify_ip6(MockProcessRunner& runner, const std::string& args) {
@@ -167,7 +169,7 @@ void Verify_ip6(MockProcessRunner& runner, const std::string& args) {
   argv.erase(argv.begin());
   argv.erase(argv.begin());
   EXPECT_CALL(runner,
-              ip6(StrEq(object), StrEq(action), ElementsAreArray(argv), _));
+              ip6(StrEq(object), StrEq(action), ElementsAreArray(argv), _, _));
 }
 
 void Verify_iptables(MockProcessRunner& runner,
@@ -1197,7 +1199,7 @@ TEST(DatapathTest, StopDownstreamTetheredNetwork) {
                   "mangle -D PREROUTING -i ap0 -j PREROUTING_ap0 -w");
   Verify_iptables(*runner, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
   Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_ap0 -w");
-  EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip(_, _, _, _, _)).Times(0);
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kTethering;

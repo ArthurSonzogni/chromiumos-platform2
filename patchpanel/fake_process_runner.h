@@ -26,7 +26,9 @@ class FakeProcessRunner : public MinijailedProcessRunner {
 
   ~FakeProcessRunner() = default;
 
-  int RunIp(const std::vector<std::string>& argv, bool log_failures) override {
+  int RunIp(const std::vector<std::string>& argv,
+            bool as_patchpanel_user,
+            bool log_failures) override {
     if (capture_)
       runs_->emplace_back(base::JoinString(argv, " "));
     if (run_override_)

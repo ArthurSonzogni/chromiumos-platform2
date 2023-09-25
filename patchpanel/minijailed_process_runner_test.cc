@@ -104,7 +104,7 @@ TEST_F(MinijailProcessRunnerTest, modprobe_all) {
 TEST_F(MinijailProcessRunnerTest, ip) {
   uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
   EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("patchpaneld"), StrEq("patchpaneld")))
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(mj_, RunPipesAndDestroy(
@@ -121,7 +121,7 @@ TEST_F(MinijailProcessRunnerTest, ip) {
 TEST_F(MinijailProcessRunnerTest, ip6) {
   uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
   EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("patchpaneld"), StrEq("patchpaneld")))
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(
@@ -134,6 +134,23 @@ TEST_F(MinijailProcessRunnerTest, ip6) {
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
   EXPECT_TRUE(runner_->ip6("obj", "cmd", {"arg1", "arg2"}));
+}
+
+TEST_F(MinijailProcessRunnerTest, RunIPAsPatchpanel) {
+  uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, DropRoot(_, StrEq("patchpaneld"), StrEq("patchpaneld")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+  EXPECT_CALL(mj_, RunPipesAndDestroy(
+                       _,
+                       ElementsAre(StrEq("/bin/ip"), StrEq("obj"), StrEq("cmd"),
+                                   StrEq("arg1"), StrEq("arg2"), nullptr),
+                       _, nullptr, _, _));
+  EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
+
+  EXPECT_TRUE(runner_->ip("obj", "cmd", {"arg1", "arg2"}, true));
 }
 
 TEST_F(MinijailProcessRunnerTest, iptables) {
