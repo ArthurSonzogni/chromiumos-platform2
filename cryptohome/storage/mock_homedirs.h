@@ -65,7 +65,6 @@ class MockHomeDirs : public HomeDirs {
 
   MOCK_METHOD(bool, SetLockedToSingleUser, (), (const, override));
   MOCK_METHOD(std::vector<HomeDir>, GetHomeDirs, (), (override));
-  MOCK_METHOD(void, set_enterprise_owned, (bool), (override));
   MOCK_METHOD(bool, enterprise_owned, (), (const, override));
 };
 

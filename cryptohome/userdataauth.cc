@@ -1531,7 +1531,6 @@ void UserDataAuth::SetEnterpriseOwned(bool enterprise_owned) {
   AssertOnMountThread();
 
   enterprise_owned_ = enterprise_owned;
-  homedirs_->set_enterprise_owned(enterprise_owned);
 }
 
 void UserDataAuth::DetectEnterpriseOwnership() {

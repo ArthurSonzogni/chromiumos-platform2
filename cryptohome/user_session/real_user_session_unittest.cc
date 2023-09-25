@@ -185,7 +185,6 @@ class RealUserSessionTest : public ::testing::Test {
   }
 
   void PreparePolicy(bool enterprise_owned, const std::string& owner) {
-    homedirs_->set_enterprise_owned(enterprise_owned);
     EXPECT_CALL(device_management_client_, IsEnterpriseOwned())
         .WillRepeatedly(Return(enterprise_owned));
     EXPECT_CALL(*mock_device_policy_,

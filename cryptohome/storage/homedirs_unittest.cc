@@ -272,7 +272,6 @@ TEST_P(HomeDirsTest,
   EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
       .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
 
-  homedirs_->set_enterprise_owned(true);
   EXPECT_CALL(device_management_client_, IsEnterpriseOwned())
       .WillRepeatedly(Return(true));
   auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();

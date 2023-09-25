@@ -179,9 +179,7 @@ class HomeDirs {
   // Get the list of cryptohomes on the system.
   virtual std::vector<HomeDir> GetHomeDirs();
 
-  // Accessors. Mostly used for unit testing. These do not take ownership of
-  // passed-in pointers.
-  virtual void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
+  // Fetch the status of whether the device is enterprise owned or not.
   virtual bool enterprise_owned() const;
 
   virtual void set_lvm_migration_enabled(bool value) {

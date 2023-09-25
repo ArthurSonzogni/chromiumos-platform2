@@ -4623,8 +4623,6 @@ TEST_F(UserDataAuthTestThreaded, DetectEnterpriseOwnership) {
   EXPECT_CALL(*attrs_, Get("enterprise.owned", _))
       .WillOnce(DoAll(SetArgPointee<1>(true_value), Return(true)));
 
-  EXPECT_CALL(homedirs_, set_enterprise_owned(true)).WillOnce(Return());
-
   InitializeUserDataAuth();
 }
 
