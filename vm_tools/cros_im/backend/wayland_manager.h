@@ -15,7 +15,6 @@ struct zcr_extended_text_input_v1_listener;
 struct zcr_text_input_crostini_manager_v1;
 struct zcr_text_input_crostini_v1;
 struct zcr_text_input_extension_v1;
-struct zcr_text_input_x11_v1;
 struct zwp_text_input_manager_v1;
 struct zwp_text_input_v1;
 struct zwp_text_input_v1_listener;
@@ -68,7 +67,6 @@ class WaylandManager {
 
   // Once initialized, these are not expected to change.
   wl_seat* GetSeat() { return wl_seat_; }
-  zcr_text_input_x11_v1* GetTextInputX11() { return text_input_x11_; }
   int GetTextInputExtensionVersion() { return text_input_extension_version_; }
   int GetTextInputCrostiniVersion() { return text_input_crostini_version_; }
 
@@ -104,9 +102,6 @@ class WaylandManager {
   // For support provided by sommelier.
   zcr_text_input_crostini_manager_v1* text_input_crostini_manager_ = nullptr;
   uint32_t text_input_crostini_manager_id_ = 0;
-  // TODO(timloh): Replaced by text_input_crostini, remove after M118 branches
-  zcr_text_input_x11_v1* text_input_x11_ = nullptr;
-  uint32_t text_input_x11_id_ = 0;
 
   int text_input_extension_version_ = 0;
   int text_input_crostini_version_ = 0;

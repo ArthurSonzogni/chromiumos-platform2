@@ -181,15 +181,6 @@ void WaylandManager::OnGlobal(wl_registry* registry,
             registry, name, &zcr_text_input_crostini_manager_v1_interface,
             text_input_crostini_version_));
     text_input_crostini_manager_id_ = name;
-  } else if (interface == "zcr_text_input_x11_v1") {
-    if (!text_input_crostini_manager_) {
-      assert(!text_input_x11_);
-      assert(version >= kTextInputX11Version);
-      text_input_x11_ = reinterpret_cast<zcr_text_input_x11_v1*>(
-          wl_registry_bind(registry, name, &zcr_text_input_x11_v1_interface,
-                           kTextInputX11Version));
-      text_input_x11_id_ = name;
-    }
   }
 }
 
@@ -206,10 +197,6 @@ void WaylandManager::OnGlobalRemove(wl_registry* registry, uint32_t name) {
     LOG(WARNING) << "The global zcr_text_input_extension_v1 was removed.";
     text_input_extension_ = nullptr;
     text_input_extension_id_ = 0;
-  } else if (name == text_input_x11_id_) {
-    LOG(WARNING) << "The global zcr_text_input_x11_v1 was removed.";
-    text_input_x11_ = nullptr;
-    text_input_x11_id_ = 0;
   } else if (name == text_input_crostini_manager_id_) {
     LOG(WARNING)
         << "The global zcr_text_input_crostini_manager_v1 was removed.";
@@ -231,14 +218,8 @@ WaylandManager::~WaylandManager() {
 }
 
 bool WaylandManager::IsInitialized() const {
-  if (!(wl_seat_ && text_input_manager_ && text_input_extension_))
-    return false;
-
-  if (app_type_ == AppType::kX11 && !text_input_crostini_manager_ &&
-      !text_input_x11_)
-    return false;
-
-  return true;
+  return wl_seat_ && text_input_manager_ && text_input_extension_ &&
+         text_input_crostini_manager_;
 }
 
 }  // namespace cros_im

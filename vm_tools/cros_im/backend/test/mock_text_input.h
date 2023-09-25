@@ -162,18 +162,6 @@ void zcr_extended_text_input_v1_set_input_type(
 void zcr_extended_text_input_v1_set_surrounding_text_support(
     zcr_extended_text_input_v1*, uint32_t support);
 
-// Mocks for zcr_text_input_x11_v1
-
-struct zcr_text_input_x11_v1_listener;
-struct zcr_text_input_x11_v1;
-
-extern const wl_interface zcr_text_input_x11_v1_interface;
-
-void zcr_text_input_x11_v1_activate(zcr_text_input_x11_v1*,
-                                    zwp_text_input_v1*,
-                                    wl_seat*,
-                                    uint32_t x11_id);
-
 // Mocks for zcr_text_input_crostini_v1
 
 struct zcr_text_input_crostini_v1 {

@@ -39,7 +39,8 @@ void wl_registry_add_listener(wl_registry* registry,
                    /*version=*/1);
   listener->global(data, registry, /*name=*/0, "zcr_text_input_extension_v1",
                    /*version=*/9);
-  listener->global(data, registry, /*name=*/0, "zcr_text_input_x11_v1",
+  listener->global(data, registry, /*name=*/0,
+                   "zcr_text_input_crostini_manager_v1",
                    /*version=*/1);
 }
 
