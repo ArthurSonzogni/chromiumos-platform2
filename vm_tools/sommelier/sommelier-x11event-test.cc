@@ -60,5 +60,54 @@ TEST_F(X11EventTest, MapRequestGetsWmName) {
   EXPECT_EQ(window->name, windowName);
 }
 
+TEST_F(X11EventTest, ListensToWmNameChanges) {
+  std::string windowName("Fred");
+  xcb.DelegateToFake();
+  sl_window* window = CreateWindowWithoutRole();
+  xcb.create_window(nullptr, 32, window->id, XCB_WINDOW_NONE, 0, 0, 800, 600, 0,
+                    XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT, 0,
+                    nullptr);
+  xcb.change_property(nullptr, XCB_PROP_MODE_REPLACE, window->id,
+                      XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, windowName.size(),
+                      windowName.c_str());
+
+  xcb_property_notify_event_t event;
+  event.response_type = XCB_PROPERTY_NOTIFY;
+  event.window = window->id;
+  event.atom = XCB_ATOM_WM_NAME;
+  event.state = XCB_PROPERTY_NEW_VALUE;
+  sl_handle_property_notify(&ctx, &event);
+
+  EXPECT_EQ(window->name, windowName);
+}
+
+TEST_F(X11EventTest, NetWmNameOverridesWmname) {
+  std::string boringWindowName("Fred");
+  std::string fancyWindowName("I ♥️ Unicode 🦄🌈");
+  xcb.DelegateToFake();
+  sl_window* window = CreateWindowWithoutRole();
+  xcb.create_window(nullptr, 32, window->id, XCB_WINDOW_NONE, 0, 0, 800, 600, 0,
+                    XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT, 0,
+                    nullptr);
+  xcb.change_property(nullptr, XCB_PROP_MODE_REPLACE, window->id,
+                      XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
+                      boringWindowName.size(), boringWindowName.c_str());
+  xcb.change_property(nullptr, XCB_PROP_MODE_REPLACE, window->id,
+                      ctx.atoms[ATOM_NET_WM_NAME].value, XCB_ATOM_STRING, 8,
+                      fancyWindowName.size(), fancyWindowName.c_str());
+
+  xcb_property_notify_event_t event;
+  event.response_type = XCB_PROPERTY_NOTIFY;
+  event.window = window->id;
+  event.atom = XCB_ATOM_WM_NAME;
+  event.state = XCB_PROPERTY_NEW_VALUE;
+  sl_handle_property_notify(&ctx, &event);
+
+  event.atom = ctx.atoms[ATOM_NET_WM_NAME].value;
+  sl_handle_property_notify(&ctx, &event);
+
+  EXPECT_EQ(window->name, fancyWindowName);
+}
+
 }  // namespace sommelier
 }  // namespace vm_tools
