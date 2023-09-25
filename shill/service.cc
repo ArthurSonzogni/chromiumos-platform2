@@ -2022,7 +2022,9 @@ bool Service::IsPortalDetectionDisabled() const {
   // manager, since we don't have the ability to evaluate arbitrary proxy
   // configs and their possible credentials. One possible scenario for the case
   // is an on-prem proxy server with a strict firewall that blocks portal
-  // detection probes. See also b/279520395.
+  // detection probes. As we don't check for proxy configurations, non-policy
+  // defined networks that have connectivity only through proxy can be
+  // mistakenly reported as not online. See also b/279520395.
   if (source_ == ONCSource::kONCSourceDevicePolicy ||
       source_ == ONCSource::kONCSourceUserPolicy) {
     return true;
