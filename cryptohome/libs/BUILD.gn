@@ -573,6 +573,7 @@ static_library("libcrostpm") {
     "../cryptohome_key_loader.cc",
     "../cryptohome_keys_manager.cc",
     "../firmware_management_parameters.cc",
+    "../firmware_management_parameters_proxy.cc",
     "../install_attributes.cc",
     "../install_attributes_proxy.cc",
     "../key_objects.cc",
