@@ -3,10 +3,11 @@
 // found in the LICENSE file.
 
 #include "cryptohome/mock_install_attributes.h"
+#include "cryptohome/install_attributes_interface.h"
 
 namespace cryptohome {
 
-MockInstallAttributes::MockInstallAttributes() : InstallAttributes() {}
+MockInstallAttributes::MockInstallAttributes() : InstallAttributesInterface() {}
 MockInstallAttributes::~MockInstallAttributes() {}
 
 }  // namespace cryptohome

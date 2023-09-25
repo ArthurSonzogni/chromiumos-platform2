@@ -1318,11 +1318,12 @@ TEST_F(UserDataAuthTest, InstallAttributesIsSecure) {
 }
 
 TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
-  std::vector<InstallAttributes::Status> status_list = {
-      InstallAttributes::Status::kUnknown,
-      InstallAttributes::Status::kTpmNotOwned,
-      InstallAttributes::Status::kFirstInstall,
-      InstallAttributes::Status::kValid, InstallAttributes::Status::kInvalid};
+  std::vector<InstallAttributesInterface::Status> status_list = {
+      InstallAttributesInterface::Status::kUnknown,
+      InstallAttributesInterface::Status::kTpmNotOwned,
+      InstallAttributesInterface::Status::kFirstInstall,
+      InstallAttributesInterface::Status::kValid,
+      InstallAttributesInterface::Status::kInvalid};
 
   for (auto& s : status_list) {
     EXPECT_CALL(*attrs_, status()).WillOnce(Return(s));
@@ -1333,24 +1334,25 @@ TEST_F(UserDataAuthTest, InstallAttributesGetStatus) {
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesStatusToProtoEnum) {
   EXPECT_EQ(user_data_auth::InstallAttributesState::UNKNOWN,
             UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributes::Status::kUnknown));
+                InstallAttributesInterface::Status::kUnknown));
   EXPECT_EQ(user_data_auth::InstallAttributesState::TPM_NOT_OWNED,
             UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributes::Status::kTpmNotOwned));
+                InstallAttributesInterface::Status::kTpmNotOwned));
   EXPECT_EQ(user_data_auth::InstallAttributesState::FIRST_INSTALL,
             UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributes::Status::kFirstInstall));
+                InstallAttributesInterface::Status::kFirstInstall));
   EXPECT_EQ(user_data_auth::InstallAttributesState::VALID,
             UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributes::Status::kValid));
+                InstallAttributesInterface::Status::kValid));
   EXPECT_EQ(user_data_auth::InstallAttributesState::INVALID,
             UserDataAuth::InstallAttributesStatusToProtoEnum(
-                InstallAttributes::Status::kInvalid));
+                InstallAttributesInterface::Status::kInvalid));
   static_assert(
       user_data_auth::InstallAttributesState_MAX == 4,
       "Incorrect element count in user_data_auth::InstallAttributesState");
-  static_assert(static_cast<int>(InstallAttributes::Status::COUNT) == 5,
-                "Incorrect element count in InstallAttributes::Status");
+  static_assert(
+      static_cast<int>(InstallAttributesInterface::Status::COUNT) == 5,
+      "Incorrect element count in InstallAttributesInterface::Status");
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity) {

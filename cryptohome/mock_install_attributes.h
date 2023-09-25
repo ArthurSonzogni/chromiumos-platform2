@@ -5,8 +5,12 @@
 #ifndef CRYPTOHOME_MOCK_INSTALL_ATTRIBUTES_H_
 #define CRYPTOHOME_MOCK_INSTALL_ATTRIBUTES_H_
 
-#include "cryptohome/install_attributes.h"
+#include "cryptohome/install_attributes_interface.h"
 
+#include <device_management/proto_bindings/device_management_interface.pb.h>
+#include <device_management-client/device_management/dbus-proxies.h>
+
+#include <memory>
 #include <string>
 
 #include <brillo/secure_blob.h>
@@ -14,7 +18,7 @@
 
 namespace cryptohome {
 
-class MockInstallAttributes : public InstallAttributes {
+class MockInstallAttributes : public InstallAttributesInterface {
  public:
   MockInstallAttributes();
   virtual ~MockInstallAttributes();
@@ -24,15 +28,15 @@ class MockInstallAttributes : public InstallAttributes {
               Get,
               (const std::string&, brillo::Blob*),
               (const, override));
-  MOCK_METHOD(bool,
-              GetByIndex,
-              (int, std::string*, brillo::Blob*),
-              (const, override));
   MOCK_METHOD(bool, Set, (const std::string&, const brillo::Blob&), (override));
   MOCK_METHOD(bool, Finalize, (), (override));
   MOCK_METHOD(int, Count, (), (const, override));
   MOCK_METHOD(bool, IsSecure, (), (override));
-  MOCK_METHOD(InstallAttributes::Status, status, (), (const, override));
+  MOCK_METHOD(InstallAttributesInterface::Status, status, (), (override));
+  MOCK_METHOD(void,
+              SetDeviceManagementProxy,
+              (std::unique_ptr<org::chromium::DeviceManagementProxy> proxy),
+              (override));
 };
 
 }  // namespace cryptohome

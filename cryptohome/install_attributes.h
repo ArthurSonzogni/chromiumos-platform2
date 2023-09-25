@@ -18,6 +18,7 @@
 #include <libhwsec/frontend/cryptohome/frontend.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/install_attributes_interface.h"
 #include "cryptohome/lockbox.h"
 #include "cryptohome/platform.h"
 
@@ -31,18 +32,8 @@ namespace cryptohome {
 // until the next install.
 //
 // InstallAttributes is not thread-safe and should not be accessed in parallel.
-class InstallAttributes {
+class InstallAttributes : public InstallAttributesInterface {
  public:
-  enum class Status {
-    kUnknown,       // Not initialized yet.
-    kTpmNotOwned,   // TPM not owned yet.
-    kFirstInstall,  // Allows writing.
-    kValid,         // Validated successfully.
-    kInvalid,       // Not valid, e.g. clobbered, absent.
-    COUNT,          // This is unused, just for counting the number of elements.
-                    // Note that COUNT should always be the last element.
-  };
-
   class Observer : public base::CheckedObserver {
    public:
     virtual void OnFinalized() = 0;
@@ -56,14 +47,14 @@ class InstallAttributes {
 
   virtual ~InstallAttributes();
 
-  virtual Status status() const { return status_; }
+  Status status() override { return status_; }
 
   // Sets status (for testing).
   void set_status_for_testing(Status status) { status_ = status; }
 
   // Prepares the class for use including instantiating a new environment
   // if needed.
-  [[nodiscard]] virtual bool Init();
+  [[nodiscard]] bool Init() override;
 
   // Populates |value| based on the content referenced by |name|.
   //
@@ -72,20 +63,8 @@ class InstallAttributes {
   // - value: pointer to a Blob to populate with the value, if found.
   // Returns true if |name| exists in the store and |value| will be populated.
   // Returns false if the |name| does not exist.
-  [[nodiscard]] virtual bool Get(const std::string& name,
-                                 brillo::Blob* value) const;
-
-  // Populates |name| and |value| based on the content referenced by |index|.
-  //
-  // Parameters
-  // - index: 0-addressable index of the desired entry.
-  // - name: addressable name of the entry to retrieve
-  // - value: pointer to a Blob to populate with the value, if found.
-  // Returns true if |index| exists in the store.
-  // Returns false if the |index| does not exist.
-  [[nodiscard]] virtual bool GetByIndex(int index,
-                                        std::string* name,
-                                        brillo::Blob* value) const;
+  [[nodiscard]] bool Get(const std::string& name,
+                         brillo::Blob* value) const override;
 
   // Appends |name| and |value| as an attribute pair to the internal store.
   //
@@ -94,17 +73,21 @@ class InstallAttributes {
   // - value: Blob of data to store with |name|.
   // Returns true if the association can be stored, and false if it can't.
   // If the given |name| already exists, it will be replaced.
-  [[nodiscard]] virtual bool Set(const std::string& name,
-                                 const brillo::Blob& value);
+  [[nodiscard]] bool Set(const std::string& name,
+                         const brillo::Blob& value) override;
 
   // Finalizes the install-time attributes making them tamper-evident.
-  [[nodiscard]] virtual bool Finalize();
+  [[nodiscard]] bool Finalize() override;
 
   // Returns the number of entries in the Lockbox.
-  virtual int Count() const;
+  int Count() const override;
 
   // Indicates if there is hardware protection or not.
-  virtual bool IsSecure();
+  bool IsSecure() override;
+
+  // No-op in legacy install_attributes.
+  void SetDeviceManagementProxy(
+      std::unique_ptr<org::chromium::DeviceManagementProxy> proxy) override{};
 
   // Return InstallAttributes version.
   // This is populated from the default value in install_attributes.proto and
@@ -151,6 +134,17 @@ class InstallAttributes {
   bool ClearData();
 
  private:
+  // Populates |name| and |value| based on the content referenced by |index|.
+  //
+  // Parameters
+  // - index: 0-addressable index of the desired entry.
+  // - name: addressable name of the entry to retrieve
+  // - value: pointer to a Blob to populate with the value, if found.
+  // Returns true if |index| exists in the store.
+  // Returns false if the |index| does not exist.
+  [[nodiscard]] bool GetByIndex(int index,
+                                std::string* name,
+                                brillo::Blob* value) const;
   Platform* const platform_ = nullptr;
   const hwsec::CryptohomeFrontend* const hwsec_ = nullptr;
   Status status_ = Status::kUnknown;

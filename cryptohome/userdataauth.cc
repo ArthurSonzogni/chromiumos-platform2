@@ -41,6 +41,8 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus_adaptors/org.chromium.UserDataAuth.h>
+#include <device_management/proto_bindings/device_management_interface.pb.h>
+#include <device_management-client/device_management/dbus-proxies.h>
 #include <featured/feature_library.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/status.h>
@@ -805,6 +807,10 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
                         base::BindOnce(&UserDataAuth::CreateMountThreadDBus,
                                        base::Unretained(this)));
 
+  PostTaskToMountThread(FROM_HERE,
+                        base::BindOnce(&UserDataAuth::SetDeviceManagementProxy,
+                                       base::Unretained(this)));
+
   // If the TPM is unowned or doesn't exist, it's safe for
   // this function to be called again. However, it shouldn't
   // be called across multiple threads in parallel.
@@ -879,6 +885,15 @@ void UserDataAuth::InitializeFeatureLibrary() {
       LOG(WARNING) << "Failed to determine USS migration experiment flag";
       return;
     }
+  }
+}
+
+void UserDataAuth::SetDeviceManagementProxy() {
+  AssertOnMountThread();
+  if (install_attrs_) {
+    install_attrs_->SetDeviceManagementProxy(
+        std::make_unique<org::chromium::DeviceManagementProxy>(
+            mount_thread_bus_));
   }
 }
 
@@ -1525,8 +1540,9 @@ void UserDataAuth::InitializeInstallAttributes() {
   AssertOnMountThread();
 
   // Don't reinitialize when install attributes are valid or first install.
-  if (install_attrs_->status() == InstallAttributes::Status::kValid ||
-      install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
+  if (install_attrs_->status() == InstallAttributesInterface::Status::kValid ||
+      install_attrs_->status() ==
+          InstallAttributesInterface::Status::kFirstInstall) {
     return;
   }
 
@@ -2002,7 +2018,7 @@ bool UserDataAuth::InstallAttributesIsSecure() {
   return install_attrs_->IsSecure();
 }
 
-InstallAttributes::Status UserDataAuth::InstallAttributesGetStatus() {
+InstallAttributesInterface::Status UserDataAuth::InstallAttributesGetStatus() {
   AssertOnMountThread();
   return install_attrs_->status();
 }
@@ -2010,18 +2026,18 @@ InstallAttributes::Status UserDataAuth::InstallAttributesGetStatus() {
 // static
 user_data_auth::InstallAttributesState
 UserDataAuth::InstallAttributesStatusToProtoEnum(
-    InstallAttributes::Status status) {
-  static const std::unordered_map<InstallAttributes::Status,
+    InstallAttributesInterface::Status status) {
+  static const std::unordered_map<InstallAttributesInterface::Status,
                                   user_data_auth::InstallAttributesState>
-      state_map = {{InstallAttributes::Status::kUnknown,
+      state_map = {{InstallAttributesInterface::Status::kUnknown,
                     user_data_auth::InstallAttributesState::UNKNOWN},
-                   {InstallAttributes::Status::kTpmNotOwned,
+                   {InstallAttributesInterface::Status::kTpmNotOwned,
                     user_data_auth::InstallAttributesState::TPM_NOT_OWNED},
-                   {InstallAttributes::Status::kFirstInstall,
+                   {InstallAttributesInterface::Status::kFirstInstall,
                     user_data_auth::InstallAttributesState::FIRST_INSTALL},
-                   {InstallAttributes::Status::kValid,
+                   {InstallAttributesInterface::Status::kValid,
                     user_data_auth::InstallAttributesState::VALID},
-                   {InstallAttributes::Status::kInvalid,
+                   {InstallAttributesInterface::Status::kInvalid,
                     user_data_auth::InstallAttributesState::INVALID}};
   if (state_map.count(status) != 0) {
     return state_map.at(status);
@@ -2621,7 +2637,8 @@ void UserDataAuth::PreMountHook(const ObfuscatedUsername& obfuscated_username) {
   // Any non-guest mount attempt triggers InstallAttributes finalization.
   // The return value is ignored as it is possible we're pre-ownership.
   // The next login will assure finalization if possible.
-  if (install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
+  if (install_attrs_->status() ==
+      InstallAttributesInterface::Status::kFirstInstall) {
     std::ignore = install_attrs_->Finalize();
   }
   // Removes all ephemeral cryptohomes owned by anyone other than the owner

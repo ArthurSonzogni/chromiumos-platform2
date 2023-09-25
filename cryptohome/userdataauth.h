@@ -45,6 +45,7 @@
 #include "cryptohome/firmware_management_parameters.h"
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
 #include "cryptohome/install_attributes.h"
+#include "cryptohome/install_attributes_interface.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/keyset_management.h"
@@ -278,12 +279,12 @@ class UserDataAuth {
   bool InstallAttributesIsSecure();
 
   // Return the current status of the install attributes.
-  InstallAttributes::Status InstallAttributesGetStatus();
+  InstallAttributesInterface::Status InstallAttributesGetStatus();
 
   // Convert the InstallAttributes::Status enum to
   // user_data_auth::InstallAttributesState protobuf enum.
   static user_data_auth::InstallAttributesState
-  InstallAttributesStatusToProtoEnum(InstallAttributes::Status status);
+  InstallAttributesStatusToProtoEnum(InstallAttributesInterface::Status status);
 
   // =============== Install Attributes Related Utilities ===============
 
@@ -513,7 +514,7 @@ class UserDataAuth {
   }
 
   // Override |install_attrs_| for testing purpose
-  void set_install_attrs(InstallAttributes* install_attrs) {
+  void set_install_attrs(InstallAttributesInterface* install_attrs) {
     install_attrs_ = install_attrs;
   }
 
@@ -831,6 +832,9 @@ class UserDataAuth {
   // can only be called on origin thread.
   void InitializeInstallAttributes();
 
+  // Method to set device_management_proxy to install_attributes interface.
+  void SetDeviceManagementProxy();
+
   // =============== Stateful Recovery related Helpers ===============
 
   // Ensures BootLockbox is finalized;
@@ -1039,12 +1043,12 @@ class UserDataAuth {
 
   // The default install attributes object, for accessing install attributes
   // related functionality.
-  std::unique_ptr<InstallAttributes> default_install_attrs_;
+  std::unique_ptr<InstallAttributesInterface> default_install_attrs_;
 
   // The actual install attributes object used by this class, usually set to
   // |default_install_attrs_|, but can be overridden for testing. This object
   // should only be accessed on the origin thread.
-  InstallAttributes* install_attrs_;
+  InstallAttributesInterface* install_attrs_;
 
   // Whether this device is an enterprise owned device. Write access should only
   // happen on mount thread.
