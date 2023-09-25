@@ -10,13 +10,11 @@ namespace {
 
 // Landlock allowlisted paths.
 constexpr base::StringPiece kAllowedPaths[] = {
-    "/dev",       "/home/chronos",
-    "/home/user", "/media",
-    "/mnt",       "/proc",
-    "/run",       "/sys/fs/cgroup/",
-    "/tmp",       "/var/cache",
-    "/var/lib",   "/var/lock",
-    "/var/log",   "/var/spool/support",
+    "/dev",      "/home/chronos", "/home/user",
+    "/media",    "/mnt",          "/opt",
+    "/proc",     "/run",          "/sys/fs/cgroup/",
+    "/tmp",      "/var/cache",    "/var/lib",
+    "/var/lock", "/var/log",      "/var/spool/support",
     "/var/tmp"};
 
 constexpr char kRootPath[] = "/";
