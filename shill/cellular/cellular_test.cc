@@ -97,6 +97,11 @@ namespace {
 MATCHER_P(IsWeakPtrTo, address, "") {
   return arg.get() == address;
 }
+MATCHER_P(KeyValueStoreHasApn, expected_apn, "") {
+  return arg.template Contains<std::string>(CellularBearer::kMMApnProperty) &&
+         expected_apn ==
+             arg.template Get<std::string>(CellularBearer::kMMApnProperty);
+}
 constexpr int kTestInterfaceIndex = 3;
 constexpr char kTestInterfaceName[] = "wwan0";
 constexpr char kTestInterfaceAddress[] = "00:01:02:03:04:05";
@@ -3396,14 +3401,21 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultFailedBearerConnect) {
               EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, ""));
 
   // Will request reconnection with the DUN APN
-  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(KeyValueStoreHasApn("apn-dun"), _, _))
       .WillOnce(Invoke([](const KeyValueStore& props,
                           RpcIdentifierCallback callback, int timeout) {
-        EXPECT_EQ(props.Get<std::string>(CellularBearer::kMMApnProperty),
-                  "apn-dun");
-        // Connect operation FAILS.
+        // Connect operation with DUN FAILS.
         std::move(callback).Run(kTestBearerDBusPath,
                                 Error(Error::kOperationFailed));
+      }));
+
+  // The recovery logic after the failure will reconnect with DEFAULT APN
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Connect(KeyValueStoreHasApn("apn-default"), _, _))
+      .WillOnce(Invoke([](const KeyValueStore& props,
+                          RpcIdentifierCallback callback, int timeout) {
+        // Connect operation with DUN FAILS.
+        std::move(callback).Run(kTestBearerDBusPath, Error(Error::kSuccess));
       }));
 
   SetCapability3gppModemSimpleProxy();
@@ -3414,15 +3426,15 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultFailedBearerConnect) {
                   Error::kOperationFailed,
                   Metrics::DetailedCellularConnectionResult::APNType::kDUN));
 
+  // The recovery logic after the failure will report successful metrics.
+  EXPECT_CALL(
+      metrics_,
+      NotifyCellularConnectionResult(
+          Error::kSuccess,
+          Metrics::DetailedCellularConnectionResult::APNType::kDefault));
+
   // Service is connected.
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateConnected));
-
-  // Last good APN should NOT be updated because we're connecting a DUN APN,
-  // and it anyway failed.
-  EXPECT_CALL(*service, SetLastGoodApn(_)).Times(0);
-
-  // Service state should be updated with an error.
-  EXPECT_CALL(*service, SetFailure(_));
 
   // Operation finishes with an error.
   base::test::TestFuture<Network*, const Error&> future;

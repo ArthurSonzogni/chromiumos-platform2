@@ -1165,8 +1165,8 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotConnected) {
                             TetheringManager::SetEnabledResult::kSuccess);
 
   VerifyResult(TetheringManager::SetEnabledResult::kFailure);
-  // Expect idle state: there is no downstream device to tear down.
-  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
+  // Expect stopping state: the attempt will be aborted.
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotReady) {
@@ -1213,7 +1213,8 @@ TEST_F(TetheringManagerTest, FailToCreateLocalInterface) {
   SetEnabledVerifyResult(
       tethering_manager_, true,
       TetheringManager::SetEnabledResult::kDownstreamWiFiFailure);
-  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
+  // Expect stopping state: the attempt will be aborted.
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, FailToConfigureService) {
@@ -1228,7 +1229,8 @@ TEST_F(TetheringManagerTest, FailToConfigureService) {
   SetEnabledVerifyResult(
       tethering_manager_, true,
       TetheringManager::SetEnabledResult::kDownstreamWiFiFailure);
-  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
+  // Expect stopping state: the attempt will be aborted.
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, FailToFetchUpstreamNetwork) {
@@ -1240,7 +1242,8 @@ TEST_F(TetheringManagerTest, FailToFetchUpstreamNetwork) {
       TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable);
   VerifyResult(
       TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable);
-  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
+  // Expect stopping state: the attempt will be aborted.
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, UserStopTetheringSession) {
@@ -1306,11 +1309,12 @@ TEST_F(TetheringManagerTest, UpstreamNetworkDestroyed) {
   SetEnabledVerifyResult(tethering_manager_, true,
                          TetheringManager::SetEnabledResult::kSuccess);
 
-  // State change from active to stopping then to idle
-  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(2);
+  // State change from active to stopping.
+  EXPECT_CALL(manager_, TetheringStatusChanged());
   OnUpstreamNetworkDestroyed(tethering_manager_);
-  CheckTetheringIdle(tethering_manager_,
-                     kTetheringIdleReasonUpstreamDisconnect);
+  // Expect stopping state: the attempt will be aborted.
+  CheckTetheringStopping(tethering_manager_,
+                         kTetheringIdleReasonUpstreamDisconnect);
 }
 
 TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
@@ -1324,7 +1328,8 @@ TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
                         LocalDevice::DeviceEvent::kInterfaceDisabled,
                         hotspot_device_.get());
   VerifyResult(TetheringManager::SetEnabledResult::kDownstreamWiFiFailure);
-  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
+  // Expect stopping state: the attempt will be aborted.
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
 }
 
 // TODO(b/273975270) Re-enable this test once Internet connectivity check on the
@@ -1480,7 +1485,8 @@ TEST_F(TetheringManagerTest, TetheringStartTimer) {
 
   // Tethering start timeout
   OnStartingTetheringTimeout(tethering_manager_);
-  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
+  // Expect stopping state: the attempt will be aborted.
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, TetheringStartTimerUpdated) {
@@ -1500,7 +1506,8 @@ TEST_F(TetheringManagerTest, TetheringStartTimerUpdated) {
 
   // Tethering start timeout
   OnStartingTetheringTimeout(tethering_manager_);
-  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
+  // Expect stopping state: the attempt will be aborted.
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, TetheringStopTimer) {

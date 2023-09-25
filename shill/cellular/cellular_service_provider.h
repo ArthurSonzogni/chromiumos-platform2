@@ -99,6 +99,8 @@ class CellularServiceProvider : public ProviderInterface {
   // obtained with AcquireTetheringNetwork() is not used for tethering anymore.
   // If that Network had been created specially for tethering, it is destroyed
   // and the underlying connection is torn down.
+  // If |network| is nullptr, this request will abort the ongoing tethering
+  // network acquisition attempt.
   mockable void ReleaseTetheringNetwork(
       Network* network, base::OnceCallback<void(bool is_success)> callback);
 

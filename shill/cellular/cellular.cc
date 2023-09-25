@@ -1502,7 +1502,7 @@ void Cellular::OnConnectReply(ApnList::ApnType apn_type,
     // If we are connecting or disconnecting DUN as DEFAULT and an error happens
     // in the reconnection procedure, the operation must be aborted right away.
     if (IsTetheringOperationDunAsDefaultOngoing()) {
-      CompleteTetheringOperation(error);
+      AbortTetheringOperation(error, base::DoNothing());
     }
     return;
   }
@@ -1567,7 +1567,8 @@ void Cellular::Disconnect(Error* error, const char* reason) {
   }
 
   if (IsTetheringOperationDunAsDefaultOngoing()) {
-    CompleteTetheringOperation(Error(Error::kOperationFailed, reason));
+    AbortTetheringOperation(Error(Error::kOperationFailed, reason),
+                            base::DoNothing());
   }
   StopPPP();
   explicit_disconnect_ = true;
@@ -1656,21 +1657,12 @@ void Cellular::CompleteTetheringOperation(const Error& error) {
   // updated to ignore events if a tethering operation is ongoing.
   ResultCallback callback = std::move(tethering_operation_->callback);
   bool apn_connected = tethering_operation_->apn_connected;
-  Error operation_error = tethering_operation_->saved_error.value_or(error);
   tethering_operation_ = std::nullopt;
 
   // Report error.
-  if (!operation_error.IsSuccess()) {
-    LOG(WARNING) << LoggingTag()
-                 << ": Tethering operation failed: " << operation_error;
-    if (dun_as_default_ongoing && StateIsConnected()) {
-      Disconnect(nullptr, "DUN as DEFAULT tethering operation failed");
-    } else if (multiplexed_dun_ongoing) {
-      // Both on connect and disconnect error we expect no multiplexed
-      // tethering PDN, it should have been cleared.
-      CHECK(!multiplexed_tethering_pdn_);
-    }
-    std::move(callback).Run(operation_error);
+  if (!error.IsSuccess()) {
+    LOG(WARNING) << LoggingTag() << ": Tethering operation failed: " << error;
+    std::move(callback).Run(error);
     return;
   }
 
@@ -1769,30 +1761,29 @@ void Cellular::OnCapabilityConnectMultiplexedTetheringReply(
 
   // If attempt was aborted, bail out.
   if (!tethering_operation_) {
-    LOG(WARNING) << LoggingTag() << ": Tethering operation aborted.";
     if (bearer_connected) {
-      // No need to save error because there is no operation to complete.
+      // TODO(b/301919183): We should be able to cancel the attempt even before
+      // MM has created a bearer object, otherwise we'll end up in this state.
+      LOG(WARNING) << LoggingTag() << ": Multiplexed DUN bearer connected but"
+                   << " no attempt ongoing";
       RunDisconnectMultiplexedTetheringPdn();
     }
     return;
   }
 
-  // Bearer connection failed, the operation can be completed in place
-  // because there is nothing to cleanup.
+  // Bearer connection failed.
   if (!bearer_connected) {
-    LOG(WARNING) << LoggingTag() << ": Tethering operation failed: " << error;
-    CompleteTetheringOperation(error);
+    LOG(WARNING) << LoggingTag() << ": Tethering operation failed.";
+    AbortTetheringOperation(error, base::DoNothing());
     return;
   }
 
   // If the device is disconnected or the service was lost, cleanup the
   // possibly connected bearer and complete.
   if (state_ != State::kLinked || !service() || !default_pdn_) {
-    LOG(WARNING) << LoggingTag() << ": Tethering operation aborted: "
-                 << "default PDN must be connected.";
-    tethering_operation_->saved_error =
-        Error(Error::kWrongState, "Default PDN connection must be connected.");
-    RunDisconnectMultiplexedTetheringPdn();
+    AbortTetheringOperation(
+        Error(Error::kWrongState, "Default PDN must be connected"),
+        base::DoNothing());
     return;
   }
 
@@ -1801,9 +1792,9 @@ void Cellular::OnCapabilityConnectMultiplexedTetheringReply(
   tethering_operation_->apn_connected = true;
   EstablishMultiplexedTetheringLink();
   if (!multiplexed_tethering_pdn_) {
-    tethering_operation_->saved_error =
-        Error(Error::kWrongState, "Setup failed.");
-    RunDisconnectMultiplexedTetheringPdn();
+    AbortTetheringOperation(
+        Error(Error::kOperationFailed, "Multiplexed DUN bearer setup failed"),
+        base::DoNothing());
     return;
   }
 
@@ -1850,6 +1841,7 @@ void Cellular::OnCapabilityDisconnectMultiplexedTetheringReply(
   }
 
   if (IsTetheringOperationDunMultiplexedOngoing()) {
+    // Disconnections are not aborted, we can simply complete.
     CompleteTetheringOperation(error);
   }
 }
@@ -1919,14 +1911,15 @@ void Cellular::OnCapabilityDisconnectBeforeReconnectReply(const Error& error) {
 
   // A failure in the disconnection is assumed fatal.
   if (!error.IsSuccess()) {
-    CompleteTetheringOperation(error);
+    AbortTetheringOperation(error, base::DoNothing());
     return;
   }
 
   // If service lost while attempt ongoing, abort right away.
   if (!service()) {
-    CompleteTetheringOperation(
-        Error(Error::kWrongState, "Tethering operation failed: no service."));
+    AbortTetheringOperation(
+        Error(Error::kWrongState, "Tethering operation failed: no service."),
+        base::DoNothing());
     return;
   }
 
@@ -2111,10 +2104,66 @@ void Cellular::OnConnectMultiplexedTetheringPdnReply(
                           Error(Error::kSuccess));
 }
 
+void Cellular::AbortTetheringOperation(const Error& error,
+                                       ResultCallback callback) {
+  if (!tethering_operation_) {
+    LOG(ERROR) << LoggingTag() << ": no ongoing tethering operation to abort.";
+    dispatcher()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback), Error(Error::kSuccess)));
+    return;
+  }
+
+  LOG(INFO) << LoggingTag() << ": Tethering operation aborted: " << error;
+
+  // The abort logic is exclusively used during a connection attempt, because it
+  // allows us to go back to the default state without tethering enabled. There
+  // is no point in trying to abort a tethering disconnection attempt.
+  if (tethering_operation_->type ==
+          TetheringOperationType::kDisconnectDunMultiplexed ||
+      tethering_operation_->type ==
+          TetheringOperationType::kDisconnectDunAsDefaultPdn) {
+    LOG(WARNING) << LoggingTag() << ": Ignoring tethering abort request while"
+                 << " disconnecting operation is ongoing.";
+    dispatcher()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback), Error(Error::kSuccess)));
+    return;
+  }
+
+  // Keep track of which operation was being done.
+  bool dun_as_default_ongoing = IsTetheringOperationDunAsDefaultOngoing();
+  bool multiplexed_dun_ongoing = IsTetheringOperationDunMultiplexedOngoing();
+
+  // Abort the original connection attempt.
+  LOG(INFO) << LoggingTag()
+            << ": Completing tethering connect during abort sequence.";
+  CompleteTetheringOperation(error);
+
+  // Launch a new disconnection attempt. The disconnection logic needs to
+  // be able to recover the state with tethering disabled from any point in the
+  // logic.
+  LOG(INFO) << LoggingTag()
+            << ": Launching tethering disconnect during abort sequence.";
+  if (dun_as_default_ongoing) {
+    DisconnectTetheringAsDefaultPdn(std::move(callback));
+  } else if (multiplexed_dun_ongoing) {
+    DisconnectMultiplexedTetheringPdn(std::move(callback));
+  } else {
+    NOTREACHED_NORETURN();
+  }
+}
+
 void Cellular::ReleaseTetheringNetwork(Network* network,
                                        ResultCallback callback) {
   SLOG(1) << LoggingTag() << ": " << __func__;
   CHECK(!callback.is_null());
+
+  // No explicit network given, which means there is an ongoing tethering
+  // network acquisition operation that needs to be aborted.
+  if (!network) {
+    AbortTetheringOperation(Error(Error::kOperationAborted, "Aborted."),
+                            std::move(callback));
+    return;
+  }
 
   // If we connected the tethering APN as default, we need to disconnect it and
   // reconnect with the default APN.
@@ -2355,8 +2404,9 @@ void Cellular::MultiplexedTetheringLinkUp() {
     LOG(INFO) << LoggingTag()
               << ": Multiplexed tethering link network configuration failed";
     if (IsTetheringOperationDunMultiplexedOngoing()) {
-      CompleteTetheringOperation(
-          Error(Error::kOperationFailed, "Link configuration failed."));
+      AbortTetheringOperation(
+          Error(Error::kOperationFailed, "Link configuration failed."),
+          base::DoNothing());
       return;
     }
   }

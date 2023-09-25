@@ -787,21 +787,22 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
   }
   hotspot_service_up_ = false;
 
+  if (upstream_technology_ == Technology::kCellular) {
+    manager_->cellular_service_provider()->ReleaseTetheringNetwork(
+        upstream_network_,  // may be nullptr if attempt is ongoing
+        base::BindOnce(&TetheringManager::OnUpstreamNetworkReleased,
+                       base::Unretained(this)));
+    return;
+  }
+
   if (!upstream_network_) {
     CheckAndPostTetheringStopResult();
     return;
   }
 
-  if (upstream_technology_ == Technology::kCellular) {
-    manager_->cellular_service_provider()->ReleaseTetheringNetwork(
-        upstream_network_,
-        base::BindOnce(&TetheringManager::OnUpstreamNetworkReleased,
-                       base::Unretained(this)));
-  } else {
-    // For other types of upstream technology like ethernet or WiFi, there is
-    // no particular cleanup other than resetting the internal state.
-    OnUpstreamNetworkReleased(/*is_success=*/true);
-  }
+  // For other types of upstream technology like ethernet or WiFi, there is
+  // no particular cleanup other than resetting the internal state.
+  OnUpstreamNetworkReleased(/*is_success=*/true);
 }
 
 void TetheringManager::StartInactiveTimer() {

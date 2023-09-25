@@ -279,8 +279,10 @@ class Cellular : public Device,
       TetheringManager::UpdateTimeoutCallback update_timeout_callback,
       AcquireTetheringNetworkResultCallback callback);
 
-  // Asynchronously releases the tethering network. This may involve
+  // Asynchronously releases the tethering network, if any. This may involve
   // disconnecting a PDN connection or a no-op in certain other cases.
+  // If |network| is nullptr, this request will abort the ongoing tethering
+  // network acquisition attempt.
   void ReleaseTetheringNetwork(Network* network, ResultCallback callback);
 
   // Public to ease testing tethering acquisition logic.
@@ -734,11 +736,11 @@ class Cellular : public Device,
     ApnList::ApnType apn_type;
     std::deque<Stringmap> apn_try_list;
     bool apn_connected;
-    std::optional<Error> saved_error;
   };
   void CompleteTetheringOperation(const Error& error);
   bool InitializeTetheringOperation(TetheringOperationType type,
                                     ResultCallback callback);
+  void AbortTetheringOperation(const Error& error, ResultCallback callback);
 
   // Management of the DUN as DEFAULT tethering operation
   void DisconnectTetheringAsDefaultPdn(ResultCallback callback);
