@@ -7,11 +7,14 @@
 #ifndef CRYPTOHOME_FIRMWARE_MANAGEMENT_PARAMETERS_H_
 #define CRYPTOHOME_FIRMWARE_MANAGEMENT_PARAMETERS_H_
 
+#include "cryptohome/firmware_management_parameters_interface.h"
+#include "cryptohome/proto_bindings/UserDataAuth.pb.h"
+#include "libhwsec/frontend/cryptohome/frontend.h"
+
 #include <memory>
 
 #include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
-#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <openssl/sha.h>
 
 namespace cryptohome {
@@ -41,7 +44,8 @@ struct FirmwareManagementParametersRawV1_0;
 //   fwmp->GetFlags(&dev_flags);
 //   fwmp->GetDeveloperKeyHash(&dev_hash);
 // ...
-class FirmwareManagementParameters {
+class FirmwareManagementParameters
+    : public FirmwareManagementParametersInterface {
  public:
   // Populates the basic internal state of the firmware management parameters.
   //
@@ -63,6 +67,24 @@ class FirmwareManagementParameters {
 
   virtual ~FirmwareManagementParameters();
 
+  bool GetFWMP(user_data_auth::FirmwareManagementParameters* fwmp) override;
+
+  bool SetFWMP(
+      const user_data_auth::FirmwareManagementParameters& fwmp) override;
+
+  bool Destroy() override;
+
+  // NVRAM index for firmware management parameters space
+  static const uint32_t kNvramIndex;
+  // Size of the NVRAM structure
+  static const uint32_t kNvramBytes;
+  // Offset of CRC'd data (past CRC and size)
+  static const uint32_t kCrcDataOffset;
+
+  // No-op in legacy install_attributes.
+  void SetDeviceManagementProxy(
+      std::unique_ptr<org::chromium::DeviceManagementProxy> proxy) override{};
+
   // Creates the backend state needed for this firmware management parameters.
   //
   // Instantiates a new TPM NVRAM index to store the FWMP data.
@@ -71,16 +93,6 @@ class FirmwareManagementParameters {
   // - true if a new space was instantiated or an old one could be used.
   // - false if the space cannot be created or claimed.
   virtual bool Create(void);
-
-  // Destroys all backend state for this firmware management parameters.
-  //
-  // This call deletes the NVRAM space if defined.
-  //
-  // Returns
-  // - false if TPM Owner authorization is missing or the space cannot be
-  //   destroyed.
-  // - true if the space is already undefined or has been destroyed.
-  virtual bool Destroy(void);
 
   // Loads the TPM NVRAM state date into memory
   //
@@ -117,14 +129,7 @@ class FirmwareManagementParameters {
   virtual bool GetDeveloperKeyHash(brillo::Blob* hash);
 
   // Returns true if the firmware management parameters have been loaded
-  virtual bool IsLoaded() const { return loaded_; }
-
-  // NVRAM index for firmware management parameters space
-  static const uint32_t kNvramIndex;
-  // Size of the NVRAM structure
-  static const uint32_t kNvramBytes;
-  // Offset of CRC'd data (past CRC and size)
-  static const uint32_t kCrcDataOffset;
+  bool IsLoaded() const { return loaded_; }
 
  protected:
   // constructor for mock testing purpose.

@@ -43,6 +43,8 @@
 #include "cryptohome/features.h"
 #include "cryptohome/fingerprint_manager.h"
 #include "cryptohome/firmware_management_parameters.h"
+#include "cryptohome/firmware_management_parameters_interface.h"
+#include "cryptohome/firmware_management_parameters_proxy.h"
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/install_attributes_interface.h"
@@ -527,7 +529,8 @@ class UserDataAuth {
   }
 
   // Override |firmware_management_parameters_| for testing purpose
-  void set_firmware_management_parameters(FirmwareManagementParameters* fwmp) {
+  void set_firmware_management_parameters(
+      FirmwareManagementParametersInterface* fwmp) {
     firmware_management_parameters_ = fwmp;
   }
 
@@ -1006,12 +1009,12 @@ class UserDataAuth {
 
   // The default Firmware Management Parameters object for accessing any
   // Firmware Management Parameters related functionalities.
-  std::unique_ptr<FirmwareManagementParameters>
+  std::unique_ptr<FirmwareManagementParametersInterface>
       default_firmware_management_params_;
 
   // The actual Firmware Management Parameters object that is used by this
   // class, but can be overridden for testing.
-  FirmwareManagementParameters* firmware_management_parameters_;
+  FirmwareManagementParametersInterface* firmware_management_parameters_;
 
   // The default Fingerprint Manager object for fingerprint authentication.
   std::unique_ptr<FingerprintManager> default_fingerprint_manager_;

@@ -890,6 +890,11 @@ void UserDataAuth::InitializeFeatureLibrary() {
 
 void UserDataAuth::SetDeviceManagementProxy() {
   AssertOnMountThread();
+  if (firmware_management_parameters_) {
+    firmware_management_parameters_->SetDeviceManagementProxy(
+        std::make_unique<org::chromium::DeviceManagementProxy>(
+            mount_thread_bus_));
+  }
   if (install_attrs_) {
     install_attrs_->SetDeviceManagementProxy(
         std::make_unique<org::chromium::DeviceManagementProxy>(
@@ -2181,31 +2186,10 @@ user_data_auth::CryptohomeErrorCode
 UserDataAuth::GetFirmwareManagementParameters(
     user_data_auth::FirmwareManagementParameters* fwmp) {
   AssertOnMountThread();
-  if (!firmware_management_parameters_->Load()) {
+  if (!firmware_management_parameters_->GetFWMP(fwmp)) {
     return user_data_auth::
         CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID;
   }
-
-  uint32_t flags;
-  if (firmware_management_parameters_->GetFlags(&flags)) {
-    fwmp->set_flags(flags);
-  } else {
-    LOG(WARNING)
-        << "Failed to GetFlags() for GetFirmwareManagementParameters().";
-    return user_data_auth::
-        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID;
-  }
-
-  std::vector<uint8_t> hash;
-  if (firmware_management_parameters_->GetDeveloperKeyHash(&hash)) {
-    *fwmp->mutable_developer_key_hash() = {hash.begin(), hash.end()};
-  } else {
-    LOG(WARNING) << "Failed to GetDeveloperKeyHash() for "
-                    "GetFirmwareManagementParameters().";
-    return user_data_auth::
-        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID;
-  }
-
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
@@ -2213,25 +2197,10 @@ user_data_auth::CryptohomeErrorCode
 UserDataAuth::SetFirmwareManagementParameters(
     const user_data_auth::FirmwareManagementParameters& fwmp) {
   AssertOnMountThread();
-
-  if (!firmware_management_parameters_->Create()) {
+  if (!firmware_management_parameters_->SetFWMP(fwmp)) {
     return user_data_auth::
         CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE;
   }
-
-  uint32_t flags = fwmp.flags();
-  std::unique_ptr<std::vector<uint8_t>> hash;
-
-  if (!fwmp.developer_key_hash().empty()) {
-    hash = std::make_unique<std::vector<uint8_t>>(
-        fwmp.developer_key_hash().begin(), fwmp.developer_key_hash().end());
-  }
-
-  if (!firmware_management_parameters_->Store(flags, hash.get())) {
-    return user_data_auth::
-        CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE;
-  }
-
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 

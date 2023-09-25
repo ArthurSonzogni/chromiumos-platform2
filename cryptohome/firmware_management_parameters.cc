@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/crc.h"
 #include "cryptohome/firmware_management_parameters.h"
 
 #include <arpa/inet.h>
@@ -17,8 +18,6 @@
 #include <base/strings/string_split.h>
 #include <brillo/secure_blob.h>
 #include <openssl/sha.h>
-
-#include "cryptohome/crc.h"
 
 using brillo::SecureBlob;
 
@@ -55,16 +54,14 @@ FirmwareManagementParameters::FirmwareManagementParameters(
 
   if (PLATFORM_FWMP_INDEX) {
     fwmp_type_ = hwsec::Space::kPlatformFirmwareManagementParameters;
-    return;
-  }
-  if (hwsec::StatusOr<hwsec::CryptohomeFrontend::StorageState> state =
-          hwsec->GetSpaceState(
-              hwsec::Space::kPlatformFirmwareManagementParameters);
-      !state.ok()) {
+  } else if (hwsec::StatusOr<hwsec::CryptohomeFrontend::StorageState> state =
+                 hwsec->GetSpaceState(
+                     hwsec::Space::kPlatformFirmwareManagementParameters);
+             !state.ok()) {
     fwmp_type_ = hwsec::Space::kFirmwareManagementParameters;
-    return;
+  } else {
+    fwmp_type_ = hwsec::Space::kPlatformFirmwareManagementParameters;
   }
-  fwmp_type_ = hwsec::Space::kPlatformFirmwareManagementParameters;
 }
 
 FirmwareManagementParameters::FirmwareManagementParameters(
@@ -81,6 +78,52 @@ FirmwareManagementParameters::FirmwareManagementParameters()
       hwsec_(nullptr) {}
 
 FirmwareManagementParameters::~FirmwareManagementParameters() {}
+
+bool FirmwareManagementParameters::GetFWMP(
+    user_data_auth::FirmwareManagementParameters* fwmp) {
+  if (!Load()) {
+    return false;
+  }
+
+  uint32_t flags;
+  if (GetFlags(&flags)) {
+    fwmp->set_flags(flags);
+  } else {
+    LOG(WARNING) << "Failed to GetFlags() for GetFWMP().";
+    return false;
+  }
+
+  std::vector<uint8_t> hash;
+  if (GetDeveloperKeyHash(&hash)) {
+    *fwmp->mutable_developer_key_hash() = {hash.begin(), hash.end()};
+  } else {
+    LOG(WARNING) << "Failed to GetDeveloperKeyHash() for GetFWMP().";
+    return false;
+  }
+
+  return true;
+}
+
+bool FirmwareManagementParameters::SetFWMP(
+    const user_data_auth::FirmwareManagementParameters& fwmp) {
+  if (!Create()) {
+    return false;
+  }
+
+  uint32_t flags = fwmp.flags();
+  std::unique_ptr<std::vector<uint8_t>> hash;
+
+  if (!fwmp.developer_key_hash().empty()) {
+    hash = std::make_unique<std::vector<uint8_t>>(
+        fwmp.developer_key_hash().begin(), fwmp.developer_key_hash().end());
+  }
+
+  if (!Store(flags, hash.get())) {
+    return false;
+  }
+
+  return true;
+}
 
 bool FirmwareManagementParameters::Destroy(void) {
   if (fwmp_type_ == hwsec::Space::kPlatformFirmwareManagementParameters) {

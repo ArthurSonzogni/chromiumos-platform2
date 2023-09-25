@@ -1427,114 +1427,30 @@ TEST_F(UserDataAuthTest, GetEncryptionInfoEnabledTest) {
 // ================== Firmware Management Parameters tests ==================
 
 TEST_F(UserDataAuthTest, GetFirmwareManagementParametersSuccess) {
-  const std::string kHash = "its_a_hash";
-  std::vector<uint8_t> hash(kHash.begin(), kHash.end());
-  constexpr uint32_t kFlag = 0x1234;
-
-  EXPECT_CALL(fwmp_, Load()).WillOnce(Return(true));
-  EXPECT_CALL(fwmp_, GetFlags(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(kFlag), Return(true)));
-  EXPECT_CALL(fwmp_, GetDeveloperKeyHash(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(hash), Return(true)));
-
   user_data_auth::FirmwareManagementParameters fwmp;
+  EXPECT_CALL(fwmp_, GetFWMP(&fwmp)).WillOnce(Return(true));
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             userdataauth_->GetFirmwareManagementParameters(&fwmp));
-
-  EXPECT_EQ(kFlag, fwmp.flags());
-  EXPECT_EQ(kHash, fwmp.developer_key_hash());
 }
 
 TEST_F(UserDataAuthTest, GetFirmwareManagementParametersError) {
-  constexpr uint32_t kFlag = 0x1234;
-
-  // Test Load() fail.
-  EXPECT_CALL(fwmp_, Load()).WillRepeatedly(Return(false));
-
   user_data_auth::FirmwareManagementParameters fwmp;
-  EXPECT_EQ(
-      user_data_auth::CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
-      userdataauth_->GetFirmwareManagementParameters(&fwmp));
-
-  // Test GetFlags() fail.
-  EXPECT_CALL(fwmp_, Load()).WillRepeatedly(Return(true));
-  EXPECT_CALL(fwmp_, GetFlags(_)).WillRepeatedly(Return(false));
-
-  EXPECT_EQ(
-      user_data_auth::CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
-      userdataauth_->GetFirmwareManagementParameters(&fwmp));
-
-  // Test GetDeveloperKeyHash fail.
-  EXPECT_CALL(fwmp_, Load()).WillRepeatedly(Return(true));
-  EXPECT_CALL(fwmp_, GetFlags(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(kFlag), Return(true)));
-  EXPECT_CALL(fwmp_, GetDeveloperKeyHash(_)).WillRepeatedly(Return(false));
-
+  EXPECT_CALL(fwmp_, GetFWMP(&fwmp)).WillOnce(Return(false));
   EXPECT_EQ(
       user_data_auth::CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID,
       userdataauth_->GetFirmwareManagementParameters(&fwmp));
 }
 
 TEST_F(UserDataAuthTest, SetFirmwareManagementParametersSuccess) {
-  const std::string kHash = "its_a_hash";
-  std::vector<uint8_t> hash(kHash.begin(), kHash.end());
-  constexpr uint32_t kFlag = 0x1234;
-
-  std::vector<uint8_t> out_hash;
-
-  EXPECT_CALL(fwmp_, Create()).WillOnce(Return(true));
-  EXPECT_CALL(fwmp_, Store(kFlag, _))
-      .WillOnce(DoAll(SaveArgPointee<1>(&out_hash), Return(true)));
-
   user_data_auth::FirmwareManagementParameters fwmp;
-  fwmp.set_flags(kFlag);
-  fwmp.set_developer_key_hash(kHash);
-
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-            userdataauth_->SetFirmwareManagementParameters(fwmp));
-
-  EXPECT_EQ(hash, out_hash);
-}
-
-TEST_F(UserDataAuthTest, SetFirmwareManagementParametersNoHash) {
-  constexpr uint32_t kFlag = 0x1234;
-
-  EXPECT_CALL(fwmp_, Create()).WillOnce(Return(true));
-  EXPECT_CALL(fwmp_, Store(kFlag, nullptr)).WillOnce(Return(true));
-
-  user_data_auth::FirmwareManagementParameters fwmp;
-  fwmp.set_flags(kFlag);
-
+  EXPECT_CALL(fwmp_, SetFWMP(_)).WillOnce(Return(true));
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             userdataauth_->SetFirmwareManagementParameters(fwmp));
 }
 
-TEST_F(UserDataAuthTest, SetFirmwareManagementParametersCreateError) {
-  const std::string kHash = "its_a_hash";
-  constexpr uint32_t kFlag = 0x1234;
-
-  EXPECT_CALL(fwmp_, Create()).WillOnce(Return(false));
-
+TEST_F(UserDataAuthTest, SetFirmwareManagementParametersError) {
   user_data_auth::FirmwareManagementParameters fwmp;
-  fwmp.set_flags(kFlag);
-  fwmp.set_developer_key_hash(kHash);
-
-  EXPECT_EQ(user_data_auth::
-                CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
-            userdataauth_->SetFirmwareManagementParameters(fwmp));
-}
-
-TEST_F(UserDataAuthTest, SetFirmwareManagementParametersStoreError) {
-  const std::string kHash = "its_a_hash";
-  constexpr uint32_t kFlag = 0x1234;
-
-  EXPECT_CALL(fwmp_, Create()).WillOnce(Return(true));
-  EXPECT_CALL(fwmp_, Store(_, _)).WillOnce(Return(false));
-
-  user_data_auth::FirmwareManagementParameters fwmp;
-  fwmp.set_flags(kFlag);
-  fwmp.set_developer_key_hash(kHash);
-
+  EXPECT_CALL(fwmp_, SetFWMP(_)).WillOnce(Return(false));
   EXPECT_EQ(user_data_auth::
                 CRYPTOHOME_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE,
             userdataauth_->SetFirmwareManagementParameters(fwmp));
