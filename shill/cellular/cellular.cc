@@ -61,7 +61,6 @@
 #include "shill/net/process_manager.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
-#include "shill/net/rtnl_message.h"
 #include "shill/network/network_config.h"
 #include "shill/ppp_daemon.h"
 #include "shill/profile.h"
@@ -2450,17 +2449,17 @@ void Cellular::MultiplexedTetheringLinkDeleted() {
   multiplexed_tethering_pdn_->SetLinkState(LinkState::kUnknown);
 }
 
-void Cellular::LinkMsgHandler(const RTNLMessage& msg) {
-  DCHECK(msg.type() == RTNLMessage::kTypeLink);
+void Cellular::LinkMsgHandler(const net_base::RTNLMessage& msg) {
+  DCHECK(msg.type() == net_base::RTNLMessage::kTypeLink);
 
   int data_interface_index = msg.interface_index();
 
   // Actions on the default APN Network
   if (default_pdn_ &&
       data_interface_index == default_pdn_->network()->interface_index()) {
-    if (msg.mode() == RTNLMessage::kModeDelete) {
+    if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
       DefaultLinkDeleted();
-    } else if (msg.mode() == RTNLMessage::kModeAdd) {
+    } else if (msg.mode() == net_base::RTNLMessage::kModeAdd) {
       if (msg.link_status().flags & IFF_UP) {
         DefaultLinkUp();
       } else {
@@ -2476,9 +2475,9 @@ void Cellular::LinkMsgHandler(const RTNLMessage& msg) {
   if (multiplexed_tethering_pdn_ &&
       data_interface_index ==
           multiplexed_tethering_pdn_->network()->interface_index()) {
-    if (msg.mode() == RTNLMessage::kModeDelete) {
+    if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
       MultiplexedTetheringLinkDeleted();
-    } else if (msg.mode() == RTNLMessage::kModeAdd) {
+    } else if (msg.mode() == net_base::RTNLMessage::kModeAdd) {
       if (msg.link_status().flags & IFF_UP) {
         MultiplexedTetheringLinkUp();
       } else {

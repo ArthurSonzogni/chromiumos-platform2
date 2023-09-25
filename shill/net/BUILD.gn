@@ -45,7 +45,6 @@ install_config("install_headers") {
     "rtnl_handler.h",
     "rtnl_link_stats.h",
     "rtnl_listener.h",
-    "rtnl_message.h",
     "shill_export.h",
   ]
   install_path = "/usr/include/shill/net"
@@ -92,7 +91,6 @@ shared_library("libshill-net") {
     "process_manager.cc",
     "rtnl_handler.cc",
     "rtnl_listener.cc",
-    "rtnl_message.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":${target_name}_deps" ]
@@ -142,6 +140,7 @@ if (use.test) {
       ":target_defaults",
     ]
     pkg_deps = [ "libshill-net" ]
+    deps = [ "//net-base:net_base_test_support" ]
   }
 
   pkg_config("shill_net_test_config") {
@@ -166,7 +165,6 @@ if (use.test) {
       "process_manager_test.cc",
       "rtnl_handler_test.cc",
       "rtnl_listener_test.cc",
-      "rtnl_message_test.cc",
     ]
     configs += [
       "//common-mk:test",

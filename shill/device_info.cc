@@ -47,6 +47,7 @@
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/byte_utils.h>
+#include <net-base/rtnl_message.h>
 #include <re2/re2.h>
 
 #include "shill/cellular/modem_info.h"
@@ -61,7 +62,6 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_listener.h"
-#include "shill/net/rtnl_message.h"
 #include "shill/network/network.h"
 #include "shill/power_manager.h"
 #include "shill/vpn/vpn_provider.h"
@@ -715,7 +715,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
 }
 
 // static
-bool DeviceInfo::GetLinkNameFromMessage(const RTNLMessage& msg,
+bool DeviceInfo::GetLinkNameFromMessage(const net_base::RTNLMessage& msg,
                                         std::string* link_name) {
   if (!msg.HasAttribute(IFLA_IFNAME))
     return false;
@@ -724,7 +724,7 @@ bool DeviceInfo::GetLinkNameFromMessage(const RTNLMessage& msg,
   return true;
 }
 
-bool DeviceInfo::IsRenamedBlockedDevice(const RTNLMessage& msg) {
+bool DeviceInfo::IsRenamedBlockedDevice(const net_base::RTNLMessage& msg) {
   int interface_index = msg.interface_index();
   const Info* info = GetInfo(interface_index);
   if (!info)
@@ -745,11 +745,11 @@ bool DeviceInfo::IsRenamedBlockedDevice(const RTNLMessage& msg) {
   return true;
 }
 
-void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
+void DeviceInfo::AddLinkMsgHandler(const net_base::RTNLMessage& msg) {
   SLOG(2) << __func__ << " index: " << msg.interface_index();
 
-  DCHECK(msg.type() == RTNLMessage::kTypeLink &&
-         msg.mode() == RTNLMessage::kModeAdd);
+  DCHECK(msg.type() == net_base::RTNLMessage::kTypeLink &&
+         msg.mode() == net_base::RTNLMessage::kModeAdd);
   int dev_index = msg.interface_index();
   Technology technology = Technology::kUnknown;
   unsigned int flags = msg.link_status().flags;
@@ -823,11 +823,11 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
   }
 }
 
-void DeviceInfo::DelLinkMsgHandler(const RTNLMessage& msg) {
+void DeviceInfo::DelLinkMsgHandler(const net_base::RTNLMessage& msg) {
   SLOG(2) << __func__ << "(index=" << msg.interface_index() << ")";
 
-  DCHECK(msg.type() == RTNLMessage::kTypeLink &&
-         msg.mode() == RTNLMessage::kModeDelete);
+  DCHECK(msg.type() == net_base::RTNLMessage::kTypeLink &&
+         msg.mode() == net_base::RTNLMessage::kModeDelete);
   SLOG(2) << __func__
           << base::StringPrintf("(index=%d, flags=0x%x, change=0x%x)",
                                 msg.interface_index(), msg.link_status().flags,
@@ -1142,12 +1142,12 @@ bool DeviceInfo::CreateXFRMInterface(const std::string& interface_name,
                                      int xfrm_if_id,
                                      LinkReadyCallback link_ready_callback,
                                      base::OnceClosure failure_callback) {
-  RTNLAttrMap attrs;
+  net_base::RTNLAttrMap attrs;
   attrs[kIflaXfrmLink] =
       net_base::byte_utils::ToBytes<uint32_t>(underlying_if_index);
   attrs[kIflaXfrmIfId] = net_base::byte_utils::ToBytes<uint32_t>(xfrm_if_id);
 
-  const auto link_info_data = RTNLMessage::PackAttrs(attrs);
+  const auto link_info_data = net_base::RTNLMessage::PackAttrs(attrs);
   if (!rtnl_handler_->AddInterface(
           interface_name, kKindXfrm, link_info_data,
           base::BindOnce(&DeviceInfo::OnCreateInterfaceResponse,
@@ -1215,11 +1215,11 @@ void DeviceInfo::DeregisterDevice(int interface_index) {
   delayed_devices_.erase(interface_index);
 }
 
-void DeviceInfo::LinkMsgHandler(const RTNLMessage& msg) {
-  DCHECK(msg.type() == RTNLMessage::kTypeLink);
-  if (msg.mode() == RTNLMessage::kModeAdd) {
+void DeviceInfo::LinkMsgHandler(const net_base::RTNLMessage& msg) {
+  DCHECK(msg.type() == net_base::RTNLMessage::kTypeLink);
+  if (msg.mode() == net_base::RTNLMessage::kModeAdd) {
     AddLinkMsgHandler(msg);
-  } else if (msg.mode() == RTNLMessage::kModeDelete) {
+  } else if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
     DelLinkMsgHandler(msg);
   } else {
     NOTREACHED();
@@ -1288,7 +1288,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
 }
 
 void DeviceInfo::RetrieveLinkStatistics(int interface_index,
-                                        const RTNLMessage& msg) {
+                                        const net_base::RTNLMessage& msg) {
   if (!msg.HasAttribute(IFLA_STATS64)) {
     return;
   }

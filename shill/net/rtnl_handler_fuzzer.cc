@@ -11,8 +11,13 @@
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <net-base/rtnl_message.h>
 
 namespace shill {
+namespace {
+// TODO(b/301905012): Remove this after moving this file to net-base.
+using net_base::RTNLMessage;
+}  // namespace
 
 class RTNLHandlerFuzz {
  public:

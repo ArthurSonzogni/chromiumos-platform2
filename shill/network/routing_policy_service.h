@@ -16,8 +16,7 @@
 
 #include <base/containers/flat_map.h>
 #include <base/no_destructor.h>
-
-#include "shill/net/rtnl_message.h"
+#include <net-base/rtnl_message.h>
 
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b);
 
@@ -103,14 +102,14 @@ class RoutingPolicyService {
   using PolicyTableEntryVector = std::vector<RoutingPolicyEntry>;
   using PolicyTables = std::unordered_map<int, PolicyTableEntryVector>;
 
-  void RuleMsgHandler(const RTNLMessage& message);
+  void RuleMsgHandler(const net_base::RTNLMessage& message);
 
   bool ApplyRule(uint32_t interface_index,
                  const RoutingPolicyEntry& entry,
-                 RTNLMessage::Mode mode,
+                 net_base::RTNLMessage::Mode mode,
                  unsigned int flags);
   std::optional<RoutingPolicyEntry> ParseRoutingPolicyMessage(
-      const RTNLMessage& message);
+      const net_base::RTNLMessage& message);
 
   // Maps from interface ids to the routing policy entries associated with the
   // interface.

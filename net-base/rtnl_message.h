@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_RTNL_MESSAGE_H_
-#define SHILL_NET_RTNL_MESSAGE_H_
+#ifndef NET_BASE_RTNL_MESSAGE_H_
+#define NET_BASE_RTNL_MESSAGE_H_
 
 #include <memory>
 #include <optional>
@@ -13,14 +13,14 @@
 
 #include <base/containers/contains.h>
 #include <base/containers/span.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv6_address.h>
 
-#include "shill/net/shill_export.h"
+#include "net-base/export.h"
+#include "net-base/ip_address.h"
+#include "net-base/ipv6_address.h"
 
 struct rtattr;
 
-namespace shill {
+namespace net_base {
 
 struct RTNLHeader;
 
@@ -29,7 +29,7 @@ using RTNLAttrMap = std::unordered_map<uint16_t, std::vector<uint8_t>>;
 // Helper class for processing rtnetlink messages. See uapi/linux/rtnetlink.h
 // and rtnetlink manual page for details about the message binary encoding and
 // meaning of struct fields populated by the kernel.
-class SHILL_EXPORT RTNLMessage {
+class NET_BASE_EXPORT RTNLMessage {
  public:
   enum Type {
     kTypeUnknown,
@@ -271,26 +271,24 @@ class SHILL_EXPORT RTNLMessage {
                        base::span<const uint8_t> info_data);
 
  private:
-  SHILL_PRIVATE static std::unique_ptr<RTNLMessage> DecodeLink(
-      Mode mode, const RTNLHeader* hdr);
-  SHILL_PRIVATE static std::unique_ptr<RTNLMessage> DecodeAddress(
-      Mode mode, const RTNLHeader* hdr);
-  SHILL_PRIVATE static std::unique_ptr<RTNLMessage> DecodeRoute(
-      Mode mode, const RTNLHeader* hdr);
-  SHILL_PRIVATE static std::unique_ptr<RTNLMessage> DecodeRule(
-      Mode mode, const RTNLHeader* hdr);
-  SHILL_PRIVATE static std::unique_ptr<RTNLMessage> DecodeNdUserOption(
-      Mode mode, const RTNLHeader* hdr);
-  SHILL_PRIVATE static std::unique_ptr<RTNLMessage> DecodeNeighbor(
-      Mode mode, const RTNLHeader* hdr);
+  static std::unique_ptr<RTNLMessage> DecodeLink(Mode mode,
+                                                 const RTNLHeader* hdr);
+  static std::unique_ptr<RTNLMessage> DecodeAddress(Mode mode,
+                                                    const RTNLHeader* hdr);
+  static std::unique_ptr<RTNLMessage> DecodeRoute(Mode mode,
+                                                  const RTNLHeader* hdr);
+  static std::unique_ptr<RTNLMessage> DecodeRule(Mode mode,
+                                                 const RTNLHeader* hdr);
+  static std::unique_ptr<RTNLMessage> DecodeNdUserOption(Mode mode,
+                                                         const RTNLHeader* hdr);
+  static std::unique_ptr<RTNLMessage> DecodeNeighbor(Mode mode,
+                                                     const RTNLHeader* hdr);
 
-  SHILL_PRIVATE bool ParseRdnssOption(const uint8_t* data,
-                                      int length,
-                                      uint32_t lifetime);
-  SHILL_PRIVATE bool EncodeLink(RTNLHeader* hdr) const;
-  SHILL_PRIVATE bool EncodeAddress(RTNLHeader* hdr) const;
-  SHILL_PRIVATE bool EncodeRoute(RTNLHeader* hdr) const;
-  SHILL_PRIVATE bool EncodeNeighbor(RTNLHeader* hdr) const;
+  bool ParseRdnssOption(const uint8_t* data, size_t length, uint32_t lifetime);
+  bool EncodeLink(RTNLHeader* hdr) const;
+  bool EncodeAddress(RTNLHeader* hdr) const;
+  bool EncodeRoute(RTNLHeader* hdr) const;
+  bool EncodeNeighbor(RTNLHeader* hdr) const;
 
   // Type and mode of the message, corresponding to a subset of the RTM_* enum
   // defined in uapi/linux/rtnetlink.h
@@ -321,6 +319,5 @@ class SHILL_EXPORT RTNLMessage {
   // NOTE: Update Reset() accordingly when adding a new member field.
 };
 
-}  // namespace shill
-
-#endif  // SHILL_NET_RTNL_MESSAGE_H_
+}  // namespace net_base
+#endif  // NET_BASE_RTNL_MESSAGE_H_

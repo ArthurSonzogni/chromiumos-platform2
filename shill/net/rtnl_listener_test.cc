@@ -7,13 +7,15 @@
 #include <base/functional/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/rtnl_message.h>
 
 #include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_message.h"
 
 namespace shill {
-
 namespace {
+
+// TODO(b/301905012): Remove this after moving this file to net-base.
+using net_base::RTNLMessage;
 
 RTNLMessage CreateFakeMessage() {
   return RTNLMessage(RTNLMessage::kTypeLink, RTNLMessage::kModeGet,

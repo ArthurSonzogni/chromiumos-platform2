@@ -249,8 +249,8 @@ void NeighborLinkMonitor::SendNeighborDumpRTNLMessage() {
   // |seq| will be set by RTNLHandler.
   // TODO(jiejiang): Specify the family instead of AF_UNSPEC. This optimization
   // could reduce the amount of data received for each request.
-  auto msg = std::make_unique<shill::RTNLMessage>(
-      shill::RTNLMessage::kTypeNeighbor, shill::RTNLMessage::kModeGet,
+  auto msg = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeNeighbor, net_base::RTNLMessage::kModeGet,
       NLM_F_REQUEST | NLM_F_DUMP, /*seq=*/0, /*pid=*/0, ifindex_, AF_UNSPEC);
 
   // TODO(jiejiang): We may get an error of errno=16 (Device or resource busy)
@@ -262,13 +262,13 @@ void NeighborLinkMonitor::SendNeighborDumpRTNLMessage() {
 void NeighborLinkMonitor::SendNeighborProbeRTNLMessage(
     const WatchingEntry& entry) {
   // |seq| will be set by RTNLHandler.
-  auto msg = std::make_unique<shill::RTNLMessage>(
-      shill::RTNLMessage::kTypeNeighbor, shill::RTNLMessage::kModeAdd,
+  auto msg = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeNeighbor, net_base::RTNLMessage::kModeAdd,
       NLM_F_REQUEST | NLM_F_REPLACE, /*seq=*/0, /*pid=*/0, ifindex_,
       net_base::ToSAFamily(entry.addr.GetFamily()));
 
   // We don't need to set |ndm_flags| and |ndm_type| for this message.
-  msg->set_neighbor_status(shill::RTNLMessage::NeighborStatus(
+  msg->set_neighbor_status(net_base::RTNLMessage::NeighborStatus(
       NUD_PROBE, /*ndm_flags=*/0, /*ndm_type=*/0));
   msg->SetAttribute(NDA_DST, entry.addr.ToBytes());
 
@@ -277,7 +277,7 @@ void NeighborLinkMonitor::SendNeighborProbeRTNLMessage(
                  << entry.ToString() << " on " << ifname_;
 }
 
-void NeighborLinkMonitor::OnNeighborMessage(const shill::RTNLMessage& msg) {
+void NeighborLinkMonitor::OnNeighborMessage(const net_base::RTNLMessage& msg) {
   if (msg.interface_index() != ifindex_)
     return;
 
@@ -296,7 +296,7 @@ void NeighborLinkMonitor::OnNeighborMessage(const shill::RTNLMessage& msg) {
 
   uint16_t old_nud_state = it->second.nud_state;
   uint16_t new_nud_state;
-  if (msg.mode() == shill::RTNLMessage::kModeDelete)
+  if (msg.mode() == net_base::RTNLMessage::kModeDelete)
     new_nud_state = NUD_NONE;
   else
     new_nud_state = msg.neighbor_status().state;

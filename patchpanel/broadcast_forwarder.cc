@@ -151,13 +151,13 @@ void BroadcastForwarder::Init() {
   shill::RTNLHandler::GetInstance()->Start(RTMGRP_IPV4_IFADDR);
 }
 
-void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
+void BroadcastForwarder::AddrMsgHandler(const net_base::RTNLMessage& msg) {
   if (!msg.HasAttribute(IFA_LABEL)) {
     LOG(ERROR) << "Address event message does not have IFA_LABEL";
     return;
   }
 
-  if (msg.mode() != shill::RTNLMessage::kModeAdd)
+  if (msg.mode() != net_base::RTNLMessage::kModeAdd)
     return;
 
   const std::string ifname =

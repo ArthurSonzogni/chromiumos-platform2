@@ -7,33 +7,35 @@
 
 #include <base/functional/callback.h>
 #include <base/observer_list_types.h>
+#include <net-base/rtnl_message.h>
 
 #include "shill/net/shill_export.h"
 
 namespace shill {
 
 class RTNLHandler;
-class RTNLMessage;
 
 class SHILL_EXPORT RTNLListener : public base::CheckedObserver {
  public:
   RTNLListener(
       int listen_flags,
-      const base::RepeatingCallback<void(const RTNLMessage&)>& callback);
+      const base::RepeatingCallback<void(const net_base::RTNLMessage&)>&
+          callback);
   RTNLListener(
       int listen_flags,
-      const base::RepeatingCallback<void(const RTNLMessage&)>& callback,
+      const base::RepeatingCallback<void(const net_base::RTNLMessage&)>&
+          callback,
       RTNLHandler* rtnl_handler);
   RTNLListener(const RTNLListener&) = delete;
   RTNLListener& operator=(const RTNLListener&) = delete;
 
   ~RTNLListener();
 
-  void NotifyEvent(int type, const RTNLMessage& msg) const;
+  void NotifyEvent(int type, const net_base::RTNLMessage& msg) const;
 
  private:
   const int listen_flags_;
-  const base::RepeatingCallback<void(const RTNLMessage&)> callback_;
+  const base::RepeatingCallback<void(const net_base::RTNLMessage&)> callback_;
   RTNLHandler* const rtnl_handler_;
 };
 

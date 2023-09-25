@@ -32,6 +32,7 @@ shared_library("libnet-base") {
     "ipv4_address.cc",
     "ipv6_address.cc",
     "mac_address.cc",
+    "rtnl_message.cc",
     "socket.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -54,7 +55,10 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
-    pkg_deps = [ "libnet-base" ]
+    pkg_deps = [
+      "libnet-base",
+      "re2",
+    ]
   }
 
   executable("libnet-base-testrunner") {
@@ -65,6 +69,7 @@ if (use.test) {
       "ipv4_address_test.cc",
       "ipv6_address_test.cc",
       "mac_address_test.cc",
+      "rtnl_message_test.cc",
       "socket_test.cc",
     ]
     configs += [

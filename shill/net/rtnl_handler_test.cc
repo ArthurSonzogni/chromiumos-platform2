@@ -23,9 +23,9 @@
 #include <net-base/byte_utils.h>
 #include <net-base/mac_address.h>
 #include <net-base/mock_socket.h>
+#include <net-base/rtnl_message.h>
 
 #include "shill/mock_log.h"
-#include "shill/net/rtnl_message.h"
 
 using testing::_;
 using testing::A;
@@ -38,6 +38,9 @@ using testing::Return;
 using testing::ReturnArg;
 using testing::StrictMock;
 using testing::Test;
+
+// TODO(b/301905012): Remove this after moving this file to net-base.
+using net_base::RTNLMessage;
 
 namespace shill {
 

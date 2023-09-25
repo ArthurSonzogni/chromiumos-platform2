@@ -15,13 +15,13 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
-#include <net-base/ip_address.h>
 #include <net-base/byte_utils.h>
+#include <net-base/ip_address.h>
+#include <net-base/rtnl_message.h>
 
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
-#include "shill/net/rtnl_message.h"
 
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b) {
   return (a.start == b.start) && (a.end == b.end);
@@ -112,7 +112,8 @@ void RoutingPolicyService::Stop() {
   rule_listener_.reset();
 }
 
-void RoutingPolicyService::RuleMsgHandler(const RTNLMessage& message) {
+void RoutingPolicyService::RuleMsgHandler(
+    const net_base::RTNLMessage& message) {
   // Family will be set to the real value in ParseRoutingPolicyMessage().
   auto entry = ParseRoutingPolicyMessage(message);
 
@@ -135,17 +136,19 @@ void RoutingPolicyService::RuleMsgHandler(const RTNLMessage& message) {
     }
   }
 
-  ApplyRule(-1, *entry, RTNLMessage::kModeDelete, 0);
+  ApplyRule(-1, *entry, net_base::RTNLMessage::kModeDelete, 0);
   return;
 }
 
 std::optional<RoutingPolicyEntry>
-RoutingPolicyService::ParseRoutingPolicyMessage(const RTNLMessage& message) {
-  if (message.type() != RTNLMessage::kTypeRule) {
+RoutingPolicyService::ParseRoutingPolicyMessage(
+    const net_base::RTNLMessage& message) {
+  if (message.type() != net_base::RTNLMessage::kTypeRule) {
     return std::nullopt;
   }
 
-  const RTNLMessage::RouteStatus& route_status = message.route_status();
+  const net_base::RTNLMessage::RouteStatus& route_status =
+      message.route_status();
   if (route_status.type != RTN_UNICAST) {
     return std::nullopt;
   }
@@ -246,7 +249,7 @@ RoutingPolicyService::ParseRoutingPolicyMessage(const RTNLMessage& message) {
 
 bool RoutingPolicyService::AddRule(int interface_index,
                                    const RoutingPolicyEntry& entry) {
-  if (!ApplyRule(interface_index, entry, RTNLMessage::kModeAdd,
+  if (!ApplyRule(interface_index, entry, net_base::RTNLMessage::kModeAdd,
                  NLM_F_CREATE | NLM_F_EXCL)) {
     return false;
   }
@@ -271,23 +274,23 @@ void RoutingPolicyService::FlushRules(int interface_index) {
   }
 
   for (const auto& nent : table->second) {
-    ApplyRule(interface_index, nent, RTNLMessage::kModeDelete, 0);
+    ApplyRule(interface_index, nent, net_base::RTNLMessage::kModeDelete, 0);
   }
   table->second.clear();
 }
 
 bool RoutingPolicyService::ApplyRule(uint32_t interface_index,
                                      const RoutingPolicyEntry& entry,
-                                     RTNLMessage::Mode mode,
+                                     net_base::RTNLMessage::Mode mode,
                                      unsigned int flags) {
   SLOG(2) << base::StringPrintf(
       "%s: index %d family %s prio %d", __func__, interface_index,
       net_base::ToString(entry.family).c_str(), entry.priority);
 
-  auto message = std::make_unique<RTNLMessage>(
-      RTNLMessage::kTypeRule, mode, NLM_F_REQUEST | flags, 0, 0, 0,
+  auto message = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeRule, mode, NLM_F_REQUEST | flags, 0, 0, 0,
       net_base::ToSAFamily(entry.family));
-  message->set_route_status(RTNLMessage::RouteStatus(
+  message->set_route_status(net_base::RTNLMessage::RouteStatus(
       entry.dst.prefix_length(), entry.src.prefix_length(),
       entry.table < 256 ? entry.table : RT_TABLE_COMPAT, RTPROT_BOOT,
       RT_SCOPE_UNIVERSE, RTN_UNICAST, entry.invert_rule ? FIB_RULE_INVERT : 0));

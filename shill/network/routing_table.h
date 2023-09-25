@@ -9,15 +9,14 @@
 #include <set>
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include <base/functional/callback.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
 #include <net-base/ip_address.h>
+#include <net-base/rtnl_message.h>
 
-#include "shill/net/rtnl_message.h"
 #include "shill/network/routing_table_entry.h"
 
 namespace shill {
@@ -140,10 +139,10 @@ class RoutingTable {
   bool RemoveRouteFromKernelTable(int interface_index,
                                   const RoutingTableEntry& entry);
 
-  void RouteMsgHandler(const RTNLMessage& msg);
+  void RouteMsgHandler(const net_base::RTNLMessage& msg);
   bool ApplyRoute(uint32_t interface_index,
                   const RoutingTableEntry& entry,
-                  RTNLMessage::Mode mode,
+                  net_base::RTNLMessage::Mode mode,
                   unsigned int flags);
   // Get the default route associated with an interface of a given addr family.
   // A pointer to the route is placed in |*entry|.

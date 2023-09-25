@@ -36,6 +36,7 @@
 #include <net-base/ipv6_address.h>
 #include <net-base/mac_address.h>
 #include <net-base/mock_socket.h>
+#include <net-base/rtnl_message.h>
 
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/ipconfig.h"
@@ -49,7 +50,6 @@
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_link_stats.h"
-#include "shill/net/rtnl_message.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
@@ -167,12 +167,13 @@ class DeviceInfoTest : public Test {
   }
 
  protected:
-  std::unique_ptr<RTNLMessage> BuildLinkMessage(RTNLMessage::Mode mode);
-  std::unique_ptr<RTNLMessage> BuildLinkMessageWithInterfaceName(
-      RTNLMessage::Mode mode,
+  std::unique_ptr<net_base::RTNLMessage> BuildLinkMessage(
+      net_base::RTNLMessage::Mode mode);
+  std::unique_ptr<net_base::RTNLMessage> BuildLinkMessageWithInterfaceName(
+      net_base::RTNLMessage::Mode mode,
       const std::string& interface_name,
       int interface_index = kTestDeviceIndex);
-  void SendMessageToDeviceInfo(const RTNLMessage& message);
+  void SendMessageToDeviceInfo(const net_base::RTNLMessage& message);
 
   void CreateWiFiDevice();
 
@@ -192,12 +193,14 @@ class DeviceInfoTest : public Test {
   std::string test_device_name_;
 };
 
-std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
-    RTNLMessage::Mode mode,
+std::unique_ptr<net_base::RTNLMessage>
+DeviceInfoTest::BuildLinkMessageWithInterfaceName(
+    net_base::RTNLMessage::Mode mode,
     const std::string& interface_name,
     int interface_index) {
-  auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink, mode, 0,
-                                               0, 0, interface_index, AF_INET);
+  auto message = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeLink, mode, 0, 0, 0, interface_index,
+      AF_INET);
   message->SetAttribute(
       static_cast<uint16_t>(IFLA_IFNAME),
       net_base::byte_utils::StringToCStringBytes(interface_name));
@@ -206,13 +209,14 @@ std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
   return message;
 }
 
-std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessage(
-    RTNLMessage::Mode mode) {
+std::unique_ptr<net_base::RTNLMessage> DeviceInfoTest::BuildLinkMessage(
+    net_base::RTNLMessage::Mode mode) {
   return BuildLinkMessageWithInterfaceName(mode, kTestDeviceName);
 }
 
-void DeviceInfoTest::SendMessageToDeviceInfo(const RTNLMessage& message) {
-  if (message.type() == RTNLMessage::kTypeLink) {
+void DeviceInfoTest::SendMessageToDeviceInfo(
+    const net_base::RTNLMessage& message) {
+  if (message.type() == net_base::RTNLMessage::kTypeLink) {
     device_info_.LinkMsgHandler(message);
   } else {
     NOTREACHED();
@@ -227,8 +231,9 @@ void DeviceInfoTest::CreateWiFiDevice() {
   if (device) {
     RegisterDevice(device);
   }
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
+  message->set_link_status(
+      net_base::RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
 }
 
@@ -273,8 +278,9 @@ TEST_F(DeviceInfoTest, RegisterDevice) {
 }
 
 TEST_F(DeviceInfoTest, DeviceEnumeration) {
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
+  message->set_link_status(
+      net_base::RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
   SendMessageToDeviceInfo(*message);
@@ -286,13 +292,14 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_EQ(address, net_base::MacAddress(kTestMacAddress));
   EXPECT_EQ(kTestDeviceIndex, device_info_.GetIndex(kTestDeviceName));
 
-  message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_UP | IFF_RUNNING, 0));
+  message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
+  message->set_link_status(
+      net_base::RTNLMessage::LinkStatus(0, IFF_UP | IFF_RUNNING, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
   EXPECT_EQ(IFF_UP | IFF_RUNNING, flags);
 
-  message = BuildLinkMessage(RTNLMessage::kModeDelete);
+  message = BuildLinkMessage(net_base::RTNLMessage::kModeDelete);
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   SendMessageToDeviceInfo(*message);
   EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
@@ -305,7 +312,7 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
   scoped_refptr<MockDevice> device0(
       new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device0;
-  auto message = BuildLinkMessage(RTNLMessage::kModeDelete);
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeDelete);
   EXPECT_CALL(*device0, technology()).WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
@@ -320,7 +327,7 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
       .WillRepeatedly(Return(Technology::kCellular));
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
-  message = BuildLinkMessage(RTNLMessage::kModeDelete);
+  message = BuildLinkMessage(net_base::RTNLMessage::kModeDelete);
   SendMessageToDeviceInfo(*message);
 }
 
@@ -374,7 +381,7 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
       device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
 
   // No link statistics in the message.
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(
       device_info_.GetByteCounts(kTestDeviceIndex, &rx_bytes, &tx_bytes));
@@ -382,7 +389,7 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
   EXPECT_EQ(0, tx_bytes);
 
   // Short link statistics message.
-  message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
   struct old_rtnl_link_stats64 stats;
   memset(&stats, 0, sizeof(stats));
   stats.rx_bytes = kReceiveByteCount;
@@ -396,7 +403,7 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
   EXPECT_EQ(0, tx_bytes);
 
   // Correctly sized link statistics message.
-  message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
   message->SetAttribute(
       IFLA_STATS64, {reinterpret_cast<const uint8_t*>(&stats), sizeof(stats)});
   SendMessageToDeviceInfo(*message);
@@ -536,7 +543,7 @@ TEST_F(DeviceInfoTest, BlockedDevices) {
   // Manager is not running by default.
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(0);
   device_info_.BlockDevice(kTestDeviceName);
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
@@ -548,7 +555,7 @@ TEST_F(DeviceInfoTest, BlockDeviceWithManagerRunning) {
   SetManagerRunning(true);
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
   device_info_.BlockDevice(kTestDeviceName);
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
@@ -558,7 +565,7 @@ TEST_F(DeviceInfoTest, BlockDeviceWithManagerRunning) {
 
 TEST_F(DeviceInfoTest, RenamedBlockedDevice) {
   device_info_.BlockDevice(kTestDeviceName);
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
@@ -567,8 +574,8 @@ TEST_F(DeviceInfoTest, RenamedBlockedDevice) {
 
   // Rename the test device.
   const char kRenamedDeviceName[] = "renamed-device";
-  auto rename_message = BuildLinkMessageWithInterfaceName(RTNLMessage::kModeAdd,
-                                                          kRenamedDeviceName);
+  auto rename_message = BuildLinkMessageWithInterfaceName(
+      net_base::RTNLMessage::kModeAdd, kRenamedDeviceName);
   EXPECT_CALL(manager_, DeregisterDevice(_));
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex));
   SendMessageToDeviceInfo(*rename_message);
@@ -587,9 +594,9 @@ TEST_F(DeviceInfoTest, RenamedBlockedDevice) {
 TEST_F(DeviceInfoTest, RenamedNonBlockedDevice) {
   const char kInitialDeviceName[] = "initial-device";
   auto initial_message = BuildLinkMessageWithInterfaceName(
-      RTNLMessage::kModeAdd, kInitialDeviceName);
+      net_base::RTNLMessage::kModeAdd, kInitialDeviceName);
   SendMessageToDeviceInfo(*initial_message);
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
 
   DeviceRefPtr initial_device = device_info_.GetDevice(kTestDeviceIndex);
   ASSERT_NE(nullptr, initial_device);
@@ -601,8 +608,8 @@ TEST_F(DeviceInfoTest, RenamedNonBlockedDevice) {
   // Rename the test device.
   const char kRenamedDeviceName[] = "renamed-device";
   device_info_.BlockDevice(kRenamedDeviceName);
-  auto rename_message = BuildLinkMessageWithInterfaceName(RTNLMessage::kModeAdd,
-                                                          kRenamedDeviceName);
+  auto rename_message = BuildLinkMessageWithInterfaceName(
+      net_base::RTNLMessage::kModeAdd, kRenamedDeviceName);
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(0);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(0);
   SendMessageToDeviceInfo(*rename_message);
@@ -652,8 +659,9 @@ TEST_F(DeviceInfoTest, GetMacAddressesFromKernelUnableToOpenSocket) {
       .Times(2)
       .WillOnce(Return(nullptr));
 
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
+  message->set_link_status(
+      net_base::RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
   const auto mac_address =
@@ -676,8 +684,9 @@ TEST_F(DeviceInfoTest, GetMacAddressesFromKernelIoctlFails) {
         return socket;
       });
 
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
+  message->set_link_status(
+      net_base::RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
@@ -717,8 +726,9 @@ TEST_F(DeviceInfoTest, GetMacAddressFromKernel) {
         return socket;
       });
 
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
+  message->set_link_status(
+      net_base::RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
@@ -746,8 +756,9 @@ TEST_F(DeviceInfoTest, GetPermAddressFromKernel) {
         return socket;
       });
 
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
+  message->set_link_status(
+      net_base::RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_NE(nullptr, device_info_.GetDevice(kTestDeviceIndex));
 
@@ -960,7 +971,7 @@ TEST_F(DeviceInfoTest, CreateXFRMInterface) {
       });
   EXPECT_TRUE(call_create_xfrm_interface());
   EXPECT_EQ(actual_link_info_data,
-            RTNLMessage::PackAttrs(
+            net_base::RTNLMessage::PackAttrs(
                 {{1, net_base::byte_utils::ToBytes(kUnderlyingIfIndex)},
                  {2, net_base::byte_utils::ToBytes(kIfId)}}));
   std::move(registered_response_cb).Run(100);
@@ -1017,8 +1028,9 @@ TEST_F(DeviceInfoTest, GetWiFiHardwareIdsNotWiFi) {
   if (device) {
     RegisterDevice(device);
   }
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
+  message->set_link_status(
+      net_base::RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
 
   int vendor = kDefaultTestHardwareId;
@@ -1427,7 +1439,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
   }
 
   void AddDelayedDevice(Technology delayed_technology) {
-    auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
+    auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName, _))
         .WillOnce(Return(delayed_technology));
     EXPECT_CALL(
@@ -1443,9 +1455,9 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
   }
 
   void AddDeviceWithNoIFLAAddress(Technology delayed_technology) {
-    auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeLink,
-                                                 RTNLMessage::kModeAdd, 0, 0, 0,
-                                                 kTestDeviceIndex, AF_INET);
+    auto message = std::make_unique<net_base::RTNLMessage>(
+        net_base::RTNLMessage::kTypeLink, net_base::RTNLMessage::kModeAdd, 0, 0,
+        0, kTestDeviceIndex, AF_INET);
     message->SetAttribute(
         static_cast<uint16_t>(IFLA_IFNAME),
         net_base::byte_utils::StringToCStringBytes(kTestDeviceName));

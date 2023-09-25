@@ -37,7 +37,6 @@
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
-#include "shill/net/rtnl_message.h"
 
 namespace shill {
 
@@ -59,15 +58,16 @@ static_assert(
     "kInterfaceTableIdIncrement must be greater than RT_TABLE_LOCAL, "
     "as otherwise some interface's table IDs may collide with system tables.");
 
-bool ParseRoutingTableMessage(const RTNLMessage& message,
+bool ParseRoutingTableMessage(const net_base::RTNLMessage& message,
                               int* interface_index,
                               RoutingTableEntry* entry) {
-  if (message.type() != RTNLMessage::kTypeRoute ||
+  if (message.type() != net_base::RTNLMessage::kTypeRoute ||
       !message.HasAttribute(RTA_OIF)) {
     return false;
   }
 
-  const RTNLMessage::RouteStatus& route_status = message.route_status();
+  const net_base::RTNLMessage::RouteStatus& route_status =
+      message.route_status();
 
   if (route_status.type != RTN_UNICAST) {
     return false;
@@ -394,7 +394,7 @@ bool RoutingTable::AddRouteToKernelTable(int interface_index,
   SLOG(2) << __func__ << ": "
           << " index " << interface_index << " " << entry;
 
-  return ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
+  return ApplyRoute(interface_index, entry, net_base::RTNLMessage::kModeAdd,
                     NLM_F_CREATE | NLM_F_EXCL);
 }
 
@@ -403,10 +403,11 @@ bool RoutingTable::RemoveRouteFromKernelTable(int interface_index,
   SLOG(2) << __func__ << ": "
           << " index " << interface_index << " " << entry;
 
-  return ApplyRoute(interface_index, entry, RTNLMessage::kModeDelete, 0);
+  return ApplyRoute(interface_index, entry, net_base::RTNLMessage::kModeDelete,
+                    0);
 }
 
-void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
+void RoutingTable::RouteMsgHandler(const net_base::RTNLMessage& message) {
   int interface_index;
   // Initialize it to IPv4, will be set to the real value in
   // ParseRoutingTableMessage().
@@ -429,7 +430,8 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
-  SLOG(2) << __func__ << " " << RTNLMessage::ModeToString(message.mode())
+  SLOG(2) << __func__ << " "
+          << net_base::RTNLMessage::ModeToString(message.mode())
           << " index: " << interface_index << " entry: " << entry;
 
   bool entry_exists = false;
@@ -462,7 +464,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     }
     // clang-format on
 
-    if (message.mode() == RTNLMessage::kModeAdd &&
+    if (message.mode() == net_base::RTNLMessage::kModeAdd &&
         (is_managed || entry.table == nent->table)) {
       // Set this to true to avoid adding the same route twice to
       // tables_[interface_index].
@@ -470,7 +472,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
       break;
     }
 
-    if (message.mode() == RTNLMessage::kModeDelete &&
+    if (message.mode() == net_base::RTNLMessage::kModeDelete &&
         entry.table == nent->table) {
       // Keep track of route deletions that come from outside of shill. Continue
       // the loop for resilience to any failure scenario in which
@@ -481,7 +483,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     }
   }
 
-  if (message.mode() != RTNLMessage::kModeAdd) {
+  if (message.mode() != net_base::RTNLMessage::kModeAdd) {
     return;
   }
 
@@ -491,7 +493,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
   if (is_managed && entry.table != target_table && entry.type == RTN_UNICAST) {
     RoutingTableEntry oldEntry(entry);
     entry.table = target_table;
-    ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
+    ApplyRoute(interface_index, entry, net_base::RTNLMessage::kModeAdd,
                NLM_F_CREATE | NLM_F_REPLACE);
     RemoveRouteFromKernelTable(interface_index, oldEntry);
   }
@@ -503,7 +505,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
 
 bool RoutingTable::ApplyRoute(uint32_t interface_index,
                               const RoutingTableEntry& entry,
-                              RTNLMessage::Mode mode,
+                              net_base::RTNLMessage::Mode mode,
                               unsigned int flags) {
   DCHECK(entry.table != RT_TABLE_UNSPEC && entry.table != RT_TABLE_COMPAT)
       << "Attempted to apply route: " << entry;
@@ -513,10 +515,10 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
                                 entry.src.ToString().c_str(), interface_index,
                                 mode, flags);
 
-  auto message = std::make_unique<RTNLMessage>(
-      RTNLMessage::kTypeRoute, mode, NLM_F_REQUEST | flags, 0, 0, 0,
+  auto message = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeRoute, mode, NLM_F_REQUEST | flags, 0, 0, 0,
       net_base::ToSAFamily(entry.dst.GetFamily()));
-  message->set_route_status(RTNLMessage::RouteStatus(
+  message->set_route_status(net_base::RTNLMessage::RouteStatus(
       entry.dst.prefix_length(), entry.src.prefix_length(),
       entry.table < 256 ? entry.table : RT_TABLE_COMPAT, entry.protocol,
       entry.scope, entry.type, 0));

@@ -980,7 +980,7 @@ void Proxy::DoHConfig::set_logger(Proxy::Logger logger) {
   logger_ = std::move(logger);
 }
 
-void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
+void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
   // Listen only for global or site-local IPv6 address changes.
   if (msg.address_status().scope != RT_SCOPE_UNIVERSE &&
       msg.address_status().scope != RT_SCOPE_SITE) {
@@ -993,7 +993,7 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
   }
 
   switch (msg.mode()) {
-    case shill::RTNLMessage::kModeAdd: {
+    case net_base::RTNLMessage::kModeAdd: {
       const auto ifa_addr = msg.GetIfaAddress();
       if (!ifa_addr || ifa_addr->GetFamily() != net_base::IPFamily::kIPv6) {
         LOG(ERROR) << *this << " IFA_ADDRESS in RTNL message is invalid";
@@ -1020,7 +1020,7 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
       }
       return;
     }
-    case shill::RTNLMessage::kModeDelete:
+    case net_base::RTNLMessage::kModeDelete:
       ns_peer_ipv6_address_ = std::nullopt;
       if (opts_.type == Type::kDefault) {
         StopDnsRedirection(/*ifname=*/"", AF_INET6);

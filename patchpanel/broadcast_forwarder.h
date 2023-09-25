@@ -13,8 +13,8 @@
 #include <string>
 
 #include <net-base/ipv4_address.h>
+#include <net-base/rtnl_message.h>
 #include <shill/net/rtnl_listener.h>
-#include <shill/net/rtnl_message.h>
 
 #include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/shill_client.h"
@@ -47,7 +47,7 @@ class BroadcastForwarder {
 
   // Callback from RTNetlink listener, invoked when the lan interface IPv4
   // address is changed.
-  void AddrMsgHandler(const shill::RTNLMessage& msg);
+  void AddrMsgHandler(const net_base::RTNLMessage& msg);
 
  protected:
   // Socket is used to keep track of an fd and its watcher.

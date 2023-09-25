@@ -7,7 +7,6 @@
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
 
-#include <deque>
 #include <memory>
 #include <vector>
 
@@ -21,9 +20,9 @@
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
+#include <net-base/rtnl_message.h>
 
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/net/rtnl_message.h"
 
 using testing::_;
 using testing::Field;
@@ -50,11 +49,11 @@ class RoutingTableTest : public Test {
     return &routing_table_->tables_;
   }
 
-  void SendRouteEntry(RTNLMessage::Mode mode,
+  void SendRouteEntry(net_base::RTNLMessage::Mode mode,
                       uint32_t interface_index,
                       const RoutingTableEntry& entry);
 
-  void SendRouteEntryWithSeqAndProto(RTNLMessage::Mode mode,
+  void SendRouteEntryWithSeqAndProto(net_base::RTNLMessage::Mode mode,
                                      uint32_t interface_index,
                                      const RoutingTableEntry& entry,
                                      uint32_t seq,
@@ -127,12 +126,12 @@ const int RoutingTableTest::kTestRouteTag = 789;
 namespace {
 
 MATCHER_P3(IsBlackholeRoutingPacket, family, metric, table, "") {
-  const RTNLMessage::RouteStatus& status = arg->route_status();
+  const net_base::RTNLMessage::RouteStatus& status = arg->route_status();
 
   const auto priority = net_base::byte_utils::FromBytes<uint32_t>(
       arg->GetAttribute(RTA_PRIORITY));
 
-  return arg->type() == RTNLMessage::kTypeRoute &&
+  return arg->type() == net_base::RTNLMessage::kTypeRoute &&
          arg->family() == net_base::ToSAFamily(family) &&
          arg->flags() == (NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL) &&
          status.table == table && status.protocol == RTPROT_BOOT &&
@@ -142,9 +141,9 @@ MATCHER_P3(IsBlackholeRoutingPacket, family, metric, table, "") {
 }
 
 MATCHER_P2(IsUnreachableRoutingPacket, family, table, "") {
-  const RTNLMessage::RouteStatus& status = arg->route_status();
+  const net_base::RTNLMessage::RouteStatus& status = arg->route_status();
 
-  return arg->type() == RTNLMessage::kTypeRoute &&
+  return arg->type() == net_base::RTNLMessage::kTypeRoute &&
          arg->family() == net_base::ToSAFamily(family) &&
          arg->flags() == (NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL) &&
          status.table == table && status.protocol == RTPROT_BOOT &&
@@ -153,14 +152,14 @@ MATCHER_P2(IsUnreachableRoutingPacket, family, table, "") {
 }
 
 MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
-  const RTNLMessage::RouteStatus& status = arg->route_status();
+  const net_base::RTNLMessage::RouteStatus& status = arg->route_status();
 
   const auto oif =
       net_base::byte_utils::FromBytes<uint32_t>(arg->GetAttribute(RTA_OIF));
   const auto priority = net_base::byte_utils::FromBytes<uint32_t>(
       arg->GetAttribute(RTA_PRIORITY));
 
-  return arg->type() == RTNLMessage::kTypeRoute &&
+  return arg->type() == net_base::RTNLMessage::kTypeRoute &&
          arg->family() == net_base::ToSAFamily(entry.gateway.GetFamily()) &&
          arg->flags() == (NLM_F_REQUEST | flags) &&
          entry.table == RoutingTable::GetInterfaceTableId(index) &&
@@ -176,22 +175,22 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
 
 }  // namespace
 
-void RoutingTableTest::SendRouteEntry(RTNLMessage::Mode mode,
+void RoutingTableTest::SendRouteEntry(net_base::RTNLMessage::Mode mode,
                                       uint32_t interface_index,
                                       const RoutingTableEntry& entry) {
   SendRouteEntryWithSeqAndProto(mode, interface_index, entry, 0, RTPROT_BOOT);
 }
 
 void RoutingTableTest::SendRouteEntryWithSeqAndProto(
-    RTNLMessage::Mode mode,
+    net_base::RTNLMessage::Mode mode,
     uint32_t interface_index,
     const RoutingTableEntry& entry,
     uint32_t seq,
     unsigned char proto) {
-  RTNLMessage msg(RTNLMessage::kTypeRoute, mode, 0, seq, 0, 0,
-                  net_base::ToSAFamily(entry.dst.GetFamily()));
+  net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeRoute, mode, 0, seq, 0,
+                            0, net_base::ToSAFamily(entry.dst.GetFamily()));
 
-  msg.set_route_status(RTNLMessage::RouteStatus(
+  msg.set_route_status(net_base::RTNLMessage::RouteStatus(
       entry.dst.prefix_length(), entry.src.prefix_length(),
       entry.table < 256 ? entry.table : RT_TABLE_COMPAT, proto, entry.scope,
       RTN_UNICAST, 0));
@@ -247,7 +246,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
       RoutingTableEntry(default_address, default_address, gateway_address0)
           .SetMetric(metric)
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
-  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry0);
+  SendRouteEntry(net_base::RTNLMessage::kModeAdd, kTestDeviceIndex0, entry0);
 
   std::unordered_map<int, std::vector<RoutingTableEntry>>* tables =
       GetRoutingTables();
@@ -265,7 +264,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
       RoutingTableEntry(default_address, default_address, gateway_address0)
           .SetMetric(metric)
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex1));
-  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex1, entry1);
+  SendRouteEntry(net_base::RTNLMessage::kModeAdd, kTestDeviceIndex1, entry1);
 
   // We should have two tables, which should have a single entry each.
   EXPECT_EQ(2, tables->size());
@@ -283,7 +282,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
       RoutingTableEntry(default_address, default_address, gateway_address1);
 
   // Add a second gateway route to the second interface.
-  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex1, entry2);
+  SendRouteEntry(net_base::RTNLMessage::kModeAdd, kTestDeviceIndex1, entry2);
 
   // We should have two tables, one of which has a single entry, the other has
   // two.
@@ -295,7 +294,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_EQ(entry2, test_entry);
 
   // Remove the first gateway route from the second interface.
-  SendRouteEntry(RTNLMessage::kModeDelete, kTestDeviceIndex1, entry1);
+  SendRouteEntry(net_base::RTNLMessage::kModeDelete, kTestDeviceIndex1, entry1);
 
   // We should be back to having one route per table.
   EXPECT_EQ(2, tables->size());
@@ -308,7 +307,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   // Send a duplicate of the second gateway route message, changing the metric.
   RoutingTableEntry entry3(entry2);
   entry3.metric++;
-  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex1, entry3);
+  SendRouteEntry(net_base::RTNLMessage::kModeAdd, kTestDeviceIndex1, entry3);
 
   // Both entries should show up.
   EXPECT_EQ(2, (*tables)[kTestDeviceIndex1].size());
@@ -327,8 +326,8 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
       kTestDeviceIndex1, net_base::IPFamily::kIPv6, &test_entry));
 
   // Remove last entry from an existing interface and test that we now fail.
-  SendRouteEntry(RTNLMessage::kModeDelete, kTestDeviceIndex1, entry2);
-  SendRouteEntry(RTNLMessage::kModeDelete, kTestDeviceIndex1, entry3);
+  SendRouteEntry(net_base::RTNLMessage::kModeDelete, kTestDeviceIndex1, entry2);
+  SendRouteEntry(net_base::RTNLMessage::kModeDelete, kTestDeviceIndex1, entry3);
 
   EXPECT_FALSE(routing_table_->GetDefaultRoute(
       kTestDeviceIndex1, net_base::IPFamily::kIPv4, &test_entry));
@@ -339,11 +338,11 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
 
   RoutingTableEntry entry4(entry1);
   entry4.SetMetric(RoutingTable::kShillDefaultRouteMetric);
-  EXPECT_CALL(
-      rtnl_handler_,
-      DoSendMessage(IsRoutingPacket(RTNLMessage::kModeAdd, kTestDeviceIndex1,
-                                    entry4, NLM_F_CREATE | NLM_F_EXCL),
-                    _));
+  EXPECT_CALL(rtnl_handler_,
+              DoSendMessage(IsRoutingPacket(net_base::RTNLMessage::kModeAdd,
+                                            kTestDeviceIndex1, entry4,
+                                            NLM_F_CREATE | NLM_F_EXCL),
+                            _));
   EXPECT_TRUE(routing_table_->SetDefaultRoute(
       kTestDeviceIndex1, gateway_address,
       RoutingTable::GetInterfaceTableId(kTestDeviceIndex1)));
@@ -357,14 +356,14 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
 
   // Ask to flush table0.  We should see a delete message sent.
   EXPECT_CALL(rtnl_handler_,
-              DoSendMessage(IsRoutingPacket(RTNLMessage::kModeDelete,
+              DoSendMessage(IsRoutingPacket(net_base::RTNLMessage::kModeDelete,
                                             kTestDeviceIndex0, entry0, 0),
                             _));
   routing_table_->FlushRoutes(kTestDeviceIndex0);
   EXPECT_EQ(0, (*tables)[kTestDeviceIndex0].size());
 
   // Test that the routing table size returns to zero.
-  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry1);
+  SendRouteEntry(net_base::RTNLMessage::kModeAdd, kTestDeviceIndex0, entry1);
   EXPECT_EQ(1, GetRoutingTables()->size());
   routing_table_->ResetTable(kTestDeviceIndex0);
   EXPECT_EQ(0, GetRoutingTables()->size());
@@ -384,13 +383,13 @@ TEST_F(RoutingTableTest, LowestMetricDefault) {
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
 
   // Add the same entry three times, with different metrics.
-  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry);
+  SendRouteEntry(net_base::RTNLMessage::kModeAdd, kTestDeviceIndex0, entry);
 
   entry.metric = 1;
-  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry);
+  SendRouteEntry(net_base::RTNLMessage::kModeAdd, kTestDeviceIndex0, entry);
 
   entry.metric = 1024;
-  SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry);
+  SendRouteEntry(net_base::RTNLMessage::kModeAdd, kTestDeviceIndex0, entry);
 
   // Find a matching entry.
   RoutingTableEntry test_entry(net_base::IPFamily::kIPv4);
@@ -416,8 +415,9 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
 
   // Simulate an RTPROT_RA kernel message indicating that it processed a
   // valid IPv6 router advertisement.
-  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd, kTestDeviceIndex0,
-                                entry0, 0 /* seq */, RTPROT_RA);
+  SendRouteEntryWithSeqAndProto(net_base::RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0, entry0, 0 /* seq */,
+                                RTPROT_RA);
 
   std::unordered_map<int, std::vector<RoutingTableEntry>>* tables =
       GetRoutingTables();
@@ -443,19 +443,20 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
           .SetTable(RoutingTable::GetInterfaceTableId(kTestDeviceIndex0));
 
   // Simulate an RTPROT_RA kernel message.
-  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd, kTestDeviceIndex0,
-                                entry2, 0 /* seq */, RTPROT_RA);
+  SendRouteEntryWithSeqAndProto(net_base::RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0, entry2, 0 /* seq */,
+                                RTPROT_RA);
 
   tables = GetRoutingTables();
   EXPECT_EQ(1, tables->size());
 }
 
 MATCHER_P2(IsRoutingQuery, destination, index, "") {
-  const RTNLMessage::RouteStatus& status = arg->route_status();
+  const net_base::RTNLMessage::RouteStatus& status = arg->route_status();
   const auto oif =
       net_base::byte_utils::FromBytes<uint32_t>(arg->GetAttribute(RTA_OIF));
 
-  return arg->type() == RTNLMessage::kTypeRoute &&
+  return arg->type() == net_base::RTNLMessage::kTypeRoute &&
          arg->family() == destination.family() &&
          arg->flags() == NLM_F_REQUEST && status.table == 0 &&
          status.protocol == 0 && status.scope == 0 && status.type == 0 &&

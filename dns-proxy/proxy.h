@@ -24,6 +24,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/rtnl_message.h>
 #include <shill/dbus/client/client.h>
 #include <shill/net/rtnl_listener.h>
 
@@ -217,7 +218,7 @@ class Proxy : public brillo::DBusDaemon {
 
   // Callback from RTNetlink listener, invoked when the lan interface IPv6
   // address is changed.
-  void RTNLMessageHandler(const shill::RTNLMessage& msg);
+  void RTNLMessageHandler(const net_base::RTNLMessage& msg);
 
   void LogName(std::ostream& stream) const;
 

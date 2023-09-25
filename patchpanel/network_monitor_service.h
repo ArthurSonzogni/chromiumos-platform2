@@ -19,8 +19,8 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <shill/net/rtnl_listener.h>
-#include <shill/net/rtnl_message.h>
 #include <net-base/ip_address.h>
+#include <net-base/rtnl_message.h>
 
 #include "patchpanel/shill_client.h"
 
@@ -179,7 +179,7 @@ class NeighborLinkMonitor {
 
   void SendNeighborDumpRTNLMessage();
   void SendNeighborProbeRTNLMessage(const WatchingEntry& entry);
-  void OnNeighborMessage(const shill::RTNLMessage& msg);
+  void OnNeighborMessage(const net_base::RTNLMessage& msg);
 
   int ifindex_;
   const std::string ifname_;

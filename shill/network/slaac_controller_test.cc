@@ -8,6 +8,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/rtnl_message.h>
 
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_network.h"
@@ -53,13 +54,13 @@ class SLAACControllerTest : public testing::Test {
         &SLAACControllerTest::UpdateCallback, base::Unretained(this)));
   }
 
-  void SendRTNLMessage(const RTNLMessage& message);
-  std::unique_ptr<RTNLMessage> BuildRdnssMessage(
-      RTNLMessage::Mode mode,
+  void SendRTNLMessage(const net_base::RTNLMessage& message);
+  std::unique_ptr<net_base::RTNLMessage> BuildRdnssMessage(
+      net_base::RTNLMessage::Mode mode,
       uint32_t lifetime,
       const std::vector<net_base::IPv6Address>& dns_servers);
-  std::unique_ptr<RTNLMessage> BuildAddressMessage(
-      RTNLMessage::Mode mode,
+  std::unique_ptr<net_base::RTNLMessage> BuildAddressMessage(
+      net_base::RTNLMessage::Mode mode,
       const net_base::IPCIDR& address,
       unsigned char flags,
       unsigned char scope);
@@ -73,37 +74,39 @@ class SLAACControllerTest : public testing::Test {
   EventDispatcherForTest dispatcher_;
 };
 
-void SLAACControllerTest::SendRTNLMessage(const RTNLMessage& message) {
-  if (message.type() == RTNLMessage::kTypeAddress) {
+void SLAACControllerTest::SendRTNLMessage(
+    const net_base::RTNLMessage& message) {
+  if (message.type() == net_base::RTNLMessage::kTypeAddress) {
     slaac_controller_.AddressMsgHandler(message);
-  } else if (message.type() == RTNLMessage::kTypeRdnss) {
+  } else if (message.type() == net_base::RTNLMessage::kTypeRdnss) {
     slaac_controller_.RDNSSMsgHandler(message);
   } else {
     NOTREACHED();
   }
 }
 
-std::unique_ptr<RTNLMessage> SLAACControllerTest::BuildRdnssMessage(
-    RTNLMessage::Mode mode,
+std::unique_ptr<net_base::RTNLMessage> SLAACControllerTest::BuildRdnssMessage(
+    net_base::RTNLMessage::Mode mode,
     uint32_t lifetime,
     const std::vector<net_base::IPv6Address>& dns_servers) {
-  auto message = std::make_unique<RTNLMessage>(RTNLMessage::kTypeRdnss, mode, 0,
-                                               0, 0, kTestIfindex, AF_INET6);
-  message->set_rdnss_option(RTNLMessage::RdnssOption(lifetime, dns_servers));
+  auto message = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeRdnss, mode, 0, 0, 0, kTestIfindex, AF_INET6);
+  message->set_rdnss_option(
+      net_base::RTNLMessage::RdnssOption(lifetime, dns_servers));
   return message;
 }
 
-std::unique_ptr<RTNLMessage> SLAACControllerTest::BuildAddressMessage(
-    RTNLMessage::Mode mode,
+std::unique_ptr<net_base::RTNLMessage> SLAACControllerTest::BuildAddressMessage(
+    net_base::RTNLMessage::Mode mode,
     const net_base::IPCIDR& cidr,
     unsigned char flags,
     unsigned char scope) {
-  auto message = std::make_unique<RTNLMessage>(
-      RTNLMessage::kTypeAddress, mode, 0, 0, 0, kTestIfindex,
+  auto message = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeAddress, mode, 0, 0, 0, kTestIfindex,
       net_base::ToSAFamily(cidr.GetFamily()));
   message->SetAttribute(IFA_ADDRESS, cidr.address().ToBytes());
   message->set_address_status(
-      RTNLMessage::AddressStatus(cidr.prefix_length(), flags, scope));
+      net_base::RTNLMessage::AddressStatus(cidr.prefix_length(), flags, scope));
   return message;
 }
 
@@ -122,8 +125,8 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
 
   // Infinite lifetime
   const uint32_t kInfiniteLifetime = 0xffffffff;
-  auto message = BuildRdnssMessage(RTNLMessage::kModeAdd, kInfiniteLifetime,
-                                   dns_server_addresses_in);
+  auto message = BuildRdnssMessage(net_base::RTNLMessage::kModeAdd,
+                                   kInfiniteLifetime, dns_server_addresses_in);
 
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
       .Times(1);
@@ -134,8 +137,8 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
 
   // Lifetime of 120
   const uint32_t kLifetime120 = 120;
-  auto message1 = BuildRdnssMessage(RTNLMessage::kModeAdd, kLifetime120,
-                                    dns_server_addresses_in);
+  auto message1 = BuildRdnssMessage(net_base::RTNLMessage::kModeAdd,
+                                    kLifetime120, dns_server_addresses_in);
   EXPECT_CALL(*this, UpdateCallback(
                          SLAACController::SLAACController::UpdateType::kRDNSS))
       .Times(1);
@@ -147,7 +150,7 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
 
   // Lifetime of 0
   const uint32_t kLifetime0 = 0;
-  auto message2 = BuildRdnssMessage(RTNLMessage::kModeAdd, kLifetime0,
+  auto message2 = BuildRdnssMessage(net_base::RTNLMessage::kModeAdd, kLifetime0,
                                     dns_server_addresses_in);
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
       .Times(1);
@@ -162,7 +165,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   // Contains no addresses.
   EXPECT_TRUE(slaac_controller_.GetAddresses().empty());
 
-  auto message = BuildAddressMessage(RTNLMessage::kModeAdd,
+  auto message = BuildAddressMessage(net_base::RTNLMessage::kModeAdd,
                                      net_base::IPCIDR(kTestIPAddress0), 0, 0);
 
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
@@ -173,14 +176,14 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   EXPECT_TRUE(slaac_controller_.GetAddresses().empty());
 
   message =
-      BuildAddressMessage(RTNLMessage::kModeAdd,
+      BuildAddressMessage(net_base::RTNLMessage::kModeAdd,
                           net_base::IPCIDR(kTestIPAddress1), 0, RT_SCOPE_LINK);
 
   // We should ignore non-SCOPE_UNIVERSE messages for IPv6.
   SendRTNLMessage(*message);
   EXPECT_TRUE(slaac_controller_.GetAddresses().empty());
 
-  message = BuildAddressMessage(RTNLMessage::kModeAdd,
+  message = BuildAddressMessage(net_base::RTNLMessage::kModeAdd,
                                 net_base::IPCIDR(kTestIPAddress2),
                                 IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 
@@ -192,7 +195,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
       slaac_controller_.GetAddresses(),
       std::vector<net_base::IPv6CIDR>({net_base::IPv6CIDR(kTestIPAddress2)}));
 
-  message = BuildAddressMessage(RTNLMessage::kModeAdd,
+  message = BuildAddressMessage(net_base::RTNLMessage::kModeAdd,
                                 net_base::IPCIDR(kTestIPAddress3), 0,
                                 RT_SCOPE_UNIVERSE);
 
@@ -207,7 +210,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
                                        net_base::IPv6CIDR(kTestIPAddress3)}));
 
   message = BuildAddressMessage(
-      RTNLMessage::kModeAdd, net_base::IPCIDR(kTestIPAddress4),
+      net_base::RTNLMessage::kModeAdd, net_base::IPCIDR(kTestIPAddress4),
       IFA_F_TEMPORARY | IFA_F_DEPRECATED, RT_SCOPE_UNIVERSE);
 
   // Adding a temporary deprecated address alerts the Device, but does not
@@ -221,7 +224,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
                                        net_base::IPv6CIDR(kTestIPAddress3),
                                        net_base::IPv6CIDR(kTestIPAddress4)}));
 
-  message = BuildAddressMessage(RTNLMessage::kModeAdd,
+  message = BuildAddressMessage(net_base::RTNLMessage::kModeAdd,
                                 net_base::IPCIDR(kTestIPAddress7),
                                 IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 

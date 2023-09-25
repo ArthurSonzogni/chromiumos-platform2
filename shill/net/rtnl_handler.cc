@@ -48,6 +48,9 @@ base::LazyInstance<RTNLHandler>::DestructorAtExit g_rtnl_handler =
 
 // Increasing buffer size to avoid overflows on IPV6 routing events.
 constexpr int kReceiveBufferBytes = 3 * 1024 * 1024;
+
+// TODO(b/301905012): Remove this after moving this file to net-base.
+using net_base::RTNLMessage;
 }  // namespace
 
 RTNLHandler::RTNLHandler()
@@ -472,7 +475,7 @@ bool RTNLHandler::AddInterface(const std::string& interface_name,
   }
 
   auto msg = std::make_unique<RTNLMessage>(
-      shill::RTNLMessage::kTypeLink, shill::RTNLMessage::kModeAdd,
+      RTNLMessage::kTypeLink, RTNLMessage::kModeAdd,
       NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK, 0 /* seq */,
       0 /* pid */, 0 /* if_index */, AF_UNSPEC);
   msg->SetAttribute(IFLA_IFNAME,

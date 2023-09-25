@@ -21,6 +21,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
+#include <net-base/rtnl_message.h>
 #include <shill/dbus/client/fake_client.h>
 #include <shill/dbus-constants.h>
 #include <shill/dbus-proxy-mocks.h>
@@ -989,12 +990,12 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   // RTNL message's interface index is set to 0 in order to match.
   // if_nametoindex which is used to get the interface index will return 0 on
   // error.
-  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
-                         shill::RTNLMessage::kModeAdd, 0 /* flags */,
-                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         AF_INET6);
+  net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
+                            net_base::RTNLMessage::kModeAdd, 0 /* flags */,
+                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                            AF_INET6);
   msg.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
   proxy_->RTNLMessageHandler(msg);
 }
@@ -1005,12 +1006,12 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
   proxy_->lifeline_fds_.emplace(std::make_pair("", AF_INET6),
                                 base::ScopedFD(make_fd()));
 
-  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
-                         shill::RTNLMessage::kModeDelete, 0 /* flags */,
-                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         AF_INET6);
+  net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
+                            net_base::RTNLMessage::kModeDelete, 0 /* flags */,
+                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                            AF_INET6);
   msg.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   proxy_->RTNLMessageHandler(msg);
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
@@ -1071,12 +1072,12 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   // RTNL message's interface index is set to 0 in order to match.
   // if_nametoindex which is used to get the interface index will return 0 on
   // error.
-  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
-                         shill::RTNLMessage::kModeAdd, 0 /* flags */,
-                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         AF_INET6);
+  net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
+                            net_base::RTNLMessage::kModeAdd, 0 /* flags */,
+                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                            AF_INET6);
   msg.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
   proxy_->RTNLMessageHandler(msg);
 }
@@ -1094,12 +1095,12 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
           Return(std::vector<patchpanel::Client::VirtualDevice>{virtualdev(
               patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0")}));
 
-  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
-                         shill::RTNLMessage::kModeDelete, 0 /* flags */,
-                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         AF_INET6);
+  net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
+                            net_base::RTNLMessage::kModeDelete, 0 /* flags */,
+                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                            AF_INET6);
   msg.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   proxy_->RTNLMessageHandler(msg);
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
@@ -1117,21 +1118,21 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   // RTNL message's interface index is set to -1 in order to not match.
   // if_nametoindex which is used to get the interface index will return 0 on
   // error.
-  shill::RTNLMessage msg_unrelated_ifindex(
-      shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
+  net_base::RTNLMessage msg_unrelated_ifindex(
+      net_base::RTNLMessage::kTypeAddress, net_base::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
       AF_INET6);
   msg_unrelated_ifindex.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg_unrelated_ifindex.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
   proxy_->RTNLMessageHandler(msg_unrelated_ifindex);
 
-  shill::RTNLMessage msg_unrelated_scope(
-      shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
+  net_base::RTNLMessage msg_unrelated_scope(
+      net_base::RTNLMessage::kTypeAddress, net_base::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
       AF_INET6);
   msg_unrelated_scope.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
   msg_unrelated_scope.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
   proxy_->RTNLMessageHandler(msg_unrelated_scope);
 }
@@ -1231,12 +1232,12 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   // RTNL message's interface index is set to 0 in order to match.
   // if_nametoindex which is used to get the interface index will return 0 on
   // error.
-  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
-                         shill::RTNLMessage::kModeAdd, 0 /* flags */,
-                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         AF_INET6);
+  net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
+                            net_base::RTNLMessage::kModeAdd, 0 /* flags */,
+                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                            AF_INET6);
   msg.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
   proxy_->RTNLMessageHandler(msg);
 }
@@ -1253,12 +1254,12 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
           Return(std::vector<patchpanel::Client::VirtualDevice>{virtualdev(
               patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0")}));
 
-  shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
-                         shill::RTNLMessage::kModeDelete, 0 /* flags */,
-                         0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                         AF_INET6);
+  net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
+                            net_base::RTNLMessage::kModeDelete, 0 /* flags */,
+                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
+                            AF_INET6);
   msg.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   proxy_->RTNLMessageHandler(msg);
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
@@ -1277,21 +1278,21 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   // RTNL message's interface index is set to -1 in order to not match.
   // if_nametoindex which is used to get the interface index will return 0 on
   // error.
-  shill::RTNLMessage msg_unrelated_ifindex(
-      shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
+  net_base::RTNLMessage msg_unrelated_ifindex(
+      net_base::RTNLMessage::kTypeAddress, net_base::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
       AF_INET6);
   msg_unrelated_ifindex.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg_unrelated_ifindex.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
   proxy_->RTNLMessageHandler(msg_unrelated_ifindex);
 
-  shill::RTNLMessage msg_unrelated_scope(
-      shill::RTNLMessage::kTypeAddress, shill::RTNLMessage::kModeAdd,
+  net_base::RTNLMessage msg_unrelated_scope(
+      net_base::RTNLMessage::kTypeAddress, net_base::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
       AF_INET6);
   msg_unrelated_scope.set_address_status(
-      shill::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
+      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
   msg_unrelated_scope.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
   proxy_->RTNLMessageHandler(msg_unrelated_scope);
 }

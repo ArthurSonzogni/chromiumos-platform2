@@ -17,6 +17,7 @@
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/rtnl_message.h>
 
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/carrier_entitlement.h"
@@ -41,7 +42,6 @@ class ExternalTask;
 class NetlinkSockDiag;
 class ProcessManager;
 class RTNLListener;
-class RTNLMessage;
 class PowerOpt;
 
 class Cellular : public Device,
@@ -604,7 +604,7 @@ class Cellular : public Device,
   // Invoked when the tethering multiplexed link may need to be setup.
   void EstablishMultiplexedTetheringLink();
 
-  void LinkMsgHandler(const RTNLMessage& msg);
+  void LinkMsgHandler(const net_base::RTNLMessage& msg);
 
   void SetPrimarySimProperties(const SimProperties& properties);
   void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties,

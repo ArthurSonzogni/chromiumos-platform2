@@ -20,6 +20,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/mac_address.h>
+#include <net-base/rtnl_message.h>
 #include <net-base/socket.h>
 
 #include "shill/metrics.h"
@@ -36,7 +37,6 @@ class Nl80211Message;
 class RoutingTable;
 class RTNLHandler;
 class RTNLListener;
-class RTNLMessage;
 
 class DeviceInfo {
  public:
@@ -249,20 +249,22 @@ class DeviceInfo {
 
   // Returns true and sets |link_name| to the interface name contained
   // in |msg| if one is provided.  Returns false otherwise.
-  bool GetLinkNameFromMessage(const RTNLMessage& msg, std::string* link_name);
+  bool GetLinkNameFromMessage(const net_base::RTNLMessage& msg,
+                              std::string* link_name);
 
   // Returns true if |msg| pertains to a blocked device whose link name
   // is now different from the name it was assigned before.
-  bool IsRenamedBlockedDevice(const RTNLMessage& msg);
+  bool IsRenamedBlockedDevice(const net_base::RTNLMessage& msg);
 
-  void AddLinkMsgHandler(const RTNLMessage& msg);
-  void DelLinkMsgHandler(const RTNLMessage& msg);
-  void LinkMsgHandler(const RTNLMessage& msg);
+  void AddLinkMsgHandler(const net_base::RTNLMessage& msg);
+  void DelLinkMsgHandler(const net_base::RTNLMessage& msg);
+  void LinkMsgHandler(const net_base::RTNLMessage& msg);
 
   const Info* GetInfo(int interface_index) const;
   void DelayDeviceCreation(int interface_index);
   void DelayedDeviceCreationTask();
-  void RetrieveLinkStatistics(int interface_index, const RTNLMessage& msg);
+  void RetrieveLinkStatistics(int interface_index,
+                              const net_base::RTNLMessage& msg);
   void RequestLinkStatistics();
 
   // Use nl80211 to get information on |interface_index|.

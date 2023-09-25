@@ -22,10 +22,10 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/rtnl_message.h>
 #include <net-base/socket.h>
 
 #include "shill/net/rtnl_listener.h"
-#include "shill/net/rtnl_message.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -131,7 +131,8 @@ class SHILL_EXPORT RTNLHandler {
 
   // Sends an RTNL message. If the message is successfully sent, and |seq| is
   // not null, then it will be set to the message's assigned sequence number.
-  virtual bool SendMessage(std::unique_ptr<RTNLMessage> message, uint32_t* seq);
+  virtual bool SendMessage(std::unique_ptr<net_base::RTNLMessage> message,
+                           uint32_t* seq);
 
  protected:
   RTNLHandler();
@@ -174,14 +175,14 @@ class SHILL_EXPORT RTNLHandler {
   void OnReadable();
 
   // Dispatches an rtnl message to all listeners
-  void DispatchEvent(int type, const RTNLMessage& msg);
+  void DispatchEvent(int type, const net_base::RTNLMessage& msg);
   // Send the next table-dump request to the kernel
   void NextRequest(uint32_t seq);
   // Parse an incoming rtnl message from the kernel
   void ParseRTNL(base::span<const uint8_t> data);
 
   bool AddressRequest(int interface_index,
-                      RTNLMessage::Mode mode,
+                      net_base::RTNLMessage::Mode mode,
                       int flags,
                       const net_base::IPCIDR& local,
                       const std::optional<net_base::IPv4Address>& broadcast);
@@ -191,7 +192,7 @@ class SHILL_EXPORT RTNLHandler {
   // default -- with the outgoing message.  If the message is sent
   // successfully, the sequence number in |message| is set, and the
   // function returns true.  Otherwise this function returns false.
-  bool SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
+  bool SendMessageWithErrorMask(std::unique_ptr<net_base::RTNLMessage> message,
                                 const ErrorMask& error_mask,
                                 uint32_t* msg_seq);
 
@@ -212,10 +213,10 @@ class SHILL_EXPORT RTNLHandler {
   // Storing a request when there is already a request stored with the same
   // sequence number will result in the stored request being updated by the new
   // request.
-  void StoreRequest(std::unique_ptr<RTNLMessage> request);
+  void StoreRequest(std::unique_ptr<net_base::RTNLMessage> request);
   // Removes a stored request from |stored_requests_| and returns it. Returns
   // nullptr if there is no request stored with that sequence.
-  std::unique_ptr<RTNLMessage> PopStoredRequest(uint32_t seq);
+  std::unique_ptr<net_base::RTNLMessage> PopStoredRequest(uint32_t seq);
   uint32_t CalculateStoredRequestWindowSize();
 
   std::unique_ptr<net_base::SocketFactory> socket_factory_ =
@@ -233,8 +234,8 @@ class SHILL_EXPORT RTNLHandler {
   uint32_t last_dump_sequence_;
   // Sequence of the oldest request stored in |stored_requests_|.
   uint32_t oldest_request_sequence_;
-  // Mapping of sequence number to corresponding RTNLMessage.
-  std::map<uint32_t, std::unique_ptr<RTNLMessage>> stored_requests_;
+  // Mapping of sequence number to corresponding net_base::RTNLMessage.
+  std::map<uint32_t, std::unique_ptr<net_base::RTNLMessage>> stored_requests_;
 
   base::ObserverList<RTNLListener> listeners_;
   std::vector<ErrorMask> error_mask_window_;

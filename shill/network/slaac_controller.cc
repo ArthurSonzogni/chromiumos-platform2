@@ -91,13 +91,13 @@ void SLAACController::Stop() {
   last_provision_timer_.reset();
 }
 
-void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
-  DCHECK(msg.type() == RTNLMessage::kTypeAddress);
+void SLAACController::AddressMsgHandler(const net_base::RTNLMessage& msg) {
+  DCHECK(msg.type() == net_base::RTNLMessage::kTypeAddress);
   if (msg.interface_index() != interface_index_) {
     return;
   }
 
-  const RTNLMessage::AddressStatus& status = msg.address_status();
+  const net_base::RTNLMessage::AddressStatus& status = msg.address_status();
   if (msg.family() != AF_INET6 || status.scope != RT_SCOPE_UNIVERSE ||
       (status.flags & IFA_F_PERMANENT)) {
     // SLAACController only monitors IPv6 global address that is not PERMANENT.
@@ -125,7 +125,7 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
       slaac_addresses_.begin(), slaac_addresses_.end(),
       [&](const AddressData& data) { return data.cidr == *ipv6_cidr; });
   if (iter != slaac_addresses_.end()) {
-    if (msg.mode() == RTNLMessage::kModeDelete) {
+    if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
       LOG(INFO) << "RTNL cache: Delete address " << ipv6_cidr->ToString()
                 << " for interface " << interface_index_;
       slaac_addresses_.erase(iter);
@@ -134,13 +134,13 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
       iter->scope = status.scope;
     }
   } else {
-    if (msg.mode() == RTNLMessage::kModeAdd) {
+    if (msg.mode() == net_base::RTNLMessage::kModeAdd) {
       LOG(INFO) << "RTNL cache: Add address " << ipv6_cidr->ToString()
                 << " for interface " << interface_index_;
       slaac_addresses_.insert(
           slaac_addresses_.begin(),
           AddressData(*ipv6_cidr, status.flags, status.scope));
-    } else if (msg.mode() == RTNLMessage::kModeDelete) {
+    } else if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
       LOG(WARNING) << "RTNL cache: Deleting non-cached address "
                    << ipv6_cidr->ToString() << " for interface "
                    << interface_index_;
@@ -179,13 +179,13 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
   }
 }
 
-void SLAACController::RDNSSMsgHandler(const RTNLMessage& msg) {
-  DCHECK(msg.type() == RTNLMessage::kTypeRdnss);
+void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
+  DCHECK(msg.type() == net_base::RTNLMessage::kTypeRdnss);
   if (msg.interface_index() != interface_index_) {
     return;
   }
 
-  const RTNLMessage::RdnssOption& rdnss_option = msg.rdnss_option();
+  const net_base::RTNLMessage::RdnssOption& rdnss_option = msg.rdnss_option();
   uint32_t rdnss_lifetime_seconds = rdnss_option.lifetime;
   rdnss_addresses_ = rdnss_option.addresses;
 

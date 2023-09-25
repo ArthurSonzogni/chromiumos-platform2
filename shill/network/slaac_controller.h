@@ -13,6 +13,7 @@
 #include <base/time/time.h>
 #include <metrics/timer.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/rtnl_message.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mockable.h"
@@ -79,8 +80,8 @@ class SLAACController {
     unsigned char scope;
   };
 
-  void AddressMsgHandler(const RTNLMessage& msg);
-  void RDNSSMsgHandler(const RTNLMessage& msg);
+  void AddressMsgHandler(const net_base::RTNLMessage& msg);
+  void RDNSSMsgHandler(const net_base::RTNLMessage& msg);
 
   // Timer function for monitoring RDNSS's lifetime.
   void StartRDNSSTimer(base::TimeDelta lifetime);

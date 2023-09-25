@@ -8,6 +8,9 @@
 
 namespace shill {
 
+// TODO(b/301905012): Remove this after moving this file to net-base.
+using net_base::RTNLMessage;
+
 RTNLListener::RTNLListener(
     int listen_flags,
     const base::RepeatingCallback<void(const RTNLMessage&)>& callback)

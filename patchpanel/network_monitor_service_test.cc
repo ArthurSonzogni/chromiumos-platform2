@@ -32,9 +32,9 @@ constexpr char kTestInterfaceName[] = "wlan0";
 using ::testing::Eq;
 
 MATCHER(IsNeighborDumpMessage, "") {
-  if (!(arg->type() == shill::RTNLMessage::kTypeNeighbor &&
+  if (!(arg->type() == net_base::RTNLMessage::kTypeNeighbor &&
         arg->flags() == NLM_F_REQUEST | NLM_F_DUMP &&
-        arg->mode() == shill::RTNLMessage::kModeGet &&
+        arg->mode() == net_base::RTNLMessage::kModeGet &&
         arg->interface_index() == kTestInterfaceIndex))
     return false;
 
@@ -42,9 +42,9 @@ MATCHER(IsNeighborDumpMessage, "") {
 }
 
 MATCHER_P(IsNeighborProbeMessage, address, "") {
-  if (!(arg->type() == shill::RTNLMessage::kTypeNeighbor &&
+  if (!(arg->type() == net_base::RTNLMessage::kTypeNeighbor &&
         arg->flags() == NLM_F_REQUEST | NLM_F_REPLACE &&
-        arg->mode() == shill::RTNLMessage::kModeAdd &&
+        arg->mode() == net_base::RTNLMessage::kModeAdd &&
         arg->neighbor_status().state == NUD_PROBE &&
         arg->interface_index() == kTestInterfaceIndex &&
         arg->HasAttribute(NDA_DST)))
@@ -168,28 +168,29 @@ class NeighborLinkMonitorTest : public testing::Test {
   }
 
   void NotifyNUDStateChanged(const std::string& addr, uint16_t nud_state) {
-    CreateAndSendIncomingRTNLMessage(shill::RTNLMessage::kModeAdd, addr,
+    CreateAndSendIncomingRTNLMessage(net_base::RTNLMessage::kModeAdd, addr,
                                      nud_state);
   }
 
   void NotifyNeighborRemoved(const std::string& addr) {
-    CreateAndSendIncomingRTNLMessage(shill::RTNLMessage::kModeDelete, addr, 0);
+    CreateAndSendIncomingRTNLMessage(net_base::RTNLMessage::kModeDelete, addr,
+                                     0);
   }
 
-  void CreateAndSendIncomingRTNLMessage(const shill::RTNLMessage::Mode mode,
+  void CreateAndSendIncomingRTNLMessage(const net_base::RTNLMessage::Mode mode,
                                         const std::string& address,
                                         uint16_t nud_state) {
     ASSERT_NE(registered_listener_, nullptr);
 
     const auto addr = net_base::IPAddress::CreateFromString(address);
     CHECK(addr);
-    shill::RTNLMessage msg(shill::RTNLMessage::kTypeNeighbor, mode, 0, 0, 0,
-                           kTestInterfaceIndex,
-                           net_base::ToSAFamily(addr->GetFamily()));
+    net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeNeighbor, mode, 0, 0,
+                              0, kTestInterfaceIndex,
+                              net_base::ToSAFamily(addr->GetFamily()));
     msg.SetAttribute(NDA_DST, addr->ToBytes());
-    if (mode == shill::RTNLMessage::kModeAdd) {
+    if (mode == net_base::RTNLMessage::kModeAdd) {
       msg.set_neighbor_status(
-          shill::RTNLMessage::NeighborStatus(nud_state, 0, 0));
+          net_base::RTNLMessage::NeighborStatus(nud_state, 0, 0));
       msg.SetAttribute(NDA_LLADDR, std::vector<uint8_t>{1, 2, 3, 4, 5, 6});
     }
 

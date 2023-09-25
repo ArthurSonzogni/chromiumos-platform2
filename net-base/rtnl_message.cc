@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/rtnl_message.h"
+#include "net-base/rtnl_message.h"
 
 #include <net/if.h>     // NB: order matters; this conflicts with <linux/if.h>
 #include <arpa/inet.h>  // NOLINT(build/include_alpha)
@@ -26,10 +26,10 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
-#include <net-base/byte_utils.h>
 
-namespace shill {
+#include "net-base/byte_utils.h"
 
+namespace net_base {
 namespace {
 
 // Defined in the kernel at include/net/ndisc.h and not exposed in user space
@@ -104,7 +104,7 @@ constexpr std::array<flag_info_t, 19> kNetDeviceFlags = {{
 // Returns the name associated with the give |ifi_type| corresponding to the
 // ifi_type field of a struct ifinfomsg LINK message. The possible type values
 // are defined in uapi/linux/if_arp.h.
-std::string GetNetDeviceTypeName(uint16_t ifi_type) {
+std::string GetNetDeviceTypeName(unsigned int ifi_type) {
   switch (ifi_type) {
     case ARPHRD_NETROM:
       return "NETROM";
@@ -360,9 +360,9 @@ std::string GetRuleActionName(uint16_t rule_rtm_type) {
   }
 }
 
-std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, int len) {
+std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, size_t len) {
   const auto* attr_data = reinterpret_cast<const char*>(data);
-  int attr_len = len;
+  const size_t attr_len = len;
 
   RTNLAttrMap attrs;
   while (data && RTA_OK(data, len)) {
@@ -386,7 +386,7 @@ std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, int len) {
 
 // Returns the interface name for the device with interface index |ifindex|, or
 // returns an empty string if it fails to find the interface.
-std::string IndexToName(int ifindex) {
+std::string IndexToName(unsigned int ifindex) {
   char buf[IFNAMSIZ] = {};
   if_indextoname(ifindex, buf);
   return std::string(buf);
@@ -497,7 +497,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
   }
 
   rtattr* attr_data = nullptr;
-  int attr_length = 0;
+  size_t attr_length = 0;
   std::unique_ptr<RTNLMessage> msg;
   switch (hdr->hdr.nlmsg_type) {
     case RTM_NEWLINK:
@@ -567,7 +567,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeLink(Mode mode,
   }
 
   rtattr* attr_data = IFLA_RTA(NLMSG_DATA(&hdr->hdr));
-  const int attr_length = IFLA_PAYLOAD(&hdr->hdr);
+  const size_t attr_length = IFLA_PAYLOAD(&hdr->hdr);
   const Type type = kTypeLink;
   const sa_family_t family = hdr->ifi.ifi_family;
   const int32_t interface_index = hdr->ifi.ifi_index;
@@ -614,7 +614,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeAddress(Mode mode,
 
   const Type type = kTypeAddress;
   const sa_family_t family = hdr->ifa.ifa_family;
-  const int interface_index = hdr->ifa.ifa_index;
+  const int interface_index = static_cast<int>(hdr->ifa.ifa_index);
   auto msg = std::make_unique<RTNLMessage>(type, mode, 0, 0, 0, interface_index,
                                            family);
   msg->set_address_status(AddressStatus(
@@ -685,7 +685,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
 
   // Verify option length.
   // The length field in the header is in units of 8 octets.
-  int opt_len = static_cast<int>(nd_user_option_header->length) * 8;
+  const size_t opt_len = nd_user_option_header->length * 8;
   if (opt_len != hdr->nd_user_opt.nduseropt_opts_len) {
     return nullptr;
   }
@@ -693,7 +693,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
   // Determine option data pointer and data length.
   const uint8_t* option_data =
       reinterpret_cast<const uint8_t*>(nd_user_option_header + 1);
-  int data_len = opt_len - sizeof(NDUserOptionHeader);
+  const size_t data_len = opt_len - sizeof(NDUserOptionHeader);
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(min_payload_len + data_len)) {
     return nullptr;
   }
@@ -720,7 +720,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
 }
 
 bool RTNLMessage::ParseRdnssOption(const uint8_t* data,
-                                   int length,
+                                   size_t length,
                                    uint32_t lifetime) {
   const size_t addr_length = net_base::IPv6Address::kAddressLength;
 
@@ -802,9 +802,10 @@ std::vector<uint8_t> RTNLMessage::Encode() const {
     hdr.hdr.nlmsg_flags |= NLM_F_REQUEST | NLM_F_DUMP;
   }
 
-  size_t header_length = hdr.hdr.nlmsg_len;
+  uint32_t header_length = hdr.hdr.nlmsg_len;
   const std::vector<uint8_t> attributes = PackAttrs(attributes_);
-  hdr.hdr.nlmsg_len = NLMSG_ALIGN(hdr.hdr.nlmsg_len) + attributes.size();
+  hdr.hdr.nlmsg_len =
+      NLMSG_ALIGN(hdr.hdr.nlmsg_len) + static_cast<uint32_t>(attributes.size());
   std::vector<uint8_t> packet(reinterpret_cast<uint8_t*>(&hdr),
                               reinterpret_cast<uint8_t*>(&hdr) + header_length);
   packet.insert(packet.end(), attributes.begin(), attributes.end());
@@ -829,9 +830,9 @@ bool RTNLMessage::EncodeLink(RTNLHeader* hdr) const {
       return false;
   }
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ifi));
-  hdr->ifi.ifi_family = family_;
+  hdr->ifi.ifi_family = static_cast<unsigned char>(family_);
   hdr->ifi.ifi_index = interface_index_;
-  hdr->ifi.ifi_type = link_status_.type;
+  hdr->ifi.ifi_type = static_cast<uint16_t>(link_status_.type);
   hdr->ifi.ifi_flags = link_status_.flags;
   hdr->ifi.ifi_change = link_status_.change;
   return true;
@@ -854,11 +855,11 @@ bool RTNLMessage::EncodeAddress(RTNLHeader* hdr) const {
       return false;
   }
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ifa));
-  hdr->ifa.ifa_family = family_;
+  hdr->ifa.ifa_family = static_cast<unsigned char>(family_);
   hdr->ifa.ifa_prefixlen = address_status_.prefix_len;
   hdr->ifa.ifa_flags = address_status_.flags;
   hdr->ifa.ifa_scope = address_status_.scope;
-  hdr->ifa.ifa_index = interface_index_;
+  hdr->ifa.ifa_index = static_cast<uint32_t>(interface_index_);
   return true;
 }
 
@@ -880,7 +881,7 @@ bool RTNLMessage::EncodeRoute(RTNLHeader* hdr) const {
       return false;
   }
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->rtm));
-  hdr->rtm.rtm_family = family_;
+  hdr->rtm.rtm_family = static_cast<unsigned char>(family_);
   hdr->rtm.rtm_dst_len = route_status_.dst_prefix;
   hdr->rtm.rtm_src_len = route_status_.src_prefix;
   hdr->rtm.rtm_table = route_status_.table;
@@ -908,7 +909,7 @@ bool RTNLMessage::EncodeNeighbor(RTNLHeader* hdr) const {
       return false;
   }
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ndm));
-  hdr->ndm.ndm_family = family_;
+  hdr->ndm.ndm_family = static_cast<unsigned char>(family_);
   hdr->ndm.ndm_ifindex = interface_index_;
   hdr->ndm.ndm_state = neighbor_status_.state;
   hdr->ndm.ndm_flags = neighbor_status_.flags;
@@ -1089,7 +1090,8 @@ std::string RTNLMessage::ToString() const {
       if (const auto addr = GetIfaAddress(); addr.has_value()) {
         details = base::StringPrintf(
             "%s if %s[%d] flags %s scope %d", addr->ToString().c_str(),
-            IndexToName(interface_index_).c_str(), interface_index_,
+            IndexToName(static_cast<unsigned int>(interface_index_)).c_str(),
+            interface_index_,
             address_status_.flags
                 ? PrintFlags(address_status_.flags, kIfaFlags).c_str()
                 : "0",
@@ -1148,4 +1150,4 @@ std::string RTNLMessage::ToString() const {
                             details.c_str());
 }
 
-}  // namespace shill
+}  // namespace net_base
