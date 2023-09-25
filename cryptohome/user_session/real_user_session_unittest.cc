@@ -30,6 +30,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/mock_device_management_client_proxy.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
@@ -111,6 +112,7 @@ class RealUserSessionTest : public ::testing::Test {
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
         remove_callback,
         /*vault_factory=*/nullptr);
+    homedirs_->SetDeviceManagementClientProxy(&device_management_client_);
 
     AddUser(kUser0, kUserPassword0);
 
@@ -151,6 +153,7 @@ class RealUserSessionTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
+  NiceMock<MockDeviceManagementClientProxy> device_management_client_;
   Crypto crypto_;
   std::unique_ptr<KeysetManagement> keyset_management_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
@@ -183,6 +186,8 @@ class RealUserSessionTest : public ::testing::Test {
 
   void PreparePolicy(bool enterprise_owned, const std::string& owner) {
     homedirs_->set_enterprise_owned(enterprise_owned);
+    EXPECT_CALL(device_management_client_, IsEnterpriseOwned())
+        .WillRepeatedly(Return(enterprise_owned));
     EXPECT_CALL(*mock_device_policy_,
                 LoadPolicy(/*delete_invalid_files=*/false))
         .WillRepeatedly(Return(true));

@@ -377,6 +377,12 @@ StorageStatusOr<EncryptedContainerType> HomeDirs::GetVaultType(
   return EncryptedContainerType::kUnknown;
 }
 
+bool HomeDirs::enterprise_owned() const {
+  CHECK(device_management_client_)
+      << __func__ << " proxy class instance is not initialized";
+  return device_management_client_->IsEnterpriseOwned();
+}
+
 StorageStatusOr<EncryptedContainerType> HomeDirs::PickVaultType(
     const ObfuscatedUsername& obfuscated_username,
     const CryptohomeVault::Options& options) {
@@ -437,6 +443,13 @@ StorageStatusOr<EncryptedContainerType> HomeDirs::PickVaultType(
   return options.force_type != EncryptedContainerType::kUnknown
              ? options.force_type
              : ChooseVaultType();
+}
+
+void HomeDirs::CreateAndSetDeviceManagementClientProxy(
+    scoped_refptr<dbus::Bus> bus) {
+  default_device_management_client_ =
+      std::make_unique<DeviceManagementClientProxy>(bus);
+  device_management_client_ = default_device_management_client_.get();
 }
 
 bool HomeDirs::GetPlainOwner(Username* owner) {

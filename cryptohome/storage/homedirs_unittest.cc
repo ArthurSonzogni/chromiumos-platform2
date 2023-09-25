@@ -21,6 +21,7 @@
 #include <policy/mock_device_policy.h>
 
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/mock_device_management_client_proxy.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
@@ -113,6 +114,7 @@ class HomeDirsTest
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
         remove_callback, vault_factory_.get());
+    homedirs_->SetDeviceManagementClientProxy(&device_management_client_);
 
     AddUser(kUser0, kUserPassword0);
     AddUser(kUser1, kUserPassword1);
@@ -150,6 +152,7 @@ class HomeDirsTest
 
  protected:
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockDeviceManagementClientProxy> device_management_client_;
   MockKeysetManagement keyset_management_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
@@ -270,6 +273,8 @@ TEST_P(HomeDirsTest,
       .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
 
   homedirs_->set_enterprise_owned(true);
+  EXPECT_CALL(device_management_client_, IsEnterpriseOwned())
+      .WillRepeatedly(Return(true));
   auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
   EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kAll);
 

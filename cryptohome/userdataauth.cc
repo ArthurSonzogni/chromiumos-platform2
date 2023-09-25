@@ -802,10 +802,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   low_disk_space_handler_->SetLowDiskSpaceCallback(
       base::BindRepeating([](uint64_t) {}));
 
-  if (!low_disk_space_handler_->Init(base::BindRepeating(
-          &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
-    return false;
-
   hwsec_->RegisterOnReadyCallback(base::BindOnce(
       &UserDataAuth::HwsecReadyCallback, base::Unretained(this)));
 
@@ -817,6 +813,13 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   PostTaskToMountThread(FROM_HERE,
                         base::BindOnce(&UserDataAuth::SetDeviceManagementProxy,
                                        base::Unretained(this)));
+
+  // SetDeviceManagementProxy() should be invoked before the following
+  // initialization, as low_disk_space_handler_ uses homedirs to check the
+  // enterprise_owned status.
+  if (!low_disk_space_handler_->Init(base::BindRepeating(
+          &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
+    return false;
 
   // If the TPM is unowned or doesn't exist, it's safe for
   // this function to be called again. However, it shouldn't
@@ -906,6 +909,9 @@ void UserDataAuth::SetDeviceManagementProxy() {
     install_attrs_->SetDeviceManagementProxy(
         std::make_unique<org::chromium::DeviceManagementProxy>(
             mount_thread_bus_));
+  }
+  if (homedirs_) {
+    homedirs_->CreateAndSetDeviceManagementClientProxy(mount_thread_bus_);
   }
 }
 

@@ -30,6 +30,7 @@
 #include <policy/libpolicy.h>
 
 #include "cryptohome/crypto.h"
+#include "cryptohome/device_management_client_proxy.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
@@ -181,7 +182,7 @@ class HomeDirs {
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
   virtual void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
-  virtual bool enterprise_owned() const { return enterprise_owned_; }
+  virtual bool enterprise_owned() const;
 
   virtual void set_lvm_migration_enabled(bool value) {
     lvm_migration_enabled_ = value;
@@ -193,6 +194,15 @@ class HomeDirs {
       const CryptohomeVault::Options& options);
 
   virtual CryptohomeVaultFactory* GetVaultFactory() { return vault_factory_; }
+
+  // Set the device_management_client proxy to homedirs.
+  virtual void SetDeviceManagementClientProxy(
+      DeviceManagementClientProxy* device_management_client) {
+    device_management_client_ = device_management_client;
+  }
+
+  virtual void CreateAndSetDeviceManagementClientProxy(
+      scoped_refptr<dbus::Bus> bus);
 
  private:
   // Choose the vault type for new vaults.
@@ -259,6 +269,12 @@ class HomeDirs {
   // This callback will be run in Remove() to remove LE Credentials when the
   // home directory of the corresponding user is removed.
   RemoveCallback remove_callback_;
+
+  // These will be used to fetch enterprise_owned status from device_management
+  // client.
+  std::unique_ptr<DeviceManagementClientProxy>
+      default_device_management_client_;
+  DeviceManagementClientProxy* device_management_client_ = nullptr;
 
   // Caches the result of the AES keylocker check, so that we don't add the
   // latency of reading /proc/crypto for every cryptohome::Mount call.

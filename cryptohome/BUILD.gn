@@ -291,6 +291,7 @@ if (use.test) {
       "data_migrator/fake_migration_helper_delegate.cc",
       "mock_cryptohome_key_loader.cc",
       "mock_cryptohome_keys_manager.cc",
+      "mock_device_management_client_proxy.cc",
       "mock_firmware_management_parameters.cc",
       "mock_install_attributes.cc",
       "mock_key_challenge_service.cc",
