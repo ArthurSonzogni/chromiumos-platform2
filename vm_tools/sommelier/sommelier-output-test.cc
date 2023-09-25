@@ -53,12 +53,10 @@ TEST_F(X11DirectScaleTest,
   output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 0);
-  EXPECT_EQ(output->virt_y, 0);
 
   output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 1920);
-  EXPECT_EQ(output->virt_y, 0);
 
   // Advertise another output to the left.
   AdvertiseOutputs(xwayland.get(), {{.x = -800,
@@ -71,17 +69,14 @@ TEST_F(X11DirectScaleTest,
   output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, -800);
   EXPECT_EQ(output->virt_x, 0);
-  EXPECT_EQ(output->virt_y, 0);
 
   output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 1080);
-  EXPECT_EQ(output->virt_y, 0);
 
   output = ctx.host_outputs[2];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 3000);
-  EXPECT_EQ(output->virt_y, 0);
 }
 
 TEST_F(X11Test, AddingMultipleOutputsPositionsCorrectly) {
@@ -102,12 +97,10 @@ TEST_F(X11Test, AddingMultipleOutputsPositionsCorrectly) {
   output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 0);
-  EXPECT_EQ(output->virt_y, 0);
 
   output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 1920);
-  EXPECT_EQ(output->virt_y, 0);
 
   // Act
   AdvertiseOutputs(xwayland.get(), {{
@@ -123,17 +116,14 @@ TEST_F(X11Test, AddingMultipleOutputsPositionsCorrectly) {
   output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, -800);
   EXPECT_EQ(output->virt_x, 0);
-  EXPECT_EQ(output->virt_y, 0);
 
   output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 1440);
-  EXPECT_EQ(output->virt_y, 0);
 
   output = ctx.host_outputs[2];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 3360);
-  EXPECT_EQ(output->virt_y, 0);
 }
 
 TEST_F(X11Test, OutputsPositionedCorrectlyAfterRemovingLeftOutput) {
@@ -159,12 +149,10 @@ TEST_F(X11Test, OutputsPositionedCorrectlyAfterRemovingLeftOutput) {
   output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 1920);
   EXPECT_EQ(output->virt_x, 0);
-  EXPECT_EQ(output->virt_y, 0);
 
   output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 2000);
   EXPECT_EQ(output->virt_x, 540);
-  EXPECT_EQ(output->virt_y, 0);
 
   // outputs has length 2.
   EXPECT_EQ(ctx.host_outputs.size(), 2u);
@@ -193,12 +181,10 @@ TEST_F(X11Test, OutputsPositionedCorrectlyAfterRemovingMiddleOutput) {
   output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 0);
-  EXPECT_EQ(output->virt_y, 0);
 
   output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 2000);
   EXPECT_EQ(output->virt_x, 1920);
-  EXPECT_EQ(output->virt_y, 0);
 
   // outputs has length 2.
   EXPECT_EQ(ctx.host_outputs.size(), 2u);
@@ -220,7 +206,6 @@ TEST_F(X11Test, OtherOutputUnchangedAfterRemovingRightOutput) {
   output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 0);
-  EXPECT_EQ(output->virt_y, 0);
   // outputs has length 1.
   EXPECT_EQ(ctx.host_outputs.size(), 1u);
 }
@@ -240,13 +225,11 @@ TEST_F(X11Test, RotatingOutputsShiftsNeighbouringOutputs) {
 
   // Assert: Output is rotated and next output is shifted left.
   EXPECT_EQ(output->virt_x, 0);
-  EXPECT_EQ(output->virt_y, 0);
   EXPECT_EQ(output->virt_rotated_width, 1080);
   EXPECT_EQ(output->virt_rotated_height, 1920);
 
   output = ctx.host_outputs[1];
   EXPECT_EQ(output->virt_x, 1080);
-  EXPECT_EQ(output->virt_y, 0);
 }
 
 TEST_F(X11Test, MovingOutputsShiftsOutputs) {
@@ -266,12 +249,10 @@ TEST_F(X11Test, MovingOutputsShiftsOutputs) {
   output = ctx.host_outputs[0];
   EXPECT_EQ(output->x, -1920);
   EXPECT_EQ(output->virt_x, 0);
-  EXPECT_EQ(output->virt_y, 0);
 
   output = ctx.host_outputs[1];
   EXPECT_EQ(output->x, 0);
   EXPECT_EQ(output->virt_x, 1920);
-  EXPECT_EQ(output->virt_y, 0);
 }
 
 }  // namespace sommelier

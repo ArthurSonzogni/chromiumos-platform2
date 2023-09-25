@@ -67,6 +67,7 @@ enum {
   ATOM_LAST = ATOM_SOMMELIER_QUIRK_APPLIED,
 };
 
+// A series of configurations and objects shared globally.
 struct sl_context {
   char** runprog;
 
@@ -144,7 +145,11 @@ struct sl_context {
 #ifdef GAMEPAD_SUPPORT
   struct wl_list gamepads;
 #endif
+  // The scale provided by the --scale argument to sommelier.
   double desired_scale;
+  // The calculated value of desired_scale * default_scale. Default scale is the
+  // device_scale_factor * preferred_scale (usually preferred_scale = 1) of the
+  // internal screen (which is assumed to be the first output).
   double scale;
 
   // These scale factors are used for the direct scaling mode.

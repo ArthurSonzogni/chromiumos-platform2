@@ -242,6 +242,9 @@ struct sl_host_output {
   struct zxdg_output_v1* zxdg_output;
   struct zaura_output* aura_output;
   int internal;
+  // Whether or not this output has been modified and updated information needs
+  // to be forwarded.
+  bool needs_update;
 
   // Position in host's global logical space
   int x;
@@ -249,8 +252,9 @@ struct sl_host_output {
 
   int physical_width;
   int physical_height;
+
   // The physical width/height after being scaled by
-  // sl_output_get_dimensions_original.
+  // sl_output_get_dimensions_original to adjust the DPI values accordingly.
   int virt_physical_width;
   int virt_physical_height;
   int subpixel;
@@ -263,18 +267,40 @@ struct sl_host_output {
   // https://wayland.app/protocols/wayland#wl_output:event:mode
   int width;
   int height;
+
+  // The width/height after being scaled.
+  int virt_width;
+  int virt_height;
+
   // The width/height after being scaled by
   // sl_output_get_dimensions_original and rotated.
   int virt_rotated_width;
   int virt_rotated_height;
 
   int refresh;
+
+  // The output scale received from the host via wl_output.scale.
+  // When run without aura-shell and in non-direct-scale mode,
+  // we forward this scale to clients.
   int scale_factor;
+  // The current scale being used which is provided by zaura_output.scale.
   int current_scale;
+  // The preferred scale which is provided by zaura_output.scale. On a
+  // Chromebook, this is the "Default" value in Settings>Device>Display.
   int preferred_scale;
+  // The device_scale_factor provided by zaura_output.device_scale_factor.
+  // Chromebooks come with their own default device scale which is appropriate
+  // for their screen sizes.
   int device_scale_factor;
   int expecting_scale;
   bool expecting_logical_size;
+
+  // xdg_output values.
+  // Ref: https://wayland.app/protocols/xdg-output-unstable-v1
+  int32_t logical_width;
+  int32_t logical_height;
+  int32_t logical_x;
+  int32_t logical_y;
 
   // The scaling factors for direct mode
   // virt_scale: Used to translate from physical space to virtual space
@@ -293,11 +319,6 @@ struct sl_host_output {
   double xdg_scale_x;
   double xdg_scale_y;
   int virt_x;
-  int virt_y;
-  int32_t logical_width;
-  int32_t logical_height;
-  int32_t logical_x;
-  int32_t logical_y;
 };
 MAP_STRUCTS(wl_output, sl_host_output);
 
@@ -505,6 +526,13 @@ struct sl_host_output* sl_infer_output_for_host_position(struct sl_context* ctx,
 struct sl_host_output* sl_infer_output_for_guest_position(
     struct sl_context* ctx, int32_t virt_x, int32_t virt_y);
 
+// Generates all the virtual/modified values to be forwarded to the client.
+void sl_output_calculate_virtual_dimensions(struct sl_host_output* host);
+
+// Updates the virt_x of all outputs.
+void sl_output_update_output_x(struct sl_context* ctx);
+
+// Forwards all the available information of an output to the client.
 void sl_output_send_host_output_state(struct sl_host_output* host);
 
 struct sl_global* sl_output_global_create(struct sl_output* output);

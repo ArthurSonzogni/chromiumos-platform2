@@ -276,48 +276,16 @@ void sl_output_get_dimensions_original(struct sl_host_output* host,
 }
 
 // Recalculates the virt_x coordinates of outputs when an output is
-// add/removed/changed. skip_host is false if the host is being removed
-// (as it should not exist in the list already) and true if it's being
-// added/changed.
-void sl_output_shift_output_x(struct sl_host_output* host, bool skip_host) {
-  // Outputs are positioned in a line from left to right ordered base on its
-  // x position.
+// add/removed/changed.
+void sl_output_update_output_x(struct sl_context* ctx) {
+  // Outputs are positioned in a line from left to right based off their x
+  // position.
   int next_output_x = 0;
-  for (auto output : host->ctx->host_outputs) {
+  for (auto output : ctx->host_outputs) {
+    // Update the value and mark for sending.
     if (output->virt_x != next_output_x) {
       output->virt_x = next_output_x;
-      // Skipping sending current output's details here if skip host is set
-      // as they are sent after this method.
-      if (!skip_host || output != host) {
-        // virt_physical_width/height may have not been set yet.
-        if (!output->virt_physical_width || !output->virt_physical_height) {
-          int scale;
-          int virt_physical_width;
-          int virt_physical_height;
-          int virt_width;
-          int virt_height;
-
-          if (host->ctx->use_direct_scale) {
-            sl_output_init_dimensions_direct(host, &scale, &virt_physical_width,
-                                             &virt_physical_height, &virt_width,
-                                             &virt_height);
-          } else {
-            sl_output_get_dimensions_original(
-                host, &scale, &virt_physical_width, &virt_physical_height,
-                &virt_width, &virt_height);
-          }
-          host->virt_physical_width = virt_physical_width;
-          host->virt_physical_height = virt_physical_height;
-        }
-
-        wl_output_send_geometry(output->resource, output->virt_x,
-                                output->virt_y, output->virt_physical_width,
-                                output->virt_physical_height, output->subpixel,
-                                output->make, output->model, output->transform);
-        if (wl_resource_get_version(output->resource) >=
-            WL_OUTPUT_DONE_SINCE_VERSION)
-          wl_output_send_done(output->resource);
-      }
+      output->needs_update = true;
     }
     next_output_x += output->virt_rotated_width;
   }
@@ -393,7 +361,7 @@ struct sl_host_output* sl_infer_output_for_guest_position(
   return last;
 }
 
-void sl_output_send_host_output_state(struct sl_host_output* host) {
+void sl_output_calculate_virtual_dimensions(struct sl_host_output* host) {
   int scale;
   int virt_physical_width;
   int virt_physical_height;
@@ -410,26 +378,36 @@ void sl_output_send_host_output_state(struct sl_host_output* host) {
                                       &virt_height);
   }
 
+  host->scale_factor = scale;
+  host->virt_width = virt_width;
+  host->virt_height = virt_height;
   host->virt_physical_width = virt_physical_width;
   host->virt_physical_height = virt_physical_height;
 
   sl_output_apply_rotation(host->transform, virt_width, virt_height,
                            &host->virt_rotated_width,
                            &host->virt_rotated_height);
+  host->needs_update = true;
+}
 
-  // Shift all outputs that are to the right of host to the right if needed.
-  sl_output_shift_output_x(host, true);
-  host->virt_y = 0;
-  wl_output_send_geometry(host->resource, host->virt_x, host->virt_y,
-                          host->virt_physical_width, host->virt_physical_height,
-                          host->subpixel, host->make, host->model,
-                          host->transform);
-  wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
-                      virt_width, virt_height, host->refresh);
-  if (wl_resource_get_version(host->resource) >= WL_OUTPUT_SCALE_SINCE_VERSION)
-    wl_output_send_scale(host->resource, scale);
-  if (wl_resource_get_version(host->resource) >= WL_OUTPUT_DONE_SINCE_VERSION)
-    wl_output_send_done(host->resource);
+// Function which pushes the state of an output to the client.
+void sl_output_send_host_output_state(struct sl_host_output* host) {
+  // Could be more granular, but the current implementation means that if one
+  // value changes, everything should be impacted.
+  if (host->needs_update) {
+    wl_output_send_geometry(host->resource, host->virt_x, 0,
+                            host->virt_physical_width,
+                            host->virt_physical_height, host->subpixel,
+                            host->make, host->model, host->transform);
+    wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
+                        host->virt_width, host->virt_height, host->refresh);
+    if (wl_resource_get_version(host->resource) >=
+        WL_OUTPUT_SCALE_SINCE_VERSION)
+      wl_output_send_scale(host->resource, host->scale_factor);
+    if (wl_resource_get_version(host->resource) >= WL_OUTPUT_DONE_SINCE_VERSION)
+      wl_output_send_done(host->resource);
+    host->needs_update = false;
+  }
 }
 
 static void sl_output_geometry(void* data,
@@ -487,6 +465,7 @@ static void sl_output_mode(void* data,
   host->width = width;
   host->height = height;
   host->refresh = refresh;
+  host->needs_update = true;
 }
 
 static void sl_output_done(void* data, struct wl_output* output) {
@@ -497,6 +476,10 @@ static void sl_output_done(void* data, struct wl_output* output) {
   if (host->expecting_scale)
     return;
 
+  // Recalculate according to any information that's been modified.
+  sl_output_calculate_virtual_dimensions(host);
+  // Shift all outputs that are to the right of host to the right if needed.
+  sl_output_update_output_x(host->ctx);
   sl_output_send_host_output_state(host);
 
   // Expect scale if aura output exists.
@@ -573,7 +556,7 @@ static void sl_destroy_host_output(struct wl_resource* resource) {
   free(host->make);
   free(host->model);
   // Shift all outputs to the right of the deleted output to the left.
-  sl_output_shift_output_x(host, false);
+  sl_output_update_output_x(host->ctx);
   delete host;
 }
 
@@ -623,10 +606,11 @@ static void sl_bind_host_output(struct wl_client* client,
   host->aura_output = nullptr;
   // We assume that first output is internal by default.
   host->internal = ctx->host_outputs.empty();
+  // We'll always need to forward this information.
+  host->needs_update = true;
   host->x = 0;
   host->y = 0;
   host->virt_x = 0;
-  host->virt_y = 0;
   host->logical_x = 0;
   host->logical_y = 0;
   host->physical_width = 0;
@@ -640,6 +624,8 @@ static void sl_bind_host_output(struct wl_client* client,
   host->flags = 0;
   host->width = 1024;
   host->height = 768;
+  host->virt_width = 1024;
+  host->virt_height = 768;
   host->virt_rotated_width = 0;
   host->virt_rotated_height = 0;
   host->logical_width = 1024;

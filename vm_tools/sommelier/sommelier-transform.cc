@@ -401,7 +401,6 @@ struct sl_host_output* sl_transform_guest_position_to_host_position(
 
   // Translate from global to output-relative guest coordinates
   (*x) -= output->virt_x;
-  (*y) -= output->virt_y;
 
   // Convert to host logical scale
   sl_transform_guest_to_host(ctx, surface, x, y);
@@ -427,7 +426,6 @@ struct sl_host_output* sl_transform_host_position_to_guest_position(
 
   // Translate to global guest coordinates
   (*x) += output->virt_x;
-  (*y) += output->virt_y;
 
   return output;
 }

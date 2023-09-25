@@ -200,8 +200,7 @@ static void sl_adjust_window_position_for_screen_size(
   if (output) {
     window->x =
         output->virt_x + (output->virt_rotated_width - window->width) / 2;
-    window->y =
-        output->virt_y + (output->virt_rotated_height - window->height) / 2;
+    window->y = (output->virt_rotated_height - window->height) / 2;
   } else {
     // Center horizontally/vertically.
     window->x = ctx->screen->width_in_pixels / 2 - window->width / 2;
@@ -3282,6 +3281,9 @@ static void sl_calculate_scale_for_xwayland(struct sl_context* ctx) {
   ctx->scale = MIN(MAX_SCALE, MAX(MIN_SCALE, scale));
 
   // Scale affects output state. Send updated output state to xwayland.
+  for (auto output : ctx->host_outputs)
+    sl_output_calculate_virtual_dimensions(output);
+  sl_output_update_output_x(ctx);
   for (auto output : ctx->host_outputs)
     sl_output_send_host_output_state(output);
 }

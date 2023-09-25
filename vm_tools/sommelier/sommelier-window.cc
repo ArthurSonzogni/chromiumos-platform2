@@ -305,7 +305,6 @@ static void sl_internal_toplevel_configure(struct sl_window* window,
         window->next_config.values[i++] =
             output->virt_x + (output->virt_rotated_width - width_in_pixels) / 2;
         window->next_config.values[i++] =
-            output->virt_y +
             (output->virt_rotated_height - height_in_pixels) / 2;
       } else {
         window->next_config.values[i++] =
