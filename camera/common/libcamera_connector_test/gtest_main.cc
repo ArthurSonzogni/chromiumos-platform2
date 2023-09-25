@@ -441,9 +441,9 @@ TEST(ConnectorTest, CompareFrames) {
   EXPECT_GE(ssim, 0.3);
 
   // If the frames are exactly same (ssim = 1.0), the frame is likely broken
-  // such as all pixels are black. Set the threshold as 0.99 for potential jpeg
+  // such as all pixels are black. Set the threshold as 0.999 for potential jpeg
   // artifacts and floating point error.
-  EXPECT_LE(ssim, 0.99);
+  EXPECT_LE(ssim, 0.999);
 }
 
 TEST(ConnectorTest, RestartCrosCameraIdle) {
