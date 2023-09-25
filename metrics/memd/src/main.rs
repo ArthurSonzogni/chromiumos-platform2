@@ -36,6 +36,7 @@ use dbus::{BusType, Connection, WatchEvent};
 use protobuf::Message;
 
 use std::cmp::max;
+use std::collections::hash_map::HashMap;
 use std::fmt;
 use std::fs::{create_dir, File, OpenOptions};
 use std::io::prelude::*;
@@ -400,7 +401,7 @@ struct Sample {
     info: Sysinfo,
     runnables: u32, // number of runnable processes
     available: u32, // available RAM from low-mem notifier
-    vmstat_values: [u64; VMSTAT_VALUES_COUNT],
+    vmstat_values: [i64; VMSTAT_VALUES_COUNT],
 }
 
 impl Sample {
@@ -583,82 +584,32 @@ fn parse_int_prefix(s: &str) -> Result<(u32, usize)> {
     }
 }
 
-// Reads selected values from |file| (which should be opened to /proc/vmstat)
-// as specified in |VMSTATS|, and stores them in |vmstat_values|.  The format of
-// the vmstat file is (<name> <integer-value>\n)+.
-fn get_vmstats(file: &File, vmstat_values: &mut [u64]) -> Result<()> {
-    let content = pread(file)?;
-    let mut lines = content.split('\n');
-    let mut targets = VMSTATS.iter().enumerate();
-    let mut line = None;
-    let mut target = None;
-    let mut advance_line = true;
-    let mut advance_target = true;
-    for item in vmstat_values.iter_mut() {
-        *item = 0;
-    }
-    loop {
-        if advance_target {
-            target = targets.next();
-            if target == None {
-                break;
-            }
-        }
-        if advance_line {
-            line = lines.next();
-            // Special case: empty last line.
-            if line.is_some() && line.unwrap() == "" {
-                line = None;
-            }
-            if line.is_none() {
-                break;
-            }
-        }
+fn get_vmstats() -> Result<[i64; VMSTAT_VALUES_COUNT]> {
+    let vmstats = procfs::vmstat()?;
+    parse_vmstats(&vmstats)
+}
 
-        // The default is to advance the line and keep the same target.  When a
-        // target is found in a line, the target is advanced, unless it's an
-        // accumulated target, which adds up the values from consecutive
-        // matching lines.
-        advance_line = true;
-        advance_target = false;
-
-        let (i, &(wanted_name, mandatory, accumulate)) = target.unwrap();
-        match line {
-            Some(string) => {
-                let mut pair = string.split(' ');
-                let found_name = pair.next().ok_or("missing name in vmstat")?;
-                let found_value = pair.next().ok_or("missing value in vmstat")?;
-                // First check accumulative targets.
-                if accumulate {
-                    if found_name.starts_with(wanted_name) {
-                        vmstat_values[i] += found_value.parse::<u64>()?;
-                        advance_line = true;
-                        advance_target = false;
-                    } else {
-                        // Try the next target, but don't consume the line.
-                        advance_line = false;
-                        advance_target = true;
+fn parse_vmstats(vmstats: &HashMap<String, i64>) -> Result<[i64; VMSTAT_VALUES_COUNT]> {
+    let mut result = [0i64; VMSTAT_VALUES_COUNT];
+    for (i, &(field_name, mandatory, accumulate)) in VMSTATS.iter().enumerate() {
+        if accumulate {
+            for (sub_field_name, value) in vmstats {
+                if sub_field_name.starts_with(field_name) {
+                    result[i] += value;
+                }
+            }
+        } else {
+            match vmstats.get(field_name) {
+                Some(value) => result[i] = *value,
+                None => {
+                    if mandatory {
+                        return Err(format!("vmstat: missing value: {}", field_name).into());
                     }
-                    continue;
-                }
-                // Then check for single-shot (not accumulated) fields.
-                if found_name == wanted_name {
-                    vmstat_values[i] = found_value.parse::<u64>()?;
-                    advance_line = true;
-                    advance_target = true;
-                    continue;
-                }
-            }
-            None => {
-                if mandatory {
-                    return Err(format!("vmstat: missing value: {}", wanted_name).into());
-                } else {
-                    vmstat_values[i] = 0;
                 }
             }
         }
     }
-    Ok(())
+    Ok(result)
 }
 
 fn pread_u32(f: &File) -> Result<u32> {
@@ -887,8 +838,6 @@ impl<'a> Sampler<'a> {
         }
 
         let files = Files {
-            vmstat_file: File::open(&paths.vmstat)
-                .map_err(|e| Error::VmstatFileError(Box::new(e)))?,
             runnables_file: File::open(&paths.runnables)
                 .map_err(|e| Error::RunnablesFileError(Box::new(e)))?,
             available_file_option: open_maybe(&paths.available)
@@ -958,7 +907,7 @@ impl<'a> Sampler<'a> {
             } else {
                 sysinfo()?
             };
-            get_vmstats(&self.files.vmstat_file, &mut sample.vmstat_values)?;
+            sample.vmstat_values = get_vmstats()?;
         }
         self.refresh_time();
         Ok(())
@@ -1354,7 +1303,6 @@ impl SampleType {
 // are collected into this struct because they get special values when testing.
 #[derive(Clone)]
 pub struct Paths {
-    vmstat: PathBuf,
     available: PathBuf,
     runnables: PathBuf,
     low_mem_margin: PathBuf,
@@ -1392,7 +1340,6 @@ macro_rules! make_paths {
 // All files that are to be left open go here.  We keep them open to reduce the
 // number of syscalls.  They are mostly files in /proc and /sys.
 struct Files {
-    vmstat_file: File,
     runnables_file: File,
     // These files might not exist.
     available_file_option: Option<File>,
@@ -1401,7 +1348,7 @@ struct Files {
 
 fn build_sample_header() -> String {
     let mut s = "uptime type load freeram freeswap procs runnables available".to_string();
-    for vmstat in VMSTATS.iter() {
+    for vmstat in VMSTATS {
         s = s + " " + vmstat.0;
     }
     s + "\n"
@@ -1464,13 +1411,6 @@ fn read_loadavg_test() {
     test::read_loadavg();
 }
 
-#[test]
-fn read_vmstat_test() {
-    let testing_dir_option = make_testing_dir();
-    let paths = get_paths(testing_dir_option);
-    test::read_vmstat(&paths);
-}
-
 /// Regression test for https://crbug.com/1058463. Ensures that output_from_time doesn't read
 /// samples outside of the valid range.
 #[test]
@@ -1487,7 +1427,6 @@ fn get_paths(root: Option<TempDir>) -> Paths {
     make_paths!(
         cfg!(test),
         &testing_root,
-        vmstat:            "/proc/vmstat",
         available:         LOW_MEM_SYSFS.to_string() + "/available",
         runnables:         "/proc/loadavg",
         low_mem_margin:    LOW_MEM_SYSFS.to_string() + "/margin",
@@ -1534,5 +1473,31 @@ fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
             sampler.slow_poll()?;
             sampler.fast_poll()?;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_vmstats() {
+        let vmstats: HashMap<String, i64> = HashMap::from([
+            ("noop".to_string(), 600),
+            ("pswpin".to_string(), 100),
+            ("pswpout".to_string(), 200),
+            ("pgalloc_dma".to_string(), 1000),
+            ("pgalloc_dma32".to_string(), 2000),
+            ("pgalloc_normal".to_string(), 3000),
+            ("pgalloc_movable".to_string(), 4000),
+            ("pgmajfault".to_string(), 1500),
+            ("pgmajfault_f".to_string(), 550),
+        ]);
+        let result = parse_vmstats(&vmstats).unwrap();
+        assert_eq!(result[0], 100); // pswpin
+        assert_eq!(result[1], 200); // pswpout
+        assert_eq!(result[2], 10000); // paalloc
+        assert_eq!(result[3], 1500); // pgmajfault
+        assert_eq!(result[4], 550); // pgmajfault_f
     }
 }

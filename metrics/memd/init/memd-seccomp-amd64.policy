@@ -27,6 +27,8 @@ ftruncate: 1
 futex: 1
 geteuid: 1
 getpid: 1
+# Filter arg2 to disallow GRND_RANDOM (2).
+getrandom: arg2 in 0xfffffffd
 getresgid: 1
 getresuid: 1
 getrlimit: 1

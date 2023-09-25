@@ -19,7 +19,6 @@ use std::time::Duration;
 // Imported from main program
 use errno;
 use get_runnables;
-use get_vmstats;
 use strerror;
 use Dbus;
 use FileWatcher;
@@ -32,7 +31,6 @@ use Sampler;
 use Timer;
 use PAGE_SIZE;
 use SAMPLE_QUEUE_LENGTH;
-use VMSTAT_VALUES_COUNT;
 
 // Different levels of emulated available RAM in MB.
 const LOW_MEM_LOW_AVAILABLE: usize = 150;
@@ -736,15 +734,12 @@ pub fn setup_test_environment(paths: &Paths) {
     std::fs::create_dir(&paths.testing_root)
         .unwrap_or_else(|_| panic!("cannot create {}", paths.testing_root.to_str().unwrap()));
     mkfifo(&paths.testing_root.join(MOCK_DBUS_FIFO_NAME)).expect("failed to make mock dbus fifo");
-    create_dir_all(paths.vmstat.parent().unwrap()).expect("cannot create /proc");
     create_dir_all(paths.available.parent().unwrap()).expect("cannot create ../chromeos-low-mem");
     let sys_vm = paths.testing_root.join("proc/sys/vm");
     create_dir_all(&sys_vm).expect("cannot create /proc/sys/vm");
     create_dir_all(paths.low_mem_device.parent().unwrap()).expect("cannot create /dev");
 
-    let vmstat_content = include_str!("vmstat_content");
     let zoneinfo_content = include_str!("zoneinfo_content");
-    print_to_path!(&paths.vmstat, "{}", vmstat_content).expect("cannot initialize vmstat");
     print_to_path!(&paths.zoneinfo, "{}", zoneinfo_content).expect("cannot initialize zoneinfo");
     print_to_path!(&paths.available, "{}\n", LOW_MEM_HIGH_AVAILABLE)
         .expect("cannot initialize available");
@@ -818,18 +813,4 @@ pub fn queue_loop() {
     sq.head = 30;
     sq.count = 30;
     sq.output_from_time(&mut file, /*start_time=*/ 0).unwrap();
-}
-
-pub fn read_vmstat(paths: &Paths) {
-    setup_test_environment(paths);
-    let mut vmstat_values: [u64; VMSTAT_VALUES_COUNT] = [0, 0, 0, 0, 0];
-    get_vmstats(
-        &File::open(&paths.vmstat).expect("cannot open vmstat"),
-        &mut vmstat_values,
-    )
-    .expect("get_vmstats failure");
-    // Check one simple and one accumulated value.
-    assert_eq!(vmstat_values[1], 678);
-    assert_eq!(vmstat_values[2], 66);
-    teardown_test_environment(paths);
 }

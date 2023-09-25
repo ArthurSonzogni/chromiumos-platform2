@@ -32,6 +32,8 @@ getegid32: 1
 geteuid32: 1
 getgid32: 1
 getpid: 1
+# Filter arg2 to disallow GRND_RANDOM (2).
+getrandom: arg2 in 0xfffffffd
 getresgid32: 1
 getresuid32: 1
 getsockname: 1

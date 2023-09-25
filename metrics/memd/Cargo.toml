@@ -13,6 +13,7 @@ libc = "0.2.40"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 log = "0.4.1"
 nix = "0.26"
+procfs = "0.15"
 protobuf = "3.2"
 syslog = "6.0.1"
 tempfile = "3.0"
