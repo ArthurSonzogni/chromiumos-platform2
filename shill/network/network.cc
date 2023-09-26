@@ -144,13 +144,13 @@ void Network::Start(const Network::StartOptions& opts) {
         base::BindRepeating(&Network::OnUpdateFromSLAAC, AsWeakPtr()));
     slaac_controller_->Start(opts.link_local_address);
     ipv6_started = true;
-  } else if (link_local_protocol_network_config_ &&
-             !link_local_protocol_network_config_->ipv6_addresses.empty()) {
+  } else if (link_protocol_network_config_ &&
+             !link_protocol_network_config_->ipv6_addresses.empty()) {
     proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
                         ProcFsStub::kIPFlagDisableIPv6, "0");
     set_ip6config(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
-    ip6config_->ApplyNetworkConfig(*link_local_protocol_network_config_,
+    ip6config_->ApplyNetworkConfig(*link_protocol_network_config_,
                                    /*force_overwrite=*/true,
                                    net_base::IPFamily::kIPv6);
     dispatcher_->PostTask(
@@ -176,20 +176,20 @@ void Network::Start(const Network::StartOptions& opts) {
     set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
                                             IPConfig::kTypeDHCP));
     dhcp_started = dhcp_controller_->RequestIP();
-  } else if (link_local_protocol_network_config_ &&
-             (link_local_protocol_network_config_->ipv4_address ||
+  } else if (link_protocol_network_config_ &&
+             (link_protocol_network_config_->ipv4_address ||
               static_network_config_.ipv4_address)) {
     set_ipconfig(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
-    ipconfig_->ApplyNetworkConfig(*link_local_protocol_network_config_,
+    ipconfig_->ApplyNetworkConfig(*link_protocol_network_config_,
                                   /*force_overwrite=*/true);
   } else {
     // This could happen on IPv6-only networks.
     DCHECK(ipv6_started);
   }
 
-  if ((link_local_protocol_network_config_ &&
-       link_local_protocol_network_config_->ipv4_address) ||
+  if ((link_protocol_network_config_ &&
+       link_protocol_network_config_->ipv4_address) ||
       static_network_config_.ipv4_address) {
     // If the parameters contain an IP address, apply them now and bring the
     // interface up.  When DHCP information arrives, it will supplement the
@@ -211,9 +211,9 @@ void Network::Start(const Network::StartOptions& opts) {
   if (static_network_config_.ipv4_address.has_value()) {
     LOG(INFO) << *this << ": has IPv4 static config " << static_network_config_;
   }
-  if (link_local_protocol_network_config_) {
+  if (link_protocol_network_config_) {
     LOG(INFO) << *this << ": has link local layer protocol config "
-              << *link_local_protocol_network_config_;
+              << *link_protocol_network_config_;
   }
 }
 
@@ -306,7 +306,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
     set_ip6config(nullptr);
     ipconfig_changed = true;
   }
-  link_local_protocol_network_config_ = nullptr;
+  link_protocol_network_config_ = nullptr;
   slaac_network_config_ = nullptr;
   dhcp_network_config_ = nullptr;
   // Emit updated IP configs if there are any changes.
@@ -395,8 +395,8 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
   if (dhcp_network_config_) {
     underlying_config = dhcp_network_config_.get();
   }
-  if (link_local_protocol_network_config_) {
-    underlying_config = link_local_protocol_network_config_.get();
+  if (link_protocol_network_config_) {
+    underlying_config = link_protocol_network_config_.get();
   }
   if (underlying_config) {
     ipconfig()->ApplyNetworkConfig(*underlying_config,
@@ -436,8 +436,8 @@ std::optional<NetworkConfig> Network::GetSavedIPConfig() const {
   if (dhcp_network_config_) {
     return *dhcp_network_config_;
   }
-  if (link_local_protocol_network_config_) {
-    return *link_local_protocol_network_config_;
+  if (link_protocol_network_config_) {
+    return *link_protocol_network_config_;
   }
   return std::nullopt;
 }
@@ -718,21 +718,21 @@ void Network::RecalculateNetworkConfig() {
   if (slaac_network_config_) {
     combined_network_config_ = *slaac_network_config_;
   }
-  if (link_local_protocol_network_config_) {
+  if (link_protocol_network_config_) {
     if (slaac_network_config_) {
       LOG(INFO) << *this
                 << ": both link local protocol config and SLAAC are enabled. "
                    "Address config from link local protocol will be ignored.";
     } else {
       combined_network_config_.ipv6_addresses =
-          link_local_protocol_network_config_->ipv6_addresses;
+          link_protocol_network_config_->ipv6_addresses;
       combined_network_config_.ipv6_gateway =
-          link_local_protocol_network_config_->ipv6_gateway;
+          link_protocol_network_config_->ipv6_gateway;
     }
     combined_network_config_.dns_servers =
-        link_local_protocol_network_config_->dns_servers;
+        link_protocol_network_config_->dns_servers;
     combined_network_config_.dns_search_domains =
-        link_local_protocol_network_config_->dns_search_domains;
+        link_protocol_network_config_->dns_search_domains;
   }
   if (!static_network_config_.dns_search_domains.empty()) {
     combined_network_config_.dns_search_domains =
@@ -815,13 +815,13 @@ std::vector<net_base::IPCIDR> Network::GetAddresses() const {
       result.push_back(*addr);
     }
   }
-  // link_local_protocol_network_config_->ipv4_address should already be
+  // link_protocol_network_config_->ipv4_address should already be
   // reflected in ipconfig_.
-  if (link_local_protocol_network_config_ &&
-      !link_local_protocol_network_config_->ipv6_addresses.empty()) {
+  if (link_protocol_network_config_ &&
+      !link_protocol_network_config_->ipv6_addresses.empty()) {
     std::transform(
-        link_local_protocol_network_config_->ipv6_addresses.begin(),
-        link_local_protocol_network_config_->ipv6_addresses.end(),
+        link_protocol_network_config_->ipv6_addresses.begin(),
+        link_protocol_network_config_->ipv6_addresses.end(),
         std::back_inserter(result),
         [](const net_base::IPv6CIDR& v6) { return net_base::IPCIDR(v6); });
   }

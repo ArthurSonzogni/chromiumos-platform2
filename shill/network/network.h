@@ -218,9 +218,9 @@ class Network {
 
   // Sets network config specific to technology. Currently this is used by
   // cellular and VPN.
-  mockable void set_link_local_protocol_network_config(
+  mockable void set_link_protocol_network_config(
       std::unique_ptr<NetworkConfig> config) {
-    link_local_protocol_network_config_ = std::move(config);
+    link_protocol_network_config_ = std::move(config);
   }
 
   int interface_index() const { return interface_index_; }
@@ -541,7 +541,7 @@ class Network {
 
   // The technology-specific network configuration. Currently only used by
   // cellular and VPN.
-  std::unique_ptr<NetworkConfig> link_local_protocol_network_config_;
+  std::unique_ptr<NetworkConfig> link_protocol_network_config_;
 
   // The network configuration received from DHCPv4.
   std::unique_ptr<NetworkConfig> dhcp_network_config_;

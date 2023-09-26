@@ -4,6 +4,7 @@
 
 #include "shill/network/network.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -418,7 +419,7 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
       .WillOnce(Return(true));
   auto link_protocol_properties = std::make_unique<IPConfig::Properties>();
   link_protocol_properties->address = "2001:db8:abcd::1234";
-  network_->set_link_local_protocol_network_config(
+  network_->set_link_protocol_network_config(
       std::make_unique<NetworkConfig>(IPConfig::Properties::ToNetworkConfig(
           nullptr, link_protocol_properties.get())));
   network_->Start(Network::StartOptions{});
@@ -1249,7 +1250,7 @@ class NetworkStartTest : public NetworkTest {
       IPConfig::Properties* ipv4 =
           test_opts.link_protocol_ipv4 ? &ipv4_link_protocol_props_ : nullptr;
       auto network_config = IPConfig::Properties::ToNetworkConfig(ipv4, ipv6);
-      network_->set_link_local_protocol_network_config(
+      network_->set_link_protocol_network_config(
           std::make_unique<NetworkConfig>(std::move(network_config)));
     }
     Network::StartOptions start_opts{

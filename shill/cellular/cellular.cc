@@ -4107,7 +4107,7 @@ void Cellular::NetworkInfo::Start() {
     IPConfig::Properties* ipv6 = ipv6_props_ ? &*ipv6_props_ : nullptr;
     IPConfig::Properties* ipv4 = ipv4_props_ ? &*ipv4_props_ : nullptr;
     auto network_config = IPConfig::Properties::ToNetworkConfig(ipv4, ipv6);
-    network_->set_link_local_protocol_network_config(
+    network_->set_link_protocol_network_config(
         std::make_unique<NetworkConfig>(std::move(network_config)));
   }
   network_->Start(start_opts_);

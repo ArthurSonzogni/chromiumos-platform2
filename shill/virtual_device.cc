@@ -65,7 +65,7 @@ void VirtualDevice::UpdateIPConfig(
   // IPConfig::Properties internally.
   auto network_config = IPConfig::Properties::ToNetworkConfig(
       ipv4_properties.get(), ipv6_properties.get());
-  GetPrimaryNetwork()->set_link_local_protocol_network_config(
+  GetPrimaryNetwork()->set_link_protocol_network_config(
       std::make_unique<NetworkConfig>(std::move(network_config)));
   GetPrimaryNetwork()->Start(Network::StartOptions{
       .dhcp = std::nullopt,
