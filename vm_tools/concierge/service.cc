@@ -3897,11 +3897,9 @@ Service::EnableVmMemoryManagementService(
 
   EnableVmMemoryManagementServiceResponse response;
 
-  // VmMemoryManagementService is already enabled
+  // VmMemoryManagementService is already enabled. Do not return an error.
   if (vm_memory_management_service_) {
-    static constexpr char error[] = "Service already running.";
-    LOG(ERROR) << error;
-    response.set_failure_reason(error);
+    response.set_success(true);
     return response;
   }
 
