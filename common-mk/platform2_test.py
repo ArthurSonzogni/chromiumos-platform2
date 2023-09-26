@@ -267,7 +267,14 @@ class Platform2Test:
         Returns:
             A tuple of (username, uid, gid, home).
         """
+        # Should we find a better home?
+        NOBODY = ("nobody", 65534, 65534, "/tmp")
+
         if user is not None:
+            # Hardcode these accounts to avoid modification to the sysroot.
+            if user == "nobody":
+                return NOBODY
+
             # Assume the account is a UID first.
             try:
                 acct = pwd.getpwuid(int(user))
@@ -282,11 +289,10 @@ class Platform2Test:
             return (acct.pw_name, acct.pw_uid, acct.pw_gid, acct.pw_dir)
 
         return (
-            os.environ.get("SUDO_USER", "nobody"),
-            int(os.environ.get("SUDO_UID", "65534")),
-            int(os.environ.get("SUDO_GID", "65534")),
-            # Should we find a better home?
-            "/tmp/portage",
+            os.environ.get("SUDO_USER", NOBODY[0]),
+            int(os.environ.get("SUDO_UID", NOBODY[1])),
+            int(os.environ.get("SUDO_GID", NOBODY[2])),
+            NOBODY[3],
         )
 
     @staticmethod
