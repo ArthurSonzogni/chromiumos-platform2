@@ -60,7 +60,6 @@ std::optional<SerializedUserPolicy> UserPolicyFile::GetUserPolicy() const {
 CryptohomeStatus UserPolicyFile::LoadFromFile() {
   auto file_contents_status = file_.LoadFile(kLoadUserPolicyTimer);
   if (!file_contents_status.ok()) {
-    LOG(ERROR) << "Failed to load the user policy information from the file";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocLoadFileFailedInLoadUserPolicyFromFile),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),

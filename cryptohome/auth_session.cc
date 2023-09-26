@@ -561,8 +561,6 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
   UserPolicyFile user_policy_file(platform_,
                                   GetUserPolicyPath(obfuscated_username_));
   if (!user_policy_file.LoadFromFile().ok()) {
-    LOG(ERROR) << "Couldn't load user policy from file, attempting to create "
-                  "an empty default file in SendAuthFactorWithStatusUpdate";
     user_policy_file.UpdateUserPolicy(
         SerializedUserPolicy({.auth_factor_type_policy = {}}));
   }
