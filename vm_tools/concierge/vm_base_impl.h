@@ -24,7 +24,6 @@
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
-#include "vm_tools/concierge/tracing.h"
 
 namespace patchpanel {
 class Client;
@@ -106,14 +105,12 @@ class VmBaseImpl {
 
   // Suspends the VM.
   void Suspend() {
-    VMT_TRACE(kCategory, "VmBaseImpl::Suspend");
     HandleSuspendImminent();
     suspended_ = true;
   }
 
   // Resumes the VM.
   void Resume() {
-    VMT_TRACE(kCategory, "VmBaseImpl::Resume");
     HandleSuspendDone();
     suspended_ = false;
   }

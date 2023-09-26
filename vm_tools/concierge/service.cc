@@ -1310,8 +1310,6 @@ void Service::OnSignalReadable() {
 }
 
 bool Service::Init() {
-  VMT_TRACE(kCategory, "Service::Init");
-  VMT_TRACE_BEGIN(kCategory, "Service::Init::signals");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // It's not possible to ask minijail to set up a user namespace and switch to
   // a non-0 uid/gid, or to set up supplemental groups. Concierge needs both
@@ -1388,7 +1386,15 @@ bool Service::Init() {
   // TODO(b/193806814): This log line helps us detect when there is a race
   // during signal setup. When we eventually fix that bug we won't need it.
   LOG(INFO) << "Finished setting up signal handlers";
-  VMT_TRACE_END(kCategory);
+
+  // Perfetto has its own threads, so we are unable to initialize tracing until
+  // after we've set up signal handlers (so that perfetto's threads inherit the
+  // mask).
+  //
+  // TODO(b/296025701): Move process-init out of service.cc. We need to do it
+  // before InitTracing due to threading, and i'd rather have tracing
+  // conceptually available as-soon-as we're in service.
+  InitTracing();
 
   VMT_TRACE_BEGIN(kCategory, "Service::Init::bus");
   if (!metrics_thread_.StartWithOptions(
