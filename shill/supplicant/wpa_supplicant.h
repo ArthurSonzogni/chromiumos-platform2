@@ -181,6 +181,30 @@ class WPASupplicant {
   static constexpr char kSecurityModeWPA[] = "WPA";
   static constexpr char kStationPropertyAddress[] = "Address";
   static constexpr char kStationPropertyAID[] = "AID";
+  static constexpr char kAddPersistentGroupPropertyBSSID[] = "bssid";
+  static constexpr char kAddPersistentGroupPropertyMode[] = "mode";
+  static constexpr char kAddPersistentGroupPropertyPassphrase[] = "psk";
+  static constexpr char kAddPersistentGroupPropertySSID[] = "ssid";
+  static constexpr char kGroupAddPropertyFrequency[] = "frequency";
+  static constexpr char kGroupAddPropertyPersistent[] = "persistent";
+  static constexpr char kGroupAddPropertyPersistentPath[] =
+      "persistent_group_object";
+  static constexpr char kGroupStartedPropertyGroupObject[] = "group_object";
+  static constexpr char kGroupStartedPropertyInterfaceObject[] =
+      "interface_object";
+  static constexpr char kGroupStartedPropertyRoleObject[] = "role";
+  static constexpr char kGroupFinishedPropertyGroupObject[] = "group_object";
+  static constexpr char kGroupFinishedPropertyInterfaceObject[] =
+      "interface_object";
+  static constexpr char kGroupFinishedPropertyRoleObject[] = "role";
+  static constexpr char kGroupPropertyBSSID[] = "BSSID";
+  static constexpr char kGroupPropertyFrequency[] = "Frequency";
+  static constexpr char kGroupPropertyPassphrase[] = "Passphrase";
+  static constexpr char kGroupPropertySSID[] = "SSID";
+  static constexpr char kPeerPropertyDeviceAddress[] = "DeviceAddress";
+  static constexpr char kPeerPropertyDeviceCapability[] = "DeviceCapability";
+  static constexpr char kPeerPropertyDeviceName[] = "DeviceName";
+  static constexpr char kPeerPropertyGroupCapability[] = "GroupCapability";
 
   static constexpr char kSignalChangeProperty[] = "SignalChange";
   static constexpr char kSignalChangePropertyRSSI[] = "rssi";
