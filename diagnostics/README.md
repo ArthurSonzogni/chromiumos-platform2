@@ -4,8 +4,8 @@ Health Service (a.k.a healthd) aims to provide
 [one-stop APIs](./mojom/public/cros_healthd.mojom), including diagnostic and
 telemetry, for Chromium and non-Chromium clients. It is _strongly_ suggested
 that anyone with requests in [telemetry](./docs/telemetry.md) or
-[diagnostic](./docs/diagnostic.md) to [contact us][team-contact] for a quick
-check on the latest status just in case the documentation is behind the
+[diagnostic](./docs/diag-routines-for-oems.md) to [contact us][team-contact] for
+a quick check on the latest status just in case the documentation is behind the
 reality.
 
 By using healthd's APIs, the following benefits could be brought instantly with
