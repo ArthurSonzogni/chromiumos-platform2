@@ -5,6 +5,7 @@
 #include "shill/dbus/supplicant_group_proxy.h"
 
 #include "shill/logging.h"
+#include "shill/supplicant/supplicant_group_event_delegate_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
 #include <base/logging.h>
@@ -31,10 +32,13 @@ SupplicantGroupProxy::PropertySet::PropertySet(
   RegisterProperty(kPropertyPassphrase, &passphrase);
 }
 
-SupplicantGroupProxy::SupplicantGroupProxy(const scoped_refptr<dbus::Bus>& bus,
-                                           const RpcIdentifier& object_path)
+SupplicantGroupProxy::SupplicantGroupProxy(
+    const scoped_refptr<dbus::Bus>& bus,
+    const RpcIdentifier& object_path,
+    SupplicantGroupEventDelegateInterface* delegate)
     : group_proxy_(new fi::w1::wpa_supplicant1::GroupProxy(
-          bus, WPASupplicant::kDBusAddr, object_path)) {
+          bus, WPASupplicant::kDBusAddr, object_path)),
+      delegate_(delegate) {
   // Register properties.
   properties_.reset(new PropertySet(
       group_proxy_->GetObjectProxy(), kInterfaceName,
@@ -58,10 +62,12 @@ SupplicantGroupProxy::~SupplicantGroupProxy() = default;
 
 void SupplicantGroupProxy::PeerJoined(const dbus::ObjectPath& peer) {
   SLOG(&group_proxy_->GetObjectPath(), 2) << __func__;
+  delegate_->PeerJoined(peer);
 }
 
 void SupplicantGroupProxy::PeerDisconnected(const dbus::ObjectPath& peer) {
   SLOG(&group_proxy_->GetObjectPath(), 2) << __func__;
+  delegate_->PeerDisconnected(peer);
 }
 
 void SupplicantGroupProxy::OnPropertyChanged(const std::string& property_name) {

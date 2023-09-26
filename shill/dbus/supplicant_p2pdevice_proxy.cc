@@ -5,6 +5,7 @@
 #include "shill/dbus/supplicant_p2pdevice_proxy.h"
 
 #include "shill/logging.h"
+#include "shill/supplicant/supplicant_p2pdevice_event_delegate_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
 #include <base/logging.h>
@@ -27,9 +28,12 @@ SupplicantP2PDeviceProxy::PropertySet::PropertySet(
 }
 
 SupplicantP2PDeviceProxy::SupplicantP2PDeviceProxy(
-    const scoped_refptr<dbus::Bus>& bus, const RpcIdentifier& object_path)
+    const scoped_refptr<dbus::Bus>& bus,
+    const RpcIdentifier& object_path,
+    SupplicantP2PDeviceEventDelegateInterface* delegate)
     : p2pdevice_proxy_(new fi::w1::wpa_supplicant1::Interface::P2PDeviceProxy(
-          bus, WPASupplicant::kDBusAddr, object_path)) {
+          bus, WPASupplicant::kDBusAddr, object_path)),
+      delegate_(delegate) {
   // Register properties.
   properties_.reset(new PropertySet(
       p2pdevice_proxy_->GetObjectProxy(), kInterfaceName,
@@ -109,18 +113,23 @@ bool SupplicantP2PDeviceProxy::RemovePersistentGroup(
 }
 
 void SupplicantP2PDeviceProxy::GroupStarted(
-    const brillo::VariantDictionary& /*properties*/) {
+    const brillo::VariantDictionary& properties) {
   SLOG(&p2pdevice_proxy_->GetObjectPath(), 2) << __func__;
+  KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(properties);
+  delegate_->GroupStarted(store);
 }
 
 void SupplicantP2PDeviceProxy::GroupFinished(
-    const brillo::VariantDictionary& /*properties*/) {
+    const brillo::VariantDictionary& properties) {
   SLOG(&p2pdevice_proxy_->GetObjectPath(), 2) << __func__;
+  KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(properties);
+  delegate_->GroupFinished(store);
 }
 
 void SupplicantP2PDeviceProxy::GroupFormationFailure(
     const std::string& reason) {
   SLOG(&p2pdevice_proxy_->GetObjectPath(), 2) << __func__;
+  delegate_->GroupFormationFailure(reason);
 }
 
 bool SupplicantP2PDeviceProxy::GetDeviceConfig(KeyValueStore* config) {

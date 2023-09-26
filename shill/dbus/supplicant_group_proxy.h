@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 
@@ -16,10 +17,13 @@
 
 namespace shill {
 
+class SupplicantGroupEventDelegateInterface;
+
 class SupplicantGroupProxy : public SupplicantGroupProxyInterface {
  public:
   SupplicantGroupProxy(const scoped_refptr<dbus::Bus>& bus,
-                       const RpcIdentifier& object_path);
+                       const RpcIdentifier& object_path,
+                       SupplicantGroupEventDelegateInterface* delegate);
   SupplicantGroupProxy(const SupplicantGroupProxy&) = delete;
   SupplicantGroupProxy& operator=(const SupplicantGroupProxy&) = delete;
 
@@ -66,6 +70,10 @@ class SupplicantGroupProxy : public SupplicantGroupProxyInterface {
 
   std::unique_ptr<fi::w1::wpa_supplicant1::GroupProxy> group_proxy_;
   std::unique_ptr<PropertySet> properties_;
+
+  // This pointer is owned by the object that created |this|. That object
+  // MUST destroy |this| before destroying itself.
+  SupplicantGroupEventDelegateInterface* delegate_;
 
   base::WeakPtrFactory<SupplicantGroupProxy> weak_factory_{this};
 };

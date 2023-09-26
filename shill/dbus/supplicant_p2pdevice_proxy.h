@@ -15,10 +15,13 @@
 
 namespace shill {
 
+class SupplicantP2PDeviceEventDelegateInterface;
+
 class SupplicantP2PDeviceProxy : public SupplicantP2PDeviceProxyInterface {
  public:
   SupplicantP2PDeviceProxy(const scoped_refptr<dbus::Bus>& bus,
-                           const RpcIdentifier& object_path);
+                           const RpcIdentifier& object_path,
+                           SupplicantP2PDeviceEventDelegateInterface* delegate);
   SupplicantP2PDeviceProxy(const SupplicantP2PDeviceProxy&) = delete;
   SupplicantP2PDeviceProxy& operator=(const SupplicantP2PDeviceProxy&) = delete;
 
@@ -67,6 +70,10 @@ class SupplicantP2PDeviceProxy : public SupplicantP2PDeviceProxyInterface {
   std::unique_ptr<fi::w1::wpa_supplicant1::Interface::P2PDeviceProxy>
       p2pdevice_proxy_;
   std::unique_ptr<PropertySet> properties_;
+
+  // This pointer is owned by the object that created |this|.  That object
+  // MUST destroy |this| before destroying itself.
+  SupplicantP2PDeviceEventDelegateInterface* delegate_;
 
   base::WeakPtrFactory<SupplicantP2PDeviceProxy> weak_factory_{this};
 };
