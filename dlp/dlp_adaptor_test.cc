@@ -16,7 +16,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/process/process_handle.h>
 #include <base/run_loop.h>
-#include "base/test/task_environment.h"
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
@@ -360,8 +359,6 @@ class DlpAdaptorTest : public ::testing::Test {
   std::vector<std::pair<FileMetadata, RestrictionLevel>> files_restrictions_;
   std::unique_ptr<base::ScopedTempDir> database_directory_;
 
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::MainThreadType::IO};
   DlpAdaptorTestHelper helper_;
 };
 
