@@ -43,3 +43,5 @@ recvfrom: 1
 clock_gettime: 1
 uname: 1
 sysinfo: 1
+sendmmsg: 1
+writev: 1
