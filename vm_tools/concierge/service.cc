@@ -3941,7 +3941,7 @@ Service::EnableVmMemoryManagementService(
 }
 
 void Service::GetVmMemoryManagementKillsConnection(
-    const GetVmMemoryManagementKillsConnectionRequest& request,
+    const GetVmMemoryManagementKillsConnectionRequest&,
     GetVmMemoryManagementKillsConnectionResponse* response,
     base::ScopedFD* fd) {
   LOG(INFO) << "Received request: " << __func__;
@@ -3954,8 +3954,7 @@ void Service::GetVmMemoryManagementKillsConnection(
     return;
   }
 
-  *fd = vm_memory_management_service_->GetKillsServerConnection(
-      request.read_timeout_ms());
+  *fd = vm_memory_management_service_->GetKillsServerConnection();
 
   if (!fd->is_valid()) {
     static constexpr char error[] = "Failed to connect.";

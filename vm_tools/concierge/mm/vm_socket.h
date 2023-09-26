@@ -17,9 +17,9 @@ class VmSocket {
 
   explicit VmSocket(base::ScopedFD fd);
 
-  // Connects the socket to |port| and sets the read timeout to |timeout_ms|.
+  // Connects the socket to |port|.
   // Returns true iff the connection succeeded.
-  bool Connect(int port, int timeout_ms);
+  bool Connect(int port);
 
   // Releases the owned socket FD.
   base::ScopedFD Release();

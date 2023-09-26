@@ -21,21 +21,10 @@ VmSocket::VmSocket() = default;
 
 VmSocket::VmSocket(base::ScopedFD fd) : fd_(std::move(fd)) {}
 
-bool VmSocket::Connect(int port, int timeout_ms) {
+bool VmSocket::Connect(int port) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!InitFd()) {
-    return false;
-  }
-
-  // Set the read timeout
-  struct timeval tv;
-  tv.tv_sec = timeout_ms / 1000;
-  timeout_ms -= (tv.tv_sec * 1000);
-  tv.tv_usec = timeout_ms * 1000;
-  if (setsockopt(fd_.get(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
-    PLOG(ERROR) << "Failed to set recv timeout on vsock.";
-    fd_.reset();
     return false;
   }
 

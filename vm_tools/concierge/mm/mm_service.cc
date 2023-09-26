@@ -125,11 +125,11 @@ void MmService::NotifyVmStopping(int vm_cid) {
                                 weak_ptr_factory_.GetWeakPtr(), vm_cid));
 }
 
-base::ScopedFD MmService::GetKillsServerConnection(uint32_t read_timeout_ms) {
+base::ScopedFD MmService::GetKillsServerConnection() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   VmSocket socket;
-  if (!socket.Connect(kVmMemoryManagementKillsServerPort, read_timeout_ms)) {
+  if (!socket.Connect(kVmMemoryManagementKillsServerPort)) {
     return {};
   }
 

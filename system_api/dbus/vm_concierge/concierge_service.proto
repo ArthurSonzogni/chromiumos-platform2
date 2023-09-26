@@ -1506,10 +1506,7 @@ message EnableVmMemoryManagementServiceResponse {
 }
 
 // Request to get an open FD to the VM Memory Management kills server.
-message GetVmMemoryManagementKillsConnectionRequest {
-  // The read timeout that should be set on the connection.
-  uint32 read_timeout_ms = 1;
-}
+message GetVmMemoryManagementKillsConnectionRequest {}
 
 // Response to an GetVmMemoryManagementKillsConnection request.
 // A successful response must be accompanied with the fd that was opened to the

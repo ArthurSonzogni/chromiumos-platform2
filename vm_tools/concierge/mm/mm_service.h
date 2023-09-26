@@ -46,7 +46,7 @@ class MmService {
   void NotifyVmStopping(int vm_cid);
 
   // Returns an open FD to the kills server.
-  base::ScopedFD GetKillsServerConnection(uint32_t read_timeout_ms);
+  base::ScopedFD GetKillsServerConnection();
 
  private:
   // Retrieves the lowest balloon block priority from the BalloonBroker.
