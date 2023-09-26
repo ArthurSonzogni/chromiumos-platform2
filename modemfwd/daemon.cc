@@ -436,11 +436,11 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
 void Daemon::CheckForWedgedModems() {
   EVLOG(1) << "Running wedged modems check...";
 
-  // Start long-running monitoring task
-  StartHeartbeatTimer();
-
   helper_directory_->ForEachHelper(
       base::BindRepeating(&Daemon::ForceFlashIfWedged, base::Unretained(this)));
+
+  // Start long-running monitoring task
+  StartHeartbeatTimer();
 }
 
 void Daemon::ForceFlashIfWedged(const std::string& device_id,
