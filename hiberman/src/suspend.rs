@@ -30,6 +30,7 @@ use regex::Regex;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
+use crate::files::HIBERNATING_USER_FILE;
 use crate::hiberlog;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::redirect_log_to_file;
@@ -38,6 +39,7 @@ use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
 use crate::hiberlog::LogRedirectGuard;
 use crate::hiberutil::checked_command_output;
+use crate::hiberutil::get_account_id;
 use crate::hiberutil::get_kernel_restore_time;
 use crate::hiberutil::get_page_size;
 use crate::hiberutil::get_ram_size;
@@ -45,6 +47,7 @@ use crate::hiberutil::has_user_logged_out;
 use crate::hiberutil::intel_keylocker_enabled;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
+use crate::hiberutil::sanitize_username;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::HibernateStage;
@@ -160,6 +163,8 @@ impl SuspendConductor<'_> {
             Self::log_suspend_abort(SuspendAbortReason::UpdateEngineActive);
             return Err(HibernateError::UpdateEngineBusyError()).context("Update engine is active");
         }
+
+        Self::record_hibernating_user()?;
 
         // Stop logging to syslog, and divert instead to a file since the
         // logging daemon's about to be frozen.
@@ -467,6 +472,24 @@ impl SuspendConductor<'_> {
         let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
 
         metrics_logger.log_linear_metric("Platform.Hibernate.Abort.Errno", errno as isize, 1, 200);
+    }
+
+    // Record the account id of the user that is hibernating.
+    fn record_hibernating_user() -> Result<()> {
+        let account_id = get_account_id()?;
+        let obfuscated_account_id = sanitize_username(&account_id)?;
+
+        let mut f = File::create(HIBERNATING_USER_FILE.as_path()).context(format!(
+            "failed to create {}",
+            HIBERNATING_USER_FILE.display()
+        ))?;
+        f.write_all(obfuscated_account_id.as_bytes())
+            .context(format!(
+                "failed to write account id to {}",
+                HIBERNATING_USER_FILE.display()
+            ))?;
+
+        Ok(())
     }
 }
 

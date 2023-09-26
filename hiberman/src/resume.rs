@@ -28,6 +28,7 @@ use crate::cookie::HibernateCookieValue;
 use crate::cryptohome;
 use crate::device_mapper::DeviceMapper;
 use crate::files::remove_resume_in_progress_file;
+use crate::files::HIBERNATING_USER_FILE;
 use crate::hiberlog;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::redirect_log_to_file;
@@ -35,6 +36,7 @@ use crate::hiberlog::replay_logs;
 use crate::hiberlog::HiberlogOut;
 use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::path_to_stateful_block;
+use crate::hiberutil::sanitize_username;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateStage;
 use crate::hiberutil::ResumeOptions;
@@ -64,6 +66,7 @@ const TPM_SEED_FILE: &str = "/run/hiberman/tpm_seed";
 pub struct ResumeConductor {
     options: ResumeOptions,
     stateful_block_path: String,
+    current_user: Option<String>,
     tried_to_resume: bool,
     timestamp_start: Duration,
 }
@@ -74,6 +77,7 @@ impl ResumeConductor {
         Ok(ResumeConductor {
             options: Default::default(),
             stateful_block_path: path_to_stateful_block()?,
+            current_user: None,
             tried_to_resume: false,
             timestamp_start: Duration::ZERO,
         })
@@ -84,6 +88,7 @@ impl ResumeConductor {
     /// the case of resume failure, an error is returned.
     pub fn resume(&mut self, options: ResumeOptions) -> Result<()> {
         info!("Beginning resume");
+
         // Ensure the persistent version of the stateful block device is available.
         let _rw_stateful_lv = activate_physical_lv("unencrypted")?;
         self.options = options;
@@ -137,19 +142,23 @@ impl ResumeConductor {
         // not supported.
         let user_key = match dbus_server.wait_for_event()? {
             DBusEvent::UserAuthenticated {
-                account_id: _,
+                account_id,
                 session_id,
-            } => cryptohome::get_user_key_for_session(&session_id)?,
+            } => {
+                self.current_user = Some(sanitize_username(&account_id)?);
+                cryptohome::get_user_key_for_session(&session_id)?
+            }
+
             DBusEvent::AbortRequest { reason } => {
                 info!("hibernate is not available: {reason}");
                 return Err(HibernateError::HibernateNotSupportedError(reason).into());
             }
         };
 
-        let volume_manager = VOLUME_MANAGER.read().unwrap();
-
         if let Err(e) = self.decide_to_resume() {
             // No resume from hibernate
+
+            let volume_manager = VOLUME_MANAGER.read().unwrap();
 
             // Make sure the thinpool is writable before removing the LVs.
             volume_manager.make_thinpool_rw()?;
@@ -166,6 +175,8 @@ impl ResumeConductor {
             return Err(e);
         }
 
+        // We attempt to resume from hibernate.
+
         self.timestamp_start = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
 
         {
@@ -173,6 +184,7 @@ impl ResumeConductor {
             metrics_logger.log_event(HibernateEvent::ResumeAttempt);
         }
 
+        let volume_manager = VOLUME_MANAGER.read().unwrap();
         let hibermeta_mount = volume_manager.setup_hibermeta_lv(false)?;
 
         // Set up the snapshot device for resuming
@@ -202,6 +214,21 @@ impl ResumeConductor {
 
         if cookie == HibernateCookieValue::ResumeInProgress || self.options.dry_run {
             if cookie == HibernateCookieValue::ResumeInProgress {
+                let hibernating_user = Self::get_hibernating_user()?;
+                if self.current_user != Some(hibernating_user) {
+                    info!("Skipping resume: the current user is not the one who hibernated");
+
+                    // TODO: log metric
+
+                    set_hibernate_cookie(
+                        Some(&self.stateful_block_path),
+                        HibernateCookieValue::NoResume,
+                    )
+                    .context("Failed to reset cookie")?;
+
+                    return Err(HibernateError::UserMismatchError().into());
+                }
+
                 self.tried_to_resume = true;
             } else {
                 info!(
@@ -369,5 +396,12 @@ impl ResumeConductor {
         let result = snap_dev.atomic_restore();
         error!("Resume failed");
         result
+    }
+
+    fn get_hibernating_user() -> Result<String> {
+        fs::read_to_string(HIBERNATING_USER_FILE.as_path()).context(format!(
+            "failed to read {}",
+            HIBERNATING_USER_FILE.display()
+        ))
     }
 }

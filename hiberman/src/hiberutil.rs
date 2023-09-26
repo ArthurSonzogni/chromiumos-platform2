@@ -24,6 +24,8 @@ use std::time::Duration;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
+use dbus::blocking::Connection;
+
 use lazy_static::lazy_static;
 use libc::c_ulong;
 use libc::c_void;
@@ -32,6 +34,9 @@ use log::error;
 use log::info;
 use log::warn;
 use regex::Regex;
+use sha2::Digest;
+use sha2::Sha256;
+use system_api::client::OrgChromiumSessionManagerInterface;
 use thiserror::Error as ThisError;
 
 use crate::cookie::set_hibernate_cookie;
@@ -44,6 +49,9 @@ use crate::metrics::METRICS_LOGGER;
 use crate::mmapbuf::MmapBuffer;
 
 const KEYCTL_PATH: &str = "/bin/keyctl";
+
+// 25 seconds is the default timeout for dbus-send.
+const DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 
 lazy_static! {
     static ref USER_LOGGED_OUT_PATH: PathBuf = {
@@ -123,6 +131,9 @@ pub enum HibernateError {
     /// Syscall stat error
     #[error("Snapshot stat error: {0}")]
     SnapshotStatDeviceError(nix::Error),
+    /// The current user is not one who hibernated
+    #[error("User mismatch")]
+    UserMismatchError(),
 }
 
 /// Options taken from the command line affecting hibernate.
@@ -649,6 +660,39 @@ pub fn record_user_logout() {
 /// Returns true if the hiberimage was torn down because the user logged out.
 pub fn has_user_logged_out() -> bool {
     USER_LOGGED_OUT_PATH.exists()
+}
+
+/// Returns the account id of the primary user.
+pub fn get_account_id() -> Result<String> {
+    let connection = Connection::new_system()?;
+
+    let conn_path = connection.with_proxy(
+        "org.chromium.SessionManager",
+        "/org/chromium/SessionManager",
+        DBUS_TIMEOUT,
+    );
+
+    let (account_id, _) = conn_path.retrieve_primary_session()?;
+
+    Ok(account_id)
+}
+
+/// Obfuscates the given username.
+///
+/// We can't use cryptohome's SanitizeUserName() because hiberman does not have
+/// access to /home/.shadow/ where the salt is stored.
+pub fn sanitize_username(username: &str) -> Result<String> {
+    let username_lc = username.to_lowercase();
+    let mut hasher = Sha256::new();
+
+    hasher.update(username_lc);
+    let res = hasher.finalize();
+
+    // hex::encode() wants an array, not a slice.
+    let mut hash = [0_u8; 32];
+    hash.copy_from_slice(&res[0..32]);
+
+    Ok(hex::encode(hash))
 }
 
 /// Add a logon key to the kernel key ring

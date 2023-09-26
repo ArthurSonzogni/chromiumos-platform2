@@ -8,9 +8,11 @@ use std::fs::create_dir;
 use std::fs::remove_file;
 use std::fs::OpenOptions;
 use std::path::Path;
+use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
+use lazy_static::lazy_static;
 use log::warn;
 
 /// Define the directory where hibernate state files are kept.
@@ -22,6 +24,15 @@ pub const TMPFS_DIR: &str = "/run/hibernate/";
 /// Services outside of hiberman use this file, so don't change this name
 /// carelessly.
 const RESUME_IN_PROGRESS_FILE: &str = "resume_in_progress";
+
+lazy_static! {
+    /// Define the path of the file with the (obfuscated) account id of the user
+    /// who was logged in when the system hibernated.
+    pub static ref HIBERNATING_USER_FILE: PathBuf = {
+        let path = Path::new("/var/lib/hiberman");
+        path.join("hibernating_user")
+    };
+}
 
 /// Add the resuming file token that other services can check to quickly see if
 /// a resume is in progress.
