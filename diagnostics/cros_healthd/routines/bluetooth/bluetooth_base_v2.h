@@ -95,13 +95,15 @@ class BluetoothRoutineBaseV2 {
   void OnAdapterAdded(
       org::chromium::bluetooth::BluetoothProxyInterface* adapter);
   void OnAdapterRemoved(const dbus::ObjectPath& adapter_path);
+  void OnAdapterPoweredChanged(int32_t hci_interface, bool powered);
   void OnManagerRemoved(const dbus::ObjectPath& manager_path);
 
   // The initial powered state of the adapter.
   std::optional<bool> initial_powered_state_;
 
-  // The callbacks waiting for adapter added event.
-  std::vector<base::OnceClosure> on_adapter_added_cbs_;
+  // The callbacks waiting for adapter enabled event. The callbacks will return
+  // a bool state to report whether the adapter is enabled successfully.
+  std::vector<base::OnceCallback<void(bool)>> on_adapter_enabled_cbs_;
 
   // Must be the last class member.
   base::WeakPtrFactory<BluetoothRoutineBaseV2> weak_ptr_factory_{this};

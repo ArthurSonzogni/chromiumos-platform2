@@ -99,6 +99,10 @@ void BluetoothRoutineBaseV2::SetupDefaultAdapter(
       context_->floss_event_hub()->SubscribeAdapterRemoved(
           base::BindRepeating(&BluetoothRoutineBaseV2::OnAdapterRemoved,
                               weak_ptr_factory_.GetWeakPtr())));
+  event_subscriptions_.push_back(
+      context_->floss_event_hub()->SubscribeAdapterPoweredChanged(
+          base::BindRepeating(&BluetoothRoutineBaseV2::OnAdapterPoweredChanged,
+                              weak_ptr_factory_.GetWeakPtr())));
 
   if (!manager_) {
     LOG(ERROR) << "Failed to access Bluetooth manager proxy.";
@@ -220,10 +224,15 @@ void BluetoothRoutineBaseV2::HandleChangePoweredResponse(
     return;
   }
 
-  // Ensure the adapter is added after powering on.
+  // Ensure the adapter is enabled after powering on. The adapter will be
+  // enabled after added.
   if (powered && !default_adapter_) {
-    LOG(INFO) << "Waiting for adapter added event";
-    on_adapter_added_cbs_.push_back(base::BindOnce(std::move(on_finish), true));
+    LOG(INFO) << "Waiting for adapter enabled event";
+    on_adapter_enabled_cbs_.push_back(base::BindOnce(
+        [](ResultCallback cb, bool is_success) {
+          std::move(cb).Run(base::ok(is_success));
+        },
+        std::move(on_finish)));
     return;
   }
 
@@ -237,17 +246,29 @@ void BluetoothRoutineBaseV2::OnAdapterAdded(
     return;
   }
   default_adapter_ = adapter;
-
-  for (auto& cb : on_adapter_added_cbs_) {
-    std::move(cb).Run();
-  }
-  on_adapter_added_cbs_.clear();
 }
 
 void BluetoothRoutineBaseV2::OnAdapterRemoved(
     const dbus::ObjectPath& adapter_path) {
   if (GetAdapterPath(default_adapter_hci_) == adapter_path)
     default_adapter_ = nullptr;
+}
+
+void BluetoothRoutineBaseV2::OnAdapterPoweredChanged(int32_t hci_interface,
+                                                     bool powered) {
+  if (hci_interface != default_adapter_hci_ || !powered) {
+    return;
+  }
+
+  bool is_success = true;
+  if (default_adapter_ == nullptr) {
+    LOG(ERROR) << "Failed to get non-null default adapter when powering on";
+    is_success = false;
+  }
+  for (auto& cb : on_adapter_enabled_cbs_) {
+    std::move(cb).Run(is_success);
+  }
+  on_adapter_enabled_cbs_.clear();
 }
 
 void BluetoothRoutineBaseV2::OnManagerRemoved(

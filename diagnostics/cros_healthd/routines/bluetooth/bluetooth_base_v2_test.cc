@@ -355,6 +355,8 @@ TEST_F(BluetoothRoutineBaseV2Test, EnsureAdapterPoweredOnSuccess) {
       .WillOnce(WithArg<1>([&](base::OnceCallback<void()> on_success) {
         std::move(on_success).Run();
         fake_floss_event_hub()->SendAdapterAdded(&mock_adapter_proxy_);
+        fake_floss_event_hub()->SendAdapterPoweredChanged(kDefaultHciInterface,
+                                                          /*powered=*/true);
       }));
 
   // Call on adapter added in Floss event hub.
