@@ -1,0 +1,18 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+group("all") {
+  deps = [ ":pp_cli" ]
+}
+
+executable("pp_cli") {
+  sources = [ "main.cc" ]
+  install_path = "bin"
+  pkg_deps = [
+    "libchrome",
+    "libpatchpanel-client",
+  ]
+}
