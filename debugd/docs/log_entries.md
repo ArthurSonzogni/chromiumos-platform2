@@ -363,6 +363,11 @@ Lists PCI devices. Contains output for `lspci`.
 
 Lists USB devices. Contains output for `lsusb` and `lsusb -t` for topology.
 
+## lsusb_verbose
+
+Verbose output of the lsusb tool. Provides more detailed information including
+decoded common descriptors of all currently enumerated USB devices.
+
 ## lvs
 
 Information about LVM logical volumes.

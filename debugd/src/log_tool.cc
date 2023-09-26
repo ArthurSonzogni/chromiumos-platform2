@@ -317,6 +317,7 @@ const std::array kCommandLogs {
     true /* access_root_mount_ns */},
   Log{kCommand, "lsmod", "lsmod"},
   Log{kCommand, "lsusb", "lsusb -tvv"},
+  Log{kCommand, "lsusb_verbose", "lsusb --verbose", kRoot, kRoot},
   Log{kCommand, "lvs", "lvs --all --readonly --reportformat json -o lv_all",
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB */, LogTool::Encoding::kUtf8, true},
   Log{kFile, "mali_memory", "/sys/kernel/debug/mali0/gpu_memory",
