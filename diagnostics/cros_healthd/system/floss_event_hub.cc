@@ -198,7 +198,8 @@ void FlossEventHub::HandleRegisterBluetoothCallbackResponse(
   if (bus_) {
     adapter_callbacks_[adapter_path].reset();
     adapter_callbacks_[adapter_path] =
-        std::make_unique<BluetoothCallbackService>(this, bus_, callback_path);
+        std::make_unique<BluetoothCallbackService>(this, bus_, callback_path,
+                                                   adapter_path);
   }
 }
 

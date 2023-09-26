@@ -15,10 +15,11 @@ namespace diagnostics {
 BluetoothCallbackService::BluetoothCallbackService(
     FlossEventHub* event_hub,
     const scoped_refptr<dbus::Bus>& bus,
-    const dbus::ObjectPath& object_path)
+    const dbus::ObjectPath& object_path,
+    const dbus::ObjectPath& adapter_path)
     : org::chromium::bluetooth::BluetoothCallbackAdaptor(this),
       event_hub_(event_hub),
-      object_path_(object_path),
+      adapter_path_(adapter_path),
       dbus_object_(nullptr, bus, object_path) {
   RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAndBlock();
@@ -35,7 +36,7 @@ void BluetoothCallbackService::OnNameChanged(const std::string& name) {}
 void BluetoothCallbackService::OnDiscoverableChanged(bool discoverable) {}
 
 void BluetoothCallbackService::OnDiscoveringChanged(bool discovering) {
-  event_hub_->OnAdapterDiscoveringChanged(object_path_, discovering);
+  event_hub_->OnAdapterDiscoveringChanged(adapter_path_, discovering);
 }
 
 void BluetoothCallbackService::OnDeviceFound(

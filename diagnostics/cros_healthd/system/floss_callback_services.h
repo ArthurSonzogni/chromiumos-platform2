@@ -30,7 +30,8 @@ class BluetoothCallbackService
  public:
   explicit BluetoothCallbackService(FlossEventHub* event_hub,
                                     const scoped_refptr<dbus::Bus>& bus,
-                                    const dbus::ObjectPath& object_path);
+                                    const dbus::ObjectPath& object_path,
+                                    const dbus::ObjectPath& adapter_path);
   BluetoothCallbackService(const BluetoothCallbackService&) = delete;
   BluetoothCallbackService& operator=(const BluetoothCallbackService&) = delete;
   ~BluetoothCallbackService();
@@ -54,8 +55,8 @@ class BluetoothCallbackService
   // Unowned pointer. Used to send Bluetooth events.
   FlossEventHub* const event_hub_;
 
-  // Object path if the adapter that register this callback.
-  const dbus::ObjectPath object_path_;
+  // Object path of the adapter that register this callback.
+  const dbus::ObjectPath adapter_path_;
 
   // D-Bus helper when registering callback service.
   brillo::dbus_utils::DBusObject dbus_object_;
