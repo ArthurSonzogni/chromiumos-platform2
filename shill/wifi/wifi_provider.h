@@ -265,9 +265,6 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, RegisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDevice);
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDeviceWithDeviceNameForTest);
-  FRIEND_TEST(WiFiProviderTest2, UpdateRegAndPhyInfo_Success);
-  FRIEND_TEST(WiFiProviderTest2, UpdateRegAndPhyInfo_NoCellularNoCountry);
-  FRIEND_TEST(WiFiProviderTest2, UpdatePhyInfo_Success);
 
   // Register a WiFi local device object to WiFiProvider and a WiFiPhy object.
   // This method asserts that there is a WiFiPhy object at the given phy_index,

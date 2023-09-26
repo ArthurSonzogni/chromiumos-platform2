@@ -21,7 +21,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
@@ -374,12 +373,14 @@ const uint8_t kActiveScanTriggerNlMsg[] = {
 
 const char kUS_Alpha2[] = "US";
 const char kWorld_Alpha2[] = "00";
+
+constexpr base::TimeDelta kPhyUpdateTimeout = base::Milliseconds(500);
 }  // namespace
 
 class WiFiProviderTest : public testing::Test {
  public:
-  explicit WiFiProviderTest(EventDispatcher* dispatcher = nullptr)
-      : manager_(&control_, dispatcher ? dispatcher : &dispatcher_, &metrics_),
+  explicit WiFiProviderTest()
+      : manager_(&control_, &dispatcher_, &metrics_),
         provider_(manager_.wifi_provider()),
         default_profile_(new NiceMock<MockProfile>(&manager_, "default")),
         user_profile_(new NiceMock<MockProfile>(&manager_, "user")),
@@ -698,6 +699,17 @@ class WiFiProviderTest : public testing::Test {
 
   void SetCountry(std::string alpha2) { provider_->country_ = alpha2; }
 
+  void OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
+                              const NetlinkMessage* raw_message) {
+    provider_->OnGetPhyInfoAuxMessage(type, raw_message);
+  }
+
+  void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
+
+  bool IsPhyUpdateTimeoutCbCancelled() {
+    return provider_->phy_update_timeout_cb_.IsCancelled();
+  }
+
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
@@ -709,14 +721,6 @@ class WiFiProviderTest : public testing::Test {
   FakeStore default_profile_storage_;
   FakeStore user_profile_storage_;
   int storage_entry_index_;  // shared across profiles
-};
-
-class WiFiProviderTest2 : public WiFiProviderTest {
- public:
-  WiFiProviderTest2() : WiFiProviderTest(&dispatcher_) {}
-
- protected:
-  MockEventDispatcher dispatcher_;
 };
 
 MATCHER_P(RefPtrMatch, ref, "") {
@@ -2553,20 +2557,20 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceWithDeviceNameForTest) {
   EXPECT_EQ(provider_->local_devices_[device->link_name()], device);
 }
 
-TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_NoChange) {
+TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoChange) {
   // With region domains set correctly the notification callback should be
   // called immediately signaling no change ('false' as argument).
   SetCountry(kUS_Alpha2);
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
       .WillOnce(Return(kUS_Alpha2));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   int times_called = 0;
   provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
   EXPECT_EQ(times_called, 1);
+  EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
 }
 
-TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_Timeout) {
+TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Timeout) {
   // With different region domains we expect to request domain and phy update,
   // however our request might not get a reply, so we should time out and run
   // the callback.
@@ -2578,14 +2582,16 @@ TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_Timeout) {
               SendNl80211Message(
                   IsNl80211Command(kNl80211FamilyId, NL80211_CMD_REQ_SET_REG),
                   _, _, _));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _))
-      .WillOnce(WithArg<1>(Invoke([&](auto cb) { std::move(cb).Run(); })));
   provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
+  EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
+  dispatcher_.task_environment().FastForwardBy(kPhyUpdateTimeout);
+  DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
+  EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
 }
 
-TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_Success) {
+TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Success) {
   // With different region domains we expect to request domain and phy update.
   SetCountry(kWorld_Alpha2);
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
@@ -2595,81 +2601,76 @@ TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_Success) {
               SendNl80211Message(
                   IsNl80211Command(kNl80211FamilyId, NL80211_CMD_REQ_SET_REG),
                   _, _, _));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(false))).Times(1);
   provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
+  EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
 
   // Now simulate reception of region change, expect phy dump and simulate
   // reception of "Done" message (signaling the end of "split messages" dump).
-  Mock::VerifyAndClearExpectations(&dispatcher_);
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(true)))
-      .WillOnce(WithArg<1>(Invoke([](auto cb) { std::move(cb).Run(); })));
   provider_->RegionChanged("US");
-  provider_->OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
-  EXPECT_TRUE(provider_->phy_update_timeout_cb_.IsCancelled());
+  EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
 }
 
-TEST_F(WiFiProviderTest2, UpdateRegAndPhyInfo_NoCellularNoCountry) {
+TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_NoCellularNoCountry) {
   // If celluar cannot provide region code and WiFiProvider does not have coutry
   // info yet, should request to do a sync.
   EXPECT_CALL(manager_, GetCellularOperatorCountryCode())
       .WillOnce(Return(std::nullopt));
   int times_called = 0;
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(false))).Times(1);
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
   provider_->UpdateRegAndPhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
+  EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
 
   // Now simulate reception of region change, expect phy dump and simulate
   // reception of "Done" message (signaling the end of "split messages" dump).
-  Mock::VerifyAndClearExpectations(&dispatcher_);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(true)))
-      .WillOnce(WithArg<1>(Invoke([](auto cb) { std::move(cb).Run(); })));
-  provider_->OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
-  EXPECT_TRUE(provider_->phy_update_timeout_cb_.IsCancelled());
+  EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
 }
 
-TEST_F(WiFiProviderTest2, UpdatePhyInfo_Timeout) {
+TEST_F(WiFiProviderTest, UpdatePhyInfo_Timeout) {
   int times_called = 0;
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _))
-      .WillOnce(WithArg<1>(Invoke([&](auto cb) { std::move(cb).Run(); })));
   provider_->UpdatePhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
-  dispatcher_.DispatchPendingEvents();
+  EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
+  dispatcher_.task_environment().FastForwardBy(kPhyUpdateTimeout);
+  DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
+  EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
 }
 
-TEST_F(WiFiProviderTest2, UpdatePhyInfo_Success) {
+TEST_F(WiFiProviderTest, UpdatePhyInfo_Success) {
   int times_called = 0;
   EXPECT_CALL(
       netlink_manager_,
       SendNl80211Message(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(false))).Times(1);
   provider_->UpdatePhyInfo(
       base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
+  EXPECT_FALSE(IsPhyUpdateTimeoutCbCancelled());
 
   // Now simulate reception of expect phy dump and simulate reception of "Done"
   // message (signaling the end of "split messages" dump).
-  Mock::VerifyAndClearExpectations(&dispatcher_);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(true)))
-      .WillOnce(WithArg<1>(Invoke([](auto cb) { std::move(cb).Run(); })));
-  provider_->OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  DispatchPendingEvents();
   EXPECT_EQ(times_called, 1);
-  EXPECT_TRUE(provider_->phy_update_timeout_cb_.IsCancelled());
+  EXPECT_TRUE(IsPhyUpdateTimeoutCbCancelled());
 }
 
 }  // namespace shill
