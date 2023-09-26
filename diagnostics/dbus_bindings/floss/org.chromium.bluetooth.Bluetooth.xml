@@ -12,6 +12,12 @@
     <method name="IsDiscovering">
       <arg name="discovering" direction="out" type="b"/>
     </method>
+    <method name="StartDiscovery">
+      <arg name="discovering" direction="out" type="b"/>
+    </method>
+    <method name="CancelDiscovery">
+      <arg name="discovering" direction="out" type="b"/>
+    </method>
     <method name="RegisterCallback">
       <arg name="callback_path" direction="in" type="o" />
       <arg name="callback_id" direction="out" type="u"/>

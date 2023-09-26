@@ -413,7 +413,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, RoutineTimeoutOccurred) {
 
   routine_->Start();
   // Trigger timeout.
-  task_environment_.FastForwardBy(kRoutineDiscoveryTimeout);
+  task_environment_.FastForwardBy(kDiscoveryRoutineTimeout);
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      "Bluetooth routine failed to complete before timeout.");
 }

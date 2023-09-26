@@ -46,4 +46,9 @@ void FakeFlossEventHub::SendAdapterPoweredChanged(int32_t hci_interface,
   OnAdapterPoweredChanged(hci_interface, powered);
 }
 
+void FakeFlossEventHub::SendAdapterDiscoveringChanged(
+    const dbus::ObjectPath& adapter_path, bool discovering) {
+  OnAdapterDiscoveringChanged(adapter_path, discovering);
+}
+
 }  // namespace diagnostics

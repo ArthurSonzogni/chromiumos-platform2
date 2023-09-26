@@ -300,6 +300,14 @@ int BluetoothPowerV2Main(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(BluetoothPower);
 }
 
+int BluetoothDiscoveryV2Main(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS("Bluetooth discovery routine");
+
+  auto argument = mojom::BluetoothDiscoveryRoutineArgument::New();
+
+  COMMON_V2_ROUTINE_MAIN(BluetoothDiscovery);
+}
+
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
   DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(), \
                 "If specified, will attempt to cancel the routine when its "   \
@@ -813,6 +821,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"led_lit_up", LedLitUpMain},
     {"floating_point_v2", FloatingPointV2Main},
     {"bluetooth_power_v2", BluetoothPowerV2Main},
+    {"bluetooth_discovery_v2", BluetoothDiscoveryV2Main},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},

@@ -34,6 +34,8 @@ class FakeFlossEventHub final : public FlossEventHub {
   void SendAdapterGattAdded(
       org::chromium::bluetooth::BluetoothGattProxyInterface* adapter_gatt);
   void SendAdapterPoweredChanged(int32_t hci_interface, bool powered);
+  void SendAdapterDiscoveringChanged(const dbus::ObjectPath& adapter_path,
+                                     bool discovering);
 };
 
 }  // namespace diagnostics

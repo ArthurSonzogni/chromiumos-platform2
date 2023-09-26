@@ -43,7 +43,7 @@ void BluetoothDiscoveryRoutine::Start() {
       FROM_HERE,
       base::BindOnce(&BluetoothDiscoveryRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),
-      kRoutineDiscoveryTimeout);
+      kDiscoveryRoutineTimeout);
 
   event_subscriptions_.push_back(
       context_->bluez_event_hub()->SubscribeAdapterPropertyChanged(
@@ -97,7 +97,7 @@ void BluetoothDiscoveryRoutine::PopulateStatusUpdate(
 
   double step_percent = step_ * 100 / TestStep::kComplete;
   double running_time_ratio =
-      (base::TimeTicks::Now() - start_ticks_) / kRoutineDiscoveryTimeout;
+      (base::TimeTicks::Now() - start_ticks_) / kDiscoveryRoutineTimeout;
   response->progress_percent =
       step_percent + (100 - step_percent) * std::min(1.0, running_time_ratio);
 }

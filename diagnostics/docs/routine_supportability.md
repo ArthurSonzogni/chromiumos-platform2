@@ -132,6 +132,10 @@ You can run the following commands on your DUT:
 
 Supported only when ChromeOS uses Floss as Bluetooth stack.
 
+### Bluetooth discovery
+
+Supported only when ChromeOS uses Floss as Bluetooth stack.
+
 [team-contact]: mailto:cros-tdm-tpe-eng@google.com
 [cros_healthd_routines.mojom]: /diagnostics/mojom/public/cros_healthd_routines.mojom
 [hw_topology.star]: https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star

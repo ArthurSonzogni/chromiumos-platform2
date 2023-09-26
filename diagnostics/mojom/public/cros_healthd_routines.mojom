@@ -71,7 +71,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 12, NextIndex: 12
+// NextMinVersion: 13, NextIndex: 13
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -99,6 +99,8 @@ union RoutineArgument {
   [MinVersion=10] FloatingPointRoutineArgument floating_point@10;
   // Arguments to create a Bluetooth power routine.
   [MinVersion=11] BluetoothPowerRoutineArgument bluetooth_power@11;
+  // Arguments to create a Bluetooth discovery routine.
+  [MinVersion=12] BluetoothDiscoveryRoutineArgument bluetooth_discovery@12;
 };
 
 // This routine checks whether there is any memory problem by
@@ -252,6 +254,12 @@ struct FloatingPointRoutineArgument {
 // NextMinVersion: 1, NextIndex: 0
 struct BluetoothPowerRoutineArgument {};
 
+// This routine checks whether the Bluetooth adapter can start/stop discovery
+// mode and the discovering status is consistent in both HCI and D-Bus levels.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct BluetoothDiscoveryRoutineArgument {};
+
 // Interface exposed to clients for controlling a routine.
 //
 // Error Handling:
@@ -368,6 +376,7 @@ union RoutineDetail {
   LedLitUpRoutineDetail led_lit_up;
   FloatingPointRoutineDetail floating_point;
   BluetoothPowerRoutineDetail bluetooth_power;
+  BluetoothDiscoveryRoutineDetail bluetooth_discovery;
 };
 
 // Details regarding memory routine.
@@ -523,6 +532,26 @@ struct BluetoothPowerRoutineDetail {
   BluetoothPoweredDetail? power_off_result@0;
   // Result of powering on Bluetooth adapter, or null if error occurs.
   BluetoothPoweredDetail? power_on_result@1;
+};
+
+// Details regarding Bluetooth discovering state.
+//
+// NextMinVersion: 1, NextIndex: 2
+struct BluetoothDiscoveringDetail {
+  // Bluetooth discovering state in HCI level.
+  bool hci_discovering@0;
+  // Bluetooth discovering state in D-Bus level.
+  bool dbus_discovering@1;
+};
+
+// Details regarding Bluetooth discovery routine.
+//
+// NextMinVersion: 1, NextIndex: 2
+struct BluetoothDiscoveryRoutineDetail {
+  // Result of starting discovery, or null if error occurs.
+  BluetoothDiscoveringDetail? start_discovery_result@0;
+  // Result of stopping discovery, or null if error occurs.
+  BluetoothDiscoveringDetail? stop_discovery_result@1;
 };
 
 // Enumeration of the possible DiskRead routine's command type.

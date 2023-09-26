@@ -50,6 +50,9 @@ inline constexpr char kBluetoothRoutineFailedFinishPairing[] =
 // Bluetooth power routine timeout.
 constexpr base::TimeDelta kPowerRoutineTimeout = base::Seconds(15);
 
+// Bluetooth discovery routine timeout.
+constexpr base::TimeDelta kDiscoveryRoutineTimeout = base::Seconds(20);
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_CONSTANTS_H_

@@ -10,6 +10,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery_v2.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power_v2.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
@@ -94,6 +95,9 @@ std::unique_ptr<BaseRoutineControl> RoutineService::CreateRoutineControl(
     case mojom::RoutineArgument::Tag::kBluetoothPower:
       return std::make_unique<BluetoothPowerRoutineV2>(
           context_, std::move(routine_arg->get_bluetooth_power()));
+    case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
+      return std::make_unique<BluetoothDiscoveryRoutineV2>(
+          context_, std::move(routine_arg->get_bluetooth_discovery()));
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {
       LOG(ERROR) << "Routine Argument not recognized/supported";
       routine_receiver.ResetWithReason(

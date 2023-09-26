@@ -86,6 +86,34 @@ base::Value::Dict ParseBluetoothPowerDetail(
   return output;
 }
 
+base::Value::Dict ParseBluetoothDiscoveryDetail(
+    const mojom::BluetoothDiscoveryRoutineDetailPtr&
+        bluetooth_discovery_detail) {
+  base::Value::Dict output;
+
+  if (bluetooth_discovery_detail->start_discovery_result) {
+    base::Value::Dict start_discovery_result;
+    SET_DICT(hci_discovering,
+             bluetooth_discovery_detail->start_discovery_result,
+             &start_discovery_result);
+    SET_DICT(dbus_discovering,
+             bluetooth_discovery_detail->start_discovery_result,
+             &start_discovery_result);
+    output.Set("start_discovery_result", std::move(start_discovery_result));
+  }
+
+  if (bluetooth_discovery_detail->stop_discovery_result) {
+    base::Value::Dict stop_discovery_result;
+    SET_DICT(hci_discovering, bluetooth_discovery_detail->stop_discovery_result,
+             &stop_discovery_result);
+    SET_DICT(dbus_discovering,
+             bluetooth_discovery_detail->stop_discovery_result,
+             &stop_discovery_result);
+    output.Set("stop_discovery_result", std::move(stop_discovery_result));
+  }
+  return output;
+}
+
 void FormatJsonOutput(bool single_line_json, const base::Value::Dict& output) {
   if (single_line_json) {
     std::cout << "Output: ";
@@ -148,6 +176,10 @@ void RoutineV2Client::OnRoutineStateChange(
           break;
         case mojom::RoutineDetail::Tag::kBluetoothPower:
           PrintOutput(ParseBluetoothPowerDetail(detail->get_bluetooth_power()));
+          break;
+        case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
+          PrintOutput(
+              ParseBluetoothDiscoveryDetail(detail->get_bluetooth_discovery()));
           break;
       }
       run_loop_.Quit();

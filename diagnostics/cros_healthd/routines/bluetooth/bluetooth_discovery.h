@@ -21,7 +21,6 @@
 
 namespace diagnostics {
 
-constexpr base::TimeDelta kRoutineDiscoveryTimeout = base::Seconds(20);
 constexpr base::TimeDelta kHciDiscoveringValidationRetryDelay =
     base::Seconds(3);
 constexpr int kHciDiscoveringValidationMaxRetries = 5;
