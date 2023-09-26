@@ -8,7 +8,8 @@
 
 namespace vm_tools::concierge::mm {
 
-BalloonBroker::BalloonBroker(std::unique_ptr<KillsServer>) {}
+BalloonBroker::BalloonBroker(std::unique_ptr<KillsServer>,
+                             scoped_refptr<base::SequencedTaskRunner>) {}
 
 void BalloonBroker::RegisterVm(int, const std::string&) {}
 

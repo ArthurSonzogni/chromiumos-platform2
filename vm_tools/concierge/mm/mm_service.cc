@@ -39,35 +39,46 @@ T PostTaskAndWaitForResult(scoped_refptr<base::TaskRunner> task_runner,
 }  // namespace
 
 MmService::MmService() : weak_ptr_factory_(this) {
-  DETACH_FROM_SEQUENCE(balloons_thread_sequence_checker_);
+  DETACH_FROM_SEQUENCE(negotiation_thread_sequence_checker_);
 }
 
 MmService::~MmService() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  balloons_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&MmService::BalloonsThreadStop,
+  negotiation_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&MmService::NegotiationThreadStop,
                                 weak_ptr_factory_.GetWeakPtr()));
 
   // Wait for the balloons thread to be cleaned up before continuing.
-  balloons_thread_.Stop();
+  negotiation_thread_.Stop();
+
+  // The balloon_operation_thread does not own objects so it does not need to be
+  // explicitly stopped. The destructor will implicitly stop it.
 }
 
 bool MmService::Start() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   LOG(INFO) << "Starting VM Memory Management Service.";
 
-  if (!balloons_thread_.StartWithOptions(
+  if (!negotiation_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::IO, 0))) {
-    LOG(ERROR) << "Failed to start VM Memory Management balloons thread.";
+    LOG(ERROR) << "Failed to start VM Memory Management negotiation thread.";
+    return false;
+  }
+
+  if (!balloon_operation_thread_.StartWithOptions(
+          base::Thread::Options(base::MessagePumpType::IO, 0))) {
+    LOG(ERROR)
+        << "Failed to start VM Memory Management balloon operation thread.";
     return false;
   }
 
   // Unretained(this) is safe because this call blocks until the task is
   // complete.
   bool success = PostTaskAndWaitForResult<bool>(
-      balloons_thread_.task_runner(),
-      base::BindOnce(&MmService::BalloonsThreadStart, base::Unretained(this)));
+      negotiation_thread_.task_runner(),
+      base::BindOnce(&MmService::NegotiationThreadStart, base::Unretained(this),
+                     balloon_operation_thread_.task_runner()));
 
   if (!success) {
     LOG(ERROR) << "Balloons thread failed to start.";
@@ -110,9 +121,9 @@ void MmService::NotifyVmStarted(apps::VmType type,
 
   reclaim_broker_->RegisterVm(vm_cid);
 
-  balloons_thread_.task_runner()->PostTask(
+  negotiation_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::BindOnce(&MmService::BalloonsThreadNotifyVmStarted,
+      base::BindOnce(&MmService::NegotiationThreadNotifyVmStarted,
                      weak_ptr_factory_.GetWeakPtr(), vm_cid, socket));
 }
 
@@ -120,8 +131,8 @@ void MmService::NotifyVmStopping(int vm_cid) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   reclaim_broker_->RemoveVm(vm_cid);
 
-  balloons_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&MmService::BalloonsThreadNotifyVmStopping,
+  negotiation_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&MmService::NegotiationThreadNotifyVmStopping,
                                 weak_ptr_factory_.GetWeakPtr(), vm_cid));
 }
 
@@ -142,8 +153,8 @@ ResizePriority MmService::GetLowestBalloonBlockPriority() {
   // Unretained(this) is safe because this call blocks until the task is
   // complete.
   return PostTaskAndWaitForResult<ResizePriority>(
-      balloons_thread_.task_runner(),
-      base::BindOnce(&MmService::BalloonsThreadGetLowestBalloonBlockPriority,
+      negotiation_thread_.task_runner(),
+      base::BindOnce(&MmService::NegotiationThreadGetLowestBalloonBlockPriority,
                      base::Unretained(this)));
 }
 
@@ -151,14 +162,15 @@ void MmService::Reclaim(
     const BalloonBroker::ReclaimOperation& reclaim_operation,
     ResizePriority priority) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  balloons_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&MmService::BalloonsThreadReclaim,
+  negotiation_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&MmService::NegotiationThreadReclaim,
                                 weak_ptr_factory_.GetWeakPtr(),
                                 reclaim_operation, priority));
 }
 
-bool MmService::BalloonsThreadStart() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(balloons_thread_sequence_checker_);
+bool MmService::NegotiationThreadStart(
+    scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
   LOG(INFO) << "Starting VM Memory Management Kills Server.";
 
   std::unique_ptr<KillsServer> kills_server =
@@ -169,37 +181,38 @@ bool MmService::BalloonsThreadStart() {
     return false;
   }
 
-  balloon_broker_ = std::make_unique<BalloonBroker>(std::move(kills_server));
+  balloon_broker_ = std::make_unique<BalloonBroker>(
+      std::move(kills_server), balloon_operations_task_runner);
 
   return true;
 }
 
-void MmService::BalloonsThreadStop() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(balloons_thread_sequence_checker_);
+void MmService::NegotiationThreadStop() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
   balloon_broker_.reset();
-  DETACH_FROM_SEQUENCE(balloons_thread_sequence_checker_);
+  DETACH_FROM_SEQUENCE(negotiation_thread_sequence_checker_);
 }
 
-void MmService::BalloonsThreadNotifyVmStarted(int vm_cid,
-                                              const std::string& socket) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(balloons_thread_sequence_checker_);
+void MmService::NegotiationThreadNotifyVmStarted(int vm_cid,
+                                                 const std::string& socket) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
   balloon_broker_->RegisterVm(vm_cid, socket);
 }
 
-void MmService::BalloonsThreadNotifyVmStopping(int vm_cid) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(balloons_thread_sequence_checker_);
+void MmService::NegotiationThreadNotifyVmStopping(int vm_cid) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
   balloon_broker_->RemoveVm(vm_cid);
 }
 
-ResizePriority MmService::BalloonsThreadGetLowestBalloonBlockPriority() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(balloons_thread_sequence_checker_);
+ResizePriority MmService::NegotiationThreadGetLowestBalloonBlockPriority() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
   return balloon_broker_->LowestBalloonBlockPriority();
 }
 
-void MmService::BalloonsThreadReclaim(
+void MmService::NegotiationThreadReclaim(
     const BalloonBroker::ReclaimOperation& reclaim_operation,
     ResizePriority priority) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(balloons_thread_sequence_checker_);
+  DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
   balloon_broker_->Reclaim(reclaim_operation, priority);
 }
 

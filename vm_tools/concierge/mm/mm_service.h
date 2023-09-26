@@ -56,23 +56,24 @@ class MmService {
   void Reclaim(const BalloonBroker::ReclaimOperation& reclaim_operation,
                ResizePriority priority);
 
-  // Starts components that run on the balloons thread.
-  bool BalloonsThreadStart();
+  // Starts components that run on the negotiation thread.
+  bool NegotiationThreadStart(
+      scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner);
 
-  // Stops the balloons thread.
-  void BalloonsThreadStop();
+  // Stops the negotiation thread.
+  void NegotiationThreadStop();
 
-  // Notify balloons thread components that a new VM has started.
-  void BalloonsThreadNotifyVmStarted(int vm_cid, const std::string& socket);
+  // Notify negotiation thread components that a new VM has started.
+  void NegotiationThreadNotifyVmStarted(int vm_cid, const std::string& socket);
 
-  // Notify the balloons thread that a VM is stopping.
-  void BalloonsThreadNotifyVmStopping(int vm_cid);
+  // Notify the negotiation thread that a VM is stopping.
+  void NegotiationThreadNotifyVmStopping(int vm_cid);
 
   // Gets the lowest block priority from the balloon broker.
-  ResizePriority BalloonsThreadGetLowestBalloonBlockPriority();
+  ResizePriority NegotiationThreadGetLowestBalloonBlockPriority();
 
   // Instructs the balloon broker to perform the supplied reclaim operation.
-  void BalloonsThreadReclaim(
+  void NegotiationThreadReclaim(
       const BalloonBroker::ReclaimOperation& reclaim_operation,
       ResizePriority priority);
 
@@ -84,12 +85,16 @@ class MmService {
   // Ensure calls are made on the right thread.
   SEQUENCE_CHECKER(sequence_checker_);
 
-  // Ensure balloons thread calls are only made on the balloons thread.
-  SEQUENCE_CHECKER(balloons_thread_sequence_checker_);
+  // Ensure negotiation thread calls are only made on the negotiation thread.
+  SEQUENCE_CHECKER(negotiation_thread_sequence_checker_);
 
-  // Runs the kills server and handles all balloon modifications.
-  base::Thread balloons_thread_ GUARDED_BY_CONTEXT(sequence_checker_){
-      "VM_Memory_Management_Balloons_Thread"};
+  // Runs the kills server and handles all balloon negotiations.
+  base::Thread negotiation_thread_ GUARDED_BY_CONTEXT(sequence_checker_){
+      "VMMMS_Negotiation_Thread"};
+
+  // Used by Balloon instances for running blocking calls to crosvm_control.
+  base::Thread balloon_operation_thread_ GUARDED_BY_CONTEXT(sequence_checker_){
+      "VMMMS_Balloon_Operation_Thread"};
 
   // The reclaim broker instance.
   std::unique_ptr<ReclaimBroker> reclaim_broker_
@@ -97,7 +102,7 @@ class MmService {
 
   // The balloon broker instance.
   std::unique_ptr<BalloonBroker> balloon_broker_
-      GUARDED_BY_CONTEXT(balloons_thread_sequence_checker_){};
+      GUARDED_BY_CONTEXT(negotiation_thread_sequence_checker_){};
 
   // This should be the last member of the class.
   base::WeakPtrFactory<MmService> weak_ptr_factory_;

@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/containers/flat_map.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include <vm_memory_management/vm_memory_management.pb.h>
 
@@ -30,7 +31,9 @@ namespace vm_tools::concierge::mm {
 // KillsServer.
 class BalloonBroker {
  public:
-  explicit BalloonBroker(std::unique_ptr<KillsServer> kills_server);
+  explicit BalloonBroker(
+      std::unique_ptr<KillsServer> kills_server,
+      scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner);
 
   BalloonBroker(const BalloonBroker&) = delete;
   BalloonBroker& operator=(const BalloonBroker&) = delete;
