@@ -65,6 +65,18 @@ class DBusControl : public ControlInterface {
   std::unique_ptr<SupplicantBSSProxyInterface> CreateSupplicantBSSProxy(
       WiFiEndpoint* wifi_endpoint, const RpcIdentifier& object_path) override;
 
+  std::unique_ptr<SupplicantP2PDeviceProxyInterface>
+  CreateSupplicantP2PDeviceProxy(
+      SupplicantP2PDeviceEventDelegateInterface* delegate,
+      const RpcIdentifier& object_path) override;
+
+  std::unique_ptr<SupplicantGroupProxyInterface> CreateSupplicantGroupProxy(
+      SupplicantGroupEventDelegateInterface* delegate,
+      const RpcIdentifier& object_path) override;
+
+  std::unique_ptr<SupplicantPeerProxyInterface> CreateSupplicantPeerProxy(
+      const RpcIdentifier& object_path) override;
+
   std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override;
 
   std::unique_ptr<DHCPCDListenerInterface> CreateDHCPCDListener(

@@ -38,8 +38,11 @@
 #include "shill/dbus/rpc_task_dbus_adaptor.h"
 #include "shill/dbus/service_dbus_adaptor.h"
 #include "shill/dbus/supplicant_bss_proxy.h"
+#include "shill/dbus/supplicant_group_proxy.h"
 #include "shill/dbus/supplicant_interface_proxy.h"
 #include "shill/dbus/supplicant_network_proxy.h"
+#include "shill/dbus/supplicant_p2pdevice_proxy.h"
+#include "shill/dbus/supplicant_peer_proxy.h"
 #include "shill/dbus/supplicant_process_proxy.h"
 #include "shill/dbus/third_party_vpn_dbus_adaptor.h"
 #include "shill/dbus/upstart_proxy.h"
@@ -183,6 +186,27 @@ DBusControl::CreateSupplicantBSSProxy(WiFiEndpoint* wifi_endpoint,
                                       const RpcIdentifier& object_path) {
   return std::make_unique<SupplicantBSSProxy>(proxy_bus_, object_path,
                                               wifi_endpoint);
+}
+
+std::unique_ptr<SupplicantP2PDeviceProxyInterface>
+DBusControl::CreateSupplicantP2PDeviceProxy(
+    SupplicantP2PDeviceEventDelegateInterface* delegate,
+    const RpcIdentifier& object_path) {
+  return std::make_unique<SupplicantP2PDeviceProxy>(proxy_bus_, object_path,
+                                                    delegate);
+}
+
+std::unique_ptr<SupplicantGroupProxyInterface>
+DBusControl::CreateSupplicantGroupProxy(
+    SupplicantGroupEventDelegateInterface* delegate,
+    const RpcIdentifier& object_path) {
+  return std::make_unique<SupplicantGroupProxy>(proxy_bus_, object_path,
+                                                delegate);
+}
+
+std::unique_ptr<SupplicantPeerProxyInterface>
+DBusControl::CreateSupplicantPeerProxy(const RpcIdentifier& object_path) {
+  return std::make_unique<SupplicantPeerProxy>(proxy_bus_, object_path);
 }
 
 std::unique_ptr<DHCPCDListenerInterface> DBusControl::CreateDHCPCDListener(

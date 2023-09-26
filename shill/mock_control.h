@@ -31,8 +31,13 @@
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_bss_proxy_interface.h"
+#include "shill/supplicant/supplicant_group_event_delegate_interface.h"
+#include "shill/supplicant/supplicant_group_proxy_interface.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_network_proxy_interface.h"
+#include "shill/supplicant/supplicant_p2pdevice_event_delegate_interface.h"
+#include "shill/supplicant/supplicant_p2pdevice_proxy_interface.h"
+#include "shill/supplicant/supplicant_peer_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
@@ -91,6 +96,19 @@ class MockControl : public ControlInterface {
   MOCK_METHOD(std::unique_ptr<SupplicantBSSProxyInterface>,
               CreateSupplicantBSSProxy,
               (WiFiEndpoint*, const RpcIdentifier&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<SupplicantP2PDeviceProxyInterface>,
+              CreateSupplicantP2PDeviceProxy,
+              (SupplicantP2PDeviceEventDelegateInterface*,
+               const RpcIdentifier&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<SupplicantGroupProxyInterface>,
+              CreateSupplicantGroupProxy,
+              (SupplicantGroupEventDelegateInterface*, const RpcIdentifier&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<SupplicantPeerProxyInterface>,
+              CreateSupplicantPeerProxy,
+              (const RpcIdentifier&),
               (override));
   MOCK_METHOD(std::unique_ptr<DHCPCDListenerInterface>,
               CreateDHCPCDListener,

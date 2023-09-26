@@ -43,6 +43,11 @@ class ServiceAdaptorInterface;
 class SupplicantBSSProxyInterface;
 class SupplicantEventDelegateInterface;
 class SupplicantInterfaceProxyInterface;
+class SupplicantP2PDeviceProxyInterface;
+class SupplicantP2PDeviceEventDelegateInterface;
+class SupplicantGroupProxyInterface;
+class SupplicantGroupEventDelegateInterface;
+class SupplicantPeerProxyInterface;
 class SupplicantNetworkProxyInterface;
 class SupplicantProcessProxyInterface;
 class ThirdPartyVpnDriver;
@@ -108,6 +113,18 @@ class ControlInterface {
   // See comment in supplicant_bss_proxy.h, about bare pointer.
   virtual std::unique_ptr<SupplicantBSSProxyInterface> CreateSupplicantBSSProxy(
       WiFiEndpoint* wifi_endpoint, const RpcIdentifier& object_path) = 0;
+
+  virtual std::unique_ptr<SupplicantP2PDeviceProxyInterface>
+  CreateSupplicantP2PDeviceProxy(
+      SupplicantP2PDeviceEventDelegateInterface* delegate,
+      const RpcIdentifier& object_path) = 0;
+
+  virtual std::unique_ptr<SupplicantGroupProxyInterface>
+  CreateSupplicantGroupProxy(SupplicantGroupEventDelegateInterface* delegate,
+                             const RpcIdentifier& object_path) = 0;
+
+  virtual std::unique_ptr<SupplicantPeerProxyInterface>
+  CreateSupplicantPeerProxy(const RpcIdentifier& object_path) = 0;
 
   virtual std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() = 0;
 
