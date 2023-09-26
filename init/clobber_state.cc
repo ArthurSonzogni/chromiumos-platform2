@@ -45,7 +45,9 @@
 #include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
+#include <chromeos/constants/imageloader.h>
 #include <crypto/random.h>
+#include <libdlcservice/utils.h>
 #include <libcrossystem/crossystem.h>
 #include <rootdev/rootdev.h>
 #include <chromeos/secure_erase_file/secure_erase_file.h>
@@ -996,12 +998,20 @@ void ClobberState::RemoveLogicalVolumeStack() {
   pv->Remove();
 }
 
-bool ClobberState::ProcessInfo(const brillo::VolumeGroup& vg,
-                               const PreserveLogicalVolumesWipeInfo& info) {
+bool ClobberState::ProcessInfo(
+    const brillo::VolumeGroup& vg,
+    const PreserveLogicalVolumesWipeInfo& info,
+    std::unique_ptr<dlcservice::UtilsInterface> utils) {
   auto lv = lvm_->GetLogicalVolume(vg, info.lv_name);
   if (!lv || !lv->IsValid()) {
     LOG(INFO) << "Skipping over logical volume: " << info.lv_name;
     return true;
+  }
+
+  // Active logical volumes as not all have udev rule to active by default.
+  if (!lv->Activate()) {
+    LOG(ERROR) << "Failed to active logical volume: " << info.lv_name;
+    return false;
   }
 
   // Zero the logical volume.
@@ -1018,6 +1028,31 @@ bool ClobberState::ProcessInfo(const brillo::VolumeGroup& vg,
   } else if (!lv->Remove()) {
     LOG(ERROR) << "Failed to remove logical volume: " << info.lv_name;
     return false;
+  }
+
+  bool remove_lv = false;
+  // Verify digest of the logical volume.
+  if (info.digest_info) {
+    std::vector<uint8_t> actual_digest;
+    // Logical volumes MUST skip size checking. Stats on it are going to return
+    // the wrong size or 0.
+    if (!utils->HashFile(lv->GetPath(), info.digest_info->bytes, &actual_digest,
+                         /*skip_size_check=*/true)) {
+      LOG(ERROR) << "Failed to check digest of logical volume: "
+                 << info.lv_name;
+      // Continue to return `true`, as we DO NOT want all other preservations to
+      // fail due to a bad digest.
+      remove_lv = true;
+    } else if (info.digest_info->digest != actual_digest) {
+      LOG(ERROR) << "Digests do not match for logical volume: " << info.lv_name;
+      // Continue to return `true`, as we DO NOT want all other preservations to
+      // fail due to a bad digest.
+      remove_lv = true;
+    }
+  }
+
+  if (remove_lv && !lv->Remove()) {
+    LOG(ERROR) << "Failed to remove logical volume: " << info.lv_name;
   }
 
   return true;
@@ -1056,7 +1091,7 @@ bool ClobberState::PreserveLogicalVolumesWipe(
   for (const auto& info : infos) {
     if (info.lv_name == kUnencrypted)
       continue;
-    if (!ProcessInfo(*vg, info))
+    if (!ProcessInfo(*vg, info, std::make_unique<dlcservice::Utils>()))
       return false;
   }
   // Note: Always process unencrypted stateful last.
@@ -1071,7 +1106,7 @@ bool ClobberState::PreserveLogicalVolumesWipe(
                  << " in preserve logical volumes wipe info.";
       return false;
     }
-    if (!ProcessInfo(*vg, *info_it))
+    if (!ProcessInfo(*vg, *info_it, std::make_unique<dlcservice::Utils>()))
       return false;
   }
 
@@ -1465,7 +1500,7 @@ int ClobberState::Run() {
   if (args_.preserve_lvs) {
     if (!PreserveLogicalVolumesWipe(PreserveLogicalVolumesWipeArgs())) {
       args_.preserve_lvs = false;
-      LOG(WARNING) << "Preserve logical voluems wipe failed "
+      LOG(WARNING) << "Preserve logical volumes wipe failed "
                    << "(falling back to default LVM stateful wipe).";
     } else {
       LOG(INFO) << "Preserve logical volumes, skipping device level wipe.";
@@ -1852,9 +1887,71 @@ void ClobberState::ResetStatefulPartition() {
 }
 
 ClobberState::PreserveLogicalVolumesWipeInfos
+ClobberState::DlcPreserveLogicalVolumesWipeArgs(
+    const base::FilePath& ps_file_path,
+    const base::FilePath& dlc_manifest_root_path,
+    dlcservice::PartitionSlot active_slot,
+    std::unique_ptr<dlcservice::UtilsInterface> utils) {
+  if (!base::PathExists(ps_file_path)) {
+    LOG(WARNING) << "DLC powerwash safe file missing, skipping preservation.";
+    return {};
+  }
+  std::string ps_file_content;
+  if (!base::ReadFileToString(ps_file_path, &ps_file_content)) {
+    // Don't end PLOGs with (period).
+    PLOG(ERROR) << "Failed to read DLC powerwash safe file";
+    return {};
+  }
+  auto dlcs = base::SplitString(ps_file_content, "\n", base::TRIM_WHITESPACE,
+                                base::SPLIT_WANT_NONEMPTY);
+  LOG(INFO) << "The powerwash safe DLCs are=" << base::JoinString(dlcs, ",");
+
+  ClobberState::PreserveLogicalVolumesWipeInfos verified_dlcs;
+  for (const auto& dlc : dlcs) {
+    const auto& manifest = utils->GetDlcManifest(dlc_manifest_root_path, dlc,
+                                                 dlcservice::kPackage);
+
+    // Verify against rootfs that these DLCs are in fact, powerwash safe.
+    if (!manifest->powerwash_safe()) {
+      LOG(WARNING) << "DLC=" << dlc << " is not powerwash safe, but list in "
+                   << "powerwash safe file, skipping it.";
+      continue;
+    }
+
+    LOG(INFO) << "DLC=" << dlc << " is set to be preserved.";
+
+    // We add the active DLC logical volume.
+    const auto& dlc_active_lv_name = utils->LogicalVolumeName(dlc, active_slot);
+    verified_dlcs.emplace(PreserveLogicalVolumesWipeInfo{
+        .lv_name = dlc_active_lv_name,
+        .preserve = true,
+        .zero = false,
+        .digest_info =
+            PreserveLogicalVolumesWipeInfo::DigestInfo{
+                .bytes = manifest->size(),
+                .digest = manifest->image_sha256(),
+            },
+    });
+
+    // We also add the inactive DLC logical volume, but simply clear (zero) it.
+    const auto& dlc_inactive_lv_name = utils->LogicalVolumeName(
+        dlc, active_slot == dlcservice::PartitionSlot::A
+                 ? dlcservice::PartitionSlot::B
+                 : dlcservice::PartitionSlot::A);
+    verified_dlcs.emplace(PreserveLogicalVolumesWipeInfo{
+        .lv_name = dlc_inactive_lv_name,
+        .preserve = true,
+        .zero = true,
+    });
+  }
+
+  return verified_dlcs;
+}
+
+ClobberState::PreserveLogicalVolumesWipeInfos
 ClobberState::PreserveLogicalVolumesWipeArgs() {
-  // TODO(b/222344877): Add DLC logical volumes here.
-  return {
+  PreserveLogicalVolumesWipeInfos infos;
+  infos.insert({
       {
           .lv_name = kThinpool,
           .preserve = true,
@@ -1865,5 +1962,14 @@ ClobberState::PreserveLogicalVolumesWipeArgs() {
           .preserve = false,
           .zero = true,
       },
-  };
+  });
+  const auto& dlcs = DlcPreserveLogicalVolumesWipeArgs(
+      base::FilePath(dlcservice::kDlcPowerwashSafeFile),
+      base::FilePath(imageloader::kDlcManifestRootpath),
+      wipe_info_.active_kernel_partition == partitions_.kernel_a
+          ? dlcservice::PartitionSlot::A
+          : dlcservice::PartitionSlot::B,
+      std::make_unique<dlcservice::Utils>());
+  infos.insert(std::cbegin(dlcs), std::cend(dlcs));
+  return infos;
 }

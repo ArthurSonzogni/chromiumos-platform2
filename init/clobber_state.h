@@ -20,6 +20,7 @@
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/process/process.h>
 #include <libcrossystem/crossystem.h>
+#include <libdlcservice/utils_interface.h>
 
 #include "init/clobber_ui.h"
 
@@ -80,10 +81,19 @@ class ClobberState {
     int active_kernel_partition = -1;
   };
 
+  // TODO(b/302427976): Add some kind of pairing/grouping to infos, so they can
+  // be batched. This will come in handy for DLCs/logical volumes that want to
+  // be atomically operated on.
   struct PreserveLogicalVolumesWipeInfo {
     std::string lv_name;
     bool preserve = false;
     bool zero = false;
+
+    struct DigestInfo {
+      int64_t bytes = 0;
+      std::vector<uint8_t> digest;
+    };
+    std::optional<DigestInfo> digest_info;
 
     struct Hash {
       auto operator()(const PreserveLogicalVolumesWipeInfo& info) const {
@@ -174,7 +184,8 @@ class ClobberState {
   // (zeroing/preserving/removing) of individual logical volumes.
   bool PreserveLogicalVolumesWipe(const PreserveLogicalVolumesWipeInfos& infos);
   bool ProcessInfo(const brillo::VolumeGroup& vg,
-                   const PreserveLogicalVolumesWipeInfo& info);
+                   const PreserveLogicalVolumesWipeInfo& info,
+                   std::unique_ptr<dlcservice::UtilsInterface> utils);
 
   ClobberState(const Arguments& args,
                std::unique_ptr<crossystem::Crossystem> cros_system,
@@ -255,6 +266,12 @@ class ClobberState {
   virtual std::string GenerateRandomVolumeGroupName();
 
  private:
+  FRIEND_TEST(DlcPreserveLogicalVolumesWipeArgsTest, MissingPowerwashFile);
+  FRIEND_TEST(DlcPreserveLogicalVolumesWipeArgsTest, EmptyPowerwashFile);
+  FRIEND_TEST(DlcPreserveLogicalVolumesWipeArgsTest, MismatchingPowerwashFile);
+  FRIEND_TEST(DlcPreserveLogicalVolumesWipeArgsTest, SingleDlcPowerwashFile);
+  FRIEND_TEST(DlcPreserveLogicalVolumesWipeArgsTest, MixedDlcPowerwashFile);
+
   bool ClearBiometricSensorEntropy();
 
   // Perform media-dependent wipe of the device based on if the device is
@@ -271,6 +288,16 @@ class ClobberState {
 
   // Helper to wrap calls removing logical volumes and device level wipes.
   void ResetStatefulPartition();
+
+  // Returns the argument list for preserved wipe of LVM specific to DLCs.
+  // Takes in as argument:
+  //   - the path to the DLC powerwash safe file
+  //   - the path to the DLC manifest root
+  PreserveLogicalVolumesWipeInfos DlcPreserveLogicalVolumesWipeArgs(
+      const base::FilePath& ps_file_path,
+      const base::FilePath& dlc_manifest_root_path,
+      dlcservice::PartitionSlot active_slot,
+      std::unique_ptr<dlcservice::UtilsInterface> utils);
 
   // Returns the argument list for preserved wipe of LVM.
   PreserveLogicalVolumesWipeInfos PreserveLogicalVolumesWipeArgs();

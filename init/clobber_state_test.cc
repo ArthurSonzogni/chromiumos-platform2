@@ -20,9 +20,12 @@
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
-
 #include <libcrossystem/crossystem.h>
 #include <libcrossystem/crossystem_fake.h>
+#include <libdlcservice/mock_utils.h>
+#include <libdlcservice/utils.h>
+
+#include "gmock/gmock.h"
 
 namespace {
 using ::testing::_;
@@ -1831,6 +1834,10 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
                                                   "STATEFULSTATEFUL"}))
       .WillOnce(Return(true));
 
+  EXPECT_CALL(*mock_lvm_command_runner_, RunCommand(std::vector<std::string>{
+                                             "lvchange", "-ay", lv->GetName()}))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
       {
           .lv_name = kUnencrypted,
@@ -1871,6 +1878,10 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
   EXPECT_CALL(*mock_lvm_command_runner_,
               RunCommand(std::vector<std::string>{"vgrename", "foobar_vg",
                                                   "STATEFULSTATEFUL"}))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(*mock_lvm_command_runner_, RunCommand(std::vector<std::string>{
+                                             "lvchange", "-ay", lv->GetName()}))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
@@ -1981,6 +1992,10 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
                                                   "STATEFULSTATEFUL"}))
       .WillOnce(Return(true));
 
+  EXPECT_CALL(*mock_lvm_command_runner_, RunCommand(std::vector<std::string>{
+                                             "lvchange", "-ay", lv->GetName()}))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
       {
           .lv_name = kUnencrypted,
@@ -2053,4 +2068,348 @@ TEST_F(PreserveEncryptedFilesTest, FlexFilesArePreserved) {
   clobber_.PreserveEncryptedFiles();
   ASSERT_TRUE(base::PathExists(
       fake_stateful_.Append("unencrypted/preserve/flex/flex_id")));
+}
+
+class ProcessInfoTest : public ::testing::Test {
+ public:
+  ProcessInfoTest()
+      : clobber_(ClobberState::Arguments(),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::make_unique<crossystem::fake::CrossystemFake>()),
+                 std::make_unique<ClobberUi>(DevNull())),
+        mock_lvm_command_runner_(
+            std::make_shared<brillo::MockLvmCommandRunner>()) {}
+
+  ProcessInfoTest(const ProcessInfoTest&) = delete;
+  ProcessInfoTest& operator=(const ProcessInfoTest&) = delete;
+
+  void SetUp() override {
+    auto mock_lvm =
+        std::make_unique<StrictMock<brillo::MockLogicalVolumeManager>>();
+    mock_lvm_ptr_ = mock_lvm.get();
+
+    clobber_.SetLogicalVolumeManagerForTesting(std::move(mock_lvm));
+
+    mock_utils_.reset(new dlcservice::MockUtils);
+    mock_utils_ptr_ = mock_utils_.get();
+  }
+
+ protected:
+  ClobberStateMock clobber_;
+  std::shared_ptr<brillo::MockLvmCommandRunner> mock_lvm_command_runner_;
+  brillo::MockLogicalVolumeManager* mock_lvm_ptr_ = nullptr;
+  std::unique_ptr<dlcservice::MockUtils> mock_utils_;
+  dlcservice::MockUtils* mock_utils_ptr_ = nullptr;
+};
+
+TEST_F(ProcessInfoTest, MissingLogicalVolume) {
+  const std::string& lv_name("some-lv");
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, lv_name))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_TRUE(clobber_.ProcessInfo({"some-vg", nullptr}, {.lv_name = lv_name},
+                                   nullptr));
+}
+
+TEST_F(ProcessInfoTest, InvalidLogicalVolume) {
+  const std::string& vg_name("some-vg");
+  const std::string& lv_name("");
+  auto lv = std::make_optional(
+      brillo::LogicalVolume(lv_name, vg_name, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, lv_name))
+      .WillOnce(Return(lv));
+  EXPECT_TRUE(
+      clobber_.ProcessInfo({vg_name, nullptr}, {.lv_name = lv_name}, nullptr));
+}
+
+TEST_F(ProcessInfoTest, VerifyDigestInfoOfLogicalVolumeHashingFailure) {
+  const std::string& vg_name("some-vg");
+  const std::string& lv_name("some-lv");
+  auto lv = std::make_optional(
+      brillo::LogicalVolume(lv_name, vg_name, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, lv_name))
+      .WillOnce(Return(lv));
+
+  int64_t bytes = 123;
+  ClobberState::PreserveLogicalVolumesWipeInfo::DigestInfo digest_info{
+      .bytes = bytes,
+      .digest = {1, 2, 3},
+  };
+
+  EXPECT_CALL(*mock_utils_ptr_, HashFile(_, _, _, _)).WillOnce(Return(false));
+
+  EXPECT_CALL(*mock_lvm_command_runner_, RunCommand(std::vector<std::string>{
+                                             "lvchange", "-ay", lv->GetName()}))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(*mock_lvm_command_runner_,
+              RunCommand(std::vector<std::string>{"lvremove", "--force",
+                                                  lv->GetName()}))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(clobber_.ProcessInfo(
+      {vg_name, nullptr},
+      {.lv_name = lv_name, .preserve = true, .digest_info = digest_info},
+      std::move(mock_utils_)));
+}
+
+TEST_F(ProcessInfoTest, VerifyDigestInfoOfLogicalVolumeHashingMismatch) {
+  const std::string& vg_name("some-vg");
+  const std::string& lv_name("some-lv");
+  auto lv = std::make_optional(
+      brillo::LogicalVolume(lv_name, vg_name, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, lv_name))
+      .WillOnce(Return(lv));
+
+  int64_t bytes = 123;
+  std::vector<uint8_t> digest{1, 2, 3};
+  ClobberState::PreserveLogicalVolumesWipeInfo::DigestInfo digest_info{
+      .bytes = bytes,
+      .digest = digest,
+  };
+
+  EXPECT_CALL(*mock_utils_ptr_, HashFile(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(std::vector<uint8_t>{}), Return(true)));
+
+  EXPECT_CALL(*mock_lvm_command_runner_, RunCommand(std::vector<std::string>{
+                                             "lvchange", "-ay", lv->GetName()}))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(*mock_lvm_command_runner_,
+              RunCommand(std::vector<std::string>{"lvremove", "--force",
+                                                  lv->GetName()}))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(clobber_.ProcessInfo(
+      {vg_name, nullptr},
+      {.lv_name = lv_name, .preserve = true, .digest_info = digest_info},
+      std::move(mock_utils_)));
+}
+
+TEST_F(ProcessInfoTest, VerifyDigestInfoOfLogicalVolume) {
+  const std::string& vg_name("some-vg");
+  const std::string& lv_name("some-lv");
+  auto lv = std::make_optional(
+      brillo::LogicalVolume(lv_name, vg_name, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, lv_name))
+      .WillOnce(Return(lv));
+
+  int64_t bytes = 123;
+  ClobberState::PreserveLogicalVolumesWipeInfo::DigestInfo digest_info{
+      .bytes = bytes,
+      .digest = {1, 2, 3},
+  };
+
+  EXPECT_CALL(*mock_utils_ptr_, HashFile(_, bytes, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(std::vector<uint8_t>{1, 2, 3}), Return(true)));
+
+  EXPECT_CALL(*mock_lvm_command_runner_, RunCommand(std::vector<std::string>{
+                                             "lvchange", "-ay", lv->GetName()}))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(*mock_lvm_command_runner_,
+              RunCommand(std::vector<std::string>{"lvremove", "--force",
+                                                  lv->GetName()}))
+      .Times(0);
+
+  EXPECT_TRUE(clobber_.ProcessInfo(
+      {vg_name, nullptr},
+      {.lv_name = lv_name, .preserve = true, .digest_info = digest_info},
+      std::move(mock_utils_)));
+}
+
+class DlcPreserveLogicalVolumesWipeArgsTest : public ::testing::Test {
+ public:
+  DlcPreserveLogicalVolumesWipeArgsTest()
+      : clobber_(ClobberState::Arguments(),
+                 std::make_unique<crossystem::Crossystem>(
+                     std::make_unique<crossystem::fake::CrossystemFake>()),
+                 std::make_unique<ClobberUi>(DevNull())) {}
+
+  DlcPreserveLogicalVolumesWipeArgsTest(
+      const DlcPreserveLogicalVolumesWipeArgsTest&) = delete;
+  DlcPreserveLogicalVolumesWipeArgsTest& operator=(
+      const DlcPreserveLogicalVolumesWipeArgsTest&) = delete;
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+
+    mock_utils_.reset(new dlcservice::MockUtils);
+    mock_utils_ptr_ = mock_utils_.get();
+  }
+
+ protected:
+  base::ScopedTempDir temp_dir_;
+  ClobberStateMock clobber_;
+  std::unique_ptr<dlcservice::MockUtils> mock_utils_;
+  dlcservice::MockUtils* mock_utils_ptr_;
+};
+
+TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, MissingPowerwashFile) {
+  const auto& dlcs = clobber_.DlcPreserveLogicalVolumesWipeArgs(
+      temp_dir_.GetPath(), temp_dir_.GetPath(), dlcservice::PartitionSlot::A,
+      nullptr);
+  EXPECT_TRUE(dlcs.empty());
+}
+
+TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, EmptyPowerwashFile) {
+  const auto& ps_file_path = temp_dir_.GetPath().Append("psfile");
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(ps_file_path, ""));
+  const auto& dlcs = clobber_.DlcPreserveLogicalVolumesWipeArgs(
+      ps_file_path, temp_dir_.GetPath(), dlcservice::PartitionSlot::A, nullptr);
+  EXPECT_TRUE(dlcs.empty());
+}
+
+TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, MismatchingPowerwashFile) {
+  const auto& ps_file_path = temp_dir_.GetPath().Append("psfile");
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(ps_file_path, "some-dlc"));
+
+  auto manifest = std::make_unique<imageloader::Manifest>();
+  manifest->ParseManifest(R"(
+    "manifest-version": 1,
+    "image-sha256-hash": "A",
+    "table-sha256-hash": "B",
+    "version": 1,
+    "fs-type": "squashfs",
+    "powerwash-safe": false
+  )");
+  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest(_, _, _))
+      .WillOnce(Return(std::move(manifest)));
+  // DO NOT USE `manifest` beyond this point.
+
+  const auto& dlcs = clobber_.DlcPreserveLogicalVolumesWipeArgs(
+      ps_file_path, temp_dir_.GetPath(), dlcservice::PartitionSlot::A,
+      std::move(mock_utils_));
+  // DO NOT USE `mock_utils_` beyond this point.
+
+  EXPECT_TRUE(dlcs.empty());
+}
+
+TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, SingleDlcPowerwashFile) {
+  const std::string& dlc("some-dlc");
+  const auto& ps_file_path = temp_dir_.GetPath().Append("psfile");
+  ASSERT_TRUE(CreateDirectoryAndWriteFile(ps_file_path, dlc));
+
+  auto manifest = std::make_unique<imageloader::Manifest>();
+  const base::Value::Dict manifest_dict =
+      base::Value::Dict()
+          .Set("powerwash-safe", true)
+          .Set("image-sha256-hash",
+               "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+               "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+          .Set("table-sha256-hash",
+               "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+               "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+          .Set("version", "1")
+          .Set("manifest-version", 1);
+  ASSERT_TRUE(manifest->ParseManifest(manifest_dict));
+  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest(temp_dir_.GetPath(), dlc, _))
+      .WillOnce(Return(std::move(manifest)));
+  // DO NOT USE `manifest` beyond this point.
+
+  const auto& active_slot = dlcservice::PartitionSlot::A;
+  const auto& inactive_slot = dlcservice::PartitionSlot::B;
+  const auto& dlc_active_lv_name =
+      dlcservice::LogicalVolumeName(dlc, active_slot);
+  const auto& dlc_inactive_lv_name =
+      dlcservice::LogicalVolumeName(dlc, inactive_slot);
+
+  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeName(dlc, active_slot))
+      .WillOnce(Return(dlc_active_lv_name));
+  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeName(dlc, inactive_slot))
+      .WillOnce(Return(dlc_inactive_lv_name));
+
+  const auto& dlcs = clobber_.DlcPreserveLogicalVolumesWipeArgs(
+      ps_file_path, temp_dir_.GetPath(), active_slot, std::move(mock_utils_));
+  // DO NOT USE `mock_utils_` beyond this point.
+
+  ASSERT_EQ(dlcs.size(), 2);
+
+  const auto& active_iter = dlcs.find({.lv_name = dlc_active_lv_name});
+  EXPECT_NE(active_iter, dlcs.end());
+  const auto& inactive_iter = dlcs.find({.lv_name = dlc_inactive_lv_name});
+  EXPECT_NE(inactive_iter, dlcs.end());
+
+  EXPECT_TRUE(active_iter->preserve);
+  EXPECT_TRUE(inactive_iter->preserve);
+
+  EXPECT_FALSE(active_iter->zero);
+  EXPECT_TRUE(inactive_iter->zero);
+}
+
+TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, MixedDlcPowerwashFile) {
+  const auto& ps_file_path = temp_dir_.GetPath().Append("psfile");
+  ASSERT_TRUE(
+      CreateDirectoryAndWriteFile(ps_file_path, "some-dlc\nid-ps\nid-not-ps"));
+
+  auto manifest_ps = std::make_unique<imageloader::Manifest>();
+  {
+    const base::Value::Dict manifest_dict =
+        base::Value::Dict()
+            .Set("powerwash-safe", true)
+            .Set("image-sha256-hash",
+                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+            .Set("table-sha256-hash",
+                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+            .Set("version", "1")
+            .Set("manifest-version", 1);
+    ASSERT_TRUE(manifest_ps->ParseManifest(manifest_dict));
+  }
+  auto manifest_not_ps = std::make_unique<imageloader::Manifest>();
+  {
+    const base::Value::Dict manifest_dict =
+        base::Value::Dict()
+            .Set("powerwash-safe", false)
+            .Set("image-sha256-hash",
+                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+            .Set("table-sha256-hash",
+                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                 "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+            .Set("version", "1")
+            .Set("manifest-version", 1);
+    ASSERT_TRUE(manifest_not_ps->ParseManifest(manifest_dict));
+  }
+
+  const std::string& dlc_ps("id-ps");
+  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest(temp_dir_.GetPath(), dlc_ps, _))
+      .WillOnce(Return(std::move(manifest_ps)));
+  EXPECT_CALL(*mock_utils_ptr_,
+              GetDlcManifest(temp_dir_.GetPath(), "id-not-ps", _))
+      .WillOnce(Return(std::move(manifest_not_ps)));
+  EXPECT_CALL(*mock_utils_ptr_,
+              GetDlcManifest(temp_dir_.GetPath(), "some-dlc", _))
+      .WillOnce(Return(std::make_unique<imageloader::Manifest>()));
+  // DO NOT USE `manifest_*` beyond this point.
+
+  const auto& active_slot = dlcservice::PartitionSlot::A;
+  const auto& inactive_slot = dlcservice::PartitionSlot::B;
+  const auto& dlc_active_lv_name =
+      dlcservice::LogicalVolumeName(dlc_ps, active_slot);
+  const auto& dlc_inactive_lv_name =
+      dlcservice::LogicalVolumeName(dlc_ps, inactive_slot);
+
+  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeName(dlc_ps, active_slot))
+      .WillOnce(Return(dlc_active_lv_name));
+  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeName(dlc_ps, inactive_slot))
+      .WillOnce(Return(dlc_inactive_lv_name));
+
+  const auto& dlcs = clobber_.DlcPreserveLogicalVolumesWipeArgs(
+      ps_file_path, temp_dir_.GetPath(), active_slot, std::move(mock_utils_));
+  // DO NOT USE `mock_utils_` beyond this point.
+
+  ASSERT_EQ(dlcs.size(), 2);
+
+  const auto& active_iter = dlcs.find({.lv_name = dlc_active_lv_name});
+  EXPECT_NE(active_iter, dlcs.end());
+  const auto& inactive_iter = dlcs.find({.lv_name = dlc_inactive_lv_name});
+  EXPECT_NE(inactive_iter, dlcs.end());
+
+  EXPECT_TRUE(active_iter->preserve);
+  EXPECT_TRUE(inactive_iter->preserve);
+
+  EXPECT_FALSE(active_iter->zero);
+  EXPECT_TRUE(inactive_iter->zero);
 }

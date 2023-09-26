@@ -46,6 +46,8 @@ pkg_config("target_defaults") {
     "libchrome",
     "libcrossystem",
     "libcrypto",
+    "libdlcservice-utils",
+    "libimageloader-manifest",
     "libmetrics",
     "libselinux",
     "re2",
