@@ -143,6 +143,12 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver,
       RunFloatingPointCallback callback) override;
+  void StartBtmon(
+      int32_t hci_interface,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver)
+      override;
+  void ReadBtmonLog(ReadBtmonLogCallback callback) override;
+  void RemoveBtmonLog(RemoveBtmonLogCallback callback) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

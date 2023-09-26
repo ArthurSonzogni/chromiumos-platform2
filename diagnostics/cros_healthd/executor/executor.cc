@@ -62,6 +62,7 @@ constexpr char kStressAppTestBinary[] = "/usr/bin/stressapptest";
 constexpr char kDrmDevice[] = "/dev/dri";
 constexpr char kCrashSenderBinary[] = "/sbin/crash_sender";
 constexpr char kInputDevice[] = "/dev/input";
+constexpr char kBtmonBinary[] = "/usr/bin/btmon";
 
 }  // namespace
 }  // namespace path
@@ -104,6 +105,8 @@ constexpr char kFio[] = "fio-seccomp.policy";
 constexpr char kRm[] = "healthd_rm-seccomp.policy";
 // SECCOMP policy for drm.
 constexpr char kDrm[] = "drm-seccomp.policy";
+// SECCOMP policy for btmon.
+constexpr char kBtmon[] = "btmon-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -847,6 +850,53 @@ void Executor::RunFloatingPoint(
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
                      std::move(process_control_receiver)));
+}
+
+void Executor::StartBtmon(
+    int32_t hci_interface,
+    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver) {
+  std::vector<std::string> command = {path::kBtmonBinary, "--index",
+                                      base::NumberToString(hci_interface), "-w",
+                                      path::kBtmonLogFile};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kBtmon,
+      SandboxedProcess::Options{
+          .capabilities_mask = CAP_TO_MASK(CAP_NET_RAW),
+          .writable_mount_points =
+              {base::FilePath{path::kBtmonLogFile}.DirName()},
+          .enter_network_namespace = false,
+      });
+
+  RunLongRunningProcess(std::move(process), std::move(receiver),
+                        /*combine_stdout_and_stderr=*/false);
+}
+
+void Executor::ReadBtmonLog(ReadBtmonLogCallback callback) {
+  std::vector<std::string> command = {
+      path::kBtmonBinary, "-r", path::kBtmonLogFile,
+      // Set the output width to an arbitrary value 100 to get the full log.
+      "--columns", "100"};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kBtmon,
+      SandboxedProcess::Options{
+          .readonly_mount_points = {base::FilePath{path::kBtmonLogFile}},
+      });
+
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
+}
+
+void Executor::RemoveBtmonLog(RemoveBtmonLogCallback callback) {
+  std::vector<std::string> command = {"/bin/rm", "-f", path::kBtmonLogFile};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kRm,
+      SandboxedProcess::Options{
+          .writable_mount_points =
+              {base::FilePath(path::kBtmonLogFile).DirName()},
+      });
+
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::RunAndWaitProcess(

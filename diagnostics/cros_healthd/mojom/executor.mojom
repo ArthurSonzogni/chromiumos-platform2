@@ -447,4 +447,26 @@ interface Executor {
   RunFloatingPoint(
       ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration,
       pending_receiver<ProcessControl> process_control) => (bool passed);
+
+  // Run btmon to record HCI traces in temporary log file. The executor uses
+  // ProcessControl to take control of the process lifetime, making sure the
+  // process is terminated when mojo disconnects.
+  //
+  // The request:
+  // * |hci_interface| - The target HCI interface.
+  // * |receiver| - The receiver which will be bound to a Process Control class
+  //                that will manage the btmon binary's lifetime.
+  StartBtmon(int32 hci_interface, pending_receiver<ProcessControl> receiver);
+
+  // Read the log file by btmon and return the result.
+  //
+  // The response:
+  // * |result| - contains information of reading log file.
+  ReadBtmonLog() => (ExecutedProcessResult result);
+
+  // Remove the log file created by btmon and return the result.
+  //
+  // The response:
+  // * |result| - contains information of removing log file by running rm.
+  RemoveBtmonLog() => (ExecutedProcessResult result);
 };

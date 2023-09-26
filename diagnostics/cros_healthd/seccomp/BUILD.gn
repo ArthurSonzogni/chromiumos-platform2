@@ -36,6 +36,7 @@ BASE_DENIED_SYSCALLS = [
 install_and_check_seccomp_policy("diagnostics_seccomp") {
   _arch = getenv("ARCH")
   sources = [
+    "${_arch}/btmon-seccomp.policy",
     "${_arch}/ectool_i2cread-seccomp.policy",
     "${_arch}/fio-seccomp.policy",
     "${_arch}/hciconfig-seccomp.policy",

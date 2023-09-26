@@ -173,6 +173,14 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
                    process_control_receiver,
                RunFloatingPointCallback callback),
               (override));
+  MOCK_METHOD(void,
+              StartBtmon,
+              (int32_t hci_interface,
+               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                   receiver),
+              (override));
+  MOCK_METHOD(void, ReadBtmonLog, (ReadBtmonLogCallback callback), (override));
+  MOCK_METHOD(void, RemoveBtmonLog, (RemoveBtmonLogCallback), (override));
 };
 
 }  // namespace diagnostics

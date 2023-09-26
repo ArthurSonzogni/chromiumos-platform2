@@ -42,6 +42,9 @@ namespace path {
 // Path of the cache file for fio test.
 constexpr char kFioCacheFile[] = "/var/cache/diagnostics/fio-test-file";
 
+// Path of the log file for btmon.
+constexpr char kBtmonLogFile[] = "/var/cache/diagnostics/btmon-dump";
+
 }  // namespace path
 
 }  // namespace diagnostics
