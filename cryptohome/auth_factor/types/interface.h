@@ -135,9 +135,7 @@ class AuthFactorDriver {
   // This checks if the rate-limiter of |username| for this factor exists. And
   // if not, tries to create it and persist it into the USS.
   virtual CryptohomeStatus TryCreateRateLimiter(
-      const ObfuscatedUsername& username,
-      DecryptedUss& decrypted_uss,
-      UserUssStorage& uss_storage) = 0;
+      const ObfuscatedUsername& username, DecryptedUss& decrypted_uss) = 0;
 
   // This returns if a type supports delayed availability.
   virtual bool IsDelaySupported() const = 0;

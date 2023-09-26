@@ -1620,8 +1620,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
@@ -1644,7 +1644,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
                 IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
@@ -1718,8 +1718,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
@@ -1742,7 +1742,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
                 IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
@@ -1817,8 +1817,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUssFails) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
@@ -1841,7 +1841,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUssFails) {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
                 IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
@@ -1914,8 +1914,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUss) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
@@ -1938,7 +1938,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUss) {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),
                 IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
@@ -2007,8 +2007,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUssWithRecreate) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
@@ -2031,7 +2031,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUssWithRecreate) {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),
                 IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
 
   // Creating the auth session.
@@ -2120,8 +2120,8 @@ TEST_F(AuthSessionWithUssTest,
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
@@ -2144,7 +2144,7 @@ TEST_F(AuthSessionWithUssTest,
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),
                 IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
@@ -2222,8 +2222,8 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
@@ -2246,7 +2246,7 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakePinLabel, *wrapping_key),
                 IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
@@ -2381,8 +2381,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor.
   AuthFactor auth_factor(
@@ -2405,7 +2405,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
                 IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
@@ -2519,8 +2519,8 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor.
   AuthFactor auth_factor(
@@ -2543,7 +2543,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
     auto transaction = uss->StartTransaction();
     ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
                 IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
   // Creating the auth session.
   AuthSession auth_session({.username = kFakeUsername,
@@ -2708,8 +2708,8 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
   // Setting the expectation that the user exists.
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
   // Generating the USS.
-  CryptohomeStatusOr<DecryptedUss> uss =
-      DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
   ASSERT_THAT(uss, IsOk());
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
@@ -2736,7 +2736,7 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
     ASSERT_THAT(
         transaction.InitializeFingerprintRateLimiterId(kFakeRateLimiterLabel),
         IsOk());
-    ASSERT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
   }
   // Setup the credential verifier.
   auto user_session = std::make_unique<MockUserSession>();

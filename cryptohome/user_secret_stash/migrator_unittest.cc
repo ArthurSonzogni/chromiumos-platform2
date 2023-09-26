@@ -86,7 +86,7 @@ class UssMigratorTest : public ::testing::Test {
     auto transaction = decrypted_uss_->StartTransaction();
     EXPECT_THAT(transaction.RemoveWrappedMainKey(kMigrationSecretLabel),
                 IsOk());
-    EXPECT_THAT(std::move(transaction).Commit(user_uss_storage_), IsOk());
+    EXPECT_THAT(std::move(transaction).Commit(), IsOk());
     EXPECT_THAT(decrypted_uss_->encrypted().WrappedMainKeyIds(),
                 Not(Contains(kMigrationSecretLabel)));
     decrypted_uss_.reset();

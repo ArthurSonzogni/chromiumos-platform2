@@ -602,6 +602,7 @@ if (use.fuzzer) {
     libs = [ "hwsec-foundation" ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [
+      ":fake_platform-static",
       ":fuzz-helpers",
       "libs:libcrosplatform",
       "libs:libcryptohome",

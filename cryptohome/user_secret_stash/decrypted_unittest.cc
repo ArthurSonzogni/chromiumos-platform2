@@ -17,9 +17,12 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/fake_platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/file_system_keyset_test_utils.h"
+#include "cryptohome/user_secret_stash/encrypted.h"
+#include "cryptohome/user_secret_stash/storage.h"
 
 namespace cryptohome {
 namespace {
@@ -79,8 +82,18 @@ class IsNotInBlobMatcher {
   return IsNotInBlobMatcher(std::move(blob));
 }
 
-TEST(DecryptedUssTest, AddWrappedKeys) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+class DecryptedUssTest : public ::testing::Test {
+ protected:
+  const ObfuscatedUsername kObfuscatedUsername{"foo@gmail.com"};
+
+  FakePlatform platform_;
+  UssStorage uss_storage_{&platform_};
+  UserUssStorage user_uss_storage_{uss_storage_, kObfuscatedUsername};
+};
+
+TEST_F(DecryptedUssTest, AddWrappedKeys) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Check the initial value.
@@ -99,8 +112,36 @@ TEST(DecryptedUssTest, AddWrappedKeys) {
               UnorderedElementsAre("a", "b"));
 }
 
-TEST(DecryptedUssTest, InsertWrappedKeyRejectsDuplicates) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, AddWrappedKeysAndCommitToStorage) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
+  ASSERT_THAT(decrypted_uss, IsOk());
+
+  // Check the initial value.
+  EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(), IsEmpty());
+
+  // Inject some wrapped keys.
+  const brillo::SecureBlob kWrappingKey1(kAesGcm256KeySize, 0xA);
+  const brillo::SecureBlob kWrappingKey2(kAesGcm256KeySize, 0xB);
+  {
+    auto transaction = decrypted_uss->StartTransaction();
+    EXPECT_THAT(transaction.InsertWrappedMainKey("a", kWrappingKey1), IsOk());
+    EXPECT_THAT(transaction.InsertWrappedMainKey("b", kWrappingKey2), IsOk());
+    EXPECT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+  EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
+              UnorderedElementsAre("a", "b"));
+
+  // Check that the changes are persisted to the storage.
+  auto encrypted_uss = EncryptedUss::FromStorage(user_uss_storage_);
+  ASSERT_THAT(encrypted_uss, IsOk());
+  EXPECT_THAT(encrypted_uss->WrappedMainKeyIds(),
+              UnorderedElementsAre("a", "b"));
+}
+
+TEST_F(DecryptedUssTest, InsertWrappedKeyRejectsDuplicates) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Check the initial value.
@@ -119,8 +160,9 @@ TEST(DecryptedUssTest, InsertWrappedKeyRejectsDuplicates) {
               UnorderedElementsAre("a"));
 }
 
-TEST(DecryptedUssTest, AssignWrappedKeyOverwritesDuplicates) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, AssignWrappedKeyOverwritesDuplicates) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Check the initial value.
@@ -139,8 +181,9 @@ TEST(DecryptedUssTest, AssignWrappedKeyOverwritesDuplicates) {
               UnorderedElementsAre("a"));
 }
 
-TEST(DecryptedUssTest, RenameWrappedKeySuccess) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, RenameWrappedKeySuccess) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Set up some initial wrapped keys.
@@ -166,8 +209,9 @@ TEST(DecryptedUssTest, RenameWrappedKeySuccess) {
               UnorderedElementsAre("c", "d"));
 }
 
-TEST(DecryptedUssTest, RenameWrappedKeyWithResetSecret) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, RenameWrappedKeyWithResetSecret) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Set up some initial wrapped keys with secrets.
@@ -203,8 +247,9 @@ TEST(DecryptedUssTest, RenameWrappedKeyWithResetSecret) {
   EXPECT_THAT(decrypted_uss->GetResetSecret("d"), Optional(kSecret2));
 }
 
-TEST(DecryptedUssTest, RenameWrappedKeyFailures) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, RenameWrappedKeyFailures) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Set up some initial wrapped keys.
@@ -230,8 +275,9 @@ TEST(DecryptedUssTest, RenameWrappedKeyFailures) {
               UnorderedElementsAre("a", "b"));
 }
 
-TEST(DecryptedUssTest, RemoveWrappedKey) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, RemoveWrappedKey) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Set up some initial wrapped keys.
@@ -257,8 +303,9 @@ TEST(DecryptedUssTest, RemoveWrappedKey) {
               UnorderedElementsAre("b"));
 }
 
-TEST(DecryptedUssTest, RemoveWrappedKeyWithResetSecret) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, RemoveWrappedKeyWithResetSecret) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Set up some initial wrapped keys with secrets.
@@ -292,8 +339,9 @@ TEST(DecryptedUssTest, RemoveWrappedKeyWithResetSecret) {
   EXPECT_THAT(decrypted_uss->GetResetSecret("b"), Optional(kSecret2));
 }
 
-TEST(DecryptedUssTest, AddResetSecrets) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, AddResetSecrets) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Check for the initial secrets.
@@ -313,8 +361,9 @@ TEST(DecryptedUssTest, AddResetSecrets) {
   EXPECT_THAT(decrypted_uss->GetResetSecret("b"), Optional(kSecret2));
 }
 
-TEST(DecryptedUssTest, InsertResetSecretRejectsDuplicates) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, InsertResetSecretRejectsDuplicates) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Check for the initial secrets.
@@ -332,8 +381,9 @@ TEST(DecryptedUssTest, InsertResetSecretRejectsDuplicates) {
   EXPECT_THAT(decrypted_uss->GetResetSecret("a"), Optional(kSecret1));
 }
 
-TEST(DecryptedUssTest, AssignResetSecretAllowsDuplicates) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, AssignResetSecretAllowsDuplicates) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Check for the initial secrets.
@@ -351,8 +401,9 @@ TEST(DecryptedUssTest, AssignResetSecretAllowsDuplicates) {
   EXPECT_THAT(decrypted_uss->GetResetSecret("a"), Optional(kSecret2));
 }
 
-TEST(DecryptedUssTest, AddRateLimiterResetSecrets) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, AddRateLimiterResetSecrets) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Check for the initial secrets.
@@ -384,8 +435,9 @@ TEST(DecryptedUssTest, AddRateLimiterResetSecrets) {
       Optional(kSecret2));
 }
 
-TEST(DecryptedUssTest, InsertRateLimiterResetSecretRejectsDuplicates) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, InsertRateLimiterResetSecretRejectsDuplicates) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Check for the initial secrets.
@@ -414,8 +466,9 @@ TEST(DecryptedUssTest, InsertRateLimiterResetSecretRejectsDuplicates) {
       Optional(kSecret1));
 }
 
-TEST(DecryptedUssTest, FingerprintRateLimiterId) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, FingerprintRateLimiterId) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Check the initial value.
@@ -441,8 +494,9 @@ TEST(DecryptedUssTest, FingerprintRateLimiterId) {
               Optional(1234));
 }
 
-TEST(DecryptedUssTest, TransactionsIgnoredWithoutCommit) {
-  auto decrypted_uss = DecryptedUss::CreateWithRandomMainKey(CreateTestFsk());
+TEST_F(DecryptedUssTest, TransactionsIgnoredWithoutCommit) {
+  auto decrypted_uss =
+      DecryptedUss::CreateWithRandomMainKey(user_uss_storage_, CreateTestFsk());
   ASSERT_THAT(decrypted_uss, IsOk());
 
   EXPECT_THAT(decrypted_uss->encrypted().fingerprint_rate_limiter_id(),
@@ -456,44 +510,43 @@ TEST(DecryptedUssTest, TransactionsIgnoredWithoutCommit) {
               Eq(std::nullopt));
 }
 
-TEST(DecryptedUssTest, CreateFailsWithEmptyMainKey) {
+TEST_F(DecryptedUssTest, CreateFailsWithEmptyMainKey) {
   brillo::SecureBlob empty_main_key;
-  auto decrypted_uss =
-      DecryptedUss::CreateWithMainKey(CreateTestFsk(), empty_main_key);
+  auto decrypted_uss = DecryptedUss::CreateWithMainKey(
+      user_uss_storage_, CreateTestFsk(), empty_main_key);
   EXPECT_THAT(decrypted_uss, NotOk());
 }
 
-TEST(DecryptedUssTest, CreateFailsWithShortMainKey) {
+TEST_F(DecryptedUssTest, CreateFailsWithShortMainKey) {
   brillo::SecureBlob short_main_key(kAesGcm256KeySize / 2, 0xA);
-  auto decrypted_uss =
-      DecryptedUss::CreateWithMainKey(CreateTestFsk(), short_main_key);
+  auto decrypted_uss = DecryptedUss::CreateWithMainKey(
+      user_uss_storage_, CreateTestFsk(), short_main_key);
   EXPECT_THAT(decrypted_uss, NotOk());
 }
 
-TEST(DecryptedUssTest, CreateToBlobWorksWithFromBlob) {
+TEST_F(DecryptedUssTest, CreateToBlobWorksWithFromStorage) {
   brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
 
-  auto decrypted_uss =
-      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  auto decrypted_uss = DecryptedUss::CreateWithMainKey(
+      user_uss_storage_, CreateTestFsk(), main_key);
   ASSERT_THAT(decrypted_uss, IsOk());
   EXPECT_THAT(decrypted_uss->file_system_keyset(),
               FileSystemKeysetEquals(CreateTestFsk()));
+  ASSERT_THAT(decrypted_uss->StartTransaction().Commit(), IsOk());
 
-  auto blob = decrypted_uss->encrypted().ToBlob();
-  ASSERT_THAT(blob, IsOk());
-
-  auto redecrypted_uss = DecryptedUss::FromBlobUsingMainKey(*blob, main_key);
+  auto redecrypted_uss =
+      DecryptedUss::FromStorageUsingMainKey(user_uss_storage_, main_key);
   ASSERT_THAT(redecrypted_uss, IsOk());
   EXPECT_THAT(redecrypted_uss->file_system_keyset(),
               FileSystemKeysetEquals(CreateTestFsk()));
 }
 
-TEST(DecryptedUssTest, CreateToBlobWorksWithFromBlobWithWrapping) {
+TEST_F(DecryptedUssTest, CreateToBlobWorksWithFromStorageWithWrapping) {
   brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
   brillo::SecureBlob wrapping_key(kAesGcm256KeySize, 0xB);
 
-  auto decrypted_uss =
-      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  auto decrypted_uss = DecryptedUss::CreateWithMainKey(
+      user_uss_storage_, CreateTestFsk(), main_key);
   ASSERT_THAT(decrypted_uss, IsOk());
   EXPECT_THAT(decrypted_uss->file_system_keyset(),
               FileSystemKeysetEquals(CreateTestFsk()));
@@ -503,37 +556,32 @@ TEST(DecryptedUssTest, CreateToBlobWorksWithFromBlobWithWrapping) {
     EXPECT_THAT(std::move(transaction).Commit(), IsOk());
   }
 
-  auto blob = decrypted_uss->encrypted().ToBlob();
-  ASSERT_THAT(blob, IsOk());
-
-  auto redecrypted_uss =
-      DecryptedUss::FromBlobUsingWrappedKey(*blob, "a", wrapping_key);
+  auto redecrypted_uss = DecryptedUss::FromStorageUsingWrappedKey(
+      user_uss_storage_, "a", wrapping_key);
   ASSERT_THAT(redecrypted_uss, IsOk());
   EXPECT_THAT(redecrypted_uss->file_system_keyset(),
               FileSystemKeysetEquals(CreateTestFsk()));
 }
 
-TEST(DecryptedUssTest, FromBlobFailsWithBadKey) {
+TEST_F(DecryptedUssTest, FromStorageFailsWithBadKey) {
   brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
   brillo::SecureBlob wrong_key(kAesGcm256KeySize, 0xB);
 
-  auto decrypted_uss =
-      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  auto decrypted_uss = DecryptedUss::CreateWithMainKey(
+      user_uss_storage_, CreateTestFsk(), main_key);
   ASSERT_THAT(decrypted_uss, IsOk());
   EXPECT_THAT(decrypted_uss->file_system_keyset(),
               FileSystemKeysetEquals(CreateTestFsk()));
 
-  auto blob = decrypted_uss->encrypted().ToBlob();
-  ASSERT_THAT(blob, IsOk());
-
-  auto redecrypted_uss = DecryptedUss::FromBlobUsingMainKey(*blob, wrong_key);
+  auto redecrypted_uss =
+      DecryptedUss::FromStorageUsingMainKey(user_uss_storage_, wrong_key);
   ASSERT_THAT(redecrypted_uss, NotOk());
 }
 
 // Do a basic check that the secret parts of USS don't just show up in the clear
 // in the encrypted blob. This isn't perfect because of course you could have
 // the secrets poorly encrypted in the output but there's no test for that.
-TEST(DecryptedUssTest, NoSecretsInEncryptedBlob) {
+TEST_F(DecryptedUssTest, NoSecretsInEncryptedBlob) {
   brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
   brillo::SecureBlob wrapping_key(kAesGcm256KeySize, 0xB);
 
@@ -541,8 +589,8 @@ TEST(DecryptedUssTest, NoSecretsInEncryptedBlob) {
   const brillo::SecureBlob kSecret2(kAesGcm256KeySize, 0xE);
   const brillo::SecureBlob kSecret3(kAesGcm256KeySize, 0xF);
 
-  auto decrypted_uss =
-      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  auto decrypted_uss = DecryptedUss::CreateWithMainKey(
+      user_uss_storage_, CreateTestFsk(), main_key);
   ASSERT_THAT(decrypted_uss, IsOk());
   EXPECT_THAT(decrypted_uss->file_system_keyset(),
               FileSystemKeysetEquals(CreateTestFsk()));
@@ -566,7 +614,7 @@ TEST(DecryptedUssTest, NoSecretsInEncryptedBlob) {
   EXPECT_THAT(kSecret3, IsNotInBlob(*blob));
 }
 
-TEST(DecryptedUssTest, OsVersion) {
+TEST_F(DecryptedUssTest, OsVersion) {
   constexpr char kLsbRelease[] =
       "CHROMEOS_RELEASE_NAME=Chrome "
       "OS\nCHROMEOS_RELEASE_VERSION=11012.0.2018_08_28_1422\n";
@@ -574,15 +622,15 @@ TEST(DecryptedUssTest, OsVersion) {
       kLsbRelease, /*lsb_release_time=*/base::Time());
   brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
 
-  auto decrypted_uss =
-      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  auto decrypted_uss = DecryptedUss::CreateWithMainKey(
+      user_uss_storage_, CreateTestFsk(), main_key);
   ASSERT_THAT(decrypted_uss, IsOk());
 
   EXPECT_THAT(decrypted_uss->encrypted().created_on_os_version(),
               Eq("11012.0.2018_08_28_1422"));
 }
 
-TEST(DecryptedUssTest, OsVersionStays) {
+TEST_F(DecryptedUssTest, OsVersionStays) {
   constexpr char kLsbRelease1[] =
       "CHROMEOS_RELEASE_NAME=Chrome "
       "OS\nCHROMEOS_RELEASE_VERSION=11012.0.2018_08_28_1422\n";
@@ -592,19 +640,14 @@ TEST(DecryptedUssTest, OsVersionStays) {
   brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
 
   // Create the USS on version 1.
-  brillo::Blob v1_blob;
   {
     base::test::ScopedChromeOSVersionInfo scoped_version1(
         kLsbRelease1, /*lsb_release_time=*/base::Time());
 
-    auto decrypted_uss =
-        DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+    auto decrypted_uss = DecryptedUss::CreateWithMainKey(
+        user_uss_storage_, CreateTestFsk(), main_key);
     ASSERT_THAT(decrypted_uss, IsOk());
-
-    // Save the blob to re-decrypt afterwards.
-    auto blob = decrypted_uss->encrypted().ToBlob();
-    ASSERT_THAT(blob, IsOk());
-    v1_blob = std::move(*blob);
+    ASSERT_THAT(decrypted_uss->StartTransaction().Commit(), IsOk());
   }
 
   // Decrypt the USS on the version 2. The field should be the release 1 version
@@ -613,7 +656,8 @@ TEST(DecryptedUssTest, OsVersionStays) {
     base::test::ScopedChromeOSVersionInfo scoped_version2(
         kLsbRelease2, /*lsb_release_time=*/base::Time());
 
-    auto decrypted_uss = DecryptedUss::FromBlobUsingMainKey(v1_blob, main_key);
+    auto decrypted_uss =
+        DecryptedUss::FromStorageUsingMainKey(user_uss_storage_, main_key);
     ASSERT_THAT(decrypted_uss, IsOk());
 
     EXPECT_THAT(decrypted_uss->encrypted().created_on_os_version(),
@@ -621,7 +665,7 @@ TEST(DecryptedUssTest, OsVersionStays) {
   }
 }
 
-TEST(DecryptedUssTest, MissingOsVersion) {
+TEST_F(DecryptedUssTest, MissingOsVersion) {
   // Note: Normally unit tests don't have access to a CrOS /etc/lsb-release
   // anyway, but this override guarantees that the test passes regardless of
   // that.
@@ -630,8 +674,8 @@ TEST(DecryptedUssTest, MissingOsVersion) {
 
   brillo::SecureBlob main_key(kAesGcm256KeySize, 0xA);
 
-  auto decrypted_uss =
-      DecryptedUss::CreateWithMainKey(CreateTestFsk(), main_key);
+  auto decrypted_uss = DecryptedUss::CreateWithMainKey(
+      user_uss_storage_, CreateTestFsk(), main_key);
   ASSERT_THAT(decrypted_uss, IsOk());
 
   EXPECT_THAT(decrypted_uss->encrypted().created_on_os_version(), IsEmpty());

@@ -1044,16 +1044,13 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
 
   // Verify that migrator created the user_secret_stash and uss_main_key.
   UssStorage uss_storage(&platform_);
-  CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
-      uss_storage.LoadPersisted(users_[0].obfuscated);
-  ASSERT_TRUE(uss_serialized_container_status.ok());
+  UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
   CryptohomeStatusOr<DecryptedUss> decrypted_uss =
-      DecryptedUss::FromBlobUsingWrappedKey(*uss_serialized_container_status,
-                                            kDefaultLabel,
-                                            *uss_credential_secret);
+      DecryptedUss::FromStorageUsingWrappedKey(user_uss_storage, kDefaultLabel,
+                                               *uss_credential_secret);
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Verify that the user_secret_stash has the wrapped_key_block for
@@ -1103,16 +1100,13 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
 
   // Verify that migrator loaded the user_secret_stash and uss_main_key.
   UssStorage uss_storage(&platform_);
-  CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
-      uss_storage.LoadPersisted(users_[0].obfuscated);
-  ASSERT_TRUE(uss_serialized_container_status.ok());
+  UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
   CryptohomeStatusOr<DecryptedUss> decrypted_uss =
-      DecryptedUss::FromBlobUsingWrappedKey(*uss_serialized_container_status,
-                                            kPasswordLabel,
-                                            *uss_credential_secret);
+      DecryptedUss::FromStorageUsingWrappedKey(user_uss_storage, kPasswordLabel,
+                                               *uss_credential_secret);
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Verify that the user_secret_stash has the wrapped_key_blocks for the
@@ -1171,16 +1165,13 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
   // Verify
   // Verify that migrator loaded the user_secret_stash and uss_main_key.
   UssStorage uss_storage(&platform_);
-  CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
-      uss_storage.LoadPersisted(users_[0].obfuscated);
-  ASSERT_TRUE(uss_serialized_container_status.ok());
+  UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
   CryptohomeStatusOr<DecryptedUss> decrypted_uss =
-      DecryptedUss::FromBlobUsingWrappedKey(*uss_serialized_container_status,
-                                            kPasswordLabel,
-                                            *uss_credential_secret);
+      DecryptedUss::FromStorageUsingWrappedKey(user_uss_storage, kPasswordLabel,
+                                               *uss_credential_secret);
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Verify that the user_secret_stash has the wrapped_key_blocks for the
@@ -1228,16 +1219,13 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 
   // Verify that migrator created the user_secret_stash and uss_main_key.
   UssStorage uss_storage(&platform_);
-  CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
-      uss_storage.LoadPersisted(users_[0].obfuscated);
-  ASSERT_TRUE(uss_serialized_container_status.ok());
+  UserUssStorage user_uss_storage(uss_storage, users_[0].obfuscated);
   std::optional<brillo::SecureBlob> uss_credential_secret =
       kKeyBlobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(uss_credential_secret.has_value());
   CryptohomeStatusOr<DecryptedUss> decrypted_uss =
-      DecryptedUss::FromBlobUsingWrappedKey(*uss_serialized_container_status,
-                                            kPasswordLabel,
-                                            *uss_credential_secret);
+      DecryptedUss::FromStorageUsingWrappedKey(user_uss_storage, kPasswordLabel,
+                                               *uss_credential_secret);
   ASSERT_THAT(decrypted_uss, IsOk());
 
   // Verify that the user_secret_stash has the wrapped_key_blocks for both

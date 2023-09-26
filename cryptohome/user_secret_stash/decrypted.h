@@ -104,19 +104,16 @@ class DecryptedUss {
     // Attempt to commit the changes to the underlying DecryptedUss. On success
     // this will return OK and the underlying store will be modified; on failure
     // and error will be returned an none of the changes from the transaction
-    // will have been applied.
-    //
-    // If the commit is supplied with a storage object then writing the
-    // resulting changes out to storage will also be considered a part of the
-    // commit sequence and the commit will only succeed if the changes are able
-    // to be persisted. If the commit fails in that case than both the in-memory
-    // and in-storage copies should remain unmodified.
+    // will have been applied. Writing the resulting changes out to storage will
+    // also be considered a part of the commit sequence and the commit will only
+    // succeed if the changes are able to be persisted. If the commit fails in
+    // that case than both the in-memory and in-storage copies should remain
+    // unmodified.
     //
     // Note that there is no equivalent "rollback" operation. To abandon a
     // transaction without committing any modifications you can simply discard
     // the Transaction object.
     CryptohomeStatus Commit() &&;
-    CryptohomeStatus Commit(UserUssStorage& storage) &&;
 
    private:
     // The DecryptedUss class needs to be able to construct Transaction objects.
@@ -141,22 +138,28 @@ class DecryptedUss {
   };
 
   // Create a new stash storing the given filesystem keyset, encrypted with the
-  // given main key.
+  // given main key. Note that this will not persist the created USS to storage
+  // yet, as a created USS without any wrapped keyset should only be persisted
+  // after adding the first auth factor. It's fine that the in-memory USS isn't
+  // consistent with the disk in this case, as if the USS doesn't eventually get
+  // persisted, the user isn't created successfully so the inconsistency doesn't
+  // matter.
   static CryptohomeStatusOr<DecryptedUss> CreateWithMainKey(
-      FileSystemKeyset file_system_keyset, brillo::SecureBlob main_key);
+      UserUssStorage& storage,
+      FileSystemKeyset file_system_keyset,
+      brillo::SecureBlob main_key);
 
-  // Create a new stash storing the given filesystem keyset. This will generate
-  // a random main key.
+  // This will generate a random main key and call CreateWithMainKey.
   static CryptohomeStatusOr<DecryptedUss> CreateWithRandomMainKey(
-      FileSystemKeyset file_system_keyset);
+      UserUssStorage& storage, FileSystemKeyset file_system_keyset);
 
   // Attempt to decrypt USS using using the main key.
-  static CryptohomeStatusOr<DecryptedUss> FromBlobUsingMainKey(
-      const brillo::Blob& flatbuffer, brillo::SecureBlob main_key);
+  static CryptohomeStatusOr<DecryptedUss> FromStorageUsingMainKey(
+      UserUssStorage& storage, brillo::SecureBlob main_key);
 
   // Attempt to decrypt USS using using a wrapped key.
-  static CryptohomeStatusOr<DecryptedUss> FromBlobUsingWrappedKey(
-      const brillo::Blob& flatbuffer,
+  static CryptohomeStatusOr<DecryptedUss> FromStorageUsingWrappedKey(
+      UserUssStorage& storage,
       const std::string& wrapping_id,
       const brillo::SecureBlob& wrapping_key);
 
@@ -186,17 +189,27 @@ class DecryptedUss {
 
  private:
   // Given an EncryptedUss and a main key, attempt to decrypt it and construct
-  // the DecryptedUss.
+  // the DecryptedUss. New fields might be introduced to the USS container:
+  // sometimes the default flatbuffer value (like empty blobs) are suitable,
+  // while sometimes new fields should be initialized if they don't exist (like
+  // fixed secrets). We perform the initialization routine of new fields in this
+  // method, and if such routine is performed, the changes would be committed to
+  // |storage|.
   static CryptohomeStatusOr<DecryptedUss> FromEncryptedUss(
-      EncryptedUss encrypted, brillo::SecureBlob main_key);
+      UserUssStorage& storage,
+      EncryptedUss encrypted,
+      brillo::SecureBlob main_key);
 
   DecryptedUss(
+      UserUssStorage* storage,
       EncryptedUss encrypted,
       brillo::SecureBlob main_key,
       FileSystemKeyset file_system_keyset,
       std::map<std::string, brillo::SecureBlob> reset_secrets,
       std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets);
 
+  // The underlying storage of the decrypted USS instance.
+  UserUssStorage* storage_;
   // The underlying raw data.
   EncryptedUss encrypted_;
   // The main key used to encrypt and decrypt the payload.

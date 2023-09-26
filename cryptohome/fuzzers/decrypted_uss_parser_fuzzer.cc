@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <gmock/gmock.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/fuzzers/blob_mutator.h>
 #include <openssl/err.h>
@@ -20,7 +21,10 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
+#include "cryptohome/mock_platform.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
+#include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/username.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -32,6 +36,8 @@ using cryptohome::UserSecretStashPayload;
 using hwsec_foundation::AesGcmEncrypt;
 using hwsec_foundation::kAesGcm256KeySize;
 using hwsec_foundation::MutateBlob;
+using testing::_;
+using testing::Return;
 
 namespace {
 
@@ -163,6 +169,7 @@ void AssertStashesEqual(const DecryptedUss& first, const DecryptedUss& second) {
 // It starts of a semantically correct USS with a corresponding USS main key,
 // and mutates all parameters before passing them to the tested function.
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  const cryptohome::ObfuscatedUsername kObfuscatedUsername{"foo@gmail.com"};
   static Environment env;
   // Prevent OpenSSL errors from accumulating in the error queue and leaking
   // memory across fuzzer executions.
@@ -175,23 +182,38 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   PrepareMutatedArguments(&fuzzed_data_provider, &mutated_uss_container,
                           &mutated_uss_main_key);
 
+  // Use a storage that will behave correctly instead of fuzzed, as we want to
+  // prepare the mutated USS container ourselves.
+  testing::NiceMock<cryptohome::MockPlatform> platform;
+  cryptohome::UssStorage uss_storage{&platform};
+  cryptohome::UserUssStorage user_uss_storage{uss_storage, kObfuscatedUsername};
+  ON_CALL(platform, ReadFile(_, _))
+      .WillByDefault([&mutated_uss_container](auto&&, brillo::Blob* result) {
+        *result = mutated_uss_container;
+        return true;
+      });
+  ON_CALL(platform, WriteFileAtomicDurable(_, _, _))
+      .WillByDefault(
+          [&mutated_uss_container](auto&&, const brillo::Blob& blob, auto&&) {
+            mutated_uss_container = blob;
+            return true;
+          });
+
   // The USS decryption may succeed or fail, but never crash.
   cryptohome::CryptohomeStatusOr<DecryptedUss> stash_status =
-      DecryptedUss::FromBlobUsingMainKey(mutated_uss_container,
-                                         mutated_uss_main_key);
+      DecryptedUss::FromStorageUsingMainKey(user_uss_storage,
+                                            mutated_uss_main_key);
 
   if (stash_status.ok()) {
     // If the USS was decrypted successfully, its reencryption must succeed as
     // well.
-    cryptohome::CryptohomeStatusOr<Blob> reencrypted =
-        stash_status->encrypted().ToBlob();
-    CHECK(reencrypted.ok());
+    CHECK(stash_status->StartTransaction().Commit().ok());
 
     // Decryption of the reencrypted USS must succeed as well, and the result
     // must be equal to the original USS.
     cryptohome::CryptohomeStatusOr<DecryptedUss> stash2_status =
-        DecryptedUss::FromBlobUsingMainKey(*reencrypted.HintOk(),
-                                           mutated_uss_main_key);
+        DecryptedUss::FromStorageUsingMainKey(user_uss_storage,
+                                              mutated_uss_main_key);
     CHECK(stash2_status.ok());
     AssertStashesEqual(*stash_status, *stash2_status.HintOk());
   }

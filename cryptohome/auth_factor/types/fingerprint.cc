@@ -129,9 +129,7 @@ bool FingerprintAuthFactorDriver::NeedsRateLimiter() const {
 }
 
 CryptohomeStatus FingerprintAuthFactorDriver::TryCreateRateLimiter(
-    const ObfuscatedUsername& username,
-    DecryptedUss& decrypted_uss,
-    UserUssStorage& uss_storage) {
+    const ObfuscatedUsername& username, DecryptedUss& decrypted_uss) {
   std::optional<uint64_t> rate_limiter_label =
       decrypted_uss.encrypted().fingerprint_rate_limiter_id();
   if (rate_limiter_label.has_value()) {
@@ -161,7 +159,7 @@ CryptohomeStatus FingerprintAuthFactorDriver::TryCreateRateLimiter(
     RETURN_IF_ERROR(transaction.InitializeFingerprintRateLimiterId(label));
     RETURN_IF_ERROR(transaction.InsertRateLimiterResetSecret(
         type(), std::move(reset_secret)));
-    RETURN_IF_ERROR(std::move(transaction).Commit(uss_storage));
+    RETURN_IF_ERROR(std::move(transaction).Commit());
   }
   return OkStatus<CryptohomeError>();
 }

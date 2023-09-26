@@ -632,7 +632,8 @@ CryptohomeStatus AuthSession::OnUserCreated() {
       // non-ephemeral user. Keep the USS in memory: it will be persisted after
       // the first auth factor gets added.
       CryptohomeStatusOr<DecryptedUss> new_uss =
-          DecryptedUss::CreateWithRandomMainKey(*file_system_keyset_);
+          DecryptedUss::CreateWithRandomMainKey(uss_storage_,
+                                                *file_system_keyset_);
       if (!new_uss.ok()) {
         LOG(ERROR) << "User secret stash creation failed";
         return MakeStatus<CryptohomeError>(
@@ -1169,7 +1170,7 @@ bool AuthSession::MigrateResetSecretToUss() {
   // If updates occurred, attempt to commit them. We only return true both if
   // there were updates and if the commit was successful.
   if (updated) {
-    auto status = std::move(transaction).Commit(uss_storage_);
+    auto status = std::move(transaction).Commit();
     if (status.ok()) {
       return true;
     } else {
@@ -1761,8 +1762,7 @@ void AuthSession::ResaveUssWithFactorRemoved(
       std::move(on_done).Run(OkStatus<CryptohomeError>());
       return;
     }
-    if (auto status = std::move(transaction).Commit(uss_storage_);
-        !status.ok()) {
+    if (auto status = std::move(transaction).Commit(); !status.ok()) {
       LOG(ERROR)
           << "AuthSession: Failed to persist user secret stash after auth "
              "factor removal: "
@@ -2006,8 +2006,7 @@ void AuthSession::ResaveUssWithFactorUpdated(
     // chance of ending in an inconsistent state on the disk: a created/updated
     // USS and a missing auth factor (note that we're using file system syncs to
     // have best-effort ordering guarantee).
-    if (auto status = std::move(transaction).Commit(uss_storage_);
-        !status.ok()) {
+    if (auto status = std::move(transaction).Commit(); !status.ok()) {
       LOG(ERROR)
           << "Failed to persist user secret stash after auth factor creation";
       std::move(on_done).Run(
@@ -2235,8 +2234,7 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
               .Wrap(std::move(status)));
       return;
     }
-    if (auto status = std::move(transaction).Commit(session_->uss_storage_);
-        !status.ok()) {
+    if (auto status = std::move(transaction).Commit(); !status.ok()) {
       LOG(ERROR)
           << "Failed to persist user secret stash after changing labels from: "
           << request.auth_factor_label()
@@ -2638,8 +2636,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
     // Write out the new USS with the new factor added and the original one
     // removed. If this succeeds the then Replace operation is committed and the
     // overall operation is "complete" once we do all the in-memory swaps.
-    if (CryptohomeStatus status =
-            std::move(transaction).Commit(session_->uss_storage_);
+    if (CryptohomeStatus status = std::move(transaction).Commit();
         !status.ok()) {
       LOG(ERROR) << "Failed to persist user secret stash after the creation of "
                     "auth factor with label: "
@@ -2757,8 +2754,7 @@ void AuthSession::AuthForDecrypt::PrepareAuthFactorForAdd(
   }
   if (factor_driver.NeedsRateLimiter()) {
     CryptohomeStatus status = factor_driver.TryCreateRateLimiter(
-        session_->obfuscated_username_, *session_->decrypted_uss_,
-        session_->uss_storage_);
+        session_->obfuscated_username_, *session_->decrypted_uss_);
     if (!status.ok()) {
       std::move(on_done).Run(std::move(status));
       return;
@@ -3378,8 +3374,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     // chance of ending in an inconsistent state on the disk: a created/updated
     // USS and a missing auth factor (note that we're using file system syncs to
     // have best-effort ordering guarantee).
-    if (auto status = std::move(transaction).Commit(uss_storage_);
-        !status.ok()) {
+    if (auto status = std::move(transaction).Commit(); !status.ok()) {
       LOG(ERROR) << "Failed to persist user secret stash after the creation of "
                     "auth factor with label: "
                  << auth_factor_label;
@@ -3841,25 +3836,13 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     return;
   }
 
-  // Load the USS container with the encrypted payload.
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss = uss_storage_.LoadPersisted();
-  if (!encrypted_uss.ok()) {
-    LOG(ERROR) << "Failed to load the user secret stash";
-    std::move(on_done).Run(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionLoadUSSFailedInLoadUSS),
-            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
-            .Wrap(std::move(encrypted_uss).err_status()));
-    return;
-  }
-
   // Decrypt the USS payload.
   // This unwraps the USS Main Key with the credential secret, and decrypts the
   // USS payload using the USS Main Key. The wrapping_id field is defined equal
   // to the factor's label.
   CryptohomeStatusOr<DecryptedUss> existing_uss =
-      DecryptedUss::FromBlobUsingWrappedKey(*encrypted_uss, auth_factor_label,
-                                            *uss_credential_secret);
+      DecryptedUss::FromStorageUsingWrappedKey(uss_storage_, auth_factor_label,
+                                               *uss_credential_secret);
   if (!existing_uss.ok()) {
     LOG(ERROR) << "Failed to decrypt the user secret stash";
     std::move(on_done).Run(

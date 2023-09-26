@@ -54,13 +54,12 @@ void UssMigrator::MigrateVaultKeysetToUss(
 
   // Load the USS container with the encrypted payload.
   std::optional<DecryptedUss> decrypted_uss;
-  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-      user_secret_stash_storage.LoadPersisted();
-  if (!encrypted_uss.ok()) {
+  if (!user_secret_stash_storage.LoadPersisted().ok()) {
     // If no UserSecretStash file found for the user create a new
     // UserSecretStash from the passed VaultKeyset and add the migration_secret
     // block.
-    auto new_uss = DecryptedUss::CreateWithRandomMainKey(filesystem_keyset);
+    auto new_uss = DecryptedUss::CreateWithRandomMainKey(
+        user_secret_stash_storage, filesystem_keyset);
     if (!new_uss.ok()) {
       LOG(ERROR) << "UserSecretStash creation failed during migration of "
                     "VaultKeyset with label: "
@@ -85,9 +84,7 @@ void UssMigrator::MigrateVaultKeysetToUss(
         std::move(completion_callback).Run(std::nullopt);
         return;
       }
-      if (auto status =
-              std::move(transaction).Commit(user_secret_stash_storage);
-          !status.ok()) {
+      if (auto status = std::move(transaction).Commit(); !status.ok()) {
         LOG(ERROR) << "Failed to persist the new UserSecretStash.";
         ReapAndReportError(std::move(status),
                            kCryptohomeErrorUssMigrationErrorBucket);
@@ -101,8 +98,8 @@ void UssMigrator::MigrateVaultKeysetToUss(
   } else {
     // Decrypt the existing UserSecretStash payload with the migration secret
     // and obtain the main key.
-    auto existing_uss = DecryptedUss::FromBlobUsingWrappedKey(
-        *encrypted_uss, kMigrationSecretLabel, *migration_secret_);
+    auto existing_uss = DecryptedUss::FromStorageUsingWrappedKey(
+        user_secret_stash_storage, kMigrationSecretLabel, *migration_secret_);
     if (!existing_uss.ok()) {
       LOG(ERROR) << "Failed to decrypt the UserSecretStash during migration.";
       ReapAndReportError(std::move(existing_uss).status(),

@@ -2468,8 +2468,10 @@ class UserDataAuthExTest : public UserDataAuthTest {
   void MakeUssWithLabels(const ObfuscatedUsername& obfuscated_username,
                          const std::vector<std::string>& labels) {
     // Create a random USS.
-    auto uss =
-        DecryptedUss::CreateWithRandomMainKey(FileSystemKeyset::CreateRandom());
+    UserUssStorage user_storage(*userdataauth_->uss_storage_,
+                                obfuscated_username);
+    auto uss = DecryptedUss::CreateWithRandomMainKey(
+        user_storage, FileSystemKeyset::CreateRandom());
     if (!uss.ok()) {
       ADD_FAILURE() << "Making a test USS failed at CreateRandom: "
                     << uss.status();
@@ -2490,10 +2492,8 @@ class UserDataAuthExTest : public UserDataAuthTest {
           return;
         }
       }
-      // Persist the changes.
-      UserUssStorage user_storage(*userdataauth_->uss_storage_,
-                                  obfuscated_username);
-      auto status = std::move(transaction).Commit(user_storage);
+
+      auto status = std::move(transaction).Commit();
       if (!status.ok()) {
         ADD_FAILURE() << "Making a test USS failed during Commit: " << status;
         return;
