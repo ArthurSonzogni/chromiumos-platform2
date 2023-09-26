@@ -8,13 +8,17 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/file_path_watcher.h>
+#include <base/synchronization/condition_variable.h>
+#include <base/synchronization/lock.h>
 #include <brillo/files/safe_fd.h>
 
 namespace bootsplash {
 
 class Frecon {
  public:
-  Frecon() = default;
+  Frecon();
   Frecon(const Frecon&) = delete;
   Frecon& operator=(const Frecon&) = delete;
   ~Frecon() = default;
@@ -31,8 +35,18 @@ class Frecon {
   void UpdateBootLogoDisplay(int frame_number);
 
  private:
+  void HandleRunDirChanged(const base::FilePath& path, bool error);
+  void WatchFreconRunDir();
+  void HandleFreconFilesCreated();
+  bool FreconStarted();
+
   base::FilePath boot_splash_assets_dir_;
   brillo::SafeFD frecon_vt_;
+  std::unique_ptr<base::FilePathWatcher> run_dir_watcher_;
+  base::Lock lock_;
+  base::ConditionVariable frecon_files_created_;
+
+  base::WeakPtrFactory<Frecon> weak_factory_{this};
 };
 
 }  // namespace bootsplash

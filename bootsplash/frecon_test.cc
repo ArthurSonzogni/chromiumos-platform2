@@ -30,6 +30,11 @@ class FreconTest : public ::testing::Test {
     ASSERT_TRUE(base::CreateDirectory(frecon_vt_path_.DirName()));
     ASSERT_TRUE(base::WriteFile(frecon_vt_path_, ""));
 
+    // Create an empty hi_res file.
+    frecon_hi_res_path_ = paths::Get(paths::kFreconHiRes);
+    ASSERT_TRUE(base::CreateDirectory(frecon_hi_res_path_.DirName()));
+    ASSERT_TRUE(base::WriteFile(frecon_hi_res_path_, ""));
+
     // Create an empty boot splash assets directory.
     boot_splash_assets_dir_ = paths::GetBootSplashAssetsDir(false);
     ASSERT_TRUE(base::CreateDirectory(boot_splash_assets_dir_));
@@ -37,6 +42,7 @@ class FreconTest : public ::testing::Test {
 
   base::ScopedTempDir scoped_temp_dir_;
   base::FilePath frecon_vt_path_;
+  base::FilePath frecon_hi_res_path_;
   base::FilePath boot_splash_assets_dir_;
 };
 

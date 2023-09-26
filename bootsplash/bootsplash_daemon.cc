@@ -43,8 +43,6 @@ BootSplashDaemon::BootSplashDaemon(bool feature_simon_enabled)
     : feature_simon_enabled_(feature_simon_enabled) {
   g_bootsplash_daemon = this;
 
-  num_frames_ = utils::GetMaxBootSplashFrameNumber(feature_simon_enabled_);
-
   signal(SIGUSR1, &internal::SignalHandler);
 }
 
@@ -80,6 +78,8 @@ int BootSplashDaemon::OnInit() {
     LOG(ERROR) << "Failed to create Frecon object.";
     return -EX_SOFTWARE;
   }
+
+  num_frames_ = utils::GetMaxBootSplashFrameNumber(feature_simon_enabled_);
 
   int status;
   status = InitBootSplash();

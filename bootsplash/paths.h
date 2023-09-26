@@ -10,8 +10,8 @@
 
 namespace paths {
 
+constexpr char kFreconRunDir[] = "/run/frecon/";
 constexpr char kFreconVt[] = "/run/frecon/vt0";
-
 constexpr char kFreconHiRes[] = "/run/frecon/hi_res";
 
 constexpr char kChromeOsAssetsDir[] = "/usr/share/chromeos-assets/";
