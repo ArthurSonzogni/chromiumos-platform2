@@ -198,11 +198,11 @@ bool VaultKeyset::ToKeysBlob(SecureBlob* keys_blob) const {
 }
 
 void VaultKeyset::CreateRandomChapsKey() {
-  chaps_key_ = CreateSecureRandomBlob(CRYPTOHOME_CHAPS_KEY_LENGTH);
+  chaps_key_ = CreateSecureRandomBlob(kCryptohomeChapsKeyLength);
 }
 
 void VaultKeyset::CreateRandomResetSeed() {
-  reset_seed_ = CreateSecureRandomBlob(CRYPTOHOME_RESET_SEED_LENGTH);
+  reset_seed_ = CreateSecureRandomBlob(kCryptohomeResetSeedLength);
 }
 
 void VaultKeyset::CreateFromFileSystemKeyset(
@@ -508,7 +508,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
   wrapped_keyset_ = brillo::SecureBlob(vault_cipher_text);
   le_fek_iv_ = SecureBlob(blobs.vkk_iv.value());
 
-  if (GetChapsKey().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
+  if (GetChapsKey().size() == kCryptohomeChapsKeyLength) {
     Blob wrapped_chaps_key;
     if (!AesEncryptDeprecated(
             GetChapsKey(), blobs.vkk_key.value(),
@@ -598,7 +598,7 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
   }
   wrapped_keyset_ = cipher_text;
 
-  if (GetChapsKey().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
+  if (GetChapsKey().size() == kCryptohomeChapsKeyLength) {
     SecureBlob wrapped_chaps_key;
     if (!LibScryptCompat::Encrypt(key_blobs.scrypt_chaps_key.value(),
                                   state->chaps_salt.value(), GetChapsKey(),
@@ -1286,23 +1286,23 @@ void VaultKeyset::SetSignatureChallengeInfo(
 }
 
 void VaultKeyset::SetChapsKey(const brillo::SecureBlob& chaps_key) {
-  CHECK(chaps_key.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
+  CHECK(chaps_key.size() == kCryptohomeChapsKeyLength);
   chaps_key_ = chaps_key;
 }
 
 void VaultKeyset::ClearChapsKey() {
-  CHECK(chaps_key_.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
+  CHECK(chaps_key_.size() == kCryptohomeChapsKeyLength);
   chaps_key_.clear();
   chaps_key_.resize(0);
 }
 
 void VaultKeyset::SetResetSeed(const brillo::SecureBlob& reset_seed) {
-  CHECK_EQ(reset_seed.size(), CRYPTOHOME_RESET_SEED_LENGTH);
+  CHECK_EQ(reset_seed.size(), kCryptohomeResetSeedLength);
   reset_seed_ = reset_seed;
 }
 
 void VaultKeyset::SetResetSecret(const brillo::SecureBlob& reset_secret) {
-  CHECK_EQ(reset_secret.size(), CRYPTOHOME_RESET_SEED_LENGTH);
+  CHECK_EQ(reset_secret.size(), kCryptohomeResetSeedLength);
   reset_secret_ = reset_secret;
 }
 

@@ -5,37 +5,27 @@
 #ifndef CRYPTOHOME_CRYPTOHOME_COMMON_H_
 #define CRYPTOHOME_CRYPTOHOME_COMMON_H_
 
-#include <stdint.h>
+#include <stddef.h>
 
 namespace cryptohome {
 
 // Constants used in both service.cc and userdataauth.cc
-static constexpr char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
+inline constexpr char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
 
 // The default symmetric key size for cryptohome is the ecryptfs default
-#define CRYPTOHOME_DEFAULT_KEY_SIZE 64           // ECRYPTFS_MAX_KEY_BYTES
-#define CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE 8  // ECRYPTFS_SIG_SIZE
-#define CRYPTOHOME_DEFAULT_KEY_SALT_SIZE 8       // ECRYPTFS_SALT_SIZE
-#define CRYPTOHOME_AES_KEY_BYTES 16              // ECRYPTFS_AES_KEY_BYTES
+inline constexpr size_t kCryptohomeDefaultKeySize = 64;
+inline constexpr size_t kCryptohomeDefaultKeySignatureSize = 8;
+inline constexpr size_t kCryptohomeDefaultKeySaltSize = 8;
+inline constexpr size_t kCryptohomeAesKeyBytes = 16;
 // The default salt length for the user salt
-#define CRYPTOHOME_DEFAULT_SALT_LENGTH 16
-#define CRYPTOHOME_PWNAME_BUF_LENGTH 1024
-#define CRYPTOHOME_CHAPS_KEY_LENGTH 16  // AES block size
-#define CRYPTOHOME_RESET_SEED_LENGTH 32
+inline constexpr size_t kCryptohomeDefaultSaltLength = 16;
+inline constexpr size_t kCryptohomePwnameBufLength = 1024;
+inline constexpr size_t kCryptohomeChapsKeyLength = 16;  // AES block size
+inline constexpr size_t kCryptohomeResetSeedLength = 32;
 // Always 32 bytes per the firmware.
-#define CRYPTOHOME_RESET_SECRET_LENGTH 32
+inline constexpr size_t kCryptohomeResetSecretLength = 32;
 // UserSecretStash file system encryption keys are 512 bits.
-#define CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE 64
-
-struct VaultKeysetKeys {
-  unsigned char fek[CRYPTOHOME_DEFAULT_KEY_SIZE];
-  unsigned char fek_sig[CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE];
-  unsigned char fek_salt[CRYPTOHOME_DEFAULT_KEY_SALT_SIZE];
-  unsigned char fnek[CRYPTOHOME_DEFAULT_KEY_SIZE];
-  unsigned char fnek_sig[CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE];
-  unsigned char fnek_salt[CRYPTOHOME_DEFAULT_KEY_SALT_SIZE];
-} __attribute__((__packed__));
-typedef struct VaultKeysetKeys VaultKeysetKeys;
+inline constexpr size_t kCryptohomeDefault512BitKeySize = 64;
 
 }  // namespace cryptohome
 

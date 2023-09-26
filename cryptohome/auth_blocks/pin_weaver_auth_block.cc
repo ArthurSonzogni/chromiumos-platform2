@@ -233,7 +233,7 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
   brillo::SecureBlob salt =
-      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+      CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize);
   if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                            {&le_secret, &kdf_skey})) {
     std::move(callback).Run(

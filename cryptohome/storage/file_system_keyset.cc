@@ -16,19 +16,19 @@ namespace cryptohome {
 
 FileSystemKeyset FileSystemKeyset::CreateRandom() {
   const FileSystemKey key = {
-      .fek = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE),
-      .fnek = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE),
-      .fek_salt = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE),
-      .fnek_salt = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE),
+      .fek = CreateSecureRandomBlob(kCryptohomeDefaultKeySize),
+      .fnek = CreateSecureRandomBlob(kCryptohomeDefaultKeySize),
+      .fek_salt = CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize),
+      .fnek_salt = CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize),
   };
 
   const FileSystemKeyReference key_reference = {
-      .fek_sig = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE),
-      .fnek_sig = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE),
+      .fek_sig = CreateSecureRandomBlob(kCryptohomeDefaultKeySignatureSize),
+      .fnek_sig = CreateSecureRandomBlob(kCryptohomeDefaultKeySignatureSize),
   };
 
   const brillo::SecureBlob chaps_key =
-      CreateSecureRandomBlob(CRYPTOHOME_CHAPS_KEY_LENGTH);
+      CreateSecureRandomBlob(kCryptohomeChapsKeyLength);
 
   return FileSystemKeyset(key, key_reference, chaps_key);
 }

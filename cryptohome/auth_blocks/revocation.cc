@@ -114,7 +114,7 @@ CryptoStatus Create(LECredentialManager* le_manager,
   brillo::SecureBlob per_credential_secret = key_blobs->vkk_key.value();
 
   brillo::SecureBlob salt =
-      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+      CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize);
 
   // Derive two secrets from per_credential_secret:
   // le_secret to be stored in LECredentialManager,

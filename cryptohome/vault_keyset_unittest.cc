@@ -152,17 +152,16 @@ TEST_F(VaultKeysetTest, AllocateRandom) {
   vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.GetFek().size());
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE,
+  EXPECT_EQ(kCryptohomeDefaultKeySize, vault_keyset.GetFek().size());
+  EXPECT_EQ(kCryptohomeDefaultKeySignatureSize,
             vault_keyset.GetFekSig().size());
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE, vault_keyset.GetFekSalt().size());
+  EXPECT_EQ(kCryptohomeDefaultKeySaltSize, vault_keyset.GetFekSalt().size());
 
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.GetFnek().size());
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE,
+  EXPECT_EQ(kCryptohomeDefaultKeySize, vault_keyset.GetFnek().size());
+  EXPECT_EQ(kCryptohomeDefaultKeySignatureSize,
             vault_keyset.GetFnekSig().size());
-  EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE,
-            vault_keyset.GetFnekSalt().size());
-  EXPECT_EQ(CRYPTOHOME_CHAPS_KEY_LENGTH, vault_keyset.GetChapsKey().size());
+  EXPECT_EQ(kCryptohomeDefaultKeySaltSize, vault_keyset.GetFnekSalt().size());
+  EXPECT_EQ(kCryptohomeChapsKeyLength, vault_keyset.GetChapsKey().size());
 }
 
 TEST_F(VaultKeysetTest, SerializeTest) {

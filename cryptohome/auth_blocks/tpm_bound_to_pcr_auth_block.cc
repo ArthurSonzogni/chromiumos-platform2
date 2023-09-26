@@ -146,7 +146,7 @@ void TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
 
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
   brillo::SecureBlob salt =
-      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+      CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize);
 
   const ObfuscatedUsername& obfuscated_username =
       user_input.obfuscated_username.value();

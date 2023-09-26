@@ -209,9 +209,9 @@ void TpmEccAuthBlock::TryCreate(const AuthInput& user_input,
   // |extended_sealed_hvkkm|, which are stored in the serialized vault keyset.
   hwsec::Key cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
 
-  auth_state.salt = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  auth_state.salt = CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize);
 
-  if (auth_state.salt.value().size() != CRYPTOHOME_DEFAULT_KEY_SALT_SIZE) {
+  if (auth_state.salt.value().size() != kCryptohomeDefaultKeySaltSize) {
     LOG(ERROR) << __func__ << ": Wrong salt size.";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(

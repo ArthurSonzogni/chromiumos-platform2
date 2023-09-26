@@ -1018,7 +1018,7 @@ message GetSystemSaltRequest {
 message GetSystemSaltReply {
   // The system salt.
   // Note that the caller should not expect the system salt to be a particular
-  // size. The length is defined by the CRYPTOHOME_DEFAULT_SALT_LENGTH
+  // size. The length is defined by the kCryptohomeDefaultSaltLength
   // constant.
   bytes salt = 1;
 }

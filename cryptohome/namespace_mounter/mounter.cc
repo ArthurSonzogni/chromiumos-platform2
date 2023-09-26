@@ -40,7 +40,7 @@ namespace {
 
 const char kEphemeralCryptohomeRootContext[] =
     "u:object_r:cros_home_shadow_uid:s0";
-const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
+const int kDefaultEcryptfsKeySize = kCryptohomeAesKeyBytes;
 
 FilePath GetUserEphemeralMountDirectory(
     const ObfuscatedUsername& obfuscated_username) {

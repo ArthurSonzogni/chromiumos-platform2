@@ -3113,7 +3113,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
       // generated independently.
       LOG(INFO) << "Adding random reset secret for UserSecretStash.";
       auth_input.reset_secret =
-          CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+          CreateSecureRandomBlob(kCryptohomeResetSecretLength);
       return std::move(auth_input);
     }
 

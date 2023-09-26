@@ -58,7 +58,7 @@ bool GetOrCreateSalt(Platform* platform,
     LOG(ERROR) << "Creating new salt at " << salt_file.value() << " ("
                << file_len << ")";
     // If this salt doesn't exist, automatically create it.
-    local_salt = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_SALT_LENGTH);
+    local_salt = CreateSecureRandomBlob(kCryptohomeDefaultSaltLength);
     if (!platform->WriteSecureBlobToFileAtomicDurable(salt_file, local_salt,
                                                       kSaltFilePermissions)) {
       LOG(ERROR) << "Could not write user salt";

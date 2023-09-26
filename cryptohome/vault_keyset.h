@@ -5,7 +5,6 @@
 #ifndef CRYPTOHOME_VAULT_KEYSET_H_
 #define CRYPTOHOME_VAULT_KEYSET_H_
 
-#include <memory>
 #include <optional>
 #include <string>
 
@@ -19,13 +18,22 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
 class FileSystemKeyset;
 class Platform;
+
+// Defines the actual physical layout of a keyset.
+struct VaultKeysetKeys {
+  unsigned char fek[kCryptohomeDefaultKeySize];
+  unsigned char fek_sig[kCryptohomeDefaultKeySignatureSize];
+  unsigned char fek_salt[kCryptohomeDefaultKeySaltSize];
+  unsigned char fnek[kCryptohomeDefaultKeySize];
+  unsigned char fnek_sig[kCryptohomeDefaultKeySignatureSize];
+  unsigned char fnek_salt[kCryptohomeDefaultKeySaltSize];
+} __attribute__((__packed__));
 
 // VaultKeyset holds the File Encryption Key (FEK) and File Name Encryption Key
 // (FNEK) and their corresponding signatures.

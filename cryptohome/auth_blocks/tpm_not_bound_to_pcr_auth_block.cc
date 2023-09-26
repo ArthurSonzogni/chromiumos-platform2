@@ -308,7 +308,7 @@ void TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
 
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
   brillo::SecureBlob salt =
-      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+      CreateSecureRandomBlob(kCryptohomeDefaultKeySaltSize);
 
   // If the key still isn't loaded, fail the operation.
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
