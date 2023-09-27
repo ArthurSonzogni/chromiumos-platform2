@@ -21,8 +21,7 @@ const HIBERMAN_DBUS_PATH: &str = "/org/chromium/Hibernate";
 const HIBERMAN_RESUME_DBUS_INTERFACE: &str = "org.chromium.HibernateResumeInterface";
 
 pub enum DBusEvent {
-    UserAuthWithAccountId { account_id: String },
-    UserAuthWithSessionId { session_id: Vec<u8> },
+    UserAuthenticated { session_id: Vec<u8> },
     AbortRequest { reason: String },
 }
 
@@ -63,13 +62,12 @@ impl DBusServer {
         let completion_receiver = self.completion_receiver.take().unwrap();
 
         // Clone the completion_receiver for multiple closures. Each closure needs to own its receiver.
-        let completion_as_receiver = completion_receiver.clone();
         let completion_abort_receiver = completion_receiver.clone();
+        let completion_auth_receiver = completion_receiver;
 
         let (sender, receiver) = channel();
         let abort_sender = sender.clone();
-        let user_auth_session_sender = sender.clone();
-        let user_auth_sender = sender;
+        let auth_sender = sender;
 
         let conn = Connection::new_system().context("Failed to start local dbus connection")?;
         conn.request_name(HIBERMAN_DBUS_NAME, false, false, false)
@@ -79,42 +77,19 @@ impl DBusServer {
         // Build a new HibernateResumeInterface.
         let iface_token = crossroads.register(HIBERMAN_RESUME_DBUS_INTERFACE, |b| {
             b.method(
-                "ResumeFromHibernate",
-                ("account_id",),
-                (),
-                move |_, _, (account_id,): (String,)| {
-                    // Send the auth event to the main thread.
-                    if let Err(e) =
-                        user_auth_sender.send(DBusEvent::UserAuthWithAccountId { account_id })
-                    {
-                        error!(
-                            "Failed to send resume account id request to the main thread: {:?}",
-                            e
-                        );
-                    }
-                    // recv() returns an error when the sender is dropped.
-                    _ = completion_receiver.recv();
-                    debug!("ResumeFromHibernate completing");
-                    Ok(())
-                },
-            );
-
-            b.method(
                 "ResumeFromHibernateAS",
                 ("auth_session_id",),
                 (),
                 move |_, _, (session_id,): (Vec<u8>,)| {
                     // Send the auth event to the main thread.
-                    if let Err(e) =
-                        user_auth_session_sender.send(DBusEvent::UserAuthWithSessionId { session_id })
-                    {
+                    if let Err(e) = auth_sender.send(DBusEvent::UserAuthenticated { session_id }) {
                         error!(
-                            "Failed to send resume auth session id request to the main thread: {:?}",
+                            "Failed to send resume auth request to the main thread: {:?}",
                             e
                         );
                     }
                     // recv() returns an error when the sender is dropped.
-                    _ = completion_as_receiver.recv();
+                    _ = completion_auth_receiver.recv();
                     debug!("ResumeFromHibernateAS completing");
                     Ok(())
                 },
