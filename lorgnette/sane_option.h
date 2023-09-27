@@ -28,6 +28,7 @@ class SaneOption {
   bool Set(const std::vector<int>& i);
   bool Set(const std::string& s);
   bool Set(const char* s);
+  bool Set(const ScannerOption& value);
 
   template <typename T>
   std::optional<T> Get() const = delete;
@@ -55,6 +56,7 @@ class SaneOption {
   size_t GetSize() const;
   std::optional<SaneConstraint> GetConstraint() const;
   bool IsActive() const;
+  SANE_Action GetAction() const;
 
   // Wrapper functions to process the embedded constraint.
   std::optional<std::vector<std::string>> GetValidStringValues() const;
@@ -81,6 +83,8 @@ class SaneOption {
   bool active_;           // SANE_OPTION_IS_ACTIVE is true for capabilities.
                           // Inactive options do not contain a valid value.
   bool advanced_;         // Capabilities contains CAP_ADVANCED.
+  SANE_Action action_;    // The action needed to set the current value with
+                          // sane_control_option().
   std::optional<SaneConstraint> constraint_;
 
   // Only one of these will be set, depending on type_.

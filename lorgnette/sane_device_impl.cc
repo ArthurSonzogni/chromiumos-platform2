@@ -583,24 +583,28 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
 bool SaneDeviceImpl::UpdateDeviceOption(brillo::ErrorPtr* error,
                                         SaneOption* option) {
   SANE_Int result_flags;
+  SANE_Action action = option->GetAction();
   SANE_Status status = libsane_->sane_control_option(
-      handle_, option->GetIndex(), SANE_ACTION_SET_VALUE, option->GetPointer(),
-      &result_flags);
+      handle_, option->GetIndex(), action, option->GetPointer(), &result_flags);
   if (status != SANE_STATUS_GOOD) {
-    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
-                         "Unable to set " + option->GetName() + " to " +
-                             option->DisplayValue() + " : " +
-                             sane_strstatus(status));
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Unable to set %s to %s: %s", option->GetName().c_str(),
+        option->DisplayValue().c_str(), sane_strstatus(status));
     // Reload options, to bring local value and device value back in sync.
     LoadOptions(error);
     return false;
   }
 
-  // We also reload if we get SANE_INFO_INEXACT because we want to know
-  // what value the printer changed our requested value to.
-  // As an optimization, we could only reload this particular option.
-  if (result_flags & (SANE_INFO_RELOAD_OPTIONS | SANE_INFO_INEXACT)) {
-    return LoadOptions(error);
+  // Reload options if they're out of date:
+  //   1. The backend tells us to reload with SANE_INFO_RELOAD_OPTIONS.
+  //   2. The backend changed the value and returned SANE_INFO_INEXACT.
+  //   3. The new value is unknown because automatic setting was requested.
+  // For cases 2 and 3, we could reload just this option as an optimization,
+  // but this is not currently implemented.
+  if ((result_flags & (SANE_INFO_RELOAD_OPTIONS | SANE_INFO_INEXACT)) ||
+      action == SANE_ACTION_SET_AUTO) {
+    LoadOptions(error);
   }
   return true;
 }

@@ -862,4 +862,341 @@ TEST(SaneOptionToProto, UnitMapping) {
   }
 }
 
+TEST(SaneOptionFromProto, EmptyProtoFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word)), 1);
+  ScannerOption value;
+  EXPECT_FALSE(option.Set(value));
+}
+
+TEST(SaneOptionFromProto, CannotSetGroupOption) {
+  SaneOption option(CreateDescriptor("Test Name", SANE_TYPE_GROUP, 0), 1);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_GROUP);
+  value.set_bool_value(true);
+  EXPECT_FALSE(option.Set(value));
+}
+
+TEST(SaneOptionFromProto, CannotSetButtonOption) {
+  SaneOption option(CreateDescriptor("Test Name", SANE_TYPE_BUTTON, 0), 1);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_BUTTON);
+  value.set_bool_value(true);
+  EXPECT_FALSE(option.Set(value));
+}
+
+TEST(SaneOptionFromProto, SetBoolToValue) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_BOOL, sizeof(SANE_Word)), 1);
+  option.Set(false);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_BOOL);
+  value.set_bool_value(true);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "true");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetBoolAutomatic) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_BOOL, sizeof(SANE_Word));
+  desc.cap |= SANE_CAP_AUTOMATIC;
+  SaneOption option(desc, 1);
+  option.Set(false);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_BOOL);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "[autoset]");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_AUTO);
+}
+
+TEST(SaneOptionFromProto, SetBoolWrongTypeFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_BOOL, sizeof(SANE_Word)), 1);
+  option.Set(false);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_BOOL);
+  value.set_string_value("oops");
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "false");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetStringToValue) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_STRING, 5 * sizeof(SANE_Char)),
+      1);
+  option.Set("1234");
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_STRING);
+  value.set_string_value("5432");
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "5432");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetStringTooLongFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_STRING, 5 * sizeof(SANE_Char)),
+      1);
+  option.Set("1234");
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_STRING);
+  value.set_string_value("54321");
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "1234");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetStringAutomatic) {
+  auto desc =
+      CreateDescriptor("Test Name", SANE_TYPE_STRING, 5 * sizeof(SANE_Char));
+  desc.cap |= SANE_CAP_AUTOMATIC;
+  SaneOption option(desc, 1);
+  option.Set("1234");
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_STRING);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "[autoset]");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_AUTO);
+}
+
+TEST(SaneOptionFromProto, SetStringWrongTypeFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_STRING, 5 * sizeof(SANE_Char)),
+      1);
+  option.Set("1234");
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_STRING);
+  value.set_bool_value(true);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "1234");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetIntToValue) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word)), 1);
+  option.Set(42);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_INT);
+  value.mutable_int_value()->add_value(24);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "24");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetIntTooLongFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word)), 1);
+  option.Set(42);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_INT);
+  value.mutable_int_value()->add_value(23);
+  value.mutable_int_value()->add_value(24);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetIntAutomatic) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word));
+  desc.cap |= SANE_CAP_AUTOMATIC;
+  SaneOption option(desc, 1);
+  option.Set(42);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_INT);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "[autoset]");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_AUTO);
+}
+
+TEST(SaneOptionFromProto, SetIntWrongTypeFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, sizeof(SANE_Word)), 1);
+  option.Set(42);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_INT);
+  value.set_bool_value(true);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetIntListToValue) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 2 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<int>{42, 43});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_INT);
+  value.mutable_int_value()->add_value(24);
+  value.mutable_int_value()->add_value(25);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "24, 25");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetIntListTooLongFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 2 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<int>{42, 43});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_INT);
+  value.mutable_int_value()->add_value(23);
+  value.mutable_int_value()->add_value(24);
+  value.mutable_int_value()->add_value(25);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42, 43");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetIntListTooShortFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 2 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<int>{42, 43});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_INT);
+  value.mutable_int_value()->add_value(24);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42, 43");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetIntListAutomatic) {
+  auto desc =
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 2 * sizeof(SANE_Word));
+  desc.cap |= SANE_CAP_AUTOMATIC;
+  SaneOption option(desc, 1);
+  option.Set(std::vector<int>{42, 43});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_INT);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "[autoset]");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_AUTO);
+}
+
+TEST(SaneOptionFromProto, SetIntListWrongTypeFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_INT, 2 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<int>{42, 43});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_INT);
+  value.set_bool_value(true);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42, 43");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetFixedToValue) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, sizeof(SANE_Word)), 1);
+  option.Set(42.0);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_FIXED);
+  value.mutable_fixed_value()->add_value(24.5);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "24.5");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetFixedTooLongFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, sizeof(SANE_Word)), 1);
+  option.Set(42.0);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_FIXED);
+  value.mutable_fixed_value()->add_value(23.5);
+  value.mutable_fixed_value()->add_value(24.75);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42.0");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetFixedAutomatic) {
+  auto desc = CreateDescriptor("Test Name", SANE_TYPE_FIXED, sizeof(SANE_Word));
+  desc.cap |= SANE_CAP_AUTOMATIC;
+  SaneOption option(desc, 1);
+  option.Set(42.0);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_FIXED);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "[autoset]");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_AUTO);
+}
+
+TEST(SaneOptionFromProto, SetFixedWrongTypeFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, sizeof(SANE_Word)), 1);
+  option.Set(42.0);
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_FIXED);
+  value.set_bool_value(true);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42.0");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetFixedListToValue) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 2 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<double>{42.0, 43.5});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_FIXED);
+  value.mutable_fixed_value()->add_value(24.5);
+  value.mutable_fixed_value()->add_value(25.2);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "24.5, 25.2");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetFixedListTooLongFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 2 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<double>{42.0, 43.5});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_FIXED);
+  value.mutable_fixed_value()->add_value(23.0);
+  value.mutable_fixed_value()->add_value(24.0);
+  value.mutable_fixed_value()->add_value(25.0);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42.0, 43.5");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetFixedListTooShortFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 2 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<double>{42.0, 43.5});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_FIXED);
+  value.mutable_fixed_value()->add_value(24.5);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42.0, 43.5");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
+TEST(SaneOptionFromProto, SetFixedListAutomatic) {
+  auto desc =
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 2 * sizeof(SANE_Word));
+  desc.cap |= SANE_CAP_AUTOMATIC;
+  SaneOption option(desc, 1);
+  option.Set(std::vector<double>{42.0, 43.5});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_FIXED);
+  EXPECT_TRUE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "[autoset]");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_AUTO);
+}
+
+TEST(SaneOptionFromProto, SetFixedListWrongTypeFails) {
+  SaneOption option(
+      CreateDescriptor("Test Name", SANE_TYPE_FIXED, 2 * sizeof(SANE_Word)), 1);
+  option.Set(std::vector<double>{42.0, 43.5});
+  ScannerOption value;
+  value.set_option_type(OptionType::TYPE_FIXED);
+  value.set_bool_value(true);
+  EXPECT_FALSE(option.Set(value));
+  EXPECT_EQ(option.DisplayValue(), "42.0, 43.5");
+  EXPECT_EQ(option.GetAction(), SANE_ACTION_SET_VALUE);
+}
+
 }  // namespace lorgnette

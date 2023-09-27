@@ -113,6 +113,7 @@ SaneOption::SaneOption(const SANE_Option_Descriptor& opt, int index) {
   type_ = opt.type;
   unit_ = opt.unit;
   constraint_ = SaneConstraint::Create(opt);
+  action_ = SANE_ACTION_SET_VALUE;
 
   ParseCapabilities(opt.cap);
   ReserveValueSize(opt);
@@ -208,6 +209,7 @@ bool SaneOption::Set(bool b) {
   }
 
   bool_data_ = b ? SANE_TRUE : SANE_FALSE;
+  action_ = SANE_ACTION_SET_VALUE;
   return true;
 }
 
@@ -222,16 +224,19 @@ bool SaneOption::Set(int i) {
         return false;
       }
       bool_data_ = i == SANE_TRUE ? SANE_TRUE : SANE_FALSE;
+      action_ = SANE_ACTION_SET_VALUE;
       return true;
     case SANE_TYPE_INT:
       if (GetSize() > 0) {
         int_data_->at(0) = i;
+        action_ = SANE_ACTION_SET_VALUE;
         return true;
       }
       return false;
     case SANE_TYPE_FIXED:
       if (GetSize() > 0) {
         fixed_data_->at(0) = SANE_FIX(static_cast<double>(i));
+        action_ = SANE_ACTION_SET_VALUE;
         return true;
       }
       return false;
@@ -252,6 +257,7 @@ bool SaneOption::Set(const std::vector<int>& i) {
   }
 
   std::copy(i.begin(), i.end(), int_data_->begin());
+  action_ = SANE_ACTION_SET_VALUE;
   return true;
 }
 
@@ -264,12 +270,14 @@ bool SaneOption::Set(double d) {
     case SANE_TYPE_INT:
       if (GetSize() > 0) {
         int_data_->at(0) = static_cast<int>(d);
+        action_ = SANE_ACTION_SET_VALUE;
         return true;
       }
       return false;
     case SANE_TYPE_FIXED:
       if (GetSize() > 0) {
         fixed_data_->at(0) = SANE_FIX(d);
+        action_ = SANE_ACTION_SET_VALUE;
         return true;
       }
       return false;
@@ -292,6 +300,7 @@ bool SaneOption::Set(const std::vector<double>& d) {
   for (int i = 0; i < d.size(); i++) {
     fixed_data_->at(i) = SANE_FIX(d[i]);
   }
+  action_ = SANE_ACTION_SET_VALUE;
   return true;
 }
 
@@ -313,11 +322,83 @@ bool SaneOption::Set(const std::string& s) {
   }
 
   memcpy(string_data_->data(), s.c_str(), size_with_null);
+  action_ = SANE_ACTION_SET_VALUE;
   return true;
 }
 
 bool SaneOption::Set(const char* s) {
   return Set(std::string(s));
+}
+
+bool SaneOption::Set(const ScannerOption& value) {
+  switch (value.option_type()) {
+    case TYPE_BOOL:
+      if (value.has_bool_value()) {
+        if (!Set(value.bool_value())) {
+          return false;
+        }
+      } else if (auto_settable_) {
+        action_ = SANE_ACTION_SET_AUTO;
+      } else {
+        LOG(ERROR) << __func__ << ": Cannot set SANE_TYPE_BOOL option "
+                   << GetName() << " without a boolean value";
+        return false;
+      }
+      break;
+
+    case TYPE_INT:
+      if (value.has_int_value() && value.int_value().value_size() > 0) {
+        if (!Set(std::vector<int>{value.int_value().value().begin(),
+                                  value.int_value().value().end()})) {
+          return false;
+        }
+      } else if (auto_settable_) {
+        action_ = SANE_ACTION_SET_AUTO;
+      } else {
+        LOG(ERROR) << __func__ << ": Cannot set SANE_TYPE_INT option "
+                   << GetName() << " without an int value";
+        return false;
+      }
+      break;
+
+    case TYPE_FIXED:
+      if (value.has_fixed_value() && value.fixed_value().value_size() > 0) {
+        if (!Set(std::vector<double>{value.fixed_value().value().begin(),
+                                     value.fixed_value().value().end()})) {
+          return false;
+        }
+      } else if (auto_settable_) {
+        action_ = SANE_ACTION_SET_AUTO;
+      } else {
+        LOG(ERROR) << __func__ << ": Cannot set SANE_TYPE_FIXED option "
+                   << GetName() << " without a double value";
+        return false;
+      }
+      break;
+
+    case TYPE_STRING:
+      if (value.has_string_value()) {
+        if (!Set(value.string_value())) {
+          return false;
+        }
+      } else if (auto_settable_) {
+        action_ = SANE_ACTION_SET_AUTO;
+      } else {
+        LOG(ERROR) << __func__ << ": Cannot set SANE_TYPE_STRING option "
+                   << GetName() << " without a string value";
+        return false;
+      }
+      break;
+
+    default:
+      LOG(ERROR) << __func__ << ": Attempted to set option " << GetName()
+                 << " of type " << type_ << " that does not take a value";
+      return false;
+  }
+
+  LOG(INFO) << __func__ << ": Setting option " << GetName() << " at index "
+            << GetIndex() << " to " << DisplayValue();
+  return true;
 }
 
 template <>
@@ -472,9 +553,16 @@ bool SaneOption::IsActive() const {
   return active_;
 }
 
+SANE_Action SaneOption::GetAction() const {
+  return action_;
+}
+
 std::string SaneOption::DisplayValue() const {
   if (!active_) {
     return "[inactive]";
+  }
+  if (action_ == SANE_ACTION_SET_AUTO) {
+    return "[autoset]";
   }
 
   switch (type_) {
