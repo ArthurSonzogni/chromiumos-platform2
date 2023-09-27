@@ -44,8 +44,8 @@ lseek: 1
 madvise: 1
 mkdir: 1
 mlock: 1
-mmap: arg2 == PROT_READ || arg2 == PROT_READ|PROT_EXEC || arg2 == PROT_READ|PROT_WRITE || arg2 == PROT_NONE
-mprotect: arg2 == PROT_READ || arg2 == PROT_NONE || arg2 == PROT_READ|PROT_WRITE
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munlock: 1
 munmap: 1
 nanosleep: 1

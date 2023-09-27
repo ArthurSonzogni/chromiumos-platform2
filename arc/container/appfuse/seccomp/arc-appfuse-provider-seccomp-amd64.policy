@@ -11,8 +11,8 @@ read: 1
 gettid: 1
 close: 1
 epoll_ctl: 1
-# Prevent PROT_WRITE | PROT_EXEC
-mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+# Prevent PROT_WRITE | PROT_EXEC.
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 recvmsg: 1
 geteuid: 1
 getgid: 1
@@ -26,8 +26,8 @@ lstat: 1
 sendmsg: 1
 fcntl: 1
 pipe2: 1
-# Prevent PROT_WRITE | PROT_EXEC
-mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+# Prevent PROT_WRITE | PROT_EXEC.
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 getdents: 1
 getdents64: 1
 munmap: 1

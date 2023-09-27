@@ -58,8 +58,8 @@ ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == SIOCGIFINDEX || \
 listen: 1
 lseek: 1
 madvise: 1
-mmap: arg2 in ~PROT_WRITE || arg2 in ~PROT_EXEC
-mprotect: arg2 in ~PROT_WRITE || arg2 in ~PROT_EXEC
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 nanosleep: 1
 newfstatat: 1

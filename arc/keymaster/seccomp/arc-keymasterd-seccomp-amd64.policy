@@ -54,11 +54,11 @@ tgkill: 1
 clock_gettime: 1
 gettimeofday: 1
 newfstatat: 1
-# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
-mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+# Prevent PROT_WRITE | PROT_EXEC.
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
-# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
-mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+# Prevent PROT_WRITE | PROT_EXEC.
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 prctl: arg0 == PR_SET_NAME
 clone: 1
 setpriority: 1

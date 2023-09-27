@@ -18,10 +18,8 @@ getdents64: 1
 ioctl: arg1 == FIOCLEX
 pwrite64: 1
 pread64: 1
-# Disallow mmap with PROT_EXEC set.  The syntax here doesn't allow bit
-# negation, thus the manually negated mask constant.
-mmap: arg2 in 0xfffffffb
-mprotect: arg2 in 0xfffffffb
+mmap: arg2 in ~PROT_EXEC
+mprotect: arg2 in ~PROT_EXEC
 utimensat: 1
 rt_sigaction: 1
 fstatfs: 1

@@ -14,8 +14,8 @@ gettid: 1
 close: 1
 recvmsg: 1
 epoll_ctl: 1
-# Prevent PROT_WRITE | PROT_EXEC
-mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+# Prevent PROT_WRITE | PROT_EXEC.
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 geteuid32: 1
 getegid32: 1
 getuid32: 1
@@ -28,8 +28,8 @@ sendmsg: 1
 fcntl64: 1
 pipe2: 1
 gettimeofday: 1
-# Prevent PROT_WRITE | PROT_EXEC
-mmap2: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+# Prevent PROT_WRITE | PROT_EXEC.
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 epoll_create1: 1
 umount2: 1
 poll: 1

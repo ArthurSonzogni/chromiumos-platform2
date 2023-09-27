@@ -14,8 +14,8 @@ fcntl: 1
 fstat: 1
 futex: 1
 lseek: 1
-# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
-mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+# Prevent PROT_WRITE | PROT_EXEC.
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 munmap: 1
 newfstatat: 1
@@ -36,8 +36,8 @@ arch_prctl: 1
 brk: 1
 execve: 1
 getrlimit: 1
-# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
-mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+# Prevent PROT_WRITE | PROT_EXEC.
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 stat: 1
 rt_sigaction: 1
 rt_sigprocmask: 1

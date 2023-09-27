@@ -38,8 +38,8 @@ getuid: 1
 ioctl: arg1 == TCGETS || arg1 == FIOCLEX
 lseek: 1
 memfd_create: 1
-mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
-mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 nanosleep: 1
 newfstatat: 1

@@ -5,11 +5,11 @@
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
-# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
-mmap: arg2 in ~PROT_WRITE || arg2 in ~PROT_EXEC
+# Prevent PROT_WRITE | PROT_EXEC.
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 newfstatat: 1
-# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
-mprotect: arg2 in ~PROT_WRITE || arg2 in ~PROT_EXEC
+# Prevent PROT_WRITE | PROT_EXEC.
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
 close: 1
 munmap: 1

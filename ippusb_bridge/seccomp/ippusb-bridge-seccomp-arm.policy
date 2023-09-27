@@ -66,8 +66,8 @@ lseek: 1
 lstat: 1
 lstat64: 1
 madvise: 1
-mmap2: arg2 in ~PROT_WRITE || arg2 in ~PROT_EXEC
-mprotect: arg2 in ~PROT_WRITE || arg2 in ~PROT_EXEC
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 nanosleep: 1
 open: 1
