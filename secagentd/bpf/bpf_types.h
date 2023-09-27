@@ -210,6 +210,7 @@ struct cros_network_5_tuple {
  * marked for cleanup, this is because a single socket could send datagrams to
  * different IP addresses and ports.
  */
+
 struct cros_flow_map_key {
   struct cros_network_5_tuple five_tuple;
   uint64_t sock;  // Holds struct socket * but force to 64-bit value
@@ -222,6 +223,7 @@ struct cros_flow_map_value {
   enum cros_network_socket_direction direction;
   uint32_t tx_bytes;
   uint32_t rx_bytes;
+  struct cros_process_task_info task_info;
   // TODO(b/264550183): add remote_hostname
   // TODO(b/264550183): add application protocol
   // TODO(b/264550183): add http_host
@@ -253,7 +255,6 @@ struct cros_synthetic_network_flow {
   // We use the slightly cumbersome map data structures to
   // minimize the amount of copying that is done in userspace.
   struct cros_flow_map_key flow_map_key;
-  struct cros_sock_to_process_map_value process_map_value;
   struct cros_flow_map_value flow_map_value;
 } __attribute__((aligned(8)));
 

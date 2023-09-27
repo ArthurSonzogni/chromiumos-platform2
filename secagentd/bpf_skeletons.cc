@@ -151,12 +151,11 @@ void NetworkBpfSkeleton::ScanFlowMap() {
   int rv = 0;
   auto& skel_maps = default_bpf_skeleton_->skel_->maps;
   auto& skel_flow_map = skel_maps.cros_network_flow_map;
-  auto& skel_process_map = skel_maps.process_map;
   std::unordered_set<uint64_t> active_sockets;
 
-  // build a set of deceased socket identifiers.
+  // Build a set of currently active sockets.
+  // This will let us determine which network flows can be cleaned up.
   active_sockets = GetActiveSocketsSet();
-
   bpf::cros_flow_map_key* cur_key = nullptr;
   bpf::cros_flow_map_key* next_key = nullptr;
   std::vector<bpf::cros_flow_map_key> flow_map_entries_to_delete;
@@ -186,19 +185,6 @@ void NetworkBpfSkeleton::ScanFlowMap() {
         // delete elements while we're iterating through the map.
         flow_map_entries_to_delete.push_back(*next_key);
       }
-      if (platform_->BpfMapLookupElem(
-              skel_process_map, &cur_key->sock, sizeof(cur_key->sock),
-              &event_flow.process_map_value,
-              sizeof(event_flow.process_map_value), 0) < 0) {
-        LOG(ERROR) << "Error fetching process related information for a "
-                      "flow entry.";
-        // TODO(b:277815178): Add a UMA metric to log errors.
-        continue;
-      }
-      if (event_flow_map_value.garbage_collect_me) {
-        platform_->BpfMapDeleteElem(skel_process_map, &(next_key->sock),
-                                    sizeof(next_key->sock), 0);
-      }
       default_bpf_skeleton_->callbacks_.ring_buffer_event_callback.Run(
           cros_event);
     }
@@ -212,5 +198,4 @@ void NetworkBpfSkeleton::ScanFlowMap() {
 void NetworkBpfSkeleton::RegisterCallbacks(BpfCallbacks cbs) {
   default_bpf_skeleton_->RegisterCallbacks(std::move(cbs));
 }
-
 }  // namespace secagentd

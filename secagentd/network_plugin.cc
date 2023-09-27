@@ -309,8 +309,7 @@ NetworkPlugin::MakeFlowEvent(
       flow->set_direction(pb::NetworkFlow::DIRECTION_UNKNOWN);
       break;
   }
-  FillProcessTree(flow_proto.get(),
-                  flow_event.process_map_value.common.process);
+  FillProcessTree(flow_proto.get(), flow_event.flow_map_value.task_info);
   // TODO(b:294579287): Make event filtering more generic, before doing that
   // process cache hits need to be drastically improved.
   if (flow_proto->process().commandline().starts_with(

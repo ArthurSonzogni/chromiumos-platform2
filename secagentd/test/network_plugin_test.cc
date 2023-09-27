@@ -208,7 +208,7 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
   flow.flow_map_key.five_tuple = tuple;
   flow.flow_map_value = val;
 
-  flow.process_map_value.common.process = kDefaultProcess;
+  flow.flow_map_value.task_info = kDefaultProcess;
 
   auto event = CreateCrosFlowEvent(flow);
   std::vector<std::unique_ptr<pb::Process>> hierarchy;
@@ -221,8 +221,7 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
     hierarchy.back()->set_rel_start_time_s(p.rel_start_time_s);
     expected_hierarchy.emplace_back(*hierarchy.back());
   }
-  auto& process =
-      event.data.network_event.data.flow.process_map_value.common.process;
+  auto& process = event.data.network_event.data.flow.flow_map_value.task_info;
   EXPECT_CALL(*process_cache_,
               GetProcessHierarchy(process.pid, process.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
