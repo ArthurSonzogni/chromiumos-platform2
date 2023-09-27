@@ -12,7 +12,7 @@
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power_v2.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
-#include "diagnostics/cros_healthd/routines/led/led_lit_up_v2.h"
+#include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_v2.h"

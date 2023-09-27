@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/led/led_lit_up_v2.h"
+#include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
 
 #include <optional>
 #include <string>

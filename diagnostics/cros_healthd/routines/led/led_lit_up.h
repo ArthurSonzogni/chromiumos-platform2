@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_LED_LED_LIT_UP_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_LED_LED_LIT_UP_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_LED_LED_LIT_UP_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_LED_LED_LIT_UP_H_
 
 #include <optional>
 #include <string>
@@ -66,4 +66,4 @@ class LedLitUpV2Routine final : public BaseRoutineControl {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_LED_LED_LIT_UP_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_LED_LED_LIT_UP_H_
