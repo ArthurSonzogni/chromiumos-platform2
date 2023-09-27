@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# # -*- coding: utf-8 -*-
 # Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -8,16 +7,17 @@
 
 import argparse
 from distutils.dir_util import copy_tree
-from enum import Enum
+import enum
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 
 
-class PackageType(Enum):
+class PackageType(enum.Enum):
     """Packaging options for different firmwares or cust packs."""
 
     L850_MAIN_FW = "l850-main-fw"
@@ -25,6 +25,7 @@ class PackageType(Enum):
     L850_OEM_DIR_ONLY = "l850-oem-dir"
     NL668_MAIN_FW = "nl668-main-fw"
     FM101_MAIN_FW = "fm101-main-fw"
+    EM060_FW = "em060-fw"
 
     # FM350 firmware payloads
     FM350_MAIN_FW = "fm350-main-fw"  # 81600... directory
@@ -39,10 +40,12 @@ class PackageType(Enum):
 
 MIRROR_PATH = "gs://chromeos-localmirror/distfiles/"
 FIBOCOM_TARBALL_PREFIX = "cellular-firmware-fibocom-"
+QUECTEL_TARBALL_PREFIX = "cellular-firmware-quectel-"
 L850_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + "l850-"
 NL668_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + "nl668-"
 FM101_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + "fm101-"
 FM350_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + "fm350-"
+EM060_TARBALL_PREFIX = QUECTEL_TARBALL_PREFIX + "em060-"
 
 FM350_MISC_PREFIXES = ["OEM_OTA_", "DEV_OTA_", "OP_OTA_"]
 
@@ -50,7 +53,7 @@ OEM_FW_PREFIX = "OEM_cust."
 OEM_FW_POSTFIX = "_signed.fls3.xz"
 
 
-class TempDir(object):
+class TempDir:
     """Context manager to make sure temporary directories are cleaned up."""
 
     def __init__(self, keep_tmp_files):
@@ -68,7 +71,7 @@ class TempDir(object):
         return False
 
 
-class FwUploader(object):
+class FwUploader:
     """Class to verify the files and upload the tarball to a gs bucket."""
 
     def __init__(self, path, upload, tarball_dir_name):
@@ -330,6 +333,72 @@ class FM350MiscFw(FwUploader):
         return True
 
 
+class EM060Fw(FwUploader):
+    """Uploader class for EM060 payloads.
+
+    This should be used for oem.bin, main.bin, and carrier.bin payloads.
+
+    The expectation is that the .bin file is sitting in a parent directory
+    whose name is the firmware version, for instance "01.300/main.bin". The
+    upload_fw_to_gs_bucket script should be provided the path to the .bin file
+    as path argument.
+    """
+
+    def __init__(self, path, upload):
+        super().__init__(path, upload, None)
+
+        self.firmware_version = None
+        self.payload_type = None
+
+    def validate(self):
+        fw_file_to_directory_name = {
+            "oem.bin": "OEM",
+            "main.bin": "MAIN",
+            "carrier.bin": "CARRIER",
+        }
+
+        if os.path.isdir(self.path):
+            logging.error("Path should point to an EM060 firmware file")
+            return False
+        if self.basename not in fw_file_to_directory_name.keys():
+            logging.error("EM060 file should have name {main,carrier,oem}.bin")
+            return False
+
+        # Grab package version from parent directory name, i.e. "01.300"
+        parent_dir_name = self.path.split("/")[-2]
+        parsed_version = re.findall(r"\d{2}.\d{3}", parent_dir_name)
+        if not parsed_version:
+            logging.error(
+                "Parent directory should have version in XX.YYY format"
+            )
+            return False
+
+        self.firmware_version = parsed_version[0]
+
+        # Example path - cellular-firmware-quectel-em060-MAIN-01.200/
+        self.payload_type = fw_file_to_directory_name[self.basename]
+        self.tarball_dir_name = (
+            EM060_TARBALL_PREFIX
+            + self.payload_type
+            + "-"
+            + self.firmware_version
+        )
+
+        return True
+
+    def prepare_files(self, fw_path, target_path):
+        if not self.firmware_version or not self.payload_type:
+            return False
+
+        package_dir_structure = os.path.join(
+            target_path, self.payload_type, self.firmware_version
+        )
+        logging.info("Copying %s into %s", fw_path, package_dir_structure)
+        os.makedirs(package_dir_structure)
+        shutil.copy(fw_path, package_dir_structure)
+        return True
+
+
 def parse_arguments(argv):
     """Parses command line arguments.
 
@@ -419,6 +488,8 @@ def main(argv):
         PackageType.FM350_CARRIER_FW,
     ]:
         fw_uploader = FM350MiscFw(opts.path, opts.upload)
+    elif opts.type == PackageType.EM060_FW:
+        fw_uploader = EM060Fw(opts.path, opts.upload)
 
     return fw_uploader.process_fw_and_upload(opts.keep_files)
 
