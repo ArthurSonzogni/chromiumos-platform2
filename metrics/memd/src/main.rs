@@ -21,6 +21,7 @@ extern crate env_logger;
 extern crate libc;
 #[macro_use]
 extern crate log;
+extern crate procfs;
 extern crate syslog;
 extern crate tempfile;
 
@@ -28,7 +29,7 @@ extern crate protobuf; // needed by proto_include.rs
 include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
 
 use chrono::prelude::*;
-use {libc::__errno_location, libc::c_void};
+use libc::c_void;
 
 #[cfg(not(test))]
 use dbus::{BusType, Connection, WatchEvent};
@@ -50,12 +51,11 @@ use std::{io, str};
 // Not to be confused with chrono::Duration or the deprecated time::Duration.
 use std::time::Duration;
 
+use procfs::LoadAverage;
 use tempfile::TempDir;
 
 #[cfg(test)]
 mod test;
-
-const PAGE_SIZE: usize = 4096; // old friend
 
 const LOG_DIRECTORY: &str = "/var/log/memd";
 const STATIC_PARAMETERS_LOG: &str = "memd.parameters";
@@ -155,48 +155,6 @@ impl fmt::Display for Error {
 }
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-fn errno() -> i32 {
-    // _errno_location() is trivially safe to call and dereferencing the
-    // returned pointer is always safe because it's guaranteed to be valid and
-    // point to thread-local data.  (Thanks to Zach for this comment.)
-    unsafe { *__errno_location() }
-}
-
-// Returns the string for posix error number |err|.
-fn strerror(err: i32) -> String {
-    let mut buffer = vec![0u8; 128];
-    // |err| is valid because it is the libc errno at all call sites.  |buffer|
-    // is converted to a valid address, and |buffer.len()| is a valid length.
-    let ret = unsafe {
-        libc::strerror_r(
-            err,
-            &mut buffer[0] as *mut u8 as *mut libc::c_char,
-            buffer.len(),
-        )
-    };
-    if ret != 0 {
-        panic!(
-            "strerror_r failed with '{}'; the original error number was '{}'",
-            ret, err
-        );
-    }
-    buffer.resize(
-        buffer
-            .iter()
-            .position(|&a| a == 0u8)
-            .unwrap_or(buffer.len()),
-        0u8,
-    );
-    match String::from_utf8(buffer) {
-        Ok(s) => s,
-        Err(e) => {
-            // Ouch---an error while trying to process another error.
-            // Very unlikely so we just panic.
-            panic!("error {:?} converting to UTF8", e);
-        }
-    }
-}
 
 // Opens a file if it exists, otherwise returns none.
 fn open_maybe(path: &Path) -> Result<Option<File>> {
@@ -548,40 +506,16 @@ impl SampleQueue {
     }
 }
 
-// Returns number of tasks in the run queue as reported in /proc/loadavg, which
-// must be accessible via runnables_file.
-pub fn get_runnables(runnables_file: &File) -> Result<u32> {
-    let content = pread(runnables_file)?;
-    // Example: "0.81 0.66 0.86 22/3873 7043" (22 runnables here).
-    let slash_pos = content.find('/').ok_or("cannot find '/'")?;
-    let space_pos = &content[..slash_pos].rfind(' ').ok_or("cannot find ' '")?;
-    let (value, _) = parse_int_prefix(&content[space_pos + 1..])?;
-    Ok(value)
+// Returns the number of processes currently runnable (running or on ready queue).
+// Rule of thumb:
+// runnable / CPU_count < 3, CPU loading is not high.
+// runnable / CPU_count > 5, CPU loading is very high.
+fn get_runnables() -> Result<u32> {
+    Ok(parse_runnables(LoadAverage::new()?))
 }
 
-// Converts the initial digit characters of |s| to the value of the number they
-// represent.  Returns the number of characters scanned.
-fn parse_int_prefix(s: &str) -> Result<(u32, usize)> {
-    let mut result = 0;
-    let mut count = 0;
-    // Skip whitespace first.
-    for c in s.trim_start().chars() {
-        let x = c.to_digit(10);
-        match x {
-            Some(d) => {
-                result = result * 10 + d;
-                count += 1;
-            }
-            None => {
-                break;
-            }
-        }
-    }
-    if count == 0 {
-        Err(format!("parse_int_prefix: not an int: {}", s).into())
-    } else {
-        Ok((result, count))
-    }
+fn parse_runnables(load_average: LoadAverage) -> u32 {
+    load_average.cur
 }
 
 fn get_vmstats() -> Result<[i64; VMSTAT_VALUES_COUNT]> {
@@ -632,33 +566,6 @@ fn pread_u32(f: &File) -> Result<u32> {
     Ok(String::from_utf8_lossy(&buffer[..length as usize])
         .trim()
         .parse::<u32>()?)
-}
-
-// Reads the content of file |f| starting at offset 0, up to PAGE_SIZE and
-// returns it as a string.
-fn pread(f: &File) -> Result<String> {
-    let mut buffer = vec![0u8; PAGE_SIZE];
-    // pread is safe to call with valid addresses and buffer length.
-    let length = unsafe {
-        libc::pread(
-            f.as_raw_fd(),
-            buffer.as_mut_ptr() as *mut c_void,
-            buffer.len(),
-            0,
-        )
-    };
-    if length == 0 {
-        return Err("unexpected null pread".into());
-    }
-    if length < 0 {
-        return Err(format!("pread failed: {}", strerror(errno())).into());
-    }
-    buffer.resize(length as usize, 0u8);
-
-    // Sysfs files contain only single-byte characters, so from_utf8_unchecked
-    // would be safe for those files.  However, there's no guarantee that this
-    // is only called on sysfs files.
-    Ok(String::from_utf8(buffer)?)
 }
 
 struct Watermarks {
@@ -838,8 +745,6 @@ impl<'a> Sampler<'a> {
         }
 
         let files = Files {
-            runnables_file: File::open(&paths.runnables)
-                .map_err(|e| Error::RunnablesFileError(Box::new(e)))?,
             available_file_option: open_maybe(&paths.available)
                 .map_err(|e| Error::AvailableFileError(e))?,
             low_mem_file_option,
@@ -901,7 +806,7 @@ impl<'a> Sampler<'a> {
             sample.uptime = time;
             sample.sample_type = sample_type;
             sample.available = self.current_available;
-            sample.runnables = get_runnables(&self.files.runnables_file)?;
+            sample.runnables = get_runnables()?;
             sample.info = if cfg!(test) {
                 Sysinfo::fake_sysinfo()?
             } else {
@@ -1304,7 +1209,6 @@ impl SampleType {
 #[derive(Clone)]
 pub struct Paths {
     available: PathBuf,
-    runnables: PathBuf,
     low_mem_margin: PathBuf,
     low_mem_device: PathBuf,
     log_directory: PathBuf,
@@ -1340,7 +1244,6 @@ macro_rules! make_paths {
 // All files that are to be left open go here.  We keep them open to reduce the
 // number of syscalls.  They are mostly files in /proc and /sys.
 struct Files {
-    runnables_file: File,
     // These files might not exist.
     available_file_option: Option<File>,
     low_mem_file_option: Option<File>,
@@ -1406,11 +1309,6 @@ fn memory_daemon_test() {
     run_memory_daemon(false).expect("run_memory_daemon error");
 }
 
-#[test]
-fn read_loadavg_test() {
-    test::read_loadavg();
-}
-
 /// Regression test for https://crbug.com/1058463. Ensures that output_from_time doesn't read
 /// samples outside of the valid range.
 #[test]
@@ -1428,7 +1326,6 @@ fn get_paths(root: Option<TempDir>) -> Paths {
         cfg!(test),
         &testing_root,
         available:         LOW_MEM_SYSFS.to_string() + "/available",
-        runnables:         "/proc/loadavg",
         low_mem_margin:    LOW_MEM_SYSFS.to_string() + "/margin",
         low_mem_device:    LOW_MEM_DEVICE,
         log_directory:     LOG_DIRECTORY,
@@ -1499,5 +1396,15 @@ mod tests {
         assert_eq!(result[2], 10000); // paalloc
         assert_eq!(result[3], 1500); // pgmajfault
         assert_eq!(result[4], 550); // pgmajfault_f
+    }
+
+    #[test]
+    fn test_parse_runnables() {
+        // See also https://docs.kernel.org/filesystems/proc.html for field values of
+        // /proc/loadavg.
+        let load_average =
+            LoadAverage::from_reader("3.15 2.15 1.15 5/990 1270".as_bytes()).unwrap();
+        let runnables = parse_runnables(load_average);
+        assert_eq!(runnables, 5);
     }
 }

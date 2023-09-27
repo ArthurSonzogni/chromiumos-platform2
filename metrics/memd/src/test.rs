@@ -17,9 +17,6 @@ use std::str;
 use std::time::Duration;
 
 // Imported from main program
-use errno;
-use get_runnables;
-use strerror;
 use Dbus;
 use FileWatcher;
 use Paths;
@@ -29,7 +26,6 @@ use SampleQueue;
 use SampleType;
 use Sampler;
 use Timer;
-use PAGE_SIZE;
 use SAMPLE_QUEUE_LENGTH;
 
 // Different levels of emulated available RAM in MB.
@@ -39,6 +35,8 @@ const LOW_MEM_HIGH_AVAILABLE: usize = 1000;
 const LOW_MEM_MARGIN: usize = 200;
 const MOCK_DBUS_FIFO_NAME: &str = "mock-dbus-fifo";
 
+const PAGE_SIZE: usize = 4096;
+
 macro_rules! print_to_path {
     ($path:expr, $format:expr $(, $arg:expr)*) => {{
         let r = OpenOptions::new().write(true).create(true).open($path);
@@ -47,6 +45,48 @@ macro_rules! print_to_path {
             Ok(mut f) => f.write_all(format!($format $(, $arg)*).as_bytes())
         }
     }}
+}
+
+fn errno() -> i32 {
+    // _errno_location() is trivially safe to call and dereferencing the
+    // returned pointer is always safe because it's guaranteed to be valid and
+    // point to thread-local data.  (Thanks to Zach for this comment.)
+    unsafe { *libc::__errno_location() }
+}
+
+// Returns the string for posix error number |err|.
+fn strerror(err: i32) -> String {
+    let mut buffer = vec![0u8; 128];
+    // |err| is valid because it is the libc errno at all call sites.  |buffer|
+    // is converted to a valid address, and |buffer.len()| is a valid length.
+    let ret = unsafe {
+        libc::strerror_r(
+            err,
+            &mut buffer[0] as *mut u8 as *mut libc::c_char,
+            buffer.len(),
+        )
+    };
+    if ret != 0 {
+        panic!(
+            "strerror_r failed with '{}'; the original error number was '{}'",
+            ret, err
+        );
+    }
+    buffer.resize(
+        buffer
+            .iter()
+            .position(|&a| a == 0u8)
+            .unwrap_or(buffer.len()),
+        0u8,
+    );
+    match String::from_utf8(buffer) {
+        Ok(s) => s,
+        Err(e) => {
+            // Ouch---an error while trying to process another error.
+            // Very unlikely so we just panic.
+            panic!("error {:?} converting to UTF8", e);
+        }
+    }
 }
 
 fn duration_to_millis(duration: &Duration) -> i64 {
@@ -743,8 +783,6 @@ pub fn setup_test_environment(paths: &Paths) {
     print_to_path!(&paths.zoneinfo, "{}", zoneinfo_content).expect("cannot initialize zoneinfo");
     print_to_path!(&paths.available, "{}\n", LOW_MEM_HIGH_AVAILABLE)
         .expect("cannot initialize available");
-    print_to_path!(&paths.runnables, "0.16 0.18 0.22 4/981 8504")
-        .expect("cannot initialize runnables");
     print_to_path!(
         &paths.low_mem_margin,
         "{} {}",
@@ -761,37 +799,6 @@ pub fn setup_test_environment(paths: &Paths) {
         .expect("cannot initialize extra_free_kbytes");
 
     mkfifo(&paths.low_mem_device).expect("could not make mock low-mem device");
-}
-
-pub fn read_loadavg() {
-    // Calling getpid() is always safe.
-    let temp_file_name = format!("/tmp/memd-loadavg-{}", unsafe { libc::getpid() });
-    let mut temp_file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(&temp_file_name)
-        .expect("cannot create");
-    // Unlink file immediately for more reliable cleanup.
-    std::fs::remove_file(&temp_file_name).expect("cannot remove");
-
-    temp_file
-        .write_all("0.42 0.31 1.50 44/1234 56789".as_bytes())
-        .expect("cannot write");
-    temp_file
-        .seek(std::io::SeekFrom::Start(0))
-        .expect("cannot seek");
-    assert_eq!(get_runnables(&temp_file).unwrap(), 44);
-    temp_file
-        .seek(std::io::SeekFrom::Start(0))
-        .expect("cannot seek");
-    temp_file
-        .write_all("1122.12 25.87 19.51 33/1234 56789".as_bytes())
-        .expect("cannot write");
-    temp_file
-        .seek(std::io::SeekFrom::Start(0))
-        .expect("cannot seek");
-    assert_eq!(get_runnables(&temp_file).unwrap(), 33);
 }
 
 pub fn queue_loop() {
