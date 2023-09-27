@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/compiler_specific.h>
 #include <base/location.h>
@@ -24,20 +25,20 @@ class BRILLO_EXPORT Error {
 
   // Creates an instance of Error class and logs the error.
   static ErrorPtr Create(const base::Location& location,
-                         const std::string& domain,
-                         const std::string& code,
-                         const std::string& message);
+                         std::string_view domain,
+                         std::string_view code,
+                         std::string_view message);
   static ErrorPtr Create(const base::Location& location,
-                         const std::string& domain,
-                         const std::string& code,
-                         const std::string& message,
+                         std::string_view domain,
+                         std::string_view code,
+                         std::string_view message,
                          ErrorPtr inner_error);
 
   // Creates an instance of Error class without logging.
   static ErrorPtr CreateNoLog(const base::Location& location,
-                              const std::string& domain,
-                              const std::string& code,
-                              const std::string& message,
+                              std::string_view domain,
+                              std::string_view code,
+                              std::string_view message,
                               ErrorPtr inner_error);
 
   // If |error| is not nullptr, creates another instance of Error class,
@@ -45,15 +46,15 @@ class BRILLO_EXPORT Error {
   // the error chain pointed to by |error|.
   static void AddTo(ErrorPtr* error,
                     const base::Location& location,
-                    const std::string& domain,
-                    const std::string& code,
-                    const std::string& message);
+                    std::string_view domain,
+                    std::string_view code,
+                    std::string_view message);
   // Same as the Error::AddTo above, but allows to pass in a printf-like
   // format string and optional parameters to format the error message.
   static void AddToPrintf(ErrorPtr* error,
                           const base::Location& location,
-                          const std::string& domain,
-                          const std::string& code,
+                          std::string_view domain,
+                          std::string_view code,
                           const char* format,
                           ...) PRINTF_FORMAT(5, 6);
 
@@ -70,11 +71,11 @@ class BRILLO_EXPORT Error {
 
   // Checks if this or any of the inner errors in the chain has the specified
   // error domain.
-  bool HasDomain(const std::string& domain) const;
+  bool HasDomain(std::string_view domain) const;
 
   // Checks if this or any of the inner errors in the chain matches the
   // specified error domain and code.
-  bool HasError(const std::string& domain, const std::string& code) const;
+  bool HasError(std::string_view domain, std::string_view code) const;
 
   // Gets a pointer to the inner error, if present. Returns nullptr otherwise.
   const Error* GetInnerError() const { return inner_error_.get(); }
@@ -90,22 +91,22 @@ class BRILLO_EXPORT Error {
   // This method is safe to call on a nullptr |error_chain_start| in which case
   // the result will also be nullptr.
   static const Error* FindErrorOfDomain(const Error* error_chain_start,
-                                        const std::string& domain);
+                                        std::string_view domain);
   // Finds an error of particular domain with the given code in the error chain
   // stating at |error_chain_start|. Returns the pointer to the first matching
   // error object.
   // Returns nullptr if no match is found or if |error_chain_start| is nullptr.
   static const Error* FindError(const Error* error_chain_start,
-                                const std::string& domain,
-                                const std::string& code);
+                                std::string_view domain,
+                                std::string_view code);
 
  protected:
   // Constructor is protected since this object is supposed to be
   // created via the Create factory methods.
   Error(const base::Location& location,
-        const std::string& domain,
-        const std::string& code,
-        const std::string& message,
+        std::string_view domain,
+        std::string_view code,
+        std::string_view message,
         ErrorPtr inner_error);
   Error(const Error&) = delete;
   Error& operator=(const Error&) = delete;
