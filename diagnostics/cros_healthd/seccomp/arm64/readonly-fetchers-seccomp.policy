@@ -42,3 +42,4 @@ getrandom: arg2 in 0xfffffffd
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
+process_vm_readv: 1

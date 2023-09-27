@@ -46,3 +46,4 @@ clock_gettime: 1
 gettimeofday: 1
 socket: arg0 == AF_UNIX
 connect: 1
+process_vm_readv: 1

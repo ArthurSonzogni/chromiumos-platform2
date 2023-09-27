@@ -23,6 +23,7 @@ gettid: 1
 getuid: 1
 memfd_create: 1
 pipe2: 1
+process_vm_readv: 1
 read: 1
 recvmsg: 1
 rt_sigprocmask: 1

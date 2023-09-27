@@ -41,3 +41,4 @@ eventfd2: 1
 epoll_pwait: 1
 mmap: 1
 close: 1
+process_vm_readv: 1

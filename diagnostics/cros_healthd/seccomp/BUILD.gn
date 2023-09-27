@@ -76,6 +76,9 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
                         "connect",
                         "socket: arg0 == AF_UNIX",
                       ]
+  if (_arch == "arm64") {
+    required_syscalls += [ "process_vm_readv" ]
+  }
   denied_syscalls = BASE_DENIED_SYSCALLS
 }
 

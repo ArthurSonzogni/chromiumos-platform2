@@ -154,3 +154,4 @@ rt_sigreturn: 1
 gettimeofday: 1
 clock_gettime: 1
 clock_getres: 1
+process_vm_readv: 1

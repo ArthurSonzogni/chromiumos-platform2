@@ -11,3 +11,4 @@ getrandom: arg2 in 0xfffffffd
 connect: 1
 socket: arg0 == AF_UNIX
 exit_group: 1
+process_vm_readv: 1

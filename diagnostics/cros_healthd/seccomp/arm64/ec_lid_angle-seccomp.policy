@@ -43,3 +43,4 @@ close: 1
 socket: arg0 == AF_UNIX
 connect: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+process_vm_readv: 1

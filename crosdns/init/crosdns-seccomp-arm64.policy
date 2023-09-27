@@ -57,3 +57,4 @@ futex: 1
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: arg2 == SIGABRT
 fstatfs: 1
+process_vm_readv: 1
