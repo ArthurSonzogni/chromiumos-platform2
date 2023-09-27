@@ -130,6 +130,38 @@ mojo::ScopedHandle ConvertBluetoothPowerV2ResultToJson(
   return CreateReadOnlySharedMemoryRegionMojoHandle(std::string_view(json));
 }
 
+mojo::ScopedHandle ConvertBluetoothDiscoveryV2ResultToJson(
+    const mojom::BluetoothDiscoveryRoutineDetailPtr&
+        bluetooth_discovery_detail) {
+  base::Value::Dict output;
+
+  if (bluetooth_discovery_detail->start_discovery_result) {
+    base::Value::Dict start_discovery_result;
+    start_discovery_result.Set(
+        "hci_discovering",
+        bluetooth_discovery_detail->start_discovery_result->hci_discovering);
+    start_discovery_result.Set(
+        "dbus_discovering",
+        bluetooth_discovery_detail->start_discovery_result->dbus_discovering);
+    output.Set("start_discovery_result", std::move(start_discovery_result));
+  }
+
+  if (bluetooth_discovery_detail->stop_discovery_result) {
+    base::Value::Dict stop_discovery_result;
+    stop_discovery_result.Set(
+        "hci_discovering",
+        bluetooth_discovery_detail->stop_discovery_result->hci_discovering);
+    stop_discovery_result.Set(
+        "dbus_discovering",
+        bluetooth_discovery_detail->stop_discovery_result->dbus_discovering);
+    output.Set("stop_discovery_result", std::move(stop_discovery_result));
+  }
+
+  std::string json;
+  base::JSONWriter::Write(output, &json);
+  return CreateReadOnlySharedMemoryRegionMojoHandle(std::string_view(json));
+}
+
 }  // namespace
 
 RoutineAdapter::RoutineAdapter(
@@ -328,6 +360,17 @@ void RoutineAdapter::PopulateStatusUpdate(
             update->status = mojom::DiagnosticRoutineStatusEnum::kError;
             update->status_message =
                 "Unrecognized output from Bluetooth power routine.";
+          }
+        } else if (routine_type_ ==
+                   mojom::RoutineArgument::Tag::kBluetoothDiscovery) {
+          if (!finished_ptr->detail.is_null() &&
+              finished_ptr->detail->is_bluetooth_discovery()) {
+            response->output = ConvertBluetoothDiscoveryV2ResultToJson(
+                finished_ptr->detail->get_bluetooth_discovery());
+          } else {
+            update->status = mojom::DiagnosticRoutineStatusEnum::kError;
+            update->status_message =
+                "Unrecognized output from Bluetooth discovery routine.";
           }
         }
       }
