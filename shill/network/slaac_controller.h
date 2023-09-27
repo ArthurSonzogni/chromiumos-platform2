@@ -19,6 +19,7 @@
 #include "shill/mockable.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
+#include "shill/network/network_config.h"
 #include "shill/network/proc_fs_stub.h"
 
 namespace shill {
@@ -29,6 +30,7 @@ class SLAACController {
   enum class UpdateType {
     kAddress = 1,
     kRDNSS = 2,
+    kDefaultRoute = 3,
   };
   using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
 
@@ -49,13 +51,10 @@ class SLAACController {
   // SLAAC process itself in the kernel is not stopped.
   mockable void Stop();
 
-  // Return the list of all SLAAC-configured addresses. The order is guaranteed
-  // to match kernel preference so that the first element is always the
-  // preferred address.
-  mockable std::vector<net_base::IPv6CIDR> GetAddresses() const;
-
-  // Get the IPv6 DNS server addresses received from RDNSS.
-  mockable std::vector<net_base::IPv6Address> GetRDNSSAddresses() const;
+  // Return a NetworkConfig containing all information received from SLAAC. The
+  // order of its |ipv6_addresses| is guaranteed to match kernel preference so
+  // that the first element is always the preferred address.
+  mockable NetworkConfig GetNetworkConfig() const;
 
   // Returns the duration from Start() and the first time that this class gets
   // the SLAAC address information from the kernel, and then resets the value
@@ -82,6 +81,7 @@ class SLAACController {
 
   void AddressMsgHandler(const net_base::RTNLMessage& msg);
   void RDNSSMsgHandler(const net_base::RTNLMessage& msg);
+  void RouteMsgHandler(const net_base::RTNLMessage& msg);
 
   // Timer function for monitoring RDNSS's lifetime.
   void StartRDNSSTimer(base::TimeDelta lifetime);
@@ -97,7 +97,7 @@ class SLAACController {
 
   // Cache of kernel SLAAC data collected through RTNL.
   std::vector<AddressData> slaac_addresses_;
-  std::vector<net_base::IPv6Address> rdnss_addresses_;
+  NetworkConfig network_config_;
 
   // Internal timer for RDNSS expiration.
   base::CancelableOnceClosure rdnss_expired_callback_;
@@ -114,6 +114,7 @@ class SLAACController {
 
   RTNLHandler* rtnl_handler_;
   std::unique_ptr<RTNLListener> address_listener_;
+  std::unique_ptr<RTNLListener> route_listener_;
   std::unique_ptr<RTNLListener> rdnss_listener_;
 
   EventDispatcher* dispatcher_;

@@ -5,9 +5,6 @@
 #ifndef SHILL_NETWORK_MOCK_SLAAC_CONTROLLER_H_
 #define SHILL_NETWORK_MOCK_SLAAC_CONTROLLER_H_
 
-#include <string>
-#include <vector>
-
 #include <gmock/gmock.h>
 
 #include "shill/network/slaac_controller.h"
@@ -25,15 +22,7 @@ class MockSLAACController : public SLAACController {
   MOCK_METHOD(void, Start, (std::optional<net_base::IPv6Address>), (override));
   MOCK_METHOD(void, Stop, (), (override));
 
-  MOCK_METHOD(std::vector<net_base::IPv6CIDR>,
-              GetAddresses,
-              (),
-              (const override));
-
-  MOCK_METHOD(std::vector<net_base::IPv6Address>,
-              GetRDNSSAddresses,
-              (),
-              (const override));
+  MOCK_METHOD(NetworkConfig, GetNetworkConfig, (), (const override));
 
   void RegisterCallback(UpdateCallback update_callback) override {
     update_callback_ = update_callback;

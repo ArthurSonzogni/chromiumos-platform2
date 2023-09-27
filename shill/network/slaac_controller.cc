@@ -10,10 +10,13 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 
 #include <base/logging.h>
 #include <metrics/timer.h>
+#include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/net/rtnl_handler.h"
 
@@ -41,6 +44,11 @@ void SLAACController::Start(
   address_listener_ = std::make_unique<RTNLListener>(
       RTNLHandler::kRequestAddr,
       base::BindRepeating(&SLAACController::AddressMsgHandler,
+                          weak_factory_.GetWeakPtr()),
+      rtnl_handler_);
+  route_listener_ = std::make_unique<RTNLListener>(
+      RTNLHandler::kRequestRoute,
+      base::BindRepeating(&SLAACController::RouteMsgHandler,
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
   rdnss_listener_ = std::make_unique<RTNLListener>(
@@ -174,8 +182,55 @@ void SLAACController::AddressMsgHandler(const net_base::RTNLMessage& msg) {
   std::stable_sort(slaac_addresses_.begin(), slaac_addresses_.end(),
                    address_preference);
 
+  network_config_.ipv6_addresses = {};
+  for (const auto& address_data : slaac_addresses_) {
+    network_config_.ipv6_addresses.push_back(address_data.cidr);
+  }
+
   if (update_callback_) {
     update_callback_.Run(UpdateType::kAddress);
+  }
+}
+
+void SLAACController::RouteMsgHandler(const net_base::RTNLMessage& msg) {
+  DCHECK(msg.type() == net_base::RTNLMessage::kTypeRoute);
+  // We only care about IPv6 default route of type RA that routes to
+  // |interface_index_|.
+  if (!msg.HasAttribute(RTA_OIF)) {
+    return;
+  }
+  if (net_base::byte_utils::FromBytes<int32_t>(msg.GetAttribute(RTA_OIF)) !=
+      interface_index_) {
+    return;
+  }
+  const net_base::RTNLMessage::RouteStatus& route_status = msg.route_status();
+  if (route_status.type != RTN_UNICAST || route_status.protocol != RTPROT_RA) {
+    return;
+  }
+  if (net_base::FromSAFamily(msg.family()) != net_base::IPFamily::kIPv6) {
+    return;
+  }
+  const auto dst = msg.GetRtaDst();
+  if (dst && !dst->IsDefault()) {
+    return;
+  }
+  const auto gateway = msg.GetRtaGateway();
+  if (!gateway) {
+    LOG(WARNING) << __func__
+                 << ": IPv6 default route without a gateway on interface "
+                 << interface_index_;
+    return;
+  }
+  const auto gateway_ipv6addr = gateway->ToIPv6Address();
+  if (msg.mode() == net_base::RTNLMessage::kModeAdd) {
+    network_config_.ipv6_gateway = gateway_ipv6addr;
+  } else if (msg.mode() == net_base::RTNLMessage::kModeDelete &&
+             network_config_.ipv6_gateway == gateway_ipv6addr) {
+    network_config_.ipv6_gateway = std::nullopt;
+  }
+
+  if (update_callback_) {
+    update_callback_.Run(UpdateType::kDefaultRoute);
   }
 }
 
@@ -187,13 +242,16 @@ void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
 
   const net_base::RTNLMessage::RdnssOption& rdnss_option = msg.rdnss_option();
   uint32_t rdnss_lifetime_seconds = rdnss_option.lifetime;
-  rdnss_addresses_ = rdnss_option.addresses;
+  network_config_.dns_servers.clear();
+  for (const auto& rdnss : rdnss_option.addresses) {
+    network_config_.dns_servers.push_back(net_base::IPAddress(rdnss));
+  }
 
   // Stop any existing timer.
   StopRDNSSTimer();
 
   if (rdnss_lifetime_seconds == 0) {
-    rdnss_addresses_.clear();
+    network_config_.dns_servers.clear();
   } else if (rdnss_lifetime_seconds != ND_OPT_LIFETIME_INFINITY) {
     // Setup timer to monitor DNS server lifetime if not infinite lifetime.
     base::TimeDelta delay = base::Seconds(rdnss_lifetime_seconds);
@@ -217,22 +275,14 @@ void SLAACController::StopRDNSSTimer() {
 }
 
 void SLAACController::RDNSSExpired() {
-  rdnss_addresses_.clear();
+  network_config_.dns_servers.clear();
   if (update_callback_) {
     update_callback_.Run(UpdateType::kRDNSS);
   }
 }
 
-std::vector<net_base::IPv6CIDR> SLAACController::GetAddresses() const {
-  std::vector<net_base::IPv6CIDR> result;
-  for (const auto& address_data : slaac_addresses_) {
-    result.push_back(address_data.cidr);
-  }
-  return result;
-}
-
-std::vector<net_base::IPv6Address> SLAACController::GetRDNSSAddresses() const {
-  return rdnss_addresses_;
+NetworkConfig SLAACController::GetNetworkConfig() const {
+  return network_config_;
 }
 
 void SLAACController::ConfigureLinkLocalAddress() {

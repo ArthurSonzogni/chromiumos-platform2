@@ -33,7 +33,6 @@
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/routing_table.h"
-#include "shill/network/routing_table_entry.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/service.h"
 
@@ -578,90 +577,60 @@ std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
-  if (update_type == SLAACController::UpdateType::kAddress) {
-    OnIPv6AddressChanged();
-  } else if (update_type == SLAACController::UpdateType::kRDNSS) {
-    OnIPv6DnsServerAddressesChanged();
-  }
-}
-
-void Network::OnIPv6AddressChanged() {
-  auto slaac_addresses = slaac_controller_->GetAddresses();
-  if (slaac_addresses.size() == 0) {
-    if (slaac_network_config_) {
-      slaac_network_config_->ipv6_addresses = {};
-    }
-    RecalculateNetworkConfig();
-    // TODO(b/232177767): We may lose the whole IP connectivity here (if there
-    // is no IPv4).
-    return;
-  }
-
-  if (!slaac_network_config_) {
-    slaac_network_config_ = std::make_unique<NetworkConfig>();
-  }
-  slaac_network_config_->ipv6_addresses = slaac_addresses;
-
-  RoutingTableEntry default_route(net_base::IPFamily::kIPv6);
-  if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
-                                                &default_route)) {
-    slaac_network_config_->ipv6_gateway = default_route.gateway.ToIPv6Address();
-  } else {
-    // The kernel normally populates the default route before it performs
-    // a neighbor solicitation for the new address, so it shouldn't be
-    // missing at this point.
-    LOG(WARNING) << *this << ": No default route for global IPv6 address "
-                 << slaac_addresses[0].address();
-  }
-
-  std::string addresses_str;
-  std::string sep;
-  for (const auto& addr : slaac_addresses) {
-    addresses_str += sep;
-    addresses_str += addr.address().ToString();
-    sep = ",";
-  }
-  LOG(INFO) << *this << ": Updating IPv6 addresses to [" << addresses_str
-            << "]";
+  slaac_network_config_ =
+      std::make_unique<NetworkConfig>(slaac_controller_->GetNetworkConfig());
+  LOG(INFO) << *this << ": Updating SLAAC config to " << *slaac_network_config_;
 
   auto old_network_config = combined_network_config_;
   RecalculateNetworkConfig();
 
-  for (auto* ev : event_handlers_) {
-    ev->OnGetSLAACAddress(interface_index_);
-  }
-  // No matter whether the primary address changes, any address change will
-  // need to trigger address-based routing rule to be updated.
-  if (primary_family_) {
-    ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy);
-  }
-
-  if (old_network_config.ipv6_addresses.size() >= 1 &&
-      combined_network_config_.ipv6_addresses.size() >= 1 &&
-      old_network_config.ipv6_addresses[0] ==
-          combined_network_config_.ipv6_addresses[0] &&
-      old_network_config.ipv6_gateway ==
-          combined_network_config_.ipv6_gateway) {
-    SLOG(2) << *this << ": " << __func__ << ": primary address for "
-            << interface_name_ << " is unchanged";
+  if (update_type == SLAACController::UpdateType::kAddress) {
+    for (auto* ev : event_handlers_) {
+      ev->OnGetSLAACAddress(interface_index_);
+    }
+    // No matter whether the primary address changes, any address change will
+    // need to trigger address-based routing rule to be updated.
+    if (primary_family_) {
+      ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy);
+    }
+    if (old_network_config.ipv6_addresses.size() >= 1 &&
+        combined_network_config_.ipv6_addresses.size() >= 1 &&
+        old_network_config.ipv6_addresses[0] ==
+            combined_network_config_.ipv6_addresses[0] &&
+        old_network_config.ipv6_gateway ==
+            combined_network_config_.ipv6_gateway) {
+      SLOG(2) << *this << ": " << __func__ << ": primary address for "
+              << interface_name_ << " is unchanged";
+      return;
+    }
+  } else if (update_type == SLAACController::UpdateType::kRDNSS) {
+    if (old_network_config.dns_servers ==
+        combined_network_config_.dns_servers) {
+      SLOG(2) << *this << ": " << __func__ << " DNS server list is unchanged.";
+      return;
+    }
+  } else if (update_type == SLAACController::UpdateType::kDefaultRoute) {
+    // Nothing to do except updating IPConfig.
     return;
   }
 
   OnIPv6ConfigUpdated();
-  // TODO(b/232177767): OnIPv6ConfiguredWithSLAACAddress() should be called
-  // inside Network::OnIPv6ConfigUpdated() and only if SetupConnection()
-  // happened as a result of the new address (ignoring IPv4 and assuming Network
-  // is fully dual-stack). The current call pattern reproduces the same
-  // conditions as before crrev/c/3840983.
-  for (auto* ev : event_handlers_) {
-    ev->OnIPv6ConfiguredWithSLAACAddress(interface_index_);
-  }
 
-  std::optional<base::TimeDelta> slaac_duration =
-      slaac_controller_->GetAndResetLastProvisionDuration();
-  if (slaac_duration.has_value()) {
-    metrics_->SendToUMA(Metrics::kMetricSLAACProvisionDurationMillis,
-                        technology_, slaac_duration->InMilliseconds());
+  if (update_type == SLAACController::UpdateType::kAddress) {
+    // TODO(b/232177767): OnIPv6ConfiguredWithSLAACAddress() should be called
+    // inside Network::OnIPv6ConfigUpdated() and only if SetupConnection()
+    // happened as a result of the new address (ignoring IPv4 and assuming
+    // Network is fully dual-stack). The current call pattern reproduces the
+    // same conditions as before crrev/c/3840983.
+    for (auto* ev : event_handlers_) {
+      ev->OnIPv6ConfiguredWithSLAACAddress(interface_index_);
+    }
+    std::optional<base::TimeDelta> slaac_duration =
+        slaac_controller_->GetAndResetLastProvisionDuration();
+    if (slaac_duration.has_value()) {
+      metrics_->SendToUMA(Metrics::kMetricSLAACProvisionDurationMillis,
+                          technology_, slaac_duration->InMilliseconds());
+    }
   }
 }
 
@@ -680,34 +649,6 @@ void Network::OnIPv6ConfigUpdated() {
       ApplyNetworkConfig(NetworkApplier::Area::kDNS);
     }
   }
-}
-
-void Network::OnIPv6DnsServerAddressesChanged() {
-  const auto rdnss = slaac_controller_->GetRDNSSAddresses();
-  if (!slaac_network_config_) {
-    slaac_network_config_ = std::make_unique<NetworkConfig>();
-  }
-  slaac_network_config_->dns_servers = {};
-  for (const auto& ip : rdnss) {
-    slaac_network_config_->dns_servers.emplace_back(ip);
-  }
-
-  auto old_network_config = combined_network_config_;
-  RecalculateNetworkConfig();
-
-  if (old_network_config.dns_servers == combined_network_config_.dns_servers) {
-    SLOG(2) << *this << ": " << __func__ << " DNS server list is unchanged.";
-    return;
-  }
-
-  std::vector<std::string> addresses_str;
-  for (const auto& ip : combined_network_config_.dns_servers) {
-    addresses_str.push_back(ip.ToString());
-  }
-  LOG(INFO) << *this << ": Updating DNS addresses to ["
-            << base::JoinString(addresses_str, ",") << "]";
-
-  OnIPv6ConfigUpdated();
 }
 
 void Network::RecalculateNetworkConfig() {
@@ -826,7 +767,8 @@ std::vector<net_base::IPCIDR> Network::GetAddresses() const {
         [](const net_base::IPv6CIDR& v6) { return net_base::IPCIDR(v6); });
   }
   if (slaac_controller_) {
-    for (const auto& slaac_addr : slaac_controller_->GetAddresses()) {
+    for (const auto& slaac_addr :
+         slaac_controller_->GetNetworkConfig().ipv6_addresses) {
       result.emplace_back(slaac_addr);
     }
   }

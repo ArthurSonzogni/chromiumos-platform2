@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
@@ -1287,29 +1288,35 @@ class NetworkStartTest : public NetworkTest {
 
   void TriggerSLAACUpdate() {
     TriggerSLAACNameServersUpdate(
-        {*net_base::IPv6Address::CreateFromString(kIPv6SLAACNameserver)});
+        {*net_base::IPAddress::CreateFromString(kIPv6SLAACNameserver)});
     TriggerSLAACAddressUpdate();
   }
 
   void TriggerSLAACAddressUpdate() {
-    EXPECT_CALL(routing_table_, GetDefaultRouteFromKernel(kTestIfindex, _))
-        .WillRepeatedly(WithArg<1>([](RoutingTableEntry* entry) {
-          entry->gateway =
-              *net_base::IPAddress::CreateFromString(kIPv6SLAACGateway);
-          return true;
-        }));
-    const auto cidr = *net_base::IPv6CIDR::CreateFromStringAndPrefix(
-        kIPv6SLAACAddress, kIPv6SLAACPrefix);
-    EXPECT_CALL(*slaac_controller_, GetAddresses())
-        .WillRepeatedly(Return(std::vector<net_base::IPv6CIDR>{cidr}));
+    slaac_config_.ipv6_gateway =
+        *net_base::IPv6Address::CreateFromString(kIPv6SLAACGateway);
+    slaac_config_.ipv6_addresses = {
+        *net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6SLAACAddress,
+                                                       kIPv6SLAACPrefix)};
+    EXPECT_CALL(*slaac_controller_, GetNetworkConfig())
+        .WillRepeatedly(Return(slaac_config_));
+    slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
+    dispatcher_.task_environment().RunUntilIdle();
+  }
+
+  void TriggerSLAACAddressUpdate(net_base::IPv6CIDR address) {
+    slaac_config_.ipv6_addresses = {address};
+    EXPECT_CALL(*slaac_controller_, GetNetworkConfig())
+        .WillRepeatedly(Return(slaac_config_));
     slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
     dispatcher_.task_environment().RunUntilIdle();
   }
 
   void TriggerSLAACNameServersUpdate(
-      const std::vector<net_base::IPv6Address>& dns_list) {
-    EXPECT_CALL(*slaac_controller_, GetRDNSSAddresses())
-        .WillRepeatedly(Return(dns_list));
+      const std::vector<net_base::IPAddress>& dns_list) {
+    slaac_config_.dns_servers = dns_list;
+    EXPECT_CALL(*slaac_controller_, GetNetworkConfig())
+        .WillRepeatedly(Return(slaac_config_));
     slaac_controller_->TriggerCallback(SLAACController::UpdateType::kRDNSS);
     dispatcher_.task_environment().RunUntilIdle();
   }
@@ -1395,6 +1402,8 @@ class NetworkStartTest : public NetworkTest {
   NetworkConfig ipv4_dhcp_config_;
   NetworkConfig ipv4_static_config_;
   NetworkConfig ipv4_link_protocol_config_;
+
+  NetworkConfig slaac_config_;
 
   // IPConfig::Properties version of the above.
   IPConfig::Properties ipv4_dhcp_props_;
@@ -1645,9 +1654,6 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
       ApplyNetworkConfig(ContainsAddressAndRoute(net_base::IPFamily::kIPv6)));
   EXPECT_CALL(*network_,
               ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
-  EXPECT_CALL(*slaac_controller_, GetAddresses())
-      .WillRepeatedly(Return(
-          std::vector<net_base::IPv6CIDR>{net_base::IPv6CIDR(new_addr)}));
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
@@ -1655,7 +1661,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
               OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler2_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
-  slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
+  TriggerSLAACAddressUpdate(net_base::IPv6CIDR(new_addr));
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
@@ -1674,9 +1680,6 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
       ApplyNetworkConfig(ContainsAddressAndRoute(net_base::IPFamily::kIPv6)));
   EXPECT_CALL(*network_,
               ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy));
-  EXPECT_CALL(*slaac_controller_, GetAddresses())
-      .WillRepeatedly(Return(std::vector<net_base::IPv6CIDR>{
-          *net_base::IPv6CIDR::CreateFromAddressAndPrefix(new_addr, 64)}));
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
@@ -1684,7 +1687,8 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
               OnConnectionUpdated(network_->interface_index()));
   EXPECT_CALL(event_handler2_,
               OnIPConfigsPropertyUpdated(network_->interface_index()));
-  slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
+  TriggerSLAACAddressUpdate(
+      *net_base::IPv6CIDR::CreateFromAddressAndPrefix(new_addr, 64));
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
@@ -1700,7 +1704,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 
   const auto dns_server =
-      *net_base::IPv6Address::CreateFromString(kIPv6SLAACNameserver);
+      *net_base::IPAddress::CreateFromString(kIPv6SLAACNameserver);
 
   // A valid DNS should bring the network up.
   ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);

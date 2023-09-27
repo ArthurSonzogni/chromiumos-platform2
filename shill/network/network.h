@@ -477,8 +477,6 @@ class Network {
   // Callback registered with SLAACController. |update_type| indicates the
   // update type (see comment in SLAACController declaration for detail).
   void OnUpdateFromSLAAC(SLAACController::UpdateType update_type);
-  void OnIPv6AddressChanged();
-  void OnIPv6DnsServerAddressesChanged();
 
   // Calculate the combined NetworkConfig that will be used to configure the
   // network based on all input NetworkConfigs, including the one from DHCP,
