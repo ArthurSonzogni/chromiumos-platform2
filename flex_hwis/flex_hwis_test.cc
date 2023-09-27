@@ -36,8 +36,6 @@ ACTION_P(SetEnterpriseEnrolled, managed) {
 class FlexHwisTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    constexpr char kUuid[] = "reven-uuid";
-
     CHECK(test_dir_.CreateUniqueTempDir());
     test_path_ = test_dir_.GetPath();
 
@@ -80,7 +78,6 @@ class FlexHwisTest : public ::testing::Test {
         .Times(AtMost(1))
         .WillOnce(Return(true));
 
-    CreateUuid(kUuid);
     telemetry_.AddTelemetryInfo();
   }
 
@@ -88,12 +85,6 @@ class FlexHwisTest : public ::testing::Test {
     base::FilePath time_path = test_path_.Append("var/lib/flex_hwis_tool");
     CHECK(base::CreateDirectory(time_path));
     CHECK(base::WriteFile(time_path.Append("time"), timestamp));
-  }
-
-  void CreateUuid(const std::string& uuid) {
-    base::FilePath uuid_path = test_path_.Append("proc/sys/kernel/random");
-    CHECK(base::CreateDirectory(uuid_path));
-    CHECK(base::WriteFile(uuid_path.Append("uuid"), uuid));
   }
 
   void ExpectEnumMetric(PermissionResult result) {
@@ -116,17 +107,6 @@ class FlexHwisTest : public ::testing::Test {
   base::FilePath test_path_;
   flex_hwis::TelemetryForTesting telemetry_;
 };
-
-TEST_F(FlexHwisTest, FailToGetUuid) {
-  auto flex_hwis_sender_ =
-      flex_hwis::FlexHwisSender(test_path_, mock_policy_provider_);
-  flex_hwis_sender_.SetTelemetryInfoForTesting(telemetry_.Get());
-
-  CreateUuid("");
-
-  EXPECT_EQ(flex_hwis_sender_.CollectAndSend(library_, Debug::None),
-            Result::Error);
-}
 
 TEST_F(FlexHwisTest, HasRunRecently) {
   auto flex_hwis_sender_ =

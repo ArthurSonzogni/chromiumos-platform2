@@ -80,14 +80,9 @@ class FlexHwisCheckTest : public ::testing::Test {
   }
 
   void CreateUuid(const std::string& uuid) {
-    base::FilePath uuid_path = test_path_.Append("proc/sys/kernel/random");
+    base::FilePath uuid_path = test_path_.Append("var/lib/flex_hwis_tool");
     CHECK(base::CreateDirectory(uuid_path));
     CHECK(base::WriteFile(uuid_path.Append("uuid"), uuid));
-  }
-
-  void EmptyHwisUuid() {
-    base::FilePath uuid_path = test_path_.Append("var/lib/flex_hwis_tool");
-    CHECK(base::WriteFile(uuid_path.Append("uuid"), ""));
   }
 
   StrictMock<policy::MockPolicyProvider> mock_policy_provider_;
@@ -110,27 +105,18 @@ TEST_F(FlexHwisCheckTest, CheckTimeEmpty) {
 }
 
 TEST_F(FlexHwisCheckTest, CheckUuid) {
-  constexpr char kUuid[] = "reven-uuid";
   auto flex_hwis_check_ =
       flex_hwis::FlexHwisCheck(test_path_, mock_policy_provider_);
 
-  // Simulate failure to read kernel UUID.
-  CreateUuid("");
-  UuidInfo info = flex_hwis_check_.GetOrCreateUuid();
-  EXPECT_EQ(std::nullopt, info.uuid);
-  EXPECT_FALSE(info.already_exists);
+  // Simulate failure to read UUID.
+  EXPECT_EQ(std::nullopt, flex_hwis_check_.GetUuid());
 
+  constexpr char kUuid[] = "reven-uuid";
   CreateUuid(kUuid);
-  info = flex_hwis_check_.GetOrCreateUuid();
-  EXPECT_FALSE(info.already_exists);
-  EXPECT_EQ(kUuid, info.uuid);
-  info = flex_hwis_check_.GetOrCreateUuid();
-  EXPECT_TRUE(info.already_exists);
+  EXPECT_EQ(kUuid, flex_hwis_check_.GetUuid().value());
 
-  EmptyHwisUuid();
-  info = flex_hwis_check_.GetOrCreateUuid();
-  EXPECT_FALSE(info.already_exists);
-  EXPECT_EQ(kUuid, info.uuid);
+  flex_hwis_check_.DeleteUuid();
+  EXPECT_EQ(std::nullopt, flex_hwis_check_.GetUuid());
 }
 
 TEST_F(FlexHwisCheckTest, CheckManagedPermission) {

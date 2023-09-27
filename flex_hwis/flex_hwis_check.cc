@@ -10,6 +10,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 
 namespace flex_hwis {
 
@@ -43,7 +44,6 @@ int64_t NowToEpochInSeconds() {
 
 }  // namespace
 
-constexpr char kKernelUuidFile[] = "proc/sys/kernel/random/uuid";
 constexpr char kHwisUuidFile[] = "var/lib/flex_hwis_tool/uuid";
 constexpr char kHwisTimeStampFile[] = "var/lib/flex_hwis_tool/time";
 
@@ -51,33 +51,22 @@ FlexHwisCheck::FlexHwisCheck(const base::FilePath& base_path,
                              policy::PolicyProvider& provider)
     : base_path_(base_path), policy_provider_(provider) {}
 
-UuidInfo FlexHwisCheck::GetOrCreateUuid() {
-  UuidInfo info;
-  const base::FilePath hwis_uuid_path = base_path_.Append(kHwisUuidFile);
-  const base::FilePath kernel_uuid_path = base_path_.Append(kKernelUuidFile);
+std::optional<std::string> FlexHwisCheck::GetUuid() const {
+  return ReadHwisFile(UuidPath());
+}
 
-  if ((info.uuid = ReadHwisFile(hwis_uuid_path))) {
-    LOG(INFO) << "UUID has already been generated";
-    info.already_exists = true;
-    return info;
+void FlexHwisCheck::DeleteUuid() {
+  if (!brillo::DeleteFile(UuidPath())) {
+    LOG(INFO) << "Error deleting UUID file";
   }
+}
 
-  if (!(info.uuid = ReadHwisFile(kernel_uuid_path))) {
-    LOG(INFO) << "Error reading kernel UUID";
-    return info;
-  }
-
-  if (!WriteHwisFile(hwis_uuid_path, info.uuid.value())) {
-    LOG(INFO) << "Error writing UUID file";
-    return info;
-  }
-
-  LOG(INFO) << "Successfully wrote uuid: " << info.uuid.value();
-  return info;
+base::FilePath FlexHwisCheck::UuidPath() const {
+  return base_path_.Append(kHwisUuidFile);
 }
 
 std::optional<std::string> FlexHwisCheck::ReadHwisFile(
-    const base::FilePath& file_path) {
+    const base::FilePath& file_path) const {
   std::optional<std::string> hwis_info;
 
   if (!(hwis_info = ReadAndTrimFile(file_path))) {

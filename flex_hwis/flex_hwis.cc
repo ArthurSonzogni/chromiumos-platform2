@@ -69,27 +69,30 @@ Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
   // Exit if the device does not have permission to send data to the server.
   PermissionInfo permission_info = check_.CheckPermission();
   SendPermissionMetric(permission_info, metrics);
+  const std::optional<std::string> uuid = check_.GetUuid();
   if (!permission_info.permission) {
+    if (uuid) {
+      // If the user does not consent to share hardware data, the HWIS service
+      // must delete the client's UUID after confirming that the request to
+      // delete the hardware data to the server is successfully.
+      check_.DeleteUuid();
+    }
     return Result::NotAuthorized;
   }
 
   mojo_.SetHwisInfo(&data);
-  const UuidInfo info = check_.GetOrCreateUuid();
-  if (info.uuid) {
-    data.set_uuid(info.uuid.value());
-  } else {
-    LOG(ERROR) << "Unable to get nor create uuid.";
-    return Result::Error;
-  }
 
-  // If the UUID was just generated this should be a POST request.
+  // If the UUID is not in the client, this should be a POST request.
   // If the UUID already exists, then it should be a PUT request.
-  if (info.already_exists) {
-    // TODO(tinghaolin): Implement server interaction logic to call PUT api.
+  if (uuid) {
+    // TODO(tinghaolin): Implement server interaction logic to call PUT API.
+    data.set_uuid(uuid.value());
     LOG(INFO) << "Call PUT API to update the slot";
     SendServerMetric("Platform.FlexHwis.ServerPutResult", true, metrics);
   } else {
-    // TODO(tinghaolin): Implement server interaction logic to call POST api.
+    // TODO(tinghaolin): Implement server interaction logic to call POST API.
+    // The POST API will response the uuid and the client should save the uuid
+    // in the client side.
     LOG(INFO) << "Call POST API to create a new slot";
     SendServerMetric("Platform.FlexHwis.ServerPostResult", true, metrics);
   }

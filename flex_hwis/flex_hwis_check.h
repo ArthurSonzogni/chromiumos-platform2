@@ -52,17 +52,25 @@ class FlexHwisCheck {
   // timestamp will be stored.
   void RecordSendTime();
 
-  // Retrieve a UUID from a specific file path.
-  UuidInfo GetOrCreateUuid();
+  // Retrieve a UUID value.
+  std::optional<std::string> GetUuid() const;
+
+  // Delete the UUID file.
+  void DeleteUuid();
 
  private:
   // Extracts the HWIS info from the file at the file_path.
-  std::optional<std::string> ReadHwisFile(const base::FilePath& file_path);
+  std::optional<std::string> ReadHwisFile(
+      const base::FilePath& file_path) const;
 
   // Writes the HWIS information, such as uuid or timestamp, to file_path
   // and adds a newline.
   bool WriteHwisFile(const base::FilePath& file_path,
                      const std::string& content);
+
+  // Returns the file path that records the device uuid created by the
+  // HWIS server.
+  base::FilePath UuidPath() const;
 
   base::FilePath base_path_;
 
