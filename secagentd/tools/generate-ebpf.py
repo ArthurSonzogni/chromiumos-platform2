@@ -13,6 +13,7 @@ used by userspace programs to load, attach and communicate with bpf functions.
 import argparse
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import typing
@@ -129,11 +130,12 @@ def do_gen_vmlinux(args):
     sysroot = args.sysroot
     vmlinux_out = args.out_header
     btf_out = args.out_btf
+    vmlinux_in = f"{sysroot}/usr/lib/debug/boot/vmlinux"
     gen_detached_btf = [
         "/usr/bin/pahole",
         "--btf_encode_detached",
         btf_out,
-        f"{sysroot}/usr/lib/debug/boot/vmlinux",
+        vmlinux_in,
     ]
     gen_vmlinux = [
         "/usr/sbin/bpftool",
@@ -144,16 +146,91 @@ def do_gen_vmlinux(args):
         "format",
         "c",
     ]
+    read_symbols = [
+        "/usr/bin/readelf",
+        "--symbols",
+        "--wide",
+        vmlinux_in,
+    ]
+    read_sections = [
+        "/usr/bin/readelf",
+        "--sections",
+        "--wide",
+        vmlinux_in,
+    ]
+
     # First, run pahole to generate a detached vmlinux BTF. This step works
     # regardless of whether the vmlinux was built with CONFIG_DEBUG_BTF_INFO.
     pathlib.Path(os.path.dirname(btf_out)).mkdir(parents=True, exist_ok=True)
     _run_command(gen_detached_btf)
 
+    symbols = _run_command(read_symbols)
+    for line in symbols.stdout.splitlines():
+        # Example line to parse:
+        # 145612: ffffffff823e1ca0   274 OBJECT  GLOBAL DEFAULT    2 linux_banner
+        d = line.split()
+        if len(d) == 8 and d[-1] == "linux_banner":
+            linux_banner_addr = int(d[1], 16)
+            linux_banner_len = int(d[2])
+            linux_banner_sec = d[-2]
+            break
+    else:
+        print(f"Failed to find linux_banner from {vmlinux_in}")
+        return 1
+
+    sections = _run_command(read_sections)
+    for line in sections.stdout.splitlines():
+        # Example line to parse:
+        # [ 2] .rodata           PROGBITS        ffffffff82200000 1400000 5e104e 00 WAMS  0   0 4096
+        if line.lstrip().startswith(f"[{linux_banner_sec:>2}]"):
+            d = line.split("]", 1)[1].split()
+            section_addr = int(d[2], 16)
+            section_off = int(d[3], 16)
+            break
+    else:
+        print(
+            f"Failed to find section '[{linux_banner_sec:>2}]' from "
+            f"{vmlinux_in}"
+        )
+        return 1
+
+    offset = section_off + linux_banner_addr - section_addr
+    with open(vmlinux_in, "rb") as fp:
+        fp.seek(offset)
+        linux_banner = fp.read(linux_banner_len).decode("utf-8")
+
+    m = re.match(r"Linux version (\d+).(\d+).(\d+)", linux_banner)
+    if not m:
+        print(f"Failed to match Linux version: {linux_banner}")
+        return 1
+
+    version = m.group(1)
+    patch_level = m.group(2)
+    sub_level = m.group(3)
+
+    # Constructing LINUX_VERSION_CODE.
+    linux_version_code = int(version) * 65536 + int(patch_level) * 256
+    linux_version_code += min(int(sub_level), 255)
+
     # Then, use the generated BTF (and not vmlinux itself) to generate the
     # header.
     vmlinux_cmd = _run_command(gen_vmlinux)
     with open(f"{vmlinux_out}", "w", encoding="utf-8") as vmlinux:
-        vmlinux.write(vmlinux_cmd.stdout)
+        written = False
+
+        for line in vmlinux_cmd.stdout.splitlines():
+            vmlinux.write(f"{line}\n")
+
+            if not written and line == "#define __VMLINUX_H__":
+                vmlinux.write(
+                    f"\n#define LINUX_VERSION_CODE {linux_version_code}\n"
+                )
+                written = True
+
+        if not written:
+            print("Failed to write LINUX_VERSION_CODE")
+            return 1
+
     return 0
 
 

@@ -60,9 +60,20 @@ static inline __attribute__((always_inline)) void fill_image_info(
   image_info->mtime.tv_sec = BPF_CORE_READ(bprm, file, f_inode, i_mtime.tv_sec);
   image_info->mtime.tv_nsec =
       BPF_CORE_READ(bprm, file, f_inode, i_mtime.tv_nsec);
+  // Starts from Linux kernel v6.6-rc1, commit 13bc24457850 ("fs: rename
+  // i_ctime field to __i_ctime"), the field name changed.
+  //
+  // We can remove the guard after all ChromeOS kernels use __i_ctime.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+  image_info->ctime.tv_sec =
+      BPF_CORE_READ(bprm, file, f_inode, __i_ctime.tv_sec);
+  image_info->ctime.tv_nsec =
+      BPF_CORE_READ(bprm, file, f_inode, __i_ctime.tv_nsec);
+#else
   image_info->ctime.tv_sec = BPF_CORE_READ(bprm, file, f_inode, i_ctime.tv_sec);
   image_info->ctime.tv_nsec =
       BPF_CORE_READ(bprm, file, f_inode, i_ctime.tv_nsec);
+#endif
   // Mimic new_encode_dev() to get stat-like dev_id.
   dev_t dev = BPF_CORE_READ(bprm, file, f_inode, i_sb, s_dev);
   unsigned major = dev >> 20;
