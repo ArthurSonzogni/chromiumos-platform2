@@ -81,6 +81,9 @@ def main(argv):
 
     # Then test that RO can't update anything
     flash_invalid_address(updater, False)
+    # Sleep for some time to ensure the kernel and base keyboard become ready as
+    # a restoration, so we can hand the control back for any following tests.
+    time.sleep(5)
 
 
 def get_wp_status(updater):

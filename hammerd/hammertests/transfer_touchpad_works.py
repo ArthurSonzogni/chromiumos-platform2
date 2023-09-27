@@ -91,7 +91,7 @@ def restore_valid_rw(updater, image):
     updater.SendSubcommand(hammerd_api.UpdateExtraCommand.StayInRO)
     transfer_rw(updater, image)
     updater.SendSubcommand(hammerd_api.UpdateExtraCommand.JumpToRW)
-    time.sleep(2)
+    time.sleep(common.WAIT_TIME_JUMP_FROM_RO_TO_RW)
     updater.CloseUsb()
     time.sleep(0.5)
     # Jump to RW resets the base. Need to reconnect

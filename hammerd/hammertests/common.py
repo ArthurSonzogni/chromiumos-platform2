@@ -134,6 +134,11 @@ RB_LOWER = os.path.join(IMAGE_DIR, f"{BASE_NAME}.dev.rb0")
 RB_INITIAL = os.path.join(IMAGE_DIR, f"{BASE_NAME}.dev.rb1")
 # Image should update RW and RB regions region
 RB_HIGHER = os.path.join(IMAGE_DIR, f"{BASE_NAME}.dev.rb9")
+# Time to wait to ensure the base keyboard jumps from RO to RW in seconds.
+# Since there are various factor affecting the test to interacting with the RW
+# firmware, the wait time here is choose to be far greater than the jump time to
+# ensure the test code interacts with the RW section.
+WAIT_TIME_JUMP_FROM_RO_TO_RW = 4
 
 
 # Common function.

@@ -77,7 +77,7 @@ def main(argv):
     print(f"Protection: {protect:04x} == {FLASH_PROTECT_NORW:04x}?")
     assert protect == FLASH_PROTECT_NORW, "WP status after Unlock RW"
     updater.CloseUsb()
-    time.sleep(2)
+    time.sleep(common.WAIT_TIME_JUMP_FROM_RO_TO_RW)
     # By now, hammer will have jumped to RW and locked the flash again
     common.connect_usb(updater)
     assert (
@@ -95,7 +95,7 @@ def main(argv):
         get_flash_protection(updater) == FLASH_PROTECT_NORB
     ), "WP status after Unlock RB"
     updater.CloseUsb()
-    time.sleep(2)
+    time.sleep(common.WAIT_TIME_JUMP_FROM_RO_TO_RW)
     # By now, hammer will have jumped to RW and locked the flash again
     common.connect_usb(updater)
     assert (

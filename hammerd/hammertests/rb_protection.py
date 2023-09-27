@@ -79,7 +79,7 @@ def transfer_rw(updater, image):
     time.sleep(0.5)
     common.connect_usb(updater)
     updater.SendSubcommand(hammerd_api.UpdateExtraCommand.JumpToRW)
-    time.sleep(2)
+    time.sleep(common.WAIT_TIME_JUMP_FROM_RO_TO_RW)
     updater.CloseUsb()
     time.sleep(0.5)
     # Jump to RW resets the base. Need to reconnect
