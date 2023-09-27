@@ -285,6 +285,9 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual, "mangle -L skip_apply_vpn_mark -w"},
       {IpFamily::kDual, "mangle -F skip_apply_vpn_mark -w"},
       {IpFamily::kDual, "mangle -X skip_apply_vpn_mark -w"},
+      {IpFamily::kDual, "mangle -L qos_detect_static -w"},
+      {IpFamily::kDual, "mangle -F qos_detect_static -w"},
+      {IpFamily::kDual, "mangle -X qos_detect_static -w"},
       {IpFamily::kDual, "mangle -L qos_detect -w"},
       {IpFamily::kDual, "mangle -F qos_detect -w"},
       {IpFamily::kDual, "mangle -X qos_detect -w"},
@@ -504,7 +507,10 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual, "filter -N egress_port_firewall -w"},
       {IpFamily::kDual, "filter -A OUTPUT -j egress_port_firewall -w"},
       {IpFamily::kDual, "filter -N accept_downstream_network -w"},
-      // Asserts for QoS detect chain.
+      // Asserts for QoS detect chains.
+      {IpFamily::kDual, "mangle -N qos_detect_static -w"},
+      {IpFamily::kDual, "mangle -A OUTPUT -j qos_detect_static -w"},
+      {IpFamily::kDual, "mangle -A PREROUTING -j qos_detect_static -w"},
       {IpFamily::kDual, "mangle -N qos_detect -w"},
       {IpFamily::kDual, "mangle -A qos_detect -m dscp ! --dscp 0 -j RETURN -w"},
       {IpFamily::kDual,
@@ -582,6 +588,9 @@ TEST(DatapathTest, Stop) {
       {IpFamily::kDual, "mangle -L skip_apply_vpn_mark -w"},
       {IpFamily::kDual, "mangle -F skip_apply_vpn_mark -w"},
       {IpFamily::kDual, "mangle -X skip_apply_vpn_mark -w"},
+      {IpFamily::kDual, "mangle -L qos_detect_static -w"},
+      {IpFamily::kDual, "mangle -F qos_detect_static -w"},
+      {IpFamily::kDual, "mangle -X qos_detect_static -w"},
       {IpFamily::kDual, "mangle -L qos_detect -w"},
       {IpFamily::kDual, "mangle -F qos_detect -w"},
       {IpFamily::kDual, "mangle -X qos_detect -w"},
@@ -2372,9 +2381,7 @@ TEST(DatapathTest, EnableQoSDetection) {
   FakeSystem system;
 
   Verify_iptables(*runner, IpFamily::kDual,
-                  "mangle -A OUTPUT -j qos_detect -w");
-  Verify_iptables(*runner, IpFamily::kDual,
-                  "mangle -A PREROUTING -j qos_detect -w");
+                  "mangle -A qos_detect_static -j qos_detect -w");
 
   Datapath datapath(runner, firewall, &system);
   datapath.EnableQoSDetection();
@@ -2386,9 +2393,7 @@ TEST(DatapathTEST, DisableQoSDetection) {
   FakeSystem system;
 
   Verify_iptables(*runner, IpFamily::kDual,
-                  "mangle -D OUTPUT -j qos_detect -w");
-  Verify_iptables(*runner, IpFamily::kDual,
-                  "mangle -D PREROUTING -j qos_detect -w");
+                  "mangle -D qos_detect_static -j qos_detect -w");
 
   Datapath datapath(runner, firewall, &system);
   datapath.DisableQoSDetection();

@@ -109,9 +109,16 @@ constexpr char kSNATChromeDnsChain[] = "snat_chrome_dns";
 constexpr char kSNATUserDnsChain[] = "snat_user_dns";
 
 // Chains for QoS.
-// mangle OUTPUT and PREROUTING chain for applying fwmarks on both ingress and
+// mangle OUTPUT and PREROUTING chains for applying fwmarks on both ingress and
 // egress traffic for QoS.
+// - qos_detect: Hold the rules for applying fwmarks. Jump rule to this chain is
+//   in qos_detect_static and installed dynamically.
+// - qos_detect_static: Hold only the jump rule to qos_detect. Jump rules to
+//   this chain are in OUTPUT and PREROUTING chains and installed statically.
+// The main purpose to have these two layers is for having static order of rules
+// in the mangle table. Also see b/301566901.
 constexpr char kQoSDetectChain[] = "qos_detect";
+constexpr char kQoSDetectStaticChain[] = "qos_detect_static";
 // mangle POSTROUTING chain for applying DSCP fields based on fwmarks for egress
 // traffic.
 constexpr char kQoSApplyDSCPChain[] = "qos_apply_dscp";
@@ -216,9 +223,9 @@ void Datapath::Start() {
       // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
       // traffic that should be routed through a VPN.
       {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain},
-      // Set up a mangle chain used in OUTPUT and PREROUTING for applying
-      // fwmarks for QoS. QoSService controls when to add the jump rules to this
-      // chain.
+      // Set up mangle chains used in OUTPUT and PREROUTING for applying fwmarks
+      // for QoS.
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectStaticChain},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain},
       // Set up a mangle chain used in POSTROUTING for applying DSCP values for
       // QoS. QoSService controls when to add the jump rules to this chain.
@@ -280,6 +287,10 @@ void Datapath::Start() {
   } jumpCommands[] = {
       {IpFamily::kDual, Iptables::Table::kMangle, "OUTPUT",
        kApplyLocalSourceMarkChain},
+      {IpFamily::kDual, Iptables::Table::kMangle, "OUTPUT",
+       kQoSDetectStaticChain},
+      {IpFamily::kDual, Iptables::Table::kMangle, "PREROUTING",
+       kQoSDetectStaticChain},
       {IpFamily::kDual, Iptables::Table::kNat, "PREROUTING",
        kRedirectDefaultDnsChain},
       // "ingress_port_forwarding" must be traversed before
@@ -583,6 +594,7 @@ void Datapath::ResetIptables() {
        true},
       {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain, true},
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectStaticChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain, true},
       {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain,
@@ -2479,10 +2491,8 @@ void Datapath::DisableQoSApplyingDSCP(std::string_view ifname) {
 }
 
 void Datapath::ModifyQoSDetectJumpRule(Iptables::Command command) {
-  for (const auto chain : {"OUTPUT", "PREROUTING"}) {
-    ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command, chain,
-                   {"-j", kQoSDetectChain, "-w"});
-  }
+  ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command,
+                 kQoSDetectStaticChain, {"-j", kQoSDetectChain, "-w"});
 }
 
 void Datapath::ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
