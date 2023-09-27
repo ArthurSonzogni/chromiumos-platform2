@@ -64,7 +64,7 @@ selections {
   EXPECT_TRUE(status);
   EXPECT_EQ(selection_bundle.selections().size(), 2);
 
-  const char* marasov_aa_hwid = "marasov-AA 123";
+  const char* marasov_aa_hwid = "marasov-AA E2A";
   std::optional<DeviceSelection> marasov_aa =
       FeatureManagementHwid::GetSelectionFromHWID(selection_bundle,
                                                   marasov_aa_hwid, true);
@@ -74,7 +74,7 @@ selections {
   marasov_aa_exp.set_feature_level(1);
   EXPECT_TRUE(marasov_aa->feature_level() == marasov_aa_exp.feature_level());
 
-  const char* marasov_ad_hwid = "marasov-AD 123";
+  const char* marasov_ad_hwid = "marasov-AD E2A";
   std::optional<DeviceSelection> marasov_ad =
       FeatureManagementHwid::GetSelectionFromHWID(selection_bundle,
                                                   marasov_ad_hwid, false);
@@ -84,7 +84,7 @@ selections {
   marasov_ad_exp.set_feature_level(2);
   EXPECT_TRUE(marasov_ad->feature_level() == marasov_ad_exp.feature_level());
 
-  const char* marasov_ae_hwid = "marasov-AE 123";
+  const char* marasov_ae_hwid = "marasov-AE E2A";
   std::optional<DeviceSelection> marasov_ae =
       FeatureManagementHwid::GetSelectionFromHWID(selection_bundle,
                                                   marasov_ae_hwid, false);
@@ -92,8 +92,9 @@ selections {
 }
 
 TEST_F(FeatureManagementHwidTest, GetHwidProfileSelection) {
-  // Test with hwid_profiles: D3A is 00011 001 00000
-  // Look for bit 3: 1, 4: 1, 11: 0, 12: 0 and bit 13: 0
+  // Test with hwid_profiles: D3B is 00011 001 00001 10000 101 01010"
+  // Look for bit 3: 1, 4: 1, 11: 0, 12: 0 and bit 13: 1
+  // Then bit 14 is the End Of String and 10101010 the dummy CRC.
   // There are not bit 13 in D3A, but the code should append a 0,
   // so D3A should match.
   const char* selection_device_proto = R""""(
@@ -120,7 +121,7 @@ selections {
   EXPECT_TRUE(status);
   EXPECT_EQ(selection_bundle.selections().size(), 1);
 
-  const char* marasov_aa5_hwid = "marasov-AA D3A";
+  const char* marasov_aa5_hwid = "marasov-AA D3A-Q7K";
   std::optional<DeviceSelection> marasov_aa5 =
       FeatureManagementHwid::GetSelectionFromHWID(selection_bundle,
                                                   marasov_aa5_hwid, false);
@@ -130,7 +131,7 @@ selections {
   marasov_aa5_exp.set_feature_level(1);
   EXPECT_TRUE(marasov_aa5->feature_level() == marasov_aa5_exp.feature_level());
 
-  const char* marasov_aa7_hwid = "marasov-AA D3B";
+  const char* marasov_aa7_hwid = "marasov-AA D3B-Q7K";
   std::optional<DeviceSelection> marasov_aa7 =
       FeatureManagementHwid::GetSelectionFromHWID(selection_bundle,
                                                   marasov_aa7_hwid, false);

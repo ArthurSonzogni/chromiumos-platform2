@@ -29,6 +29,9 @@
 
 namespace segmentation {
 
+// Size of the chsusm used at end the of the HWID
+constexpr size_t kHWIDChecksumBits = 8;
+
 // Writes |device_info| as base64 to |file_path|. Returns false if the write
 // isn't successful.
 std::optional<libsegmentation::DeviceInfo>
@@ -117,6 +120,21 @@ std::optional<std::string> FeatureManagementUtil::DecodeHWID(
   // For instance, assume hwid = "REDRIX-ZZCR D3A-39F-27K-E6B"
   // After removing the prefix, translate the triplet of character using the
   // maps above, the middle character using a smaller map.
+  //
+  // Also, remove the trailer and checksum:
+  // HIWD format is as follow:
+  // +---------------------------------------------------------+
+  // |                         HWID                            |
+  // +----------------+---+-----------------+------------------+
+  // | payload        |EOS|   padding       | checksum (8bit)  |
+  // +----------------+---+-----------------+------------------+
+  // | XXXXXX         | 1 |    0...0        |     YYYY         |
+  // +----------------+---+-----------------+------------------+
+  // EOS is 1 bit, set to 1,
+  // padding is 0 bits, so that HWID size is a multiple of 13.
+  //
+  // To remove the end, look for the last bit set to 1 in the whole string,
+  // excluding the checksum.
   std::string decoded_bit_string;
   std::vector<base::StringPiece> payload = base::SplitStringPiece(
       hwid, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -132,10 +150,16 @@ std::optional<std::string> FeatureManagementUtil::DecodeHWID(
     decoded_bit_string.append(BASE8_MAP[key[1]]);
     decoded_bit_string.append(BASE32_MAP[key[2]]);
   }
-  if (decoded_bit_string.empty())
+  if (decoded_bit_string.size() <= kHWIDChecksumBits)
     return std::nullopt;
 
-  return decoded_bit_string;
+  auto pos = decoded_bit_string.find_last_of(
+      '1', decoded_bit_string.size() - kHWIDChecksumBits - 1);
+
+  if (pos == std::string::npos)
+    return std::nullopt;
+
+  return decoded_bit_string.substr(0, pos);
 }
 
 std::optional<int64_t> FeatureManagementUtil::GetDiskSpace(
