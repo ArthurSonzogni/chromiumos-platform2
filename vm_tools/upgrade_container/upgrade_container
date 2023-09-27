@@ -1,5 +1,5 @@
-#!/bin/sh
-# Copyright 2019 The ChromiumOS Authors
+#!/bin/bash
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -22,11 +22,15 @@
 set -ex
 
 to_buster() {
-  [ $1 = 'DEBIAN_BUSTER' ]
+  [ "$1" = 'DEBIAN_BUSTER' ]
 }
 
 to_bullseye() {
-  [ $1 = 'DEBIAN_BULLSEYE' ]
+  [ "$1" = 'DEBIAN_BULLSEYE' ]
+}
+
+to_bookworm() {
+  [ "$1" = 'DEBIAN_BOOKWORM' ]
 }
 
 # Really old versions of openssl will prioritize expired trust chains over valid
@@ -61,8 +65,10 @@ do_upgrade() {
   # default to keeping the local version. This is required along with setting
   # DEBIAN_FRONTEND above and passing -y --allow-releaseinfo-change for apt to
   # hopefully really be noninteractive.
-  APT_OPTIONS="-o Dpkg::Options::=--force-confdef
-   -o Dpkg::Options::=--force-confold"
+  APT_OPTIONS=(
+   -o Dpkg::Options::=--force-confdef
+   -o Dpkg::Options::=--force-confold
+  )
 
   # If a previous run of this script was killed, it might have left packages in
   # a half-configured state. Complete the configurations.
@@ -74,11 +80,11 @@ do_upgrade() {
   # instead of checking lsb-release or similar in case a failed upgrade leaves
   # them with modified release info but old apt. They'll probably hit other
   # issues if that's the case, but might as well try.
-  if ! apt-get ${APT_OPTIONS} update -y --allow-releaseinfo-change; then
-    apt-get ${APT_OPTIONS} update -y
+  if ! apt-get "${APT_OPTIONS[@]}" update -y --allow-releaseinfo-change; then
+    apt-get "${APT_OPTIONS[@]}" update -y
   fi
-  apt-get ${APT_OPTIONS} upgrade -y
-  apt-get ${APT_OPTIONS} dist-upgrade -y
+  apt-get "${APT_OPTIONS[@]}" upgrade -y
+  apt-get "${APT_OPTIONS[@]}" dist-upgrade -y
 }
 
 # Debian doesn't support skip-version upgrades, so we need to make sure we're
@@ -86,7 +92,7 @@ do_upgrade() {
 # the case where we restart an upgrade after /etc/os-release has been updated.
 do_upgrade
 
-for version in $@; do
+for version in "$@"; do
   if to_buster "${version}"; then
     # No longer need to backport GPU support packages.
     rm -f /etc/apt/sources.list.d/cros-gpu.list \
@@ -105,6 +111,14 @@ for version in $@; do
     # uses "buster/updates"
     sed -i 's/debian-security\/\? bullseye\/updates/debian-security bullseye-security/g' \
       /etc/apt/sources.list
+
+  elif to_bookworm "${version}"; then
+    # Drop backports, not used yet in Crostini bookworm.
+    sed -i '/bullseye-backports/d' /etc/apt/sources.list.d/cros.list
+
+    # The actual flip to bookworm.
+    sed -i 's/bullseye/bookworm/g' /etc/apt/sources.list \
+      /etc/apt/sources.list.d/cros.list
   fi
 
   # Upgrade again, now to the new version.
