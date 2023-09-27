@@ -1915,6 +1915,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRateLimiterNoRateLimiterInAuthInputForAdd = 3410,
   /* ./userdataauth.cc */
   kLocUserDataAuthTerminateAuthFactorNoAuthSession = 3411,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthGetAuthSessionStatusNoAuthSession = 3412,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
@@ -1935,8 +1937,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockNoRecoveryIdInCreate = 3506,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocCryptohomeRecoveryAuthBlockFailedRecoveryIdReadInCreate = 3507,
-  /* =userdataauth.cc= */
-  kLocUserDataAuthGetAuthSessionStatusNoAuthSession = 3508,
+  /* =Obsolete= */
+  kLocAuthSessionUpdateKeysetFailedInUpdateWithUSS = 3508,
   /* ./userdataauth.cc */
   kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound = 3509,
   /* =Obsolete= */
