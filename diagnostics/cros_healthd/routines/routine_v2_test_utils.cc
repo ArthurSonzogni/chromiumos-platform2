@@ -7,14 +7,15 @@
 #include <cstdint>
 #include <string>
 
-#include <gtest/gtest.h>
+#include <base/check.h>
+#include <base/functional/bind.h>
 
 namespace diagnostics {
 
 BaseRoutineControl::ExceptionCallback UnexpectedRoutineExceptionCallback() {
   return base::BindOnce([](uint32_t error, const std::string& reason) {
-    FAIL() << "An unexpected routine exception has occurred; error=" << error
-           << ", reason=" << reason;
+    CHECK(false) << "An unexpected routine exception has occurred; error="
+                 << error << ", reason=" << reason;
   });
 }
 

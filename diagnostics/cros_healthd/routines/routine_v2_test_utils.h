@@ -11,8 +11,11 @@ namespace diagnostics {
 
 // All of the utilities in this file are for use in testing only.
 
-// Returns a callback that, when invoked, generates a fatal failure in
-// GoogleTest. Designed for |BaseRoutineControl::SetOnExceptionCallback|.
+// Returns a callback that will CHECK when invoked. This callback is designed to
+// be used in |BaseRoutineControl::SetOnExceptionCallback|.
+//
+// It uses CHECK rather than a fatal failure of GoogleTest to make the test fail
+// as soon as possible in case the callback is invoked within |RunLoop::Run|.
 BaseRoutineControl::ExceptionCallback UnexpectedRoutineExceptionCallback();
 
 }  // namespace diagnostics
