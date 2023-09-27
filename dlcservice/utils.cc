@@ -71,7 +71,6 @@ char kDlcDirAName[] = "dlc_a";
 char kDlcDirBName[] = "dlc_b";
 
 char kDlcImageFileName[] = "dlc.img";
-char kManifestName[] = "imageloader.json";
 
 char kRootDirectoryInsideDlcModule[] = "root";
 
@@ -233,47 +232,6 @@ bool CreateFile(const base::FilePath& path, int64_t size) {
   return ResizeFile(path, size) && SetFilePermissions(path, kDlcFilePerms);
 }
 
-bool HashFile(const base::FilePath& path,
-              int64_t size,
-              vector<uint8_t>* sha256,
-              bool skip_size_check) {
-  base::File f(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!f.IsValid()) {
-    PLOG(ERROR) << "Failed to read file at " << path.value()
-                << ", reason: " << base::File::ErrorToString(f.error_details());
-    return false;
-  }
-
-  if (!skip_size_check) {
-    auto length = f.GetLength();
-    if (length < 0) {
-      LOG(ERROR) << "Failed to get length for file at " << path.value();
-      return false;
-    }
-    if (length < size) {
-      LOG(ERROR) << "File size " << length
-                 << " is smaller than intended file size " << size;
-      return false;
-    }
-  }
-
-  constexpr int64_t kMaxBufSize = 4096;
-  unique_ptr<SecureHash> hash(SecureHash::Create(SecureHash::SHA256));
-
-  vector<char> buf(kMaxBufSize);
-  for (; size > 0; size -= kMaxBufSize) {
-    int bytes = std::min(kMaxBufSize, size);
-    if (f.ReadAtCurrentPos(buf.data(), bytes) != bytes) {
-      PLOG(ERROR) << "Failed to read from file at " << path.value();
-      return false;
-    }
-    hash->Update(buf.data(), bytes);
-  }
-  sha256->resize(crypto::kSHA256Length);
-  hash->Finish(sha256->data(), sha256->size());
-  return true;
-}
-
 bool CopyAndHashFile(const base::FilePath& from,
                      const base::FilePath& to,
                      int64_t size,
@@ -335,30 +293,6 @@ FilePath GetDlcImagePath(const FilePath& dlc_module_root_path,
                    kDlcImageFileName);
 }
 
-// Extract details about a DLC module from its manifest file.
-std::shared_ptr<imageloader::Manifest> GetDlcManifest(
-    const FilePath& dlc_manifest_path,
-    const string& id,
-    const string& package) {
-  string dlc_json_str;
-  FilePath dlc_manifest_file =
-      JoinPaths(dlc_manifest_path, id, package, kManifestName);
-
-  if (!base::ReadFileToString(dlc_manifest_file, &dlc_json_str)) {
-    LOG(ERROR) << "Failed to read DLC manifest file '"
-               << dlc_manifest_file.value() << "'.";
-    return nullptr;
-  }
-
-  auto manifest = std::make_shared<imageloader::Manifest>();
-  if (!manifest->ParseManifest(dlc_json_str)) {
-    LOG(ERROR) << "Failed to parse DLC manifest for DLC:" << id << ".";
-    return nullptr;
-  }
-
-  return manifest;
-}
-
 set<string> ScanDirectory(const FilePath& dir) {
   set<string> result;
   base::FileEnumerator file_enumerator(dir, false,
@@ -375,6 +309,15 @@ std::vector<base::FilePath> GetPathsToDelete(const DlcId& id) {
   return {JoinPaths(system_state->content_dir(), id),
           JoinPaths(system_state->dlc_prefs_dir(), id),
           JoinPaths(system_state->factory_install_dir(), id)};
+}
+
+PartitionSlot ToPartitionSlot(BootSlot::Slot slot) {
+  switch (slot) {
+    case BootSlot::Slot::A:
+      return PartitionSlot::A;
+    case BootSlot::Slot::B:
+      return PartitionSlot::B;
+  }
 }
 
 }  // namespace dlcservice

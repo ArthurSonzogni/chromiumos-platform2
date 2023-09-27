@@ -14,10 +14,10 @@
 #include <base/files/file_util.h>
 #include <base/functional/callback.h>
 #include <base/strings/stringprintf.h>
-#include <libimageloader/manifest.h>
 
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/types.h"
+#include "dlcservice/utils/utils.h"
 
 namespace dlcservice {
 
@@ -26,7 +26,6 @@ extern char kDlcDirBName[];
 
 // Important DLC file names.
 extern char kDlcImageFileName[];
-extern char kManifestName[];
 
 // The directory inside a DLC module that contains all the DLC files.
 extern char kRootDirectoryInsideDlcModule[];
@@ -92,13 +91,6 @@ bool CreateFile(const base::FilePath& path, int64_t size);
 // shrinking nor increasing, nothing happens.
 bool ResizeFile(const base::FilePath& path, int64_t size);
 
-// Hashes the file at |path|.
-// Pass zero or less for `size` to skip size check.
-bool HashFile(const base::FilePath& path,
-              int64_t size,
-              std::vector<uint8_t>* sha256,
-              bool skip_size_check = false);
-
 // Copies and hashes the |from| file.
 bool CopyAndHashFile(const base::FilePath& from,
                      const base::FilePath& to,
@@ -111,16 +103,14 @@ base::FilePath GetDlcImagePath(const base::FilePath& dlc_module_root_path,
                                const std::string& package,
                                BootSlot::Slot current_slot);
 
-std::shared_ptr<imageloader::Manifest> GetDlcManifest(
-    const base::FilePath& dlc_manifest_path,
-    const std::string& id,
-    const std::string& package);
-
 // Scans a directory and returns all its subdirectory names in a list.
 std::set<std::string> ScanDirectory(const base::FilePath& dir);
 
 // Returns the list of directories related to a DLC for deletion.
 std::vector<base::FilePath> GetPathsToDelete(const DlcId& id);
+
+// Convert `BootSlot::Slot` to `PartitionSlot`;
+PartitionSlot ToPartitionSlot(BootSlot::Slot slot);
 
 // Create a tag that can be added to an Error log message to allow easier
 // filtering from listnr logs. Expected to be used as the first field of a log

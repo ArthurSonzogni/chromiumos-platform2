@@ -35,6 +35,7 @@
 #endif  // USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/system_state.h"
 #include "dlcservice/utils.h"
+#include "dlcservice/utils/utils.h"
 
 using std::string;
 using std::vector;
@@ -51,7 +52,6 @@ const char kSecondDlc[] = "second-dlc";
 const char kThirdDlc[] = "third-dlc";
 const char kFourthDlc[] = "fourth-dlc";
 const char kScaledDlc[] = "scaled-dlc";
-const char kPackage[] = "package";
 const char kDefaultOmahaUrl[] = "http://foo-url";
 
 BaseTest::BaseTest() {

@@ -7,8 +7,8 @@
 
 #include "dlcservice/boot/mock_boot_slot.h"
 #include "dlcservice/lvm/dlc_lvm.h"
-#include "dlcservice/lvm/lvm_utils.h"
 #include "dlcservice/test_utils.h"
+#include "dlcservice/utils/utils.h"
 
 using testing::_;
 using testing::DoAll;
@@ -130,9 +130,9 @@ TEST_F(DlcLvmTest, IsActiveImagePresent) {
   DlcLvm dlc(kFourthDlc);
   dlc.Initialize();
 
-  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_,
-              ActivateLogicalVolume(
-                  LogicalVolumeName(kFourthDlc, BootSlotInterface::Slot::A)))
+  EXPECT_CALL(
+      *mock_lvmd_proxy_wrapper_ptr_,
+      ActivateLogicalVolume(LogicalVolumeName(kFourthDlc, PartitionSlot::A)))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(dlc.IsActiveImagePresent());

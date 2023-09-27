@@ -35,6 +35,7 @@
 #include "dlcservice/dbus-proxies.h"
 #include "dlcservice/proto_utils.h"
 #include "dlcservice/utils.h"
+#include "dlcservice/utils/utils.h"
 
 using base::FilePath;
 using base::Value;

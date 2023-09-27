@@ -1,0 +1,4 @@
+Name: libdlcservice-utils
+Version: 1.0
+Description: dlcservice utils library
+Libs: -ldlcservice-utils

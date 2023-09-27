@@ -13,6 +13,7 @@
 #include <libimageloader/manifest.h>
 
 #include "dlcservice/utils.h"
+#include "dlcservice/utils/utils.h"
 
 namespace dlcservice {
 

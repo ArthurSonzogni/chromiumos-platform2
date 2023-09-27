@@ -17,6 +17,7 @@
 #include "dlcservice/system_state.h"
 #include "dlcservice/test_utils.h"
 #include "dlcservice/utils.h"
+#include "dlcservice/utils/utils.h"
 
 using dlcservice::metrics::InstallResult;
 using testing::_;

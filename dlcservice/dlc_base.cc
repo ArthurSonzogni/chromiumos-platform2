@@ -28,6 +28,7 @@
 #include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/utils.h"
+#include "dlcservice/utils/utils.h"
 
 using base::FilePath;
 using brillo::ErrorPtr;

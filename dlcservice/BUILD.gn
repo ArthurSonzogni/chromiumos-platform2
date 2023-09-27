@@ -14,6 +14,8 @@ group("all") {
     ":dlcservice_util",
     ":dlcverify",
     ":install_minijail_conf",
+    ":install_utils_header",
+    ":install_utils_pkgconfig",
     ":libdlcservice",
     ":libdlcservice_utils",
   ]
@@ -75,6 +77,26 @@ generate_dbus_adaptors("dlcservice_adaptors") {
   sources = [ "dbus_adaptors/org.chromium.DlcServiceInterface.xml" ]
 }
 
+shared_library("libdlcservice-utils") {
+  sources = [ "utils/utils.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "lib"
+}
+
+install_config("install_utils_pkgconfig") {
+  sources = [ "utils/libdlcservice-utils.pc" ]
+  install_path = "${libdir}/pkgconfig"
+}
+
+install_config("install_utils_header") {
+  sources = [
+    "utils/mock_utils.h",
+    "utils/utils.h",
+    "utils/utils_interface.h",
+  ]
+  install_path = "/usr/include/libdlcservice"
+}
+
 # DLC utils related files.
 static_library("libdlcservice_utils") {
   sources = [
@@ -88,6 +110,7 @@ static_library("libdlcservice_utils") {
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ ":libdlcservice-utils" ]
 }
 
 # DLC verify related files.
@@ -117,7 +140,6 @@ static_library("libdlcservice") {
     sources += [
       "lvm/dlc_lvm.cc",
       "lvm/dlc_lvm_creator.cc",
-      "lvm/lvm_utils.cc",
       "lvm/lvmd_proxy_wrapper.cc",
     ]
   }
@@ -180,13 +202,11 @@ if (use.test) {
       "system_state_test.cc",
       "test_utils.cc",
       "unique_queue_test.cc",
+      "utils/utils_test.cc",
       "utils_test.cc",
     ]
     if (use.lvm_stateful_partition) {
-      sources += [
-        "lvm/dlc_lvm_test.cc",
-        "lvm/lvm_utils_test.cc",
-      ]
+      sources += [ "lvm/dlc_lvm_test.cc" ]
     }
     configs += [
       "//common-mk:test",

@@ -22,6 +22,7 @@
 
 #include "dlcservice/test_utils.h"
 #include "dlcservice/utils.h"
+#include "dlcservice/utils/utils.h"
 
 namespace dlcservice {
 
