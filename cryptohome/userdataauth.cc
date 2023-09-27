@@ -150,10 +150,7 @@ SerializedUserAuthFactorTypePolicy GetAuthFactorPolicyFromUserPolicy(
     const std::optional<SerializedUserPolicy>& user_policy,
     AuthFactorType auth_factor_type) {
   if (!user_policy.has_value()) {
-    return SerializedUserAuthFactorTypePolicy(
-        {.type = *SerializeAuthFactorType(auth_factor_type),
-         .enabled_intents = {},
-         .disabled_intents = {}});
+    return GetEmptyAuthFactorTypePolicy(auth_factor_type);
   }
   for (auto policy : user_policy->auth_factor_type_policy) {
     if (policy.type != std::nullopt &&
@@ -161,10 +158,7 @@ SerializedUserAuthFactorTypePolicy GetAuthFactorPolicyFromUserPolicy(
       return policy;
     }
   }
-  return SerializedUserAuthFactorTypePolicy(
-      {.type = *SerializeAuthFactorType(auth_factor_type),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  return GetEmptyAuthFactorTypePolicy(auth_factor_type);
 }
 
 // This function sets the auth intents for auth factor type. As long as an

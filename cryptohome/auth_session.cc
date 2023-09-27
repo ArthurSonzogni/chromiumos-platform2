@@ -344,14 +344,21 @@ WrapCallbackWithMetricsReporting(
                         auth_factor_type, std::move(bucket_name));
 }
 
+}  // namespace
+
+SerializedUserAuthFactorTypePolicy GetEmptyAuthFactorTypePolicy(
+    AuthFactorType type) {
+  return SerializedUserAuthFactorTypePolicy(
+      {.type = *SerializeAuthFactorType(type),
+       .enabled_intents = {},
+       .disabled_intents = {}});
+}
+
 SerializedUserAuthFactorTypePolicy GetAuthFactorPolicyFromUserPolicy(
     const std::optional<SerializedUserPolicy>& user_policy,
     AuthFactorType auth_factor_type) {
   if (!user_policy.has_value()) {
-    return SerializedUserAuthFactorTypePolicy(
-        {.type = SerializeAuthFactorType(auth_factor_type).value(),
-         .enabled_intents = {},
-         .disabled_intents = {}});
+    return GetEmptyAuthFactorTypePolicy(auth_factor_type);
   }
   for (auto policy : user_policy->auth_factor_type_policy) {
     if (policy.type != std::nullopt &&
@@ -359,13 +366,8 @@ SerializedUserAuthFactorTypePolicy GetAuthFactorPolicyFromUserPolicy(
       return policy;
     }
   }
-  return SerializedUserAuthFactorTypePolicy(
-      {.type = SerializeAuthFactorType(auth_factor_type).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  return GetEmptyAuthFactorTypePolicy(auth_factor_type);
 }
-
-}  // namespace
 
 std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
                                                  unsigned int flags,

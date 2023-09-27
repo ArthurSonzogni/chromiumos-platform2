@@ -429,11 +429,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     std::vector<std::string> auth_factor_labels{label};
     user_data_auth::AuthInput auth_input_proto;
     auth_input_proto.mutable_password_input()->set_secret(secret);
-    SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-        {.type = *SerializeAuthFactorType(
-             DetermineFactorTypeFromAuthInput(auth_input_proto).value()),
-         .enabled_intents = {},
-         .disabled_intents = {}});
+    auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(
+        *DetermineFactorTypeFromAuthInput(auth_input_proto));
 
     AuthenticateTestFuture authenticate_future;
     auth_session.AuthenticateAuthFactor(
@@ -502,10 +499,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     user_data_auth::AuthInput auth_input_proto;
     auth_input_proto.mutable_password_input()->set_secret(secret);
     AuthenticateTestFuture authenticate_future;
-    SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-        {.type = SerializedAuthFactorType::kPassword,
-         .enabled_intents = {},
-         .disabled_intents = {}});
+    auto auth_factor_type_policy =
+        GetEmptyAuthFactorTypePolicy(AuthFactorType::kPassword);
     auth_session.AuthenticateAuthFactor(
         ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
         auth_factor_type_policy, authenticate_future.GetCallback());
@@ -522,10 +517,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     user_data_auth::AuthInput auth_input_proto;
     auth_input_proto.mutable_pin_input()->set_secret(secret);
     AuthenticateTestFuture authenticate_future;
-    SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-        {.type = SerializedAuthFactorType::kPin,
-         .enabled_intents = {},
-         .disabled_intents = {}});
+    auto auth_factor_type_policy =
+        GetEmptyAuthFactorTypePolicy(AuthFactorType::kPin);
     auth_session.AuthenticateAuthFactor(
         ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
         auth_factor_type_policy, authenticate_future.GetCallback());
@@ -928,11 +921,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthenticatePasswordVkToKioskUss) {
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_kiosk_input();
   AuthenticateTestFuture authenticate_future;
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = *SerializeAuthFactorType(
-           DetermineFactorTypeFromAuthInput(auth_input_proto).value()),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(
+      *DetermineFactorTypeFromAuthInput(auth_input_proto));
   auth_session.AuthenticateAuthFactor(
       ToAuthenticateRequest(auth_factor_labels, auth_input_proto),
       auth_factor_type_policy, authenticate_future.GetCallback());

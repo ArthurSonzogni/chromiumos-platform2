@@ -120,11 +120,8 @@ CryptohomeStatus RunAuthenticateAuthFactor(
       .auth_input_proto = request.auth_input(),
       .flags = {.force_full_auth = AuthSession::ForceFullAuthFlag::kNone},
   };
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = *SerializeAuthFactorType(
-           *DetermineFactorTypeFromAuthInput(request.auth_input())),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(
+      *DetermineFactorTypeFromAuthInput(request.auth_input()));
   auth_session.AuthenticateAuthFactor(auth_request, auth_factor_type_policy,
                                       future.GetCallback());
   return std::get<1>(future.Take());

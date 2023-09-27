@@ -29,6 +29,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/map.h"
 #include "cryptohome/auth_factor/metadata.h"
@@ -59,6 +60,11 @@ namespace cryptohome {
 
 using AuthFactorStatusUpdateCallback = base::RepeatingCallback<void(
     user_data_auth::AuthFactorWithStatus, const std::string&)>;
+
+// Helper function to return an empty auth factor type policy with the given
+// type.
+SerializedUserAuthFactorTypePolicy GetEmptyAuthFactorTypePolicy(
+    AuthFactorType type);
 
 // This class starts a session for the user to authenticate with their
 // credentials.

@@ -25,6 +25,7 @@
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -139,10 +140,8 @@ TEST_F(AuthFactorWithDriverTest, PasswordSupportsAllIntents) {
   AuthFactor password_factor = CreateFactor(
       AuthFactorType::kPassword, PasswordMetadata(), TpmEccAuthBlockState());
 
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = SerializeAuthFactorType(password_factor.type()).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy =
+      GetEmptyAuthFactorTypePolicy(password_factor.type());
   auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, password_factor,
                                              manager_, auth_factor_type_policy);
 
@@ -155,10 +154,8 @@ TEST_F(AuthFactorWithDriverTest, PinNoIntentsWithNoHardware) {
                    PinWeaverAuthBlockState{.le_label = kLeLabel});
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(false));
 
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = SerializeAuthFactorType(pin_factor.type()).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy =
+      GetEmptyAuthFactorTypePolicy(pin_factor.type());
   auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, pin_factor,
                                              manager_, auth_factor_type_policy);
 
@@ -174,10 +171,8 @@ TEST_F(AuthFactorWithDriverTest, PinNoIntentsWithDelay) {
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
 
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = SerializeAuthFactorType(pin_factor.type()).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy =
+      GetEmptyAuthFactorTypePolicy(pin_factor.type());
   auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, pin_factor,
                                              manager_, auth_factor_type_policy);
 
@@ -193,10 +188,8 @@ TEST_F(AuthFactorWithDriverTest, PinSupportAllIntentsWhenUnlocked) {
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = SerializeAuthFactorType(pin_factor.type()).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy =
+      GetEmptyAuthFactorTypePolicy(pin_factor.type());
   auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, pin_factor,
                                              manager_, auth_factor_type_policy);
 
@@ -209,10 +202,7 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithNoHardware) {
                    FingerprintAuthBlockState{});
   EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(false));
 
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = SerializeAuthFactorType(fp_factor.type()).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(fp_factor.type());
   auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
                                              manager_, auth_factor_type_policy);
 
@@ -230,10 +220,7 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWhenExpired) {
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = SerializeAuthFactorType(fp_factor.type()).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(fp_factor.type());
   auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
                                              manager_, auth_factor_type_policy);
 
@@ -253,10 +240,7 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
 
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = SerializeAuthFactorType(fp_factor.type()).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(fp_factor.type());
   auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
                                              manager_, auth_factor_type_policy);
 
@@ -276,10 +260,7 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = SerializeAuthFactorType(fp_factor.type()).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(fp_factor.type());
   auto intents = GetFullAuthAvailableIntents(kObfuscatedUser, fp_factor,
                                              manager_, auth_factor_type_policy);
 
@@ -291,10 +272,8 @@ TEST_F(AuthFactorWithDriverTest, PasswordVerifierSupportsVerifyOnly) {
   std::unique_ptr<CredentialVerifier> verifier =
       ScryptVerifier::Create(kLabel, {}, brillo::SecureBlob("password"));
 
-  SerializedUserAuthFactorTypePolicy auth_factor_type_policy(
-      {.type = SerializeAuthFactorType(verifier->auth_factor_type()).value(),
-       .enabled_intents = {},
-       .disabled_intents = {}});
+  auto auth_factor_type_policy =
+      GetEmptyAuthFactorTypePolicy(verifier->auth_factor_type());
   auto intents = GetSupportedIntents(
       kObfuscatedUser, verifier->auth_factor_type(), manager_,
       auth_factor_type_policy, /*light_auth_only=*/true);
