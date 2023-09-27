@@ -615,6 +615,25 @@ TEST_F(PortalDetectorTest, RequestTempRedirect) {
   ExpectCleanupTrial();
 }
 
+TEST_F(PortalDetectorTest, RequestRedirectWithHTTPSProbeTimeout) {
+  StartAttempt();
+  EXPECT_TRUE(portal_detector_->IsInProgress());
+
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kRedirect;
+  result.https_phase = PortalDetector::Phase::kUnknown;
+  result.https_status = PortalDetector::Status::kFailure;
+  result.redirect_url_string = kHttpUrl;
+  result.probe_url_string = kHttpUrl;
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
+  EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
+      .WillOnce(Return(kHttpUrl));
+  ExpectHttpRequestSuccessWithStatus(302);
+  // The HTTPS probe does not complete.
+  ExpectCleanupTrial();
+}
+
 TEST_F(PortalDetectorTest, PhaseToString) {
   struct {
     PortalDetector::Phase phase;

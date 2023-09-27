@@ -223,18 +223,25 @@ void PortalDetector::HttpRequestSuccessCallback(
     result_->http_status = Status::kRedirect;
     std::string redirect_url_string =
         response->GetHeader(brillo::http::response_header::kLocation);
-    if (!redirect_url_string.empty()) {
+    if (redirect_url_string.empty()) {
+      LOG(INFO) << LoggingTag() << ": Received redirection status code "
+                << status_code << " but there was no Location header";
+    } else {
       HttpUrl redirect_url;
       if (!redirect_url.ParseFromString(redirect_url_string)) {
+        // Do not log |redirect_url_string| if it is not a valid URL and cannot
+        // be obfuscated by the redaction tool.
+        LOG(INFO) << LoggingTag() << ": Received redirection status code "
+                  << status_code << " but Location header was not a valid URL.";
         result_->http_status = Status::kFailure;
       } else {
+        LOG(INFO) << LoggingTag() << ": Redirect response, Redirect URL: "
+                  << redirect_url_string
+                  << ", response status code: " << status_code;
         result_->redirect_url_string = redirect_url_string;
         result_->probe_url_string = http_url_.ToString();
       }
     }
-    LOG(INFO) << LoggingTag()
-              << ": Redirect response, Redirect URL: " << redirect_url_string
-              << ", response status code: " << status_code;
   } else {
     result_->http_status = Status::kFailure;
   }
@@ -446,7 +453,18 @@ std::string PortalDetector::LoggingTag() const {
 }
 
 bool PortalDetector::Result::IsComplete() const {
-  return http_probe_completed && https_probe_completed;
+  if (!http_probe_completed) {
+    return false;
+  }
+  // If the HTTP probe was redirected and a Location URL was received, the
+  // result is unambiguously kPortalRedirect and the trial can complete
+  // immediately. This allows to abort the HTTPS probe and avoids waiting the
+  // full duration of the HTTPS probe timeout if the captive portal is silently
+  // dropping HTTPS traffic when closed.
+  if (!redirect_url_string.empty()) {
+    return true;
+  }
+  return https_probe_completed;
 }
 
 std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase) {
