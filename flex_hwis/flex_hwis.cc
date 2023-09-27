@@ -48,10 +48,13 @@ void SendServerMetric(std::string metric_name,
   }
 }
 }  // namespace
+constexpr char kPutMetricName[] = "Platform.FlexHwis.ServerPutSuccess";
+constexpr char kPostMetricName[] = "Platform.FlexHwis.ServerPostSuccess";
 
 FlexHwisSender::FlexHwisSender(const base::FilePath& base_path,
-                               policy::PolicyProvider& provider)
-    : base_path_(base_path), check_(base_path, provider) {}
+                               policy::PolicyProvider& provider,
+                               HttpSender& sender)
+    : base_path_(base_path), check_(base_path, provider), sender_(sender) {}
 
 void FlexHwisSender::SetTelemetryInfoForTesting(mojom::TelemetryInfoPtr info) {
   mojo_.SetTelemetryInfoForTesting(std::move(info));
@@ -59,48 +62,64 @@ void FlexHwisSender::SetTelemetryInfoForTesting(mojom::TelemetryInfoPtr info) {
 
 Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
                                       Debug debug) {
-  hwis_proto::Device data;
-
   // Exit if HWIS runs successfully within 24 hours.
   if (check_.HasRunRecently()) {
     return Result::HasRunRecently;
   }
 
-  // Exit if the device does not have permission to send data to the server.
   PermissionInfo permission_info = check_.CheckPermission();
   SendPermissionMetric(permission_info, metrics);
+  hwis_proto::Device hardware_info;
   const std::optional<std::string> uuid = check_.GetUuid();
+
+  // Exit if the device does not have permission to send data to the server.
   if (!permission_info.permission) {
     if (uuid) {
+      hardware_info.set_uuid(uuid.value());
       // If the user does not consent to share hardware data, the HWIS service
       // must delete the client's UUID after confirming that the request to
       // delete the hardware data to the server is successfully.
-      check_.DeleteUuid();
+      if (sender_.DeleteDevice(hardware_info)) {
+        check_.DeleteUuid();
+      }
     }
     return Result::NotAuthorized;
   }
 
-  mojo_.SetHwisInfo(&data);
+  mojo_.SetHwisInfo(&hardware_info);
 
-  // If the UUID is not in the client, this should be a POST request.
-  // If the UUID already exists, then it should be a PUT request.
+  bool api_call_success = false;
+  std::string metric_name;
+
+  // If the device ID is not in the client side, client should do post request.
+  // If the device ID already exists, then it should be a put request.
   if (uuid) {
-    // TODO(tinghaolin): Implement server interaction logic to call PUT API.
-    data.set_uuid(uuid.value());
-    LOG(INFO) << "Call PUT API to update the slot";
-    SendServerMetric("Platform.FlexHwis.ServerPutResult", true, metrics);
+    hardware_info.set_uuid(uuid.value());
+    api_call_success = sender_.UpdateDevice(hardware_info);
+    metric_name = kPutMetricName;
   } else {
-    // TODO(tinghaolin): Implement server interaction logic to call POST API.
-    // The POST API will response the uuid and the client should save the uuid
-    // in the client side.
-    LOG(INFO) << "Call POST API to create a new slot";
-    SendServerMetric("Platform.FlexHwis.ServerPostResult", true, metrics);
+    PostActionResponse response = sender_.RegisterNewDevice(hardware_info);
+    api_call_success = response.success;
+    metric_name = kPostMetricName;
+
+    // If the POST API stores data successfully, the server will return a
+    // device ID. The client must save this device ID in the local file.
+    if (api_call_success) {
+      hwis_proto::Device response_proto;
+      response_proto.ParsePartialFromString(response.serialized_uuid);
+      check_.SetUuid(response_proto.uuid());
+    }
+  }
+
+  SendServerMetric(metric_name, api_call_success, metrics);
+  if (!api_call_success) {
+    return Result::Error;
   }
 
   check_.RecordSendTime();
 
   if (debug == Debug::Print) {
-    LOG(INFO) << data.DebugString();
+    LOG(INFO) << hardware_info.DebugString();
   }
   return Result::Sent;
 }

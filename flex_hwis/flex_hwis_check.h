@@ -13,13 +13,6 @@
 #include <policy/libpolicy.h>
 
 namespace flex_hwis {
-
-class UuidInfo {
- public:
-  std::optional<std::string> uuid;
-  bool already_exists = false;
-};
-
 class PermissionInfo {
  public:
   // If the device is managed, the value of this field is true.
@@ -58,6 +51,9 @@ class FlexHwisCheck {
   // Delete the UUID file.
   void DeleteUuid();
 
+  // Write a UUID value to the client side.
+  void SetUuid(const std::string_view uuid);
+
  private:
   // Extracts the HWIS info from the file at the file_path.
   std::optional<std::string> ReadHwisFile(
@@ -66,7 +62,7 @@ class FlexHwisCheck {
   // Writes the HWIS information, such as uuid or timestamp, to file_path
   // and adds a newline.
   bool WriteHwisFile(const base::FilePath& file_path,
-                     const std::string& content);
+                     const std::string_view content);
 
   // Returns the file path that records the device uuid created by the
   // HWIS server.

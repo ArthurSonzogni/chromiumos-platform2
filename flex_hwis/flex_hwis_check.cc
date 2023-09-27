@@ -61,6 +61,12 @@ void FlexHwisCheck::DeleteUuid() {
   }
 }
 
+void FlexHwisCheck::SetUuid(const std::string_view uuid) {
+  if (!WriteHwisFile(UuidPath(), uuid)) {
+    LOG(INFO) << "Error writing UUID file";
+  }
+}
+
 base::FilePath FlexHwisCheck::UuidPath() const {
   return base_path_.Append(kHwisUuidFile);
 }
@@ -82,10 +88,10 @@ std::optional<std::string> FlexHwisCheck::ReadHwisFile(
 }
 
 bool FlexHwisCheck::WriteHwisFile(const base::FilePath& file_path,
-                                  const std::string& content) {
+                                  const std::string_view content) {
   if (base::CreateDirectory(file_path.DirName())) {
-    return base::ImportantFileWriter::WriteFileAtomically(file_path,
-                                                          content + "\n");
+    return base::ImportantFileWriter::WriteFileAtomically(
+        file_path, std::string(content) + "\n");
   }
   return false;
 }

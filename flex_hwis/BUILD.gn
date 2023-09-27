@@ -49,6 +49,7 @@ static_library("libflex_hwis") {
     "flex_hwis.cc",
     "flex_hwis_check.cc",
     "flex_hwis_mojo.cc",
+    "http_sender.cc",
     "telemetry_for_testing.cc",
   ]
   configs += [

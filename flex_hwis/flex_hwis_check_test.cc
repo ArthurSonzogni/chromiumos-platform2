@@ -79,12 +79,6 @@ class FlexHwisCheckTest : public ::testing::Test {
     CHECK(base::WriteFile(time_path.Append("time"), timestamp));
   }
 
-  void CreateUuid(const std::string& uuid) {
-    base::FilePath uuid_path = test_path_.Append("var/lib/flex_hwis_tool");
-    CHECK(base::CreateDirectory(uuid_path));
-    CHECK(base::WriteFile(uuid_path.Append("uuid"), uuid));
-  }
-
   StrictMock<policy::MockPolicyProvider> mock_policy_provider_;
   StrictMock<policy::MockDevicePolicy> mock_device_policy_;
   base::ScopedTempDir test_dir_;
@@ -112,7 +106,7 @@ TEST_F(FlexHwisCheckTest, CheckUuid) {
   EXPECT_EQ(std::nullopt, flex_hwis_check_.GetUuid());
 
   constexpr char kUuid[] = "reven-uuid";
-  CreateUuid(kUuid);
+  flex_hwis_check_.SetUuid(kUuid);
   EXPECT_EQ(kUuid, flex_hwis_check_.GetUuid().value());
 
   flex_hwis_check_.DeleteUuid();

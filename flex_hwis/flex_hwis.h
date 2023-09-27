@@ -7,6 +7,7 @@
 
 #include "flex_hwis/flex_hwis_check.h"
 #include "flex_hwis/flex_hwis_mojo.h"
+#include "flex_hwis/http_sender.h"
 
 #include <base/files/file_path.h>
 #include <metrics/metrics_library.h>
@@ -56,8 +57,9 @@ enum class [[nodiscard]] PermissionResult {
 class FlexHwisSender {
  public:
   // |base_path| is normally "/" but can be adjusted for testing.
-  explicit FlexHwisSender(const base::FilePath& base_path,
-                          policy::PolicyProvider& provider);
+  FlexHwisSender(const base::FilePath& base_path,
+                 policy::PolicyProvider& provider,
+                 HttpSender& sender);
   // Collect and send the device hardware information.
   Result CollectAndSend(MetricsLibraryInterface& metrics, Debug debug);
   // This function is used by tests only to set the telemetry info.
@@ -68,6 +70,7 @@ class FlexHwisSender {
   base::FilePath base_path_;
   flex_hwis::FlexHwisCheck check_;
   flex_hwis::FlexHwisMojo mojo_;
+  HttpSender& sender_;
 };
 
 }  // namespace flex_hwis
