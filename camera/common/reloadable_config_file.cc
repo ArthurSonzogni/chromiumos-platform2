@@ -27,6 +27,9 @@ ReloadableConfigFile::ReloadableConfigFile(const Options& options)
       override_config_file_path_(options.override_config_file_path) {
   base::AutoLock lock(options_lock_);
   ReadConfigFileLocked(default_config_file_path_);
+  if (json_values_.has_value()) {
+    default_json_values_ = json_values_->Clone();
+  }
   if (!override_config_file_path_.empty()) {
     ReadConfigFileLocked(override_config_file_path_);
     override_file_path_watcher_ = std::make_unique<base::FilePathWatcher>();
@@ -91,6 +94,7 @@ bool ReloadableConfigFile::IsValid() const {
 void ReloadableConfigFile::ReadConfigFileLocked(
     const base::FilePath& file_path) {
   options_lock_.AssertAcquired();
+  json_values_ = default_json_values_.Clone();
   if (file_path.empty() || !base::PathExists(file_path)) {
     return;
   }
@@ -109,9 +113,9 @@ void ReloadableConfigFile::ReadConfigFileLocked(
     return;
   }
   if (json_values_) {
-    // Merge the new config with existing config, if it has been loaded. Keys
-    // that are present both in the existing and new config will be overwritten
-    // with the new value.
+    // If the new config has been successfully loaded, merge it with the default
+    // config. Keys that are present both in the default and new config will be
+    // overwritten with the values from the new config.
     json_values_->Merge(std::move(json_values->GetDict()));
   } else {
     json_values_ = std::move(json_values->GetDict());

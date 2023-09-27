@@ -81,6 +81,10 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   std::unique_ptr<base::FilePathWatcher> override_file_path_watcher_;
   scoped_refptr<base::SequencedTaskRunner> file_path_watcher_runner_;
 
+  // Stores JSON values from |default_config_file_path_| if the path is not
+  // empty. Otherwise, |default_json_values_| is an empty dict.
+  base::Value::Dict default_json_values_;
+
   base::Lock options_lock_;
   std::optional<base::Value::Dict> json_values_ GUARDED_BY(options_lock_);
 };
