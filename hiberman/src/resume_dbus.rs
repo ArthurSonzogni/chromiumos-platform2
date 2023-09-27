@@ -21,8 +21,13 @@ const HIBERMAN_DBUS_PATH: &str = "/org/chromium/Hibernate";
 const HIBERMAN_RESUME_DBUS_INTERFACE: &str = "org.chromium.HibernateResumeInterface";
 
 pub enum DBusEvent {
-    UserAuthenticated { session_id: Vec<u8> },
-    AbortRequest { reason: String },
+    UserAuthenticated {
+        account_id: String,
+        session_id: Vec<u8>,
+    },
+    AbortRequest {
+        reason: String,
+    },
 }
 
 /// The hiberman D-Bus server. The D-Bus interface provides functions for notifying
@@ -78,16 +83,20 @@ impl DBusServer {
         let iface_token = crossroads.register(HIBERMAN_RESUME_DBUS_INTERFACE, |b| {
             b.method(
                 "ResumeFromHibernateAS",
-                ("auth_session_id",),
+                ("account_id", "auth_session_id"),
                 (),
-                move |_, _, (session_id,): (Vec<u8>,)| {
+                move |_, _, (account_id, session_id): (String, Vec<u8>)| {
                     // Send the auth event to the main thread.
-                    if let Err(e) = auth_sender.send(DBusEvent::UserAuthenticated { session_id }) {
+                    if let Err(e) = auth_sender.send(DBusEvent::UserAuthenticated {
+                        account_id,
+                        session_id,
+                    }) {
                         error!(
                             "Failed to send resume auth request to the main thread: {:?}",
                             e
                         );
                     }
+
                     // recv() returns an error when the sender is dropped.
                     _ = completion_auth_receiver.recv();
                     debug!("ResumeFromHibernateAS completing");

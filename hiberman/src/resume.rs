@@ -136,9 +136,10 @@ impl ResumeConductor {
         // Wait for the user to authenticate or a message that hibernate is
         // not supported.
         let user_key = match dbus_server.wait_for_event()? {
-            DBusEvent::UserAuthenticated { session_id } => {
-                cryptohome::get_user_key_for_session(&session_id)?
-            }
+            DBusEvent::UserAuthenticated {
+                account_id: _,
+                session_id,
+            } => cryptohome::get_user_key_for_session(&session_id)?,
             DBusEvent::AbortRequest { reason } => {
                 info!("hibernate is not available: {reason}");
                 return Err(HibernateError::HibernateNotSupportedError(reason).into());

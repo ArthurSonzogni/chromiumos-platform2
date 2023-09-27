@@ -11,6 +11,7 @@
     later time.
     -->
     <method name="ResumeFromHibernateAS">
+      <arg name="account_id" direction="in" type="s" />
       <arg name="auth_session_id" direction="in" type="ay" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
