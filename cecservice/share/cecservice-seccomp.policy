@@ -13,7 +13,7 @@ sendto: 1
 read: 1
 recvmsg: 1
 close: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 openat: 1
 epoll_create: 1
 sendmsg: 1
