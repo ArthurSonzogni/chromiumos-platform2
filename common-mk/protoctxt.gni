@@ -1,3 +1,7 @@
+# Copyright 2018 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 # Helper file to convert text format protobuf files to binary format.
 
 # Note: This file is similar to proto_library.gni, but is kept separate because
@@ -39,17 +43,18 @@ template("protoc_text_to_bin") {
 
     sources = invoker.sources
 
-    script = "//common-mk/file_generator_wrapper.py"
+    script = "//common-mk/stdio_wrapper.py"
     args = [
+      "--stdin",
+      "${protoc_text_dir}/{{source_file_part}}",
+      "--stdout",
+      "${protoc_bin_dir}/{{source_name_part}}.pbf",
+      "--",
       "protoc",
       "--proto_path",
       "${protoc_proto_dir}",
       "--encode",
       "${protoc_message_name}",
-      "--protobuf_in",
-      "${protoc_text_dir}/{{source_file_part}}",
-      "--protobuf_out",
-      "${protoc_bin_dir}/{{source_name_part}}.pbf",
       "${protoc_proto_dir}/${protoc_proto_def}",
     ]
     outputs = [ "${protoc_bin_dir}/{{source_name_part}}.pbf" ]
