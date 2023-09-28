@@ -182,6 +182,60 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
   EXPECT_TRUE(crostini->GetDevices().empty());
 }
 
+TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
+  constexpr uint64_t vm_id = 101;
+  auto crostini = NewService();
+
+  ShillClient::Device wlan0_dev;
+  wlan0_dev.ifname = "wlan0";
+  crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
+
+  EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
+      .WillOnce(Return("vmtap0"));
+  EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
+  EXPECT_CALL(*datapath_,
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM, _,
+                                       Eq(std::nullopt), Eq(std::nullopt),
+                                       Eq(std::nullopt)));
+  EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
+
+  // There should be no virtual device before the VM starts.
+  ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
+  EXPECT_TRUE(crostini->GetDevices().empty());
+
+  // The virtual datapath for the Bruschetta VM can successfully start.
+  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kBruschetta,
+                                 /*subnet_index=*/0);
+  Mock::VerifyAndClearExpectations(datapath_.get());
+  ASSERT_NE(nullptr, device);
+  EXPECT_EQ(std::nullopt, device->lxd_ipv4_subnet());
+  EXPECT_EQ(std::nullopt, device->lxd_ipv4_address());
+  EXPECT_EQ("vmtap0", device->tap_device_ifname());
+  auto it = guest_devices_.find("vmtap0");
+  ASSERT_NE(guest_devices_.end(), it);
+  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kAdded, it->second);
+  guest_devices_.clear();
+
+  // After starting, there should be a virtual device.
+  EXPECT_EQ(device, crostini->GetDevice(vm_id));
+  auto devices = crostini->GetDevices();
+  ASSERT_FALSE(devices.empty());
+  EXPECT_EQ(device, devices[0]);
+
+  // The virtual datapath for the Bruschetta VM can successfully stop.
+  EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
+  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap0"));
+  EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
+  crostini->Stop(vm_id);
+  it = guest_devices_.find("vmtap0");
+  ASSERT_NE(guest_devices_.end(), it);
+  EXPECT_EQ(CrostiniService::CrostiniDeviceEvent::kRemoved, it->second);
+
+  // After stopping the datapath setup, there should be no virtual device.
+  EXPECT_EQ(nullptr, crostini->GetDevice(vm_id));
+  EXPECT_TRUE(crostini->GetDevices().empty());
+}
+
 TEST_F(CrostiniServiceTest, MultipleVMs) {
   constexpr uint64_t vm_id1 = 101;
   constexpr uint64_t vm_id2 = 102;

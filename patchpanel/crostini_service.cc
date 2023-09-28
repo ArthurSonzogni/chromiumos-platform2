@@ -9,9 +9,9 @@
 #include <ostream>
 #include <utility>
 
-#include "base/task/single_thread_task_runner.h"
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 // Ignore Wconversion warnings in dbus headers.
@@ -46,14 +46,37 @@ std::ostream& operator<<(
                 << "}";
 }
 
-AutoDNATTarget GetAutoDNATTarget(CrostiniService::VMType guest_type) {
+std::optional<AutoDNATTarget> GetAutoDNATTarget(
+    CrostiniService::VMType guest_type) {
   switch (guest_type) {
     case CrostiniService::VMType::kTermina:
       return AutoDNATTarget::kCrostini;
     case CrostiniService::VMType::kParallels:
       return AutoDNATTarget::kParallels;
+    case CrostiniService::VMType::kBruschetta:
+    case CrostiniService::VMType::kBorealis:
+      // There should not be attempt of auto DNAT into Bruschetta and Borealis
+      return std::nullopt;
   }
 }
+
+NetworkDevice::GuestType ProtoDeviceTypeFromVMType(
+    CrostiniService::VMType vm_type) {
+  switch (vm_type) {
+    case CrostiniService::VMType::kTermina:
+      return NetworkDevice::TERMINA_VM;
+      break;
+    case CrostiniService::VMType::kParallels:
+      return NetworkDevice::PARALLELS_VM;
+      break;
+    case CrostiniService::VMType::kBruschetta:
+    case CrostiniService::VMType::kBorealis:
+      // TODO(b/279994478): Clarify whether Bruschetta and Borealis need to
+      // differentiate themselves from Crostini devices on dbus.
+      return NetworkDevice::TERMINA_VM;
+  }
+}
+
 }  // namespace
 
 CrostiniService::CrostiniDevice::CrostiniDevice(
@@ -91,14 +114,8 @@ void CrostiniService::CrostiniDevice::ConvertToProto(
   output->set_guest_ifname("");
   output->set_ipv4_addr(vm_ipv4_address().ToInAddr().s_addr);
   output->set_host_ipv4_addr(gateway_ipv4_address().ToInAddr().s_addr);
-  switch (type()) {
-    case VMType::kTermina:
-      output->set_guest_type(NetworkDevice::TERMINA_VM);
-      break;
-    case VMType::kParallels:
-      output->set_guest_type(NetworkDevice::PARALLELS_VM);
-      break;
-  }
+  output->set_guest_type(ProtoDeviceTypeFromVMType(type()));
+
   FillSubnetProto(vm_ipv4_subnet(), output->mutable_ipv4_subnet());
   // Do no copy LXD container subnet data: patchpanel_service.proto's
   // NetworkDevice does not have a field for the LXD container IPv4 allocation.
@@ -364,8 +381,12 @@ void CrostiniService::StartAutoDNAT(
   if (!default_logical_device_) {
     return;
   }
-  datapath_->AddInboundIPv4DNAT(GetAutoDNATTarget(virtual_device->type()),
-                                *default_logical_device_,
+  auto dnat_target = GetAutoDNATTarget(virtual_device->type());
+  if (!dnat_target) {
+    LOG(ERROR) << virtual_device->type() << "is not a valid auto DNAT target.";
+    return;
+  }
+  datapath_->AddInboundIPv4DNAT(*dnat_target, *default_logical_device_,
                                 virtual_device->vm_ipv4_address());
 }
 
@@ -374,8 +395,12 @@ void CrostiniService::StopAutoDNAT(
   if (!default_logical_device_) {
     return;
   }
-  datapath_->RemoveInboundIPv4DNAT(GetAutoDNATTarget(virtual_device->type()),
-                                   *default_logical_device_,
+  auto dnat_target = GetAutoDNATTarget(virtual_device->type());
+  if (!dnat_target) {
+    LOG(ERROR) << virtual_device->type() << "is not an valid auto DNAT target.";
+    return;
+  }
+  datapath_->RemoveInboundIPv4DNAT(*dnat_target, *default_logical_device_,
                                    virtual_device->vm_ipv4_address());
 }
 
@@ -387,6 +412,12 @@ TrafficSource CrostiniService::TrafficSourceFromVMType(
       return TrafficSource::kCrosVM;
     case VMType::kParallels:
       return TrafficSource::kParallelsVM;
+    case VMType::kBruschetta:
+      // TODO(b/279994478): Implement specific firewall rule for Bruschetta.
+    case VMType::kBorealis:
+      // TODO(b/279994478): Clarify whether Borealis needs its own traffic
+      // source type.
+      return TrafficSource::kCrosVM;
   }
 }
 
@@ -398,6 +429,10 @@ GuestMessage::GuestType CrostiniService::GuestMessageTypeFromVMType(
       return GuestMessage::TERMINA_VM;
     case VMType::kParallels:
       return GuestMessage::PARALLELS_VM;
+    case VMType::kBruschetta:
+      return GuestMessage::BRUSCHETTA_VM;
+    case VMType::kBorealis:
+      return GuestMessage::BOREALIS_VM;
   }
 }
 
@@ -406,6 +441,9 @@ AddressManager::GuestType CrostiniService::AddressManagingTypeFromVMType(
     CrostiniService::VMType vm_type) {
   switch (vm_type) {
     case VMType::kTermina:
+    case VMType::kBruschetta:
+    case VMType::kBorealis:
+      // Bruschetta and Borealis share the same address pool with Crostini.
       return AddressManager::GuestType::kTerminaVM;
     case VMType::kParallels:
       return AddressManager::GuestType::kParallelsVM;
@@ -420,6 +458,11 @@ Device::Type CrostiniService::VirtualDeviceTypeFromVMType(
       return Device::Type::kTerminaVM;
     case VMType::kParallels:
       return Device::Type::kParallelsVM;
+    case VMType::kBruschetta:
+    case VMType::kBorealis:
+      // TODO(b/279994478): Clarify whether Bruschetta and Borealis need their
+      // own virtual device type.
+      return Device::Type::kTerminaVM;
   }
 }
 
@@ -430,6 +473,10 @@ std::ostream& operator<<(std::ostream& stream,
       return stream << "Termina";
     case CrostiniService::VMType::kParallels:
       return stream << "Parallels";
+    case CrostiniService::VMType::kBruschetta:
+      return stream << "Bruschetta";
+    case CrostiniService::VMType::kBorealis:
+      return stream << "Borealis";
   }
 }
 

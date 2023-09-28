@@ -48,7 +48,9 @@ message GuestMessage {
     ARC = 1;           // ARC++ Container (P & higher)
     ARC_VM = 2;        // ARC VM
     TERMINA_VM = 3;    // Crostini Termina VM
-    PARALLELS_VM = 4;  // Parallels VM
+    PARALLELS_VM = 4;
+    BRUSCHETTA_VM = 5;
+    BOREALIS_VM = 6;
   }
   required GuestType type = 1;
 

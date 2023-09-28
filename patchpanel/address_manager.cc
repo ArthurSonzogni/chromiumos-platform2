@@ -26,7 +26,7 @@ namespace {
 // +---------------+------------+----------------------------------------------+
 // | 0       (/30) | ARC/ARCVM  | Used for ARC management interface arc0       |
 // | 4-20    (/30) | ARC/ARCVM  | Used to expose multiple host networks to ARC |
-// | 24-124  (/30) | Termina VM | Used by Crostini                             |
+// | 24-124  (/30) | Termina VM | Used by Crostini, Bruschetta and Borealis    |
 // | 128-188 (/30) | Host netns | Used for netns hosting minijailed services   |
 // | 192-252 (/28) | Containers | Used by Crostini LXD user containers         |
 // +---------------+------------+----------------------------------------------+
