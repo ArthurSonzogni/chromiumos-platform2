@@ -62,7 +62,7 @@ class OpenVPNManagementServerTest : public testing::Test {
   }
 
   void ExpectSend(net_base::MockSocket& connected_socket,
-                  const std::string& value) {
+                  std::string_view value) {
     EXPECT_CALL(connected_socket, Send(StringEq(value), _))
         .WillOnce(Return(value.size()));
   }
@@ -110,43 +110,45 @@ class OpenVPNManagementServerTest : public testing::Test {
     return {reinterpret_cast<const uint8_t*>(str.data()), str.size()};
   }
 
-  void SendSignal(const std::string& signal) { server_.SendSignal(signal); }
+  void SendSignal(std::string_view signal) { server_.SendSignal(signal); }
 
   void OnInput(base::span<const uint8_t> data) { server_.OnInput(data); }
 
-  void ProcessMessage(const std::string& message) {
+  void ProcessMessage(std::string_view message) {
     server_.ProcessMessage(message);
   }
 
-  bool ProcessSuccessMessage(const std::string& message) {
+  bool ProcessSuccessMessage(std::string_view message) {
     return server_.ProcessSuccessMessage(message);
   }
 
-  bool ProcessStateMessage(const std::string& message) {
+  bool ProcessStateMessage(std::string_view message) {
     return server_.ProcessStateMessage(message);
   }
 
-  bool ProcessAuthTokenMessage(const std::string& message) {
+  bool ProcessAuthTokenMessage(std::string_view message) {
     return server_.ProcessAuthTokenMessage(message);
   }
 
   bool GetHoldWaiting() { return server_.hold_waiting_; }
 
-  static std::string ParseSubstring(const std::string& message,
-                                    const std::string& start,
-                                    const std::string& end) {
+  static std::string_view ParseSubstring(std::string_view message,
+                                         std::string_view start,
+                                         std::string_view end) {
     return OpenVPNManagementServer::ParseSubstring(message, start, end);
   }
 
-  static std::string ParsePasswordTag(const std::string& message) {
+  static std::string_view ParsePasswordTag(std::string_view message) {
     return OpenVPNManagementServer::ParsePasswordTag(message);
   }
 
-  static std::string ParsePasswordFailedReason(const std::string& message) {
+  static std::string_view ParsePasswordFailedReason(std::string_view message) {
     return OpenVPNManagementServer::ParsePasswordFailedReason(message);
   }
 
-  void SetClientState(const std::string& state) { server_.state_ = state; }
+  void SetClientState(std::string_view state) {
+    server_.state_ = std::string(state);
+  }
 
   // required by base::FileDescriptorWatcher.
   base::test::TaskEnvironment task_environment_{

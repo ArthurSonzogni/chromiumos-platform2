@@ -98,34 +98,34 @@ class OpenVPNManagementServer {
   void OnInputReady();
   void OnInput(base::span<const uint8_t> data);
 
-  void Send(const std::string& data);
-  void SendState(const std::string& state);
-  void SendUsername(const std::string& tag, const std::string& username);
-  void SendPassword(const std::string& tag, const std::string& password);
+  void Send(std::string_view data);
+  void SendState(std::string_view state);
+  void SendUsername(std::string_view tag, std::string_view username);
+  void SendPassword(std::string_view tag, std::string_view password);
   void SendHoldRelease();
-  void SendSignal(const std::string& signal);
+  void SendSignal(std::string_view signal);
   void SendStatus();
 
-  void ProcessMessage(const std::string& message);
-  bool ProcessInfoMessage(const std::string& message);
-  bool ProcessNeedPasswordMessage(const std::string& message);
-  bool ProcessFailedPasswordMessage(const std::string& message);
-  bool ProcessAuthTokenMessage(const std::string& message);
-  bool ProcessStateMessage(const std::string& message);
-  bool ProcessHoldMessage(const std::string& message);
-  bool ProcessSuccessMessage(const std::string& message);
-  bool ProcessStatusMessage(const std::string& message);
+  void ProcessMessage(std::string_view message);
+  bool ProcessInfoMessage(std::string_view message);
+  bool ProcessNeedPasswordMessage(std::string_view message);
+  bool ProcessFailedPasswordMessage(std::string_view message);
+  bool ProcessAuthTokenMessage(std::string_view message);
+  bool ProcessStateMessage(std::string_view message);
+  bool ProcessHoldMessage(std::string_view message);
+  bool ProcessSuccessMessage(std::string_view message);
+  bool ProcessStatusMessage(std::string_view message);
 
-  void PerformStaticChallenge(const std::string& tag);
-  void PerformAuthentication(const std::string& tag);
-  void SupplyTPMToken(const std::string& tag);
+  void PerformStaticChallenge(std::string_view tag);
+  void PerformAuthentication(std::string_view tag);
+  void SupplyTPMToken(std::string_view tag);
 
   // Returns the first substring in |message| enclosed by the |start| and |end|
   // substrings. Note that the first |end| substring after the position of
   // |start| is matched.
-  static std::string ParseSubstring(const std::string& message,
-                                    const std::string& start,
-                                    const std::string& end);
+  static std::string_view ParseSubstring(std::string_view message,
+                                         std::string_view start,
+                                         std::string_view end);
 
   // Password messages come in two forms:
   //
@@ -135,13 +135,13 @@ class OpenVPNManagementServer {
   // ParsePasswordTag parses AUTH_TYPE out of a password |message| and returns
   // it. ParsePasswordFailedReason parses REASON_STRING, if any, out of a
   // password |message| and returns it.
-  static std::string ParsePasswordTag(const std::string& message);
-  static std::string ParsePasswordFailedReason(const std::string& message);
+  static std::string_view ParsePasswordTag(std::string_view message);
+  static std::string_view ParsePasswordFailedReason(std::string_view message);
 
   // Escapes |str| per OpenVPN's command parsing rules assuming |str| will be
   // sent over the management interface quoted (i.e., whitespace is not
   // escaped).
-  static std::string EscapeToQuote(const std::string& str);
+  static std::string EscapeToQuote(std::string_view str);
 
   OpenVPNDriver* driver_;
 
