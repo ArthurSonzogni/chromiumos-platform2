@@ -167,7 +167,7 @@ TEST_F(X11Test, OutputsPositionedCorrectlyAfterRemovingLeftOutput) {
   EXPECT_EQ(output->virt_y, 0);
 
   // outputs has length 2.
-  EXPECT_EQ(ctx.host_outputs.size(), 2u);
+  EXPECT_EQ(ctx.host_outputs.size(), 2);
 }
 
 TEST_F(X11Test, OutputsPositionedCorrectlyAfterRemovingMiddleOutput) {
@@ -201,7 +201,7 @@ TEST_F(X11Test, OutputsPositionedCorrectlyAfterRemovingMiddleOutput) {
   EXPECT_EQ(output->virt_y, 0);
 
   // outputs has length 2.
-  EXPECT_EQ(ctx.host_outputs.size(), 2u);
+  EXPECT_EQ(ctx.host_outputs.size(), 2);
 }
 
 TEST_F(X11Test, OtherOutputUnchangedAfterRemovingRightOutput) {
@@ -222,7 +222,7 @@ TEST_F(X11Test, OtherOutputUnchangedAfterRemovingRightOutput) {
   EXPECT_EQ(output->virt_x, 0);
   EXPECT_EQ(output->virt_y, 0);
   // outputs has length 1.
-  EXPECT_EQ(ctx.host_outputs.size(), 1u);
+  EXPECT_EQ(ctx.host_outputs.size(), 1);
 }
 
 TEST_F(X11Test, RotatingOutputsShiftsNeighbouringOutputs) {

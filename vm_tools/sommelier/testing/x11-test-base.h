@@ -20,10 +20,6 @@ class X11TestBase : public WaylandTestBase {
     WaylandTestBase::InitContext();
     ctx.xwayland = 1;
 
-    // Always delegate ID generation to the fake XCB shim, even for test cases
-    // that never use the fake for anything else. This prevents ID collisions.
-    xcb.DelegateIdGenerationToFake();
-
     // Create a fake screen with somewhat plausible values.
     // Some of these are not realistic because they refer to things not present
     // in the mocked X environment (such as specifying a root window with ID 0).
@@ -60,8 +56,13 @@ class X11TestBase : public WaylandTestBase {
 
   ~X11TestBase() override { set_xcb_shim(nullptr); }
 
+  uint32_t GenerateId() {
+    static uint32_t id = 0;
+    return ++id;
+  }
+
   virtual sl_window* CreateWindowWithoutRole() {
-    xcb_window_t window_id = xcb.generate_id(ctx.connection);
+    xcb_window_t window_id = GenerateId();
     sl_create_window(&ctx, window_id, 0, 0, 800, 600, 0);
     sl_window* window = sl_lookup_window(&ctx, window_id);
     EXPECT_NE(window, nullptr);
@@ -72,7 +73,7 @@ class X11TestBase : public WaylandTestBase {
     sl_window* window = CreateWindowWithoutRole();
 
     // Pretend we created a frame window too
-    window->frame_id = xcb.generate_id(ctx.connection);
+    window->frame_id = GenerateId();
 
     window->host_surface_id = SurfaceId(xwayland->CreateSurface());
     sl_window_update(window);

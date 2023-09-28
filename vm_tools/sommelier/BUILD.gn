@@ -174,11 +174,9 @@ if (use.test) {
       "sommelier-test.cc",
       "sommelier-transform-test.cc",
       "sommelier-window-test.cc",
-      "sommelier-x11event-test.cc",
       "sommelier-xdg-shell-test.cc",
       "testing/mock-wayland-channel.cc",
       "testing/sommelier-test-util.cc",
-      "xcb/fake-xcb-shim.cc",
     ]
     include_dirs = [ "testing" ]
 
