@@ -21,12 +21,16 @@ pkg_config("target_defaults") {
     "-Werror",
     "-Wno-unused-parameter",  # needed for libchrome
   ]
-  pkg_deps = [ "libchrome" ]
+  pkg_deps = [
+    "libcares",
+    "libchrome",
+  ]
 }
 
 shared_library("libnet-base") {
   sources = [
     "byte_utils.cc",
+    "dns_client.cc",
     "ip_address.cc",
     "ip_address_utils.cc",
     "ipv4_address.cc",
