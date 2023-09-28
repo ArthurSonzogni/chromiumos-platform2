@@ -5,9 +5,9 @@
 #include "patchpanel/multicast_counters_service.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
-#include "base/strings/string_piece.h"
 #include <base/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -356,7 +356,7 @@ bool IsEmptyCounters(std::map<CounterKey, uint64_t> counter) {
 }
 
 ShillClient::Device MakeShillDevice(ShillClient::Device::Type type,
-                                    base::StringPiece ifname,
+                                    std::string_view ifname,
                                     int ifindex) {
   ShillClient::Device dev;
   dev.type = type;

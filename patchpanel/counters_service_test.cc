@@ -8,10 +8,10 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -314,7 +314,7 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
       .WillOnce(Return(true));
   const struct {
     Iptables::Command command;
-    base::StringPiece chain;
+    std::string_view chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
       {Iptables::Command::kA, "INPUT", {"-i", "eth0", "-j", "rx_eth0", "-w"}},
@@ -399,7 +399,7 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
 TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
   const struct {
     Iptables::Command command;
-    base::StringPiece chain;
+    std::string_view chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
       {Iptables::Command::kD, "INPUT", {"-i", "eth0", "-j", "rx_eth0", "-w"}},
@@ -435,7 +435,7 @@ TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
       .WillOnce(Return(true));
   const struct {
     Iptables::Command command;
-    base::StringPiece chain;
+    std::string_view chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
       {Iptables::Command::kA,
@@ -520,7 +520,7 @@ TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
 TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
   const struct {
     Iptables::Command command;
-    base::StringPiece chain;
+    std::string_view chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
       {Iptables::Command::kD, "FORWARD", {"-i", "ppp0", "-j", "rx_vpn", "-w"}},
@@ -553,7 +553,7 @@ TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
       .Times(0);
   const struct {
     Iptables::Command command;
-    base::StringPiece chain;
+    std::string_view chain;
     std::vector<std::string> argv;
   } expected_calls[] = {
       {Iptables::Command::kA, "FORWARD", {"-i", "eth0", "-j", "rx_eth0", "-w"}},
