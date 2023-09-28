@@ -37,7 +37,7 @@ futex_time64: 1
 getdents64: 1
 geteuid32: 1
 getpid: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getresgid32: 1
 getresuid32: 1
 getsockname: 1
