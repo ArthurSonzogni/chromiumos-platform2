@@ -31,7 +31,7 @@ getdents: 1
 getdents64: 1
 geteuid: 1
 getpid: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getresgid: 1
 getresuid: 1
 getrlimit: 1
