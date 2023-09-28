@@ -103,44 +103,11 @@ class FakeShillClient : public shill::FakeClient {
   ManagerProxyInterface* manager_proxy_;
 };
 
-class MockPatchpanelClient : public patchpanel::Client {
+class MockPatchpanelClient : public patchpanel::FakeClient {
  public:
   MockPatchpanelClient() = default;
   ~MockPatchpanelClient() override = default;
 
-  MOCK_METHOD(void,
-              RegisterOnAvailableCallback,
-              (base::RepeatingCallback<void(bool)>),
-              (override));
-  MOCK_METHOD(void,
-              RegisterProcessChangedCallback,
-              (base::RepeatingCallback<void(bool)>),
-              (override));
-  MOCK_METHOD(bool, NotifyArcStartup, (pid_t), (override));
-  MOCK_METHOD(bool, NotifyArcShutdown, (), (override));
-  MOCK_METHOD(std::vector<patchpanel::Client::VirtualDevice>,
-              NotifyArcVmStartup,
-              (uint32_t),
-              (override));
-  MOCK_METHOD(bool, NotifyArcVmShutdown, (uint32_t), (override));
-  MOCK_METHOD(std::optional<patchpanel::Client::TerminaAllocation>,
-              NotifyTerminaVmStartup,
-              (uint32_t),
-              (override));
-  MOCK_METHOD(bool, NotifyTerminaVmShutdown, (uint32_t), (override));
-  MOCK_METHOD(std::optional<patchpanel::Client::ParallelsAllocation>,
-              NotifyParallelsVmStartup,
-              (uint64_t, int),
-              (override));
-  MOCK_METHOD(bool, NotifyParallelsVmShutdown, (uint64_t), (override));
-  MOCK_METHOD(std::optional<patchpanel::Client::BruschettaAllocation>,
-              NotifyBruschettaVmStartup,
-              (uint64_t),
-              (override));
-  MOCK_METHOD(bool, NotifyBruschettaVmShutdown, (uint64_t), (override));
-  MOCK_METHOD(bool, DefaultVpnRouting, (const base::ScopedFD&), (override));
-  MOCK_METHOD(bool, RouteOnVpn, (const base::ScopedFD&), (override));
-  MOCK_METHOD(bool, BypassVpn, (const base::ScopedFD&), (override));
   MOCK_METHOD(
       (std::pair<base::ScopedFD, patchpanel::Client::ConnectedNamespace>),
       ConnectNamespace,
@@ -151,21 +118,6 @@ class MockPatchpanelClient : public patchpanel::Client {
        patchpanel::Client::TrafficSource traffic_source,
        bool static_ipv6),
       (override));
-  MOCK_METHOD(void,
-              GetTrafficCounters,
-              (const std::set<std::string>&, GetTrafficCountersCallback),
-              (override));
-  MOCK_METHOD(bool,
-              ModifyPortRule,
-              (patchpanel::Client::FirewallRequestOperation,
-               patchpanel::Client::FirewallRequestType,
-               patchpanel::Client::FirewallRequestProtocol,
-               const std::string&,
-               const std::string&,
-               uint32_t,
-               const std::string&,
-               uint32_t),
-              (override));
   MOCK_METHOD(base::ScopedFD,
               RedirectDns,
               (patchpanel::Client::DnsRedirectionRequestType,
@@ -177,35 +129,6 @@ class MockPatchpanelClient : public patchpanel::Client {
   MOCK_METHOD(std::vector<patchpanel::Client::VirtualDevice>,
               GetDevices,
               (),
-              (override));
-  MOCK_METHOD(void,
-              RegisterVirtualDeviceEventHandler,
-              (patchpanel::Client::VirtualDeviceEventHandler),
-              (override));
-  MOCK_METHOD(void,
-              RegisterNeighborReachabilityEventHandler,
-              (NeighborReachabilityEventHandler),
-              (override));
-  MOCK_METHOD(bool, SetVpnLockdown, (bool), (override));
-  MOCK_METHOD(bool,
-              CreateTetheredNetwork,
-              (const std::string&,
-               const std::string&,
-               const std::optional<DHCPOptions>& dhcp_options,
-               const std::optional<UplinkIPv6Configuration>& uplink_ipv6_config,
-               const std::optional<int>& mtu,
-               patchpanel::Client::CreateTetheredNetworkCallback));
-  MOCK_METHOD(bool,
-              CreateLocalOnlyNetwork,
-              (const std::string&,
-               patchpanel::Client::CreateLocalOnlyNetworkCallback));
-  MOCK_METHOD(bool,
-              GetDownstreamNetworkInfo,
-              (const std::string&,
-               patchpanel::Client::GetDownstreamNetworkInfoCallback));
-  MOCK_METHOD(bool,
-              SendSetFeatureFlagRequest,
-              (FeatureFlag flag, bool enable),
               (override));
 };
 
