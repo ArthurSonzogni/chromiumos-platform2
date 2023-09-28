@@ -30,7 +30,7 @@ prctl: arg0 == PR_SET_NAME
 execve: 1
 set_tid_address: 1
 prlimit64: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 sched_getattr: 1
 statx: 1
 lseek: 1
