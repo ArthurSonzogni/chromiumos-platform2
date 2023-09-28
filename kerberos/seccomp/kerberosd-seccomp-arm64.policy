@@ -28,7 +28,7 @@ munmap: 1
 brk: 1
 bind: 1
 getsockname: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getdents64: 1
 rt_sigaction: 1
 getuid: 1

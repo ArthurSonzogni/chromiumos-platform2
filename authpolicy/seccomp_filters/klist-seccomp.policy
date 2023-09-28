@@ -12,7 +12,7 @@ fcntl: 1
 fstat: 1
 newfstatat: 1
 futex: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getuid: 1
 lseek: 1
 open: 1

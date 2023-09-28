@@ -38,7 +38,7 @@ getegid: 1
 geteuid: 1
 getpeername: 1
 getpid: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getrlimit: 1
 getsockname: 1
 getsockopt: 1
