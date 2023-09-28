@@ -41,7 +41,7 @@ flock: 1
 geteuid32: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getuid32: 1
 getgid32: 1
 getegid32: 1

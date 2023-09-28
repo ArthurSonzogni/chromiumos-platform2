@@ -34,7 +34,7 @@ sendmsg: 1
 flock: 1
 geteuid: 1
 brk: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getuid: 1
 getgid: 1
 getegid: 1
