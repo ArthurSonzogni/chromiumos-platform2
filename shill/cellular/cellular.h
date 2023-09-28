@@ -191,6 +191,9 @@ class Cellular : public Device,
   // Configures the attach APN in the modem.
   virtual void ConfigureAttachApn();
 
+  bool GetForceInitEpsBearerSettings();
+  void SetForceInitEpsBearerSettings(bool force);
+
   // Cancel any pending connect request.
   void CancelPendingConnect();
 
@@ -942,6 +945,7 @@ class Cellular : public Device,
   std::unique_ptr<ExternalTask> ppp_task_;
   VirtualDeviceRefPtr ppp_device_;
   bool is_ppp_authenticating_ = false;
+  bool force_init_eps_bearer_settings_ = true;
 
   std::unique_ptr<NetlinkSockDiag> socket_destroyer_;
 

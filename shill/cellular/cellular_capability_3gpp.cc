@@ -1156,7 +1156,8 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
   // Store the last Attach APN we tried.
   last_attach_apn_ = apn_info;
   LOG(INFO) << __func__ << ": Using Attach APN '"
-            << GetPrintableApnStringmap(apn_info) << "'";
+            << GetPrintableApnStringmap(apn_info) << "' "
+            << "force: " << cellular()->GetForceInitEpsBearerSettings();
   if (base::Contains(apn_info, kApnProperty))
     properties->Set<std::string>(CellularBearer::kMMApnProperty,
                                  apn_info.at(kApnProperty));
@@ -1188,6 +1189,9 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
     // will choose a default, or will fail to accept |none| on qmi modems.
     properties->Set<uint32_t>(CellularBearer::kMMIpTypeProperty,
                               IpTypeToMMBearerIpFamily(kApnIpTypeV4));
+  }
+  if (cellular()->GetForceInitEpsBearerSettings()) {
+    properties->Set<bool>(CellularBearer::kMMForceProperty, true);
   }
 }
 
@@ -1599,6 +1603,7 @@ void CellularCapability3gpp::OnSetInitialEpsBearerReply(ResultCallback callback,
     return;
   }
 
+  cellular()->SetForceInitEpsBearerSettings(false);
   service->SetLastAttachApn(last_attach_apn_);
   std::move(callback).Run(Error(Error::kSuccess));
 }

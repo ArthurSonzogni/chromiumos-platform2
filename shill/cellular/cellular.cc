@@ -1158,6 +1158,7 @@ void Cellular::OnModemDestroyed() {
   SLOG(1) << LoggingTag() << ": " << __func__;
   StopLocationPolling();
   DestroyCapability();
+  SetForceInitEpsBearerSettings(true);
   // Clear the dbus path.
   SetDbusPath(shill::RpcIdentifier());
 
@@ -2881,6 +2882,16 @@ void Cellular::OnPPPAuthenticated() {
 void Cellular::OnPPPAuthenticating() {
   SLOG(2) << LoggingTag() << ": " << __func__;
   is_ppp_authenticating_ = true;
+}
+
+bool Cellular::GetForceInitEpsBearerSettings() {
+  return force_init_eps_bearer_settings_;
+}
+
+void Cellular::SetForceInitEpsBearerSettings(bool force) {
+  SLOG(2) << LoggingTag() << ": " << __func__ << " force: " << std::boolalpha
+          << force;
+  force_init_eps_bearer_settings_ = force;
 }
 
 void Cellular::OnPPPConnected(

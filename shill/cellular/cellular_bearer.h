@@ -34,6 +34,7 @@ class CellularBearer {
   static const char kMMAllowRoamingProperty[];
   static const char kMMIpTypeProperty[];
   static const char kMMMultiplexProperty[];
+  static const char kMMForceProperty[];
 
   enum class IPConfigMethod { kUnknown, kPPP, kStatic, kDHCP };
 
