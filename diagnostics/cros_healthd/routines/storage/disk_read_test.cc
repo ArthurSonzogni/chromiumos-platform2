@@ -268,9 +268,6 @@ TEST_F(DiskReadRoutineTest, RoutineRetrieveFreeSpaceError) {
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
   SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/std::nullopt);
 
-  // Function call in destructor.
-  SetRemoveFioTestFileResponse();
-
   RunRoutineAndWaitForException("Failed to retrieve free storage space");
 }
 
@@ -280,9 +277,6 @@ TEST_F(DiskReadRoutineAdapterTest, RoutineRetrieveFreeSpaceError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
   SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/std::nullopt);
-
-  // Called in deconstructor to handle unexpected routine failures.
-  SetRemoveFioTestFileResponse();
 
   routine_adapter_->Start();
   // Flush the routine for all request to executor through process control.
@@ -298,9 +292,6 @@ TEST_F(DiskReadRoutineTest, RoutineInsufficientFreeSpaceError) {
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
   SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/0);
 
-  // Function call in destructor.
-  SetRemoveFioTestFileResponse();
-
   RunRoutineAndWaitForException("Failed to reserve sufficient storage space");
 }
 
@@ -310,9 +301,6 @@ TEST_F(DiskReadRoutineAdapterTest, RoutineInsufficientFreeSpaceError) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
   SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/0);
-
-  // Called in deconstructor to handle unexpected routine failures.
-  SetRemoveFioTestFileResponse();
 
   routine_adapter_->Start();
   // Flush the routine for all request to executor through process control.
@@ -403,9 +391,6 @@ TEST_F(DiskReadRoutineTest, RoutineRemoveFioTestFileErrorOnStart) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_FAILURE);
 
-  // Function call in destructor.
-  SetRemoveFioTestFileResponse();
-
   RunRoutineAndWaitForException("Failed to clean up storage");
 }
 
@@ -414,9 +399,6 @@ TEST_F(DiskReadRoutineTest, RoutineRemoveFioTestFileErrorOnStart) {
 TEST_F(DiskReadRoutineAdapterTest, RoutineCleanFioTestFileErrorOnStart) {
   InSequence s;
   SetRemoveFioTestFileResponse(/*return_code=*/EXIT_FAILURE);
-
-  // Called in deconstructor to handle unexpected routine failures.
-  SetRemoveFioTestFileResponse();
 
   routine_adapter_->Start();
   // Flush the routine for all request to executor through process control.

@@ -112,6 +112,10 @@ class DiskReadRoutine final : public BaseRoutineControl {
   };
   TestStep step_ = TestStep::kInitialize;
 
+  // A callback that should be run regardless of the execution status. This
+  // callback will remove temporary cache file created by fio.
+  base::ScopedClosureRunner remove_fio_cache_;
+
   // Cancelable task to update the routine percentage.
   base::CancelableOnceClosure percentage_update_task_;
 

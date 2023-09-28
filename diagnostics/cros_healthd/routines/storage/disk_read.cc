@@ -49,6 +49,10 @@ constexpr double kFileCreationSecondsPerMiB = 0.012;
 static_assert(kFileCreationSecondsPerMiB <= 1.0,
               "This value should not be higher than 1 to avoid overflow.");
 
+void RemoveFioTestFile(mojom::Executor* executor) {
+  executor->RemoveFioTestFile(base::DoNothing());
+}
+
 }  // namespace
 
 base::expected<std::unique_ptr<DiskReadRoutine>, std::string>
@@ -84,10 +88,7 @@ DiskReadRoutine::DiskReadRoutine(Context* context,
   CHECK(fio_prepare_duration_.is_positive());
 }
 
-DiskReadRoutine::~DiskReadRoutine() {
-  // Remove test file if the routine unexpectedly fails.
-  context_->executor()->RemoveFioTestFile(base::DoNothing());
-}
+DiskReadRoutine::~DiskReadRoutine() = default;
 
 void DiskReadRoutine::OnStart() {
   CHECK(step_ == kInitialize);
@@ -119,6 +120,9 @@ void DiskReadRoutine::RunNextStep() {
       break;
     }
     case kFioPrepare:
+      // Set up scoped closure runner for removing fio test file.
+      remove_fio_cache_ = base::ScopedClosureRunner(
+          base::BindOnce(&RemoveFioTestFile, context_->executor()));
       context_->executor()->RunFio(
           mojom::FioJobArgument::NewPrepare(
               mojom::PrepareJobArgument::New(file_size_mib_)),
@@ -151,6 +155,7 @@ void DiskReadRoutine::RunNextStep() {
               EXIT_FAILURE));
       break;
     case kComplete:
+      remove_fio_cache_.RunAndReset();
       // The routine will pass if all fio jobs complete successfully.
       SetFinishedState(true, mojom::RoutineDetail::NewDiskRead(
                                  mojom::DiskReadRoutineDetail::New()));
