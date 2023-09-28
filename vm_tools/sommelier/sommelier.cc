@@ -1140,19 +1140,8 @@ static void sl_set_application_id_from_atom(struct sl_context* ctx,
                                             struct sl_window* window,
                                             xcb_get_property_reply_t* reply) {
   if (reply->type == XCB_ATOM_CARDINAL) {
-    uint32_t value = *static_cast<uint32_t*>(xcb()->get_property_value(reply));
+    uint32_t value = *static_cast<uint32_t*>(xcb_get_property_value(reply));
     window->app_id_property = std::to_string(value);
-  }
-}
-
-static void on_steam_game_id_updated(struct sl_context* ctx,
-                                     struct sl_window* window,
-                                     xcb_get_property_reply_t* reply) {
-  if (reply->type == XCB_ATOM_CARDINAL) {
-    window->steam_game_id =
-        *static_cast<uint32_t*>(xcb()->get_property_value(reply));
-  } else {
-    window->steam_game_id = 0;
   }
 }
 
@@ -1179,7 +1168,6 @@ void sl_handle_map_request(struct sl_context* ctx,
       {PROPERTY_GTK_THEME_VARIANT, ctx->atoms[ATOM_GTK_THEME_VARIANT].value},
       {PROPERTY_XWAYLAND_RANDR_EMU_MONITOR_RECTS,
        ctx->atoms[ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS].value},
-      {PROPERTY_STEAM_GAME, ctx->atoms[ATOM_STEAM_GAME].value},
       {PROPERTY_SPECIFIED_FOR_APP_ID, ctx->application_id_property_atom},
   };
   xcb_get_geometry_cookie_t geometry_cookie;
@@ -1357,9 +1345,6 @@ void sl_handle_map_request(struct sl_context* ctx,
         if (xcb()->get_property_value_length(reply) >= 4)
           window->dark_frame = !strcmp(
               static_cast<char*>(xcb()->get_property_value(reply)), "dark");
-        break;
-      case PROPERTY_STEAM_GAME:
-        on_steam_game_id_updated(ctx, window, reply);
         break;
       case PROPERTY_SPECIFIED_FOR_APP_ID:
         sl_set_application_id_from_atom(ctx, window, reply);
@@ -2219,15 +2204,6 @@ void sl_handle_property_notify(struct sl_context* ctx,
       free(reply);
     }
     sl_update_application_id(ctx, window);
-  } else if (event->atom == ctx->atoms[ATOM_STEAM_GAME].value) {
-    struct sl_window* window = sl_lookup_window(ctx, event->window);
-    if (window) {
-      xcb_get_property_cookie_t cookie = xcb()->get_property(
-          ctx->connection, 0, window->id, event->atom, XCB_ATOM_CARDINAL, 0, 1);
-      xcb_get_property_reply_t* reply =
-          xcb()->get_property_reply(ctx->connection, cookie, nullptr);
-      on_steam_game_id_updated(ctx, window, reply);
-    }
   } else if (event->atom == ctx->application_id_property_atom) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
     if (!window || event->state == XCB_PROPERTY_DELETE)
