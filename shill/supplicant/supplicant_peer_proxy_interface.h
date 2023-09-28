@@ -12,6 +12,7 @@ namespace shill {
 class SupplicantPeerProxyInterface {
  public:
   virtual ~SupplicantPeerProxyInterface() = default;
+  virtual bool GetProperties(KeyValueStore* properties) = 0;
 };
 
 }  // namespace shill

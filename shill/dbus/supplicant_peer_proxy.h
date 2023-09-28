@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 
@@ -24,6 +25,9 @@ class SupplicantPeerProxy : public SupplicantPeerProxyInterface {
   SupplicantPeerProxy& operator=(const SupplicantPeerProxy&) = delete;
 
   ~SupplicantPeerProxy() override;
+
+  // Implementation of SupplicantPeerProxyInterface.
+  bool GetProperties(KeyValueStore* properties) override;
 
  private:
   class PropertySet : public dbus::PropertySet {

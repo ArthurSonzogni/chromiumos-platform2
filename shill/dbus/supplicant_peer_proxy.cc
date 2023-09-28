@@ -46,9 +46,52 @@ SupplicantPeerProxy::SupplicantPeerProxy(const scoped_refptr<dbus::Bus>& bus,
       base::BindRepeating(&SupplicantPeerProxy::PropertiesChanged,
                           weak_factory_.GetWeakPtr()),
       on_connected_callback);
+
+  // Connect property signals and initialize cached values. Based on
+  // recommendations from src/dbus/property.h.
+  properties_->ConnectSignals();
+  properties_->GetAll();
 }
 
 SupplicantPeerProxy::~SupplicantPeerProxy() = default;
+
+bool SupplicantPeerProxy::GetProperties(KeyValueStore* properties) {
+  SLOG(&peer_proxy_->GetObjectPath(), 2) << __func__;
+  CHECK(properties);
+
+  if (!properties_->device_name.GetAndBlock() ||
+      !properties_->device_name.is_valid()) {
+    LOG(ERROR) << "Failed to obtain peer device name";
+    return false;
+  }
+
+  if (!properties_->device_cap.GetAndBlock() ||
+      !properties_->device_cap.is_valid()) {
+    LOG(ERROR) << "Failed to obtain peer device capabilities";
+    return false;
+  }
+
+  if (!properties_->group_cap.GetAndBlock() ||
+      !properties_->group_cap.is_valid()) {
+    LOG(ERROR) << "Failed to obtain peer group capabilities";
+    return false;
+  }
+
+  if (!properties_->device_address.GetAndBlock() ||
+      !properties_->device_address.is_valid()) {
+    LOG(ERROR) << "Failed to obtain peer device address";
+    return false;
+  }
+
+  properties->Set<std::string>(kPropertyDeviceName,
+                               properties_->device_name.value());
+  properties->Set<uint8_t>(kPropertyDeviceCap, properties_->device_cap.value());
+  properties->Set<uint8_t>(kPropertyGroupCap, properties_->group_cap.value());
+  properties->Set<std::vector<uint8_t>>(kPropertyDeviceAddress,
+                                        properties_->device_address.value());
+
+  return true;
+}
 
 void SupplicantPeerProxy::PropertiesChanged(
     const brillo::VariantDictionary& /*properties*/) {
