@@ -18,7 +18,9 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <brillo/kernel_config_utils.h>
+#include <brillo/secure_blob.h>
 #include <brillo/udev/udev.h>
 #include <brillo/udev/udev_device.h>
 #include <brillo/udev/udev_enumerate.h>
@@ -38,6 +40,11 @@ const char kTarCommand[] = "/usr/bin/tar";
 // Using `gzip` as it's the only installed compress utility on MiniOS.
 const char kTarCompressFlags[] = "-czhf";
 
+const char kVpdCommand[] = "/usr/bin/vpd";
+const char kVpdAddValueFlag[] = "-s";
+const char kVpdRetrieveValueFlag[] = "-g";
+const char kVpdLogStoreSecretKey[] = "minios_log_store_key";
+
 const std::vector<std::string> kFilesToCompress{
     "/var/log/update_engine.log", "/var/log/upstart.log", "/var/log/messages"};
 // NOLINTNEXTLINE
@@ -51,6 +58,8 @@ const char kMiniOsVersionKey[] = "cros_minios_version";
 const char kBlockSubsystem[] = "block";
 const char kFileSystemProperty[] = "ID_FS_USAGE";
 const char kFilesystem[] = "filesystem";
+
+constexpr int kLogStoreKeySizeBytes = 32;
 }  // namespace
 
 namespace minios {
@@ -373,6 +382,65 @@ bool GetRemovableDevices(std::vector<base::FilePath>& devices,
     } else if (brillo::IsRemovable(*dev)) {
       devices.emplace_back(dev->GetDeviceNode());
     }
+  }
+  return true;
+}
+
+bool IsLogStoreKeyValid(const std::string& key) {
+  if (key.size() != kLogStoreKeySizeBytes) {
+    LOG(ERROR) << "Key not of expected size, key_size=" << key.size()
+               << " expected=" << kLogStoreKeySizeBytes;
+    return false;
+  }
+  return true;
+}
+
+void TrimLogStoreKey(std::string& key) {
+  if (key.size() <= kLogStoreKeySizeBytes)
+    return;
+
+  key = key.substr(0, kLogStoreKeySizeBytes) +
+        std::string{base::TrimWhitespaceASCII(key.substr(kLogStoreKeySizeBytes),
+                                              base::TRIM_TRAILING)};
+}
+
+std::optional<std::string> GetLogStoreKey(
+    ProcessManagerInterface* process_manager) {
+  int return_code = 0;
+  std::string std_out, std_err;
+
+  if (!process_manager->RunCommandWithOutput(
+          {kVpdCommand, kVpdRetrieveValueFlag, kVpdLogStoreSecretKey},
+          &return_code, &std_out, &std_err) ||
+      return_code != 0) {
+    LOG(ERROR) << "VPD get failed, code: " << return_code;
+    return std::nullopt;
+  }
+
+  if (std_out.empty()) {
+    LOG(WARNING) << "No value found for key=" << kVpdLogStoreSecretKey;
+    return std::nullopt;
+  }
+
+  TrimLogStoreKey(std_out);
+  if (!IsLogStoreKeyValid(std_out)) {
+    return std::nullopt;
+  }
+
+  return std_out;
+}
+
+bool SaveLogStoreKey(ProcessManagerInterface* process_manager,
+                     const std::string& key) {
+  if (!IsLogStoreKeyValid(key)) {
+    return false;
+  }
+
+  const auto key_value_pair = std::string{kVpdLogStoreSecretKey} + "=" + key;
+  if (process_manager->RunCommand(
+          {kVpdCommand, kVpdAddValueFlag, key_value_pair}, {}) != 0) {
+    LOG(ERROR) << "VPD save operation failed";
+    return false;
   }
   return true;
 }

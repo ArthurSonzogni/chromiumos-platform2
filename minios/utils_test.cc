@@ -325,4 +325,96 @@ TEST(UtilsTest, GetRemovableDevices) {
   EXPECT_THAT(removable_devices, ElementsAre(base::FilePath{device_node}));
 }
 
+TEST(UtilsTest, GetLogStoreKeyTest) {
+  auto mock_process_manager_ =
+      std::make_unique<StrictMock<MockProcessManager>>();
+
+  const std::string kKey = "thisisa32bytestring1234567890abc";
+  const std::vector<std::string> kExpectedArgs = {"/usr/bin/vpd", "-g",
+                                                  "minios_log_store_key"};
+
+  EXPECT_CALL(*mock_process_manager_,
+              RunCommandWithOutput(kExpectedArgs, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kKey),
+                      ::testing::Return(true)));
+  const auto log_store_key = GetLogStoreKey(mock_process_manager_.get());
+
+  ASSERT_TRUE(log_store_key.has_value());
+  EXPECT_EQ(log_store_key.value(), kKey);
+}
+
+TEST(UtilsTest, GetLogStoreKeyFailureTest) {
+  std::unique_ptr<MockProcessManager> mock_process_manager_ =
+      std::make_unique<StrictMock<MockProcessManager>>();
+  const std::string kKey = "short_key";
+
+  const std::vector<std::string> kExpectedArgs = {"/usr/bin/vpd", "-g",
+                                                  "minios_log_store_key"};
+
+  EXPECT_CALL(*mock_process_manager_,
+              RunCommandWithOutput(kExpectedArgs, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(-1), SetArgPointee<2>(kKey),
+                      ::testing::Return(true)));
+  const auto log_store_key = GetLogStoreKey(mock_process_manager_.get());
+
+  EXPECT_FALSE(log_store_key.has_value());
+}
+
+TEST(UtilsTest, LogStoreKeyValidTest) {
+  const auto kValidKey = "thisisa32bytestring1234567890abc";
+
+  const auto kShortKey = "short";
+  const auto kLongKey = "thisisa32bytestring1234567890abc_____";
+  const auto kEmptyKey = "";
+
+  EXPECT_TRUE(IsLogStoreKeyValid(kValidKey));
+  EXPECT_FALSE(IsLogStoreKeyValid(kShortKey));
+  EXPECT_FALSE(IsLogStoreKeyValid(kLongKey));
+  EXPECT_FALSE(IsLogStoreKeyValid(kEmptyKey));
+}
+
+TEST(UtilsTest, LogStoreKeyTrimTest) {
+  std::string simple_key = "thisisa32bytestring1234567890abc";
+  TrimLogStoreKey(simple_key);
+  EXPECT_EQ(simple_key, "thisisa32bytestring1234567890abc");
+
+  std::string short_key = "short_key";
+  TrimLogStoreKey(short_key);
+  EXPECT_EQ(short_key, "short_key");
+
+  std::string simple_key_with_trailing_space =
+      "thisisa32bytestring1234567890abc ";
+  TrimLogStoreKey(simple_key_with_trailing_space);
+  EXPECT_EQ(simple_key_with_trailing_space, "thisisa32bytestring1234567890abc");
+
+  std::string simple_key_with_whitespace =
+      "thisisa32bytestring1234567890abc\n ";
+  TrimLogStoreKey(simple_key_with_whitespace);
+  EXPECT_EQ(simple_key_with_whitespace, "thisisa32bytestring1234567890abc");
+
+  std::string key_with_whitespace = "thisisa32bytestring1234567890\n  ";
+  TrimLogStoreKey(key_with_whitespace);
+  EXPECT_EQ(key_with_whitespace, "thisisa32bytestring1234567890\n  ");
+
+  std::string key_with_trailing_whitespace =
+      "thisisa32bytestring1234567890\n  \n\t   ";
+  TrimLogStoreKey(key_with_trailing_whitespace);
+  EXPECT_EQ(key_with_trailing_whitespace, "thisisa32bytestring1234567890\n  ");
+}
+
+TEST(UtilsTest, SaveLogKeyTest) {
+  std::unique_ptr<MockProcessManager> mock_process_manager_ =
+      std::make_unique<StrictMock<MockProcessManager>>();
+
+  const auto kKey = "thisisa32bytestring1234567890abc";
+
+  std::vector<std::string> expected_args = {
+      "/usr/bin/vpd", "-s",
+      "minios_log_store_key=thisisa32bytestring1234567890abc"};
+
+  EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
+      .WillOnce(::testing::Return(0));
+  EXPECT_TRUE(SaveLogStoreKey(mock_process_manager_.get(), kKey));
+}
+
 }  // namespace minios
