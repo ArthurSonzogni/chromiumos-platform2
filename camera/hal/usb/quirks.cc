@@ -58,6 +58,10 @@ const QuirksMap& GetQuirksMap() {
       {{"04f2", "b7da"}, kQuirkPreferLargePreviewResolution},
       // Quanta(TF) YHVU-1 (b/293388961)
       {{"0408", "4047"}, kQuirkPreferLargePreviewResolution},
+      // KINGCOME KBFD1004
+      {{"2b7e", "1004"}, kQuirkPreferLargePreviewResolution},
+      // KINGCOME KBAD1005
+      {{"2b7e", "1005"}, kQuirkPreferLargePreviewResolution},
   });
   return *kQuirksMap;
 }
