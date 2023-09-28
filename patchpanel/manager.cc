@@ -610,15 +610,17 @@ void Manager::ParallelsVmShutdown(uint64_t vm_id) {
 
 const CrostiniService::CrostiniDevice* const Manager::BruschettaVmStartup(
     uint64_t vm_id) {
-  // TODO(b/279994478): Currently fallback to same implementation as TerminaVM.
-  // To implement this method properly with Bruschetta-specific logic.
-  return TerminaVmStartup(vm_id);
+  const auto* guest_device =
+      StartCrosVm(vm_id, CrostiniService::VMType::kBruschetta);
+  if (!guest_device) {
+    LOG(ERROR) << "Failed to start Bruschetta VM network service";
+    return nullptr;
+  }
+  return guest_device;
 }
 
 void Manager::BruschettaVmShutdown(uint64_t vm_id) {
-  // TODO(b/279994478): Currently fallback to same implementation as TerminaVM.
-  // To implement this method properly with Bruschetta-specific logic.
-  TerminaVmShutdown(vm_id);
+  StopCrosVm(vm_id, CrostiniService::VMType::kBruschetta);
 }
 
 bool Manager::SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
