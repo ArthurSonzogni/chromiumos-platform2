@@ -19,7 +19,7 @@ openat: 1
 close: 1
 send: 1
 sendto: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 recvmsg: 1
 getdents: 1
 getdents64: 1
