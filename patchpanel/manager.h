@@ -240,7 +240,7 @@ class Manager {
       uint64_t vm_id,
       CrostiniService::VMType vm_type,
       uint32_t subnet_index = kAnySubnetIndex);
-  void StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type);
+  void StopCrosVm(uint64_t vm_id, CrostiniService::VMType vm_type);
 
   // Checks the validaty of a CreateTetheredNetwork or CreatedLocalOnlyNetwork
   // DBus request.

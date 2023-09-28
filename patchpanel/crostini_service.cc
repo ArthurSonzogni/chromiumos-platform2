@@ -214,8 +214,8 @@ CrostiniService::GetDevices() const {
 
 std::unique_ptr<CrostiniService::CrostiniDevice> CrostiniService::AddTAP(
     CrostiniService::VMType vm_type, uint32_t subnet_index) {
-  auto guest_type = GuestTypeFromVMType(vm_type);
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(guest_type, subnet_index);
+  auto address_type = AddressManagingTypeFromVMType(vm_type);
+  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(address_type, subnet_index);
   if (!ipv4_subnet) {
     LOG(ERROR) << "Subnet already in use or unavailable.";
     return nullptr;
@@ -380,32 +380,6 @@ void CrostiniService::StopAutoDNAT(
 }
 
 // static
-std::optional<CrostiniService::VMType> CrostiniService::VMTypeFromDeviceType(
-    Device::Type device_type) {
-  switch (device_type) {
-    case Device::Type::kTerminaVM:
-      return VMType::kTermina;
-    case Device::Type::kParallelsVM:
-      return VMType::kParallels;
-    default:
-      return std::nullopt;
-  }
-}
-
-// static
-std::optional<CrostiniService::VMType>
-CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::GuestType guest_type) {
-  switch (guest_type) {
-    case NetworkDevice::TERMINA_VM:
-      return VMType::kTermina;
-    case NetworkDevice::PARALLELS_VM:
-      return VMType::kParallels;
-    default:
-      return std::nullopt;
-  }
-}
-
-// static
 TrafficSource CrostiniService::TrafficSourceFromVMType(
     CrostiniService::VMType vm_type) {
   switch (vm_type) {
@@ -428,7 +402,7 @@ GuestMessage::GuestType CrostiniService::GuestMessageTypeFromVMType(
 }
 
 // static
-AddressManager::GuestType CrostiniService::GuestTypeFromVMType(
+AddressManager::GuestType CrostiniService::AddressManagingTypeFromVMType(
     CrostiniService::VMType vm_type) {
   switch (vm_type) {
     case VMType::kTermina:

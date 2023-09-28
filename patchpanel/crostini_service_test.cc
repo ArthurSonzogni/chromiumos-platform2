@@ -384,30 +384,6 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
 }
 
 TEST_F(CrostiniServiceTest, VMTypeConversions) {
-  EXPECT_EQ(CrostiniService::VMType::kTermina,
-            CrostiniService::VMTypeFromDeviceType(Device::Type::kTerminaVM));
-  EXPECT_EQ(CrostiniService::VMType::kParallels,
-            CrostiniService::VMTypeFromDeviceType(Device::Type::kParallelsVM));
-  EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromDeviceType(Device::Type::kARC0));
-  EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromDeviceType(Device::Type::kARCContainer));
-  EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromDeviceType(Device::Type::kARCVM));
-
-  EXPECT_EQ(
-      CrostiniService::VMType::kTermina,
-      CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::TERMINA_VM));
-  EXPECT_EQ(
-      CrostiniService::VMType::kParallels,
-      CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::PARALLELS_VM));
-  EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::ARC));
-  EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::ARCVM));
-  EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::UNKNOWN));
-
   EXPECT_EQ(TrafficSource::kCrosVM, CrostiniService::TrafficSourceFromVMType(
                                         CrostiniService::VMType::kTermina));
   EXPECT_EQ(TrafficSource::kParallelsVM,
@@ -421,11 +397,11 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
             CrostiniService::GuestMessageTypeFromVMType(
                 CrostiniService::VMType::kParallels));
 
-  EXPECT_EQ(
-      AddressManager::GuestType::kTerminaVM,
-      CrostiniService::GuestTypeFromVMType(CrostiniService::VMType::kTermina));
+  EXPECT_EQ(AddressManager::GuestType::kTerminaVM,
+            CrostiniService::AddressManagingTypeFromVMType(
+                CrostiniService::VMType::kTermina));
   EXPECT_EQ(AddressManager::GuestType::kParallelsVM,
-            CrostiniService::GuestTypeFromVMType(
+            CrostiniService::AddressManagingTypeFromVMType(
                 CrostiniService::VMType::kParallels));
 
   EXPECT_EQ(Device::Type::kTerminaVM,

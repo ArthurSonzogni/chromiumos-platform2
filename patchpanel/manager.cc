@@ -17,6 +17,7 @@
 #include <base/task/single_thread_task_runner.h>
 
 #include "patchpanel/address_manager.h"
+#include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/downstream_network_service.h"
 #include "patchpanel/metrics.h"
@@ -544,10 +545,10 @@ const CrostiniService::CrostiniDevice* Manager::StartCrosVm(
   return guest_device;
 }
 
-void Manager::StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type) {
+void Manager::StopCrosVm(uint64_t vm_id, CrostiniService::VMType vm_type) {
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
-  msg.set_type(vm_type);
+  msg.set_type(CrostiniService::GuestMessageTypeFromVMType(vm_type));
   SendGuestMessage(msg);
   cros_svc_->Stop(vm_id);
 }
@@ -589,7 +590,7 @@ const CrostiniService::CrostiniDevice* const Manager::TerminaVmStartup(
 }
 
 void Manager::TerminaVmShutdown(uint64_t vm_id) {
-  StopCrosVm(vm_id, GuestMessage::TERMINA_VM);
+  StopCrosVm(vm_id, CrostiniService::VMType::kTermina);
 }
 
 const CrostiniService::CrostiniDevice* const Manager::ParallelsVmStartup(
@@ -604,7 +605,7 @@ const CrostiniService::CrostiniDevice* const Manager::ParallelsVmStartup(
 }
 
 void Manager::ParallelsVmShutdown(uint64_t vm_id) {
-  StopCrosVm(vm_id, GuestMessage::PARALLELS_VM);
+  StopCrosVm(vm_id, CrostiniService::VMType::kParallels);
 }
 
 const CrostiniService::CrostiniDevice* const Manager::BruschettaVmStartup(

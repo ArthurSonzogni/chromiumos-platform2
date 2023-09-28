@@ -120,16 +120,14 @@ class CrostiniService {
   using CrostiniDeviceEventHandler =
       base::RepeatingCallback<void(const CrostiniDevice&, CrostiniDeviceEvent)>;
 
-  static std::optional<VMType> VMTypeFromDeviceType(Device::Type device_type);
-  static std::optional<VMType> VMTypeFromProtoGuestType(
-      NetworkDevice::GuestType guest_type);
   static TrafficSource TrafficSourceFromVMType(VMType vm_type);
   // Converts VMType to an internal IPC GuestMessage::GuestType value. This type
   // is needed by Manager for IPCs to patchpanel subprocesses.
   static GuestMessage::GuestType GuestMessageTypeFromVMType(VMType vm_type);
-  // Converts VMType to an internal GuestType enum value. This type is needed
-  // for allocating static IPv4 subnets.
-  static AddressManager::GuestType GuestTypeFromVMType(VMType vm_type);
+  // Converts VMType to an internal AddressManager::GuestType enum value. This
+  // type is needed for allocating static IPv4 subnets.
+  static AddressManager::GuestType AddressManagingTypeFromVMType(
+      VMType vm_type);
   // Converts VMType to an internal Device::Type enum value. This type is needed
   // for the internal Device class.
   static Device::Type VirtualDeviceTypeFromVMType(VMType vm_type);
