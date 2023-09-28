@@ -119,21 +119,33 @@ TEST(ParseArgv, PreserveLogicalVolumesWipe) {
     ClobberState::Arguments args =
         ClobberState::ParseArgv(argv.size(), &argv[0]);
     EXPECT_FALSE(args.safe_wipe);
+#if USE_LVM_STATEFUL_PARTITION
     EXPECT_TRUE(args.preserve_lvs);
+#else
+    EXPECT_FALSE(args.preserve_lvs);
+#endif  // USE_LVM_STATEFUL_PARTITION
   }
   {
     std::vector<const char*> argv{"clobber-state", "safe preserve_lvs"};
     ClobberState::Arguments args =
         ClobberState::ParseArgv(argv.size(), &argv[0]);
     EXPECT_TRUE(args.safe_wipe);
+#if USE_LVM_STATEFUL_PARTITION
     EXPECT_TRUE(args.preserve_lvs);
+#else
+    EXPECT_FALSE(args.preserve_lvs);
+#endif  // USE_LVM_STATEFUL_PARTITION
   }
   {
     std::vector<const char*> argv{"clobber-state", "safe", "preserve_lvs"};
     ClobberState::Arguments args =
         ClobberState::ParseArgv(argv.size(), &argv[0]);
     EXPECT_TRUE(args.safe_wipe);
+#if USE_LVM_STATEFUL_PARTITION
     EXPECT_TRUE(args.preserve_lvs);
+#else
+    EXPECT_FALSE(args.preserve_lvs);
+#endif  // USE_LVM_STATEFUL_PARTITION
   }
 }
 

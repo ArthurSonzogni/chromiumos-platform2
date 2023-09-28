@@ -321,7 +321,7 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
     } else if (arg == "ad_migration") {
       args.ad_migration_wipe = true;
     } else if (arg == "preserve_lvs") {
-      args.preserve_lvs = true;
+      args.preserve_lvs = USE_LVM_STATEFUL_PARTITION;
     }
   }
 
