@@ -272,6 +272,28 @@ bool SetDownloadsBindMountMigrationXattr(Platform* platform,
                                             stage_xattr.size());
 }
 
+// Convert |mount_type| to a string for logging.
+const char* MountTypeToString(MountType mount_type) {
+  switch (mount_type) {
+    case MountType::NONE:
+      return "NONE";
+    case MountType::ECRYPTFS:
+      return "ECRYPTFS";
+    case MountType::DIR_CRYPTO:
+      return "DIR_CRYPTO";
+    case MountType::DMCRYPT:
+      return "DMCRYPT";
+    case MountType::EPHEMERAL:
+      return "EPHEMERAL";
+    case MountType::ECRYPTFS_TO_DIR_CRYPTO:
+      return "ECRYPTFS_TO_DIR_CRYPTO";
+    case MountType::ECRYPTFS_TO_DMCRYPT:
+      return "ECRYPTFS_TO_DMCRYPT";
+    case MountType::DIR_CRYPTO_TO_DMCRYPT:
+      return "DIR_CRYPTO_TO_DMCRYPT";
+  }
+}
+
 }  // namespace
 
 const char kDefaultHomeDir[] = "/home/chronos/user";
@@ -956,6 +978,8 @@ StorageStatus Mounter::PerformMount(MountType mount_type,
                                     const Username& username,
                                     const std::string& fek_signature,
                                     const std::string& fnek_signature) {
+  LOG(INFO) << "Performing mount of type " << MountTypeToString(mount_type);
+
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
 
   if (!EnsureUserMountPoints(username)) {
