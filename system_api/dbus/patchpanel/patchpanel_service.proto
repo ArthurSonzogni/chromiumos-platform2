@@ -248,6 +248,10 @@ message BruschettaVmStartupResponse {
   // The IPv4 address assigned to the VM, represented as 4 bytes in network
   // order, contained inside |ipv4_subnet|.
   bytes ipv4_address = 3;
+
+  // The IPv4 next hop gateway address for the VM, represented as 4 bytes in
+  // network order, contained inside |ipv4_subnet|.
+  bytes gateway_ipv4_address = 4;
 };
 
 // Notification that the Bruschetta VM is shutting down.

@@ -45,6 +45,8 @@ void FillBruschettaAllocationProto(
   FillSubnetProto(bruschetta_device.vm_ipv4_subnet(),
                   output->mutable_ipv4_subnet());
   output->set_ipv4_address(bruschetta_device.vm_ipv4_address().ToByteString());
+  output->set_gateway_ipv4_address(
+      bruschetta_device.gateway_ipv4_address().ToByteString());
 }
 
 void FillDeviceProto(const Device& virtual_device,

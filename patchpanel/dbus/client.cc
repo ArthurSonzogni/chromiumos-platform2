@@ -311,12 +311,20 @@ std::optional<Client::BruschettaAllocation> ConvertBruschettaAllocation(
   const auto bruschetta_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
   const auto bruschetta_address =
       net_base::IPv4Address::CreateFromBytes(in.ipv4_address());
+  const auto gateway_address =
+      net_base::IPv4Address::CreateFromBytes(in.gateway_ipv4_address());
   if (!bruschetta_subnet) {
     LOG(ERROR) << __func__ << ": Invalid Bruschetta IPv4 subnet";
     return std::nullopt;
   }
-  if (!bruschetta_address) {
+  if (!bruschetta_address ||
+      !bruschetta_subnet->InSameSubnetWith(*bruschetta_address)) {
     LOG(ERROR) << __func__ << ": Invalid Bruschetta IPv4 address";
+    return std::nullopt;
+  }
+  if (!gateway_address ||
+      !bruschetta_subnet->InSameSubnetWith(*gateway_address)) {
+    LOG(ERROR) << __func__ << ": Invalid Bruschetta gateway IPv4 address";
     return std::nullopt;
   }
 
@@ -324,6 +332,7 @@ std::optional<Client::BruschettaAllocation> ConvertBruschettaAllocation(
   bruschetta_alloc.tap_device_ifname = in.tap_device_ifname();
   bruschetta_alloc.bruschetta_ipv4_subnet = *bruschetta_subnet;
   bruschetta_alloc.bruschetta_ipv4_address = *bruschetta_address;
+  bruschetta_alloc.gateway_ipv4_address = *gateway_address;
   return bruschetta_alloc;
 }
 

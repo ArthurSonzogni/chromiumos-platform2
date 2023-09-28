@@ -102,6 +102,8 @@ TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
       *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
   const auto bruschetta_ipv4_address =
       *net_base::IPv4Address::CreateFromString("100.115.93.2");
+  const auto gateway_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.93.1");
   auto ipv4_subnet =
       std::make_unique<Subnet>(bruschetta_ipv4_subnet, base::DoNothing());
 
@@ -115,6 +117,8 @@ TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
   ASSERT_EQ("vmtap1", proto.tap_device_ifname());
   EXPECT_EQ(bruschetta_ipv4_address,
             net_base::IPv4Address::CreateFromBytes(proto.ipv4_address()));
+  EXPECT_EQ(gateway_ipv4_address, net_base::IPv4Address::CreateFromBytes(
+                                      proto.gateway_ipv4_address()));
   EXPECT_EQ(bruschetta_ipv4_subnet.address(),
             net_base::IPv4Address::CreateFromBytes(proto.ipv4_subnet().addr()));
   EXPECT_EQ(bruschetta_ipv4_subnet.prefix_length(),

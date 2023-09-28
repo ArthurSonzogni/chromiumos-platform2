@@ -190,6 +190,8 @@ TEST_F(ClientTest, NotifyBruschettaVmStartup) {
       *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
   const auto bruschetta_ipv4_address =
       *net_base::IPv4Address::CreateFromString("100.115.93.2");
+  const auto gateway_ipv4_address =
+      *net_base::IPv4Address::CreateFromString("100.115.93.1");
 
   BruschettaVmStartupResponse response_proto;
   response_proto.set_tap_device_ifname(tap_ifname);
@@ -198,6 +200,7 @@ TEST_F(ClientTest, NotifyBruschettaVmStartup) {
   response_subnet->set_prefix_len(
       static_cast<uint32_t>(bruschetta_ipv4_subnet.prefix_length()));
   response_proto.set_ipv4_address(bruschetta_ipv4_address.ToByteString());
+  response_proto.set_gateway_ipv4_address(gateway_ipv4_address.ToByteString());
 
   EXPECT_CALL(*proxy_,
               BruschettaVmStartup(Property(&BruschettaVmStartupRequest::id, id),
@@ -209,6 +212,7 @@ TEST_F(ClientTest, NotifyBruschettaVmStartup) {
   EXPECT_EQ(result->tap_device_ifname, tap_ifname);
   EXPECT_EQ(result->bruschetta_ipv4_subnet, bruschetta_ipv4_subnet);
   EXPECT_EQ(result->bruschetta_ipv4_address, bruschetta_ipv4_address);
+  EXPECT_EQ(result->gateway_ipv4_address, gateway_ipv4_address);
 }
 
 TEST_F(ClientTest, NotifyBruschettaVmShutdown) {
