@@ -8,13 +8,16 @@
 #include <tuple>
 
 #include <base/files/file.h>
+#include <base/logging.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/logging.h>
+#include <base/functional/bind.h>
 #include <base/strings/strcat.h>
+#include <base/time/time.h>
 #include <base/uuid.h>
 
+#include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/util/file.h"
 #include "missive/util/status.h"
@@ -22,7 +25,7 @@
 namespace reporting {
 
 // static
-StorageDirectory::Set StorageDirectory::FindQueueDirectories(
+StorageDirectory::Set StorageDirectory::GetQueueDirectories(
     const StorageOptions& options) {
   Set queue_params;
   base::FileEnumerator dir_enum(options.directory(),
@@ -36,13 +39,18 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
       // This is a legacy queue directory named just by priority with no
       // generation guid as an extension: foo/bar/Security,
       // foo/bar/FastBatch, etc.
-      queue_params.emplace(
-          std::make_tuple(priority_result.ValueOrDie(), GenerationGuid()));
+      queue_params.emplace(std::make_tuple(priority_result.ValueOrDie(),
+                                           GenerationGuid(), full_name));
       LOG(INFO) << "Found legacy queue directory: " << full_name;
     } else if (auto queue_param =
                    GetPriorityAndGenerationGuid(full_name, options);
                queue_param.ok()) {
-      queue_params.emplace(queue_param.ValueOrDie());
+      // Found a generation guid as the path extension, therefore this is a
+      // multigeneration queue.
+      const auto [priority, generation_guid] = queue_param.ValueOrDie();
+      queue_params.emplace(
+          std::make_tuple(priority, generation_guid, full_name));
+      LOG(INFO) << "Found multigeneration queue directory: " << full_name;
     } else {
       LOG(INFO) << "Could not parse queue parameters from filename "
                 << full_name.MaybeAsASCII()
@@ -50,6 +58,47 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
     }
   }
   return queue_params;
+}
+
+// static
+bool StorageDirectory::QueueDirectoryShouldBeGarbageCollected(
+    const base::FilePath& queue_directory,
+    const base::TimeDelta& garbage_collecton_period) {
+  base::File::Info info;
+  if (!base::GetFileInfo(queue_directory, &info)) {
+    return false;
+  }
+  CHECK(info.is_directory);
+
+  const base::TimeDelta time_elapsed_since_last_modified =
+      (base::Time::Now() - info.last_modified).magnitude();
+
+  // Return true when it's been longer than `garbage_collecton_period`
+  // since this queue directory was last modified, and it's a
+  // multigenerational queue, and the directory contains no
+  // unconfirmed records.
+  return time_elapsed_since_last_modified >= garbage_collecton_period &&
+         StorageDirectory::ParseGenerationGuidFromFilePath(queue_directory)
+             .ok() &&
+         StorageDirectory::QueueDirectoryContainsNoUnconfirmedRecords(
+             queue_directory);
+}
+
+StorageDirectory::Set
+StorageDirectory::GetMultigenerationQueuesToGarbageCollect(
+    const StorageOptions& options) {
+  StorageDirectory::Set queues_to_delete;
+
+  for (const auto& priority_guid_path :
+       StorageDirectory::GetQueueDirectories(options)) {
+    const base::FilePath queue_directory_path =
+        std::get<base::FilePath>(priority_guid_path);
+    if (QueueDirectoryShouldBeGarbageCollected(
+            queue_directory_path, options.queue_garbage_collection_period())) {
+      queues_to_delete.emplace(priority_guid_path);
+    }
+  }
+  return queues_to_delete;
 }
 
 // static

@@ -46,6 +46,8 @@ class StorageOptions {
  public:
   // Default period for Storage to check for encryption key
   static constexpr base::TimeDelta kDefaultKeyCheckPeriod = base::Seconds(1);
+  static constexpr base::TimeDelta kDefaultQueueGarbageCollectionPeriod =
+      base::Days(5);
 
   using QueuesOptionsList = std::vector<std::pair<Priority, QueueOptions>>;
 
@@ -123,6 +125,12 @@ class StorageOptions {
     return *this;
   }
 
+  StorageOptions& set_queue_garbage_collection_period(
+      base::TimeDelta queue_garbage_collection_period) {
+    queue_garbage_collection_period_ = queue_garbage_collection_period;
+    return *this;
+  }
+
   const base::FilePath& directory() const { return directory_; }
   std::string_view signature_verification_public_key() const {
     return signature_verification_public_key_;
@@ -149,6 +157,10 @@ class StorageOptions {
   }
   scoped_refptr<ResourceManager> memory_resource() const {
     return memory_resource_;
+  }
+
+  base::TimeDelta queue_garbage_collection_period() const {
+    return queue_garbage_collection_period_;
   }
 
   base::TimeDelta key_check_period() const { return key_check_period_; }
@@ -183,6 +195,10 @@ class StorageOptions {
   // Callback that can adjust queue options (used in tests only).
   const base::RepeatingCallback<void(Priority, QueueOptions&)>
       modify_queue_options_for_tests_;
+
+  // Period to garbage collect inactive and empty queues.
+  base::TimeDelta queue_garbage_collection_period_ =
+      kDefaultQueueGarbageCollectionPeriod;
 };
 
 // Single queue options class allowing to set parameters individually, e.g.:

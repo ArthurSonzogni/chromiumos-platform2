@@ -13,11 +13,13 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/ref_counted_delete_on_sequence.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/thread_annotations.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
@@ -56,13 +58,12 @@ namespace reporting {
 // on the next restart of Storage.
 
 // Empty subdirectories in the storage directory are deleted on storage
-// creation. TODO(b/278620137): should also delete empty directories every 1-2
-// days.
+// creation.
 
 // In single-generation mode (legacy mode) there is only one queue per priority.
 // Queues are created at the first start of the Storage and never erased.
 
-class Storage : public base::RefCountedThreadSafe<Storage> {
+class Storage : public base::RefCountedDeleteOnSequence<Storage> {
  public:
   // Transient settings used by `Storage` instantiation.
   struct Settings {
@@ -119,7 +120,8 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   void RegisterCompletionCallback(base::OnceClosure callback);
 
  private:
-  friend class base::RefCountedThreadSafe<Storage>;
+  friend class base::RefCountedDeleteOnSequence<Storage>;
+  friend class base::DeleteHelper<Storage>;
 
   // Private helper class to initialize a single queue
   friend class CreateQueueContext;
@@ -147,7 +149,9 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
 
   // Private constructor, to be called by Create factory method only.
   // Queues need to be added afterwards.
-  explicit Storage(const Settings& settings);
+  explicit Storage(
+      const Settings& settings,
+      scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
   // Private destructor, as required by RefCountedThreadSafe.
   ~Storage();
@@ -187,6 +191,10 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
                     scoped_refptr<StorageQueue> queue,
                     base::OnceCallback<void(Status)> completion_cb);
 
+  // Delete multigenerational `StorageQueue`s that have not been used
+  // within the garbage collection period defined in `options_`.
+  void GarbageCollectQueues();
+
   // Immutable options, stored at the time of creation.
   const StorageOptions options_;
 
@@ -222,6 +230,10 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // enabled, in case of disk space pressure it facilitates dropping low
   // priority events to free up space for the higher priority ones.
   const scoped_refptr<QueuesContainer> queues_container_;
+
+  // Used to periodically trigger queue garbage_collection.
+  base::RepeatingTimer queue_garbage_collection_timer_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 }  // namespace reporting

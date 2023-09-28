@@ -325,6 +325,12 @@ void QueuesContainer::DropAllQueues() {
   queues_.clear();
 }
 
+size_t QueuesContainer::DropQueue(const Priority priority,
+                                  const GenerationGuid& generation_guid) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return queues_.erase(std::make_tuple(priority, generation_guid));
+}
+
 base::WeakPtr<QueuesContainer> QueuesContainer::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
