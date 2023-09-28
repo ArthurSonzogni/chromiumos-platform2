@@ -32,7 +32,6 @@ PACKAGES=(
   linux-image-amd64
   locales
   lvm2
-  network-manager
   pciutils
   rsync
   shim-signed
