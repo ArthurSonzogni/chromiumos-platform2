@@ -15,6 +15,7 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
+#include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>
 #include <net-base/ipv4_address.h>
 #include <shill/net/process_manager.h>
@@ -119,6 +120,9 @@ class DHCPServerController {
   std::string GetClientHostname(const std::string& mac_addr) const;
 
  private:
+  friend class DHCPServerControllerTest;
+  FRIEND_TEST(DHCPServerControllerTest, GetClientHostname);
+
   // Callback when the process is exited unexpectedly.
   void OnProcessExitedUnexpectedly(int exit_status);
 

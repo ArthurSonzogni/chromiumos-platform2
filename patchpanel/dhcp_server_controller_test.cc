@@ -11,8 +11,10 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/run_loop.h>
+#include <base/test/mock_log.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -23,6 +25,7 @@
 
 using testing::_;
 using testing::DoAll;
+using testing::HasSubstr;
 using testing::Return;
 using testing::StrictMock;
 using testing::WithArg;
@@ -41,6 +44,10 @@ class MockCallback {
 
 ACTION_P(SetStderrFd, stderr_fd) {
   *arg6.stderr_fd = stderr_fd;
+}
+
+void ExpectLog(base::test::MockLog& log, std::string_view log_str) {
+  EXPECT_CALL(log, Log(_, _, _, _, HasSubstr(log_str)));
 }
 
 }  // namespace
@@ -306,20 +313,47 @@ TEST_F(DHCPServerControllerTest, GetClientHostname) {
   ExpectMetrics(DHCPServerUmaEvent::kStartSuccess, 1);
   ExpectMetrics(DHCPServerUmaEvent::kStop, 1);
   ExpectMetrics(DHCPServerUmaEvent::kStopSuccess, 1);
-  ExpectMetrics(DHCPServerUmaEvent::kDHCPMessageAck, 1);
+  ExpectMetrics(DHCPServerUmaEvent::kDHCPMessageAck, 2);
 
   EXPECT_CALL(process_manager_, StartProcessInMinijailWithPipes)
       .WillOnce(DoAll(SetStderrFd(read_fd()), Return(pid)));
   EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
   EXPECT_TRUE(dhcp_server_controller_->Start(config, base::DoNothing()));
 
+  // Verify the hostname is redated at the following log.
+  base::test::MockLog log;
+  ON_CALL(log, Log).WillByDefault(Return(true));
+  ExpectLog(log,
+            "dnsmasq-dhcp[8201]: 2641710318 DHCPACK(ap0) "
+            "172.16.250.98 11:22:33:44:55:66 <redacted>");
+  ExpectLog(log, "dnsmasq-dhcp[8201]: log contain <redacted>");
+  ExpectLog(log, "2641710318 DHCPACK(ap0) 172.16.250.99 11:22:33:44:55:67");
+  ExpectLog(log, "dnsmasq-dhcp[8201]: log after that");
+  log.StartCapturingLogs();
+
+  // The first client has hostname "ChromeOS". It should be redacted.
+  base::WriteFileDescriptor(
+      write_fd(), "dnsmasq-dhcp[8201]: client provides name ChromeOS\n");
   base::WriteFileDescriptor(write_fd(),
                             "dnsmasq-dhcp[8201]: 2641710318 DHCPACK(ap0) "
                             "172.16.250.98 11:22:33:44:55:66 ChromeOS\n");
+  base::WriteFileDescriptor(write_fd(),
+                            "dnsmasq-dhcp[8201]: log contain ChromeOS\n");
+  // The second client doesn't have hostname.
+  base::WriteFileDescriptor(write_fd(),
+                            "dnsmasq-dhcp[8201]: 2641710318 DHCPACK(ap0) "
+                            "172.16.250.99 11:22:33:44:55:67 \n");
+  base::WriteFileDescriptor(write_fd(), "dnsmasq-dhcp[8201]: log after that\n");
+
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(dhcp_server_controller_->GetClientHostname("11:22:33:44:55:66"),
             "ChromeOS");
+  // The second client without hostname should not be recorded at
+  // |mac_addr_to_hostname_|.
+  EXPECT_EQ(
+      dhcp_server_controller_->mac_addr_to_hostname_.find("11:22:33:44:55:67"),
+      dhcp_server_controller_->mac_addr_to_hostname_.end());
 }
 
 }  // namespace patchpanel

@@ -289,9 +289,9 @@ void DHCPServerController::HandleDnsmasqLog(std::string_view log) {
   const size_t pos = log.find("DHCPACK");
   if (pos != std::string::npos) {
     // The log format: DHCPACK(<iface>) <IP> <MAC address> [hostname]
-    const std::vector<std::string_view> tokens =
-        base::SplitStringPiece(log.substr(pos), base::kWhitespaceASCII,
-                               base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+    const std::vector<std::string_view> tokens = base::SplitStringPiece(
+        log.substr(pos), base::kWhitespaceASCII, base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_NONEMPTY);
     if (tokens.size() >= 4) {
       // Handle the hostname with whitespace characters.
       const std::string mac_addr(tokens[2]);
@@ -306,10 +306,10 @@ void DHCPServerController::HandleDnsmasqLog(std::string_view log) {
   } else {
     std::vector<std::string> tokens =
         base::SplitString(log, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
-                          base::SPLIT_WANT_ALL);
+                          base::SPLIT_WANT_NONEMPTY);
     for (auto& token : tokens) {
       if (base::Contains(hostname_set, token)) {
-        token = "<redected>";
+        token = "<redacted>";
       }
     }
     LOG(INFO) << base::JoinString(tokens, " ");
