@@ -54,7 +54,7 @@ if (use.test) {
 
     deps = [
       ":libureadahead_diff",
-      "../../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 }

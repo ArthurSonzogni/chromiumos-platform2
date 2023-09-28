@@ -127,7 +127,7 @@ if (use.test) {
     ]
     deps = [
       ":libpermission_broker",
-      "../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner:testrunner",
       "//featured:libfake_platform_features",
     ]
   }

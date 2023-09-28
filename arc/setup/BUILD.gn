@@ -248,7 +248,7 @@ if (use.test) {
 
     deps = [
       ":libarc_setup_static",
-      "../../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 }

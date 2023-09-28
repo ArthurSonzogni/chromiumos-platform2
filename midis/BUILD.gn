@@ -109,7 +109,7 @@ if (use.test) {
     run_test = true
     deps = [
       ":midis_common",
-      "../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 }

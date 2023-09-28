@@ -45,7 +45,7 @@ if (use.test) {
     ]
     deps = [
       ":libmgmt",
-      "../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner:testrunner",
     ]
     pkg_deps = [ "libchrome-test" ]
   }

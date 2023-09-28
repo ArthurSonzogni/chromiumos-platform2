@@ -196,7 +196,7 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
-    deps = [ "../common-mk/testrunner:testrunner" ]
+    deps = [ "//common-mk/testrunner:testrunner" ]
   }
   executable("hold_lock_file") {
     sources = [ "serialization/hold_lock_file.cc" ]
@@ -221,7 +221,7 @@ if (use.test) {
       ":hold_lock_file",
       ":libmetrics",
       ":metrics_test_support",
-      "../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner:testrunner",
     ]
   }
   executable("process_meter_test") {
@@ -244,7 +244,7 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
-    deps = [ "../common-mk/testrunner:testrunner" ]
+    deps = [ "//common-mk/testrunner:testrunner" ]
   }
   executable("upload_service_test") {
     sources = [
@@ -261,7 +261,7 @@ if (use.test) {
     include_dirs = [ "." ]
     deps = [
       ":libupload_service",
-      "../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 }

@@ -11,7 +11,7 @@ group("all") {
 
 static_library("ml_cmdline_common") {
   sources = [ "../simple.cc" ]
-  deps = [ "..:ml_common" ]
+  deps = [ "//ml:ml_common" ]
 }
 
 executable("ml_cmdline") {

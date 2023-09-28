@@ -453,7 +453,7 @@ shared_library("libpolicy") {
   deps = [
     ":libinstallattributes",
     ":libpolicy-includes",
-    "../common-mk/external_dependencies:policy-protos",
+    "//common-mk/external_dependencies:policy-protos",
   ]
   all_dependent_pkg_deps = [
     "openssl",
@@ -615,7 +615,7 @@ if (use.test) {
     ]
     deps = [
       ":libinstallattributes",
-      "../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 
@@ -635,8 +635,8 @@ if (use.test) {
     deps = [
       ":libinstallattributes",
       ":libpolicy",
-      "../common-mk/external_dependencies:policy-protos",
-      "../common-mk/testrunner:testrunner",
+      "//common-mk/external_dependencies:policy-protos",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 
@@ -653,7 +653,7 @@ if (use.test) {
     deps = [
       ":grpc_test_rpcs_protolib",
       ":libbrillo-grpc",
-      "../common-mk/testrunner:testrunner",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 
