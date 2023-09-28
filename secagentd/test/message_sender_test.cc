@@ -62,8 +62,9 @@ class MessageSenderTestFixture : public ::testing::Test {
       auto it = message_sender_->queue_map_.find(destination);
       EXPECT_NE(it, message_sender_->queue_map_.end());
       mock_queue_map_.insert(std::make_pair(
-          destination, google::protobuf::down_cast<reporting::MockReportQueue*>(
-                           it->second.get())));
+          destination,
+          google::protobuf::internal::DownCast<reporting::MockReportQueue*>(
+              it->second.get())));
     }
   }
 

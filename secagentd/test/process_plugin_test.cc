@@ -11,7 +11,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/test/task_environment.h"
 #include "gmock/gmock.h"
-#include "google/protobuf/stubs/casts.h"
+#include "google/protobuf/message_lite.h"
 #include "gtest/gtest.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
@@ -59,7 +59,7 @@ class ProcessPluginTestFixture : public ::testing::Test {
     // in the plugin interface and the plugin factory. The factory generally
     // requires future cleanup to cleanly accommodate plugin specific dependency
     // injections.
-    google::protobuf::down_cast<ProcessPlugin*>(plugin)
+    google::protobuf::internal::DownCast<ProcessPlugin*>(plugin)
         ->SetBatchSenderForTesting(std::move(batch_sender));
   }
 

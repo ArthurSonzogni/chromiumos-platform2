@@ -113,7 +113,7 @@ TEST_F(BatchSenderTestFixture, TestSimpleBatchingPeriodicFlush) {
   task_environment_.RunUntilIdle();
 
   BatchSenderTestFixture::XM* actual_process_event =
-      google::protobuf::down_cast<pb::XdrProcessEvent*>(
+      google::protobuf::internal::DownCast<pb::XdrProcessEvent*>(
           actual_sent_message.get());
   EXPECT_EQ(actual_process_event->mutable_common(), actual_mutable_common);
   ASSERT_EQ(2, actual_process_event->batched_events_size());
@@ -143,8 +143,9 @@ TEST_F(BatchSenderTestFixture, TestSimpleBatchingPeriodicFlush) {
   task_environment_.AdvanceClock(base::Seconds(kBatchInterval));
   task_environment_.RunUntilIdle();
 
-  actual_process_event = google::protobuf::down_cast<pb::XdrProcessEvent*>(
-      actual_sent_message.get());
+  actual_process_event =
+      google::protobuf::internal::DownCast<pb::XdrProcessEvent*>(
+          actual_sent_message.get());
   ASSERT_EQ(1, actual_process_event->batched_events_size());
   EXPECT_EQ(
       expected_process_term_1_.process_exec().spawn_process().process_uuid(),
@@ -203,7 +204,8 @@ TEST_F(BatchSenderTestFixture, TestBatchingSizeLimit) {
   for (const auto& message : actual_sent_messages) {
     EXPECT_GE(BatchSenderType::kMaxMessageSizeBytes, message->ByteSizeLong());
     auto actual_process_event =
-        google::protobuf::down_cast<pb::XdrProcessEvent*>(message.get());
+        google::protobuf::internal::DownCast<pb::XdrProcessEvent*>(
+            message.get());
     for (int i = 0; i < actual_process_event->batched_events_size(); ++i) {
       auto id = GetProcessEventKey(actual_process_event->batched_events(i));
       CHECK_EQ(0, sent_ids.count(id)) << "Found dupe id " << id;

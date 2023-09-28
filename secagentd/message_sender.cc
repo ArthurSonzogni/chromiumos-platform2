@@ -56,28 +56,28 @@ void VlogEventForDebug(reporting::Destination destination,
   switch (destination) {
     case reporting::CROS_SECURITY_AGENT: {
       auto agent_event =
-          google::protobuf::internal::down_cast<pb::XdrAgentEvent*>(message);
+          google::protobuf::internal::DownCast<pb::XdrAgentEvent*>(message);
       VLOG(1) << "XdrAgentEvent:";
       VLOG(1) << agent_event->DebugString();
       break;
     }
     case reporting::CROS_SECURITY_PROCESS: {
       auto process_event =
-          google::protobuf::internal::down_cast<pb::XdrProcessEvent*>(message);
+          google::protobuf::internal::DownCast<pb::XdrProcessEvent*>(message);
       VLOG(1) << "XdrProcessEvent:";
       VLOG(1) << process_event->DebugString();
       break;
     }
     case reporting::CROS_SECURITY_NETWORK: {
       auto network_event =
-          google::protobuf::internal::down_cast<pb::XdrNetworkEvent*>(message);
+          google::protobuf::internal::DownCast<pb::XdrNetworkEvent*>(message);
       VLOG(1) << "XdrNetworkEvent:";
       VLOG(1) << network_event->DebugString();
       break;
     }
     case reporting::CROS_SECURITY_USER: {
       auto authenticate_event =
-          google::protobuf::internal::down_cast<pb::XdrUserEvent*>(message);
+          google::protobuf::internal::DownCast<pb::XdrUserEvent*>(message);
       VLOG(1) << "XdrUserEvent:";
       VLOG(1) << authenticate_event->DebugString();
       break;
