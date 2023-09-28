@@ -21,7 +21,6 @@ std::optional<base::FilePath> GetFilePathFromName(
     const std::string& vm_name,
     StorageLocation storage_location,
     const std::string& extension,
-    bool create_parent_dir,
     base::FilePath storage_dir) {
   if (!IsValidOwnerId(cryptohome_id)) {
     LOG(ERROR) << "Invalid cryptohome_id specified";
@@ -47,16 +46,8 @@ std::optional<base::FilePath> GetFilePathFromName(
   storage_dir = storage_dir.Append(cryptohome_id);
 
   if (!base::DirectoryExists(storage_dir)) {
-    if (!create_parent_dir) {
-      return std::nullopt;
-    }
-    base::File::Error dir_error;
-
-    if (!base::CreateDirectoryAndGetError(storage_dir, &dir_error)) {
-      LOG(ERROR) << "Failed to create storage directory " << storage_dir << ": "
-                 << base::File::ErrorToString(dir_error);
-      return std::nullopt;
-    }
+    LOG(ERROR) << "Missing VM storage directory " << storage_dir;
+    return std::nullopt;
   }
 
   if (base::IsLink(storage_dir)) {
@@ -132,8 +123,7 @@ std::optional<PflashMetadata> GetPflashMetadata(
     base::FilePath storage_dir) {
   std::optional<base::FilePath> pflash_installation_path_result =
       GetFilePathFromName(cryptohome_id, vm_name, STORAGE_CRYPTOHOME_ROOT,
-                          kPflashImageExtension, false /* create_parent_dir */,
-                          storage_dir);
+                          kPflashImageExtension, storage_dir);
   if (!pflash_installation_path_result) {
     return std::nullopt;
   }

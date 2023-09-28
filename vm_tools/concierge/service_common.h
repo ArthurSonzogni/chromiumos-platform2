@@ -60,7 +60,6 @@ std::optional<base::FilePath> GetFilePathFromName(
     const std::string& vm_name,
     StorageLocation storage_location,
     const std::string& extension,
-    bool create_parent_dir,
     base::FilePath storage_dir = base::FilePath(kCryptohomeRoot));
 
 bool GetPluginDirectory(const base::FilePath& prefix,

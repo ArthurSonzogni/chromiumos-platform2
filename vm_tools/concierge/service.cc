@@ -535,25 +535,18 @@ bool GetDiskPathFromName(
     const std::string& vm_name,
     const std::string& cryptohome_id,
     StorageLocation storage_location,
-    bool create_parent_dir,
     base::FilePath* path_out,
     enum DiskImageType preferred_image_type = DiskImageType::DISK_IMAGE_AUTO) {
   switch (storage_location) {
     case STORAGE_CRYPTOHOME_ROOT: {
-      const auto qcow2_path =
-          GetFilePathFromName(cryptohome_id, vm_name, storage_location,
-                              kQcowImageExtension, create_parent_dir);
+      const auto qcow2_path = GetFilePathFromName(
+          cryptohome_id, vm_name, storage_location, kQcowImageExtension);
       if (!qcow2_path) {
-        if (create_parent_dir)
-          LOG(ERROR) << "Failed to get qcow2 path";
         return false;
       }
-      const auto raw_path =
-          GetFilePathFromName(cryptohome_id, vm_name, storage_location,
-                              kRawImageExtension, create_parent_dir);
+      const auto raw_path = GetFilePathFromName(
+          cryptohome_id, vm_name, storage_location, kRawImageExtension);
       if (!raw_path) {
-        if (create_parent_dir)
-          LOG(ERROR) << "Failed to get raw path";
         return false;
       }
 
@@ -589,12 +582,9 @@ bool GetDiskPathFromName(
       return true;
     }
     case STORAGE_CRYPTOHOME_PLUGINVM: {
-      const auto plugin_path =
-          GetFilePathFromName(cryptohome_id, vm_name, storage_location,
-                              kPluginVmImageExtension, create_parent_dir);
+      const auto plugin_path = GetFilePathFromName(
+          cryptohome_id, vm_name, storage_location, kPluginVmImageExtension);
       if (!plugin_path) {
-        if (create_parent_dir)
-          LOG(ERROR) << "failed to get plugin path";
         return false;
       }
       *path_out = *plugin_path;
@@ -642,9 +632,7 @@ bool CheckVmExists(const std::string& vm_name,
   for (int l = StorageLocation_MIN; l <= StorageLocation_MAX; l++) {
     StorageLocation location = static_cast<StorageLocation>(l);
     base::FilePath disk_path;
-    if (GetDiskPathFromName(vm_name, cryptohome_id, location,
-                            false, /* create_parent_dir */
-                            &disk_path) &&
+    if (GetDiskPathFromName(vm_name, cryptohome_id, location, &disk_path) &&
         base::PathExists(disk_path)) {
       if (out_path) {
         *out_path = disk_path;
@@ -2882,9 +2870,8 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
   }
 
   if (!GetDiskPathFromName(request.vm_name(), request.cryptohome_id(),
-                           request.storage_location(),
-                           true, /* create_parent_dir */
-                           &disk_path, request.image_type())) {
+                           request.storage_location(), &disk_path,
+                           request.image_type())) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Failed to create vm image");
 
@@ -3266,9 +3253,7 @@ void Service::FinishResize(const std::string& owner_id,
                            DiskImageStatusEnum* status,
                            std::string* failure_reason) {
   base::FilePath disk_path;
-  if (!GetDiskPathFromName(vm_name, owner_id, location,
-                           false, /* create_parent_dir */
-                           &disk_path)) {
+  if (!GetDiskPathFromName(vm_name, owner_id, location, &disk_path)) {
     LOG(ERROR) << "Failed to get disk path after resize";
     *failure_reason = "Failed to get disk path after resize";
     *status = DISK_STATUS_FAILED;
@@ -3445,9 +3430,7 @@ ImportDiskImageResponse Service::ImportDiskImage(
 
   base::FilePath disk_path;
   if (!GetDiskPathFromName(request.vm_name(), request.cryptohome_id(),
-                           request.storage_location(),
-                           true, /* create_parent_dir */
-                           &disk_path)) {
+                           request.storage_location(), &disk_path)) {
     response.set_failure_reason("Failed to set up vm image name");
     return response;
   }
