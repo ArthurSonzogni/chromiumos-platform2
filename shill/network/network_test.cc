@@ -13,6 +13,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -2023,6 +2024,122 @@ TEST_F(NetworkStartTest, NoReportIPTypeForShortConnection) {
   network_->Stop();
 
   dispatcher_.task_environment().FastForwardBy(base::Minutes(1));
+}
+
+TEST_F(NetworkTest, ValidationLogRecordMetrics) {
+  // Stub PortalDetector results:
+  PortalDetector::Result i, r, p, n;
+
+  // |i| -> kInternetConnectivity
+  i.http_phase = PortalDetector::Phase::kContent;
+  i.http_status = PortalDetector::Status::kSuccess;
+  i.https_phase = PortalDetector::Phase::kContent;
+  i.https_status = PortalDetector::Status::kSuccess;
+
+  // |r| -> kPortalRedirect
+  r.http_phase = PortalDetector::Phase::kContent;
+  r.http_status = PortalDetector::Status::kRedirect;
+  r.https_phase = PortalDetector::Phase::kContent;
+  r.https_status = PortalDetector::Status::kFailure;
+  r.redirect_url_string = "https://portal.login";
+
+  // |p| -> kPartialConnectivity
+  p.http_phase = PortalDetector::Phase::kContent;
+  p.http_status = PortalDetector::Status::kSuccess;
+  p.https_phase = PortalDetector::Phase::kConnection;
+  p.https_status = PortalDetector::Status::kFailure;
+
+  // |n| -> kNoConnectivity
+  n.http_phase = PortalDetector::Phase::kConnection;
+  n.http_status = PortalDetector::Status::kFailure;
+  n.https_phase = PortalDetector::Phase::kConnection;
+  n.https_status = PortalDetector::Status::kFailure;
+
+  struct {
+    std::vector<PortalDetector::Result> results;
+    std::optional<Metrics::PortalDetectorAggregateResult> expected_metric_enum;
+  } test_cases[] = {
+      {{}, std::nullopt},
+      {{i}, Metrics::kPortalDetectorAggregateResultInternet},
+      {{i, r, p, n}, Metrics::kPortalDetectorAggregateResultInternet},
+      {{r}, Metrics::kPortalDetectorAggregateResultRedirect},
+      {{p}, Metrics::kPortalDetectorAggregateResultPartialConnectivity},
+      {{n}, Metrics::kPortalDetectorAggregateResultNoConnectivity},
+      {{n, n, n}, Metrics::kPortalDetectorAggregateResultNoConnectivity},
+      {{n, n, p, n},
+       Metrics::kPortalDetectorAggregateResultPartialConnectivity},
+      {{p, r, r, p}, Metrics::kPortalDetectorAggregateResultRedirect},
+      {{r, r, r, i},
+       Metrics::kPortalDetectorAggregateResultInternetAfterRedirect},
+      {{r, p, r, i},
+       Metrics::kPortalDetectorAggregateResultInternetAfterRedirect},
+      {{p, n, p, i},
+       Metrics::kPortalDetectorAggregateResultInternetAfterPartialConnectivity},
+      {{p, p, i, i, r, r},
+       Metrics::kPortalDetectorAggregateResultInternetAfterPartialConnectivity},
+  };
+
+  for (const auto& tt : test_cases) {
+    NiceMock<MockMetrics> metrics;
+    Network::ValidationLog log(Technology::kWiFi, &metrics);
+    for (auto r : tt.results) {
+      // Ensure that all durations between events are positive.
+      dispatcher_.task_environment().FastForwardBy(base::Milliseconds(10));
+      log.AddResult(r);
+    }
+
+    if (!tt.expected_metric_enum) {
+      EXPECT_CALL(metrics,
+                  SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, _, _))
+          .Times(0);
+      EXPECT_CALL(metrics,
+                  SendToUMA(Metrics::kPortalDetectorTimeToRedirect, _, _))
+          .Times(0);
+    } else {
+      EXPECT_CALL(metrics,
+                  SendEnumToUMA(Metrics::kPortalDetectorAggregateResult,
+                                Technology::kWiFi, *tt.expected_metric_enum));
+      switch (*tt.expected_metric_enum) {
+        case Metrics::kPortalDetectorAggregateResultInternet:
+        case Metrics::
+            kPortalDetectorAggregateResultInternetAfterPartialConnectivity:
+          EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToInternet,
+                                         Technology::kWiFi, _));
+          break;
+        case Metrics::kPortalDetectorAggregateResultRedirect:
+          EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToRedirect,
+                                         Technology::kWiFi, _));
+          break;
+        case Metrics::kPortalDetectorAggregateResultInternetAfterRedirect:
+          EXPECT_CALL(metrics, SendToUMA(Metrics::kPortalDetectorTimeToRedirect,
+                                         Technology::kWiFi, _));
+          EXPECT_CALL(
+              metrics,
+              SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect,
+                        Technology::kWiFi, _));
+          break;
+        case Metrics::kPortalDetectorAggregateResultNoConnectivity:
+        case Metrics::kPortalDetectorAggregateResultPartialConnectivity:
+        case Metrics::kPortalDetectorAggregateResultUnknown:
+        default:
+          EXPECT_CALL(metrics,
+                      SendToUMA(Metrics::kPortalDetectorTimeToInternet, _, _))
+              .Times(0);
+          EXPECT_CALL(metrics,
+                      SendToUMA(Metrics::kPortalDetectorTimeToRedirect, _, _))
+              .Times(0);
+          EXPECT_CALL(
+              metrics,
+              SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect, _,
+                        _))
+              .Times(0);
+          break;
+      }
+    }
+
+    log.RecordMetrics();
+    Mock::VerifyAndClearExpectations(&metrics);
+  }
 }
 
 }  // namespace

@@ -118,6 +118,8 @@ void Network::Start(const Network::StartOptions& opts) {
   ignore_link_monitoring_ = opts.ignore_link_monitoring;
   ipv4_gateway_found_ = false;
   ipv6_gateway_found_ = false;
+  network_validation_log_ =
+      std::make_unique<ValidationLog>(technology_, metrics_);
 
   probing_configuration_ = opts.probing_configuration;
 
@@ -285,6 +287,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   network_validation_result_.reset();
   StopPortalDetection();
   StopConnectionDiagnostics();
+  StopNetworkValidationLog();
 
   const bool should_trigger_callback =
       state_ != State::kIdle && trigger_callback;
@@ -1045,6 +1048,11 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationResult(interface_index_, result);
   }
+
+  if (network_validation_log_) {
+    network_validation_log_->AddResult(result);
+  }
+
   // If portal detection was not conclusive, also start additional connection
   // diagnostics for the current network connection.
   switch (result.GetValidationState()) {
@@ -1057,6 +1065,9 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
       // "online" state.
       metrics_->SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
                           technology_, total_duration);
+      // Stop recording results in |network_validation_log_| as soon as the
+      // first kInternetConnectivity result is observed.
+      StopNetworkValidationLog();
       break;
     case PortalDetector::ValidationState::kPortalRedirect:
       // Conclusive result that allows to start the portal detection sign-in
@@ -1070,6 +1081,13 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
                       result.http_duration.InMilliseconds());
   metrics_->SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration, technology_,
                       result.https_duration.InMilliseconds());
+}
+
+void Network::StopNetworkValidationLog() {
+  if (network_validation_log_) {
+    network_validation_log_->RecordMetrics();
+    network_validation_log_.reset();
+  }
 }
 
 void Network::StartConnectionDiagnostics() {
@@ -1222,6 +1240,94 @@ void Network::ReportNeighborLinkMonitorFailure(
 
   metrics_->SendEnumToUMA(Metrics::kMetricNeighborLinkMonitorFailure, tech,
                           failure);
+}
+
+Network::ValidationLog::ValidationLog(Technology technology, Metrics* metrics)
+    : technology_(technology),
+      metrics_(metrics),
+      connection_start_(base::TimeTicks::Now()) {}
+
+void Network::ValidationLog::AddResult(const PortalDetector::Result& result) {
+  // Make sure that the total memory taken by ValidationLog is bounded.
+  static constexpr size_t kValidationLogMaxSize = 128;
+  if (results_.size() < kValidationLogMaxSize) {
+    results_.emplace_back(base::TimeTicks::Now(), result.GetValidationState());
+  }
+}
+
+void Network::ValidationLog::RecordMetrics() const {
+  if (results_.empty()) {
+    return;
+  }
+
+  bool has_internet = false;
+  bool has_redirect = false;
+  bool has_partial_connectivity = false;
+  base::TimeDelta time_to_internet;
+  base::TimeDelta time_to_redirect;
+  base::TimeDelta time_to_internet_after_redirect;
+  for (const auto& [time, result] : results_) {
+    switch (result) {
+      case PortalDetector::ValidationState::kNoConnectivity:
+        break;
+      case PortalDetector::ValidationState::kPartialConnectivity:
+        has_partial_connectivity = true;
+        break;
+      case PortalDetector::ValidationState::kPortalRedirect:
+        if (!has_redirect) {
+          time_to_redirect = time - connection_start_;
+        }
+        has_redirect = true;
+        break;
+      case PortalDetector::ValidationState::kInternetConnectivity:
+        if (!has_internet && !has_redirect) {
+          time_to_internet = time - connection_start_;
+        }
+        if (!has_internet && has_redirect) {
+          time_to_internet_after_redirect = time - connection_start_;
+        }
+        has_internet = true;
+        break;
+    }
+    // Ignores all results after the first kInternetConnectivity result.
+    if (has_internet) {
+      break;
+    }
+  }
+
+  Metrics::PortalDetectorAggregateResult netval_result =
+      Metrics::kPortalDetectorAggregateResultUnknown;
+  if (has_internet && has_redirect) {
+    netval_result =
+        Metrics::kPortalDetectorAggregateResultInternetAfterRedirect;
+  } else if (has_internet && has_partial_connectivity) {
+    netval_result =
+        Metrics::kPortalDetectorAggregateResultInternetAfterPartialConnectivity;
+  } else if (has_internet) {
+    netval_result = Metrics::kPortalDetectorAggregateResultInternet;
+  } else if (has_redirect) {
+    netval_result = Metrics::kPortalDetectorAggregateResultRedirect;
+  } else if (has_partial_connectivity) {
+    netval_result = Metrics::kPortalDetectorAggregateResultPartialConnectivity;
+  } else {
+    netval_result = Metrics::kPortalDetectorAggregateResultNoConnectivity;
+  }
+  metrics_->SendEnumToUMA(Metrics::kPortalDetectorAggregateResult, technology_,
+                          netval_result);
+
+  if (time_to_internet.is_positive()) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorTimeToInternet, technology_,
+                        time_to_internet.InMilliseconds());
+  }
+  if (time_to_redirect.is_positive()) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorTimeToRedirect, technology_,
+                        time_to_redirect.InMilliseconds());
+  }
+  if (time_to_internet_after_redirect.is_positive()) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorTimeToInternetAfterRedirect,
+                        technology_,
+                        time_to_internet_after_redirect.InMilliseconds());
+  }
 }
 
 std::ostream& operator<<(std::ostream& stream, const Network& network) {

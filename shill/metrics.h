@@ -333,7 +333,8 @@ class Metrics {
     kWirelessSecurityChangeMax
   };
 
-  // Updated portal detector results. See b/236387876 for details.
+  // Possible result of a single network validation attempt. See b/236387876 for
+  // details.
   enum PortalDetectorResult {
     kPortalDetectorResultUnknown = 0,
     kPortalDetectorResultConnectionFailure = 1,
@@ -350,15 +351,39 @@ class Metrics {
     kPortalDetectorResultOnline = 12,
     kPortalDetectorResultMax = 13,
   };
+  // Network validation result recorded for the first network validation attempt
+  // on a newly connected network.
   static constexpr EnumMetric<NameByTechnology> kPortalDetectorInitialResult = {
       .n = NameByTechnology{"PortalDetector.InitialResult",
                             TechnologyLocation::kAfterName},
       .max = kPortalDetectorResultMax,
   };
+  // Network validation result recorded for any network validation attempt after
+  // the first initial attempt.
   static constexpr EnumMetric<NameByTechnology> kPortalDetectorRetryResult = {
       .n = NameByTechnology{"PortalDetector.RepeatResult",
                             TechnologyLocation::kAfterName},
       .max = kPortalDetectorResultMax,
+  };
+
+  // Result of network validation aggregated until Internet connectivity has
+  // been checked or until disconnection.
+  enum PortalDetectorAggregateResult {
+    kPortalDetectorAggregateResultUnknown = 0,
+    kPortalDetectorAggregateResultNoConnectivity = 1,
+    kPortalDetectorAggregateResultPartialConnectivity = 2,
+    kPortalDetectorAggregateResultRedirect = 3,
+    kPortalDetectorAggregateResultInternetAfterPartialConnectivity = 4,
+    kPortalDetectorAggregateResultInternetAfterRedirect = 5,
+    kPortalDetectorAggregateResultInternet = 6,
+
+    kPortalDetectorAggregateResultMax,
+  };
+  static constexpr EnumMetric<NameByTechnology> kPortalDetectorAggregateResult =
+      {
+          .n = {"PortalDetector.AggregateResult",
+                TechnologyLocation::kAfterName},
+          .max = kPortalDetectorAggregateResultMax,
   };
 
   // patchpanel::NeighborLinkMonitor statistics.
@@ -1440,6 +1465,39 @@ class Metrics {
           .min = 10,
           .max = 10000,  // 10 seconds
           .num_buckets = 40,
+  };
+
+  // Duration in milliseconds from the initial network connection to the first
+  // discovery of a captive portal redirect.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorTimeToRedirect = {
+          .n = {"PortalDetector.TimeToRedirect",
+                TechnologyLocation::kAfterName},
+          .min = 10,
+          .max = base::Minutes(2).InMilliseconds(),
+          .num_buckets = kTimerHistogramNumBuckets,
+  };
+
+  // Duration in milliseconds from the initial network connection to the first
+  // verification of Internet connectivity with network validation.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorTimeToInternet = {
+          .n = {"PortalDetector.TimeToInternet",
+                TechnologyLocation::kAfterName},
+          .min = 10,
+          .max = base::Minutes(1).InMilliseconds(),
+          .num_buckets = kTimerHistogramNumBuckets,
+  };
+
+  // Duration in milliseconds from the first captive portal redirect found to
+  // the first verification of Internet connectivity with network validation.
+  static constexpr HistogramMetric<NameByTechnology>
+      kPortalDetectorTimeToInternetAfterRedirect = {
+          .n = {"PortalDetector.TimeToInternetAfterRedirect",
+                TechnologyLocation::kAfterName},
+          .min = 10,
+          .max = base::Minutes(5).InMilliseconds(),
+          .num_buckets = kTimerHistogramNumBuckets,
   };
 
   static constexpr char kMetricWiFiScanTimeInEbusyMilliseconds[] =

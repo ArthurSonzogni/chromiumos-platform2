@@ -176,6 +176,23 @@ class Network {
     kEthernetGatewayReachable,
   };
 
+  // Helper struct which keeps a history of network validation results over time
+  // until network validation stops for the first time or until the Network
+  // disconnect.
+  class ValidationLog {
+   public:
+    ValidationLog(Technology technology, Metrics* metrics);
+    void AddResult(const PortalDetector::Result& result);
+    void RecordMetrics() const;
+
+   private:
+    Technology technology_;
+    Metrics* metrics_;
+    base::TimeTicks connection_start_;
+    std::vector<std::pair<base::TimeTicks, PortalDetector::ValidationState>>
+        results_;
+  };
+
   // Returns true if |reason| requires that network validation be entirely
   // restarted with the latest IP configuration settings.
   static bool ShouldResetNetworkValidation(ValidationReason reason);
@@ -342,6 +359,7 @@ class Network {
       const {
     return network_validation_result_;
   }
+  void StopNetworkValidationLog();
 
   // Initiates connection diagnostics on this Network.
   mockable void StartConnectionDiagnostics();
@@ -573,6 +591,7 @@ class Network {
 
   PortalDetector::ProbingConfiguration probing_configuration_;
   std::unique_ptr<PortalDetector> portal_detector_;
+  std::unique_ptr<ValidationLog> network_validation_log_;
   // Only defined if PortalDetector completed at least one attempt for the
   // current network connection.
   std::optional<PortalDetector::Result> network_validation_result_;
