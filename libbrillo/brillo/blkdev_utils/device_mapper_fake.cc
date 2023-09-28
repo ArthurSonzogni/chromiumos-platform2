@@ -139,7 +139,9 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
       CHECK_EQ(udev_sync, true);
       if (dm_target_map_.find(dev_name) == dm_target_map_.end())
         return false;
-      dm_target_map_.erase(dev_name);
+      if (!task->deferred) {
+        dm_target_map_.erase(dev_name);
+      }
       break;
     case DM_DEVICE_TABLE:
       CHECK_EQ(udev_sync, false);
