@@ -6,18 +6,18 @@ syntax = "proto3";
 
 option optimize_for = LITE_RUNTIME;
 
-package resourced;
+package resource_manager;
 
 option go_package = "chromiumos/system_api/resource_manager_proto";
 
-message ReportBackgroundPids {
-  // The component reporting the background pids.
+message ReportBackgroundProcesses {
+  // The component reporting the background processes.
   enum Component {
     ASH = 0;
     LACROS = 1;
   }
   Component component = 1;
 
-  // The list of the background pids.
+  // The list of the background processes.
   repeated int32 pids = 2;
 }

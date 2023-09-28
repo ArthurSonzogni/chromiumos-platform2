@@ -572,40 +572,44 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             },
         );
         b.method(
-            "ReportBackgroundPids",
+            "ReportBackgroundProcesses",
             ("raw_bytes",),
             (),
             move |_, _, (raw_bytes,): (Vec<u8>,)| {
-                use system_api::resource_manager::report_background_pids::Component;
+                use system_api::resource_manager::report_background_processes::Component;
 
-                let report_bk_pids: system_api::resource_manager::ReportBackgroundPids =
+                let report_bk_processes: system_api::resource_manager::ReportBackgroundProcesses =
                     match protobuf::Message::parse_from_bytes(&raw_bytes) {
                         Ok(result) => result,
                         Err(e) => {
-                            error!("Failed to parse ReportBackgroundPids protobuf: {:#}", e);
+                            error!(
+                                "Failed to parse ReportBackgroundProcesses protobuf: {:#}",
+                                e
+                            );
                             return Err(MethodErr::failed(
-                                "Failed to parse ReportBackgroundPids protobuf",
+                                "Failed to parse ReportBackgroundProcesses protobuf",
                             ));
                         }
                     };
-                let component: memory::Component = match report_bk_pids.component.enum_value() {
+                let component: memory::Component = match report_bk_processes.component.enum_value()
+                {
                     Ok(Component::ASH) => memory::Component::Ash,
                     Ok(Component::LACROS) => memory::Component::Lacros,
                     Err(enum_raw) => {
                         error!(
-                            "ReportBackgroundPids Component is unknown, enum_raw: {}",
+                            "ReportBackgroundProcesses Component is unknown, enum_raw: {}",
                             enum_raw
                         );
                         return Err(MethodErr::failed(
-                            "ReportBackgroundPids Component is unknown",
+                            "ReportBackgroundProcesses Component is unknown",
                         ));
                     }
                 };
-                match memory::set_background_pids(component, report_bk_pids.pids) {
+                match memory::set_background_processes(component, report_bk_processes.pids) {
                     Ok(()) => Ok(()),
                     Err(e) => {
-                        error!("Failed to set background pids: {:#}", e);
-                        Err(MethodErr::failed("Failed to set background pids"))
+                        error!("Failed to set background processes: {:#}", e);
+                        Err(MethodErr::failed("Failed to set background processes"))
                     }
                 }
             },

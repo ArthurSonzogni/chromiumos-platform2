@@ -628,7 +628,7 @@ static ASH_BACKGROUND_PIDS: Mutex<(Vec<i32>, SystemTime)> =
 static LACROS_BACKGROUND_PIDS: Mutex<(Vec<i32>, SystemTime)> =
     Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
 
-pub fn set_background_pids(component: Component, pids: Vec<i32>) -> Result<()> {
+pub fn set_background_processes(component: Component, pids: Vec<i32>) -> Result<()> {
     let component_pids = match component {
         Component::Ash => &ASH_BACKGROUND_PIDS,
         Component::Lacros => &LACROS_BACKGROUND_PIDS,
