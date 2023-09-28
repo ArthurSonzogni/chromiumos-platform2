@@ -38,7 +38,7 @@ getegid32: 1
 geteuid32: 1
 getgid32: 1
 getpid: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getresgid32: 1
 getresuid32: 1
 getsockname: 1
