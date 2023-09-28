@@ -41,7 +41,7 @@ set_tid_address: 1
 eventfd2: 1
 dup: 1
 clone: arg0 & CLONE_THREAD
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 clock_getres: 1
 getresuid: 1
 getresgid: 1

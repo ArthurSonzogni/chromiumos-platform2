@@ -37,7 +37,7 @@ set_robust_list: 1
 rt_sigprocmask: 1
 ugetrlimit: 1
 sched_getaffinity: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 geteuid32: 1
 epoll_create1: 1
 bind: 1

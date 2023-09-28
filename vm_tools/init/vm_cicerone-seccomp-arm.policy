@@ -114,7 +114,7 @@ inotify_add_watch: 1
 inotify_rm_watch: 1
 dup2: 1
 flock: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 sched_setattr: 1
 sched_getattr: 1
 fstatfs64: 1
