@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/routine_adapter.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -23,6 +22,7 @@
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
+#include "diagnostics/mojom/routine_output_utils.h"
 
 namespace diagnostics {
 
@@ -77,7 +77,8 @@ std::string EnumToString(mojom::MemtesterTestItemEnum subtest_enum) {
   }
 }
 
-mojo::ScopedHandle ConvertMemoryV2ResultToJson(
+// Convert memory v2 routine detail to v1 format output.
+base::Value::Dict ConvertMemoryV2ResultToOutputDict(
     const mojom::MemoryRoutineDetailPtr& memory_detail) {
   base::Value::Dict output_dict;
   // Holds the results of all subtests.
@@ -97,68 +98,41 @@ mojo::ScopedHandle ConvertMemoryV2ResultToJson(
   if (!result_dict.empty())
     output_dict.Set("resultDetails", std::move(result_dict));
 
-  std::string json;
-  base::JSONWriter::Write(output_dict, &json);
-
-  return CreateReadOnlySharedMemoryRegionMojoHandle(std::string_view(json));
+  return output_dict;
 }
 
-mojo::ScopedHandle ConvertBluetoothPowerV2ResultToJson(
-    const mojom::BluetoothPowerRoutineDetailPtr& bluetooth_power_detail) {
-  base::Value::Dict output;
-
-  if (bluetooth_power_detail->power_off_result) {
-    base::Value::Dict power_off_result;
-    power_off_result.Set("hci_powered",
-                         bluetooth_power_detail->power_off_result->hci_powered);
-    power_off_result.Set(
-        "dbus_powered", bluetooth_power_detail->power_off_result->dbus_powered);
-    output.Set("power_off_result", std::move(power_off_result));
+base::Value::Dict ConvertRoutineDetailToOutputDict(
+    const mojom::RoutineDetailPtr& detail) {
+  switch (detail->which()) {
+    case mojom::RoutineDetail::Tag::kUnrecognizedArgument: {
+      NOTREACHED_NORETURN() << "Got unrecognized RoutineDetail";
+    }
+    // These routines do not produce printable output. Return empty output.
+    case mojom::RoutineDetail::Tag::kCpuStress:
+    case mojom::RoutineDetail::Tag::kDiskRead:
+    case mojom::RoutineDetail::Tag::kCpuCache:
+    case mojom::RoutineDetail::Tag::kPrimeSearch:
+    case mojom::RoutineDetail::Tag::kVolumeButton:
+    case mojom::RoutineDetail::Tag::kLedLitUp:
+    case mojom::RoutineDetail::Tag::kFloatingPoint:
+      return base::Value::Dict();
+    case mojom::RoutineDetail::Tag::kMemory:
+      return ConvertMemoryV2ResultToOutputDict(detail->get_memory());
+    case mojom::RoutineDetail::Tag::kAudioDriver:
+      return ParseAudioDriverDetail(detail->get_audio_driver());
+    case mojom::RoutineDetail::Tag::kUfsLifetime:
+      return ParseUfsLifetimeDetail(detail->get_ufs_lifetime());
+    case mojom::RoutineDetail::Tag::kBluetoothPower:
+      return ParseBluetoothPowerDetail(detail->get_bluetooth_power());
+    case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
+      return ParseBluetoothDiscoveryDetail(detail->get_bluetooth_discovery());
   }
-
-  if (bluetooth_power_detail->power_on_result) {
-    base::Value::Dict power_on_result;
-    power_on_result.Set("hci_powered",
-                        bluetooth_power_detail->power_on_result->hci_powered);
-    power_on_result.Set("dbus_powered",
-                        bluetooth_power_detail->power_on_result->dbus_powered);
-    output.Set("power_on_result", std::move(power_on_result));
-  }
-
-  std::string json;
-  base::JSONWriter::Write(output, &json);
-  return CreateReadOnlySharedMemoryRegionMojoHandle(std::string_view(json));
 }
 
-mojo::ScopedHandle ConvertBluetoothDiscoveryV2ResultToJson(
-    const mojom::BluetoothDiscoveryRoutineDetailPtr&
-        bluetooth_discovery_detail) {
-  base::Value::Dict output;
-
-  if (bluetooth_discovery_detail->start_discovery_result) {
-    base::Value::Dict start_discovery_result;
-    start_discovery_result.Set(
-        "hci_discovering",
-        bluetooth_discovery_detail->start_discovery_result->hci_discovering);
-    start_discovery_result.Set(
-        "dbus_discovering",
-        bluetooth_discovery_detail->start_discovery_result->dbus_discovering);
-    output.Set("start_discovery_result", std::move(start_discovery_result));
-  }
-
-  if (bluetooth_discovery_detail->stop_discovery_result) {
-    base::Value::Dict stop_discovery_result;
-    stop_discovery_result.Set(
-        "hci_discovering",
-        bluetooth_discovery_detail->stop_discovery_result->hci_discovering);
-    stop_discovery_result.Set(
-        "dbus_discovering",
-        bluetooth_discovery_detail->stop_discovery_result->dbus_discovering);
-    output.Set("stop_discovery_result", std::move(stop_discovery_result));
-  }
-
+mojo::ScopedHandle ConvertRoutineDetailToMojoHandle(
+    const mojom::RoutineDetailPtr& detail) {
   std::string json;
-  base::JSONWriter::Write(output, &json);
+  base::JSONWriter::Write(ConvertRoutineDetailToOutputDict(detail), &json);
   return CreateReadOnlySharedMemoryRegionMojoHandle(std::string_view(json));
 }
 
@@ -341,37 +315,13 @@ void RoutineAdapter::PopulateStatusUpdate(
                            : mojom::DiagnosticRoutineStatusEnum::kFailed;
 
       if (include_output) {
-        if (routine_type_ == mojom::RoutineArgument::Tag::kMemory) {
-          if (!finished_ptr->detail.is_null() &&
-              finished_ptr->detail->is_memory()) {
-            response->output =
-                ConvertMemoryV2ResultToJson(finished_ptr->detail->get_memory());
-          } else {
-            update->status = mojom::DiagnosticRoutineStatusEnum::kError;
-            update->status_message = "Unrecognized output from memory routine.";
-          }
-        } else if (routine_type_ ==
-                   mojom::RoutineArgument::Tag::kBluetoothPower) {
-          if (!finished_ptr->detail.is_null() &&
-              finished_ptr->detail->is_bluetooth_power()) {
-            response->output = ConvertBluetoothPowerV2ResultToJson(
-                finished_ptr->detail->get_bluetooth_power());
-          } else {
-            update->status = mojom::DiagnosticRoutineStatusEnum::kError;
-            update->status_message =
-                "Unrecognized output from Bluetooth power routine.";
-          }
-        } else if (routine_type_ ==
-                   mojom::RoutineArgument::Tag::kBluetoothDiscovery) {
-          if (!finished_ptr->detail.is_null() &&
-              finished_ptr->detail->is_bluetooth_discovery()) {
-            response->output = ConvertBluetoothDiscoveryV2ResultToJson(
-                finished_ptr->detail->get_bluetooth_discovery());
-          } else {
-            update->status = mojom::DiagnosticRoutineStatusEnum::kError;
-            update->status_message =
-                "Unrecognized output from Bluetooth discovery routine.";
-          }
+        if (finished_ptr->detail.is_null()) {
+          update->status = mojom::DiagnosticRoutineStatusEnum::kError;
+          update->status_message = "Got null routine output.";
+
+        } else {
+          response->output =
+              ConvertRoutineDetailToMojoHandle(finished_ptr->detail);
         }
       }
       NotifyStatusChanged(update->status);

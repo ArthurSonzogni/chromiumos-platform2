@@ -12,9 +12,9 @@
 #include <base/values.h>
 #include <mojo/service_constants.h>
 
-#include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_health_tool/output_util.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
+#include "diagnostics/mojom/routine_output_utils.h"
 
 namespace diagnostics {
 
@@ -38,79 +38,6 @@ base::Value::Dict ParseMemoryDetail(
   SET_DICT(bytes_tested, memory_detail, &output);
   output.Set("passed_items", std::move(passed_items));
   output.Set("failed_items", std::move(failed_items));
-  return output;
-}
-
-base::Value::Dict ParseAudioDriverDetail(
-    const mojom::AudioDriverRoutineDetailPtr& audio_driver_detail) {
-  base::Value::Dict output;
-
-  SET_DICT(internal_card_detected, audio_driver_detail, &output);
-  SET_DICT(audio_devices_succeed_to_open, audio_driver_detail, &output);
-
-  return output;
-}
-
-base::Value::Dict ParseUfsLifetimeDetail(
-    const mojom::UfsLifetimeRoutineDetailPtr& ufs_lifetime_detail) {
-  base::Value::Dict output;
-
-  SET_DICT(pre_eol_info, ufs_lifetime_detail, &output);
-  SET_DICT(device_life_time_est_a, ufs_lifetime_detail, &output);
-  SET_DICT(device_life_time_est_b, ufs_lifetime_detail, &output);
-
-  return output;
-}
-
-base::Value::Dict ParseBluetoothPowerDetail(
-    const mojom::BluetoothPowerRoutineDetailPtr& bluetooth_power_detail) {
-  base::Value::Dict output;
-
-  if (bluetooth_power_detail->power_off_result) {
-    base::Value::Dict power_off_result;
-    SET_DICT(hci_powered, bluetooth_power_detail->power_off_result,
-             &power_off_result);
-    SET_DICT(dbus_powered, bluetooth_power_detail->power_off_result,
-             &power_off_result);
-    output.Set("power_off_result", std::move(power_off_result));
-  }
-
-  if (bluetooth_power_detail->power_on_result) {
-    base::Value::Dict power_on_result;
-    SET_DICT(hci_powered, bluetooth_power_detail->power_on_result,
-             &power_on_result);
-    SET_DICT(dbus_powered, bluetooth_power_detail->power_on_result,
-             &power_on_result);
-    output.Set("power_on_result", std::move(power_on_result));
-  }
-  return output;
-}
-
-base::Value::Dict ParseBluetoothDiscoveryDetail(
-    const mojom::BluetoothDiscoveryRoutineDetailPtr&
-        bluetooth_discovery_detail) {
-  base::Value::Dict output;
-
-  if (bluetooth_discovery_detail->start_discovery_result) {
-    base::Value::Dict start_discovery_result;
-    SET_DICT(hci_discovering,
-             bluetooth_discovery_detail->start_discovery_result,
-             &start_discovery_result);
-    SET_DICT(dbus_discovering,
-             bluetooth_discovery_detail->start_discovery_result,
-             &start_discovery_result);
-    output.Set("start_discovery_result", std::move(start_discovery_result));
-  }
-
-  if (bluetooth_discovery_detail->stop_discovery_result) {
-    base::Value::Dict stop_discovery_result;
-    SET_DICT(hci_discovering, bluetooth_discovery_detail->stop_discovery_result,
-             &stop_discovery_result);
-    SET_DICT(dbus_discovering,
-             bluetooth_discovery_detail->stop_discovery_result,
-             &stop_discovery_result);
-    output.Set("stop_discovery_result", std::move(stop_discovery_result));
-  }
   return output;
 }
 

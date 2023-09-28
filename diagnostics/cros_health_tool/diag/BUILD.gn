@@ -14,6 +14,7 @@ source_set("libdiag") {
   configs += [ "//diagnostics/cros_health_tool:cros_health_tool_pkg_deps" ]
   deps = [
     "//diagnostics/base",
+    "//diagnostics/mojom:libmojom_utils",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }

@@ -34,3 +34,23 @@ generate_pkg_config("cros_healthd-client") {
   cflags = [ "-I/usr/include/cros_healthd-client" ]
   install = true
 }
+
+source_set("libmojom_utils") {
+  sources = [ "routine_output_utils.cc" ]
+  pkg_deps = [ "libchrome" ]
+  deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
+}
+
+if (use.test) {
+  source_set("libmojom_utils_test") {
+    sources = [ "routine_output_utils_test.cc" ]
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+    ]
+    deps = [
+      ":libmojom_utils",
+      "//diagnostics/base:healthd_testrunner",
+    ]
+  }
+}
