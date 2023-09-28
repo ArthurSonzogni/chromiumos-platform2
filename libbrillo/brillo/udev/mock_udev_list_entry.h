@@ -7,13 +7,12 @@
 
 #include <memory>
 
-#include <brillo/brillo_export.h>
 #include <brillo/udev/udev_list_entry.h>
 #include <gmock/gmock.h>
 
 namespace brillo {
 
-class BRILLO_EXPORT MockUdevListEntry : public UdevListEntry {
+class MockUdevListEntry : public UdevListEntry {
  public:
   MockUdevListEntry() = default;
   MockUdevListEntry(const MockUdevListEntry&) = delete;

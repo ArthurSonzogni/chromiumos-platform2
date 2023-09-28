@@ -7,13 +7,12 @@
 
 #include <memory>
 
-#include <brillo/brillo_export.h>
 #include <brillo/udev/udev_enumerate.h>
 #include <gmock/gmock.h>
 
 namespace brillo {
 
-class BRILLO_EXPORT MockUdevEnumerate : public UdevEnumerate {
+class MockUdevEnumerate : public UdevEnumerate {
  public:
   MockUdevEnumerate() = default;
   MockUdevEnumerate(const MockUdevEnumerate&) = delete;
