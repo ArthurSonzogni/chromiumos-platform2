@@ -28,7 +28,7 @@ getgid32: 1
 fstat64: 1
 fstatat64: 1
 statx: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getegid32: 1
 getuid32: 1
 rename: 1

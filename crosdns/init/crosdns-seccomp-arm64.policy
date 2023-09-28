@@ -26,7 +26,7 @@ munmap: 1
 getgid: 1
 fstat: 1
 newfstatat: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getegid: 1
 getuid: 1
 renameat: 1
