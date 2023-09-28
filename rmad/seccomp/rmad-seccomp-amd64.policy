@@ -116,7 +116,7 @@ tgkill: 1
 fchmod: 1
 setpriority: 1
 mremap: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 madvise: arg2 == MADV_DONTNEED
 newfstatat: 1
 lchown: 1

@@ -59,7 +59,7 @@ fcntl64: 1
 rseq: 1
 set_tid_address: 1
 getpid: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 ugetrlimit: 1
 sendfile64: 1
 set_robust_list: 1

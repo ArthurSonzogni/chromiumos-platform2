@@ -14,7 +14,7 @@ clock_getres: 1
 clock_nanosleep: 1
 dup2: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 readlinkat: 1
 gettid: 1
 access: 1

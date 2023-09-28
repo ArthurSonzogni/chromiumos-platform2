@@ -38,7 +38,7 @@ write: 1
 recvmsg: 1
 faccessat2: 1
 fstatfs64: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 sendmsg: 1
 getdents64: 1
 send: 1

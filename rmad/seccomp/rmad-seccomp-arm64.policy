@@ -43,7 +43,7 @@ dup: 1
 socketpair: 1
 epoll_create1: 1
 fstatfs: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 write: 1
 faccessat2: 1
 brk: 1
