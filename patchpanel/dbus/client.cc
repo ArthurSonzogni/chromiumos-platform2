@@ -248,11 +248,11 @@ std::optional<Client::TerminaAllocation> ConvertTerminaAllocation(
     LOG(ERROR) << __func__ << ": Invalid Termina IPv4 subnet";
     return std::nullopt;
   }
-  if (!termina_address) {
+  if (!termina_address || !termina_subnet->InSameSubnetWith(*termina_address)) {
     LOG(ERROR) << __func__ << ": Invalid Termina IPv4 address";
     return std::nullopt;
   }
-  if (!gateway_address) {
+  if (!gateway_address || !termina_subnet->InSameSubnetWith(*gateway_address)) {
     LOG(ERROR) << __func__ << ": Invalid Termina gateway IPv4 address";
     return std::nullopt;
   }
@@ -287,7 +287,8 @@ std::optional<Client::ParallelsAllocation> ConvertParallelsAllocation(
     LOG(ERROR) << __func__ << ": Invalid Parallels IPv4 subnet";
     return std::nullopt;
   }
-  if (!parallels_address) {
+  if (!parallels_address ||
+      !parallels_subnet->InSameSubnetWith(*parallels_address)) {
     LOG(ERROR) << __func__ << ": Invalid Parallels IPv4 address";
     return std::nullopt;
   }
