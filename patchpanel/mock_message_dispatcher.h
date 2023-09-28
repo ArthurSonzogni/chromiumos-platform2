@@ -5,7 +5,6 @@
 #ifndef PATCHPANEL_MOCK_MESSAGE_DISPATCHER_H_
 #define PATCHPANEL_MOCK_MESSAGE_DISPATCHER_H_
 
-#include <brillo/brillo_export.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/message_lite.h>
 
@@ -14,8 +13,7 @@
 namespace patchpanel {
 
 template <typename ProtoMessage>
-class BRILLO_EXPORT MockMessageDispatcher
-    : public MessageDispatcher<ProtoMessage> {
+class MockMessageDispatcher : public MessageDispatcher<ProtoMessage> {
  public:
   MockMessageDispatcher() : MessageDispatcher<ProtoMessage>(base::ScopedFD()) {}
   MockMessageDispatcher(const MockMessageDispatcher&) = delete;
