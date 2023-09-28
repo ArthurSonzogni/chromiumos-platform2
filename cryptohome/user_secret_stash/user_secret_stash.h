@@ -13,13 +13,6 @@
 
 namespace cryptohome {
 
-// Structure defining the override state for key block with existing wrapping
-// ID.
-enum class OverwriteExistingKeyBlock {
-  kEnabled,
-  kDisabled,
-};
-
 // Returns whether the UserSecretStash experiment (using the USS instead of
 // vault keysets) is enabled.
 // The experiment is controlled by fetching a config file from gstatic. It

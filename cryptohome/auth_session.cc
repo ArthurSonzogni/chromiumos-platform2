@@ -1988,9 +1988,8 @@ void AuthSession::ResaveUssWithFactorUpdated(
     auto transaction = decrypted_uss_->StartTransaction();
 
     // Overwrite the existing factor with the new one.
-    if (auto status = AddAuthFactorToUssTransaction(
-            auth_factor, *key_blobs, OverwriteExistingKeyBlock::kEnabled,
-            transaction);
+    if (auto status =
+            AddAuthFactorToUssTransaction(auth_factor, *key_blobs, transaction);
         !status.ok()) {
       LOG(ERROR)
           << "AuthSession: Failed to add updated auth factor secret to USS.";
@@ -2598,8 +2597,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
 
     // Add the new factor into the USS and remove the old one.
     if (CryptohomeStatus status = session_->AddAuthFactorToUssTransaction(
-            replacement_auth_factor, *key_blobs,
-            OverwriteExistingKeyBlock::kDisabled, transaction);
+            replacement_auth_factor, *key_blobs, transaction);
         !status.ok()) {
       std::move(on_done).Run(
           MakeStatus<CryptohomeError>(
@@ -3349,9 +3347,8 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     auto transaction = decrypted_uss_->StartTransaction();
 
     // Add the factor into the USS.
-    if (auto status = AddAuthFactorToUssTransaction(
-            auth_factor, *key_blobs, OverwriteExistingKeyBlock::kEnabled,
-            transaction);
+    if (auto status =
+            AddAuthFactorToUssTransaction(auth_factor, *key_blobs, transaction);
         !status.ok()) {
       return MakeStatus<CryptohomeError>(
                  CRYPTOHOME_ERR_LOC(
@@ -3452,7 +3449,6 @@ void AuthSession::CompleteVerifyOnlyAuthentication(
 CryptohomeStatus AuthSession::AddAuthFactorToUssTransaction(
     AuthFactor& auth_factor,
     const KeyBlobs& key_blobs,
-    OverwriteExistingKeyBlock clobber,
     DecryptedUss::Transaction& transaction) {
   // Derive the credential secret for the USS from the key blobs.
   std::optional<brillo::SecureBlob> uss_credential_secret =
@@ -3470,22 +3466,9 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssTransaction(
   }
 
   // This wraps the USS Main Key with the credential secret. The wrapping_id
-  // field is defined equal to the factor's label. If this is called during the
-  // migration of a VaultKeyset to UserSecretStash clobbering should be enabled.
-  // This is because there may be some edge cases where migration fails after
-  // persisting to UserSecretStash; next time migration fail again since label
-  // already exists.
-  auto add_key = [&](auto&&... args) {
-    switch (clobber) {
-      case OverwriteExistingKeyBlock::kEnabled:
-        return transaction.AssignWrappedMainKey(
-            std::forward<decltype(args)>(args)...);
-      case OverwriteExistingKeyBlock::kDisabled:
-        return transaction.InsertWrappedMainKey(
-            std::forward<decltype(args)>(args)...);
-    }
-  };
-  if (auto status = add_key(auth_factor.label(), *uss_credential_secret);
+  // field is defined equal to the factor's label.
+  if (auto status = transaction.AssignWrappedMainKey(auth_factor.label(),
+                                                     *uss_credential_secret);
       !status.ok()) {
     LOG(ERROR) << "AuthSession: Failed to add created auth factor into user "
                   "secret stash.";
@@ -3502,15 +3485,6 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssTransaction(
       auth_factor_driver_manager_->GetDriver(auth_factor.type());
 
   if (factor_driver.NeedsResetSecret() && key_blobs.reset_secret.has_value()) {
-    // USS schema allows adding reset secrets before adding the actual key
-    // blocks. And it is possible that there is already an existing reset secret
-    // due to the USS migration flows such as password migration added the reset
-    // secret for the PIN beforehand.
-    if (decrypted_uss_->GetResetSecret(auth_factor.label()) &&
-        clobber == OverwriteExistingKeyBlock::kDisabled) {
-      return OkStatus<CryptohomeError>();
-    }
-
     if (auto status = transaction.AssignResetSecret(auth_factor.label(),
                                                     *key_blobs.reset_secret);
         !status.ok()) {

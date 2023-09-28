@@ -616,7 +616,6 @@ class AuthSession final {
   CryptohomeStatus AddAuthFactorToUssTransaction(
       AuthFactor& auth_factor,
       const KeyBlobs& key_blobs,
-      OverwriteExistingKeyBlock override,
       DecryptedUss::Transaction& transaction);
 
   // Returns the callback function to add and AuthFactor for the right key store
