@@ -309,7 +309,7 @@ TEST_F(GscUtilsTest, GetBoardIdFlags_Fail) {
 
 TEST_F(GscUtilsTest, SetBoardId_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).WillOnce(Return(true));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
   EXPECT_TRUE(gsc_utils->SetBoardId(true));
@@ -317,7 +317,7 @@ TEST_F(GscUtilsTest, SetBoardId_Success) {
 
 TEST_F(GscUtilsTest, SetBoardId_Fail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).WillOnce(Return(false));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
   EXPECT_FALSE(gsc_utils->SetBoardId(true));

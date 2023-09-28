@@ -195,7 +195,7 @@ bool GscUtilsImpl::SetBoardId(bool is_custom_label) const {
   } else {
     argv.push_back("pvt");
   }
-  if (!cmd_utils_->GetOutput(argv, &output)) {
+  if (!cmd_utils_->GetOutputAndError(argv, &output)) {
     LOG(ERROR) << "Failed to set GSC board ID";
     LOG(ERROR) << output;
     return false;

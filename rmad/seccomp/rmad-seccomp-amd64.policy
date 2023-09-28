@@ -52,6 +52,8 @@ sendto: 1
 mount: 1
 geteuid: 1
 sendmsg: 1
+vfork: 1
+sched_getaffinity: 1
 
 # CROS_EC_DEV_IOCRDMEM                      = 0xc0103a01
 # CROS_EC_DEV_IOCXCMD                       = 0xc0283a00
@@ -59,6 +61,7 @@ sendmsg: 1
 # CROS_EC_DEV_IOCXCMD_V2                    = 0xc014ec00
 # _IOC(_IOC_READ|_IOC_WRITE, 0x3a, 0, 0x28) = 0xc0283a00
 # IIO_GET_EVENT_FD_IOCTL                    = 0x80046990
+# FIONBIO                                   = 0x5421
 #
 # Driver type 0x3a (":") = CROS_EC_DEV_IOC
 # (Old iotcl format, used by ChromeOS 3.18 and older)
@@ -68,7 +71,7 @@ ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || \
        arg1 == SIOCSIFFLAGS || arg1 == 0xc0103a01 || \
        arg1 == 0xc0283a00 || arg1 == 0xc108ec01 || \
        arg1 == 0xc014ec00 || arg1 == 0xc0283a00 || \
-       arg1 == 0x80046990
+       arg1 == 0x80046990 || arg1 == 0x5421
 set_tid_address: 1
 poll: 1
 pipe: 1
