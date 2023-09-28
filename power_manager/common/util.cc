@@ -116,13 +116,6 @@ bool ReadHexUint32File(const base::FilePath& path, uint32_t* value_out) {
   return ReadTypeFile(path, base::HexStringToUInt, value_out);
 }
 
-bool DeleteFile(const base::FilePath& path) {
-  // |base::DeleteFile| should return true if |path| doesn't exist, but in fact
-  // returns false when the directory doesn't exist. Hence additionally check
-  // that path does not exist.
-  return base::DeleteFile(path) || !base::PathExists(path);
-}
-
 std::string JoinPaths(const std::vector<base::FilePath>& paths,
                       const std::string& separator) {
   std::string str;

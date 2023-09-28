@@ -47,10 +47,6 @@ bool ReadUint64File(const base::FilePath& path, uint64_t* value_out);
 // whitespace. Logs an error and returns false on failure.
 bool ReadHexUint32File(const base::FilePath& path, uint32_t* value_out);
 
-// Deletes the file specified by |path|. Returns true if the file does not exist
-// afterwards.
-bool DeleteFile(const base::FilePath& path);
-
 // Joins |paths| using |separator|.
 std::string JoinPaths(const std::vector<base::FilePath>& paths,
                       const std::string& separator);
