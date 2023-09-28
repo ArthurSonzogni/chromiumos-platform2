@@ -6,6 +6,7 @@
 #define SHILL_STORE_PROPERTY_STORE_TEST_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
@@ -61,7 +62,7 @@ class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
 
   void SetUp() override;
 
-  MOCK_METHOD(void, TestCallback, (base::StringPiece));
+  MOCK_METHOD(void, TestCallback, (std::string_view));
   MOCK_METHOD(KeyValueStore, GetKeyValueStoreCallback, (Error*));
   MOCK_METHOD(KeyValueStores, GetKeyValueStoresCallback, (Error*));
   MOCK_METHOD(bool, SetKeyValueStoreCallback, (const KeyValueStore&, Error*));

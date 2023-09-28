@@ -5,10 +5,10 @@
 #include "shill/store/key_value_store.h"
 
 #include <string>
+#include <string_view>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
-#include <base/strings/string_piece.h>
 
 #include "shill/logging.h"
 
@@ -36,22 +36,22 @@ bool KeyValueStore::operator!=(const KeyValueStore& rhs) const {
   return properties_ != rhs.properties_;
 }
 
-bool KeyValueStore::ContainsVariant(base::StringPiece name) const {
+bool KeyValueStore::ContainsVariant(std::string_view name) const {
   return base::Contains(properties_, name);
 }
 
-const brillo::Any& KeyValueStore::GetVariant(base::StringPiece name) const {
+const brillo::Any& KeyValueStore::GetVariant(std::string_view name) const {
   const auto it(properties_.find(name));
   CHECK(it != properties_.end());
   return it->second;
 }
 
-void KeyValueStore::SetVariant(base::StringPiece name,
+void KeyValueStore::SetVariant(std::string_view name,
                                const brillo::Any& value) {
   properties_.insert_or_assign(std::string(name), value);
 }
 
-void KeyValueStore::Remove(base::StringPiece name) {
+void KeyValueStore::Remove(std::string_view name) {
   // Note that map::erase does not support transparent comparator.
   const auto it = properties_.find(name);
   if (it != properties_.end()) {
