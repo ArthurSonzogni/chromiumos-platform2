@@ -609,12 +609,15 @@ void Manager::ParallelsVmShutdown(uint64_t vm_id) {
 
 const CrostiniService::CrostiniDevice* const Manager::BruschettaVmStartup(
     uint64_t vm_id) {
-  // TODO(b/279994478): Implement this method.
-  return nullptr;
+  // TODO(b/279994478): Currently fallback to same implementation as TerminaVM.
+  // To implement this method properly with Bruschetta-specific logic.
+  return TerminaVmStartup(vm_id);
 }
 
 void Manager::BruschettaVmShutdown(uint64_t vm_id) {
-  // TODO(b/279994478): Implement this method.
+  // TODO(b/279994478): Currently fallback to same implementation as TerminaVM.
+  // To implement this method properly with Bruschetta-specific logic.
+  TerminaVmShutdown(vm_id);
 }
 
 bool Manager::SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
