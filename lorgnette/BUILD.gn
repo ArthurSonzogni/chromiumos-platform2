@@ -115,6 +115,7 @@ static_library("liblorgnette_cli") {
     "cli/file_pattern.cc",
     "cli/print_config.cc",
     "cli/scan_handler.cc",
+    "cli/scan_options.cc",
     "constants.cc",
     "guess_source.cc",
   ]
@@ -194,6 +195,7 @@ if (use.test) {
     sources = [
       "cli/file_pattern_test.cc",
       "cli/print_config_test.cc",
+      "cli/scan_options_test.cc",
     ]
     configs += [
       "//common-mk:test",

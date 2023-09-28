@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/command_line.h>
-#include <base/containers/fixed_flat_map.h>
 #include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -31,13 +30,17 @@
 #include <re2/re2.h>
 
 #include "lorgnette/cli/advanced_scan.h"
+#include "lorgnette/cli/commands.h"
 #include "lorgnette/cli/discovery_handler.h"
 #include "lorgnette/cli/print_config.h"
 #include "lorgnette/cli/scan_handler.h"
+#include "lorgnette/cli/scan_options.h"
 #include "lorgnette/dbus-proxies.h"
 #include "lorgnette/guess_source.h"
 
+using lorgnette::cli::Command;
 using lorgnette::cli::DiscoveryHandler;
+using lorgnette::cli::kCommandMap;
 using lorgnette::cli::ScanHandler;
 using org::chromium::lorgnette::ManagerProxy;
 
@@ -45,26 +48,6 @@ namespace {
 
 // ListScanners can take a long time if many USB scanners are plugged in.
 constexpr int kListScannersTimeoutMs = 60000;
-
-enum class Command {
-  kList,
-  kScan,
-  kCancelScan,
-  kGetJsonCaps,
-  kShowConfig,
-  kDiscover,
-  kAdvancedScan,
-};
-
-constexpr auto kCommandMap = base::MakeFixedFlatMap<std::string_view, Command>({
-    {"advanced_scan", Command::kAdvancedScan},
-    {"cancel_scan", Command::kCancelScan},
-    {"discover", Command::kDiscover},
-    {"get_json_caps", Command::kGetJsonCaps},
-    {"list", Command::kList},
-    {"scan", Command::kScan},
-    {"show_config", Command::kShowConfig},
-});
 
 template <class T, class M>
 std::vector<T> MapKeys(const M& map) {
@@ -135,7 +118,7 @@ std::optional<lorgnette::ScannerCapabilities> GetScannerCapabilities(
   return capabilities;
 }
 
-std::optional<lorgnette::ScannerConfig> GetScannerConfig(
+std::optional<lorgnette::ScannerConfig> OpenScanner(
     ManagerProxy* manager, const std::string& scanner_name) {
   brillo::ErrorPtr error;
   lorgnette::OpenScannerRequest open_request;
@@ -151,23 +134,41 @@ std::optional<lorgnette::ScannerConfig> GetScannerConfig(
                << lorgnette::OperationResult_Name(open_response.result());
     return std::nullopt;
   }
+  return open_response.config();
+}
 
-  // Immediately close the scanner because the response already includes the
-  // config.
+void CloseScanner(ManagerProxy* manager,
+                  const lorgnette::ScannerHandle& scanner) {
+  brillo::ErrorPtr error;
   lorgnette::CloseScannerRequest close_request;
-  *close_request.mutable_scanner() = open_response.config().scanner();
+  *close_request.mutable_scanner() = scanner;
   lorgnette::CloseScannerResponse close_response;
   if (!manager->CloseScanner(close_request, &close_response, &error)) {
     LOG(WARNING) << "CloseScanner failed: " << error->GetMessage();
-    return open_response.config();
+    return;
   }
   if (close_response.result() != lorgnette::OPERATION_RESULT_SUCCESS) {
     LOG(WARNING) << "CloseScanner returned error result "
                  << lorgnette::OperationResult_Name(close_response.result());
-    // Fall through.
   }
+}
 
-  return open_response.config();
+std::optional<lorgnette::ScannerConfig> SetScannerOptions(
+    ManagerProxy* manager, const lorgnette::SetOptionsRequest& request) {
+  brillo::ErrorPtr error;
+  lorgnette::SetOptionsResponse response;
+  if (!manager->SetOptions(request, &response, &error)) {
+    LOG(ERROR) << "SetOptions failed: " << error->GetMessage();
+    return std::nullopt;
+  }
+  for (const auto& [option, result] : response.results()) {
+    if (result != lorgnette::OPERATION_RESULT_SUCCESS) {
+      LOG(WARNING) << "SetOptions returned error result for " << option << ": "
+                   << lorgnette::OperationResult_Name(result);
+    }
+    // Fall through even if some options failed.
+  }
+  return response.config();
 }
 
 // RoundThousandth will round the input number at the thousandth place
@@ -544,13 +545,22 @@ int main(int argc, char** argv) {
 
   const std::vector<std::string>& args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
-  if (args.size() != 1 || !base::Contains(kCommandMap, args[0])) {
+  if (args.size() < 1 || !base::Contains(kCommandMap, args[0])) {
     std::cerr << "Usage: lorgnette_cli "
               << base::JoinString(MapKeys<std::string_view>(kCommandMap), "|")
               << " [FLAGS...]" << std::endl;
     return 1;
   }
   Command command = kCommandMap.at(args[0]);
+
+  base::StringPairs scan_options = lorgnette::cli::GetScanOptions(args);
+  if (scan_options.size() > 0) {
+    if (command != Command::kAdvancedScan && command != Command::kShowConfig) {
+      std::cerr << "set_options can only be used with "
+                << "advanced_scan and show_config" << std::endl;
+      return 1;
+    }
+  }
 
   // Create a task executor for this thread. This will automatically be bound
   // to the current thread so that it is usable by other code for posting tasks.
@@ -707,11 +717,28 @@ int main(int argc, char** argv) {
       }
 
       std::optional<lorgnette::ScannerConfig> config =
-          GetScannerConfig(manager.get(), FLAGS_scanner);
+          OpenScanner(manager.get(), FLAGS_scanner);
       if (!config.has_value()) {
         LOG(ERROR) << "Unable to open scanner " << FLAGS_scanner;
         return 1;
       }
+
+      if (scan_options.size()) {
+        std::optional<lorgnette::SetOptionsRequest> request =
+            lorgnette::cli::MakeSetOptionsRequest(config.value(), scan_options);
+        if (!request.has_value()) {
+          LOG(ERROR) << "Unable to parse set_options values";
+          return 1;
+        }
+
+        config = SetScannerOptions(manager.get(), request.value());
+        if (!config.has_value()) {
+          LOG(ERROR) << "Unable to set scanner options";
+          return 1;
+        }
+      }
+
+      CloseScanner(manager.get(), config->scanner());
 
       lorgnette::cli::PrintScannerConfig(config.value(), FLAGS_show_inactive,
                                          FLAGS_show_advanced, std::cout);
@@ -736,9 +763,14 @@ int main(int argc, char** argv) {
       }
 
       return lorgnette::cli::DoAdvancedScan(manager.get(), FLAGS_scanner,
-                                            mime_type, FLAGS_output)
+                                            scan_options, mime_type,
+                                            FLAGS_output)
                  ? 0
                  : 1;
+    }
+    case Command::kSetOptions: {
+      std::cerr << "set_options must come after the main command" << std::endl;
+      return 1;
     }
   }
 

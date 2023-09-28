@@ -4,6 +4,7 @@
 
 #include "lorgnette/cli/advanced_scan.h"
 
+#include <algorithm>
 #include <iostream>
 #include <utility>
 
@@ -18,6 +19,7 @@
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 #include "lorgnette/cli/file_pattern.h"
+#include "lorgnette/cli/scan_options.h"
 #include "lorgnette/constants.h"
 #include "lorgnette/dbus-proxies.h"
 #include "lorgnette/guess_source.h"
@@ -97,6 +99,7 @@ namespace lorgnette::cli {
 
 bool DoAdvancedScan(ManagerProxy* manager,
                     const std::string& scanner_name,
+                    const base::StringPairs& scan_options,
                     const std::string& mime_type,
                     const std::string& output_pattern) {
   std::cout << "Opening scanner " << scanner_name << std::endl;
@@ -136,8 +139,88 @@ bool DoAdvancedScan(ManagerProxy* manager,
       },
       manager, open_response.config().scanner()));
 
-  std::cout << "Setting options" << std::endl;
-  // TODO(bmgordon): Actually set options once SetOptions is implemented.
+  if (scan_options.size()) {
+    std::optional<lorgnette::SetOptionsRequest> set_request =
+        MakeSetOptionsRequest(open_response.config(), scan_options);
+    if (!set_request.has_value()) {
+      std::cerr << "Unable to parse set_options values" << std::endl;
+      return false;
+    }
+    std::cout << "Setting " << set_request->options_size() << " options"
+              << std::endl;
+
+    lorgnette::SetOptionsResponse set_response;
+    if (!manager->SetOptions(set_request.value(), &set_response, &error)) {
+      std::cerr << "SetOptions failed: " << error->GetMessage() << std::endl;
+      return false;
+    }
+    for (const auto& requested : set_request->options()) {
+      lorgnette::OperationResult result =
+          (*set_response.mutable_results())[requested.name()];
+      if (result != lorgnette::OPERATION_RESULT_SUCCESS) {
+        std::cerr << "WARNING: Failed to set " << requested.name() << ": "
+                  << lorgnette::OperationResult_Name(result) << std::endl;
+      }
+      const auto& actual =
+          (*set_response.mutable_config()->mutable_options())[requested.name()];
+      switch (actual.option_type()) {
+        case lorgnette::TYPE_BOOL:
+          if (actual.bool_value() != requested.bool_value()) {
+            std::cerr << "WARNING: " << actual.name()
+                      << " requested=" << requested.bool_value()
+                      << ", actual=" << actual.bool_value() << std::endl;
+          }
+          break;
+        case lorgnette::TYPE_INT:
+          if (actual.int_value().value_size() !=
+              requested.int_value().value_size()) {
+            std::cerr << "WARNING: " << actual.name() << " requested "
+                      << requested.int_value().value_size()
+                      << " values and got back "
+                      << actual.int_value().value_size() << std::endl;
+            break;
+          }
+          for (int i = 0; i < actual.int_value().value_size(); i++) {
+            if (actual.int_value().value(i) != requested.int_value().value(i)) {
+              std::cerr << "WARNING: " << actual.name()
+                        << " requested=" << requested.int_value().value(i)
+                        << ", actual=" << actual.int_value().value(i)
+                        << std::endl;
+            }
+          }
+          break;
+        case lorgnette::TYPE_FIXED:
+          if (actual.fixed_value().value_size() !=
+              requested.fixed_value().value_size()) {
+            std::cerr << "WARNING: " << actual.name() << " requested "
+                      << requested.fixed_value().value_size()
+                      << " values and got back "
+                      << actual.fixed_value().value_size() << std::endl;
+            break;
+          }
+          for (int i = 0; i < actual.fixed_value().value_size(); i++) {
+            if (actual.fixed_value().value(i) !=
+                requested.fixed_value().value(i)) {
+              std::cerr << "WARNING: " << actual.name()
+                        << " requested=" << requested.fixed_value().value(i)
+                        << ", actual=" << actual.fixed_value().value(i)
+                        << std::endl;
+            }
+          }
+          break;
+        case lorgnette::TYPE_STRING:
+          if (actual.string_value() != requested.string_value()) {
+            std::cerr << "WARNING: " << actual.name() << " requested=\""
+                      << requested.string_value() << "\", actual=\""
+                      << actual.string_value() << "\"" << std::endl;
+          }
+          break;
+        default:
+          // No value to compare.
+          break;
+      }
+    }
+  }
 
   size_t page = 1;
   std::string extension = ExtensionForMimeType(mime_type);

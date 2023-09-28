@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/strings/string_split.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 #include "lorgnette/dbus-proxies.h"
@@ -15,6 +16,7 @@ namespace lorgnette::cli {
 
 bool DoAdvancedScan(org::chromium::lorgnette::ManagerProxy* manager,
                     const std::string& scanner_name,
+                    const base::StringPairs& scan_options,
                     const std::string& mime_type,
                     const std::string& output_pattern);
 
