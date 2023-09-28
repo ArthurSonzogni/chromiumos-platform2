@@ -23,6 +23,32 @@
 
 namespace vm_tools::concierge {
 
+// Enum describing what caused vmm-swap to be disabled.
+enum class VmmSwapDisableReason {
+  // Disabled due to the target VM having shut down.
+  kVmShutdown,
+  // Disabled due to low/critical disk space notification.
+  kLowDiskSpace,
+  // Disabled due to dbus request.
+  kDisableRequest
+};
+
+// Enum describing swap policy decision of how to handle an enable dbus request.
+enum VmmSwapPolicyResult {
+  // All policies allow vmm-swap enable
+  kApprove,
+  // Vmm-swap moved memory to disk recently.
+  kCoolDown,
+  // VmmSwapUsagePolicy: vmm-swap is predicted to be disabled soon.
+  kUsagePrediction,
+  // VmmSwapTbwPolicy: vmm-swap have written too much pages into disk last
+  // 28 days.
+  kExceededTotalBytesWrittenLimit,
+  // VmmSwapLowDiskPolicy: The device does not have enough disk space
+  // available.
+  kLowDisk,
+};
+
 // Logs UMA metrics for vmm-swap feature.
 //
 // * "Memory.VmmSwap.<vm name>.State"
@@ -96,6 +122,43 @@ class VmmSwapMetrics final {
     kMaxValue = kDisabled,
   };
 
+  // Cross-product if VmmSwapDisableReason and state at exit. This enum is used
+  // in UMA and defined at `tools/metrics/histograms/enums.xml` in Chromium as
+  // `VmmSwapDisableReason`, and cannot be modified independently.
+  enum class DisableReasonMetric : int {
+    kVmShutdownActive = 0,
+    kVmShutdownInactive = 1,
+    kLowDiskSpaceActive = 2,
+    kLowDiskSpaceInactive = 3,
+    kDisableRequestActive = 4,
+    kDisableRequestInactive = 5,
+    kMaxValue = kDisableRequestInactive,
+  };
+
+  // Cross-product if PolicyResult and whether swap is being enabled or
+  // maintained. This enum is used in UMA and defined at
+  // `tools/metrics/histograms/enums.xml` in Chromium as `VmmSwapPolicyResult`,
+  // and cannot be modified independently.
+  enum class PolicyResultMetric : int {
+    kApproveEnable = 0,
+    kCoolDownEnable = 1,
+    kUsagePredictionEnable = 2,
+    kExceededTotalBytesWrittenLimitEnable = 3,
+    kLowDiskEnable = 4,
+    kApproveMaintenance = 5,
+    kCoolDownMaintenance = 6,
+    kUsagePredictionMaintenance = 7,
+    kExceededTotalBytesWrittenLimitMaintenance = 8,
+    kLowDiskMaintenance = 9,
+    kMaxValue = kLowDiskMaintenance,
+  };
+
+  // Reports a swap policy result. `is_enable_request` is true in response
+  // to a request to enable vmm-swap, and false in response to a request to
+  // perform vmm-swap maintenance (i.e. vmm-swap is already enabled).
+  void ReportPolicyResult(VmmSwapPolicyResult policy_result,
+                          bool is_enable_request);
+
   // When SwapVm DBus method tries to enable vmm-swap. This means the vm is idle
   // and ready to enable vmm-swap.
   void OnSwappableIdleEnabled(base::Time time = base::Time::Now());
@@ -109,7 +172,8 @@ class VmmSwapMetrics final {
                        base::Time time = base::Time::Now());
   // When vmm-swap is disabled. Vmm-swap can be disabled not only by SwapVm DBus
   // method but also by low disk signals.
-  void OnVmmSwapDisabled(base::Time time = base::Time::Now());
+  void OnVmmSwapDisabled(VmmSwapDisableReason reason,
+                         base::Time time = base::Time::Now());
   // When ArcVm shutdown.
   void OnDestroy(base::Time time = base::Time::Now());
 
@@ -128,12 +192,17 @@ class VmmSwapMetrics final {
   };
   void ClearPagesInFileCounters();
   void OnHeartbeat();
-  void ReportDurations(base::Time time) const;
+  void ReportDisableMetrics(VmmSwapDisableReason reason, base::Time time) const;
   void ReportPagesInFile(base::Time time) const;
   bool SendPagesToUMA(const std::string& unprefixed_metrics_name,
                       int64_t pages) const;
   bool SendDurationToUMA(const std::string& unprefixed_metrics_name,
                          base::TimeDelta duration) const;
+
+  static DisableReasonMetric GetDisableReasonMetric(VmmSwapDisableReason reason,
+                                                    bool active);
+  static PolicyResultMetric GetPolicyResultMetric(
+      VmmSwapPolicyResult policy_result, bool is_maintenance);
 
   const apps::VmType vm_type_;
   const raw_ref<MetricsLibraryInterface> metrics_

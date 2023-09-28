@@ -961,7 +961,7 @@ void ArcVm::HandleStatefulUpdate(const spaced::StatefulDiskSpaceUpdate update) {
 
   if (is_vmm_swap_enabled_ || requested_slow_file_cleanup_) {
     LOG(INFO) << "Disable vmm-swap due to low disk notification";
-    if (!DisableVmmSwap(false)) {
+    if (!DisableVmmSwap(VmmSwapDisableReason::kLowDiskSpace, false)) {
       LOG(ERROR) << "Failure on crosvm swap command for disable";
     }
   }
@@ -1217,7 +1217,8 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
         guest_memory_size_, base::BindOnce(&ArcVm::OnVmmSwapLowDiskPolicyResult,
                                            base::Unretained(this)));
   } else {
-    ApplyVmmSwapPolicyResult(std::move(callback), VmmSwapPolicyResult::kPass);
+    ApplyVmmSwapPolicyResult(std::move(callback),
+                             VmmSwapPolicyResult::kApprove);
   }
 }
 
@@ -1236,7 +1237,7 @@ void ArcVm::OnVmmSwapLowDiskPolicyResult(bool can_enable) {
       LOG(INFO) << "Enabling vmm-swap is rejected by low disk mode.";
     }
     ApplyVmmSwapPolicyResult(std::move(pending_swap_vm_callback_),
-                             can_enable ? VmmSwapPolicyResult::kPass
+                             can_enable ? VmmSwapPolicyResult::kApprove
                                         : VmmSwapPolicyResult::kLowDisk);
   }
 }
@@ -1245,8 +1246,10 @@ void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
                                      VmmSwapPolicyResult policy_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  vmm_swap_metrics_->ReportPolicyResult(policy_result, !is_vmm_swap_enabled_);
+
   SwapVmResponse response;
-  if (policy_result == VmmSwapPolicyResult::kPass ||
+  if (policy_result == VmmSwapPolicyResult::kApprove ||
       (is_vmm_swap_enabled_ && !swap_policy_timer_->IsRunning())) {
     if (!CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath())) {
       LOG(ERROR) << "Failure on crosvm swap command for enable";
@@ -1254,7 +1257,7 @@ void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
       std::move(callback).Run(response);
       return;
     }
-    if (policy_result == VmmSwapPolicyResult::kPass) {
+    if (policy_result == VmmSwapPolicyResult::kApprove) {
       vmm_swap_metrics_->OnVmmSwapEnabled();
       is_vmm_swap_enabled_ = true;
       swap_policy_timer_->Start(FROM_HERE, kVmmSwapTrimWaitPeriod, this,
@@ -1268,7 +1271,7 @@ void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
     }
   }
   switch (policy_result) {
-    case VmmSwapPolicyResult::kPass:
+    case VmmSwapPolicyResult::kApprove:
       response.set_success(true);
       break;
     case VmmSwapPolicyResult::kCoolDown:
@@ -1311,7 +1314,7 @@ void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
 void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   vmm_swap_usage_policy_.OnDisabled();
-  if (DisableVmmSwap(true)) {
+  if (DisableVmmSwap(VmmSwapDisableReason::kDisableRequest, true)) {
     response.set_success(true);
   } else {
     LOG(ERROR) << "Failure on crosvm swap command for disable";
@@ -1320,7 +1323,8 @@ void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
   vmm_swap_metrics_->OnSwappableIdleDisabled();
 }
 
-bool ArcVm::DisableVmmSwap(bool slow_file_cleanup) {
+bool ArcVm::DisableVmmSwap(VmmSwapDisableReason reason,
+                           bool slow_file_cleanup) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (swap_policy_timer_->IsRunning()) {
     LOG(INFO) << "Cancel pending swap out";
@@ -1338,7 +1342,7 @@ bool ArcVm::DisableVmmSwap(bool slow_file_cleanup) {
   }
   is_vmm_swap_enabled_ = false;
   requested_slow_file_cleanup_ = slow_file_cleanup;
-  vmm_swap_metrics_->OnVmmSwapDisabled();
+  vmm_swap_metrics_->OnVmmSwapDisabled(reason);
   vm_swapping_notify_callback_.Run(SWAPPING_IN);
   return CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath(),
                                               slow_file_cleanup);

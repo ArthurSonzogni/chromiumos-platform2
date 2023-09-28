@@ -28,6 +28,8 @@ namespace vm_tools::concierge {
 namespace {
 static constexpr char kMetricsPrefix[] = "Memory.VmmSwap.";
 static constexpr char kMetricsState[] = ".State";
+static constexpr char kPolicyResult[] = ".PolicyResult";
+static constexpr char kDisableReason[] = ".DisableReason";
 static constexpr char kMetricsInactiveBeforeEnableDuration[] =
     ".InactiveBeforeEnableDuration";
 static constexpr char kMetricsActiveAfterEnableDuration[] =
@@ -132,14 +134,15 @@ void VmmSwapMetrics::OnPreVmmSwapOut(int64_t written_pages, base::Time time) {
   }
 }
 
-void VmmSwapMetrics::OnVmmSwapDisabled(base::Time time) {
+void VmmSwapMetrics::OnVmmSwapDisabled(VmmSwapDisableReason reason,
+                                       base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   is_enabled_ = false;
   // Reports ".InactiveNoEnableDuration" when vmm-swap is disabled instead of
   // when swappable-idle is disabled for codebase simplicity.
   // `OnVmmSwapDisabled()` is called every time just before
   // `OnSwappableIdleDisabled()`.
-  ReportDurations(time);
+  ReportDisableMetrics(reason, time);
 
   ReportPagesInFile(time);
   vmm_swap_out_metrics_.reset();
@@ -155,7 +158,7 @@ void VmmSwapMetrics::OnVmmSwapDisabled(base::Time time) {
 
 void VmmSwapMetrics::OnDestroy(base::Time time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  ReportDurations(time);
+  ReportDisableMetrics(VmmSwapDisableReason::kVmShutdown, time);
   ReportPagesInFile(time);
 }
 
@@ -219,7 +222,8 @@ void VmmSwapMetrics::OnHeartbeat() {
   swap_out_metrics.count_heartbeat += 1;
 }
 
-void VmmSwapMetrics::ReportDurations(base::Time time) const {
+void VmmSwapMetrics::ReportDisableMetrics(VmmSwapDisableReason reason,
+                                          base::Time time) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (vmm_swap_enable_time_.has_value()) {
     // If vmm-swap is force-enabled, `pending_started_at_` can be empty or
@@ -236,6 +240,11 @@ void VmmSwapMetrics::ReportDurations(base::Time time) const {
                              time - vmm_swap_enable_time_.value())) {
         LOG(ERROR) << "Failed to send vmm-swap enabled duration metrics";
       }
+      if (!metrics_->SendEnumToUMA(
+              GetMetricsName(vm_type_, kDisableReason),
+              GetDisableReasonMetric(reason, true /*active*/))) {
+        LOG(ERROR) << "Failed to send vmm-swap disable reason metric";
+      }
     }
   } else {
     if (swappable_idle_start_time_.has_value()) {
@@ -243,6 +252,11 @@ void VmmSwapMetrics::ReportDurations(base::Time time) const {
                              time - swappable_idle_start_time_.value())) {
         LOG(ERROR)
             << "Failed to send vmm-swap pending enabled duration metrics";
+      }
+      if (!metrics_->SendEnumToUMA(
+              GetMetricsName(vm_type_, kDisableReason),
+              GetDisableReasonMetric(reason, false /*active*/))) {
+        LOG(ERROR) << "Failed to send vmm-swap disable reason metric";
       }
     }
   }
@@ -307,6 +321,55 @@ bool VmmSwapMetrics::SendDurationToUMA(
   return metrics_->SendToUMA(GetMetricsName(vm_type_, unprefixed_metrics_name),
                              hours, kDurationMinHours, kDurationMaxHours,
                              kDurationNumBuckets);
+}
+
+void VmmSwapMetrics::ReportPolicyResult(VmmSwapPolicyResult policy_result,
+                                        bool is_enable_request) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!metrics_->SendEnumToUMA(
+          GetMetricsName(vm_type_, kPolicyResult),
+          GetPolicyResultMetric(policy_result, is_enable_request))) {
+    LOG(ERROR) << "Failed to send policy result metric";
+  }
+}
+
+VmmSwapMetrics::DisableReasonMetric VmmSwapMetrics::GetDisableReasonMetric(
+    VmmSwapDisableReason reason, bool active) {
+  switch (reason) {
+    case VmmSwapDisableReason::kVmShutdown:
+      return active ? DisableReasonMetric::kVmShutdownActive
+                    : DisableReasonMetric::kVmShutdownInactive;
+    case VmmSwapDisableReason::kLowDiskSpace:
+      return active ? DisableReasonMetric::kLowDiskSpaceActive
+                    : DisableReasonMetric::kLowDiskSpaceInactive;
+    case VmmSwapDisableReason::kDisableRequest:
+      return active ? DisableReasonMetric::kDisableRequestActive
+                    : DisableReasonMetric::kDisableRequestInactive;
+  }
+}
+
+VmmSwapMetrics::PolicyResultMetric VmmSwapMetrics::GetPolicyResultMetric(
+    VmmSwapPolicyResult policy_result, bool is_enable_request) {
+  switch (policy_result) {
+    case VmmSwapPolicyResult::kApprove:
+      return is_enable_request ? PolicyResultMetric::kApproveEnable
+                               : PolicyResultMetric::kApproveMaintenance;
+    case VmmSwapPolicyResult::kCoolDown:
+      return is_enable_request ? PolicyResultMetric::kCoolDownEnable
+                               : PolicyResultMetric::kCoolDownMaintenance;
+    case VmmSwapPolicyResult::kUsagePrediction:
+      return is_enable_request
+                 ? PolicyResultMetric::kUsagePredictionEnable
+                 : PolicyResultMetric::kUsagePredictionMaintenance;
+    case VmmSwapPolicyResult::kExceededTotalBytesWrittenLimit:
+      return is_enable_request
+                 ? PolicyResultMetric::kExceededTotalBytesWrittenLimitEnable
+                 : PolicyResultMetric::
+                       kExceededTotalBytesWrittenLimitMaintenance;
+    case VmmSwapPolicyResult::kLowDisk:
+      return is_enable_request ? PolicyResultMetric::kLowDiskEnable
+                               : PolicyResultMetric::kLowDiskMaintenance;
+  }
 }
 
 }  // namespace vm_tools::concierge

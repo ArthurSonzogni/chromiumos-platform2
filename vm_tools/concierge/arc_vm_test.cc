@@ -50,6 +50,10 @@ constexpr int kSeneschalServerPort = 3000;
 constexpr int kLcdDensity = 160;
 
 static constexpr char kMetricsArcvmStateName[] = "Memory.VmmSwap.ARCVM.State";
+static constexpr char kMetricsArcvmPolicyResultName[] =
+    "Memory.VmmSwap.ARCVM.PolicyResult";
+static constexpr char kMetricsArcvmDisableReasonName[] =
+    "Memory.VmmSwap.ARCVM.DisableReason";
 static constexpr char kMetricsArcvmInactiveBeforeEnableDurationName[] =
     "Memory.VmmSwap.ARCVM.InactiveBeforeEnableDuration";
 static constexpr char kMetricsArcvmActiveAfterEnableDurationName[] =
@@ -1340,6 +1344,13 @@ TEST_F(ArcVmTest, EnableVmmSwap) {
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapHeartbeatMetrics) {
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(
+          kMetricsArcvmPolicyResultName,
+          static_cast<int>(VmmSwapMetrics::PolicyResultMetric::kApproveEnable),
+          _))
+      .Times(1);
   ASSERT_TRUE(EnableVmmSwap());
 
   EXPECT_TRUE(swap_metrics_heartbeat_timer_->IsRunning());
@@ -1349,6 +1360,15 @@ TEST_F(ArcVmTest, EnableVmmSwapHeartbeatMetrics) {
                     static_cast<int>(VmmSwapMetrics::State::kEnabled), _))
       .Times(1);
   swap_metrics_heartbeat_timer_->Fire();
+
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(kMetricsArcvmDisableReasonName,
+                    static_cast<int>(
+                        VmmSwapMetrics::DisableReasonMetric::kVmShutdownActive),
+                    _))
+      .Times(1);
+  vm_.reset();
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapFail) {
@@ -1383,6 +1403,13 @@ TEST_F(ArcVmTest, VmmSwapOutAfterTrim) {
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapAgainJustAfterVmmSwapOut) {
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(
+          kMetricsArcvmPolicyResultName,
+          static_cast<int>(VmmSwapMetrics::PolicyResultMetric::kApproveEnable),
+          _))
+      .Times(1);
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
   FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
@@ -1390,6 +1417,13 @@ TEST_F(ArcVmTest, EnableVmmSwapAgainJustAfterVmmSwapOut) {
   FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
   FakeCrosvmControl::Get()->count_vmm_swap_out_ = 0;
   FakeCrosvmControl::Get()->count_vmm_swap_trim_ = 0;
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  kMetricsArcvmPolicyResultName,
+                  static_cast<int>(
+                      VmmSwapMetrics::PolicyResultMetric::kCoolDownMaintenance),
+                  _))
+      .Times(1);
   ASSERT_FALSE(EnableVmmSwap());
   // Vmm-swap enable & trim without vmm-swap out.
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
@@ -1398,19 +1432,58 @@ TEST_F(ArcVmTest, EnableVmmSwapAgainJustAfterVmmSwapOut) {
   ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_trim_, 1);
   ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
   ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
+
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(kMetricsArcvmDisableReasonName,
+                    static_cast<int>(
+                        VmmSwapMetrics::DisableReasonMetric::kVmShutdownActive),
+                    _))
+      .Times(1);
+  vm_.reset();
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapAgain24HoursAfterVmmSwapOut) {
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(
+          kMetricsArcvmPolicyResultName,
+          static_cast<int>(VmmSwapMetrics::PolicyResultMetric::kApproveEnable),
+          _))
+      .Times(1);
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
   FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
   swap_state_monitor_timer_->Fire();
   ProceedTimeAfterSwapOut(base::Hours(24));
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  kMetricsArcvmPolicyResultName,
+                  static_cast<int>(
+                      VmmSwapMetrics::PolicyResultMetric::kApproveMaintenance),
+                  _))
+      .Times(1);
   ASSERT_TRUE(EnableVmmSwap());
+
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(kMetricsArcvmDisableReasonName,
+                    static_cast<int>(
+                        VmmSwapMetrics::DisableReasonMetric::kVmShutdownActive),
+                    _))
+      .Times(1);
+  vm_.reset();
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapAgainExceedsTbwTarget) {
   const uint64_t target_size = MiB(512);
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(
+          kMetricsArcvmPolicyResultName,
+          static_cast<int>(VmmSwapMetrics::PolicyResultMetric::kApproveEnable),
+          _))
+      .Times(1);
   vmm_swap_tbw_policy_->SetTargetTbwPerDay(target_size);
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
@@ -1422,6 +1495,13 @@ TEST_F(ArcVmTest, EnableVmmSwapAgainExceedsTbwTarget) {
   FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
   FakeCrosvmControl::Get()->count_vmm_swap_out_ = 0;
   FakeCrosvmControl::Get()->count_vmm_swap_trim_ = 0;
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(kMetricsArcvmPolicyResultName,
+                            static_cast<int>(
+                                VmmSwapMetrics::PolicyResultMetric::
+                                    kExceededTotalBytesWrittenLimitMaintenance),
+                            _))
+      .Times(1);
   ASSERT_FALSE(EnableVmmSwap());
   // Vmm-swap enable & trim without vmm-swap out.
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
@@ -1430,9 +1510,27 @@ TEST_F(ArcVmTest, EnableVmmSwapAgainExceedsTbwTarget) {
   ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_trim_, 1);
   ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
   ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
+
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(kMetricsArcvmDisableReasonName,
+                    static_cast<int>(
+                        VmmSwapMetrics::DisableReasonMetric::kVmShutdownActive),
+                    _))
+      .Times(1);
+  vm_.reset();
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy) {
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(
+          kMetricsArcvmPolicyResultName,
+          static_cast<int>(
+              VmmSwapMetrics::PolicyResultMetric::kUsagePredictionEnable),
+          _))
+      .Times(1);
+
   // The usage prediction target is 2 days.
   vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize / 2);
   // Invalidates the usage log.
@@ -1448,9 +1546,27 @@ TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy) {
   FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
   ASSERT_FALSE(EnableVmmSwap());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  kMetricsArcvmDisableReasonName,
+                  static_cast<int>(
+                      VmmSwapMetrics::DisableReasonMetric::kVmShutdownInactive),
+                  _))
+      .Times(1);
+  vm_.reset();
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy4DaysTarget) {
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(
+          kMetricsArcvmPolicyResultName,
+          static_cast<int>(
+              VmmSwapMetrics::PolicyResultMetric::kUsagePredictionEnable),
+          _))
+      .Times(1);
+
   // The usage prediction target is 4 days.
   vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize / 4);
   // Invalidates the usage log.
@@ -1466,6 +1582,15 @@ TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy4DaysTarget) {
   FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
   ASSERT_FALSE(EnableVmmSwap());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  kMetricsArcvmDisableReasonName,
+                  static_cast<int>(
+                      VmmSwapMetrics::DisableReasonMetric::kVmShutdownInactive),
+                  _))
+      .Times(1);
+  vm_.reset();
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapPassUsagePolicy) {
@@ -1501,6 +1626,14 @@ TEST_F(ArcVmTest, EnableVmmSwapPassUsagePolicy4DaysTarget) {
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapRejectedByLowDiskPolicy) {
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(
+          kMetricsArcvmPolicyResultName,
+          static_cast<int>(VmmSwapMetrics::PolicyResultMetric::kLowDiskEnable),
+          _))
+      .Times(1);
+
   // The usage prediction target is 2 days.
   vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize);
   SpacedProxyReturnSuccessCallback(
@@ -1509,6 +1642,15 @@ TEST_F(ArcVmTest, EnableVmmSwapRejectedByLowDiskPolicy) {
   FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
   ASSERT_FALSE(EnableVmmSwap());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  kMetricsArcvmDisableReasonName,
+                  static_cast<int>(
+                      VmmSwapMetrics::DisableReasonMetric::kVmShutdownInactive),
+                  _))
+      .Times(1);
+  vm_.reset();
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapAgainBeforeLowDiskPolicyResponse) {
@@ -1729,6 +1871,14 @@ TEST_F(ArcVmTest, HandleStatefulUpdateHeartbeatDisabledMetrics) {
   ASSERT_TRUE(EnableVmmSwap());
   spaced::StatefulDiskSpaceUpdate update;
   update.set_state(spaced::StatefulDiskSpaceState::LOW);
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  kMetricsArcvmDisableReasonName,
+                  static_cast<int>(
+                      VmmSwapMetrics::DisableReasonMetric::kLowDiskSpaceActive),
+                  _))
+      .Times(1);
   vm_->HandleStatefulUpdate(update);
 
   EXPECT_TRUE(swap_metrics_heartbeat_timer_->IsRunning());
@@ -1738,6 +1888,15 @@ TEST_F(ArcVmTest, HandleStatefulUpdateHeartbeatDisabledMetrics) {
                     static_cast<int>(VmmSwapMetrics::State::kDisabled), _))
       .Times(1);
   swap_metrics_heartbeat_timer_->Fire();
+
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(
+                  kMetricsArcvmDisableReasonName,
+                  static_cast<int>(
+                      VmmSwapMetrics::DisableReasonMetric::kVmShutdownInactive),
+                  _))
+      .Times(1);
+  vm_.reset();
 }
 
 TEST_F(ArcVmTest, VmmSwapMetricsReportDurations) {

@@ -29,6 +29,8 @@ namespace vm_tools::concierge {
 
 namespace {
 static constexpr char kMetricsArcvmStateName[] = "Memory.VmmSwap.ARCVM.State";
+static constexpr char kMetricsArcvmDisableReasonName[] =
+    "Memory.VmmSwap.ARCVM.DisableReason";
 static constexpr char kMetricsArcvmInactiveBeforeEnableDurationName[] =
     "Memory.VmmSwap.ARCVM.InactiveBeforeEnableDuration";
 static constexpr char kMetricsArcvmActiveAfterEnableDurationName[] =
@@ -156,9 +158,18 @@ TEST_F(VmmSwapMetricsTest, HeartbeatAfterDisabled) {
   VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
-  metrics.OnSwappableIdleEnabled();
-  metrics.OnVmmSwapEnabled();
-  metrics.OnVmmSwapDisabled();
+  base::Time now = base::Time::Now();
+  metrics.OnSwappableIdleEnabled(now);
+  metrics.OnVmmSwapEnabled(now + base::Seconds(1));
+
+  EXPECT_CALL(*metrics_,
+              SendEnumToUMA(
+                  kMetricsArcvmDisableReasonName,
+                  static_cast<int>(
+                      VmmSwapMetrics::DisableReasonMetric::kLowDiskSpaceActive),
+                  _))
+      .Times(1);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kLowDiskSpace);
 
   EXPECT_CALL(
       *metrics_,
@@ -173,8 +184,9 @@ TEST_F(VmmSwapMetricsTest, HeartbeatMultiple) {
   VmmSwapMetrics metrics = VmmSwapMetrics(apps::VmType::ARCVM, GetMetricsRef(),
                                           std::move(heartbeat_timer_));
 
-  metrics.OnSwappableIdleEnabled();
-  metrics.OnVmmSwapEnabled();
+  base::Time now = base::Time::Now();
+  metrics.OnSwappableIdleEnabled(now);
+  metrics.OnVmmSwapEnabled(now + base::Seconds(1));
 
   EXPECT_CALL(
       *metrics_,
@@ -185,7 +197,15 @@ TEST_F(VmmSwapMetricsTest, HeartbeatMultiple) {
   heartbeat_timer->Fire();
   heartbeat_timer->Fire();
   heartbeat_timer->Fire();
-  metrics.OnVmmSwapDisabled();
+  EXPECT_CALL(
+      *metrics_,
+      SendEnumToUMA(
+          kMetricsArcvmDisableReasonName,
+          static_cast<int>(
+              VmmSwapMetrics::DisableReasonMetric::kDisableRequestActive),
+          _))
+      .Times(1);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest);
   EXPECT_CALL(
       *metrics_,
       SendEnumToUMA(kMetricsArcvmStateName,
@@ -229,7 +249,15 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsEnabled) {
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsArcvmInactiveNoEnableDurationName, _, _, _, _))
       .Times(0);
-  metrics.OnVmmSwapDisabled(now);
+  EXPECT_CALL(
+      *metrics_,
+      SendEnumToUMA(
+          kMetricsArcvmDisableReasonName,
+          static_cast<int>(
+              VmmSwapMetrics::DisableReasonMetric::kDisableRequestActive),
+          _))
+      .Times(1);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest, now);
 }
 
 TEST_F(VmmSwapMetricsTest, ReportDurationsEnabledOnDestroy) {
@@ -251,6 +279,13 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsEnabledOnDestroy) {
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsArcvmInactiveNoEnableDurationName, _, _, _, _))
       .Times(0);
+  EXPECT_CALL(
+      *metrics_,
+      SendEnumToUMA(kMetricsArcvmDisableReasonName,
+                    static_cast<int>(
+                        VmmSwapMetrics::DisableReasonMetric::kVmShutdownActive),
+                    _))
+      .Times(1);
   metrics.OnDestroy(now);
 }
 
@@ -269,11 +304,14 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsForceEnabled) {
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsArcvmInactiveNoEnableDurationName, _, _, _, _))
       .Times(0);
+  EXPECT_CALL(*metrics_, SendEnumToUMA(kMetricsArcvmDisableReasonName, _, _))
+      .Times(0);
 
   // OnVmmSwapEnabled without OnSwappableIdleEnabled
   metrics.OnVmmSwapEnabled(now - base::Days(1));
-  metrics.OnVmmSwapDisabled(now - base::Hours(10));
-  metrics.OnVmmSwapDisabled(now);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest,
+                            now - base::Hours(10));
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest, now);
 }
 
 TEST_F(VmmSwapMetricsTest, ReportDurationsDisabled) {
@@ -294,7 +332,15 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsDisabled) {
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsArcvmInactiveNoEnableDurationName, 24, _, _, _))
       .Times(1);
-  metrics.OnVmmSwapDisabled(now);
+  EXPECT_CALL(
+      *metrics_,
+      SendEnumToUMA(
+          kMetricsArcvmDisableReasonName,
+          static_cast<int>(
+              VmmSwapMetrics::DisableReasonMetric::kDisableRequestInactive),
+          _))
+      .Times(1);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest, now);
 }
 
 TEST_F(VmmSwapMetricsTest, ReportDurationsDisabledClearEnabledLog) {
@@ -304,7 +350,16 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsDisabledClearEnabledLog) {
 
   metrics.OnSwappableIdleEnabled(now - base::Days(1));
   metrics.OnVmmSwapEnabled(now - base::Hours(15));
-  metrics.OnVmmSwapDisabled(now - base::Hours(10));
+  EXPECT_CALL(
+      *metrics_,
+      SendEnumToUMA(
+          kMetricsArcvmDisableReasonName,
+          static_cast<int>(
+              VmmSwapMetrics::DisableReasonMetric::kDisableRequestActive),
+          _))
+      .Times(1);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest,
+                            now - base::Hours(10));
 
   EXPECT_CALL(
       *metrics_,
@@ -316,7 +371,15 @@ TEST_F(VmmSwapMetricsTest, ReportDurationsDisabledClearEnabledLog) {
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsArcvmInactiveNoEnableDurationName, 10, _, _, _))
       .Times(1);
-  metrics.OnVmmSwapDisabled(now);
+  EXPECT_CALL(
+      *metrics_,
+      SendEnumToUMA(
+          kMetricsArcvmDisableReasonName,
+          static_cast<int>(
+              VmmSwapMetrics::DisableReasonMetric::kDisableRequestInactive),
+          _))
+      .Times(1);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest, now);
 }
 
 TEST_F(VmmSwapMetricsTest, SendDurationToUMA) {
@@ -333,14 +396,22 @@ TEST_F(VmmSwapMetricsTest, SendDurationToUMA) {
   EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmInactiveNoEnableDurationName,
                                    24, min_duration, max_duration, buckets))
       .Times(1);
-  metrics.OnVmmSwapDisabled(now);
+  EXPECT_CALL(
+      *metrics_,
+      SendEnumToUMA(
+          kMetricsArcvmDisableReasonName,
+          static_cast<int>(
+              VmmSwapMetrics::DisableReasonMetric::kLowDiskSpaceInactive),
+          _))
+      .Times(5);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kLowDiskSpace, now);
   metrics.OnSwappableIdleDisabled();
 
   metrics.OnSwappableIdleEnabled(now - base::Hours(24));
   EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmInactiveNoEnableDurationName,
                                    24, min_duration, max_duration, buckets))
       .Times(1);
-  metrics.OnVmmSwapDisabled(now);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kLowDiskSpace, now);
   metrics.OnSwappableIdleDisabled();
 
   metrics.OnSwappableIdleEnabled(now -
@@ -348,7 +419,7 @@ TEST_F(VmmSwapMetricsTest, SendDurationToUMA) {
   EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmInactiveNoEnableDurationName,
                                    23, min_duration, max_duration, buckets))
       .Times(1);
-  metrics.OnVmmSwapDisabled(now);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kLowDiskSpace, now);
   metrics.OnSwappableIdleDisabled();
 
   // Zero duration
@@ -356,7 +427,7 @@ TEST_F(VmmSwapMetricsTest, SendDurationToUMA) {
   EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmInactiveNoEnableDurationName, 0,
                                    min_duration, max_duration, buckets))
       .Times(1);
-  metrics.OnVmmSwapDisabled(now);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kLowDiskSpace, now);
   metrics.OnSwappableIdleDisabled();
 
   // Negative duration.
@@ -365,7 +436,7 @@ TEST_F(VmmSwapMetricsTest, SendDurationToUMA) {
   EXPECT_CALL(*metrics_,
               SendToUMA(kMetricsArcvmInactiveNoEnableDurationName, _, _, _, _))
       .Times(0);
-  metrics.OnVmmSwapDisabled(now);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kLowDiskSpace, now);
   metrics.OnSwappableIdleDisabled();
 }
 
@@ -399,7 +470,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFile) {
               SendToUMA(kMetricsArcvmAvgPagesInFileName, avg_pages_4KiB,
                         min_pages, max_pages, buckets))
       .Times(1);
-  metrics.OnVmmSwapDisabled();
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kLowDiskSpace);
 }
 
 TEST_F(VmmSwapMetricsTest, ReportPagesInFileOnDestroy) {
@@ -441,7 +512,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileOnDestroyAfterDisabled) {
 
   loader.status_.metrics.swap_pages = 100;
   heartbeat_timer->Fire();
-  metrics.OnVmmSwapDisabled();
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest);
 
   EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmMinPagesInFileName, _, _, _, _))
       .Times(0);
@@ -463,7 +534,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileWithoutLoader) {
       .Times(0);
   EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmAvgPagesInFileName, _, _, _, _))
       .Times(0);
-  metrics.OnVmmSwapDisabled();
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest);
 }
 
 TEST_F(VmmSwapMetricsTest, ReportPagesInFileNotActive) {
@@ -483,7 +554,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileNotActive) {
       .Times(0);
   EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmAvgPagesInFileName, _, _, _, _))
       .Times(0);
-  metrics.OnVmmSwapDisabled();
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest);
 }
 
 TEST_F(VmmSwapMetricsTest, ReportPagesInFileFailToLoadStatus) {
@@ -501,7 +572,7 @@ TEST_F(VmmSwapMetricsTest, ReportPagesInFileFailToLoadStatus) {
       .Times(0);
   EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmAvgPagesInFileName, _, _, _, _))
       .Times(0);
-  metrics.OnVmmSwapDisabled();
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest);
 }
 
 TEST_F(VmmSwapMetricsTest, ReportPageDurationInFile) {
@@ -536,7 +607,7 @@ TEST_F(VmmSwapMetricsTest, ReportPageDurationInFile) {
                                    377, min_seconds, max_seconds, buckets))
       .Times(1);
   task_environment_.FastForwardBy(base::Seconds(200));
-  metrics.OnVmmSwapDisabled();
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest);
 }
 
 TEST_F(VmmSwapMetricsTest, ReportPageDurationInFileOnDestroy) {
@@ -591,7 +662,7 @@ TEST_F(VmmSwapMetricsTest, ReportPageDurationInFileZero) {
               SendToUMA(kMetricsArcvmPageAverageDurationInFileName, 0, _, _, _))
       .Times(1);
   task_environment_.FastForwardBy(base::Seconds(200));
-  metrics.OnVmmSwapDisabled();
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest);
 }
 
 TEST_F(VmmSwapMetricsTest, ReportPageDurationInFileBeforeHeartbeat) {
@@ -609,7 +680,7 @@ TEST_F(VmmSwapMetricsTest, ReportPageDurationInFileBeforeHeartbeat) {
   EXPECT_CALL(*metrics_, SendToUMA(kMetricsArcvmPageAverageDurationInFileName,
                                    1000, _, _, _))
       .Times(1);
-  metrics.OnVmmSwapDisabled(now);
+  metrics.OnVmmSwapDisabled(VmmSwapDisableReason::kDisableRequest, now);
 }
 
 }  // namespace vm_tools::concierge

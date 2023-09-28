@@ -199,22 +199,6 @@ class ArcVm final : public VmBaseImpl {
   using VmmSwapStateChangeCallback =
       base::OnceCallback<void(SwapState new_state)>;
 
-  // Indicates which policy rejects to enable vmm-swap.
-  enum VmmSwapPolicyResult {
-    // All policies allow vmm-swap enable
-    kPass,
-    // Vmm-swap moved memory to disk recently.
-    kCoolDown,
-    // VmmSwapUsagePolicy: vmm-swap is predicted to be disabled soon.
-    kUsagePrediction,
-    // VmmSwapTbwPolicy: vmm-swap have written too much pages into disk last
-    // 28 days.
-    kExceededTotalBytesWrittenLimit,
-    // VmmSwapLowDiskPolicy: The device does not have enough disk space
-    // available.
-    kLowDisk,
-  };
-
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
 
@@ -240,7 +224,7 @@ class ArcVm final : public VmBaseImpl {
   void HandleSwapVmEnableRequest(SwapVmCallback callback);
   void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
   void HandleSwapVmDisableRequest(SwapVmResponse& response);
-  bool DisableVmmSwap(bool slow_file_cleanup);
+  bool DisableVmmSwap(VmmSwapDisableReason reason, bool slow_file_cleanup);
   void OnVmmSwapLowDiskPolicyResult(bool can_enable);
   void ApplyVmmSwapPolicyResult(SwapVmCallback callback,
                                 VmmSwapPolicyResult policy_result);
