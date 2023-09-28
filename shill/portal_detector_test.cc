@@ -85,27 +85,20 @@ MATCHER_P(IsResult, result, "") {
 class PortalDetectorTest : public Test {
  public:
   PortalDetectorTest()
-      : transport_(std::make_shared<brillo::http::MockTransport>()),
-        brillo_connection_(
-            std::make_shared<brillo::http::MockConnection>(transport_)),
+      : http_probe_transport_(std::make_shared<brillo::http::MockTransport>()),
+        http_probe_connection_(std::make_shared<brillo::http::MockConnection>(
+            http_probe_transport_)),
+        https_probe_transport_(std::make_shared<brillo::http::MockTransport>()),
+        https_probe_connection_(std::make_shared<brillo::http::MockConnection>(
+            https_probe_transport_)),
+        http_request_(nullptr),
+        https_request_(nullptr),
+        interface_name_(kInterfaceName),
+        dns_servers_(kDNSServers, kDNSServers + 2),
         portal_detector_(
             new PortalDetector(&dispatcher_,
                                MakeProbingConfiguration(),
-                               callback_target_.result_callback())),
-        interface_name_(kInterfaceName),
-        dns_servers_(kDNSServers, kDNSServers + 2),
-        http_request_(nullptr),
-        https_request_(nullptr) {}
-
-  void SetUp() override { EXPECT_EQ(nullptr, portal_detector_->http_request_); }
-
-  void TearDown() override {
-    Mock::VerifyAndClearExpectations(&http_request_);
-    testing::Mock::VerifyAndClearExpectations(brillo_connection_.get());
-    brillo_connection_.reset();
-    testing::Mock::VerifyAndClearExpectations(transport_.get());
-    transport_.reset();
-  }
+                               callback_target_.result_callback())) {}
 
  protected:
   static const int kNumAttempts;
@@ -176,8 +169,11 @@ class PortalDetectorTest : public Test {
   PortalDetector* portal_detector() { return portal_detector_.get(); }
   MockEventDispatcher& dispatcher() { return dispatcher_; }
   CallbackTarget& callback_target() { return callback_target_; }
-  brillo::http::MockConnection* brillo_connection() {
-    return brillo_connection_.get();
+  brillo::http::MockConnection* http_connection() {
+    return http_probe_connection_.get();
+  }
+  brillo::http::MockConnection* https_connection() {
+    return https_probe_connection_.get();
   }
 
   void ExpectReset() {
@@ -200,28 +196,34 @@ class PortalDetectorTest : public Test {
     StartTrialTask();
   }
 
-  void ExpectRequestSuccessWithStatus(int status_code, bool is_http) {
-    EXPECT_CALL(*brillo_connection_, GetResponseStatusCode())
+  void ExpectHttpRequestSuccessWithStatus(int status_code) {
+    EXPECT_CALL(*http_probe_connection_, GetResponseStatusCode())
         .WillOnce(Return(status_code));
-
     auto response =
-        std::make_shared<brillo::http::Response>(brillo_connection_);
-    if (is_http)
-      portal_detector_->HttpRequestSuccessCallback(response);
-    else
-      portal_detector_->HttpsRequestSuccessCallback(response);
+        std::make_shared<brillo::http::Response>(http_probe_connection_);
+    portal_detector_->HttpRequestSuccessCallback(response);
+  }
+
+  void ExpectHttpsRequestSuccessWithStatus(int status_code) {
+    EXPECT_CALL(*https_probe_connection_, GetResponseStatusCode())
+        .WillOnce(Return(status_code));
+    auto response =
+        std::make_shared<brillo::http::Response>(https_probe_connection_);
+    portal_detector_->HttpsRequestSuccessCallback(response);
   }
 
  protected:
   StrictMock<MockEventDispatcher> dispatcher_;
-  std::shared_ptr<brillo::http::MockTransport> transport_;
-  std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
-  CallbackTarget callback_target_;
-  std::unique_ptr<PortalDetector> portal_detector_;
-  const std::string interface_name_;
-  std::vector<std::string> dns_servers_;
+  std::shared_ptr<brillo::http::MockTransport> http_probe_transport_;
+  std::shared_ptr<brillo::http::MockConnection> http_probe_connection_;
+  std::shared_ptr<brillo::http::MockTransport> https_probe_transport_;
+  std::shared_ptr<brillo::http::MockConnection> https_probe_connection_;
   MockHttpRequest* http_request_;
   MockHttpRequest* https_request_;
+  CallbackTarget callback_target_;
+  const std::string interface_name_;
+  std::vector<std::string> dns_servers_;
+  std::unique_ptr<PortalDetector> portal_detector_;
 };
 
 // static
@@ -518,10 +520,10 @@ TEST_F(PortalDetectorTest, RequestSuccess) {
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
-  ExpectRequestSuccessWithStatus(204, false);
+  ExpectHttpsRequestSuccessWithStatus(204);
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
-  ExpectRequestSuccessWithStatus(204, true);
+  ExpectHttpRequestSuccessWithStatus(204);
   ExpectCleanupTrial();
 }
 
@@ -539,10 +541,10 @@ TEST_F(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess) {
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
-  ExpectRequestSuccessWithStatus(123, true);
+  ExpectHttpRequestSuccessWithStatus(123);
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
-  ExpectRequestSuccessWithStatus(204, false);
+  ExpectHttpsRequestSuccessWithStatus(204);
   ExpectCleanupTrial();
 }
 
@@ -560,10 +562,10 @@ TEST_F(PortalDetectorTest, RequestFail) {
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
-  ExpectRequestSuccessWithStatus(123, false);
+  ExpectHttpsRequestSuccessWithStatus(123);
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
-  ExpectRequestSuccessWithStatus(123, true);
+  ExpectHttpRequestSuccessWithStatus(123);
   ExpectCleanupTrial();
 }
 
@@ -581,12 +583,12 @@ TEST_F(PortalDetectorTest, RequestRedirect) {
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
-  ExpectRequestSuccessWithStatus(123, false);
+  ExpectHttpsRequestSuccessWithStatus(123);
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
-  EXPECT_CALL(*brillo_connection(), GetResponseHeader("Location"))
+  EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
       .WillOnce(Return(kHttpUrl));
-  ExpectRequestSuccessWithStatus(302, true);
+  ExpectHttpRequestSuccessWithStatus(302);
   ExpectCleanupTrial();
 }
 
@@ -604,12 +606,12 @@ TEST_F(PortalDetectorTest, RequestTempRedirect) {
   EXPECT_TRUE(portal_detector_->IsInProgress());
   EXPECT_NE(nullptr, portal_detector_->http_request_);
   EXPECT_NE(nullptr, portal_detector_->https_request_);
-  ExpectRequestSuccessWithStatus(123, false);
+  ExpectHttpsRequestSuccessWithStatus(123);
 
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
-  EXPECT_CALL(*brillo_connection(), GetResponseHeader("Location"))
+  EXPECT_CALL(*http_connection(), GetResponseHeader("Location"))
       .WillOnce(Return(kHttpUrl));
-  ExpectRequestSuccessWithStatus(307, true);
+  ExpectHttpRequestSuccessWithStatus(307);
   ExpectCleanupTrial();
 }
 
