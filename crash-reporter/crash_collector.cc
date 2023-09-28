@@ -532,6 +532,13 @@ std::optional<std::string> ReadDmiIdBestEffort(const std::string& file) {
     return std::nullopt;
   }
 
+  // The kernel adds a trailing newline to the DMI files it
+  // exposes. Trim that character, but don't trim any other trailing
+  // whitespace as that would be in the DMI data itself.
+  if (base::EndsWith(contents, "\n")) {
+    contents.pop_back();
+  }
+
   return contents;
 }
 

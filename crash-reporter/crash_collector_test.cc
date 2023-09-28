@@ -2436,18 +2436,21 @@ TEST_F(CrashCollectorTest, AddDetailedHardwareData) {
   base::FilePath dmi_id_path = paths::Get(paths::kDmiIdDirectory);
   ASSERT_TRUE(base::CreateDirectory(dmi_id_path));
   ASSERT_TRUE(base::WriteFile(dmi_id_path.Append(paths::kProductNameFile),
-                              "OptiPlex 9010"));
-  ASSERT_TRUE(
-      base::WriteFile(dmi_id_path.Append(paths::kProductVersionFile), "01"));
+                              "OptiPlex 9010\n"));
+  ASSERT_TRUE(base::WriteFile(dmi_id_path.Append(paths::kProductVersionFile),
+                              "01\n\n"));
   ASSERT_TRUE(
       base::WriteFile(dmi_id_path.Append(paths::kSysVendorFile), "Dell Inc."));
 
   collector_.AddDetailedHardwareData();
 
   std::string meta = collector_.extra_metadata_;
+  // The file ended in the expected single newline, which has been trimmed.
   EXPECT_THAT(meta,
               HasSubstr("upload_var_chromeosflex_product_name=OptiPlex 9010"));
-  EXPECT_THAT(meta, HasSubstr("upload_var_chromeosflex_product_version=01"));
+  // The file ended in the multiple newlines, only one has been trimmed.
+  EXPECT_THAT(meta, HasSubstr("upload_var_chromeosflex_product_version=01\\n"));
+  // The file ended in no newline, value preserved.
   EXPECT_THAT(meta,
               HasSubstr("upload_var_chromeosflex_product_vendor=Dell Inc."));
 }
