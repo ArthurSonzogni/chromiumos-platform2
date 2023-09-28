@@ -77,5 +77,5 @@ unlinkat: 1
 lchown: 1
 uname: 1
 fstatfs: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 fchmod: 1

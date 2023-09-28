@@ -70,5 +70,5 @@ unlinkat: 1
 # rt_sigaction: 1   # repeated
 uname: 1
 fstatfs: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 fchmod: 1
