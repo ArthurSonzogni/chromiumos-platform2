@@ -33,6 +33,7 @@ const char kPstorePath[] = "/sys/fs/pstore";
 const char kEncryptionKeyTag[] = "pmsg-key";
 // Encryption key size.
 const size_t kEncryptionKeySize = 64;
+const size_t kMaxFileSize = 200;
 
 bool IsSupported() {
   if (!base::PathExists(base::FilePath(kPmsgDevicePath))) {
@@ -73,8 +74,12 @@ cryptohome::FileSystemKey RetrieveKey() {
   for (base::FilePath ramoops_file = pmsg_ramoops_enumerator.Next();
        !ramoops_file.empty(); ramoops_file = pmsg_ramoops_enumerator.Next()) {
     brillo::KeyValueStore store;
+    std::string pmsg_contents;
     std::string val;
-    if (store.Load(ramoops_file) && store.GetString(kEncryptionKeyTag, &val)) {
+    if (base::ReadFileToStringWithMaxSize(ramoops_file, &pmsg_contents,
+                                          kMaxFileSize) &&
+        store.LoadFromString(pmsg_contents) &&
+        store.GetString(kEncryptionKeyTag, &val)) {
       key.fek = brillo::SecureHexToSecureBlob(brillo::SecureBlob(val));
       base::DeleteFile(ramoops_file);
       // SaveKey stores the key again into pstore-pmsg on every boot since the
