@@ -1077,10 +1077,14 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
       break;
   }
 
-  metrics_->SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration, technology_,
-                      result.http_duration.InMilliseconds());
-  metrics_->SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration, technology_,
-                      result.https_duration.InMilliseconds());
+  if (result.http_duration.is_positive()) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration, technology_,
+                        result.http_duration.InMilliseconds());
+  }
+  if (result.https_duration.is_positive()) {
+    metrics_->SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration, technology_,
+                        result.https_duration.InMilliseconds());
+  }
 }
 
 void Network::StopNetworkValidationLog() {

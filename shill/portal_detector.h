@@ -323,7 +323,7 @@ class PortalDetector {
   int delay_backoff_exponent_ = 0;
   // Timestamp updated when StartTrialTask runs and used to determine when to
   // schedule the next portal detection attempt after this one.
-  base::Time last_attempt_start_time_ = base::Time();
+  base::TimeTicks last_attempt_start_time_ = base::TimeTicks();
   base::RepeatingCallback<void(const Result&)> portal_result_callback_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;

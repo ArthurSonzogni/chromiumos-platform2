@@ -138,7 +138,7 @@ void PortalDetector::StartTrialTask() {
   // systematic failure from creating a hot loop.
   delay_backoff_exponent_++;
 
-  last_attempt_start_time_ = base::Time::NowFromSystemTime();
+  last_attempt_start_time_ = base::TimeTicks::Now();
   LOG(INFO) << LoggingTag()
             << ": Starting trial. HTTP probe: " << http_url_.host()
             << ". HTTPS probe: " << https_url_.host();
@@ -246,8 +246,7 @@ void PortalDetector::HttpRequestSuccessCallback(
   } else {
     result_->http_status = Status::kFailure;
   }
-  result_->http_duration =
-      base::Time::NowFromSystemTime() - last_attempt_start_time_;
+  result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": HTTP probe " << http_url_.host()
             << " response status code=" << status_code
             << " status=" << result_->http_status
@@ -266,8 +265,7 @@ void PortalDetector::HttpsRequestSuccessCallback(
   result_->https_status = (status_code == brillo::http::status_code::NoContent)
                               ? Status::kSuccess
                               : Status::kFailure;
-  result_->https_duration =
-      base::Time::NowFromSystemTime() - last_attempt_start_time_;
+  result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": HTTPS probe " << https_url_.host()
             << " response status code=" << status_code
             << " status=" << result_->https_status
@@ -280,8 +278,7 @@ void PortalDetector::HttpRequestErrorCallback(HttpRequest::Result http_result) {
   result_->http_probe_completed = true;
   result_->http_phase = GetPortalPhaseForRequestResult(http_result);
   result_->http_status = GetPortalStatusForRequestResult(http_result);
-  result_->http_duration =
-      base::Time::NowFromSystemTime() - last_attempt_start_time_;
+  result_->http_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": HTTP probe " << http_url_.host()
             << " failed with phase=" << result_->http_phase
             << " status=" << result_->http_status
@@ -295,8 +292,7 @@ void PortalDetector::HttpsRequestErrorCallback(
   result_->https_probe_completed = true;
   result_->https_phase = GetPortalPhaseForRequestResult(https_result);
   result_->https_status = GetPortalStatusForRequestResult(https_result);
-  result_->https_duration =
-      base::Time::NowFromSystemTime() - last_attempt_start_time_;
+  result_->https_duration = base::TimeTicks::Now() - last_attempt_start_time_;
   LOG(INFO) << LoggingTag() << ": HTTPS probe " << https_url_.host()
             << " failed with phase=" << result_->https_phase
             << " status=" << result_->https_status
@@ -327,7 +323,7 @@ base::TimeDelta PortalDetector::GetNextAttemptDelay() const {
     next_interval = kMaxPortalCheckInterval;
   }
   const auto next_attempt = last_attempt_start_time_ + next_interval;
-  const auto now = base::Time::NowFromSystemTime();
+  const auto now = base::TimeTicks::Now();
   auto next_delay = next_attempt - now;
   if (next_delay < kMinPortalCheckDelay) {
     next_delay = kMinPortalCheckDelay;
