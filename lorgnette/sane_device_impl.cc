@@ -406,6 +406,12 @@ SANE_Status SaneDeviceImpl::ReadScanData(brillo::ErrorPtr* error,
   *read_out = read;
   if (status != SANE_STATUS_GOOD) {
     scan_running_ = false;
+    if (status == SANE_STATUS_EOF) {
+      // Stop tracking after EOF so the next page can be started without calling
+      // cancel.  Other statuses keep the job open to ensure that subsequent
+      // scans on the same handle trigger a cleanup.
+      EndJob();
+    }
   }
   return status;
 }
