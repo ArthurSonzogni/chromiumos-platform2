@@ -73,6 +73,10 @@ class MockHttpRequest : public HttpRequest {
 
 }  // namespace
 
+MATCHER(PositiveDelay, "") {
+  return arg.is_positive();
+}
+
 MATCHER_P(IsResult, result, "") {
   return (result.http_phase == arg.http_phase &&
           result.http_status == arg.http_status &&
@@ -319,6 +323,32 @@ TEST_F(PortalDetectorTest, HttpsStartAttemptFailed) {
   result.https_status = PortalDetector::Status::kFailure;
   portal_detector()->CompleteTrial(result);
   ExpectCleanupTrial();
+}
+
+TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmeidateRestart) {
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_EQ(0, portal_detector()->attempt_count());
+  EXPECT_TRUE(StartPortalRequest());
+
+  EXPECT_CALL(*http_request(), Start)
+      .WillOnce(Return(HttpRequest::kResultDNSFailure));
+  EXPECT_CALL(*https_request(), Start).Times(0);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kDNS,
+  result.http_status = PortalDetector::Status::kFailure;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kFailure;
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
+  portal_detector()->StartTrialTask();
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, PositiveDelay()));
+  EXPECT_TRUE(RestartPortalRequest());
+
+  portal_detector()->Stop();
+  ExpectReset();
 }
 
 TEST_F(PortalDetectorTest, GetNextAttemptDelayUnchangedUntilTrialStarts) {

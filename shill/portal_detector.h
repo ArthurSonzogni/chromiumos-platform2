@@ -260,6 +260,7 @@ class PortalDetector {
   friend class PortalDetectorTest;
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
+  FRIEND_TEST(PortalDetectorTest, FailureToStartDoesNotCauseImmeidateRestart);
   FRIEND_TEST(PortalDetectorTest, GetNextAttemptDelayUnchangedUntilTrialStarts);
   FRIEND_TEST(PortalDetectorTest, HttpStartAttemptFailed);
   FRIEND_TEST(PortalDetectorTest, HttpsStartAttemptFailed);

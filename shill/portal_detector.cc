@@ -134,6 +134,10 @@ bool PortalDetector::Start(const std::string& ifname,
 
 void PortalDetector::StartTrialTask() {
   attempt_count_++;
+  // Ensure that every trial increases the delay backoff exponent to prevent a
+  // systematic failure from creating a hot loop.
+  delay_backoff_exponent_++;
+
   last_attempt_start_time_ = base::Time::NowFromSystemTime();
   LOG(INFO) << LoggingTag()
             << ": Starting trial. HTTP probe: " << http_url_.host()
@@ -174,9 +178,6 @@ void PortalDetector::StartTrialTask() {
     // before completing the trial and calling |portal_result_callback_|.
   }
 
-  // Only update the delay backoff exponent if at least one probe started
-  // successfully.
-  delay_backoff_exponent_++;
   is_active_ = true;
 }
 
