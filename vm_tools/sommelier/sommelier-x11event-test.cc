@@ -109,5 +109,45 @@ TEST_F(X11EventTest, NetWmNameOverridesWmname) {
   EXPECT_EQ(window->name, fancyWindowName);
 }
 
+TEST_F(X11EventTest, MapRequestStoresSteamGameId) {
+  uint32_t steam_game_id = 123456;
+  xcb.DelegateToFake();
+  sl_window* window = CreateWindowWithoutRole();
+  xcb.create_window(nullptr, 32, window->id, XCB_WINDOW_NONE, 0, 0, 800, 600, 0,
+                    XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT, 0,
+                    nullptr);
+  xcb.change_property(nullptr, XCB_PROP_MODE_REPLACE, window->id,
+                      ctx.atoms[ATOM_STEAM_GAME].value, XCB_ATOM_CARDINAL, 32,
+                      1, &steam_game_id);
+
+  xcb_map_request_event_t event;
+  event.response_type = XCB_MAP_REQUEST;
+  event.window = window->id;
+  sl_handle_map_request(&ctx, &event);
+
+  EXPECT_EQ(window->steam_game_id, steam_game_id);
+}
+
+TEST_F(X11EventTest, PropertyNotifyStoresSteamId) {
+  uint32_t steam_game_id = 123456;
+  xcb.DelegateToFake();
+  sl_window* window = CreateWindowWithoutRole();
+  xcb.create_window(nullptr, 32, window->id, XCB_WINDOW_NONE, 0, 0, 800, 600, 0,
+                    XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT, 0,
+                    nullptr);
+  xcb.change_property(nullptr, XCB_PROP_MODE_REPLACE, window->id,
+                      ctx.atoms[ATOM_STEAM_GAME].value, XCB_ATOM_CARDINAL, 32,
+                      1, &steam_game_id);
+
+  xcb_property_notify_event_t event;
+  event.response_type = XCB_PROPERTY_NOTIFY;
+  event.window = window->id;
+  event.atom = ctx.atoms[ATOM_STEAM_GAME].value;
+  event.state = XCB_PROPERTY_NEW_VALUE;
+  sl_handle_property_notify(&ctx, &event);
+
+  EXPECT_EQ(window->steam_game_id, steam_game_id);
+}
+
 }  // namespace sommelier
 }  // namespace vm_tools

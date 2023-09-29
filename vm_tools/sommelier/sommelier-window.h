@@ -78,6 +78,7 @@ struct sl_window {
   bool has_net_wm_name = false;
   char* clazz = nullptr;
   char* startup_id = nullptr;
+  uint32_t steam_game_id = 0;
   std::string app_id_property;
   int dark_frame = 0;
   uint32_t size_flags = P_POSITION;
@@ -128,6 +129,7 @@ enum {
   PROPERTY_NET_WM_STATE,
   PROPERTY_GTK_THEME_VARIANT,
   PROPERTY_XWAYLAND_RANDR_EMU_MONITOR_RECTS,
+  PROPERTY_STEAM_GAME,
 
   // The atom corresponding to this property changes depending on the
   // --application-id-format command-line argument.
