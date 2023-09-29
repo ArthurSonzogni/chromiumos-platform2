@@ -27,6 +27,7 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/network/compound_network_config.h"
 #include "shill/network/network_applier.h"
 #include "shill/network/network_config.h"
 #include "shill/network/network_priority.h"
@@ -84,6 +85,7 @@ Network::Network(int interface_index,
       logging_tag_(interface_name),
       fixed_ip_params_(fixed_ip_params),
       proc_fs_(std::make_unique<ProcFsStub>(interface_name_)),
+      config_(logging_tag_),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
@@ -144,13 +146,13 @@ void Network::Start(const Network::StartOptions& opts) {
         base::BindRepeating(&Network::OnUpdateFromSLAAC, AsWeakPtr()));
     slaac_controller_->Start(opts.link_local_address);
     ipv6_started = true;
-  } else if (link_protocol_network_config_ &&
-             !link_protocol_network_config_->ipv6_addresses.empty()) {
+  } else if (config_.GetLinkProtocol() &&
+             !config_.GetLinkProtocol()->ipv6_addresses.empty()) {
     proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
                         ProcFsStub::kIPFlagDisableIPv6, "0");
     set_ip6config(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
-    ip6config_->ApplyNetworkConfig(*link_protocol_network_config_,
+    ip6config_->ApplyNetworkConfig(*config_.GetLinkProtocol(),
                                    /*force_overwrite=*/true,
                                    net_base::IPFamily::kIPv6);
     dispatcher_->PostTask(
@@ -165,7 +167,7 @@ void Network::Start(const Network::StartOptions& opts) {
   bool dhcp_started = false;
   if (opts.dhcp) {
     auto dhcp_opts = *opts.dhcp;
-    if (static_network_config_.ipv4_address) {
+    if (config_.GetStatic().ipv4_address) {
       dhcp_opts.use_arp_gateway = false;
     }
     dhcp_controller_ = dhcp_provider_->CreateController(interface_name_,
@@ -176,21 +178,20 @@ void Network::Start(const Network::StartOptions& opts) {
     set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
                                             IPConfig::kTypeDHCP));
     dhcp_started = dhcp_controller_->RequestIP();
-  } else if (link_protocol_network_config_ &&
-             (link_protocol_network_config_->ipv4_address ||
-              static_network_config_.ipv4_address)) {
+  } else if (config_.GetLinkProtocol() &&
+             (config_.GetLinkProtocol()->ipv4_address ||
+              config_.GetStatic().ipv4_address)) {
     set_ipconfig(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
-    ipconfig_->ApplyNetworkConfig(*link_protocol_network_config_,
+    ipconfig_->ApplyNetworkConfig(*config_.GetLinkProtocol(),
                                   /*force_overwrite=*/true);
   } else {
     // This could happen on IPv6-only networks.
     DCHECK(ipv6_started);
   }
 
-  if ((link_protocol_network_config_ &&
-       link_protocol_network_config_->ipv4_address) ||
-      static_network_config_.ipv4_address) {
+  if ((config_.GetLinkProtocol() && config_.GetLinkProtocol()->ipv4_address) ||
+      config_.GetStatic().ipv4_address) {
     // If the parameters contain an IP address, apply them now and bring the
     // interface up.  When DHCP information arrives, it will supplement the
     // static information.
@@ -208,13 +209,7 @@ void Network::Start(const Network::StartOptions& opts) {
   LOG(INFO) << *this << ": Started IP provisioning, dhcp: "
             << (dhcp_started ? "started" : "no")
             << ", accept_ra: " << std::boolalpha << opts.accept_ra;
-  if (static_network_config_.ipv4_address.has_value()) {
-    LOG(INFO) << *this << ": has IPv4 static config " << static_network_config_;
-  }
-  if (link_protocol_network_config_) {
-    LOG(INFO) << *this << ": has link local layer protocol config "
-              << *link_protocol_network_config_;
-  }
+  LOG(INFO) << *this << " initial config: " << config_;
 }
 
 std::unique_ptr<SLAACController> Network::CreateSLAACController() {
@@ -307,9 +302,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
     set_ip6config(nullptr);
     ipconfig_changed = true;
   }
-  link_protocol_network_config_ = nullptr;
-  slaac_network_config_ = nullptr;
-  dhcp_network_config_ = nullptr;
+  config_.Clear();
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {
     for (auto* ev : event_handlers_) {
@@ -355,8 +348,8 @@ void Network::OnIPv4ConfigUpdated() {
   if (!ipconfig()) {
     return;
   }
-  ipconfig()->ApplyNetworkConfig(static_network_config_, false);
-  if (static_network_config_.ipv4_address.has_value() && dhcp_controller_) {
+  ipconfig()->ApplyNetworkConfig(config_.GetStatic(), false);
+  if (config_.GetStatic().ipv4_address.has_value() && dhcp_controller_) {
     // If we are using a statically configured IP address instead of a leased IP
     // address, release any acquired lease so it may be used by others.  This
     // allows us to merge other non-leased parameters (like DNS) when they're
@@ -372,7 +365,7 @@ void Network::OnIPv4ConfigUpdated() {
 }
 
 void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
-  static_network_config_ = config;
+  config_.SetFromStatic(config);
   if (state_ == State::kIdle) {
     // This can happen after service is selected but before the Network starts.
     return;
@@ -390,15 +383,9 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
   // Clear the previously applied static IP parameters and revert to the one
   // from DHCP or data link layer. The new static config will be applied in
   // OnIPv4ConfigUpdated().
-  // TODO(b/269401899): Implement the merge logic in RecalculateNetworkConfig()
+  // TODO(b/269401899): Implement the merge logic in CompoundNetworkConfig
   // instead.
-  const NetworkConfig* underlying_config = nullptr;
-  if (dhcp_network_config_) {
-    underlying_config = dhcp_network_config_.get();
-  }
-  if (link_protocol_network_config_) {
-    underlying_config = link_protocol_network_config_.get();
-  }
+  auto underlying_config = config_.GetLegacySavedIPConfig();
   if (underlying_config) {
     ipconfig()->ApplyNetworkConfig(*underlying_config,
                                    /*force_overwrite=*/true);
@@ -433,14 +420,8 @@ IPConfig* Network::GetCurrentIPConfig() const {
   return nullptr;
 }
 
-std::optional<NetworkConfig> Network::GetSavedIPConfig() const {
-  if (dhcp_network_config_) {
-    return *dhcp_network_config_;
-  }
-  if (link_protocol_network_config_) {
-    return *link_protocol_network_config_;
-  }
-  return std::nullopt;
+const NetworkConfig* Network::GetSavedIPConfig() const {
+  return config_.GetLegacySavedIPConfig();
 }
 
 void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
@@ -456,7 +437,7 @@ void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
       ev->OnGetDHCPLease(interface_index_);
     }
   }
-  dhcp_network_config_ = std::make_unique<NetworkConfig>(network_config);
+  config_.SetFromDHCP(std::make_unique<NetworkConfig>(network_config));
   ipconfig()->UpdateFromDHCP(network_config, dhcp_data);
   OnIPv4ConfigUpdated();
   // TODO(b/232177767): OnIPv4ConfiguredWithDHCPLease() should be called inside
@@ -489,7 +470,7 @@ void Network::OnDHCPDrop(bool is_voluntary) {
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
   DCHECK(ipconfig());
-  if (static_network_config_.ipv4_address.has_value()) {
+  if (config_.GetStatic().ipv4_address.has_value()) {
     // Consider three cases:
     //
     // 1. We're here because DHCP failed while starting up. There
@@ -520,15 +501,16 @@ void Network::OnDHCPDrop(bool is_voluntary) {
     return;
   }
 
-  dhcp_network_config_.reset();
+  config_.SetFromDHCP(nullptr);
   ipconfig()->ResetProperties();
   for (auto* ev : event_handlers_) {
     ev->OnIPConfigsPropertyUpdated(interface_index_);
   }
 
   // Fallback to IPv6 if possible.
-  if (!combined_network_config_.ipv6_addresses.empty() &&
-      !combined_network_config_.dns_servers.empty()) {
+  const auto combined_network_config = config_.Get();
+  if (!combined_network_config.ipv6_addresses.empty() &&
+      !combined_network_config.dns_servers.empty()) {
     LOG(INFO) << *this << ": operating in IPv6-only because of "
               << (is_voluntary ? "receiving DHCP option 108" : "DHCP failure");
     if (primary_family_ == net_base::IPFamily::kIPv4) {
@@ -538,8 +520,7 @@ void Network::OnDHCPDrop(bool is_voluntary) {
       // lease at first. Static IP is handled above so it's guaranteed that
       // there is no valid IPv4 lease. Also see b/261681299.
       network_applier_->Clear(interface_index_);
-      SetupConnection(net_base::IPFamily::kIPv6,
-                      slaac_network_config_ != nullptr);
+      SetupConnection(net_base::IPFamily::kIPv6, config_.HasSLAAC());
     }
     return;
   }
@@ -579,12 +560,15 @@ std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
-  slaac_network_config_ =
-      std::make_unique<NetworkConfig>(slaac_controller_->GetNetworkConfig());
-  LOG(INFO) << *this << ": Updating SLAAC config to " << *slaac_network_config_;
+  const auto slaac_network_config = slaac_controller_->GetNetworkConfig();
+  LOG(INFO) << *this << ": Updating SLAAC config to " << slaac_network_config;
 
-  auto old_network_config = combined_network_config_;
-  RecalculateNetworkConfig();
+  auto old_network_config = config_.Get();
+  if (config_.SetFromSLAAC(
+          std::make_unique<NetworkConfig>(slaac_network_config))) {
+    UpdateIPConfigDBusObject();
+  }
+  auto new_network_config = config_.Get();
 
   if (update_type == SLAACController::UpdateType::kAddress) {
     for (auto* ev : event_handlers_) {
@@ -596,18 +580,16 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
       ApplyNetworkConfig(NetworkApplier::Area::kRoutingPolicy);
     }
     if (old_network_config.ipv6_addresses.size() >= 1 &&
-        combined_network_config_.ipv6_addresses.size() >= 1 &&
+        new_network_config.ipv6_addresses.size() >= 1 &&
         old_network_config.ipv6_addresses[0] ==
-            combined_network_config_.ipv6_addresses[0] &&
-        old_network_config.ipv6_gateway ==
-            combined_network_config_.ipv6_gateway) {
+            new_network_config.ipv6_addresses[0] &&
+        old_network_config.ipv6_gateway == new_network_config.ipv6_gateway) {
       SLOG(2) << *this << ": " << __func__ << ": primary address for "
               << interface_name_ << " is unchanged";
       return;
     }
   } else if (update_type == SLAACController::UpdateType::kRDNSS) {
-    if (old_network_config.dns_servers ==
-        combined_network_config_.dns_servers) {
+    if (old_network_config.dns_servers == new_network_config.dns_servers) {
       SLOG(2) << *this << ": " << __func__ << " DNS server list is unchanged.";
       return;
     }
@@ -637,15 +619,14 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
 }
 
 void Network::OnIPv6ConfigUpdated() {
-  if (!combined_network_config_.ipv6_addresses.empty() &&
-      !combined_network_config_.dns_servers.empty()) {
+  if (!config_.Get().ipv6_addresses.empty() &&
+      !config_.Get().dns_servers.empty()) {
     // Setup connection using IPv6 configuration only if the IPv6 configuration
     // is ready for connection (contained both IP address and DNS servers), and
     // there is no existing IPv4 connection. We always prefer IPv4 configuration
     // over IPv6.
     if (primary_family_ != net_base::IPFamily::kIPv4) {
-      SetupConnection(net_base::IPFamily::kIPv6,
-                      slaac_network_config_ != nullptr);
+      SetupConnection(net_base::IPFamily::kIPv6, config_.HasSLAAC());
     } else {
       // Still apply IPv6 DNS even if the Connection is setup with IPv4.
       ApplyNetworkConfig(NetworkApplier::Area::kDNS);
@@ -653,51 +634,17 @@ void Network::OnIPv6ConfigUpdated() {
   }
 }
 
-void Network::RecalculateNetworkConfig() {
-  // TODO(b/269401899): currently the generated golden NetworkConfig contains
-  // only IPv6 information. IPv4 in the process to be migrated.
-  auto old_network_config = combined_network_config_;
-
-  if (slaac_network_config_) {
-    combined_network_config_ = *slaac_network_config_;
-  }
-  if (link_protocol_network_config_) {
-    if (slaac_network_config_) {
-      LOG(INFO) << *this
-                << ": both link local protocol config and SLAAC are enabled. "
-                   "Address config from link local protocol will be ignored.";
-    } else {
-      combined_network_config_.ipv6_addresses =
-          link_protocol_network_config_->ipv6_addresses;
-      combined_network_config_.ipv6_gateway =
-          link_protocol_network_config_->ipv6_gateway;
-    }
-    combined_network_config_.dns_servers =
-        link_protocol_network_config_->dns_servers;
-    combined_network_config_.dns_search_domains =
-        link_protocol_network_config_->dns_search_domains;
-  }
-  if (!static_network_config_.dns_search_domains.empty()) {
-    combined_network_config_.dns_search_domains =
-        static_network_config_.dns_search_domains;
-  }
-  if (!static_network_config_.dns_servers.empty()) {
-    combined_network_config_.dns_servers = static_network_config_.dns_servers;
-  }
-
-  if (old_network_config == combined_network_config_) {
-    return;
-  }
-  // If anything changes, update the dbus IPConfig objects.
-  if (combined_network_config_.ipv6_addresses.empty() ||
-      combined_network_config_.dns_servers.empty()) {
+void Network::UpdateIPConfigDBusObject() {
+  auto combined_network_config = config_.Get();
+  if (combined_network_config.ipv6_addresses.empty() ||
+      combined_network_config.dns_servers.empty()) {
     set_ip6config(nullptr);
   } else {
     if (!ip6config()) {
       set_ip6config(
           std::make_unique<IPConfig>(control_interface_, interface_name_));
     }
-    ip6config()->ApplyNetworkConfig(combined_network_config_, true,
+    ip6config()->ApplyNetworkConfig(combined_network_config, true,
                                     net_base::IPFamily::kIPv6);
   }
   for (auto* ev : event_handlers_) {
@@ -758,21 +705,8 @@ std::vector<net_base::IPCIDR> Network::GetAddresses() const {
       result.push_back(*addr);
     }
   }
-  // link_protocol_network_config_->ipv4_address should already be
-  // reflected in ipconfig_.
-  if (link_protocol_network_config_ &&
-      !link_protocol_network_config_->ipv6_addresses.empty()) {
-    std::transform(
-        link_protocol_network_config_->ipv6_addresses.begin(),
-        link_protocol_network_config_->ipv6_addresses.end(),
-        std::back_inserter(result),
-        [](const net_base::IPv6CIDR& v6) { return net_base::IPCIDR(v6); });
-  }
-  if (slaac_controller_) {
-    for (const auto& slaac_addr :
-         slaac_controller_->GetNetworkConfig().ipv6_addresses) {
-      result.emplace_back(slaac_addr);
-    }
+  for (const auto& ipv6_addr : config_.Get().ipv6_addresses) {
+    result.push_back(net_base::IPCIDR(ipv6_addr));
   }
   return result;
 }

@@ -1243,8 +1243,9 @@ KeyValueStore Service::GetSavedIPConfig(Error* /*error*/) {
   if (!attached_network_) {
     return {};
   }
+  const auto* saved_network_config = attached_network_->GetSavedIPConfig();
   return StaticIPParameters::NetworkConfigToKeyValues(
-      attached_network_->GetSavedIPConfig().value_or(NetworkConfig{}));
+      saved_network_config ? *saved_network_config : NetworkConfig{});
 }
 
 VirtualDeviceRefPtr Service::GetVirtualDevice() const {

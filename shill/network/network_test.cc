@@ -474,6 +474,7 @@ TEST_F(NetworkTest, DHCPOptions) {
   network_->Start({.dhcp = opts});
 
   // When there is static IP, |use_arp_gateway| will be forced to false.
+  network_->Stop();
   EXPECT_CALL(dhcp_provider_,
               CreateController(
                   _, Field(&DHCPProvider::Options::use_arp_gateway, false), _));
