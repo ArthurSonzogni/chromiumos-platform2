@@ -37,6 +37,11 @@ class BRILLO_EXPORT EnterpriseRollbackMetricsHandler {
 
   virtual ~EnterpriseRollbackMetricsHandler();
 
+  static EventData CreateEventData(EnterpriseRollbackEvent event);
+
+  static EventData CreateEventData(EnterpriseRollbackEvent event,
+                                   const base::Version& event_version);
+
   // Creates a new rollback metrics file if metrics are enabled. Stores
   // `current_os_version` and `target_os_version` as metadata of the file to
   // keep for the current rollback process. Returns false if the new file is not
@@ -56,13 +61,18 @@ class BRILLO_EXPORT EnterpriseRollbackMetricsHandler {
   // rollback metrics file is deleted while the event is being added to the
   // file. the method will succeed but the event will be ultimately lost. This
   // limitation is expected.
-  bool TrackEvent(const EnterpriseRollbackEvent& event) const;
+  //
+  // Caller must use CreateEventData to provide the proto as expected.
+  bool TrackEvent(const EventData& event_data) const;
 
   // Reports event immediately instead of adding it to the rollback metrics
-  // file. Caller must ensure this method is called after powerwash. Returns
-  // true if rollback events are being tracked and event is reported
-  // successfully. Attempts to report old events tracked in the file as well.
-  bool ReportEventNow(EnterpriseRollbackEvent event) const;
+  // file. Returns true if rollback events are being tracked and event is
+  // reported successfully. Attempts to report old events tracked in the file as
+  // well.
+  //
+  // Caller must ensure this method is called when powerwash is not
+  // imminent and use CreateEventData to provide the proto as expected.
+  bool ReportEventNow(const EventData& event_data) const;
 
   // Attempts to report the events tracked in the rollback metrics file. Locks
   // the file during the process to avoid synchronization issues.

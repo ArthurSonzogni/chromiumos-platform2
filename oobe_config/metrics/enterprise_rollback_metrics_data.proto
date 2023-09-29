@@ -10,13 +10,29 @@ option optimize_for = LITE_RUNTIME;
 enum EnterpriseRollbackEvent {
   EVENT_UNSPECIFIED = 0;
   ROLLBACK_POLICY_ACTIVATED = 1;
+  ROLLBACK_OOBE_CONFIG_SAVE_SUCCESS = 2;
+  ROLLBACK_OOBE_CONFIG_SAVE_FAILURE = 3;
+  ROLLBACK_OOBE_CONFIG_RESTORE_SUCCESS = 4;
+  ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_DECRYPT = 5;
+  ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_READ = 6;
+  ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_PARSE = 7;
+  ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_CONFIG = 8;
+}
+
+// ChromeOS version is a string with format "15270.0.0". As strings are not
+// fully supported in structured metrics, we encode each version as three
+// integers: [major, minor, patch].
+message ChromeOSVersion {
+  uint32 major = 1;
+  uint32 minor = 2;
+  uint32 patch = 3;
 }
 
 // Information about the triggered Rollback event required to log the metric.
 message EventData {
   EnterpriseRollbackEvent event = 1;
-  // TODO(b/261850979): add optional extra event details required for certain
-  // metrics.
+  // Optional event details.
+  ChromeOSVersion event_chromeos_version = 2;
 }
 
 // EnterpriseRollbackMetricsData keeps track of the events related to the most
@@ -31,13 +47,6 @@ message EnterpriseRollbackMetricsData {
 
 // Information that applies to the whole duration of Enterprise Rollback.
 message RollbackMetadata {
-  // ChromeOS version is a string with format "15270.0.0". As strings are not
-  // fully supported in structured metrics, we encode each version as three
-  // integers: [major, minor, patch].
-  uint32 origin_chromeos_version_major = 1;
-  uint32 origin_chromeos_version_minor = 2;
-  uint32 origin_chromeos_version_patch = 3;
-  uint32 target_chromeos_version_major = 4;
-  uint32 target_chromeos_version_minor = 5;
-  uint32 target_chromeos_version_patch = 6;
+  ChromeOSVersion origin_chromeos_version = 1;
+  ChromeOSVersion target_chromeos_version = 2;
 }

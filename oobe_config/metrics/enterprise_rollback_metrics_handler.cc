@@ -11,23 +11,48 @@
 #include <base/logging.h>
 
 #include "oobe_config/filesystem/file_handler.h"
-#include "oobe_config/metrics/structured_metrics_recorder.h"
+#include "oobe_config/metrics/enterprise_rollback_metrics_recorder.h"
 
 namespace oobe_config {
 
 namespace {
 
+const int kNumberExpectedVersionComponents = 3;
 const int kNumberStaleDaysBeforeDeletion = 15;
+
+void SetChromeOSVersionFromVersionComponents(ChromeOSVersion* chromeos_version,
+                                             const base::Version& version) {
+  chromeos_version->set_major(version.components()[0]);
+  chromeos_version->set_minor(version.components()[1]);
+  chromeos_version->set_patch(version.components()[2]);
+
+  return;
+}
+
+bool ExpectedVersion(base::Version version) {
+  if (!version.IsValid()) {
+    return false;
+  }
+
+  if (version.components().size() < kNumberExpectedVersionComponents) {
+    return false;
+  }
+
+  return true;
+}
 
 std::unique_ptr<RollbackMetadata> MetadataFromVersions(
     const base::Version& current, const base::Version& target) {
+  if (!ExpectedVersion(current) || !ExpectedVersion(target)) {
+    return nullptr;
+  }
+
   auto metadata = std::make_unique<RollbackMetadata>();
-  metadata->set_origin_chromeos_version_major(current.components()[0]);
-  metadata->set_origin_chromeos_version_minor(current.components()[1]);
-  metadata->set_origin_chromeos_version_patch(current.components()[2]);
-  metadata->set_target_chromeos_version_major(target.components()[0]);
-  metadata->set_target_chromeos_version_minor(target.components()[1]);
-  metadata->set_target_chromeos_version_patch(target.components()[2]);
+  SetChromeOSVersionFromVersionComponents(
+      metadata->mutable_origin_chromeos_version(), current);
+  SetChromeOSVersionFromVersionComponents(
+      metadata->mutable_target_chromeos_version(), target);
+
   return metadata;
 }
 
@@ -38,6 +63,28 @@ EnterpriseRollbackMetricsHandler::EnterpriseRollbackMetricsHandler() {
 }
 
 EnterpriseRollbackMetricsHandler::~EnterpriseRollbackMetricsHandler() = default;
+
+// static
+EventData EnterpriseRollbackMetricsHandler::CreateEventData(
+    EnterpriseRollbackEvent event) {
+  EventData event_data;
+  event_data.set_event(event);
+
+  return event_data;
+}
+
+// static
+EventData EnterpriseRollbackMetricsHandler::CreateEventData(
+    EnterpriseRollbackEvent event, const base::Version& event_version) {
+  EventData event_data = CreateEventData(event);
+
+  if (ExpectedVersion(event_version)) {
+    SetChromeOSVersionFromVersionComponents(
+        event_data.mutable_event_chromeos_version(), event_version);
+  }
+
+  return event_data;
+}
 
 bool EnterpriseRollbackMetricsHandler::StartTrackingRollback(
     const base::Version& current_os_version,
@@ -64,6 +111,11 @@ bool EnterpriseRollbackMetricsHandler::StartTrackingRollback(
   // Create header containing information about the current Enterprise Rollback.
   auto rollback_metadata =
       MetadataFromVersions(current_os_version, target_os_version);
+  if (!rollback_metadata) {
+    LOG(ERROR) << "Not possible to create metadata with versions provided";
+    return false;
+  }
+
   EnterpriseRollbackMetricsData metrics_data;
   metrics_data.set_allocated_rollback_metadata(rollback_metadata.release());
 
@@ -80,11 +132,11 @@ bool EnterpriseRollbackMetricsHandler::StartTrackingRollback(
 }
 
 bool EnterpriseRollbackMetricsHandler::TrackEvent(
-    const EnterpriseRollbackEvent& event) const {
+    const EventData& event_data) const {
   // We only track rollback events if the metrics file was created. Calling
   // this method if metrics are not enabled is not an error.
   if (!file_handler_->HasRollbackMetricsData()) {
-    LOG(INFO) << "Not recording metrics. Rollback event " << event
+    LOG(INFO) << "Not recording metrics. Rollback event " << event_data.event()
               << " not tracked.";
     return false;
   }
@@ -92,8 +144,8 @@ bool EnterpriseRollbackMetricsHandler::TrackEvent(
   std::optional<base::File> rollback_metrics_file =
       file_handler_->OpenRollbackMetricsDataFile();
   if (!rollback_metrics_file.has_value()) {
-    LOG(ERROR) << "Cannot open Rollback metrics file. Rollback event " << event
-               << " not tracked.";
+    LOG(ERROR) << "Cannot open Rollback metrics file. Rollback event "
+               << event_data.event() << " not tracked.";
     return false;
   }
 
@@ -104,8 +156,8 @@ bool EnterpriseRollbackMetricsHandler::TrackEvent(
   // If the lock is busy we do not wait for the lock to be released. It is
   // preferable to lose the metric than risk blocking Rollback.
   if (!file_handler_->LockFileNoBlocking(*rollback_metrics_file)) {
-    LOG(ERROR) << "Cannot lock Rollback metrics file. Rollback event " << event
-               << " not tracked.";
+    LOG(ERROR) << "Cannot lock Rollback metrics file. Rollback event "
+               << event_data.event() << " not tracked.";
     return false;
   }
 
@@ -115,14 +167,13 @@ bool EnterpriseRollbackMetricsHandler::TrackEvent(
   // existing EnterpriseRollbackMetricsData. We create a new message with only
   // the new event, serialize it, and append it at the end of the file.
   EnterpriseRollbackMetricsData metrics_data;
-  EventData* event_data = metrics_data.add_event_data();
-  event_data->set_event(event);
+  *metrics_data.add_event_data() = event_data;
   std::string event_data_serialized;
   metrics_data.SerializeToString(&event_data_serialized);
 
   if (!file_handler_->ExtendOpenedFile(*rollback_metrics_file,
                                        event_data_serialized)) {
-    LOG(ERROR) << "Cannot extend Rollback metrics file." << event
+    LOG(ERROR) << "Cannot extend Rollback metrics file." << event_data.event()
                << " not tracked.";
     file_handler_->UnlockFile(*rollback_metrics_file);
     return false;
@@ -133,17 +184,15 @@ bool EnterpriseRollbackMetricsHandler::TrackEvent(
 }
 
 bool EnterpriseRollbackMetricsHandler::ReportEventNow(
-    EnterpriseRollbackEvent event) const {
+    const EventData& event_data) const {
   std::optional<EnterpriseRollbackMetricsData> metrics_data =
       GetRollbackMetricsData();
   if (!metrics_data.has_value()) {
-    LOG(INFO) << "Rollback event: " << event << " not reported.";
+    LOG(INFO) << "Rollback event: " << event_data.event() << " not reported.";
     return false;
   }
 
-  EventData new_event_data;
-  new_event_data.set_event(event);
-  RecordStructuredMetric(new_event_data, metrics_data->rollback_metadata());
+  RecordEnterpriseRollbackMetric(event_data, metrics_data->rollback_metadata());
 
   // If there were previous events tracked in the file, we get this chance to
   // attempt to report them as well.
@@ -199,7 +248,8 @@ bool EnterpriseRollbackMetricsHandler::ReportTrackedEvents() const {
   if (metrics_data.event_data_size() > 0) {
     for (const EventData& event_data : metrics_data.event_data()) {
       LOG(INFO) << "Event found: " << event_data.event() << ".";
-      RecordStructuredMetric(event_data, metrics_data.rollback_metadata());
+      RecordEnterpriseRollbackMetric(event_data,
+                                     metrics_data.rollback_metadata());
     }
 
     // Truncate the file to the size of the header so only the Rollback metadata
@@ -265,9 +315,9 @@ bool EnterpriseRollbackMetricsHandler::IsTrackingForTargetVersion(
   }
 
   base::Version target(
-      {metrics_data->rollback_metadata().target_chromeos_version_major(),
-       metrics_data->rollback_metadata().target_chromeos_version_minor(),
-       metrics_data->rollback_metadata().target_chromeos_version_patch()});
+      {metrics_data->rollback_metadata().target_chromeos_version().major(),
+       metrics_data->rollback_metadata().target_chromeos_version().minor(),
+       metrics_data->rollback_metadata().target_chromeos_version().patch()});
 
   if (!target.IsValid()) {
     LOG(ERROR) << "Version parsed not valid.";
@@ -297,6 +347,12 @@ EnterpriseRollbackMetricsHandler::GetRollbackMetricsData() const {
 
   if (!metrics_data.has_rollback_metadata()) {
     LOG(ERROR) << "No RollbackMetadata in proto.";
+    return std::nullopt;
+  }
+
+  if ((!metrics_data.rollback_metadata().has_origin_chromeos_version()) ||
+      (!metrics_data.rollback_metadata().has_target_chromeos_version())) {
+    LOG(ERROR) << "No valid RollbackMetadata in proto.";
     return std::nullopt;
   }
 

@@ -48,9 +48,9 @@ bool EnterpriseRollbackMetricsHandlerForTesting::IsTrackingForDeviceVersion(
   }
 
   base::Version origin(
-      {metrics_data->rollback_metadata().origin_chromeos_version_major(),
-       metrics_data->rollback_metadata().origin_chromeos_version_minor(),
-       metrics_data->rollback_metadata().origin_chromeos_version_patch()});
+      {metrics_data->rollback_metadata().origin_chromeos_version().major(),
+       metrics_data->rollback_metadata().origin_chromeos_version().minor(),
+       metrics_data->rollback_metadata().origin_chromeos_version().patch()});
 
   if (!origin.IsValid()) {
     LOG(ERROR) << "Version parsed not valid";

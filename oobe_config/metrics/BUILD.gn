@@ -35,7 +35,7 @@ proto_library("enterprise_rollback_metrics_proto") {
 source_set("enterprise_rollback_metrics_library_common_sources") {
   sources = [
     "enterprise_rollback_metrics_handler.cc",
-    "structured_metrics_recorder.cc",
+    "enterprise_rollback_metrics_recorder.cc",
   ]
   deps = [ ":enterprise_rollback_metrics_proto" ]
   all_dependent_configs = [ ":target_defaults" ]
@@ -104,7 +104,7 @@ if (use.test) {
   executable("enterprise_rollback_metrics_tests") {
     sources = [
       "enterprise_rollback_metrics_handler_test.cc",
-      "structured_metrics_recorder_test.cc",
+      "enterprise_rollback_metrics_recorder_test.cc",
     ]
     configs += [
       "//common-mk:test",

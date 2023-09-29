@@ -31,6 +31,10 @@ const base::Version kOsVersionM107("15117.3.4");
 const base::Version kOsVersionM105("14989.5.6");
 const base::Version kOsVersionM102("14695.7.8");
 
+const base::Version kOSVersionInvalid("sadas");
+const base::Version kOSVersionIncomplete("14989.");
+const base::Version kOSVersionIncompleteWithMinor("14989.3");
+
 base::FilePath GetBuildDirectory() {
   // Required to spawn a new process and test file locking.
   base::FilePath executable_path =
@@ -38,26 +42,11 @@ base::FilePath GetBuildDirectory() {
   return base::FilePath(executable_path.DirName());
 }
 
-bool OSVersionEqualOrigin(
-    const base::Version& version,
-    const EnterpriseRollbackMetricsData& rollback_metrics_data) {
-  auto metadata = rollback_metrics_data.rollback_metadata();
-  base::Version origin_chromeos_version(
-      {metadata.origin_chromeos_version_major(),
-       metadata.origin_chromeos_version_minor(),
-       metadata.origin_chromeos_version_patch()});
-  return origin_chromeos_version == version;
-}
-
-bool OSVersionEqualTarget(
-    const base::Version& version,
-    const EnterpriseRollbackMetricsData& rollback_metrics_data) {
-  auto metadata = rollback_metrics_data.rollback_metadata();
-  base::Version target_chromeos_version(
-      {metadata.target_chromeos_version_major(),
-       metadata.target_chromeos_version_minor(),
-       metadata.target_chromeos_version_patch()});
-  return target_chromeos_version == version;
+bool OSVersionEqualChromeOSVersion(const base::Version& expected_version,
+                                   const ChromeOSVersion& chromeos_version) {
+  base::Version version({chromeos_version.major(), chromeos_version.minor(),
+                         chromeos_version.patch()});
+  return version == expected_version;
 }
 
 }  // namespace
@@ -119,6 +108,48 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_FALSE(file_handler_->HasRollbackMetricsData());
 }
 
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       NoMetricsFileIfInvalidCurrentVersion) {
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
+      kOSVersionInvalid, kOsVersionM107));
+  ASSERT_FALSE(file_handler_->HasRollbackMetricsData());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       NoMetricsFileIfIncompleteCurrentVersion) {
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
+      kOSVersionIncomplete, kOsVersionM107));
+  ASSERT_FALSE(file_handler_->HasRollbackMetricsData());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       NoMetricsFileIfIncompleteCurrentVersionWithMinor) {
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
+      kOSVersionIncompleteWithMinor, kOsVersionM107));
+  ASSERT_FALSE(file_handler_->HasRollbackMetricsData());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       NoMetricsFileIfInvalidTargetVersion) {
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
+      kOsVersionM108, kOSVersionInvalid));
+  ASSERT_FALSE(file_handler_->HasRollbackMetricsData());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       NoMetricsFileIfIncompleteTargetVersion) {
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
+      kOsVersionM108, kOSVersionIncomplete));
+  ASSERT_FALSE(file_handler_->HasRollbackMetricsData());
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest,
+       NoMetricsFileIfIncompleteTargetVersionWithMinor) {
+  ASSERT_FALSE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
+      kOsVersionM108, kOSVersionIncompleteWithMinor));
+  ASSERT_FALSE(file_handler_->HasRollbackMetricsData());
+}
+
 TEST_F(EnterpriseRollbackMetricsHandlerTest, NewMetricsFileHasOriginAndTarget) {
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
@@ -128,8 +159,12 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest, NewMetricsFileHasOriginAndTarget) {
   EnterpriseRollbackMetricsData rollback_metrics_data;
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
 
-  ASSERT_TRUE(OSVersionEqualOrigin(kOsVersionM108, rollback_metrics_data));
-  ASSERT_TRUE(OSVersionEqualTarget(kOsVersionM107, rollback_metrics_data));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM108,
+      rollback_metrics_data.rollback_metadata().origin_chromeos_version()));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM107,
+      rollback_metrics_data.rollback_metadata().target_chromeos_version()));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 0);
 }
 
@@ -149,8 +184,12 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   EnterpriseRollbackMetricsData rollback_metrics_data;
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
 
-  ASSERT_TRUE(OSVersionEqualOrigin(kOsVersionM108, rollback_metrics_data));
-  ASSERT_TRUE(OSVersionEqualTarget(kOsVersionM107, rollback_metrics_data));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM108,
+      rollback_metrics_data.rollback_metadata().origin_chromeos_version()));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM107,
+      rollback_metrics_data.rollback_metadata().target_chromeos_version()));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 0);
 }
 
@@ -176,8 +215,12 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   EnterpriseRollbackMetricsData rollback_metrics_data;
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
 
-  ASSERT_TRUE(OSVersionEqualOrigin(kOsVersionM108, rollback_metrics_data));
-  ASSERT_TRUE(OSVersionEqualTarget(kOsVersionM107, rollback_metrics_data));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM108,
+      rollback_metrics_data.rollback_metadata().origin_chromeos_version()));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM107,
+      rollback_metrics_data.rollback_metadata().target_chromeos_version()));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 0);
 }
 
@@ -185,7 +228,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
        DoNotTrackEventIfMetricsFileDoesNotExist) {
   ASSERT_FALSE(file_handler_->HasRollbackMetricsData());
   ASSERT_FALSE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::EVENT_UNSPECIFIED)));
   ASSERT_FALSE(file_handler_->HasRollbackMetricsData());
 }
 
@@ -197,7 +241,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest, DoNotTrackEventIfFileIsLocked) {
       file_handler_->StartLockMetricsFileProcess(GetBuildDirectory());
   ASSERT_NE(lock_process, nullptr);
   ASSERT_FALSE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::EVENT_UNSPECIFIED)));
 
   lock_process->Kill(SIGKILL, /*timeout=*/5);
 }
@@ -208,7 +253,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest, TrackEventEvenIfFileIsCorrupted) {
   ASSERT_TRUE(file_handler_->HasRollbackMetricsData());
 
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::EVENT_UNSPECIFIED)));
 }
 
 TEST_F(EnterpriseRollbackMetricsHandlerTest,
@@ -216,14 +262,19 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::EVENT_UNSPECIFIED)));
 
   // Verify file content.
   EnterpriseRollbackMetricsData rollback_metrics_data;
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
 
-  ASSERT_TRUE(OSVersionEqualOrigin(kOsVersionM108, rollback_metrics_data));
-  ASSERT_TRUE(OSVersionEqualTarget(kOsVersionM107, rollback_metrics_data));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM108,
+      rollback_metrics_data.rollback_metadata().origin_chromeos_version()));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM107,
+      rollback_metrics_data.rollback_metadata().target_chromeos_version()));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 1);
   ASSERT_EQ(rollback_metrics_data.event_data(0).event(),
             EnterpriseRollbackEvent::EVENT_UNSPECIFIED);
@@ -234,18 +285,25 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::EVENT_UNSPECIFIED)));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::EVENT_UNSPECIFIED)));
 
   // Verify file content.
   EnterpriseRollbackMetricsData rollback_metrics_data;
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
 
-  ASSERT_TRUE(OSVersionEqualOrigin(kOsVersionM108, rollback_metrics_data));
-  ASSERT_TRUE(OSVersionEqualTarget(kOsVersionM107, rollback_metrics_data));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM108,
+      rollback_metrics_data.rollback_metadata().origin_chromeos_version()));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM107,
+      rollback_metrics_data.rollback_metadata().target_chromeos_version()));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 3);
   ASSERT_EQ(rollback_metrics_data.event_data(0).event(),
             EnterpriseRollbackEvent::EVENT_UNSPECIFIED);
@@ -253,6 +311,31 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
             EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED);
   ASSERT_EQ(rollback_metrics_data.event_data(2).event(),
             EnterpriseRollbackEvent::EVENT_UNSPECIFIED);
+}
+
+TEST_F(EnterpriseRollbackMetricsHandlerTest, TrackEventWithChromeOSVersion) {
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
+      kOsVersionM108, kOsVersionM107));
+  ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::EVENT_UNSPECIFIED, kOsVersionM105)));
+
+  // Verify file content.
+  EnterpriseRollbackMetricsData rollback_metrics_data;
+  ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
+
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM108,
+      rollback_metrics_data.rollback_metadata().origin_chromeos_version()));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM107,
+      rollback_metrics_data.rollback_metadata().target_chromeos_version()));
+  ASSERT_EQ(rollback_metrics_data.event_data_size(), 1);
+  ASSERT_EQ(rollback_metrics_data.event_data(0).event(),
+            EnterpriseRollbackEvent::EVENT_UNSPECIFIED);
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM105,
+      rollback_metrics_data.event_data(0).event_chromeos_version()));
 }
 
 TEST_F(EnterpriseRollbackMetricsHandlerTest, ReportingFailsIfNoMetricsFile) {
@@ -274,9 +357,11 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::EVENT_UNSPECIFIED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::EVENT_UNSPECIFIED)));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
@@ -295,8 +380,12 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(file_handler_->HasRollbackMetricsData());
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
 
-  ASSERT_TRUE(OSVersionEqualOrigin(kOsVersionM108, rollback_metrics_data));
-  ASSERT_TRUE(OSVersionEqualTarget(kOsVersionM107, rollback_metrics_data));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM108,
+      rollback_metrics_data.rollback_metadata().origin_chromeos_version()));
+  ASSERT_TRUE(OSVersionEqualChromeOSVersion(
+      kOsVersionM107,
+      rollback_metrics_data.rollback_metadata().target_chromeos_version()));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 0);
 }
 
@@ -305,9 +394,11 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   auto lock_process =
       file_handler_->StartLockMetricsFileProcess(GetBuildDirectory());
@@ -335,9 +426,11 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
@@ -351,7 +444,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
       .Times(3);
 
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->ReportEventNow(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   // Previous events should have also been reported.
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
@@ -365,9 +459,11 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   ASSERT_TRUE(ReadRollbackMetricsData(&rollback_metrics_data));
   ASSERT_EQ(rollback_metrics_data.event_data_size(), 2);
@@ -384,7 +480,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
       .Times(1);
 
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->ReportEventNow(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   lock_process->Kill(SIGKILL, /*timeout=*/5);
 
@@ -399,7 +496,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
       "This is not valid metrics data"));
   ASSERT_TRUE(file_handler_->HasRollbackMetricsData());
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   EXPECT_CALL(*recorder_, Record(testing::Property(
                               &metrics::structured::EventBase::name_hash,
@@ -408,7 +506,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
       .Times(0);
 
   ASSERT_FALSE(enterprise_rollback_metrics_handler_->ReportEventNow(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 }
 
 TEST_F(EnterpriseRollbackMetricsHandlerTest, StopTrackingDeletesCorruptedFile) {
@@ -433,9 +532,11 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   EXPECT_CALL(*recorder_, Record(testing::Property(
                               &metrics::structured::EventBase::name_hash,
@@ -454,9 +555,11 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   ASSERT_TRUE(file_handler_->HasRollbackMetricsData());
   // Events will not be reported but the file is deleted.
@@ -481,7 +584,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   base::Time modification_time = base::Time::Now();
   ASSERT_TRUE(
@@ -496,7 +600,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest,
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   base::Time modification_time = base::Time::Now() - base::Days(16);
   ASSERT_TRUE(
@@ -523,7 +628,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest, IsTrackingForTargetVersion) {
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->IsTrackingForTargetVersion(
       kOsVersionM107));
@@ -533,7 +639,8 @@ TEST_F(EnterpriseRollbackMetricsHandlerTest, IsNotTrackingForTargetVersion) {
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->StartTrackingRollback(
       kOsVersionM108, kOsVersionM107));
   ASSERT_TRUE(enterprise_rollback_metrics_handler_->TrackEvent(
-      EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED));
+      EnterpriseRollbackMetricsHandler::CreateEventData(
+          EnterpriseRollbackEvent::ROLLBACK_POLICY_ACTIVATED)));
 
   ASSERT_FALSE(enterprise_rollback_metrics_handler_->IsTrackingForTargetVersion(
       kOsVersionM108));
