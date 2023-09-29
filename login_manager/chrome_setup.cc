@@ -279,6 +279,14 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--arc-scale=" + arc_scale);
   }
 
+  // Pass USE flag of blocking KeyMint to Chrome.
+  // TODO(b/302648164): Remove the block_keymint flag on selected boards
+  // once the migration issue of older keyblobs is resolved.
+  if (builder->UseFlagIsSet("block_keymint")) {
+    LOG(INFO) << "KeyMint is temporarily blocked on this board.";
+    builder->AddArg("--arc-block-keymint");
+  }
+
   // Pass USE flags of ARM binary translation libraries to Chrome.
   if (builder->UseFlagIsSet("houdini"))
     builder->AddArg("--enable-houdini");
