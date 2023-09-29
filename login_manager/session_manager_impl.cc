@@ -1793,7 +1793,7 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
       '_');
   const base::FilePath reset_path(kResetFile);
   const std::string reset_file_content =
-      "fast safe keepimg reason=" + sanitized_reason;
+      "fast safe keepimg preserve_lvs reason=" + sanitized_reason;
   system_->AtomicFileWrite(reset_path, reset_file_content);
 
   RestartDevice(sanitized_reason);

@@ -2210,7 +2210,7 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
       base::FilePath(SessionManagerImpl::kResetFile));
   ASSERT_TRUE(base::ReadFileToString(reset_path, &contents));
   ASSERT_EQ(
-      "fast safe keepimg reason="
+      "fast safe keepimg preserve_lvs reason="
       "overly_long_test_message_with_special_chars_____12",
       contents);
 }
