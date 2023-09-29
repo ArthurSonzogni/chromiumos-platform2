@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <linux/ethtool.h>
 #include <linux/if.h>
+#include <linux/if_link.h>
 #include <linux/if_tun.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
@@ -60,7 +61,6 @@
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/network/network.h"
 #include "shill/power_manager.h"
@@ -1294,16 +1294,15 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
   }
 
   const auto stats_bytes = msg.GetAttribute(IFLA_STATS64);
-  if (stats_bytes.size() < sizeof(struct old_rtnl_link_stats64)) {
+  if (stats_bytes.size() < sizeof(struct rtnl_link_stats64)) {
     LOG(WARNING) << "Link statistics size is too small: " << stats_bytes.size()
-                 << " < " << sizeof(struct old_rtnl_link_stats64);
+                 << " < " << sizeof(struct rtnl_link_stats64);
     return;
   }
 
-  const auto stats =
-      *net_base::byte_utils::FromBytes<struct old_rtnl_link_stats64>(
-          base::span<const uint8_t>(stats_bytes)
-              .subspan(0, sizeof(struct old_rtnl_link_stats64)));
+  const auto stats = *net_base::byte_utils::FromBytes<struct rtnl_link_stats64>(
+      base::span<const uint8_t>(stats_bytes)
+          .subspan(0, sizeof(struct rtnl_link_stats64)));
 
   SLOG(2) << "Link statistics for "
           << " interface index " << interface_index << ": "

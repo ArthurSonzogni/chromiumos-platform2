@@ -4136,7 +4136,7 @@ uint64_t WiFi::GetReceiveByteCount() {
   return rx_byte_count;
 }
 
-void WiFi::OnReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats) {
+void WiFi::OnReceivedRtnlLinkStatistics(const rtnl_link_stats64& stats) {
   wifi_link_statistics_->UpdateRtnlLinkStatistics(current_rtnl_network_event_,
                                                   stats);
   // Reset current_rtnl_network_event_ to prevent unnecessary WiFiLinkStatistics

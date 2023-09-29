@@ -13,6 +13,7 @@
 
 #include <linux/ethtool.h>
 #include <linux/if.h>
+#include <linux/if_link.h>
 #include <linux/if_tun.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <linux/rtnetlink.h>
@@ -49,7 +50,6 @@
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/net/rtnl_link_stats.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/network.h"
@@ -390,7 +390,7 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
 
   // Short link statistics message.
   message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
-  struct old_rtnl_link_stats64 stats;
+  struct rtnl_link_stats64 stats;
   memset(&stats, 0, sizeof(stats));
   stats.rx_bytes = kReceiveByteCount;
   stats.tx_bytes = kTransmitByteCount;

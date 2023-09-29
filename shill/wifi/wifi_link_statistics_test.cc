@@ -76,22 +76,24 @@ constexpr WiFiLinkStatistics::StationStats kNetworkValidationDiffNl80211Stats =
      .signal_avg = -30,
      .rx = {.packets = 3061, .bytes = 28946},
      .tx = {.packets = 3570, .bytes = 30417}};
-constexpr old_rtnl_link_stats64 kDhcpStartRtnlStats = {
-    17, 32, 105, 206, 3, 2, 8, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-constexpr old_rtnl_link_stats64 kDhcpEndRtnlStats = {
+constexpr rtnl_link_stats64 kDhcpStartRtnlStats = {
+    17, 32, 105, 206, 3, 2, 8, 6, 0, 0, 0, 0,
+    0,  0,  0,   0,   0, 0, 0, 0, 0, 0, 0, 0};
+constexpr rtnl_link_stats64 kDhcpEndRtnlStats = {
     3862, 3362, 49510, 43641, 35, 31, 29, 55, 0, 0, 0, 0,
-    0,    0,    0,     0,     0,  0,  0,  0,  0, 0, 0};
-constexpr old_rtnl_link_stats64 kDhcpDiffRtnlStats = {
+    0,    0,    0,     0,     0,  0,  0,  0,  0, 0, 0, 0};
+constexpr rtnl_link_stats64 kDhcpDiffRtnlStats = {
     3845, 3330, 49405, 43435, 32, 29, 21, 49, 0, 0, 0, 0,
-    0,    0,    0,     0,     0,  0,  0,  0,  0, 0, 0};
-constexpr old_rtnl_link_stats64 kNetworkValidationStartRtnlStats = {
-    29, 36, 278, 233, 6, 3, 11, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-constexpr old_rtnl_link_stats64 kNetworkValidationEndRtnlStats = {
+    0,    0,    0,     0,     0,  0,  0,  0,  0, 0, 0, 0};
+constexpr rtnl_link_stats64 kNetworkValidationStartRtnlStats = {
+    29, 36, 278, 233, 6, 3, 11, 9, 0, 0, 0, 0,
+    0,  0,  0,   0,   0, 0, 0,  0, 0, 0, 0, 0};
+constexpr rtnl_link_stats64 kNetworkValidationEndRtnlStats = {
     1509, 2022, 23890, 36217, 21, 26, 23, 31, 0, 0, 0, 0,
-    0,    0,    0,     0,     0,  0,  0,  0,  0, 0, 0};
-constexpr old_rtnl_link_stats64 kNetworkValidationDiffRtnlStats = {
+    0,    0,    0,     0,     0,  0,  0,  0,  0, 0, 0, 0};
+constexpr rtnl_link_stats64 kNetworkValidationDiffRtnlStats = {
     1480, 1986, 23612, 35984, 15, 23, 12, 22, 0, 0, 0, 0,
-    0,    0,    0,     0,     0,  0,  0,  0,  0, 0, 0};
+    0,    0,    0,     0,     0,  0,  0,  0,  0, 0, 0, 0};
 
 std::string Nl80211Log(WiFiLinkStatistics::Trigger start_event,
                        WiFiLinkStatistics::Trigger end_event,
@@ -121,7 +123,7 @@ std::string Nl80211Log(WiFiLinkStatistics::Trigger start_event,
 
 std::string RtnlLog(WiFiLinkStatistics::Trigger start_event,
                     WiFiLinkStatistics::Trigger end_event,
-                    const old_rtnl_link_stats64& diff_stats) {
+                    const rtnl_link_stats64& diff_stats) {
   return "Network event related to RTNL link statistics: " +
          WiFiLinkStatistics::LinkStatisticsTriggerToString(start_event) +
          " -> " + WiFiLinkStatistics::LinkStatisticsTriggerToString(end_event) +
@@ -150,7 +152,7 @@ class WiFiLinkStatisticsTest : public ::testing::Test {
   }
 
   void UpdateRtnlLinkStatistics(WiFiLinkStatistics::Trigger trigger,
-                                const old_rtnl_link_stats64& stats) {
+                                const rtnl_link_stats64& stats) {
     wifi_link_statistics_->UpdateRtnlLinkStatistics(trigger, stats);
   }
 

@@ -43,7 +43,6 @@ install_config("install_headers") {
     "nl80211_message.h",
     "process_manager.h",
     "rtnl_handler.h",
-    "rtnl_link_stats.h",
     "rtnl_listener.h",
     "shill_export.h",
   ]

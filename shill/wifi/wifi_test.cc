@@ -1059,7 +1059,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
       const WiFiLinkStatistics::StationStats& stats) {
     wifi_->EmitStationInfoReceivedEvent(stats);
   }
-  void ReportReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats) {
+  void ReportReceivedRtnlLinkStatistics(const rtnl_link_stats64& stats) {
     wifi_->OnReceivedRtnlLinkStatistics(stats);
   }
   KeyValueStore GetLinkStatistics() {
@@ -5900,7 +5900,7 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
   KeyValueStore properties;
   properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
 
-  old_rtnl_link_stats64 stats;
+  rtnl_link_stats64 stats;
 
   // IP configuration starts
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);

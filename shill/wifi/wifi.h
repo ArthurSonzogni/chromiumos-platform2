@@ -73,6 +73,7 @@
 // description of the same interface is in
 // third_party/wpa_supplicant/doc/dbus.doxygen.
 
+#include <linux/if_link.h>
 #include <linux/nl80211.h>
 #include <time.h>
 
@@ -99,7 +100,6 @@
 #include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
-#include "shill/net/rtnl_link_stats.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
@@ -265,8 +265,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Removes a set of Passpoint credentials from WPA supplicant.
   bool RemoveCred(const PasspointCredentialsRefPtr& credentials);
 
-  // Process old_rtnl_link_stats64 information
-  void OnReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats);
+  // Process rtnl_link_stats64 information
+  void OnReceivedRtnlLinkStatistics(const rtnl_link_stats64& stats);
 
   // Send a structured event to notify that we've requested link statistics
   // from the driver.

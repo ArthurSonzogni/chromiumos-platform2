@@ -155,10 +155,9 @@ WiFiLinkStatistics::StationStats Nl80211LinkStatisticsDiff(
 
 // Calculate the difference between RTNL link statistics old_stats and
 // new_stats
-old_rtnl_link_stats64 RtnlLinkStatisticsDiff(
-    const old_rtnl_link_stats64& old_stats,
-    const old_rtnl_link_stats64& new_stats) {
-  old_rtnl_link_stats64 diff_stats;
+rtnl_link_stats64 RtnlLinkStatisticsDiff(const rtnl_link_stats64& old_stats,
+                                         const rtnl_link_stats64& new_stats) {
+  rtnl_link_stats64 diff_stats;
   diff_stats.rx_packets = new_stats.rx_packets - old_stats.rx_packets;
   diff_stats.tx_packets = new_stats.tx_packets - old_stats.tx_packets;
   diff_stats.rx_bytes = new_stats.rx_bytes - old_stats.rx_bytes;
@@ -171,8 +170,7 @@ old_rtnl_link_stats64 RtnlLinkStatisticsDiff(
 }
 
 // Convert RTNL link statistics to string
-std::string RtnlLinkStatisticsToString(
-    const old_rtnl_link_stats64& diff_stats) {
+std::string RtnlLinkStatisticsToString(const rtnl_link_stats64& diff_stats) {
   return base::StrCat({"rx_packets ", std::to_string(diff_stats.rx_packets),
                        " tx_packets ", std::to_string(diff_stats.tx_packets),
                        " rx_bytes ", std::to_string(diff_stats.rx_bytes),
@@ -625,7 +623,7 @@ void WiFiLinkStatistics::UpdateNl80211LinkStatistics(
 }
 
 void WiFiLinkStatistics::UpdateRtnlLinkStatistics(
-    Trigger trigger, const old_rtnl_link_stats64& stats) {
+    Trigger trigger, const rtnl_link_stats64& stats) {
   if (trigger == Trigger::kUnknown) {
     return;
   }

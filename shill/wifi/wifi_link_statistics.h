@@ -5,8 +5,10 @@
 #ifndef SHILL_WIFI_WIFI_LINK_STATISTICS_H_
 #define SHILL_WIFI_WIFI_LINK_STATISTICS_H_
 
-#include <cstdint>
 #include <limits.h>
+#include <linux/if_link.h>
+#include <stdint.h>
+
 #include <list>
 #include <string>
 
@@ -14,7 +16,6 @@
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/net/rtnl_link_stats.h"
 #include "shill/store/key_value_store.h"
 
 namespace shill {
@@ -172,8 +173,8 @@ class WiFiLinkStatistics {
     // The event that triggered the snapshot of WiFiLinkStatistics.
     Trigger trigger = Trigger::kUnknown;
     base::Time timestamp;
-    old_rtnl_link_stats64 rtnl_link_stats;
-    RtnlLinkStatistics(Trigger event, const old_rtnl_link_stats64& stats)
+    rtnl_link_stats64 rtnl_link_stats;
+    RtnlLinkStatistics(Trigger event, const rtnl_link_stats64& stats)
         : trigger(event), rtnl_link_stats(stats) {
       timestamp = base::Time::Now();
     }
@@ -210,7 +211,7 @@ class WiFiLinkStatistics {
   mockable void UpdateNl80211LinkStatistics(Trigger trigger,
                                             const StationStats& stats);
   mockable void UpdateRtnlLinkStatistics(Trigger trigger,
-                                         const old_rtnl_link_stats64& stats);
+                                         const rtnl_link_stats64& stats);
 
   static Metrics::WiFiLinkQualityTrigger ConvertLinkStatsTriggerEvent(
       Trigger trigger);
