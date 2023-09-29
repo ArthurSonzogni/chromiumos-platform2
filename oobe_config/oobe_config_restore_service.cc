@@ -11,6 +11,7 @@
 #include "libhwsec/factory/factory.h"
 #include "libhwsec/frontend/oobe_config/frontend.h"
 #include "oobe_config/load_oobe_config_rollback.h"
+#include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/proto_bindings/oobe_config.pb.h"
 
@@ -45,7 +46,9 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   std::unique_ptr<const hwsec::OobeConfigFrontend> hwsec_oobe_config =
       hwsec_factory.GetOobeConfigFrontend();
   OobeConfig oobe_config(hwsec_oobe_config.get());
-  LoadOobeConfigRollback load_oobe_config_rollback(&oobe_config);
+  EnterpriseRollbackMetricsHandler rollback_metrics;
+  LoadOobeConfigRollback load_oobe_config_rollback(&oobe_config,
+                                                   &rollback_metrics);
   std::string chrome_config_json, unused_enrollment_domain;
 
   // There is rollback data so attempt to parse it.

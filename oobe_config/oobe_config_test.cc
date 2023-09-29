@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 #include <unistd.h>
 
 #include <base/files/file_path.h>
@@ -16,7 +15,6 @@
 #include <libhwsec/frontend/oobe_config/frontend.h>
 
 #include "libhwsec/error/tpm_retry_action.h"
-#include "oobe_config/filesystem/file_handler.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_data.pb.h"
 
@@ -70,9 +68,9 @@ void OobeConfigTest::SimulatePowerwash(bool preserve_openssl,
   }
 
   file_handler_ = FileHandlerForTesting();
+  ASSERT_TRUE(file_handler_.CreateDefaultExistingPaths());
   oobe_config_ =
       std::make_unique<OobeConfig>(hwsec_oobe_config_.get(), file_handler_);
-  ASSERT_TRUE(file_handler_.CreateDefaultExistingPaths());
 
   if (preserve_openssl) {
     ASSERT_TRUE(

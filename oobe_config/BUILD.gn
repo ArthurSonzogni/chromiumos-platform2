@@ -34,6 +34,9 @@ group("all") {
     deps += [
       ":load_oobe_config_rollback_fuzzer",
       ":openssl_encryption_fuzzer",
+      "metrics:install_headers-test",
+      "metrics:install_pkgconfig-test",
+      "metrics:libenterprise_rollback_metrics-test",
     ]
   }
 }
@@ -219,6 +222,7 @@ if (use.test) {
     deps = [
       ":liboobeconfig",
       "filesystem:filesystem_for_testing",
+      "metrics:libenterprise_rollback_metrics-test",
       "//common-mk/testrunner",
     ]
   }
@@ -235,6 +239,7 @@ if (use.fuzzer) {
       ":liboobeconfig",
       ":oobe_config_proto",
       "filesystem:filesystem_for_testing",
+      "metrics:libenterprise_rollback_metrics-test",
     ]
     pkg_deps = [ "libprotobuf-mutator" ]
   }

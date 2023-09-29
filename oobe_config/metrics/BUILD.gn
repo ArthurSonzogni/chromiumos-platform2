@@ -5,6 +5,25 @@
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
+group("all") {
+  deps = [
+    ":install_headers",
+    ":install_pkgconfig",
+    ":install_proto_header",
+    ":libenterprise_rollback_metrics",
+  ]
+  if (use.test || use.fuzzer) {
+    deps += [
+      ":install_headers-test",
+      ":install_pkgconfig-test",
+      ":libenterprise_rollback_metrics-test",
+    ]
+  }
+  if (use.test) {
+    deps += [ ":enterprise_rollback_metrics_tests" ]
+  }
+}
+
 pkg_config("target_defaults") {
   pkg_deps = [
     "libmetrics",
@@ -73,7 +92,7 @@ install_config("install_proto_header") {
   deps = [ ":enterprise_rollback_metrics_proto" ]
 }
 
-if (use.test) {
+if (use.test || use.fuzzer) {
   install_config("install_headers-test") {
     sources = [ "enterprise_rollback_metrics_handler_for_testing.h" ]
     install_path = "/usr/include/oobe_config/metrics"
@@ -104,7 +123,9 @@ if (use.test) {
     ]
     install_path = "lib"
   }
+}
 
+if (use.test) {
   executable("enterprise_rollback_metrics_tests") {
     sources = [
       "enterprise_rollback_metrics_handler_test.cc",

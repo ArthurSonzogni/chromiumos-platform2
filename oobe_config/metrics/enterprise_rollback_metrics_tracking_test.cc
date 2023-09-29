@@ -45,7 +45,18 @@ class EnterpriseRollbackTrackingTest : public ::testing::Test {
  protected:
   std::unique_ptr<oobe_config::EnterpriseRollbackMetricsHandlerForTesting>
       rollback_metrics_;
+  // Need to keep the variable around for the test version to be read.
+  base::test::ScopedChromeOSVersionInfo version_info_{
+      base::StringPrintf("CHROMEOS_RELEASE_VERSION=%s",
+                         kDeviceVersionM108LsbRelease),
+      base::Time()};
 };
+
+TEST_F(EnterpriseRollbackTrackingTest, VerifyGetDeviceInfo) {
+  auto version = GetDeviceVersion();
+  ASSERT_TRUE(version.has_value());
+  ASSERT_EQ(version.value(), kDeviceVersionM108);
+}
 
 TEST_F(EnterpriseRollbackTrackingTest, CleanOutdatedTrackingNoTracking) {
   ASSERT_FALSE(rollback_metrics_->IsTrackingRollback());
@@ -117,10 +128,6 @@ TEST_F(EnterpriseRollbackTrackingTest,
 TEST_F(EnterpriseRollbackTrackingTest,
        DoNotStartTrackingRollbackIfMetricsAreDisabled) {
   ASSERT_TRUE(rollback_metrics_->DisableMetrics());
-  base::test::ScopedChromeOSVersionInfo version_info(
-      base::StringPrintf("CHROMEOS_RELEASE_VERSION=%s",
-                         kDeviceVersionM108LsbRelease),
-      base::Time());
 
   ASSERT_FALSE(StartNewTracking(*rollback_metrics_,
                                 kTargetVersionM107PolicyValueExpected));
@@ -132,11 +139,6 @@ TEST_F(EnterpriseRollbackTrackingTest,
 
 TEST_F(EnterpriseRollbackTrackingTest,
        StartNewTrackingWithExpectedPolicyValueStartsTracking) {
-  base::test::ScopedChromeOSVersionInfo version_info(
-      base::StringPrintf("CHROMEOS_RELEASE_VERSION=%s",
-                         kDeviceVersionM108LsbRelease),
-      base::Time());
-
   ASSERT_TRUE(StartNewTracking(*rollback_metrics_,
                                kTargetVersionM107PolicyValueExpected));
 
@@ -151,11 +153,6 @@ TEST_F(EnterpriseRollbackTrackingTest,
 
 TEST_F(EnterpriseRollbackTrackingTest,
        StartNewTrackingWithInvalidPolicyValueDoesNotStartTracking) {
-  base::test::ScopedChromeOSVersionInfo version_info(
-      base::StringPrintf("CHROMEOS_RELEASE_VERSION=%s",
-                         kDeviceVersionM108LsbRelease),
-      base::Time());
-
   ASSERT_FALSE(
       StartNewTracking(*rollback_metrics_, kTargetVersionInvalidPolicyValue));
   ASSERT_FALSE(rollback_metrics_->IsTrackingRollback());
@@ -165,11 +162,6 @@ TEST_F(EnterpriseRollbackTrackingTest,
 
 TEST_F(EnterpriseRollbackTrackingTest,
        StartNewTrackingWithMajorPolicyValueTracksMajor) {
-  base::test::ScopedChromeOSVersionInfo version_info(
-      base::StringPrintf("CHROMEOS_RELEASE_VERSION=%s",
-                         kDeviceVersionM108LsbRelease),
-      base::Time());
-
   ASSERT_TRUE(
       StartNewTracking(*rollback_metrics_, kTargetVersionM107PolicyValueMajor));
 
@@ -182,11 +174,6 @@ TEST_F(EnterpriseRollbackTrackingTest,
 
 TEST_F(EnterpriseRollbackTrackingTest,
        StartNewTrackingWithWithMajorWildcardPolicyValueTracksMajor) {
-  base::test::ScopedChromeOSVersionInfo version_info(
-      base::StringPrintf("CHROMEOS_RELEASE_VERSION=%s",
-                         kDeviceVersionM108LsbRelease),
-      base::Time());
-
   ASSERT_TRUE(StartNewTracking(*rollback_metrics_,
                                kTargetVersionM107PolicyValueMajorWildcard));
 
@@ -199,11 +186,6 @@ TEST_F(EnterpriseRollbackTrackingTest,
 
 TEST_F(EnterpriseRollbackTrackingTest,
        StartNewTrackingWithMajorMinorWildcardPolicyValueTracksMajor) {
-  base::test::ScopedChromeOSVersionInfo version_info(
-      base::StringPrintf("CHROMEOS_RELEASE_VERSION=%s",
-                         kDeviceVersionM108LsbRelease),
-      base::Time());
-
   ASSERT_TRUE(StartNewTracking(
       *rollback_metrics_, kTargetVersionM107PolicyValueMajorMinorWildcard));
 
@@ -216,11 +198,6 @@ TEST_F(EnterpriseRollbackTrackingTest,
 
 TEST_F(EnterpriseRollbackTrackingTest,
        StartNewTrackingWithMajorMinorPatchPolicyValueTracksMajor) {
-  base::test::ScopedChromeOSVersionInfo version_info(
-      base::StringPrintf("CHROMEOS_RELEASE_VERSION=%s",
-                         kDeviceVersionM108LsbRelease),
-      base::Time());
-
   ASSERT_TRUE(StartNewTracking(*rollback_metrics_,
                                kTargetVersionM107PolicyValueMajorMinorPatch));
 

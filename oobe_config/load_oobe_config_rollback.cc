@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/values.h>
 
+#include "oobe_config/metrics/enterprise_rollback_metrics_tracking.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_data.pb.h"
 
@@ -21,9 +22,35 @@ using std::unique_ptr;
 
 namespace oobe_config {
 
-LoadOobeConfigRollback::LoadOobeConfigRollback(OobeConfig* oobe_config,
-                                               FileHandler file_handler)
-    : file_handler_(std::move(file_handler)), oobe_config_(oobe_config) {}
+namespace {
+
+base::Version DeviceVersion() {
+  auto device_version = GetDeviceVersion();
+  if (!device_version.has_value()) {
+    return base::Version("");
+  }
+  return device_version.value();
+}
+
+void ReportEnterpriseRollbackRestoreResult(
+    EnterpriseRollbackMetricsHandler& rollback_metrics,
+    const EnterpriseRollbackEvent& event) {
+  // OobeConfigRestore results are reported immediately because the powerwash
+  // already happened.
+  rollback_metrics.ReportEventNow(
+      EnterpriseRollbackMetricsHandler::CreateEventData(event,
+                                                        DeviceVersion()));
+}
+
+}  // namespace
+
+LoadOobeConfigRollback::LoadOobeConfigRollback(
+    OobeConfig* oobe_config,
+    EnterpriseRollbackMetricsHandler* rollback_metrics,
+    FileHandler file_handler)
+    : file_handler_(std::move(file_handler)),
+      oobe_config_(oobe_config),
+      rollback_metrics_(rollback_metrics) {}
 
 bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
                                                string* enrollment_domain) {
@@ -46,6 +73,9 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       LOG(ERROR)
           << "Failed to decrypt rollback data. This is expected in rare cases, "
              "e.g. when the TPM was cleared again during rollback OOBE.";
+      ReportEnterpriseRollbackRestoreResult(
+          *rollback_metrics_, EnterpriseRollbackEvent::
+                                  ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_DECRYPT);
       metrics_uma_.RecordRestoreResult(
           MetricsUMA::OobeRestoreResult::kStage1Failure);
       return false;
@@ -56,6 +86,9 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     string rollback_data_str;
     if (!file_handler_.ReadDecryptedRollbackData(&rollback_data_str)) {
       LOG(ERROR) << "Could not read decrypted rollback data file.";
+      ReportEnterpriseRollbackRestoreResult(
+          *rollback_metrics_,
+          EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_READ);
       metrics_uma_.RecordRestoreResult(
           MetricsUMA::OobeRestoreResult::kStage3Failure);
       return false;
@@ -63,6 +96,9 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     RollbackData rollback_data;
     if (!rollback_data.ParseFromString(rollback_data_str)) {
       LOG(ERROR) << "Couldn't parse proto.";
+      ReportEnterpriseRollbackRestoreResult(
+          *rollback_metrics_,
+          EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_PARSE);
       metrics_uma_.RecordRestoreResult(
           MetricsUMA::OobeRestoreResult::kStage3Failure);
       return false;
@@ -70,12 +106,18 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     // We get the data for Chrome and assemble the config.
     if (!AssembleConfig(rollback_data, config)) {
       LOG(ERROR) << "Failed to assemble config.";
+      ReportEnterpriseRollbackRestoreResult(
+          *rollback_metrics_,
+          EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_RESTORE_FAILURE_CONFIG);
       metrics_uma_.RecordRestoreResult(
           MetricsUMA::OobeRestoreResult::kStage3Failure);
       return false;
     }
 
     LOG(INFO) << "Rollback restore completed successfully.";
+    ReportEnterpriseRollbackRestoreResult(
+        *rollback_metrics_,
+        EnterpriseRollbackEvent::ROLLBACK_OOBE_CONFIG_RESTORE_SUCCESS);
     metrics_uma_.RecordRestoreResult(MetricsUMA::OobeRestoreResult::kSuccess);
     return true;
   }

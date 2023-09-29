@@ -72,6 +72,7 @@ class OobeConfig {
 
   // Object for accessing the HWSec related functions.
   const hwsec::OobeConfigFrontend* hwsec_oobe_config_;
+
   // Object for managing files.
   FileHandler file_handler_;
 

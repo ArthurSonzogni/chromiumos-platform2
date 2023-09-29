@@ -16,7 +16,7 @@
 
 namespace oobe_config {
 
-std::optional<base::Version> GetDeviceVersion();
+BRILLO_EXPORT std::optional<base::Version> GetDeviceVersion();
 
 // Stops any enterprise rollback tracking. Returns false if there is an error
 // cleaning up the tracking file.

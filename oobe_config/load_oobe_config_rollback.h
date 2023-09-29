@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 
+#include "oobe_config/metrics/enterprise_rollback_metrics_handler.h"
 #include "oobe_config/metrics/metrics_uma.h"
 
 namespace oobe_config {
@@ -23,8 +24,10 @@ class RollbackData;
 // file after rollback.
 class LoadOobeConfigRollback : public LoadOobeConfigInterface {
  public:
-  explicit LoadOobeConfigRollback(OobeConfig* oobe_config,
-                                  FileHandler file_handler = FileHandler());
+  explicit LoadOobeConfigRollback(
+      OobeConfig* oobe_config,
+      EnterpriseRollbackMetricsHandler* rollback_metrics,
+      FileHandler file_handler = FileHandler());
   LoadOobeConfigRollback(const LoadOobeConfigRollback&) = delete;
   LoadOobeConfigRollback& operator=(const LoadOobeConfigRollback&) = delete;
 
@@ -42,6 +45,8 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
 
   FileHandler file_handler_;
   OobeConfig* oobe_config_;
+  EnterpriseRollbackMetricsHandler* rollback_metrics_;
+  // TODO(b/301924474): Clean old UMA metrics.
   MetricsUMA metrics_uma_;  // For UMA metrics logging.
 };
 

@@ -14,6 +14,7 @@
 
 #include "oobe_config/filesystem/file_handler_for_testing.h"
 #include "oobe_config/load_oobe_config_rollback.h"
+#include "oobe_config/metrics/enterprise_rollback_metrics_handler_for_testing.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_data.pb.h"
 
@@ -42,7 +43,9 @@ DEFINE_PROTO_FUZZER(const RollbackData& input) {
   CHECK(file_handler.WriteDecryptedRollbackData(serialized_input));
 
   OobeConfig oobe_config(nullptr, file_handler);
-  LoadOobeConfigRollback load_config(&oobe_config, file_handler);
+  EnterpriseRollbackMetricsHandlerForTesting rollback_metrics;
+  LoadOobeConfigRollback load_config(&oobe_config, &rollback_metrics,
+                                     file_handler);
 
   std::string config, enrollment_domain;
   CHECK(load_config.GetOobeConfigJson(&config, &enrollment_domain));
