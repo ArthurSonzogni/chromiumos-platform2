@@ -23,7 +23,6 @@
 #include "missive/client/report_queue_configuration.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/proto/test.pb.h"
-#include "missive/storage/storage_module_interface.h"
 #include "missive/storage/test_storage_module.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
@@ -51,10 +50,7 @@ constexpr char kTestMessage[] = "TEST_MESSAGE";
 class ReportQueueImplTest : public testing::Test {
  protected:
   ReportQueueImplTest()
-      : priority_(Priority::IMMEDIATE),
-        dm_token_("FAKE_DM_TOKEN"),
-        destination_(Destination::UPLOAD_EVENTS),
-        storage_module_(base::MakeRefCounted<TestStorageModule>()),
+      : test_storage_module_(base::MakeRefCounted<TestStorageModule>()),
         policy_check_callback_(
             base::BindRepeating(&MockFunction<Status()>::Call,
                                 base::Unretained(&mocked_policy_check_))) {}
@@ -77,18 +73,11 @@ class ReportQueueImplTest : public testing::Test {
 
     test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
     ReportQueueImpl::Create(std::move(config_result.ValueOrDie()),
-                            storage_module_, report_queue_event.cb());
+                            test_storage_module_, report_queue_event.cb());
     auto report_queue_result = report_queue_event.result();
     ASSERT_OK(report_queue_result) << report_queue_result.status();
 
     report_queue_ = std::move(report_queue_result.ValueOrDie());
-  }
-
-  TestStorageModule* test_storage_module() const {
-    TestStorageModule* test_storage_module =
-        google::protobuf::down_cast<TestStorageModule*>(storage_module_.get());
-    CHECK(test_storage_module);
-    return test_storage_module;
   }
 
   NiceMock<MockFunction<Status()>> mocked_policy_check_;
@@ -99,14 +88,14 @@ class ReportQueueImplTest : public testing::Test {
   // Declare it here to avoid UMA error.
   analytics::Metrics::TestEnvironment metrics_test_environment_;
 
-  const Priority priority_;
+  const Priority priority_ = Priority::IMMEDIATE;
 
   std::unique_ptr<ReportQueue> report_queue_;
   base::OnceCallback<void(Status)> callback_;
 
-  const std::string dm_token_;
-  const Destination destination_;
-  scoped_refptr<StorageModuleInterface> storage_module_;
+  const std::string dm_token_ = "FAKE_DM_TOKEN";
+  const Destination destination_ = Destination::UPLOAD_EVENTS;
+  scoped_refptr<TestStorageModule> test_storage_module_;
   ReportQueueConfiguration::PolicyCheckCallback policy_check_callback_;
 };
 
@@ -118,8 +107,8 @@ TEST_F(ReportQueueImplTest, SuccessfulStringRecord) {
   report_queue_->Enqueue(kTestString, priority_, a.cb());
   const auto a_result = a.result();
   EXPECT_OK(a_result) << a_result;
-  EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
-  EXPECT_THAT(test_storage_module()->record().data(), StrEq(kTestString));
+  EXPECT_THAT(test_storage_module_->priority(), Eq(priority_));
+  EXPECT_THAT(test_storage_module_->record().data(), StrEq(kTestString));
 }
 
 // Enqueues a |base::Value| dictionary and ensures it arrives unaltered in the
@@ -134,10 +123,10 @@ TEST_F(ReportQueueImplTest, SuccessfulBaseValueRecord) {
   const auto a_result = a.result();
   EXPECT_OK(a_result) << a_result;
 
-  EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
+  EXPECT_THAT(test_storage_module_->priority(), Eq(priority_));
 
   std::optional<base::Value> value_result =
-      base::JSONReader::Read(test_storage_module()->record().data());
+      base::JSONReader::Read(test_storage_module_->record().data());
   ASSERT_TRUE(value_result.has_value());
   EXPECT_EQ(value_result.value(), test_dict);
 }
@@ -153,11 +142,11 @@ TEST_F(ReportQueueImplTest, SuccessfulProtoRecord) {
   const auto a_result = a.result();
   EXPECT_OK(a_result) << a_result;
 
-  EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
+  EXPECT_THAT(test_storage_module_->priority(), Eq(priority_));
 
   test::TestMessage result_message;
   ASSERT_TRUE(
-      result_message.ParseFromString(test_storage_module()->record().data()));
+      result_message.ParseFromString(test_storage_module_->record().data()));
   ASSERT_EQ(result_message.test(), test_message.test());
 }
 
@@ -171,7 +160,7 @@ TEST_F(ReportQueueImplTest, SuccessfulProtoRecordWithReservedSpace) {
 
   test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
   ReportQueueImpl::Create(std::move(config_result.ValueOrDie()),
-                          storage_module_, report_queue_event.cb());
+                          test_storage_module_, report_queue_event.cb());
   auto report_queue_result = report_queue_event.result();
   ASSERT_OK(report_queue_result) << report_queue_result.status();
 
@@ -185,13 +174,13 @@ TEST_F(ReportQueueImplTest, SuccessfulProtoRecordWithReservedSpace) {
   const auto a_result = a.result();
   EXPECT_OK(a_result) << a_result;
 
-  EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
-  EXPECT_THAT(test_storage_module()->record().reserved_space(),
+  EXPECT_THAT(test_storage_module_->priority(), Eq(priority_));
+  EXPECT_THAT(test_storage_module_->record().reserved_space(),
               Eq(kReservedSpace));
 
   test::TestMessage result_message;
   ASSERT_TRUE(
-      result_message.ParseFromString(test_storage_module()->record().data()));
+      result_message.ParseFromString(test_storage_module_->record().data()));
   ASSERT_EQ(result_message.test(), test_message.test());
 }
 
@@ -199,7 +188,7 @@ TEST_F(ReportQueueImplTest, SuccessfulProtoRecordWithReservedSpace) {
 // been scheduled. The callback should fail, indicating that storage was
 // unsuccessful.
 TEST_F(ReportQueueImplTest, CallSuccessCallbackFailure) {
-  EXPECT_CALL(*test_storage_module(), AddRecord(Eq(priority_), _, _))
+  EXPECT_CALL(*test_storage_module_, AddRecord(Eq(priority_), _, _))
       .WillOnce(
           WithArg<2>(Invoke([](base::OnceCallback<void(Status)> callback) {
             std::move(callback).Run(Status(error::UNKNOWN, "Failing for Test"));
@@ -276,7 +265,7 @@ TEST_F(ReportQueueImplTest, EnqueueSuccessFlushFailure) {
   const auto a_result = a.result();
   EXPECT_OK(a_result) << a_result;
 
-  EXPECT_CALL(*test_storage_module(), Flush(Eq(priority_), _))
+  EXPECT_CALL(*test_storage_module_, Flush(Eq(priority_), _))
       .WillOnce(
           WithArg<1>(Invoke([](base::OnceCallback<void(Status)> callback) {
             std::move(callback).Run(Status(error::UNKNOWN, "Failing for Test"));
@@ -307,8 +296,8 @@ TEST_F(ReportQueueImplTest, SuccessfulSpeculativeStringRecord) {
   // Let everything ongoing to finish.
   task_environment_.RunUntilIdle();
 
-  EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
-  EXPECT_THAT(test_storage_module()->record().data(), StrEq(kTestString));
+  EXPECT_THAT(test_storage_module_->priority(), Eq(priority_));
+  EXPECT_THAT(test_storage_module_->record().data(), StrEq(kTestString));
 }
 
 TEST_F(ReportQueueImplTest,
@@ -322,7 +311,7 @@ TEST_F(ReportQueueImplTest,
 
   test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
   ReportQueueImpl::Create(std::move(config_result.ValueOrDie()),
-                          storage_module_, report_queue_event.cb());
+                          test_storage_module_, report_queue_event.cb());
   auto report_queue_result = report_queue_event.result();
   ASSERT_OK(report_queue_result) << report_queue_result.status();
 
@@ -343,9 +332,9 @@ TEST_F(ReportQueueImplTest,
   // Let everything ongoing to finish.
   task_environment_.RunUntilIdle();
 
-  EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
-  EXPECT_THAT(test_storage_module()->record().data(), StrEq(kTestString));
-  EXPECT_THAT(test_storage_module()->record().reserved_space(),
+  EXPECT_THAT(test_storage_module_->priority(), Eq(priority_));
+  EXPECT_THAT(test_storage_module_->record().data(), StrEq(kTestString));
+  EXPECT_THAT(test_storage_module_->record().reserved_space(),
               Eq(kReservedSpace));
 }
 
@@ -364,16 +353,16 @@ TEST_F(ReportQueueImplTest, SpeculativeQueueMultipleRecordsAfterCreation) {
                                     test_event1.cb());
   const auto result1 = test_event1.result();
   ASSERT_OK(result1) << result1;
-  EXPECT_THAT(test_storage_module()->priority(), Eq(Priority::IMMEDIATE));
-  EXPECT_THAT(test_storage_module()->record().data(), StrEq(kTestString1));
+  EXPECT_THAT(test_storage_module_->priority(), Eq(Priority::IMMEDIATE));
+  EXPECT_THAT(test_storage_module_->record().data(), StrEq(kTestString1));
 
   test::TestEvent<Status> test_event2;
   speculative_report_queue->Enqueue(kTestString2, Priority::SLOW_BATCH,
                                     test_event2.cb());
   const auto result2 = test_event2.result();
   ASSERT_OK(result2) << result2;
-  EXPECT_THAT(test_storage_module()->priority(), Eq(Priority::SLOW_BATCH));
-  EXPECT_THAT(test_storage_module()->record().data(), StrEq(kTestString2));
+  EXPECT_THAT(test_storage_module_->priority(), Eq(Priority::SLOW_BATCH));
+  EXPECT_THAT(test_storage_module_->record().data(), StrEq(kTestString2));
 }
 
 TEST_F(ReportQueueImplTest, SpeculativeQueueCreationFailedToCreate) {
@@ -437,7 +426,7 @@ TEST_F(ReportQueueImplTest, FlushSpeculativeReportQueue) {
       std::move(report_queue_));
   task_environment_.RunUntilIdle();
 
-  EXPECT_CALL(*test_storage_module(), Flush(Eq(priority_), _))
+  EXPECT_CALL(*test_storage_module_, Flush(Eq(priority_), _))
       .WillOnce(
           WithArg<1>(Invoke([](base::OnceCallback<void(Status)> callback) {
             std::move(callback).Run(Status::StatusOK());
