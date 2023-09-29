@@ -465,7 +465,7 @@ void StatefulMount::MountStateful() {
               LOG(ERROR) << "Failed to activate unencrypted stateful logical "
                          << "volume.";
 
-              ClobberStateful({"fast", "keepimg"},
+              ClobberStateful({"fast", "keepimg", "preserve_lvs"},
                               "'Invalid unencrypted logical volume'");
             }
             should_mount_lvm = true;
@@ -512,7 +512,7 @@ void StatefulMount::MountStateful() {
                     << kDumpe2fsStatefulLog;
       }
 
-      ClobberStateful({"keepimg"},
+      ClobberStateful({"keepimg", "preserve_lvs"},
                       "'Self-repair corrupted stateful partition'");
     }
 

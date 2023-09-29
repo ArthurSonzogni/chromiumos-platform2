@@ -95,7 +95,7 @@ void MountHelper::CleanupMounts(const std::string& msg) {
   std::vector<std::string> crash_args{"--clobber_state"};
   platform_->AddClobberCrashReport(crash_args);
 
-  std::vector<std::string> argv{"fast", "keepimg"};
+  std::vector<std::string> argv{"fast", "keepimg", "preserve_lvs"};
   platform_->Clobber(argv);
 }
 

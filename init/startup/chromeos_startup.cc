@@ -230,7 +230,7 @@ void ChromeosStartup::ForceCleanFileAttrs(const base::FilePath& path) {
   bool status = file_attrs_cleaner::ScanDir(path.value(), skip);
 
   if (!status) {
-    std::vector<std::string> args = {"keepimg"};
+    std::vector<std::string> args = {"keepimg", "preserve_lvs"};
     platform_->Clobber(
         "self-repair", args,
         std::string("Bad file attrs under ").append(path.value()));
@@ -399,6 +399,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
     // If it's not a plain file owned by us, force a powerwash.
     if (stbuf.st_uid != getuid() || !S_ISREG(stbuf.st_mode)) {
       clobber_args.push_back("keepimg");
+      clobber_args.push_back("preserve_lvs");
     } else {
       std::string str;
       if (!base::ReadFileToString(reset_file, &str)) {
