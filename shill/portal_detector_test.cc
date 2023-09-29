@@ -77,6 +77,10 @@ MATCHER(PositiveDelay, "") {
   return arg.is_positive();
 }
 
+MATCHER(ZeroDelay, "") {
+  return arg.is_zero();
+}
+
 MATCHER_P(IsResult, result, "") {
   return (result.http_phase == arg.http_phase &&
           result.http_status == arg.http_status &&
@@ -161,9 +165,9 @@ class PortalDetectorTest : public Test {
   }
 
   void StartTrialTask() {
-    EXPECT_CALL(*http_request(), Start(_, _, _, _, _))
+    EXPECT_CALL(*http_request(), Start)
         .WillOnce(Return(HttpRequest::kResultInProgress));
-    EXPECT_CALL(*https_request(), Start(_, _, _, _, _))
+    EXPECT_CALL(*https_request(), Start)
         .WillOnce(Return(HttpRequest::kResultInProgress));
     portal_detector()->StartTrialTask();
   }
@@ -195,7 +199,7 @@ class PortalDetectorTest : public Test {
   }
 
   void StartAttempt() {
-    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
     EXPECT_TRUE(StartPortalRequest());
     StartTrialTask();
   }
@@ -239,7 +243,7 @@ TEST_F(PortalDetectorTest, Constructor) {
 
 TEST_F(PortalDetectorTest, InvalidURL) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta())).Times(0);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay())).Times(0);
   auto probing_configuration = MakeProbingConfiguration();
   probing_configuration.portal_http_url = kBadURL;
   portal_detector()->set_probing_configuration_for_testing(
@@ -255,7 +259,7 @@ TEST_F(PortalDetectorTest, IsInProgress) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
 
   // Once the trial is started, IsInProgress should return true.
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(StartPortalRequest());
 
   StartTrialTask();
@@ -272,14 +276,14 @@ TEST_F(PortalDetectorTest, IsInProgress) {
 }
 
 TEST_F(PortalDetectorTest, HttpStartAttemptFailed) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(StartPortalRequest());
 
   // Expect that the HTTP request will be started -- return failure.
-  EXPECT_CALL(*http_request(), Start(_, _, _, _, _))
+  EXPECT_CALL(*http_request(), Start)
       .WillOnce(Return(HttpRequest::kResultDNSFailure));
-  EXPECT_CALL(*https_request(), Start(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta())).Times(0);
+  EXPECT_CALL(*https_request(), Start).Times(0);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay())).Times(0);
 
   // Expect a non-final failure to be relayed to the caller.
   PortalDetector::Result result;
@@ -295,19 +299,19 @@ TEST_F(PortalDetectorTest, HttpStartAttemptFailed) {
 }
 
 TEST_F(PortalDetectorTest, HttpsStartAttemptFailed) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(StartPortalRequest());
 
   // Expect that the HTTP request will be started successfully and the
   // HTTPS request will fail to start.
-  EXPECT_CALL(*http_request(), Start(_, _, _, _, _))
+  EXPECT_CALL(*http_request(), Start)
       .WillOnce(Return(HttpRequest::kResultInProgress));
-  EXPECT_CALL(*https_request(), Start(_, _, _, _, _))
+  EXPECT_CALL(*https_request(), Start)
       .WillOnce(Return(HttpRequest::kResultDNSFailure));
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta())).Times(0);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay())).Times(0);
 
   // Expect PortalDetector will wait for HTTP probe completion.
-  EXPECT_CALL(callback_target(), ResultCallback(_)).Times(0);
+  EXPECT_CALL(callback_target(), ResultCallback).Times(0);
 
   portal_detector()->StartTrialTask();
   EXPECT_TRUE(portal_detector()->IsInProgress());
@@ -326,8 +330,8 @@ TEST_F(PortalDetectorTest, HttpsStartAttemptFailed) {
 }
 
 TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmeidateRestart) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
-  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
   EXPECT_EQ(0, portal_detector()->attempt_count());
   EXPECT_TRUE(StartPortalRequest());
 
@@ -343,7 +347,7 @@ TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmeidateRestart) {
   portal_detector()->StartTrialTask();
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
-  EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_positive());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, PositiveDelay()));
   EXPECT_TRUE(RestartPortalRequest());
 
@@ -352,46 +356,46 @@ TEST_F(PortalDetectorTest, FailureToStartDoesNotCauseImmeidateRestart) {
 }
 
 TEST_F(PortalDetectorTest, GetNextAttemptDelayUnchangedUntilTrialStarts) {
-  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(StartPortalRequest());
-  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
 
   StartTrialTask();
-  EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_positive());
 }
 
 TEST_F(PortalDetectorTest, ResetAttemptDelays) {
-  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(StartPortalRequest());
   StartTrialTask();
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
-  EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_positive());
   portal_detector_->ResetAttemptDelays();
-  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(StartPortalRequest());
   StartTrialTask();
-  EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_positive());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 }
 
 TEST_F(PortalDetectorTest, DelayedAttempt) {
   const auto delay = base::Seconds(123);
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay));
   EXPECT_TRUE(StartPortalRequest(delay));
 }
 
 TEST_F(PortalDetectorTest, Restart) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
-  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
   EXPECT_EQ(0, portal_detector()->attempt_count());
   EXPECT_TRUE(StartPortalRequest());
   EXPECT_EQ(portal_detector()->http_url_.ToString(), kHttpUrl);
@@ -403,8 +407,8 @@ TEST_F(PortalDetectorTest, Restart) {
   ExpectCleanupTrial();
 
   auto next_delay = portal_detector()->GetNextAttemptDelay();
-  EXPECT_GT(next_delay, base::TimeDelta());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
+  EXPECT_TRUE(next_delay.is_positive());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, PositiveDelay()));
   EXPECT_TRUE(RestartPortalRequest());
   StartTrialTask();
   EXPECT_EQ(2, portal_detector()->attempt_count());
@@ -417,8 +421,8 @@ TEST_F(PortalDetectorTest, Restart) {
 TEST_F(PortalDetectorTest, ResetAttemptDelaysAndRestart) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
-  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
   EXPECT_EQ(0, portal_detector()->attempt_count());
   EXPECT_TRUE(StartPortalRequest());
   StartTrialTask();
@@ -430,13 +434,13 @@ TEST_F(PortalDetectorTest, ResetAttemptDelaysAndRestart) {
   ExpectCleanupTrial();
 
   auto next_delay = portal_detector()->GetNextAttemptDelay();
-  EXPECT_GT(next_delay, base::TimeDelta());
+  EXPECT_TRUE(next_delay.is_positive());
 
   portal_detector()->ResetAttemptDelays();
   auto reset_delay = portal_detector()->GetNextAttemptDelay();
-  EXPECT_EQ(reset_delay, base::TimeDelta());
+  EXPECT_TRUE(reset_delay.is_zero());
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, reset_delay)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(RestartPortalRequest());
   StartTrialTask();
   EXPECT_EQ(2, portal_detector()->attempt_count());
@@ -450,8 +454,8 @@ TEST_F(PortalDetectorTest, MultipleRestarts) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   EXPECT_FALSE(portal_detector()->IsTrialScheduled());
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
-  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
+  EXPECT_TRUE(portal_detector()->GetNextAttemptDelay().is_zero());
   EXPECT_EQ(0, portal_detector()->attempt_count());
   EXPECT_TRUE(StartPortalRequest());
   StartTrialTask();
@@ -462,8 +466,8 @@ TEST_F(PortalDetectorTest, MultipleRestarts) {
   ExpectCleanupTrial();
 
   auto next_delay = portal_detector()->GetNextAttemptDelay();
-  EXPECT_GT(next_delay, base::TimeDelta());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
+  EXPECT_TRUE(next_delay.is_positive());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, PositiveDelay()));
   EXPECT_TRUE(RestartPortalRequest());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
@@ -471,8 +475,8 @@ TEST_F(PortalDetectorTest, MultipleRestarts) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   EXPECT_TRUE(portal_detector()->IsTrialScheduled());
 
-  EXPECT_GT(next_delay, base::TimeDelta());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
+  EXPECT_TRUE(next_delay.is_positive());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, PositiveDelay()));
   EXPECT_TRUE(RestartPortalRequest());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
@@ -491,7 +495,7 @@ TEST_F(PortalDetectorTest, MultipleRestarts) {
 
 TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
   EXPECT_TRUE(StartPortalRequest());
   EXPECT_EQ(portal_detector()->http_url_.ToString(), kHttpUrl);
   Mock::VerifyAndClearExpectations(&dispatcher_);
@@ -514,10 +518,14 @@ TEST_F(PortalDetectorTest, AttemptCount) {
 
   auto last_delay = base::TimeDelta();
   for (int i = 1; i < 4; i++) {
-    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
+    if (i == 1) {
+      EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay()));
+    } else {
+      EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, PositiveDelay()));
+    }
     EXPECT_TRUE(RestartPortalRequest());
     StartTrialTask();
-    // FIXME EXPECT_EQ(i, portal_detector()->attempt_count());
+    EXPECT_EQ(i, portal_detector()->attempt_count());
     const auto next_delay = portal_detector()->GetNextAttemptDelay();
     EXPECT_GT(next_delay, last_delay);
     last_delay = next_delay;
