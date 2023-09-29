@@ -103,11 +103,11 @@ void ClatService::Disable() {
   if (!is_enabled_) {
     return;
   }
-  is_enabled_ = false;
-
   // We keep `clat_running_device_` here because we want to start CLAT
   // immediately after the feature is enabled again.
   StopClat(/*clear_running_device=*/false);
+
+  is_enabled_ = false;
 }
 
 void ClatService::OnShillDefaultLogicalDeviceChanged(

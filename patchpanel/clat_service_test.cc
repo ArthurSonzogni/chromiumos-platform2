@@ -392,7 +392,7 @@ TEST_F(ClatServiceTest, VerifyStartAndStopClat) {
 
   target.OnShillDefaultLogicalDeviceChanged(&v4only_dev, nullptr);
 
-  EXPECT_CALL(system_, WriteConfigFile(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(system_, WriteConfigFile).WillOnce(Return(true));
   EXPECT_CALL(
       datapath_,
       AddTunTap(StrEq("tun_nat64"), Eq(std::nullopt),
@@ -427,6 +427,32 @@ TEST_F(ClatServiceTest, VerifyStartAndStopClat) {
   EXPECT_CALL(datapath_, RemoveTunTap(StrEq("tun_nat64"), DeviceMode::kTun));
   // StopClat() is called.
   target.OnShillDefaultLogicalDeviceChanged(&v4only_dev, &v6only_dev);
+}
+
+TEST_F(ClatServiceTest, CleanUpDatapathWhenDisabled) {
+  ClatService target(&datapath_, &process_manager_, &system_);
+  target.Enable();
+
+  auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 2);
+  ON_CALL(system_, WriteConfigFile).WillByDefault(Return(true));
+  ON_CALL(datapath_, AddTunTap).WillByDefault(Return("tun_nat64"));
+  ON_CALL(datapath_, ModifyClatAcceptRules).WillByDefault(Return(true));
+  ON_CALL(datapath_, AddIPv6HostRoute).WillByDefault(Return(true));
+  ON_CALL(datapath_, AddIPv6NeighborProxy).WillByDefault(Return(true));
+  ON_CALL(datapath_, AddIPv4RouteToTable).WillByDefault(Return(true));
+  // Start CLAT.
+  target.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+
+  EXPECT_CALL(datapath_, DeleteIPv4RouteFromTable(StrEq("tun_nat64"),
+                                                  net_base::IPv4CIDR(), 249));
+  EXPECT_CALL(datapath_,
+              RemoveIPv6NeighborProxy(StrEq("v6only"),
+                                      AddressHasPrefix("2001:db8::/64")));
+  EXPECT_CALL(datapath_,
+              ModifyClatAcceptRules(Iptables::Command::kD, StrEq("tun_nat64")));
+  EXPECT_CALL(datapath_, RemoveIPv6HostRoute(CIDRHasPrefix("2001:db8::/64")));
+  EXPECT_CALL(datapath_, RemoveTunTap(StrEq("tun_nat64"), DeviceMode::kTun));
+  target.Disable();
 }
 
 }  // namespace
