@@ -85,11 +85,6 @@ class RoutingTable {
                                net_base::IPFamily family,
                                RoutingTableEntry* entry);
 
-  // Get the default IPv6 route associated with an interface which was created
-  // by the kernel. The route is copied into |*entry|.
-  virtual bool GetDefaultRouteFromKernel(int interface_index,
-                                         RoutingTableEntry* entry);
-
   // Set the default route for an interface with index |interface_index|,
   // given the IPAddress of the gateway |gateway_address| and priority
   // |metric|.

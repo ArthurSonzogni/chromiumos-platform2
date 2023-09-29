@@ -306,27 +306,6 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
   }
 }
 
-bool RoutingTable::GetDefaultRouteFromKernel(int interface_index,
-                                             RoutingTableEntry* entry) {
-  SLOG(2) << __func__ << " index " << interface_index;
-
-  RouteTables::iterator table = tables_.find(interface_index);
-  if (table == tables_.end()) {
-    SLOG(2) << __func__ << " no table";
-    return false;
-  }
-
-  for (auto& nent : table->second) {
-    if (nent.dst.IsDefault() &&
-        nent.dst.GetFamily() == net_base::IPFamily::kIPv6 &&
-        nent.metric == kKernelSlaacRouteMetric) {
-      *entry = nent;
-      return true;
-    }
-  }
-  return false;
-}
-
 bool RoutingTable::SetDefaultRoute(int interface_index,
                                    const net_base::IPAddress& gateway_address,
                                    uint32_t table_id) {
