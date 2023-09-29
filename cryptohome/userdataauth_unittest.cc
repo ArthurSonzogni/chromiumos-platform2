@@ -4965,6 +4965,17 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return reply_future.Get();
   }
 
+  std::optional<user_data_auth::RestoreDeviceKeyReply> RestoreDeviceKeySync(
+      const user_data_auth::RestoreDeviceKeyRequest& in_request) {
+    TestFuture<user_data_auth::RestoreDeviceKeyReply> reply_future;
+    userdataauth_->RestoreDeviceKey(
+        in_request,
+        reply_future
+            .GetCallback<const user_data_auth::RestoreDeviceKeyReply&>());
+    RunUntilIdle();
+    return reply_future.Get();
+  }
+
   std::optional<user_data_auth::ModifyAuthFactorIntentsReply>
   ModifyAuthFactorIntentsSync(
       const user_data_auth::ModifyAuthFactorIntentsRequest& in_request) {
@@ -5180,6 +5191,60 @@ TEST_F(UserDataAuthApiTest, MountFailed) {
                    user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
+}
+
+TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithoutPersistentVault) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+  scoped_refptr<MockMount> mount = new MockMount();
+  new_mounts_.push_back(mount.get());
+
+  // Check that RestoreDeviceKey fails when the user session vault is not ready.
+  user_data_auth::RestoreDeviceKeyRequest restore_req;
+  restore_req.set_auth_session_id(session_id.value());
+  std::optional<user_data_auth::RestoreDeviceKeyReply> restore_reply =
+      RestoreDeviceKeySync(restore_req);
+  ASSERT_TRUE(restore_reply.has_value());
+  EXPECT_THAT(restore_reply->error_info(),
+              HasPossibleActions(
+                  std::set({user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+}
+
+TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithEphemeralVault) {
+  // Prepare an auth session for ephemeral mount.
+  std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+      user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT,
+      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
+  ASSERT_TRUE(session_id.has_value());
+
+  // Ensure that the ephemeral mount succeeds.
+  scoped_refptr<MockMount> mount = new MockMount();
+  EXPECT_CALL(*mount, MountEphemeralCryptohome(_))
+      .WillOnce(ReturnOk<StorageError>());
+  EXPECT_CALL(homedirs_, GetPlainOwner(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(kUsername2), Return(true)));
+  new_mounts_.push_back(mount.get());
+
+  // Prepare the ephemeral vault.
+  user_data_auth::PrepareEphemeralVaultRequest prepare_req;
+  prepare_req.set_auth_session_id(session_id.value());
+  std::optional<user_data_auth::PrepareEphemeralVaultReply> prepare_reply =
+      PrepareEphemeralVaultSync(prepare_req);
+
+  ASSERT_TRUE(prepare_reply.has_value());
+  EXPECT_EQ(prepare_reply->error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Check that RestoreDeviceKey fails when the user session is ephemeral.
+  user_data_auth::RestoreDeviceKeyRequest restore_req;
+  restore_req.set_auth_session_id(session_id.value());
+  std::optional<user_data_auth::RestoreDeviceKeyReply> restore_reply =
+      RestoreDeviceKeySync(restore_req);
+  ASSERT_TRUE(restore_reply.has_value());
+  EXPECT_THAT(restore_reply->error_info(),
+              HasPossibleActions(
+                  std::set({user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
 }
 
 TEST_F(UserDataAuthApiTest, GuestMountFailed) {

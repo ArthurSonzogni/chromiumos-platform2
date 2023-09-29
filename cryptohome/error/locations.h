@@ -2013,6 +2013,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNameTooLongInUpdateAuthFactorMetadata = 3541,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockRemoveCredential = 3542,
+  /* ./user_session/real_user_session.cc */
+  kLocUserSessionRestoreKeyFailed = 3543,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInRestoreDeviceKey = 3544,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthEphemeralAuthSessionAttemptRestoreDeviceKey = 3545,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthGetSessionFailedInRestoreDeviceKey = 3546,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthRestoreDeviceKeyFailed = 3547,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

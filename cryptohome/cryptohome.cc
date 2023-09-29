@@ -259,6 +259,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "terminate_auth_factor",
                                     "prepare_and_add_auth_factor",
                                     "prepare_and_authenticate_auth_factor",
+                                    "restore_device_key",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -321,6 +322,7 @@ enum ActionEnum {
   ACTION_TERMINATE_AUTH_FACTOR,
   ACTION_PREPARE_AND_ADD_AUTH_FACTOR,
   ACTION_PREPARE_AND_AUTHENTICATE_AUTH_FACTOR,
+  ACTION_RESTORE_DEVICE_KEY,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -2986,6 +2988,34 @@ int main(int argc, char** argv) {
                  action.c_str())) {
     return DoPrepareAuthenticateTerminate(printer, cl, userdataauth_proxy,
                                           misc_proxy);
+  } else if (!strcmp(switches::kActions[switches::ACTION_RESTORE_DEVICE_KEY],
+                     action.c_str())) {
+    user_data_auth::RestoreDeviceKeyRequest req;
+    user_data_auth::RestoreDeviceKeyReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.RestoreDeviceKey(req, &reply, &error, timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "RestoreDeviceKey call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+
+    printer.PrintReplyProtobuf(reply);
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput("Failed to restore device key.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printer.PrintHumanOutput("Restored device key.\n");
   } else {
     printer.PrintHumanOutput(
         "Unknown action or no action given.  Available actions:\n");

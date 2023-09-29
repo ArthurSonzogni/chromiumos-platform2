@@ -1355,6 +1355,34 @@ void UserDataAuthAdaptor::DoResetApplicationContainer(
   response->Return(reply);
 }
 
+void UserDataAuthAdaptor::RestoreDeviceKey(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::RestoreDeviceKeyReply>> response,
+    const user_data_auth::RestoreDeviceKeyRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoRestoreDeviceKey, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::RestoreDeviceKeyReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoRestoreDeviceKey(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::RestoreDeviceKeyReply>> response,
+    const user_data_auth::RestoreDeviceKeyRequest& in_request) {
+  service_->RestoreDeviceKey(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::RestoreDeviceKeyReply>> local_response,
+             const user_data_auth::RestoreDeviceKeyReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::GetArcDiskFeatures(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetArcDiskFeaturesReply>> response,

@@ -546,6 +546,20 @@ do.
       </arg>
     </method>
 
+    <!-- Restore encryption key. -->
+    <method name="RestoreDeviceKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RestoreDeviceKeyRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RestoreDeviceKeyReply"/>
+      </arg>
+    </method>
+
     <!-- Gets disk features related to ARC. -->
     <method name="GetArcDiskFeatures">
       <annotation name="org.chromium.DBus.Method.Kind"

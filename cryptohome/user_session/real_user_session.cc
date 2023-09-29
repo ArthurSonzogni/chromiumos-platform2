@@ -27,6 +27,7 @@
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/error.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/username.h"
 
@@ -153,6 +154,19 @@ MountStatus RealUserSession::MountGuest() {
       ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot,
                       PossibleAction::kPowerwash}),
       status->error(), std::nullopt);
+}
+
+MountStatus RealUserSession::RestoreDeviceKey(
+    const FileSystemKeyset& fs_keyset) {
+  StorageStatus status = mount_->RestoreCryptohomeKey(fs_keyset);
+  if (!status.ok()) {
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(kLocUserSessionRestoreKeyFailed),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kDeleteVault}),
+        status->error());
+  }
+
+  return OkStatus<CryptohomeMountError>();
 }
 
 bool RealUserSession::Unmount() {

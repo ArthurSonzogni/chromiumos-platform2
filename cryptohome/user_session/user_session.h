@@ -19,6 +19,7 @@
 #include "cryptohome/migration_type.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/storage/cryptohome_vault.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/username.h"
 
@@ -65,6 +66,9 @@ class UserSession {
   // Creates and mounts a ramdisk backed ephemeral session for an anonymous
   // user.
   virtual MountStatus MountGuest() = 0;
+
+  // Restore key to the user's active mount.
+  virtual MountStatus RestoreDeviceKey(const FileSystemKeyset& fs_keyset) = 0;
 
   // Unmounts the session.
   virtual bool Unmount() = 0;

@@ -4094,4 +4094,61 @@ void UserDataAuth::CreateVaultKeyset(
                      std::move(on_done)));
 }
 
+void UserDataAuth::RestoreDeviceKey(
+    user_data_auth::RestoreDeviceKeyRequest request,
+    base::OnceCallback<void(const user_data_auth::RestoreDeviceKeyReply&)>
+        on_done) {
+  AssertOnMountThread();
+  user_data_auth::RestoreDeviceKeyReply reply;
+
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  if (!auth_session_status.ok()) {
+    auto status =
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInRestoreDeviceKey))
+            .Wrap(std::move(auth_session_status).err_status());
+    ReplyWithError(std::move(on_done), reply, status);
+    return;
+  }
+
+  InUseAuthSession& auth_session = *auth_session_status;
+  if (auth_session->ephemeral_user()) {
+    auto status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthEphemeralAuthSessionAttemptRestoreDeviceKey),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    ReplyWithError(std::move(on_done), reply, status);
+    return;
+  }
+
+  // Check the user is already mounted.
+  UserSession* const session = sessions_->Find(auth_session->username());
+  if (!session || !session->IsActive()) {
+    auto status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthGetSessionFailedInRestoreDeviceKey),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    ReplyWithError(std::move(on_done), reply, status);
+    return;
+  }
+
+  MountStatus mount_status =
+      session->RestoreDeviceKey(auth_session->file_system_keyset());
+  if (!mount_status.ok()) {
+    RemoveInactiveUserSession(auth_session->username());
+    auto status =
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthRestoreDeviceKeyFailed))
+            .Wrap(std::move(mount_status).err_status());
+    ReplyWithError(std::move(on_done), reply, status);
+    return;
+  }
+
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+}
+
 }  // namespace cryptohome

@@ -21,6 +21,7 @@
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/storage/cryptohome_vault.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/user_session/user_session.h"
@@ -66,6 +67,8 @@ class RealUserSession : public UserSession {
   MountStatus MountEphemeral(const Username& username) override;
 
   MountStatus MountGuest() override;
+
+  MountStatus RestoreDeviceKey(const FileSystemKeyset& fs_keyset) override;
 
   bool Unmount() override;
 
