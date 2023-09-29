@@ -221,9 +221,11 @@ if get_option('with_tests')
       'sommelier-transform-test.cc',
       'sommelier-output-test.cc',
       'sommelier-window-test.cc',
+      'sommelier-x11event-test.cc',
       'sommelier-xdg-shell-test.cc',
       'testing/mock-wayland-channel.cc',
       'testing/sommelier-test-util.cc',
+      'xcb/fake-xcb-shim.cc',
     ] + wl_outs + shim_outs + gamepad_testing,
     link_with: libsommelier,
     dependencies: [
