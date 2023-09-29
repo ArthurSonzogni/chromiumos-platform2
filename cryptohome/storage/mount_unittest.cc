@@ -564,6 +564,34 @@ TEST_F(PersistentSystemTest, MountRestoreSelinux) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
+TEST_F(PersistentSystemTest, MountEvictKeyRestoreKey) {
+  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
+  CryptohomeVault::Options options = {
+      .force_type = EncryptedContainerType::kDmcrypt,
+  };
+
+  MockPreclearKeyring(/*success=*/true);
+  SetDmcryptPrereqs(kUser);
+  EXPECT_CALL(*mock_mount_interface_,
+              PerformMount(MountType::DMCRYPT, kUser, _, _))
+      .WillOnce(Return(StorageStatus::Ok()));
+  EXPECT_CALL(*mock_mount_interface_, MountPerformed())
+      .WillRepeatedly(Return(true));
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), IsOk());
+  ASSERT_THAT(mount_->EvictCryptohomeKey(), IsOk());
+
+  ASSERT_THAT(mount_->RestoreCryptohomeKey(keyset), IsOk());
+}
+
+TEST_F(PersistentSystemTest, RestoreKeyFailedWithoutVault) {
+  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
+
+  // Intentionally skip MountCryptohome() call so there is no
+  // valid vault to carry out restore operation.
+  ASSERT_THAT(mount_->RestoreCryptohomeKey(keyset),
+              IsError(MOUNT_ERROR_KEY_RESTORE_FAILED));
+}
+
 }  // namespace
 
 class EphemeralSystemTest : public ::testing::Test {

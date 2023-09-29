@@ -171,12 +171,12 @@ StorageStatus CryptohomeVault::RestoreKey(const FileSystemKey& filesystem_key) {
   }
   if (!container_->RestoreKey(filesystem_key)) {
     return StorageStatus::Make(FROM_HERE, "Failed to restore container key.",
-                               MOUNT_ERROR_KEYRING_FAILED);
+                               MOUNT_ERROR_KEY_RESTORE_FAILED);
   }
   if (cache_container_ && !cache_container_->RestoreKey(filesystem_key)) {
     return StorageStatus::Make(FROM_HERE,
                                "Failed to restore cache container key.",
-                               MOUNT_ERROR_KEYRING_FAILED);
+                               MOUNT_ERROR_KEY_RESTORE_FAILED);
   }
   for (auto& [name, container] : application_containers_) {
     if (!container->RestoreKey(filesystem_key)) {
@@ -184,7 +184,7 @@ StorageStatus CryptohomeVault::RestoreKey(const FileSystemKey& filesystem_key) {
                  << name;
       return StorageStatus::Make(
           FROM_HERE, "Failed to restore key for an application container.",
-          MOUNT_ERROR_KEYRING_FAILED);
+          MOUNT_ERROR_KEY_RESTORE_FAILED);
     }
   }
   return StorageStatus::Ok();

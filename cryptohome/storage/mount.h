@@ -100,6 +100,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // dmcrypt device.
   virtual StorageStatus EvictCryptohomeKey();
 
+  // RestoreCryptohomeKey restores the key into the cryptohome vault.
+  // Currently only support dmcrypt based vault.
+  virtual StorageStatus RestoreCryptohomeKey(
+      const FileSystemKeyset& file_system_keys);
+
   // Get the HomeDirs instance
   virtual HomeDirs* homedirs() { return homedirs_; }
 

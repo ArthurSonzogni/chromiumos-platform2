@@ -146,8 +146,7 @@ StorageStatus Mount::MountCryptohome(
   // Set up the cryptohome vault for mount.
   RETURN_IF_ERROR(user_cryptohome_vault_->Setup(file_system_keyset.Key()))
           .LogError()
-      << "Failed to setup persisten vault";
-
+      << "Failed to setup persistent vault";
   ReportTimerStop(kVaultSetupTimer);
 
   std::string key_signature =
@@ -269,6 +268,24 @@ StorageStatus Mount::EvictCryptohomeKey() {
   }
   return StorageStatus::Make(FROM_HERE, "Failed to evict cryptohome key.",
                              MOUNT_ERROR_INVALID_ARGS);
+}
+
+StorageStatus Mount::RestoreCryptohomeKey(
+    const FileSystemKeyset& file_system_keyset) {
+  if (!user_cryptohome_vault_) {
+    return StorageStatus::Make(FROM_HERE, "Cryptohome vault has not set up.",
+                               MOUNT_ERROR_KEY_RESTORE_FAILED);
+  }
+  if (!IsNonEphemeralMounted()) {
+    return StorageStatus::Make(
+        FROM_HERE, "Non-mounted or ephemeral mount can't restore key.",
+        MOUNT_ERROR_KEY_RESTORE_FAILED);
+  }
+
+  RETURN_IF_ERROR(user_cryptohome_vault_->RestoreKey(file_system_keyset.Key()))
+          .LogError()
+      << "Failed to restore key of the persistent vault";
+  return StorageStatus::Ok();
 }
 
 MountType Mount::GetMountType() const {
