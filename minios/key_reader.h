@@ -25,9 +25,13 @@ constexpr int kMaxInputLength = 64;
 // Increasing `kRepeatedSensitivity` will slow key repeating speed.
 constexpr int kRepeatedSensitivity = 3;
 
-// Key state parameters.
+// Key state parameter.
 extern const int kFdsMax;
-extern const int kKeyMax;
+
+// Input event values.
+const int kKeyRelease = 0;
+const int kKeyPress = 1;
+const int kKeyHold = 2;
 
 class KeyReader {
  public:
@@ -40,13 +44,8 @@ class KeyReader {
 
   class Delegate {
    public:
-    // Keeps track of key states based on the file descriptor index and whether
-    // the key event is a key press or key release event as given by
-    // `key_released`. `key_changed` is the ev code for the key. Only records
-    // key state for valid keys.
-    virtual void OnKeyPress(int fd_index,
-                            int key_changed,
-                            bool key_released) = 0;
+    // Forward a key press to the currently displayed screen.
+    virtual void OnKeyPress(int key) = 0;
   };
 
   // Initializes the `epfd_` and sets the callback. Listens for input keys based
@@ -98,9 +97,9 @@ class KeyReader {
   // returns true on success.
   virtual bool EpollCreate(base::ScopedFD* epfd);
 
-  // Waits for a valid key event and reads it into the input event struct. Sets
-  // fd index and returns true on success.
-  virtual bool GetEpEvent(int epfd, struct input_event* ev, int* index);
+  // Waits for a valid key event and reads it into the input event struct.
+  // Returns true on success.
+  virtual bool GetEpEvent(int epfd, struct input_event* ev);
 
   // Get epoll event using `GetEpEvent`. If the event is a key event and is for
   // a valid key, it and calls the Delegate `OnKeyPress` function to modify the

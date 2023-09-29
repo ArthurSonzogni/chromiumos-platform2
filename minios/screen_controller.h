@@ -25,6 +25,9 @@
 
 namespace minios {
 
+// Minimal set of keys supported by MiniOS. Keys 200 and above are dropped.
+constexpr int kKeyMax = 200;
+
 class ScreenController : public ScreenControllerInterface,
                          public KeyReader::Delegate {
  public:
@@ -112,11 +115,8 @@ class ScreenController : public ScreenControllerInterface,
   // Take next action if Dbus recovery flow is in progress.
   void HandleStateChanged(State::States state_state);
 
-  // This function overloads Delegate. It is only called when the key is
-  // valid and updates the key state for the given fd and key. Calls
-  // `SwitchState` to update the flow once key is recorded as being pressed
-  // and released.
-  void OnKeyPress(int fd_index, int key_changed, bool key_released) override;
+  // This function overloads `KeyReader::Delegate`.
+  void OnKeyPress(int key) override;
 
   // Reset MiniOs to its initial screen.
   bool ResetScreen(brillo::ErrorPtr* error);
@@ -137,11 +137,6 @@ class ScreenController : public ScreenControllerInterface,
   ProcessManagerInterface* process_manager_;
 
   KeyReader key_reader_;
-
-  // Records the key press for each fd and key, where the index of the fd is the
-  // row and the key code the column. Resets to false after key is released.
-  // Only tracks the valid keys.
-  std::vector<std::vector<bool>> key_states_;
 
   // Currently displayed screen. This class receives all the key events.
   std::unique_ptr<ScreenInterface> current_screen_;

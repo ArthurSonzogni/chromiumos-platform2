@@ -13,6 +13,7 @@
 #include <brillo/message_loops/message_loop.h>
 
 #include "minios/error.h"
+#include "minios/key_reader.h"
 #include "minios/recovery_installer.h"
 #include "minios/screen_types.h"
 #include "minios/screens/screen_debug_options.h"
@@ -36,9 +37,8 @@ ScreenController::ScreenController(
       update_engine_proxy_(update_engine_proxy),
       network_manager_(network_manager),
       process_manager_(process_manager),
-      key_reader_(
-          KeyReader{/*include_usb=*/true, GetKeyboardLayout(process_manager_)}),
-      key_states_(kFdsMax, std::vector<bool>(kKeyMax, false)) {}
+      key_reader_(KeyReader{/*include_usb=*/true,
+                            GetKeyboardLayout(process_manager_)}) {}
 
 bool ScreenController::Init() {
   if (!draw_utils_ || !draw_utils_->Init()) {
@@ -240,29 +240,15 @@ void ScreenController::UpdateLocale(ScreenInterface* screen,
   current_screen_->Show();
 }
 
-void ScreenController::OnKeyPress(int fd_index,
-                                  int key_changed,
-                                  bool key_released) {
+void ScreenController::OnKeyPress(int key) {
   CHECK(current_screen_) << "Could not send key event to screen.";
 
-  // Make sure you have seen a key press for this key before ending on key
-  // event release.
-  if (fd_index < 0 || key_changed < 0 || fd_index >= key_states_.size() ||
-      key_changed >= key_states_[0].size()) {
-    LOG(ERROR) << "Fd index or key code out of range.  Index: " << fd_index
-               << ". Key code: " << key_changed;
+  if (key < 0 || key >= kKeyMax) {
+    LOG(ERROR) << "Key code out of range. Key=" << key;
     return;
   }
 
-  if (key_released && key_states_[fd_index][key_changed]) {
-    key_states_[fd_index][key_changed] = false;
-    // Send key event to the currently displayed screen. It will decide what
-    // to do with it.
-    current_screen_->OnKeyPress(key_changed);
-    return;
-  } else if (!key_released) {
-    key_states_[fd_index][key_changed] = true;
-  }
+  current_screen_->OnKeyPress(key);
 }
 
 void ScreenController::GetState(State* state_out) {
