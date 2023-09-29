@@ -17,6 +17,10 @@
 #include "sommelier-util.h"    // NOLINT(build/include_directory)
 #include "virtualization/wayland_channel.h"
 
+#ifdef QUIRKS_SUPPORT
+#include "quirks/sommelier-quirks.h"
+#endif
+
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
@@ -196,6 +200,9 @@ struct sl_context {
   xcb_colormap_t colormaps[256];
   Timing* timing;
   const char* trace_filename;
+#ifdef QUIRKS_SUPPORT
+  Quirks quirks;
+#endif
 
   // Command-line configurable options.
   bool trace_system;

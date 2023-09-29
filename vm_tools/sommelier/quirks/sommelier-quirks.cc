@@ -3,15 +3,48 @@
 // found in the LICENSE file.
 
 #include "builddir/libsommelier.a.p/quirks/quirks.pb.h"
+#include <fcntl.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include "quirks/quirks.pb.h"
 #include "quirks/sommelier-quirks.h"
 #include <set>
 #include "sommelier-window.h"  // NOLINT(build/include_directory)
+#include <string.h>
+#include <unistd.h>
 
 void Quirks::Load(std::string textproto) {
   google::protobuf::TextFormat::MergeFromString(textproto, &active_config_);
   Update();
+}
+
+void Quirks::LoadFromCommaSeparatedFiles(const char* paths) {
+  const char* start = paths;
+  const char* end;
+  do {
+    // Find the next comma (or end of string).
+    end = strchrnul(start, ',');
+    // `start` and `end` delimit a path; load rules from it.
+    std::string path(start, end - start);
+    LoadFromFile(path);
+    // The next string starts after the comma
+    start = end + 1;
+    // Terminate on null char.
+  } while (*end != '\0');
+}
+
+void Quirks::LoadFromFile(std::string path) {
+  int fd = open(path.c_str(), O_RDONLY);
+  if (fd < 0) {
+    const char* e = strerror(errno);
+    fprintf(stderr, "Failed to open quirks config: %s: %s\n", path.c_str(), e);
+    return;
+  }
+  google::protobuf::io::FileInputStream f(fd);
+  if (google::protobuf::TextFormat::Merge(&f, &active_config_)) {
+    Update();
+  }
+  close(fd);
 }
 
 bool Quirks::IsEnabled(struct sl_window* window, int feature) {

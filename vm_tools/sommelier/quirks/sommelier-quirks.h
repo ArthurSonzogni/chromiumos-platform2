@@ -17,6 +17,12 @@ class Quirks {
   // Parse `textproto` as a Config proto, and merge it into the active config.
   void Load(std::string textproto);
 
+  // Call `LoadFromFile` for each filename separated by commas in `paths`.
+  void LoadFromCommaSeparatedFiles(const char* paths);
+
+  // Load a Config textproto from `path`, and merge it into the active config.
+  void LoadFromFile(std::string path);
+
   // Whether the given Feature (from quirks.proto) is enabled for the given
   // `window`, according to the active config.
   bool IsEnabled(struct sl_window* window, int feature);

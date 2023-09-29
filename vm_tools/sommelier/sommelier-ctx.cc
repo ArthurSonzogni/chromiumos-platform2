@@ -185,6 +185,9 @@ void sl_context_init_default(struct sl_context* ctx) {
   }
   ctx->timing = nullptr;
   ctx->trace_filename = nullptr;
+#ifdef QUIRKS_SUPPORT
+  new (&ctx->quirks) Quirks();
+#endif
   ctx->enable_xshape = false;
   ctx->enable_x11_move_windows = false;
   ctx->trace_system = false;

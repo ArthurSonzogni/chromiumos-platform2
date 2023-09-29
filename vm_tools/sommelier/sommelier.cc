@@ -3455,6 +3455,9 @@ static void sl_print_usage() {
       "  --trace-filename=PATH\t\tPath to Perfetto trace filename\n"
       "  --trace-system\t\tPerfetto trace to system daemon\n"
 #endif
+#ifdef QUIRKS_SUPPORT
+      "  --quirks-config=PATH[,PATH...]\tOne or more 'quirks' config files.\n"
+#endif
       "  --fullscreen-mode=MODE\tDefault fullscreen behavior (immersive,"
       " plain)\n"
       "  --noop-driver\t\tPass through to existing Wayland server"
@@ -3816,6 +3819,9 @@ int real_main(int argc, char** argv) {
   const char* xauth_path = getenv("SOMMELIER_XAUTH_PATH");
   const char* xfont_path = getenv("SOMMELIER_XFONT_PATH");
   const char* vm_id = getenv("SOMMELIER_VM_IDENTIFIER");
+#ifdef QUIRKS_SUPPORT
+  const char* quirks_paths = getenv("SOMMELIER_QUIRKS_CONFIG");
+#endif
   const char* socket_name = "wayland-0";
   bool noop_driver = false;
   struct wl_event_loop* event_loop;
@@ -3925,6 +3931,10 @@ int real_main(int argc, char** argv) {
     } else if (strstr(arg, "--trace-system") == arg) {
       ctx.trace_system = true;
 #endif
+#ifdef QUIRKS_SUPPORT
+    } else if (strstr(arg, "--quirks-config") == arg) {
+      quirks_paths = sl_arg_value(arg);
+#endif
     } else if (arg[0] == '-') {
       if (strcmp(arg, "--") == 0) {
         ctx.runprog = &argv[i + 1];
@@ -4007,6 +4017,12 @@ int real_main(int argc, char** argv) {
 
   ctx.support_damage_buffer = support_damage_buffer == nullptr ||
                               strcmp(support_damage_buffer, "1") == 0;
+
+#ifdef QUIRKS_SUPPORT
+  if (quirks_paths) {
+    ctx.quirks.LoadFromCommaSeparatedFiles(quirks_paths);
+  }
+#endif
 
   if (fullscreen_mode) {
     if (strcmp(fullscreen_mode, "immersive") == 0) {
