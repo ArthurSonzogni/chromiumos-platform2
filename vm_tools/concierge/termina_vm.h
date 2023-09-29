@@ -36,6 +36,7 @@
 
 namespace vm_tools::concierge {
 
+class GuestOsNetwork;
 class ScopedWlSocket;
 
 // The CPU cgroup where all the Termina main crosvm process should belong to.
@@ -95,7 +96,7 @@ class TerminaVm final : public VmBaseImpl {
 
   struct Config {
     uint32_t vsock_cid;
-    std::unique_ptr<patchpanel::Client> network_client;
+    std::unique_ptr<GuestOsNetwork> network;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
     std::string cros_vm_socket{kTerminaCrosvmSocket};
     base::FilePath runtime_dir;
@@ -236,7 +237,7 @@ class TerminaVm final : public VmBaseImpl {
       const spaced::StatefulDiskSpaceUpdate update) override;
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
-      const patchpanel::Client::TerminaAllocation& network_allocation,
+      std::unique_ptr<GuestOsNetwork> network,
       uint32_t vsock_cid,
       base::FilePath runtime_dir,
       base::FilePath log_path,
@@ -287,10 +288,9 @@ class TerminaVm final : public VmBaseImpl {
   // Sends a gRPC message to the VM to shutdown.
   grpc::Status SendVMShutdownMessage();
 
-  void set_kernel_version_for_testing(std::string kernel_version);
+  GuestOsNetwork* Network() const;
 
-  // Network IPv4 subnet and tap device allocation from patchpanel.
-  patchpanel::Client::TerminaAllocation network_alloc_;
+  void set_kernel_version_for_testing(std::string kernel_version);
 
   // Flags passed to vmc start.
   VmFeatures features_;

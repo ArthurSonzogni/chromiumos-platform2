@@ -10,14 +10,12 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_split.h>
 #include <base/time/time.h>
 #include <brillo/process/process.h>
-#include <chromeos/patchpanel/dbus/client.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 
@@ -25,11 +23,9 @@
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 
-namespace patchpanel {
-class Client;
-}
-
 namespace vm_tools::concierge {
+
+class ScopedNetwork;
 
 // See VmBaseImpl.Info.vm_memory_id
 typedef uint32_t VmMemoryId;
@@ -39,8 +35,8 @@ typedef uint32_t VmMemoryId;
 class VmBaseImpl {
  public:
   struct Config {
-    std::unique_ptr<patchpanel::Client> network_client;
     uint32_t vsock_cid{0};
+    std::unique_ptr<ScopedNetwork> network;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
     std::string cros_vm_socket{};
     base::FilePath runtime_dir;
@@ -49,7 +45,7 @@ class VmBaseImpl {
 
   VmBaseImpl(const VmBaseImpl&) = delete;
   VmBaseImpl& operator=(const VmBaseImpl&) = delete;
-  virtual ~VmBaseImpl() = default;
+  virtual ~VmBaseImpl();
 
   // The pid of the child process.
   pid_t pid() const { return process_.pid(); }
@@ -257,8 +253,7 @@ class VmBaseImpl {
   // VM.
   uint32_t seneschal_server_handle() const;
 
-  // DBus client for the networking service.
-  std::unique_ptr<patchpanel::Client> network_client_;
+  ScopedNetwork* GetNetwork() const;
 
   // Runtime directory for this VM.
   // TODO(abhishekbh): Try to move this to private.
@@ -282,6 +277,11 @@ class VmBaseImpl {
 
   // Handle the device resuming from a suspend.
   virtual void HandleSuspendDone() = 0;
+
+  // Scoped handle to the network resources allocated for this VM (over dbus),
+  // which will be removed when we destroy the VM. This is nullptr if network
+  // resources are not allocated for the VM.
+  std::unique_ptr<ScopedNetwork> network_handle_;
 
   // The socket that communicates directly with crosvm to change VM
   // configuration.

@@ -36,6 +36,7 @@
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/fake_crosvm_control.h"
+#include "vm_tools/concierge/network/arc_network.h"
 #include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
 #include "vm_tools/concierge/vmm_swap_metrics.h"
 #include "vm_tools/concierge/vmm_swap_tbw_policy.h"
@@ -963,7 +964,6 @@ class ArcVmTest : public ::testing::Test {
 
     vm_ = base::WrapUnique(new ArcVm(ArcVm::Config{
         .vsock_cid = vsock_cid,
-        .network_client = std::make_unique<patchpanel::FakeClient>(),
         .seneschal_server_proxy = nullptr,
         .vmm_swap_metrics = std::make_unique<VmmSwapMetrics>(
             apps::VmType::ARCVM,

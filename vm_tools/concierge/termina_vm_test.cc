@@ -26,7 +26,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/threading/thread.h>
-#include <chromeos/patchpanel/dbus/client.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/util/message_differencer.h>
@@ -35,6 +35,7 @@
 #include <net-base/ipv4_address.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
+#include "vm_tools/concierge/network/guest_os_network.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 using std::string;
@@ -134,6 +135,31 @@ class TerminaVmTest : public ::testing::Test {
   std::shared_ptr<grpc::Server> server_;
 
   base::WeakPtrFactory<TerminaVmTest> weak_factory_{this};
+};
+
+class TestGuestOsNetwork final : public GuestOsNetwork {
+ public:
+  explicit TestGuestOsNetwork(uint32_t vsock_cid)
+      : GuestOsNetwork(std::make_unique<patchpanel::FakeClient>(), vsock_cid) {}
+
+  ~TestGuestOsNetwork() override = default;
+
+  std::string TapDevice() const override { return "vmtap1"; }
+  net_base::IPv4Address AddressV4() const override {
+    return *net_base::IPv4Address::CreateFromString("100.115.92.26");
+  }
+  net_base::IPv4Address GatewayV4() const override {
+    return *net_base::IPv4Address::CreateFromString("100.115.92.25");
+  }
+  net_base::IPv4CIDR SubnetV4() const override {
+    return *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.24/30");
+  }
+  net_base::IPv4Address ContainerAddressV4() const override {
+    return *net_base::IPv4Address::CreateFromString("100.115.92.193");
+  }
+  net_base::IPv4CIDR ContainerSubnetV4() const override {
+    return *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/28");
+  }
 };
 
 // Test server that verifies the RPCs it receives with the expected RPCs.
@@ -364,21 +390,10 @@ void TerminaVmTest::SetUp() {
 
   // Allocate resources for the VM.
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
-  address_ = "100.115.92.26";
-  netmask_ = "255.255.255.252";
-  gateway_ = "100.115.92.25";
-  patchpanel::Client::TerminaAllocation network_alloc;
-  network_alloc.tap_device_ifname = "vmtap1";
-  network_alloc.termina_ipv4_subnet =
-      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.24/30");
-  network_alloc.termina_ipv4_address =
-      *net_base::IPv4Address::CreateFromString("100.115.92.26");
-  network_alloc.gateway_ipv4_address =
-      *net_base::IPv4Address::CreateFromString("100.115.92.25");
-  network_alloc.container_ipv4_subnet =
-      *net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.192/28");
-  network_alloc.container_ipv4_address =
-      *net_base::IPv4Address::CreateFromString("100.115.92.193");
+  auto network = std::make_unique<TestGuestOsNetwork>(vsock_cid);
+  address_ = network->AddressV4().ToString();
+  netmask_ = network->SubnetV4().ToNetmask().ToString();
+  gateway_ = network->GatewayV4().ToString();
   std::string stateful_device = "/dev/vdb";
   uint64_t stateful_size = (uint64_t)20 * 1024 * 1024 * 1024;
 
@@ -386,7 +401,7 @@ void TerminaVmTest::SetUp() {
   VmBuilder vm_builder;
   vm_builder.SetRootfs({.device = "/dev/vda", .path = base::FilePath("dummy")});
   vm_ = TerminaVm::CreateForTesting(
-      network_alloc, vsock_cid, temp_dir_.GetPath(), base::FilePath(),
+      std::move(network), vsock_cid, temp_dir_.GetPath(), base::FilePath(),
       std::move(stateful_device), stateful_size, kKernelVersion,
       std::move(stub), std::move(vm_builder));
   ASSERT_TRUE(vm_);

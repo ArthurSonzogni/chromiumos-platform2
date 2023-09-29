@@ -9,6 +9,7 @@
 #include <sys/un.h>
 
 #include <algorithm>
+#include <memory>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -17,6 +18,7 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -25,6 +27,7 @@
 #include <base/time/time.h>
 
 #include "vm_tools/common/vm_id.h"
+#include "vm_tools/concierge/network/plugin_vm_network.h"
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/tap_device_builder.h"
@@ -89,14 +92,13 @@ void TrySuspendVm(scoped_refptr<dbus::Bus> bus,
 // static
 std::unique_ptr<PluginVm> PluginVm::Create(Config config) {
   auto stateful_dir = std::move(config.stateful_dir);
-  auto subnet_index = std::move(config.subnet_index);
   auto enable_vnet_hdr = std::move(config.enable_vnet_hdr);
   auto vm_builder = std::move(config.vm_builder);
 
   auto vm = base::WrapUnique(new PluginVm(std::move(config)));
 
   if (!vm->CreateUsbListeningSocket() ||
-      !vm->Start(std::move(stateful_dir), subnet_index, enable_vnet_hdr,
+      !vm->Start(std::move(stateful_dir), enable_vnet_hdr,
                  std::move(vm_builder))) {
     return {};
   }
@@ -109,15 +111,6 @@ PluginVm::~PluginVm() {
 }
 
 bool PluginVm::StopVm() {
-  // Notify arc-patchpanel that the VM is down.
-  // This should run before the process existence check below since we still
-  // want to release the network resources on crash.
-  // Note the client will only be null during testing.
-  if (network_client_ &&
-      !network_client_->NotifyParallelsVmShutdown(id_hash_)) {
-    LOG(WARNING) << "Unable to notify networking services";
-  }
-
   // Notify permission service of VM destruction.
   if (!permission_token_.empty()) {
     vm_permission::UnregisterVm(bus_, vm_permission_service_proxy_, id_);
@@ -154,15 +147,6 @@ bool PluginVm::StopVm() {
 }
 
 bool PluginVm::Shutdown() {
-  // Notify arc-patchpanel that the VM is down.
-  // This should run before the process existence check below since we still
-  // want to release the network resources on crash.
-  // Note the client will only be null during testing.
-  if (network_client_ &&
-      !network_client_->NotifyParallelsVmShutdown(id_hash_)) {
-    LOG(WARNING) << "Unable to notify networking services";
-  }
-
   return !CheckProcessExists(process_.pid()) ||
          pvm::dispatcher::ShutdownVm(bus_, vmplugin_service_proxy_, id_) ==
              pvm::dispatcher::VmOpResult::SUCCESS;
@@ -170,7 +154,10 @@ bool PluginVm::Shutdown() {
 
 VmBaseImpl::Info PluginVm::GetInfo() const {
   VmBaseImpl::Info info = {
-      .ipv4_address = network_alloc_.parallels_ipv4_address.ToInAddr().s_addr,
+      .ipv4_address = static_cast<PluginVmNetwork*>(GetNetwork())
+                          ->Allocation()
+                          .parallels_ipv4_address.ToInAddr()
+                          .s_addr,
       .pid = process_.pid(),
       .cid = 0,
       .seneschal_server_handle = seneschal_server_handle(),
@@ -592,7 +579,7 @@ void PluginVm::VmToolsStateChanged(bool running) {
 
 PluginVm::PluginVm(Config config)
     : VmBaseImpl(VmBaseImpl::Config{
-          .network_client = std::move(config.network_client),
+          .network = std::move(config.network),
           .seneschal_server_proxy = std::move(config.seneschal_server_proxy),
           .runtime_dir = std::move(config.runtime_dir),
       }),
@@ -608,14 +595,9 @@ PluginVm::PluginVm(Config config)
 
   // Take ownership of the root and runtime directories.
   CHECK(root_dir_.Set(config.root_dir));
-
-  std::ostringstream oss;
-  oss << id_;
-  id_hash_ = std::hash<std::string>{}(oss.str());
 }
 
 bool PluginVm::Start(base::FilePath stateful_dir,
-                     int subnet_index,
                      bool enable_vnet_hdr,
                      VmBuilder vm_builder) {
   if (!base::PathExists(base::FilePath(pvm::kApplicationDir))) {
@@ -632,22 +614,14 @@ bool PluginVm::Start(base::FilePath stateful_dir,
     return false;
   }
 
-  // Get the network interface.
-  const auto network_alloc =
-      network_client_->NotifyParallelsVmStartup(id_hash_, subnet_index);
-  if (!network_alloc) {
-    LOG(ERROR) << "No network allocation available from patchpanel";
-    return false;
-  }
-  network_alloc_ = *network_alloc;
-
   // Open the tap device.
+  PluginVmNetwork* network = static_cast<PluginVmNetwork*>(GetNetwork());
   base::ScopedFD tap_fd =
-      OpenTapDevice(network_alloc->tap_device_ifname, enable_vnet_hdr,
+      OpenTapDevice(network->Allocation().tap_device_ifname, enable_vnet_hdr,
                     nullptr /*ifname_out*/);
   if (!tap_fd.is_valid()) {
     LOG(ERROR) << "Unable to open and configure TAP device "
-               << network_alloc->tap_device_ifname;
+               << network->Allocation().tap_device_ifname;
     return false;
   }
 

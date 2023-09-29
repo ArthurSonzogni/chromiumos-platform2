@@ -41,6 +41,8 @@
 
 namespace vm_tools::concierge {
 
+class ArcNetwork;
+
 // Disk index of the /data disk. It is the 4th disk in request.disks().
 constexpr unsigned int kDataDiskIndex = 3;
 
@@ -79,7 +81,7 @@ class ArcVm final : public VmBaseImpl {
   struct Config {
     base::FilePath kernel;
     uint32_t vsock_cid;
-    std::unique_ptr<patchpanel::Client> network_client;
+    std::unique_ptr<ArcNetwork> network;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
     bool is_vmm_swap_enabled;
     // The metrics sender for vmm-swap feature.
@@ -239,7 +241,7 @@ class ArcVm final : public VmBaseImpl {
   void RunVmmSwapOutAfterTrim();
   base::expected<SwapStatus, std::string> FetchVmmSwapStatus();
 
-  patchpanel::Client::ArcVMAllocation network_allocation_;
+  const patchpanel::Client::ArcVMAllocation& GetNetworkAllocation() const;
 
   // Proxy to the server providing shared directory access for this VM.
   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;

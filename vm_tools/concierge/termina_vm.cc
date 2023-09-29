@@ -43,6 +43,7 @@
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/future.h"
+#include "vm_tools/concierge/network/guest_os_network.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/tracing.h"
 #include "vm_tools/concierge/vm_base_impl.h"
@@ -125,8 +126,8 @@ void TerminaVm::MaitredDeleter::operator()(
 
 TerminaVm::TerminaVm(Config config)
     : VmBaseImpl(VmBaseImpl::Config{
-          .network_client = std::move(config.network_client),
           .vsock_cid = config.vsock_cid,
+          .network = std::move(config.network),
           .seneschal_server_proxy = std::move(config.seneschal_server_proxy),
           .cros_vm_socket = config.cros_vm_socket,
           .runtime_dir = std::move(config.runtime_dir),
@@ -174,15 +175,6 @@ std::string TerminaVm::GetCrosVmSerial(std::string hardware,
 }
 
 bool TerminaVm::Start(VmBuilder vm_builder) {
-  // Get the network IPv4 subnet and tap device allocation from patchpanel.
-  const auto network_alloc =
-      network_client_->NotifyTerminaVmStartup(vsock_cid_);
-  if (!network_alloc) {
-    LOG(ERROR) << "No network allocation available from patchpanel";
-    return false;
-  }
-  network_alloc_ = *network_alloc;
-
   // Sommelier relies on implicit modifier, which does not pass host modifier to
   // zwp_linux_buffer_params_v1_add. Graphics will be broken if modifiers are
   // enabled.  Sommelier shall be fixed to mirror what arc wayland_service does,
@@ -222,12 +214,11 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   }
 
   // Open the tap device.
-  base::ScopedFD tap_fd =
-      OpenTapDevice(network_alloc_.tap_device_ifname, true /*vnet_hdr*/,
-                    nullptr /*ifname_out*/);
+  base::ScopedFD tap_fd = OpenTapDevice(
+      Network()->TapDevice(), true /*vnet_hdr*/, nullptr /*ifname_out*/);
   if (!tap_fd.is_valid()) {
     LOG(ERROR) << "Unable to open and configure TAP device "
-               << network_alloc_.tap_device_ifname;
+               << Network()->TapDevice();
     return false;
   }
 
@@ -383,15 +374,6 @@ grpc::Status TerminaVm::SendVMShutdownMessage() {
 }
 
 bool TerminaVm::Shutdown() {
-  // Notify arc-patchpanel that the VM is down.
-  // This should run before the process existence check below since we still
-  // want to release the network resources on crash.
-  // Note the client will only be null during testing.
-  if (network_client_ &&
-      !network_client_->NotifyTerminaVmShutdown(vsock_cid_)) {
-    LOG(WARNING) << "Unable to notify networking services";
-  }
-
   // Notify permission service of VM destruction.
   if (!permission_token_.empty()) {
     vm_permission::UnregisterVm(bus_, vm_permission_service_proxy_, id_);
@@ -1036,21 +1018,21 @@ void TerminaVm::HandleStatefulUpdate(
 }
 
 net_base::IPv4Address TerminaVm::GatewayAddress() const {
-  return network_alloc_.gateway_ipv4_address;
+  return Network()->GatewayV4();
 }
 
 net_base::IPv4Address TerminaVm::IPv4Address() const {
-  return network_alloc_.termina_ipv4_address;
+  return Network()->AddressV4();
 }
 
 net_base::IPv4Address TerminaVm::Netmask() const {
-  return network_alloc_.termina_ipv4_subnet.ToNetmask();
+  return Network()->SubnetV4().ToNetmask();
 }
 
 net_base::IPv4CIDR TerminaVm::ContainerCIDRAddress() const {
   return *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      network_alloc_.container_ipv4_address,
-      network_alloc_.container_ipv4_subnet.prefix_length());
+      Network()->ContainerAddressV4(),
+      Network()->ContainerSubnetV4().prefix_length());
 }
 
 std::string TerminaVm::PermissionToken() const {
@@ -1073,6 +1055,10 @@ VmBaseImpl::Info TerminaVm::GetInfo() const {
   return info;
 }
 
+GuestOsNetwork* TerminaVm::Network() const {
+  return static_cast<GuestOsNetwork*>(GetNetwork());
+}
+
 void TerminaVm::set_kernel_version_for_testing(std::string kernel_version) {
   kernel_version_ = kernel_version;
 }
@@ -1089,7 +1075,7 @@ void TerminaVm::InitializeMaitredService(
 }
 
 std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
-    const patchpanel::Client::TerminaAllocation& network_allocation,
+    std::unique_ptr<GuestOsNetwork> network,
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
     base::FilePath log_path,
@@ -1105,6 +1091,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   };
   auto vm = base::WrapUnique(new TerminaVm(
       TerminaVm::Config{.vsock_cid = vsock_cid,
+                        .network = std::move(network),
                         .seneschal_server_proxy = nullptr,
                         .cros_vm_socket = "",
                         .runtime_dir = std::move(runtime_dir),
@@ -1116,7 +1103,6 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
                         .classification = apps::VmType::UNKNOWN}));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->InitializeMaitredService(std::move(stub));
-  vm->network_alloc_ = network_allocation;
   return vm;
 }
 

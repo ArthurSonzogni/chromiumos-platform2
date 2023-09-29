@@ -5,6 +5,7 @@
 #include "vm_tools/concierge/vm_base_impl.h"
 
 #include <optional>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -14,20 +15,23 @@
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/crosvm_control.h"
+#include "vm_tools/concierge/network/scoped_network.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {
 
 VmBaseImpl::VmBaseImpl(Config config)
-    : network_client_(std::move(config.network_client)),
-      seneschal_server_proxy_(std::move(config.seneschal_server_proxy)),
+    : seneschal_server_proxy_(std::move(config.seneschal_server_proxy)),
       vsock_cid_(config.vsock_cid),
+      network_handle_(std::move(config.network)),
       control_socket_path_(
           config.runtime_dir.Append(config.cros_vm_socket).value()) {
   // Take ownership of the runtime directory.
   CHECK(base::DirectoryExists(config.runtime_dir));
   CHECK(runtime_dir_.Set(config.runtime_dir));
 }
+
+VmBaseImpl::~VmBaseImpl() = default;
 
 std::optional<BalloonStats> VmBaseImpl::GetBalloonStats(
     std::optional<base::TimeDelta> timeout) {
@@ -162,6 +166,11 @@ uint32_t VmBaseImpl::seneschal_server_handle() const {
     return seneschal_server_proxy_->handle();
 
   return 0;
+}
+
+ScopedNetwork* VmBaseImpl::GetNetwork() const {
+  CHECK(network_handle_);
+  return network_handle_.get();
 }
 
 void VmBaseImpl::MakeRtVcpu() {

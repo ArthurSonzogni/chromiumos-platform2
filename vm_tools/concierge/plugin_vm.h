@@ -22,7 +22,6 @@
 #include <base/notreached.h>
 #include <brillo/process/process.h>
 #include <dbus/exported_object.h>
-#include <chromeos/patchpanel/dbus/client.h>
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/common/vm_id.h"
@@ -32,6 +31,8 @@
 #include "vm_tools/concierge/vm_builder.h"
 
 namespace vm_tools::concierge {
+
+class PluginVmNetwork;
 
 // The CPU cgroup where all the PluginVm crosvm processes (other than vcpu)
 // should belong to.
@@ -47,10 +48,9 @@ class PluginVm final : public VmBaseImpl {
     base::FilePath iso_dir;
     base::FilePath root_dir;
     base::FilePath runtime_dir;
-    std::unique_ptr<patchpanel::Client> network_client;
-    int subnet_index;
     bool enable_vnet_hdr;
     scoped_refptr<dbus::Bus> bus;
+    std::unique_ptr<PluginVmNetwork> network;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
     dbus::ObjectProxy* vm_permission_service_proxy;
     dbus::ObjectProxy* vmplugin_service_proxy;
@@ -126,7 +126,6 @@ class PluginVm final : public VmBaseImpl {
   void HandleSuspendImminent() override {}
   void HandleSuspendDone() override {}
   bool Start(base::FilePath stateful_dir,
-             int subnet_index,
              bool enable_vnet_hdr,
              VmBuilder vm_builder);
   bool CreateUsbListeningSocket();
@@ -142,7 +141,6 @@ class PluginVm final : public VmBaseImpl {
   // This VM ID. It is used to communicate with the dispatcher to request
   // VM state changes.
   const VmId id_;
-  std::size_t id_hash_;
 
   // Specifies directory holding ISO images that can be attached to the VM.
   base::FilePath iso_dir_;
@@ -150,9 +148,6 @@ class PluginVm final : public VmBaseImpl {
   // Allows to build skeleton of root file system for the plugin.
   // Individual directories, such as /etc, are mounted plugin jail.
   base::ScopedTempDir root_dir_;
-
-  // Network IPv4 subnet and tap device allocation from patchpanel.
-  patchpanel::Client::ParallelsAllocation network_alloc_;
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;

@@ -48,6 +48,7 @@
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/crosvm_control.h"
+#include "vm_tools/concierge/network/arc_network.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
@@ -261,8 +262,8 @@ SharedDataParam GetOemEtcSharedDataParam(uid_t euid, gid_t egid) {
 
 ArcVm::ArcVm(Config config)
     : VmBaseImpl(VmBaseImpl::Config{
-          .network_client = std::move(config.network_client),
           .vsock_cid = config.vsock_cid,
+          .network = std::move(config.network),
           .seneschal_server_proxy = std::move(config.seneschal_server_proxy),
           .cros_vm_socket = kCrosvmSocket,
           .runtime_dir = std::move(config.runtime_dir),
@@ -321,17 +322,9 @@ std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
 }
 
 bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
-  // Get the available network interfaces.
-  const auto result = network_client_->NotifyArcVmStartup(vsock_cid_);
-  if (!result) {
-    LOG(ERROR) << "Failed to created the initial network setup for ARCVM";
-    return false;
-  }
-  network_allocation_ = *result;
-
   // Open the tap device(s).
   bool no_tap_fd_added = true;
-  for (const auto& tap : network_allocation_.tap_device_ifnames) {
+  for (const auto& tap : GetNetworkAllocation().tap_device_ifnames) {
     auto fd = OpenTapDevice(tap, true /*vnet_hdr*/, nullptr /*ifname_out*/);
     if (!fd.is_valid()) {
       LOG(ERROR) << "Unable to open and configure TAP device " << tap;
@@ -521,8 +514,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
 
   if (!StartProcess(std::move(args).value())) {
     LOG(ERROR) << "Failed to start VM process";
-    // Release any network resources.
-    network_client_->NotifyArcVmShutdown(vsock_cid_);
     return false;
   }
 
@@ -530,13 +521,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
 }
 
 bool ArcVm::Shutdown() {
-  // Notify arc-patchpanel that ARCVM is down.
-  // This should run before the process existence check below since we still
-  // want to release the network resources on crash.
-  if (!network_client_->NotifyArcVmShutdown(vsock_cid_)) {
-    LOG(WARNING) << "Unable to notify networking services";
-  }
-
   // Do a check here to make sure the process is still around.  It may have
   // crashed and we don't want to be waiting around for an RPC response that's
   // never going to come.  kill with a signal value of 0 is explicitly
@@ -749,7 +733,7 @@ bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
 }
 
 uint32_t ArcVm::IPv4Address() const {
-  return network_allocation_.arc0_ipv4_address.ToInAddr().s_addr;
+  return GetNetworkAllocation().arc0_ipv4_address.ToInAddr().s_addr;
 }
 
 VmBaseImpl::Info ArcVm::GetInfo() const {
@@ -1420,6 +1404,10 @@ base::expected<SwapStatus, std::string> ArcVm::FetchVmmSwapStatus() {
     return base::unexpected("crosvm command error");
   }
   return status;
+}
+
+const patchpanel::Client::ArcVMAllocation& ArcVm::GetNetworkAllocation() const {
+  return static_cast<ArcNetwork*>(GetNetwork())->Allocation();
 }
 
 // static

@@ -102,6 +102,8 @@
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
+#include "vm_tools/concierge/network/guest_os_network.h"
+#include "vm_tools/concierge/network/termina_network.h"
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
@@ -2097,12 +2099,12 @@ StartVmResponse Service::StartVmInternal(
   }
   vm_info->set_cid(vsock_cid);
 
-  std::unique_ptr<patchpanel::Client> network_client =
-      patchpanel::Client::New(bus_);
-  if (!network_client) {
-    LOG(ERROR) << "Unable to open networking service client";
+  std::unique_ptr<GuestOsNetwork> network;
+  network = TerminaNetwork::Create(bus_, vsock_cid);
+  if (!network) {
+    LOG(ERROR) << "Unable to get network resources";
 
-    response.set_failure_reason("Unable to open network service client");
+    response.set_failure_reason("Unable to get network resources");
     return response;
   }
 
@@ -2232,7 +2234,7 @@ StartVmResponse Service::StartVmInternal(
 
   auto vm = TerminaVm::Create(TerminaVm::Config{
       .vsock_cid = vsock_cid,
-      .network_client = std::move(network_client),
+      .network = std::move(network),
       .seneschal_server_proxy = std::move(server_proxy),
       .runtime_dir = std::move(runtime_dir),
       .log_path = std::move(log_path),

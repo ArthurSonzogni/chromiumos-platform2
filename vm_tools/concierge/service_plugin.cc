@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 
 #include <base/check.h>
@@ -13,6 +14,7 @@
 #include <base/uuid.h>
 
 #include "vm_tools/concierge/metrics/duration_recorder.h"
+#include "vm_tools/concierge/network/plugin_vm_network.h"
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/service.h"
@@ -207,12 +209,13 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
     return response;
   }
 
-  std::unique_ptr<patchpanel::Client> network_client =
-      patchpanel::Client::New(bus_);
-  if (!network_client) {
-    LOG(ERROR) << "Unable to open networking service client";
+  std::unique_ptr<PluginVmNetwork> network = PluginVmNetwork::Create(
+      bus_, vm_id, static_cast<int>(request.subnet_index()));
+  if (!network) {
+    LOG(ERROR) << "Failed to allocate network resources for pluginvm";
 
-    response.set_failure_reason("Unable to open network service client");
+    response.set_failure_reason(
+        "Failed to allocate network resources for pluginvm");
     return response;
   }
 
@@ -252,10 +255,9 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
       .iso_dir = std::move(iso_dir),
       .root_dir = root_dir.Take(),
       .runtime_dir = runtime_dir.Take(),
-      .network_client = std::move(network_client),
-      .subnet_index = static_cast<int>(request.subnet_index()),
       .enable_vnet_hdr = request.net_options().enable_vnet_hdr(),
       .bus = bus_,
+      .network = std::move(network),
       .seneschal_server_proxy = std::move(seneschal_server_proxy),
       .vm_permission_service_proxy = vm_permission_service_proxy_,
       .vmplugin_service_proxy = vmplugin_service_proxy_,

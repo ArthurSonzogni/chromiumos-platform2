@@ -27,6 +27,7 @@
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
+#include "vm_tools/concierge/network/arc_network.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/service_common.h"
 #include "vm_tools/concierge/service_start_vm_helper.h"
@@ -389,12 +390,11 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
   vm_info->set_cid(vsock_cid);
 
-  std::unique_ptr<patchpanel::Client> network_client =
-      patchpanel::Client::New(bus_);
-  if (!network_client) {
-    LOG(ERROR) << "Unable to open networking service client";
+  std::unique_ptr<ArcNetwork> network = ArcNetwork::Create(bus_, vsock_cid);
+  if (!network) {
+    LOG(ERROR) << "Unable to open networking service";
 
-    response.set_failure_reason("Unable to open network service client");
+    response.set_failure_reason("Unable to open network service");
     return response;
   }
 
@@ -623,7 +623,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   auto vm = ArcVm::Create(ArcVm::Config{
       .kernel = base::FilePath(kKernelPath),
       .vsock_cid = vsock_cid,
-      .network_client = std::move(network_client),
+      .network = std::move(network),
       .seneschal_server_proxy = std::move(server_proxy),
       .is_vmm_swap_enabled = request.enable_vmm_swap(),
       .vmm_swap_metrics = std::make_unique<VmmSwapMetrics>(
