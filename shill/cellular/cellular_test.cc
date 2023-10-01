@@ -924,6 +924,7 @@ TEST_F(CellularTest, SimSlotSwitch) {
 
 TEST_F(CellularTest, Disconnect) {
   Error error;
+  SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kRegistered);
   device_->Disconnect(&error, "in test");
   EXPECT_EQ(Error::kNotConnected, error.type());
@@ -948,9 +949,11 @@ TEST_F(CellularTest, Disconnect) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
   EXPECT_EQ(nullptr, device_->default_pdn_for_testing());
+  EXPECT_EQ(Service::kStateIdle, device_->service_->state());
 }
 
 TEST_F(CellularTest, DisconnectFailure) {
+  SetRegisteredWithService();
   // Test the case where the underlying modem state is set
   // to disconnecting, but shill thinks it's still connected
   device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
@@ -978,6 +981,7 @@ TEST_F(CellularTest, DisconnectFailure) {
   device_->Disconnect(&error, "in test");
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
   EXPECT_EQ(nullptr, device_->default_pdn_for_testing());
+  EXPECT_EQ(Service::kStateIdle, device_->service_->state());
 }
 
 TEST_F(CellularTest, ConnectFailure) {
@@ -1004,6 +1008,7 @@ TEST_F(CellularTest, ConnectWhileInhibited) {
   device_->Connect(device_->service().get(), &error);
   EXPECT_FALSE(error.IsSuccess());
   EXPECT_EQ(Error::kWrongState, error.type());
+  EXPECT_EQ(Service::kStateIdle, device_->service_->state());
 }
 
 TEST_F(CellularTest, PendingConnect) {
@@ -1051,6 +1056,7 @@ TEST_F(CellularTest, PendingDisconnect) {
   service->Disconnect(&error, "test");
   dispatcher_.DispatchPendingEvents();
   EXPECT_TRUE(device_->connect_pending_iccid().empty());
+  EXPECT_EQ(Service::kStateIdle, device_->service_->state());
 }
 
 // TODO(b/232177767): Add a test to verify that Cellular start the Network with
@@ -1750,6 +1756,7 @@ TEST_F(CellularTest, EstablishLinkFailureNoBearer) {
   device_->EstablishLink();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
+  EXPECT_EQ(Service::kStateIdle, device_->service_->state());
 }
 
 TEST_F(CellularTest, EstablishLinkPPP) {
@@ -2241,6 +2248,7 @@ TEST_F(CellularTest, DefaultLinkUpToDown) {
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
+  EXPECT_EQ(Service::kStateIdle, device_->service_->state());
 }
 
 TEST_F(CellularTest, DefaultLinkUpToDownAlreadyDisconnecting) {
@@ -2270,6 +2278,7 @@ TEST_F(CellularTest, DefaultLinkUpToDownAlreadyDisconnecting) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
   device_->DefaultLinkDown();
   dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Service::kStateIdle, device_->service_->state());
 }
 
 TEST_F(CellularTest, DefaultLinkAlreadyDown) {

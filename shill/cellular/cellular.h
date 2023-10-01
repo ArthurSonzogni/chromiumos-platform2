@@ -514,6 +514,9 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, CompareApnsFromApnList);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, ConnectFailure);
+  FRIEND_TEST(CellularTest, ConnectWhileInhibited);
+  FRIEND_TEST(CellularTest, DefaultLinkUpToDown);
+  FRIEND_TEST(CellularTest, DefaultLinkUpToDownAlreadyDisconnecting);
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, DisconnectFailure);
   FRIEND_TEST(CellularTest, DropConnection);
@@ -532,6 +535,8 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantEnabled);
   FRIEND_TEST(CellularTest, OnAfterResumePowerDownInProgressWantEnabled);
   FRIEND_TEST(CellularTest, OnPPPDied);
+  FRIEND_TEST(CellularTest, PendingConnect);
+  FRIEND_TEST(CellularTest, PendingDisconnect);
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedBeforeAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedDuringAuth);
