@@ -84,7 +84,6 @@ std::vector<unsigned int> ConvertTfLiteDimensions(
   return ret;
 }
 
-// Notice that in the new version of TFLite, kUint16 will be supported.
 model_loader::mojom::DataType ConvertTfLiteTypeToMojo(TfLiteType tflite_type) {
   switch (tflite_type) {
     case kTfLiteFloat32:
@@ -107,12 +106,15 @@ model_loader::mojom::DataType ConvertTfLiteTypeToMojo(TfLiteType tflite_type) {
       return model_loader::mojom::DataType::kFloat64;
     case kTfLiteUInt64:
       return model_loader::mojom::DataType::kUint64;
+    case kTfLiteUInt16:
+      return model_loader::mojom::DataType::kUint16;
     case kTfLiteUInt32:
       return model_loader::mojom::DataType::kUint32;
     case kTfLiteNoType:
     case kTfLiteString:
     case kTfLiteComplex64:
     case kTfLiteComplex128:
+    case kTfLiteInt4:
     case kTfLiteResource:
     case kTfLiteVariant:
       return model_loader::mojom::DataType::kUnknown;
