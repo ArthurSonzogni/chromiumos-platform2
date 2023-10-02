@@ -104,4 +104,9 @@ EcCommandFactory::FpPairingKeyWrapCommand(const brillo::Blob& pub_x,
   return FpPairingKeyWrapCommand::Create(pub_x, pub_y, encrypted_priv);
 }
 
+std::unique_ptr<ec::LedControlAutoCommand>
+EcCommandFactory::LedControlAutoCommand(enum ec_led_id led_id) {
+  return std::make_unique<ec::LedControlAutoCommand>(led_id);
+}
+
 }  // namespace ec

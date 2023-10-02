@@ -93,6 +93,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
                const brillo::Blob& pub_y,
                const brillo::Blob& encrypted_priv),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::LedControlAutoCommand>,
+              LedControlAutoCommand,
+              (enum ec_led_id led_id),
+              (override));
 };
 
 }  // namespace ec
