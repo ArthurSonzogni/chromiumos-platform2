@@ -30,11 +30,6 @@ if (use.secagentd_min_core_btf) {
   global_use_defines += [ "USE_MIN_CORE_BTF=1" ]
 }
 
-if ((defined(use.kernel_5_15) && use.kernel_5_15) ||
-    (defined(use.kernel_5_10) && use.kernel_5_10)) {
-  global_use_defines += [ "NO_FUNCTION_HOOKS=1" ]
-}
-
 generate_ebpf_skeletons("bpf_process") {
   sources = [ "bpf/process_bpf.c" ]
   bpf_skeleton_out_dir = "include/secagentd/bpf_skeletons"

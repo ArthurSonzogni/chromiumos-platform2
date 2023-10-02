@@ -11,17 +11,18 @@
 #define _Static_assert static_assert
 namespace secagentd::bpf {
 #else
+#include "include/secagentd/vmlinux/vmlinux.h"
 // Kernels 5.10,5.15 won't have support for fentry/fexit
 // hooks. Instead these kernels have downstream tracepoints
 // defined and added to areas of interest within the kernel.
-// NO_FUNCTION_HOOKS is defined by the BUILD file when a
-// 5.15 or 5.10 kernel is detected and when that is the case
+// LINUX_VERSION_CODE is defined in vmlinux.h and when that is the case
 // then the NO substitution is used otherwise it is assumed the
 // kernel supports fentry/fexit and so the YES substitution is used.
 // In short, this allows different hooks to be used based on
 // whether the kernel is expected to support fentry/fexit hooks
 // or not.
-#if defined(NO_FUNCTION_HOOKS) && NO_FUNCTION_HOOKS == 1
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) && \
+    LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
 #define CROS_IF_FUNCTION_HOOK(YES, NO) SEC(NO)
 #else
 #define CROS_IF_FUNCTION_HOOK(YES, NO) SEC(YES)
