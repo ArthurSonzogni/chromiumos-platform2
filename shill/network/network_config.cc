@@ -39,7 +39,7 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
          << (config.ipv4_address.has_value() ? config.ipv4_address->ToString()
                                              : "nullopt");
   if (config.ipv4_broadcast) {
-    stream << ", IPv4 broadcast: " << *config.ipv4_gateway;
+    stream << ", IPv4 broadcast: " << *config.ipv4_broadcast;
   }
   if (config.ipv4_gateway) {
     stream << ", IPv4 gateway: " << *config.ipv4_gateway;
