@@ -942,14 +942,8 @@ bool Network::StartPortalDetection(ValidationReason reason) {
     }
 
     portal_detector_ = CreatePortalDetector();
-    if (!portal_detector_->Start(interface_name_, local_address->GetFamily(),
-                                 dns_servers(), logging_tag_)) {
-      LOG(ERROR) << *this << " " << __func__ << "(" << reason
-                 << "): Portal detection failed to start.";
-      portal_detector_.reset();
-      return false;
-    }
-
+    portal_detector_->Start(interface_name_, local_address->GetFamily(),
+                            dns_servers(), logging_tag_);
     LOG(INFO) << *this << " " << __func__ << "(" << reason
               << "): Portal detection started.";
     for (auto* ev : event_handlers_) {
@@ -989,13 +983,8 @@ bool Network::RestartPortalDetection() {
     return false;
   }
 
-  if (!portal_detector_->Start(interface_name_, local_address->GetFamily(),
-                               dns_servers(), logging_tag_)) {
-    LOG(ERROR) << *this << ": Portal detection failed to restart.";
-    StopPortalDetection();
-    return false;
-  }
-
+  portal_detector_->Start(interface_name_, local_address->GetFamily(),
+                          dns_servers(), logging_tag_);
   // TODO(b/216351118): this ignores the portal detection retry delay. The
   // callback should be triggered when the next attempt starts, not when it
   // is scheduled.
@@ -1152,13 +1141,9 @@ void Network::StartConnectivityTest(
     LOG(DFATAL) << *this << ": Does not have a valid address";
     return;
   }
-  if (connectivity_test_portal_detector_->Start(interface_name_,
-                                                local_address->GetFamily(),
-                                                dns_servers(), logging_tag_)) {
-    LOG(WARNING) << *this << ": Failed to start connectivity test";
-  } else {
-    LOG(INFO) << *this << ": Started connectivity test";
-  }
+  LOG(INFO) << *this << ": Starting Internet connectivity test";
+  connectivity_test_portal_detector_->Start(
+      interface_name_, local_address->GetFamily(), dns_servers(), logging_tag_);
 }
 
 void Network::ConnectivityTestCallback(const std::string& device_logging_tag,

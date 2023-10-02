@@ -141,7 +141,7 @@ class MockPortalDetector : public PortalDetector {
   MockPortalDetector& operator=(const MockPortalDetector&) = delete;
   ~MockPortalDetector() = default;
 
-  MOCK_METHOD(bool,
+  MOCK_METHOD(void,
               Start,
               (const std::string& ifname,
                net_base::IPFamily,
@@ -830,7 +830,7 @@ TEST_F(NetworkTest, PortalDetectionRequestsInitializesPortalDetector) {
         .WillOnce([portal_detector]() {
           return std::unique_ptr<MockPortalDetector>(portal_detector);
         });
-    EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
+    EXPECT_CALL(*portal_detector, Start);
     EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(false));
     EXPECT_CALL(event_handler_, OnNetworkValidationStart(ifindex));
     EXPECT_CALL(event_handler2_, OnNetworkValidationStart(ifindex));
@@ -905,7 +905,7 @@ TEST_F(NetworkTest, PortalDetectionRequestResetsPortalDetector) {
           return std::unique_ptr<MockPortalDetector>(portal_detector);
         });
     EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
+    EXPECT_CALL(*portal_detector, Start);
     EXPECT_CALL(event_handler_,
                 OnNetworkValidationStart(network_->interface_index()));
     EXPECT_CALL(event_handler2_,
@@ -917,22 +917,6 @@ TEST_F(NetworkTest, PortalDetectionRequestResetsPortalDetector) {
   }
 }
 
-TEST_F(NetworkTest, PortalDetectionStartFailure) {
-  SetNetworkStateForPortalDetection();
-  MockPortalDetector* portal_detector = new MockPortalDetector();
-  EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
-    return std::unique_ptr<MockPortalDetector>(portal_detector);
-  });
-  EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(false));
-  EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
-  EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
-  EXPECT_FALSE(network_->StartPortalDetection(
-      Network::ValidationReason::kServicePropertyUpdate));
-  EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  Mock::VerifyAndClearExpectations(portal_detector);
-}
-
 TEST_F(NetworkTest, PortalDetectionStartSuccess) {
   SetNetworkStateForPortalDetection();
   MockPortalDetector* portal_detector = new MockPortalDetector();
@@ -940,7 +924,7 @@ TEST_F(NetworkTest, PortalDetectionStartSuccess) {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
   });
   EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
+  EXPECT_CALL(*portal_detector, Start);
   EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
   EXPECT_CALL(event_handler_,
               OnNetworkValidationStart(network_->interface_index()));
@@ -959,7 +943,7 @@ TEST_F(NetworkTest, PortalDetectionStartStop) {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
   });
   EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
+  EXPECT_CALL(*portal_detector, Start);
   EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
   EXPECT_CALL(event_handler_,
               OnNetworkValidationStart(network_->interface_index()));
@@ -981,39 +965,6 @@ TEST_F(NetworkTest, PortalDetectionStartStop) {
   EXPECT_FALSE(network_->IsPortalDetectionInProgress());
 }
 
-TEST_F(NetworkTest, PortalDetectionRestartFailure) {
-  SetNetworkStateForPortalDetection();
-  MockPortalDetector* portal_detector = new MockPortalDetector();
-  EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
-    return std::unique_ptr<MockPortalDetector>(portal_detector);
-  });
-  EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
-  EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
-  EXPECT_CALL(event_handler_,
-              OnNetworkValidationStart(network_->interface_index()));
-  EXPECT_CALL(event_handler2_,
-              OnNetworkValidationStart(network_->interface_index()));
-  EXPECT_TRUE(network_->StartPortalDetection(
-      Network::ValidationReason::kServicePropertyUpdate));
-  EXPECT_TRUE(network_->IsPortalDetectionInProgress());
-  Mock::VerifyAndClearExpectations(&event_handler_);
-  Mock::VerifyAndClearExpectations(&event_handler2_);
-  Mock::VerifyAndClearExpectations(portal_detector);
-
-  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(false));
-  EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
-  EXPECT_CALL(event_handler_, OnNetworkValidationStart).Times(0);
-  EXPECT_CALL(event_handler_,
-              OnNetworkValidationStop(network_->interface_index()));
-  EXPECT_CALL(event_handler2_, OnNetworkValidationStart).Times(0);
-  EXPECT_CALL(event_handler2_,
-              OnNetworkValidationStop(network_->interface_index()));
-  EXPECT_FALSE(network_->RestartPortalDetection());
-  EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  Mock::VerifyAndClearExpectations(portal_detector);
-}
-
 TEST_F(NetworkTest, PortalDetectionRestartSuccess) {
   SetNetworkStateForPortalDetection();
   MockPortalDetector* portal_detector = new MockPortalDetector();
@@ -1021,7 +972,7 @@ TEST_F(NetworkTest, PortalDetectionRestartSuccess) {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
   });
   EXPECT_FALSE(network_->IsPortalDetectionInProgress());
-  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
+  EXPECT_CALL(*portal_detector, Start);
   EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
   EXPECT_CALL(event_handler_,
               OnNetworkValidationStart(network_->interface_index()));
@@ -1034,7 +985,7 @@ TEST_F(NetworkTest, PortalDetectionRestartSuccess) {
   Mock::VerifyAndClearExpectations(&event_handler2_);
   Mock::VerifyAndClearExpectations(portal_detector);
 
-  EXPECT_CALL(*portal_detector, Start).WillOnce(Return(true));
+  EXPECT_CALL(*portal_detector, Start);
   EXPECT_CALL(*portal_detector, IsInProgress()).WillRepeatedly(Return(true));
   EXPECT_CALL(event_handler_,
               OnNetworkValidationStart(network_->interface_index()));

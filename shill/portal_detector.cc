@@ -86,13 +86,13 @@ const HttpUrl& PortalDetector::PickProbeUrl(
   return index < fallback_urls.size() ? fallback_urls[index] : default_url;
 }
 
-bool PortalDetector::Start(const std::string& ifname,
+void PortalDetector::Start(const std::string& ifname,
                            net_base::IPFamily ip_family,
                            const std::vector<std::string>& dns_list,
                            const std::string& logging_tag) {
   if (IsInProgress()) {
     LOG(INFO) << LoggingTag() << ": Attempt is already running";
-    return true;
+    return;
   }
 
   logging_tag_ = logging_tag + " " + net_base::ToString(ip_family);
@@ -127,7 +127,6 @@ bool PortalDetector::Start(const std::string& ifname,
   trial_.Reset(base::BindOnce(&PortalDetector::StartTrialTask,
                               weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(), delay);
-  return true;
 }
 
 void PortalDetector::StartTrialTask() {

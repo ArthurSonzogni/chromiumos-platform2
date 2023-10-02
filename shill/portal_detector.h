@@ -208,9 +208,9 @@ class PortalDetector {
 
   // Starts and schedules a new portal detection attempt according to the value
   // of GetNextAttemptDelay. If an attempt is already scheduled to run but has
-  // not run yet, the new attempt will override the old attempt. If an attempt
-  // is already running, nothing happens and true is returned.
-  virtual bool Start(const std::string& ifname,
+  // not run yet, the new attempt will override the old attempt. Nothing happens
+  // if an attempt is already running.
+  virtual void Start(const std::string& ifname,
                      net_base::IPFamily ip_family,
                      const std::vector<std::string>& dns_list,
                      const std::string& logging_tag);
