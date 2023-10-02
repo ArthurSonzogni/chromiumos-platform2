@@ -559,6 +559,17 @@ properties:
                 no-battery-boot-supported:
                   description: Device supports booting without a battery.
                   type: boolean
+            firmware-features:
+              type: object
+              properties:
+                alternative-firmware:
+                  type: object
+                  properties:
+                    present:
+                      description: Indicates whether the altfw feature is present
+                      type: boolean
+                  additionalProperties: false
+              additionalProperties: false
             bluetooth:
               type: object
               properties:

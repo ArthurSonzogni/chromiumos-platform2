@@ -484,6 +484,7 @@ In the tables below,
 | efi | [efi](#efi) |  | False |  | False | Contains settings related to EFI firmware. |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
 | firmware | [firmware](#firmware) |  | False |  | False |  |
+| firmware-features | [firmware-features](#firmware_features) |  | False |  | False |  |
 | firmware-signing | [firmware-signing](#firmware_signing) |  | False |  | True |  |
 | hardware-properties | [hardware-properties](#hardware_properties) |  | False |  | False | Contains boolean flags or enums for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. If a value is an enum and is not specified for a specific model, it will default to "none". All properties must be booleans or enums. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
 | hdmi-cec | [hdmi-cec](#hdmi_cec) |  | False |  | False | Configurable parameters for HDMI-CEC. |
@@ -802,6 +803,16 @@ In the tables below,
 | u-boot | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | zephyr-detachable-base | string |  | False |  | True | Specifies the detachable base of Zephyr-based firmware target to build. |
 | zephyr-ec | string |  | False |  | True | Specifies the list of Zephyr-based firmware targets to build. |
+
+### firmware-features
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| alternative-firmware | [alternative-firmware](#alternative_firmware) |  | False |  | False |  |
+
+### alternative-firmware
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| present | boolean |  | False |  | False | Indicates whether the altfw feature is present |
 
 ### firmware-signing
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
