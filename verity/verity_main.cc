@@ -13,29 +13,13 @@
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <brillo/flag_helper.h>
 #include <brillo/strings/string_utils.h>
 
 #include "verity/file_hasher.h"
 
 namespace {
-void print_usage(const char* name) {
-  // We used to advertise more algorithms, but they've never been implemented:
-  // sha512 sha384 sha mdc2 ripemd160 md4 md2
-  fprintf(
-      stderr,
-      "Usage:\n"
-      "  %s <arg>=<value>...\n"
-      "Options:\n"
-      "  mode              One of 'create' or 'verify'\n"
-      "  alg               Hash algorithm to use. Only sha256 for now\n"
-      "  payload           Path to the image to hash\n"
-      "  payload_blocks    Size of the image, in blocks (4096 bytes)\n"
-      "  hashtree          Path to a hash tree to create or read from\n"
-      "  root_hexdigest    Digest of the root node (in hex) for verification\n"
-      "  salt              Salt (in hex)\n"
-      "\n",
-      name);
-}
 
 typedef enum { VERITY_NONE = 0, VERITY_CREATE, VERITY_VERIFY } verity_mode_t;
 
@@ -66,23 +50,24 @@ int verity_create(const std::string& alg,
   hasher.PrintTable(true);
   return 0;
 }
+
 }  // namespace
 
 int main(int argc, char** argv) {
   verity_mode_t mode = VERITY_CREATE;
-  std::string alg, payload, hashtree, salt;
+  std::string alg = "sha256", payload = "", hashtree = "", salt = "";
   unsigned int payload_blocks = 0;
 
-  // TODO(b/269707854): Use flag arguments + update callers to verity tool.
+  // TODO(b/269707854): Drop the old code after adding the proper cmdline
+  // options and migrating consumers by Jan 2025.
   for (int i = 1; i < argc; i++) {
     auto [key, val] = brillo::string_utils::SplitAtFirst(
         argv[i], "=", /*trim_whitespaces=*/true);
     if (key.empty())
       continue;
 
-    if (val.empty()) {
-      fprintf(stderr, "missing value: %s\n", key.c_str());
-      print_usage(argv[0]);
+    if (val.empty() && !base::StartsWith(key, "--")) {
+      LOG(ERROR) << "missing value: " << key;
       return -1;
     }
 
@@ -100,23 +85,39 @@ int main(int argc, char** argv) {
       // Silently drop the mode for now...
     } else if (key == "salt") {
       salt = val;
-    } else {
-      fprintf(stderr, "bogus key: '%s'\n", key.c_str());
-      print_usage(argv[0]);
+    } else if (!base::StartsWith(key, "--")) {
+      LOG(ERROR) << "bogus key: '" << key << "'";
       return -1;
     }
   }
 
-  if (alg.empty() || payload.empty() || hashtree.empty()) {
-    fprintf(stderr, "missing data: %s%s%s\n", alg.empty() ? "alg " : "",
-            payload.empty() ? "payload " : "",
-            hashtree.empty() ? "hashtree" : "");
-    print_usage(argv[0]);
+  // Silently drop the mode for now...
+  DEFINE_string(mode, "create", "Only 'create'");
+  // We used to advertise more algorithms, but they've never been implemented:
+  // sha512 sha384 sha mdc2 ripemd160 md4 md2
+  DEFINE_string(alg, alg, "Hash algorithm to use. Only sha256 for now");
+  DEFINE_string(payload, payload, "Path to the image to hash");
+  DEFINE_uint32(payload_blocks, payload_blocks,
+                "Size of the image, in blocks (4096 bytes)");
+  DEFINE_string(hashtree, hashtree,
+                "Path to a hash tree to create or read from");
+  // Silently drop root_hexdigest for now...
+  DEFINE_string(root_hexdigest, "",
+                "Digest of the root node (in hex) for verification");
+  DEFINE_string(salt, salt, "Salt (in hex)");
+
+  brillo::FlagHelper::Init(argc, argv, "verity userspace tool");
+
+  if (FLAGS_alg.empty() || FLAGS_payload.empty() || FLAGS_hashtree.empty()) {
+    LOG(ERROR) << "missing data: " << (FLAGS_alg.empty() ? "alg " : "")
+               << (FLAGS_payload.empty() ? "payload " : "")
+               << (FLAGS_hashtree.empty() ? "hashtree " : "");
     return -1;
   }
 
   if (mode == VERITY_CREATE) {
-    return verity_create(alg, payload, payload_blocks, hashtree, salt);
+    return verity_create(FLAGS_alg, FLAGS_payload, FLAGS_payload_blocks,
+                         FLAGS_hashtree, FLAGS_salt);
   } else {
     LOG(FATAL) << "Verification not done yet";
   }

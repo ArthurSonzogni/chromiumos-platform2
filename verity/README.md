@@ -29,12 +29,12 @@ device.
 
 To use:
 ```sh
-verity <arg>=<value>...
+verity --<arg>=<value>...
 ```
 
 where supported options are
 ```
-mode              One of 'create' or 'verify'
+mode              Only 'create'
 alg               Hash algorithm to use. Only sha256 for now
 payload           Path to the image to hash
 payload_blocks    Size of the image, in blocks (4096 bytes)
@@ -46,7 +46,7 @@ salt              Salt (in hex)
 For example:
 ```sh
 dd if=/dev/zero of=/tmp/image bs=4k count=512
-verity mode=create alg=sha256 payload=/tmp/image hashtree=/tmp/hash | tee table
+verity --mode=create --alg=sha256 --payload=/tmp/image --hashtree=/tmp/hash | tee table
 # ...
 cat table
 ls -la /tmp/hash
