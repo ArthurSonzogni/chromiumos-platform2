@@ -69,18 +69,15 @@ const std::string& PortalDetector::PickProbeUrl(
   return index < fallback_urls.size() ? fallback_urls[index] : default_url;
 }
 
-bool PortalDetector::Restart(const std::string& ifname,
-                             net_base::IPFamily ip_family,
-                             const std::vector<std::string>& dns_list,
-                             const std::string& logging_tag) {
-  return Start(ifname, ip_family, dns_list, logging_tag, GetNextAttemptDelay());
-}
-
 bool PortalDetector::Start(const std::string& ifname,
                            net_base::IPFamily ip_family,
                            const std::vector<std::string>& dns_list,
-                           const std::string& logging_tag,
-                           base::TimeDelta delay) {
+                           const std::string& logging_tag) {
+  if (IsInProgress()) {
+    LOG(INFO) << LoggingTag() << ": Attempt is already running";
+    return true;
+  }
+
   logging_tag_ = logging_tag + " " + net_base::ToString(ip_family);
 
   SLOG(this, 3) << "In " << __func__;
@@ -113,12 +110,15 @@ bool PortalDetector::Start(const std::string& ifname,
     LOG(INFO) << LoggingTag() << ": Cancelling next scheduled trial";
     trial_.Cancel();
   }
+
+  const auto delay = GetNextAttemptDelay();
   if (delay.is_positive()) {
     LOG(INFO) << logging_tag_ << ": Retrying in " << delay;
   }
 
   // TODO(hugobenichi) Network properties like src address and DNS should be
-  // obtained exactly at the time that the trial starts if |delay| > 0.
+  // obtained exactly at the time that the trial starts if |GetNextAttemptDelay|
+  // > 0.
   http_request_ =
       std::make_unique<HttpRequest>(dispatcher_, ifname, ip_family, dns_list);
   // For non-default URLs, allow for secure communication with both Google and

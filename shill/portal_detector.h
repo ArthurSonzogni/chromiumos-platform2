@@ -202,24 +202,17 @@ class PortalDetector {
   // this method returns Status::kFailure.
   static Status GetPortalStatusForRequestResult(HttpRequest::Result result);
 
-  // Starts a new portal detection cycle and starts a single detection attempt.
-  // Returns true if url strings selected in |props| correctly parse as URLs.
-  // Returns false (and does not start) if they fail to parse. As each attempt
-  // completes the callback handed to the constructor will be called.
+  // Starts and schedules a new portal detection attempt according to the value
+  // of GetNextAttemptDelay. If an attempt is already scheduled to run but has
+  // not run yet, the new attempt will override the old attempt. If an attempt
+  // is already running, nothing happens and true is returned. Returns true if
+  // url strings selected in |props| correctly parse as URLs. Returns false (and
+  // does not start) if they fail to parse. As each attempt completes the
+  // callback handed to the constructor will be called.
   virtual bool Start(const std::string& ifname,
                      net_base::IPFamily ip_family,
                      const std::vector<std::string>& dns_list,
-                     const std::string& logging_tag,
-                     base::TimeDelta delay = kZeroTimeDelta);
-
-  // Continues a portal detection cycle with the current probe configuration and
-  // schedules a new single detection attempt. Returns true if url strings
-  // selected in |props| correctly parse as URLs. Returns false (and does not
-  // start) if they fail to parse.
-  virtual bool Restart(const std::string& ifname,
-                       net_base::IPFamily ip_family,
-                       const std::vector<std::string>& dns_list,
-                       const std::string& logging_tag);
+                     const std::string& logging_tag);
 
   // End the current portal detection process if one exists, and do not call
   // the callback.
@@ -275,8 +268,6 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, ResetAttemptDelays);
   FRIEND_TEST(PortalDetectorTest, ResetAttemptDelaysAndRestart);
   FRIEND_TEST(PortalDetectorTest, Restart);
-
-  static constexpr base::TimeDelta kZeroTimeDelta = base::TimeDelta();
 
   // Picks the next probe URL based on |attempt_count_|. Returns |default_url|
   // if this is the first attempt. Otherwise, randomly returns with equal

@@ -989,8 +989,8 @@ bool Network::RestartPortalDetection() {
     return false;
   }
 
-  if (!portal_detector_->Restart(interface_name_, local_address->GetFamily(),
-                                 dns_servers(), logging_tag_)) {
+  if (!portal_detector_->Start(interface_name_, local_address->GetFamily(),
+                               dns_servers(), logging_tag_)) {
     LOG(ERROR) << *this << ": Portal detection failed to restart.";
     StopPortalDetection();
     return false;

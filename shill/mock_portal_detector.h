@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
 
@@ -26,14 +25,6 @@ class MockPortalDetector : public PortalDetector {
 
   MOCK_METHOD(bool,
               Start,
-              (const std::string& ifname,
-               net_base::IPFamily,
-               const std::vector<std::string>&,
-               const std::string& logging_tag,
-               base::TimeDelta),
-              (override));
-  MOCK_METHOD(bool,
-              Restart,
               (const std::string& ifname,
                net_base::IPFamily,
                const std::vector<std::string>&,
