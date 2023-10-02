@@ -187,6 +187,9 @@ We store reports in a couple of different places.
     we wish to preserve them across clobbers.
 *   `/run/crash_reporter/crash`: Crashes found early in the boot process (before
     `/var/spool/crash` is available) are stored here.
+*   `/run/daemon-store/fbpreprocessord/<user_hash>`: All connectivity firmware dumps
+    generated when a user is logged in are stored here. These fwdumps will only be
+    attached to feedback reports and not uploaded to crash-reporter server.
 
 These directories are only written to by the crash-reporter at collection time.
 The [crash_sender] program will also delete reports after it uploads them.

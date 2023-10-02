@@ -17,13 +17,16 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <metrics/metrics_library.h>
+#include <session_manager/dbus-proxies.h>
 
+#include "crash-reporter/connectivity_util.h"
 #include "crash-reporter/crash_collector.h"
 
 // Udev crash collector.
@@ -48,6 +51,12 @@ class UdevCollector : public CrashCollector {
   // could be omitted, in which case it would be treated as a wildcard (*).
   bool HandleCrash(const std::string& udev_event);
 
+  // This function is to be called from unit tests to specifically enable
+  // connectivity fwdump feature for unit test.
+  void EnableConnectivityFwdumpForTest() {
+    connectivity_fwdump_feature_enabled_ = true;
+  }
+
   static CollectorInfo GetHandlerInfo(
       const std::string& udev_event,
       const scoped_refptr<
@@ -63,6 +72,34 @@ class UdevCollector : public CrashCollector {
   // Is this a "safe" device coredump, from an allowlist of driver names
   // for devices whose device coredump does not contain PII?
   bool IsSafeDevCoredump(std::map<std::string, std::string> udev_event_map);
+
+  // This function checks if the generated coredump belongs to intel
+  // wifi subdomain and returns true or false accordingly. This function
+  // is called within HandleCrash() before attempting to collect
+  // connectivity wifi fwdump because collection of connectivity fwdump
+  // requires fetching user policy and connectivity storage path in
+  // fbpreprocessord cryptohome directory. Crash-reporter should not be
+  // performing all the above if the fwdump does not belong to
+  // connectivity domain.
+  bool IsConnectivityWiFiFwdump(int instance_number);
+
+  // This function checks if connectivity fwdump is allowed and returns a
+  // user session on which connectivity fwdump. If not allowed, the function
+  // returns std::nullopt. This return value is later used to collect
+  // connectivity fwdumps.
+  std::optional<connectivity_util::Session>
+  ConnectivityFwdumpAllowedForUserSession(
+      std::map<std::string, std::string>& udev_event_map,
+      int instance_number,
+      const base::FilePath& coredump_path);
+
+  // For connectivity fwdumps, we want to store in fbpreprocessord's
+  // daemon-store directory and thus need to generate a customized storage path
+  // with this function. The path for connectivity fw dump is different than
+  // general fw dumps is because, unlike regular fwdumps we want to upload
+  // connectivity fwdumps only with feedback reports.
+  std::optional<base::FilePath> GetConnectivityFwdumpStoragePath(
+      const connectivity_util::Session& primary_session);
 
   // Process udev crash logs, collecting log files according to the config
   // file (crash_reporter_logs.conf).
@@ -95,6 +132,14 @@ class UdevCollector : public CrashCollector {
       const base::FilePath& failing_uevent_path);
   // Return the driver name of the device that generates the coredump.
   std::string GetFailingDeviceDriverName(int instance_number);
+
+  // This variable is set false by default and set to true from
+  // unit test to invoke connectivity fwdump feature for testing.
+  // This is a temporary variable to block fwdump in FR feature until
+  // policy to control this feature is available. This will be removed
+  // when the feature is fully ready. TODO(b/291344512): Remove this
+  // flag support once fwdump feature is fully ready.
+  bool connectivity_fwdump_feature_enabled_ = false;
 };
 
 #endif  // CRASH_REPORTER_UDEV_COLLECTOR_H_

@@ -17,7 +17,6 @@
 #include <unistd.h>       // For execv and fork.
 
 #include <ctime>
-#include <map>
 #include <optional>
 #include <set>
 #include <utility>
@@ -129,11 +128,6 @@ constexpr char kAddWeightResultHistogram[] =
 // Directory mode of the user crash spool directory.
 // This is SGID so that files created in it are also accessible to the group.
 const mode_t kUserCrashPathMode = 02770;
-
-// Directory mode of the daemon store spool directory.  This has the sticky bit
-// set to prevent different crash collectors from messing with each others
-// files.
-const mode_t kDaemonStoreCrashPathMode = 03770;
 #endif
 
 // Directory mode of the system crash spool directory.
@@ -1090,7 +1084,7 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
       crash_directory_selection_method_ == kAlwaysUseUserCrashDirectory ||
       crash_directory_selection_method_ == kAlwaysUseDaemonStore) {
     if (crash_directory_selection_method_ == kAlwaysUseDaemonStore) {
-      *mode = kDaemonStoreCrashPathMode;
+      *mode = constants::kDaemonStoreCrashPathMode;
       if (!brillo::userdb::GetGroupInfo(constants::kCrashName,
                                         directory_owner)) {
         PLOG(ERROR) << "Couldn't look up user " << constants::kCrashName;
@@ -1146,7 +1140,7 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
   // the system crash directory after the #if.
 #else
   if (crash_directory_selection_method_ != kAlwaysUseSystemCrashDirectory) {
-    *mode = kDaemonStoreCrashPathMode;
+    *mode = constants::kDaemonStoreCrashPathMode;
     if (!brillo::userdb::GetGroupInfo(constants::kCrashName, directory_owner)) {
       PLOG(ERROR) << "Couldn't look up user " << constants::kCrashName;
       return std::nullopt;
@@ -1205,6 +1199,47 @@ std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
   return system_crash_path_;
 }
 
+std::optional<base::FilePath> CrashCollector::GetCreatedCrashDirectory(
+    base::FilePath& full_path,
+    bool can_create_or_fix,
+    mode_t directory_mode,
+    mode_t directory_owner,
+    mode_t directory_group,
+    bool* out_of_capacity) {
+  // Note: We "leak" dirfd to children so the /proc symlink below stays valid
+  // in their own context.  We can't pass other /proc paths as they might not
+  // be accessible in the children (when dropping privs), and we don't want to
+  // pass the direct path in the filesystem as it'd be subject to TOCTOU.
+  int dirfd;
+  if (can_create_or_fix) {
+    if (!CreateDirectoryWithSettings(full_path, directory_mode, directory_owner,
+                                     directory_group, &dirfd)) {
+      LOG(ERROR) << "CreateDirectory failed.";
+      return std::nullopt;
+    }
+  } else {
+    if (!OpenCrashDirectory(full_path, directory_mode, directory_owner,
+                            directory_group, &dirfd)) {
+      LOG(ERROR) << "OpenCrashDirectory(" << full_path.value() << ") failed.";
+      return std::nullopt;
+    }
+  }
+
+  // Have all the rest of the tools access the directory by file handle.  This
+  // avoids any TOCTOU races in case the underlying dir is changed on us.
+  const FilePath crash_dir_procfd =
+      FilePath("/proc/self/fd").Append(std::to_string(dirfd));
+  LOG(INFO) << "Accessing crash dir '" << (full_path).value()
+            << "' via symlinked handle '" << crash_dir_procfd.value() << "'";
+
+  if (!CheckHasCapacity(crash_dir_procfd, (full_path).value())) {
+    if (out_of_capacity)
+      *out_of_capacity = true;
+    return std::nullopt;
+  }
+  return crash_dir_procfd;
+}
+
 bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
                                                     FilePath* crash_directory,
                                                     bool* out_of_capacity) {
@@ -1254,41 +1289,16 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   if (!maybe_path) {
     return false;
   }
-  base::FilePath full_path = *maybe_path;
+  std::optional<base::FilePath> maybe_dir;
 
-  // Note: We "leak" dirfd to children so the /proc symlink below stays valid
-  // in their own context.  We can't pass other /proc paths as they might not
-  // be accessible in the children (when dropping privs), and we don't want to
-  // pass the direct path in the filesystem as it'd be subject to TOCTOU.
-  int dirfd;
-  if (can_create_or_fix) {
-    if (!CreateDirectoryWithSettings(full_path, directory_mode, directory_owner,
-                                     directory_group, &dirfd)) {
-      LOG(ERROR) << "CreateDirectory failed";
-      return false;
-    }
-  } else {
-    if (!OpenCrashDirectory(full_path, directory_mode, directory_owner,
-                            directory_group, &dirfd)) {
-      LOG(ERROR) << "OpenCrashDirectory(" << full_path.value() << ") failed";
-      return false;
-    }
-  }
+  maybe_dir = GetCreatedCrashDirectory(*maybe_path, can_create_or_fix,
+                                       directory_mode, directory_owner,
+                                       directory_group, out_of_capacity);
 
-  // Have all the rest of the tools access the directory by file handle.  This
-  // avoids any TOCTOU races in case the underlying dir is changed on us.
-  const FilePath crash_dir_procfd =
-      FilePath("/proc/self/fd").Append(std::to_string(dirfd));
-  LOG(INFO) << "Accessing crash dir '" << full_path.value()
-            << "' via symlinked handle '" << crash_dir_procfd.value() << "'";
-
-  if (!CheckHasCapacity(crash_dir_procfd, full_path.value())) {
-    if (out_of_capacity)
-      *out_of_capacity = true;
+  if (!maybe_dir.has_value()) {
     return false;
   }
-
-  *crash_directory = crash_dir_procfd;
+  *crash_directory = *maybe_dir;
   return true;
 }
 

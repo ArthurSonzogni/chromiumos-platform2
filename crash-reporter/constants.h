@@ -14,12 +14,25 @@ namespace constants {
 inline constexpr uid_t kRootUid = 0;
 
 inline constexpr char kCrashName[] = "crash";
+
 // The name of the crash-access group, which owns /var/spool/crash.
 inline constexpr char kCrashGroupName[] = "crash-access";
 
 #if !USE_KVM_GUEST
 inline constexpr char kCrashUserGroupName[] = "crash-user-access";
 #endif
+
+// Directory mode of the daemon store spool directory. This has the sticky bit
+// set to prevent different crash collectors from accidentally changing or
+// modifying each other's files.
+inline constexpr mode_t kDaemonStoreCrashPathMode = 03770;
+
+// The user name that has access to connectivity fw crash dumps.
+inline constexpr char kFbpreprocessorUserName[] = "fbpreprocessor";
+
+// The name of fbpreprocessord user access group that owns
+// connectivity fw dumps.
+inline constexpr char kFbpreprocessorGroupName[] = "fbpreprocessor-user-access";
 
 inline constexpr char kUploadVarPrefix[] = "upload_var_";
 inline constexpr char kUploadTextPrefix[] = "upload_text_";

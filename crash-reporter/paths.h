@@ -72,6 +72,11 @@ inline constexpr char kFallbackUserCrashDirectory[] = "/home/chronos/crash";
 // daemon-store.
 inline constexpr char kCryptohomeCrashDirectory[] = "/run/daemon-store/crash";
 
+// The daemon store directory where the connectivity fw crash dumps
+// will be stored.
+inline constexpr char kCryptohomeFbPreprocessorBaseDirectory[] =
+    "/run/daemon-store/fbpreprocessord";
+
 // File whose existence indicates this is a developer image.
 inline constexpr char kLeaveCoreFile[] = "/root/.leave_core";
 

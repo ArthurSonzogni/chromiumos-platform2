@@ -450,6 +450,16 @@ class CrashCollector {
       uid_t* directory_owner,
       gid_t* directory_group);
 
+  // This is common helper function to open/create crash directory
+  // for given mode, owner, group.
+  std::optional<base::FilePath> GetCreatedCrashDirectory(
+      base::FilePath& full_path,
+      bool can_create_or_fix,
+      mode_t directory_mode,
+      mode_t directory_owner,
+      mode_t directory_group,
+      bool* out_of_capacity);
+
   // Determines the crash directory for given euid, and creates the directory if
   // necessary with appropriate permissions.  If |out_of_capacity| is not
   // nullptr, it is set to indicate if the call failed due to not having

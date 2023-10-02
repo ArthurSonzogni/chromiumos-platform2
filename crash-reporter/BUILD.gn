@@ -80,6 +80,7 @@ pkg_config("libcrash_config") {
     "libcrossystem",
     "libsession_manager-client",
     "re2",
+    "system_api",
     "vboot_host",
     "zlib",
   ]
@@ -121,6 +122,7 @@ static_library("libcrash_reporter") {
     "bert_collector.cc",
     "chrome_collector.cc",
     "clobber_state_collector.cc",
+    "connectivity_util.cc",
     "crash_collector.cc",
     "crash_reporter_failure_collector.cc",
     "ec_collector.cc",
@@ -152,6 +154,7 @@ static_library("libcrash_reporter") {
   deps = [
     ":crash-reporter-adaptors",
     "//common-mk/external_dependencies:policy-protos",
+    "//common-mk/external_dependencies:user_policy-protos",
   ]
   pkg_deps = [ "libminijail" ]
 
@@ -419,6 +422,7 @@ if (use.test) {
       "bluetooth_devcd_parser_util_test.cc",
       "chrome_collector_test.cc",
       "clobber_state_collector_test.cc",
+      "connectivity_util_test.cc",
       "crash_collector_test.cc",
       "crash_collector_test.h",
       "crash_reporter_failure_collector_test.cc",

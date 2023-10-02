@@ -257,6 +257,11 @@ It is invoked via the [udev rules] and relies heavily on callbacks in the
 
 The program name is `udev`.
 
+udev_collector also collects connectivity firmware dumps and unlike generic
+coredumps, it stores connectivity firmware dumps in daemon-store directory of
+fbpreprocessord. The firmware dumps collected are attached to feedback reports
+instead of uploading to crash-reporter server.
+
 These reports are largely device specific as they try to capture whatever state
 the device/firmware needs to triage.
 

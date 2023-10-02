@@ -4,7 +4,9 @@
 
 #include "crash-reporter/udev_collector.h"
 
+#include <map>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_enumerator.h>
@@ -13,12 +15,16 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
+#include <bindings/cloud_policy.pb.h>
+#include <bindings/device_management_backend.pb.h>
 #include <brillo/strings/string_utils.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
+#include <session_manager-client-test/session_manager/dbus-proxy-mocks.h>
 
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
@@ -49,15 +55,21 @@ const char kLogConfigFileContents[] =
 const char kCrashLogFilePattern[] = "*.log.gz";
 const char kDevCoredumpFilePattern[] = "*.devcore.gz";
 const char kBluetoothCoredumpFilePattern[] = "bt_firmware.*";
+const char kWiFiCoredumpFilePattern[] = "devcoredump_iwlwifi.*.devcore.gz";
 
 // Dummy content for device coredump data file.
 const char kDevCoredumpDataContents[] = "coredump";
 
-// BT tests should be using BT specific driver name.
-const char kConnectivityBTDriverName[] = "bt_driver";
-
 // Driver name for a coredump that should not be collected:
 const char kNoCollectDriverName[] = "disallowed_driver";
+
+// BT tests should be using BT specific driver name.
+constexpr char kConnectivityBTDriverName[] = "bt_driver";
+constexpr char kConnectivityWiFiDriverName[] = "iwlwifi";
+constexpr char kDeviceGoogleUser[] = "alice@google.com";
+constexpr char kDeviceUserInAllowlist[] = "testuser@managedchrome.com";
+constexpr char kDeviceGmailUser[] = "alice@gmail.com";
+constexpr char kAffiliationID[] = "affiliation_id";
 
 // Driver name for a coredump that should be collected:
 const char kCollectedDriverName[] = "msm";
@@ -77,6 +89,11 @@ int GetNumFiles(const FilePath& path, const std::string& file_pattern) {
 
 }  // namespace
 
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::WithArg;
+using ::testing::WithArgs;
+
 class UdevCollectorMock : public UdevCollector {
  public:
   UdevCollectorMock()
@@ -85,6 +102,13 @@ class UdevCollectorMock : public UdevCollector {
                 base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
                 std::make_unique<MetricsLibraryMock>())) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
+
+  void SetSessionManagerProxy(
+      org::chromium::SessionManagerInterfaceProxyMock* mock) {
+    // This will take ownership of the mock, and the mock will be
+    // deleted when the UdevCollectorMock is deleted.
+    session_manager_proxy_.reset(mock);
+  }
 };
 
 class UdevCollectorTest : public ::testing::Test {
@@ -126,6 +150,62 @@ class UdevCollectorTest : public ::testing::Test {
     FilePath dev_coredump_path =
         temp_dir_generator_.GetPath().Append(kDevCoredumpDirectory);
     collector->dev_coredump_directory_ = dev_coredump_path.value();
+    collector->EnableConnectivityFwdumpForTest();
+  }
+
+  // This function creates input request blob required to call
+  // RetrievePolicyEx() function.
+  std::vector<uint8_t> CreateExpectedDescriptorBlob(
+      const login_manager::PolicyAccountType& type, const std::string& user) {
+    login_manager::PolicyDescriptor descriptor;
+    descriptor.set_domain(login_manager::POLICY_DOMAIN_CHROME);
+    descriptor.set_account_id(user);
+
+    if (type == login_manager::PolicyAccountType::ACCOUNT_TYPE_USER) {
+      descriptor.set_account_type(
+          login_manager::PolicyAccountType::ACCOUNT_TYPE_USER);
+    } else if (type == login_manager::PolicyAccountType::ACCOUNT_TYPE_DEVICE) {
+      descriptor.set_account_type(
+          login_manager::PolicyAccountType::ACCOUNT_TYPE_DEVICE);
+    } else {
+      CHECK(false);
+    }
+
+    std::string descriptor_string = descriptor.SerializeAsString();
+    return std::vector<uint8_t>(descriptor_string.begin(),
+                                descriptor_string.end());
+  }
+
+  // This function creates Policy Fetch Response blob to simulate expected
+  // response of RetrievePolicyEx() function call.
+  std::vector<uint8_t> CreatePolicyFetchResponseBlob(
+      const login_manager::PolicyAccountType& type,
+      const std::string& affiliation_id) {
+    // Add fake policy values to ensure user policy is correctly
+    // deserialized. TODO(b/291344512): These will be replaced with
+    // userfeedbackwithlowleveldebugdataallowed once this policy
+    // is available.
+    enterprise_management::PolicyData policy_data;
+    enterprise_management::CloudPolicySettings user_policy_val;
+    user_policy_val.mutable_arcpolicy()->set_value("ARCVM");
+    user_policy_val.mutable_attestationenabledforuser()->set_value(true);
+    std::string serialized_user_policy = user_policy_val.SerializeAsString();
+    policy_data.set_policy_value(serialized_user_policy);
+
+    if (type == login_manager::PolicyAccountType::ACCOUNT_TYPE_USER) {
+      auto id = policy_data.add_user_affiliation_ids();
+      *id = affiliation_id;
+    } else if (type == login_manager::PolicyAccountType::ACCOUNT_TYPE_DEVICE) {
+      auto id = policy_data.add_device_affiliation_ids();
+      *id = affiliation_id;
+    } else {
+      CHECK(false);
+    }
+
+    enterprise_management::PolicyFetchResponse response;
+    CHECK(policy_data.SerializeToString(response.mutable_policy_data()));
+    auto serialized = response.SerializeAsString();
+    return std::vector<uint8_t>(serialized.begin(), serialized.end());
   }
 
   UdevCollectorMock collector_;
@@ -184,6 +264,128 @@ TEST_F(UdevCollectorTest, TestDevCoredump) {
       "ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
   EXPECT_EQ(
       0, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
+}
+
+// Ensure that subsequent fwdumps are generated on back to back udev events
+// for allowed users.
+TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserAllowed) {
+  GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
+
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+
+  EXPECT_CALL(*mock, RetrievePrimarySession)
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceGoogleUser;
+            *sanitized = "user_hash";
+            return true;
+          })));
+
+  EXPECT_CALL(
+      *mock,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kDeviceGoogleUser),
+                       _, _, _))
+      .WillRepeatedly(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+            kAffiliationID);
+        return true;
+      })));
+
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(
+      1, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
+
+  // Generate another coredump and check additional fwdump file is generated.
+  GenerateDevCoredump("devcd1", kConnectivityWiFiDriverName);
+  // Each collector is only allowed to handle one crash, so create a second
+  // collector for the second crash.
+  UdevCollectorMock second_collector;
+  SetUpCollector(&second_collector);
+  auto* mock2 = new org::chromium::SessionManagerInterfaceProxyMock;
+  second_collector.SetSessionManagerProxy(mock2);
+
+  EXPECT_CALL(*mock2, RetrievePrimarySession)
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceGoogleUser;
+            *sanitized = "user_hash";
+            return true;
+          })));
+
+  EXPECT_CALL(
+      *mock2,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kDeviceGoogleUser),
+                       _, _, _))
+      .WillRepeatedly(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+            kAffiliationID);
+        return true;
+      })));
+  second_collector.HandleCrash(
+      "ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(
+      2, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
+}
+
+// Ensure that connectivity fwdump is generated for user in allowlist.
+TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserInAllowList) {
+  GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
+
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+
+  EXPECT_CALL(*mock, RetrievePrimarySession)
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUserInAllowlist;
+            *sanitized = "user_hash";
+            return true;
+          })));
+
+  EXPECT_CALL(
+      *mock,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kDeviceUserInAllowlist),
+                       _, _, _))
+      .WillRepeatedly(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+            kAffiliationID);
+        return true;
+      })));
+
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(
+      1, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
+  GenerateDevCoredump("devcd1", kConnectivityWiFiDriverName);
+}
+
+// Ensure no connectivity fwdump is generated for not allowed user.
+TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserNotAllowed) {
+  GenerateDevCoredump("devcd0", kConnectivityWiFiDriverName);
+
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+
+  EXPECT_CALL(*mock, RetrievePrimarySession)
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceGmailUser;
+            *sanitized = "user_hash";
+            return true;
+          })));
+
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(
+      0, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
 }
 
 TEST_F(UdevCollectorTest, TestCollectedDevCoredump) {
