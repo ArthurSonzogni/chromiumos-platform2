@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
 
+#include "shill/http_url.h"
 #include "shill/icmp_session.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
@@ -209,7 +210,7 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   bool Start(const std::string& url) {
-    return connection_diagnostics_.Start(url);
+    return connection_diagnostics_.Start(*HttpUrl::CreateFromString(url));
   }
 
   void VerifyStopped() {
@@ -220,7 +221,7 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_FALSE(connection_diagnostics_.icmp_session_->IsStarted());
     EXPECT_TRUE(
         connection_diagnostics_.id_to_pending_dns_server_icmp_session_.empty());
-    EXPECT_EQ(nullptr, connection_diagnostics_.target_url_);
+    EXPECT_EQ(std::nullopt, connection_diagnostics_.target_url_);
   }
 
   void ExpectIcmpSessionStop() { EXPECT_CALL(*icmp_session_, Stop()); }
@@ -513,16 +514,6 @@ TEST_F(ConnectionDiagnosticsTest, DoesPreviousEventMatch) {
       DoesPreviousEventMatch(ConnectionDiagnostics::kTypeResolveTargetServerIP,
                              ConnectionDiagnostics::kPhaseEnd,
                              ConnectionDiagnostics::kResultSuccess, 0));
-}
-
-TEST_F(ConnectionDiagnosticsTest, StartWithBadURL) {
-  const std::string kBadURL("http://www.foo.com:x");  // Colon but no port
-  // IcmpSession::Stop will be called once when the bad URL is rejected.
-  ExpectIcmpSessionStop();
-  EXPECT_FALSE(Start(kBadURL));
-  // IcmpSession::Stop will be called a second time when
-  // |connection_diagnostics_| is destructed.
-  ExpectIcmpSessionStop();
 }
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {

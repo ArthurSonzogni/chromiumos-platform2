@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,7 @@
 #include <base/types/expected.h>
 #include <net-base/ip_address.h>
 
+#include "shill/http_url.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 
@@ -136,8 +138,8 @@ class ConnectionDiagnostics {
 
   virtual ~ConnectionDiagnostics();
 
-  // Performs connectivity diagnostics for the hostname of the URL |url_string|.
-  mockable bool Start(const std::string& url_string);
+  // Performs connectivity diagnostics for the hostname of the URL |url|.
+  mockable bool Start(const HttpUrl& url);
   void Stop();
 
   // Returns a string representation of |event|.
@@ -223,9 +225,9 @@ class ConnectionDiagnostics {
   std::unique_ptr<DnsClient> dns_client_;
   std::unique_ptr<IcmpSession> icmp_session_;
 
-  // The URL whose hostname is being diagnosed. Stored in unique_ptr so that it
-  // can be cleared when we stop diagnostics.
-  std::unique_ptr<HttpUrl> target_url_;
+  // The URL whose hostname is being diagnosed. Only defined when the
+  // diagnostics is running.
+  std::optional<HttpUrl> target_url_;
 
   // Used to ping multiple DNS servers in parallel.
   std::map<int, std::unique_ptr<IcmpSession>>

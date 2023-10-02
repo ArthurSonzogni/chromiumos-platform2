@@ -47,6 +47,23 @@ static std::string ObjectID(const PortalDetector* pd) {
 }
 }  // namespace Logging
 
+// static
+PortalDetector::ProbingConfiguration
+PortalDetector::DefaultProbingConfiguration() {
+  ProbingConfiguration config;
+  config.portal_http_url = *HttpUrl::CreateFromString(kDefaultHttpUrl);
+  config.portal_https_url = *HttpUrl::CreateFromString(kDefaultHttpsUrl);
+  for (const auto& url_string : kDefaultFallbackHttpUrls) {
+    config.portal_fallback_http_urls.push_back(
+        *HttpUrl::CreateFromString(url_string));
+  }
+  for (const auto& url_string : kDefaultFallbackHttpsUrls) {
+    config.portal_fallback_https_urls.push_back(
+        *HttpUrl::CreateFromString(url_string));
+  }
+  return config;
+}
+
 PortalDetector::PortalDetector(
     EventDispatcher* dispatcher,
     const ProbingConfiguration& probing_configuration,
@@ -59,9 +76,9 @@ PortalDetector::~PortalDetector() {
   Stop();
 }
 
-const std::string& PortalDetector::PickProbeUrl(
-    const std::string& default_url,
-    const std::vector<std::string>& fallback_urls) const {
+const HttpUrl& PortalDetector::PickProbeUrl(
+    const HttpUrl& default_url,
+    const std::vector<HttpUrl>& fallback_urls) const {
   if (attempt_count_ == 0 || fallback_urls.empty()) {
     return default_url;
   }
@@ -82,29 +99,10 @@ bool PortalDetector::Start(const std::string& ifname,
 
   SLOG(this, 3) << "In " << __func__;
 
-  // This step is rerun on each attempt, but trying it here will allow
-  // Start() to abort on any obviously malformed URL strings.
-  const auto& http_url_string =
-      PickProbeUrl(probing_configuration_.portal_http_url,
-                   probing_configuration_.portal_fallback_http_urls);
-  const auto http_url = HttpUrl::CreateFromString(http_url_string);
-  if (!http_url) {
-    LOG(ERROR) << LoggingTag() << ": Failed to parse HTTP probe URL string: "
-               << http_url_string;
-    return false;
-  }
-  http_url_ = *http_url;
-
-  const auto& https_url_string =
-      PickProbeUrl(probing_configuration_.portal_https_url,
-                   probing_configuration_.portal_fallback_https_urls);
-  const auto https_url = HttpUrl::CreateFromString(https_url_string);
-  if (!https_url) {
-    LOG(ERROR) << "Failed to parse HTTPS probe URL string: "
-               << https_url_string;
-    return false;
-  }
-  https_url_ = *https_url;
+  http_url_ = PickProbeUrl(probing_configuration_.portal_http_url,
+                           probing_configuration_.portal_fallback_http_urls);
+  https_url_ = PickProbeUrl(probing_configuration_.portal_https_url,
+                            probing_configuration_.portal_fallback_https_urls);
 
   if (!trial_.IsCancelled()) {
     LOG(INFO) << LoggingTag() << ": Cancelling next scheduled trial";
@@ -123,7 +121,7 @@ bool PortalDetector::Start(const std::string& ifname,
       std::make_unique<HttpRequest>(dispatcher_, ifname, ip_family, dns_list);
   // For non-default URLs, allow for secure communication with both Google and
   // non-Google servers.
-  bool allow_non_google_https = (https_url_string != kDefaultHttpsUrl);
+  bool allow_non_google_https = https_url_.ToString() == kDefaultHttpsUrl;
   https_request_ = std::make_unique<HttpRequest>(
       dispatcher_, ifname, ip_family, dns_list, allow_non_google_https);
   trial_.Reset(base::BindOnce(&PortalDetector::StartTrialTask,

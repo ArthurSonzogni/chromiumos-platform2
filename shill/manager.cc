@@ -3118,10 +3118,38 @@ void Manager::TetheringStatusChanged() {
 PortalDetector::ProbingConfiguration
 Manager::GetPortalDetectorProbingConfiguration() const {
   PortalDetector::ProbingConfiguration config;
-  config.portal_http_url = props_.portal_http_url;
-  config.portal_https_url = props_.portal_https_url;
-  config.portal_fallback_http_urls = props_.portal_fallback_http_urls;
-  config.portal_fallback_https_urls = props_.portal_fallback_https_urls;
+  auto http_url = HttpUrl::CreateFromString(props_.portal_http_url);
+  auto https_url = HttpUrl::CreateFromString(props_.portal_https_url);
+  if (!http_url) {
+    LOG(WARNING) << __func__ << ": could not parse default HTTP URL "
+                 << props_.portal_http_url;
+    return PortalDetector::DefaultProbingConfiguration();
+  }
+  if (!https_url) {
+    LOG(WARNING) << __func__ << ": could not parse default HTTPS URL "
+                 << props_.portal_http_url;
+    return PortalDetector::DefaultProbingConfiguration();
+  }
+  config.portal_http_url = *http_url;
+  config.portal_https_url = *https_url;
+  for (const auto& url_string : props_.portal_fallback_http_urls) {
+    auto url = HttpUrl::CreateFromString(url_string);
+    if (!url) {
+      LOG(WARNING) << __func__ << ": could not parse fallback HTTP URL "
+                   << url_string;
+      return PortalDetector::DefaultProbingConfiguration();
+    }
+    config.portal_fallback_http_urls.push_back(*url);
+  }
+  for (const auto& url_string : props_.portal_fallback_https_urls) {
+    auto url = HttpUrl::CreateFromString(url_string);
+    if (!url) {
+      LOG(WARNING) << __func__ << ": could not parse fallback HTTPS URL "
+                   << url_string;
+      return PortalDetector::DefaultProbingConfiguration();
+    }
+    config.portal_fallback_https_urls.push_back(*url);
+  }
   return config;
 }
 

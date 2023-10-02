@@ -93,17 +93,21 @@ class PortalDetector {
   struct ProbingConfiguration {
     // URL used for the first HTTP probe sent by PortalDetector on a new network
     // connection.
-    std::string portal_http_url;
+    HttpUrl portal_http_url;
     // URL used for the first HTTPS probe sent by PortalDetector on a new
     // network connection.
-    std::string portal_https_url;
+    HttpUrl portal_https_url;
     // Set of fallback URLs used for retrying the HTTP probe when portal
     // detection is not conclusive.
-    std::vector<std::string> portal_fallback_http_urls;
+    std::vector<HttpUrl> portal_fallback_http_urls;
     // Set of fallback URLs used for retrying the HTTPS probe when portal
     // detection is not conclusive.
-    std::vector<std::string> portal_fallback_https_urls;
+    std::vector<HttpUrl> portal_fallback_https_urls;
   };
+
+  // Returns the default ProbingConfiguration using the default URLs defined in
+  // PortalDetector.
+  static ProbingConfiguration DefaultProbingConfiguration();
 
   // The Phase enum indicates the phase at which the probe fails.
   enum class Phase {
@@ -205,10 +209,7 @@ class PortalDetector {
   // Starts and schedules a new portal detection attempt according to the value
   // of GetNextAttemptDelay. If an attempt is already scheduled to run but has
   // not run yet, the new attempt will override the old attempt. If an attempt
-  // is already running, nothing happens and true is returned. Returns true if
-  // url strings selected in |props| correctly parse as URLs. Returns false (and
-  // does not start) if they fail to parse. As each attempt completes the
-  // callback handed to the constructor will be called.
+  // is already running, nothing happens and true is returned.
   virtual bool Start(const std::string& ifname,
                      net_base::IPFamily ip_family,
                      const std::vector<std::string>& dns_list,
@@ -272,9 +273,8 @@ class PortalDetector {
   // Picks the next probe URL based on |attempt_count_|. Returns |default_url|
   // if this is the first attempt. Otherwise, randomly returns with equal
   // probability |default_url| or an element of |fallback_urls|.
-  const std::string& PickProbeUrl(
-      const std::string& default_url,
-      const std::vector<std::string>& fallback_urls) const;
+  const HttpUrl& PickProbeUrl(const HttpUrl& default_url,
+                              const std::vector<HttpUrl>& fallback_urls) const;
 
   // Internal method used to start the actual connectivity trial, called after
   // the start delay completes.

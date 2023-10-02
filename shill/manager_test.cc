@@ -108,6 +108,17 @@ class MockTetheringManager : public shill::TetheringManager {
   MOCK_METHOD(void, LoadConfigFromProfile, (const ProfileRefPtr&), (override));
   MOCK_METHOD(void, UnloadConfigFromProfile, (), (override));
 };
+
+bool AreProbingConfigurationsEqual(
+    const PortalDetector::ProbingConfiguration& config1,
+    const PortalDetector::ProbingConfiguration& config2) {
+  return config1.portal_http_url == config2.portal_http_url &&
+         config1.portal_https_url == config2.portal_https_url &&
+         config1.portal_fallback_http_urls ==
+             config2.portal_fallback_http_urls &&
+         config1.portal_fallback_https_urls ==
+             config2.portal_fallback_https_urls;
+}
 }  // namespace
 
 class ManagerTest : public PropertyStoreTest {
@@ -3567,6 +3578,43 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   manager()->DeregisterDevice(wifi_device);
   manager()->DeregisterDevice(cell_device);
   manager()->DeregisterDevice(eth_device);
+}
+
+TEST_F(ManagerTest, GetPortalDetectorProbingConfiguration) {
+  const auto default_probe_config =
+      PortalDetector::DefaultProbingConfiguration();
+
+  manager()->props_.portal_http_url =
+      "http://example.com/non_default_valid_url1";
+  manager()->props_.portal_https_url =
+      "http://example.com/non_default_valid_url2";
+  manager()->props_.portal_fallback_http_urls = {
+      "http://example.com/non_default_valid_url3"};
+  manager()->props_.portal_fallback_https_urls = {
+      "http://example.com/non_default_valid_url4"};
+
+  EXPECT_FALSE(AreProbingConfigurationsEqual(
+      default_probe_config,
+      manager()->GetPortalDetectorProbingConfiguration()));
+
+  manager()->props_.portal_http_url = "invalid_url";
+  EXPECT_TRUE(AreProbingConfigurationsEqual(
+      default_probe_config,
+      manager()->GetPortalDetectorProbingConfiguration()));
+  manager()->props_.portal_http_url =
+      "http://example.com/non_default_valid_url";
+
+  manager()->props_.portal_https_url = "invalid_url";
+  EXPECT_TRUE(AreProbingConfigurationsEqual(
+      default_probe_config,
+      manager()->GetPortalDetectorProbingConfiguration()));
+  manager()->props_.portal_https_url =
+      "http://example.com/non_default_valid_url";
+
+  manager()->props_.portal_fallback_http_urls = {"invalid_url"};
+  EXPECT_TRUE(AreProbingConfigurationsEqual(
+      default_probe_config,
+      manager()->GetPortalDetectorProbingConfiguration()));
 }
 
 TEST_F(ManagerTest, IsProfileBefore) {

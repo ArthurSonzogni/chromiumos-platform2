@@ -131,22 +131,14 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
 }
 
-bool ConnectionDiagnostics::Start(const std::string& url_string) {
-  LOG(INFO) << iface_name_ << ": Starting diagnostics for " << url_string;
-
+bool ConnectionDiagnostics::Start(const HttpUrl& url) {
   if (running()) {
     LOG(ERROR) << iface_name_ << ": Diagnostics already started";
     return false;
   }
 
-  target_url_.reset(new HttpUrl());
-  if (!target_url_->ParseFromString(url_string)) {
-    LOG(ERROR) << iface_name_ << ": Failed to parse URL \"" << url_string
-               << "\". Cannot start diagnostics";
-    Stop();
-    return false;
-  }
-
+  LOG(INFO) << iface_name_ << ": Starting diagnostics for " << url.ToString();
+  target_url_ = url;
   running_ = true;
   // Ping DNS servers to make sure at least one is reachable before resolving
   // the hostname of |target_url_|;
@@ -163,7 +155,7 @@ void ConnectionDiagnostics::Stop() {
   dns_client_.reset();
   icmp_session_->Stop();
   id_to_pending_dns_server_icmp_session_.clear();
-  target_url_.reset();
+  target_url_ = std::nullopt;
 }
 
 // static

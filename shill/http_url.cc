@@ -121,4 +121,13 @@ std::string HttpUrl::ToString() const {
   return url_string;
 }
 
+bool HttpUrl::operator==(const HttpUrl& rhs) const {
+  return host_ == rhs.host_ && path_ == rhs.path_ && port_ == rhs.port_ &&
+         protocol_ == rhs.protocol_;
+}
+
+bool HttpUrl::operator!=(const HttpUrl& rhs) const {
+  return !(*this == rhs);
+}
+
 }  // namespace shill

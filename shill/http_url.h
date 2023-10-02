@@ -33,6 +33,9 @@ class HttpUrl {
   Protocol protocol() const { return protocol_; }
   std::string ToString() const;
 
+  bool operator==(const HttpUrl& rhs) const;
+  bool operator!=(const HttpUrl& rhs) const;
+
  private:
   std::string host_;
   std::string path_;

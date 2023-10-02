@@ -574,6 +574,7 @@ class Manager {
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DeviceRegistrationTriggersThrottler);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
+  FRIEND_TEST(ManagerTest, GetPortalDetectorProbingConfiguration);
   FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
   FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
   FRIEND_TEST(ManagerTest, IsTechnologyAutoConnectDisabled);

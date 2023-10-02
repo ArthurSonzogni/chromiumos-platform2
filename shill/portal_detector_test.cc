@@ -32,7 +32,6 @@ using testing::Test;
 namespace shill {
 
 namespace {
-const char kBadURL[] = "badurl";
 const char kInterfaceName[] = "int0";
 const char kHttpUrl[] = "http://www.chromium.org";
 const char kHttpsUrl[] = "https://www.google.com";
@@ -139,10 +138,16 @@ class PortalDetectorTest : public Test {
 
   static PortalDetector::ProbingConfiguration MakeProbingConfiguration() {
     PortalDetector::ProbingConfiguration config;
-    config.portal_http_url = kHttpUrl;
-    config.portal_https_url = kHttpsUrl;
-    config.portal_fallback_http_urls = kFallbackHttpUrls;
-    config.portal_fallback_https_urls = kFallbackHttpsUrls;
+    config.portal_http_url = *HttpUrl::CreateFromString(kHttpUrl);
+    config.portal_https_url = *HttpUrl::CreateFromString(kHttpsUrl);
+    for (const auto& url : kFallbackHttpUrls) {
+      config.portal_fallback_http_urls.push_back(
+          *HttpUrl::CreateFromString(url));
+    }
+    for (const auto& url : kFallbackHttpsUrls) {
+      config.portal_fallback_https_urls.push_back(
+          *HttpUrl::CreateFromString(url));
+    }
     return config;
   }
 
@@ -230,19 +235,6 @@ const int PortalDetectorTest::kNumAttempts = 0;
 
 TEST_F(PortalDetectorTest, Constructor) {
   ExpectReset();
-}
-
-TEST_F(PortalDetectorTest, InvalidURL) {
-  EXPECT_FALSE(portal_detector()->IsInProgress());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, ZeroDelay())).Times(0);
-  auto probing_configuration = MakeProbingConfiguration();
-  probing_configuration.portal_http_url = kBadURL;
-  portal_detector()->set_probing_configuration_for_testing(
-      probing_configuration);
-  EXPECT_FALSE(StartPortalRequest());
-  ExpectReset();
-
-  EXPECT_FALSE(portal_detector()->IsInProgress());
 }
 
 TEST_F(PortalDetectorTest, IsInProgress) {
@@ -718,10 +710,11 @@ TEST_F(PortalDetectorTest, StatusToString) {
 }
 
 TEST_F(PortalDetectorTest, PickProbeUrlTest) {
-  const std::string url1 = "http://www.url1.com";
-  const std::string url2 = "http://www.url2.com";
-  const std::string url3 = "http://www.url3.com";
-  const std::set<std::string> all_urls = {url1, url2, url3};
+  const auto url1 = *HttpUrl::CreateFromString("http://www.url1.com");
+  const auto url2 = *HttpUrl::CreateFromString("http://www.url2.com");
+  const auto url3 = *HttpUrl::CreateFromString("http://www.url3.com");
+  const std::set<std::string> all_urls = {url1.ToString(), url2.ToString(),
+                                          url3.ToString()};
   std::set<std::string> all_found_urls;
 
   EXPECT_EQ(url1, portal_detector_->PickProbeUrl(url1, {}));
@@ -733,7 +726,8 @@ TEST_F(PortalDetectorTest, PickProbeUrlTest) {
     portal_detector_->attempt_count_ = i;
     EXPECT_EQ(portal_detector_->PickProbeUrl(url1, {}), url1);
 
-    const auto found = portal_detector_->PickProbeUrl(url1, {url2, url3});
+    const auto found =
+        portal_detector_->PickProbeUrl(url1, {url2, url3}).ToString();
     all_found_urls.insert(found);
     EXPECT_NE(all_urls.find(found), all_urls.end());
   }

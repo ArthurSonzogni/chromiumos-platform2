@@ -22,6 +22,7 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 
+#include "shill/http_url.h"
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
@@ -169,7 +170,7 @@ class MockConnectionDiagnostics : public ConnectionDiagnostics {
       delete;
   ~MockConnectionDiagnostics() = default;
 
-  MOCK_METHOD(bool, Start, (const std::string& url_string), (override));
+  MOCK_METHOD(bool, Start, (const HttpUrl& url), (override));
 };
 
 // Allows us to fake/mock some functions in this test.
