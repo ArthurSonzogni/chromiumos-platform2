@@ -5,6 +5,7 @@
 #include "sommelier.h"            // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
+#include "sommelier-window.h"     // NOLINT(build/include_directory)
 #include "sommelier-xshape.h"     // NOLINT(build/include_directory)
 #ifdef GAMEPAD_SUPPORT
 #include "libevdev/libevdev-shim.h"
@@ -1420,8 +1421,8 @@ void sl_handle_map_request(struct sl_context* ctx,
   }
 
   // Allow user/program controlled position for transients,
-  // or for all windows if --enable_x11_move_windows was specified.
-  if (window->transient_for || ctx->enable_x11_move_windows)
+  // and other client-positioned windows.
+  if (window->transient_for || sl_window_is_client_positioned(window))
     window->size_flags |= size_hints.flags & (US_POSITION | P_POSITION);
 
   // If startup ID is not set, then try the client leader window.

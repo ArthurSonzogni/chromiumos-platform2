@@ -16,6 +16,10 @@
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
+#ifdef QUIRKS_SUPPORT
+#include "quirks/sommelier-quirks.h"
+#endif
+
 #define XID_APPLICATION_ID_FORMAT APPLICATION_ID_FORMAT_PREFIX ".xid.%d"
 #define WM_CLIENT_LEADER_APPLICATION_ID_FORMAT \
   APPLICATION_ID_FORMAT_PREFIX ".wmclientleader.%d"
@@ -458,7 +462,7 @@ static const struct wl_callback_listener configure_event_barrier_listener = {
 void sl_toplevel_send_window_bounds_to_host(struct sl_window* window) {
   // Don't send window bounds if fullscreen/maximized/resizing,
   // or if the feature is unsupported by the host or disabled by flag.
-  if (!window->allow_resize || !window->ctx->enable_x11_move_windows ||
+  if (!window->allow_resize || !sl_window_is_client_positioned(window) ||
       !window->ctx->aura_shell ||
       window->ctx->aura_shell->version <
           ZAURA_TOPLEVEL_SET_WINDOW_BOUNDS_SINCE_VERSION ||
@@ -694,8 +698,9 @@ void sl_window_update(struct sl_window* window) {
                                 &sl_internal_xdg_toplevel_listener, window);
     }
 
-    // aura_toplevel is only needed for the --enable-x11-move-windows case
-    // right now. Setting it up means we get x and y coordinates in configure
+    // Right now, aura_toplevel is only needed for windows positioned by the
+    // client (which is all windows if --enable-x11-move-windows is passed).
+    // Setting it up means we get x and y coordinates in configure
     // events (aura_toplevel.configure replaces xdg_toplevel.configure), which
     // changes how windows are positioned in the X server's coordinate space. If
     // windows end up partially offscreen in that space, we get bugs like
@@ -709,7 +714,7 @@ void sl_window_update(struct sl_window* window) {
     // coordinates, but for now the most conservative approach is to avoid using
     // aura_toplevel entirely. This can be revisited later if we need
     // aura_toplevel for anything else.
-    if (ctx->enable_x11_move_windows && ctx->aura_shell &&
+    if (sl_window_is_client_positioned(window) && ctx->aura_shell &&
         window->xdg_toplevel && !window->aura_toplevel) {
       window->aura_toplevel = zaura_shell_get_aura_toplevel_for_xdg_toplevel(
           ctx->aura_shell->internal, window->xdg_toplevel);
@@ -785,4 +790,23 @@ void sl_window_update(struct sl_window* window) {
 
   if (host_surface->contents_width && host_surface->contents_height)
     window->realized = 1;
+}
+
+#ifdef QUIRKS_SUPPORT
+bool sl_window_should_log_quirk(struct sl_window* window, int feature_enum) {
+  return window->logged_quirks.insert(feature_enum).second;
+}
+
+std::set<int> sl_window_logged_quirks(struct sl_window* window) {
+  return window->logged_quirks;
+}
+#endif
+
+bool sl_window_is_client_positioned(struct sl_window* window) {
+#ifdef QUIRKS_SUPPORT
+  if (window->ctx->quirks.IsEnabled(window, quirks::FEATURE_X11_MOVE_WINDOWS)) {
+    return true;
+  }
+#endif
+  return window->ctx->enable_x11_move_windows;
 }

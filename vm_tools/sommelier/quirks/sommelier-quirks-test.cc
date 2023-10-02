@@ -121,4 +121,24 @@ TEST_F(QuirksTest, AllConditionsMustMatch) {
   EXPECT_FALSE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
 }
 
+TEST_F(QuirksTest, SetsQuirkAppliedProperty) {
+  xcb.DelegateToFake();
+  sl_window* game123 = CreateToplevelWindow();
+  xcb.create_window(nullptr, 32, game123->id, XCB_WINDOW_NONE, 0, 0, 800, 600,
+                    0, XCB_WINDOW_CLASS_INPUT_OUTPUT, XCB_COPY_FROM_PARENT, 0,
+                    nullptr);
+  game123->steam_game_id = 123;
+
+  ctx.quirks.Load(
+      "sommelier { \n"
+      "  condition { steam_game_id: 123 }\n"
+      "  enable: FEATURE_X11_MOVE_WINDOWS\n"
+      "}");
+  EXPECT_TRUE(ctx.quirks.IsEnabled(game123, quirks::FEATURE_X11_MOVE_WINDOWS));
+
+  EXPECT_EQ(StringPropertyForTesting(
+                game123->id, ctx.atoms[ATOM_SOMMELIER_QUIRK_APPLIED].value),
+            "FEATURE_X11_MOVE_WINDOWS");
+}
+
 }  // namespace vm_tools::sommelier

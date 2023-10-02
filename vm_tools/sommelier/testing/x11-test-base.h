@@ -5,7 +5,9 @@
 #ifndef VM_TOOLS_SOMMELIER_TESTING_X11_TEST_BASE_H_
 #define VM_TOOLS_SOMMELIER_TESTING_X11_TEST_BASE_H_
 
+#include <xcb/xproto.h>
 #include <memory>
+#include <string>
 
 #include "../xcb/mock-xcb-shim.h"
 #include "wayland-test-base.h"  // NOLINT(build/include_directory)
@@ -86,6 +88,29 @@ class X11TestBase : public WaylandTestBase {
     }
     Pump();
     return window;
+  }
+
+  std::string StringPropertyForTesting(xcb_window_t window_id,
+                                       xcb_atom_t property_name) {
+    xcb_get_property_cookie_t cookie = xcb.get_property(
+        nullptr, 0, window_id, property_name, XCB_ATOM_STRING, 0, 1024);
+    xcb_get_property_reply_t* reply =
+        xcb.get_property_reply(nullptr, cookie, nullptr);
+    EXPECT_TRUE(reply) << "get_property_reply() returned null. Try calling "
+                          "xcb.DelegateToFake().";
+    std::string result;
+    if (reply->format != 8) {
+      result = "error: expected X11 property format 8, got " +
+               std::to_string(reply->format);
+    } else if (reply->type != XCB_ATOM_STRING) {
+      result = "error: expected X11 property type XCB_ATOM_STRING";
+    } else {
+      void* value = xcb.get_property_value(reply);
+      result = std::string(static_cast<char*>(value), reply->length);
+      free(value);
+    }
+    free(reply);
+    return result;
   }
 
  protected:

@@ -8,6 +8,7 @@
 #include <pixman.h>
 #include <wayland-client-protocol.h>
 #include <wayland-server-core.h>
+#include <set>
 #include <string>
 #include <xcb/xcb.h>
 
@@ -87,6 +88,12 @@ struct sl_window {
   int min_height = 0;
   int max_width = 0;
   int max_height = 0;
+
+#ifdef QUIRKS_SUPPORT
+  // Quirk feature flags previously applied to this window, for which log
+  // messages have already been written.
+  std::set<int> logged_quirks;
+#endif
 
   // Window rect and state from the most recent xdg_toplevel/aura_toplevel
   // configure event, to be applied when xdg_surface.configure is next received.
@@ -221,5 +228,19 @@ void sl_send_configure_notify(struct sl_window* window);
 
 int sl_process_pending_configure_acks(struct sl_window* window,
                                       struct sl_host_surface* host_surface);
+
+#ifdef QUIRKS_SUPPORT
+// Returns true if this function hasn't been called with this combination of
+// `window` and `feature_enum` before. In that case, the caller is expected to
+// write a log message indicating that the quirk has been applied.
+bool sl_window_should_log_quirk(struct sl_window* window, int feature_enum);
+
+// Returns all quirks ever logged against this window.
+// This "latches"; if a quirk has ever been enabled, it will stay in this list,
+// even if the quirk is no longer enabled.
+std::set<int> sl_window_logged_quirks(struct sl_window* window);
+#endif
+
+bool sl_window_is_client_positioned(struct sl_window* window);
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_WINDOW_H_

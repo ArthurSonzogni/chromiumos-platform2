@@ -92,6 +92,8 @@ const char* sl_context_atom_name(int atom_enum) {
       return "STEAM_GAME";
     case ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS:
       return "_XWAYLAND_RANDR_EMU_MONITOR_RECTS";
+    case ATOM_SOMMELIER_QUIRK_APPLIED:
+      return "SOMMELIER_QUIRK_APPLIED";
   }
   return nullptr;
 }
