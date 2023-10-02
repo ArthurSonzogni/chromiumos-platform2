@@ -21,6 +21,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/posix/eintr_wrapper.h>
 #include <chromeos/ec/ec_commands.h>
+#include <libec/ec_command_factory.h>
 #include <libec/fingerprint/fp_frame_command.h>
 #include <libec/fingerprint/fp_info_command.h>
 #include <libec/fingerprint/fp_mode_command.h>
@@ -142,7 +143,9 @@ std::optional<uint8_t> GetNumFans(const int cros_fd) {
 
 namespace diagnostics {
 
-DelegateImpl::DelegateImpl() = default;
+DelegateImpl::DelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory)
+    : ec_command_factory_(ec_command_factory) {}
+
 DelegateImpl::~DelegateImpl() = default;
 
 void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
@@ -295,8 +298,8 @@ void DelegateImpl::ResetLedColor(mojom::LedName name,
 
   auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
 
-  ec::LedControlAutoCommand cmd(ec_led_id);
-  if (!cmd.Run(cros_fd.get())) {
+  auto cmd = ec_command_factory_->LedControlAutoCommand(ec_led_id);
+  if (!cmd || !cmd->Run(cros_fd.get())) {
     std::move(callback).Run("Failed to reset LED color");
     return;
   }

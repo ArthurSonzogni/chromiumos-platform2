@@ -80,6 +80,7 @@ if (use.test) {
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/base:test",
+      "//diagnostics/cros_healthd/delegate:test",
       "//diagnostics/cros_healthd/delegate/fetchers:test",
       "//diagnostics/cros_healthd/delegate/routines:test",
       "//diagnostics/cros_healthd/delegate/utils:test",

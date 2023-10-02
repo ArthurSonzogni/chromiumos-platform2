@@ -6,6 +6,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
+#include <libec/ec_command_factory.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
@@ -39,9 +40,8 @@ class DelegateDaemon : public brillo::Daemon {
 
  private:
   mojo::core::ScopedIPCSupport scoped_ipc_support_;
-
-  DelegateImpl delegate_;
-
+  ec::EcCommandFactory ec_command_factory_;
+  DelegateImpl delegate_{&ec_command_factory_};
   mojo::Receiver<mojom::Delegate> receiver_{&delegate_};
 };
 

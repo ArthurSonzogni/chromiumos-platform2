@@ -2,11 +2,30 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-executable("executor-delegate") {
-  sources = [
-    "delegate_impl.cc",
-    "delegate_main.cc",
+pkg_config("libexecutor_delegate_pkg_deps") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libdrm",
+    "libec",
+    "libmojo",
   ]
+}
+
+source_set("libexecutor_delegate") {
+  sources = [ "delegate_impl.cc" ]
+  configs += [ ":libexecutor_delegate_pkg_deps" ]
+  deps = [
+    "//diagnostics/cros_healthd/delegate/fetchers",
+    "//diagnostics/cros_healthd/delegate/routines",
+    "//diagnostics/cros_healthd/delegate/utils",
+    "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
+  ]
+}
+
+executable("executor-delegate") {
+  sources = [ "delegate_main.cc" ]
+  configs += [ ":libexecutor_delegate_pkg_deps" ]
   assert_no_deps = [
     "//diagnostics/cros_healthd:*",
     "//diagnostics/cros_healthd/event/*",
@@ -22,17 +41,30 @@ executable("executor-delegate") {
     "//diagnostics/cros_healthd/welco_ec/*",
   ]
   install_path = "/usr/libexec/diagnostics"
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libdrm",
-    "libec",
-    "libmojo",
-  ]
-  deps = [
-    "//diagnostics/cros_healthd/delegate/fetchers",
-    "//diagnostics/cros_healthd/delegate/routines",
-    "//diagnostics/cros_healthd/delegate/utils",
-    "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
-  ]
+  deps = [ ":libexecutor_delegate" ]
+}
+
+if (use.test) {
+  pkg_config("test_pkg_deps") {
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+      "libchrome-test",
+      "libdrm",
+      "libec",
+      "libmojo",
+    ]
+  }
+
+  source_set("test") {
+    sources = [ "delegate_impl_test.cc" ]
+    configs += [
+      ":test_pkg_deps",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":libexecutor_delegate",
+      "//diagnostics/base",
+    ]
+  }
 }

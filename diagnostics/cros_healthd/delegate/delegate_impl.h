@@ -10,11 +10,15 @@
 
 #include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
 
+namespace ec {
+class EcCommandFactoryInterface;
+}  // namespace ec
+
 namespace diagnostics {
 
 class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
  public:
-  DelegateImpl();
+  explicit DelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory);
   DelegateImpl(const DelegateImpl&) = delete;
   DelegateImpl& operator=(const DelegateImpl&) = delete;
   ~DelegateImpl() override;
@@ -63,6 +67,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void RunFloatingPoint(base::TimeDelta exec_duration,
                         RunFloatingPointCallback callback) override;
   void GetAllFanSpeed(GetAllFanSpeedCallback callback) override;
+
+ private:
+  ec::EcCommandFactoryInterface* const ec_command_factory_;
 };
 
 }  // namespace diagnostics
