@@ -65,6 +65,8 @@ readlinkat: 1
 recvmsg: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
+sched_get_priority_max: 1
+sched_get_priority_min: 1
 sched_getaffinity: 1
 sched_getattr: 1
 sched_getparam: 1
