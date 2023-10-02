@@ -777,6 +777,7 @@ if (use.test) {
       "mock_throttler.cc",
       "mock_time.cc",
       "mock_virtual_device.cc",
+      "network/compound_network_config_test.cc",
       "network/dhcp_controller_test.cc",
       "network/dhcp_provider_test.cc",
       "network/dhcpv4_config_test.cc",
