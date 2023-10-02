@@ -22,3 +22,7 @@ SUBSYSTEM=="video4linux", KERNEL=="v4l-subdev*", GROUP="camera"
 
 # Limit access to media devices to the camera HAL.
 SUBSYSTEM=="media", ENV{MEDIA_DEVICE_TYPE}!="decoder", GROUP="camera"
+
+# Limit access to /dev/dma_heap to the camera HAL. This will allow us to do
+# dma-heap buffer allocation.
+SUBSYSTEM=="dma_heap", ENV{DEVNAME}=="/dev/dma_heap/*", GROUP="camera"
