@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -26,7 +27,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_portal_detector.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/mock_dhcp_controller.h"
@@ -132,6 +132,25 @@ IPConfig::Properties NetworkConfigToIPProperties(const NetworkConfig& config) {
   props.UpdateFromNetworkConfig(config, /*force_overwrite=*/true);
   return props;
 }
+
+class MockPortalDetector : public PortalDetector {
+ public:
+  MockPortalDetector() : PortalDetector(nullptr, {}, base::DoNothing()) {}
+  MockPortalDetector(const MockPortalDetector&) = delete;
+  MockPortalDetector& operator=(const MockPortalDetector&) = delete;
+  ~MockPortalDetector() = default;
+
+  MOCK_METHOD(bool,
+              Start,
+              (const std::string& ifname,
+               net_base::IPFamily,
+               const std::vector<std::string>&,
+               const std::string& logging_tag),
+              (override));
+  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(bool, IsInProgress, (), (const, override));
+  MOCK_METHOD(void, ResetAttemptDelays, (), (override));
+};
 
 class MockConnectionDiagnostics : public ConnectionDiagnostics {
  public:

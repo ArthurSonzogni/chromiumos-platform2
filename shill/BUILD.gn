@@ -751,7 +751,6 @@ if (use.test) {
       "mock_log_test.cc",
       "mock_manager.cc",
       "mock_metrics.cc",
-      "mock_portal_detector.cc",
       "mock_power_manager.cc",
       "mock_power_manager_proxy.cc",
       "mock_profile.cc",
