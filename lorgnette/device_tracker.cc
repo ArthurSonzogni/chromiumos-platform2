@@ -794,6 +794,17 @@ CancelScanResponse DeviceTracker::CancelScan(const CancelScanRequest& request) {
   OpenScannerState& state = open_scanners_[device_handle];
   state.last_activity = base::Time::Now();
 
+  // If there's no job handle currently, the previous job was run to completion
+  // and no new job has been started.  Go ahead and report that cancelling
+  // succeeds because the end state is identical.
+  if (!state.device->GetCurrentJob().has_value()) {
+    LOG(WARNING) << __func__ << ": Job has already completed: " << job_handle;
+    response.set_success(true);
+    response.set_result(OPERATION_RESULT_SUCCESS);
+    active_jobs_.erase(job_handle);
+    return response;
+  }
+
   if (state.device->GetCurrentJob() != job_handle) {
     LOG(ERROR) << __func__ << ": Job is not currently active: " << job_handle;
     response.set_failure_reason("Job has already been cancelled");

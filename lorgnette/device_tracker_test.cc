@@ -1017,6 +1017,52 @@ TEST(DeviceTrackerTest, CancelScanClosedScanner) {
               EqualsProto(cancel_request.job_handle()));
 }
 
+TEST(DeviceTrackerTest, CancelScanCompletedJob) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
+  SaneDeviceFake* raw_scanner = scanner.get();
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  StartPreparedScanRequest sps_request1;
+  *sps_request1.mutable_scanner() = open_response.config().scanner();
+  sps_request1.set_image_format("image/jpeg");
+  StartPreparedScanResponse sps_response1 =
+      tracker->StartPreparedScan(sps_request1);
+  ASSERT_EQ(sps_response1.result(), OPERATION_RESULT_SUCCESS);
+
+  // Simulate finishing the first job by clearing it out.
+  raw_scanner->ClearScanJob();
+
+  // Cancelling original job should succeed because no new job has started.
+  CancelScanRequest cancel_request;
+  *cancel_request.mutable_job_handle() = sps_response1.job_handle();
+  CancelScanResponse cancel_response = tracker->CancelScan(cancel_request);
+  EXPECT_TRUE(cancel_response.success());
+  EXPECT_EQ(cancel_response.failure_reason(), "");
+  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_SUCCESS);
+  EXPECT_THAT(cancel_response.job_handle(),
+              EqualsProto(cancel_request.job_handle()));
+
+  // Cancelling a second time should fail.
+  cancel_response = tracker->CancelScan(cancel_request);
+  EXPECT_FALSE(cancel_response.success());
+  EXPECT_NE(cancel_response.failure_reason(), "");
+  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_THAT(cancel_response.job_handle(),
+              EqualsProto(cancel_request.job_handle()));
+}
+
 TEST(DeviceTrackerTest, CancelScanNotCurrentJob) {
   auto sane_client = std::make_unique<SaneClientFake>();
   auto libusb = std::make_unique<LibusbWrapperFake>();
