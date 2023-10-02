@@ -265,6 +265,7 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityCorrectBasename);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityStrangeNames);
   FRIEND_TEST(CrashCollectorTest, CheckHasCapacityUsual);
+  FRIEND_TEST(CrashCollectorTest, CheckHasCapacityFull_LeavesNote);
   FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsMode);
   FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsNonDir);
   FRIEND_TEST(CrashCollectorTest, CreateDirectoryWithSettingsSubdir);

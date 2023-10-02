@@ -1352,6 +1352,18 @@ bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory,
                    << " already full with " << kMaxCrashDirectorySize
                    << " pending reports";
       full = true;
+
+      if (util::IsTestImage()) {
+        // Drop a file indicating to developers that the directory is now full,
+        // so crashes were lost.
+        // base::TouchFile sounds like what we want, but it fails if the file
+        // does not already exist.
+        if (!base::WriteFile(
+                crash_directory.Append(paths::kAlreadyFullFileName), "")) {
+          PLOG(WARNING) << "Failed to update informational directory-full file "
+                        << paths::kAlreadyFullFileName;
+        }
+      }
       break;
     }
   }

@@ -154,6 +154,13 @@ inline constexpr char kRunningLooseChromeCrashEarlyTestFile[] =
 inline constexpr char kGscPrevCrashLogIdPath[] =
     "/mnt/stateful_partition/unencrypted/preserve/gsc_prev_crash_log_id";
 
+// (Test-image only) Indicator that we dropped crash reports because the spool
+// directory was already full. Removed when we get past the "already full"
+// check. The timestamp the file was updated will indicate when the last crash
+// was dropped.
+inline constexpr char kAlreadyFullFileName[] =
+    "__DIRECTORY_ALREADY_FULL_DROPPED_REPORTS";
+
 // These are used when the hw_details USE flag is set.
 // The location of dmi info on devices with UEFI firmware.
 inline constexpr char kDmiIdDirectory[] = "/sys/class/dmi/id/";

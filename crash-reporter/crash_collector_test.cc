@@ -1729,6 +1729,30 @@ TEST_F(CrashCollectorTest, CheckHasCapacityStrangeNames) {
   EXPECT_TRUE(CheckHasCapacity());
 }
 
+// Tests that CheckHasCapacity creates a file on test images indicating that it
+// dropped crashes.
+TEST_F(CrashCollectorTest, CheckHasCapacityFull_LeavesNote) {
+  FilePath lsb_release = paths::Get("/etc/lsb-release");
+  collector_.set_lsb_release_for_test(lsb_release);
+  const char kLsbContents[] = "CHROMEOS_RELEASE_TRACK=testimage-channel\n";
+  ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
+
+  // Test kMaxCrashDirectorySize - 1 meta files fit.
+  for (int i = 0; i < CrashCollector::kMaxCrashDirectorySize - 1; ++i) {
+    ASSERT_TRUE(test_util::CreateFile(
+        test_dir_.Append(StringPrintf("file%d.meta", i)), ""));
+    EXPECT_TRUE(CheckHasCapacity());
+    EXPECT_FALSE(
+        base::PathExists(test_dir_.Append(paths::kAlreadyFullFileName)));
+  }
+
+  // Test an additional meta file doesn't fit.
+  ASSERT_TRUE(test_util::CreateFile(test_dir_.Append("overage.meta"), ""));
+  EXPECT_FALSE(CheckHasCapacity());
+
+  EXPECT_TRUE(base::PathExists(test_dir_.Append(paths::kAlreadyFullFileName)));
+}
+
 struct MetaDataTest {
   std::string test_case_name;
   bool test_in_prog = false;
