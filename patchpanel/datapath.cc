@@ -498,19 +498,6 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to add jump rule to VPN chain in mangle OUTPUT chain";
   }
 
-  // b/176260499: on 4.4 kernel, the following connmark rules are observed to
-  // incorrectly cause neighbor discovery icmpv6 packets to be dropped. Add
-  // these rules to bypass connmark rule for those packets.
-  for (const auto& type : kNeighborDiscoveryTypes) {
-    if (!ModifyIptables(
-            IpFamily::kIPv6, Iptables::Table::kMangle, Iptables::Command::kI,
-            "OUTPUT",
-            {"-p", "icmpv6", "--icmpv6-type", type, "-j", "ACCEPT", "-w"})) {
-      LOG(ERROR) << "Failed to set up connmark bypass rule for " << type
-                 << " packets in OUTPUT";
-    }
-  }
-
   SetupQoSDetectChain();
   SetupQoSApplyDSCPChain();
 }

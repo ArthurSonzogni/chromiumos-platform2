@@ -400,19 +400,6 @@ TEST(DatapathTest, Start) {
        "-w"},
       // Asserts for forwarding ICMP6.
       {IpFamily::kIPv6, "filter -A FORWARD -p ipv6-icmp -j ACCEPT -w"},
-      // Asserts for OUTPUT ndp connmark bypass rule
-      {IpFamily::kIPv6,
-       "mangle -I OUTPUT -p icmpv6 --icmpv6-type router-solicitation -j ACCEPT "
-       "-w"},
-      {IpFamily::kIPv6,
-       "mangle -I OUTPUT -p icmpv6 --icmpv6-type router-advertisement -j "
-       "ACCEPT -w"},
-      {IpFamily::kIPv6,
-       "mangle -I OUTPUT -p icmpv6 --icmpv6-type neighbour-solicitation -j "
-       "ACCEPT -w"},
-      {IpFamily::kIPv6,
-       "mangle -I OUTPUT -p icmpv6 --icmpv6-type neighbour-advertisement -j "
-       "ACCEPT -w"},
       // Asserts for OUTPUT CONNMARK restore rule
       {IpFamily::kDual,
        "mangle -A OUTPUT -j CONNMARK --restore-mark --mask 0xffff0000 -w"},
