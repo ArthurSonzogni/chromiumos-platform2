@@ -146,6 +146,7 @@ copies.
 | [resourced](./resourced/) | Resource Management Daemon |
 | [rgbkbd](./rgbkbd/) | ChromeOS RGB Keyboard Daemon |
 | [rmad](./rmad/) | ChromeOS RMA Daemon |
+| [routing-simulator](./routing-simulator/) | Debugging tool for routing subsystem |
 | [run_oci](./run_oci/) | Minimalistic container runtime |
 | [runtime_probe](./runtime_probe/) | Runtime probe tool for ChromeOS |
 | [screen-capture-utils](./screen-capture-utils/) | Utilities for screen capturing (screenshot) |
