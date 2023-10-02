@@ -34,6 +34,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   ~SupplicantInterfaceProxy() override;
 
   // Implementation of SupplicantInterfaceProxyInterface.
+  bool GetIfname(std::string* ifname) const override;
   bool AddNetwork(const KeyValueStore& args, RpcIdentifier* network) override;
   bool EAPLogon() override;
   bool EAPLogoff() override;
@@ -73,6 +74,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
     PropertySet(const PropertySet&) = delete;
     PropertySet& operator=(const PropertySet&) = delete;
 
+    brillo::dbus_utils::Property<std::string> ifname;
     brillo::dbus_utils::Property<bool> fast_reauth;
     brillo::dbus_utils::Property<bool> scan;
     brillo::dbus_utils::Property<int32_t> scan_interval;
@@ -85,6 +87,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   };
 
   static const char kInterfaceName[];
+  static const char kPropertyIfname[];
   static const char kPropertyFastReauth[];
   static const char kPropertyScan[];
   static const char kPropertyScanInterval[];

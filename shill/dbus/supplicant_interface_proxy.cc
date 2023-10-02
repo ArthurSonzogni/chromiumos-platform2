@@ -25,6 +25,7 @@ static std::string ObjectID(const dbus::ObjectPath* p) {
 
 const char SupplicantInterfaceProxy::kInterfaceName[] =
     "fi.w1.wpa_supplicant1.Interface";
+const char SupplicantInterfaceProxy::kPropertyIfname[] = "Ifname";
 const char SupplicantInterfaceProxy::kPropertyFastReauth[] = "FastReauth";
 const char SupplicantInterfaceProxy::kPropertyScan[] = "Scan";
 const char SupplicantInterfaceProxy::kPropertyScanInterval[] = "ScanInterval";
@@ -38,6 +39,7 @@ SupplicantInterfaceProxy::PropertySet::PropertySet(
     const std::string& interface_name,
     const PropertyChangedCallback& callback)
     : dbus::PropertySet(object_proxy, interface_name, callback) {
+  RegisterProperty(kPropertyIfname, &ifname);
   RegisterProperty(kPropertyFastReauth, &fast_reauth);
   RegisterProperty(kPropertyScan, &scan);
   RegisterProperty(kPropertyScanInterval, &scan_interval);
@@ -364,6 +366,20 @@ bool SupplicantInterfaceProxy::DisableMacAddressRandomization() {
     LOG(ERROR) << "Failed to disable MAC address randomization";
     return false;
   }
+  return true;
+}
+
+bool SupplicantInterfaceProxy::GetIfname(std::string* ifname) const {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  CHECK(ifname);
+
+  if (!properties_->ifname.GetAndBlock() || !properties_->ifname.is_valid()) {
+    LOG(ERROR) << "Failed to obtain interface ifname";
+    return false;
+  }
+
+  *ifname = properties_->ifname.value();
+
   return true;
 }
 

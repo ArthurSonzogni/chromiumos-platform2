@@ -18,6 +18,7 @@ class SupplicantInterfaceProxyInterface {
  public:
   virtual ~SupplicantInterfaceProxyInterface() = default;
 
+  virtual bool GetIfname(std::string* ifname) const = 0;
   virtual bool AddNetwork(const KeyValueStore& args,
                           RpcIdentifier* network) = 0;
   virtual bool EAPLogoff() = 0;
