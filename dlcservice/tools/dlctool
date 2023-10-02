@@ -162,12 +162,12 @@ get_num_blocks() {
 generate_verity() {
   local blocks=$(get_num_blocks "${DLC_IMG_FILE}" "${BLOCK_SIZE}")
   verity \
-    mode=create \
-    alg=sha256 \
-    payload="${DLC_IMG_FILE}" \
-    payload_blocks="${blocks}" \
-    hashtree="${DLC_HASHTREE_FILE}" \
-    salt=random \
+    --mode=create \
+    --alg=sha256 \
+    --payload="${DLC_IMG_FILE}" \
+    --payload_blocks="${blocks}" \
+    --hashtree="${DLC_HASHTREE_FILE}" \
+    --salt=random \
     > "${DLC_TABLE_FILE}"
 }
 
