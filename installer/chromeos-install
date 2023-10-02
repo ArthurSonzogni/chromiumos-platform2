@@ -1108,20 +1108,6 @@ main() {
   . "${ROOT}/usr/sbin/write_gpt.sh"
   load_base_vars
 
-  # This was moved out of check_payload_image because DEFAULT_ROOTDEV
-  # is not defined until after the GPT helper functions are loaded.
-  if [ "${FLAGS_skip_src_removable}" -eq "${FLAGS_FALSE}" ]; then
-    if [ "$(cat "/sys/block/${SRC#/dev/}/removable")" != "1" ]; then
-      # Removable flag is implemented inconsistently for ARM sdcard reader.
-      # Allow all devices except the default fixed drive.
-      if [ "${SRC}" = "$(get_fixed_dst_drive)" ]; then
-        trap - EXIT
-        cleanup
-        die "Error: Source can not be the destination device: ${SRC}"
-      fi
-    fi
-  fi
-
   # Now that we have loaded the partition table we can actually read the format
   # and partition information.
   STATEFUL_FORMAT="$(get_format "${PARTITION_NUM_STATE}")"
