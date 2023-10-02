@@ -197,8 +197,41 @@ has_ectool_s0ix_counter() {
   fi
 }
 
+should_ignore_s0ix_count() {
+  # TODO(b/297952740): remove this when this bug is resolved.
+  grep -q "^$(cros_config / name)$" << EOF
+akemi
+chronicler
+collis
+copano
+delbin
+drobit
+eldrid
+elemi
+eve
+lillipup
+lindar
+swanky
+voema
+volet
+volta
+voxel
+EOF
+  found=$?
+  if [ "${found}" -eq 0 ]; then
+    echo "NOTE: overriding --ignore_s0ix_substates to true due to b/297952740"
+    return 0
+  fi
+  return 1
+}
+
 
 FLAGS "$@" || exit 1
+
+if [ "${FLAGS_ignore_s0ix_substates}" -eq "${FLAGS_FALSE}" ] && \
+   should_ignore_s0ix_count; then
+  FLAGS_ignore_s0ix_substates=${FLAGS_TRUE}
+fi
 
 # Some environment variables (USER/EUID) are not set in the factory, so use
 # 'id' to check if running as root instead.
