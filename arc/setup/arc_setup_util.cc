@@ -1007,8 +1007,7 @@ bool SafeCopyFile(const base::FilePath& src_path,
   do {
     ret = sendfile(dest_fd.get(), src_fd.get(), nullptr, len);
     if (ret == -1) {
-      PLOG(ERROR) << "Fail to copy file " << src_path << " to " << dest_path
-                  << errno;
+      PLOG(ERROR) << "Fail to copy file " << src_path << " to " << dest_path;
       return false;
     }
     len -= ret;

@@ -2628,16 +2628,16 @@ void ArcSetup::OnRemoveData() {
       // No need to delete the image in the background because deleting a single
       // image file won't take more than 1 second.
       err = fd.Unlink(kImageFileName);
-      CHECK(!brillo::SafeFD::IsError(err) ||
-            // Abort if the |err| is not ENOENT.
-            (err == brillo::SafeFD::Error::kIOError && errno == ENOENT))
-          << "err=" << static_cast<int>(err) << ", errno=" << errno;
+      PCHECK(!brillo::SafeFD::IsError(err) ||
+             // Abort if the |err| is not ENOENT.
+             (err == brillo::SafeFD::Error::kIOError && errno == ENOENT))
+          << "err=" << static_cast<int>(err);
       LOG_IF(INFO, !brillo::SafeFD::IsError(err))
           << "Deleting disk image (crosvm/YXJjdm0=.img) took "
           << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
     } else {
-      LOG(ERROR) << "Failed to open the image directory: " << image_dir
-                 << ", err=" << static_cast<int>(err) << ", errno=" << errno;
+      PLOG(ERROR) << "Failed to open the image directory: " << image_dir
+                  << ", err=" << static_cast<int>(err);
     }
   }
 
