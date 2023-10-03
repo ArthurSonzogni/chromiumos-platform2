@@ -926,4 +926,7 @@ message SetFeatureFlagRequest {
 }
 
 // Response to a SetFeatureFlag call.
-message SetFeatureFlagResponse {}
+message SetFeatureFlagResponse {
+  // Value of the enabled flag before the call to SetFeatureFlag.
+  bool enabled = 1;
+}

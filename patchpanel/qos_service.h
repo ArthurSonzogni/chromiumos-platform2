@@ -57,6 +57,7 @@ class QoSService {
   // be changed.
   void Enable();
   void Disable();
+  bool is_enabled() const { return is_enabled_; }
 
   // Listening to the shill Device change event for the per-interface setup.
   // Currently this class only care about WiFi interfaces.

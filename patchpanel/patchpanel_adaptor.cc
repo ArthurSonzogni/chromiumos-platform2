@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <shill/net/process_manager.h>
 
 #include "patchpanel/downstream_network_service.h"
@@ -386,8 +387,10 @@ PatchpanelAdaptor::NotifySocketConnectionEvent(
 
 SetFeatureFlagResponse PatchpanelAdaptor::SetFeatureFlag(
     const SetFeatureFlagRequest& request) {
-  manager_->SetFeatureFlag(request.flag(), request.enabled());
-  return {};
+  bool old_value = manager_->SetFeatureFlag(request.flag(), request.enabled());
+  SetFeatureFlagResponse response;
+  response.set_enabled(old_value);
+  return response;
 }
 
 void PatchpanelAdaptor::OnNetworkDeviceChanged(

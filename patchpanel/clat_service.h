@@ -33,6 +33,7 @@ class ClatService {
   // up the effects of ClatService if exist.
   void Enable();
   void Disable();
+  bool is_enabled() const { return is_enabled_; }
 
   // Processes changes in the default logical shill device.
   // This function judges whether CLAT is needed, and based on that decision it

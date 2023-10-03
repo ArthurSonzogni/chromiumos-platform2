@@ -169,7 +169,7 @@ class Manager {
       const NotifySocketConnectionEventRequest& request);
 
   // Set feature enabled flag.
-  void SetFeatureFlag(patchpanel::SetFeatureFlagRequest::FeatureFlag flag,
+  bool SetFeatureFlag(patchpanel::SetFeatureFlagRequest::FeatureFlag flag,
                       bool enabled);
 
   // Returns the CurHopLimit of upstream from sysctl minus 1.

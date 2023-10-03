@@ -1399,11 +1399,13 @@ void Manager::NotifySocketConnectionEvent(
   qos_svc_->ProcessSocketConnectionEvent(request.msg());
 }
 
-void Manager::SetFeatureFlag(
+bool Manager::SetFeatureFlag(
     patchpanel::SetFeatureFlagRequest::FeatureFlag flag, bool enabled) {
+  bool old_flag = false;
   switch (flag) {
     case patchpanel::SetFeatureFlagRequest::FeatureFlag::
         SetFeatureFlagRequest_FeatureFlag_WIFI_QOS:
+      old_flag = qos_svc_->is_enabled();
       if (enabled) {
         qos_svc_->Enable();
       } else {
@@ -1412,6 +1414,7 @@ void Manager::SetFeatureFlag(
       break;
     case patchpanel::SetFeatureFlagRequest::FeatureFlag::
         SetFeatureFlagRequest_FeatureFlag_CLAT:
+      old_flag = qos_svc_->is_enabled();
       if (enabled) {
         clat_svc_->Enable();
       } else {
@@ -1420,8 +1423,9 @@ void Manager::SetFeatureFlag(
       break;
     default:
       LOG(ERROR) << __func__ << "Unknown feature flag: " << flag;
-      return;
+      break;
   }
+  return old_flag;
 }
 
 std::optional<int> Manager::CalculateDownstreamCurHopLimit(
