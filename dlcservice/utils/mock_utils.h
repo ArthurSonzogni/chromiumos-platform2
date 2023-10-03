@@ -28,6 +28,10 @@ class MockUtils : public UtilsInterface {
               LogicalVolumeName,
               (const std::string& id, PartitionSlot slot),
               (override));
+  MOCK_METHOD(std::string,
+              LogicalVolumeNameToId,
+              (const std::string& lv_name),
+              (override));
   MOCK_METHOD(bool,
               HashFile,
               (const base::FilePath& path,

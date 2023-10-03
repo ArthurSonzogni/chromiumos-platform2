@@ -248,6 +248,26 @@ bool LvmdProxyWrapper::ActivateLogicalVolume(const std::string& lv_name) {
   return true;
 }
 
+bool LvmdProxyWrapper::ListLogicalVolumes(lvmd::LogicalVolumeList* lvs) {
+  auto stateful_path =
+      SystemState::Get()->boot_slot()->GetStatefulPartitionPath();
+
+  lvmd::PhysicalVolume pv;
+  if (!GetPhysicalVolume(stateful_path.value(), &pv)) {
+    LOG(ERROR) << "Failed to GetPhysicalVolume.";
+    return false;
+  }
+
+  lvmd::VolumeGroup vg;
+  if (!GetVolumeGroup(pv, &vg)) {
+    LOG(ERROR) << "Failed to GetVolumeGroup.";
+    return false;
+  }
+
+  brillo::ErrorPtr err;
+  return lvmd_proxy_->ListLogicalVolumes(vg, lvs, &err);
+}
+
 std::string LvmdProxyWrapper::GetLogicalVolumePath(const std::string& lv_name) {
   lvmd::LogicalVolume lv;
   return GetLogicalVolume(lv_name, &lv) ? lv.path() : "";

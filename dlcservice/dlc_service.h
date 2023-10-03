@@ -27,6 +27,7 @@
 #include "dlcservice/dlc_creator_interface.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/types.h"
+#include "dlcservice/utils/utils_interface.h"
 
 namespace dlcservice {
 
@@ -100,7 +101,8 @@ class DlcService : public DlcServiceInterface {
  public:
   static constexpr base::TimeDelta kUECheckTimeout = base::Seconds(5);
 
-  explicit DlcService(std::unique_ptr<DlcCreatorInterface> dlc_creator);
+  DlcService(std::unique_ptr<DlcCreatorInterface> dlc_creator,
+             std::unique_ptr<UtilsInterface> utils);
   ~DlcService() override;
 
   void Initialize() override;
@@ -216,6 +218,9 @@ class DlcService : public DlcServiceInterface {
 
   // Holds the DLC creator.
   std::unique_ptr<DlcCreatorInterface> dlc_creator_;
+
+  // Holds utils.
+  std::unique_ptr<UtilsInterface> utils_;
 
   base::WeakPtrFactory<DlcService> weak_ptr_factory_;
 

@@ -4,6 +4,7 @@
 
 #include "dlcservice/daemon.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -77,7 +78,8 @@ void Daemon::RegisterDBusObjectsAsync(
 #else
         std::make_unique<DlcBaseCreator>();
 #endif  // USE_LVM_STATEFUL_PARTITION
-    dlc_service_ = std::make_unique<DlcService>(std::move(dlc_creator));
+    dlc_service_ = std::make_unique<DlcService>(std::move(dlc_creator),
+                                                std::make_unique<Utils>());
     // NOTE: `dlc_creator` should not be used beyond this line.
   }
 

@@ -24,6 +24,24 @@ TEST(UtilsTest, LogicalVolumeNameTest) {
             u.LogicalVolumeName("sample-dlc", PartitionSlot::B));
 }
 
+TEST(UtilsTest, LogicalVolumeNameToIdTest) {
+  Utils u;
+  EXPECT_EQ("", u.LogicalVolumeNameToId("bad-logical-volume-name"));
+  EXPECT_EQ("foo", u.LogicalVolumeNameToId("dlc_foo_a"));
+  EXPECT_EQ("", u.LogicalVolumeNameToId(std::string(kDlcLogicalVolumePrefix) +
+                                        "foo"));
+  EXPECT_EQ(
+      "", u.LogicalVolumeNameToId(std::string("foo") + kDlcLogicalVolumeSlotA));
+  EXPECT_EQ(
+      "", u.LogicalVolumeNameToId(std::string("foo") + kDlcLogicalVolumeSlotB));
+  EXPECT_EQ("foo",
+            u.LogicalVolumeNameToId(std::string(kDlcLogicalVolumePrefix) +
+                                    "foo" + kDlcLogicalVolumeSlotA));
+  EXPECT_EQ("foo",
+            u.LogicalVolumeNameToId(std::string(kDlcLogicalVolumePrefix) +
+                                    "foo" + kDlcLogicalVolumeSlotB));
+}
+
 class FunctionsTest : public testing::Test {
  public:
   FunctionsTest() = default;

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -15,6 +16,7 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <lvmd/proto_bindings/lvmd.pb.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 
 #include "dlcservice/dlc_base.h"
@@ -29,6 +31,7 @@
 #include "dlcservice/proto_utils.h"
 #include "dlcservice/test_utils.h"
 #include "dlcservice/utils.h"
+#include "dlcservice/utils/mock_utils.h"
 
 using dlcservice::metrics::InstallResult;
 using dlcservice::metrics::UninstallResult;
@@ -62,7 +65,12 @@ class DlcServiceTest : public BaseTest {
 
     auto mock_dlc_creator = std::make_unique<NiceMock<MockDlcCreator>>();
     mock_dlc_creator_ptr_ = mock_dlc_creator.get();
-    dlc_service_ = std::make_unique<DlcService>(std::move(mock_dlc_creator));
+
+    auto mock_utils = std::make_unique<StrictMock<MockUtils>>();
+    mock_utils_ptr_ = mock_utils.get();
+
+    dlc_service_ = std::make_unique<DlcService>(std::move(mock_dlc_creator),
+                                                std::move(mock_utils));
   }
 
   void CheckDlcState(const DlcId& id,
@@ -77,6 +85,7 @@ class DlcServiceTest : public BaseTest {
  protected:
   std::unique_ptr<DlcService> dlc_service_;
   MockDlcCreator* mock_dlc_creator_ptr_ = nullptr;
+  MockUtils* mock_utils_ptr_ = nullptr;
 
  private:
   DlcServiceTest(const DlcServiceTest&) = delete;
@@ -415,20 +424,90 @@ TEST_F(DlcServiceTest, GetInstalledTest) {
 // Tests related to `GetExistingDlcs`.
 
 TEST_F(DlcServiceTest, GetExistingDlcs) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, HasContent()).WillOnce(Return(true));
-
-  auto mock_dlc_bar = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_bar, HasContent()).WillOnce(Return(false));
+  SetUpDlcWithSlots(kFirstDlc);
+  SetUpDlcWithSlots(kSecondDlc);
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
-  supported.emplace("bar-dlc", std::move(mock_dlc_bar));
+  supported.emplace(kFirstDlc, nullptr);
+  supported.emplace(kSecondDlc, nullptr);
+  supported.emplace(kThirdDlc, nullptr);
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  const auto& dlcs = dlc_service_->GetExistingDlcs();
-  EXPECT_THAT(dlcs, ElementsAre("foo-dlc"));
+#if USE_LVM_STATEFUL_PARTITION
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(Return(false));
+#endif  // USE_LVM_STATEFUL_PARTITION
+
+  auto dlcs = dlc_service_->GetExistingDlcs();
+  std::sort(std::begin(dlcs), std::end(dlcs));
+  EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, kSecondDlc));
 }
+
+TEST_F(DlcServiceTest, GetExistingDlcsNoSupportOverlap) {
+  SetUpDlcWithSlots(kFirstDlc);
+  SetUpDlcWithSlots(kSecondDlc);
+
+  DlcMap supported;
+  supported.emplace("foo", nullptr);
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+#if USE_LVM_STATEFUL_PARTITION
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(Return(false));
+#endif  // USE_LVM_STATEFUL_PARTITION
+
+  auto dlcs = dlc_service_->GetExistingDlcs();
+  std::sort(std::begin(dlcs), std::end(dlcs));
+  EXPECT_THAT(dlcs, ElementsAre());
+}
+
+#if USE_LVM_STATEFUL_PARTITION
+TEST_F(DlcServiceTest, GetExistingDlcsWithLogicalVolumesWithFileSupported) {
+  SetUpDlcWithSlots(kFirstDlc);
+  SetUpDlcWithSlots(kSecondDlc);
+
+  DlcMap supported;
+  supported.emplace("lv-ok-dlc", nullptr);
+  supported.emplace(kFirstDlc, nullptr);
+  supported.emplace(kSecondDlc, nullptr);
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  lvmd::LogicalVolumeList lvs;
+  auto* lv = lvs.add_logical_volume();
+  const std::string lv_name("dlc_lv-ok-dlc_a");
+  lv->set_name(lv_name);
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
+  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeNameToId(lv_name))
+      .WillOnce(Return(std::string("lv-ok-dlc")));
+
+  auto dlcs = dlc_service_->GetExistingDlcs();
+  std::sort(std::begin(dlcs), std::end(dlcs));
+  EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, "lv-ok-dlc", kSecondDlc));
+}
+
+TEST_F(DlcServiceTest, GetExistingDlcsWithLogicalVolumes) {
+  SetUpDlcWithSlots(kFirstDlc);
+  SetUpDlcWithSlots(kSecondDlc);
+
+  DlcMap supported;
+  supported.emplace("lv-ok-dlc", nullptr);
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  lvmd::LogicalVolumeList lvs;
+  auto* lv = lvs.add_logical_volume();
+  const std::string lv_name("dlc_lv-ok-dlc_a");
+  lv->set_name(lv_name);
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
+  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeNameToId(lv_name))
+      .WillOnce(Return(std::string("lv-ok-dlc")));
+
+  auto dlcs = dlc_service_->GetExistingDlcs();
+  std::sort(std::begin(dlcs), std::end(dlcs));
+  EXPECT_THAT(dlcs, ElementsAre("lv-ok-dlc"));
+}
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 // Tests related to `GetDlcsToUpdate`.
 
@@ -687,7 +766,12 @@ class DlcServiceTestLegacy : public BaseTest {
 #else
         std::make_unique<DlcBaseCreator>();
 #endif  // USE_LVM_STATEFUL_PARTITION
-    dlc_service_ = std::make_unique<DlcService>(std::move(dlc_creator));
+
+    auto mock_utils = std::make_unique<StrictMock<MockUtils>>();
+    mock_utils_ptr_ = mock_utils.get();
+
+    dlc_service_ = std::make_unique<DlcService>(std::move(dlc_creator),
+                                                std::move(mock_utils));
     dlc_service_->Initialize();
   }
 
@@ -734,6 +818,7 @@ class DlcServiceTestLegacy : public BaseTest {
 
  protected:
   std::unique_ptr<DlcService> dlc_service_;
+  MockUtils* mock_utils_ptr_ = nullptr;
 
  private:
   DlcServiceTestLegacy(const DlcServiceTestLegacy&) = delete;
@@ -752,17 +837,25 @@ TEST_F(DlcServiceTestLegacy, GetInstalledTest) {
 
 TEST_F(DlcServiceTestLegacy, GetExistingDlcs) {
   Install(kFirstDlc);
-
   SetUpDlcWithSlots(kSecondDlc);
 
 #if USE_LVM_STATEFUL_PARTITION
-  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetLogicalVolumePath(_))
-      .WillRepeatedly(Return(""));
+  lvmd::LogicalVolumeList lvs;
+  auto* lv = lvs.add_logical_volume();
+  lv->set_name("dlc_foo_a");
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
+      .WillOnce(DoAll(SetArgPointee<0>(lvs), Return(true)));
+  EXPECT_CALL(*mock_utils_ptr_, LogicalVolumeNameToId("dlc_foo_a"))
+      .WillOnce(Return(std::string("foo")));
 #endif  // USE_LVM_STATEFUL_PARTITION
 
-  const auto& dlcs = dlc_service_->GetExistingDlcs();
-
+  auto dlcs = dlc_service_->GetExistingDlcs();
+  std::sort(std::begin(dlcs), std::end(dlcs));
+#if USE_LVM_STATEFUL_PARTITION
+  EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, "foo", kSecondDlc));
+#else
   EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, kSecondDlc));
+#endif  // USE_LVM_STATEFUL_PARTITION
 }
 
 TEST_F(DlcServiceTestLegacy, GetDlcsToUpdateTest) {

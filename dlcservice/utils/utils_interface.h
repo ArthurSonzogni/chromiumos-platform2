@@ -32,6 +32,10 @@ class BRILLO_EXPORT UtilsInterface {
   virtual std::string LogicalVolumeName(const std::string& id,
                                         PartitionSlot slot) = 0;
 
+  // Returns the DLC ID based off of logical volume name, returns empty when an
+  // invalid DLC logical volume name is given.
+  virtual std::string LogicalVolumeNameToId(const std::string& lv_name) = 0;
+
   // Hashes the file at |path|.
   // Pass zero or less for `size` to skip size check.
   virtual bool HashFile(const base::FilePath& path,

@@ -17,6 +17,11 @@
 
 namespace dlcservice {
 
+// DLC LVM related fields.
+BRILLO_EXPORT extern const char kDlcLogicalVolumePrefix[];
+BRILLO_EXPORT extern const char kDlcLogicalVolumeSlotA[];
+BRILLO_EXPORT extern const char kDlcLogicalVolumeSlotB[];
+
 // DLC powerwash safe meta file.
 BRILLO_EXPORT extern const char kDlcPowerwashSafeFile[];
 
@@ -37,6 +42,7 @@ class BRILLO_EXPORT Utils : public UtilsInterface {
   // Overrides of `UtilsInterface`.
   std::string LogicalVolumeName(const std::string& id,
                                 PartitionSlot slot) override;
+  std::string LogicalVolumeNameToId(const std::string& lv_name) override;
   bool HashFile(const base::FilePath& path,
                 int64_t size,
                 std::vector<uint8_t>* sha256,

@@ -31,6 +31,9 @@ class LvmdProxyWrapperInterface {
   // Activates the logical volume, if they exist.
   virtual bool ActivateLogicalVolume(const std::string& lv_name) = 0;
 
+  // Returns the list of logical volumes on the devices.
+  virtual bool ListLogicalVolumes(lvmd::LogicalVolumeList* lvs) = 0;
+
   // Returns the logical volume path as a string.
   // Returns empty string if the logical volume does not exist.
   virtual std::string GetLogicalVolumePath(const std::string& lv_name) = 0;
@@ -54,6 +57,7 @@ class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
       const std::vector<lvmd::LogicalVolumeConfiguration>& lv_configs) override;
   bool RemoveLogicalVolumes(const std::vector<std::string>& lv_names) override;
   bool ActivateLogicalVolume(const std::string& lv_name) override;
+  bool ListLogicalVolumes(lvmd::LogicalVolumeList* lvs) override;
   std::string GetLogicalVolumePath(const std::string& lv_name) override;
   bool GetPhysicalVolume(const std::string& device_path,
                          lvmd::PhysicalVolume* pv) override;

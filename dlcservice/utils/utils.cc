@@ -25,11 +25,9 @@ using std::vector;
 
 namespace dlcservice {
 
-namespace {
-constexpr char kDlcLogicalVolumePrefix[] = "dlc_";
-constexpr char kDlcSlotA[] = "_a";
-constexpr char kDlcSlotB[] = "_b";
-}  // namespace
+const char kDlcLogicalVolumePrefix[] = "dlc_";
+const char kDlcLogicalVolumeSlotA[] = "_a";
+const char kDlcLogicalVolumeSlotB[] = "_b";
 
 const char kDlcPowerwashSafeFile[] = "/opt/google/dlc/_powerwash_safe_";
 const char kPackage[] = "package";
@@ -40,9 +38,9 @@ std::string Utils::LogicalVolumeName(const std::string& id,
   static const std::string& kPrefix(kDlcLogicalVolumePrefix);
   switch (slot) {
     case PartitionSlot::A:
-      return kPrefix + id + kDlcSlotA;
+      return kPrefix + id + kDlcLogicalVolumeSlotA;
     case PartitionSlot::B:
-      return kPrefix + id + kDlcSlotB;
+      return kPrefix + id + kDlcLogicalVolumeSlotB;
   }
 }
 
@@ -50,6 +48,19 @@ std::string LogicalVolumeName(const std::string& id,
                               PartitionSlot slot,
                               std::unique_ptr<UtilsInterface> utils) {
   return utils->LogicalVolumeName(id, slot);
+}
+
+std::string Utils::LogicalVolumeNameToId(const std::string& lv_name) {
+  if (!lv_name.starts_with(kDlcLogicalVolumePrefix)) {
+    return "";
+  }
+  std::string id;
+  id = lv_name.substr(strlen(kDlcLogicalVolumePrefix));
+  if (!id.ends_with(kDlcLogicalVolumeSlotA) &&
+      !id.ends_with(kDlcLogicalVolumeSlotB)) {
+    return "";
+  }
+  return id.substr(0, id.size() - strlen(kDlcLogicalVolumeSlotA));
 }
 
 bool Utils::HashFile(const base::FilePath& path,

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <gmock/gmock.h>
+#include <lvmd/proto_bindings/lvmd.pb.h>
 
 namespace dlcservice {
 
@@ -29,6 +30,7 @@ class MockLvmdProxyWrapper : public LvmdProxyWrapperInterface {
               (const std::vector<std::string>&),
               (override));
   MOCK_METHOD(bool, ActivateLogicalVolume, (const std::string&), (override));
+  MOCK_METHOD(bool, ListLogicalVolumes, (lvmd::LogicalVolumeList*), (override));
   MOCK_METHOD(std::string,
               GetLogicalVolumePath,
               (const std::string&),

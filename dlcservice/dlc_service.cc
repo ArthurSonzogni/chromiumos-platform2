@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <unordered_set>
 #include <utility>
 
 #include <base/check.h>
@@ -19,9 +20,12 @@
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
+#include <lvmd/proto_bindings/lvmd.pb.h>
 
 #include "dlcservice/dlc_base.h"
 #include "dlcservice/dlc_base_creator.h"
+#include "dlcservice/utils/utils.h"
+#include "dlcservice/utils/utils_interface.h"
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/dlc_lvm.h"
 #include "dlcservice/lvm/dlc_lvm_creator.h"
@@ -59,9 +63,11 @@ DlcIdList ToDlcIdList(const DlcMap& dlcs,
 }
 }  // namespace
 
-DlcService::DlcService(std::unique_ptr<DlcCreatorInterface> dlc_creator)
+DlcService::DlcService(std::unique_ptr<DlcCreatorInterface> dlc_creator,
+                       std::unique_ptr<UtilsInterface> utils)
     : periodic_install_check_id_(MessageLoop::kTaskIdNull),
       dlc_creator_(std::move(dlc_creator)),
+      utils_(std::move(utils)),
       weak_ptr_factory_(this) {}
 
 DlcService::~DlcService() {
@@ -355,8 +361,32 @@ DlcIdList DlcService::GetInstalled() {
 }
 
 DlcIdList DlcService::GetExistingDlcs() {
-  return ToDlcIdList(supported_,
-                     [](const DlcType& dlc) { return dlc->HasContent(); });
+  std::unordered_set<DlcId> unique_existing_dlcs;
+
+  // This scans the files based DLC(s).
+  for (const auto& id : ScanDirectory(SystemState::Get()->content_dir())) {
+    if (supported_.find(id) != std::end(supported_)) {
+      unique_existing_dlcs.insert(id);
+    }
+  }
+
+#if USE_LVM_STATEFUL_PARTITION
+  // This scans the logical volume based DLC(s).
+  lvmd::LogicalVolumeList lvs;
+  if (!SystemState::Get()->lvmd_wrapper()->ListLogicalVolumes(&lvs)) {
+    LOG(ERROR) << "Failed to list logical volumes.";
+  } else {
+    for (const auto& lv : lvs.logical_volume()) {
+      const auto& id = utils_->LogicalVolumeNameToId(lv.name());
+      if (id.empty()) {
+        continue;
+      }
+      unique_existing_dlcs.insert(id);
+    }
+  }
+#endif  // USE_LVM_STATEFUL_PARTITION
+
+  return {std::begin(unique_existing_dlcs), std::end(unique_existing_dlcs)};
 }
 
 DlcIdList DlcService::GetDlcsToUpdate() {
