@@ -265,10 +265,11 @@ void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
   const uint8_t* buf = data.data();
   const uint8_t* end = buf + data.size();
 
-  while (buf < end) {
+  while (buf + sizeof(struct nlmsghdr) <= end) {
     const struct nlmsghdr* hdr = reinterpret_cast<const struct nlmsghdr*>(buf);
-    if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
+    if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf))) {
       break;
+    }
 
     const uint8_t* payload = reinterpret_cast<const uint8_t*>(hdr);
     VLOG(5) << __func__ << "RTNL received payload length " << hdr->nlmsg_len

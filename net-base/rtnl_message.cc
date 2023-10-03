@@ -360,9 +360,13 @@ std::string GetRuleActionName(uint16_t rule_rtm_type) {
   }
 }
 
-std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, size_t len) {
+std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, size_t attr_len) {
   const auto* attr_data = reinterpret_cast<const char*>(data);
-  const size_t attr_len = len;
+  if (attr_len > INT_MAX) {
+    LOG(ERROR) << "Buffer length " << attr_len << " is over INT_MAX";
+    return nullptr;
+  }
+  int len = static_cast<int>(attr_len);
 
   RTNLAttrMap attrs;
   while (data && RTA_OK(data, len)) {
