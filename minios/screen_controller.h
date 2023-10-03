@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path_watcher.h>
 #include <brillo/errors/error.h>
 #include <minios/proto_bindings/minios.pb.h>
 
@@ -121,6 +122,9 @@ class ScreenController : public ScreenControllerInterface,
   // Reset MiniOs to its initial screen.
   bool ResetScreen(brillo::ErrorPtr* error);
 
+  // Update keyreader on display changing from UI (to terminal in dev mode).
+  void OnDisplayChange(const base::FilePath& path, bool error);
+
   std::shared_ptr<DrawInterface> draw_utils_;
 
   std::shared_ptr<UpdateEngineProxy> update_engine_proxy_;
@@ -143,6 +147,8 @@ class ScreenController : public ScreenControllerInterface,
   // Previous screen only used when changing the language so you know what
   // screen to return to after selection.
   std::unique_ptr<ScreenInterface> previous_screen_;
+
+  std::unique_ptr<base::FilePathWatcher> frecon_screen_watcher_;
 };
 
 }  // namespace minios

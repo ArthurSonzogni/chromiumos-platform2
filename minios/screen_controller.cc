@@ -4,8 +4,12 @@
 
 #include "minios/screen_controller.h"
 
+#include <filesystem>
+#include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
@@ -27,6 +31,13 @@
 #include "minios/utils.h"
 
 namespace minios {
+
+namespace {
+
+const base::FilePath kCurrentDisplayPath{"/run/frecon/current"};
+const base::FilePath kUiDisplayPath{"/run/frecon/vt0"};
+
+}  // namespace
 
 ScreenController::ScreenController(
     std::shared_ptr<DrawInterface> draw_utils,
@@ -60,6 +71,13 @@ bool ScreenController::Init() {
 
   current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
   current_screen_->Show();
+
+  frecon_screen_watcher_ = std::make_unique<base::FilePathWatcher>();
+  frecon_screen_watcher_->Watch(
+      kCurrentDisplayPath, base::FilePathWatcher::Type::kNonRecursive,
+      base::BindRepeating(&::minios::ScreenController::OnDisplayChange,
+                          base::Unretained(this)));
+
   return true;
 }
 
@@ -379,6 +397,26 @@ void ScreenController::HandleStateChanged(State::States state_state) {
     default:
       break;
   }
+}
+
+void ScreenController::OnDisplayChange(const base::FilePath& path, bool error) {
+  // Disable key reader delegate when switching away from the UI display, enable
+  // in all other cases.
+  if (error) {
+    LOG(ERROR) << "Enabling keyreader, error watching path=" << path;
+    key_reader_.SetDelegate(this);
+    return;
+  }
+
+  base::FilePath resolved_path;
+  if (base::ReadSymbolicLink(path, &resolved_path) &&
+      resolved_path != kUiDisplayPath) {
+    LOG(INFO) << "Disabling key reader due to display change.";
+    key_reader_.SetDelegate(nullptr);
+    return;
+  }
+  LOG(INFO) << "Enabling key reader.";
+  key_reader_.SetDelegate(this);
 }
 
 }  // namespace minios

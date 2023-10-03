@@ -89,6 +89,7 @@ KeyReader::~KeyReader() {
 
 bool KeyReader::Init(const std::vector<int>& valid_keys) {
   keys_ = valid_keys;
+
   if (!GetValidFds(/*check_supported_keys=*/true)) {
     LOG(ERROR) << "No valid input devices found.";
     return false;
@@ -178,16 +179,16 @@ void KeyReader::OnKeyEvent() {
     PLOG(ERROR) << "Could not get event";
     return;
   }
+
+  if (!delegate_) {
+    return;
+  }
+
   if (ev.type != EV_KEY || ev.code > KEY_MAX) {
     return;
   }
 
   if (std::find(keys_.begin(), keys_.end(), ev.code) == keys_.end()) {
-    return;
-  }
-
-  if (!delegate_) {
-    LOG(ERROR) << "Delegate not initialized.";
     return;
   }
 

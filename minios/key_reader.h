@@ -70,9 +70,13 @@ class KeyReader {
   bool GetUserInput(bool* enter, bool* tab_toggle, std::string* user_input);
 
   // Sets the watcher to the `epfd`, has a callback to `OnKeyEvent`.
+  // Note: Any input already present in `epfd` before watcher is enabled will be
+  // read out during the next event.
   bool StartWatcher();
 
   // Stops the watcher.
+  // Note: No file descriptors are closed here. Input that occurred after
+  // StopWather can be read either via `GetUserInput` or after `StartWatcher`.
   void StopWatcher();
 
   // Wrapper that does not take in tab toggle key. Used for testing.
