@@ -23,6 +23,7 @@
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
+#include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
@@ -88,7 +89,7 @@ absl::Status AgentPlugin::Activate() {
   StartInitializingAgentProto();
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&AgentPlugin::SendAgentStartEvent,
+      base::BindOnce(&AgentPlugin::SendStartEvent,
                      weak_ptr_factory_.GetWeakPtr()),
       // Add delay for tpm_manager and attestation to initialize.
       base::Seconds(1));
@@ -282,37 +283,29 @@ metrics::Tpm AgentPlugin::GetTpmInformation(bool available) {
   return metrics::Tpm::kSuccess;
 }
 
-void AgentPlugin::SendAgentStartEvent() {
+void AgentPlugin::SendAgentEvent(bool is_agent_start) {
   auto xdr_proto = std::make_unique<pb::XdrAgentEvent>();
-  auto agent_start = xdr_proto->add_batched_events();
+  auto agent_event = xdr_proto->add_batched_events();
   base::AutoLock lock(tcb_attributes_lock_);
-  agent_start->mutable_agent_start()->mutable_tcb()->CopyFrom(tcb_attributes_);
-  agent_start->mutable_common()->set_create_timestamp_us(
-      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
-  agent_start->mutable_common()->set_device_user(device_user_->GetDeviceUser());
 
-  message_sender_->SendMessage(
-      reporting::CROS_SECURITY_AGENT, xdr_proto->mutable_common(),
-      std::move(xdr_proto),
-      base::BindOnce(&AgentPlugin::StartEventStatusCallback,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void AgentPlugin::SendAgentHeartbeatEvent() {
-  // Create agent heartbeat event.
-  auto xdr_proto = std::make_unique<pb::XdrAgentEvent>();
-  auto agent_heartbeat = xdr_proto->add_batched_events();
-  base::AutoLock lock(tcb_attributes_lock_);
-  agent_heartbeat->mutable_agent_heartbeat()->mutable_tcb()->CopyFrom(
-      tcb_attributes_);
-  agent_heartbeat->mutable_common()->set_create_timestamp_us(
+  base::OnceCallback<void(reporting::Status)> cb;
+  if (is_agent_start) {
+    agent_event->mutable_agent_start()->mutable_tcb()->CopyFrom(
+        tcb_attributes_);
+    cb = base::BindOnce(&AgentPlugin::StartEventStatusCallback,
+                        weak_ptr_factory_.GetWeakPtr());
+  } else {
+    agent_event->mutable_agent_heartbeat()->mutable_tcb()->CopyFrom(
+        tcb_attributes_);
+    cb = base::DoNothingAs<void(reporting::Status)>();
+  }
+  agent_event->mutable_common()->set_create_timestamp_us(
       base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
-  agent_heartbeat->mutable_common()->set_device_user(
-      device_user_->GetDeviceUser());
+  agent_event->mutable_common()->set_device_user(device_user_->GetDeviceUser());
 
   message_sender_->SendMessage(reporting::CROS_SECURITY_AGENT,
                                xdr_proto->mutable_common(),
-                               std::move(xdr_proto), std::nullopt);
+                               std::move(xdr_proto), std::move(cb));
 }
 
 void AgentPlugin::StartEventStatusCallback(reporting::Status status) {
@@ -320,7 +313,7 @@ void AgentPlugin::StartEventStatusCallback(reporting::Status status) {
     // Start heartbeat timer.
     agent_heartbeat_timer_.Start(
         FROM_HERE, heartbeat_timer_,
-        base::BindRepeating(&AgentPlugin::SendAgentHeartbeatEvent,
+        base::BindRepeating(&AgentPlugin::SendHeartbeatEvent,
                             weak_ptr_factory_.GetWeakPtr()));
 
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -329,7 +322,7 @@ void AgentPlugin::StartEventStatusCallback(reporting::Status status) {
     LOG(ERROR) << "Agent Start failed to send. Will retry in 3s.";
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&AgentPlugin::SendAgentStartEvent,
+        base::BindOnce(&AgentPlugin::SendStartEvent,
                        weak_ptr_factory_.GetWeakPtr()),
         base::Seconds(3));
   }

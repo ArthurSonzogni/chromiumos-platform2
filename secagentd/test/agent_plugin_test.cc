@@ -66,6 +66,7 @@ struct BootmodeAndTpm {
 };
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
+static constexpr int kDefaultHeartbeatTimer = 300;
 
 class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
  protected:
@@ -78,18 +79,17 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::MockBus(options);
-    heartbeat_timer = 300;
   }
   void TearDown() override { task_environment_.RunUntilIdle(); }
 
-  void CreateAndRunAgentPlugin() {
+  void CreateAndRunAgentPlugin(int heartbeat_timer) {
     base::RunLoop run_loop = base::RunLoop();
-    CreateAgentPlugin(&run_loop);
+    CreateAgentPlugin(&run_loop, heartbeat_timer);
     EXPECT_OK(plugin_->Activate());
     run_loop.Run();
   }
 
-  void CreateAgentPlugin(base::RunLoop* run_loop) {
+  void CreateAgentPlugin(base::RunLoop* run_loop, int heartbeat_timer) {
     plugin_ = plugin_factory_->CreateAgentPlugin(
         message_sender_, device_user_, std::move(attestation_proxy_),
         std::move(tpm_manager_proxy_),
@@ -176,16 +176,19 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
   AgentPlugin* agent_plugin_;
   std::unique_ptr<org::chromium::AttestationProxyMock> attestation_proxy_;
   std::unique_ptr<org::chromium::TpmManagerProxyMock> tpm_manager_proxy_;
-  uint32_t heartbeat_timer;
 };
 
 TEST_F(AgentPluginTestFixture, TestGetName) {
-  CreateAgentPlugin(nullptr);
+  CreateAgentPlugin(nullptr, 300);
   ASSERT_EQ("Agent", plugin_->GetName());
 }
 
 TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
   SetupObjectProxies(true);
+
+  static constexpr int kTimePassed = 600;
+  // Add 1 for Agent start.
+  int kTimes = 1 + kTimePassed / kDefaultHeartbeatTimer;
 
   // Setup attestation GetStatus mock.
   EXPECT_CALL(*attestation_proxy_, GetStatus)
@@ -224,7 +227,7 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
           })));
 
   EXPECT_CALL(*device_user_, GetDeviceUser)
-      .Times(3)
+      .Times(kTimes)
       .WillRepeatedly(Return(kDeviceUser));
 
   // Setup message sender mock. WillOnce is for StartEvent and
@@ -235,7 +238,7 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
   auto agent_heartbeat_message = std::make_unique<pb::XdrAgentEvent>();
   EXPECT_CALL(*message_sender_,
               SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))
-      .Times(3)
+      .Times(kTimes)
       .WillOnce(WithArgs<2, 3>(Invoke(
           [&agent_start_message](
               std::unique_ptr<google::protobuf::MessageLite> message,
@@ -253,8 +256,8 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
                 std::move(message->SerializeAsString()));
           })));
 
-  CreateAndRunAgentPlugin();
-  task_environment_.FastForwardBy(base::Minutes(10));
+  CreateAndRunAgentPlugin(kDefaultHeartbeatTimer);
+  task_environment_.FastForwardBy(base::Seconds(kTimePassed));
 
   // Check tcb attributes for agent start and heartbeat.
   EXPECT_EQ(1, agent_start_message->batched_events_size());
@@ -276,32 +279,32 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
 TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerNonzero) {
   SetupObjectProxies(false);
 
+  static constexpr int kHeartbeatTimer = 3;
+  static constexpr int kTimePassed = 10;
+  // Add 1 for Agent start.
+  int kTimes = 1 + kTimePassed / kHeartbeatTimer;
+
   EXPECT_CALL(*device_user_, GetDeviceUser)
-      .Times(4)
+      .Times(kTimes)
       .WillRepeatedly(Return(kDeviceUser));
 
   EXPECT_CALL(*message_sender_,
               SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))
-      .Times(4)
-      .WillOnce(WithArgs<3>(
+      .Times(kTimes)
+      .WillRepeatedly(WithArgs<3>(
           Invoke([](std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
             EXPECT_TRUE(cb.has_value());
             std::move(cb.value()).Run(reporting::Status::StatusOK());
-          })))
-      .WillRepeatedly(WithArgs<3>(
-          Invoke([](std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
-            EXPECT_FALSE(cb.has_value());
           })));
 
-  heartbeat_timer = 3;
-  CreateAndRunAgentPlugin();
-  task_environment_.FastForwardBy(base::Seconds(10));
+  CreateAndRunAgentPlugin(kHeartbeatTimer);
+  task_environment_.FastForwardBy(base::Seconds(kTimePassed));
 }
 
 TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerZero) {
   SetupObjectProxies(false);
 
-  heartbeat_timer = 0;
+  static constexpr int kHeartbeatTimer = 0;
   static constexpr double kTimePassed = 3.1;
   // When heartbeat timer is 0 seconds it defaults to 1.
   // Add 1 for Agent start.
@@ -314,17 +317,13 @@ TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerZero) {
   EXPECT_CALL(*message_sender_,
               SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))
       .Times(kTimes)
-      .WillOnce(WithArgs<3>(
+      .WillRepeatedly(WithArgs<3>(
           Invoke([](std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
             EXPECT_TRUE(cb.has_value());
             std::move(cb.value()).Run(reporting::Status::StatusOK());
-          })))
-      .WillRepeatedly(WithArgs<3>(
-          Invoke([](std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
-            EXPECT_FALSE(cb.has_value());
           })));
 
-  CreateAndRunAgentPlugin();
+  CreateAndRunAgentPlugin(kHeartbeatTimer);
   task_environment_.FastForwardBy(base::Seconds(kTimePassed));
 }
 
@@ -347,7 +346,7 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesUnvailable) {
             std::move(cb.value()).Run(reporting::Status::StatusOK());
           })));
 
-  CreateAndRunAgentPlugin();
+  CreateAndRunAgentPlugin(kDefaultHeartbeatTimer);
 
   EXPECT_EQ(1, agent_message->batched_events_size());
   auto tcb = agent_message->batched_events()[0].agent_start().tcb();
@@ -389,7 +388,7 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesFailedToRetrieve) {
             std::move(cb.value()).Run(reporting::Status::StatusOK());
           })));
 
-  CreateAndRunAgentPlugin();
+  CreateAndRunAgentPlugin(kDefaultHeartbeatTimer);
 
   auto tcb = agent_message->agent_start().tcb();
   EXPECT_FALSE(tcb.has_firmware_secure_boot());
@@ -399,13 +398,18 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesFailedToRetrieve) {
 TEST_F(AgentPluginTestFixture, TestSendStartEventFailure) {
   SetupObjectProxies(false);
 
+  static constexpr int kTimePassed = 10;
+  // Add 1 for Agent start.
+  // 3 is timeout for retrying failure.
+  static constexpr int kTimes = 1 + kTimePassed / 3;
+
   EXPECT_CALL(*device_user_, GetDeviceUser)
-      .Times(4)
+      .Times(kTimes)
       .WillRepeatedly(Return(kDeviceUser));
 
   EXPECT_CALL(*message_sender_,
               SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))
-      .Times(4)
+      .Times(kTimes)
       .WillRepeatedly(WithArg<3>(
           Invoke([](std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
             EXPECT_TRUE(cb.has_value());
@@ -414,9 +418,9 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventFailure) {
                     reporting::Status(reporting::error::UNAVAILABLE, "Failed"));
           })));
 
-  CreateAgentPlugin(nullptr);
+  CreateAgentPlugin(nullptr, kDefaultHeartbeatTimer);
   EXPECT_OK(plugin_->Activate());
-  task_environment_.FastForwardBy(base::Seconds(10));
+  task_environment_.FastForwardBy(base::Seconds(kTimePassed));
 }
 
 #ifdef HAVE_BOOTPARAM
@@ -430,7 +434,7 @@ TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileExistsEnabled) {
   base::WriteFile(boot_params_filepath, reinterpret_cast<char*>(&boot),
                   sizeof(boot));
 
-  CreateAgentPlugin(nullptr);
+  CreateAgentPlugin(nullptr, kDefaultHeartbeatTimer);
   CallGetUefiSecureBootInformation(boot_params_filepath);
 
   auto tcb = GetTcbAttributes();
@@ -447,7 +451,7 @@ TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileExistsNotEnabled) {
   base::WriteFile(boot_params_filepath, reinterpret_cast<char*>(&boot),
                   sizeof(boot));
 
-  CreateAgentPlugin(nullptr);
+  CreateAgentPlugin(nullptr, kDefaultHeartbeatTimer);
   CallGetUefiSecureBootInformation(boot_params_filepath);
 
   auto tcb = GetTcbAttributes();
@@ -461,7 +465,7 @@ TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileInvalidSize) {
   std::string content = "invalid file size";
   base::WriteFile(boot_params_filepath, content.c_str(), content.size());
 
-  CreateAgentPlugin(nullptr);
+  CreateAgentPlugin(nullptr, kDefaultHeartbeatTimer);
   CallGetUefiSecureBootInformation(boot_params_filepath);
 
   auto tcb = GetTcbAttributes();
@@ -470,7 +474,7 @@ TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileInvalidSize) {
 #endif
 
 TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileDoesNotExist) {
-  CreateAgentPlugin(nullptr);
+  CreateAgentPlugin(nullptr, kDefaultHeartbeatTimer);
   base::FilePath non_existent_filepath = base::FilePath("badfile");
   CallGetUefiSecureBootInformation(non_existent_filepath);
 
@@ -490,7 +494,7 @@ TEST_F(AgentPluginTestFixture, TestNoTpm) {
       .WillOnce(WithArg<1>(Invoke(
           [](tpm_manager::GetVersionInfoReply* out_reply) { return true; })));
 
-  CreateAgentPlugin(nullptr);
+  CreateAgentPlugin(nullptr, kDefaultHeartbeatTimer);
   CallGetTpmInformation();
   EXPECT_EQ(pb::TcbAttributes_SecurityChip_Kind_NONE,
             GetTcbAttributes().security_chip().kind());
@@ -505,7 +509,7 @@ TEST_F(AgentPluginTestFixture, TestTpmDisabled) {
             return true;
           })));
 
-  CreateAgentPlugin(nullptr);
+  CreateAgentPlugin(nullptr, kDefaultHeartbeatTimer);
   CallGetTpmInformation();
   EXPECT_FALSE(GetTcbAttributes().has_security_chip());
 }
@@ -533,7 +537,7 @@ TEST_P(AgentPluginTestFixture, TestBootAndTpmModes) {
             return true;
           })));
 
-  CreateAgentPlugin(nullptr);
+  CreateAgentPlugin(nullptr, kDefaultHeartbeatTimer);
   CallGetCrosSecureBootInformation();
   CallGetTpmInformation();
 

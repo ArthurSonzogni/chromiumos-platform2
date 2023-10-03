@@ -435,16 +435,16 @@ class AgentPlugin : public PluginInterface {
   // Note: Only for flex machines.
   metrics::UefiBootmode GetUefiSecureBootInformation(
       const base::FilePath& boot_params_filepath);
-  // Sends the agent start event. Uses the StartEventStatusCallback() to handle
-  // the status of the message.
-  void SendAgentStartEvent();
-  // Sends an agent heartbeat event every 5 minutes.
-  void SendAgentHeartbeatEvent();
+  // Sends an agent event dependant on whether it is start or heartbeat event.
+  // Uses the StartEventStatusCallback() to handle the status of the message.
+  void SendAgentEvent(bool is_agent_start);
   // Checks the message status of the agent start event. If the message is
   // successfully sent it calls the daemon callback to run the remaining
   // plugins. If the message fails to send it will retry sending the message
   // every 3 seconds.
   void StartEventStatusCallback(reporting::Status status);
+  inline void SendStartEvent() { SendAgentEvent(true); }
+  inline void SendHeartbeatEvent() { SendAgentEvent(false); }
 
   base::RepeatingTimer agent_heartbeat_timer_;
   cros_xdr::reporting::TcbAttributes tcb_attributes_;
