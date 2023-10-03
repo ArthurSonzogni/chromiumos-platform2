@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -109,6 +110,12 @@ pkg_config("libcrash_reporter_config") {
   ]
 }
 
+generate_dbus_adaptors("crash-reporter-adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/crash-reporter/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.CrashReporterInterface.xml" ]
+}
+
 static_library("libcrash_reporter") {
   sources = [
     "bert_collector.cc",
@@ -142,7 +149,10 @@ static_library("libcrash_reporter") {
     "policy",
     "redaction_tool",
   ]
-  deps = [ "//common-mk/external_dependencies:policy-protos" ]
+  deps = [
+    ":crash-reporter-adaptors",
+    "//common-mk/external_dependencies:policy-protos",
+  ]
   pkg_deps = [ "libminijail" ]
 
   if (use.arcpp || use.arcvm) {

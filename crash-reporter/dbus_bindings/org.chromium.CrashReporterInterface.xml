@@ -1,0 +1,19 @@
+<!--
+  Copyright 2023 The ChromiumOS Authors
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/org/chromium/CrashReporter"
+      xmlns:doc="http://www.freedesktop.org/dbus/1.0/doc.dtd">
+  <interface name="org.chromium.CrashReporterInterface">
+    <signal name="DebugDumpCreated">
+      <arg name="DebugDumps" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+          value="fbpreprocessor::DebugDumps" />
+      </arg>
+    </signal>
+  </interface>
+</node>
