@@ -182,10 +182,14 @@ void SLAACController::AddressMsgHandler(const net_base::RTNLMessage& msg) {
   std::stable_sort(slaac_addresses_.begin(), slaac_addresses_.end(),
                    address_preference);
 
-  network_config_.ipv6_addresses = {};
+  std::vector<net_base::IPv6CIDR> addresses;
   for (const auto& address_data : slaac_addresses_) {
-    network_config_.ipv6_addresses.push_back(address_data.cidr);
+    addresses.push_back(address_data.cidr);
   }
+  if (network_config_.ipv6_addresses == addresses) {
+    return;
+  }
+  network_config_.ipv6_addresses = addresses;
 
   if (update_callback_) {
     update_callback_.Run(UpdateType::kAddress);
@@ -221,6 +225,7 @@ void SLAACController::RouteMsgHandler(const net_base::RTNLMessage& msg) {
                  << interface_index_;
     return;
   }
+  const auto old_gateway = network_config_.ipv6_gateway;
   const auto gateway_ipv6addr = gateway->ToIPv6Address();
   if (msg.mode() == net_base::RTNLMessage::kModeAdd) {
     network_config_.ipv6_gateway = gateway_ipv6addr;
@@ -229,7 +234,7 @@ void SLAACController::RouteMsgHandler(const net_base::RTNLMessage& msg) {
     network_config_.ipv6_gateway = std::nullopt;
   }
 
-  if (update_callback_) {
+  if (update_callback_ && old_gateway != network_config_.ipv6_gateway) {
     update_callback_.Run(UpdateType::kDefaultRoute);
   }
 }
@@ -242,6 +247,8 @@ void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
 
   const net_base::RTNLMessage::RdnssOption& rdnss_option = msg.rdnss_option();
   uint32_t rdnss_lifetime_seconds = rdnss_option.lifetime;
+
+  auto old_dns_servers = network_config_.dns_servers;
   network_config_.dns_servers.clear();
   for (const auto& rdnss : rdnss_option.addresses) {
     network_config_.dns_servers.push_back(net_base::IPAddress(rdnss));
@@ -258,7 +265,7 @@ void SLAACController::RDNSSMsgHandler(const net_base::RTNLMessage& msg) {
     StartRDNSSTimer(delay);
   }
 
-  if (update_callback_) {
+  if (update_callback_ && old_dns_servers != network_config_.dns_servers) {
     update_callback_.Run(UpdateType::kRDNSS);
   }
 }

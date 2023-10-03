@@ -137,6 +137,18 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
   // Verify addresses.
   EXPECT_EQ(dns_server_addresses_expected_out, network_config_out.dns_servers);
 
+  // Lifetime of 0
+  const uint32_t kLifetime0 = 0;
+  auto message2 = BuildRdnssMessage(net_base::RTNLMessage::kModeAdd, kLifetime0,
+                                    dns_server_addresses_in);
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
+      .Times(1);
+  SendRTNLMessage(*message2);
+
+  network_config_out = slaac_controller_.GetNetworkConfig();
+  // Verify addresses.
+  EXPECT_EQ(0, network_config_out.dns_servers.size());
+
   // Lifetime of 120
   const uint32_t kLifetime120 = 120;
   auto message1 = BuildRdnssMessage(net_base::RTNLMessage::kModeAdd,
@@ -149,18 +161,6 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
   network_config_out = slaac_controller_.GetNetworkConfig();
   // Verify addresses.
   EXPECT_EQ(dns_server_addresses_expected_out, network_config_out.dns_servers);
-
-  // Lifetime of 0
-  const uint32_t kLifetime0 = 0;
-  auto message2 = BuildRdnssMessage(net_base::RTNLMessage::kModeAdd, kLifetime0,
-                                    dns_server_addresses_in);
-  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
-      .Times(1);
-  SendRTNLMessage(*message2);
-
-  network_config_out = slaac_controller_.GetNetworkConfig();
-  // Verify addresses.
-  EXPECT_EQ(0, network_config_out.dns_servers.size());
 }
 
 TEST_F(SLAACControllerTest, IPv6AddressChanged) {
