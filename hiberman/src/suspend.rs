@@ -479,12 +479,15 @@ fn log_metric_event(event: HibernateEvent) {
 /// Get the number of pages that were not included in the hibernate image
 /// by the kernel because they only contain zeroes.
 fn get_number_of_dropped_pages_with_zeroes() -> Result<u64> {
-    let output =
-        checked_command_output(Command::new("/bin/dmesg").args(["-P", "--since", "1 minute ago"]))
-            .context("Failed to execute 'dmesg'")?;
+    // We can't limit the logs with something like "--since 1 minute ago" here,
+    // it often causes dmesg to hang when it tries to open /etc/localtime,
+    // probably due to a frozen filesystem or storage kernel thread.
+    let output = checked_command_output(Command::new("/bin/dmesg").args(["-P"]))
+        .context("Failed to execute 'dmesg'")?;
 
     // regular expression for extracting the number of pages with zeroes
     let re = Regex::new(r"Image created \(\d+ pages copied, (\d+) zero pages\)").unwrap();
+    let mut value: Option<u64> = None;
 
     for line in output.stdout.lines() {
         if line.is_err() {
@@ -500,11 +503,11 @@ fn get_number_of_dropped_pages_with_zeroes() -> Result<u64> {
 
         let cap = re.captures(&line);
         if let Some(cap) = cap {
-            return Ok(cap[1].parse::<u64>()?);
+            value = Some(cap[1].parse::<u64>()?);
         }
     }
 
-    Err(anyhow!(
+    value.ok_or(anyhow!(
         "Could not determine number of dropped pages with only zeroes"
     ))
 }
