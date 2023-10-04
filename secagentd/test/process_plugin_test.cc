@@ -33,10 +33,12 @@ using ::testing::AnyNumber;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Eq;
+using ::testing::Invoke;
 using ::testing::Ref;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
+using ::testing::WithArg;
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
 
@@ -173,7 +175,11 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEvent) {
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*device_user_, GetDeviceUser).WillOnce(Return(kDeviceUser));
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_sent_event;
   EXPECT_CALL(*batch_sender_, Enqueue(_))
@@ -281,7 +287,11 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
               GetFeature(PoliciesFeaturesBrokerInterface::Feature::
                              kCrOSLateBootSecagentdCoalesceTerminates))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*device_user_, GetDeviceUser).WillRepeatedly(Return(kDeviceUser));
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   std::vector<std::unique_ptr<pb::ProcessEventAtomicVariant>>
       actual_sent_events;
@@ -350,7 +360,11 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*device_user_, GetDeviceUser).WillRepeatedly(Return(kDeviceUser));
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_sent_event;
   EXPECT_CALL(*batch_sender_, Enqueue(_))
@@ -428,7 +442,11 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheHit) {
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTime, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*device_user_, GetDeviceUser).WillRepeatedly(Return(kDeviceUser));
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_process_event;
   EXPECT_CALL(*batch_sender_, Enqueue(_))
@@ -484,7 +502,11 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[1], kStartTimes[1], 1))
       .WillOnce(Return(ByMove(std::move(parent_hierarchy))));
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*device_user_, GetDeviceUser).WillRepeatedly(Return(kDeviceUser));
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_process_event;
   EXPECT_CALL(*batch_sender_, Enqueue(_))

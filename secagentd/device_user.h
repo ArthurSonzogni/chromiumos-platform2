@@ -14,6 +14,7 @@
 
 #include "absl/status/statusor.h"
 #include "base/files/file_path.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
 #include "bindings/chrome_device_policy.pb.h"
@@ -45,7 +46,8 @@ class DeviceUserInterface : public base::RefCounted<DeviceUserInterface> {
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
   virtual void RegisterSessionChangeListener(
       base::RepeatingCallback<void(const std::string&)> cb) = 0;
-  virtual std::string GetDeviceUser() = 0;
+  virtual void GetDeviceUserAsync(
+      base::OnceCallback<void(const std::string& device_user)> cb) = 0;
   virtual std::list<std::string> GetUsernamesForRedaction() = 0;
 
   virtual ~DeviceUserInterface() = default;
@@ -79,7 +81,8 @@ class DeviceUser : public DeviceUserInterface {
   void RegisterSessionChangeListener(
       base::RepeatingCallback<void(const std::string&)> cb) override;
   // Returns the current device user.
-  std::string GetDeviceUser() override;
+  void GetDeviceUserAsync(
+      base::OnceCallback<void(const std::string& device_user)> cb) override;
   // Returns the most recently used usernames so they can be redacted.
   std::list<std::string> GetUsernamesForRedaction() override;
 
@@ -129,6 +132,8 @@ class DeviceUser : public DeviceUserInterface {
       session_manager_;
   std::vector<base::RepeatingCallback<void(const std::string&)>>
       session_change_listeners_;
+  std::vector<base::OnceCallback<void(const std::string&)>>
+      on_device_user_ready_cbs_;
   std::string device_user_ = "";
   std::list<std::string> redacted_usernames_;
   std::string device_id_ = "";
@@ -149,6 +154,7 @@ class DeviceUser : public DeviceUserInterface {
        {enterprise_management::DeviceLocalAccountInfoProto::
             ACCOUNT_TYPE_WEB_KIOSK_APP,
         "KioskApp"}};
+  bool device_user_ready_ = false;
 };
 
 }  // namespace secagentd

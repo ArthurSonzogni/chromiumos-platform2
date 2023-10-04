@@ -144,9 +144,12 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLockToUnlock) {
   SetupObjectProxies();
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(2)
-      .WillRepeatedly(Return(kDeviceUser));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   user_data_auth::AuthenticateAuthFactorCompleted completed;
   completed.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
@@ -196,9 +199,12 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
   SetupObjectProxies();
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(2)
-      .WillRepeatedly(Return(kDeviceUser));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   user_data_auth::AuthenticateAuthFactorCompleted completed;
   completed.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
@@ -248,9 +254,12 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
   SetupObjectProxies();
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(2)
-      .WillRepeatedly(Return(kDeviceUser));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   user_data_auth::AuthenticateAuthFactorCompleted completed;
   completed.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
@@ -304,9 +313,12 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
   SetupObjectProxies();
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(2)
-      .WillRepeatedly(Return(kDeviceUser));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure;
   failure.mutable_error_info();
@@ -366,7 +378,12 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAfterTimeout) {
   SetupObjectProxies();
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
-  EXPECT_CALL(*device_user_, GetDeviceUser).Times(1).WillRepeatedly(Return(""));
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .Times(1)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure;
   failure.mutable_error_info();
@@ -408,9 +425,12 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginCreateTimestampSquashing) {
   SetupObjectProxies();
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(3)
-      .WillRepeatedly(Return(kDeviceUser));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure;
   failure.mutable_error_info();
@@ -491,9 +511,12 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAuthFactorSquashing) {
   SetupObjectProxies();
   SaveRegisterLockingCbs();
   SaveSessionStateChangeCb();
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(2)
-      .WillRepeatedly(Return(kDeviceUser));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure;
   failure.mutable_error_info();

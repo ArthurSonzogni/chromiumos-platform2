@@ -137,8 +137,15 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     return;
   }
 
-  atomic_event->mutable_common()->set_device_user(
-      device_user_->GetDeviceUser());
+  device_user_->GetDeviceUserAsync(
+      base::BindOnce(&ProcessPlugin::OnDeviceUserRetrieved,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(atomic_event)));
+}
+
+void ProcessPlugin::OnDeviceUserRetrieved(
+    std::unique_ptr<pb::ProcessEventAtomicVariant> atomic_event,
+    const std::string& device_user) {
+  atomic_event->mutable_common()->set_device_user(device_user);
   EnqueueBatchedEvent(std::move(atomic_event));
 }
 

@@ -284,24 +284,42 @@ metrics::Tpm AgentPlugin::GetTpmInformation(bool available) {
 }
 
 void AgentPlugin::SendAgentEvent(bool is_agent_start) {
-  auto xdr_proto = std::make_unique<pb::XdrAgentEvent>();
-  auto agent_event = xdr_proto->add_batched_events();
+  auto agent_event = std::make_unique<pb::AgentEventAtomicVariant>();
   base::AutoLock lock(tcb_attributes_lock_);
 
-  base::OnceCallback<void(reporting::Status)> cb;
   if (is_agent_start) {
     agent_event->mutable_agent_start()->mutable_tcb()->CopyFrom(
         tcb_attributes_);
-    cb = base::BindOnce(&AgentPlugin::StartEventStatusCallback,
-                        weak_ptr_factory_.GetWeakPtr());
   } else {
     agent_event->mutable_agent_heartbeat()->mutable_tcb()->CopyFrom(
         tcb_attributes_);
-    cb = base::DoNothingAs<void(reporting::Status)>();
   }
   agent_event->mutable_common()->set_create_timestamp_us(
       base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
-  agent_event->mutable_common()->set_device_user(device_user_->GetDeviceUser());
+  device_user_->GetDeviceUserAsync(
+      base::BindOnce(&AgentPlugin::OnDeviceUserRetrieved,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(agent_event)));
+}
+
+void AgentPlugin::OnDeviceUserRetrieved(
+    std::unique_ptr<pb::AgentEventAtomicVariant> agent_event,
+    const std::string& device_user) {
+  agent_event->mutable_common()->set_device_user(device_user);
+  auto xdr_proto = std::make_unique<pb::XdrAgentEvent>();
+  auto batched_event = xdr_proto->add_batched_events();
+
+  base::OnceCallback<void(reporting::Status)> cb;
+  if (agent_event->has_agent_start()) {
+    batched_event->set_allocated_agent_start(
+        agent_event->release_agent_start());
+    cb = base::BindOnce(&AgentPlugin::StartEventStatusCallback,
+                        weak_ptr_factory_.GetWeakPtr());
+  } else {
+    batched_event->set_allocated_agent_heartbeat(
+        agent_event->release_agent_heartbeat());
+    cb = base::DoNothingAs<void(reporting::Status)>();
+  }
+  batched_event->set_allocated_common(agent_event->release_common());
 
   message_sender_->SendMessage(reporting::CROS_SECURITY_AGENT,
                                xdr_proto->mutable_common(),

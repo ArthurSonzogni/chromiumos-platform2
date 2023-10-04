@@ -226,9 +226,12 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
             return true;
           })));
 
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(kTimes)
-      .WillRepeatedly(Return(kDeviceUser));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   // Setup message sender mock. WillOnce is for StartEvent and
   // WillRepeatedly is for HeartbeatEvent.
@@ -284,10 +287,12 @@ TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerNonzero) {
   // Add 1 for Agent start.
   int kTimes = 1 + kTimePassed / kHeartbeatTimer;
 
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(kTimes)
-      .WillRepeatedly(Return(kDeviceUser));
-
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
   EXPECT_CALL(*message_sender_,
               SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))
       .Times(kTimes)
@@ -310,9 +315,12 @@ TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerZero) {
   // Add 1 for Agent start.
   static constexpr int kTimes = 1 + kTimePassed / 1;
 
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(kTimes)
-      .WillRepeatedly(Return(kDeviceUser));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   EXPECT_CALL(*message_sender_,
               SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))
@@ -330,7 +338,11 @@ TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerZero) {
 TEST_F(AgentPluginTestFixture, TestSendStartEventServicesUnvailable) {
   SetupObjectProxies(false);
 
-  EXPECT_CALL(*device_user_, GetDeviceUser).WillOnce(Return(kDeviceUser));
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   auto agent_message = std::make_unique<pb::XdrAgentEvent>();
   EXPECT_CALL(*message_sender_,
@@ -372,7 +384,11 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesFailedToRetrieve) {
         return false;
       })));
 
-  EXPECT_CALL(*device_user_, GetDeviceUser).WillOnce(Return(kDeviceUser));
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   auto agent_message = std::make_unique<pb::AgentEventAtomicVariant>();
   EXPECT_CALL(*message_sender_,
@@ -403,9 +419,12 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventFailure) {
   // 3 is timeout for retrying failure.
   static constexpr int kTimes = 1 + kTimePassed / 3;
 
-  EXPECT_CALL(*device_user_, GetDeviceUser)
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(kTimes)
-      .WillRepeatedly(Return(kDeviceUser));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   EXPECT_CALL(*message_sender_,
               SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))

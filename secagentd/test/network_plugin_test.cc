@@ -72,10 +72,14 @@ using ::testing::AnyNumber;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Eq;
+using ::testing::Invoke;
 using ::testing::Ref;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
+using ::testing::WithArg;
+
+constexpr char kDeviceUser[] = "deviceUser@email.com";
 
 class NetworkPluginTestFixture : public ::testing::Test {
  protected:
@@ -223,6 +227,12 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
   std::unique_ptr<pb::NetworkEventAtomicVariant> actual_sent_event;
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
+
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(1)
       .WillOnce([&actual_sent_event](
@@ -287,6 +297,12 @@ TEST_F(NetworkPluginTestFixture, TestNetworkPluginListenEvent) {
               GetProcessHierarchy(socket_event.common.process.pid,
                                   socket_event.common.process.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   std::unique_ptr<pb::NetworkEventAtomicVariant> actual_sent_event;
   EXPECT_CALL(*batch_sender_, Enqueue(_))
@@ -391,6 +407,12 @@ TEST_P(IPv6VariationsTestFixture, TestSocketListenIPv6) {
                                   socket_event.common.process.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
+
   std::unique_ptr<pb::NetworkEventAtomicVariant> actual_sent_event;
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(1)
@@ -491,6 +513,12 @@ TEST_P(ProtocolVariationsTestFixture, TestSocketListenProtocols) {
                                   socket_event.common.process.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
+
   std::unique_ptr<pb::NetworkEventAtomicVariant> actual_sent_event;
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(1)
@@ -573,6 +601,12 @@ TEST_P(SocketTypeVariationsTestFixture, TestSocketListenSocketTypes) {
               GetProcessHierarchy(socket_event.common.process.pid,
                                   socket_event.common.process.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
+
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
 
   std::unique_ptr<pb::NetworkEventAtomicVariant> actual_sent_event;
   EXPECT_CALL(*batch_sender_, Enqueue(_))

@@ -30,7 +30,10 @@ class MockDeviceUser : public DeviceUserInterface {
               RegisterSessionChangeListener,
               (base::RepeatingCallback<void(const std::string&)> cb),
               (override));
-  MOCK_METHOD(std::string, GetDeviceUser, (), (override));
+  MOCK_METHOD(void,
+              GetDeviceUserAsync,
+              (base::OnceCallback<void(const std::string& device_user)> cb),
+              (override));
   MOCK_METHOD((std::list<std::string>),
               GetUsernamesForRedaction,
               (),

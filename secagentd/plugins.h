@@ -106,11 +106,11 @@ class BpfPlugin : public PluginInterface {
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
       uint32_t batch_interval_s)
       : batch_interval_s_(batch_interval_s),
+        weak_ptr_factory_(this),
         device_user_(device_user),
         message_sender_(message_sender),
         policies_features_broker_(policies_features_broker),
-        process_cache_(process_cache),
-        weak_ptr_factory_(this) {
+        process_cache_(process_cache) {
     batch_sender_ = std::make_unique<BatchSenderType>(
         std::move(batch_key_generator), message_sender,
         Config::reporting_destination, batch_interval_s);
@@ -150,8 +150,16 @@ class BpfPlugin : public PluginInterface {
 
   bool IsActive() const override { return skeleton_wrapper_ != nullptr; }
 
+  void OnDeviceUserRetrieved(
+      std::unique_ptr<typename Config::XdrAtomicType> atomic_event,
+      const std::string& device_user) {
+    atomic_event->mutable_common()->set_device_user(device_user);
+    EnqueueBatchedEvent(std::move(atomic_event));
+  }
+
  protected:
   uint32_t batch_interval_s_;
+  base::WeakPtrFactory<BpfPlugin> weak_ptr_factory_;
   std::unique_ptr<BatchSenderInterfaceType> batch_sender_;
   scoped_refptr<DeviceUserInterface> device_user_;
   scoped_refptr<MessageSenderInterface> message_sender_;
@@ -173,7 +181,6 @@ class BpfPlugin : public PluginInterface {
   }
 
   scoped_refptr<BpfSkeletonFactoryInterface> factory_;
-  base::WeakPtrFactory<BpfPlugin> weak_ptr_factory_;
   std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
 };
 
@@ -296,10 +303,16 @@ class ProcessPlugin : public PluginInterface {
   // Converts the BPF process exit event into a XDR process terminate
   // protobuf.
   MakeTerminateEvent(const secagentd::bpf::cros_process_exit& process_exit);
+  // Callback function that is ran when the device user is ready.
+  void OnDeviceUserRetrieved(
+      std::unique_ptr<cros_xdr::reporting::ProcessEventAtomicVariant>
+          atomic_event,
+      const std::string& device_user);
   // Inject the given (mock) BatchSender object for unit testing.
   void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
     batch_sender_ = std::move(given);
   }
+
   base::WeakPtrFactory<ProcessPlugin> weak_ptr_factory_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
@@ -330,8 +343,6 @@ class AuthenticationPlugin : public PluginInterface {
                            cros_xdr::reporting::XdrUserEvent,
                            cros_xdr::reporting::UserEventAtomicVariant>;
 
-  // Fills the common field for the protos.
-  void FillCommon(cros_xdr::reporting::UserEventAtomicVariant* proto);
   // Creates and sends a screen Lock event.
   void HandleScreenLock();
   // Creates and sends a screen Unlock event.
@@ -357,6 +368,10 @@ class AuthenticationPlugin : public PluginInterface {
   void DelayedCheckForAuthSignal(
       std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> xdr_proto,
       cros_xdr::reporting::Authentication* authentication);
+  // Callback function that is ran when the device user is ready.
+  void OnDeviceUserRetrieved(
+      std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> atomic_event,
+      const std::string& device_user);
   // Inject the given (mock) BatchSender object for unit testing.
   void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
     batch_sender_ = std::move(given);
@@ -445,6 +460,11 @@ class AgentPlugin : public PluginInterface {
   void StartEventStatusCallback(reporting::Status status);
   inline void SendStartEvent() { SendAgentEvent(true); }
   inline void SendHeartbeatEvent() { SendAgentEvent(false); }
+  // Callback function that is ran when the device user is ready.
+  void OnDeviceUserRetrieved(
+      std::unique_ptr<cros_xdr::reporting::AgentEventAtomicVariant>
+          atomic_event,
+      const std::string& device_user);
 
   base::RepeatingTimer agent_heartbeat_timer_;
   cros_xdr::reporting::TcbAttributes tcb_attributes_;

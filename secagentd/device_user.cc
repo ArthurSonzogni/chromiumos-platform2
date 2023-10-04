@@ -119,8 +119,13 @@ void DeviceUser::OnSessionManagerNameChange(const std::string& old_owner,
   device_user_ = "";
 }
 
-std::string DeviceUser::GetDeviceUser() {
-  return device_user_;
+void DeviceUser::GetDeviceUserAsync(
+    base::OnceCallback<void(const std::string& device_user)> cb) {
+  if (device_user_ready_) {
+    std::move(cb).Run(device_user_);
+  } else {
+    on_device_user_ready_cbs_.push_back(std::move(cb));
+  }
 }
 
 std::list<std::string> DeviceUser::GetUsernamesForRedaction() {
@@ -135,12 +140,12 @@ void DeviceUser::HandleRegistrationResult(const std::string& interface,
                << " on interface: " << interface;
     device_user_ = "Unknown";
   } else {
-    UpdateDeviceId();
-    UpdateDeviceUser();
+    OnSessionStateChange(kStarted);
   }
 }
 
 void DeviceUser::OnSessionStateChange(const std::string& state) {
+  device_user_ready_ = false;
   if (state == kStarted) {
     UpdateDeviceId();
     if (!UpdateDeviceUser()) {
@@ -150,6 +155,11 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
     device_user_ = "";
   } else if (state == kStopped) {
     device_user_ = "";
+  }
+
+  device_user_ready_ = true;
+  for (auto& cb : on_device_user_ready_cbs_) {
+    std::move(cb).Run(device_user_);
   }
 
   for (auto cb : session_change_listeners_) {
@@ -332,20 +342,26 @@ void DeviceUser::HandleUserPolicyAndNotifyListeners(
   if (!response.ok()) {
     device_user_ = "Unknown";
     LOG(ERROR) << response.status();
-    return;
-  }
-  auto policy_data = response.value();
-
-  // Fill in device_user if user is affiliated.
-  if (IsAffiliated(policy_data)) {
-    device_user_ = username;
   } else {
-    device_user_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+    auto policy_data = response.value();
+
+    // Fill in device_user if user is affiliated.
+    if (IsAffiliated(policy_data)) {
+      device_user_ = username;
+    } else {
+      device_user_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+    }
+    if (!base::ImportantFileWriter::WriteFileAtomically(username_file,
+                                                        device_user_)) {
+      LOG(ERROR) << "Failed to write username to file";
+    }
   }
-  if (!base::ImportantFileWriter::WriteFileAtomically(username_file,
-                                                      device_user_)) {
-    LOG(ERROR) << "Failed to write username to file";
+
+  device_user_ready_ = true;
+  for (auto& cb : on_device_user_ready_cbs_) {
+    std::move(cb).Run(device_user_);
   }
+  on_device_user_ready_cbs_.clear();
 
   // Notify listeners.
   for (auto cb : session_change_listeners_) {

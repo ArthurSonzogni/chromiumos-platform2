@@ -147,32 +147,29 @@ bool AuthenticationPlugin::IsActive() const {
   return is_active_;
 }
 
-void AuthenticationPlugin::FillCommon(pb::UserEventAtomicVariant* proto) {
-  proto->mutable_common()->set_create_timestamp_us(
-      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
-  proto->mutable_common()->set_device_user(device_user_->GetDeviceUser());
-}
-
 void AuthenticationPlugin::HandleScreenLock() {
   auto screen_lock = std::make_unique<pb::UserEventAtomicVariant>();
   screen_lock->mutable_lock();
-  FillCommon(screen_lock.get());
-
-  EnqueueAuthenticationEvent(std::move(screen_lock));
+  screen_lock->mutable_common()->set_create_timestamp_us(
+      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
+  device_user_->GetDeviceUserAsync(
+      base::BindOnce(&AuthenticationPlugin::OnDeviceUserRetrieved,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(screen_lock)));
 }
 
 void AuthenticationPlugin::HandleScreenUnlock() {
-  auto screen_lock = std::make_unique<pb::UserEventAtomicVariant>();
-  FillCommon(screen_lock.get());
+  auto screen_unlock = std::make_unique<pb::UserEventAtomicVariant>();
+  screen_unlock->mutable_common()->set_create_timestamp_us(
+      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
 
   auto* authentication =
-      screen_lock->mutable_unlock()->mutable_authentication();
+      screen_unlock->mutable_unlock()->mutable_authentication();
   if (!FillAuthFactor(authentication)) {
     authentication->clear_auth_factor();
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&AuthenticationPlugin::DelayedCheckForAuthSignal,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(screen_lock),
+                       weak_ptr_factory_.GetWeakPtr(), std::move(screen_unlock),
                        authentication),
         kWaitForAuthFactorS);
     return;
@@ -180,12 +177,15 @@ void AuthenticationPlugin::HandleScreenUnlock() {
 
   auth_factor_type_ =
       AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
-  EnqueueAuthenticationEvent(std::move(screen_lock));
+  device_user_->GetDeviceUserAsync(
+      base::BindOnce(&AuthenticationPlugin::OnDeviceUserRetrieved,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(screen_unlock)));
 }
 
 void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
   auto log_event = std::make_unique<pb::UserEventAtomicVariant>();
-  FillCommon(log_event.get());
+  log_event->mutable_common()->set_create_timestamp_us(
+      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
 
   if (state == kStarted) {
     latest_successful_login_timestamp_ =
@@ -209,7 +209,9 @@ void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
     return;
   }
 
-  EnqueueAuthenticationEvent(std::move(log_event));
+  device_user_->GetDeviceUserAsync(
+      base::BindOnce(&AuthenticationPlugin::OnDeviceUserRetrieved,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(log_event)));
 }
 
 void AuthenticationPlugin::HandleRegistrationResult(
@@ -239,14 +241,18 @@ void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
                                              auth_factor_type_))) {
       // Create new event if no matching failure event found and updated.
       auto failure_event = std::make_unique<pb::UserEventAtomicVariant>();
-      FillCommon(failure_event.get());
+      failure_event->mutable_common()->set_create_timestamp_us(
+          base::Time::Now().ToJavaTime() *
+          base::Time::kMicrosecondsPerMillisecond);
 
       auto* authentication =
           failure_event->mutable_failure()->mutable_authentication();
       authentication->set_num_failed_attempts(1);
       FillAuthFactor(authentication);
 
-      EnqueueAuthenticationEvent(std::move(failure_event));
+      device_user_->GetDeviceUserAsync(base::BindOnce(
+          &AuthenticationPlugin::OnDeviceUserRetrieved,
+          weak_ptr_factory_.GetWeakPtr(), std::move(failure_event)));
     }
   }
 }
@@ -271,7 +277,16 @@ void AuthenticationPlugin::DelayedCheckForAuthSignal(
     auth_factor_type_ =
         AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
   }
-  EnqueueAuthenticationEvent(std::move(xdr_proto));
+  device_user_->GetDeviceUserAsync(
+      base::BindOnce(&AuthenticationPlugin::OnDeviceUserRetrieved,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(xdr_proto)));
+}
+
+void AuthenticationPlugin::OnDeviceUserRetrieved(
+    std::unique_ptr<pb::UserEventAtomicVariant> atomic_event,
+    const std::string& device_user) {
+  atomic_event->mutable_common()->set_device_user(device_user);
+  EnqueueAuthenticationEvent(std::move(atomic_event));
 }
 
 }  // namespace secagentd

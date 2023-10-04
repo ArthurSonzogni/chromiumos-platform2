@@ -172,9 +172,10 @@ void NetworkPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     atomic_event->set_allocated_network_socket_listen(
         MakeListenEvent(ne.data.socket_listen).release());
   }
-  atomic_event->mutable_common()->set_device_user(
-      device_user_->GetDeviceUser());
-  EnqueueBatchedEvent(std::move(atomic_event));
+
+  device_user_->GetDeviceUserAsync(
+      base::BindOnce(&BpfPlugin::OnDeviceUserRetrieved,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(atomic_event)));
 }
 
 std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
