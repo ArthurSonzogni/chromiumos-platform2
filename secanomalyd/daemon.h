@@ -63,11 +63,10 @@ class Daemon : public brillo::DBusDaemon {
   void EmitMemfdExecProcCountUma();
   void EmitSandboxingUma();
 
-  // Used to keep track of whether this daemon has attempted to send a crash
-  // report for a W+X mount observation throughout its lifetime.
-  // Only one crash report upload is attempted for an anomaly of type W+X mount
-  // during the lifetime of the daemon.
-  bool has_attempted_anomaly_report_ = false;
+  // These booleans track whether the daemon has ever attempted to generate a
+  // crash report due to an anomaly. Attempts are capped at 1 per anomaly type.
+  bool has_attempted_wx_mount_report_ = false;
+  bool has_attempted_forbidden_intersection_report_ = false;
 
   // Forbidden intersection process count is sent once per boot.
   bool has_emitted_forbidden_intersection_uma_ = false;

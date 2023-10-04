@@ -335,16 +335,26 @@ void Daemon::DoProcScan() {
 void Daemon::DoAnomalousSystemReporting() {
   // TODO(b/255818130): Check for and append the details of any discovered memfd
   // execution events so that they appear in the report.
-  // Skip reporting if the daemon has previously attempted to
-  // send a report or there are no anomalous conditions.
-  if (has_attempted_anomaly_report_ ||
-      (wx_mounts_.empty() && (!forbidden_intersection_procs_ ||
-                              forbidden_intersection_procs_.value().empty()))) {
+  // Skip reporting if for all anomaly types either the daemon has previously
+  // attempted to send a report or the anomaly does not exist.
+  if ((has_attempted_wx_mount_report_ || wx_mounts_.empty()) &&
+      (has_attempted_forbidden_intersection_report_ ||
+       forbidden_intersection_procs_.value().empty())) {
     return;
   }
 
-  // Stop subsequent reporting attempts for this execution.
-  has_attempted_anomaly_report_ = true;
+  // Makes checking for this anomaly type easier.
+  ProcEntries anomalous_procs = forbidden_intersection_procs_
+                                    ? forbidden_intersection_procs_.value()
+                                    : ProcEntries();
+
+  // Stop subsequent reporting attempts for each discovered anomaly type.
+  if (!wx_mounts_.empty()) {
+    has_attempted_wx_mount_report_ = true;
+  }
+  if (!anomalous_procs.empty()) {
+    has_attempted_forbidden_intersection_report_ = true;
+  }
 
   if (!ShouldReport(dev_)) {
     VLOG(1) << "Not reporting anomalous system due to dev mode";
@@ -352,9 +362,6 @@ void Daemon::DoAnomalousSystemReporting() {
   }
   VLOG(1) << "Attempting to report anomalous system";
 
-  ProcEntries anomalous_procs = forbidden_intersection_procs_
-                                    ? forbidden_intersection_procs_.value()
-                                    : ProcEntries();
   int range = 0;
   int weight = 1;
   // If |dev_| is set, always send the report. Otherwise, if W+X anomalies
