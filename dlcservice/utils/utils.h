@@ -11,8 +11,10 @@
 
 #include <brillo/brillo_export.h>
 #include <base/files/file_path.h>
+#include <chromeos/constants/imageloader.h>
 #include <libimageloader/manifest.h>
 
+#include "dlcservice/metadata/metadata_interface.h"
 #include "dlcservice/utils/utils_interface.h"
 
 namespace dlcservice {
@@ -51,6 +53,17 @@ class BRILLO_EXPORT Utils : public UtilsInterface {
       const base::FilePath& dlc_manifest_path,
       const std::string& id,
       const std::string& package) override;
+
+  std::shared_ptr<imageloader::Manifest> GetDlcManifest(
+      const std::string& id, const base::FilePath& dlc_manifest_path) override;
+
+ private:
+  bool InitializeDlcMetadata(const base::FilePath& path);
+
+  std::shared_ptr<imageloader::Manifest> GetDlcManifestInternal(
+      const std::string& id);
+
+  std::unique_ptr<metadata::MetadataInterface> metadata_;
 };
 
 // Wrapper functions to ease transitions/usages.
@@ -68,6 +81,10 @@ BRILLO_EXPORT std::shared_ptr<imageloader::Manifest> GetDlcManifest(
     const base::FilePath& dlc_manifest_path,
     const std::string& id,
     const std::string& package,
+    std::unique_ptr<UtilsInterface> utils = std::make_unique<Utils>());
+BRILLO_EXPORT std::shared_ptr<imageloader::Manifest> GetDlcManifest(
+    const std::string& id,
+    const base::FilePath& dlc_manifest_path,
     std::unique_ptr<UtilsInterface> utils = std::make_unique<Utils>());
 
 }  // namespace dlcservice

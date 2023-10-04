@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libimageloader/manifest.h>
 
 #include "dlcservice/utils/mock_utils.h"
 #include "dlcservice/utils/utils.h"
@@ -71,6 +73,12 @@ TEST_F(FunctionsTest, HashFileFunctionsTest) {
 TEST_F(FunctionsTest, GetDlcManifestTest) {
   EXPECT_CALL(*mu_ptr_, GetDlcManifest(_, _, _));
   (void)GetDlcManifest(base::FilePath(), "", "", std::move(mu_));
+}
+
+TEST_F(FunctionsTest, GetCompressedDlcManifestTest) {
+  EXPECT_CALL(*mu_ptr_, GetDlcManifest(_, _))
+      .WillOnce(testing::Return(std::make_shared<imageloader::Manifest>()));
+  (void)GetDlcManifest("", base::FilePath(), std::move(mu_));
 }
 
 }  // namespace dlcservice

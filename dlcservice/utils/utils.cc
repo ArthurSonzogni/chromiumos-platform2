@@ -14,9 +14,12 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
+
+#include "dlcservice/metadata/metadata.h"
 
 using base::FilePath;
 using crypto::SecureHash;
@@ -135,12 +138,62 @@ std::shared_ptr<imageloader::Manifest> Utils::GetDlcManifest(
   return manifest;
 }
 
+std::shared_ptr<imageloader::Manifest> Utils::GetDlcManifest(
+    const std::string& id, const base::FilePath& dlc_manifest_path) {
+  InitializeDlcMetadata(dlc_manifest_path);
+  if (auto manifest = GetDlcManifestInternal(id)) {
+    return manifest;
+  } else {
+    return GetDlcManifest(dlc_manifest_path, id, kPackage);
+  }
+}
+
+std::shared_ptr<imageloader::Manifest> Utils::GetDlcManifestInternal(
+    const std::string& id) {
+  if (!metadata_)
+    return nullptr;
+
+  auto entry = metadata_->Get(id);
+  if (!entry) {
+    LOG(ERROR) << "Failed to get metadata for DLC=" << id;
+    return nullptr;
+  }
+
+  auto manifest = std::make_shared<imageloader::Manifest>();
+  if (!manifest->ParseManifest(entry->manifest)) {
+    LOG(ERROR) << "Failed to parse manifest for DLC=" << id;
+    return nullptr;
+  }
+
+  return manifest;
+}
+
 std::shared_ptr<imageloader::Manifest> GetDlcManifest(
     const FilePath& dlc_manifest_path,
     const std::string& id,
     const std::string& package,
     std::unique_ptr<UtilsInterface> utils) {
   return utils->GetDlcManifest(dlc_manifest_path, id, package);
+}
+
+std::shared_ptr<imageloader::Manifest> GetDlcManifest(
+    const std::string& id,
+    const FilePath& dlc_manifest_path,
+    std::unique_ptr<UtilsInterface> utils) {
+  return utils->GetDlcManifest(id, dlc_manifest_path);
+}
+
+bool Utils::InitializeDlcMetadata(const base::FilePath& path) {
+  if (metadata_)
+    return true;
+
+  metadata_ = std::make_unique<metadata::Metadata>(path);
+  if (!metadata_->Initialize()) {
+    metadata_.reset();
+    LOG(ERROR) << "Failed to initialize the DLC metadata.";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace dlcservice

@@ -48,6 +48,10 @@ class BRILLO_EXPORT UtilsInterface {
       const base::FilePath& dlc_manifest_path,
       const std::string& id,
       const std::string& package) = 0;
+
+  // Retrieves the given DLC (id) manifest from metadata.
+  virtual std::shared_ptr<imageloader::Manifest> GetDlcManifest(
+      const std::string& id, const base::FilePath& dlc_manifest_path) = 0;
 };
 
 }  // namespace dlcservice

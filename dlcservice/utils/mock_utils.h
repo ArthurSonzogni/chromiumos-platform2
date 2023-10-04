@@ -45,6 +45,10 @@ class MockUtils : public UtilsInterface {
                const std::string& id,
                const std::string& package),
               (override));
+  MOCK_METHOD(std::shared_ptr<imageloader::Manifest>,
+              GetDlcManifest,
+              (const std::string& id, const base::FilePath& dlc_manifest_path),
+              (override));
 };
 
 }  // namespace dlcservice
