@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <dbus/object_path.h>
 
+#include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher_floss.h"
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
@@ -173,9 +174,7 @@ void CheckBluetoothStack(Context* context,
   }
 
   if (floss_enabled) {
-    // TODO(b/300007763): Support Bluetooth telemetry via Floss.
-    std::move(callback).Run(
-        mojom::BluetoothResult::NewBluetoothAdapterInfo({}));
+    FetchBluetoothInfoFromFloss(context, std::move(callback));
     return;
   }
 

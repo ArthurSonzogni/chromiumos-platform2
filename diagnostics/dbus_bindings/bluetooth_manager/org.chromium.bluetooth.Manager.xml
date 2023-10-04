@@ -18,6 +18,12 @@
       </tp:docstring>
       <arg name="hci_interface" direction="out" type="i"/>
     </method>
+    <method name="GetAvailableAdapters">
+      <tp:docstring>
+        Gets available adapters' HCI interface number and enabled state.
+      </tp:docstring>
+      <arg name="adapters" direction="out" type="aa{sv}"/>
+    </method>
     <method name="GetAdapterEnabled">
       <tp:docstring>
         Gets the specific adapter's powered/enabled state.
