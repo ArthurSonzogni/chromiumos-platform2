@@ -110,13 +110,18 @@ IPFamily IPAddress::GetFamily() const {
   return IPFamily::kIPv6;
 }
 
-size_t IPAddress::GetAddressLength() const {
-  switch (GetFamily()) {
+// static
+size_t IPAddress::GetAddressLength(IPFamily family) {
+  switch (family) {
     case IPFamily::kIPv4:
       return IPv4Address::kAddressLength;
     case IPFamily::kIPv6:
       return IPv6Address::kAddressLength;
   }
+}
+
+size_t IPAddress::GetAddressLength() const {
+  return GetAddressLength(GetFamily());
 }
 
 std::optional<IPv4Address> IPAddress::ToIPv4Address() const {
