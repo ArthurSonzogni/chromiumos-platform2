@@ -499,6 +499,9 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual, "mangle -A OUTPUT -j qos_detect_static -w"},
       {IpFamily::kDual, "mangle -A PREROUTING -j qos_detect_static -w"},
       {IpFamily::kDual, "mangle -N qos_detect -w"},
+      {IpFamily::kDual,
+       "mangle -A qos_detect -m mark ! --mark 0x00000000/0x000000e0 -j MARK "
+       "--set-xmark 0x00000000/0x000000e0 -w"},
       {IpFamily::kDual, "mangle -A qos_detect -m dscp ! --dscp 0 -j RETURN -w"},
       {IpFamily::kDual,
        "mangle -A qos_detect -j CONNMARK --restore-mark --nfmask 0x000000e0 "

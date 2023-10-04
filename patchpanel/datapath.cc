@@ -2392,6 +2392,18 @@ void Datapath::SetupQoSDetectChain() {
   };
 
   const std::string qos_mask = kFwmarkQoSCategoryMask.ToString();
+  const std::string default_mark = QoSFwmarkWithMask(QoSCategory::kDefault);
+  const std::string network_control_mark =
+      QoSFwmarkWithMask(QoSCategory::kNetworkControl);
+
+  // Reset the QoS-related bits in fwmark. Some sockets will set their own
+  // fwmarks when sending packets, while this is not compatible with the rules
+  // here. See b/303216552 for an example. Note that the matcher part in this
+  // rule (`--mark 0x0/0xe0`) is not a must, just for checking how many packets
+  // have their own fwmarks.
+  install_rule(IpFamily::kDual,
+               {"-m", "mark", "!", "--mark", default_mark, "-j", "MARK",
+                "--set-xmark", default_mark, "-w"});
 
   // Skip QoS detection if DSCP value is already set.
   install_rule(IpFamily::kDual,
@@ -2406,33 +2418,27 @@ void Datapath::SetupQoSDetectChain() {
 
   // If the value restored from the conntrack mark is not 0, skip the following
   // detection.
-  install_rule(IpFamily::kDual, {"-m", "mark", "!", "--mark",
-                                 QoSFwmarkWithMask(QoSCategory::kDefault), "-j",
-                                 "RETURN", "-w"});
+  install_rule(IpFamily::kDual, {"-m", "mark", "!", "--mark", default_mark,
+                                 "-j", "RETURN", "-w"});
 
   // Marking the first packet in the TCP handshake (SYN bit set and the ACK,RST
   // and FIN bits cleared). We only care about the TCP connection initiated from
   // the device now.
-  install_rule(IpFamily::kDual,
-               {"-p", "tcp", "--syn", "-j", "MARK", "--set-xmark",
-                QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
+  install_rule(IpFamily::kDual, {"-p", "tcp", "--syn", "-j", "MARK",
+                                 "--set-xmark", network_control_mark, "-w"});
 
   // Marking ICMP packets.
-  install_rule(IpFamily::kIPv4,
-               {"-p", "icmp", "-j", "MARK", "--set-xmark",
-                QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
-  install_rule(IpFamily::kIPv6,
-               {"-p", "icmpv6", "-j", "MARK", "--set-xmark",
-                QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
+  install_rule(IpFamily::kIPv4, {"-p", "icmp", "-j", "MARK", "--set-xmark",
+                                 network_control_mark, "-w"});
+  install_rule(IpFamily::kIPv6, {"-p", "icmpv6", "-j", "MARK", "--set-xmark",
+                                 network_control_mark, "-w"});
 
   // Marking DNS packets. 853 for DoT for Android is ignored here since it won't
   // happen when dns-proxy is on.
-  install_rule(IpFamily::kDual,
-               {"-p", "udp", "--dport", "53", "-j", "MARK", "--set-xmark",
-                QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
-  install_rule(IpFamily::kDual,
-               {"-p", "tcp", "--dport", "53", "-j", "MARK", "--set-xmark",
-                QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
+  install_rule(IpFamily::kDual, {"-p", "udp", "--dport", "53", "-j", "MARK",
+                                 "--set-xmark", network_control_mark, "-w"});
+  install_rule(IpFamily::kDual, {"-p", "tcp", "--dport", "53", "-j", "MARK",
+                                 "--set-xmark", network_control_mark, "-w"});
 
   // TODO(b/296952085): Add rules for WebRTC detection. Also need to add an
   // early-return rule above for packets marked by rules for network control, to
