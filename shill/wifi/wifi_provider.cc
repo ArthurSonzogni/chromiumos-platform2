@@ -1134,11 +1134,11 @@ void WiFiProvider::HandleNetlinkBroadcast(const NetlinkMessage& message) {
   }
 
   if ((nl80211_message.command() == NewWiphyMessage::kCommand)) {
-    if (nl80211_message.flags() & NLM_F_MULTI) {
-      LOG(WARNING)
-          << "Unsolicited NEW_WIPHY message is not expected to be multi-part";
-    }
-    OnNewWiphy(nl80211_message);
+    // Force a split phy dump to retrieve all the phy information as the
+    // unsolicited new phy message will be truncated and incomplete.
+    // Ref code:
+    // https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/kernel/v5.15/net/wireless/nl80211.c;l=2547
+    GetPhyInfo(phy_index);
     return;
   }
 

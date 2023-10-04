@@ -2375,10 +2375,13 @@ TEST_F(WiFiProviderTest, NetLinkBroadcast_NewPhy) {
   NetlinkPacket packet(kNewWiphyNlMsg);
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_EQ(nullptr, GetPhyAtIndex(kNewWiphyNlMsg_WiphyIndex));
-  // We should create a new WiFiPhy object when we get a NewWiphy broadcast for
-  // a new phy_index.
+  // Expect an NL80211_CMD_GET_WIPHY to be triggered to force dump the phy info
+  // on NewWiphy broadcast message.
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
   HandleNetlinkBroadcast(msg);
-  EXPECT_NE(nullptr, GetPhyAtIndex(kNewWiphyNlMsg_WiphyIndex));
 }
 
 TEST_F(WiFiProviderTest, NetLinkBroadcast_DeletePresentPhy) {
