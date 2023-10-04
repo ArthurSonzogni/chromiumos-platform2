@@ -13,6 +13,7 @@
 #include <base/files/dir_reader_posix.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
+#include <base/process/process_metrics.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -179,34 +180,6 @@ absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
   return false;
 }
 
-// Extract second field of MemTotal entry in /proc/meminfo. The unit for
-// MemTotal is KiB.
-absl::StatusOr<uint64_t> SwapTool::GetMemTotalKiB() {
-  std::string mem_info;
-  absl::Status status = SwapToolUtil::Get()->ReadFileToString(
-      base::FilePath("/proc/meminfo"), &mem_info);
-  if (!status.ok())
-    return status;
-
-  std::vector<std::string> mem_info_lines = base::SplitString(
-      mem_info, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-  for (auto& line : mem_info_lines) {
-    if (line.find("MemTotal") != std::string::npos) {
-      std::string buf = base::SplitString(line, " ", base::KEEP_WHITESPACE,
-                                          base::SPLIT_WANT_NONEMPTY)[1];
-
-      uint64_t res = 0;
-      if (!absl::SimpleAtoi(buf, &res))
-        return absl::OutOfRangeError("Failed to convert " + buf +
-                                     " to 64-bit unsigned integer.");
-      return res;
-    }
-  }
-
-  return absl::NotFoundError("Could not get MemTotal in /proc/meminfo");
-}
-
 // Return user runtime config zram size in byte for swap.
 // kSwapSizeFile contains the zram size in MiB.
 // Return 0 if swap is disabled, and NotFoundError if kSwapSizeFile is empty.
@@ -275,10 +248,11 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
   LOG_IF(WARNING, !absl::IsNotFound(size_byte.status())) << size_byte.status();
 
   // 2. Feature
-  // First, read the MemTotal from /proc/meminfo
-  absl::StatusOr<uint64_t> mem_total = GetMemTotalKiB();
-  if (!mem_total.ok())
-    return mem_total.status();
+  // First, read /proc/meminfo for MemTotal in kiB.
+  absl::StatusOr<base::SystemMemoryInfoKB> meminfo =
+      SwapToolUtil::Get()->GetSystemMemoryInfo();
+  if (!meminfo.ok())
+    return meminfo.status();
 
   // Then check if feature kSwapZramDisksizeFeature is available.
   float multiplier = kDefaultZramSizeToMemTotalMultiplier;
@@ -294,7 +268,8 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
   }
 
   // Should roundup with page size.
-  return RoundupMultiple(*mem_total * 1024 * multiplier, 4096);
+  return RoundupMultiple(
+      static_cast<uint64_t>((*meminfo).total) * 1024 * multiplier, 4096);
 }
 
 // Program /sys/block/zram0/recomp_algorithm.

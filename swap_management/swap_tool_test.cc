@@ -26,50 +26,8 @@ const char kSwapsNoZram[] =
     "Filename                               "
     " Type            Size            "
     "Used            Priority\n";
-const char kMeminfoMemTotal8G[] = R"(MemTotal:        8144424 kB
-MemFree:         5712260 kB
-MemAvailable:    6368308 kB
-Buffers:           64092 kB
-Cached:          1045820 kB
-SwapCached:            0 kB
-Active:          1437424 kB
-Inactive:         493512 kB
-Active(anon):     848464 kB
-Inactive(anon):    63600 kB
-Active(file):     588960 kB
-Inactive(file):   429912 kB
-Unevictable:       68676 kB
-Mlocked:           40996 kB
-SwapTotal:      16288844 kB
-SwapFree:       16288844 kB
-Dirty:               380 kB
-Writeback:             0 kB
-AnonPages:        889736 kB
-Mapped:           470060 kB
-Shmem:             91040 kB
-KReclaimable:      87488 kB
-Slab:             174412 kB
-SReclaimable:      87488 kB
-SUnreclaim:        86924 kB
-KernelStack:        9056 kB
-PageTables:        18120 kB
-NFS_Unstable:          0 kB
-Bounce:                0 kB
-WritebackTmp:          0 kB
-CommitLimit:    20361056 kB
-Committed_AS:    5581424 kB
-VmallocTotal:   34359738367 kB
-VmallocUsed:      145016 kB
-VmallocChunk:          0 kB
-Percpu:             2976 kB
-AnonHugePages:     40960 kB
-ShmemHugePages:        0 kB
-ShmemPmdMapped:        0 kB
-FileHugePages:         0 kB
-FilePmdMapped:         0 kB
-DirectMap4k:      188268 kB
-DirectMap2M:     8200192 kB)";
 const char kZramDisksize8G[] = "16679780352";
+const int kZramMemTotal8G = 8144424;
 }  // namespace
 
 class MockSwapToolUtil : public swap_management::SwapToolUtil {
@@ -137,6 +95,10 @@ class MockSwapToolUtil : public swap_management::SwapToolUtil {
               GenerateRandHex,
               (size_t size),
               (override));
+  MOCK_METHOD(absl::StatusOr<base::SystemMemoryInfoKB>,
+              GetSystemMemoryInfo,
+              (),
+              (override));
 };
 
 class SwapToolTest : public ::testing::Test {
@@ -192,10 +154,9 @@ TEST_F(SwapToolTest, SwapStart) {
                               base::FilePath("/var/lib/swap/swap_size"), _, _))
       .WillOnce(Return(
           absl::NotFoundError("Failed to read /var/lib/swap/swap_size")));
-  // GetMemTotalKiB
-  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
-                      Return(absl::OkStatus())));
+  base::SystemMemoryInfoKB mock_meminfo;
+  mock_meminfo.total = kZramMemTotal8G;
+  EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
       .WillOnce(Return(absl::OkStatus()));

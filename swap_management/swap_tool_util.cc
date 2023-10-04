@@ -177,6 +177,14 @@ absl::StatusOr<std::string> SwapToolUtil::GenerateRandHex(size_t size) {
   return base::HexEncode(random_bytes.data(), random_bytes.size());
 }
 
+absl::StatusOr<base::SystemMemoryInfoKB> SwapToolUtil::GetSystemMemoryInfo() {
+  base::SystemMemoryInfoKB meminfo;
+  if (!base::GetSystemMemoryInfo(&meminfo))
+    return absl::NotFoundError("Could not get MemTotal in /proc/meminfo");
+
+  return std::move(meminfo);
+}
+
 const base::FilePath ScopedFilePathTraits::InvalidValue() {
   return base::FilePath();
 }

@@ -12,6 +12,7 @@
 #include <absl/status/statusor.h>
 #include <base/files/file_path.h>
 #include <base/scoped_generic.h>
+#include <base/process/process_metrics.h>
 #include <sys/statfs.h>
 
 namespace swap_management {
@@ -49,6 +50,7 @@ class SwapToolUtil {
   virtual absl::Status Umount(const std::string& target);
   virtual absl::StatusOr<struct statfs> GetStatfs(const std::string& path);
   virtual absl::StatusOr<std::string> GenerateRandHex(size_t size);
+  virtual absl::StatusOr<base::SystemMemoryInfoKB> GetSystemMemoryInfo();
 
  private:
   SwapToolUtil() = default;
