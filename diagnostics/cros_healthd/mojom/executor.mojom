@@ -487,4 +487,12 @@ interface Executor {
   // The response:
   // * |err| - Error message if existed.
   SetAllFanAutoControl() => (string? err);
+
+  // Get the name and temperature from thermal sensors in the EC.
+  //
+  // The response:
+  // * |thermal_sensors| - An array containing the information for each thermal
+  //                       sensor.
+  // * |err| - Error message if existed.
+  GetEcThermalSensors() => (array<ThermalSensorInfo> thermal_sensors, string? err);
 };

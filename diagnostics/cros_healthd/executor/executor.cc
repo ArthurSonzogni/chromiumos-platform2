@@ -107,6 +107,8 @@ constexpr char kRm[] = "healthd_rm-seccomp.policy";
 constexpr char kDrm[] = "drm-seccomp.policy";
 // SECCOMP policy for btmon.
 constexpr char kBtmon[] = "btmon-seccomp.policy";
+// SECCOMP policy for thermal related commands.
+constexpr char kThermal[] = "ec_thermal-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -1018,6 +1020,21 @@ void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->SetAllFanAutoControl(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback), kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
+}
+
+void Executor::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kThermal,
+      SandboxedProcess::Options{
+          .user = user::kEc,
+          .writable_mount_points = {base::FilePath{path::kCrosEcDevice}},
+      });
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetEcThermalSensors(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback),
+      std::vector<mojom::ThermalSensorInfoPtr>{}, kFailToLaunchDelegate));
   delegate_ptr->StartAsync();
 }
 

@@ -1184,6 +1184,20 @@ event --help`.
 | model_name | string? | The product model name. (Optional RO VPD field. b/35512367) |
 | oem_name | string? | OEM name of the device. (Optional RO VPD field) |
 
+###  Thermal
+
+#####  ThermalSensorInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| name | string | The name of the thermal sensor. |
+| temperature_celsius | double | The value read by the thermal sensor in celsius. |
+| source | ThermalSensorSource | Where the thermal sensor is from. |
+
+##### ThermalSensorSource
+| Enum | Description |
+| ---- | ----------- |
+| kEc | Thermal Sensor is located in the EC. |
+| kSysFs | Thermal Sensor is located in SysFS. |
 
 ###  TPM
 

@@ -1982,6 +1982,32 @@ struct Sensor {
   Location location@3;
 };
 
+// Information about various thermal sensors.
+//
+// NextMinVersion: 1, NextIndex: 3
+[Stable]
+struct ThermalSensorInfo {
+  // The location of sensor.
+  //
+  // NextMinVersion: 1, NextIndex: 3
+  [Stable, Extensible]
+  enum ThermalSensorSource {
+    // For mojo backward compatibility, should not be used.
+    [Default] kUnmappedEnumField = 0,
+    // Thermal sensor is located in the EC.
+    kEc = 1,
+    // Thermal sensor is located in SysFs.
+    kSysFs = 2,
+  };
+
+  // Name of the thermal sensor.
+  string name@0;
+  // Temperature detected by the thermal sensor in celsius.
+  double temperature_celsius@1;
+  // Where the thermal sensor is detected from.
+  ThermalSensorSource source@2;
+};
+
 // A collection of all the device's telemetry information that cros_healthd is
 // capable of reporting. Note that every field in TelemetryInfo is nullable, and
 // the response for a particular ProbeTelemetryInfo request will only contain

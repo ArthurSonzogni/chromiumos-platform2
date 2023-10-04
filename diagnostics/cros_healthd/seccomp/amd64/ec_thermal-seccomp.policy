@@ -1,0 +1,49 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# The following are generic syscalls.
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
+# Socket is a dangerous syscall.
+socket: arg0 == AF_UNIX
+
+# Required syscalls by seccomp_checker
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1
+exit_group: 1
+
+# CROS_EC_DEV_IOCRDMEM_V2 = 0xc108ec01
+# CROS_EC_DEV_IOCXCMD = 0xc0283a00
+# CROS_EC_DEV_IOCXCMD_V2 = 0xc014ec00
+# CROS_EC_DEV_IOCRDMEM = 0x0c0103a01
+ioctl: arg1 == 0xc108ec01 || arg1 == 0xc0283a00 || arg1 == 0xc014ec00 || \
+       arg1 == 0x0c0103a01
+
+openat: 1
+read: 1
+rt_sigprocmask: 1
+write: 1
+connect: 1
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+uname: 1
+sendto: 1
+gettid: 1
+getuid: 1
+epoll_wait: 1
+eventfd2: 1
+memfd_create: 1
+getpid: 1
+signalfd4: 1
+recvmsg: 1
+fcntl: 1
+getrandom: arg2 in ~GRND_RANDOM
+geteuid: 1
+getgid: 1
+getegid: 1
+epoll_create1: 1
+epoll_ctl: 1
+pipe2: 1
+close: 1

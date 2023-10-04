@@ -190,6 +190,10 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               SetAllFanAutoControl,
               (SetAllFanAutoControlCallback callback),
               (override));
+  MOCK_METHOD(void,
+              GetEcThermalSensors,
+              (GetEcThermalSensorsCallback),
+              (override));
 };
 
 }  // namespace diagnostics
