@@ -410,6 +410,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/spool                      u:object_r:cros_var_spool:s0
 /var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
 /var/spool/crash(/.*)?          u:object_r:cros_crash_spool:s0
+/var/spool/cros_ec(/.*)?        u:object_r:cros_var_spool_cros_ec:s0
 /var/spool/cups(/.*)?           u:object_r:cros_cups_spool:s0
 /var/spool/power_manager(/.*)?  u:object_r:cros_var_spool_power_manager:s0
 /var/spool/reporting(/.*)?      u:object_r:cros_var_spool_reporting:s0

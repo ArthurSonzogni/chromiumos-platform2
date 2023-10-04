@@ -513,6 +513,7 @@ type cros_var_log_vmlog, file_type, cros_log_type, cros_file_type, cros_var_file
 type cros_crash_spool, file_type, cros_file_type, cros_var_file_type;
 type cros_cups_spool, file_type, cros_file_type, cros_var_file_type;
 type cros_periodic_scheduler_cache_t, file_type, cros_file_type, cros_var_file_type;
+type cros_var_spool_cros_ec, file_type, cros_file_type, cros_var_file_type;
 type cros_var_spool_power_manager, file_type, cros_file_type, cros_var_file_type;
 type cros_var_spool_reporting, file_type, cros_file_type, cros_var_file_type;
 type cros_var_spool_support, file_type, cros_file_type, cros_var_file_type;
