@@ -73,5 +73,10 @@ TEST_F(FileTest, BaseTest) {
   EXPECT_TRUE(base::DirectoryExists(GetPathUnderRoot("my/dir")));
 }
 
+TEST_F(FileTest, GetTestDataPath) {
+  base::FilePath testdata_path = GetTestDataPath();
+  EXPECT_TRUE(base::DirectoryExists(testdata_path));
+}
+
 }  // namespace
 }  // namespace runtime_probe

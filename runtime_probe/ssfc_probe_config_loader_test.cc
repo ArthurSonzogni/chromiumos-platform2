@@ -20,13 +20,6 @@ namespace runtime_probe {
 
 namespace {
 
-base::FilePath GetTestDataPath() {
-  char* src_env = std::getenv("SRC");
-  CHECK(src_env != nullptr)
-      << "Expect to have the envvar |SRC| set when testing.";
-  return base::FilePath(src_env).Append("testdata");
-}
-
 class SsfcProbeConfigLoaderTest : public BaseFileTest {
  protected:
   void SetUp() {

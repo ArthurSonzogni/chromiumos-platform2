@@ -20,6 +20,7 @@
 #include "runtime_probe/component_category.h"
 #include "runtime_probe/functions/sysfs.h"
 #include "runtime_probe/probe_config.h"
+#include "runtime_probe/utils/file_test_utils.h"
 
 namespace runtime_probe {
 
@@ -30,13 +31,6 @@ using ::testing::NiceMock;
 constexpr char kConfigName[] = "probe_config.json";
 constexpr char kConfigHash[] = "14127A36F3A2509343AF7F19387537F608B07EE1";
 
-base::FilePath GetTestDataPath() {
-  char* src_env = std::getenv("SRC");
-  CHECK(src_env != nullptr)
-      << "Expect to have the envvar |SRC| set when testing.";
-  return base::FilePath(src_env).Append("testdata");
-}
-
 class MockComponentCategory : public ComponentCategory {
  public:
   MOCK_METHOD(void,
@@ -45,7 +39,7 @@ class MockComponentCategory : public ComponentCategory {
               (const, override));
 };
 
-class ProbeConfigTest : public ::testing::Test {
+class ProbeConfigTest : public BaseFileTest {
  protected:
   // Set a mocked category that would return |category_eval_result| on
   // calling ComponentCategory::Eval for |probe_config|.

@@ -64,6 +64,13 @@ base::FilePath BaseFileTest::GetPathUnderRoot(const PathType& path) const {
   return res;
 }
 
+base::FilePath BaseFileTest::GetTestDataPath() const {
+  char* src_env = std::getenv("SRC");
+  CHECK(src_env != nullptr)
+      << "Expect to have the envvar |SRC| set when testing.";
+  return base::FilePath(src_env).Append("testdata");
+}
+
 const base::FilePath& BaseFileTest::root_dir() const {
   CHECK(!root_dir_.empty());
   return root_dir_;

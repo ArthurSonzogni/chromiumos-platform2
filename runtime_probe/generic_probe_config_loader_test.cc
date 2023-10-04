@@ -21,13 +21,6 @@ namespace {
 constexpr char kConfigName[] = "probe_config.json";
 constexpr char kConfigHash[] = "14127A36F3A2509343AF7F19387537F608B07EE1";
 
-base::FilePath GetTestDataPath() {
-  char* src_env = std::getenv("SRC");
-  CHECK(src_env != nullptr)
-      << "Expect to have the envvar |SRC| set when testing.";
-  return base::FilePath(src_env).Append("testdata");
-}
-
 class GenericProbeConfigLoaderTest : public BaseFileTest {
  protected:
   void SetUp() {
