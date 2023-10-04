@@ -142,6 +142,8 @@ ufs_disk_metrics() {
 }
 
 # Invoke main if not in test mode, otherwise let the test code call.
+# TODO(b/303702730, dlunev): deshell the entire script into chromeos_disk_metric
+# binary.
 main() {
   if [ "${FLAGS_test}" -eq "${FLAGS_TRUE}" ]; then
     return
@@ -152,6 +154,7 @@ main() {
   fi
   rm -f "${STORAGE_INFO_FILE}"
   get_storage_info > "${STORAGE_INFO_FILE}"
+  chromeos_disk_metrics
   metrics_client -e Platform.StatefulFormat "$(get_stateful_format_enum)" 2
   sata_disk_metrics
   emmc_disk_metrics
