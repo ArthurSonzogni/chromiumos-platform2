@@ -952,14 +952,7 @@ mno {
       apn : "telstra.wap"
       ip_type : IPV6
       type : DEFAULT
-    }
-    mobile_apn {
-      apn : "telstra.datapack"
-      localized_name {
-        name : "Telstra (3G data pack)"
-      }
-      password : "Telstra"
-      type : DEFAULT
+      type : IA
     }
     mobile_apn {
       apn : "telstra.internet"
@@ -969,35 +962,6 @@ mno {
       ip_type : IPV4V6
       type : DEFAULT
       type : IA
-    }
-    mobile_apn {
-      apn : "telstra.pcpack"
-      localized_name {
-        name : "Telstra (3G PC pack - pay by time)"
-      }
-      password : "Telstra"
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "telstra.iph"
-      localized_name {
-        name : "Telstra Internet/Wap"
-      }
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "telstra.mms"
-      localized_name {
-        name : "Telstra MMS"
-      }
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "telstra.bigpond"
-      localized_name {
-        name : "Telstra BigPond"
-      }
-      type : DEFAULT
     }
   }
 }
