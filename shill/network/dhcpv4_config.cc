@@ -4,6 +4,7 @@
 
 #include "shill/network/dhcpv4_config.h"
 
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -97,6 +98,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
   net_base::IPv4Address address;
   uint8_t prefix_length = 0;
   std::string domain_name;
+  bool has_error = false;
 
   for (const auto& it : configuration.properties()) {
     const auto& key = it.first;
@@ -105,7 +107,8 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
     if (key == kConfigurationKeyIPAddress) {
       address = net_base::IPv4Address(value.Get<uint32_t>());
       if (address.IsZero()) {
-        return false;
+        LOG(ERROR) << "Invalid IP address.";
+        has_error = true;
       }
     } else if (key == kConfigurationKeySubnetCIDR) {
       prefix_length = value.Get<uint8_t>();
@@ -113,7 +116,9 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       network_config->ipv4_broadcast =
           net_base::IPv4Address(value.Get<uint32_t>());
       if (network_config->ipv4_broadcast->IsZero()) {
-        return false;
+        LOG(ERROR) << "Ignoring invalid broadcast address.";
+        network_config->ipv4_broadcast = std::nullopt;
+        has_error = true;
       }
     } else if (key == kConfigurationKeyRouters) {
       const auto& routers = value.Get<std::vector<uint32_t>>();
@@ -124,6 +129,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
         network_config->ipv4_gateway = net_base::IPv4Address(routers[0]);
         if (network_config->ipv4_gateway->IsZero()) {
           LOG(ERROR) << "Failed to parse router parameter provided.";
+          network_config->ipv4_gateway = std::nullopt;
           default_gateway_parse_error = true;
         }
       }
@@ -132,7 +138,9 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       for (auto it = servers.begin(); it != servers.end(); ++it) {
         auto server = net_base::IPAddress(net_base::IPv4Address(*it));
         if (server.IsZero()) {
-          return false;
+          LOG(ERROR) << "Ignoring invalid DNS address.";
+          has_error = true;
+          continue;
         }
         network_config->dns_servers.push_back(std::move(server));
       }
@@ -169,13 +177,15 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
     if (!network_config->ipv4_address) {
       LOG(ERROR) << "Invalid prefix length " << prefix_length
                  << ", ignoring address " << address;
+      has_error = true;
     }
   }
   if (!domain_name.empty() && network_config->dns_search_domains.empty()) {
     network_config->dns_search_domains.push_back(domain_name + ".");
   }
   ParseClasslessStaticRoutes(classless_static_routes, network_config);
-  return !default_gateway_parse_error || network_config->ipv4_gateway;
+  return !has_error &&
+         (!default_gateway_parse_error || network_config->ipv4_gateway);
 }
 
 }  // namespace shill

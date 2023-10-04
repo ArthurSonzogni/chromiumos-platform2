@@ -180,9 +180,10 @@ void DHCPController::ProcessEventSignal(ClientEventReason reason,
   DHCPv4Config::Data dhcp_data;
   if (!DHCPv4Config::ParseConfiguration(configuration, &network_config,
                                         &dhcp_data)) {
-    LOG(ERROR) << device_name_
-               << ": Error parsing network configuration from DHCP client.";
-    return;
+    LOG(WARNING) << device_name_
+                 << ": Error parsing network configuration from DHCP client. "
+                 << "The following configuration might be partial: "
+                 << network_config;
   }
 
   // This needs to be set before calling OnIPConfigUpdated() below since
