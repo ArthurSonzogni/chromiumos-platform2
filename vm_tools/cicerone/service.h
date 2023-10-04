@@ -410,42 +410,6 @@ class Service final {
           security_key_response,
       base::WaitableEvent* event);
 
-  // Sends a D-Bus message to Chrome to request information about the VM disk,
-  // how much space is available and how much it could be expanded by. It uses
-  // |cid| and |container_token| to identify the source and somewhat verify that
-  // it is borealis (the only VM this method is available for). |result| is
-  // filled with information about the disk, if the request fails, than the
-  // error field will be set to !0. Signals |event| when done.
-  void GetDiskInfo(const std::string& container_token,
-                   const uint32_t cid,
-                   vm_tools::disk_management::GetDiskInfoResponse* result,
-                   base::WaitableEvent* event);
-
-  // Sends a D-Bus message to Chrome to request that the VM disk be expanded by
-  // |space_requested| bytes. It uses |cid| and |container_token| to identify
-  // the source and somewhat verify that it is borealis (the only VM this method
-  // is available for). If a resize occurs, |result| will be filled with the
-  // information of how many bytes the disk was expanded by, if the request
-  // fails, than the error field will be set to !0. Signals |event| when done.
-  void RequestSpace(const std::string& container_token,
-                    const uint32_t cid,
-                    const uint64_t space_requested,
-                    vm_tools::disk_management::RequestSpaceResponse* result,
-                    base::WaitableEvent* event);
-
-  // Sends a D-Bus message to Chrome to notify it that the VM disk can be
-  // shrunk by |space_to_release| bytes. It uses |cid| and |container_token| to
-  // identify the source and somewhat verify that it is borealis (the only VM
-  // this method is available for). If a resize occurs, |result| will be filled
-  // with the information of how many bytes the disk was shrunk by, if the
-  // request fails, than the error field will be set to !0. Signals |event| when
-  // done.
-  void ReleaseSpace(const std::string& container_token,
-                    const uint32_t cid,
-                    const uint64_t space_to_release,
-                    vm_tools::disk_management::ReleaseSpaceResponse* result,
-                    base::WaitableEvent* event);
-
   // Passes metrics from a container.  Used by e.g. Borealis, for IO and swap
   // metrics.
   void ReportMetrics(const std::string& container_token,

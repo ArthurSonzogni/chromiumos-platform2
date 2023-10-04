@@ -174,8 +174,6 @@ void ServiceTestingHelper::VerifyAndClearMockExpectations() {
   ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(
       mock_vm_applications_service_proxy_.get()));
   ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(
-      mock_vm_disk_management_service_proxy_.get()));
-  ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(
       mock_vm_sk_forwarding_service_proxy_.get()));
   ASSERT_TRUE(testing::Mock::VerifyAndClearExpectations(
       mock_url_handler_service_proxy_.get()));
@@ -198,8 +196,7 @@ void ServiceTestingHelper::ExpectNoDBusMessages() {
   for (const auto& object_proxy :
        {mock_vm_applications_service_proxy_, mock_url_handler_service_proxy_,
         mock_chunneld_service_proxy_, mock_crosdns_service_proxy_,
-        mock_concierge_service_proxy_, mock_vm_sk_forwarding_service_proxy_,
-        mock_vm_disk_management_service_proxy_}) {
+        mock_concierge_service_proxy_, mock_vm_sk_forwarding_service_proxy_}) {
     EXPECT_CALL(*object_proxy,
                 CallMethodAndBlock(A<dbus::MethodCall*>(), A<int>()))
         .Times(0);
@@ -619,9 +616,6 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
     mock_vm_applications_service_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
-    mock_vm_disk_management_service_proxy_ = new dbus::MockObjectProxy(
-        mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
-
     mock_vm_sk_forwarding_service_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
 
@@ -651,10 +645,6 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
 
     mock_vm_applications_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
         mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
-
-    mock_vm_disk_management_service_proxy_ =
-        new NiceMock<dbus::MockObjectProxy>(mock_bus_.get(), "",
-                                            dbus::ObjectPath(kFakeServicePath));
 
     mock_vm_sk_forwarding_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
         mock_bus_.get(), "", dbus::ObjectPath(kFakeServicePath));
@@ -693,12 +683,6 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
               GetObjectProxy(vm_tools::apps::kVmApplicationsServiceName,
                              A<const dbus::ObjectPath&>()))
       .WillOnce(Return(mock_vm_applications_service_proxy_.get()));
-
-  EXPECT_CALL(
-      *mock_bus_,
-      GetObjectProxy(vm_tools::disk_management::kVmDiskManagementServiceName,
-                     A<const dbus::ObjectPath&>()))
-      .WillOnce(Return(mock_vm_disk_management_service_proxy_.get()));
 
   EXPECT_CALL(
       *mock_bus_,

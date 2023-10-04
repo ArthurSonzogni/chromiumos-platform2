@@ -182,34 +182,6 @@ bool HostNotifier::SelectFile(const std::string& type,
   return true;
 }
 
-bool HostNotifier::GetDiskInfo(
-    vm_tools::container::GetDiskInfoResponse* response) {
-  grpc::ClientContext ctx;
-  vm_tools::container::GetDiskInfoRequest request;
-  request.set_token(token_);
-  grpc::Status status = stub_->GetDiskInfo(&ctx, request, response);
-  if (!status.ok()) {
-    LOG(WARNING) << "Failed to get disk info: " << status.error_message();
-    return false;
-  }
-  return true;
-}
-
-bool HostNotifier::RequestSpace(
-    uint64_t space_requested,
-    vm_tools::container::RequestSpaceResponse* response) {
-  grpc::ClientContext ctx;
-  vm_tools::container::RequestSpaceRequest request;
-  request.set_token(token_);
-  request.set_space_requested(space_requested);
-  grpc::Status status = stub_->RequestSpace(&ctx, request, response);
-  if (!status.ok()) {
-    LOG(WARNING) << "Failed to expand the disk: " << status.error_message();
-    return false;
-  }
-  return true;
-}
-
 bool HostNotifier::InstallShaderCache(uint64_t steam_app_id,
                                       bool mount,
                                       bool wait) {
@@ -273,21 +245,6 @@ bool HostNotifier::UnmountShaderCache(uint64_t steam_app_id, bool wait) {
   if (!status.ok()) {
     LOG(ERROR) << "Failed to queue unmount shader cache: "
                << status.error_message();
-    return false;
-  }
-  return true;
-}
-
-bool HostNotifier::ReleaseSpace(
-    uint64_t space_to_release,
-    vm_tools::container::ReleaseSpaceResponse* response) {
-  grpc::ClientContext ctx;
-  vm_tools::container::ReleaseSpaceRequest request;
-  request.set_token(token_);
-  request.set_space_to_release(space_to_release);
-  grpc::Status status = stub_->ReleaseSpace(&ctx, request, response);
-  if (!status.ok()) {
-    LOG(WARNING) << "Failed to shrink the disk: " << status.error_message();
     return false;
   }
   return true;

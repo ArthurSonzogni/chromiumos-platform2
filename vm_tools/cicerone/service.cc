@@ -1395,46 +1395,6 @@ void Service::UpdateMimeTypes(const std::string& container_token,
   event->Signal();
 }
 
-void Service::GetDiskInfo(
-    const std::string& container_token,
-    const uint32_t cid,
-    vm_tools::disk_management::GetDiskInfoResponse* result,
-    base::WaitableEvent* event) {
-  vm_tools::disk_management::GetDiskInfoRequest get_disk_info_request;
-  SendDiskMethod(
-      vm_tools::disk_management::kVmDiskManagementServiceGetDiskInfoMethod,
-      container_token, cid, &get_disk_info_request, result);
-  event->Signal();
-}
-
-void Service::RequestSpace(
-    const std::string& container_token,
-    const uint32_t cid,
-    const uint64_t space_requested,
-    vm_tools::disk_management::RequestSpaceResponse* result,
-    base::WaitableEvent* event) {
-  vm_tools::disk_management::RequestSpaceRequest request_space_request;
-  request_space_request.set_space_requested(space_requested);
-  SendDiskMethod(
-      vm_tools::disk_management::kVmDiskManagementServiceRequestSpaceMethod,
-      container_token, cid, &request_space_request, result);
-  event->Signal();
-}
-
-void Service::ReleaseSpace(
-    const std::string& container_token,
-    const uint32_t cid,
-    const uint64_t space_to_release,
-    vm_tools::disk_management::ReleaseSpaceResponse* result,
-    base::WaitableEvent* event) {
-  vm_tools::disk_management::ReleaseSpaceRequest release_space_request;
-  release_space_request.set_space_to_release(space_to_release);
-  SendDiskMethod(
-      vm_tools::disk_management::kVmDiskManagementServiceReleaseSpaceMethod,
-      container_token, cid, &release_space_request, result);
-  event->Signal();
-}
-
 void Service::ReportMetrics(
     const std::string& container_token,
     const uint32_t cid,
@@ -1762,16 +1722,6 @@ bool Service::Init(
   }
   shadercached_helper_ =
       std::make_unique<ShadercachedHelper>(shadercached_proxy_);
-
-  vm_disk_management_service_proxy_ = bus_->GetObjectProxy(
-      vm_tools::disk_management::kVmDiskManagementServiceName,
-      dbus::ObjectPath(
-          vm_tools::disk_management::kVmDiskManagementServicePath));
-  if (!vm_disk_management_service_proxy_) {
-    LOG(ERROR) << "Unable to get dbus proxy for "
-               << vm_tools::disk_management::kVmDiskManagementServiceName;
-    return false;
-  }
 
   std::vector<std::string> container_listener_addresses = {
       base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kGarconPort),

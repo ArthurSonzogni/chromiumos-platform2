@@ -75,7 +75,6 @@ constexpr char kSelectFileTypeSwitch[] = "type";
 constexpr char kSelectFileTitleSwitch[] = "title";
 constexpr char kSelectFilePathSwitch[] = "path";
 constexpr char kSelectFileExtensionsSwitch[] = "extensions";
-constexpr char kDiskSwitch[] = "disk";
 constexpr char kShaderSwitch[] = "borealis-shader-cache";
 constexpr char kShaderAppIDSwitch[] = "app-id";
 constexpr char kShaderInstallSwitch[] = "install";
@@ -83,9 +82,6 @@ constexpr char kShaderUninstallSwitch[] = "uninstall";
 constexpr char kShaderMountSwitch[] = "mount";
 constexpr char kShaderUnmountSwitch[] = "unmount";
 constexpr char kShaderWaitSwitch[] = "wait";
-constexpr char kGetDiskInfoArg[] = "get_disk_info";
-constexpr char kRequestSpaceArg[] = "request_space";
-constexpr char kReleaseSpaceArg[] = "release_space";
 constexpr char kSftpServer[] = "/usr/lib/openssh/sftp-server";
 constexpr char kMetricsSwitch[] = "metrics";
 constexpr char kNoStartupNotifySwitch[] = "no_startup_notify";
@@ -268,7 +264,6 @@ void PrintUsage() {
             << "  --url: opens all arguments as URLs in host browser\n"
             << "  --terminal: opens terminal\n"
             << "  --selectfile: open file dialog and return file: URL list\n"
-            << "  --disk: handles requests relating to disk management\n"
             << "  --metrics: reports metrics to the host\n"
             << "  --borealis-shader-cache: (un)install shader cache\n"
             << "Borealis Shader Cache Switches "
@@ -290,10 +285,6 @@ void PrintUsage() {
             << "  --title: title for dialog\n"
             << "  --path: default path (file: URL or path)\n"
             << "  --extensions: comma-separated list of allowed extensions\n"
-            << "Disk args (use with --client --disk):\n"
-            << "  get_disk_info: returns information about the disk\n"
-            << "  request_space <bytes>: tries to expand the disk by <bytes>\n"
-            << "  release_space <bytes>: tries to shrink the disk by <bytes>\n"
             << "Metrics args (use with --client --metrics):\n"
             << "  <metric_name>=<metric_value>,[...]\n"
             << "Server Switches (only with --server):\n"
@@ -309,82 +300,6 @@ std::string GetSecurityToken() {
   }
   token[num_read] = '\0';
   return std::string(token);
-}
-
-int HandleDiskArgs(std::vector<std::string> args,
-                   vm_tools::garcon::HostNotifier* host_notifier) {
-  std::string output;
-  if (args.empty()) {
-    LOG(ERROR) << "Missing arguments in --disk mode";
-    PrintUsage();
-    return -1;
-  }
-  google::protobuf::util::JsonOptions options;
-  options.always_print_primitive_fields = true;
-  if (args.at(0) == kGetDiskInfoArg) {
-    vm_tools::container::GetDiskInfoResponse response;
-    host_notifier->GetDiskInfo(&response);
-    // Error code 4 is for invalid requests; those that have incomplete meta
-    // data, don't originate from Borealis or are made when Chrome infra isn't
-    // set up. To support unorthodox workflows, we return basic information,
-    // rather than an error.
-    if (response.error() == 4) {
-      response.set_error(0);
-      int free_space =
-          base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/mnt/stateful"));
-      response.set_available_space(free_space);
-      // TODO(b/223308797): Potentially revert this to being empty.
-      response.set_expandable_space(free_space);
-    }
-    google::protobuf::util::MessageToJsonString(response, &output, options);
-    std::cout << output << std::endl;
-    if (response.error() == 0)
-      return 0;
-    LOG(WARNING) << "Something went wrong when requesting disk info";
-    return -1;
-  }
-  if (args.size() < 2) {
-    LOG(ERROR) << "Missing additional argument for request/release space";
-    PrintUsage();
-    return -1;
-  }
-  uint64_t space_arg;
-  bool arg_conversion = base::StringToUint64(args.at(1), &space_arg);
-  if (args.at(0) == kRequestSpaceArg) {
-    vm_tools::container::RequestSpaceResponse response;
-    if (arg_conversion) {
-      host_notifier->RequestSpace(space_arg, &response);
-    } else {
-      LOG(WARNING) << "Couldn't parse requested_bytes (expected Uint64)";
-      PrintUsage();
-      response.set_error(1);
-    }
-    google::protobuf::util::MessageToJsonString(response, &output, options);
-    std::cout << output << std::endl;
-    if (response.error() == 0)
-      return 0;
-    LOG(WARNING) << "Something went wrong when requesting for more space";
-    return -1;
-  }
-  if (args.at(0) == kReleaseSpaceArg) {
-    vm_tools::container::ReleaseSpaceResponse response;
-    if (arg_conversion) {
-      host_notifier->ReleaseSpace(space_arg, &response);
-    } else {
-      LOG(WARNING) << "Couldn't parse bytes_to_release (expected Uint64)";
-      PrintUsage();
-      response.set_error(1);
-    }
-    google::protobuf::util::MessageToJsonString(response, &output, options);
-    std::cout << output << std::endl;
-    if (response.error() == 0)
-      return 0;
-    LOG(WARNING) << "Something went wrong when releasing disk space";
-    return -1;
-  }
-  LOG(ERROR) << "Invalid disk request";
-  PrintUsage();
-  return -1;
 }
 
 int HandleMetricsArgs(std::vector<std::string> args,
@@ -599,8 +514,6 @@ int main(int argc, char** argv) {
       } else {
         return -1;
       }
-    } else if (cl->HasSwitch(kDiskSwitch)) {
-      return HandleDiskArgs(cl->GetArgs(), host_notifier.get());
     } else if (cl->HasSwitch(kMetricsSwitch)) {
       return HandleMetricsArgs(cl->GetArgs(), host_notifier.get());
     } else if (cl->HasSwitch(kShaderSwitch)) {
