@@ -536,6 +536,18 @@ std::string EnumToString(mojom::HardwarePresenceStatus status) {
   }
 }
 
+std::string EnumToString(mojom::ThermalSensorInfo::ThermalSensorSource source) {
+  switch (source) {
+    case mojom::ThermalSensorInfo::ThermalSensorSource::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::ThermalSensorInfo::ThermalSensorSource::kEc:
+      return "EC";
+    case mojom::ThermalSensorInfo::ThermalSensorSource::kSysFs:
+      return "SysFs";
+  }
+}
+
 void OutputJson(const base::Value::Dict& output) {
   std::string json;
   base::JSONWriter::WriteWithOptions(

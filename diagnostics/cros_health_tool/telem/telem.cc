@@ -65,6 +65,7 @@ constexpr std::pair<const char*, mojom::ProbeCategoryEnum> kCategorySwitches[] =
         {"input", mojom::ProbeCategoryEnum::kInput},
         {"audio_hardware", mojom::ProbeCategoryEnum::kAudioHardware},
         {"sensor", mojom::ProbeCategoryEnum::kSensor},
+        {"thermal", mojom::ProbeCategoryEnum::kThermal},
 };
 
 void DisplayError(const mojom::ProbeErrorPtr& error) {
@@ -1153,6 +1154,28 @@ void DisplaySensorInfo(const mojom::SensorResultPtr& result) {
   OutputJson(output);
 }
 
+void DisplayThermalInfo(const mojom::ThermalResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
+    return;
+  }
+  base::Value::Dict output;
+  base::Value::List thermal_sensor_list;
+  const auto& info = result->get_thermal_info();
+  CHECK(!info.is_null());
+
+  for (const auto& thermal_sensor : info->thermal_sensors) {
+    base::Value::Dict thermal_sensor_dict;
+    SET_DICT(name, thermal_sensor, &thermal_sensor_dict);
+    SET_DICT(temperature_celsius, thermal_sensor, &thermal_sensor_dict);
+    SET_DICT(source, thermal_sensor, &thermal_sensor_dict);
+    thermal_sensor_list.Append(std::move(thermal_sensor_dict));
+  }
+  output.Set("thermal_sensors", std::move(thermal_sensor_list));
+
+  OutputJson(output);
+}
+
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   const auto& battery_result = info->battery_result;
@@ -1238,6 +1261,10 @@ void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   const auto& sensor_result = info->sensor_result;
   if (sensor_result)
     DisplaySensorInfo(sensor_result);
+
+  const auto& thermal_result = info->thermal_result;
+  if (thermal_result)
+    DisplayThermalInfo(thermal_result);
 }
 
 // Create a stringified list of the category names for use in help.

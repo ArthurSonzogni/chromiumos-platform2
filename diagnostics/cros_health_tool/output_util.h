@@ -61,6 +61,8 @@ std::string EnumToString(ash::cros_healthd::mojom::PsrEvent::EventType type);
 std::string EnumToString(ash::cros_healthd::mojom::MemtesterTestItemEnum test);
 std::string EnumToString(
     ash::cros_healthd::mojom::HardwarePresenceStatus status);
+std::string EnumToString(
+    ash::cros_healthd::mojom::ThermalSensorInfo::ThermalSensorSource source);
 
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
