@@ -15,7 +15,7 @@
 #include <string_view>
 #include <utility>
 
-#include <base/allocator/partition_allocator/pointers/raw_ref.h>
+#include <base/allocator/partition_allocator/src/partition_alloc/pointers/raw_ref.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
