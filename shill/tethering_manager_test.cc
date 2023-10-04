@@ -74,6 +74,7 @@ constexpr uint32_t kPhyIndex = 5678;
 constexpr int kTestInterfaceIndex = 3;
 constexpr char kTestInterfaceName[] = "wwan0";
 constexpr char kTestDownstreamDeviceForTest[] = "wlan5";
+constexpr uint32_t kTestDownstreamPhyIndexForTest = 5;
 
 // The value below is "testAP-0000" in hex;
 constexpr char kTestAPHexSSID[] = "7465737441502d30303030";
@@ -103,6 +104,9 @@ std::string GetConfigUpstream(const KeyValueStore& caps) {
 std::string GetConfigDownstreamDeviceForTest(const KeyValueStore& caps) {
   return caps.Get<std::string>(kTetheringConfDownstreamDeviceForTestProperty);
 }
+uint32_t GetConfigDownstreamPhyIndexForTest(const KeyValueStore& caps) {
+  return caps.Get<uint32_t>(kTetheringConfDownstreamPhyIndexForTestProperty);
+}
 void SetConfigMAR(KeyValueStore& caps, bool value) {
   caps.Set<bool>(kTetheringConfMARProperty, value);
 }
@@ -127,6 +131,9 @@ void SetConfigUpstream(KeyValueStore& caps, const std::string& value) {
 void SetConfigDownstreamDeviceForTest(KeyValueStore& caps,
                                       const std::string& value) {
   caps.Set<std::string>(kTetheringConfDownstreamDeviceForTestProperty, value);
+}
+void SetConfigDownstreamPhyIndexForTest(KeyValueStore& caps, uint32_t value) {
+  caps.Set<uint32_t>(kTetheringConfDownstreamPhyIndexForTestProperty, value);
 }
 
 base::ScopedTempDir MakeTempDir() {
@@ -338,13 +345,17 @@ class TetheringManagerTest : public testing::Test {
     EXPECT_TRUE(caps.Contains<std::string>(kTetheringConfUpstreamTechProperty));
     EXPECT_FALSE(caps.Contains<std::string>(
         kTetheringConfDownstreamDeviceForTestProperty));
+    EXPECT_FALSE(caps.Contains<uint32_t>(
+        kTetheringConfDownstreamPhyIndexForTestProperty));
     return caps;
   }
 
   KeyValueStore GenerateFakeConfig(
       const std::string& ssid,
       const std::string passphrase,
-      const std::optional<std::string> downstream_device_for_test_ =
+      const std::optional<std::string> downstream_device_for_test =
+          std::nullopt,
+      const std::optional<uint32_t> downstream_phy_index_for_test =
           std::nullopt) {
     KeyValueStore config;
     SetConfigMAR(config, false);
@@ -354,8 +365,11 @@ class TetheringManagerTest : public testing::Test {
     SetConfigSecurity(config, kSecurityWpa3);
     SetConfigBand(config, kBand2GHz);
     SetConfigUpstream(config, kTypeCellular);
-    if (downstream_device_for_test_) {
-      SetConfigDownstreamDeviceForTest(config, *downstream_device_for_test_);
+    if (downstream_device_for_test) {
+      SetConfigDownstreamDeviceForTest(config, *downstream_device_for_test);
+      EXPECT_NE(downstream_phy_index_for_test, std::nullopt);
+      SetConfigDownstreamPhyIndexForTest(config,
+                                         *downstream_phy_index_for_test);
     }
     return config;
   }
@@ -598,7 +612,8 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
 
   // Fake Tethering configuration.
   KeyValueStore args = GenerateFakeConfig(kTestAPHexSSID, kTestPassword,
-                                          kTestDownstreamDeviceForTest);
+                                          kTestDownstreamDeviceForTest,
+                                          kTestDownstreamPhyIndexForTest);
 
   // Block SetAndPersistConfig when no user has logged in.
   EXPECT_FALSE(SetAndPersistConfig(tethering_manager_, args));
@@ -620,6 +635,8 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   EXPECT_EQ(GetConfigUpstream(config), kTypeCellular);
   EXPECT_EQ(GetConfigDownstreamDeviceForTest(config),
             kTestDownstreamDeviceForTest);
+  EXPECT_EQ(GetConfigDownstreamPhyIndexForTest(config),
+            kTestDownstreamPhyIndexForTest);
 
   // Log out user and check user's tethering config is not present.
   EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager_, kUserProfile));
@@ -638,9 +655,11 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   EXPECT_EQ(GetConfigBand(config), kBand2GHz);
   EXPECT_EQ(GetConfigUpstream(config), kTypeCellular);
 
-  // kTetheringConfDownstreamDeviceForTestProperty should not be persisted.
+  // These properties are only used for testing, should not be persisted.
   EXPECT_FALSE(
       config.ContainsVariant(kTetheringConfDownstreamDeviceForTestProperty));
+  EXPECT_FALSE(
+      config.ContainsVariant(kTetheringConfDownstreamPhyIndexForTestProperty));
 }
 
 TEST_F(TetheringManagerTest, DefaultConfigCheck) {
@@ -661,6 +680,8 @@ TEST_F(TetheringManagerTest, DefaultConfigCheck) {
   EXPECT_NE(GetConfigPassphrase(config), GetConfigPassphrase(default_config));
   EXPECT_FALSE(default_config.ContainsVariant(
       kTetheringConfDownstreamDeviceForTestProperty));
+  EXPECT_FALSE(default_config.ContainsVariant(
+      kTetheringConfDownstreamPhyIndexForTestProperty));
 
   // Log in user and check the tethering config matches.
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
@@ -674,6 +695,8 @@ TEST_F(TetheringManagerTest, DefaultConfigCheck) {
       new_config.Contains<std::string>(kTetheringConfUpstreamTechProperty));
   EXPECT_FALSE(new_config.ContainsVariant(
       kTetheringConfDownstreamDeviceForTestProperty));
+  EXPECT_FALSE(new_config.ContainsVariant(
+      kTetheringConfDownstreamPhyIndexForTestProperty));
 }
 
 TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
@@ -700,6 +723,8 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
                   kTetheringConfUpstreamTechProperty, kTypeCellular);
   store.SetString(TetheringManager::kStorageId,
                   kTetheringConfDownstreamDeviceForTestProperty, "wlan5");
+  store.SetUint64(TetheringManager::kStorageId,
+                  kTetheringConfDownstreamPhyIndexForTestProperty, 5);
   scoped_refptr<MockProfile> profile =
       new MockProfile(&manager_, "~user/profile0");
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&store));
@@ -716,10 +741,12 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
   EXPECT_EQ(kBand5GHz, GetConfigBand(caps));
   EXPECT_EQ(kTypeCellular, GetConfigUpstream(caps));
 
-  // The kTetheringConfDownstreamDeviceForTestProperty should not be loaded from
-  // persisted storage, because it's only for testing.
+  // These properties should not be loaded from persisted storage, because they
+  // are only for testing.
   EXPECT_FALSE(
       caps.ContainsVariant(kTetheringConfDownstreamDeviceForTestProperty));
+  EXPECT_FALSE(
+      caps.ContainsVariant(kTetheringConfDownstreamPhyIndexForTestProperty));
 
   // Check the tethering config is reset to default properties when unloading
   // the profile.
@@ -733,17 +760,21 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
 TEST_F(TetheringManagerTest, TetheringConfigSaveAndLoad) {
   // Load a fake tethering configuration.
   KeyValueStore config1 = GenerateFakeConfig(kTestAPHexSSID, kTestPassword,
-                                             kTestDownstreamDeviceForTest);
+                                             kTestDownstreamDeviceForTest,
+                                             kTestDownstreamPhyIndexForTest);
   FromProperties(tethering_manager_, config1);
 
   // Save the fake tethering configuration
   FakeStore store;
   SaveConfig(tethering_manager_, &store);
 
-  // The kTetheringConfDownstreamDeviceForTestProperty should not be saved to
-  // persisted storage, because it's only for testing.
+  // These properties should not be saved to persisted storage, because they are
+  // only for testing.
   EXPECT_FALSE(store.GetString(TetheringManager::kStorageId,
                                kTetheringConfDownstreamDeviceForTestProperty,
+                               nullptr));
+  EXPECT_FALSE(store.GetUint64(TetheringManager::kStorageId,
+                               kTetheringConfDownstreamPhyIndexForTestProperty,
                                nullptr));
 
   // Force the default configuration to change by unloading the profile.
@@ -1542,7 +1573,7 @@ TEST_F(TetheringManagerTest, MARWithSSIDChange) {
   EXPECT_NE(ini_mac, mac);
 
   // Test 1st argument for CreateHotspotDevice (MAC as a hex-string).
-  EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(mac), _, _, _, _))
+  EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(mac), _, _, _))
       .WillOnce(Return(hotspot_device_));
   SetEnabled(tethering_manager_, true);
 }
@@ -1558,7 +1589,7 @@ TEST_F(TetheringManagerTest, MARWithTetheringRestart) {
 
   auto tether_onoff = [&]() {
     EXPECT_CALL(*wifi_provider_,
-                CreateHotspotDevice(Not(IsContained(known_macs)), _, _, _, _))
+                CreateHotspotDevice(Not(IsContained(known_macs)), _, _, _))
         .WillOnce(
             DoAll(WithArg<0>(Invoke([&](auto mac) { known_macs.insert(mac); })),
                   Return(hotspot_device_)));
@@ -1597,7 +1628,7 @@ TEST_F(TetheringManagerTest, CheckMACStored) {
   EXPECT_EQ(ini_mac, tethering_manager_->stable_mac_addr_.ToString());
 
   // And test that it is actually used.
-  EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(ini_mac), _, _, _, _))
+  EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(ini_mac), _, _, _))
       .WillOnce(Return(hotspot_device_));
   SetEnabled(tethering_manager_, true);
 }

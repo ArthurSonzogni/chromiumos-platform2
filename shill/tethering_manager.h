@@ -286,6 +286,9 @@ class TetheringManager : public Network::EventHandler {
   // The assigned downstream device, only used for testing. This property is
   // never persisted.
   std::optional<std::string> downstream_device_for_test_;
+  // The phy index of the assigned downstream device, only used for testing.
+  // This property is never persisted.
+  std::optional<uint32_t> downstream_phy_index_for_test_;
 
   // Pointer to upstream network. This pointer is valid when state_ is not
   // kTetheringIdle.

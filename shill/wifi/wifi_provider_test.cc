@@ -379,7 +379,7 @@ constexpr base::TimeDelta kPhyUpdateTimeout = base::Milliseconds(500);
 
 class WiFiProviderTest : public testing::Test {
  public:
-  explicit WiFiProviderTest()
+  WiFiProviderTest()
       : manager_(&control_, &dispatcher_, &metrics_),
         provider_(manager_.wifi_provider()),
         default_profile_(new NiceMock<MockProfile>(&manager_, "default")),
@@ -2495,8 +2495,8 @@ TEST_F(WiFiProviderTest, GetUniqueLocalDeviceName) {
 TEST_F(WiFiProviderTest, CreateHotspotDeviceWithoutWiFiDevice) {
   // Failed to create hotspot device when there is no WiFi device.
   EXPECT_EQ(provider_->CreateHotspotDevice(
-                /*mac_address=*/"b6:13:c9:d7:32:0c", std::nullopt,
-                WiFiBand::kLowBand, WiFiSecurity::kWpa2, base::DoNothing()),
+                /*mac_address=*/"b6:13:c9:d7:32:0c", WiFiBand::kLowBand,
+                WiFiSecurity::kWpa2, base::DoNothing()),
             nullptr);
 }
 
@@ -2523,14 +2523,15 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
 
   // The hotspot device should be created and registered at |local_devices_|.
   const HotspotDeviceRefPtr device = provider_->CreateHotspotDevice(
-      /*mac_address=*/"b6:13:c9:d7:32:0c", std::nullopt, WiFiBand::kLowBand,
+      /*mac_address=*/"b6:13:c9:d7:32:0c", WiFiBand::kLowBand,
       WiFiSecurity::kWpa2, base::DoNothing());
   ASSERT_NE(device, nullptr);
   EXPECT_EQ(provider_->local_devices_[device->link_name()], device);
 }
 
-TEST_F(WiFiProviderTest, CreateHotspotDeviceWithDeviceNameForTest) {
+TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
   const std::string link_name = "wlan1";
+  const uint32_t phy_index = 1;
 
   EXPECT_CALL(manager_, device_info()).Times(1);
 
@@ -2550,10 +2551,11 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceWithDeviceNameForTest) {
       });
 
   // The hotspot device should be created and registered at |local_devices_|.
-  const HotspotDeviceRefPtr device = provider_->CreateHotspotDevice(
-      /*mac_address=*/"b6:13:c9:d7:32:0c", link_name, WiFiBand::kLowBand,
-      WiFiSecurity::kWpa2, base::DoNothing());
+  const HotspotDeviceRefPtr device = provider_->CreateHotspotDeviceForTest(
+      /*mac_address=*/"b6:13:c9:d7:32:0c", link_name, phy_index,
+      base::DoNothing());
   ASSERT_NE(device, nullptr);
+  EXPECT_EQ(device->phy_index(), phy_index);
   EXPECT_EQ(provider_->local_devices_[device->link_name()], device);
 }
 

@@ -233,18 +233,24 @@ class WiFiProvider : public ProviderInterface {
   bool has_passpoint_credentials() const { return !credentials_by_id_.empty(); }
 
   // Create a WiFi hotspot device with MAC address |mac_address|. |callback| is
-  // called when interface event happens. If |device_name_for_test| is
-  // std::nullopt, then the required WiFi band |band| and security |security|
-  // are used in the WiFiPhy search to find the first WiFiPhy which meets all
-  // the criteria. Otherwise, create the hotspot device on the device
-  // |device_name_for_test|.
-  // Note that |device_name_for_test| is only used for testing.
+  // called when interface event happens. The required WiFi band |band| and
+  // security |security| are used in the WiFiPhy search to find the first
+  // WiFiPhy which meets all the criteria.
   mockable HotspotDeviceRefPtr
   CreateHotspotDevice(const std::string& mac_address,
-                      const std::optional<std::string>& device_name_for_test,
                       WiFiBand band,
                       WiFiSecurity security,
                       LocalDevice::EventCallback callback);
+
+  // Create a WiFi hotspot device on the device |device_name_for_test| with the
+  // phy index |device_phy_index_for_test|. |callback| is called when interface
+  // event happens.
+  // Note that this method is only used for testing.
+  HotspotDeviceRefPtr CreateHotspotDeviceForTest(
+      const std::string& mac_address,
+      const std::string& device_name_for_test,
+      uint32_t device_phy_index_for_test,
+      LocalDevice::EventCallback callback);
 
   // Delete the WiFi LocalDevice |device|.
   mockable void DeleteLocalDevice(LocalDeviceRefPtr device);
@@ -264,7 +270,7 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);
   FRIEND_TEST(WiFiProviderTest, RegisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDevice);
-  FRIEND_TEST(WiFiProviderTest, CreateHotspotDeviceWithDeviceNameForTest);
+  FRIEND_TEST(WiFiProviderTest, CreateHotspotDeviceForTest);
 
   // Register a WiFi local device object to WiFiProvider and a WiFiPhy object.
   // This method asserts that there is a WiFiPhy object at the given phy_index,

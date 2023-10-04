@@ -197,6 +197,7 @@ void TetheringManager::ResetConfiguration() {
   stable_mac_addr_.Randomize();
   band_ = WiFiBand::kAllBands;
   downstream_device_for_test_ = std::nullopt;
+  downstream_phy_index_for_test_ = std::nullopt;
 }
 
 void TetheringManager::InitPropertyStore(PropertyStore* store) {
@@ -239,6 +240,10 @@ bool TetheringManager::ToProperties(KeyValueStore* properties) const {
   if (downstream_device_for_test_.has_value()) {
     properties->Set<std::string>(kTetheringConfDownstreamDeviceForTestProperty,
                                  *downstream_device_for_test_);
+  }
+  if (downstream_phy_index_for_test_.has_value()) {
+    properties->Set<uint32_t>(kTetheringConfDownstreamPhyIndexForTestProperty,
+                              *downstream_phy_index_for_test_);
   }
 
   return true;
@@ -339,6 +344,11 @@ bool TetheringManager::FromProperties(const KeyValueStore& properties) {
           kTetheringConfDownstreamDeviceForTestProperty)) {
     downstream_device_for_test_ = properties.Get<std::string>(
         kTetheringConfDownstreamDeviceForTestProperty);
+  }
+  if (properties.Contains<uint32_t>(
+          kTetheringConfDownstreamPhyIndexForTestProperty)) {
+    downstream_phy_index_for_test_ = properties.Get<uint32_t>(
+        kTetheringConfDownstreamPhyIndexForTestProperty);
   }
 
   return true;
@@ -693,10 +703,18 @@ void TetheringManager::StartTetheringSession() {
     mac_address = stable_mac_addr_.ToString();
   }
 
-  hotspot_dev_ = manager_->wifi_provider()->CreateHotspotDevice(
-      mac_address, downstream_device_for_test_, band_, security_,
-      base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
-                          base::Unretained(this)));
+  if (downstream_device_for_test_ && downstream_phy_index_for_test_) {
+    hotspot_dev_ = manager_->wifi_provider()->CreateHotspotDeviceForTest(
+        mac_address, *downstream_device_for_test_,
+        *downstream_phy_index_for_test_,
+        base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
+                            base::Unretained(this)));
+  } else {
+    hotspot_dev_ = manager_->wifi_provider()->CreateHotspotDevice(
+        mac_address, band_, security_,
+        base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
+                            base::Unretained(this)));
+  }
   if (!hotspot_dev_) {
     LOG(ERROR) << __func__ << ": failed to create a WiFi AP interface";
     PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
@@ -1141,7 +1159,8 @@ void TetheringManager::UnloadConfigFromProfile() {
 
 bool TetheringManager::Save(StoreInterface* storage) {
   // |storage| should not store kTetheringConfDownstreamDeviceForTestProperty
-  // because the property is only used for testing.
+  // and kTetheringConfDownstreamPhyIndexForTestProperty because the properties
+  // are only used for testing.
 
   storage->SetBool(kStorageId, kTetheringConfAutoDisableProperty,
                    auto_disable_);
@@ -1159,8 +1178,9 @@ bool TetheringManager::Save(StoreInterface* storage) {
 }
 
 bool TetheringManager::Load(const StoreInterface* storage) {
-  // We should not load kTetheringConfDownstreamDeviceForTestProperty from
-  // |storage| because the property is only used for testing.
+  // We should not load kTetheringConfDownstreamDeviceForTestProperty and
+  // kTetheringConfDownstreamPhyIndexForTestProperty from |storage| because the
+  // properties are only used for testing.
 
   KeyValueStore config;
   bool valid;

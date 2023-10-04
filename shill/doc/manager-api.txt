@@ -801,6 +801,9 @@ Properties	object ActiveProfile [readonly]
 			string downstream_device_for_test
 				the assigned downstream device, only used for testing. This
 				property is never persisted.
+			uint32 downstream_phy_index_for_test
+				The phy index of the assigned downstream device, only used for
+				testing. This property is never persisted.
 
 		dict TetheringStatus [readonly]
 
