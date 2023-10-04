@@ -22,6 +22,8 @@ class TracingTest : public ::testing::Test {
 
   void TearDown() override { perfetto::Tracing::ResetForTesting(); }
 
+  static void TearDownTestSuite() { perfetto::Tracing::Shutdown(); }
+
  private:
   base::test::TaskEnvironment task_environment_;
 };
