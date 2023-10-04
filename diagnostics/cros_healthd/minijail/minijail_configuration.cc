@@ -89,6 +89,8 @@ void EnterHealthdMinijail() {
   BindMountIfPathExists(jail.get(), base::FilePath("/sys/class/hwmon"));
   // Files related to the system's power supplies.
   BindMountIfPathExists(jail.get(), base::FilePath("/sys/class/power_supply"));
+  // Files related to ChromeOS thermal subsystem.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/class/thermal"));
   // Files with R/O cached VPD.
   BindMountIfPathExists(jail.get(), base::FilePath("/sys/firmware/vpd/ro"));
   // Files with R/W cached VPD.

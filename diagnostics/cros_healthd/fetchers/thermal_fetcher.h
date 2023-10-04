@@ -19,6 +19,17 @@ namespace diagnostics {
 // the information.
 using FetchThermalInfoCallback =
     base::OnceCallback<void(ash::cros_healthd::mojom::ThermalResultPtr)>;
+
+// Directory containing thermal zone info.
+inline constexpr char kRelativeThermalDir[] = "sys/class/thermal/";
+
+// Matches all thermal zones in |kRelativeThermalDir|.
+const char kThermalZonePattern[] = "thermal_zone*";
+
+// Files read from the thermal zone directory.
+inline constexpr char kThermalZoneTypeFileName[] = "type";
+inline constexpr char kThermalZoneTempFileName[] = "temp";
+
 void FetchThermalInfo(Context* context, FetchThermalInfoCallback callback);
 
 }  // namespace diagnostics

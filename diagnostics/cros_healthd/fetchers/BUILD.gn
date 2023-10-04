@@ -101,6 +101,7 @@ if (use.test) {
       "sensor_fetcher_test.cc",
       "stateful_partition_fetcher_test.cc",
       "system_fetcher_test.cc",
+      "thermal_fetcher_test.cc",
       "timezone_fetcher_test.cc",
     ]
     configs += [ ":libcros_healthd_fetchers_test_pkg_deps" ]
