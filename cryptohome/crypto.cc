@@ -38,7 +38,6 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
@@ -51,26 +50,15 @@ using hwsec_foundation::SecureBlobToHexToBuffer;
 
 namespace cryptohome {
 
-namespace {
-
-// Location where we store the Low Entropy (LE) credential manager related
-// state.
-const char kSignInHashTreeDir[] = "/home/.shadow/low_entropy_creds";
-
-}  // namespace
-
 Crypto::Crypto(const hwsec::CryptohomeFrontend* hwsec,
-               const hwsec::PinWeaverFrontend* pinweaver,
                const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
                CryptohomeKeysManager* cryptohome_keys_manager,
                const hwsec::RecoveryCryptoFrontend* recovery_hwsec)
     : hwsec_(hwsec),
-      pinweaver_(pinweaver),
       hwsec_pw_manager_(hwsec_pw_manager),
       cryptohome_keys_manager_(cryptohome_keys_manager),
       recovery_hwsec_(recovery_hwsec) {
   CHECK(hwsec);
-  CHECK(pinweaver);
   CHECK(cryptohome_keys_manager);
   // recovery_hwsec_ may be nullptr.
 }
@@ -79,20 +67,6 @@ Crypto::~Crypto() {}
 
 void Crypto::Init() {
   cryptohome_keys_manager_->Init();
-  if (!le_manager_) {
-    hwsec::StatusOr<bool> is_enabled = hwsec_pw_manager_->IsEnabled();
-    if (!is_enabled.ok()) {
-      LOG(ERROR) << "Failed to get pinweaver status: " << is_enabled.status();
-      // We don't report the error to the caller: this failure shouldn't abort
-      // the daemon initialization.
-      return;
-    }
-
-    if (is_enabled.value()) {
-      le_manager_ = std::make_unique<LECredentialManagerImpl>(
-          pinweaver_, base::FilePath(kSignInHashTreeDir));
-    }
-  }
 }
 
 void Crypto::PasswordToPasskey(const char* password,

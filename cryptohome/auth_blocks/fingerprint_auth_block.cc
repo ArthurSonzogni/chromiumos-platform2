@@ -32,7 +32,6 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 namespace cryptohome {
 
@@ -86,14 +85,11 @@ std::vector<hwsec::OperationPolicySetting> GetValidPoliciesOfUser(
 
 FingerprintAuthBlock::FingerprintAuthBlock(
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-    LECredentialManager* le_manager,
     BiometricsAuthBlockService* service)
     : AuthBlock(kBiometrics),
       hwsec_pw_manager_(hwsec_pw_manager),
-      le_manager_(le_manager),
       service_(service) {
   CHECK(hwsec_pw_manager_);
-  CHECK(le_manager_);
   CHECK(service_);
 }
 
@@ -144,23 +140,14 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
         ErrorActionSet({PossibleAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
   }
 
-  if (!crypto.le_manager()) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNullLeManagerInIsSupported),
-        ErrorActionSet(
-            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
   return OkStatus<CryptohomeCryptoError>();
 }
 
 std::unique_ptr<AuthBlock> FingerprintAuthBlock::New(
     Crypto& crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
-  auto* le_manager = crypto.le_manager();
   auto* hwsec_pw_manager = crypto.GetPinWeaverManager();
-  if (le_manager && bio_service) {
-    return std::make_unique<FingerprintAuthBlock>(hwsec_pw_manager, le_manager,
+  if (bio_service) {
+    return std::make_unique<FingerprintAuthBlock>(hwsec_pw_manager,
                                                   bio_service.get());
   }
   return nullptr;

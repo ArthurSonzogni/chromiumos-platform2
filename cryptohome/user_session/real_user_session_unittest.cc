@@ -86,11 +86,8 @@ MakeTestVerifier(std::string label) {
 class RealUserSessionTest : public ::testing::Test {
  public:
   RealUserSessionTest()
-      : crypto_(&hwsec_,
-                &pinweaver_,
-                &hwsec_pw_manager_,
-                &cryptohome_keys_manager_,
-                nullptr) {}
+      : crypto_(
+            &hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_, nullptr) {}
 
   // Not copyable or movable
   RealUserSessionTest(const RealUserSessionTest&) = delete;

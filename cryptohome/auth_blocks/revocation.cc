@@ -26,7 +26,6 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::ErrorActionSet;
@@ -58,7 +57,7 @@ const char kKdfSkeyInfo[] = "kdf_skey_info";
 // (number_of_incorrect_attempts, delay before_next_attempt)
 // The delay is not needed for revocation, so we set
 // number_of_incorrect_attempts to UINT32_MAX.
-LECredentialManager::DelaySchedule GetDelaySchedule() {
+hwsec::PinWeaverManagerFrontend::DelaySchedule GetDelaySchedule() {
   return std::map<uint32_t, uint32_t>{{UINT32_MAX, 1}};
 }
 
@@ -100,10 +99,8 @@ bool IsRevocationSupported(const hwsec::CryptohomeFrontend* hwsec) {
 }
 
 CryptoStatus Create(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-                    LECredentialManager* le_manager,
                     RevocationState* revocation_state,
                     KeyBlobs* key_blobs) {
-  CHECK(le_manager);
   if (!key_blobs->vkk_key.has_value() || key_blobs->vkk_key.value().empty()) {
     LOG(ERROR) << "Failed to create secret for revocation: vkk_key is not set";
     return MakeStatus<CryptohomeCryptoError>(
@@ -180,10 +177,8 @@ CryptoStatus Create(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
 }
 
 CryptoStatus Derive(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-                    LECredentialManager* le_manager,
                     const RevocationState& revocation_state,
                     KeyBlobs* key_blobs) {
-  CHECK(le_manager);
   if (!key_blobs->vkk_key.has_value() || key_blobs->vkk_key.value().empty()) {
     LOG(ERROR) << "Failed to derive secret for revocation: vkk_key is not set";
     return MakeStatus<CryptohomeCryptoError>(
@@ -215,8 +210,8 @@ CryptoStatus Derive(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  hwsec::StatusOr<hwsec::PinWeaverManager::CheckCredentialReply> result =
-      hwsec_pw_manager->CheckCredential(
+  hwsec::StatusOr<hwsec::PinWeaverManagerFrontend::CheckCredentialReply>
+      result = hwsec_pw_manager->CheckCredential(
           /*label=*/revocation_state.le_label.value(),
           /*le_secret=*/le_secret);
 
@@ -250,9 +245,7 @@ CryptoStatus Derive(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
 
 CryptoStatus Revoke(AuthBlockType auth_block_type,
                     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-                    LECredentialManager* le_manager,
                     const RevocationState& revocation_state) {
-  CHECK(le_manager);
   if (!revocation_state.le_label.has_value()) {
     LOG(ERROR)
         << "Failed to revoke secret: revocation_state.le_label is not set";

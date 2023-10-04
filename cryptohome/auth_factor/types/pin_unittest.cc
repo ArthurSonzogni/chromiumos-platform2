@@ -20,7 +20,6 @@
 #include "cryptohome/auth_factor/types/test_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 
 namespace cryptohome {
 namespace {
@@ -40,13 +39,7 @@ class PinDriverTest : public AuthFactorDriverGenericTest {
  protected:
   static constexpr uint64_t kLeLabel = 0xdeadbeefbaadf00d;
 
-  PinDriverTest() {
-    auto le_manager = std::make_unique<MockLECredentialManager>();
-    le_manager_ = le_manager.get();
-    crypto_.set_le_manager_for_testing(std::move(le_manager));
-  }
-
-  MockLECredentialManager* le_manager_;
+  PinDriverTest() = default;
 };
 
 TEST_F(PinDriverTest, PinConvertToProto) {

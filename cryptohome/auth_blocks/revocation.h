@@ -13,7 +13,6 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 namespace cryptohome {
 namespace revocation {
@@ -24,14 +23,12 @@ bool IsRevocationSupported(const hwsec::CryptohomeFrontend* hwsec);
 // `in_out_key_blobs.vkk_key`. Saves information that is required for key
 // derivation to `in_out_revocation_state`.
 CryptoStatus Create(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-                    LECredentialManager* le_manager,
                     RevocationState* in_out_revocation_state,
                     KeyBlobs* in_out_key_blobs);
 
 // Derives a new key from `in_out_key_blobs.vkk_key` using information from
 // `revocation_state` and saves it back to `in_out_key_blobs.vkk_key`.
 CryptoStatus Derive(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-                    LECredentialManager* le_manager,
                     const RevocationState& revocation_state,
                     KeyBlobs* in_out_key_blobs);
 
@@ -39,7 +36,6 @@ CryptoStatus Derive(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
 // `auth_block_type` is used for metrics.
 CryptoStatus Revoke(AuthBlockType auth_block_type,
                     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-                    LECredentialManager* le_manager,
                     const RevocationState& revocation_state);
 
 }  // namespace revocation

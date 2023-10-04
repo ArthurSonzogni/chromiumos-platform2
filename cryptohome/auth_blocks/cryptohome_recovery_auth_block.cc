@@ -95,30 +95,26 @@ std::unique_ptr<AuthBlock> CryptohomeRecoveryAuthBlock::New(
     Platform& platform,
     const hwsec::CryptohomeFrontend& hwsec,
     const hwsec::RecoveryCryptoFrontend& recovery_hwsec,
-    const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager,
-    LECredentialManager* le_manager) {
+    const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager) {
   return std::make_unique<CryptohomeRecoveryAuthBlock>(
-      &hwsec, &recovery_hwsec, &hwsec_pw_manager, le_manager, &platform);
+      &hwsec, &recovery_hwsec, &hwsec_pw_manager, &platform);
 }
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     const hwsec::CryptohomeFrontend* hwsec,
     const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
     Platform* platform)
-    : CryptohomeRecoveryAuthBlock(
-          hwsec, recovery_hwsec, nullptr, nullptr, platform) {}
+    : CryptohomeRecoveryAuthBlock(hwsec, recovery_hwsec, nullptr, platform) {}
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     const hwsec::CryptohomeFrontend* hwsec,
     const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-    LECredentialManager* le_manager,
     Platform* platform)
     : AuthBlock(/*derivation_type=*/kCryptohomeRecovery),
       hwsec_(hwsec),
       recovery_hwsec_(recovery_hwsec),
       hwsec_pw_manager_(hwsec_pw_manager),
-      le_manager_(le_manager),
       platform_(platform) {
   CHECK(hwsec_);
   CHECK(recovery_hwsec_);
@@ -253,10 +249,9 @@ void CryptohomeRecoveryAuthBlock::Create(const AuthInput& auth_input,
   auth_block_state->state = std::move(auth_state);
 
   if (revocation::IsRevocationSupported(hwsec_)) {
-    CHECK(le_manager_);
     RevocationState revocation_state;
     CryptoStatus result = revocation::Create(
-        hwsec_pw_manager_, le_manager_, &revocation_state, key_blobs.get());
+        hwsec_pw_manager_, &revocation_state, key_blobs.get());
     if (!result.ok()) {
       std::move(callback).Run(
           MakeStatus<CryptohomeCryptoError>(
@@ -471,10 +466,8 @@ void CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
 
   if (state.revocation_state.has_value()) {
     CHECK(revocation::IsRevocationSupported(hwsec_));
-    CHECK(le_manager_);
-    CryptoStatus result =
-        revocation::Derive(hwsec_pw_manager_, le_manager_,
-                           state.revocation_state.value(), key_blobs.get());
+    CryptoStatus result = revocation::Derive(
+        hwsec_pw_manager_, state.revocation_state.value(), key_blobs.get());
     if (!result.ok()) {
       LogDeriveFailure(result->local_crypto_error());
       std::move(callback).Run(
@@ -541,18 +534,9 @@ CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemovalInternal(
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  if (!le_manager_) {
-    LOG(ERROR) << "No LE manager during recovery auth block removal";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoLEManagerInPrepareForRemoval),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kReboot}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
   CryptoStatus result =
       revocation::Revoke(AuthBlockType::kCryptohomeRecovery, hwsec_pw_manager_,
-                         le_manager_, state.revocation_state.value());
+                         state.revocation_state.value());
   if (!result.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(

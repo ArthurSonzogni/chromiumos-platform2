@@ -36,8 +36,6 @@
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -81,14 +79,13 @@ using DeriveTestFuture = TestFuture<CryptohomeStatus,
 class PinWeaverAuthBlockTest : public ::testing::Test {
  public:
   void SetUp() override {
-    auth_block_ = std::make_unique<PinWeaverAuthBlock>(
-        features_.async, &le_cred_manager_, &hwsec_pw_manager_);
+    auth_block_ = std::make_unique<PinWeaverAuthBlock>(features_.async,
+                                                       &hwsec_pw_manager_);
   }
 
  protected:
   base::test::TaskEnvironment task_environment_;
 
-  NiceMock<MockLECredentialManager> le_cred_manager_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   FakeFeaturesForTesting features_;
   std::unique_ptr<PinWeaverAuthBlock> auth_block_;
@@ -101,7 +98,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTest) {
 
   // Set up the mock expectations.
   brillo::SecureBlob le_secret;
-  LECredentialManager::DelaySchedule delay_sched;
+  DelaySchedule delay_sched;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
@@ -141,7 +138,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
 
   // Set up the mock expectations.
   brillo::SecureBlob le_secret;
-  LECredentialManager::DelaySchedule delay_sched;
+  DelaySchedule delay_sched;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),

@@ -44,7 +44,6 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
@@ -110,11 +109,8 @@ using CreateTestFuture = TestFuture<CryptohomeStatus,
 class KeysetManagementTest : public ::testing::Test {
  public:
   KeysetManagementTest()
-      : crypto_(&hwsec_,
-                &pinweaver_,
-                &hwsec_pw_manager_,
-                &cryptohome_keys_manager_,
-                nullptr) {
+      : crypto_(
+            &hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_, nullptr) {
     CHECK(temp_dir_.CreateUniqueTempDir());
   }
 
@@ -564,9 +560,6 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   hwsec::Tpm2SimulatorFactoryForTest factory;
   std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
       factory.GetPinWeaverFrontend();
-  auto le_cred_manager =
-      std::make_unique<LECredentialManagerImpl>(pinweaver.get(), CredDirPath());
-  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
   crypto_.Init();
 
   KeysetSetUpWithKeyDataAndKeyBlobs(DefaultLEKeyData());
@@ -592,10 +585,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   hwsec::Tpm2SimulatorFactoryForTest factory;
   std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
       factory.GetPinWeaverFrontend();
-  auto le_cred_manager =
-      std::make_unique<LECredentialManagerImpl>(pinweaver.get(), CredDirPath());
   auto pw_manager = factory.GetPinWeaverManagerFrontend();
-  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
   crypto_.set_pinweaver_manager_for_testing(pw_manager.get());
   crypto_.Init();
 
@@ -609,7 +599,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   // Setup pin credentials.
   FakeFeaturesForTesting features;
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      features.async, crypto_.le_manager(), crypto_.GetPinWeaverManager());
+      features.async, crypto_.GetPinWeaverManager());
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,

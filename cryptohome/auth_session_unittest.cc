@@ -62,7 +62,6 @@
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
@@ -284,11 +283,10 @@ class AuthSessionTest : public ::testing::Test {
   // Mocks and fakes for the test AuthSessions to use.
   NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
-                 &cryptohome_keys_manager_, nullptr};
+  Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
+                 nullptr};
   UssStorage uss_storage_{&platform_};
   UserUssStorage user_uss_storage_{uss_storage_,
                                    SanitizeUserName(kFakeUsername)};
@@ -2255,8 +2253,6 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
-  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   auth_session.SetAuthFactorStatusUpdateCallback(base::BindRepeating(
       [](user_data_auth::AuthFactorWithStatus, const std::string&) {}));
   // Test.
@@ -4007,8 +4003,6 @@ TEST_F(AuthSessionWithUssTest, FingerprintAuthenticationForWebAuthn) {
 
 // Test that PrepareAuthFactor succeeds for fingerprint with the purpose of add.
 TEST_F(AuthSessionWithUssTest, PrepareFingerprintAdd) {
-  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   // Create an AuthSession and add a mock for a successful auth block prepare.
   auto auth_session = std::make_unique<AuthSession>(
       AuthSession::Params{.username = kFakeUsername,
@@ -4069,8 +4063,6 @@ TEST_F(AuthSessionWithUssTest, PrepareFingerprintAdd) {
 // Test adding two fingerprint auth factors and authenticating them.
 TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
   const brillo::SecureBlob kFakeAuthPin(32, 1), kFakeAuthSecret(32, 2);
-  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
-  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   // Setup.
   AuthSession auth_session({.username = kFakeUsername,
                             .is_ephemeral_user = false,

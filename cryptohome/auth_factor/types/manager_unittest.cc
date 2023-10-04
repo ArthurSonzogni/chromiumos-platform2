@@ -36,11 +36,9 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
   // Mocks for all of the manager dependencies.
   MockPlatform platform_;
   hwsec::MockCryptohomeFrontend hwsec_;
-  hwsec::MockPinWeaverFrontend pinweaver_;
   hwsec::MockPinWeaverManagerFrontend hwsec_pw_manager_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;
-  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
-                 &cryptohome_keys_manager_,
+  Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
   MockFingerprintManager fp_manager_;
   UssStorage uss_storage_{&platform_};

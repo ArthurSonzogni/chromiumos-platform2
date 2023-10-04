@@ -38,7 +38,6 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -72,8 +71,7 @@ constexpr uint32_t kLockoutAttemptLimit = 5;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 
 // Select the delay schedule to use.
-const LECredentialManager::DelaySchedule& SelectDelaySchedule(
-    AsyncInitFeatures& features) {
+const DelaySchedule& SelectDelaySchedule(AsyncInitFeatures& features) {
   if (features.IsFeatureEnabled(Features::kModernPin)) {
     return PinDelaySchedule();
   }
@@ -82,27 +80,25 @@ const LECredentialManager::DelaySchedule& SelectDelaySchedule(
 
 }  // namespace
 
-const LECredentialManager::DelaySchedule& LockoutDelaySchedule() {
-  static base::NoDestructor<LECredentialManager::DelaySchedule> kValue(
-      LECredentialManager::DelaySchedule{
-          {kLockoutAttemptLimit, kInfiniteDelay},
-      });
+const DelaySchedule& LockoutDelaySchedule() {
+  static base::NoDestructor<DelaySchedule> kValue(DelaySchedule{
+      {kLockoutAttemptLimit, kInfiniteDelay},
+  });
   return *kValue;
 }
 
-const LECredentialManager::DelaySchedule& PinDelaySchedule() {
+const DelaySchedule& PinDelaySchedule() {
   // TODO(b/272566923): finalize the policy.
-  static base::NoDestructor<LECredentialManager::DelaySchedule> kValue(
-      LECredentialManager::DelaySchedule{
-          {4, 30},
-          {6, 1 * base::Time::kSecondsPerMinute},
-          {9, 10 * base::Time::kSecondsPerMinute},
-          {12, 30 * base::Time::kSecondsPerMinute},
-          {14, 1 * base::Time::kSecondsPerHour},
-          {16, 2 * base::Time::kSecondsPerHour},
-          {18, 5 * base::Time::kSecondsPerHour},
-          {20, 12 * base::Time::kSecondsPerHour},
-      });
+  static base::NoDestructor<DelaySchedule> kValue(DelaySchedule{
+      {4, 30},
+      {6, 1 * base::Time::kSecondsPerMinute},
+      {9, 10 * base::Time::kSecondsPerMinute},
+      {12, 30 * base::Time::kSecondsPerMinute},
+      {14, 1 * base::Time::kSecondsPerHour},
+      {16, 2 * base::Time::kSecondsPerHour},
+      {18, 5 * base::Time::kSecondsPerHour},
+      {20, 12 * base::Time::kSecondsPerHour},
+  });
   return *kValue;
 }
 
@@ -138,38 +134,22 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
         ErrorActionSet({PossibleAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
   }
 
-  if (!crypto.le_manager()) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNullLeManagerInIsSupported),
-        ErrorActionSet(
-            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
   return OkStatus<CryptohomeCryptoError>();
 }
 
 std::unique_ptr<AuthBlock> PinWeaverAuthBlock::New(
     AsyncInitFeatures& features,
-    LECredentialManager* le_manager,
     const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager) {
-  if (le_manager) {
-    return std::make_unique<PinWeaverAuthBlock>(features, le_manager,
-                                                &hwsec_pw_manager);
-  }
-  return nullptr;
+  return std::make_unique<PinWeaverAuthBlock>(features, &hwsec_pw_manager);
 }
 
 PinWeaverAuthBlock::PinWeaverAuthBlock(
     AsyncInitFeatures& features,
-    LECredentialManager* le_manager,
     const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager)
     : AuthBlock(kLowEntropyCredential),
       features_(&features),
-      le_manager_(le_manager),
       hwsec_pw_manager_(hwsec_pw_manager) {
   CHECK(features_);
-  CHECK_NE(le_manager, nullptr);
   CHECK(hwsec_pw_manager_);
 }
 

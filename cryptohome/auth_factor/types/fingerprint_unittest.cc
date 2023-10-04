@@ -30,7 +30,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/util/async_init.h"
 
@@ -64,10 +63,6 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
   static constexpr uint64_t kLeLabel = 0xdeadbeefbaadf00d;
 
   FingerprintDriverTest() {
-    auto le_manager = std::make_unique<MockLECredentialManager>();
-    le_manager_ = le_manager.get();
-    crypto_.set_le_manager_for_testing(std::move(le_manager));
-
     auto processor = std::make_unique<MockBiometricsCommandProcessor>();
     bio_command_processor_ = processor.get();
     EXPECT_CALL(*bio_command_processor_, SetEnrollScanDoneCallback(_));
@@ -97,7 +92,6 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
 
   NiceMock<MockPlatform> platform_;
   UssStorage uss_storage_{&platform_};
-  MockLECredentialManager* le_manager_;
   MockBiometricsCommandProcessor* bio_command_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
 };

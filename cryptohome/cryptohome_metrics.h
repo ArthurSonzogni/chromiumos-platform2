@@ -17,7 +17,6 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/migration_type.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 namespace cryptohome {
 

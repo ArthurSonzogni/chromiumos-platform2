@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include <libhwsec/frontend/pinweaver_manager/frontend.h>
+
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/crypto.h"
@@ -14,18 +16,19 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 namespace cryptohome {
+
+using DelaySchedule = hwsec::PinWeaverManagerFrontend::DelaySchedule;
 
 // Define the standard lockout policy to use for all LE credentials. This policy
 // will allow for 5 attempts with no delay, and then permanent lockout until the
 // credential is reset.
-const LECredentialManager::DelaySchedule& LockoutDelaySchedule();
+const DelaySchedule& LockoutDelaySchedule();
 
 // Define the PIN delay policy. This applies a gradually increasing delay after
 // more and more attempts are made.
-const LECredentialManager::DelaySchedule& PinDelaySchedule();
+const DelaySchedule& PinDelaySchedule();
 
 class PinWeaverAuthBlock : public AuthBlock {
  public:
@@ -35,11 +38,9 @@ class PinWeaverAuthBlock : public AuthBlock {
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
       AsyncInitFeatures& features,
-      LECredentialManager* le_manager,
       const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager);
 
   PinWeaverAuthBlock(AsyncInitFeatures& features,
-                     LECredentialManager* le_manager,
                      const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager);
 
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
@@ -62,8 +63,6 @@ class PinWeaverAuthBlock : public AuthBlock {
  private:
   // Feature lookup interface.
   AsyncInitFeatures* features_;
-  // Handler for Low Entropy credentials.
-  [[maybe_unused]] LECredentialManager* le_manager_;
   const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
 };
 

@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/files/scoped_temp_dir.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
@@ -36,7 +35,6 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -54,7 +52,6 @@ constexpr char kLabel0[] = "label0";
 constexpr char kLabel1[] = "label1";
 constexpr char kLabel2[] = "label2";
 constexpr char kUserPassword[] = "user_pass";
-constexpr char kCredsDir[] = "le_creds";
 constexpr char kEasyUnlockLabel[] = "easy-unlock-1";
 
 constexpr char kFirstIndex[] = "0";
@@ -67,17 +64,11 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
       : pinweaver_(tpm2_factory_.GetPinWeaverFrontend()),
         hwsec_pw_manager_(tpm2_factory_.GetPinWeaverManagerFrontend()),
         crypto_(&hwsec_,
-                pinweaver_.get(),
                 hwsec_pw_manager_.get(),
                 &cryptohome_keys_manager_,
                 nullptr) {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-
-    crypto_.set_le_manager_for_testing(
-        std::make_unique<LECredentialManagerImpl>(
-            pinweaver_.get(), temp_dir_.GetPath().Append(kCredsDir)));
     crypto_.Init();
 
     EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
@@ -107,7 +98,6 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
 
  protected:
   NiceMock<MockPlatform> platform_;
-  base::ScopedTempDir temp_dir_;
 
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   hwsec::Tpm2SimulatorFactoryForTest tpm2_factory_;

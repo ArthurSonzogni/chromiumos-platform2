@@ -28,7 +28,6 @@
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 
 namespace cryptohome {
 namespace {
@@ -36,7 +35,6 @@ namespace {
 using base::test::TestFuture;
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
-using cryptohome::error::CryptohomeLECredError;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::NotOk;
 
@@ -159,15 +157,14 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
   hwsec::Tpm2SimulatorFactoryForTest factory_;
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
       recovery_crypto_fake_backend_;
-  NiceMock<MockLECredentialManager> le_cred_manager_;
 };
 
 TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   SetupMockHwsec(hwsec_);
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
-  CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec_, recovery_crypto_fake_backend_.get(), &hwsec_pw_manager_, nullptr,
-      &platform_);
+  CryptohomeRecoveryAuthBlock auth_block(&hwsec_,
+                                         recovery_crypto_fake_backend_.get(),
+                                         &hwsec_pw_manager_, &platform_);
 
   AuthInput auth_input = GenerateFakeAuthInput();
 
@@ -229,9 +226,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithNoDeviceUserId) {
   SetupMockHwsec(hwsec_);
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
-  CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec_, recovery_crypto_fake_backend_.get(), &hwsec_pw_manager_, nullptr,
-      &platform_);
+  CryptohomeRecoveryAuthBlock auth_block(&hwsec_,
+                                         recovery_crypto_fake_backend_.get(),
+                                         &hwsec_pw_manager_, &platform_);
 
   AuthInput auth_input = GenerateFakeAuthInput();
   auth_input.cryptohome_recovery_auth_input->device_user_id.clear();
@@ -302,9 +299,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
   SetupMockHwsec(hwsec_);
-  CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec_, recovery_crypto_fake_backend_.get(), &hwsec_pw_manager_,
-      &le_cred_manager_, &platform_);
+  CryptohomeRecoveryAuthBlock auth_block(&hwsec_,
+                                         recovery_crypto_fake_backend_.get(),
+                                         &hwsec_pw_manager_, &platform_);
 
   CreateTestFuture result;
   AuthInput auth_input = GenerateFakeAuthInput();
@@ -382,9 +379,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, CreateGeneratesRecoveryId) {
   // IsPinWeaverEnabled()) returns `false` -> revocation is not supported.
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
   SetupMockHwsec(hwsec_);
-  CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec_, recovery_crypto_fake_backend_.get(), &hwsec_pw_manager_,
-      &le_cred_manager_, &platform_);
+  CryptohomeRecoveryAuthBlock auth_block(&hwsec_,
+                                         recovery_crypto_fake_backend_.get(),
+                                         &hwsec_pw_manager_, &platform_);
 
   CreateTestFuture result;
   AuthInput auth_input = GenerateFakeAuthInput();
@@ -415,9 +412,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, MissingObfuscatedUsername) {
   AuthInput auth_input = GenerateFakeAuthInput();
   auth_input.obfuscated_username.reset();
 
-  CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec_, recovery_crypto_fake_backend_.get(), &hwsec_pw_manager_,
-      &le_cred_manager_, &platform_);
+  CryptohomeRecoveryAuthBlock auth_block(&hwsec_,
+                                         recovery_crypto_fake_backend_.get(),
+                                         &hwsec_pw_manager_, &platform_);
   CreateTestFuture result;
   auth_block.Create(auth_input, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
@@ -432,9 +429,9 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, MissingUserGaiaId) {
   auth_input.cryptohome_recovery_auth_input->user_gaia_id.clear();
   auth_input.cryptohome_recovery_auth_input->device_user_id.clear();
 
-  CryptohomeRecoveryAuthBlock auth_block(
-      &hwsec_, recovery_crypto_fake_backend_.get(), &hwsec_pw_manager_,
-      &le_cred_manager_, &platform_);
+  CryptohomeRecoveryAuthBlock auth_block(&hwsec_,
+                                         recovery_crypto_fake_backend_.get(),
+                                         &hwsec_pw_manager_, &platform_);
   CreateTestFuture result;
   auth_block.Create(auth_input, result.GetCallback());
   ASSERT_TRUE(result.IsReady());

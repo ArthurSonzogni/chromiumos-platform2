@@ -31,8 +31,6 @@
 #include "cryptohome/error/cryptohome_le_cred_error.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 
 namespace cryptohome {
 namespace {
@@ -121,8 +119,8 @@ class FingerprintAuthBlockTest : public ::testing::Test {
     bio_service_ = std::make_unique<BiometricsAuthBlockService>(
         std::move(mock_processor), /*enroll_signal_sender=*/base::DoNothing(),
         /*auth_signal_sender=*/base::DoNothing());
-    auth_block_ = std::make_unique<FingerprintAuthBlock>(
-        &hwsec_pw_manager_, &mock_le_manager_, bio_service_.get());
+    auth_block_ = std::make_unique<FingerprintAuthBlock>(&hwsec_pw_manager_,
+                                                         bio_service_.get());
   }
 
  protected:
@@ -193,7 +191,6 @@ class FingerprintAuthBlockTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   testing::NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
-  StrictMock<MockLECredentialManager> mock_le_manager_;
   StrictMock<MockBiometricsCommandProcessor>* mock_processor_;
   base::RepeatingCallback<void(AuthEnrollmentProgress,
                                std::optional<brillo::Blob>)>

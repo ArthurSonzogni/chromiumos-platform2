@@ -66,8 +66,6 @@
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -77,7 +75,6 @@ namespace {
 using ::base::test::TestFuture;
 using ::brillo::cryptohome::home::SanitizeUserName;
 using ::cryptohome::error::CryptohomeCryptoError;
-using ::cryptohome::error::CryptohomeLECredError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::error::testing::IsOk;
@@ -111,7 +108,6 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
       : recovery_crypto_fake_backend_(
             hwsec_factory_.GetRecoveryCryptoFrontend()),
         crypto_(&hwsec_,
-                &pinweaver_,
                 &hwsec_pw_manager_,
                 &cryptohome_keys_manager_,
                 recovery_crypto_fake_backend_.get()),
@@ -221,11 +217,8 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
       .reset_secret = brillo::SecureBlob(32, 'S'),
   };
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
   EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(ReturnValue(/* ret_label*/ 0));
-  crypto_.set_le_manager_for_testing(
-      std::unique_ptr<LECredentialManager>(le_cred_manager));
   crypto_.Init();
   MakeAuthBlockUtilityImpl();
 
@@ -259,9 +252,6 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
   brillo::SecureBlob salt(system_salt_);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
-  MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
-  crypto_.set_le_manager_for_testing(
-      std::unique_ptr<LECredentialManager>(le_cred_manager));
   crypto_.Init();
 
   ASSERT_TRUE(DeriveSecretsScrypt(*auth_input.user_input, salt, {&le_secret}));

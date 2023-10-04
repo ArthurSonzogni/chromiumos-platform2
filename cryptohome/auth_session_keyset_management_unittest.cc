@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/bind.h>
@@ -55,8 +54,6 @@
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
@@ -158,8 +155,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     EXPECT_CALL(hwsec_, GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
 
-    crypto_.set_le_manager_for_testing(
-        std::make_unique<MockLECredentialManager>());
     crypto_.Init();
 
     auth_session_manager_ =
@@ -566,11 +561,9 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   // Mocks and fakes for the test AuthSessions to use.
   NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
-                 &cryptohome_keys_manager_,
+  Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
   UssStorage uss_storage_{&platform_};
   UserSessionMap user_session_map_;
@@ -729,20 +722,13 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 TEST_F(AuthSessionTestWithKeysetManagement,
        RemoveBackupKeysetFromMigratedKeyset) {
   // SETUP
-  constexpr char kCredDirName[] = "low_entropy_creds";
   constexpr int kMaxWrongAttempts = 6;
 
   // Setup low entropy credential manager.
-  base::ScopedTempDir temp_dir;
-  EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath temp_path = temp_dir.GetPath().Append(kCredDirName);
   hwsec::Tpm2SimulatorFactoryForTest factory;
   std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
       factory.GetPinWeaverFrontend();
-  auto le_cred_manager =
-      std::make_unique<LECredentialManagerImpl>(pinweaver.get(), temp_path);
   auto pw_manager = factory.GetPinWeaverManagerFrontend();
-  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
   crypto_.set_pinweaver_manager_for_testing(pw_manager.get());
   crypto_.Init();
 

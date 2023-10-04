@@ -658,9 +658,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
 
   if (!crypto_) {
-    default_crypto_ =
-        std::make_unique<Crypto>(hwsec_, pinweaver_, hwsec_pw_manager_,
-                                 cryptohome_keys_manager_, recovery_crypto_);
+    default_crypto_ = std::make_unique<Crypto>(
+        hwsec_, hwsec_pw_manager_, cryptohome_keys_manager_, recovery_crypto_);
     crypto_ = default_crypto_.get();
   }
   crypto_->Init();

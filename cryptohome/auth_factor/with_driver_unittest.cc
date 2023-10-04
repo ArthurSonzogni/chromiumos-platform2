@@ -32,7 +32,6 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/util/async_init.h"
 
@@ -79,10 +78,6 @@ class AuthFactorWithDriverTest : public ::testing::Test {
   }
 
   AuthFactorWithDriverTest() {
-    auto le_manager = std::make_unique<MockLECredentialManager>();
-    le_manager_ = le_manager.get();
-    crypto_.set_le_manager_for_testing(std::move(le_manager));
-
     auto processor = std::make_unique<MockBiometricsCommandProcessor>();
     bio_command_processor_ = processor.get();
     EXPECT_CALL(*bio_command_processor_, SetEnrollScanDoneCallback(_));
@@ -112,14 +107,11 @@ class AuthFactorWithDriverTest : public ::testing::Test {
   // Mocks for all of the manager dependencies.
   NiceMock<MockPlatform> platform_;
   hwsec::MockCryptohomeFrontend hwsec_;
-  hwsec::MockPinWeaverFrontend pinweaver_;
   hwsec::MockPinWeaverManagerFrontend hwsec_pw_manager_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;
-  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
-                 &cryptohome_keys_manager_,
+  Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
   UssStorage uss_storage_{&platform_};
-  MockLECredentialManager* le_manager_;
   MockFingerprintManager fp_manager_;
   FingerprintAuthBlockService fp_service_{
       AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};

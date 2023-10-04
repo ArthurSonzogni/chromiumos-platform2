@@ -45,7 +45,6 @@
 #include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mock_homedirs.h"
@@ -130,15 +129,9 @@ void MockOwnerUser(const std::string& username, MockHomeDirs& homedirs) {
 class AuthSessionInterfaceTestBase : public ::testing::Test {
  public:
   AuthSessionInterfaceTestBase()
-      : crypto_(&hwsec_,
-                &pinweaver_,
-                &hwsec_pw_manager_,
-                &cryptohome_keys_manager_,
-                nullptr) {
+      : crypto_(
+            &hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_, nullptr) {
     SetUpHWSecExpectations();
-    MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
-    crypto_.set_le_manager_for_testing(
-        std::unique_ptr<LECredentialManager>(le_cred_manager));
     crypto_.Init();
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         &keyset_management_, &crypto_, &platform_, &features_.async,

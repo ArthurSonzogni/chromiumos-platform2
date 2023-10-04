@@ -72,7 +72,6 @@
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset.h"
-#include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -326,8 +325,8 @@ class UserDataAuthTestBase : public ::testing::Test {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
 
   // Fake Crypto object, will be passed to UserDataAuth for its internal use.
-  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
-                 &cryptohome_keys_manager_, &recovery_crypto_};
+  Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
+                 &recovery_crypto_};
 
   // Mock chaps token manager client, will be passed to UserDataAuth for its
   // internal use.
@@ -3642,10 +3641,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
-  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
 
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
-  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(false));
@@ -3758,10 +3755,8 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
-  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
 
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
-  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
@@ -3879,10 +3874,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedLegacy) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
-  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
 
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
-  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
@@ -4003,11 +3996,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssPinLockedModern) {
   // Setup.
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
-  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
   AuthFactorManager manager(&platform_);
 
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
-  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));

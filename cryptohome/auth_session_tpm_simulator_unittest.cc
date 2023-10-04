@@ -48,7 +48,6 @@
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/vault_keyset.h"
@@ -274,14 +273,6 @@ CryptohomeStatus AuthenticateRecoveryFactor(AuthSession& auth_session) {
 class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    // TODO(b/254864841): Remove this after le_credential code is migrated to
-    // use `Platform` instead of direct file operations in system-global paths.
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    crypto_.set_le_manager_for_testing(
-        std::make_unique<LECredentialManagerImpl>(
-            hwsec_pinweaver_frontend_.get(),
-            temp_dir_.GetPath().AppendASCII("low_entropy_creds")));
-
     // TODO(b/266217791): The simulator factory should instead do it itself.
     ON_CALL(hwsec_simulator_factory_.GetMockBackend().GetMock().vendor,
             GetManufacturer)
@@ -304,8 +295,6 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   hwsec::Tpm2SimulatorFactoryForTest hwsec_simulator_factory_;
   std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec_cryptohome_frontend_ =
       hwsec_simulator_factory_.GetCryptohomeFrontend();
-  std::unique_ptr<const hwsec::PinWeaverFrontend> hwsec_pinweaver_frontend_ =
-      hwsec_simulator_factory_.GetPinWeaverFrontend();
   std::unique_ptr<const hwsec::PinWeaverManagerFrontend>
       hwsec_pinweaver_manager_frontend =
           hwsec_simulator_factory_.GetPinWeaverManagerFrontend();
@@ -313,18 +302,13 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       hwsec_recovery_crypto_frontend_ =
           hwsec_simulator_factory_.GetRecoveryCryptoFrontend();
 
-  // TODO(b/254864841): Remove this after le_credential code is migrated to use
-  // `Platform` instead of direct file operations.
-  base::ScopedTempDir temp_dir_;
-
   // AuthSession dependencies.
   FakePlatform platform_;
   CryptohomeKeysManager cryptohome_keys_manager_{
       hwsec_cryptohome_frontend_.get(), &platform_};
   Crypto crypto_{
-      hwsec_cryptohome_frontend_.get(), hwsec_pinweaver_frontend_.get(),
-      hwsec_pinweaver_manager_frontend.get(), &cryptohome_keys_manager_,
-      hwsec_recovery_crypto_frontend_.get()};
+      hwsec_cryptohome_frontend_.get(), hwsec_pinweaver_manager_frontend.get(),
+      &cryptohome_keys_manager_, hwsec_recovery_crypto_frontend_.get()};
   UssStorage uss_storage_{&platform_};
   UserSessionMap user_session_map_;
   KeysetManagement keyset_management_{&platform_, &crypto_,

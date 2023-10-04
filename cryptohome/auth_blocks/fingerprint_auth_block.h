@@ -17,7 +17,6 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -33,7 +32,6 @@ class FingerprintAuthBlock : public AuthBlock {
       Crypto& crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 
   FingerprintAuthBlock(const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-                       LECredentialManager* le_manager,
                        BiometricsAuthBlockService* service);
 
   FingerprintAuthBlock(const FingerprintAuthBlock&) = delete;
@@ -88,7 +86,6 @@ class FingerprintAuthBlock : public AuthBlock {
   bool IsLocked(uint64_t label);
 
   const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
-  [[maybe_unused]] LECredentialManager* le_manager_;
   BiometricsAuthBlockService* service_;
   base::WeakPtrFactory<FingerprintAuthBlock> weak_factory_{this};
 };

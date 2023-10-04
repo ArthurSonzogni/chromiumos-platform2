@@ -34,8 +34,7 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
       Platform& platform,
       const hwsec::CryptohomeFrontend& hwsec,
       const hwsec::RecoveryCryptoFrontend& recovery_hwsec,
-      const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager,
-      LECredentialManager* le_manager);
+      const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager);
 
   // the `tpm` pointer must outlive `this`
   explicit CryptohomeRecoveryAuthBlock(
@@ -46,7 +45,6 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
       const hwsec::CryptohomeFrontend* hwsec,
       const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
       const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
-      LECredentialManager* le_manager,
       Platform* platform);
 
   CryptohomeRecoveryAuthBlock(const CryptohomeRecoveryAuthBlock&) = delete;
@@ -76,7 +74,6 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
   const hwsec::RecoveryCryptoFrontend* const recovery_hwsec_;
   const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
   // Low Entropy credentials manager, needed for revocation support.
-  LECredentialManager* const le_manager_;
   Platform* const platform_;
 };
 

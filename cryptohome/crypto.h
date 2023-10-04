@@ -19,13 +19,11 @@
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
-#include <libhwsec/frontend/pinweaver/frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 
 namespace cryptohome {
 
@@ -34,7 +32,6 @@ class VaultKeyset;
 class Crypto final {
  public:
   explicit Crypto(const hwsec::CryptohomeFrontend* hwsec,
-                  const hwsec::PinWeaverFrontend* pinweaver,
                   const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager,
                   CryptohomeKeysManager* cryptohome_keys_manager,
                   const hwsec::RecoveryCryptoFrontend* recovery_hwsec);
@@ -100,16 +97,8 @@ class Crypto final {
     return hwsec_pw_manager_;
   }
 
-  // Gets an instance of the LECredentialManagerImpl object.
-  LECredentialManager* le_manager() { return le_manager_.get(); }
-
   // Checks if the cryptohome key is loaded in TPM
   bool is_cryptohome_key_loaded() const;
-
-  void set_le_manager_for_testing(
-      std::unique_ptr<LECredentialManager> le_manager) {
-    le_manager_ = std::move(le_manager);
-  }
 
   void set_pinweaver_manager_for_testing(
       const hwsec::PinWeaverManagerFrontend* pw_manager) {
@@ -119,18 +108,12 @@ class Crypto final {
  private:
   // The HWSec implementation.
   const hwsec::CryptohomeFrontend* const hwsec_;
-
-  // The pinweaver implementation.
-  const hwsec::PinWeaverFrontend* const pinweaver_;
   const hwsec::PinWeaverManagerFrontend* hwsec_pw_manager_;
   // The CryptohomeKeysManager object used to reload Cryptohome keys.
   CryptohomeKeysManager* const cryptohome_keys_manager_;
 
   // The cryptohome recovery backend.
   const hwsec::RecoveryCryptoFrontend* const recovery_hwsec_;
-
-  // Handler for Low Entropy credentials.
-  std::unique_ptr<LECredentialManager> le_manager_;
 };
 
 }  // namespace cryptohome

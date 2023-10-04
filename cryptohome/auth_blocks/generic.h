@@ -36,7 +36,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/pinweaver_manager/le_credential_manager.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/util/async_init.h"
 
@@ -158,7 +157,6 @@ class GenericAuthBlockFunctions {
                                           key_challenge_service_factory,
                                           std::move(bio_service),
                                           *crypto,
-                                          crypto->le_manager(),
                                           *crypto->GetHwsec(),
                                           *crypto->GetRecoveryCrypto(),
                                           *crypto->GetPinWeaverManager(),
@@ -206,7 +204,6 @@ class GenericAuthBlockFunctions {
              KeyChallengeServiceFactory*,
              AsyncInitPtr<BiometricsAuthBlockService>,
              Crypto&,
-             LECredentialManager*,
              const hwsec::CryptohomeFrontend&,
              const hwsec::RecoveryCryptoFrontend&,
              const hwsec::PinWeaverManagerFrontend&,

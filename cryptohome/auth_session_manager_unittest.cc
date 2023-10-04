@@ -60,11 +60,10 @@ class AuthSessionManagerTest : public ::testing::Test {
 
   NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
-  Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
-                 &cryptohome_keys_manager_, nullptr};
+  Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
+                 nullptr};
   UssStorage uss_storage_{&platform_};
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
