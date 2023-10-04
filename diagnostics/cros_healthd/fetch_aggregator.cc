@@ -26,6 +26,7 @@
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/thermal_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
 
@@ -200,6 +201,11 @@ void FetchAggregator::Run(
       case mojom::ProbeCategoryEnum::kSensor: {
         FetchSensorInfo(context_,
                         CreateFetchCallback(&barrier, &info->sensor_result));
+        break;
+      }
+      case mojom::ProbeCategoryEnum::kThermal: {
+        FetchThermalInfo(context_,
+                         CreateFetchCallback(&barrier, &info->thermal_result));
         break;
       }
     }

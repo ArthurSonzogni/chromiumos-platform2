@@ -55,6 +55,7 @@ source_set("libcros_healthd_fetchers") {
     "sensor_fetcher.cc",
     "stateful_partition_fetcher.cc",
     "system_fetcher.cc",
+    "thermal_fetcher.cc",
     "timezone_fetcher.cc",
     "tpm_fetcher.cc",
   ]

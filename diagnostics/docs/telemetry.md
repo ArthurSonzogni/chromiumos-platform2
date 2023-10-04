@@ -1186,6 +1186,11 @@ event --help`.
 
 ###  Thermal
 
+#####  ThermalInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| thermal_sensors | array&lt;ThermalSensorInfo&gt; | The array of thermal sensors. |
+
 #####  ThermalSensorInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |

@@ -54,6 +54,8 @@ inline constexpr char kTelemetryResultAudioHardware[] =
     "ChromeOS.Healthd.TelemetryResult.AudioHardware";
 inline constexpr char kTelemetryResultSensor[] =
     "ChromeOS.Healthd.TelemetryResult.Sensor";
+inline constexpr char kTelemetryResultThermal[] =
+    "ChromeOS.Healthd.TelemetryResult.Thermal";
 
 inline constexpr char kDiagnosticResultBatteryCapacity[] =
     "ChromeOS.Healthd.DiagnosticResult.BatteryCapacity";

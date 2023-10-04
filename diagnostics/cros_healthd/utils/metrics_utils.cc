@@ -68,6 +68,8 @@ std::optional<std::string> GetMetricName(mojom::ProbeCategoryEnum category) {
       return metrics_name::kTelemetryResultAudioHardware;
     case mojom::ProbeCategoryEnum::kSensor:
       return metrics_name::kTelemetryResultSensor;
+    case mojom::ProbeCategoryEnum::kThermal:
+      return metrics_name::kTelemetryResultThermal;
   }
 }
 
@@ -409,6 +411,10 @@ void SendTelemetryResultToUMA(
       }
       case mojom::ProbeCategoryEnum::kSensor: {
         SendOneTelemetryResultToUMA(metrics, category, info->sensor_result);
+        break;
+      }
+      case mojom::ProbeCategoryEnum::kThermal: {
+        SendOneTelemetryResultToUMA(metrics, category, info->thermal_result);
         break;
       }
     }
