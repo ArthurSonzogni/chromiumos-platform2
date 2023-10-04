@@ -18,7 +18,10 @@ pkg_config("target_defaults") {
 }
 
 static_library("librouting-simulator") {
-  sources = [ "routing_table.cc" ]
+  sources = [
+    "route.cc",
+    "routing_table.cc",
+  ]
   configs += [ ":target_defaults" ]
 }
 
@@ -30,7 +33,10 @@ if (use.test) {
   }
   executable("routing_simulator_testrunner") {
     run_test = true
-    sources = [ "routing_table_test.cc" ]
+    sources = [
+      "route_test.cc",
+      "routing_table_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
