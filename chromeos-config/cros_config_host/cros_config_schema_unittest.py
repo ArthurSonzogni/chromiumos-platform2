@@ -538,54 +538,6 @@ chromeos:
             )
         self.assertIn("Custom label configs can only", str(ctx.exception))
 
-    def testHardwarePropertiesInvalid(self):
-        config = """
-chromeos:
-  devices:
-    - $name: 'bad_device'
-      skus:
-        - config:
-            identity:
-              sku-id: 0
-            # THIS WILL CAUSE THE FAILURE
-            hardware-properties:
-              has-base-accelerometer: true
-              has-base-gyroscope: 7
-              has-lid-accelerometer: false
-              is-lid-convertible: false
-              has-base-magnetometer: false
-              has-touchscreen: true
-"""
-        try:
-            cros_config_schema.ValidateConfig(
-                cros_config_schema.TransformConfig(config)
-            )
-        except cros_config_schema.ValidationError as err:
-            self.assertIn("must be boolean", err.__str__())
-        else:
-            self.fail("ValidationError not raised")
-
-    def testHardwarePropertiesBoolean(self):
-        config = """
-chromeos:
-  devices:
-    - $name: 'good_device'
-      skus:
-        - config:
-            identity:
-              sku-id: 0
-            hardware-properties:
-              has-base-accelerometer: true
-              has-base-gyroscope: true
-              has-lid-accelerometer: true
-              is-lid-convertible: false
-              has-base-magnetometer: true
-              has-touchscreen: false
-"""
-        cros_config_schema.ValidateConfig(
-            cros_config_schema.TransformConfig(config)
-        )
-
     def testMultipleFingerprintFirmwareROVersionInvalid(self):
         config = {
             "chromeos": {

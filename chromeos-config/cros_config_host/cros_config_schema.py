@@ -796,28 +796,6 @@ def _ValidateCustomLabelBrandChangesOnly(json_config):
                 )
 
 
-def _ValidateHardwarePropertiesAreValidType(json_config):
-    """Checks that all fields under hardware-properties are boolean
-
-       Ensures that no key is added to hardware-properties that has a
-       non-boolean value, because non-boolean values are unsupported by the
-       hardware-properties codegen.
-
-    Args:
-        json_config: JSON config dictionary
-    """
-    for config in json_config["chromeos"]["configs"]:
-        hardware_properties = config.get("hardware-properties", None)
-        if hardware_properties:
-            for key, value in hardware_properties.items():
-                if not isinstance(value, (bool, str)):
-                    raise ValidationError(
-                        f"All configs under hardware-properties must be "
-                        f"boolean or an enum\n"
-                        f"However, key '{key}' has value '{value}'."
-                    )
-
-
 def _ValidateConsistentFingerprintFirmwareROVersion(configs):
     """Validate all /fingerprint:ro-version entries.
 
@@ -927,7 +905,6 @@ def ValidateConfig(config):
     json_config = json.loads(config)
     _ValidateUniqueIdentities(json_config)
     _ValidateCustomLabelBrandChangesOnly(json_config)
-    _ValidateHardwarePropertiesAreValidType(json_config)
     _ValidateConsistentFingerprintFirmwareROVersion(json_config)
     _ValidateConsistentSideVolumeButton(json_config)
     _ValidateFeatureDeviceTypeIdentities(json_config)
