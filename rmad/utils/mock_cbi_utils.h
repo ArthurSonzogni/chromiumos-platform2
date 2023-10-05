@@ -21,9 +21,11 @@ class MockCbiUtils : public CbiUtils {
   MOCK_METHOD(bool, GetSkuId, (uint32_t*), (const, override));
   MOCK_METHOD(bool, GetDramPartNum, (std::string*), (const, override));
   MOCK_METHOD(bool, GetSsfc, (uint32_t*), (const, override));
+  MOCK_METHOD(bool, GetFirmwareConfig, (uint32_t*), (const, override));
   MOCK_METHOD(bool, SetSkuId, (uint32_t), (override));
   MOCK_METHOD(bool, SetDramPartNum, (const std::string&), (override));
   MOCK_METHOD(bool, SetSsfc, (uint32_t), (override));
+  MOCK_METHOD(bool, SetFirmwareConfig, (uint32_t), (override));
 };
 
 }  // namespace rmad

@@ -105,6 +105,43 @@ TEST_F(CbiUtilsTest, GetDramPartNum_Nullptr) {
   EXPECT_DEATH(cbi_utils->GetDramPartNum(nullptr), "");
 }
 
+TEST_F(CbiUtilsTest, GetFirmwareConfig_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kGetIntSuccessOutput), Return(true)));
+  auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
+
+  uint32_t firmware_config;
+  EXPECT_TRUE(cbi_utils->GetFirmwareConfig(&firmware_config));
+  EXPECT_EQ(firmware_config, 1234);
+}
+
+TEST_F(CbiUtilsTest, GetFirmwareConfig_Success_ParseFail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kRandomOutput), Return(true)));
+  auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
+
+  uint32_t firmware_config;
+  EXPECT_FALSE(cbi_utils->GetFirmwareConfig(&firmware_config));
+}
+
+TEST_F(CbiUtilsTest, GetFirmwareConfig_Fail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
+
+  uint32_t firmware_config;
+  EXPECT_FALSE(cbi_utils->GetFirmwareConfig(&firmware_config));
+}
+
+TEST_F(CbiUtilsTest, GetFirmwareConfig_Nullptr) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_DEATH(cbi_utils->GetFirmwareConfig(nullptr), "");
+}
+
 TEST_F(CbiUtilsTest, SetSkuId_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
@@ -135,6 +172,22 @@ TEST_F(CbiUtilsTest, SetDramPartNum_Fail) {
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
   EXPECT_FALSE(cbi_utils->SetDramPartNum("part_num"));
+}
+
+TEST_F(CbiUtilsTest, SetFirmwareConfig_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
+  auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(cbi_utils->SetFirmwareConfig(1));
+}
+
+TEST_F(CbiUtilsTest, SetFirmwareConfig_Fail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_FALSE(cbi_utils->SetFirmwareConfig(1));
 }
 
 }  // namespace rmad

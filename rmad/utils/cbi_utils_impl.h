@@ -26,9 +26,11 @@ class CbiUtilsImpl : public CbiUtils {
   bool GetSkuId(uint32_t* sku_id) const override;
   bool GetDramPartNum(std::string* dram_part_num) const override;
   bool GetSsfc(uint32_t* ssfc) const override;
+  bool GetFirmwareConfig(uint32_t* firmware_config) const override;
   bool SetSkuId(uint32_t sku_id) override;
   bool SetDramPartNum(const std::string& dram_part_num) override;
   bool SetSsfc(uint32_t ssfc) override;
+  bool SetFirmwareConfig(uint32_t firmware_config) override;
 
  protected:
   bool SetCbi(int tag, const std::string& value, int set_flag = 0);

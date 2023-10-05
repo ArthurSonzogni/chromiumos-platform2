@@ -24,6 +24,7 @@ constexpr char kEctoolIntValRegex[] = R"(As uint: (\d+))";
 
 constexpr int kCbiTagSkuId = 2;
 constexpr int kCbiTagDramPartNum = 3;
+constexpr int kCbiTagFirmwareConfig = 6;
 constexpr int kCbiTagSsfc = 8;
 
 }  // namespace
@@ -61,6 +62,12 @@ bool CbiUtilsImpl::GetSsfc(uint32_t* ssfc) const {
   return true;
 }
 
+bool CbiUtilsImpl::GetFirmwareConfig(uint32_t* firmware_config) const {
+  CHECK(firmware_config);
+
+  return GetCbi(kCbiTagFirmwareConfig, firmware_config);
+}
+
 bool CbiUtilsImpl::SetSkuId(uint32_t sku_id) {
   int byte_size = 0;
   uint32_t tmp = sku_id;
@@ -81,6 +88,11 @@ bool CbiUtilsImpl::SetDramPartNum(const std::string& dram_part_num) {
 bool CbiUtilsImpl::SetSsfc(uint32_t ssfc) {
   // For SSFC, we always use 4 bytes.
   return SetCbi(kCbiTagSsfc, ssfc, 4);
+}
+
+bool CbiUtilsImpl::SetFirmwareConfig(uint32_t firmware_config) {
+  // For firmware config, we always use 4 bytes.
+  return SetCbi(kCbiTagFirmwareConfig, firmware_config, 4);
 }
 
 bool CbiUtilsImpl::SetCbi(int tag, const std::string& value, int set_flag) {

@@ -23,6 +23,9 @@ class CbiUtils {
   // Get the second source factory cache of the device from cbi.
   virtual bool GetSsfc(uint32_t* ssfc) const = 0;
 
+  // Get the firmware config of the device from cbi.
+  virtual bool GetFirmwareConfig(uint32_t* firmware_config) const = 0;
+
   // Set the sku id of the device to cbi.
   virtual bool SetSkuId(uint32_t sku_id) = 0;
 
@@ -31,6 +34,9 @@ class CbiUtils {
 
   // Set the second source factory cache of the device to cbi.
   virtual bool SetSsfc(uint32_t ssfc) = 0;
+
+  // Set the firmware config of the device to cbi.
+  virtual bool SetFirmwareConfig(uint32_t firmware_config) = 0;
 };
 
 }  // namespace rmad
