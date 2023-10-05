@@ -303,19 +303,17 @@ std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
 
   if (!vm->balloon_request_thread_.Start()) {
     LOG(ERROR) << "Failed to start balloon stats thread";
-    vm.reset();
-    return vm;
+    return {};
   }
 
   // Set up LMKD VSOCK listener if VmMemoryManagementClient is disabled.
   if (!vm->features_.use_vm_memory_management_client && !vm->SetupLmkdVsock()) {
     LOG(ERROR) << "Failed to initialize LMKD VSOCK connection.";
-    vm.reset();
-    return vm;
+    return {};
   }
 
   if (!vm->Start(std::move(kernel), std::move(vm_builder))) {
-    vm.reset();
+    return {};
   }
 
   return vm;

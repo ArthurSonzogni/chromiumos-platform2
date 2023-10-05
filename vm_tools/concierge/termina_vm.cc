@@ -151,8 +151,9 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(Config config) {
 
   auto vm = base::WrapUnique(new TerminaVm(std::move(config)));
 
-  if (!vm->Start(std::move(vm_builder)))
-    vm.reset();
+  if (!vm->Start(std::move(vm_builder))) {
+    return {};
+  }
 
   return vm;
 }

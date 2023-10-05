@@ -98,7 +98,7 @@ std::unique_ptr<PluginVm> PluginVm::Create(Config config) {
   if (!vm->CreateUsbListeningSocket() ||
       !vm->Start(std::move(stateful_dir), subnet_index, enable_vnet_hdr,
                  std::move(vm_builder))) {
-    vm.reset();
+    return {};
   }
 
   return vm;
