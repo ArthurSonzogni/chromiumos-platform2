@@ -66,6 +66,9 @@ _mojo_output_base = "${root_gen_dir}/include"
 _mojom_bindings_generator_wrapper =
     "${platform2_root}/common-mk/mojom_bindings_generator_wrapper.py"
 
+# Thin wrapper to launch mojom_parser.py with extra env var.
+_runtime_wrapper = "${platform2_root}/common-mk/runtime_wrapper.py"
+
 # Should be kept in sync with the templates (module*.tmpl) listed here:
 # src/platform/libchrome/mojo/public/tools/bindings/generators/cpp_templates/
 _mojom_bindings_headers_suffixes = [
@@ -159,7 +162,10 @@ template("generate_mojom_bindings_gen") {
 
   mojo_parse_action_name = "${target_name}_parse"
   action(mojo_parse_action_name) {
-    inputs = [ mojom_parser ]
+    inputs = [
+      _runtime_wrapper,
+      mojom_parser,
+    ]
     sources = invoker.sources
     outputs = []
     filelist = []
@@ -174,8 +180,12 @@ template("generate_mojom_bindings_gen") {
 
     response_file_contents = filelist
 
-    script = mojom_parser
+    script = _runtime_wrapper
     args = [
+             "--set-env",
+             "PYTHONDONTWRITEBYTECODE=1",
+             "--",
+             mojom_parser,
              "--mojom-file-list={{response_file_name}}",
              "--output-root",
              _mojo_output_base,

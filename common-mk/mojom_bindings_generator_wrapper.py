@@ -20,15 +20,18 @@ Usage:
     [... and more args/flags to be passed to the mojom_bindings_generator.py]
 """
 
+import os
 import subprocess
 import sys
 
 
 def main(argv):
-    subprocess.check_call(argv[2:])
-    subprocess.check_call(argv[2:] + ["--generate_non_variant_code"])
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+    subprocess.check_call(argv[2:], env=env)
+    subprocess.check_call(argv[2:] + ["--generate_non_variant_code"], env=env)
     subprocess.check_call(
-        argv[2:] + ["--generate_non_variant_code", "--generate_message_ids"]
+        argv[2:] + ["--generate_non_variant_code", "--generate_message_ids"],
+        env=env,
     )
 
 
