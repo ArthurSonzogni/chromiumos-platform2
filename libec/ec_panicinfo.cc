@@ -85,7 +85,7 @@ static std::string ParsePanicInfoCm(const struct panic_data* pdata) {
   std::string ret;
 
   ret = base::StringPrintf(
-      "Saved panic data:%s\n",
+      "Saved panic data: %02x%s\n", pdata->flags,
       (pdata->flags & PANIC_DATA_FLAG_OLD_HOSTCMD ? "" : " (NEW)"));
 
   if (pdata->struct_version == 2)
@@ -125,7 +125,7 @@ static std::string ParsePanicInfoNds32(const struct panic_data* pdata) {
   std::string ret;
 
   ret = base::StringPrintf(
-      "Saved panic data:%s\n",
+      "Saved panic data: %02x%s\n", pdata->flags,
       (pdata->flags & PANIC_DATA_FLAG_OLD_HOSTCMD ? "" : " (NEW)"));
 
   base::StrAppend(

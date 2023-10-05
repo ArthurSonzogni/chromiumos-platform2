@@ -25,7 +25,7 @@ TEST(ParsePanicInfo, ParsePanicInfoSuccess) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x74, 0x00, 0x00, 0x00, 0x50, 0x6e, 0x63, 0x21};
   std::string expected_result =
-      "Saved panic data: (NEW)\n"
+      "Saved panic data: 08 (NEW)\n"
       "=== PROCESS EXCEPTION: 00 ====== xPSR: ffffffff ===\n"
       "r0 :         r1 :         r2 :         r3 :        \n"
       "r4 :dead6664 r5 :1008a436 r6 :00000000 r7 :00000000\n"
