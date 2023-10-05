@@ -1053,6 +1053,8 @@ void AddFeatureManagementFlags(
                                      feature_management->GetFeatureLevel()));
   builder->AddArg(base::StringPrintf("--feature-management-max-level=%d",
                                      feature_management->GetMaxFeatureLevel()));
+  builder->AddArg(base::StringPrintf("--feature-management-scope=%d",
+                                     feature_management->GetScopeLevel()));
 
   // TODO(b/294268057): Re-enable Lacros on targeted devices once they have been
   // stabilized.

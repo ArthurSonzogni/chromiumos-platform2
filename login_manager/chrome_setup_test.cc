@@ -324,13 +324,16 @@ TEST_F(ChromeSetupTest, TestAddFeatureManagementFlagEmpty) {
       segmentation::FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_0);
   fake_feature_management_->SetMaxFeatureLevel(
       segmentation::FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_1);
+  fake_feature_management_->SetScopeLevel(
+      segmentation::FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_0);
 
   login_manager::AddFeatureManagementFlags(&builder_,
                                            feature_management_.get());
   std::vector<std::string> argv = builder_.arguments();
-  ASSERT_EQ(2, argv.size());
+  ASSERT_EQ(3, argv.size());
   EXPECT_EQ("0", GetFlag(argv, "--feature-management-level"));
   EXPECT_EQ("1", GetFlag(argv, "--feature-management-max-level"));
+  EXPECT_EQ("0", GetFlag(argv, "--feature-management-scope"));
 }
 
 TEST_F(ChromeSetupTest, TestAddFeatureManagementFlagNonEmpty) {
@@ -345,17 +348,20 @@ TEST_F(ChromeSetupTest, TestAddFeatureManagementFlagNonEmpty) {
       segmentation::FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_0);
   fake_feature_management_->SetMaxFeatureLevel(
       segmentation::FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_1);
+  fake_feature_management_->SetScopeLevel(
+      segmentation::FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_0);
 
   login_manager::AddFeatureManagementFlags(&builder_,
                                            feature_management_.get());
   std::vector<std::string> argv = builder_.arguments();
-  ASSERT_EQ(3, argv.size());
+  ASSERT_EQ(4, argv.size());
   std::vector<std::string> result =
       base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_ALL);
   EXPECT_THAT(result, testing::UnorderedElementsAre(feat1, feat2));
   EXPECT_EQ("0", GetFlag(argv, "--feature-management-level"));
   EXPECT_EQ("1", GetFlag(argv, "--feature-management-max-level"));
+  EXPECT_EQ("0", GetFlag(argv, "--feature-management-scope"));
 }
 
 void InitWithUseFlag(std::optional<std::string> flag,
