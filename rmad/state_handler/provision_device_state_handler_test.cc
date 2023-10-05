@@ -45,6 +45,9 @@ namespace {
 constexpr char kTestModelName[] = "TestModelName";
 constexpr uint32_t kTestSsfc = 0x1234;
 
+constexpr uint64_t kCrosFwConfig = 123;
+constexpr uint64_t kCbiFwConfig = 234;
+
 constexpr char kEmptyBoardIdType[] = "ffffffff";
 constexpr char kValidBoardIdType[] = "12345678";
 constexpr char kInvalidBoardIdType[] = "5a5a4352";  // ZZCR.
@@ -61,6 +64,10 @@ struct StateHandlerArgs {
   bool hwwp_enabled = false;
   bool reset_gbb_success = true;
   bool read_board_id_success = true;
+  bool has_cbi = true;
+  bool get_cros_fw_config_success = true;
+  bool get_cbi_fw_config_success = true;
+  bool set_cbi_fw_config_success = true;
   std::string board_id_type = kValidBoardIdType;
   std::string board_id_flags = kPvtBoardIdFlags;
   std::set<rmad::RmadComponent> probed_components = {};
@@ -121,6 +128,11 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     auto mock_cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
     ON_CALL(*mock_cbi_utils, SetSsfc(_))
         .WillByDefault(Return(args.set_ssfc_success));
+    ON_CALL(*mock_cbi_utils, GetFirmwareConfig(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(kCbiFwConfig),
+                             Return(args.get_cbi_fw_config_success)));
+    ON_CALL(*mock_cbi_utils, SetFirmwareConfig(_))
+        .WillByDefault(Return(args.set_cbi_fw_config_success));
 
     // Mock |CmdUtils|.
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
@@ -162,6 +174,13 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
       ON_CALL(*mock_cros_config_utils, GetModelName(_))
           .WillByDefault(Return(false));
     }
+    ON_CALL(*mock_cros_config_utils, GetRmadConfig(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(RmadConfig{.has_cbi = args.has_cbi}),
+                  Return(true)));
+    ON_CALL(*mock_cros_config_utils, GetFirmwareConfig(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(kCrosFwConfig),
+                             Return(args.get_cros_fw_config_success)));
 
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
@@ -719,6 +738,79 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_SetSsfcBypassed) {
 
   // Provision complete signal is sent.
   ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_FwConfigNoCbiSucceeded) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  StateHandlerArgs args = {.has_cbi = false};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_GetCrosFwConfigFailedBlocking) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  // Failed to get firmware_config in cros_config .
+  StateHandlerArgs args = {.get_cros_fw_config_success = false};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_GetCbiFwConfigFailedBlocking) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  // Failed to get SSFC.
+  StateHandlerArgs args = {.get_cbi_fw_config_success = false};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_SetCbiFwConfigFailedBlocking) {
+  // Set up normal environment.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  // Failed to get SSFC.
+  StateHandlerArgs args = {.set_cbi_fw_config_success = false};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,

@@ -48,9 +48,11 @@ constexpr double kProgressComplete = 1.0;
 // constexpr double kProgressFailedNonblocking = -1.0;
 constexpr double kProgressFailedBlocking = -2.0;
 constexpr double kProgressInit = 0.0;
-constexpr double kProgressGetDestination = 0.2;
-constexpr double kProgressGetModelName = 0.3;
-constexpr double kProgressWriteSsfc = 0.5;
+constexpr double kProgressGetDestination = 0.1;
+constexpr double kProgressGetModelName = 0.2;
+constexpr double kProgressWriteSsfc = 0.3;
+constexpr double kProgressReadFwConfig = 0.4;
+constexpr double kProgressWriteFwConfig = 0.5;
 constexpr double kProgressUpdateStableDeviceSecret = 0.6;
 constexpr double kProgressFlushOutVpdCache = 0.7;
 constexpr double kProgressResetGbbFlags = 0.8;
@@ -128,6 +130,11 @@ RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
   if (!task_runner_) {
     task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+  }
+
+  if (!cros_config_utils_->GetRmadConfig(&rmad_config_)) {
+    LOG(ERROR) << "Failed to get RMA config from cros_config";
+    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
   // If status_name is set in |json_store_|, it means it has been provisioned.
@@ -428,6 +435,11 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
                kProgressWriteSsfc);
 
+  // Set firmware config to CBI according to cros_config.
+  if (rmad_config_.has_cbi && !UpdateFirmwareConfig()) {
+    return;
+  }
+
   if (!same_owner) {
     std::string stable_device_secret;
     if (!GenerateStableDeviceSecret(&stable_device_secret)) {
@@ -563,6 +575,43 @@ bool ProvisionDeviceStateHandler::IsHwwpDisabled() const {
   return (
       write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
       !hwwp_enabled);
+}
+
+bool ProvisionDeviceStateHandler::UpdateFirmwareConfig() {
+  uint32_t cros_config_fw_config;
+  if (!cros_config_utils_->GetFirmwareConfig(&cros_config_fw_config)) {
+    LOG(ERROR) << "Failed to get firmware config in cros_config.";
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+    return false;
+  }
+
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressReadFwConfig);
+
+  uint32_t cbi_fw_config;
+  if (!cbi_utils_->GetFirmwareConfig(&cbi_fw_config)) {
+    LOG(ERROR) << "Failed to get firmware config in cbi.";
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+    return false;
+  }
+
+  if (cros_config_fw_config != cbi_fw_config &&
+      !cbi_utils_->SetFirmwareConfig(cros_config_fw_config)) {
+    // TODO(jeffulin): Add an error code of setting firmware config.
+    LOG(ERROR) << "Failed to set firmware config to cbi.";
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+    return false;
+  }
+
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressWriteFwConfig);
+  return true;
 }
 
 }  // namespace rmad

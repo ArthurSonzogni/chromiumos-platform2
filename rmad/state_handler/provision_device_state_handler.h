@@ -96,6 +96,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   bool GenerateStableDeviceSecret(std::string* stable_device_secret);
   void Reboot();
   bool IsHwwpDisabled() const;
+  bool UpdateFirmwareConfig();
 
   base::FilePath working_dir_path_;
   ProvisionStatus status_;
@@ -109,6 +110,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
   std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils_;
   std::unique_ptr<VpdUtils> vpd_utils_;
+
+  RmadConfig rmad_config_;
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   base::RepeatingTimer status_timer_;
