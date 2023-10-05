@@ -130,18 +130,12 @@ class IPConfig {
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
 
-  // Applies |config| to this object and inform D-Bus listeners of the change.
-  // When |force_overwrite| is false, field will be kept unchanged if the
-  // corresponding field in |network_config| is empty. This is used in scenarios
-  // such as combining IP address from static IP config with DNS from DHCP.
+  // Applies the |family| part of |config| and |dhcp_data| to this object and
+  // inform D-Bus listeners of the change.
   void ApplyNetworkConfig(
       const NetworkConfig& config,
-      bool force_overwrite,
-      net_base::IPFamily family = net_base::IPFamily::kIPv4);
-
-  // Update all information from DHCP and inform D-Bus listeners of the change.
-  void UpdateFromDHCP(const NetworkConfig& config,
-                      const DHCPv4Config::Data& dhcp_data);
+      net_base::IPFamily family = net_base::IPFamily::kIPv4,
+      const std::optional<DHCPv4Config::Data>& dhcp_data = std::nullopt);
 
  protected:
   mockable const Properties& properties() const { return properties_; }

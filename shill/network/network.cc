@@ -28,6 +28,7 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/network/compound_network_config.h"
+#include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
 #include "shill/network/network_config.h"
 #include "shill/network/network_priority.h"
@@ -150,11 +151,7 @@ void Network::Start(const Network::StartOptions& opts) {
              !config_.GetLinkProtocol()->ipv6_addresses.empty()) {
     proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
                         ProcFsStub::kIPFlagDisableIPv6, "0");
-    set_ip6config(
-        std::make_unique<IPConfig>(control_interface_, interface_name_));
-    ip6config_->ApplyNetworkConfig(*config_.GetLinkProtocol(),
-                                   /*force_overwrite=*/true,
-                                   net_base::IPFamily::kIPv6);
+    UpdateIPConfigDBusObject();
     dispatcher_->PostTask(
         FROM_HERE,
         base::BindOnce(&Network::SetupConnection, AsWeakPtr(),
@@ -175,23 +172,16 @@ void Network::Start(const Network::StartOptions& opts) {
     dhcp_controller_->RegisterCallbacks(
         base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
         base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()));
+    // Keep the legacy behavior that Network has a empty IPConfig if DHCP has
+    // started but not succeeded/failed yet.
     set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
                                             IPConfig::kTypeDHCP));
     dhcp_started = dhcp_controller_->RequestIP();
-  } else if (config_.GetLinkProtocol() &&
-             (config_.GetLinkProtocol()->ipv4_address ||
-              config_.GetStatic().ipv4_address)) {
-    set_ipconfig(
-        std::make_unique<IPConfig>(control_interface_, interface_name_));
-    ipconfig_->ApplyNetworkConfig(*config_.GetLinkProtocol(),
-                                  /*force_overwrite=*/true);
-  } else {
-    // This could happen on IPv6-only networks.
-    DCHECK(ipv6_started);
   }
 
   if ((config_.GetLinkProtocol() && config_.GetLinkProtocol()->ipv4_address) ||
       config_.GetStatic().ipv4_address) {
+    UpdateIPConfigDBusObject();
     // If the parameters contain an IP address, apply them now and bring the
     // interface up.  When DHCP information arrives, it will supplement the
     // static information.
@@ -303,6 +293,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
     ipconfig_changed = true;
   }
   config_.Clear();
+  dhcp_data_ = std::nullopt;
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {
     for (auto* ev : event_handlers_) {
@@ -345,10 +336,6 @@ void Network::InvalidateIPv6Config() {
 }
 
 void Network::OnIPv4ConfigUpdated() {
-  if (!ipconfig()) {
-    return;
-  }
-  ipconfig()->ApplyNetworkConfig(config_.GetStatic(), false);
   if (config_.GetStatic().ipv4_address.has_value() && dhcp_controller_) {
     // If we are using a statically configured IP address instead of a leased IP
     // address, release any acquired lease so it may be used by others.  This
@@ -358,9 +345,8 @@ void Network::OnIPv4ConfigUpdated() {
     // could assign to someone else who might actually use it.
     dhcp_controller_->ReleaseIP(DHCPController::ReleaseReason::kStaticIP);
   }
-  SetupConnection(net_base::IPFamily::kIPv4, /*is_slaac=*/false);
-  for (auto* ev : event_handlers_) {
-    ev->OnIPConfigsPropertyUpdated(interface_index_);
+  if (config_.Get().ipv4_address) {
+    SetupConnection(net_base::IPFamily::kIPv4, /*is_slaac=*/false);
   }
 }
 
@@ -371,34 +357,14 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
     return;
   }
 
-  if (ipconfig() == nullptr) {
-    LOG(WARNING)
-        << interface_name_
-        << " is not configured with IPv4. Skip applying static IP config";
-    return;
-  }
-
   LOG(INFO) << *this << ": static IPv4 config update " << config;
-
-  // Clear the previously applied static IP parameters and revert to the one
-  // from DHCP or data link layer. The new static config will be applied in
-  // OnIPv4ConfigUpdated().
-  // TODO(b/269401899): Implement the merge logic in CompoundNetworkConfig
-  // instead.
-  auto underlying_config = config_.GetLegacySavedIPConfig();
-  if (underlying_config) {
-    ipconfig()->ApplyNetworkConfig(*underlying_config,
-                                   /*force_overwrite=*/true);
-  }
-
-  // TODO(b/232177767): Apply the static IP parameters no matter if there is a
-  // valid IPv4 in it.
-  if (config.ipv4_address.has_value()) {
+  UpdateIPConfigDBusObject();
+  if (config_.Get().ipv4_address) {
     dispatcher_->PostTask(
         FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
   }
 
-  if (dhcp_controller_) {
+  if (dhcp_controller_ && !config.ipv4_address) {
     // Trigger DHCP renew.
     dhcp_controller_->RenewIP();
   }
@@ -429,7 +395,6 @@ void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
                                         bool new_lease_acquired) {
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
-  DCHECK(ipconfig());
   LOG(INFO) << *this << ": DHCP lease "
             << (new_lease_acquired ? "acquired " : "update ") << network_config;
   if (new_lease_acquired) {
@@ -437,8 +402,11 @@ void Network::OnIPConfigUpdatedFromDHCP(const NetworkConfig& network_config,
       ev->OnGetDHCPLease(interface_index_);
     }
   }
-  config_.SetFromDHCP(std::make_unique<NetworkConfig>(network_config));
-  ipconfig()->UpdateFromDHCP(network_config, dhcp_data);
+  dhcp_data_ = dhcp_data;
+  if (config_.SetFromDHCP(std::make_unique<NetworkConfig>(network_config))) {
+    UpdateIPConfigDBusObject();
+  }
+
   OnIPv4ConfigUpdated();
   // TODO(b/232177767): OnIPv4ConfiguredWithDHCPLease() should be called inside
   // Network::OnIPv4ConfigUpdated() and only if SetupConnection() happened as a
@@ -469,42 +437,18 @@ void Network::OnDHCPDrop(bool is_voluntary) {
 
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
-  DCHECK(ipconfig());
-  if (config_.GetStatic().ipv4_address.has_value()) {
-    // Consider three cases:
-    //
-    // 1. We're here because DHCP failed while starting up. There
-    //    are two subcases:
-    //    a. DHCP has failed, and Static IP config has _not yet_
-    //       completed. It's fine to do nothing, because we'll
-    //       apply the static config shortly.
-    //    b. DHCP has failed, and Static IP config has _already_
-    //       completed. It's fine to do nothing, because we can
-    //       continue to use the static config that's already
-    //       been applied.
-    //
-    // 2. We're here because a previously valid DHCP configuration
-    //    is no longer valid. There's still a static IP config,
-    //    because the condition in the if clause evaluated to true.
-    //    Furthermore, the static config includes an IP address for
-    //    us to use.
-    //
-    //    The current configuration may include some DHCP
-    //    parameters, overridden by any static parameters
-    //    provided. We continue to use this configuration, because
-    //    the only configuration element that is leased to us (IP
-    //    address) will be overridden by a static parameter.
-    //
-    // TODO(b/261681299): When this function is triggered by a renew failure,
-    // the current IPConfig can be a mix of DHCP and static IP. We need to
-    // revert the DHCP part.
-    return;
-  }
 
-  config_.SetFromDHCP(nullptr);
-  ipconfig()->ResetProperties();
-  for (auto* ev : event_handlers_) {
-    ev->OnIPConfigsPropertyUpdated(interface_index_);
+  dhcp_data_ = std::nullopt;
+  bool config_changed = config_.SetFromDHCP(nullptr);
+  UpdateIPConfigDBusObject();
+  if (config_.Get().ipv4_address) {
+    if (config_changed) {
+      // When this function is triggered by a renew failure, the current
+      // IPConfig can be a mix of DHCP and static IP. We need to revert the DHCP
+      // part.
+      OnIPv4ConfigUpdated();
+    }
+    return;
   }
 
   // Fallback to IPv6 if possible.
@@ -636,6 +580,18 @@ void Network::OnIPv6ConfigUpdated() {
 
 void Network::UpdateIPConfigDBusObject() {
   auto combined_network_config = config_.Get();
+  if (!combined_network_config.ipv4_address) {
+    set_ipconfig(nullptr);
+  } else {
+    if (!ipconfig()) {
+      set_ipconfig(
+          std::make_unique<IPConfig>(control_interface_, interface_name_));
+    }
+    ipconfig()->ApplyNetworkConfig(combined_network_config,
+                                   net_base::IPFamily::kIPv4, dhcp_data_);
+  }
+  // Keep the historical behavior that ip6config is only created when both IP
+  // address and DNS servers are available.
   if (combined_network_config.ipv6_addresses.empty() ||
       combined_network_config.dns_servers.empty()) {
     set_ip6config(nullptr);
@@ -644,7 +600,7 @@ void Network::UpdateIPConfigDBusObject() {
       set_ip6config(
           std::make_unique<IPConfig>(control_interface_, interface_name_));
     }
-    ip6config()->ApplyNetworkConfig(combined_network_config, true,
+    ip6config()->ApplyNetworkConfig(combined_network_config,
                                     net_base::IPFamily::kIPv6);
   }
   for (auto* ev : event_handlers_) {

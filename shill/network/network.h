@@ -27,6 +27,7 @@
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_applier.h"
 #include "shill/network/network_config.h"
 #include "shill/network/network_priority.h"
@@ -552,6 +553,7 @@ class Network {
   base::RepeatingClosure current_ipconfig_change_handler_;
 
   CompoundNetworkConfig config_;
+  std::optional<DHCPv4Config::Data> dhcp_data_;
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_ = false;

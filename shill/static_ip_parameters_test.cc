@@ -4,6 +4,8 @@
 
 #include "shill/service.h"
 
+#include <memory>
+
 #include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
@@ -94,10 +96,6 @@ class StaticIPParametersTest : public Test {
     service_->SetAttachedNetwork(network_->AsWeakPtr());
     dispatcher_.task_environment().RunUntilIdle();
   }
-
-  // Triggers that the Network applies the saved config it keeps, by a static
-  // config change without running the pending tasks.
-  void TriggerRestore() { service_->NotifyStaticIPConfigChanged(); }
 
   void ExpectEmptyIPConfig() {
     const auto& network_config = network_->GetNetworkConfig();
@@ -196,7 +194,8 @@ class StaticIPParametersTest : public Test {
     ipconfig_props.default_route = false;
     NetworkConfig network_config =
         IPConfig::Properties::ToNetworkConfig(&ipconfig_props, nullptr);
-    network_->set_dhcp_network_config_for_testing(network_config);
+    network_->set_link_protocol_network_config(
+        std::make_unique<NetworkConfig>(network_config));
   }
   void SetStaticProperties() { SetStaticPropertiesWithVersion(0); }
   void SetStaticPropertiesWithVersion(int version) {
@@ -231,6 +230,12 @@ class StaticIPParametersTest : public Test {
     args.Set<int32_t>(kMtuProperty, kMtu);
     Error error;
     store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
+  }
+  void SetEmptyStaticProperties() {
+    KeyValueStore args;
+    Error error;
+    service_->mutable_store()->SetKeyValueStoreProperty(kStaticIPConfigProperty,
+                                                        args, &error);
   }
 
   KeyValueStore GetStaticArgs() {
@@ -279,7 +284,7 @@ TEST_F(StaticIPParametersTest, DefaultRoute) {
   SetStaticProperties();
   dispatcher_.task_environment().RunUntilIdle();
   EXPECT_FALSE(network_->GetNetworkConfig().ipv4_default_route);
-  TriggerRestore();
+  SetEmptyStaticProperties();
   EXPECT_TRUE(network_->GetNetworkConfig().ipv4_default_route);
 }
 

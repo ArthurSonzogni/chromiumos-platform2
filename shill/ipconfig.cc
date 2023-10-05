@@ -385,18 +385,23 @@ uint32_t IPConfig::GetLeaseDurationSeconds(Error* /*error*/) {
   return properties_.dhcp_data.lease_duration.InSeconds();
 }
 
-void IPConfig::ApplyNetworkConfig(const NetworkConfig& config,
-                                  bool force_overwrite,
-                                  net_base::IPFamily family) {
-  properties_.UpdateFromNetworkConfig(config, force_overwrite, family);
-  EmitChanges();
-}
-
-void IPConfig::UpdateFromDHCP(const NetworkConfig& config,
-                              const DHCPv4Config::Data& dhcp_data) {
-  properties_.method = kTypeDHCP;
-  properties_.UpdateFromDHCPData(dhcp_data);
-  properties_.UpdateFromNetworkConfig(config, true, net_base::IPFamily::kIPv4);
+void IPConfig::ApplyNetworkConfig(
+    const NetworkConfig& config,
+    net_base::IPFamily family,
+    const std::optional<DHCPv4Config::Data>& dhcp_data) {
+  properties_.UpdateFromNetworkConfig(config, true, family);
+  switch (family) {
+    case net_base::IPFamily::kIPv6:
+      properties_.method = kTypeIPv6;
+      break;
+    case net_base::IPFamily::kIPv4:
+      if (dhcp_data) {
+        properties_.UpdateFromDHCPData(*dhcp_data);
+        properties_.method = kTypeDHCP;
+      } else {
+        properties_.method = kTypeIPv4;
+      }
+  }
   EmitChanges();
 }
 
