@@ -241,7 +241,7 @@ class ArcService {
   std::optional<ArcDevice> arc0_device_;
   // The PID of the ARC container instance or the CID of ARCVM instance.
   uint32_t id_;
-  // All shill Devices currently managed by shill, keyed by host interface name.
+  // All shill Devices currently managed by shill, keyed by shill Device name.
   std::map<std::string, ShillClient::Device> shill_devices_;
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};

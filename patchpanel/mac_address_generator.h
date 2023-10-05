@@ -21,6 +21,10 @@ using MacAddress = std::array<uint8_t, 6>;
 // with any previously generated addresses by this instance.
 class BRILLO_EXPORT MacAddressGenerator {
  public:
+  // Base address used for MacAddressGenerator::GetStable.
+  static constexpr MacAddress kStableBaseAddr = {0x42, 0x37, 0x05,
+                                                 0x13, 0x17, 0x00};
+
   MacAddressGenerator() = default;
   MacAddressGenerator(const MacAddressGenerator&) = delete;
   MacAddressGenerator& operator=(const MacAddressGenerator&) = delete;

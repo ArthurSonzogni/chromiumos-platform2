@@ -46,7 +46,6 @@ namespace patchpanel {
 namespace {
 constexpr uint32_t kTestPID = 2;
 constexpr uint32_t kTestCID = 2;
-constexpr MacAddress kArcVmArc0MacAddr = {0x42, 0x37, 0x05, 0x13, 0x17, 0x01};
 const IPv4CIDR kArcHostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.1/30");
 const IPv4CIDR kArcGuestCIDR =
@@ -62,6 +61,9 @@ const IPv4CIDR kFirstWifiHostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.13/30");
 const IPv4CIDR kSecondWifiHostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.17/30");
+const IPv4Address kFirstCellGuestIP = IPv4Address(100, 115, 92, 22);
+const IPv4CIDR kFirstCellGuestCIDR =
+    *IPv4CIDR::CreateFromAddressAndPrefix(kFirstCellGuestIP, 30);
 const IPv4CIDR kFirstCellHostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.21/30");
 
@@ -70,15 +72,26 @@ ShillClient::Device MakeShillDevice(
     ShillClient::Device::Type type,
     std::optional<std::string> primary_multiplexed_interface = std::nullopt) {
   ShillClient::Device dev;
-  dev.ifname = shill_device_interface_property;
   dev.shill_device_interface_property = shill_device_interface_property;
   dev.primary_multiplexed_interface = primary_multiplexed_interface;
   dev.type = type;
+  dev.ifname =
+      primary_multiplexed_interface.value_or(shill_device_interface_property);
   return dev;
 }
 
-MATCHER_P(ShillDeviceHasInterfaceName, expected_ifname, "") {
-  return arg.ifname == expected_ifname;
+MATCHER_P(IsShillDevice, expected_ifname, "") {
+  return !arg.primary_multiplexed_interface.has_value() &&
+         arg.ifname == expected_ifname;
+}
+
+MATCHER_P2(IsShillMultiplexedDevice,
+           expected_shill_device_ifname,
+           expected_ifname,
+           "") {
+  return arg.shill_device_interface_property == expected_shill_device_ifname &&
+         arg.ifname == expected_ifname && arg.primary_multiplexed_interface &&
+         arg.ifname == expected_ifname;
 }
 
 }  // namespace
@@ -120,13 +133,12 @@ class ArcServiceTest : public testing::Test {
 TEST_F(ArcServiceTest, NotStarted_AddDevice) {
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), _)).Times(0);
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false))
       .Times(0);
-  EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"), _))
+  EXPECT_CALL(*datapath_, AddInboundIPv4DNAT(AutoDNATTarget::kArc,
+                                             IsShillDevice("eth0"), _))
       .Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
@@ -139,18 +151,16 @@ TEST_F(ArcServiceTest, NotStarted_AddDevice) {
 TEST_F(ArcServiceTest, NotStarted_AddRemoveDevice) {
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), _)).Times(0);
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false))
       .Times(0);
-  EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"), _))
+  EXPECT_CALL(*datapath_, AddInboundIPv4DNAT(AutoDNATTarget::kArc,
+                                             IsShillDevice("eth0"), _))
       .Times(0);
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0"))).Times(0);
-  EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                    ShillDeviceHasInterfaceName("eth0"), _))
+  EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
+                                                IsShillDevice("eth0"), _))
       .Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(0);
 
@@ -234,10 +244,10 @@ TEST_F(ArcServiceTest, StableArcVmMacAddrs) {
   svc->Start(kTestCID);
   auto configs = svc->GetDeviceConfigs();
   EXPECT_EQ(configs.size(), 6);
-  auto mac_addr = kArcVmArc0MacAddr;
+  auto mac_addr = MacAddressGenerator::kStableBaseAddr;
   for (const auto* config : configs) {
-    EXPECT_EQ(config->mac_addr(), mac_addr);
     mac_addr[5]++;
+    EXPECT_EQ(config->mac_addr(), mac_addr);
   }
 }
 
@@ -330,16 +340,58 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
   auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
   svc->AddDevice(eth_dev);
+  Mock::VerifyAndClearExpectations(datapath_.get());
+}
+
+TEST_F(ArcServiceTest, ContainerImpl_OnStartCellularMultiplexedDevice) {
+  EXPECT_CALL(*datapath_, NetnsAttachName(StrEq("arc_netns"), kTestPID))
+      .WillOnce(Return(true));
+  // Expectations for arc0 setup.
+  EXPECT_CALL(*datapath_,
+              ConnectVethPair(kTestPID, StrEq("arc_netns"), StrEq("vetharc0"),
+                              StrEq("arc0"), _, kArcGuestCIDR, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+
+  auto svc = NewService(ArcService::ArcType::kContainer);
+  svc->Start(kTestPID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
+  // Expectations for mbimmux0.1 setup.
+  EXPECT_CALL(*datapath_,
+              ConnectVethPair(kTestPID, StrEq("arc_netns"), StrEq("vethwwan0"),
+                              StrEq("wwan0"), _, kFirstCellGuestCIDR, _, true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_wwan0"), kFirstCellHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_wwan0"), StrEq("vethwwan0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, StartRoutingDevice(
+                              IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                              StrEq("arc_wwan0"), TrafficSource::kArc,
+                              /*static_ipv6=*/false));
+  EXPECT_CALL(*datapath_, AddInboundIPv4DNAT(
+                              AutoDNATTarget::kArc,
+                              IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                              IPv4Address(100, 115, 92, 22)));
+
+  auto wwan_dev = MakeShillDevice("wwan0", ShillClient::Device::Type::kCellular,
+                                  "mbimmux0.1");
+  svc->AddDevice(wwan_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
@@ -469,12 +521,11 @@ TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
   auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
@@ -516,12 +567,11 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
   svc->Start(kTestPID);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -641,8 +691,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetheth0"))).Times(1);
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0")));
   EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                    ShillDeviceHasInterfaceName("eth0"),
+              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                     IPv4Address(100, 115, 92, 6)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(1);
 
@@ -678,12 +727,11 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -720,12 +768,11 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
@@ -752,12 +799,12 @@ TEST_F(ArcServiceTest, VmImpl_Start) {
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
   auto svc = NewService(ArcService::ArcType::kVM);
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
-TEST_F(ArcServiceTest, VmImpl_StartDevice) {
+TEST_F(ArcServiceTest, VmImpl_StartEthernetDevice) {
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
                                     StrEq("crosvm"), DeviceMode::kTap))
@@ -776,7 +823,7 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
 
   auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
   auto svc = NewService(ArcService::ArcType::kVM);
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -786,18 +833,58 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
+TEST_F(ArcServiceTest, VmImpl_StartCellularMultiplexedDevice) {
+  // Expectations for tap devices pre-creation.
+  EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
+                                    StrEq("crosvm"), DeviceMode::kTap))
+      .WillOnce(Return("vmtap0"))
+      .WillOnce(Return("vmtap1"))
+      .WillOnce(Return("vmtap2"))
+      .WillOnce(Return("vmtap3"))
+      .WillOnce(Return("vmtap4"))
+      .WillOnce(Return("vmtap5"));
+  // Expectations for "arc0" setup.
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArcHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
+
+  auto wwan_dev = MakeShillDevice("wwan0", ShillClient::Device::Type::kCellular,
+                                  "mbimmux0.1");
+  auto svc = NewService(ArcService::ArcType::kVM);
+  svc->Start(kTestCID);
+  EXPECT_TRUE(svc->IsStarted());
+  Mock::VerifyAndClearExpectations(datapath_.get());
+
+  // Expectations for mbimmux0.1  setup.
+  EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_wwan0"), kFirstCellHostCIDR))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_wwan0"), StrEq("vmtap5")))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, StartRoutingDevice(
+                              IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                              StrEq("arc_wwan0"), TrafficSource::kArc,
+                              /*static_ipv6=*/false));
+  EXPECT_CALL(*datapath_, AddInboundIPv4DNAT(
+                              AutoDNATTarget::kArc,
+                              IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                              IPv4Address(100, 115, 92, 22)));
+
+  svc->AddDevice(wwan_dev);
+  Mock::VerifyAndClearExpectations(datapath_.get());
+}
 TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
@@ -819,7 +906,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   auto eth1_dev = MakeShillDevice("eth1", ShillClient::Device::Type::kEthernet);
   auto wlan_dev = MakeShillDevice("wlan0", ShillClient::Device::Type::kWifi);
   auto svc = NewService(ArcService::ArcType::kVM);
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -829,12 +916,11 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
   svc->AddDevice(eth0_dev);
@@ -846,12 +932,11 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_wlan0"), StrEq("vmtap3")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("wlan0"),
-                                 StrEq("arc_wlan0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("wlan0"), StrEq("arc_wlan0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("wlan0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("wlan0"),
                                  IPv4Address(100, 115, 92, 14)));
 
   svc->AddDevice(wlan_dev);
@@ -863,12 +948,11 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth1"), StrEq("vmtap2")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth1"),
-                                 StrEq("arc_eth1"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth1"), StrEq("arc_eth1"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth1"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth1"),
                                  IPv4Address(100, 115, 92, 10)));
 
   svc->AddDevice(eth1_dev);
@@ -893,7 +977,7 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
   auto svc = NewService(ArcService::ArcType::kVM);
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -909,7 +993,7 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap5")));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
-  svc->Stop(kTestPID);
+  svc->Stop(kTestCID);
   EXPECT_FALSE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
@@ -933,7 +1017,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
 
   auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
   auto svc = NewService(ArcService::ArcType::kVM);
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -943,12 +1027,11 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -965,11 +1048,10 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0")));
   EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                    ShillDeviceHasInterfaceName("eth0"),
+              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                     IPv4Address(100, 115, 92, 6)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));
-  svc->Stop(kTestPID);
+  svc->Stop(kTestCID);
   EXPECT_FALSE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -993,14 +1075,13 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
@@ -1024,7 +1105,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
 
   auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
   auto svc = NewService(ArcService::ArcType::kVM);
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -1034,12 +1115,11 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
-              StartRoutingDevice(ShillDeviceHasInterfaceName("eth0"),
-                                 StrEq("arc_eth0"), TrafficSource::kArc,
+              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
+                                 TrafficSource::kArc,
                                  /*static_ipv6=*/false));
   EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                 ShillDeviceHasInterfaceName("eth0"),
+              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  IPv4Address(100, 115, 92, 6)));
 
   svc->AddDevice(eth_dev);
@@ -1048,8 +1128,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   // Expectations for eth0 teardown.
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0")));
   EXPECT_CALL(*datapath_,
-              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
-                                    ShillDeviceHasInterfaceName("eth0"),
+              RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                     IPv4Address(100, 115, 92, 6)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));
 
@@ -1077,7 +1156,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   auto eth1_dev = MakeShillDevice("eth1", ShillClient::Device::Type::kEthernet);
   auto wlan0_dev = MakeShillDevice("wlan0", ShillClient::Device::Type::kWifi);
   auto svc = NewService(ArcService::ArcType::kVM);
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
   Mock::VerifyAndClearExpectations(datapath_.get());
 
   EXPECT_CALL(*datapath_, AddBridge(_, _)).WillRepeatedly(Return(true));
@@ -1141,7 +1220,7 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   auto eth_dev = MakeShillDevice("eth0", ShillClient::Device::Type::kEthernet);
   auto wlan_dev = MakeShillDevice("wlan0", ShillClient::Device::Type::kWifi);
   auto svc = NewService(ArcService::ArcType::kVM);
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -1183,7 +1262,7 @@ TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
       .WillOnce(Return("vmtap8"));
 
   auto svc = NewService(ArcService::ArcType::kVM);
-  svc->Start(kTestPID);
+  svc->Start(kTestCID);
 
   std::map<std::string, std::string> arcvm_guest_ifnames = {
       {"vmtap2", "eth0"}, {"vmtap3", "eth1"}, {"vmtap4", "eth2"},

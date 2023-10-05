@@ -7,9 +7,6 @@
 #include <base/rand_util.h>
 
 namespace patchpanel {
-namespace {
-constexpr MacAddress kStableBaseAddr = {0x42, 0x37, 0x05, 0x13, 0x17, 0x00};
-}  // namespace
 
 MacAddress MacAddressGenerator::Generate() {
   MacAddress addr;

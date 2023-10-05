@@ -485,7 +485,7 @@ void ArcService::Stop(uint32_t id) {
 }
 
 void ArcService::AddDevice(const ShillClient::Device& shill_device) {
-  shill_devices_[shill_device.ifname] = shill_device;
+  shill_devices_[shill_device.shill_device_interface_property] = shill_device;
   if (!IsStarted())
     return;
 
@@ -576,11 +576,12 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
       devices_.erase(it);
     }
   }
-  shill_devices_.erase(shill_device.ifname);
+  shill_devices_.erase(shill_device.shill_device_interface_property);
 }
 
 void ArcService::UpdateDeviceIPConfig(const ShillClient::Device& shill_device) {
-  auto shill_device_it = shill_devices_.find(shill_device.ifname);
+  auto shill_device_it =
+      shill_devices_.find(shill_device.shill_device_interface_property);
   if (shill_device_it == shill_devices_.end()) {
     LOG(WARNING) << "Unknown shill Device " << shill_device;
     return;
