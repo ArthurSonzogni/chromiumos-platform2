@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
 #include "base/synchronization/lock.h"

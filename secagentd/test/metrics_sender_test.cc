@@ -7,8 +7,6 @@
 #include <memory>
 
 #include "base/functional/bind.h"
-#include "base/functional/callback_forward.h"
-#include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "gmock/gmock.h"

@@ -4,7 +4,6 @@
 
 #include "secagentd/message_sender.h"
 
-#include <map>
 #include <memory>
 #include <string>
 #include <utility>

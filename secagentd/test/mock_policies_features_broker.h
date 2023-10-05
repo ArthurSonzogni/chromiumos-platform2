@@ -5,10 +5,6 @@
 #ifndef SECAGENTD_TEST_MOCK_POLICIES_FEATURES_BROKER_H_
 #define SECAGENTD_TEST_MOCK_POLICIES_FEATURES_BROKER_H_
 
-#include <cstdint>
-#include <memory>
-#include <vector>
-
 #include "base/time/time.h"
 #include "gmock/gmock.h"
 #include "secagentd/policies_features_broker.h"

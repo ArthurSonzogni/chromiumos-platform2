@@ -5,20 +5,14 @@
 #ifndef SECAGENTD_MESSAGE_SENDER_H_
 #define SECAGENTD_MESSAGE_SENDER_H_
 
-#include <algorithm>
 #include <memory>
 #include <optional>
-#include <string>
 #include <unordered_map>
 #include <utility>
-#include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "base/files/file_path.h"
 #include "base/files/file_path_watcher.h"
-#include "base/functional/bind.h"
-#include "base/memory/weak_ptr.h"
 #include "base/synchronization/lock.h"
 #include "base/task/sequenced_task_runner.h"
 #include "google/protobuf/message_lite.h"

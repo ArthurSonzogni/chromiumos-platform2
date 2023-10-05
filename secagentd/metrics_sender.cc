@@ -4,13 +4,10 @@
 
 #include "secagentd/metrics_sender.h"
 
-#include <algorithm>
 #include <memory>
 #include <utility>
 
 #include "base/functional/bind.h"
-#include "base/functional/callback_forward.h"
-#include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/no_destructor.h"

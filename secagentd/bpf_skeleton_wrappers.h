@@ -7,7 +7,6 @@
 
 #include <arpa/inet.h>
 #include <bpf/libbpf.h>
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>

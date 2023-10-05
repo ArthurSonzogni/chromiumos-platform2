@@ -4,11 +4,8 @@
 
 #include "secagentd/secagent.h"
 
-#include <cstdint>
 #include <cstring>
-#include <iterator>
 #include <memory>
-#include <optional>
 #include <sysexits.h>
 
 #include "absl/status/status.h"

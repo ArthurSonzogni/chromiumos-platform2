@@ -5,23 +5,17 @@
 #ifndef SECAGENTD_METRICS_SENDER_H_
 #define SECAGENTD_METRICS_SENDER_H_
 
-#include <algorithm>
-#include <iostream>
-#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "base/functional/callback_forward.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
 #include "base/strings/strcat.h"
-#include "base/task/task_runner.h"
 #include "base/task/thread_pool.h"
 #include "base/timer/timer.h"
 #include "metrics/metrics_library.h"

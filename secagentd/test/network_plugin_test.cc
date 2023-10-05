@@ -2,25 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/plugins.h"
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <cstddef>
-#include <iterator>
 #include <memory>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
 #include "base/memory/scoped_refptr.h"
-#include "gmock/gmock.h"  // IWYU pragma: keep
-#include "google/protobuf/message_lite.h"
+#include "gmock/gmock.h"
 #include "google/protobuf/stubs/casts.h"
-#include "google/protobuf/util/message_differencer.h"
 #include "gtest/gtest.h"
-#include "secagentd/batch_sender.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
-#include "secagentd/plugins.h"
-#include "secagentd/policies_features_broker.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_batch_sender.h"
 #include "secagentd/test/mock_bpf_skeleton.h"

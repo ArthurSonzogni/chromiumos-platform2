@@ -7,7 +7,6 @@
 #include <unistd.h>
 
 #include <cstdlib>
-#include <iomanip>
 #include <memory>
 #include <string>
 #include <sysexits.h>

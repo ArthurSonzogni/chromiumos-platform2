@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/plugins.h"
+
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -19,7 +21,6 @@
 #include "secagentd/common.h"
 #include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
-#include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "user_data_auth/dbus-proxies.h"

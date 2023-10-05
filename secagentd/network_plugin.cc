@@ -5,18 +5,13 @@
 #include "secagentd/plugins.h"
 
 #include <arpa/inet.h>
-#include <algorithm>
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-#include "absl/hash/hash.h"
-#include "absl/strings/str_format.h"
 #include "absl/types/span.h"
 #include "base/base64.h"
 #include "base/containers/lru_cache.h"
-#include "base/hash/hash.h"
 #include "base/hash/sha1.h"
-#include "base/strings/string_util.h"
 #include "base/sys_byteorder.h"
 #include "secagentd/batch_sender.h"
 #include "secagentd/bpf/bpf_types.h"

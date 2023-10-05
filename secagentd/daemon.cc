@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/daemon.h"
+
 #include <unistd.h>
 
 #include <memory>
@@ -15,7 +17,6 @@
 #include "brillo/daemons/dbus_daemon.h"
 #include "missive/client/missive_client.h"
 #include "secagentd/common.h"
-#include "secagentd/daemon.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"

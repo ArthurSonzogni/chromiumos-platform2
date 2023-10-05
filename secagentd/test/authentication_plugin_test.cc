@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/plugins.h"
+
 #include <memory>
 
 #include "base/functional/callback_forward.h"
@@ -15,7 +17,6 @@
 #include "gtest/gtest.h"
 #include "missive/util/status.h"
 #include "secagentd/device_user.h"
-#include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_batch_sender.h"
 #include "secagentd/test/mock_device_user.h"

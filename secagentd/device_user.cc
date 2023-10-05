@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "secagentd/device_user.h"
-#include <absl/functional/function_ref.h>
 
 #include <list>
 #include <string>

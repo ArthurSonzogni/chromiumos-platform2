@@ -12,23 +12,18 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/bind.h"
-#include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
-#include "base/strings/stringprintf.h"
-#include "base/test/bind.h"
 #include "base/test/task_environment.h"
-#include "gmock/gmock.h"  // IWYU pragma: keep
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "missive/client/mock_report_queue.h"
 #include "missive/client/mock_report_queue_provider.h"
-#include "missive/client/report_queue.h"
 #include "missive/client/report_queue_provider_test_helper.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
-#include "secagentd/test/mock_message_sender.h"
 
 namespace secagentd::testing {
 

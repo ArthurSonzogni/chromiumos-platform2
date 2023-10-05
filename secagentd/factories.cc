@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/plugins.h"
+
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "attestation/proto_bindings/interface.pb.h"
@@ -15,7 +16,6 @@
 #include "secagentd/common.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
-#include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 
 namespace secagentd {

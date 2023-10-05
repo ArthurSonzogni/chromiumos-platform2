@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/plugins.h"
+
 #include <cstdint>
 #include <cstring>
-#include <iterator>
 #include <memory>
 #include <optional>
 
@@ -12,7 +13,6 @@
 #include <asm/bootparam.h>
 #define HAVE_BOOTPARAM
 #endif
-#include "absl/status/status.h"
 #include "attestation/dbus-constants.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client-test/attestation/dbus-proxy-mocks.h"
@@ -25,11 +25,10 @@
 #include "base/time/time.h"
 #include "dbus/mock_bus.h"
 #include "dbus/mock_object_proxy.h"
-#include "gmock/gmock.h"  // IWYU pragma: keep
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
-#include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"

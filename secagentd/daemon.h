@@ -7,18 +7,9 @@
 
 #include <cstdint>
 #include <memory>
-#include <vector>
 
-#include "base/memory/scoped_refptr.h"
 #include "brillo/daemons/dbus_daemon.h"
-#include "dbus/mock_bus.h"
-#include "secagentd/device_user.h"
-#include "secagentd/message_sender.h"
-#include "secagentd/metrics_sender.h"
-#include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
-#include "secagentd/process_cache.h"
-#include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/secagent.h"
 
 namespace secagentd {

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/plugins.h"
+
 #include <unistd.h>
 
 #include <cstdint>
@@ -24,14 +26,12 @@
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/strings/strcat.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include "missive/proto/record_constants.pb.h"
 #include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
-#include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "vboot/crossystem.h"

@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/bpf_skeleton_wrappers.h"
+
 #include "base/check.h"
 #include "secagentd/bpf/bpf_types.h"
-#include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/common.h"
 
 namespace secagentd {

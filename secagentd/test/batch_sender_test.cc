@@ -12,7 +12,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
-#include "gmock/gmock.h"  // IWYU pragma: keep
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_message_sender.h"

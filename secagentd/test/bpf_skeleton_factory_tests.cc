@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/bpf_skeleton_wrappers.h"
+
 #include <utility>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
 #include "base/memory/scoped_refptr.h"
 #include "gtest/gtest.h"
-#include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/common.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/test/mock_bpf_skeleton.h"
