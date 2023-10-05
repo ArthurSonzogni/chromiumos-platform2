@@ -12,9 +12,6 @@
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
-#include "rmad/system/power_manager_client_impl.h"
-#include "rmad/utils/crossystem_utils_impl.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
@@ -24,10 +21,8 @@ WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(
         scoped_refptr<JsonStore> json_store,
         scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback),
-      working_dir_path_(kDefaultWorkingDirPath) {
+    : BaseStateHandler(json_store, daemon_callback) {
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
-  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 
@@ -35,14 +30,10 @@ WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(
         scoped_refptr<JsonStore> json_store,
         scoped_refptr<DaemonCallback> daemon_callback,
-        const base::FilePath& working_dir_path,
         std::unique_ptr<GscUtils> gsc_utils,
-        std::unique_ptr<CrosSystemUtils> crossystem_utils,
         std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      working_dir_path_(working_dir_path),
       gsc_utils_(std::move(gsc_utils)),
-      crossystem_utils_(std::move(crossystem_utils)),
       write_protect_utils_(std::move(write_protect_utils)) {}
 
 RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
@@ -145,7 +136,6 @@ bool WriteProtectDisablePhysicalStateHandler::CanSkipEnablingFactoryMode()
 
 void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
   VLOG(1) << "Check write protection";
-
   if (IsHwwpDisabled()) {
     signal_timer_.Stop();
     OnWriteProtectDisabled();
@@ -160,15 +150,15 @@ void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
     if (!gsc_utils_->EnableFactoryMode()) {
       LOG(ERROR) << "Failed to enable factory mode.";
     }
-    if (!IsPowerwashDisabled(working_dir_path_)) {
-      powerwash_required = true;
-    }
+    // Request an RMA mode powerwash to preserve the state file.
+    powerwash_required = true;
   }
 
   // Chrome picks up the signal and shows the "Preparing to reboot" message.
   daemon_callback_->GetWriteProtectSignalCallback().Run(false);
 
-  // Request RMA mode powerwash if required, then reboot EC.
+  // Schedule an RMA mode powerwash (if required) and EC reboot after
+  // |kRebootDelay| seconds.
   if (powerwash_required) {
     reboot_timer_.Start(
         FROM_HERE, kRebootDelay,
@@ -193,10 +183,11 @@ void WriteProtectDisablePhysicalStateHandler::RequestRmaPowerwashAndRebootEc() {
 
 void WriteProtectDisablePhysicalStateHandler::
     RequestRmaPowerwashAndRebootEcCallback(bool success) {
-  if (!success) {
+  if (success) {
+    RebootEc();
+  } else {
     LOG(ERROR) << "Failed to request RMA mode powerwash";
   }
-  RebootEc();
 }
 
 void WriteProtectDisablePhysicalStateHandler::RebootEc() {

@@ -7,10 +7,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
-#include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -24,7 +22,6 @@
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
-using testing::Assign;
 using testing::DoAll;
 using testing::Eq;
 using testing::Ne;
@@ -44,7 +41,6 @@ constexpr char kTestUrl[] =
 
 struct StateHandlerArgs {
   bool factory_mode_enabled = false;
-  bool is_cros_debug = false;
   bool* powerwash_requested = nullptr;
   bool* reboot_toggled = nullptr;
 };
@@ -75,10 +71,6 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_crossystem_utils,
             GetString(Eq(CrosSystemUtils::kHwidProperty), _))
         .WillByDefault(DoAll(SetArgPointee<1>(kTestHwid), Return(true)));
-    ON_CALL(*mock_crossystem_utils,
-            GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
-        .WillByDefault(
-            DoAll(SetArgPointee<1>(args.is_cros_debug ? 1 : 0), Return(true)));
 
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
@@ -98,9 +90,8 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
                             base::Unretained(this), args.reboot_toggled));
 
     return base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
-        json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_gsc_utils), std::move(mock_crossystem_utils),
-        std::move(mock_write_protect_utils));
+        json_store_, daemon_callback_, std::move(mock_gsc_utils),
+        std::move(mock_crossystem_utils), std::move(mock_write_protect_utils));
   }
 
   void RequestRmaPowerwash(bool* request_powerwash,
@@ -238,60 +229,6 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Succeeded_Rsu) {
     EXPECT_FALSE(powerwash_requested);
     EXPECT_FALSE(reboot_toggled);
   }
-
-  task_environment_.FastForwardBy(
-      WriteProtectDisableRsuStateHandler::kRebootDelay);
-  EXPECT_TRUE(powerwash_requested);
-  EXPECT_TRUE(reboot_toggled);
-}
-
-TEST_F(WriteProtectDisableRsuStateHandlerTest,
-       GetNextStateCase_PowerwashDisabled_CrosDebug) {
-  bool powerwash_requested = false, reboot_toggled = false;
-  auto handler =
-      CreateStateHandler({.factory_mode_enabled = false,
-                          .is_cros_debug = true,
-                          .powerwash_requested = &powerwash_requested,
-                          .reboot_toggled = &reboot_toggled});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
-
-  RmadState state;
-  state.mutable_wp_disable_rsu()->set_unlock_code(kTestUnlockCode);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
-  EXPECT_FALSE(powerwash_requested);
-  EXPECT_FALSE(reboot_toggled);
-
-  task_environment_.FastForwardBy(
-      WriteProtectDisableRsuStateHandler::kRebootDelay);
-  EXPECT_FALSE(powerwash_requested);
-  EXPECT_TRUE(reboot_toggled);
-}
-
-TEST_F(WriteProtectDisableRsuStateHandlerTest,
-       GetNextStateCase_PowerwashDisabled_NonCrosDebug) {
-  bool powerwash_requested = false, reboot_toggled = false;
-  auto handler =
-      CreateStateHandler({.factory_mode_enabled = false,
-                          .is_cros_debug = false,
-                          .powerwash_requested = &powerwash_requested,
-                          .reboot_toggled = &reboot_toggled});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
-
-  RmadState state;
-  state.mutable_wp_disable_rsu()->set_unlock_code(kTestUnlockCode);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
-  EXPECT_FALSE(powerwash_requested);
-  EXPECT_FALSE(reboot_toggled);
 
   task_environment_.FastForwardBy(
       WriteProtectDisableRsuStateHandler::kRebootDelay);
