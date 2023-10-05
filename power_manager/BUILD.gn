@@ -100,6 +100,7 @@ pkg_config("target_defaults") {
     "USE_CELLULAR=${use.cellular}",
     "USE_IIOSERVICE=${use.iioservice}",
     "USE_IIOSERVICE_PROXIMITY=${use.iioservice_proximity}",
+    "USE_KEY_EVICTION=${use.key_eviction}",
   ]
 
   # NOSORT
