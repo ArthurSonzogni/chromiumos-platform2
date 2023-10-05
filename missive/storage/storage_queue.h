@@ -34,6 +34,7 @@
 #include "missive/health/health_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_managed_buffer.h"
+#include "missive/resources/resource_manager.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/refcounted_closure_list.h"
@@ -325,7 +326,6 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     uint64_t file_position_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
     ResourceManagedBuffer buffer_ GUARDED_BY_CONTEXT(sequence_checker_);
 
-    const scoped_refptr<ResourceManager> memory_resource_;
     const scoped_refptr<ResourceManager> disk_space_resource_;
   };
 

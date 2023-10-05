@@ -1871,16 +1871,19 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     // and increase in size of DATA file.
     storage_queue_->active_write_reservation_size_ =
         sizeof(generation_id_) + current_record_digest_.size() +
-        RoundUpToFrameSize(sizeof(RecordHeader) + buffer_.size());
+        RoundUpToFrameSize(RecordHeader::kSize + buffer_.size());
 
-    Status reserve_result = storage_queue_->ReserveNewRecordDiskSpace(
+    const auto reserve_result = storage_queue_->ReserveNewRecordDiskSpace(
         storage_queue_->active_write_reservation_size_);
     if (!reserve_result.ok()) {
+      const size_t space_to_recover =
+          storage_queue_->active_write_reservation_size_;
       storage_queue_->active_write_reservation_size_ = 0u;
       storage_queue_->degradation_candidates_cb_.Run(
-          storage_queue_, base::BindPostTaskToCurrentDefault(base::BindOnce(
-                              &WriteContext::RetryWithDegradation,
-                              base::Unretained(this), reserve_result)));
+          storage_queue_,
+          base::BindPostTaskToCurrentDefault(base::BindOnce(
+              &WriteContext::RetryWithDegradation, base::Unretained(this),
+              space_to_recover, reserve_result)));
       return;
     }
 
@@ -1923,6 +1926,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
   }
 
   void RetryWithDegradation(
+      size_t space_to_recover,
       Status reserve_result,
       std::queue<scoped_refptr<StorageQueue>> degradation_candidates) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1933,8 +1937,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       return;
     }
     // Candidates found, start shedding from the lowest priority.
-    StartRecordsShedding(storage_queue_->active_write_reservation_size_,
-                         std::move(degradation_candidates));
+    StartRecordsShedding(space_to_recover, std::move(degradation_candidates));
   }
 
   void StartRecordsShedding(
@@ -1945,12 +1948,9 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
     // Prepare callbacks for shedding success and failure.
     // Both will run on the current queue.
-    auto resume_writing_cb =
-        base::BindPostTask(storage_queue_->sequenced_task_runner_,
-                           base::BindOnce(&WriteContext::ResumeWriteRecord,
-                                          base::Unretained(this)));
-    auto writing_failure_cb = base::BindPostTask(
-        storage_queue_->sequenced_task_runner_,
+    auto resume_writing_cb = base::BindPostTaskToCurrentDefault(base::BindOnce(
+        &WriteContext::ResumeWriteRecord, base::Unretained(this)));
+    auto writing_failure_cb = base::BindPostTaskToCurrentDefault(
         base::BindOnce(&WriteContext::DiskSpaceReservationFailure,
                        base::Unretained(this), space_to_recover));
 
@@ -2454,15 +2454,14 @@ StorageQueue::SingleFile::SingleFile(
       filename_(settings.filename),
       size_(settings.size),
       buffer_(settings.memory_resource),
-      memory_resource_(settings.memory_resource),
       disk_space_resource_(settings.disk_space_resource) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
 StorageQueue::SingleFile::~SingleFile() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  disk_space_resource_->Discard(size_);
   Close();
+  disk_space_resource_->Discard(size_);
 }
 
 Status StorageQueue::SingleFile::Open(bool read_only) {
@@ -2508,9 +2507,10 @@ void StorageQueue::SingleFile::Close() {
 void StorageQueue::SingleFile::DeleteWarnIfFailed() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(!handle_);
-  disk_space_resource_->Discard(size_);
-  size_ = 0;
-  DeleteFileWarnIfFailed(filename_);
+  if (DeleteFileWarnIfFailed(filename_)) {
+    disk_space_resource_->Discard(size_);
+    size_ = 0;
+  }
 }
 
 StatusOr<std::string_view> StorageQueue::SingleFile::Read(
