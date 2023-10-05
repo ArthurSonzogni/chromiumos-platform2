@@ -365,13 +365,20 @@ static result_code mount_encrypted_partition(
   if (has_chromefw()) {
     LOG_IF(ERROR, !SendSecretToBiodTmpFile(key, platform))
         << "Failed to send TPM secret to biod.";
+  } else {
+    LOG(ERROR) << "biod won't get a TPM seed without chromefw.";
+  }
+
+  /* Log errors during sending seed to hiberman and featured, but don't stop
+   * execution. */
+  if (shall_use_tpm_for_system_key()) {
     LOG_IF(ERROR, !SendSecretToHibermanTmpFile(key, platform))
         << "Failed to send TPM secret to hiberman.";
     LOG_IF(ERROR, !SendSecretToFeaturedTmpFile(key, platform))
         << "Failed to send TPM secret to featured.";
   } else {
-    LOG(ERROR) << "Failed to load system key, biod, hiberman, and featured "
-                  "won't get a TPM seed.";
+    LOG(ERROR) << "Failed to load TPM system key, hiberman and featured won't "
+                  "get a TPM seed.";
   }
 
   cryptohome::FileSystemKey encryption_key;
