@@ -400,8 +400,8 @@ pub fn get_component_margins_kb() -> ComponentMarginsKb {
         // 75 % of critical.
         arcvm_foreground: critical * 3 / 4,
 
-        // 150 % of critical.
-        arcvm_perceptible: critical * 3 / 2,
+        // 100 % of critical.
+        arcvm_perceptible: critical,
 
         arcvm_cached: moderate,
 
@@ -479,16 +479,41 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
         (PressureLevelChrome::None, 0)
     };
 
-    let (raw_arcvm_level, arcvm_reclaim_target_kb) = if available < margins.arcvm_foreground {
-        (
-            PressureLevelArcvm::Foreground,
-            margins.arcvm_foreground - available,
-        )
-    } else if available < margins.arcvm_perceptible {
-        (
-            PressureLevelArcvm::Perceptible,
-            margins.arcvm_perceptible - available,
-        )
+    let arcvm_threshold = if available < margins.arcvm_perceptible {
+        margins.arcvm_perceptible - available
+    } else {
+        0
+    };
+    let arc_container_threshold = if available < margins.arc_container_perceptible {
+        margins.arc_container_perceptible - available
+    } else {
+        0
+    };
+    // Use the max of the thresholds so it only has to call get_background_memory_kb once.
+    let max_threshold = std::cmp::max(arcvm_threshold, arc_container_threshold);
+    let background_memory_kb = match get_background_memory_kb(max_threshold) {
+        Ok(result) => result,
+        Err(e) => {
+            error!("Failed to call get_background_memory_kb: {:#}", e);
+            0
+        }
+    };
+
+    let (raw_arcvm_level, arcvm_reclaim_target_kb) = if available < margins.arcvm_perceptible {
+        if background_memory_kb > arcvm_threshold {
+            // If there are enough background memory, only kill cached apps.
+            (PressureLevelArcvm::Cached, margins.arcvm_cached - available)
+        } else if available < margins.arcvm_foreground {
+            (
+                PressureLevelArcvm::Foreground,
+                margins.arcvm_foreground - available,
+            )
+        } else {
+            (
+                PressureLevelArcvm::Perceptible,
+                margins.arcvm_perceptible - available,
+            )
+        }
     } else if available < margins.arcvm_cached {
         (PressureLevelArcvm::Cached, margins.arcvm_cached - available)
     } else {
@@ -507,12 +532,7 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
 
     let (arc_container_level, arc_container_reclaim_target_kb) =
         if available < margins.arc_container_perceptible {
-            let threshold = margins.arc_container_perceptible - available;
-            let result = has_enough_background_memory(threshold);
-            if let Err(ref e) = result {
-                error!("Failed to call has_enough_background_memory: {:#}", e);
-            }
-            if let Ok(true) = result {
+            if background_memory_kb > arc_container_threshold {
                 // If there are enough background memory, only kill cached apps.
                 (
                     PressureLevelArcContainer::Cached,
@@ -661,8 +681,14 @@ fn get_background_pids(component: Component) -> Result<Vec<i32>> {
     Ok(pids_and_time.0.clone())
 }
 
-// Returns true if the sum of the background memory exceeds |threshold_kb|.
-fn has_enough_background_memory(threshold_kb: u64) -> Result<bool> {
+// Returns the amount of background memory in KiB. To reduce the work when there are a lot of
+// background processes, it would stop counting if the background memory exceeds |threshold_kb|.
+// When |threshold_kb| is 0, it returns Ok(0).
+fn get_background_memory_kb(threshold_kb: u64) -> Result<u64> {
+    if threshold_kb == 0 {
+        return Ok(0);
+    }
+
     let mut total_background_memory_kb = 0;
     for component in [Component::Ash, Component::Lacros] {
         for pid in get_background_pids(component)? {
@@ -670,20 +696,19 @@ fn has_enough_background_memory(threshold_kb: u64) -> Result<bool> {
                 Ok(result) => {
                     total_background_memory_kb += result;
                     if total_background_memory_kb > threshold_kb {
-                        return Ok(true);
+                        return Ok(total_background_memory_kb);
                     }
                 }
                 Err(e) => {
                     // It's Ok to continue when failed to get memory usage for a pid.
                     // When get_chrome_process_memory_usage() failed, total_background_memory_kb
-                    // would be less and has_enough_background_memory would tend to return
-                    // Ok(false) and the pressure level would not be modified.
+                    // would be less and the pressure level would tend to be unmodified.
                     error!("Failed to get memory usage, pid: {}, error: {}", pid, e);
                 }
             }
         }
     }
-    Ok(false)
+    Ok(total_background_memory_kb)
 }
 
 // Memory usage estimation of |pid|, it's the sum of anonymous RSS and swap.
