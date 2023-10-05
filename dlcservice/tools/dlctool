@@ -309,6 +309,9 @@ main() {
   echo "Packing DLC (${FLAGS_id}) from: ${DIR_NAME}"
   check_writable_rootfs
 
+  echo "Stopping imageloader"
+  stop imageloader
+
   echo "Stopping dlcservice"
   stop dlcservice
 
