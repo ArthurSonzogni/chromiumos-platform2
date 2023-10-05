@@ -32,22 +32,27 @@ PoliciesFeaturesBroker::PoliciesFeaturesBroker(
       policy_provider_(std::move(policy_provider)),
       features_(features),
       poll_done_cb_(std::move(poll_done_cb)),
-      feature_values_{{Feature::kCrOSLateBootSecagentdXDRReporting,
-                       {{.name = "CrOSLateBootSecagentdXDRReporting",
-                         .default_state = FEATURE_ENABLED_BY_DEFAULT},
-                        false}},
-                      {Feature::kCrOSLateBootSecagentdCoalesceTerminates,
-                       {{.name = "CrOSLateBootSecagentdCoalesceTerminates",
-                         .default_state = FEATURE_ENABLED_BY_DEFAULT},
-                        false}},
-                      {Feature::kCrOSLateBootSecagentdXDRNetworkEvents,
-                       {{.name = "CrOSLateBootSecagentdXDRNetworkEvents",
-                         .default_state = FEATURE_ENABLED_BY_DEFAULT},
-                        false}},
-                      {Feature::kCrOSLateBootSecagentdXDRAuthenticateEvents,
-                       {{.name = "CrOSLateBootSecagentdXDRAuthenticateEvents",
-                         .default_state = FEATURE_DISABLED_BY_DEFAULT},
-                        false}}} {
+      feature_values_{
+          {Feature::kCrOSLateBootSecagentdXDRReporting,
+           {{.name = "CrOSLateBootSecagentdXDRReporting",
+             .default_state = FEATURE_ENABLED_BY_DEFAULT},
+            false}},
+          {Feature::kCrOSLateBootSecagentdCoalesceTerminates,
+           {{.name = "CrOSLateBootSecagentdCoalesceTerminates",
+             .default_state = FEATURE_ENABLED_BY_DEFAULT},
+            false}},
+          {Feature::kCrOSLateBootSecagentdXDRNetworkEvents,
+           {{.name = "CrOSLateBootSecagentdXDRNetworkEvents",
+             .default_state = FEATURE_ENABLED_BY_DEFAULT},
+            false}},
+          {Feature::kCrOSLateBootSecagentdXDRAuthenticateEvents,
+           {{.name = "CrOSLateBootSecagentdXDRAuthenticateEvents",
+             .default_state = FEATURE_DISABLED_BY_DEFAULT},
+            false}},
+          {Feature::kCrOSLateBootSecagentdXDRAuthenticateEventsControl,
+           {{.name = "CrOSLateBootSecagentdXDRAuthenticateEventsControl",
+             .default_state = FEATURE_DISABLED_BY_DEFAULT},
+            false}}} {
   for (const auto& [k, v] : feature_values_) {
     variations_to_query_.push_back(&v.variation);
   }
@@ -81,9 +86,9 @@ void PoliciesFeaturesBroker::Poll(bool blocking) {
   } else {
     // Start a timer just in case features never runs the async callback for
     // some reason. Probably not required in practice but being paranoid here
-    // because either the Policy or the Feature could be used to make the daemon
-    // stop emitting events in an emergency. So it's best for them to be as
-    // independent as possible.
+    // because either the Policy or the Feature could be used to make the
+    // daemon stop emitting events in an emergency. So it's best for them to
+    // be as independent as possible.
     poll_done_fallback_timer_.Start(
         FROM_HERE, (poll_timer_.GetCurrentDelay() / 2),
         base::BindOnce(&PoliciesFeaturesBroker::RunPollDoneCb,
