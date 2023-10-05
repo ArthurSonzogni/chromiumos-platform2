@@ -147,6 +147,21 @@ bool CrosConfigUtilsImpl::GetCustomLabelTagList(
   return true;
 }
 
+bool CrosConfigUtilsImpl::GetFirmwareConfig(uint32_t* firmware_config) const {
+  DCHECK(firmware_config);
+
+  std::string firmware_config_str;
+  const base::FilePath identity_path =
+      base::FilePath(kCrosRootPath).Append(kCrosFirmwarePath);
+  if (!cros_config_->GetString(identity_path.value(),
+                               kCrosFirmwareFirmwareConfigKey,
+                               &firmware_config_str)) {
+    return false;
+  }
+
+  return base::StringToUint(firmware_config_str, firmware_config);
+}
+
 bool CrosConfigUtilsImpl::GetMatchedItemsFromCategory(
     const std::string& category,
     const std::string& key,

@@ -29,6 +29,7 @@ class MockCrosConfigUtils : public CrosConfigUtils {
               GetCustomLabelTagList,
               (std::vector<std::string>*),
               (const override));
+  MOCK_METHOD(bool, GetFirmwareConfig, (uint32_t*), (const, override));
 };
 
 }  // namespace rmad

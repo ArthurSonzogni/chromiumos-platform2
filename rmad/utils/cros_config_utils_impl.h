@@ -34,6 +34,7 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
   bool GetSkuIdList(std::vector<uint32_t>* sku_list) const override;
   bool GetCustomLabelTagList(
       std::vector<std::string>* custom_label_tag_list) const override;
+  bool GetFirmwareConfig(uint32_t* firmware_config) const override;
 
  private:
   bool GetMatchedItemsFromCategory(const std::string& category,

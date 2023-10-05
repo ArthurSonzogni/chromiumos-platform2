@@ -45,6 +45,8 @@ constexpr char kCustomLabelTagOther[] = "TestCustomLabelTagOther";
 
 constexpr char kTrueStr[] = "true";
 
+constexpr uint32_t kFirmwareConfig = 55688;
+
 constexpr char kUndefinedComponentType[] = "undefined_component_type";
 constexpr uint32_t kSsfcMask = 0x8;
 constexpr char kSsfcComponentType[] = "TestComponentType";
@@ -118,6 +120,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
     // Define all path constants here.
     const base::FilePath root_path = base::FilePath(kCrosRootPath);
     const base::FilePath identity_path = root_path.Append(kCrosIdentityPath);
+    const base::FilePath firmware_path = root_path.Append(kCrosFirmwarePath);
     const base::FilePath rmad_path = root_path.Append(kCrosRmadPath);
     const base::FilePath ssfc_path = rmad_path.Append(kCrosSsfcPath);
     const base::FilePath component_type_configs_path =
@@ -138,6 +141,9 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                 kBrandCode);
     fake_cros_config->SetString(identity_path.value(), kCrosIdentitySkuKey,
                                 base::NumberToString(kSkuId));
+    fake_cros_config->SetString(firmware_path.value(),
+                                kCrosFirmwareFirmwareConfigKey,
+                                base::NumberToString(kFirmwareConfig));
 
     base::FilePath cros_config_root_path;
     if (args.custom_label) {
@@ -323,6 +329,14 @@ TEST_F(CrosConfigUtilsImplTest, HasCustomLabel_False) {
   auto cros_config_utils = CreateCrosConfigUtils({.custom_label = false});
 
   EXPECT_FALSE(cros_config_utils->HasCustomLabel());
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetFirmwareConfig_Success) {
+  auto cros_config_utils = CreateCrosConfigUtils();
+
+  uint32_t firmware_config;
+  EXPECT_TRUE(cros_config_utils->GetFirmwareConfig(&firmware_config));
+  EXPECT_EQ(firmware_config, kFirmwareConfig);
 }
 
 }  // namespace rmad

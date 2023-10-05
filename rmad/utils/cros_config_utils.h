@@ -44,6 +44,7 @@ class CrosConfigUtils {
   virtual bool GetCustomLabelTagList(
       std::vector<std::string>* custom_label_tag_list) const = 0;
   virtual bool GetSkuIdList(std::vector<uint32_t>* sku_id_list) const = 0;
+  virtual bool GetFirmwareConfig(uint32_t* firmware_config) const = 0;
 
   bool HasCustomLabel() const;
 };

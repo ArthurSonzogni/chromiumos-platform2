@@ -21,6 +21,11 @@ constexpr char kCrosIdentitySkuKey[] = "sku-id";
 // cros_config property /identity/custom-label-tag.
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
+// cros_config path /firmware.
+constexpr char kCrosFirmwarePath[] = "firmware";
+// cros_config property /firmware/firmware-config.
+constexpr char kCrosFirmwareFirmwareConfigKey[] = "firmware-config";
+
 // cros_config path /rmad.
 constexpr char kCrosRmadPath[] = "rmad";
 // cros_config property /rmad/enabled.
