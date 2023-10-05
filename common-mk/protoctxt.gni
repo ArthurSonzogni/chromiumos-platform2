@@ -43,7 +43,7 @@ template("protoc_text_to_bin") {
 
     sources = invoker.sources
 
-    script = "//common-mk/stdio_wrapper.py"
+    script = "//common-mk/runtime_wrapper.py"
     args = [
       "--stdin",
       "${protoc_text_dir}/{{source_file_part}}",
