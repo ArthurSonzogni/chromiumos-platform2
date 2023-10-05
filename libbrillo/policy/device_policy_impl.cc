@@ -314,6 +314,21 @@ bool DevicePolicyImpl::GetHwDataUsageEnabled(
   return true;
 }
 
+bool DevicePolicyImpl::GetManagedHwDataUsageEnabled(
+    bool* managed_hw_data_usage_enabled) const {
+  if (!device_policy_
+           ->has_device_flex_hw_data_for_product_improvement_enabled())
+    return false;
+
+  const em::DeviceFlexHwDataForProductImprovementEnabledProto& proto =
+      device_policy_->device_flex_hw_data_for_product_improvement_enabled();
+  if (!proto.has_enabled())
+    return false;
+
+  *managed_hw_data_usage_enabled = proto.enabled();
+  return true;
+}
+
 bool DevicePolicyImpl::GetReportSystemInfo(bool* report_system_info) const {
   if (!device_policy_->has_device_reporting())
     return false;

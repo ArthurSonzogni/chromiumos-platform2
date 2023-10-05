@@ -69,6 +69,7 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetAllowNewUsers(bool* allow_new_users) const override;
   bool GetMetricsEnabled(bool* metrics_enabled) const override;
   bool GetHwDataUsageEnabled(bool* hw_data_usage_enabled) const override;
+  bool GetManagedHwDataUsageEnabled(bool* hw_data_usage_enabled) const override;
   bool GetReportSystemInfo(bool* report_system_info) const override;
   bool GetReportCpuInfo(bool* report_cpu_info) const override;
   bool GetReportGraphicsStatus(bool* report_graphics_status) const override;

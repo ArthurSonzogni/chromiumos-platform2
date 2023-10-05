@@ -128,6 +128,11 @@ class DevicePolicy {
   // Returns true on success.
   virtual bool GetHwDataUsageEnabled(bool* hw_data_usage_enabled) const = 0;
 
+  // Write the value of DeviceFlexHwDataForProductImprovementEnabled policy in
+  // |hw_data_usage_enabled|. Returns true on success.
+  virtual bool GetManagedHwDataUsageEnabled(
+      bool* hw_data_usage_enabled) const = 0;
+
   // Writes the value of ReportSystemInfo policy in |report_system_info|.
   // Returns true on success.
   virtual bool GetReportSystemInfo(bool* report_system_info) const = 0;
