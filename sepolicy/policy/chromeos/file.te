@@ -560,6 +560,7 @@ type cros_run_fbpreprocessord, file_type, cros_file_type, cros_run_file_type;
 type cros_run_featured_active, file_type, cros_file_type, cros_run_file_type;
 type cros_run_featured_seed, file_type, cros_file_type, cros_run_file_type;
 type cros_run_featured_test, file_type, cros_file_type, cros_run_file_type;
+type cros_run_flex_hardware, file_type, cros_file_type, cros_run_file_type;
 type cros_run_frecon, file_type, cros_file_type, cros_run_file_type;
 type cros_run_fuse, file_type, cros_file_type, cros_run_file_type;
 type cros_run_ippusb, file_type, cros_file_type, cros_run_file_type;

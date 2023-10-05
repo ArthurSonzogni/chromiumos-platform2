@@ -99,13 +99,17 @@ install_config("install_seccomp_policy") {
 }
 
 install_config("install_tmpfiles_config") {
-  sources = [ "init/tmpfiles.d/flex_hwis.conf" ]
+  sources = [
+    "init/tmpfiles.d/flex_hardware_cache.conf",
+    "init/tmpfiles.d/flex_hwis.conf",
+  ]
   install_path = "tmpfilesd"
 }
 
 install_config("install_upstart_config") {
   sources = [
     "init/upstart/flex_device_metrics.conf",
+    "init/upstart/flex_hardware_cache.conf",
     "init/upstart/flex_hwis.conf",
   ]
   install_path = "upstart"
