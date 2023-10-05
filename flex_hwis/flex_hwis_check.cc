@@ -18,78 +18,6 @@ namespace flex_hwis {
 
 namespace {
 
-enum class PolicyType {
-  // Managed
-  DeviceSystemInfo,
-  DeviceCpuInfo,
-  DeviceGraphicsStatus,
-  DeviceMemoryInfo,
-  DeviceVersionInfo,
-  DeviceNetworkConfig,
-
-  // Unmanaged
-  HardwareDataUsage,
-};
-
-// Convert a PolicyType to a string for logging.
-std::string PolicyTypeToString(PolicyType policy_type) {
-  switch (policy_type) {
-    case PolicyType::DeviceSystemInfo:
-      return "DeviceSystemInfo";
-    case PolicyType::DeviceCpuInfo:
-      return "DeviceCpuInfo";
-    case PolicyType::DeviceGraphicsStatus:
-      return "DeviceGraphicsStatus";
-    case PolicyType::DeviceMemoryInfo:
-      return "DeviceMemoryInfo";
-    case PolicyType::DeviceVersionInfo:
-      return "DeviceVersionInfo";
-    case PolicyType::DeviceNetworkConfig:
-      return "DeviceNetworkConfig";
-    case PolicyType::HardwareDataUsage:
-      return "HardwareDataUsage";
-  }
-}
-
-// Get the list of policies to check, depending on whether the device is
-// enrolled or not.
-std::vector<PolicyType> GetPolicyTypesToCheck(bool is_enterprise_enrolled) {
-  if (is_enterprise_enrolled) {
-    return {PolicyType::DeviceSystemInfo,     PolicyType::DeviceCpuInfo,
-            PolicyType::DeviceGraphicsStatus, PolicyType::DeviceMemoryInfo,
-            PolicyType::DeviceVersionInfo,    PolicyType::DeviceNetworkConfig};
-  } else {
-    return {PolicyType::HardwareDataUsage};
-  }
-}
-
-// Read a device policy.
-//
-// If successfully retrieved, the policy value will be set in |val|.
-//
-// Returns true if the policy was successfully retrieved, or false if an
-// error occurs.
-bool ReadDevicePolicy(const policy::DevicePolicy& policy,
-                      PolicyType policy_type,
-                      bool* val) {
-  switch (policy_type) {
-    case PolicyType::DeviceSystemInfo:
-      return policy.GetReportSystemInfo(val);
-    case PolicyType::DeviceCpuInfo:
-      return policy.GetReportCpuInfo(val);
-    case PolicyType::DeviceGraphicsStatus:
-      return policy.GetReportGraphicsStatus(val);
-    case PolicyType::DeviceMemoryInfo:
-      return policy.GetReportMemoryInfo(val);
-    case PolicyType::DeviceVersionInfo:
-      return policy.GetReportVersionInfo(val);
-    case PolicyType::DeviceNetworkConfig:
-      return policy.GetReportNetworkConfig(val);
-    case PolicyType::HardwareDataUsage:
-      return policy.GetHwDataUsageEnabled(val);
-  }
-}
-
 std::optional<std::string> ReadAndTrimFile(const base::FilePath& file_path) {
   std::string out;
   if (!base::ReadFileToString(file_path, &out)) {
@@ -98,27 +26,6 @@ std::optional<std::string> ReadAndTrimFile(const base::FilePath& file_path) {
 
   base::TrimWhitespaceASCII(out, base::TRIM_ALL, &out);
   return out;
-}
-
-// Check a single device policy to see whether it will deny permission
-// for HWIS to send data.
-//
-// Returns true if the policy is successfully retrieved and the policies
-// value is true. Returns false otherwise.
-bool CheckPermissionForPolicy(const policy::DevicePolicy& policy,
-                              PolicyType policy_type) {
-  const std::string log_name = PolicyTypeToString(policy_type);
-  bool policy_permission = false;
-
-  if (!ReadDevicePolicy(policy, policy_type, &policy_permission)) {
-    LOG(INFO) << log_name << " is not set";
-    return false;
-  }
-  if (!policy_permission) {
-    LOG(INFO) << "Hardware data not sent: " << log_name << " disabled.";
-    return false;
-  }
-  return true;
 }
 
 int64_t NowToEpochInSeconds() {
@@ -219,12 +126,17 @@ PermissionInfo FlexHwisCheck::CheckPermission() {
   const policy::DevicePolicy& policy = policy_provider_.GetDevicePolicy();
   info.managed = policy.IsEnterpriseEnrolled();
 
-  // Deny permission if any one of the checked policies is disabled.
-  info.permission = true;
-  for (const auto policy_type : GetPolicyTypesToCheck(info.managed)) {
-    if (!CheckPermissionForPolicy(policy, policy_type)) {
-      info.permission = false;
-    }
+  bool successful_read = false;
+  if (info.managed) {
+    LOG(INFO) << "The device is managed";
+    successful_read = policy.GetManagedHwDataUsageEnabled(&info.permission);
+  } else {
+    LOG(INFO) << "The device is not managed";
+    successful_read = policy.GetHwDataUsageEnabled(&info.permission);
+  }
+  if (!successful_read) {
+    LOG(INFO) << "Couldn't read permission to send hardware info: Not sending";
+    info.permission = false;
   }
 
   return info;

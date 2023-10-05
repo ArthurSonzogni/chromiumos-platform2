@@ -52,30 +52,6 @@ class FlexHwisTest : public ::testing::Test {
     EXPECT_CALL(mock_device_policy_, LoadPolicy(false))
         .Times(AtMost(1))
         .WillOnce(Return(true));
-    EXPECT_CALL(mock_device_policy_, GetHwDataUsageEnabled(_))
-        .Times(AtMost(1))
-        .WillOnce(SetEnabled(true));
-    EXPECT_CALL(mock_device_policy_, GetReportSystemInfo(_))
-        .Times(AtMost(1))
-        .WillOnce(SetEnabled(true));
-    EXPECT_CALL(mock_device_policy_, GetReportCpuInfo(_))
-        .Times(AtMost(1))
-        .WillOnce(SetEnabled(true));
-    EXPECT_CALL(mock_device_policy_, GetReportGraphicsStatus(_))
-        .Times(AtMost(1))
-        .WillOnce(SetEnabled(true));
-    EXPECT_CALL(mock_device_policy_, GetReportMemoryInfo(_))
-        .Times(AtMost(1))
-        .WillOnce(SetEnabled(true));
-    EXPECT_CALL(mock_device_policy_, GetReportVersionInfo(_))
-        .Times(AtMost(1))
-        .WillOnce(SetEnabled(true));
-    EXPECT_CALL(mock_device_policy_, GetReportNetworkConfig(_))
-        .Times(AtMost(1))
-        .WillOnce(SetEnabled(true));
-    EXPECT_CALL(mock_device_policy_, IsEnterpriseEnrolled())
-        .Times(AtMost(1))
-        .WillOnce(SetEnterpriseEnrolled(true));
     EXPECT_CALL(mock_policy_provider_, Reload())
         .Times(AtMost(1))
         .WillOnce(Return(true));
@@ -91,6 +67,21 @@ class FlexHwisTest : public ::testing::Test {
     base::FilePath time_path = test_path_.Append(kHwisFilePath);
     CHECK(base::CreateDirectory(time_path));
     CHECK(base::WriteFile(time_path.Append("time"), timestamp));
+  }
+
+  void ExpectEnrolled(bool enrolled) {
+    EXPECT_CALL(mock_device_policy_, IsEnterpriseEnrolled())
+        .WillOnce(SetEnterpriseEnrolled(enrolled));
+  }
+
+  void ExpectHwCollectionEnabled(bool enabled) {
+    EXPECT_CALL(mock_device_policy_, GetHwDataUsageEnabled(_))
+        .WillOnce(SetEnabled(enabled));
+  }
+
+  void ExpectManagedHwCollectionEnabled(bool enabled) {
+    EXPECT_CALL(mock_device_policy_, GetManagedHwDataUsageEnabled(_))
+        .WillOnce(SetEnabled(enabled));
   }
 
   void CreateDeviceName() {
@@ -150,8 +141,9 @@ TEST_F(FlexHwisTest, HasRunRecently) {
 TEST_F(FlexHwisTest, ManagedWithoutPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
-  EXPECT_CALL(mock_device_policy_, GetReportSystemInfo(_))
-      .WillOnce(SetEnabled(false));
+
+  ExpectEnrolled(true);
+  ExpectManagedHwCollectionEnabled(false);
   ExpectPermissionMetric(PermissionResult::kPolicyDenial);
   ExpectDeleteAction();
 
@@ -176,14 +168,21 @@ TEST_F(FlexHwisTest, UnManagedWithoutPermission) {
 TEST_F(FlexHwisTest, ManagedWithPermission) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
+
+  ExpectEnrolled(true);
+  ExpectManagedHwCollectionEnabled(true);
   ExpectPermissionMetric(PermissionResult::kPolicySuccess);
   ExpectRegisterAction(/*api_call_success=*/true);
+
   EXPECT_EQ(flex_hwis_sender.MaybeSend(hardware_info_, library_), Result::Sent);
 }
 
 TEST_F(FlexHwisTest, UpdateDeviceFail) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
+
+  ExpectEnrolled(true);
+  ExpectManagedHwCollectionEnabled(true);
   ExpectPermissionMetric(PermissionResult::kPolicySuccess);
   CreateDeviceName();
   EXPECT_CALL(mock_http_sender_, UpdateDevice(_))
@@ -196,6 +195,9 @@ TEST_F(FlexHwisTest, UpdateDeviceFail) {
 TEST_F(FlexHwisTest, UpdateDeviceNotFound) {
   auto flex_hwis_sender = flex_hwis::FlexHwisSender(
       test_path_, mock_policy_provider_, mock_http_sender_);
+
+  ExpectEnrolled(true);
+  ExpectManagedHwCollectionEnabled(true);
   ExpectPermissionMetric(PermissionResult::kPolicySuccess);
   CreateDeviceName();
   EXPECT_CALL(mock_http_sender_, UpdateDevice(_))
