@@ -279,7 +279,6 @@ bool ValidateQuipperArguments(const std::vector<std::string>& qp_args,
 
 PerfTool::PerfTool() {
   signal_handler_.Init();
-  process_reaper_.Register(&signal_handler_);
   RestoreCpuIdleStates();
   EtmStrobbingSettings();
 }
@@ -329,6 +328,7 @@ bool PerfTool::GetPerfOutputV2(const std::vector<std::string>& quipper_args,
   quipper_process_ = std::move(quipper_process);
   DCHECK_GT(quipper_process_->pid(), 0);
 
+  process_reaper_.Register(&signal_handler_);
   process_reaper_.WatchForChild(
       FROM_HERE, quipper_process_->pid(),
       base::BindOnce(&PerfTool::OnQuipperProcessExited,
@@ -424,6 +424,8 @@ void PerfTool::OnQuipperProcessExited(const siginfo_t& siginfo) {
 
   profiler_session_id_.reset();
 
+  process_reaper_.Unregister();
+
   RestoreCpuIdleStates();
 }
 
@@ -475,6 +477,7 @@ bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
   quipper_process_ = std::move(quipper_process);
   DCHECK_GT(quipper_process_->pid(), 0);
 
+  process_reaper_.Register(&signal_handler_);
   process_reaper_.WatchForChild(
       FROM_HERE, quipper_process_->pid(),
       base::BindOnce(&PerfTool::OnQuipperProcessExited,
