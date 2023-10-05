@@ -1,0 +1,5 @@
+a	: 0x42
+bb	: 42
+ccc	: 41.99
+dddddddd: foo bar
+e	: 

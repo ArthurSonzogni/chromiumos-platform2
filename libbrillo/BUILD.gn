@@ -69,6 +69,7 @@ libbrillo_sublibs = [
     sources = [
       "brillo/asynchronous_signal_handler.cc",
       "brillo/backoff_entry.cc",
+      "brillo/cpuinfo.cc",
       "brillo/daemons/daemon.cc",
       "brillo/data_encoding.cc",
       "brillo/errors/error.cc",
@@ -492,6 +493,7 @@ if (use.test) {
       "brillo/blkdev_utils/disk_iostat_test.cc",
       "brillo/blkdev_utils/loop_device_test.cc",
       "brillo/blkdev_utils/storage_utils_test.cc",
+      "brillo/cpuinfo_test.cc",
       "brillo/cryptohome_test.cc",
       "brillo/data_encoding_test.cc",
       "brillo/enum_flags_test.cc",
