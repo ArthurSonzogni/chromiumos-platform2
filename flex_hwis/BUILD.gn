@@ -11,11 +11,9 @@ group("all") {
     ":install_minijail_config",
     ":install_seccomp_policy",
     ":install_tmpfiles_config",
+    ":install_upstart_config",
     ":libflex_hwis",
     "//flex_hwis/flex_disk_metrics:all",
-
-    # TODO(b/305052945): enable this dep once the client is ready to ship.
-    # ":install_upstart_config",
   ]
   if (use.test) {
     deps += [
@@ -99,7 +97,11 @@ install_config("install_tmpfiles_config") {
 }
 
 install_config("install_upstart_config") {
-  sources = [ "init/upstart/flex_hwis.conf" ]
+  sources = [
+    "init/upstart/flex_disk_metrics.conf",
+    # TODO(b/305052945): install this file once the client is ready to ship.
+    # "init/upstart/flex_hwis.conf",
+  ]
   install_path = "upstart"
 }
 
