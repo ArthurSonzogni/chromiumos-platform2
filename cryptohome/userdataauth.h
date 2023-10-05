@@ -48,6 +48,7 @@
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/install_attributes_interface.h"
+#include "cryptohome/install_attributes_proxy.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/keyset_management.h"

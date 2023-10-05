@@ -591,13 +591,12 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   // Initialize Firmware Management Parameters
   if (!firmware_management_parameters_) {
     default_firmware_management_params_ =
-        std::make_unique<FirmwareManagementParameters>(hwsec_);
+        std::make_unique<FirmwareManagementParametersProxy>();
     firmware_management_parameters_ = default_firmware_management_params_.get();
   }
 
   if (!install_attrs_) {
-    default_install_attrs_ =
-        std::make_unique<InstallAttributes>(platform_, hwsec_);
+    default_install_attrs_ = std::make_unique<InstallAttributesProxy>();
     install_attrs_ = default_install_attrs_.get();
   }
 
