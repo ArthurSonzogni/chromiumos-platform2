@@ -3093,6 +3093,7 @@ void UserDataAuth::EvictDeviceKey(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoActiveMountInEvictDeviceKey),
             ErrorActionSet({PossibleAction::kAuth}),
             user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL));
+    return;
   }
 
   // Return results of EvictDeviceKey(), either OK or error of the first mounted
@@ -3108,6 +3109,7 @@ void UserDataAuth::EvictDeviceKey(
             ErrorActionSet({PossibleAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL)
             .Wrap(std::move(result)));
+    return;
   }
 
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
