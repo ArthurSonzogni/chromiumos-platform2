@@ -248,16 +248,16 @@ message NetworkSocketListenEvent {
   optional Socket socket = 3;
 }
 
-// Authentication Events.
+// User Events.
 
-// Authenticate Event Wrapper.
-message XdrAuthenticateEvent {
+// User Event Wrapper.
+message XdrUserEvent {
   optional CommonEventDataFields common = 1;
-  repeated AuthenticateEventAtomicVariant batched_events = 2;
+  repeated UserEventAtomicVariant batched_events = 2;
 }
 
-// Singular Authenticate event.
-message AuthenticateEventAtomicVariant {
+// Singular User event.
+message UserEventAtomicVariant {
   optional CommonEventVariantDataFields common = 1;
   oneof variant_type {
     AuthenticateEvent logon = 2;
@@ -267,6 +267,8 @@ message AuthenticateEventAtomicVariant {
     AuthenticateEvent failure = 6;
   }
 }
+
+// Authentication Events.
 
 // authentication field only used for entry events.
 message AuthenticateEvent {

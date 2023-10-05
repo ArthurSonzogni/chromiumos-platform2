@@ -39,8 +39,8 @@ using ::testing::WithArgs;
 
 using BatchSenderType =
     ::testing::StrictMock<MockBatchSender<std::monostate,
-                                          pb::XdrAuthenticateEvent,
-                                          pb::AuthenticateEventAtomicVariant>>;
+                                          pb::XdrUserEvent,
+                                          pb::UserEventAtomicVariant>>;
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
 
@@ -152,8 +152,8 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLockToUnlock) {
   completed.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
 
   // batch_sender_ will be called twice. Once for lock, once for unlock.
-  auto lock_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
-  auto unlock_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto lock_event = std::make_unique<pb::UserEventAtomicVariant>();
+  auto unlock_event = std::make_unique<pb::UserEventAtomicVariant>();
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(2)
       .WillOnce(WithArg<0>(
@@ -173,7 +173,7 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLockToUnlock) {
   auth_factor_cb_.Run(completed);
   locked_cb_.Run();
 
-  auto expected_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto expected_event = std::make_unique<pb::UserEventAtomicVariant>();
   expected_event->mutable_common();
   expected_event->mutable_lock();
   expected_event->mutable_common()->set_device_user(kDeviceUser);
@@ -204,8 +204,8 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
   completed.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 
   // batch_sender_ will be called twice. Once for login, once for logout.
-  auto logout_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
-  auto login_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto logout_event = std::make_unique<pb::UserEventAtomicVariant>();
+  auto login_event = std::make_unique<pb::UserEventAtomicVariant>();
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(2)
       .WillOnce(WithArg<0>(
@@ -225,7 +225,7 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
   auth_factor_cb_.Run(completed);
   state_changed_cb_.Run(kStarted);
 
-  auto expected_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto expected_event = std::make_unique<pb::UserEventAtomicVariant>();
   expected_event->mutable_common();
   expected_event->mutable_logon()->mutable_authentication()->add_auth_factor(
       AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD);
@@ -255,7 +255,7 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
   user_data_auth::AuthenticateAuthFactorCompleted completed;
   completed.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 
-  auto login_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto login_event = std::make_unique<pb::UserEventAtomicVariant>();
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(1)
       .WillOnce(WithArg<0>(
@@ -278,7 +278,7 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
             GetAuthFactor());
 
   // Unlock.
-  auto unlock_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto unlock_event = std::make_unique<pb::UserEventAtomicVariant>();
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(1)
       .WillOnce(WithArg<0>(
@@ -312,8 +312,8 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
   failure.mutable_error_info();
   failure.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 
-  auto failure_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
-  auto login_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto failure_event = std::make_unique<pb::UserEventAtomicVariant>();
+  auto login_event = std::make_unique<pb::UserEventAtomicVariant>();
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(2)
       .WillOnce(WithArg<0>(
@@ -329,7 +329,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
                 std::move(message->SerializeAsString()));
           })));
   EXPECT_CALL(*batch_sender_,
-              Visit(Eq(pb::AuthenticateEventAtomicVariant::kFailure), _, _))
+              Visit(Eq(pb::UserEventAtomicVariant::kFailure), _, _))
       .WillOnce(Return(false))
       .WillOnce([&failure_event](auto unused_type, const auto& unused_key,
                                  BatchSenderType::VisitCallback cb) {
@@ -372,7 +372,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAfterTimeout) {
   failure.mutable_error_info();
   failure.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 
-  auto failure_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto failure_event = std::make_unique<pb::UserEventAtomicVariant>();
   failure_event->mutable_common()->set_create_timestamp_us(5);
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(1)
@@ -383,7 +383,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAfterTimeout) {
                 std::move(message->SerializeAsString()));
           })));
   EXPECT_CALL(*batch_sender_,
-              Visit(Eq(pb::AuthenticateEventAtomicVariant::kFailure), _, _))
+              Visit(Eq(pb::UserEventAtomicVariant::kFailure), _, _))
       .WillOnce(Return(false))
       .WillRepeatedly([&failure_event](auto unused_type, const auto& unused_key,
                                        BatchSenderType::VisitCallback cb) {
@@ -416,9 +416,9 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginCreateTimestampSquashing) {
   failure.mutable_error_info();
   failure.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 
-  auto failure_event_1 = std::make_unique<pb::AuthenticateEventAtomicVariant>();
-  auto failure_event_2 = std::make_unique<pb::AuthenticateEventAtomicVariant>();
-  auto login_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto failure_event_1 = std::make_unique<pb::UserEventAtomicVariant>();
+  auto failure_event_2 = std::make_unique<pb::UserEventAtomicVariant>();
+  auto login_event = std::make_unique<pb::UserEventAtomicVariant>();
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(3)
       .WillOnce(WithArg<0>(
@@ -441,7 +441,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginCreateTimestampSquashing) {
           })));
 
   EXPECT_CALL(*batch_sender_,
-              Visit(Eq(pb::AuthenticateEventAtomicVariant::kFailure), _, _))
+              Visit(Eq(pb::UserEventAtomicVariant::kFailure), _, _))
       .Times(3)
       .WillOnce(Return(false))
       .WillOnce([&failure_event_1](auto unused_type, const auto& unused_key,
@@ -499,8 +499,8 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAuthFactorSquashing) {
   failure.mutable_error_info();
   failure.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
 
-  auto failure_event_1 = std::make_unique<pb::AuthenticateEventAtomicVariant>();
-  auto failure_event_2 = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto failure_event_1 = std::make_unique<pb::UserEventAtomicVariant>();
+  auto failure_event_2 = std::make_unique<pb::UserEventAtomicVariant>();
   EXPECT_CALL(*batch_sender_, Enqueue(_))
       .Times(2)
       .WillOnce(WithArg<0>(
@@ -517,7 +517,7 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAuthFactorSquashing) {
           })));
 
   EXPECT_CALL(*batch_sender_,
-              Visit(Eq(pb::AuthenticateEventAtomicVariant::kFailure), _, _))
+              Visit(Eq(pb::UserEventAtomicVariant::kFailure), _, _))
       .Times(3)
       .WillOnce(Return(false))
       .WillRepeatedly([&failure_event_1](auto unused_type,

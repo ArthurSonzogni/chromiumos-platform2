@@ -32,7 +32,7 @@ namespace pb = cros_xdr::reporting;
 namespace {
 bool UpdateNumFailedAttempts(const int64_t latest_success,
                              const AuthFactorType auth_factor_type,
-                             pb::AuthenticateEventAtomicVariant* event) {
+                             pb::UserEventAtomicVariant* event) {
   // Check that timestamp is greater than the most recent
   // success and auth
   // factor matches. If so increment number of failed attempts
@@ -59,19 +59,18 @@ AuthenticationPlugin::AuthenticationPlugin(
     : weak_ptr_factory_(this),
       policies_features_broker_(policies_features_broker),
       device_user_(device_user) {
-  batch_sender_ =
-      std::make_unique<BatchSender<std::monostate, pb::XdrAuthenticateEvent,
-                                   pb::AuthenticateEventAtomicVariant>>(
-          base::BindRepeating(
-              [](const cros_xdr::reporting::AuthenticateEventAtomicVariant&
-                     event) -> std::monostate {
-                // Only the most recent event type will need to be visited
-                // so monostate is used. This makes it so for each type of auth
-                // variation only 1 event is tracked.
-                return std::monostate();
-              }),
-          message_sender, reporting::Destination::CROS_SECURITY_USER,
-          batch_interval_s);
+  batch_sender_ = std::make_unique<BatchSender<std::monostate, pb::XdrUserEvent,
+                                               pb::UserEventAtomicVariant>>(
+      base::BindRepeating(
+          [](const cros_xdr::reporting::UserEventAtomicVariant& event)
+              -> std::monostate {
+            // Only the most recent event type will need to be visited
+            // so monostate is used. This makes it so for each type of auth
+            // variation only 1 event is tracked.
+            return std::monostate();
+          }),
+      message_sender, reporting::Destination::CROS_SECURITY_USER,
+      batch_interval_s);
   CHECK(message_sender != nullptr);
 }
 
@@ -148,15 +147,14 @@ bool AuthenticationPlugin::IsActive() const {
   return is_active_;
 }
 
-void AuthenticationPlugin::FillCommon(
-    pb::AuthenticateEventAtomicVariant* proto) {
+void AuthenticationPlugin::FillCommon(pb::UserEventAtomicVariant* proto) {
   proto->mutable_common()->set_create_timestamp_us(
       base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
   proto->mutable_common()->set_device_user(device_user_->GetDeviceUser());
 }
 
 void AuthenticationPlugin::HandleScreenLock() {
-  auto screen_lock = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto screen_lock = std::make_unique<pb::UserEventAtomicVariant>();
   screen_lock->mutable_lock();
   FillCommon(screen_lock.get());
 
@@ -164,7 +162,7 @@ void AuthenticationPlugin::HandleScreenLock() {
 }
 
 void AuthenticationPlugin::HandleScreenUnlock() {
-  auto screen_lock = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto screen_lock = std::make_unique<pb::UserEventAtomicVariant>();
   FillCommon(screen_lock.get());
 
   auto* authentication =
@@ -186,7 +184,7 @@ void AuthenticationPlugin::HandleScreenUnlock() {
 }
 
 void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
-  auto log_event = std::make_unique<pb::AuthenticateEventAtomicVariant>();
+  auto log_event = std::make_unique<pb::UserEventAtomicVariant>();
   FillCommon(log_event.get());
 
   if (state == kStarted) {
@@ -234,14 +232,13 @@ void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
   }
 
   if (completed.has_error_info()) {
-    if (!batch_sender_->Visit(pb::AuthenticateEventAtomicVariant::kFailure,
+    if (!batch_sender_->Visit(pb::UserEventAtomicVariant::kFailure,
                               std::monostate(),
                               base::BindOnce(&UpdateNumFailedAttempts,
                                              latest_successful_login_timestamp_,
                                              auth_factor_type_))) {
       // Create new event if no matching failure event found and updated.
-      auto failure_event =
-          std::make_unique<pb::AuthenticateEventAtomicVariant>();
+      auto failure_event = std::make_unique<pb::UserEventAtomicVariant>();
       FillCommon(failure_event.get());
 
       auto* authentication =
@@ -262,13 +259,12 @@ bool AuthenticationPlugin::FillAuthFactor(pb::Authentication* proto) {
 }
 
 void AuthenticationPlugin::EnqueueAuthenticationEvent(
-    std::unique_ptr<pb::AuthenticateEventAtomicVariant> proto) {
+    std::unique_ptr<pb::UserEventAtomicVariant> proto) {
   batch_sender_->Enqueue(std::move(proto));
 }
 
 void AuthenticationPlugin::DelayedCheckForAuthSignal(
-    std::unique_ptr<cros_xdr::reporting::AuthenticateEventAtomicVariant>
-        xdr_proto,
+    std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> xdr_proto,
     cros_xdr::reporting::Authentication* authentication) {
   if (FillAuthFactor(authentication)) {
     // Clear auth factor after it has been set.

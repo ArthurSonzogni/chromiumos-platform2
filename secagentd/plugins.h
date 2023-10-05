@@ -327,11 +327,11 @@ class AuthenticationPlugin : public PluginInterface {
 
   using BatchSenderType =
       BatchSenderInterface<std::monostate,
-                           cros_xdr::reporting::XdrAuthenticateEvent,
-                           cros_xdr::reporting::AuthenticateEventAtomicVariant>;
+                           cros_xdr::reporting::XdrUserEvent,
+                           cros_xdr::reporting::UserEventAtomicVariant>;
 
   // Fills the common field for the protos.
-  void FillCommon(cros_xdr::reporting::AuthenticateEventAtomicVariant* proto);
+  void FillCommon(cros_xdr::reporting::UserEventAtomicVariant* proto);
   // Creates and sends a screen Lock event.
   void HandleScreenLock();
   // Creates and sends a screen Unlock event.
@@ -351,12 +351,11 @@ class AuthenticationPlugin : public PluginInterface {
   bool FillAuthFactor(cros_xdr::reporting::Authentication* proto);
   // Enqueues the Authentication event to the CROS_SECURITY_USER destination.
   void EnqueueAuthenticationEvent(
-      std::unique_ptr<cros_xdr::reporting::AuthenticateEventAtomicVariant>);
+      std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant>);
   // If there is an entry event but auth factor is not filled, wait and
   // then check again for auth factor. If still not found send message anyway.
   void DelayedCheckForAuthSignal(
-      std::unique_ptr<cros_xdr::reporting::AuthenticateEventAtomicVariant>
-          xdr_proto,
+      std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> xdr_proto,
       cros_xdr::reporting::Authentication* authentication);
   // Inject the given (mock) BatchSender object for unit testing.
   void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {

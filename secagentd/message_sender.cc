@@ -77,9 +77,8 @@ void VlogEventForDebug(reporting::Destination destination,
     }
     case reporting::CROS_SECURITY_USER: {
       auto authenticate_event =
-          google::protobuf::internal::down_cast<pb::XdrAuthenticateEvent*>(
-              message);
-      VLOG(1) << "XdrAuthenticateEvent:";
+          google::protobuf::internal::down_cast<pb::XdrUserEvent*>(message);
+      VLOG(1) << "XdrUserEvent:";
       VLOG(1) << authenticate_event->DebugString();
       break;
     }
