@@ -6,6 +6,7 @@
 
 use std::fs;
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::Read;
 use std::mem;
 use std::time::Duration;
@@ -44,8 +45,7 @@ use crate::metrics::DurationMetricUnit;
 use crate::metrics::HibernateEvent;
 use crate::metrics::METRICS_LOGGER;
 use crate::powerd::PowerdPendingResume;
-use crate::resume_dbus::DBusEvent;
-use crate::resume_dbus::DBusServer;
+use crate::resume_dbus::{DBusEvent, DBusServer};
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
@@ -178,10 +178,17 @@ impl ResumeConductor {
         // Set up the snapshot device for resuming
         self.setup_snapshot_device(false, user_key)?;
 
+        debug!("Opening hiberimage");
+        let hiber_image_file = OpenOptions::new()
+            .read(true)
+            .create(false)
+            .open(DeviceMapper::device_path(VolumeManager::HIBERIMAGE).unwrap())
+            .unwrap();
+
         volume_manager.lockdown_hiberimage()?;
 
         let _locked_memory = lock_process_memory()?;
-        self.resume_system(hibermeta_mount)
+        self.resume_system(hiber_image_file, hibermeta_mount)
     }
 
     /// Helper function to evaluate the hibernate cookie and decide whether or
@@ -230,7 +237,11 @@ impl ResumeConductor {
     }
 
     /// Inner helper function to read the resume image and launch it.
-    fn resume_system(&mut self, mut hibermeta_mount: ActiveMount) -> Result<()> {
+    fn resume_system(
+        &mut self,
+        hiber_image_file: File,
+        mut hibermeta_mount: ActiveMount,
+    ) -> Result<()> {
         let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Resume);
         let log_file = hiberlog::LogFile::create(log_file_path)?;
         // Start logging to the resume logger.
@@ -244,8 +255,7 @@ impl ResumeConductor {
 
         let start = Instant::now();
         // Load the snapshot image into the kernel
-        let image_size = snap_dev.load_image()?;
-        info!("Image loaded with size {}", image_size);
+        let image_size = snap_dev.load_image(hiber_image_file)?;
 
         {
             let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
