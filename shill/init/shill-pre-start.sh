@@ -33,3 +33,11 @@ chown -R shill:shill \
 
 chown -R dhcp:dhcp /var/lib/dhcpcd
 chmod -R u+rwX,g+rwX,o+rX /var/lib/dhcpcd
+
+# Increase kernel neighbor table size.
+echo 1024 > /proc/sys/net/ipv4/neigh/default/gc_thresh1
+echo 4096 > /proc/sys/net/ipv4/neigh/default/gc_thresh2
+echo 8192 > /proc/sys/net/ipv4/neigh/default/gc_thresh3
+echo 1024 > /proc/sys/net/ipv6/neigh/default/gc_thresh1
+echo 4096 > /proc/sys/net/ipv6/neigh/default/gc_thresh2
+echo 8192 > /proc/sys/net/ipv6/neigh/default/gc_thresh3
