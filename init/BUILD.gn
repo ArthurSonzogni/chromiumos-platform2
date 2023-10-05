@@ -32,6 +32,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   defines = [
+    "USE_DEVICE_MAPPER=${use.device_mapper}",
     "USE_DIRENCRYPTION=${use.direncryption}",
     "USE_ENCRYPTED_REBOOT_VAULT=${use.encrypted_reboot_vault}",
     "USE_ENCRYPTED_STATEFUL=${use.encrypted_stateful}",
@@ -95,7 +96,11 @@ static_library("libclobber") {
     "clobber_state.cc",
     "clobber_state_log.cc",
     "clobber_ui.cc",
+    "clobber_wipe.cc",
   ]
+  if (use.device_mapper) {
+    sources += [ "clobber_lvm.cc" ]
+  }
   configs += [ ":target_defaults" ]
   deps = [ ":utils" ]
 }
@@ -218,7 +223,11 @@ if (use.test) {
     sources = [
       "clobber_state_test.cc",
       "clobber_ui_test.cc",
+      "clobber_wipe_test.cc",
     ]
+    if (use.device_mapper) {
+      sources += [ "clobber_lvm_test.cc" ]
+    }
     configs += [
       "//common-mk:test",
       ":target_defaults",

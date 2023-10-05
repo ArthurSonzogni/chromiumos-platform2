@@ -18,6 +18,12 @@ base::TimeDelta BuildTimeDelta(int hours, int minutes, int seconds) {
 
 }  // namespace
 
+// Needed for "mocking UI", redirect to /dev/null
+base::File DevNull() {
+  return base::File(base::FilePath("/dev/null"),
+                    base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+}
+
 TEST(BuildUiString, NoProgressBarEmpty) {
   base::TimeDelta elapsed = BuildTimeDelta(0, 40, 27);
   double progress = 0.0;

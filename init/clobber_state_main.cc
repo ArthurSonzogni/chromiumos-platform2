@@ -54,9 +54,17 @@ int main(int argc, char* argv[]) {
   }
 
   ClobberState::Arguments args = ClobberState::ParseArgv(argc, argv);
+
+  std::unique_ptr<ClobberUi> ui = std::make_unique<ClobberUi>(OpenTerminal());
+  std::unique_ptr<ClobberWipe> wipe = std::make_unique<ClobberWipe>(ui.get());
+  std::unique_ptr<ClobberLvm> clobber_lvm =
+      USE_DEVICE_MAPPER
+          ? std::make_unique<ClobberLvm>(
+                wipe.get(), std::make_unique<brillo::LogicalVolumeManager>())
+          : std::unique_ptr<ClobberLvm>();
+
   ClobberState clobber(args, std::make_unique<crossystem::Crossystem>(),
-                       std::make_unique<ClobberUi>(OpenTerminal()),
-                       std::make_unique<brillo::LogicalVolumeManager>());
+                       std::move(ui), std::move(wipe), std::move(clobber_lvm));
 
   return clobber.Run();
 }
