@@ -91,7 +91,6 @@ void RoutineV2Client::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kVolumeButton:
         case mojom::RoutineDetail::Tag::kLedLitUp:
         case mojom::RoutineDetail::Tag::kFloatingPoint:
-        case mojom::RoutineDetail::Tag::kFan:
           break;
         case mojom::RoutineDetail::Tag::kMemory:
           PrintOutput(ParseMemoryDetail(detail->get_memory()));
@@ -108,6 +107,9 @@ void RoutineV2Client::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
           PrintOutput(
               ParseBluetoothDiscoveryDetail(detail->get_bluetooth_discovery()));
+          break;
+        case mojom::RoutineDetail::Tag::kFan:
+          PrintOutput(ParseFanDetail(detail->get_fan()));
           break;
       }
       run_loop_.Quit();

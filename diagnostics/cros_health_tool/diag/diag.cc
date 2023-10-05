@@ -147,6 +147,14 @@ int AudioDriverMain(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(AudioDriver);
 }
 
+int FanMain(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS("Fan routine");
+
+  auto argument = mojom::FanRoutineArgument::New();
+
+  COMMON_V2_ROUTINE_MAIN(Fan);
+}
+
 int MemoryV2Main(int argc, char** argv) {
   DEFINE_uint32(max_testing_mem_kib, std::numeric_limits<uint32_t>::max(),
                 "Number of kib to run the memory test for.");
@@ -822,6 +830,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"floating_point_v2", FloatingPointV2Main},
     {"bluetooth_power_v2", BluetoothPowerV2Main},
     {"bluetooth_discovery_v2", BluetoothDiscoveryV2Main},
+    {"fan", FanMain},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},

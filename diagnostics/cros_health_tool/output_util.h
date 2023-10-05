@@ -59,6 +59,8 @@ std::string EnumToString(ash::cros_healthd::mojom::UsbSpecSpeed spec_speed);
 std::string EnumToString(ash::cros_healthd::mojom::PsrInfo::LogState state);
 std::string EnumToString(ash::cros_healthd::mojom::PsrEvent::EventType type);
 std::string EnumToString(ash::cros_healthd::mojom::MemtesterTestItemEnum test);
+std::string EnumToString(
+    ash::cros_healthd::mojom::HardwarePresenceStatus status);
 
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 

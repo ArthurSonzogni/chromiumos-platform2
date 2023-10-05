@@ -525,6 +525,20 @@ std::string EnumToString(mojom::MemtesterTestItemEnum test_item) {
   }
 }
 
+std::string EnumToString(mojom::HardwarePresenceStatus status) {
+  switch (status) {
+    case mojom::HardwarePresenceStatus::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::HardwarePresenceStatus::kMatched:
+      return "Matched";
+    case mojom::HardwarePresenceStatus::kNotMatched:
+      return "Not matched";
+    case mojom::HardwarePresenceStatus::kNotConfigured:
+      return "Not configured";
+  }
+}
+
 void OutputJson(const base::Value::Dict& output) {
   std::string json;
   base::JSONWriter::WriteWithOptions(

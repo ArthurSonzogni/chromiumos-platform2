@@ -27,6 +27,9 @@ base::Value::Dict ParseUfsLifetimeDetail(
     const ash::cros_healthd::mojom::UfsLifetimeRoutineDetailPtr&
         ufs_lifetime_detail);
 
+base::Value::Dict ParseFanDetail(
+    const ash::cros_healthd::mojom::FanRoutineDetailPtr& fan_detail);
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_MOJOM_ROUTINE_OUTPUT_UTILS_H_

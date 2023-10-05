@@ -126,6 +126,8 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
       return ParseBluetoothPowerDetail(detail->get_bluetooth_power());
     case mojom::RoutineDetail::Tag::kBluetoothDiscovery:
       return ParseBluetoothDiscoveryDetail(detail->get_bluetooth_discovery());
+    case mojom::RoutineDetail::Tag::kFan:
+      return ParseFanDetail(detail->get_fan());
   }
 }
 

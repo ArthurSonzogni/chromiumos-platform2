@@ -4,6 +4,7 @@
 
 #include "diagnostics/mojom/routine_output_utils.h"
 
+#include <string>
 #include <utility>
 
 #include <base/values.h>
@@ -15,6 +16,19 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
+std::string EnumToString(mojom::HardwarePresenceStatus state) {
+  switch (state) {
+    case mojom::HardwarePresenceStatus::kUnmappedEnumField:
+      return "Unmapped enum field";
+    case mojom::HardwarePresenceStatus::kMatched:
+      return "Matched";
+    case mojom::HardwarePresenceStatus::kNotMatched:
+      return "Not Matched";
+    case mojom::HardwarePresenceStatus::kNotConfigured:
+      return "Not Configured";
+  }
+}
 
 }  // namespace
 
@@ -94,6 +108,25 @@ base::Value::Dict ParseUfsLifetimeDetail(
              ufs_lifetime_detail->device_life_time_est_a);
   output.Set("device_life_time_est_b",
              ufs_lifetime_detail->device_life_time_est_b);
+
+  return output;
+}
+
+base::Value::Dict ParseFanDetail(const mojom::FanRoutineDetailPtr& fan_detail) {
+  base::Value::Dict output;
+  base::Value::List passed_fan_ids;
+  base::Value::List failed_fan_ids;
+
+  for (const auto& fan_id : fan_detail->passed_fan_ids) {
+    passed_fan_ids.Append(fan_id);
+  }
+  for (const auto& fan_id : fan_detail->failed_fan_ids) {
+    failed_fan_ids.Append(fan_id);
+  }
+
+  output.Set("passed_fan_ids", std::move(passed_fan_ids));
+  output.Set("failed_fan_ids", std::move(failed_fan_ids));
+  output.Set("fan_count_status", EnumToString(fan_detail->fan_count_status));
 
   return output;
 }

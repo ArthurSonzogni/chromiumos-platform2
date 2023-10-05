@@ -1672,3 +1672,36 @@ Errors:
 - `Timeout must be positive.`
 - `Timeout cannot be longer than 600 seconds.`
 - `Unable to listen for volume button events.`
+
+
+## Fan
+
+Check the device's fan by setting and reading different fan speed configuration.
+
+From crosh:
+```bash
+crosh> diag fan
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag fan
+```
+
+Sample output:
+```bash
+Running Progress: 100
+Status: Passed
+Output:
+{
+   "failed_fan_ids": [  ],
+   "fan_count_status": "Not configured",
+   "passed_fan_ids": [ 0 ]
+}
+```
+
+Errors:
+- `Failed to run ec::GetFeaturesCommand`
+- `Failed to read fan speed`
+- `Failed to get number of fans`
+- `Failed to set fan speed`
