@@ -49,8 +49,8 @@ class MmService {
   base::ScopedFD GetKillsServerConnection();
 
  private:
-  // Retrieves the lowest balloon block priority from the BalloonBroker.
-  ResizePriority GetLowestBalloonBlockPriority();
+  // Retrieves the lowest priority that won't be blocked from the BalloonBroker.
+  ResizePriority GetLowestUnblockedPriority();
 
   // Instructs the balloon broker to perform the supplied reclaim operation.
   void Reclaim(const BalloonBroker::ReclaimOperation& reclaim_operation,
@@ -69,8 +69,8 @@ class MmService {
   // Notify the negotiation thread that a VM is stopping.
   void NegotiationThreadNotifyVmStopping(int vm_cid);
 
-  // Gets the lowest block priority from the balloon broker.
-  ResizePriority NegotiationThreadGetLowestBalloonBlockPriority();
+  // Retrieves the lowest priority that won't be blocked from the BalloonBroker.
+  ResizePriority NegotiationThreadGetLowestUnblockedPriority();
 
   // Instructs the balloon broker to perform the supplied reclaim operation.
   void NegotiationThreadReclaim(

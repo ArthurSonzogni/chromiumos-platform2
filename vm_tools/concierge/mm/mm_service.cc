@@ -99,7 +99,7 @@ bool MmService::Start() {
   reclaim_broker_ = ReclaimBroker::Create(
       {base::FilePath("/sys/kernel/mm/lru_gen/admin"),
        std::move(reclaim_server),
-       base::BindRepeating(&MmService::GetLowestBalloonBlockPriority,
+       base::BindRepeating(&MmService::GetLowestUnblockedPriority,
                            base::Unretained(this)),
        base::BindRepeating(&MmService::Reclaim, base::Unretained(this))});
 
@@ -148,14 +148,14 @@ base::ScopedFD MmService::GetKillsServerConnection() {
   return socket.Release();
 }
 
-ResizePriority MmService::GetLowestBalloonBlockPriority() {
+ResizePriority MmService::GetLowestUnblockedPriority() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // Unretained(this) is safe because this call blocks until the task is
   // complete.
   return PostTaskAndWaitForResult<ResizePriority>(
       negotiation_thread_.task_runner(),
-      base::BindOnce(&MmService::NegotiationThreadGetLowestBalloonBlockPriority,
+      base::BindOnce(&MmService::NegotiationThreadGetLowestUnblockedPriority,
                      base::Unretained(this)));
 }
 
@@ -205,9 +205,9 @@ void MmService::NegotiationThreadNotifyVmStopping(int vm_cid) {
   balloon_broker_->RemoveVm(vm_cid);
 }
 
-ResizePriority MmService::NegotiationThreadGetLowestBalloonBlockPriority() {
+ResizePriority MmService::NegotiationThreadGetLowestUnblockedPriority() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
-  return balloon_broker_->LowestBalloonBlockPriority();
+  return balloon_broker_->LowestUnblockedPriority();
 }
 
 void MmService::NegotiationThreadReclaim(
