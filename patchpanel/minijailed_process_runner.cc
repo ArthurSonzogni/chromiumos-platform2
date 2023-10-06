@@ -106,7 +106,7 @@ bool HandlePollEvent(struct pollfd* pollfd_struct, std::string* output_str) {
 bool ReadPipesUntilClose(std::string_view logging_tag,
                          int fd_stdout,
                          int fd_stderr,
-                         std::optional<base::Time> deadline,
+                         std::optional<base::TimeTicks> deadline,
                          std::string* str_stdout,
                          std::string* str_stderr) {
   struct pollfd pollfds[] = {
@@ -118,7 +118,7 @@ bool ReadPipesUntilClose(std::string_view logging_tag,
   while (1) {
     base::TimeDelta poll_interval = kDefaultPollInterval;
     if (deadline.has_value()) {
-      const auto now = base::Time::NowFromSystemTime();
+      const auto now = base::TimeTicks::Now();
       // `=` here to avoid interval is set to 0 by any chance.
       if (now >= *deadline) {
         return false;
@@ -156,8 +156,8 @@ int MinijailedProcessRunner::RunSyncDestroyWithTimeout(
     bool log_failures,
     std::optional<base::TimeDelta> timeout,
     std::string* output) {
-  const base::Time started_at = base::Time::NowFromSystemTime();
-  std::optional<base::Time> deadline = std::nullopt;
+  const base::TimeTicks started_at = base::TimeTicks::Now();
+  std::optional<base::TimeTicks> deadline = std::nullopt;
   if (timeout.has_value()) {
     deadline = started_at + *timeout;
   }
@@ -205,7 +205,7 @@ int MinijailedProcessRunner::RunSyncDestroyWithTimeout(
     return -1;
   }
 
-  const base::TimeDelta duration = base::Time::NowFromSystemTime() - started_at;
+  const base::TimeDelta duration = base::TimeTicks::Now() - started_at;
   if (duration > base::Seconds(1)) {
     LOG(WARNING) << logging_tag << " took " << duration.InMilliseconds()
                  << "ms to finish.";
