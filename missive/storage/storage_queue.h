@@ -278,8 +278,13 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
                                     size_t max_buffer_size,
                                     bool expect_readonly = true);
 
-    // Appends data to the file.
+    // Appends data to the file. `data_reservation` must have been acquired
+    // before that for `data.size()` amount.
     StatusOr<uint32_t> Append(std::string_view data);
+
+    // Extend accounted file reservation.
+    // The reservation must be done before actual Appends, and must succeed.
+    void HandOverReservation(ScopedReservation append_reservation);
 
     bool is_opened() const { return handle_.get() != nullptr; }
     bool is_readonly() const {
@@ -297,7 +302,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     friend class base::RefCountedThreadSafe<SingleFile>;
 
     // Private constructor, called by factory method only.
-    explicit SingleFile(const Settings& settings);
+    SingleFile(const Settings& settings, ScopedReservation file_reservation);
 
     SEQUENCE_CHECKER(sequence_checker_);
 
@@ -325,8 +330,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     size_t data_end_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
     uint64_t file_position_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
     ResourceManagedBuffer buffer_ GUARDED_BY_CONTEXT(sequence_checker_);
-
-    const scoped_refptr<ResourceManager> disk_space_resource_;
+    ScopedReservation file_reservation_ GUARDED_BY_CONTEXT(sequence_checker_);
   };
 
   // Private constructor, to be called by Create factory method only.
@@ -383,7 +387,8 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // asynchronously deletes all other files with lower sequencing id
   // (multiple Writes can see the same files and attempt to delete them, and
   // that is not an error).
-  Status WriteMetadata(std::string_view current_record_digest);
+  Status WriteMetadata(std::string_view current_record_digest,
+                       ScopedReservation metadata_reservation);
 
   // Helper method for RestoreMetadata(): loads and verifies metadata file
   // contents. If accepted, adds the file to the set.
@@ -410,6 +415,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // next sequencing id.
   Status WriteHeaderAndBlock(std::string_view data,
                              std::string_view current_record_digest,
+                             ScopedReservation data_reservation,
                              scoped_refptr<SingleFile> file);
 
   // Helper method for Upload: if the last file is not empty (has at least one
@@ -439,9 +445,6 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
   // Helper method called by periodic time to upload data.
   void PeriodicUpload();
-
-  // Helper method to reserve space needed to write a new record.
-  Status ReserveNewRecordDiskSpace(size_t total_size);
 
   // Sequentially removes the files comprising the queue from oldest to newest
   // to recover disk space so higher priority files can be stored. This function
@@ -528,12 +531,6 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Weak pointer allows to detect premature destruction of a context.
   std::list<base::WeakPtr<WriteContext>> write_contexts_queue_
       GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
-
-  // Reflects reservation for the head of the write contexts queue. Will return
-  // to 0 after each writing process is finished. It helps keep disk space usage
-  // accurate and within the bounds of the reservation.
-  size_t active_write_reservation_size_
-      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_) = 0u;
 
   // Next sequencing id to store (not assigned yet).
   int64_t next_sequencing_id_
