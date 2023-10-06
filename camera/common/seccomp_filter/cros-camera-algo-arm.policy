@@ -45,7 +45,7 @@ getdents64: 1
 getegid32: 1
 geteuid32: 1
 getgid32: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getpid: 1
 getpriority: 1
 getresuid32: 1
