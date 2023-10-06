@@ -1,3 +1,6 @@
+[workspace]
+# So cargo does not think this package belongs to a workspace.
+
 [package]
 name = "featured"
 version = "0.1.0"

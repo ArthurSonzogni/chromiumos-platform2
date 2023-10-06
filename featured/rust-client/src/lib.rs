@@ -127,6 +127,11 @@ impl Feature {
     }
 }
 
+// feature_library is thread-safe.
+// A Feature constructed from one thread can be used in another thread.
+unsafe impl Send for Feature {}
+unsafe impl Sync for Feature {}
+
 /// An enumeration for representing the state of a feature and its parameters.
 ///
 /// Disabled features will never have associated parameters, and an enabled
