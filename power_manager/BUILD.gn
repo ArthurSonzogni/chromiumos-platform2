@@ -12,6 +12,7 @@ group("all") {
     ":check_powerd_config",
     ":cpufreq_config",
     ":dump_power_status",
+    ":fake_adaptive_charging_ml_service",
     ":inject_powerd_input_event",
     ":install_dbus_conf",
     ":install_init_scripts",
@@ -415,6 +416,12 @@ executable("cpufreq_config") {
     ":libsystem_stub",
     ":libutil",
   ]
+  install_path = "bin"
+}
+
+executable("fake_adaptive_charging_ml_service") {
+  sources = [ "tools/fake_adaptive_charging_ml_service.cc" ]
+  configs += [ ":target_defaults" ]
   install_path = "bin"
 }
 
