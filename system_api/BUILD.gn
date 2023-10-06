@@ -28,6 +28,7 @@ group("all") {
     ":system_api-dlcservice-goprotos",
     ":system_api-dlcservice-protos",
     ":system_api-dlp-protos",
+    ":system_api-fbpreprocessor-protos",
     ":system_api-featured-goprotos",
     ":system_api-featured-protos",
     ":system_api-fusebox-protos",
@@ -884,4 +885,12 @@ goproto_library("system_api-stack_sampled_metrics_status-goprotos") {
   proto_in_dir = "proto/stack_sampled_metrics_status"
   proto_out_dir = "go/src/"
   sources = [ "${proto_in_dir}/stack_sampled_metrics_status.proto" ]
+}
+
+proto_library("system_api-fbpreprocessor-protos") {
+  proto_in_dir = "dbus/fbpreprocessor"
+  proto_out_dir = "include/fbpreprocessor/proto_bindings"
+  sources = [ "${proto_in_dir}/fbpreprocessor.proto" ]
+  standalone = true
+  install_package = true
 }
