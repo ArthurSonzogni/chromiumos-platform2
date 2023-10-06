@@ -29,7 +29,7 @@ getegid: 1
 epoll_create1: 1
 pipe2: 1
 epoll_ctl: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 fcntl: 1
 recvmsg: 1
 write: 1

@@ -130,7 +130,7 @@ ARM_set_tls: 1
 set_tid_address: 1
 rseq: 1
 ugetrlimit: 1
-getrandom: arg2 in 0xfffffffd
+getrandom: arg2 in ~GRND_RANDOM
 capset: 1
 uname: 1
 getdents64: 1

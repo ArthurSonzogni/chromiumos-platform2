@@ -45,7 +45,7 @@ getgid: 1
 getpid: 1
 getppid: 1
 getpriority: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getresgid: 1
 getresuid: 1
 getrusage: 1

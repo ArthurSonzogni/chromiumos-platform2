@@ -38,7 +38,7 @@ wait4: 1
 restart_syscall: 1
 exit: 1
 clock_getres: 1
-getrandom: arg2 in 0xfffffffd
+getrandom: arg2 in ~GRND_RANDOM
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1

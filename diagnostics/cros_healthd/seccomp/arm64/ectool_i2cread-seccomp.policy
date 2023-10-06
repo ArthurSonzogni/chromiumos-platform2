@@ -36,4 +36,4 @@ faccessat: 1
 set_tid_address: 1
 set_robust_list: 1
 prlimit64: 1
-getrandom: arg2 in 0xfffffffd
+getrandom: arg2 in ~GRND_RANDOM

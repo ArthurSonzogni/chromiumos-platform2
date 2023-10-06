@@ -40,7 +40,7 @@ clock_getres: 1
 clock_getres_time64: 1
 clock_gettime: 1
 gettimeofday: 1
-getrandom: arg2 in 0xfffffffd
+getrandom: arg2 in ~GRND_RANDOM
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1

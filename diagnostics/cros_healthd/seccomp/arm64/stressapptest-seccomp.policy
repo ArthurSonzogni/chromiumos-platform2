@@ -31,7 +31,7 @@ sysinfo: 1
 faccessat: 1
 set_tid_address: 1
 prlimit64: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 exit_group: 1
 restart_syscall: 1
 rt_sigreturn: 1

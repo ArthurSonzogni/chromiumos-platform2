@@ -119,7 +119,7 @@ memfd_create: 1
 eventfd2: 1
 epoll_wait: 1
 newfstatat: 1
-getrandom: arg2 in 0xfffffffd
+getrandom: arg2 in ~GRND_RANDOM
 brk: 1
 getdents64: 1
 socket: arg0 == AF_UNIX

@@ -40,8 +40,7 @@ getdents64: 1
 getegid: 1
 geteuid: 1
 getgid: 1
-# Filter arg2 to disallow GRND_RANDOM (2).
-getrandom: arg2 in 0xfffffffd
+getrandom: arg2 in ~GRND_RANDOM
 getresgid: 1
 getresuid: 1
 getrlimit: 1

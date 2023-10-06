@@ -32,7 +32,7 @@ access: 1
 ARM_set_tls: 1
 set_tid_address: 1
 ugetrlimit: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 memfd_create: 1
 ftruncate64: 1
 exit_group: 1
