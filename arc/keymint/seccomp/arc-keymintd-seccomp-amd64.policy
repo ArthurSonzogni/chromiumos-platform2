@@ -9,7 +9,7 @@ recvmsg: 1
 read: 1
 futex: 1
 gettid: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 poll: 1
 rt_sigprocmask: 1
 fcntl: 1

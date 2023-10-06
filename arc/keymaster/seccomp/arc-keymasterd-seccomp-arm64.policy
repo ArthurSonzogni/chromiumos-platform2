@@ -39,8 +39,7 @@ sendmsg: 1
 recvmsg: 1
 openat: 1
 futex: 1
-# Filter arg2 to disallow GRND_RANDOM (2).
-getrandom: arg2 in 0xfffffffd
+getrandom: arg2 in ~GRND_RANDOM
 brk: 1
 # Prevent PROT_WRITE | PROT_EXEC.
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

@@ -36,7 +36,7 @@ write: 1
 connect: 1
 execve: 1
 exit_group: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 # Used by libbrillo to know whether stderr is a TTY.
 ioctl: arg1 == TCGETS
 lseek: 1
