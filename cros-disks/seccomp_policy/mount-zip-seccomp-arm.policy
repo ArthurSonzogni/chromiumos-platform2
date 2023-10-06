@@ -38,7 +38,7 @@ geteuid32: 1
 getgid32: 1
 getitimer: 1
 getpid: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 gettid: 1
 gettimeofday: 1
 getuid32: 1

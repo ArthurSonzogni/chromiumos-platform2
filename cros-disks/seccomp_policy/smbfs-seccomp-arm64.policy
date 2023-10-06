@@ -37,7 +37,7 @@ getgid: 1
 getitimer: 1
 getpeername: 1
 getpid: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getresgid: 1
 getresuid: 1
 getrlimit: 1
