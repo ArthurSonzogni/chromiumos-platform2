@@ -740,15 +740,6 @@ base::FilePath GetVmLogPath(const std::string& owner_id,
                             .Append(encoded_vm_name)
                             .AddExtension(extension);
 
-  base::FilePath parent_dir = path.DirName();
-  if (!base::DirectoryExists(parent_dir)) {
-    base::File::Error dir_error;
-    if (!base::CreateDirectoryAndGetError(parent_dir, &dir_error)) {
-      LOG(ERROR) << "Failed to create crosvm log directory in " << parent_dir
-                 << ": " << base::File::ErrorToString(dir_error);
-      return base::FilePath();
-    }
-  }
   return path;
 }
 
@@ -1918,8 +1909,17 @@ StartVmResponse Service::StartVmInternal(
     response.set_failure_reason("VM name is too long");
     return response;
   }
+
   base::FilePath log_path =
       GetVmLogPath(request.owner_id(), request.name(), kCrosvmLogSocketExt);
+  base::FilePath log_dir = log_path.DirName();
+  base::File::Error dir_error;
+  if (!base::CreateDirectoryAndGetError(log_dir, &dir_error)) {
+    LOG(ERROR) << "Failed to create crosvm log directory " << log_dir << ": "
+               << base::File::ErrorToString(dir_error);
+    response.set_failure_reason("Failed to create crosvm log directory");
+    return response;
+  }
 
   if (request.enable_vulkan() && !request.enable_gpu()) {
     LOG(ERROR) << "Vulkan enabled without GPU";
