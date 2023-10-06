@@ -22,7 +22,6 @@ namespace system {
 
 class DBusWrapperInterface;
 
-extern const char kCpuInfoPath[];
 extern const char kSuspendToHibernateFeatureName[];
 extern const char kSnapshotDevicePath[];
 extern const char kHibermanExecutablePath[];

@@ -8,6 +8,9 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+
+#include "brillo/strings/string_utils.h"
 
 namespace brillo {
 
@@ -44,19 +47,24 @@ std::optional<CpuInfo::RecordsVec> CpuInfo::ParseFromString(
     // Blank lines separate processor records.
     if (line.size() == 0) {
       if (!p.empty()) {
-        recs->push_back(std::move(p));  // no empty records
+        // No empty records.
+        recs->push_back(std::move(p));
       }
       p.clear();
       continue;
     }
 
-    std::vector<std::string_view> kv = base::SplitStringPiece(
-        line, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-    // must be a "key : value" pair and have a nonempty key
-    if (kv.size() != 2 || kv[0].size() == 0) {
+    auto kvopt =
+        brillo::string_utils::SplitAtFirst(line, ":", base::TRIM_WHITESPACE);
+    if (!kvopt.has_value()) {
+      // Must be a "key : value" pair.
       return std::nullopt;
     }
-    p.emplace(std::make_pair(kv[0], kv[1]));
+    if (kvopt.value().first.size() == 0) {
+      // Must have a nonempty key.
+      return std::nullopt;
+    }
+    p.emplace(std::move(kvopt).value());
   }
 
   if (!p.empty()) {

@@ -12,15 +12,14 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include "base/strings/string_number_conversions.h"
+#include <base/strings/string_number_conversions.h>
+#include <brillo/cpuinfo.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 
 namespace power_manager::system {
-
-constexpr char kCpuInfoPath[] = "/proc/cpuinfo";
 
 // Path to read to figure out the hibernation resume device.
 // This file is absent on kernels without hibernation support.
@@ -253,41 +252,20 @@ bool SuspendConfigurator::IsSerialConsoleEnabled() {
   return rc;
 }
 
-bool SuspendConfigurator::ReadCpuInfo(std::string& cpuInfo) {
-  base::FilePath cpuInfoPath =
-      GetPrefixedFilePath(base::FilePath(kCpuInfoPath));
-
-  if (!base::ReadFileToString(base::FilePath(cpuInfoPath), &cpuInfo)) {
-    LOG(WARNING) << "Failed to read from: " << cpuInfoPath;
-    return false;
-  }
-  return true;
-}
-
 bool SuspendConfigurator::HasIntelCpu() {
-  std::string contents;
-
-  if (!ReadCpuInfo(contents)) {
-    return false;
-  }
-
-  std::vector<std::string> lines = base::SplitString(
-      contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const std::string& line : lines) {
-    if (base::StartsWith(line, "vendor_id", base::CompareCase::SENSITIVE)) {
-      std::vector<std::string> vendorIdInfo = base::SplitString(
-          line, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-      if (vendorIdInfo.size() != 2 || vendorIdInfo[0] != "vendor_id") {
-        LOG(WARNING) << "Unexpected vendor_id format detected";
-        continue;
-      }
-      // Found a vendor_id label. Assume other vendor_id labels have the same
-      // value.
-      return vendorIdInfo[1] == "GenuineIntel";
+  // Use a static bool so that it only gets evaluated once. This code assumes
+  // that the CPU architecture doesn't change at runtime.
+  static bool result = [this] {
+    std::optional<brillo::CpuInfo> c = brillo::CpuInfo::Create(
+        GetPrefixedFilePath(brillo::CpuInfo::DefaultPath()));
+    if (!c.has_value()) {
+      LOG(ERROR) << "Could not read cpuinfo";
+      return false;
     }
-  }
-  LOG(WARNING) << "No vendor_id found";
-  return false;
+    std::optional<std::string_view> res = c->LookUp(0, "vendor_id");
+    return res.has_value() ? res.value() == "GenuineIntel" : false;
+  }();
+  return result;
 }
 
 }  // namespace power_manager::system

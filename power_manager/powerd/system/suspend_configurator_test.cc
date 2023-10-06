@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/suspend_configurator.h"
 
+#include <cstring>
 #include <stdint.h>
 #include <string>
 
@@ -14,6 +15,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <brillo/cpuinfo.h>
 #include <featured/fake_platform_features.h>
 #include <gtest/gtest.h>
 
@@ -259,7 +261,8 @@ class SuspendConfiguratorTest : public TestEnvironment {
     CreateFileInTempRootDir(temp_root_dir_path,
                             SuspendConfigurator::kConsoleSuspendPath.value());
     CreateFileInTempRootDir(temp_root_dir_path, kSuspendModePath);
-    CreateFileInTempRootDir(temp_root_dir_path, kCpuInfoPath);
+    CreateFileInTempRootDir(temp_root_dir_path,
+                            brillo::CpuInfo::DefaultPath().value());
   }
 
   ~SuspendConfiguratorTest() override = default;
@@ -276,8 +279,10 @@ class SuspendConfiguratorTest : public TestEnvironment {
     return file_contents;
   }
 
-  void WriteCpuInfoFile(const char cpuinfo_data[], size_t len) {
-    base::FilePath cpuinfo_path = GetPath(base::FilePath(kCpuInfoPath));
+  void WriteCpuInfoFile(const char cpuinfo_data[]) {
+    base::FilePath cpuinfo_path =
+        GetPath(base::FilePath(brillo::CpuInfo::DefaultPath()));
+    size_t len = std::strlen(cpuinfo_data);
     CHECK_EQ(base::WriteFile(cpuinfo_path, cpuinfo_data, len), len);
   }
 
@@ -303,7 +308,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForIntelS0ix) {
   base::FilePath console_suspend_path =
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 1);
-  WriteCpuInfoFile(intel_cpuinfo_data, sizeof(intel_cpuinfo_data));
+  WriteCpuInfoFile(intel_cpuinfo_data);
   suspend_configurator_.Init(platform_features_.get(), &prefs_);
   // Make sure console is disabled if S0ix is enabled.
   EXPECT_EQ("Y", ReadFile(console_suspend_path));
@@ -314,7 +319,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForAmdS0ix) {
   base::FilePath console_suspend_path =
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 1);
-  WriteCpuInfoFile(amd_cpuinfo_data, sizeof(amd_cpuinfo_data));
+  WriteCpuInfoFile(amd_cpuinfo_data);
   suspend_configurator_.Init(platform_features_.get(), &prefs_);
   // Make sure console is enabled if S0ix is enabled.
   EXPECT_EQ("N", ReadFile(console_suspend_path));
