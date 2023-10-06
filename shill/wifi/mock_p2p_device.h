@@ -7,6 +7,7 @@
 
 #include "shill/wifi/p2p_device.h"
 
+#include <memory>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -33,6 +34,9 @@ class MockP2PDevice : public P2PDevice {
   bool Start() override { return true; }
 
   bool Stop() override { return true; }
+
+  MOCK_METHOD(bool, CreateGroup, (std::unique_ptr<P2PService>), ());
+  MOCK_METHOD(bool, Connect, (std::unique_ptr<P2PService>), ());
 };
 
 }  // namespace shill

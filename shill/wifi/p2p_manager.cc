@@ -5,6 +5,7 @@
 #include "shill/wifi/p2p_manager.h"
 
 #include <ios>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -38,6 +39,22 @@ void P2PManager::CreateP2PGroup(
     base::OnceCallback<void(KeyValueStore result)> callback,
     const KeyValueStore& args) {
   LOG(INFO) << __func__;
+
+  std::optional<std::string> ssid;
+  if (args.Contains<std::string>(kP2PDeviceSSID)) {
+    ssid = args.Get<std::string>(kP2PDeviceSSID);
+  }
+
+  std::optional<std::string> passphrase;
+  if (args.Contains<std::string>(kP2PDevicePassphrase)) {
+    passphrase = args.Get<std::string>(kP2PDevicePassphrase);
+  }
+
+  std::optional<uint32_t> freq;
+  if (args.Contains<uint32_t>(kP2PDeviceFrequency)) {
+    freq = args.Get<uint32_t>(kP2PDeviceFrequency);
+  }
+
   P2PDeviceRefPtr p2p_dev = manager_->wifi_provider()->CreateP2PDevice(
       LocalDevice::IfaceType::kP2PGO,
       base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
@@ -57,9 +74,18 @@ void P2PManager::CreateP2PGroup(
                std::move(callback));
     return;
   }
+  std::unique_ptr<P2PService> service =
+      std::make_unique<P2PService>(p2p_dev, ssid, passphrase, freq);
+  if (!p2p_dev->CreateGroup(std::move(service))) {
+    LOG(ERROR) << "Failed to initiate group creation";
+    PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
+               std::move(callback));
+    DeleteP2PDevice(p2p_dev);
+    return;
+  }
+
   manager_->wifi_provider()->RegisterP2PDevice(p2p_dev);
   p2p_group_owners_[p2p_dev->shill_id()] = p2p_dev;
-
   PostResult(kCreateP2PGroupResultSuccess, p2p_dev->shill_id(),
              std::move(callback));
 }
@@ -68,6 +94,28 @@ void P2PManager::ConnectToP2PGroup(
     base::OnceCallback<void(KeyValueStore result)> callback,
     const KeyValueStore& args) {
   LOG(INFO) << __func__;
+
+  if (!args.Contains<std::string>(kP2PDeviceSSID)) {
+    LOG(ERROR) << std::string(kP2PDeviceSSID) + " argument is mandatory";
+    PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
+               std::move(callback));
+    return;
+  }
+  std::string ssid = args.Get<std::string>(kP2PDeviceSSID);
+
+  if (!args.Contains<std::string>(kP2PDevicePassphrase)) {
+    LOG(ERROR) << std::string(kP2PDevicePassphrase) + " argument is mandatory";
+    PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
+               std::move(callback));
+    return;
+  }
+  std::string passphrase = args.Get<std::string>(kP2PDevicePassphrase);
+
+  std::optional<uint32_t> freq;
+  if (args.Contains<uint32_t>(kP2PDeviceFrequency)) {
+    freq = args.Get<uint32_t>(kP2PDeviceFrequency);
+  }
+
   P2PDeviceRefPtr p2p_dev = manager_->wifi_provider()->CreateP2PDevice(
       LocalDevice::IfaceType::kP2PClient,
       base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
@@ -87,6 +135,16 @@ void P2PManager::ConnectToP2PGroup(
                std::move(callback));
     return;
   }
+  std::unique_ptr<P2PService> service =
+      std::make_unique<P2PService>(p2p_dev, ssid, passphrase, freq);
+  if (!p2p_dev->Connect(std::move(service))) {
+    LOG(ERROR) << "Failed to initiate connection";
+    PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
+               std::move(callback));
+    DeleteP2PDevice(p2p_dev);
+    return;
+  }
+
   manager_->wifi_provider()->RegisterP2PDevice(p2p_dev);
   p2p_clients_[p2p_dev->shill_id()] = p2p_dev;
   PostResult(kConnectToP2PGroupResultSuccess, p2p_dev->shill_id(),

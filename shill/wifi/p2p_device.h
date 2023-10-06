@@ -5,10 +5,12 @@
 #ifndef SHILL_WIFI_P2P_DEVICE_H_
 #define SHILL_WIFI_P2P_DEVICE_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 
 #include "shill/wifi/local_device.h"
+#include "shill/wifi/p2p_service.h"
 
 namespace shill {
 
@@ -61,8 +63,23 @@ class P2PDevice : public LocalDevice {
   // P2PDevice stop routine. Override the base class Stop.
   bool Stop() override;
 
-  // Stubbed to return null.
-  LocalService* GetService() const override { return nullptr; }
+  // Return the configured service on this device.
+  LocalService* GetService() const override { return service_.get(); }
+
+  // Creates a P2P group with the current device as the group owner
+  // using the setting from |service|. Functionality is stubbed.
+  mockable bool CreateGroup(std::unique_ptr<P2PService> service);
+
+  // Starts a P2P connection with a device |peer_address| with the
+  // specified configuration in |service|. Functionality is stubbed.
+  mockable bool Connect(std::unique_ptr<P2PService> service);
+
+  // Removes the current P2P group. Functionality is stubbed.
+  bool RemoveGroup();
+
+  // Disconnect a P2P connection with a device |peer_address|.
+  // Functionality is stubbed.
+  bool Disconnect();
 
   // Set device link_name;
   void SetLinkName(std::string link_name) { link_name_ = link_name; }
@@ -77,6 +94,18 @@ class P2PDevice : public LocalDevice {
   friend class P2PDeviceTest;
   FRIEND_TEST(P2PDeviceTest, DeviceOnOff);
 
+  // Set service_ to |service|.
+  bool SetService(std::unique_ptr<P2PService> service);
+
+  // Delete service_.
+  void DeleteService();
+
+  // Returns true if the device is in an active GO state.
+  bool InGOState() const;
+
+  // Returns true if the device is in an active Client state.
+  bool InClientState() const;
+
   // Primary interface link name.
   std::string primary_link_name_;
 
@@ -84,6 +113,8 @@ class P2PDevice : public LocalDevice {
   uint32_t shill_id_;
   // P2P device state as listed in enum P2PDeviceState.
   P2PDeviceState state_;
+  // P2P service configured on this device.
+  std::unique_ptr<P2PService> service_;
 };
 
 }  // namespace shill

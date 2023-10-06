@@ -72,6 +72,8 @@ class P2PManager {
   FRIEND_TEST(P2PManagerTest, DisconnectWithoutConnect);
   FRIEND_TEST(P2PManagerTest, DestroyWithoutCreate);
   FRIEND_TEST(P2PManagerTest, ShillIDs);
+  FRIEND_TEST(P2PManagerTest, MissingArgs_CreateGroup);
+  FRIEND_TEST(P2PManagerTest, MissingArgs_ConnectClient);
 
   void HelpRegisterDerivedBool(PropertyStore* store,
                                std::string_view name,
