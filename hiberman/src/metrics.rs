@@ -59,7 +59,8 @@ pub enum HibernateEvent {
     ResumeSuccess = 4,
     ResumeFailure = 5,
     ResumePending = 6,
-    Count = 7,
+    ResumeSkippedUserMismatch = 7,
+    Count = 8,
 }
 
 #[derive(Serialize, Deserialize)]

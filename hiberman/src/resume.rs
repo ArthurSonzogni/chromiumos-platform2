@@ -218,7 +218,8 @@ impl ResumeConductor {
                 if self.current_user != Some(hibernating_user) {
                     info!("Skipping resume: the current user is not the one who hibernated");
 
-                    // TODO: log metric
+                    let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+                    metrics_logger.log_event(HibernateEvent::ResumeSkippedUserMismatch);
 
                     set_hibernate_cookie(
                         Some(&self.stateful_block_path),
