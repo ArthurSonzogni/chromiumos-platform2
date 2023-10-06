@@ -1388,6 +1388,13 @@ properties:
                 recovery-input: *recovery-input
                 storage-type: *storage-type
               additionalProperties: false
+            alt-firmware:
+              type: object
+              properties:
+                has-alt-firmware:
+                  description: Indicates whether the altfw feature is present
+                  type: boolean
+              additionalProperties: false
             cros-healthd:
               type: object
               description: Contains properties used by cros_healthd for

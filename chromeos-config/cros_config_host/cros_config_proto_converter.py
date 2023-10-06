@@ -2535,6 +2535,14 @@ def _build_battery(hw_features):
     return result
 
 
+def _build_alt_firmware(config: Config):
+    alt_firmware_config = config.sw_config.alt_firmware_config
+    result = {}
+    if alt_firmware_config.has_alt_firmware:
+        result["has-alt-firmware"] = alt_firmware_config.has_alt_firmware
+    return result
+
+
 def _build_camera(hw_features):
     camera_pb = topology_pb2.HardwareFeatures.Camera
     camera = hw_features.camera
@@ -2910,6 +2918,7 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(_build_arc(config, config_files), result, "arc")
     _upsert(_build_audio(config), result, "audio")
     _upsert(_build_battery(hw_features), result, "battery")
+    _upsert(_build_alt_firmware(config), result, "alt-firmware")
     _upsert(_build_bluetooth(config), result, "bluetooth")
     _upsert(_build_displays(hw_features), result, "displays")
     _upsert(_build_wifi(config, config_files), result, "wifi")
