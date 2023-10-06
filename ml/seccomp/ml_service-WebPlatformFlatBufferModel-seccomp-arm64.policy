@@ -22,7 +22,7 @@ flock: 1
 fstat: 1
 futex: 1
 getpid: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 gettid: 1
 gettimeofday: 1
 lseek: 1

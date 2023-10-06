@@ -19,8 +19,7 @@ flock: 1
 fstatfs: 1
 futex: 1
 getpid: 1
-# Filter arg2 to disallow GRND_RANDOM (2).
-getrandom: arg2 in 0xfffffffd
+getrandom: arg2 in ~GRND_RANDOM
 gettid: 1
 gettimeofday: 1
 lseek: 1
