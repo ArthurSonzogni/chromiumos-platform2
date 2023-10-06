@@ -21,6 +21,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/cpuinfo.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/files/file_util.h>
 #include <brillo/files/safe_fd.h>
@@ -313,7 +314,7 @@ bool ExpandPropertyContents(const std::string& content,
       break;
 
     case ExtraProps::kX86Soc:
-      AppendX86SocProperties(base::FilePath("/proc/cpuinfo"), &new_properties);
+      AppendX86SocProperties(brillo::CpuInfo::DefaultPath(), &new_properties);
       break;
   }
 
@@ -489,58 +490,62 @@ void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
 
 void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
                             std::string* dest) {
-  std::vector<char> buffer;
-  auto cpuinfo = SafelyReadFile<re2::StringPiece>(cpuinfo_path, &buffer);
-
-  std::string model_field;
-  re2::RE2 model_field_re("model name[ \t]*:(.*)\n");
-  if (!re2::RE2::PartialMatch(cpuinfo, model_field_re, &model_field)) {
-    LOG(ERROR) << "cannot find model name in cpuinfo: "
-               << cpuinfo.substr(0, 2048);
+  std::optional<brillo::CpuInfo> c = brillo::CpuInfo::Create(cpuinfo_path);
+  if (!c.has_value()) {
+    LOG(ERROR) << "couldn't read or parse cpuinfo";
+    return;
+  }
+  std::optional<std::string_view> model_field = c->LookUp(0, "model name");
+  if (!model_field.has_value()) {
+    LOG(ERROR) << "cannot find model name in cpuinfo";
     return;
   }
 
   std::string model;
   base::StringPiece manufacturer;
   if (re2::RE2::PartialMatch(
-          model_field, R"(Intel\(R\) (?:Celeron\(R\)|Core\(TM\)) ([^ ]+) CPU)",
-          &model) ||
+          model_field.value(),
+          R"(Intel\(R\) (?:Celeron\(R\)|Core\(TM\)) ([^ ]+) CPU)", &model) ||
 
       re2::RE2::PartialMatch(
-          model_field, R"(Intel\(R\) Celeron\(R\)(?: CPU)? +([^ ]+)(?: +@|$))",
-          &model) ||
+          model_field.value(),
+          R"(Intel\(R\) Celeron\(R\)(?: CPU)? +([^ ]+)(?: +@|$))", &model) ||
 
       // This one is tricky because the trailing "@ <clock frequency>" is
       // optional.
       re2::RE2::PartialMatch(
-          model_field,
+          model_field.value(),
           R"(Intel\(R\) Pentium\(R\) (?:Gold|Silver|CPU) ([^ ]+)(?: @|$))",
           &model) ||
 
-      re2::RE2::PartialMatch(model_field,
+      re2::RE2::PartialMatch(model_field.value(),
                              R"(Intel\(R\) Pentium\(R\) Silver ([^ ]+) CPU @)",
                              &model) ||
 
       // 11th Gen starts calling out the generation no. explicitly.
-      re2::RE2::PartialMatch(
-          model_field, R"(11th Gen Intel\(R\) Core\(TM\) ([^ ]+) @)", &model) ||
+      re2::RE2::PartialMatch(model_field.value(),
+                             R"(11th Gen Intel\(R\) Core\(TM\) ([^ ]+) @)",
+                             &model) ||
 
       // 12th+13th Gens don't have trailing clock freq in field.
       // For i5-1245U, the "C" in Core is missing.
       // 13th Gen may have CoreT rather than Core(TM).
-      re2::RE2::PartialMatch(model_field,
+      re2::RE2::PartialMatch(model_field.value(),
                              R"(1[23]th Gen Intel\(R\) C?ore[()TM]+ ([^ ]+)$)",
                              &model) ||
 
       // Alderlake-N series.
-      re2::RE2::PartialMatch(model_field, R"(Intel\(R\) (N[0-9]+)$)", &model) ||
-      re2::RE2::PartialMatch(
-          model_field, R"(Intel\(R\) Core\(TM\) (i3-N[0-9]+)$)", &model)) {
+      re2::RE2::PartialMatch(model_field.value(), R"(Intel\(R\) (N[0-9]+)$)",
+                             &model) ||
+      re2::RE2::PartialMatch(model_field.value(),
+                             R"(Intel\(R\) Core\(TM\) (i3-N[0-9]+)$)",
+                             &model)) {
     manufacturer = "Intel";
-  } else if (base::EndsWith(model_field, "Genuine Intel(R) 0000")) {
+  } else if (base::EndsWith(model_field.value(), "Genuine Intel(R) 0000")) {
     model = "0000-FixMe";
     manufacturer = "Intel";
-  } else if (re2::RE2::PartialMatch(model_field, R"(Intel\(R\).*Xeon\(R\))")) {
+  } else if (re2::RE2::PartialMatch(model_field.value(),
+                                    R"(Intel\(R\).*Xeon\(R\))")) {
     // Xeon CPUs should only occur when ChromeOS is running in a VM, not on a
     // physical device.
     model = "Unknown-Xeon";
@@ -550,21 +555,22 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
       // The "Ryzen # " portion is part of the ro.soc.model value.
       // There are various kinds of GPUs, so don't match past "Radeon".
       re2::RE2::PartialMatch(
-          model_field,
+          model_field.value(),
           R"(AMD (Ryzen [3-9] [0-9A-Za-z]+) [0-9a-zA-Z\/ ]+ Radeon[ 0-9A-Za-z]*)",
           &model) ||
 
       // Simpler AMD model names missing Ryzen name and a watt value.
-      re2::RE2::PartialMatch(model_field,
+      re2::RE2::PartialMatch(model_field.value(),
                              R"(AMD(?: Athlon Gold| Athlon Silver)?)"
                              R"( ([0-9A-Za-z]+) with Radeon Graphics)",
                              &model) ||
 
-      re2::RE2::PartialMatch(model_field,
+      re2::RE2::PartialMatch(model_field.value(),
                              R"(AMD ([-0-9A-Za-z]+) RADEON R[45],)", &model)) {
     manufacturer = "AMD";
   } else {
-    LOG(ERROR) << "Unknown CPU in '" << model_field << "'; won't set ro.soc.*";
+    LOG(ERROR) << "Unknown CPU in '" << model_field.value()
+               << "'; won't set ro.soc.*";
     return;
   }
 

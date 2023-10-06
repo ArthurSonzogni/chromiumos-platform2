@@ -625,11 +625,13 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
 
   for (auto& testcase :
        {std::tuple<const char*, const char*>{
-            "nomatch\nmodel name\t: Intel(R) Core(TM) i5-10510U CPU @ 999GHz\n",
+            "nomatch\t: \nmodel name\t: Intel(R) Core(TM) i5-10510U CPU @ "
+            "999GHz\n",
             "ro.soc.manufacturer=Intel\nro.soc.model=i5-10510U\n"},
-        {"xyz\nmodel name\t\t: Intel(R) Core(TM) i7-920 CPU @ 2.67GHz\nabc\n",
+        {"xyz\t: \nmodel name\t\t: Intel(R) Core(TM) i7-920 CPU @ "
+         "2.67GHz\nabc\t: \n",
          "ro.soc.manufacturer=Intel\nro.soc.model=i7-920\n"},
-        {"nomatch\nnomatch\nnomatch\n", ""},
+        {"nomatch\t: \nnomatch\t: \nnomatch\t: \n", ""},
 
         // For an Asuka board.
         {"model name\t: Intel(R) Celeron(R) CPU 3855U @ 1.60GHz\n",
@@ -700,9 +702,9 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.model=6405U\n"},
 
         // For a Zork board.
-        {"line1\n"
+        {"line1\t: \n"
          "model name\t: AMD Ryzen 3 3250C 15W with Radeon Graphics\n"
-         "line3\n",
+         "line3\t: \n",
          "ro.soc.manufacturer=AMD\n"
          "ro.soc.model=Ryzen 3 3250C\n"},
 
