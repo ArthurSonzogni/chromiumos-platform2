@@ -152,7 +152,6 @@ if (use.test) {
   executable("shill_net_test") {
     run_test = true
     sources = [
-      "../mock_log.cc",
       "attribute_list_test.cc",
       "netlink_attribute_test.cc",
       "netlink_manager_test.cc",

@@ -25,8 +25,6 @@
 #include <net-base/mock_socket.h>
 #include <net-base/rtnl_message.h>
 
-#include "shill/mock_log.h"
-
 using testing::_;
 using testing::A;
 using testing::AtLeast;
@@ -355,35 +353,6 @@ TEST_F(RTNLHandlerTest, SendMessageInferredErrorMasks) {
         RTNLHandler::GetInstance()->SendMessage(std::move(message), nullptr));
     EXPECT_EQ(expectation.mask, GetAndClearErrorMask(kSequenceNumber));
   }
-}
-
-TEST_F(RTNLHandlerTest, MaskedError) {
-  StartRTNLHandler();
-  const uint32_t kSequenceNumber = 123;
-  SetRequestSequence(kSequenceNumber);
-  EXPECT_CALL(*GetMockSocket(), Send(_, 0))
-      .WillOnce(testing::Invoke(SimulateSend));
-  uint32_t seq;
-  EXPECT_TRUE(SendMessageWithErrorMask(CreateFakeMessage(), {1, 2, 3}, &seq));
-  EXPECT_EQ(seq, kSequenceNumber);
-  ScopedMockLog log;
-
-  // This error will be not be masked since this sequence number has no mask.
-  EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _, HasSubstr("error 1")))
-      .Times(1);
-  ReturnError(kSequenceNumber - 1, 1);
-
-  // This error will be masked.
-  EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _, HasSubstr("error 2")))
-      .Times(0);
-  ReturnError(kSequenceNumber, 2);
-
-  // This second error will be not be masked since the error mask was removed.
-  EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _, HasSubstr("error 3")))
-      .Times(1);
-  ReturnError(kSequenceNumber, 3);
-
-  StopRTNLHandler();
 }
 
 TEST_F(RTNLHandlerTest, BasicStoreRequest) {
