@@ -41,13 +41,7 @@ from chromite.lib import process_util
 from chromite.lib import qemu
 from chromite.lib import retry_util
 from chromite.lib import signals
-
-
-# TODO(vapier): Delete fallback once manual uprev packages are updated.
-try:
-    from chromite.utils import proctitle_util
-except ImportError:
-    from chromite.lib import proctitle as proctitle_util
+from chromite.utils import proctitle_util
 
 
 PR_SET_CHILD_SUBREAPER = 0x24
