@@ -730,11 +730,7 @@ KernelVersionAndMajorRevision GetKernelVersion() {
 // vm_name should always be less then kMaxVmNameLength characters long.
 base::FilePath GetVmLogPath(const std::string& owner_id,
                             const std::string& vm_name,
-                            const std::string& extension,
-                            bool log_to_cryptohome = true) {
-  if (!log_to_cryptohome) {
-    return base::FilePath();
-  }
+                            const std::string& extension) {
   std::string encoded_vm_name = GetEncodedName(vm_name);
 
   base::FilePath path = base::FilePath(kCryptohomeRoot)
