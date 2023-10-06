@@ -13,9 +13,9 @@
 
 #include <base/no_destructor.h>
 #include <net-base/ip_address.h>
+#include <net-base/rtnl_handler.h>
 
 #include "shill/mockable.h"
-#include "shill/net/rtnl_handler.h"
 
 namespace shill {
 
@@ -29,7 +29,7 @@ class AddressService {
 
   // Helper factory function for test code with dependency injection.
   static std::unique_ptr<AddressService> CreateForTesting(
-      RTNLHandler* rtnl_handler);
+      net_base::RTNLHandler* rtnl_handler);
 
   // Removes all addresses previous configured onto |interface_index|.
   mockable void FlushAddress(int interface_index);
@@ -62,7 +62,7 @@ class AddressService {
   std::map<uint32_t, std::vector<net_base::IPCIDR>> added_addresses_;
 
   // Cache singleton pointer for performance and test purposes.
-  RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
 };
 }  // namespace shill
 

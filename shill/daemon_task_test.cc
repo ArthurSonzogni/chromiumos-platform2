@@ -14,6 +14,7 @@
 #include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_rtnl_handler.h>
 
 #include "shill/daemon_task.h"
 #include "shill/mock_control.h"
@@ -22,7 +23,6 @@
 #include "shill/mojom/mock_mojo_service_provider.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_process_manager.h"
-#include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_routing_policy_service.h"
@@ -107,7 +107,7 @@ class DaemonTaskTest : public Test {
  protected:
   TestConfig config_;
   DaemonTaskForTest daemon_;
-  MockRTNLHandler rtnl_handler_;
+  net_base::MockRTNLHandler rtnl_handler_;
   MockRoutingTable routing_table_;
   MockRoutingPolicyService rule_table_;
   MockDHCPProvider dhcp_provider_;

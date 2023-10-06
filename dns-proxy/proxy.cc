@@ -21,8 +21,8 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
+#include <net-base/rtnl_handler.h>
 #include <shill/dbus-constants.h>
-#include <shill/net/rtnl_handler.h>
 
 #include "dns-proxy/ipc.pb.h"
 
@@ -141,11 +141,11 @@ Proxy::Proxy(const Proxy::Options& opts, int32_t fd)
             base::ScopedFD(fd));
   }
 
-  addr_listener_ = std::make_unique<shill::RTNLListener>(
-      shill::RTNLHandler::kRequestAddr,
+  addr_listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestAddr,
       base::BindRepeating(&Proxy::RTNLMessageHandler,
                           weak_factory_.GetWeakPtr()));
-  shill::RTNLHandler::GetInstance()->Start(RTMGRP_IPV6_IFADDR);
+  net_base::RTNLHandler::GetInstance()->Start(RTMGRP_IPV6_IFADDR);
 }
 
 // This ctor is only used for testing.

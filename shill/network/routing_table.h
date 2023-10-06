@@ -15,14 +15,13 @@
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
 #include <net-base/ip_address.h>
+#include <net-base/rtnl_handler.h>
+#include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 
 #include "shill/network/routing_table_entry.h"
 
 namespace shill {
-
-class RTNLHandler;
-class RTNLListener;
 
 // This singleton maintains an in-process copy of the routing table on
 // a per-interface basis.  It offers the ability for other modules to
@@ -148,10 +147,10 @@ class RoutingTable {
   RouteTables tables_;
   std::set<int> managed_interfaces_;
 
-  std::unique_ptr<RTNLListener> route_listener_;
+  std::unique_ptr<net_base::RTNLListener> route_listener_;
 
   // Cache singleton pointer for performance and test purposes.
-  RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
 };
 
 }  // namespace shill

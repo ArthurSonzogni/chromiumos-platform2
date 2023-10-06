@@ -16,6 +16,8 @@
 
 #include <base/containers/flat_map.h>
 #include <base/no_destructor.h>
+#include <net-base/rtnl_handler.h>
+#include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b);
@@ -57,9 +59,6 @@ struct RoutingPolicyEntry {
 
 // Print out an entry in a format similar to that of ip rule.
 std::ostream& operator<<(std::ostream& os, const RoutingPolicyEntry& entry);
-
-class RTNLHandler;
-class RTNLListener;
 
 // A singleton maintains an in-process copy of the kernel routing policy data
 // base (RPDB). Offers the ability for other modules to modify RPDB, adding and
@@ -115,7 +114,7 @@ class RoutingPolicyService {
   // interface.
   PolicyTables policy_tables_;
 
-  std::unique_ptr<RTNLListener> rule_listener_;
+  std::unique_ptr<net_base::RTNLListener> rule_listener_;
 
   // "User traffic" refers to traffic from processes that run under one of the
   // unix users enumered in |kUserTrafficUsernames| constant in
@@ -123,7 +122,7 @@ class RoutingPolicyService {
   base::flat_map<std::string_view, fib_rule_uid_range> user_traffic_uids_;
 
   // Cache singleton pointer for performance and test purposes.
-  RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
 };
 
 }  // namespace shill

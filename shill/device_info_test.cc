@@ -36,6 +36,7 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/mock_rtnl_handler.h>
 #include <net-base/mock_socket.h>
 #include <net-base/rtnl_message.h>
 
@@ -48,7 +49,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/mock_netlink_manager.h"
-#include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_applier.h"
@@ -183,7 +183,7 @@ class DeviceInfoTest : public Test {
   DeviceInfo device_info_;
   EventDispatcherForTest dispatcher_;
   MockNetlinkManager netlink_manager_;
-  StrictMock<MockRTNLHandler> rtnl_handler_;
+  StrictMock<net_base::MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;  // Owned by Manager
   NiceMock<MockNetworkApplier> network_applier_;
   net_base::MockSocketFactory* socket_factory_;  // Owned by DeviceInfo
@@ -248,7 +248,7 @@ TEST_F(DeviceInfoTest, StartStop) {
   EXPECT_EQ(nullptr, device_info_.link_listener_);
   EXPECT_TRUE(device_info_.infos_.empty());
 
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink));
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestLink));
   device_info_.Start();
   EXPECT_NE(nullptr, device_info_.link_listener_);
   EXPECT_TRUE(device_info_.infos_.empty());
@@ -256,11 +256,11 @@ TEST_F(DeviceInfoTest, StartStop) {
 
   // Start() should set up a periodic task to request link statistics.
   EXPECT_EQ(1, task_environment.GetPendingMainThreadTaskCount());
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink));
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestLink));
   task_environment.FastForwardBy(
       task_environment.NextMainThreadPendingTaskDelay());
   EXPECT_EQ(1, task_environment.GetPendingMainThreadTaskCount());
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink));
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestLink));
   task_environment.FastForwardBy(
       task_environment.NextMainThreadPendingTaskDelay());
 
@@ -541,7 +541,8 @@ TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
 
 TEST_F(DeviceInfoTest, BlockedDevices) {
   // Manager is not running by default.
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(0);
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestLink))
+      .Times(0);
   device_info_.BlockDevice(kTestDeviceName);
   auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
@@ -553,7 +554,8 @@ TEST_F(DeviceInfoTest, BlockedDevices) {
 
 TEST_F(DeviceInfoTest, BlockDeviceWithManagerRunning) {
   SetManagerRunning(true);
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestLink))
+      .Times(1);
   device_info_.BlockDevice(kTestDeviceName);
   auto message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);
@@ -889,7 +891,7 @@ TEST_F(DeviceInfoTest, CreateWireGuardInterface) {
   auto link_ready_cb = [&](const std::string&, int) { link_ready_calls_num++; };
   auto on_failure_cb = [&]() { on_failure_calls_num++; };
 
-  RTNLHandler::ResponseCallback registered_response_cb;
+  net_base::RTNLHandler::ResponseCallback registered_response_cb;
 
   auto call_create_wireguard_interface = [&]() {
     return device_info_.CreateWireGuardInterface(
@@ -897,29 +899,30 @@ TEST_F(DeviceInfoTest, CreateWireGuardInterface) {
         base::BindLambdaForTesting(on_failure_cb));
   };
 
-  // RTNLHandler::AddInterface() returns false directly.
+  // net_base::RTNLHandler::AddInterface() returns false directly.
   EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(call_create_wireguard_interface());
   EXPECT_EQ(link_ready_calls_num, 0);
   EXPECT_EQ(on_failure_calls_num, 0);
 
-  // RTNLHandler::AddInterface() returns true, but the kernel returns false.
+  // net_base::RTNLHandler::AddInterface() returns true, but the kernel returns
+  // false.
   EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
-      .WillRepeatedly([&](const std::string& interface_name,
-                          const std::string& link_kind,
-                          base::span<const uint8_t>,
-                          RTNLHandler::ResponseCallback response_callback) {
-        registered_response_cb = std::move(response_callback);
-        return true;
-      });
+      .WillRepeatedly(
+          [&](const std::string& interface_name, const std::string& link_kind,
+              base::span<const uint8_t>,
+              net_base::RTNLHandler::ResponseCallback response_callback) {
+            registered_response_cb = std::move(response_callback);
+            return true;
+          });
   EXPECT_TRUE(call_create_wireguard_interface());
   std::move(registered_response_cb).Run(100);
   EXPECT_EQ(link_ready_calls_num, 0);
   EXPECT_EQ(on_failure_calls_num, 1);
 
-  // RTNLHandler::AddInterface() returns true, and the kernel returns ack. No
-  // callback to the client should be invoked now.
+  // net_base::RTNLHandler::AddInterface() returns true, and the kernel returns
+  // ack. No callback to the client should be invoked now.
   EXPECT_TRUE(call_create_wireguard_interface());
   std::move(registered_response_cb).Run(0);
   EXPECT_EQ(link_ready_calls_num, 0);
@@ -943,7 +946,7 @@ TEST_F(DeviceInfoTest, CreateXFRMInterface) {
   auto on_failure_cb = [&]() { on_failure_calls_num++; };
 
   std::vector<uint8_t> actual_link_info_data;
-  RTNLHandler::ResponseCallback registered_response_cb;
+  net_base::RTNLHandler::ResponseCallback registered_response_cb;
 
   auto call_create_xfrm_interface = [&]() {
     return device_info_.CreateXFRMInterface(
@@ -952,19 +955,21 @@ TEST_F(DeviceInfoTest, CreateXFRMInterface) {
         base::BindLambdaForTesting(on_failure_cb));
   };
 
-  // RTNLHandler::AddInterface() returns false directly.
+  // net_base::RTNLHandler::AddInterface() returns false directly.
   EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(call_create_xfrm_interface());
   EXPECT_EQ(link_ready_calls_num, 0);
   EXPECT_EQ(on_failure_calls_num, 0);
 
-  // RTNLHandler::AddInterface() returns true, but the kernel returns false.
+  // net_base::RTNLHandler::AddInterface() returns true, but the kernel returns
+  // false.
   EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
       .WillRepeatedly([&](const std::string& interface_name,
                           const std::string& link_kind,
                           base::span<const uint8_t> link_info_data,
-                          RTNLHandler::ResponseCallback response_callback) {
+                          net_base::RTNLHandler::ResponseCallback
+                              response_callback) {
         actual_link_info_data = {link_info_data.begin(), link_info_data.end()};
         registered_response_cb = std::move(response_callback);
         return true;
@@ -978,8 +983,8 @@ TEST_F(DeviceInfoTest, CreateXFRMInterface) {
   EXPECT_EQ(link_ready_calls_num, 0);
   EXPECT_EQ(on_failure_calls_num, 1);
 
-  // RTNLHandler::AddInterface() returns true, and the kernel returns ack. No
-  // callback to the client should be invoked now.
+  // net_base::RTNLHandler::AddInterface() returns true, and the kernel returns
+  // ack. No callback to the client should be invoked now.
   EXPECT_TRUE(call_create_xfrm_interface());
   std::move(registered_response_cb).Run(0);
   EXPECT_EQ(link_ready_calls_num, 0);

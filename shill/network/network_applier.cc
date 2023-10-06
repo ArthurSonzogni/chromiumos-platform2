@@ -14,7 +14,6 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 
-#include "shill/net/rtnl_handler.h"
 #include "shill/network/address_service.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/routing_policy_service.h"
@@ -85,7 +84,7 @@ NetworkApplier::NetworkApplier()
       rule_table_(RoutingPolicyService::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       address_service_(AddressService::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()),
+      rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       proc_fs_(std::make_unique<ProcFsStub>("")) {}
 
 NetworkApplier::~NetworkApplier() = default;
@@ -102,7 +101,7 @@ std::unique_ptr<NetworkApplier> NetworkApplier::CreateForTesting(
     RoutingTable* routing_table,
     RoutingPolicyService* rule_table,
     AddressService* address_service,
-    RTNLHandler* rtnl_handler,
+    net_base::RTNLHandler* rtnl_handler,
     std::unique_ptr<ProcFsStub> proc_fs) {
   // Using `new` to access a non-public constructor.
   auto ptr = base::WrapUnique(new NetworkApplier());

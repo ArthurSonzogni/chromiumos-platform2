@@ -15,7 +15,7 @@
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
-#include <shill/net/rtnl_listener.h>
+#include <net-base/rtnl_listener.h>
 #include <net-base/ip_address.h>
 #include <net-base/rtnl_message.h>
 
@@ -96,7 +96,7 @@ class NeighborLinkMonitor {
 
   NeighborLinkMonitor(int ifindex,
                       const std::string& ifname,
-                      shill::RTNLHandler* rtnl_handler,
+                      net_base::RTNLHandler* rtnl_handler,
                       NeighborReachabilityEventHandler* neighbor_event_handler);
   ~NeighborLinkMonitor() = default;
 
@@ -181,13 +181,13 @@ class NeighborLinkMonitor {
   int ifindex_;
   const std::string ifname_;
   std::map<net_base::IPAddress, WatchingEntry> watching_entries_;
-  std::unique_ptr<shill::RTNLListener> listener_;
+  std::unique_ptr<net_base::RTNLListener> listener_;
 
   // Timer for running ProbeAll().
   base::RepeatingTimer probe_timer_;
 
   // RTNLHandler is a singleton object. Stores it here for test purpose.
-  shill::RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
 
   const NeighborReachabilityEventHandler* neighbor_event_handler_;
 };
@@ -216,7 +216,7 @@ class NetworkMonitorService {
   NeighborLinkMonitor::NeighborReachabilityEventHandler neighbor_event_handler_;
   ShillClient* shill_client_;
   // RTNLHandler is a singleton object. Stores it here for test purpose.
-  shill::RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
 
   FRIEND_TEST(NetworkMonitorServiceTest, StartRTNLHanlderOnServiceStart);
   FRIEND_TEST(NetworkMonitorServiceTest, CallGetDevicePropertiesOnNewDevice);

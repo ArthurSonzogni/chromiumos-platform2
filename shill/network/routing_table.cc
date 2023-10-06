@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include <limits>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -33,10 +34,10 @@
 #include <brillo/userdb_utils.h>
 #include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
+#include <net-base/rtnl_handler.h>
+#include <net-base/rtnl_listener.h>
 
 #include "shill/logging.h"
-#include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_listener.h"
 
 namespace shill {
 
@@ -132,7 +133,8 @@ bool ParseRoutingTableMessage(const net_base::RTNLMessage& message,
 // These don't have named constants in the system header files, but they
 // are documented in ip-rule(8) and hardcoded in net/ipv4/fib_rules.c.
 
-RoutingTable::RoutingTable() : rtnl_handler_(RTNLHandler::GetInstance()) {
+RoutingTable::RoutingTable()
+    : rtnl_handler_(net_base::RTNLHandler::GetInstance()) {
   SLOG(2) << __func__;
 }
 
@@ -145,11 +147,11 @@ RoutingTable* RoutingTable::GetInstance() {
 void RoutingTable::Start() {
   SLOG(2) << __func__;
 
-  route_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestRoute,
-                       base::BindRepeating(&RoutingTable::RouteMsgHandler,
-                                           base::Unretained(this))));
-  rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
+  route_listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestRoute,
+      base::BindRepeating(&RoutingTable::RouteMsgHandler,
+                          base::Unretained(this)));
+  rtnl_handler_->RequestDump(net_base::RTNLHandler::kRequestRoute);
 
   // Initialize kUnreachableTableId as a table to block traffic.
   auto route = RoutingTableEntry(net_base::IPFamily::kIPv6)

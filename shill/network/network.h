@@ -19,12 +19,12 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/rtnl_handler.h>
 
 #include "shill/connection_diagnostics.h"
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/network_applier.h"
@@ -609,7 +609,7 @@ class Network {
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider* dhcp_provider_;
   RoutingTable* routing_table_;
-  RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
   NetworkApplier* network_applier_;
 
   // All the weak pointers created by this factory will be invalidated when the

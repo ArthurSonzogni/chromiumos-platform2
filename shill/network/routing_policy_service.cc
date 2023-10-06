@@ -17,11 +17,8 @@
 #include <brillo/userdb_utils.h>
 #include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
-#include <net-base/rtnl_message.h>
 
 #include "shill/logging.h"
-#include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_listener.h"
 
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b) {
   return (a.start == b.start) && (a.end == b.end);
@@ -85,7 +82,7 @@ base::flat_map<std::string_view, fib_rule_uid_range> ComputeUserTrafficUids() {
 }  // namespace
 
 RoutingPolicyService::RoutingPolicyService()
-    : rtnl_handler_(RTNLHandler::GetInstance()) {
+    : rtnl_handler_(net_base::RTNLHandler::GetInstance()) {
   SLOG(2) << __func__;
 }
 
@@ -99,11 +96,11 @@ RoutingPolicyService* RoutingPolicyService::GetInstance() {
 void RoutingPolicyService::Start() {
   SLOG(2) << __func__;
 
-  rule_listener_.reset(new RTNLListener(
-      RTNLHandler::kRequestRule,
+  rule_listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestRule,
       base::BindRepeating(&RoutingPolicyService::RuleMsgHandler,
-                          base::Unretained(this))));
-  rtnl_handler_->RequestDump(RTNLHandler::kRequestRule);
+                          base::Unretained(this)));
+  rtnl_handler_->RequestDump(net_base::RTNLHandler::kRequestRule);
 }
 
 void RoutingPolicyService::Stop() {

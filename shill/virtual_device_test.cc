@@ -6,18 +6,17 @@
 
 #include <sys/socket.h>
 #include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
-#include <utility>
 
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
-#include "shill/net/mock_rtnl_handler.h"
 #include "shill/store/fake_store.h"
 #include "shill/technology.h"
 #include "shill/testing.h"
@@ -56,7 +55,7 @@ class VirtualDeviceTest : public testing::Test {
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  StrictMock<MockRTNLHandler> rtnl_handler_;
+  StrictMock<net_base::MockRTNLHandler> rtnl_handler_;
 
   VirtualDeviceRefPtr device_;
 

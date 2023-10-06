@@ -27,7 +27,6 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/rtnl_handler.h"
 #include "shill/network/network_applier.h"
 #include "shill/network/network_config.h"
 #include "shill/network/network_priority.h"
@@ -90,7 +89,7 @@ Network::Network(int interface_index,
       metrics_(metrics),
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()),
+      rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       network_applier_(network_applier) {}
 
 Network::~Network() {

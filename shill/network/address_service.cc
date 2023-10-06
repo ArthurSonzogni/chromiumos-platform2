@@ -12,7 +12,8 @@
 
 namespace shill {
 
-AddressService::AddressService() : rtnl_handler_(RTNLHandler::GetInstance()) {}
+AddressService::AddressService()
+    : rtnl_handler_(net_base::RTNLHandler::GetInstance()) {}
 
 AddressService::~AddressService() = default;
 
@@ -24,7 +25,7 @@ AddressService* AddressService::GetInstance() {
 
 // static
 std::unique_ptr<AddressService> AddressService::CreateForTesting(
-    RTNLHandler* rtnl_handler) {
+    net_base::RTNLHandler* rtnl_handler) {
   // Using `new` to access a non-public constructor.
   auto ptr = base::WrapUnique(new AddressService());
   ptr->rtnl_handler_ = rtnl_handler;

@@ -2,22 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/rtnl_listener.h"
+#include "net-base/rtnl_listener.h"
 
-#include "shill/net/rtnl_handler.h"
+#include "net-base/rtnl_handler.h"
 
-namespace shill {
-
-// TODO(b/301905012): Remove this after moving this file to net-base.
-using net_base::RTNLMessage;
+namespace net_base {
 
 RTNLListener::RTNLListener(
-    int listen_flags,
+    uint32_t listen_flags,
     const base::RepeatingCallback<void(const RTNLMessage&)>& callback)
     : RTNLListener{listen_flags, callback, RTNLHandler::GetInstance()} {}
 
 RTNLListener::RTNLListener(
-    int listen_flags,
+    uint32_t listen_flags,
     const base::RepeatingCallback<void(const RTNLMessage&)>& callback,
     RTNLHandler* rtnl_handler)
     : listen_flags_(listen_flags),
@@ -30,9 +27,9 @@ RTNLListener::~RTNLListener() {
   rtnl_handler_->RemoveListener(this);
 }
 
-void RTNLListener::NotifyEvent(int type, const RTNLMessage& msg) const {
+void RTNLListener::NotifyEvent(uint32_t type, const RTNLMessage& msg) const {
   if (type & listen_flags_)
     callback_.Run(msg);
 }
 
-}  // namespace shill
+}  // namespace net_base

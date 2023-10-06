@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <net-base/rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
@@ -26,7 +27,6 @@ class NetlinkManager;
 class ProcessManager;
 class RoutingPolicyService;
 class RoutingTable;
-class RTNLHandler;
 
 // DaemonTask contains most of the logic used in ShillDaemon (e.g.
 // init/shutdown, start/stop). This class is kept separate from ShillDaemon to
@@ -85,7 +85,7 @@ class DaemonTask {
   std::unique_ptr<EventDispatcher> dispatcher_;
   std::unique_ptr<ControlInterface> control_;
   std::unique_ptr<Metrics> metrics_;
-  RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
   RoutingTable* routing_table_;
   RoutingPolicyService* rule_table_;
   DHCPProvider* dhcp_provider_;

@@ -31,6 +31,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/rtnl_handler.h>
 #include <ModemManager/ModemManager.h>
 
 #include "dbus/shill/dbus-constants.h"
@@ -59,8 +60,6 @@
 #include "shill/metrics.h"
 #include "shill/net/netlink_sock_diag.h"
 #include "shill/net/process_manager.h"
-#include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_listener.h"
 #include "shill/network/network_config.h"
 #include "shill/ppp_daemon.h"
 #include "shill/profile.h"
@@ -2494,11 +2493,11 @@ void Cellular::StopLinkListener() {
 void Cellular::StartLinkListener() {
   SLOG(2) << LoggingTag() << ": Started RTNL listener";
   if (!link_listener_) {
-    link_listener_ = std::make_unique<RTNLListener>(
-        RTNLHandler::kRequestLink,
+    link_listener_ = std::make_unique<net_base::RTNLListener>(
+        net_base::RTNLHandler::kRequestLink,
         base::BindRepeating(&Cellular::LinkMsgHandler, base::Unretained(this)));
   }
-  rtnl_handler()->RequestDump(RTNLHandler::kRequestLink);
+  rtnl_handler()->RequestDump(net_base::RTNLHandler::kRequestLink);
 }
 
 void Cellular::SetInitialProperties(const InterfaceToProperties& properties) {

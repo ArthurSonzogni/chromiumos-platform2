@@ -25,7 +25,6 @@
 #include <shill/dbus/client/fake_client.h>
 #include <shill/dbus-constants.h>
 #include <shill/dbus-proxy-mocks.h>
-#include <shill/net/rtnl_handler.h>
 
 #include "dns-proxy/ipc.pb.h"
 

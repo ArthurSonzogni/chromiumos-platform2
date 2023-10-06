@@ -20,6 +20,7 @@
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
@@ -29,7 +30,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
-#include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
@@ -186,7 +186,7 @@ class DeviceTest : public testing::Test {
   NiceMock<MockManager> manager_;
 
   scoped_refptr<TestDevice> device_;
-  StrictMock<MockRTNLHandler> rtnl_handler_;
+  StrictMock<net_base::MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;
   MockNetwork* network_;  // owned by |device_|
 };

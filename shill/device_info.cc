@@ -48,7 +48,6 @@
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/byte_utils.h>
-#include <net-base/rtnl_message.h>
 #include <re2/re2.h>
 
 #include "shill/cellular/modem_info.h"
@@ -60,8 +59,6 @@
 #include "shill/metrics.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_listener.h"
 #include "shill/network/network.h"
 #include "shill/power_manager.h"
 #include "shill/vpn/vpn_provider.h"
@@ -237,7 +234,7 @@ std::string HexEncode(const std::optional<net_base::MacAddress>& mac_address) {
 DeviceInfo::DeviceInfo(Manager* manager)
     : manager_(manager),
       device_info_root_(kDeviceInfoRoot),
-      rtnl_handler_(RTNLHandler::GetInstance()),
+      rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       netlink_manager_(NetlinkManager::GetInstance()) {
   if (manager) {
     // |manager| may be null in tests.
@@ -254,7 +251,7 @@ void DeviceInfo::BlockDevice(const std::string& device_name) {
   DeregisterDevice(GetIndex(device_name));
   // Request link info update to allow device info to be recreated.
   if (manager_->running()) {
-    rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
+    rtnl_handler_->RequestDump(net_base::RTNLHandler::kRequestLink);
   }
 }
 
@@ -264,7 +261,7 @@ void DeviceInfo::AllowDevice(const std::string& device_name) {
   DeregisterDevice(GetIndex(device_name));
   // Request link info update to allow device info to be recreated.
   if (manager_->running()) {
-    rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
+    rtnl_handler_->RequestDump(net_base::RTNLHandler::kRequestLink);
   }
 }
 
@@ -273,11 +270,10 @@ bool DeviceInfo::IsDeviceBlocked(const std::string& device_name) {
 }
 
 void DeviceInfo::Start() {
-  link_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestLink,
-                       base::BindRepeating(&DeviceInfo::LinkMsgHandler,
-                                           base::Unretained(this))));
-  rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
+  link_listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestLink,
+      base::BindRepeating(&DeviceInfo::LinkMsgHandler, base::Unretained(this)));
+  rtnl_handler_->RequestDump(net_base::RTNLHandler::kRequestLink);
   request_link_statistics_callback_.Reset(base::BindOnce(
       &DeviceInfo::RequestLinkStatistics, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
@@ -1319,7 +1315,7 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
 }
 
 void DeviceInfo::RequestLinkStatistics() {
-  rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
+  rtnl_handler_->RequestDump(net_base::RTNLHandler::kRequestLink);
   request_link_statistics_callback_.Reset(base::BindOnce(
       &DeviceInfo::RequestLinkStatistics, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,

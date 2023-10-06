@@ -26,6 +26,7 @@
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/mock_rtnl_handler.h>
 #include <net-base/mock_socket.h>
 
 #include "shill/ethernet/mock_eap_listener.h"
@@ -40,7 +41,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
-#include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network.h"
@@ -272,7 +272,7 @@ class EthernetTest : public testing::Test {
   std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
   MockSupplicantProcessProxy* supplicant_process_proxy_;
 
-  MockRTNLHandler rtnl_handler_;
+  net_base::MockRTNLHandler rtnl_handler_;
   scoped_refptr<MockEthernetService> mock_service_;
   MockEthernetProvider ethernet_provider_;
 

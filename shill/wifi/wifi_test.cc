@@ -20,15 +20,16 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/time/time.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <crypto/random.h>
+#include <net-base/mock_rtnl_handler.h>
 
-#include "base/time/time.h"
-#include "crypto/random.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -47,7 +48,6 @@
 #include "shill/mock_time.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/mock_netlink_manager.h"
-#include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/netlink_message_matchers.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
@@ -1393,7 +1393,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
-  NiceMock<MockRTNLHandler> rtnl_handler_;
+  NiceMock<net_base::MockRTNLHandler> rtnl_handler_;
   MockTime time_;
   MockNetlinkManager netlink_manager_;
 

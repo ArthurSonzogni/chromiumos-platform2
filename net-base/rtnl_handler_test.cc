@@ -2,7 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/rtnl_handler.h"
+#include "net-base/rtnl_handler.h"
+
+#include <net/if.h>
+#include <sys/socket.h>
+// NOLINTNEXTLINE(build/include_alpha)
+#include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
+#include <linux/rtnetlink.h>
+#include <sys/ioctl.h>
 
 #include <limits>
 #include <memory>
@@ -10,20 +17,15 @@
 #include <string>
 #include <utility>
 
-#include <gtest/gtest.h>
-#include <net/if.h>
-#include <sys/socket.h>
-#include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
-#include <linux/rtnetlink.h>
-#include <sys/ioctl.h>
-
 #include <base/functional/bind.h>
 #include <base/test/test_future.h>
 #include <base/test/task_environment.h>
-#include <net-base/byte_utils.h>
-#include <net-base/mac_address.h>
-#include <net-base/mock_socket.h>
-#include <net-base/rtnl_message.h>
+#include <gtest/gtest.h>
+
+#include "net-base/byte_utils.h"
+#include "net-base/mac_address.h"
+#include "net-base/mock_socket.h"
+#include "net-base/rtnl_message.h"
 
 using testing::_;
 using testing::A;
@@ -37,11 +39,7 @@ using testing::ReturnArg;
 using testing::StrictMock;
 using testing::Test;
 
-// TODO(b/301905012): Remove this after moving this file to net-base.
-using net_base::RTNLMessage;
-
-namespace shill {
-
+namespace net_base {
 namespace {
 
 const int kTestInterfaceIndex = 4;
@@ -74,15 +72,15 @@ class RTNLHandlerTest : public Test {
                                       base::Unretained(this))) {}
 
   void SetUp() override {
-    auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
+    auto socket_factory = std::make_unique<MockSocketFactory>();
     socket_factory_ = socket_factory.get();
     RTNLHandler::GetInstance()->socket_factory_ = std::move(socket_factory);
   }
 
   void TearDown() override { RTNLHandler::GetInstance()->Stop(); }
 
-  net_base::MockSocket* GetMockSocket() {
-    return reinterpret_cast<net_base::MockSocket*>(
+  MockSocket* GetMockSocket() {
+    return reinterpret_cast<MockSocket*>(
         RTNLHandler::GetInstance()->rtnl_socket_.get());
   }
 
@@ -114,7 +112,7 @@ class RTNLHandlerTest : public Test {
     return RTNLHandler::GetInstance()->GetAndClearErrorMask(sequence);
   }
 
-  int GetErrorWindowSize() { return RTNLHandler::kErrorWindowSize; }
+  uint32_t GetErrorWindowSize() { return RTNLHandler::kErrorWindowSize; }
 
   void StoreRequest(std::unique_ptr<RTNLMessage> request) {
     RTNLHandler::GetInstance()->StoreRequest(std::move(request));
@@ -149,7 +147,7 @@ class RTNLHandlerTest : public Test {
   void StopRTNLHandler();
   void ReturnError(uint32_t sequence, int error_number);
 
-  net_base::MockSocketFactory* socket_factory_;  // Owned by RTNLHandler
+  MockSocketFactory* socket_factory_;  // Owned by RTNLHandler
   base::RepeatingCallback<void(const RTNLMessage&)> callback_;
 
  private:
@@ -165,7 +163,7 @@ const char RTNLHandlerTest::kTestDeviceName[] = "test-device";
 
 void RTNLHandlerTest::StartRTNLHandler() {
   EXPECT_CALL(*socket_factory_, CreateNetlink(NETLINK_ROUTE, _, _))
-      .WillOnce(Return(std::make_unique<net_base::MockSocket>()));
+      .WillOnce(Return(std::make_unique<MockSocket>()));
   RTNLHandler::GetInstance()->Start(0);
 }
 
@@ -177,9 +175,8 @@ void RTNLHandlerTest::StopRTNLHandler() {
 void RTNLHandlerTest::AddLink() {
   RTNLMessage message(RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, 0, 0, 0,
                       kTestDeviceIndex, AF_INET);
-  message.SetAttribute(
-      static_cast<uint16_t>(IFLA_IFNAME),
-      net_base::byte_utils::StringToCStringBytes(kTestDeviceName));
+  message.SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
+                       byte_utils::StringToCStringBytes(kTestDeviceName));
   const auto encoded = message.Encode();
   RTNLHandler::GetInstance()->ParseRTNL(encoded);
 }
@@ -203,7 +200,7 @@ void RTNLHandlerTest::ReturnError(uint32_t sequence, int error_number) {
   errmsg.hdr.nlmsg_seq = sequence;
   errmsg.err.error = -error_number;
 
-  RTNLHandler::GetInstance()->ParseRTNL(net_base::byte_utils::AsBytes(errmsg));
+  RTNLHandler::GetInstance()->ParseRTNL(byte_utils::AsBytes(errmsg));
 }
 
 TEST_F(RTNLHandlerTest, ListenersInvoked) {
@@ -243,7 +240,7 @@ TEST_F(RTNLHandlerTest, GetInterfaceNameFailToCreateSocket) {
 
 TEST_F(RTNLHandlerTest, GetInterfaceNameFailToIoctl) {
   EXPECT_CALL(*socket_factory_, Create(PF_INET, _, 0)).WillOnce([]() {
-    auto socket = std::make_unique<net_base::MockSocket>();
+    auto socket = std::make_unique<MockSocket>();
     EXPECT_CALL(*socket, Ioctl(SIOCGIFINDEX, _)).WillOnce(Return(std::nullopt));
     return socket;
   });
@@ -253,7 +250,7 @@ TEST_F(RTNLHandlerTest, GetInterfaceNameFailToIoctl) {
 
 TEST_F(RTNLHandlerTest, GetInterfaceNameSuccess) {
   EXPECT_CALL(*socket_factory_, Create(PF_INET, _, 0)).WillOnce([]() {
-    auto socket = std::make_unique<net_base::MockSocket>();
+    auto socket = std::make_unique<MockSocket>();
     EXPECT_CALL(*socket, Ioctl(SIOCGIFINDEX, _))
         .WillOnce(DoAll(SetInterfaceIndex(), Return(0)));
     return socket;
@@ -538,7 +535,7 @@ TEST_F(RTNLHandlerTest, SetInterfaceMac) {
   base::test::TestFuture<int32_t> error_future;
 
   RTNLHandler::GetInstance()->SetInterfaceMac(
-      3, *net_base::MacAddress::CreateFromString("ab:cd:ef:12:34:56"),
+      3, *MacAddress::CreateFromString("ab:cd:ef:12:34:56"),
       error_future.GetCallback());
 
   ReturnError(kSequenceNumber, kErrorNumber);
@@ -582,4 +579,4 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
   StopRTNLHandler();
 }
 
-}  // namespace shill
+}  // namespace net_base

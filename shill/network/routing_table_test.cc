@@ -21,8 +21,7 @@
 #include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
 #include <net-base/rtnl_message.h>
-
-#include "shill/net/mock_rtnl_handler.h"
+#include <net-base/mock_rtnl_handler.h>
 
 using testing::_;
 using testing::Field;
@@ -42,8 +41,6 @@ class RoutingTableTest : public Test {
     routing_table_->rtnl_handler_ = &rtnl_handler_;
     ON_CALL(rtnl_handler_, DoSendMessage(_, _)).WillByDefault(Return(true));
   }
-
-  void TearDown() override { RTNLHandler::GetInstance()->Stop(); }
 
   std::unordered_map<int, std::vector<RoutingTableEntry>>* GetRoutingTables() {
     return &routing_table_->tables_;
@@ -101,7 +98,7 @@ class RoutingTableTest : public Test {
   };
 
   std::unique_ptr<RoutingTable> routing_table_;
-  StrictMock<MockRTNLHandler> rtnl_handler_;
+  StrictMock<net_base::MockRTNLHandler> rtnl_handler_;
 };
 
 const uint32_t RoutingTableTest::kTestDeviceIndex0 = 12345;
@@ -213,7 +210,7 @@ void RoutingTableTest::SendRouteEntryWithSeqAndProto(
 }
 
 void RoutingTableTest::Start() {
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestRoute));
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestRoute));
   EXPECT_CALL(rtnl_handler_,
               DoSendMessage(
                   IsUnreachableRoutingPacket(net_base::IPFamily::kIPv6,

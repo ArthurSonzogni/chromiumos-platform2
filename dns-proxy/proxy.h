@@ -24,9 +24,9 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 #include <shill/dbus/client/client.h>
-#include <shill/net/rtnl_listener.h>
 
 #include "dns-proxy/ipc.pb.h"
 #include "dns-proxy/metrics.h"
@@ -321,7 +321,7 @@ class Proxy : public brillo::DBusDaemon {
       msg_dispatcher_;
 
   // Listens for RTMGRP_IPV6_IFADDR messages and invokes RTNLMessageHandler.
-  std::unique_ptr<shill::RTNLListener> addr_listener_;
+  std::unique_ptr<net_base::RTNLListener> addr_listener_;
 
   base::WeakPtrFactory<Proxy> weak_factory_{this};
 };

@@ -15,7 +15,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
-#include <shill/net/mock_rtnl_handler.h>
+#include <net-base/mock_rtnl_handler.h>
 
 #include "patchpanel/fake_shill_client.h"
 
@@ -140,7 +140,7 @@ class FakeNeighborReachabilityEventHandler {
 class NeighborLinkMonitorTest : public testing::Test {
  protected:
   void SetUp() override {
-    mock_rtnl_handler_ = std::make_unique<shill::MockRTNLHandler>();
+    mock_rtnl_handler_ = std::make_unique<net_base::MockRTNLHandler>();
     callback_ =
         base::BindRepeating(&FakeNeighborReachabilityEventHandler::Run,
                             base::Unretained(&fake_neighbor_event_handler_));
@@ -190,9 +190,8 @@ class NeighborLinkMonitorTest : public testing::Test {
       msg.SetAttribute(NDA_LLADDR, std::vector<uint8_t>{1, 2, 3, 4, 5, 6});
     }
 
-    // TODO(b/2360921612) Remove static cast when shill-net types are fixed.
-    int event_type = static_cast<int>(shill::RTNLHandler::kRequestNeighbor);
-    registered_listener_->NotifyEvent(event_type, msg);
+    registered_listener_->NotifyEvent(net_base::RTNLHandler::kRequestNeighbor,
+                                      msg);
   }
 
   // The internal implementation of Timer uses Now() so we need
@@ -201,9 +200,9 @@ class NeighborLinkMonitorTest : public testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   FakeNeighborReachabilityEventHandler fake_neighbor_event_handler_;
   NeighborLinkMonitor::NeighborReachabilityEventHandler callback_;
-  std::unique_ptr<shill::MockRTNLHandler> mock_rtnl_handler_;
+  std::unique_ptr<net_base::MockRTNLHandler> mock_rtnl_handler_;
   std::unique_ptr<NeighborLinkMonitor> link_monitor_;
-  shill::RTNLListener* registered_listener_ = nullptr;
+  net_base::RTNLListener* registered_listener_ = nullptr;
 };
 
 TEST_F(NeighborLinkMonitorTest, SendNeighborDumpMessageOnIPConfigChanged) {
@@ -421,13 +420,13 @@ class NetworkMonitorServiceTest : public testing::Test {
         fake_shill_client_.get(),
         base::BindRepeating(&FakeNeighborReachabilityEventHandler::Run,
                             base::Unretained(&fake_neighbor_event_handler_)));
-    mock_rtnl_handler_ = std::make_unique<shill::MockRTNLHandler>();
+    mock_rtnl_handler_ = std::make_unique<net_base::MockRTNLHandler>();
   }
 
   FakeShillClientHelper shill_helper_;
   FakeNeighborReachabilityEventHandler fake_neighbor_event_handler_;
   std::unique_ptr<FakeShillClient> fake_shill_client_;
-  std::unique_ptr<shill::MockRTNLHandler> mock_rtnl_handler_;
+  std::unique_ptr<net_base::MockRTNLHandler> mock_rtnl_handler_;
   std::unique_ptr<NetworkMonitorService> monitor_svc_;
 };
 

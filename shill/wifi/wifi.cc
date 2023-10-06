@@ -33,6 +33,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/rtnl_handler.h>
 
 #if !defined(DISABLE_FLOSS)
 #include "shill/bluetooth/bluetooth_manager_interface.h"
@@ -49,7 +50,6 @@
 #include "shill/net/netlink_manager.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/scope_logger.h"
 #include "shill/store/key_value_store.h"
@@ -3452,8 +3452,8 @@ void WiFi::ConnectToSupplicant() {
 
   GetAndUseInterfaceCapabilities();
 
-  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
-                                                IFF_UP);
+  net_base::RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(),
+                                                          IFF_UP, IFF_UP);
   // TODO(quiche) Set ApScan=1 and BSSExpireAge=190, like flimflam does?
 
   // Clear out any networks that might previously have been configured
@@ -4057,7 +4057,8 @@ void WiFi::OnIPv6ConfiguredWithSLAACAddress(int net_interface_index) {
 
 void WiFi::RetrieveLinkStatistics(WiFiLinkStatistics::Trigger event) {
   current_rtnl_network_event_ = event;
-  RTNLHandler::GetInstance()->RequestDump(RTNLHandler::kRequestLink);
+  net_base::RTNLHandler::GetInstance()->RequestDump(
+      net_base::RTNLHandler::kRequestLink);
   RequestStationInfo(event);
 }
 

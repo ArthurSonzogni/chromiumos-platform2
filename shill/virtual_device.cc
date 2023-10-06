@@ -11,11 +11,7 @@
 #include <string>
 #include <utility>
 
-#include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/net/rtnl_handler.h"
-
-#include <base/logging.h>
 
 namespace shill {
 

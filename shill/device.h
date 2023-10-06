@@ -7,8 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,6 +18,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
+#include <net-base/rtnl_handler.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
@@ -44,7 +43,6 @@ class DeviceAdaptorInterface;
 class Error;
 class EventDispatcher;
 class Manager;
-class RTNLHandler;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
@@ -188,7 +186,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
-  RTNLHandler* rtnl_handler() { return rtnl_handler_; }
+  net_base::RTNLHandler* rtnl_handler() { return rtnl_handler_; }
 
   EventDispatcher* dispatcher() const;
 
@@ -532,7 +530,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   ServiceRefPtr selected_service_;
 
   // Cache singleton pointers for performance and test purposes.
-  RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
 
   // See GetTrafficCountersCallback.
   unsigned int traffic_counter_callback_id_;

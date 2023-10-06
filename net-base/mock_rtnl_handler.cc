@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/mock_rtnl_handler.h"
+#include "net-base/mock_rtnl_handler.h"
 
-namespace shill {
+namespace net_base {
 
 MockRTNLHandler::MockRTNLHandler() = default;
 
 MockRTNLHandler::~MockRTNLHandler() = default;
 
-}  // namespace shill
+}  // namespace net_base

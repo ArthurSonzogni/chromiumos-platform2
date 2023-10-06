@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_listener.h"
+#include "net-base/rtnl_handler.h"
 
 #include <base/at_exit.h>
 #include <base/check.h>
@@ -11,13 +10,11 @@
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <net-base/rtnl_message.h>
 
-namespace shill {
-namespace {
-// TODO(b/301905012): Remove this after moving this file to net-base.
-using net_base::RTNLMessage;
-}  // namespace
+#include "net-base/rtnl_listener.h"
+#include "net-base/rtnl_message.h"
+
+namespace net_base {
 
 class RTNLHandlerFuzz {
  public:
@@ -26,7 +23,7 @@ class RTNLHandlerFuzz {
     base::span<const uint8_t> input(data, size);
 
     // Listen for all messages.
-    RTNLListener listener(~0, base::BindRepeating(&RTNLHandlerFuzz::Listener));
+    RTNLListener listener(~0u, base::BindRepeating(&RTNLHandlerFuzz::Listener));
     RTNLHandler::GetInstance()->ParseRTNL(input);
   }
 
@@ -56,4 +53,4 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   return 0;
 }
 
-}  // namespace shill
+}  // namespace net_base

@@ -24,6 +24,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <net-base/mock_rtnl_handler.h>
 
 extern "C" {
 // A struct member in pppd.h has the name 'class'.
@@ -64,7 +65,6 @@ extern "C" {
 #include "shill/mock_profile.h"
 #include "shill/mock_virtual_device.h"
 #include "shill/net/mock_process_manager.h"
-#include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_network.h"
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
@@ -574,7 +574,7 @@ class CellularTest : public testing::Test {
   NiceMock<MockMetrics> metrics_;
   MockModemInfo modem_info_;
   NiceMock<MockProcessManager> process_manager_;
-  NiceMock<MockRTNLHandler> rtnl_handler_;
+  NiceMock<net_base::MockRTNLHandler> rtnl_handler_;
 
   bool create_gsm_card_proxy_from_factory_;
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
@@ -1794,7 +1794,8 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(device_->link_name()))
       .WillOnce(Return(device_->interface_index()));
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestLink))
+      .Times(1);
   // Associating because the internal RTNL handler handles the interface up
   // logic, and at this point that is not yet known.
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
@@ -2010,7 +2011,8 @@ TEST_F(CellularTest, EstablishLinkStatic) {
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(device_->link_name()))
       .WillOnce(Return(device_->interface_index()));
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestLink))
+      .Times(1);
   // Associating because the internal RTNL handler handles the interface up
   // logic, and at this point that is not yet known.
 
@@ -2041,7 +2043,8 @@ TEST_F(CellularTest, EstablishLinkMultiplexStatic) {
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kTestMultiplexedInterfaceName))
       .WillOnce(Return(kTestMultiplexedInterfaceIndex));
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestLink))
+      .Times(1);
   // Associating because the internal RTNL handler handles the interface up
   // logic, and at this point that is not yet known.
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));

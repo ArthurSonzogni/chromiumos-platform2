@@ -13,12 +13,12 @@
 #include <base/time/time.h>
 #include <metrics/timer.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/rtnl_handler.h>
+#include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mockable.h"
-#include "shill/net/rtnl_handler.h"
-#include "shill/net/rtnl_listener.h"
 #include "shill/network/network_config.h"
 #include "shill/network/proc_fs_stub.h"
 
@@ -36,7 +36,7 @@ class SLAACController {
 
   SLAACController(int interface_index,
                   ProcFsStub* proc_fs,
-                  RTNLHandler* rtnl_handler,
+                  net_base::RTNLHandler* rtnl_handler,
                   EventDispatcher* dispatcher);
   virtual ~SLAACController();
 
@@ -112,10 +112,10 @@ class SLAACController {
   // Owned by Network
   ProcFsStub* proc_fs_;
 
-  RTNLHandler* rtnl_handler_;
-  std::unique_ptr<RTNLListener> address_listener_;
-  std::unique_ptr<RTNLListener> route_listener_;
-  std::unique_ptr<RTNLListener> rdnss_listener_;
+  net_base::RTNLHandler* rtnl_handler_;
+  std::unique_ptr<net_base::RTNLListener> address_listener_;
+  std::unique_ptr<net_base::RTNLListener> route_listener_;
+  std::unique_ptr<net_base::RTNLListener> rdnss_listener_;
 
   EventDispatcher* dispatcher_;
 

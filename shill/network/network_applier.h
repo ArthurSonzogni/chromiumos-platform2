@@ -12,10 +12,10 @@
 
 #include <base/no_destructor.h>
 #include <net-base/ip_address.h>
+#include <net-base/rtnl_handler.h>
 
 #include "shill/ipconfig.h"
 #include "shill/mockable.h"
-#include "shill/net/rtnl_handler.h"
 #include "shill/network/address_service.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
@@ -55,7 +55,7 @@ class NetworkApplier {
       RoutingTable* routing_table,
       RoutingPolicyService* rule_table,
       AddressService* address_service,
-      RTNLHandler* rtnl_handler,
+      net_base::RTNLHandler* rtnl_handler,
       std::unique_ptr<ProcFsStub> proc_fs);
 
   // Clear all configurations applied to a certain interface.
@@ -130,7 +130,7 @@ class NetworkApplier {
   RoutingPolicyService* rule_table_;
   RoutingTable* routing_table_;
   AddressService* address_service_;
-  RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
 
   // A ProcFsStub instance with no specific interface_name, for the purpose of
   // calling FlushRoutingCache().

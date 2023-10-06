@@ -17,6 +17,7 @@
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 
 #include "shill/cellular/apn_list.h"
@@ -41,7 +42,6 @@ class Error;
 class ExternalTask;
 class NetlinkSockDiag;
 class ProcessManager;
-class RTNLListener;
 class PowerOpt;
 
 class Cellular : public Device,
@@ -966,7 +966,7 @@ class Cellular : public Device,
   // When set in tests, a connection attempt doesn't attempt link establishment
   bool skip_establish_link_for_testing_ = false;
 
-  std::unique_ptr<RTNLListener> link_listener_;
+  std::unique_ptr<net_base::RTNLListener> link_listener_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};
 };

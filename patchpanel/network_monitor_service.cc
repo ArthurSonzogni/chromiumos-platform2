@@ -18,8 +18,8 @@
 #include <net-base/byte_utils.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
-#include <shill/net/rtnl_handler.h>
-#include <shill/net/rtnl_listener.h>
+#include <net-base/rtnl_handler.h>
+#include <net-base/rtnl_listener.h>
 
 namespace patchpanel {
 
@@ -78,7 +78,7 @@ bool NeedProbeForState(uint16_t current_state) {
 NeighborLinkMonitor::NeighborLinkMonitor(
     int ifindex,
     const std::string& ifname,
-    shill::RTNLHandler* rtnl_handler,
+    net_base::RTNLHandler* rtnl_handler,
     NeighborReachabilityEventHandler* neighbor_event_handler)
     : ifindex_(ifindex),
       ifname_(ifname),
@@ -211,8 +211,8 @@ void NeighborLinkMonitor::Start() {
   if (listener_ != nullptr)
     return;
 
-  listener_ = std::make_unique<shill::RTNLListener>(
-      shill::RTNLHandler::kRequestNeighbor,
+  listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestNeighbor,
       base::BindRepeating(&NeighborLinkMonitor::OnNeighborMessage,
                           base::Unretained(this)),
       rtnl_handler_);
@@ -356,7 +356,7 @@ NetworkMonitorService::NetworkMonitorService(
         neighbor_event_handler)
     : neighbor_event_handler_(neighbor_event_handler),
       shill_client_(shill_client),
-      rtnl_handler_(shill::RTNLHandler::GetInstance()) {}
+      rtnl_handler_(net_base::RTNLHandler::GetInstance()) {}
 
 void NetworkMonitorService::Start() {
   // Setups the RTNL socket and listens to neighbor events. This should be

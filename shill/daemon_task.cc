@@ -23,7 +23,6 @@
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/process_manager.h"
-#include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/routing_policy_service.h"
 #include "shill/network/routing_table.h"
@@ -75,7 +74,7 @@ void DaemonTask::Init() {
   dispatcher_.reset(new EventDispatcher());
   control_.reset(new DBusControl(dispatcher_.get()));
   metrics_.reset(new Metrics());
-  rtnl_handler_ = RTNLHandler::GetInstance();
+  rtnl_handler_ = net_base::RTNLHandler::GetInstance();
   routing_table_ = RoutingTable::GetInstance();
   rule_table_ = RoutingPolicyService::GetInstance();
   dhcp_provider_ = DHCPProvider::GetInstance();

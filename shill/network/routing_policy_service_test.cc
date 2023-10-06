@@ -10,8 +10,7 @@
 
 #include <base/memory/ptr_util.h>
 #include <net-base/ip_address.h>
-
-#include "shill/net/mock_rtnl_handler.h"
+#include <net-base/mock_rtnl_handler.h>
 
 using testing::_;
 using testing::Field;
@@ -33,15 +32,13 @@ class RoutingPolicyServiceTest : public Test {
     ON_CALL(rtnl_handler_, DoSendMessage).WillByDefault(Return(true));
   }
 
-  void TearDown() override { RTNLHandler::GetInstance()->Stop(); }
-
   void Start();
 
   int CountRoutingPolicyEntries();
 
  protected:
   std::unique_ptr<RoutingPolicyService> rule_table_;
-  StrictMock<MockRTNLHandler> rtnl_handler_;
+  StrictMock<net_base::MockRTNLHandler> rtnl_handler_;
 };
 
 int RoutingPolicyServiceTest::CountRoutingPolicyEntries() {
@@ -55,7 +52,7 @@ int RoutingPolicyServiceTest::CountRoutingPolicyEntries() {
 }
 
 void RoutingPolicyServiceTest::Start() {
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestRule));
+  EXPECT_CALL(rtnl_handler_, RequestDump(net_base::RTNLHandler::kRequestRule));
   rule_table_->Start();
 }
 

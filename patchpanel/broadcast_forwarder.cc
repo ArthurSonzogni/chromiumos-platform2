@@ -22,7 +22,7 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <shill/net/rtnl_handler.h>
+#include <net-base/rtnl_handler.h>
 #include <net-base/byte_utils.h>
 
 #include "patchpanel/net_util.h"
@@ -144,11 +144,11 @@ BroadcastForwarder::BroadcastForwarder(const std::string& dev_ifname)
     : dev_ifname_(dev_ifname) {}
 
 void BroadcastForwarder::Init() {
-  addr_listener_ = std::make_unique<shill::RTNLListener>(
-      shill::RTNLHandler::kRequestAddr,
+  addr_listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestAddr,
       base::BindRepeating(&BroadcastForwarder::AddrMsgHandler,
                           weak_factory_.GetWeakPtr()));
-  shill::RTNLHandler::GetInstance()->Start(RTMGRP_IPV4_IFADDR);
+  net_base::RTNLHandler::GetInstance()->Start(RTMGRP_IPV4_IFADDR);
 }
 
 void BroadcastForwarder::AddrMsgHandler(const net_base::RTNLMessage& msg) {

@@ -23,8 +23,6 @@ classes).
 
 *   [Manager](#Manager) This is the primary / top-level shill class.
     `DaemonTask::Start` calls `Manager::Start`.
-*   [RTNLHandler class](../net/rtnl_handler.h) Available globally using
-    RTNLHandler::GetInstance(). See also [RTNL](#RTNL).
 *   [RoutingTable class](../routing_table.h) Available globally using
     RoutingTable::GetInstance(). See also [routing](routing.md).
 *   [NetlinkManager class](../net/netlink_manager.h) Available globally using
@@ -71,7 +69,7 @@ The [DeviceInfo class](../device_info.h) is a singleton owned by
 [Manager](#Manager).
 
 *   `DeviceInfo` listens to network interface and address-configuration events
-    using [RTNL](#RTNL).
+    using RTNL.
 *   On startup, `DeviceInfo` requests a dump of existing network interface and
     address-configuration information in order to be in sync with the current
     kernel state.
@@ -263,16 +261,6 @@ and a per-user Profile when a user is logged in.
 
 # Glossary
 
-## RTNL
-
-**RTNL** is short for [rtnetlink].
-
-*   [Netlink] is a protocol that can be used for kernel <-> user-space and
-    user-space <-> user-space communication.
-    *   See also [rtnetlink.h].
-*   *TODO:* Document the [RTNLHandler class](../net/rtnl_handler.h) and the
-    [RTNLListener class](../net/rtnl_listener.h).
-
 [ProviderInheritance]: https://docs.google.com/drawings/d/13bSfym4MoC3qxQS1c7aiJktyJkzs8qmF6-ulh57mbuE
 [org.chromium.flimflam.Device]: ../dbus_bindings/org.chromium.flimflam.Device.dbus-xml
 [org.chromium.flimflam.Manager]: ../dbus_bindings/org.chromium.flimflam.Manager.dbus-xml
@@ -280,6 +268,3 @@ and a per-user Profile when a user is logged in.
 [org.chromium.flimflam.IPConfig]: ../dbus_bindings/org.chromium.flimflam.IPConfig.dbus-xml
 [org.chromium.flimflam.Profile]: ../dbus_bindings/org.chromium.flimflam.Profile.dbus-xml
 [org.chromium.flimflam.ThirdPartyVpn]: ../dbus_bindings/org.chromium.flimflam.ThirdPartyVpn.dbus-xml
-[rtnetlink]: http://man7.org/linux/man-pages/man7/rtnetlink.7.html
-[Netlink]: http://man7.org/linux/man-pages/man7/netlink.7.html
-[rtnetlink.h]: https://elixir.bootlin.com/linux/v5.0/source/include/uapi/linux/rtnetlink.h

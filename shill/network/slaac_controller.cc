@@ -18,8 +18,6 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv6_address.h>
 
-#include "shill/net/rtnl_handler.h"
-
 namespace shill {
 
 // Infinity lifetime, defined in rfc8106, section-5.1.
@@ -27,7 +25,7 @@ namespace shill {
 
 SLAACController::SLAACController(int interface_index,
                                  ProcFsStub* proc_fs,
-                                 RTNLHandler* rtnl_handler,
+                                 net_base::RTNLHandler* rtnl_handler,
                                  EventDispatcher* dispatcher)
     : interface_index_(interface_index),
       proc_fs_(proc_fs),
@@ -41,18 +39,18 @@ void SLAACController::Start(
   last_provision_timer_ = std::make_unique<chromeos_metrics::Timer>();
   last_provision_timer_->Start();
 
-  address_listener_ = std::make_unique<RTNLListener>(
-      RTNLHandler::kRequestAddr,
+  address_listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestAddr,
       base::BindRepeating(&SLAACController::AddressMsgHandler,
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
-  route_listener_ = std::make_unique<RTNLListener>(
-      RTNLHandler::kRequestRoute,
+  route_listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestRoute,
       base::BindRepeating(&SLAACController::RouteMsgHandler,
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
-  rdnss_listener_ = std::make_unique<RTNLListener>(
-      RTNLHandler::kRequestRdnss,
+  rdnss_listener_ = std::make_unique<net_base::RTNLListener>(
+      net_base::RTNLHandler::kRequestRdnss,
       base::BindRepeating(&SLAACController::RDNSSMsgHandler,
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);

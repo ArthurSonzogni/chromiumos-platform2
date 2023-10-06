@@ -12,9 +12,9 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <net-base/ip_address.h>
+#include <net-base/mock_rtnl_handler.h>
 
 #include "shill/mock_resolver.h"
-#include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_network_applier.h"
 #include "shill/network/mock_proc_fs_stub.h"
 #include "shill/network/mock_routing_policy_service.h"
@@ -130,10 +130,10 @@ class NetworkApplierTest : public Test {
   StrictMock<MockResolver> resolver_;
   StrictMock<MockRoutingTable> routing_table_;
   StrictMock<MockRoutingPolicyService> rule_table_;
-  StrictMock<MockRTNLHandler> address_rtnl_handler_;
+  StrictMock<net_base::MockRTNLHandler> address_rtnl_handler_;
   std::unique_ptr<AddressService>
-      address_service_;  // mocked at RTNLHandler level
-  MockRTNLHandler rtnl_handler_;
+      address_service_;  // mocked at net_base::RTNLHandler level
+  net_base::MockRTNLHandler rtnl_handler_;
   MockProcFsStub* proc_fs_;  // owned by network_applier_;
   std::unique_ptr<NetworkApplier> network_applier_;
 };

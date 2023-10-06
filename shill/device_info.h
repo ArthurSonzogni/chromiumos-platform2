@@ -20,6 +20,8 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/mac_address.h>
+#include <net-base/rtnl_handler.h>
+#include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 #include <net-base/socket.h>
 
@@ -35,8 +37,6 @@ class Manager;
 class NetlinkManager;
 class Nl80211Message;
 class RoutingTable;
-class RTNLHandler;
-class RTNLListener;
 
 class DeviceInfo {
  public:
@@ -279,7 +279,7 @@ class DeviceInfo {
       const patchpanel::Client::NeighborReachabilityEvent& event);
 
   // Callback registered in CreateWireGuardInterface() and
-  // CreateXFRMInterface(). Invoked by RTNLHandler, to notify the
+  // CreateXFRMInterface(). Invoked by net_base::RTNLHandler, to notify the
   // acknowledgement from the kernel for the adding link request.
   void OnCreateInterfaceResponse(const std::string& interface_name,
                                  base::OnceClosure failure_callback,
@@ -297,7 +297,7 @@ class DeviceInfo {
   std::map<int, Info> infos_;           // Maps interface index to Info.
   std::map<std::string, int> indices_;  // Maps interface name to index.
 
-  std::unique_ptr<RTNLListener> link_listener_;
+  std::unique_ptr<net_base::RTNLListener> link_listener_;
   std::set<std::string> blocked_list_;
   base::FilePath device_info_root_;
 
@@ -316,7 +316,7 @@ class DeviceInfo {
   std::map<std::string, LinkReadyCallback> pending_links_;
 
   // Cache copy of singleton pointers.
-  RTNLHandler* rtnl_handler_;
+  net_base::RTNLHandler* rtnl_handler_;
   NetlinkManager* netlink_manager_;
 
   // Used to create net_base::Socket. Keep it as a class member so that a mock

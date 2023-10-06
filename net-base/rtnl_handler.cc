@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/rtnl_handler.h"
+#include "net-base/rtnl_handler.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -27,9 +27,10 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
-#include <net-base/byte_utils.h>
 
-namespace shill {
+#include "net-base/byte_utils.h"
+
+namespace net_base {
 
 const uint32_t RTNLHandler::kRequestLink = 1;
 const uint32_t RTNLHandler::kRequestAddr = 2;
@@ -39,7 +40,7 @@ const uint32_t RTNLHandler::kRequestRdnss = 16;
 const uint32_t RTNLHandler::kRequestNeighbor = 32;
 const uint32_t RTNLHandler::kRequestBridgeNeighbor = 64;
 
-const int RTNLHandler::kErrorWindowSize = 16;
+const uint32_t RTNLHandler::kErrorWindowSize = 16;
 const uint32_t RTNLHandler::kStoredRequestWindowSize = 32;
 
 namespace {
@@ -48,9 +49,6 @@ base::LazyInstance<RTNLHandler>::DestructorAtExit g_rtnl_handler =
 
 // Increasing buffer size to avoid overflows on IPV6 routing events.
 constexpr int kReceiveBufferBytes = 3 * 1024 * 1024;
-
-// TODO(b/301905012): Remove this after moving this file to net-base.
-using net_base::RTNLMessage;
 }  // namespace
 
 RTNLHandler::RTNLHandler()
@@ -163,18 +161,18 @@ void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
       0,  // pid.
       interface_index, AF_UNSPEC);
 
-  msg->SetAttribute(IFLA_MTU, net_base::byte_utils::ToBytes<unsigned int>(mtu));
+  msg->SetAttribute(IFLA_MTU, byte_utils::ToBytes<unsigned int>(mtu));
 
   CHECK(SendMessage(std::move(msg), nullptr));
 }
 
 void RTNLHandler::SetInterfaceMac(int interface_index,
-                                  const net_base::MacAddress& mac_address) {
+                                  const MacAddress& mac_address) {
   SetInterfaceMac(interface_index, mac_address, ResponseCallback());
 }
 
 void RTNLHandler::SetInterfaceMac(int interface_index,
-                                  const net_base::MacAddress& mac_address,
+                                  const MacAddress& mac_address,
                                   ResponseCallback response_callback) {
   auto msg = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST | NLM_F_ACK,
@@ -209,7 +207,7 @@ void RTNLHandler::RequestDump(uint32_t request_flags) {
   }
 }
 
-void RTNLHandler::DispatchEvent(int type, const RTNLMessage& msg) {
+void RTNLHandler::DispatchEvent(uint32_t type, const RTNLMessage& msg) {
   for (RTNLListener& listener : listeners_) {
     listener.NotifyEvent(type, msg);
   }
@@ -397,22 +395,21 @@ void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
   }
 }
 
-bool RTNLHandler::AddressRequest(
-    int interface_index,
-    RTNLMessage::Mode mode,
-    int flags,
-    const net_base::IPCIDR& local,
-    const std::optional<net_base::IPv4Address>& broadcast) {
+bool RTNLHandler::AddressRequest(int interface_index,
+                                 RTNLMessage::Mode mode,
+                                 int flags,
+                                 const IPCIDR& local,
+                                 const std::optional<IPv4Address>& broadcast) {
   auto msg = std::make_unique<RTNLMessage>(
       RTNLMessage::kTypeAddress, mode, NLM_F_REQUEST | flags, 0, 0,
-      interface_index, net_base::ToSAFamily(local.GetFamily()));
+      interface_index, ToSAFamily(local.GetFamily()));
 
-  msg->set_address_status(
-      RTNLMessage::AddressStatus(local.prefix_length(), 0, 0));
+  msg->set_address_status(RTNLMessage::AddressStatus(
+      static_cast<unsigned char>(local.prefix_length()), 0, 0));
 
   msg->SetAttribute(IFA_LOCAL, local.address().ToBytes());
   if (broadcast) {
-    CHECK_EQ(local.GetFamily(), net_base::IPFamily::kIPv4);
+    CHECK_EQ(local.GetFamily(), IPFamily::kIPv4);
     msg->SetAttribute(IFA_BROADCAST, broadcast->ToBytes());
   }
 
@@ -421,15 +418,15 @@ bool RTNLHandler::AddressRequest(
 
 bool RTNLHandler::AddInterfaceAddress(
     int interface_index,
-    const net_base::IPCIDR& local,
-    const std::optional<net_base::IPv4Address>& broadcast) {
+    const IPCIDR& local,
+    const std::optional<IPv4Address>& broadcast) {
   return AddressRequest(interface_index, RTNLMessage::kModeAdd,
                         NLM_F_CREATE | NLM_F_EXCL | NLM_F_ECHO, local,
                         broadcast);
 }
 
 bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
-                                         const net_base::IPCIDR& local) {
+                                         const IPCIDR& local) {
   return AddressRequest(interface_index, RTNLMessage::kModeDelete, NLM_F_ECHO,
                         local, std::nullopt);
 }
@@ -480,7 +477,7 @@ bool RTNLHandler::AddInterface(const std::string& interface_name,
       NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK, 0 /* seq */,
       0 /* pid */, 0 /* if_index */, AF_UNSPEC);
   msg->SetAttribute(IFLA_IFNAME,
-                    net_base::byte_utils::StringToCStringBytes(interface_name));
+                    byte_utils::StringToCStringBytes(interface_name));
   msg->SetIflaInfoKind(link_kind, link_info_data);
 
   uint32_t seq;
@@ -618,7 +615,7 @@ std::unique_ptr<RTNLMessage> RTNLHandler::PopStoredRequest(uint32_t seq) {
 
 uint32_t RTNLHandler::CalculateStoredRequestWindowSize() {
   if (stored_requests_.size() <= 1) {
-    return stored_requests_.size();
+    return static_cast<uint32_t>(stored_requests_.size());
   }
 
   auto seq_request = stored_requests_.begin();
@@ -632,4 +629,4 @@ uint32_t RTNLHandler::CalculateStoredRequestWindowSize() {
   return seq_request->first - oldest_request_sequence_ + 1;
 }
 
-}  // namespace shill
+}  // namespace net_base

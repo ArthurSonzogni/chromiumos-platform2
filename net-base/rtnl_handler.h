@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_RTNL_HANDLER_H_
-#define SHILL_NET_RTNL_HANDLER_H_
+#ifndef NET_BASE_RTNL_HANDLER_H_
+#define NET_BASE_RTNL_HANDLER_H_
 
 #include <cstdint>
 #include <map>
@@ -20,17 +20,15 @@
 #include <base/memory/ref_counted.h>
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/ip_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/rtnl_message.h>
-#include <net-base/socket.h>
 
-#include "shill/net/rtnl_listener.h"
-#include "shill/net/shill_export.h"
+#include "net-base/export.h"
+#include "net-base/ip_address.h"
+#include "net-base/mac_address.h"
+#include "net-base/rtnl_listener.h"
+#include "net-base/rtnl_message.h"
+#include "net-base/socket.h"
 
-namespace shill {
-
-class Sockets;
+namespace net_base {
 
 // This singleton class is responsible for interacting with the RTNL subsystem.
 // RTNL provides (among other things) access to interface discovery (add/remove
@@ -41,7 +39,7 @@ class Sockets;
 // RTNLHandler provides access to these events through a callback system and
 // provides utility functions to make changes to interface, address and routing
 // state.
-class SHILL_EXPORT RTNLHandler {
+class NET_BASE_EXPORT RTNLHandler {
  public:
   // TODO(crbug.com/1005487): use this for all user-triggered messages.
   // |error| is a positive errno or 0 for acknowledgements.
@@ -87,26 +85,24 @@ class SHILL_EXPORT RTNLHandler {
   // Set the MAC address for the network interface that has a kernel index of
   // |interface_index|.
   virtual void SetInterfaceMac(int interface_index,
-                               const net_base::MacAddress& mac_address);
+                               const MacAddress& mac_address);
 
   // Set the MAC address for the network interface that has a kernel index of
   // |interface_index|. |response_callback| will be called when appropriate
   // |NLMSG_ERROR| message received.
   virtual void SetInterfaceMac(int interface_index,
-                               const net_base::MacAddress& mac_address,
+                               const MacAddress& mac_address,
                                ResponseCallback response_callback);
 
   // Set address of a network interface that has a kernel index of
   // 'interface_index'.
-  virtual bool AddInterfaceAddress(
-      int interface_index,
-      const net_base::IPCIDR& local,
-      const std::optional<net_base::IPv4Address>& broadcast);
+  virtual bool AddInterfaceAddress(int interface_index,
+                                   const IPCIDR& local,
+                                   const std::optional<IPv4Address>& broadcast);
 
   // Remove address from a network interface that has a kernel index of
   // 'interface_index'.
-  virtual bool RemoveInterfaceAddress(int interface_index,
-                                      const net_base::IPCIDR& local);
+  virtual bool RemoveInterfaceAddress(int interface_index, const IPCIDR& local);
 
   // Remove a network interface from the kernel.
   virtual bool RemoveInterface(int interface_index);
@@ -131,8 +127,7 @@ class SHILL_EXPORT RTNLHandler {
 
   // Sends an RTNL message. If the message is successfully sent, and |seq| is
   // not null, then it will be set to the message's assigned sequence number.
-  virtual bool SendMessage(std::unique_ptr<net_base::RTNLMessage> message,
-                           uint32_t* seq);
+  virtual bool SendMessage(std::unique_ptr<RTNLMessage> message, uint32_t* seq);
 
  protected:
   RTNLHandler();
@@ -143,21 +138,16 @@ class SHILL_EXPORT RTNLHandler {
   using ErrorMask = std::set<int>;
 
   friend base::LazyInstanceTraitsBase<RTNLHandler>;
-  friend class CellularTest;
-  friend class DeviceInfoTest;
-  friend class ModemTest;
   friend class RTNLHandlerTest;
   friend class RTNLHandlerFuzz;
   friend class RTNLListenerTest;
-  friend class RoutingTableTest;
-  friend class RoutingPolicyServiceTest;
 
   FRIEND_TEST(RTNLHandlerTest, SendMessageInferredErrorMasks);
   FRIEND_TEST(RTNLListenerTest, NoRun);
   FRIEND_TEST(RTNLListenerTest, Run);
 
   // Size of the window for receiving error sequences out-of-order.
-  static const int kErrorWindowSize;
+  static const uint32_t kErrorWindowSize;
   // Size of the window for maintaining RTNLMessages in |stored_requests_| that
   // haven't yet gotten a response.
   static const uint32_t kStoredRequestWindowSize;
@@ -175,24 +165,24 @@ class SHILL_EXPORT RTNLHandler {
   void OnReadable();
 
   // Dispatches an rtnl message to all listeners
-  void DispatchEvent(int type, const net_base::RTNLMessage& msg);
+  void DispatchEvent(uint32_t type, const RTNLMessage& msg);
   // Send the next table-dump request to the kernel
   void NextRequest(uint32_t seq);
   // Parse an incoming rtnl message from the kernel
   void ParseRTNL(base::span<const uint8_t> data);
 
   bool AddressRequest(int interface_index,
-                      net_base::RTNLMessage::Mode mode,
+                      RTNLMessage::Mode mode,
                       int flags,
-                      const net_base::IPCIDR& local,
-                      const std::optional<net_base::IPv4Address>& broadcast);
+                      const IPCIDR& local,
+                      const std::optional<IPv4Address>& broadcast);
 
   // Send a formatted RTNL message.  Associates an error mask -- a list
   // of errors that are expected and should not trigger log messages by
   // default -- with the outgoing message.  If the message is sent
   // successfully, the sequence number in |message| is set, and the
   // function returns true.  Otherwise this function returns false.
-  bool SendMessageWithErrorMask(std::unique_ptr<net_base::RTNLMessage> message,
+  bool SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
                                 const ErrorMask& error_mask,
                                 uint32_t* msg_seq);
 
@@ -213,17 +203,17 @@ class SHILL_EXPORT RTNLHandler {
   // Storing a request when there is already a request stored with the same
   // sequence number will result in the stored request being updated by the new
   // request.
-  void StoreRequest(std::unique_ptr<net_base::RTNLMessage> request);
+  void StoreRequest(std::unique_ptr<RTNLMessage> request);
   // Removes a stored request from |stored_requests_| and returns it. Returns
   // nullptr if there is no request stored with that sequence.
-  std::unique_ptr<net_base::RTNLMessage> PopStoredRequest(uint32_t seq);
+  std::unique_ptr<RTNLMessage> PopStoredRequest(uint32_t seq);
   uint32_t CalculateStoredRequestWindowSize();
 
-  std::unique_ptr<net_base::SocketFactory> socket_factory_ =
-      std::make_unique<net_base::SocketFactory>();
+  std::unique_ptr<SocketFactory> socket_factory_ =
+      std::make_unique<SocketFactory>();
   bool in_request_;
 
-  std::unique_ptr<net_base::Socket> rtnl_socket_;
+  std::unique_ptr<Socket> rtnl_socket_;
   // Watcher to wait for |rtnl_socket_| ready to read. It should be destructed
   // prior than |rtnl_socket_|, so it's declared after |rtnl_socket_|.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
@@ -234,8 +224,8 @@ class SHILL_EXPORT RTNLHandler {
   uint32_t last_dump_sequence_;
   // Sequence of the oldest request stored in |stored_requests_|.
   uint32_t oldest_request_sequence_;
-  // Mapping of sequence number to corresponding net_base::RTNLMessage.
-  std::map<uint32_t, std::unique_ptr<net_base::RTNLMessage>> stored_requests_;
+  // Mapping of sequence number to corresponding RTNLMessage.
+  std::map<uint32_t, std::unique_ptr<RTNLMessage>> stored_requests_;
 
   base::ObserverList<RTNLListener> listeners_;
   std::vector<ErrorMask> error_mask_window_;
@@ -246,6 +236,6 @@ class SHILL_EXPORT RTNLHandler {
   std::unordered_map<uint32_t, ResponseCallback> response_callbacks_;
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_RTNL_HANDLER_H_
+#endif  // NET_BASE_RTNL_HANDLER_H_

@@ -15,7 +15,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/rtnl_message.h>
-#include <shill/net/rtnl_listener.h>
+#include <net-base/rtnl_listener.h>
 
 #include "patchpanel/shill_client.h"
 
@@ -100,7 +100,7 @@ class BroadcastForwarder {
 
  private:
   // Listens for RTMGRP_IPV4_IFADDR messages and invokes AddrMsgHandler.
-  std::unique_ptr<shill::RTNLListener> addr_listener_;
+  std::unique_ptr<net_base::RTNLListener> addr_listener_;
   // Name of the physical interface that this forwarder is bound to.
   const std::string dev_ifname_;
   // IPv4 socket bound by this forwarder onto |dev_ifname_|.
