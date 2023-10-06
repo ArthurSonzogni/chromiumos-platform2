@@ -72,6 +72,8 @@ group("all") {
     ":system_api-shadercached-protos",
     ":system_api-smbprovider-protos",
     ":system_api-spaced-protos",
+    ":system_api-stack_sampled_metrics_status-goprotos",
+    ":system_api-stack_sampled_metrics_status-protos",
     ":system_api-system_proxy-protos",
     ":system_api-tpm_manager-goprotos",
     ":system_api-tpm_manager-protos",
@@ -872,4 +874,18 @@ goproto_library("system_api-printscanmgr-goprotos") {
   proto_in_dir = "dbus/printscanmgr"
   proto_out_dir = "go/src/"
   sources = [ "${proto_in_dir}/printscanmgr_service.proto" ]
+}
+
+proto_library("system_api-stack_sampled_metrics_status-protos") {
+  proto_in_dir = "proto/stack_sampled_metrics_status"
+  proto_out_dir = "include/stack_sampled_metrics_status/proto_bindings"
+  sources = [ "${proto_in_dir}/stack_sampled_metrics_status.proto" ]
+  standalone = true
+  install_package = true
+}
+
+goproto_library("system_api-stack_sampled_metrics_status-goprotos") {
+  proto_in_dir = "proto/stack_sampled_metrics_status"
+  proto_out_dir = "go/src/"
+  sources = [ "${proto_in_dir}/stack_sampled_metrics_status.proto" ]
 }
