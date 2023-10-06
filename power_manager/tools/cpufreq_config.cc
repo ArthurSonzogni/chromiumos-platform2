@@ -67,7 +67,7 @@ std::optional<std::string> CpufreqConf::GetValue(std::string key) const {
   return std::nullopt;
 }
 
-bool BatteryStateIsCharging() {
+bool ShouldConservePower() {
   base::AtExitManager at_exit_manager;
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
 
@@ -93,9 +93,12 @@ bool BatteryStateIsCharging() {
       power_supply.GetPowerStatus();
 
   // Other values (e.g., FULL, NOT_PRESENT, and CHARGING) all mean we're OK to
-  // use "high power."
-  return status.battery_state !=
-         power_manager::PowerSupplyProperties_BatteryState_DISCHARGING;
+  // use "high power." Adaptive Charging may discharge while connected to a
+  // charger, so conserve power if there isn't a full power charger connected.
+  return status.battery_state ==
+             power_manager::PowerSupplyProperties_BatteryState_DISCHARGING &&
+         status.external_power !=
+             power_manager::PowerSupplyProperties_ExternalPower_AC;
 }
 
 // Determine which governor we should use.
@@ -107,10 +110,10 @@ std::optional<std::string> GetGovernor(const CpufreqConf& conf) {
   // No (fixed) governor? Look for charge/discharge choices.
 
   std::string key;
-  if (BatteryStateIsCharging()) {
-    key = kKeyGovernorCharging;
-  } else {
+  if (ShouldConservePower()) {
     key = kKeyGovernorDischarging;
+  } else {
+    key = kKeyGovernorCharging;
   }
   return conf.GetValue(key);
 }
