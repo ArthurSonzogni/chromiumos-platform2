@@ -25,7 +25,6 @@
 #include <libhwsec/error/tpm_error.h>
 #include <libhwsec/error/tpm_retry_action.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
-#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
@@ -149,7 +148,6 @@ class VaultKeysetTest : public ::testing::Test {
  protected:
   MockPlatform platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
@@ -1091,7 +1089,8 @@ class LeCredentialsManagerTest : public ::testing::Test {
     EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_pw_manager_, IsEnabled())
+        .WillRepeatedly(ReturnValue(true));
 
     // Raw pointer as crypto_ expects unique_ptr, which we will wrap this
     // allocation into.
@@ -1122,7 +1121,6 @@ class LeCredentialsManagerTest : public ::testing::Test {
  protected:
   MockPlatform platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;

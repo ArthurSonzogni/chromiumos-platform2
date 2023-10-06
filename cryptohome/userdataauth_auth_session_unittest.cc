@@ -23,7 +23,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
-#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
@@ -161,7 +160,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     userdataauth_.set_install_attrs(&install_attrs_);
     userdataauth_.set_mount_task_runner(
         task_environment_.GetMainThreadTaskRunner());
-    userdataauth_.set_pinweaver(&pinweaver_);
+    userdataauth_.set_pinweaver_manager(&hwsec_pw_manager_);
   }
 
   void SetUpHWSecExpectations() {
@@ -181,9 +180,10 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         .WillByDefault(ReturnValue(brillo::SecureBlob()));
     EXPECT_CALL(hwsec_, GetPubkeyHash(_))
         .WillRepeatedly(ReturnValue(brillo::Blob()));
-    EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
-    EXPECT_CALL(pinweaver_, GetVersion()).WillRepeatedly(ReturnValue(2));
-    EXPECT_CALL(pinweaver_, BlockGeneratePk())
+    EXPECT_CALL(hwsec_pw_manager_, IsEnabled())
+        .WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_pw_manager_, GetVersion()).WillRepeatedly(ReturnValue(2));
+    EXPECT_CALL(hwsec_pw_manager_, BlockGeneratePk())
         .WillRepeatedly(ReturnOk<TPMError>());
   }
 
@@ -328,7 +328,6 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   Crypto crypto_;
   UssStorage uss_storage_{&platform_};

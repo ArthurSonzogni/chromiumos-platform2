@@ -27,7 +27,6 @@
 #include <libhwsec/backend/mock_backend.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
-#include <libhwsec/frontend/pinweaver/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 

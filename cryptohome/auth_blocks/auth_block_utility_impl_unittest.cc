@@ -25,7 +25,6 @@
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/error/pinweaver_error.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
-#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
@@ -134,7 +133,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
     ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, GetPubkeyHash(_))
         .WillByDefault(ReturnValue(brillo::BlobFromString("public key hash")));
-    ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_pw_manager_, IsEnabled()).WillByDefault(ReturnValue(true));
   }
 
   // Helper function to construct a "standard" auth block utility impl using the
@@ -183,7 +182,6 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   brillo::SecureBlob system_salt_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
@@ -1248,7 +1246,8 @@ TEST_F(AuthBlockUtilityImplTest,
   // Setup. Set the PinWeaver hwsec backend to disabled; this will lead to
   // having no LE manager being created.
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
-  EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(hwsec_pw_manager_, IsEnabled())
+      .WillRepeatedly(ReturnValue(false));
   crypto_.Init();
   MakeAuthBlockUtilityImpl();
   AuthInput auth_input{

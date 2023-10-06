@@ -1645,18 +1645,18 @@ void UserDataAuth::BlockPkEstablishment() {
     return;
   }
 
-  hwsec::StatusOr<bool> enabled = pinweaver_->IsEnabled();
+  hwsec::StatusOr<bool> enabled = hwsec_pw_manager_->IsEnabled();
   if (!enabled.ok() || !*enabled) {
     return;
   }
 
   // Pk related mechanisms are only added in PW version 2.
-  hwsec::StatusOr<uint8_t> version = pinweaver_->GetVersion();
+  hwsec::StatusOr<uint8_t> version = hwsec_pw_manager_->GetVersion();
   if (!version.ok() || *version <= 1) {
     return;
   }
 
-  hwsec::Status status = pinweaver_->BlockGeneratePk();
+  hwsec::Status status = hwsec_pw_manager_->BlockGeneratePk();
   if (!status.ok()) {
     LOG(WARNING) << "Block biometrics Pk establishment failed: "
                  << status.status();

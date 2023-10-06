@@ -36,7 +36,6 @@
 #include <libhwsec/factory/mock_factory.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
-#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec/status.h>
@@ -193,9 +192,10 @@ class UserDataAuthTestBase : public ::testing::Test {
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(false));
     ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
-    ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
-    ON_CALL(pinweaver_, GetVersion()).WillByDefault(ReturnValue(2));
-    ON_CALL(pinweaver_, BlockGeneratePk()).WillByDefault(ReturnOk<TPMError>());
+    ON_CALL(hwsec_pw_manager_, IsEnabled()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_pw_manager_, GetVersion()).WillByDefault(ReturnValue(2));
+    ON_CALL(hwsec_pw_manager_, BlockGeneratePk())
+        .WillByDefault(ReturnOk<TPMError>());
 
     if (!userdataauth_) {
       // Note that this branch is usually taken as |userdataauth_| is usually
@@ -210,7 +210,7 @@ class UserDataAuthTestBase : public ::testing::Test {
         &user_activity_timestamp_manager_);
     userdataauth_->set_install_attrs(attrs_.get());
     userdataauth_->set_homedirs(&homedirs_);
-    userdataauth_->set_pinweaver(&pinweaver_);
+    userdataauth_->set_pinweaver_manager(&hwsec_pw_manager_);
     userdataauth_->set_recovery_crypto(&recovery_crypto_);
     userdataauth_->set_platform(&platform_);
     userdataauth_->set_chaps_client(&chaps_client_);
@@ -312,9 +312,6 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   // Mock HWSec object, will be passed to UserDataAuth for its internal use.
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-
-  // Mock pinweaver object, will be passed to UserDataAuth for its internal use.
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
 
   // Mock pinweaver manager object, will be passed to UserDataAuth for its
   // internal use.

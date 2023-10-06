@@ -24,7 +24,6 @@
 #include <featured/feature_library.h>
 #include <libhwsec/factory/factory.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
-#include <libhwsec/frontend/pinweaver/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 
@@ -485,9 +484,10 @@ class UserDataAuth {
   // Override |hwsec_| for testing purpose
   void set_hwsec(const hwsec::CryptohomeFrontend* hwsec) { hwsec_ = hwsec; }
 
-  // Override |pinweaver_| for testing purpose
-  void set_pinweaver(const hwsec::PinWeaverFrontend* pinweaver) {
-    pinweaver_ = pinweaver;
+  // Override |hwsec_pw_manager| for testing purpose
+  void set_pinweaver_manager(
+      const hwsec::PinWeaverManagerFrontend* pw_manager) {
+    hwsec_pw_manager_ = pw_manager;
   }
 
   // Override |recovery_crypto| for testing purpose

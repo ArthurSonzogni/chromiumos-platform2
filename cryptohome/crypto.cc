@@ -80,7 +80,7 @@ Crypto::~Crypto() {}
 void Crypto::Init() {
   cryptohome_keys_manager_->Init();
   if (!le_manager_) {
-    hwsec::StatusOr<bool> is_enabled = pinweaver_->IsEnabled();
+    hwsec::StatusOr<bool> is_enabled = hwsec_pw_manager_->IsEnabled();
     if (!is_enabled.ok()) {
       LOG(ERROR) << "Failed to get pinweaver status: " << is_enabled.status();
       // We don't report the error to the caller: this failure shouldn't abort

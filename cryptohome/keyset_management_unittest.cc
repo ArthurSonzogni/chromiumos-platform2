@@ -25,7 +25,6 @@
 #include <gtest/gtest.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
-#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -132,7 +131,8 @@ class KeysetManagementTest : public ::testing::Test {
     EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
     EXPECT_CALL(hwsec_, IsSealingSupported())
         .WillRepeatedly(ReturnValue(false));
-    EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(false));
+    EXPECT_CALL(hwsec_pw_manager_, IsEnabled())
+        .WillRepeatedly(ReturnValue(false));
 
     mock_vault_keyset_factory_ = new NiceMock<MockVaultKeysetFactory>();
     ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
@@ -159,7 +159,6 @@ class KeysetManagementTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
   NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
