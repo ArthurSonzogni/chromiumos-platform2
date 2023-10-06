@@ -5,6 +5,7 @@
 #ifndef FBPREPROCESSOR_OUTPUT_MANAGER_H_
 #define FBPREPROCESSOR_OUTPUT_MANAGER_H_
 
+#include <forward_list>
 #include <set>
 #include <string>
 
@@ -38,6 +39,8 @@ class OutputManager : public SessionStateManager::Observer {
                   const base::TimeDelta& expiration);
 
   void AddNewFile(const FirmwareDump& fw_dump);
+
+  std::forward_list<FirmwareDump> AvailableDumps();
 
  private:
   class OutputFile {

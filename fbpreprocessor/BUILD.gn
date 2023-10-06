@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -9,6 +10,7 @@ group("all") {
   deps = [
     ":fbpreprocessor-proto",
     ":fbpreprocessord",
+    ":install_dbus_config",
     ":install_init",
     ":install_tmpfiles_config",
     ":libfbpreprocessord",
@@ -30,6 +32,12 @@ pkg_config("target_defaults") {
   ]
 }
 
+generate_dbus_adaptors("fbpreprocessor-dbus-adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/fbpreprocessor/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.FbPreprocessor.xml" ]
+}
+
 proto_library("fbpreprocessor-proto") {
   proto_in_dir = "${sysroot}/usr/include/chromeos/dbus/fbpreprocessor"
   proto_out_dir = "include"
@@ -38,6 +46,7 @@ proto_library("fbpreprocessor-proto") {
 
 static_library("libfbpreprocessord") {
   sources = [
+    "dbus_adaptor.cc",
     "fbpreprocessor_daemon.cc",
     "firmware_dump.cc",
     "input_manager.cc",
@@ -47,7 +56,10 @@ static_library("libfbpreprocessord") {
     "session_state_manager.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":fbpreprocessor-proto" ]
+  deps = [
+    ":fbpreprocessor-dbus-adaptors",
+    ":fbpreprocessor-proto",
+  ]
 }
 
 executable("fbpreprocessord") {
@@ -65,6 +77,11 @@ install_config("install_init") {
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/fbpreprocessord.conf" ]
   install_path = "tmpfilesd"
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.FbPreprocessor.conf" ]
+  install_path = "dbus_system_d"
 }
 
 if (use.test) {

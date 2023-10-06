@@ -4,26 +4,31 @@
 
 #include "fbpreprocessor/fbpreprocessor_daemon.h"
 
+#include <sysexits.h>
+
 #include <memory>
 
+#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
-#include <dbus/bus.h>
+#include <fbpreprocessor-client/fbpreprocessor/dbus-constants.h>
 
 #include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/manager.h"
 
 namespace fbpreprocessor {
 
-FbPreprocessorDaemon::FbPreprocessorDaemon(const Configuration& config) {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = base::MakeRefCounted<dbus::Bus>(options);
-  if (!bus_->Connect()) {
-    LOG(ERROR) << "Failed to connect to system D-Bus";
-    return;
-  }
-  manager_ = std::make_unique<Manager>(bus_.get(), config);
+FbPreprocessorDaemon::FbPreprocessorDaemon(const Configuration& config)
+    : brillo::DBusServiceDaemon(kFbPreprocessorServiceName) {
+  manager_ = std::make_unique<Manager>(config);
+}
+
+int FbPreprocessorDaemon::OnInit() {
+  int ret = brillo::DBusServiceDaemon::OnInit();
+  if (ret != EX_OK)
+    return ret;
+  manager_->Start(bus_.get());
+  return ret;
 }
 
 }  // namespace fbpreprocessor

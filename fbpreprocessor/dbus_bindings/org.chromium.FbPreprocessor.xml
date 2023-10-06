@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/org/chromium/FbPreprocessor"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.FbPreprocessor">
+    <method name="GetDebugDumps">
+      <arg name="DebugDumps" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+          value="fbpreprocessor::DebugDumps" />
+      </arg>
+    </method>
+  </interface>
+</node>

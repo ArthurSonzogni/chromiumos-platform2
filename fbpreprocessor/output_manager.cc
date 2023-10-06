@@ -4,6 +4,7 @@
 
 #include "fbpreprocessor/output_manager.h"
 
+#include <forward_list>
 #include <string>
 
 #include <base/files/file_enumerator.h>
@@ -71,6 +72,16 @@ void OutputManager::AddNewFile(const FirmwareDump& fw_dump,
 
 void OutputManager::AddNewFile(const FirmwareDump& fw_dump) {
   AddNewFile(fw_dump, default_expiration_);
+}
+
+std::forward_list<FirmwareDump> OutputManager::AvailableDumps() {
+  std::forward_list<FirmwareDump> dumps;
+  files_lock_.Acquire();
+  for (auto file : files_) {
+    dumps.push_front(file.fw_dump());
+  }
+  files_lock_.Release();
+  return dumps;
 }
 
 void OutputManager::RestartExpirationTask(const base::Time& now) {

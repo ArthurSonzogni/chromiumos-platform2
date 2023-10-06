@@ -20,8 +20,10 @@ class SessionStateManager;
 
 class Manager {
  public:
-  explicit Manager(dbus::Bus* bus, const Configuration& config);
+  explicit Manager(const Configuration& config);
   ~Manager();
+
+  void Start(dbus::Bus* bus);
 
   SessionStateManager* session_state_manager() const {
     return session_state_manager_.get();
@@ -40,8 +42,6 @@ class Manager {
   }
 
  private:
-  scoped_refptr<dbus::Bus> bus_;
-
   int default_file_expiration_in_secs_;
 
   std::unique_ptr<PseudonymizationManager> pseudonymization_manager_;

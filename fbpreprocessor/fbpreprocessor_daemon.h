@@ -7,22 +7,32 @@
 
 #include <memory>
 
-#include <brillo/daemons/daemon.h>
-#include <dbus/bus.h>
+#include <brillo/daemons/dbus_daemon.h>
 
 #include "fbpreprocessor/configuration.h"
+#include "fbpreprocessor/dbus_adaptor.h"
 #include "fbpreprocessor/manager.h"
 
 namespace fbpreprocessor {
 
-class FbPreprocessorDaemon : public brillo::Daemon {
+class FbPreprocessorDaemon : public brillo::DBusServiceDaemon {
  public:
   explicit FbPreprocessorDaemon(const Configuration& config);
   FbPreprocessorDaemon(const FbPreprocessorDaemon&) = delete;
   FbPreprocessorDaemon& operator=(const FbPreprocessorDaemon&) = delete;
 
+ protected:
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
+    adaptor_.reset(new DBusAdaptor(bus_, manager_.get()));
+    adaptor_->RegisterAsync(
+        sequencer->GetHandler("RegisterAsync() failed", true));
+  }
+
  private:
-  scoped_refptr<dbus::Bus> bus_;
+  int OnInit() override;
+
+  std::unique_ptr<DBusAdaptor> adaptor_;
 
   std::unique_ptr<Manager> manager_;
 };
