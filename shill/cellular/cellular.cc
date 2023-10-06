@@ -192,16 +192,6 @@ Metrics::DetailedCellularConnectionResult::APNType ApnTypeToMetricEnum(
   }
 }
 
-std::vector<Metrics::DetailedCellularConnectionResult::APNType>
-ConnectionApnTypesToMetrics(ApnList::ApnType apn_type) {
-  std::vector<Metrics::DetailedCellularConnectionResult::APNType>
-      connection_apn_types;
-  // TODO(b:249372214): Add existing connections. We might be able to sort them
-  // using the LastConnected property.
-  connection_apn_types.push_back(ApnTypeToMetricEnum(apn_type));
-  return connection_apn_types;
-}
-
 }  // namespace
 
 // static
@@ -1349,6 +1339,19 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   if (IsSubscriptionError(cellular_error)) {
     subscription_error_seen_[iccid] = true;
   }
+}
+
+std::vector<Metrics::DetailedCellularConnectionResult::APNType>
+Cellular::ConnectionApnTypesToMetrics(ApnList::ApnType apn_type) {
+  std::vector<Metrics::DetailedCellularConnectionResult::APNType>
+      connection_apn_types;
+  if (default_pdn_apn_type_.has_value() &&
+      default_pdn_apn_type_.value() != apn_type) {
+    connection_apn_types.push_back(
+        ApnTypeToMetricEnum(default_pdn_apn_type_.value()));
+  }
+  connection_apn_types.push_back(ApnTypeToMetricEnum(apn_type));
+  return connection_apn_types;
 }
 
 void Cellular::Connect(CellularService* service, Error* error) {

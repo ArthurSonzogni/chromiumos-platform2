@@ -606,6 +606,8 @@ class Cellular : public Device,
                                       const std::string& iccid,
                                       bool is_user_triggered,
                                       ApnList::ApnType apn_type);
+  std::vector<Metrics::DetailedCellularConnectionResult::APNType>
+  ConnectionApnTypesToMetrics(ApnList::ApnType apn_type);
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
