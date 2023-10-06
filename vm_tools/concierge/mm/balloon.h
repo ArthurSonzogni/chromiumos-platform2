@@ -21,10 +21,40 @@ namespace vm_tools::concierge::mm {
 // Balloon size through crosvm_control).
 class Balloon {
  public:
+  struct ResizeResult {
+    bool success = false;
+    int64_t actual_delta_bytes = 0;
+    int64_t new_target = 0;
+  };
+
   Balloon(
       int vm_cid,
       const std::string& control_socket,
       scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner);
+
+  virtual ~Balloon() = default;
+
+  // Sets the callback to be run when the balloon is stalled.
+  void SetStallCallback(
+      base::RepeatingCallback<void(ResizeResult)> stall_callback);
+
+  // Resizes the balloon by delta_bytes.
+  virtual void DoResize(
+      int64_t delta_bytes,
+      base::OnceCallback<void(ResizeResult)> completion_callback);
+
+  // Non-blocking call that returns the current balloon size target. The balloon
+  // may or may not actually be at this size, but should be
+  // allocating/deallocating to reach this size.
+  virtual int64_t GetTargetSize();
+
+ protected:
+  base::RepeatingCallback<void(ResizeResult)>& GetStallCallback();
+
+ private:
+  // Callback to run when a balloon stall is detected.
+  base::RepeatingCallback<void(ResizeResult)> stall_callback_ =
+      base::DoNothing();
 };
 
 }  // namespace vm_tools::concierge::mm

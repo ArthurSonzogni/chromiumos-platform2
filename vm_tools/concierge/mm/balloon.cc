@@ -11,4 +11,20 @@ Balloon::Balloon(
     const std::string& control_socket,
     scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner) {}
 
+void Balloon::SetStallCallback(
+    base::RepeatingCallback<void(ResizeResult)> callback) {
+  stall_callback_ = callback;
+}
+
+void Balloon::DoResize(int64_t, base::OnceCallback<void(ResizeResult)>) {}
+
+base::RepeatingCallback<void(Balloon::ResizeResult)>&
+Balloon::GetStallCallback() {
+  return stall_callback_;
+}
+
+int64_t Balloon::GetTargetSize() {
+  return 0;
+}
+
 }  // namespace vm_tools::concierge::mm

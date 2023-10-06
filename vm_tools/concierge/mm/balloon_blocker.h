@@ -6,9 +6,16 @@
 #define VM_TOOLS_CONCIERGE_MM_BALLOON_BLOCKER_H_
 
 #include <memory>
+#include <string>
+
+#include <base/containers/flat_map.h>
+#include <base/sequence_checker.h>
+#include <base/threading/thread.h>
+#include <base/time/time.h>
 
 #include <vm_memory_management/vm_memory_management.pb.h>
 
+#include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/mm/balloon.h"
 
 namespace vm_tools::concierge::mm {
@@ -46,9 +53,21 @@ class ResizeRequest {
   int64_t delta_bytes_ = 0;
 };
 
+// The BalloonBlocker is a wrapper for a Balloon that allows for resize priority
+// negotiation through ResizeRequests. When a ResizeRequest is received, it
+// blocks ResizeRequests of the opposite direction at the same or lower
+// priority. Blocked ResizeRequests will not result in any balloon adjustments
+// and will return 0 as the balloon delta.
 class BalloonBlocker {
  public:
-  BalloonBlocker(int vm_cid, std::unique_ptr<Balloon> balloon);
+  BalloonBlocker(int vm_cid,
+                 std::unique_ptr<Balloon> balloon,
+                 base::TimeDelta low_priority_block_duration =
+                     kDefaultLowPriorityBalloonBlockDuration,
+                 base::TimeDelta high_priority_block_duration =
+                     kDefaultHighPriorityBalloonBlockDuration,
+                 base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now =
+                     base::BindRepeating(&base::TimeTicks::Now));
 
   virtual ~BalloonBlocker() = default;
 
@@ -64,7 +83,80 @@ class BalloonBlocker {
       ResizeDirection direction, base::TimeTicks check_time) const;
 
  protected:
+  int GetCid();
+
+ private:
+  // Used to track the unblock times at each priority.
+  using RequestList = base::flat_map<ResizePriority, base::TimeTicks>;
+
+  // Records a received resize request and adds the time to the block list.
+  void RecordResizeRequest(const ResizeRequest& request);
+
+  // Returns true if there are competing requests for the balloon at a high
+  // priority.
+  bool BalloonIsUnderContention() const;
+
+  // Run by the Balloon when a balloon stall is detected.
+  void OnBalloonStall(Balloon::ResizeResult result);
+
+  // Run by the Balloon when a resize finishes.
+  void OnResizeResult(ResizePriority priority, Balloon::ResizeResult result);
+
+  // When the balloon is under contention (both inflates and deflates are
+  // blocked at a relatively high priority), limit resizes to this amount to
+  // reduce the chance of an OOM in the host or guest.
+  static constexpr int64_t kBalloonContentionMaxOperationSizeBytes = MiB(256);
+
+  // The default duration for a low priority block.
+  static constexpr base::TimeDelta kDefaultLowPriorityBalloonBlockDuration =
+      base::Seconds(100);
+
+  // The default duration for a high priority block.
+  static constexpr base::TimeDelta kDefaultHighPriorityBalloonBlockDuration =
+      base::Seconds(10);
+
+  // The highest priority that is blocked at the low priority duration.
+  static constexpr ResizePriority kLowPriorityBlockDurationCutoff =
+      ResizePriority::RESIZE_PRIORITY_CACHED_TAB;
+
+  // Ensure calls are made on the right sequence.
+  SEQUENCE_CHECKER(sequence_checker_);
+
+  // The CID of this balloon's VM.
   const int vm_cid_;
+
+  // The actual balloon.
+  const std::unique_ptr<Balloon> balloon_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // The duration of a balloon block.
+  // In practice, the duration of the balloon block is the minimum interval for
+  // a balloon size re-negotiation at a given priority. If the block duration is
+  // small, the balloon will be resized and re-negotiated more often. If the
+  // block duration is large, the balloon won't be resized as often, but could
+  // come at the cost of unnecessary kills of high priority processes. Because
+  // of this, two different block durations are used to allow a longer block
+  // duration for low priority processes that don't have much user impact, and a
+  // short block duration is used for high priority processes to ensure user
+  // impact from kills is minimized at the cost of more balloon resizes when
+  // there is higher memory pressure.
+  const base::TimeDelta low_priority_block_duration_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  const base::TimeDelta high_priority_block_duration_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Getter for TimeTicks::Now
+  const base::RepeatingCallback<base::TimeTicks(void)> time_ticks_now_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Tracks the unblock time for a direction and priority.
+  // TODO(b/307462723): This relies on the ResizePriority enum being dense which
+  // makes it difficult to add a new priority. Refactor this to allow for a
+  // non-dense ResizePriority enum.
+  base::flat_map<ResizeDirection, RequestList> request_lists_
+      GUARDED_BY_CONTEXT(sequence_checker_){};
+
+  // Must be the last member.
+  base::WeakPtrFactory<BalloonBlocker> weak_ptr_factory_{this};
 };
 
 }  // namespace vm_tools::concierge::mm

@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include "vm_tools/concierge/mm/fake_balloon.h"
+
 namespace vm_tools::concierge::mm {
 
 // static
@@ -13,12 +15,12 @@ base::flat_map<int, FakeBalloonBlocker*>
     FakeBalloonBlocker::fake_balloon_blockers_{};
 
 FakeBalloonBlocker::FakeBalloonBlocker(int vm_cid)
-    : BalloonBlocker(vm_cid, {}) {
+    : BalloonBlocker(vm_cid, std::make_unique<FakeBalloon>()) {
   fake_balloon_blockers_[vm_cid] = this;
 }
 
 FakeBalloonBlocker::~FakeBalloonBlocker() {
-  fake_balloon_blockers_.erase(vm_cid_);
+  fake_balloon_blockers_.erase(GetCid());
 }
 
 int64_t FakeBalloonBlocker::TryResize(ResizeRequest request) {
@@ -62,7 +64,7 @@ ResizePriority FakeBalloonBlocker::LowestUnblockedPriority(
 }
 
 int FakeBalloonBlocker::Cid() {
-  return vm_cid_;
+  return GetCid();
 }
 
 }  // namespace vm_tools::concierge::mm
