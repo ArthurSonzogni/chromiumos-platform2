@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 
 #include "shill/logging.h"
@@ -42,11 +43,11 @@ std::string Rot47(std::string_view input) {
 
 namespace Crypto {
 
-std::string Encrypt(const std::string& plaintext) {
-  return std::string(kRot47Id) + Rot47(plaintext);
+std::string Encrypt(std::string_view plaintext) {
+  return base::StrCat({kRot47Id, Rot47(plaintext)});
 }
 
-std::optional<std::string> Decrypt(const std::string& ciphertext) {
+std::optional<std::string> Decrypt(std::string_view ciphertext) {
   if (!base::StartsWith(ciphertext, kRot47Id, base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "Cannot decrypt non-ROT47 ciphertext";
     return std::nullopt;
@@ -54,7 +55,7 @@ std::optional<std::string> Decrypt(const std::string& ciphertext) {
 
   std::string_view to_decrypt = ciphertext;
   to_decrypt.remove_prefix(sizeof(kRot47Id) - 1);
-  return Rot47(std::move(to_decrypt));
+  return Rot47(to_decrypt);
 }
 
 }  // namespace Crypto

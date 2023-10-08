@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace shill {
 
@@ -17,12 +18,12 @@ namespace Crypto {
 
 // Returns |plaintext| encrypted by the highest priority available crypto
 // module capable of performing the operation.
-std::string Encrypt(const std::string& plaintext);
+std::string Encrypt(std::string_view plaintext);
 
 // Returns |ciphertext| decrypted by the highest priority available crypto
 // module capable of performing the operation. If no module succeeds, returns
 // std::nullopt.
-std::optional<std::string> Decrypt(const std::string& ciphertext);
+std::optional<std::string> Decrypt(std::string_view ciphertext);
 
 }  // namespace Crypto
 
