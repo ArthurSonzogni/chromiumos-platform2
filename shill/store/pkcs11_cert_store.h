@@ -8,6 +8,7 @@
 #include <chaps/pkcs11/cryptoki.h>
 
 #include <string>
+#include <string_view>
 
 namespace shill {
 
@@ -24,14 +25,14 @@ class Pkcs11CertStore {
   // matches the given |cka_id| from PKCS#11 token storage. Returns true if all
   // matching objects are deleted successfully or if nothing matches, false
   // upon failure.
-  bool Delete(CK_SLOT_ID slot, const std::string& cka_id);
+  bool Delete(CK_SLOT_ID slot, std::string_view cka_id);
 
  private:
   // Searches for a PKCS#11 objects matching |cka_id|. Upon success,
   // |object_handles| and |out_count| will be populated and the method will
   // return true.
   bool FindObjects(CK_SESSION_HANDLE session_handle,
-                   const std::string& cka_id,
+                   std::string_view cka_id,
                    CK_ULONG max_object_count,
                    CK_OBJECT_HANDLE_PTR object_handles,
                    CK_ULONG& out_count);

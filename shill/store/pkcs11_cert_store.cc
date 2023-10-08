@@ -4,6 +4,9 @@
 
 #include "shill/store/pkcs11_cert_store.h"
 
+#include <string>
+#include <string_view>
+
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -17,7 +20,7 @@ constexpr int kMaxObjectCount = 64;
 
 namespace shill {
 
-bool Pkcs11CertStore::Delete(CK_SLOT_ID slot, const std::string& cka_id) {
+bool Pkcs11CertStore::Delete(CK_SLOT_ID slot, std::string_view cka_id) {
   pkcs11::ScopedSession session(slot);
   if (!session.IsValid()) {
     LOG(ERROR) << "Pkcs11CertStore: Failed to open token session with slot "
@@ -57,7 +60,7 @@ bool Pkcs11CertStore::Delete(CK_SLOT_ID slot, const std::string& cka_id) {
 }
 
 bool Pkcs11CertStore::FindObjects(CK_SESSION_HANDLE session_handle,
-                                  const std::string& cka_id,
+                                  std::string_view cka_id,
                                   CK_ULONG max_object_count,
                                   CK_OBJECT_HANDLE_PTR object_handles,
                                   CK_ULONG& out_count) {

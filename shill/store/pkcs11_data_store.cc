@@ -5,6 +5,8 @@
 #include "shill/store/pkcs11_data_store.h"
 
 #include <iterator>
+#include <string>
+#include <string_view>
 
 #include <base/strings/string_util.h>
 #include <chaps/isolate.h>
@@ -15,7 +17,7 @@
 namespace shill {
 
 // An arbitrary application ID to identify PKCS #11 objects.
-const char kApplicationID[] =
+constexpr char kApplicationID[] =
     "CrOS_shill_bee161e513a44bda9d4e64a09cd64f529b44008e";
 
 Pkcs11DataStore::Pkcs11DataStore() {}
@@ -23,7 +25,7 @@ Pkcs11DataStore::Pkcs11DataStore() {}
 Pkcs11DataStore::~Pkcs11DataStore() {}
 
 bool Pkcs11DataStore::Read(CK_SLOT_ID slot,
-                           const std::string& key_name,
+                           std::string_view key_name,
                            std::string* key_data) {
   CHECK(key_data);
   pkcs11::ScopedSession session(slot);
@@ -55,8 +57,8 @@ bool Pkcs11DataStore::Read(CK_SLOT_ID slot,
 }
 
 bool Pkcs11DataStore::Write(CK_SLOT_ID slot,
-                            const std::string& key_name,
-                            const std::string& key_data) {
+                            std::string_view key_name,
+                            std::string_view key_data) {
   // Delete any existing key with the same name.
   if (!Delete(slot, key_name)) {
     return false;
@@ -92,7 +94,7 @@ bool Pkcs11DataStore::Write(CK_SLOT_ID slot,
   return true;
 }
 
-bool Pkcs11DataStore::Delete(CK_SLOT_ID slot, const std::string& key_name) {
+bool Pkcs11DataStore::Delete(CK_SLOT_ID slot, std::string_view key_name) {
   pkcs11::ScopedSession session(slot);
   if (!session.IsValid()) {
     LOG(ERROR) << "Pkcs11DataStore: Failed to open token session with slot "
@@ -110,7 +112,7 @@ bool Pkcs11DataStore::Delete(CK_SLOT_ID slot, const std::string& key_name) {
 }
 
 bool Pkcs11DataStore::DeleteByPrefix(CK_SLOT_ID slot,
-                                     const std::string& key_prefix) {
+                                     std::string_view key_prefix) {
   pkcs11::ScopedSession session(slot);
   if (!session.IsValid()) {
     LOG(ERROR) << "Pkcs11DataStore: Failed to open token session with slot "
@@ -128,7 +130,7 @@ bool Pkcs11DataStore::DeleteByPrefix(CK_SLOT_ID slot,
 }
 
 CK_OBJECT_HANDLE Pkcs11DataStore::FindObject(CK_SESSION_HANDLE session_handle,
-                                             const std::string& key_name) {
+                                             std::string_view key_name) {
   // Assemble a search template.
   std::string mutable_key_name(key_name);
   std::string mutable_application_id(kApplicationID);
@@ -227,8 +229,8 @@ bool Pkcs11DataStore::GetKeyName(CK_SESSION_HANDLE session_handle,
 }
 
 bool Pkcs11DataStore::DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
-                                            const std::string& key_prefix,
-                                            const std::string& key_name,
+                                            std::string_view key_prefix,
+                                            std::string_view key_name,
                                             CK_OBJECT_HANDLE object_handle) {
   if (base::StartsWith(key_name, key_prefix, base::CompareCase::SENSITIVE)) {
     if (C_DestroyObject(session_handle, object_handle) != CKR_OK) {

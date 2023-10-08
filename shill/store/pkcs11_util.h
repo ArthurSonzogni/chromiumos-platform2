@@ -6,6 +6,7 @@
 #define SHILL_STORE_PKCS11_UTIL_H_
 
 #include <string>
+#include <string_view>
 
 #include <chaps/pkcs11/cryptoki.h>
 
@@ -42,7 +43,7 @@ struct Pkcs11Id {
 
   // Parses a Pkcs11Id from a colon-separated "slot_id:cka_id" representation.
   static std::optional<Pkcs11Id> ParseFromColonSeparated(
-      const std::string& pkcs11_id);
+      std::string_view pkcs11_id);
 
   // Emits a colon-separated "slot_id:cka_id" representation.
   std::string ToColonSeparated();

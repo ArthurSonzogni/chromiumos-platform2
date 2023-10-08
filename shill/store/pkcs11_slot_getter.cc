@@ -4,6 +4,8 @@
 
 #include "shill/store/pkcs11_slot_getter.h"
 
+#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -24,7 +26,7 @@ constexpr char kChapsDaemonStore[] = "/run/daemon-store/chaps";
 
 namespace shill {
 
-Pkcs11SlotGetter::Pkcs11SlotGetter(const std::string& user_hash,
+Pkcs11SlotGetter::Pkcs11SlotGetter(std::string_view user_hash,
                                    chaps::TokenManagerClient* test_chaps_client)
     : user_slot_id_(pkcs11::kInvalidSlot),
       system_slot_id_(pkcs11::kInvalidSlot),

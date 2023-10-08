@@ -5,6 +5,8 @@
 #include "shill/store/pkcs11_util.h"
 
 #include <memory>
+#include <optional>
+#include <string_view>
 #include <vector>
 
 #include <base/logging.h>
@@ -40,8 +42,8 @@ ScopedSession::~ScopedSession() {
 }
 
 std::optional<Pkcs11Id> Pkcs11Id::ParseFromColonSeparated(
-    const std::string& pkcs11_id) {
-  const std::vector<std::string> data = base::SplitString(
+    std::string_view pkcs11_id) {
+  const auto data = base::SplitStringPiece(
       pkcs11_id, ":", base::WhitespaceHandling::TRIM_WHITESPACE,
       base::SplitResult::SPLIT_WANT_NONEMPTY);
   if (data.size() != 2) {
@@ -53,7 +55,7 @@ std::optional<Pkcs11Id> Pkcs11Id::ParseFromColonSeparated(
     LOG(ERROR) << "Invalid slot ID " << data[0];
     return {};
   }
-  return std::optional<Pkcs11Id>({slot_id, data[1]});
+  return std::optional<Pkcs11Id>({slot_id, std::string(data[1])});
 }
 
 std::string Pkcs11Id::ToColonSeparated() {

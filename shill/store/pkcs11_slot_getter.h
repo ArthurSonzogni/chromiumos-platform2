@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
@@ -33,7 +34,7 @@ constexpr int kPkcs11TokenDelayMultiplier = 2;
 class Pkcs11SlotGetter {
  public:
   explicit Pkcs11SlotGetter(
-      const std::string& user_hash = "",
+      std::string_view user_hash = "",
       chaps::TokenManagerClient* test_chaps_client_ = nullptr);
   Pkcs11SlotGetter(const Pkcs11SlotGetter&) = delete;
   Pkcs11SlotGetter& operator=(const Pkcs11SlotGetter&) = delete;

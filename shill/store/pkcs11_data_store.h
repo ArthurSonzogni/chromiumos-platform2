@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/functional/callback.h>
 #include <chaps/pkcs11/cryptoki.h>
@@ -38,28 +39,28 @@ class Pkcs11DataStore {
 
   // Reads a data object from PKCS#11 token storage. Returns false if not found.
   bool Read(CK_SLOT_ID slot,
-            const std::string& data_key,
+            std::string_view data_key,
             std::string* data_value);
   // Writes a data object into PKCS#11 token storage. Overwrites existing data
   // if one with |data_key| already exists.
   bool Write(CK_SLOT_ID slot,
-             const std::string& data_key,
-             const std::string& data_value);
+             std::string_view data_key,
+             std::string_view data_value);
   // Deletes a data object from PKCS#11 token storage. Returns true if the
   // object does not exist or is deleted successfully, false upon failure.
-  bool Delete(CK_SLOT_ID slot, const std::string& data_key);
+  bool Delete(CK_SLOT_ID slot, std::string_view data_key);
   // Deletes all data objects with a certain key prefix. Return false upon
   // operation failure.
-  bool DeleteByPrefix(CK_SLOT_ID slot, const std::string& key_prefix);
+  bool DeleteByPrefix(CK_SLOT_ID slot, std::string_view key_prefix);
 
  private:
   using EnumObjectsCallback = base::RepeatingCallback<bool(
-      const std::string& key_name, CK_OBJECT_HANDLE object_handle)>;
+      std::string_view key_name, CK_OBJECT_HANDLE object_handle)>;
 
   // Searches for a PKCS #11 object for a given key name.  If one exists, the
   // object handle is returned, otherwise CK_INVALID_HANDLE is returned.
   CK_OBJECT_HANDLE FindObject(CK_SESSION_HANDLE session_handle,
-                              const std::string& key_name);
+                              std::string_view key_name);
 
   // Enumerates all PKCS #11 objects associated with keys.  The |callback| is
   // called once for each object.
@@ -76,8 +77,8 @@ class Pkcs11DataStore {
   // object identified by |object_handle| if |key_name| matches |key_prefix|.
   // Returns true on success.
   bool DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
-                             const std::string& key_prefix,
-                             const std::string& key_name,
+                             std::string_view key_prefix,
+                             std::string_view key_name,
                              CK_OBJECT_HANDLE object_handle);
 };
 
