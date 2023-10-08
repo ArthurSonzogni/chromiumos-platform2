@@ -4,12 +4,14 @@
 
 #include "shill/store/key_file_store.h"
 
+#include <functional>
 #include <list>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -51,9 +53,10 @@ constexpr char kPKCS11ObjectIDPrefix[] = "shill";
 
 // GLib uses the semicolon for separating lists, but it is configurable,
 // so we don't want to hardcode it around this file.
-constexpr char kListSeparator = ';';
+constexpr char kListSeparatorStr[] = ";";
+constexpr char kListSeparator = kListSeparatorStr[0];
 
-std::string Escape(const std::string& str, std::optional<char> separator) {
+std::string Escape(std::string_view str, std::optional<char> separator) {
   std::string out;
   bool leading_space = true;
   for (const char c : str) {
@@ -97,7 +100,7 @@ std::string Escape(const std::string& str, std::optional<char> separator) {
   return out;
 }
 
-bool Unescape(const std::string& str,
+bool Unescape(std::string_view str,
               std::optional<char> separator,
               std::vector<std::string>* out) {
   DCHECK(out);
@@ -165,21 +168,22 @@ bool IsBlankComment(const KeyValuePair& kv) {
 
 class Group {
  public:
-  explicit Group(const std::string& name) : name_(name) {}
+  explicit Group(std::string_view name) : name_(name) {}
   Group(const Group&) = delete;
   Group& operator=(const Group&) = delete;
 
-  void Set(const std::string& key, const std::string& value) {
-    if (index_.count(key) > 0) {
-      index_[key]->second = value;
+  void Set(std::string_view key, std::string_view value) {
+    const auto it = index_.find(key);
+    if (it != index_.end()) {
+      it->second->second = value;
       return;
     }
 
-    entries_.push_back({key, value});
-    index_[key] = &entries_.back();
+    entries_.push_back({std::string(key), std::string(value)});
+    index_[std::string(key)] = &entries_.back();
   }
 
-  std::optional<std::string> Get(const std::string& key) const {
+  std::optional<std::string> Get(std::string_view key) const {
     const auto it = index_.find(key);
     if (it == index_.end()) {
       return std::nullopt;
@@ -188,7 +192,7 @@ class Group {
     return it->second->second;
   }
 
-  bool Delete(const std::string& key) {
+  bool Delete(std::string_view key) {
     const auto it = index_.find(key);
     if (it == index_.end()) {
       return false;
@@ -203,8 +207,8 @@ class Group {
   // Comment lines are ignored, but they have to be preserved when the file is
   // written back out. Hence, we add them to the entries list but not to the
   // index.
-  void AddComment(const std::string& comment) {
-    entries_.push_back({"", comment});
+  void AddComment(std::string_view comment) {
+    entries_.push_back({"", std::string(comment)});
   }
 
   // Serializes this group to a string, preserving comments.
@@ -229,7 +233,7 @@ class Group {
  private:
   std::string name_;
   std::list<KeyValuePair> entries_;
-  std::map<std::string, KeyValuePair*> index_;
+  std::map<std::string, KeyValuePair*, std::less<>> index_;
 };
 
 }  // namespace
@@ -246,8 +250,8 @@ class KeyFileStore::KeyFile {
       return nullptr;
     }
 
-    auto lines = base::SplitString(contents, "\n", base::KEEP_WHITESPACE,
-                                   base::SPLIT_WANT_ALL);
+    auto lines = base::SplitStringPiece(contents, "\n", base::KEEP_WHITESPACE,
+                                        base::SPLIT_WANT_ALL);
     // Trim final empty line if present, since ending a file on a newline
     // will cause us to have an extra with base::SPLIT_WANT_ALL.
     if (!lines.empty() && lines.back().empty()) {
@@ -256,7 +260,7 @@ class KeyFileStore::KeyFile {
 
     std::list<std::string> pre_group_comments;
     std::list<Group> groups;
-    std::map<std::string, Group*> index;
+    std::map<std::string, Group*, std::less<>> index;
     for (const auto& line : lines) {
       // Trim leading spaces.
       auto pos = line.find_first_not_of(' ');
@@ -268,7 +272,7 @@ class KeyFileStore::KeyFile {
       if (trimmed_line.empty() || trimmed_line[0] == '#') {
         // Comment line.
         if (groups.empty()) {
-          pre_group_comments.push_back(line);
+          pre_group_comments.push_back(std::string(line));
         } else {
           groups.back().AddComment(line);
         }
@@ -305,19 +309,20 @@ class KeyFileStore::KeyFile {
                     std::move(index)));
   }
 
-  void Set(const std::string& group,
-           const std::string& key,
-           const std::string& value) {
-    if (index_.count(group) == 0) {
+  void Set(std::string_view group,
+           std::string_view key,
+           std::string_view value) {
+    auto it = index_.find(group);
+    if (it == index_.end()) {
       groups_.emplace_back(group);
-      index_[group] = &groups_.back();
+      it = index_.insert({std::string(group), &groups_.back()}).first;
     }
 
-    index_[group]->Set(key, value);
+    it->second->Set(key, value);
   }
 
-  std::optional<std::string> Get(const std::string& group,
-                                 const std::string& key) const {
+  std::optional<std::string> Get(std::string_view group,
+                                 std::string_view key) const {
     const auto it = index_.find(group);
     if (it == index_.end()) {
       return std::nullopt;
@@ -326,7 +331,7 @@ class KeyFileStore::KeyFile {
     return it->second->Get(key);
   }
 
-  bool Delete(const std::string& group, const std::string& key) {
+  bool Delete(std::string_view group, std::string_view key) {
     const auto it = index_.find(group);
     if (it == index_.end()) {
       return false;
@@ -335,11 +340,11 @@ class KeyFileStore::KeyFile {
     return it->second->Delete(key);
   }
 
-  bool HasGroup(const std::string& group) const {
-    return index_.count(group) > 0;
+  bool HasGroup(std::string_view group) const {
+    return index_.find(group) != index_.end();
   }
 
-  bool DeleteGroup(const std::string& group) {
+  bool DeleteGroup(std::string_view group) {
     const auto it = index_.find(group);
     if (it == index_.end()) {
       return false;
@@ -359,19 +364,19 @@ class KeyFileStore::KeyFile {
     return group_names;
   }
 
-  void SetHeader(const std::string& header) {
-    const auto lines = base::SplitString(header, "\n", base::KEEP_WHITESPACE,
-                                         base::SPLIT_WANT_ALL);
+  void SetHeader(std::string_view header) {
+    const auto lines = base::SplitStringPiece(
+        header, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
     pre_group_comments_.clear();
-    for (const std::string& line : lines) {
-      pre_group_comments_.push_back("#" + line);
+    for (const auto& line : lines) {
+      pre_group_comments_.push_back(base::StrCat({"#", line}));
     }
   }
 
   bool Flush() const {
     std::string to_write;
-    for (const std::string& line : pre_group_comments_) {
+    for (const auto& line : pre_group_comments_) {
       to_write += line + '\n';
     }
     for (const Group& group : groups_) {
@@ -390,7 +395,7 @@ class KeyFileStore::KeyFile {
   KeyFile(const base::FilePath& path,
           std::list<std::string> pre_group_comments,
           std::list<Group> groups,
-          std::map<std::string, Group*> index)
+          std::map<std::string, Group*, std::less<>> index)
       : path_(path),
         pre_group_comments_(pre_group_comments),
         groups_(std::move(groups)),
@@ -401,7 +406,7 @@ class KeyFileStore::KeyFile {
   base::FilePath path_;
   std::list<std::string> pre_group_comments_;
   std::list<Group> groups_;
-  std::map<std::string, Group*> index_;
+  std::map<std::string, Group*, std::less<>> index_;
 };
 
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
@@ -465,7 +470,7 @@ std::set<std::string> KeyFileStore::GetGroups() const {
 // Returns a set so that caller can easily test whether a particular group
 // is contained within this collection.
 std::set<std::string> KeyFileStore::GetGroupsWithKey(
-    const std::string& key) const {
+    std::string_view key) const {
   std::set<std::string> groups = GetGroups();
   std::set<std::string> groups_with_key;
   for (const auto& group : groups) {
@@ -488,29 +493,29 @@ std::set<std::string> KeyFileStore::GetGroupsWithProperties(
   return groups_with_properties;
 }
 
-bool KeyFileStore::ContainsGroup(const std::string& group) const {
+bool KeyFileStore::ContainsGroup(std::string_view group) const {
   CHECK(key_file_);
   return key_file_->HasGroup(group);
 }
 
-bool KeyFileStore::DeleteKey(const std::string& group, const std::string& key) {
+bool KeyFileStore::DeleteKey(std::string_view group, std::string_view key) {
   CHECK(key_file_);
   return key_file_->Delete(group, key);
 }
 
-bool KeyFileStore::DeleteGroup(const std::string& group) {
+bool KeyFileStore::DeleteGroup(std::string_view group) {
   CHECK(key_file_);
   return key_file_->DeleteGroup(group);
 }
 
-bool KeyFileStore::SetHeader(const std::string& header) {
+bool KeyFileStore::SetHeader(std::string_view header) {
   CHECK(key_file_);
   key_file_->SetHeader(header);
   return true;
 }
 
-bool KeyFileStore::GetString(const std::string& group,
-                             const std::string& key,
+bool KeyFileStore::GetString(std::string_view group,
+                             std::string_view key,
                              std::string* value) const {
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
@@ -533,16 +538,16 @@ bool KeyFileStore::GetString(const std::string& group,
   return true;
 }
 
-bool KeyFileStore::SetString(const std::string& group,
-                             const std::string& key,
-                             const std::string& value) {
+bool KeyFileStore::SetString(std::string_view group,
+                             std::string_view key,
+                             std::string_view value) {
   CHECK(key_file_);
   key_file_->Set(group, key, Escape(value, std::nullopt));
   return true;
 }
 
-bool KeyFileStore::GetBool(const std::string& group,
-                           const std::string& key,
+bool KeyFileStore::GetBool(std::string_view group,
+                           std::string_view key,
                            bool* value) const {
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
@@ -568,16 +573,16 @@ bool KeyFileStore::GetBool(const std::string& group,
   return true;
 }
 
-bool KeyFileStore::SetBool(const std::string& group,
-                           const std::string& key,
+bool KeyFileStore::SetBool(std::string_view group,
+                           std::string_view key,
                            bool value) {
   CHECK(key_file_);
   key_file_->Set(group, key, value ? "true" : "false");
   return true;
 }
 
-bool KeyFileStore::GetInt(const std::string& group,
-                          const std::string& key,
+bool KeyFileStore::GetInt(std::string_view group,
+                          std::string_view key,
                           int* value) const {
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
@@ -599,16 +604,16 @@ bool KeyFileStore::GetInt(const std::string& group,
   return true;
 }
 
-bool KeyFileStore::SetInt(const std::string& group,
-                          const std::string& key,
+bool KeyFileStore::SetInt(std::string_view group,
+                          std::string_view key,
                           int value) {
   CHECK(key_file_);
   key_file_->Set(group, key, base::NumberToString(value));
   return true;
 }
 
-bool KeyFileStore::GetUint64(const std::string& group,
-                             const std::string& key,
+bool KeyFileStore::GetUint64(std::string_view group,
+                             std::string_view key,
                              uint64_t* value) const {
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
@@ -630,16 +635,16 @@ bool KeyFileStore::GetUint64(const std::string& group,
   return true;
 }
 
-bool KeyFileStore::SetUint64(const std::string& group,
-                             const std::string& key,
+bool KeyFileStore::SetUint64(std::string_view group,
+                             std::string_view key,
                              uint64_t value) {
   CHECK(key_file_);
   key_file_->Set(group, key, base::NumberToString(value));
   return true;
 }
 
-bool KeyFileStore::GetInt64(const std::string& group,
-                            const std::string& key,
+bool KeyFileStore::GetInt64(std::string_view group,
+                            std::string_view key,
                             int64_t* value) const {
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
@@ -661,15 +666,15 @@ bool KeyFileStore::GetInt64(const std::string& group,
   return true;
 }
 
-bool KeyFileStore::SetInt64(const std::string& group,
-                            const std::string& key,
+bool KeyFileStore::SetInt64(std::string_view group,
+                            std::string_view key,
                             int64_t value) {
   CHECK(key_file_);
   key_file_->Set(group, key, base::NumberToString(value));
   return true;
 }
-bool KeyFileStore::GetStringList(const std::string& group,
-                                 const std::string& key,
+bool KeyFileStore::GetStringList(std::string_view group,
+                                 std::string_view key,
                                  std::vector<std::string>* value) const {
   CHECK(key_file_);
   std::optional<std::string> data = key_file_->Get(group, key);
@@ -691,23 +696,23 @@ bool KeyFileStore::GetStringList(const std::string& group,
   return true;
 }
 
-bool KeyFileStore::SetStringList(const std::string& group,
-                                 const std::string& key,
+bool KeyFileStore::SetStringList(std::string_view group,
+                                 std::string_view key,
                                  const std::vector<std::string>& value) {
   CHECK(key_file_);
-  std::vector<std::string> escaped_strings;
+  std::string joined_escaped_strings;
   // glib appends a separator to every element of the list.
   for (const auto& string_entry : value) {
-    escaped_strings.push_back(Escape(string_entry, kListSeparator) +
-                              kListSeparator);
+    joined_escaped_strings.append(Escape(string_entry, kListSeparator));
+    joined_escaped_strings.append(kListSeparatorStr);
   }
-  key_file_->Set(group, key, base::JoinString(escaped_strings, std::string()));
+  key_file_->Set(group, key, joined_escaped_strings);
   return true;
 }
 
-bool KeyFileStore::GetCryptedString(const std::string& group,
-                                    const std::string& deprecated_key,
-                                    const std::string& plaintext_key,
+bool KeyFileStore::GetCryptedString(std::string_view group,
+                                    std::string_view deprecated_key,
+                                    std::string_view plaintext_key,
                                     std::string* value) const {
   if (GetString(group, plaintext_key, value)) {
     return true;
@@ -726,16 +731,16 @@ bool KeyFileStore::GetCryptedString(const std::string& group,
   return true;
 }
 
-bool KeyFileStore::SetCryptedString(const std::string& group,
-                                    const std::string& deprecated_key,
-                                    const std::string& plaintext_key,
-                                    const std::string& value) {
+bool KeyFileStore::SetCryptedString(std::string_view group,
+                                    std::string_view deprecated_key,
+                                    std::string_view plaintext_key,
+                                    std::string_view value) {
   SetString(group, deprecated_key, Crypto::Encrypt(value));
   return SetString(group, plaintext_key, value);
 }
 
 bool KeyFileStore::DoesGroupMatchProperties(
-    const std::string& group, const KeyValueStore& properties) const {
+    std::string_view group, const KeyValueStore& properties) const {
   for (const auto& property : properties.properties()) {
     if (property.second.IsTypeCompatible<bool>()) {
       bool value;
@@ -761,8 +766,8 @@ bool KeyFileStore::DoesGroupMatchProperties(
 }
 
 bool KeyFileStore::GetStringmaps(
-    const std::string& group,
-    const std::string& key,
+    std::string_view group,
+    std::string_view key,
     std::vector<std::map<std::string, std::string>>* value) const {
   std::string json;
   if (!GetString(group, key, &json)) {
@@ -809,8 +814,8 @@ bool KeyFileStore::GetStringmaps(
 }
 
 bool KeyFileStore::SetStringmaps(
-    const std::string& group,
-    const std::string& key,
+    std::string_view group,
+    std::string_view key,
     const std::vector<std::map<std::string, std::string>>& value) {
   base::Value::List json_val;
   for (auto map_value : value) {
@@ -831,8 +836,8 @@ bool KeyFileStore::SetStringmaps(
   return SetString(group, key, json);
 }
 
-bool KeyFileStore::GetUint64List(const std::string& group,
-                                 const std::string& key,
+bool KeyFileStore::GetUint64List(std::string_view group,
+                                 std::string_view key,
                                  std::vector<uint64_t>* value) const {
   CHECK(key_file_);
   const auto data = key_file_->Get(group, key);
@@ -865,22 +870,23 @@ bool KeyFileStore::GetUint64List(const std::string& group,
   return true;
 }
 
-bool KeyFileStore::SetUint64List(const std::string& group,
-                                 const std::string& key,
+bool KeyFileStore::SetUint64List(std::string_view group,
+                                 std::string_view key,
                                  const std::vector<uint64_t>& value) {
   CHECK(key_file_);
-  std::vector<std::string> strings;
+  std::string joined_strings;
   // glib appends a separator to every element of the list.
   for (const auto& uint_entry : value) {
-    strings.push_back(base::NumberToString(uint_entry) + kListSeparator);
+    base::StrAppend(&joined_strings,
+                    {base::NumberToString(uint_entry), kListSeparatorStr});
   }
-  key_file_->Set(group, key, base::JoinString(strings, std::string()));
+  key_file_->Set(group, key, joined_strings);
   return true;
 }
 
-bool KeyFileStore::PKCS11SetString(const std::string& group,
-                                   const std::string& key,
-                                   const std::string& value) {
+bool KeyFileStore::PKCS11SetString(std::string_view group,
+                                   std::string_view key,
+                                   std::string_view value) {
   if (slot_getter_ == nullptr) {
     LOG(WARNING) << __func__
                  << ": store does not have a PKCS#11 slot getter associated.";
@@ -899,8 +905,8 @@ bool KeyFileStore::PKCS11SetString(const std::string& group,
   return pkcs11_store.Write(slot_id, object_key, value);
 }
 
-bool KeyFileStore::PKCS11GetString(const std::string& group,
-                                   const std::string& key,
+bool KeyFileStore::PKCS11GetString(std::string_view group,
+                                   std::string_view key,
                                    std::string* value) const {
   if (slot_getter_ == nullptr) {
     LOG(WARNING) << __func__
@@ -920,7 +926,7 @@ bool KeyFileStore::PKCS11GetString(const std::string& group,
   return pkcs11_store.Read(slot_id, object_key, value);
 }
 
-bool KeyFileStore::PKCS11DeleteGroup(const std::string& group) {
+bool KeyFileStore::PKCS11DeleteGroup(std::string_view group) {
   if (slot_getter_ == nullptr) {
     LOG(WARNING) << __func__
                  << ": store does not have a PKCS#11 slot getter associated.";

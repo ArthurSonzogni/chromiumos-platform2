@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -49,7 +50,7 @@ class StoreInterface {
 
   // Returns the names of all groups that contain the named |key|.
   virtual std::set<std::string> GetGroupsWithKey(
-      const std::string& key) const = 0;
+      std::string_view key) const = 0;
 
   // Returns the names of all groups that contain the named |properties|.
   // Only the Bool, Int and String properties are checked.
@@ -57,103 +58,103 @@ class StoreInterface {
       const KeyValueStore& properties) const = 0;
 
   // Returns true if the store contains |group|, false otherwise.
-  virtual bool ContainsGroup(const std::string& group) const = 0;
+  virtual bool ContainsGroup(std::string_view group) const = 0;
 
   // Deletes |group|:|key|. Returns true on success. Attempting to either delete
   // from a group that doesn't exist or to delete a non-existent key from an
   // existing group will return false.
-  virtual bool DeleteKey(const std::string& group, const std::string& key) = 0;
+  virtual bool DeleteKey(std::string_view group, std::string_view key) = 0;
 
   // Deletes |group|. Returns true on success. Attempting to delete a
   // non-existent group will return false.
-  virtual bool DeleteGroup(const std::string& group) = 0;
+  virtual bool DeleteGroup(std::string_view group) = 0;
 
   // Sets a descriptive header on the key file.
-  virtual bool SetHeader(const std::string& header) = 0;
+  virtual bool SetHeader(std::string_view header) = 0;
 
   // Gets a string |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
   // in the store).  It is not an error to pass NULL as |value| to simply
   // test for the presence of this value.
-  virtual bool GetString(const std::string& group,
-                         const std::string& key,
+  virtual bool GetString(std::string_view group,
+                         std::string_view key,
                          std::string* value) const = 0;
 
   // Associates |group|:|key| with a string |value|. Returns true on success,
   // false otherwise.
-  virtual bool SetString(const std::string& group,
-                         const std::string& key,
-                         const std::string& value) = 0;
+  virtual bool SetString(std::string_view group,
+                         std::string_view key,
+                         std::string_view value) = 0;
 
   // Gets a boolean |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when the |group|:|key| is not
   // present in the store).  It is not an error to pass NULL as |value| to
   // simply test for the presence of this value.
 
-  virtual bool GetBool(const std::string& group,
-                       const std::string& key,
+  virtual bool GetBool(std::string_view group,
+                       std::string_view key,
                        bool* value) const = 0;
 
   // Associates |group|:|key| with a boolean |value|. Returns true on success,
   // false otherwise.
-  virtual bool SetBool(const std::string& group,
-                       const std::string& key,
+  virtual bool SetBool(std::string_view group,
+                       std::string_view key,
                        bool value) = 0;
 
   // Gets a integer |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when the |group|:|key| is not
   // present in the store).  It is not an error to pass NULL as |value| to
   // simply test for the presence of this value.
-  virtual bool GetInt(const std::string& group,
-                      const std::string& key,
+  virtual bool GetInt(std::string_view group,
+                      std::string_view key,
                       int* value) const = 0;
 
   // Associates |group|:|key| with an integer |value|. Returns true on success,
   // false otherwise.
-  virtual bool SetInt(const std::string& group,
-                      const std::string& key,
+  virtual bool SetInt(std::string_view group,
+                      std::string_view key,
                       int value) = 0;
 
   // Gets a 64-bit unsigned integer |value| associated with |group|:|key|.
   // Returns true on success and false on failure (including when the
   // |group|:|key| is not present in the store).  It is not an error to
   // pass NULL as |value| to simply test for the presence of this value.
-  virtual bool GetUint64(const std::string& group,
-                         const std::string& key,
+  virtual bool GetUint64(std::string_view group,
+                         std::string_view key,
                          uint64_t* value) const = 0;
 
   // Associates |group|:|key| with a 64-bit unsigned integer |value|. Returns
   // true on success, false otherwise.
-  virtual bool SetUint64(const std::string& group,
-                         const std::string& key,
+  virtual bool SetUint64(std::string_view group,
+                         std::string_view key,
                          uint64_t value) = 0;
 
   // Gets a 64-bit signed integer |value| associated with |group|:|key|.
   // Returns true on success and false on failure (including when the
   // |group|:|key| is not present in the store).  It is not an error to
   // pass NULL as |value| to simply test for the presence of this value.
-  virtual bool GetInt64(const std::string& group,
-                        const std::string& key,
+  virtual bool GetInt64(std::string_view group,
+                        std::string_view key,
                         int64_t* value) const = 0;
 
   // Associates |group|:|key| with a 64-bit signed integer |value|. Returns
   // true on success, false otherwise.
-  virtual bool SetInt64(const std::string& group,
-                        const std::string& key,
+  virtual bool SetInt64(std::string_view group,
+                        std::string_view key,
                         int64_t value) = 0;
 
   // Gets a string list |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
   // in the store).  It is not an error to pass NULL as |value| to simply test
   // for the presence of this value.
-  virtual bool GetStringList(const std::string& group,
-                             const std::string& key,
+  virtual bool GetStringList(std::string_view group,
+                             std::string_view key,
                              std::vector<std::string>* value) const = 0;
 
   // Associates |group|:|key| with a string list |value|. Returns true on
   // success, false otherwise.
-  virtual bool SetStringList(const std::string& group,
-                             const std::string& key,
+  virtual bool SetStringList(std::string_view group,
+                             std::string_view key,
                              const std::vector<std::string>& value) = 0;
 
   // Gets the string associated with |group|:|plaintext_key|. If that doesn't
@@ -165,47 +166,47 @@ class StoreInterface {
   //
   // For migration from ROT47 to plaintext. New use cases should use GetString.
   // TODO(crbug.com/1084279) Remove after migration is complete.
-  virtual bool GetCryptedString(const std::string& group,
-                                const std::string& deprecated_key,
-                                const std::string& plaintext_key,
+  virtual bool GetCryptedString(std::string_view group,
+                                std::string_view deprecated_key,
+                                std::string_view plaintext_key,
                                 std::string* value) const = 0;
 
   // Sets the string associated with |group|:|deprecated_key| with an encrypted
   // value and sets |plaintext_key| with |value|. Returns true on success.
   // For ROT47 compatibility for rollback. See crbug.com/1120161 for details.
-  virtual bool SetCryptedString(const std::string& group,
-                                const std::string& deprecated_key,
-                                const std::string& plaintext_key,
-                                const std::string& value) = 0;
+  virtual bool SetCryptedString(std::string_view group,
+                                std::string_view deprecated_key,
+                                std::string_view plaintext_key,
+                                std::string_view value) = 0;
 
   // Gets a Stringmaps |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
   // in the store). It is not an error to pass NULL as |value| to simply test
   // for the presence of this value.
   virtual bool GetStringmaps(
-      const std::string& group,
-      const std::string& key,
+      std::string_view group,
+      std::string_view key,
       std::vector<std::map<std::string, std::string>>* value) const = 0;
 
   // Associates |group|:|key| with a Stringmaps |value|. Returns true on
   // success, false otherwise.
   virtual bool SetStringmaps(
-      const std::string& group,
-      const std::string& key,
+      std::string_view group,
+      std::string_view key,
       const std::vector<std::map<std::string, std::string>>& value) = 0;
 
   // Gets a uint64_t list |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
   // in the store).  It is not an error to pass NULL as |value| to simply test
   // for the presence of this value.
-  virtual bool GetUint64List(const std::string& group,
-                             const std::string& key,
+  virtual bool GetUint64List(std::string_view group,
+                             std::string_view key,
                              std::vector<uint64_t>* value) const = 0;
 
   // Associates |group|:|key| with a uint64_t list |value|. Returns true on
   // success, false otherwise.
-  virtual bool SetUint64List(const std::string& group,
-                             const std::string& key,
+  virtual bool SetUint64List(std::string_view group,
+                             std::string_view key,
                              const std::vector<uint64_t>& value) = 0;
 
   // The following functions behave similarly with their counterparts, but
@@ -214,15 +215,15 @@ class StoreInterface {
   // The PKCS#11 slot used depends on whether the profile of the store is
   // tied to an active user session. If so, it will use the user slot,
   // otherwise system slot is used.
-  virtual bool PKCS11SetString(const std::string& group,
-                               const std::string& key,
-                               const std::string& value) = 0;
+  virtual bool PKCS11SetString(std::string_view group,
+                               std::string_view key,
+                               std::string_view value) = 0;
 
-  virtual bool PKCS11GetString(const std::string& group,
-                               const std::string& key,
+  virtual bool PKCS11GetString(std::string_view group,
+                               std::string_view key,
                                std::string* value) const = 0;
 
-  virtual bool PKCS11DeleteGroup(const std::string& group) = 0;
+  virtual bool PKCS11DeleteGroup(std::string_view group) = 0;
 };
 
 }  // namespace shill

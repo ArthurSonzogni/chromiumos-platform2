@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -45,78 +46,76 @@ class KeyFileStore : public StoreInterface {
   bool Flush() override;
   bool MarkAsCorrupted() override;
   std::set<std::string> GetGroups() const override;
-  std::set<std::string> GetGroupsWithKey(const std::string& key) const override;
+  std::set<std::string> GetGroupsWithKey(std::string_view key) const override;
   std::set<std::string> GetGroupsWithProperties(
       const KeyValueStore& properties) const override;
-  bool ContainsGroup(const std::string& group) const override;
-  bool DeleteKey(const std::string& group, const std::string& key) override;
-  bool DeleteGroup(const std::string& group) override;
-  bool SetHeader(const std::string& header) override;
-  bool GetString(const std::string& group,
-                 const std::string& key,
+  bool ContainsGroup(std::string_view group) const override;
+  bool DeleteKey(std::string_view group, std::string_view key) override;
+  bool DeleteGroup(std::string_view group) override;
+  bool SetHeader(std::string_view header) override;
+  bool GetString(std::string_view group,
+                 std::string_view key,
                  std::string* value) const override;
-  bool SetString(const std::string& group,
-                 const std::string& key,
-                 const std::string& value) override;
-  bool GetBool(const std::string& group,
-               const std::string& key,
+  bool SetString(std::string_view group,
+                 std::string_view key,
+                 std::string_view value) override;
+  bool GetBool(std::string_view group,
+               std::string_view key,
                bool* value) const override;
-  bool SetBool(const std::string& group,
-               const std::string& key,
+  bool SetBool(std::string_view group,
+               std::string_view key,
                bool value) override;
-  bool GetInt(const std::string& group,
-              const std::string& key,
+  bool GetInt(std::string_view group,
+              std::string_view key,
               int* value) const override;
-  bool SetInt(const std::string& group,
-              const std::string& key,
-              int value) override;
-  bool GetUint64(const std::string& group,
-                 const std::string& key,
+  bool SetInt(std::string_view group, std::string_view key, int value) override;
+  bool GetUint64(std::string_view group,
+                 std::string_view key,
                  uint64_t* value) const override;
-  bool SetUint64(const std::string& group,
-                 const std::string& key,
+  bool SetUint64(std::string_view group,
+                 std::string_view key,
                  uint64_t value) override;
-  bool GetInt64(const std::string& group,
-                const std::string& key,
+  bool GetInt64(std::string_view group,
+                std::string_view key,
                 int64_t* value) const override;
-  bool SetInt64(const std::string& group,
-                const std::string& key,
+  bool SetInt64(std::string_view group,
+                std::string_view key,
                 int64_t value) override;
-  bool GetStringList(const std::string& group,
-                     const std::string& key,
+  bool GetStringList(std::string_view group,
+                     std::string_view key,
                      std::vector<std::string>* value) const override;
-  bool SetStringList(const std::string& group,
-                     const std::string& key,
+  bool SetStringList(std::string_view group,
+                     std::string_view key,
                      const std::vector<std::string>& value) override;
-  bool GetCryptedString(const std::string& group,
-                        const std::string& deprecated_key,
-                        const std::string& plaintext_key,
+  bool GetCryptedString(std::string_view group,
+                        std::string_view deprecated_key,
+                        std::string_view plaintext_key,
                         std::string* value) const override;
-  bool SetCryptedString(const std::string& group,
-                        const std::string& deprecated_key,
-                        const std::string& plaintext_key,
-                        const std::string& value) override;
+  bool SetCryptedString(std::string_view group,
+                        std::string_view deprecated_key,
+                        std::string_view plaintext_key,
+                        std::string_view value) override;
   bool GetStringmaps(
-      const std::string& group,
-      const std::string& key,
+      std::string_view group,
+      std::string_view key,
       std::vector<std::map<std::string, std::string>>* value) const override;
   bool SetStringmaps(
-      const std::string& group,
-      const std::string& key,
+      std::string_view group,
+      std::string_view key,
       const std::vector<std::map<std::string, std::string>>& value) override;
-  bool GetUint64List(const std::string& group,
-                     const std::string& key,
+  bool GetUint64List(std::string_view group,
+                     std::string_view key,
                      std::vector<uint64_t>* value) const override;
-  bool SetUint64List(const std::string& group,
-                     const std::string& key,
+  bool SetUint64List(std::string_view group,
+                     std::string_view key,
                      const std::vector<uint64_t>& value) override;
-  bool PKCS11SetString(const std::string& group,
-                       const std::string& key,
-                       const std::string& value) override;
-  bool PKCS11GetString(const std::string& group,
-                       const std::string& key,
+  bool PKCS11SetString(std::string_view group,
+                       std::string_view key,
+                       std::string_view value) override;
+  bool PKCS11GetString(std::string_view group,
+                       std::string_view key,
                        std::string* value) const override;
-  bool PKCS11DeleteGroup(const std::string& group) override;
+  bool PKCS11DeleteGroup(std::string_view group) override;
 
  private:
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
@@ -126,7 +125,7 @@ class KeyFileStore : public StoreInterface {
 
   static const char kCorruptSuffix[];
 
-  bool DoesGroupMatchProperties(const std::string& group,
+  bool DoesGroupMatchProperties(std::string_view group,
                                 const KeyValueStore& properties) const;
 
   std::unique_ptr<KeyFile> key_file_;

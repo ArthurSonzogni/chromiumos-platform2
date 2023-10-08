@@ -6,6 +6,7 @@
 
 #include <set>
 #include <string>
+#include <string_view>
 #include <typeinfo>
 #include <vector>
 
@@ -72,8 +73,7 @@ std::set<std::string> FakeStore::GetGroups() const {
 
 // Returns a set so that caller can easily test whether a particular group
 // is contained within this collection.
-std::set<std::string> FakeStore::GetGroupsWithKey(
-    const std::string& key) const {
+std::set<std::string> FakeStore::GetGroupsWithKey(std::string_view key) const {
   std::set<std::string> matching_groups;
   // iterate over groups, find ones with matching key
   for (const auto& group_name_and_settings : group_name_to_settings_) {
@@ -100,12 +100,12 @@ std::set<std::string> FakeStore::GetGroupsWithProperties(
   return matching_groups;
 }
 
-bool FakeStore::ContainsGroup(const std::string& group) const {
+bool FakeStore::ContainsGroup(std::string_view group) const {
   const auto& it = group_name_to_settings_.find(group);
   return it != group_name_to_settings_.end();
 }
 
-bool FakeStore::DeleteKey(const std::string& group, const std::string& key) {
+bool FakeStore::DeleteKey(std::string_view group, std::string_view key) {
   const auto& group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings == group_name_to_settings_.end()) {
     LOG(ERROR) << "Could not find group |" << group << "|.";
@@ -121,7 +121,7 @@ bool FakeStore::DeleteKey(const std::string& group, const std::string& key) {
   return true;
 }
 
-bool FakeStore::DeleteGroup(const std::string& group) {
+bool FakeStore::DeleteGroup(std::string_view group) {
   auto group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings != group_name_to_settings_.end()) {
     group_name_to_settings_.erase(group_name_and_settings);
@@ -129,151 +129,157 @@ bool FakeStore::DeleteGroup(const std::string& group) {
   return true;
 }
 
-bool FakeStore::SetHeader(const std::string& header) {
+bool FakeStore::SetHeader(std::string_view header) {
   return true;
 }
 
-bool FakeStore::GetString(const std::string& group,
-                          const std::string& key,
+bool FakeStore::GetString(std::string_view group,
+                          std::string_view key,
                           std::string* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetString(const std::string& group,
-                          const std::string& key,
-                          const std::string& value) {
-  return WriteSetting(group, key, value);
+bool FakeStore::SetString(std::string_view group,
+                          std::string_view key,
+                          std::string_view value) {
+  return WriteSetting(group, key, std::string(value));
 }
 
-bool FakeStore::GetBool(const std::string& group,
-                        const std::string& key,
+bool FakeStore::GetBool(std::string_view group,
+                        std::string_view key,
                         bool* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetBool(const std::string& group,
-                        const std::string& key,
+bool FakeStore::SetBool(std::string_view group,
+                        std::string_view key,
                         bool value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetInt(const std::string& group,
-                       const std::string& key,
+bool FakeStore::GetInt(std::string_view group,
+                       std::string_view key,
                        int* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetInt(const std::string& group,
-                       const std::string& key,
+bool FakeStore::SetInt(std::string_view group,
+                       std::string_view key,
                        int value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetUint64(const std::string& group,
-                          const std::string& key,
+bool FakeStore::GetUint64(std::string_view group,
+                          std::string_view key,
                           uint64_t* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetUint64(const std::string& group,
-                          const std::string& key,
+bool FakeStore::SetUint64(std::string_view group,
+                          std::string_view key,
                           uint64_t value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetInt64(const std::string& group,
-                         const std::string& key,
+bool FakeStore::GetInt64(std::string_view group,
+                         std::string_view key,
                          int64_t* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetInt64(const std::string& group,
-                         const std::string& key,
+bool FakeStore::SetInt64(std::string_view group,
+                         std::string_view key,
                          int64_t value) {
   return WriteSetting(group, key, value);
 }
-bool FakeStore::GetStringList(const std::string& group,
-                              const std::string& key,
+bool FakeStore::GetStringList(std::string_view group,
+                              std::string_view key,
                               std::vector<std::string>* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetStringList(const std::string& group,
-                              const std::string& key,
+bool FakeStore::SetStringList(std::string_view group,
+                              std::string_view key,
                               const std::vector<std::string>& value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetCryptedString(const std::string& group,
-                                 const std::string& deprecated_key,
-                                 const std::string& plaintext_key,
+bool FakeStore::GetCryptedString(std::string_view group,
+                                 std::string_view deprecated_key,
+                                 std::string_view plaintext_key,
                                  std::string* value) const {
   return GetString(group, plaintext_key, value);
 }
 
-bool FakeStore::SetCryptedString(const std::string& group,
-                                 const std::string& deprecated_key,
-                                 const std::string& plaintext_key,
-                                 const std::string& value) {
+bool FakeStore::SetCryptedString(std::string_view group,
+                                 std::string_view deprecated_key,
+                                 std::string_view plaintext_key,
+                                 std::string_view value) {
   return SetString(group, plaintext_key, value);
 }
 
 bool FakeStore::GetStringmaps(
-    const std::string& group,
-    const std::string& key,
+    std::string_view group,
+    std::string_view key,
     std::vector<std::map<std::string, std::string>>* value) const {
   return ReadSetting(group, key, value);
 }
 
 bool FakeStore::SetStringmaps(
-    const std::string& group,
-    const std::string& key,
+    std::string_view group,
+    std::string_view key,
     const std::vector<std::map<std::string, std::string>>& value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::GetUint64List(const std::string& group,
-                              const std::string& key,
+bool FakeStore::GetUint64List(std::string_view group,
+                              std::string_view key,
                               std::vector<uint64_t>* value) const {
   return ReadSetting(group, key, value);
 }
 
-bool FakeStore::SetUint64List(const std::string& group,
-                              const std::string& key,
+bool FakeStore::SetUint64List(std::string_view group,
+                              std::string_view key,
                               const std::vector<uint64_t>& value) {
   return WriteSetting(group, key, value);
 }
 
-bool FakeStore::PKCS11SetString(const std::string& group,
-                                const std::string& key,
-                                const std::string& value) {
-  pkcs11_strings_[group][key] = value;
+bool FakeStore::PKCS11SetString(std::string_view group,
+                                std::string_view key,
+                                std::string_view value) {
+  const std::string group_str(group.data(), group.size());
+  const std::string key_str(key.data(), key.size());
+  const std::string value_str(value.data(), value.size());
+  pkcs11_strings_[group_str][key_str] = value_str;
   return true;
 }
 
-bool FakeStore::PKCS11GetString(const std::string& group,
-                                const std::string& key,
+bool FakeStore::PKCS11GetString(std::string_view group,
+                                std::string_view key,
                                 std::string* value) const {
-  if (pkcs11_strings_.find(group) == pkcs11_strings_.end()) {
+  const auto group_it = pkcs11_strings_.find(group);
+  if (group_it == pkcs11_strings_.end()) {
     return false;
   }
-  auto& group_submap = pkcs11_strings_.at(group);
-  if (group_submap.find(key) == group_submap.end()) {
+  const auto& group_submap = group_it->second;
+  const auto kv_it = group_submap.find(key);
+  if (kv_it == group_submap.end()) {
     return false;
   }
-  *value = group_submap.at(key);
+  *value = kv_it->second;
   return true;
 }
 
-bool FakeStore::PKCS11DeleteGroup(const std::string& group) {
-  pkcs11_strings_.erase(group);
+bool FakeStore::PKCS11DeleteGroup(std::string_view group) {
+  const std::string group_str(group.data(), group.size());
+  pkcs11_strings_.erase(group_str);
   return true;
 }
 
 // Private methods.
 template <typename T>
-bool FakeStore::ReadSetting(const std::string& group,
-                            const std::string& key,
+bool FakeStore::ReadSetting(std::string_view group,
+                            std::string_view key,
                             T* out) const {
   const auto& group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings == group_name_to_settings_.end()) {
@@ -306,21 +312,22 @@ bool FakeStore::ReadSetting(const std::string& group,
 }
 
 template <typename T>
-bool FakeStore::WriteSetting(const std::string& group,
-                             const std::string& key,
+bool FakeStore::WriteSetting(std::string_view group,
+                             std::string_view key,
                              const T& new_value) {
-  if (writes_fail_)
+  if (writes_fail_) {
     return false;
+  }
   auto group_name_and_settings = group_name_to_settings_.find(group);
   if (group_name_and_settings == group_name_to_settings_.end()) {
-    group_name_to_settings_[group][key] = new_value;
+    group_name_to_settings_[std::string(group)][std::string(key)] = new_value;
     return true;
   }
 
   auto& group_settings = group_name_and_settings->second;
   auto property_name_and_value = group_settings.find(key);
   if (property_name_and_value == group_settings.end()) {
-    group_settings[key] = new_value;
+    group_settings.insert({std::string(key), new_value});
     return true;
   }
 
