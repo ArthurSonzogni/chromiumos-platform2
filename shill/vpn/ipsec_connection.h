@@ -109,7 +109,7 @@ class IPsecConnection : public VPNConnection {
   using CipherSuite = std::tuple<Metrics::VpnIpsecEncryptionAlgorithm,
                                  Metrics::VpnIpsecIntegrityAlgorithm,
                                  Metrics::VpnIpsecDHGroup>;
-  static CipherSuite ParseCipherSuite(const std::string& input);
+  static CipherSuite ParseCipherSuite(std::string_view input);
 
   explicit IPsecConnection(std::unique_ptr<Config> config,
                            std::unique_ptr<Callbacks> callbacks,
@@ -212,12 +212,13 @@ class IPsecConnection : public VPNConnection {
 
   // Parses and sets the |local_virtual_ipv4_| and |local_virtual_ipv6_|
   // (the overlay IPs) from the output of `swanctl --list-sas`.
-  void ParseLocalVirtualIPs(const std::vector<std::string>& swanctl_output);
+  void ParseLocalVirtualIPs(
+      const std::vector<std::string_view>& swanctl_output);
 
   // Parses and sets the cipher suite for IKE and ESP from the output of
   // `swanctl --list-sas`.
-  void ParseIKECipherSuite(const std::vector<std::string>& swanctl_output);
-  void ParseESPCipherSuite(const std::vector<std::string>& swanctl_output);
+  void ParseIKECipherSuite(const std::vector<std::string_view>& swanctl_output);
+  void ParseESPCipherSuite(const std::vector<std::string_view>& swanctl_output);
 
   // Reads ResolveConfPath() written by charon to get the DNS servers pushed
   // from the VPN server. Will only be called for an IKEv2 connection.

@@ -593,17 +593,17 @@ bool ParseForeignOption(const std::string& option,
                         std::vector<std::string>* domain_search,
                         std::vector<std::string>* dns_servers) {
   SLOG(2) << __func__ << "(" << option << ")";
-  const auto tokens = base::SplitString(option, " ", base::TRIM_WHITESPACE,
-                                        base::SPLIT_WANT_ALL);
+  const auto tokens = base::SplitStringPiece(option, " ", base::TRIM_WHITESPACE,
+                                             base::SPLIT_WANT_ALL);
   if (tokens.size() != 3 ||
       !base::EqualsCaseInsensitiveASCII(tokens[0], "dhcp-option")) {
     return false;
   }
   if (base::EqualsCaseInsensitiveASCII(tokens[1], "domain")) {
-    domain_search->push_back(tokens[2]);
+    domain_search->push_back(std::string(tokens[2]));
     return true;
   } else if (base::EqualsCaseInsensitiveASCII(tokens[1], "dns")) {
-    dns_servers->push_back(tokens[2]);
+    dns_servers->push_back(std::string(tokens[2]));
     return true;
   }
   return false;
@@ -693,8 +693,8 @@ bool OpenVPNDriver::ParseIPv6RouteOption(const std::string& key,
 bool OpenVPNDriver::SplitPortFromHost(std::string_view host,
                                       std::string* name,
                                       std::string* port) {
-  const auto tokens =
-      base::SplitString(host, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  const auto tokens = base::SplitStringPiece(host, ":", base::TRIM_WHITESPACE,
+                                             base::SPLIT_WANT_ALL);
   int port_number = 0;
   if (tokens.size() != 2 || tokens[0].empty() || tokens[1].empty() ||
       !base::IsAsciiDigit(tokens[1][0]) ||
@@ -1061,7 +1061,7 @@ bool OpenVPNDriver::AppendDelimitedValueOption(
     auto parts = base::SplitString(value, std::string{delimiter},
                                    base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     parts.insert(parts.begin(), option);
-    options->push_back(parts);
+    options->push_back(std::move(parts));
     return true;
   }
   return false;
@@ -1132,15 +1132,15 @@ std::vector<std::string> OpenVPNDriver::GetCommandLineArgs() {
                << lsb_release_file_.value();
     return args;
   }
-  const auto lines = base::SplitString(contents, "\n", base::TRIM_WHITESPACE,
-                                       base::SPLIT_WANT_ALL);
-  for (const auto& line : lines) {
+  const auto lines = base::SplitStringPiece(
+      contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  for (const std::string_view line : lines) {
     const size_t assign = line.find('=');
     if (assign == std::string::npos) {
       continue;
     }
     const auto key = line.substr(0, assign);
-    const auto value = line.substr(assign + 1);
+    const std::string value(line.substr(assign + 1));
     if (key == kChromeOSReleaseName) {
       args.push_back("--setenv");
       args.push_back("UV_PLAT");
@@ -1247,7 +1247,7 @@ void OpenVPNDriver::ReportConnectionMetrics() {
   }
 }
 
-void OpenVPNDriver::ReportCipherMetrics(const std::string& cipher) {
+void OpenVPNDriver::ReportCipherMetrics(std::string_view cipher) {
   static constexpr auto str2enum =
       base::MakeFixedFlatMap<std::string_view, Metrics::VpnOpenVPNCipher>({
           {"BF-CBC", Metrics::kVpnOpenVPNCipher_BF_CBC},

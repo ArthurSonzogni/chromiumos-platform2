@@ -62,7 +62,7 @@ class IPsecConnectionUnderTest : public IPsecConnection {
   }
 
   void InvokeParseLocalVirtualIPs(
-      const std::vector<std::string>& swanctl_output) {
+      const std::vector<std::string_view>& swanctl_output) {
     IPsecConnection::ParseLocalVirtualIPs(swanctl_output);
   }
 
@@ -712,14 +712,14 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   const std::string kBlank = " ";
 
   // The swanctl output includes an IPv4 address for the overlay IP.
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv4Address1 + kTestLineSuffix});
   ASSERT_EQ(kIPv4Address1, ipsec_connection_->local_virtual_ipv4());
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
   ipsec_connection_->InvokeClearVirtualIPs();
 
   // The swanctl output includes an IPv6 address for the overlay IP.
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv6Address1 + kTestLineSuffix});
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
   ASSERT_EQ(kIPv6Address1, ipsec_connection_->local_virtual_ipv6());
@@ -728,7 +728,7 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   // The swanctl output includes a wrong IP
   // (this is unexpected because swanctl should return the error
   // for the wrong IP addresses in advance).
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kWrongIP + kTestLineSuffix});
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv6().empty());
@@ -736,7 +736,7 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
 
   // The swanctl output includes an IPv4 address and an IPv6 address
   // for the overlay IP (dual stack case).
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv4Address1 + kBlank + kIPv6Address1 +
                       kTestLineSuffix});
   ASSERT_EQ(kIPv4Address1, ipsec_connection_->local_virtual_ipv4());
@@ -746,7 +746,7 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   // The swanctl output includes two IPv4 addresses
   // (this is unexpected because swanctl should select one IPv4 address
   // for the overlay IP before).
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv4Address1 + kBlank + kIPv4Address2 +
                       kTestLineSuffix});
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
@@ -756,7 +756,7 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   // The swanctl output includes two IPv6 addresses
   // (this is unexpected because swanctl should select one IPv6 address
   // for the overlay IP in advance).
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv6Address1 + kBlank + kIPv6Address2 +
                       kTestLineSuffix});
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
@@ -766,7 +766,7 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   // The swanctl output includes a wrong IP address and an IPv4 address
   // (this is unexpected because swanctl should return the error
   // for wrong IP addresses in advance).
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine,
       kTestLinePrefix + kWrongIP + kBlank + kIPv4Address1 + kTestLineSuffix});
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
@@ -776,7 +776,7 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   // The swanctl output includes an IPv4 address and a wrong IP address
   // (this is unexpected because swanctl should return the error
   // for wrong IP addresses in advance).
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine,
       kTestLinePrefix + kIPv4Address1 + kBlank + kWrongIP + kTestLineSuffix});
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
@@ -786,7 +786,7 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   // The swanctl output includes an IPv4 address and IPv6 address
   // without separator between them (this is unexpected because
   // swanctl should put a whitespace between them).
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine,
       kTestLinePrefix + kIPv4Address1 + kIPv6Address1 + kTestLineSuffix});
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());
@@ -796,7 +796,7 @@ TEST_F(IPsecConnectionTest, ParseLocalVirtualIP) {
   // The swanctl output includes three IP addresses
   // (this is unexpected because swanctl should select one IPv4 address
   // and one IPv6 address at most).
-  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string>{
+  ipsec_connection_->InvokeParseLocalVirtualIPs(std::vector<std::string_view>{
       kFirstLine, kTestLinePrefix + kIPv4Address1 + kBlank + kIPv6Address1 +
                       kBlank + kIPv4Address2 + kTestLineSuffix});
   ASSERT_TRUE(ipsec_connection_->local_virtual_ipv4().empty());

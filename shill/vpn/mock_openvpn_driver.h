@@ -27,7 +27,7 @@ class MockOpenVPNDriver : public OpenVPNDriver {
               FailService,
               (Service::ConnectFailure, std::string_view),
               (override));
-  MOCK_METHOD(void, ReportCipherMetrics, (const std::string&), (override));
+  MOCK_METHOD(void, ReportCipherMetrics, (std::string_view), (override));
 };
 
 }  // namespace shill

@@ -601,8 +601,8 @@ bool WireGuardDriver::PopulateIPProperties() {
   // by wireguard-tools. AllowedIPs is comma-separated list of CIDR-notation
   // addresses (e.g., "10.8.0.1/16,192.168.1.1/24").
   for (auto& peer : peers_) {
-    std::string allowed_ips_str = peer[kWireGuardPeerAllowedIPs];
-    std::vector<std::string> allowed_ip_list = base::SplitString(
+    std::string_view allowed_ips_str = peer[kWireGuardPeerAllowedIPs];
+    std::vector<std::string_view> allowed_ip_list = base::SplitStringPiece(
         allowed_ips_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     for (const auto& allowed_ip : allowed_ip_list) {
       const auto prefix = net_base::IPCIDR::CreateFromCIDRString(allowed_ip);
@@ -613,10 +613,10 @@ bool WireGuardDriver::PopulateIPProperties() {
       }
       switch (prefix->GetFamily()) {
         case net_base::IPFamily::kIPv4:
-          ipv4_properties_.inclusion_list.push_back(allowed_ip);
+          ipv4_properties_.inclusion_list.push_back(std::string(allowed_ip));
           break;
         case net_base::IPFamily::kIPv6:
-          ipv6_properties_.inclusion_list.push_back(allowed_ip);
+          ipv6_properties_.inclusion_list.push_back(std::string(allowed_ip));
           break;
       }
     }

@@ -167,10 +167,10 @@ void OpenVPNManagementServer::OnInputReady() {
 
 void OpenVPNManagementServer::OnInput(base::span<const uint8_t> data) {
   SLOG(2) << __func__ << "(" << data.size() << ")";
-  const std::vector<std::string> messages = base::SplitString(
-      std::string(reinterpret_cast<const char*>(data.data()), data.size()),
+  const auto messages = base::SplitStringPiece(
+      std::string_view(reinterpret_cast<const char*>(data.data()), data.size()),
       "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  for (const auto& message : messages) {
+  for (const std::string_view message : messages) {
     if (!IsStarted()) {
       break;
     }
@@ -357,11 +357,11 @@ bool OpenVPNManagementServer::ProcessStateMessage(std::string_view message) {
   if (!base::StartsWith(message, ">STATE:", base::CompareCase::SENSITIVE)) {
     return false;
   }
-  auto details = base::SplitString(message, ",", base::TRIM_WHITESPACE,
-                                   base::SPLIT_WANT_ALL);
+  const auto details = base::SplitStringPiece(
+      message, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (details.size() > 1) {
-    std::string new_state = details[1];
-    std::string reason;
+    std::string_view new_state = details[1];
+    std::string_view reason;
     if (details.size() > 2) {
       reason = details[2];
     }
@@ -438,10 +438,10 @@ bool OpenVPNManagementServer::ProcessStatusMessage(std::string_view message) {
                         base::CompareCase::SENSITIVE)) {
     return false;
   }
-  auto details = base::SplitString(message, ",", base::TRIM_WHITESPACE,
-                                   base::SPLIT_WANT_ALL);
+  auto details = base::SplitStringPiece(message, ",", base::TRIM_WHITESPACE,
+                                        base::SPLIT_WANT_ALL);
   if (details.size() == 2) {
-    std::string cipher = details[1];
+    std::string_view cipher = details[1];
     LOG(INFO) << "Negotiated cipher: " << cipher;
     driver_->ReportCipherMetrics(cipher);
   }

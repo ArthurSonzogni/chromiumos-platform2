@@ -132,7 +132,7 @@ bool VPNUtil::CheckKernelVersion(const base::Version& minimum_version) {
     return false;
   }
   // Extract the numeric part of release string
-  std::string version = base::SplitString(
+  std::string_view version = base::SplitStringPiece(
       buf.release, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)[0];
   base::Version kernel_version = base::Version(version);
   return kernel_version.IsValid() && kernel_version >= minimum_version;

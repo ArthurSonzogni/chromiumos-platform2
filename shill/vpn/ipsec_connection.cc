@@ -150,7 +150,7 @@ class StrongSwanConfSection {
  private:
   // Wraps the value in quotation marks and encodes control chars to make sure
   // the whole value will be read as a single string.
-  static std::string FormatValue(const std::string& input) {
+  static std::string FormatValue(std::string_view input) {
     std::string output;
     output.reserve(input.size() + 2);
     output.append("\"");
@@ -197,7 +197,7 @@ class StrongSwanConfSection {
 // - libstrongswan/crypto/crypters/crypter.c
 // - swanctl/commands/list-sas.c
 Metrics::VpnIpsecEncryptionAlgorithm ParseEncryptionAlgorithm(
-    const std::string& input) {
+    std::string_view input) {
   // The name and the key size is concated with "-". Changes them into "_" for
   // simplicity.
   std::string algo_str;
@@ -237,7 +237,7 @@ Metrics::VpnIpsecEncryptionAlgorithm ParseEncryptionAlgorithm(
 // - libstrongswan/crypto/signers/signer.c
 // - swanctl/commands/list-sas.c
 Metrics::VpnIpsecIntegrityAlgorithm ParseIntegrityAlgorithm(
-    const std::string& input) {
+    std::string_view input) {
   // The name and the key size is concated with "-". Changes them into "_" for
   // simplicity.
   std::string algo_str;
@@ -265,7 +265,7 @@ Metrics::VpnIpsecIntegrityAlgorithm ParseIntegrityAlgorithm(
 // Parsing the DH group output by swanctl. See the following src files in the
 // strongswan project for the names:
 // - libstrongswan/crypto/diffie_hellman.c
-Metrics::VpnIpsecDHGroup ParseDHGroup(const std::string& input) {
+Metrics::VpnIpsecDHGroup ParseDHGroup(std::string_view input) {
   static constexpr auto str2enum =
       base::MakeFixedFlatMap<std::string_view, Metrics::VpnIpsecDHGroup>({
           {"ECP_256", Metrics::kVpnIpsecDHGroup_ECP_256},
@@ -318,16 +318,16 @@ constexpr char IPsecConnection::kOpensslConfFilename[] =
 
 // static
 IPsecConnection::CipherSuite IPsecConnection::ParseCipherSuite(
-    const std::string& input) {
+    std::string_view input) {
   constexpr auto kInvalidResults =
       std::make_tuple(Metrics::kVpnIpsecEncryptionAlgorithmUnknown,
                       Metrics::kVpnIpsecIntegrityAlgorithmUnknown,
                       Metrics::kVpnIpsecDHGroupUnknown);
   auto [encryption_algo, integrity_algo, dh_group] = kInvalidResults;
 
-  const std::vector<std::string> names = base::SplitString(
+  const std::vector<std::string_view> names = base::SplitStringPiece(
       input, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const auto& name : names) {
+  for (const std::string_view name : names) {
     // Tries parsing the name as an encryption algorithm.
     auto parsed_encryption_algo = ParseEncryptionAlgorithm(name);
     if (parsed_encryption_algo !=
@@ -895,7 +895,7 @@ void IPsecConnection::OnCharonExitedUnexpectedly(int exit_code) {
 void IPsecConnection::OnSwanctlListSAsDone(const std::string& stdout_str) {
   // Note that any failure in parsing the cipher suite is unexpected but will
   // not block the connection. We only leave a log for such failures.
-  const std::vector<std::string> lines = base::SplitString(
+  const std::vector<std::string_view> lines = base::SplitStringPiece(
       stdout_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (!l2tp_connection_) {
@@ -952,7 +952,7 @@ void IPsecConnection::SwanctlNextStep(ConnectStep step, const std::string&) {
 }
 
 void IPsecConnection::ParseLocalVirtualIPs(
-    const std::vector<std::string>& swanctl_output) {
+    const std::vector<std::string_view>& swanctl_output) {
   ClearVirtualIPs();
 
   // The index of the line which contains the virtual IP information in
@@ -967,7 +967,7 @@ void IPsecConnection::ParseLocalVirtualIPs(
   // Example: local  '192.168.1.245' @ 192.168.1.245[4500] [10.10.10.2]
   // We need to match the IP address(es) in the last bracket ("[10.10.10.2]").
   static constexpr LazyRE2 kVIPLine = {R"(\s*local.*@.*\s+\[(.*)\]\s*$)"};
-  const std::string& line = swanctl_output[kVIPLineNumber];
+  const std::string_view line = swanctl_output[kVIPLineNumber];
 
   // Checks if the part for virtual IP addresses exists.
   std::string matched_part;
@@ -986,7 +986,7 @@ void IPsecConnection::ParseLocalVirtualIPs(
   // local  '192.168.1.245' @ 192.168.1.245[4500] [10.10.10.2 fec1::1]
   // Note: In the dual stack case, swanctl will always put IPv4 address
   // at first.
-  for (const auto& part : base::SplitString(
+  for (std::string_view part : base::SplitStringPiece(
            matched_part, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL)) {
     const auto addr = net_base::IPAddress::CreateFromString(part);
     if (!addr.has_value()) {
@@ -1023,7 +1023,7 @@ void IPsecConnection::ParseLocalVirtualIPs(
 }
 
 void IPsecConnection::ParseIKECipherSuite(
-    const std::vector<std::string>& swanctl_output) {
+    const std::vector<std::string_view>& swanctl_output) {
   ike_encryption_algo_ = Metrics::kVpnIpsecEncryptionAlgorithmUnknown;
   ike_integrity_algo_ = Metrics::kVpnIpsecIntegrityAlgorithmUnknown;
   ike_dh_group_ = Metrics::kVpnIpsecDHGroupUnknown;
@@ -1042,7 +1042,7 @@ void IPsecConnection::ParseIKECipherSuite(
   // the format.
   static constexpr LazyRE2 kIKECipherSuiteLine = {
       R"(^\s*((?:[^/\s]+)(?:/[^/\s]+)*)\s*$)"};
-  const std::string& line = swanctl_output[kIKECipherSuiteLineNumber];
+  const std::string_view line = swanctl_output[kIKECipherSuiteLineNumber];
 
   std::string matched_part;
   if (!RE2::FullMatch(line, *kIKECipherSuiteLine, &matched_part)) {
@@ -1061,7 +1061,7 @@ void IPsecConnection::ParseIKECipherSuite(
 }
 
 void IPsecConnection::ParseESPCipherSuite(
-    const std::vector<std::string>& swanctl_output) {
+    const std::vector<std::string_view>& swanctl_output) {
   esp_encryption_algo_ = Metrics::kVpnIpsecEncryptionAlgorithmUnknown;
   esp_integrity_algo_ = Metrics::kVpnIpsecIntegrityAlgorithmUnknown;
 
@@ -1080,7 +1080,7 @@ void IPsecConnection::ParseESPCipherSuite(
   // for the format.
   static constexpr LazyRE2 kESPCipherSuiteLine = {
       R"(^.*ESP:((?:[^/\s]+)(?:/[^/\s]+)*)\s*$)"};
-  const std::string& line = swanctl_output[kESPCipherSuiteLineNumber];
+  const std::string_view line = swanctl_output[kESPCipherSuiteLineNumber];
 
   std::string matched_part;
   if (!RE2::FullMatch(line, *kESPCipherSuiteLine, &matched_part)) {
@@ -1120,9 +1120,9 @@ void IPsecConnection::ParseDNSServers() {
   // TODO(jiejiang): Support IPv6 name servers.
   static constexpr LazyRE2 kNameServerLine = {
       R"(^nameserver\s+(\d+\.\d+\.\d+\.\d+).*)"};
-  const std::vector<std::string> lines = base::SplitString(
+  const std::vector<std::string_view> lines = base::SplitStringPiece(
       contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const auto& line : lines) {
+  for (std::string_view line : lines) {
     std::string matched_part;
     if (RE2::FullMatch(line, *kNameServerLine, &matched_part)) {
       dns_servers_.push_back(matched_part);
