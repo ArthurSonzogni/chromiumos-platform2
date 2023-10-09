@@ -69,31 +69,30 @@ class DecryptedUss {
     CryptohomeStatus AssignWrappedMainKey(
         std::string wrapping_id, const brillo::SecureBlob& wrapping_key);
 
-    // Changes the wrapping ID for an existing key. This does not modify the key
-    // itself in any way. Returns an error if either the old ID doesn't exist or
-    // the new ID already does. This will also rename any reset secret labelled
-    // with the same ID.
-    CryptohomeStatus RenameWrappedMainKey(const std::string& old_wrapping_id,
-                                          std::string new_wrapping_id);
-
-    // Removes the wrapped key with the given ID. Returns an error if the given
-    // ID does not exist. This will also remove any reset secret labelled with
-    // the same ID.
-    CryptohomeStatus RemoveWrappedMainKey(const std::string& wrapping_id);
-
     // Initialize the fingerprint rater limiter ID in USS. Returns an error if
     // the ID is already initialized.
     CryptohomeStatus InitializeFingerprintRateLimiterId(uint64_t id);
 
-    // Insert or assign a new reset secret for a given label.
+    // Insert or assign a new reset secret for a given wrapping ID.
     //
     // The difference between insert and assign is that insert considers it an
-    // error if a wrapped key with the given ID already exists whereas assign
-    // will unconditionally overwrite it.
-    CryptohomeStatus InsertResetSecret(std::string label,
+    // error if a secret with the given ID already exists whereas assign will
+    // unconditionally overwrite it.
+    CryptohomeStatus InsertResetSecret(std::string wrapping_id,
                                        brillo::SecureBlob secret);
-    CryptohomeStatus AssignResetSecret(std::string label,
+    CryptohomeStatus AssignResetSecret(std::string wrapping_id,
                                        brillo::SecureBlob secret);
+
+    // Renames an existing wrapping ID from the given old value to a new value.
+    // This does not modify any of the keys or secrets stored under this ID in
+    // any way. Returns an error if either the old ID doesn't exist or the new
+    // ID already does.
+    CryptohomeStatus RenameWrappingId(const std::string& old_wrapping_id,
+                                      std::string new_wrapping_id);
+
+    // Removes all of the keys and secrets stored under the given wrapping ID.
+    // Returns an error if the given ID does not exist.
+    CryptohomeStatus RemoveWrappingId(const std::string& wrapping_id);
 
     // Insert a new rate limiter reset secret for a given type of factor.
     // Returns an error if the secret could not be inserted, which includes the

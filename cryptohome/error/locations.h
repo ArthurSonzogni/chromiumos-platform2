@@ -1514,11 +1514,11 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionPersistUssFailedInReplaceAfIntoUss = 2161,
   /* ./user_secret_stash/decrypted.cc */
-  kLocUSSNewIdAlreadyExistsInRenameWrappedMainKey = 2162,
+  kLocUSSNewIdAlreadyExistsInRenameWrappingId = 2162,
   /* ./user_secret_stash/decrypted.cc */
-  kLocUSSOldIdDoesntExistInRenameWrappedMainKey = 2163,
+  kLocUSSOldIdDoesntExistInRenameWrappingId = 2163,
   /* ./user_secret_stash/decrypted.cc */
-  kLocUSSIdDoesntExistInRemoveWrappedMainKey = 2164,
+  kLocUSSIdDoesntExistInRemoveWrappingId = 2164,
   /* ./user_secret_stash/decrypted.cc */
   kLocUSSSecretAlreadyExistsInInsertResetSecret = 2165,
   /* =Obsolete= */

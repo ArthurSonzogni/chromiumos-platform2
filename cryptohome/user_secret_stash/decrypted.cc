@@ -245,12 +245,12 @@ CryptohomeStatus DecryptedUss::Transaction::AssignWrappedMainKey(
   return OkStatus<CryptohomeError>();
 }
 
-CryptohomeStatus DecryptedUss::Transaction::RenameWrappedMainKey(
+CryptohomeStatus DecryptedUss::Transaction::RenameWrappingId(
     const std::string& old_wrapping_id, std::string new_wrapping_id) {
   // Make sure the new ID is not already in use.
   if (container_.wrapped_key_blocks.contains(new_wrapping_id)) {
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSNewIdAlreadyExistsInRenameWrappedMainKey),
+        CRYPTOHOME_ERR_LOC(kLocUSSNewIdAlreadyExistsInRenameWrappingId),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
@@ -259,7 +259,7 @@ CryptohomeStatus DecryptedUss::Transaction::RenameWrappedMainKey(
   auto node = container_.wrapped_key_blocks.extract(old_wrapping_id);
   if (!node) {
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSOldIdDoesntExistInRenameWrappedMainKey),
+        CRYPTOHOME_ERR_LOC(kLocUSSOldIdDoesntExistInRenameWrappingId),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
@@ -276,13 +276,13 @@ CryptohomeStatus DecryptedUss::Transaction::RenameWrappedMainKey(
   return OkStatus<CryptohomeError>();
 }
 
-CryptohomeStatus DecryptedUss::Transaction::RemoveWrappedMainKey(
+CryptohomeStatus DecryptedUss::Transaction::RemoveWrappingId(
     const std::string& wrapping_id) {
   // Remove the key, returning an error if it doesn't exist.
   auto iter = container_.wrapped_key_blocks.find(wrapping_id);
   if (iter == container_.wrapped_key_blocks.end()) {
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUSSIdDoesntExistInRemoveWrappedMainKey),
+        CRYPTOHOME_ERR_LOC(kLocUSSIdDoesntExistInRemoveWrappingId),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
@@ -295,9 +295,9 @@ CryptohomeStatus DecryptedUss::Transaction::RemoveWrappedMainKey(
 }
 
 CryptohomeStatus DecryptedUss::Transaction::InsertResetSecret(
-    std::string label, brillo::SecureBlob secret) {
+    std::string wrapping_id, brillo::SecureBlob secret) {
   auto [iter, was_inserted] =
-      reset_secrets_.emplace(std::move(label), std::move(secret));
+      reset_secrets_.emplace(std::move(wrapping_id), std::move(secret));
   if (!was_inserted) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSSecretAlreadyExistsInInsertResetSecret),
@@ -308,8 +308,8 @@ CryptohomeStatus DecryptedUss::Transaction::InsertResetSecret(
 }
 
 CryptohomeStatus DecryptedUss::Transaction::AssignResetSecret(
-    std::string label, brillo::SecureBlob secret) {
-  reset_secrets_[std::move(label)] = std::move(secret);
+    std::string wrapping_id, brillo::SecureBlob secret) {
+  reset_secrets_[std::move(wrapping_id)] = std::move(secret);
   return OkStatus<CryptohomeError>();
 }
 

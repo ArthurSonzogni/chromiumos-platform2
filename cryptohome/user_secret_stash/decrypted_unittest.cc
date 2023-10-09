@@ -201,8 +201,8 @@ TEST_F(DecryptedUssTest, RenameWrappedKeySuccess) {
   // Rename both of them.
   {
     auto transaction = decrypted_uss->StartTransaction();
-    EXPECT_THAT(transaction.RenameWrappedMainKey("a", "c"), IsOk());
-    EXPECT_THAT(transaction.RenameWrappedMainKey("b", "d"), IsOk());
+    EXPECT_THAT(transaction.RenameWrappingId("a", "c"), IsOk());
+    EXPECT_THAT(transaction.RenameWrappingId("b", "d"), IsOk());
     EXPECT_THAT(std::move(transaction).Commit(), IsOk());
   }
   EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
@@ -235,8 +235,8 @@ TEST_F(DecryptedUssTest, RenameWrappedKeyWithResetSecret) {
   // Rename both of them.
   {
     auto transaction = decrypted_uss->StartTransaction();
-    EXPECT_THAT(transaction.RenameWrappedMainKey("a", "c"), IsOk());
-    EXPECT_THAT(transaction.RenameWrappedMainKey("b", "d"), IsOk());
+    EXPECT_THAT(transaction.RenameWrappingId("a", "c"), IsOk());
+    EXPECT_THAT(transaction.RenameWrappingId("b", "d"), IsOk());
     EXPECT_THAT(std::move(transaction).Commit(), IsOk());
   }
   EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
@@ -267,8 +267,8 @@ TEST_F(DecryptedUssTest, RenameWrappedKeyFailures) {
   // Try to rename them in ways that would fail.
   {
     auto transaction = decrypted_uss->StartTransaction();
-    EXPECT_THAT(transaction.RenameWrappedMainKey("a", "b"), NotOk());
-    EXPECT_THAT(transaction.RenameWrappedMainKey("c", "d"), NotOk());
+    EXPECT_THAT(transaction.RenameWrappingId("a", "b"), NotOk());
+    EXPECT_THAT(transaction.RenameWrappingId("c", "d"), NotOk());
     EXPECT_THAT(std::move(transaction).Commit(), IsOk());
   }
   EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
@@ -295,8 +295,8 @@ TEST_F(DecryptedUssTest, RemoveWrappedKey) {
   // Remove one element, and try to remove an element that doesn't exist.
   {
     auto transaction = decrypted_uss->StartTransaction();
-    EXPECT_THAT(transaction.RemoveWrappedMainKey("c"), NotOk());
-    EXPECT_THAT(transaction.RemoveWrappedMainKey("a"), IsOk());
+    EXPECT_THAT(transaction.RemoveWrappingId("c"), NotOk());
+    EXPECT_THAT(transaction.RemoveWrappingId("a"), IsOk());
     EXPECT_THAT(std::move(transaction).Commit(), IsOk());
   }
   EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),
@@ -329,8 +329,8 @@ TEST_F(DecryptedUssTest, RemoveWrappedKeyWithResetSecret) {
   // Remove one element, and try to remove an element that doesn't exist.
   {
     auto transaction = decrypted_uss->StartTransaction();
-    EXPECT_THAT(transaction.RemoveWrappedMainKey("c"), NotOk());
-    EXPECT_THAT(transaction.RemoveWrappedMainKey("a"), IsOk());
+    EXPECT_THAT(transaction.RemoveWrappingId("c"), NotOk());
+    EXPECT_THAT(transaction.RemoveWrappingId("a"), IsOk());
     EXPECT_THAT(std::move(transaction).Commit(), IsOk());
   }
   EXPECT_THAT(decrypted_uss->encrypted().WrappedMainKeyIds(),

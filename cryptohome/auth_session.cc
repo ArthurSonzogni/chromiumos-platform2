@@ -1754,7 +1754,7 @@ void AuthSession::ResaveUssWithFactorRemoved(
 
   {
     auto transaction = decrypted_uss_->StartTransaction();
-    if (auto status = transaction.RemoveWrappedMainKey(auth_factor_label);
+    if (auto status = transaction.RemoveWrappingId(auth_factor_label);
         !status.ok()) {
       LOG(ERROR) << "AuthSession: Failed to remove auth factor from user "
                     "secret stash: "
@@ -2219,7 +2219,7 @@ void AuthSession::AuthForDecrypt::RelabelAuthFactor(
   // Update the USS to move the wrapped key to the new label.
   {
     auto transaction = session_->decrypted_uss_->StartTransaction();
-    if (auto status = transaction.RenameWrappedMainKey(
+    if (auto status = transaction.RenameWrappingId(
             request.auth_factor_label(), request.new_auth_factor_label());
         !status.ok()) {
       // This shouldn't actually ever happen because we've already checked for
@@ -2606,7 +2606,7 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
       return;
     }
     if (CryptohomeStatus status =
-            transaction.RemoveWrappedMainKey(original_auth_factor.label());
+            transaction.RemoveWrappingId(original_auth_factor.label());
         !status.ok()) {
       std::move(on_done).Run(
           MakeStatus<CryptohomeError>(
