@@ -148,27 +148,16 @@ bool ParseCpuTime(std::istream* input, CpuTimeRecord* record) {
   return true;
 }
 
-std::optional<std::vector<int>> GetOnlineCpus(std::istream& proc_cpuinfo) {
-  if (!proc_cpuinfo) {
-    return std::nullopt;
-  }
-
+std::optional<std::vector<int>> GetOnlineCpus(const brillo::CpuInfo& cpuinfo) {
   // Search for lines like "processor : 0" in /proc/cpuinfo and add the CPU ID
   // part to the result list.
   std::vector<int> cpus;
-  for (std::string line; std::getline(proc_cpuinfo, line);) {
-    auto tokens = base::SplitString(line, ":", base::TRIM_WHITESPACE,
-                                    base::SPLIT_WANT_ALL);
-    if (tokens.size() != 2) {
+  for (int i = 0; i < cpuinfo.NumProcRecords(); i++) {
+    std::optional<std::string_view> v = cpuinfo.LookUp(i, "processor");
+    if (!v.has_value() || v.value() == "")
       continue;
-    }
-
-    if (tokens[0] != "processor") {
-      continue;
-    }
-
     int cpu = 0;
-    if (base::StringToInt(tokens[1], &cpu)) {
+    if (base::StringToInt(v.value(), &cpu)) {
       cpus.push_back(cpu);
     }
   }
@@ -445,8 +434,12 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
   // The IDs of online CPUs are not necessarily in the set of [0,
   // sysconf(_SC_NPROCESSORS_ONLN) - 1]. Query the system to get the set of
   // online CPUs.
-  std::ifstream proc_cpuinfo("/proc/cpuinfo");
-  auto online_cpus = GetOnlineCpus(proc_cpuinfo);
+  std::optional<brillo::CpuInfo> cpuinfo = brillo::CpuInfo::Create();
+  if (!cpuinfo.has_value()) {
+    LOG(ERROR) << "couldn't read or parse cpuinfo";
+    return;
+  }
+  auto online_cpus = GetOnlineCpus(cpuinfo.value());
   if (!online_cpus.has_value() || online_cpus->size() == 0) {
     PLOG(WARNING) << "Failed to get the list of online CPUs.";
 

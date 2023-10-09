@@ -15,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
+#include <brillo/cpuinfo.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace chromeos_metrics {
@@ -56,7 +57,7 @@ bool ParseCpuTime(std::istream* input, CpuTimeRecord* record);
 
 // Parse online CPU IDs from /proc/cpuinfo. Returns a vector of CPU ID on
 // success or std::nullopt on failure.
-std::optional<std::vector<int>> GetOnlineCpus(std::istream& proc_cpuinfo);
+std::optional<std::vector<int>> GetOnlineCpus(const brillo::CpuInfo& cpuinfo);
 
 // Encapsulates the access to GPU information.
 class GpuInfo {

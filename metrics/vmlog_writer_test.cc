@@ -243,8 +243,10 @@ vendor_id       : GenuineIntel
 model name      : Intel(R) Core(TM) i5-7Y57 CPU @ 1.20GHz
 bugs            : cpu_meltdown spectre_v1 spectre_v2 spec_store_bypass)";
 
-  std::istringstream input_stream(kProcCpuInfo);
-  auto cpus = GetOnlineCpus(input_stream);
+  std::optional<brillo::CpuInfo> c =
+      brillo::CpuInfo::CreateFromString(kProcCpuInfo);
+  EXPECT_TRUE(c.has_value());
+  auto cpus = GetOnlineCpus(c.value());
 
   EXPECT_TRUE(cpus.has_value());
   std::vector<int> expected_cpus = {0, 2};
