@@ -477,9 +477,10 @@ pub fn checked_command_output(command: &mut std::process::Command) -> Result<std
     } else {
         let code = exit_status.code().unwrap_or(-2);
         Err(HibernateError::SpawnedProcessError(code)).context(format!(
-            "Command {} failed with code {}",
+            "Command {} failed with code {}\nstderr: {}",
             command.get_program().to_string_lossy(),
-            &code
+            &code,
+            String::from_utf8_lossy(&output.stderr)
         ))
     }
 }
