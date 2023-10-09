@@ -47,7 +47,7 @@ gettid: 1
 getpid: 1
 fstatfs: 1
 clock_getres: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 # Definitions for prctl
 # PR_SCHED_CORE = 0x3e
 # PR_SET_SCHED_CORE = 0x200

@@ -27,7 +27,7 @@ ARM_set_tls: 1
 set_tid_address: 1
 set_robust_list: 1
 rseq: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 poll: 1
 getpid: 1
 geteuid32: 1

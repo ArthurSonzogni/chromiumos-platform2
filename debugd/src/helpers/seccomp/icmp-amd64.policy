@@ -27,7 +27,7 @@ arch_prctl: 1
 set_tid_address: 1
 set_robust_list: 1
 rseq: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getpid: 1
 geteuid: 1
 getuid: 1
