@@ -16,9 +16,11 @@ VALID_INSTALL_TYPES = ("bin", "ins", "lib.a", "lib.so", "sbin", "exe")
 # Support install_path aliases.
 INSTALL_PATH_ALIASES = {
     # Please keep this list sorted alphabetically by key!
+    "bin": "/usr/bin",
     "dbus_system_d": "/etc/dbus-1/system.d",
     "dbus_system_services": "/usr/share/dbus-1/system-services",
     "minijail_conf": "/usr/share/minijail",
+    "sbin": "/usr/sbin",
     "seccomp_policy": "/usr/share/policy",
     "tmpfilesd": "/usr/lib/tmpfiles.d",
     "tmpfiled_ondemand": "/usr/lib/tmpfiles.d/on-demand",
@@ -84,12 +86,12 @@ def generate(
           ['insopts', '-m0644'],
           ['doins', 'sources[0]', 'sources[1]', ...],
         ]
-        dobin):
+        dobin:
         [
           ['into', 'path/to/install'],
           ['dobin', 'sources[0]', 'sources[1]', ...],
         ]
-        doexe):
+        doexe:
         [
           ['exeinto', 'path/to/install'],
           ['doexe', 'sources[0]', 'sources[1]', ...],
