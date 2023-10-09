@@ -403,7 +403,7 @@ pub fn get_component_margins_kb() -> ComponentMarginsKb {
         // 100 % of critical.
         arcvm_perceptible: critical,
 
-        arcvm_cached: moderate,
+        arcvm_cached: 2 * critical,
 
         // Don't kill ARC container foreground process. It might be supported in the future.
         arc_container_foreground: 0,
