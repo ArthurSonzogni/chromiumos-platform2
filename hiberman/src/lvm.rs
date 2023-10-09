@@ -42,7 +42,9 @@ pub fn get_vg_name(blockdev: &str) -> Result<String> {
         "vg_name",
         blockdev,
     ]))
-    .context("Cannot run pvs to get volume group name")?;
+    .context(format!(
+        "Failed to get volume group name for physical volume {blockdev}"
+    ))?;
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
