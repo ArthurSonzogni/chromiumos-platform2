@@ -24,7 +24,7 @@ dup3: 1
 faccessat: 1
 sendto: 1
 set_robust_list: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getdents64: 1
 recvfrom: 1
 getuid: 1

@@ -26,7 +26,7 @@ access: 1
 recvfrom: 1
 gettid: 1
 set_robust_list: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getdents64: 1
 getuid: 1
 futex: 1
