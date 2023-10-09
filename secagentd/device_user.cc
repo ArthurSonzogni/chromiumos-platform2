@@ -257,7 +257,7 @@ bool DeviceUser::UpdateDeviceUser() {
         FROM_HERE,
         base::BindOnce(&DeviceUser::HandleUserPolicyAndNotifyListeners,
                        weak_ptr_factory_.GetWeakPtr(), username, username_file),
-        base::Seconds(2));
+        kDelayForFirstUserInit);
     return false;
   }
 }

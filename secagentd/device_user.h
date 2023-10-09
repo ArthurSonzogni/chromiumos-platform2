@@ -17,6 +17,7 @@
 #include "base/functional/callback_forward.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
+#include "base/time/time.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
@@ -27,6 +28,7 @@ namespace secagentd {
 using DeviceAccountType =
     enterprise_management::DeviceLocalAccountInfoProto_AccountType;
 
+static constexpr base::TimeDelta kDelayForFirstUserInit = base::Seconds(2);
 static constexpr char kStarted[] = "started";
 static constexpr char kStopping[] = "stopping";
 static constexpr char kStopped[] = "stopped";
