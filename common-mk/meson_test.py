@@ -67,7 +67,6 @@ def main(argv):
     real_argv += ["--"]
     real_argv += argv
 
-    print(f"Running {real_argv}", flush=True)
     os.execv(real_argv[0], real_argv)
 
 
