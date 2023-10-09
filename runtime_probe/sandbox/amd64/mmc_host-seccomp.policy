@@ -23,7 +23,7 @@ set_robust_list: 1
 rseq: 1
 prlimit64: 1
 munmap: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 faccessat2: 1
 faccessat: 1
 exit_group: 1

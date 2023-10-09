@@ -53,7 +53,7 @@ arch_prctl: 1
 rt_sigaction: 1
 set_tid_address: 1
 prlimit64: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 eventfd2: 1
 memfd_create: 1
 

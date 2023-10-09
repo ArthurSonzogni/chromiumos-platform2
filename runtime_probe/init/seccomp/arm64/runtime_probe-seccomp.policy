@@ -53,6 +53,6 @@ exit: 1
 rt_sigreturn: 1
 getpid: 1
 uname: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 eventfd2: 1
 memfd_create: 1
