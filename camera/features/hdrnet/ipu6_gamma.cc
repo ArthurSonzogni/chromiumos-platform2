@@ -14,7 +14,7 @@
 
 namespace cros::intel_ipu6 {
 
-int32_t ipu6_gamma_lut[] = {
+constexpr uint16_t ipu6_gamma_lut[] = {
     0,     26,    26,    52,    52,    78,    78,    103,   103,   129,   129,
     155,   155,   181,   181,   207,   207,   233,   233,   258,   258,   284,
     284,   310,   310,   336,   336,   362,   362,   388,   388,   413,   413,
@@ -2997,25 +2997,24 @@ int32_t ipu6_gamma_lut[] = {
 
 // The original size of 32768 is too big for textures, so we need to downsample
 // the Gamma LUT.
-constexpr int kDownsampleFactor = 2;
+constexpr uint8_t kDownsampleFactor = 2;
+constexpr int kLutSize = std::size(ipu6_gamma_lut) / kDownsampleFactor;
 
 // The IPU6 gamma table scales [0.0, 1.0] to [0, 32767].
-constexpr int kScale = 32767;
+constexpr uint16_t kScale = 32767;
 
 Texture2D CreateGammaLutTexture() {
-  const int raw_lut_size = sizeof(ipu6_gamma_lut) / sizeof(*ipu6_gamma_lut);
-  const int lut_size = raw_lut_size / kDownsampleFactor;
-  std::vector<float> lut_buffer(lut_size);
-  for (int i = 0; i < lut_size; ++i) {
+  std::vector<float> lut_buffer(kLutSize);
+  for (int i = 0; i < kLutSize; ++i) {
     lut_buffer[i] =
         static_cast<float>(ipu6_gamma_lut[i * kDownsampleFactor]) / kScale;
     DVLOGF(3) << base::StringPrintf("(%5d, %1.10f)", i, lut_buffer[i]);
   }
 
-  Texture2D lut_texture(GL_R16F, lut_size, 1);
+  Texture2D lut_texture(GL_R16F, kLutSize, 1);
   CHECK(lut_texture.IsValid());
   lut_texture.Bind();
-  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, lut_size, 1, GL_RED, GL_FLOAT,
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kLutSize, 1, GL_RED, GL_FLOAT,
                   lut_buffer.data());
   return lut_texture;
 }
@@ -3023,25 +3022,23 @@ Texture2D CreateGammaLutTexture() {
 Texture2D CreateInverseGammaLutTexture() {
   auto interpolate = [](float i, float x0, float y0, float x1,
                         float y1) -> float {
-    float kEpsilon = 1e-8;
+    constexpr float kEpsilon = 1e-8;
     if (std::abs(x1 - x0) < kEpsilon) {
       return y0;
     }
-    float slope = (y1 - y0) / (x1 - x0);
+    const float slope = (y1 - y0) / (x1 - x0);
     return y0 + (i - x0) * slope;
   };
 
-  const int raw_lut_size = sizeof(ipu6_gamma_lut) / sizeof(*ipu6_gamma_lut);
-  const int lut_size = raw_lut_size / kDownsampleFactor;
-  std::vector<float> lut_buffer(lut_size);
+  std::vector<float> lut_buffer(kLutSize);
   int lut_index = 0;
   float x0 = 0.0f, y0 = 0.0f;
-  for (int i = 0; i < lut_size; ++i) {
+  for (int i = 0; i < kLutSize; ++i) {
     const float x1 =
         (static_cast<float>(ipu6_gamma_lut[i * kDownsampleFactor]) / kScale) *
-        lut_size;
-    const float y1 = static_cast<float>(i) / (lut_size - 1);
-    for (; lut_index <= x1 && lut_index < lut_size; ++lut_index) {
+        kLutSize;
+    const float y1 = static_cast<float>(i) / (kLutSize - 1);
+    for (; lut_index <= x1 && lut_index < kLutSize; ++lut_index) {
       lut_buffer[lut_index] = interpolate(lut_index, x0, y0, x1, y1);
       DVLOGF(3) << base::StringPrintf("(%5d, %1.10f)", lut_index,
                                       lut_buffer[lut_index]);
@@ -3050,10 +3047,10 @@ Texture2D CreateInverseGammaLutTexture() {
     y0 = y1;
   }
 
-  Texture2D lut_texture(GL_R16F, lut_size, 1);
+  Texture2D lut_texture(GL_R16F, kLutSize, 1);
   CHECK(lut_texture.IsValid());
   lut_texture.Bind();
-  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, lut_size, 1, GL_RED, GL_FLOAT,
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kLutSize, 1, GL_RED, GL_FLOAT,
                   lut_buffer.data());
   return lut_texture;
 }
