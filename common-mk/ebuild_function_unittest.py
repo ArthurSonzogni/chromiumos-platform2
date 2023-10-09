@@ -110,7 +110,7 @@ class OptionCmdTests(cros_test_lib.TestCase):
 
     def testInstallOption(self):
         self.assertEqual(
-            ebuild_function.option_cmd("ins"),
+            ebuild_function.option_cmd("ins", install_path="/"),
             [["insinto", "/"], ["insopts", "-m0644"]],
         )
         self.assertEqual(
@@ -118,7 +118,9 @@ class OptionCmdTests(cros_test_lib.TestCase):
             [["insinto", "/etc/init"], ["insopts", "-m0644"]],
         )
         self.assertEqual(
-            ebuild_function.option_cmd("ins", options="-m0755"),
+            ebuild_function.option_cmd(
+                "ins", install_path="/", options="-m0755"
+            ),
             [["insinto", "/"], ["insopts", "-m0755"]],
         )
 
@@ -156,29 +158,35 @@ class GenerateTests(cros_test_lib.TestCase):
     def testInstall(self):
         # Normal install (command_type isn't specified)
         self.assertEqual(
-            ebuild_function.generate(["source"]),
-            [["insinto", "/"], ["insopts", "-m0644"], ["doins", "source"]],
+            ebuild_function.generate(["source"], install_path="/x"),
+            [["insinto", "/x"], ["insopts", "-m0644"], ["doins", "source"]],
         )
         self.assertEqual(
             ebuild_function.generate(["source"], install_path="/usr"),
             [["insinto", "/usr"], ["insopts", "-m0644"], ["doins", "source"]],
         )
         self.assertEqual(
-            ebuild_function.generate(["source"], options="-m0755"),
-            [["insinto", "/"], ["insopts", "-m0755"], ["doins", "source"]],
+            ebuild_function.generate(
+                ["source"], install_path="/x", options="-m0755"
+            ),
+            [["insinto", "/x"], ["insopts", "-m0755"], ["doins", "source"]],
         )
         self.assertEqual(
-            ebuild_function.generate(["source"], recursive=True),
+            ebuild_function.generate(
+                ["source"], install_path="/x", recursive=True
+            ),
             [
-                ["insinto", "/"],
+                ["insinto", "/x"],
                 ["insopts", "-m0644"],
                 ["doins", "-r", "source"],
             ],
         )
         self.assertEqual(
-            ebuild_function.generate(["source"], outputs=["output"]),
+            ebuild_function.generate(
+                ["source"], install_path="/x", outputs=["output"]
+            ),
             [
-                ["insinto", "/"],
+                ["insinto", "/x"],
                 ["insopts", "-m0644"],
                 ["newins", "source", "output"],
             ],

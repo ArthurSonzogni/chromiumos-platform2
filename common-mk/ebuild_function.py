@@ -205,7 +205,7 @@ def option_cmd(install_type, install_path="", options=None):
     """
     if install_type == "ins":
         return [
-            ["insinto", install_path or "/"],
+            ["insinto", install_path],
             ["insopts", options or "-m0644"],
         ]
     if install_type == "exe":
