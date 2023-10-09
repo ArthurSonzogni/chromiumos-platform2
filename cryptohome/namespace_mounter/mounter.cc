@@ -437,6 +437,9 @@ bool Mounter::EnsureUserMountPoints(const Username& username) const {
     return false;
   }
 
+  // TODO(b/300839936): Temporary verbose log.
+  LOG(INFO) << "Finished ensuring user mount points";
+
   return true;
 }
 
@@ -485,6 +488,9 @@ void Mounter::CopySkeleton(const FilePath& destination) const {
 
 bool Mounter::IsFirstMountComplete(
     const ObfuscatedUsername& obfuscated_username) const {
+  // TODO(b/300839936): Temporary verbose log.
+  LOG(INFO) << "Checking if there has been a successful mount in the past";
+
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
   const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
 
@@ -933,12 +939,18 @@ bool Mounter::SetUpEcryptfsMount(const ObfuscatedUsername& obfuscated_username,
 
 void Mounter::SetUpDircryptoMount(
     const ObfuscatedUsername& obfuscated_username) {
+  // TODO(b/300839936): Temporary verbose logging.
+  LOG(INFO) << "Setting up dircrypto mount";
+
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
 
+  LOG(INFO) << "Creating vault directory structure";
   std::ignore = CreateVaultDirectoryStructure(
       platform_, GetCommonSubdirectories(mount_point, bind_mount_downloads_));
+  LOG(INFO) << "Setting tracking xattr";
   std::ignore = SetTrackingXattr(
       platform_, GetCommonSubdirectories(mount_point, bind_mount_downloads_));
+  LOG(INFO) << "Finished setting up dircrypto mount";
 }
 
 bool Mounter::SetUpDmcryptMount(const ObfuscatedUsername& obfuscated_username,
