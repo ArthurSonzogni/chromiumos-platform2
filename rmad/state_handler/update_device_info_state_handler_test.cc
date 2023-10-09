@@ -41,17 +41,12 @@ namespace {
 
 constexpr char kSerialNumber[] = "TestSerialNumber";
 constexpr char kRegion[] = "TestRegion";
-// We get the value of type int from cros_config, but we set uint64_t in cbi.
-// This is used to mock the result of cbi, so it is an int.
-constexpr uint64_t kSkuId = 1234567890;
-// Test for overflow, because we get uint64_t from cbi and int from cros_config
-constexpr uint64_t kSkuIdOverflow =
-    static_cast<uint64_t>(std::numeric_limits<int>::max()) + 1;
+constexpr uint32_t kSkuId = 1234567890;
 constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
 constexpr char kDramPartNum[] = "TestDramPartNum";
 
 const std::vector<std::string> kRegionList = {"TestRegion", "TestRegion1"};
-const std::vector<uint64_t> kSkuList = {1234567890, 1234567891};
+const std::vector<uint32_t> kSkuList = {1234567890, 1234567891};
 const std::vector<std::string> kCustomLabelTagList = {
     "", "TestCustomLabelTag", "TestCustomLabelTag0", "TestCustomLabelTag1"};
 constexpr uint32_t kOriginalRegionSelection = 0;
@@ -81,7 +76,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     bool has_dram_part_num = true;
     bool has_region_list = true;
     bool has_sku_list = true;
-    const std::vector<uint64_t> sku_list = kSkuList;
+    const std::vector<uint32_t> sku_list = kSkuList;
     bool has_custom_label_list = true;
     bool is_feature_enabled = true;
     bool is_feature_mutable = false;
@@ -91,7 +86,6 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     bool set_sku_success = true;
     bool set_custom_label_success = true;
     bool set_dram_part_num_success = true;
-    bool sku_overflow = false;
     bool flush_out_vpd_success = true;
     bool has_cbi = true;
     bool use_legacy_custom_label = false;
@@ -163,12 +157,9 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
 
     // Mock |CbiUtils|.
     auto cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
-    if (args.has_sku && !args.sku_overflow) {
+    if (args.has_sku) {
       ON_CALL(*cbi_utils, GetSkuId(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kSkuId), Return(true)));
-    } else if (args.sku_overflow) {
-      ON_CALL(*cbi_utils, GetSkuId(_))
-          .WillByDefault(DoAll(SetArgPointee<0>(kSkuIdOverflow), Return(true)));
     } else {
       ON_CALL(*cbi_utils, GetSkuId(_)).WillByDefault(Return(false));
     }
@@ -252,7 +243,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     uint32_t hw_compliance_version = kNewHwComplianceVersion;
     // Read-only fields.
     std::optional<std::vector<std::string>> region_list = std::nullopt;
-    std::optional<std::vector<uint64_t>> sku_list = std::nullopt;
+    std::optional<std::vector<uint32_t>> sku_list = std::nullopt;
     std::optional<std::vector<std::string>> whitelabel_list = std::nullopt;
     std::optional<std::vector<std::string>> custom_label_list = std::nullopt;
     std::optional<std::string> original_serial_number = std::nullopt;
@@ -337,7 +328,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
  protected:
   std::string serial_number_set_;
   std::string region_set_;
-  uint64_t sku_set_;
+  uint32_t sku_set_;
   std::string custom_label_set_;
   std::string legacy_custom_label_set_;
   std::string dram_part_num_set_;
@@ -451,16 +442,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
-}
-
-TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_SkuOverflow_Success) {
-  auto handler = CreateStateHandler({.sku_overflow = true});
-  json_store_->SetValue(kMlbRepair, false);
-
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  auto state = handler->GetState();
-  EXPECT_EQ(state.update_device_info().original_sku_index(), -1);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,

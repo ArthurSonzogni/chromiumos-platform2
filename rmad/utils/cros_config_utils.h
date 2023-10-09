@@ -40,10 +40,10 @@ class CrosConfigUtils {
   virtual bool GetModelName(std::string* model_name) const = 0;
   virtual bool GetBrandCode(std::string* brand_code) const = 0;
   virtual bool GetCustomLabelTag(std::string* custom_label_tag) const = 0;
-  virtual bool GetSkuId(uint64_t* sku_id) const = 0;
+  virtual bool GetSkuId(uint32_t* sku_id) const = 0;
   virtual bool GetCustomLabelTagList(
       std::vector<std::string>* custom_label_tag_list) const = 0;
-  virtual bool GetSkuIdList(std::vector<uint64_t>* sku_id_list) const = 0;
+  virtual bool GetSkuIdList(std::vector<uint32_t>* sku_id_list) const = 0;
 
   bool HasCustomLabel() const;
 };

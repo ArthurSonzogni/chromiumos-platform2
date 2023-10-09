@@ -37,7 +37,7 @@ CbiUtilsImpl::CbiUtilsImpl() {
 CbiUtilsImpl::CbiUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
     : cmd_utils_(std::move(cmd_utils)) {}
 
-bool CbiUtilsImpl::GetSkuId(uint64_t* sku_id) const {
+bool CbiUtilsImpl::GetSkuId(uint32_t* sku_id) const {
   CHECK(sku_id);
 
   return GetCbi(kCbiTagSkuId, sku_id);
@@ -52,12 +52,8 @@ bool CbiUtilsImpl::GetDramPartNum(std::string* dram_part_num) const {
 bool CbiUtilsImpl::GetSsfc(uint32_t* ssfc) const {
   CHECK(ssfc);
 
-  uint64_t buf;
+  uint32_t buf;
   if (!GetCbi(kCbiTagSsfc, &buf)) {
-    return false;
-  }
-
-  if (buf > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
     return false;
   }
 
@@ -65,9 +61,9 @@ bool CbiUtilsImpl::GetSsfc(uint32_t* ssfc) const {
   return true;
 }
 
-bool CbiUtilsImpl::SetSkuId(uint64_t sku_id) {
+bool CbiUtilsImpl::SetSkuId(uint32_t sku_id) {
   int byte_size = 0;
-  uint64_t tmp = sku_id;
+  uint32_t tmp = sku_id;
 
   // To tackle |sku_id| = 0, we use do-while to ensure that |byte_size| >= 1.
   do {
@@ -113,7 +109,7 @@ bool CbiUtilsImpl::GetCbi(int tag, std::string* value, int get_flag) const {
   return true;
 }
 
-bool CbiUtilsImpl::SetCbi(int tag, uint64_t value, int size, int set_flag) {
+bool CbiUtilsImpl::SetCbi(int tag, uint32_t value, int size, int set_flag) {
   CHECK_GE(size, 1);
   CHECK_LE(size, 8);
   CHECK(size == 8 || 1ull << (size * 8) > value);
@@ -129,7 +125,7 @@ bool CbiUtilsImpl::SetCbi(int tag, uint64_t value, int size, int set_flag) {
   return cmd_utils_->GetOutput(argv, &unused_output);
 }
 
-bool CbiUtilsImpl::GetCbi(int tag, uint64_t* value, int get_flag) const {
+bool CbiUtilsImpl::GetCbi(int tag, uint32_t* value, int get_flag) const {
   CHECK(value != nullptr);
 
   std::vector<std::string> argv{kEctoolCmdPath, "cbi", "get",

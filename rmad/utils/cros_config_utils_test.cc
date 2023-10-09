@@ -33,10 +33,10 @@ constexpr char kModelNameUnused[] = "TestModelNameUnused";
 
 constexpr char kBrandCode[] = "ZZCR";
 
-constexpr uint64_t kSkuId = 1234567890;
-constexpr uint64_t kSkuIdUnused = 1111111110;
-constexpr uint64_t kSkuIdOther1 = 1111111111;
-constexpr uint64_t kSkuIdOther2 = 1111111112;
+constexpr uint32_t kSkuId = 1234567890;
+constexpr uint32_t kSkuIdUnused = 1111111110;
+constexpr uint32_t kSkuIdOther1 = 1111111111;
+constexpr uint32_t kSkuIdOther2 = 1111111112;
 
 constexpr char kCustomLabelTagEmpty[] = "";
 constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
@@ -58,7 +58,7 @@ const std::vector<std::string> kTargetCustomLabelTagList = {
     kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTagOther};
 const std::vector<std::string> kEmptyCustomLabelTagList = {
     kCustomLabelTagEmpty};
-const std::vector<uint64_t> kTargetSkuIdList = {kSkuIdOther1, kSkuIdOther2,
+const std::vector<uint32_t> kTargetSkuIdList = {kSkuIdOther1, kSkuIdOther2,
                                                 kSkuId};
 
 struct UtilArgs {
@@ -77,7 +77,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
 
   base::FilePath CreateCrosConfigFs(
       const std::vector<std::string>& model_names,
-      const std::vector<std::optional<uint64_t>>& sku_ids,
+      const std::vector<std::optional<uint32_t>>& sku_ids,
       const std::vector<std::string>& custom_label_tags) {
     EXPECT_EQ(model_names.size(), sku_ids.size());
     EXPECT_EQ(model_names.size(), custom_label_tags.size());
@@ -284,7 +284,7 @@ TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTag_Success) {
 TEST_F(CrosConfigUtilsImplTest, GetSkuId_Success) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
-  uint64_t sku_id;
+  uint32_t sku_id;
   EXPECT_TRUE(cros_config_utils->GetSkuId(&sku_id));
   EXPECT_EQ(sku_id, kSkuId);
 }
@@ -292,7 +292,7 @@ TEST_F(CrosConfigUtilsImplTest, GetSkuId_Success) {
 TEST_F(CrosConfigUtilsImplTest, GetSkuIdList_Success) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
-  std::vector<uint64_t> sku_id_list;
+  std::vector<uint32_t> sku_id_list;
   EXPECT_TRUE(cros_config_utils->GetSkuIdList(&sku_id_list));
   EXPECT_EQ(sku_id_list, kTargetSkuIdList);
 }

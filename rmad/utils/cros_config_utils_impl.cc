@@ -78,7 +78,7 @@ bool CrosConfigUtilsImpl::GetBrandCode(std::string* brand_code) const {
   return cros_config_->GetString(kCrosRootPath, kCrosBrandCodeKey, brand_code);
 }
 
-bool CrosConfigUtilsImpl::GetSkuId(uint64_t* sku_id) const {
+bool CrosConfigUtilsImpl::GetSkuId(uint32_t* sku_id) const {
   DCHECK(sku_id);
 
   std::string sku_id_str;
@@ -89,7 +89,7 @@ bool CrosConfigUtilsImpl::GetSkuId(uint64_t* sku_id) const {
     return false;
   }
 
-  return base::StringToUint64(sku_id_str, sku_id);
+  return base::StringToUint(sku_id_str, sku_id);
 }
 
 bool CrosConfigUtilsImpl::GetCustomLabelTag(
@@ -103,7 +103,7 @@ bool CrosConfigUtilsImpl::GetCustomLabelTag(
 }
 
 bool CrosConfigUtilsImpl::GetSkuIdList(
-    std::vector<uint64_t>* sku_id_list) const {
+    std::vector<uint32_t>* sku_id_list) const {
   DCHECK(sku_id_list);
 
   std::vector<std::string> values;
@@ -114,9 +114,9 @@ bool CrosConfigUtilsImpl::GetSkuIdList(
 
   sku_id_list->clear();
   for (auto& value : values) {
-    uint64_t sku_id;
-    if (!base::StringToUint64(value, &sku_id)) {
-      LOG(ERROR) << "Failed to convert " << value << " to uint64_t";
+    uint32_t sku_id;
+    if (!base::StringToUint(value, &sku_id)) {
+      LOG(ERROR) << "Failed to convert " << value << " to uint32_t";
       return false;
     }
 

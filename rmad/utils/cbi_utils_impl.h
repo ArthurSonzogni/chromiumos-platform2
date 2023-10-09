@@ -23,18 +23,18 @@ class CbiUtilsImpl : public CbiUtils {
   explicit CbiUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils);
   ~CbiUtilsImpl() override = default;
 
-  bool GetSkuId(uint64_t* sku_id) const override;
+  bool GetSkuId(uint32_t* sku_id) const override;
   bool GetDramPartNum(std::string* dram_part_num) const override;
   bool GetSsfc(uint32_t* ssfc) const override;
-  bool SetSkuId(uint64_t sku_id) override;
+  bool SetSkuId(uint32_t sku_id) override;
   bool SetDramPartNum(const std::string& dram_part_num) override;
   bool SetSsfc(uint32_t ssfc) override;
 
  protected:
   bool SetCbi(int tag, const std::string& value, int set_flag = 0);
   bool GetCbi(int tag, std::string* value, int get_flag = 0) const;
-  bool SetCbi(int tag, uint64_t value, int size, int set_flag = 0);
-  bool GetCbi(int tag, uint64_t* value, int get_flag = 0) const;
+  bool SetCbi(int tag, uint32_t value, int size, int set_flag = 0);
+  bool GetCbi(int tag, uint32_t* value, int get_flag = 0) const;
 
  private:
   std::unique_ptr<CmdUtils> cmd_utils_;

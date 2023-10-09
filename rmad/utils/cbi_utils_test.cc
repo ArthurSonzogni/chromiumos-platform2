@@ -47,7 +47,7 @@ TEST_F(CbiUtilsTest, GetSkuId_Success) {
       .WillOnce(DoAll(SetArgPointee<1>(kGetIntSuccessOutput), Return(true)));
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
-  uint64_t sku_id;
+  uint32_t sku_id;
   EXPECT_TRUE(cbi_utils->GetSkuId(&sku_id));
   EXPECT_EQ(sku_id, 1234);
 }
@@ -58,7 +58,7 @@ TEST_F(CbiUtilsTest, GetSkuId_Success_ParseFail) {
       .WillOnce(DoAll(SetArgPointee<1>(kRandomOutput), Return(true)));
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
-  uint64_t sku_id;
+  uint32_t sku_id;
   EXPECT_FALSE(cbi_utils->GetSkuId(&sku_id));
 }
 
@@ -67,7 +67,7 @@ TEST_F(CbiUtilsTest, GetSkuId_Fail) {
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
-  uint64_t sku_id;
+  uint32_t sku_id;
   EXPECT_FALSE(cbi_utils->GetSkuId(&sku_id));
 }
 

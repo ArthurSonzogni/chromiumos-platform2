@@ -109,14 +109,14 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
 
   std::string serial_number;
   std::string region;
-  uint64_t sku_id;
+  uint32_t sku_id;
   bool is_custom_label_exist;
   std::string custom_label_tag;
   std::string dram_part_number;
   UpdateDeviceInfoState::FeatureLevel feature_level;
 
   std::vector<std::string> region_list;
-  std::vector<uint64_t> sku_id_list;
+  std::vector<uint32_t> sku_id_list;
   std::vector<std::string> custom_label_tag_list;
 
   // We reserve -1 for unmatched indexes.
@@ -243,7 +243,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   }
 
   for (auto sku_option : sku_id_list) {
-    update_dev_info->add_sku_list(sku_option);
+    update_dev_info->add_sku_list(static_cast<uint64_t>(sku_option));
   }
 
   for (auto custom_label_option : custom_label_tag_list) {
@@ -408,7 +408,8 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
 
   if (rmad_config_.has_cbi &&
       device_info.sku_index() != device_info.original_sku_index() &&
-      !cbi_utils_->SetSkuId(device_info.sku_list(device_info.sku_index()))) {
+      !cbi_utils_->SetSkuId(static_cast<uint32_t>(
+          device_info.sku_list(device_info.sku_index())))) {
     LOG(ERROR) << "Failed to write sku to cbi.";
     return false;
   }
