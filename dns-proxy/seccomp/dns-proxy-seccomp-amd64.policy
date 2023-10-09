@@ -92,7 +92,7 @@ creat: 1
 rmdir: 1
 unlink: 1
 lstat: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getdents: 1
 shutdown: 1
 waitid: 1

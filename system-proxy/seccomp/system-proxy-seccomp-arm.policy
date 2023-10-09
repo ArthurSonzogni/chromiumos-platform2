@@ -95,7 +95,7 @@ creat: 1
 rmdir: 1
 unlink: 1
 lstat: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 getdents: 1
 getuid32: 1
 geteuid32: 1

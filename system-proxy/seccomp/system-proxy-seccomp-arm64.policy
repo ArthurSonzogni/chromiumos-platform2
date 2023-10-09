@@ -81,7 +81,7 @@ sendmmsg: 1
 getpeername: 1
 setpriority: 1
 madvise: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 shutdown: 1
 pread64: 1
 # Required for System-proxy to read the Chrome OS login password as part of a

@@ -84,7 +84,7 @@ sendmmsg: 1
 getpeername: 1
 setpriority: 1
 madvise: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 shutdown: 1
 waitid:1
 sysinfo: 1
