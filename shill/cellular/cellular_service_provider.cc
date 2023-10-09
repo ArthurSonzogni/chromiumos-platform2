@@ -356,7 +356,13 @@ CellularService* CellularServiceProvider::GetActiveService() {
   return nullptr;
 }
 
-bool CellularServiceProvider::HardwareSupportsTethering() {
+bool CellularServiceProvider::HardwareSupportsTethering(
+    bool experimental_tethering) {
+  // For now, the flag will allow all variants. If there is a need to block a
+  // variant under any conditions, this has to be modified.
+  if (experimental_tethering)
+    return true;
+
   if (!variant_.has_value()) {
     SLOG(3) << __func__ << " reading modem firmware variant";
     std::string temp_variant;
@@ -371,8 +377,17 @@ bool CellularServiceProvider::HardwareSupportsTethering() {
 }
 
 void CellularServiceProvider::TetheringEntitlementCheck(
-    Cellular::EntitlementCheckResultCallback callback) {
+    Cellular::EntitlementCheckResultCallback callback,
+    bool experimental_tethering) {
   SLOG(3) << __func__;
+  if (!HardwareSupportsTethering(experimental_tethering)) {
+    manager_->metrics()->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckNotAllowedOnVariant);
+    std::move(callback).Run(
+        TetheringManager::EntitlementStatus::kNotAllowedOnVariant);
+    return;
+  }
+
   const auto cellular_service = GetActiveService();
   if (!cellular_service || !cellular_service->cellular()) {
     SLOG(3) << __func__ << " cellular device doesn't exist";
@@ -389,9 +404,10 @@ void CellularServiceProvider::TetheringEntitlementCheck(
 void CellularServiceProvider::AcquireTetheringNetwork(
     TetheringManager::UpdateTimeoutCallback update_timeout_callback,
     TetheringManager::AcquireNetworkCallback callback,
-    TetheringManager::CellularUpstreamEventCallback tethering_event_callback) {
+    TetheringManager::CellularUpstreamEventCallback tethering_event_callback,
+    bool experimental_tethering) {
   SLOG(3) << __func__;
-  if (!HardwareSupportsTethering()) {
+  if (!HardwareSupportsTethering(experimental_tethering)) {
     manager_->dispatcher()->PostTask(
         FROM_HERE,
         base::BindOnce(std::move(callback),

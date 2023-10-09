@@ -411,7 +411,8 @@ KeyValueStore TetheringManager::GetCapabilities(Error* /* error */) {
   // Ethernet is always supported as an upstream technology.
   upstream_technologies.push_back(TechnologyName(Technology::kEthernet));
 
-  if (manager_->cellular_service_provider()->HardwareSupportsTethering())
+  if (manager_->cellular_service_provider()->HardwareSupportsTethering(
+          experimental_tethering_functionality_))
     upstream_technologies.push_back(TechnologyName(Technology::kCellular));
 
   // TODO(b/244335143): This should be based on static SoC capability
@@ -737,7 +738,8 @@ void TetheringManager::StartTetheringSession() {
         base::BindOnce(&TetheringManager::OnUpstreamNetworkAcquired,
                        base::Unretained(this)),
         base::BindRepeating(&TetheringManager::OnCellularUpstreamEvent,
-                            base::Unretained(this)));
+                            base::Unretained(this)),
+        experimental_tethering_functionality_);
   } else if (upstream_technology_ == Technology::kEthernet) {
     const auto eth_service = manager_->GetFirstEthernetService();
     const auto upstream_network =
@@ -1115,7 +1117,7 @@ void TetheringManager::CheckReadiness(
   // When the upstream technology is Cellular, delegate to the Provider.
   if (upstream_technology_ == Technology::kCellular) {
     manager_->cellular_service_provider()->TetheringEntitlementCheck(
-        std::move(callback));
+        std::move(callback), experimental_tethering_functionality_);
     return;
   }
 

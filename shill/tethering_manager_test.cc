@@ -212,7 +212,7 @@ class TetheringManagerTest : public testing::Test {
     ON_CALL(*hotspot_device_.get(), DeconfigureService())
         .WillByDefault(Return(true));
     ON_CALL(*hotspot_device_.get(), IsServiceUp()).WillByDefault(Return(true));
-    ON_CALL(*cellular_service_provider_, AcquireTetheringNetwork(_, _, _))
+    ON_CALL(*cellular_service_provider_, AcquireTetheringNetwork(_, _, _, _))
         .WillByDefault(Return());
     ON_CALL(*cellular_service_provider_, ReleaseTetheringNetwork(_, _))
         .WillByDefault(Return());
@@ -526,7 +526,7 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   ON_CALL(*wifi_provider_, GetPhys()).WillByDefault(Return(phys));
   ON_CALL(*phy, SupportAPMode()).WillByDefault(Return(true));
   ON_CALL(*phy, SupportAPSTAConcurrency()).WillByDefault(Return(true));
-  EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering())
+  EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering(_))
       .WillOnce(Return(true));
   SetAllowed(tethering_manager_, true);
   KeyValueStore caps = GetCapabilities(tethering_manager_);
@@ -554,7 +554,7 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutWiFi) {
   const std::vector<DeviceRefPtr> devices;
   ON_CALL(manager_, FilterByTechnology(Technology::kWiFi))
       .WillByDefault(Return(devices));
-  EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering())
+  EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering(_))
       .WillOnce(Return(true));
   SetAllowed(tethering_manager_, true);
 
@@ -582,7 +582,7 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutCellular) {
   ON_CALL(*wifi_provider_, GetPhys()).WillByDefault(Return(phys));
   ON_CALL(*phy, SupportAPMode()).WillByDefault(Return(true));
   ON_CALL(*phy, SupportAPSTAConcurrency()).WillByDefault(Return(true));
-  EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering())
+  EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering(_))
       .WillOnce(Return(false));
   SetAllowed(tethering_manager_, true);
 
@@ -908,7 +908,7 @@ TEST_F(TetheringManagerTest, CheckReadinessCellularUpstream) {
   EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(*cell_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*cellular_service_provider_, TetheringEntitlementCheck(_));
+  EXPECT_CALL(*cellular_service_provider_, TetheringEntitlementCheck(_, _));
   tethering_manager_->CheckReadiness(cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
@@ -918,7 +918,7 @@ TEST_F(TetheringManagerTest, CheckReadinessCellularUpstream) {
   EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(*cell_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*cellular_service_provider_, TetheringEntitlementCheck(_));
+  EXPECT_CALL(*cellular_service_provider_, TetheringEntitlementCheck(_, _));
   tethering_manager_->CheckReadiness(cb.Get());
   DispatchPendingEvents();
 }
@@ -959,7 +959,7 @@ TEST_F(TetheringManagerTest, CheckReadinessEthernetUpstream) {
   AddServiceToCellularProvider(cell_service);
   cell->set_selected_service_for_testing(cell_service);
 
-  EXPECT_CALL(*cellular_service_provider_, TetheringEntitlementCheck(_))
+  EXPECT_CALL(*cellular_service_provider_, TetheringEntitlementCheck(_, _))
       .Times(0);
 
   // Both Ethernet Service and Cellular Service are disconnected.

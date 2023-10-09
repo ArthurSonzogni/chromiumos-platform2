@@ -81,12 +81,13 @@ class CellularServiceProvider : public ProviderInterface {
 
   // Returns true if the hardware supports tethering over cellular and the
   // model was allowlisted for tethering.
-  mockable bool HardwareSupportsTethering();
+  mockable bool HardwareSupportsTethering(bool experimental_tethering);
 
   // Checks if sharing the Cellular connection in a tethering session with
   // client devices is allowed and supported for the current carrier and modem.
   mockable void TetheringEntitlementCheck(
-      Cellular::EntitlementCheckResultCallback callback);
+      Cellular::EntitlementCheckResultCallback callback,
+      bool experimental_tethering);
 
   // Returns the Network object to use for sharing the Cellular connection in a
   // tethering session, creating and connecting a new Network if necessary for
@@ -94,7 +95,8 @@ class CellularServiceProvider : public ProviderInterface {
   mockable void AcquireTetheringNetwork(
       TetheringManager::UpdateTimeoutCallback update_timeout_callback,
       TetheringManager::AcquireNetworkCallback callback,
-      TetheringManager::CellularUpstreamEventCallback tethering_event_callback);
+      TetheringManager::CellularUpstreamEventCallback tethering_event_callback,
+      bool experimental_tethering);
 
   // Notifies that a tethering session has stopped and that the Network object
   // obtained with AcquireTetheringNetwork() is not used for tethering anymore.

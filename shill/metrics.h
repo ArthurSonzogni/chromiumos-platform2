@@ -559,6 +559,7 @@ class Metrics {
     kCellularEntitlementCheckNoNetwork = 17,
     kCellularEntitlementCheckNetworkNotConnected = 18,
     kCellularEntitlementCheckNetworkNotOnline = 19,
+    kCellularEntitlementCheckNotAllowedOnVariant = 20,
     kCellularEntitlementCheckMax
   };
   static constexpr EnumMetric<FixedName> kMetricCellularEntitlementCheck = {
