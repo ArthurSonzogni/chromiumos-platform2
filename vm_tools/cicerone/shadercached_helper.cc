@@ -90,13 +90,14 @@ void ShadercachedHelper::InstallShaderCache(
       .owner_id = owner_id,
       .steam_app_id = request->steam_app_id()};
 
-  bool callback_added =
-      AddCallback(condition, /*expected_mount=*/true, error_out,
-                  request->wait() ? event : nullptr);
-
-  if (!callback_added) {
-    LOG(WARNING) << "Failed to add callback for install of steam id "
-                 << request->steam_app_id();
+  bool callback_added = false;
+  if (request->mount()) {
+    callback_added = AddCallback(condition, /*expected_mount=*/true, error_out,
+                                 request->wait() ? event : nullptr);
+    if (!callback_added) {
+      LOG(WARNING) << "Failed to add callback for install of steam id "
+                   << request->steam_app_id();
+    }
   }
 
   dbus::MethodCall method_call(shadercached::kShaderCacheInterface,
