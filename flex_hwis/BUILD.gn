@@ -70,17 +70,17 @@ executable("flex_hwis_tool") {
 }
 
 install_config("install_upstart_config") {
-  sources = [ "init/upstart/flex-hwis.conf" ]
+  sources = [ "init/upstart/flex_hwis.conf" ]
   install_path = "upstart"
 }
 
 install_config("install_minijail_flex_hwis_conf") {
-  sources = [ "minijail/flex-hwis.conf" ]
+  sources = [ "minijail/flex_hwis.conf" ]
   install_path = "minijail_conf"
 }
 
 install_config("install_tmpfiles_config") {
-  sources = [ "init/tmpfiles.d/flex-hwis.conf" ]
+  sources = [ "init/tmpfiles.d/flex_hwis.conf" ]
   install_path = "tmpfilesd"
 }
 
