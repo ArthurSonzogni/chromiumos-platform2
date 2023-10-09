@@ -11,6 +11,7 @@
 #include <optional>
 #include <utility>
 
+#include <dirent.h>
 #include <fcntl.h>
 
 #include <base/check.h>
@@ -323,6 +324,61 @@ PowerSupplyProperties::PowerSource::Type GetPowerSourceTypeFromString(
   return PowerSupplyProperties_PowerSource_Type_OTHER;
 }
 
+// Dump the set of file descriptors opened by the process for debugging fd
+// leaks. Implemented directly with the POSIX APIs to avoid accidentally opening
+// any extra fds.
+void DumpOpenFileDescriptorsAndInputDevices() {
+  auto get_resolved_links = [](const std::string& directory) {
+    std::vector<std::pair<std::string, std::string>> entries;
+    DIR* dir = opendir(directory.c_str());
+    if (!dir) {
+      PLOG(ERROR) << "Unable to open " << dir;
+      return entries;
+    }
+    std::unique_ptr<char[]> link_target(new char[PATH_MAX]);
+    while (true) {
+      errno = 0;
+      const dirent* entry = readdir(dir);
+      if (!entry) {
+        if (errno) {
+          PLOG(ERROR) << "Unable to read dir entry";
+        }
+        break;
+      }
+      // Ignore '.' and '..'.
+      if (entry->d_name[0] == '.') {
+        continue;
+      }
+      ssize_t result =
+          readlinkat(dirfd(dir), entry->d_name, link_target.get(), PATH_MAX);
+      if (result > 0) {
+        entries.push_back(std::make_pair(
+            entry->d_name, std::string(link_target.get(), result)));
+      } else {
+        PLOG(ERROR) << "Unable to resolve link: " << entry->d_name;
+      }
+    }
+    closedir(dir);
+    return entries;
+  };
+
+  auto entries = get_resolved_links("/proc/self/fd");
+  std::map<std::string, int> entry_counts;
+  for (const auto& it : entries) {
+    entry_counts[it.second]++;
+  }
+  LOG(ERROR) << "Total file descriptors opened: " << entries.size();
+  for (const auto& it : entry_counts) {
+    LOG(ERROR) << "Open count for " << it.first << ": " << it.second;
+  }
+
+  // Also dump the input device mapping, since most file descriptors opened by
+  // powerd are input devices.
+  for (const auto& it : get_resolved_links("/sys/class/input")) {
+    LOG(ERROR) << "Input device mapping: " << it.first << " -> " << it.second;
+  }
+}
+
 }  // namespace
 
 void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
@@ -592,17 +648,13 @@ const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
 PowerSupply::PowerSupply()
     : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {
   // TODO(b/207716926): Temporary change to find FD leaks in powerd.
-  temp_file_ = base::OpenFile(base::FilePath("/dev/null"), "r");
+  spare_files_[0].reset(base::OpenFile(base::FilePath("/dev/null"), "r"));
+  spare_files_[1].reset(base::OpenFile(base::FilePath("/dev/null"), "r"));
 }
 
 PowerSupply::~PowerSupply() {
   if (udev_)
     udev_->RemoveSubsystemObserver(kUdevSubsystem, this);
-
-  if (temp_file_ != nullptr) {
-    base::CloseFile(temp_file_);
-    temp_file_ = nullptr;
-  }
 }
 
 void PowerSupply::Init(
@@ -1587,20 +1639,10 @@ void PowerSupply::SchedulePoll() {
   // TODO(b/207716926): Temporary change to find FD leaks in powerd.
   bool ok = prefs_->GetInt64(kMaxCurrentSamplesPref, &samples);
   if (!ok) {
-    if (temp_file_ != nullptr) {
-      base::CloseFile(temp_file_);  // Release pre-allocated FD.
-      temp_file_ = nullptr;
-    }
-    base::FilePath fdpath;
-    base::FileEnumerator it(
-        base::FilePath("/proc/self/fd"), false,
-        base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS,
-        "*");
-    for (base::FilePath name = it.Next(); !name.empty(); name = it.Next()) {
-      if (base::ReadSymbolicLink(name, &fdpath)) {
-        LOG(ERROR) << "b/207716926: " << fdpath.value();
-      }
-    }
+    LOG(ERROR) << "Potential fd leak detected, dumping open files";
+    spare_files_[0].reset();
+    spare_files_[1].reset();
+    DumpOpenFileDescriptorsAndInputDevices();
   }
   CHECK(ok);
 

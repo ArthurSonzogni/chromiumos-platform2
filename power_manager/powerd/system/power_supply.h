@@ -14,6 +14,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
@@ -559,7 +560,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   base::ObserverList<PowerSupplyObserver> observers_;
 
   // TODO(b/207716926): Temporary change to find FD leaks in powerd.
-  FILE* temp_file_;
+  std::array<base::ScopedFILE, 2> spare_files_;
 
   // Most-recently-computed status.
   PowerStatus power_status_;
