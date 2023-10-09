@@ -63,7 +63,7 @@ flock: 1
 
 sched_getattr: 1
 sched_setattr: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: arg2 == SIGABRT

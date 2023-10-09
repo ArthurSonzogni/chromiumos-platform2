@@ -59,7 +59,7 @@ nanosleep: 1
 clock_nanosleep: 1
 clock_nanosleep_time64: 1
 futex: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 sysinfo: 1
 mlock: 1
 munlock: 1

@@ -70,7 +70,7 @@ set_tid_address: 1
 tgkill: 1
 sched_yield: 1
 sysinfo: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 
 rt_sigprocmask: 1
 rt_sigaction: 1

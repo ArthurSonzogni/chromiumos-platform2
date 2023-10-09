@@ -71,7 +71,7 @@ getresgid32: 1
 sysinfo: 1
 clock_gettime: 1
 clock_gettime64: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 madvise: 1
 mlock: 1
 munlock: 1

@@ -90,7 +90,7 @@ nanosleep: 1
 clock_nanosleep: 1
 sched_yield: 1
 sysinfo: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 sendmmsg: 1
 
 # Used by the http transfer.

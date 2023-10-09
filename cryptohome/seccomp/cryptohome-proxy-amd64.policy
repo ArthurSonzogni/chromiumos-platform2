@@ -67,7 +67,7 @@ clock_gettime: 1
 nanosleep: 1
 clock_nanosleep: 1
 flock: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: arg2 == SIGABRT

@@ -114,7 +114,7 @@ clock_nanosleep: 1
 clock_nanosleep_time64: 1
 sched_yield: 1
 sysinfo: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 
 # openssl 1.1.1d+ uses these to access the seeded state in shared memory if
 # getrandom() is not implemented.
