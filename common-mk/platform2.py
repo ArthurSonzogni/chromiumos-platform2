@@ -96,6 +96,7 @@ _IUSE = [
     "fake_drivefs_launcher",
     "feature_management",
     "feedback",
+    "flex_internal",
     "floss",
     "floss_rootcanal",
     "force_breakpad",

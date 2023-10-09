@@ -32,6 +32,7 @@ pkg_config("target_defaults") {
     "mojo_service_manager",
     "protobuf",
   ]
+  defines = [ "USE_FLEX_INTERNAL=${use.flex_internal}" ]
 }
 
 pkg_config("metrics") {

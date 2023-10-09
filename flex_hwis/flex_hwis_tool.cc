@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "flex_hwis/flex_hwis.h"
+#include "flex_hwis/flex_hwis_server_info.h"
 #include "flex_hwis/http_sender.h"
 
 #include <memory>
@@ -16,8 +17,6 @@
 #include <metrics/metrics_library.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-
-constexpr char kServerUrl[] = "";
 
 int main(int argc, char** argv) {
   DEFINE_bool(debug, false, "Whether to dump the data for debugging purposes");
@@ -37,7 +36,8 @@ int main(int argc, char** argv) {
 
   MetricsLibrary metrics_library;
   auto provider = std::make_unique<policy::PolicyProvider>();
-  auto sender = std::make_unique<flex_hwis::HttpSender>(kServerUrl);
+  auto sender = std::make_unique<flex_hwis::HttpSender>(
+      std::string(flex_hwis::kServerUrl));
   flex_hwis::FlexHwisSender flex_hwis_sender(base::FilePath("/"), *provider,
                                              *sender);
   auto flex_hwis_res = flex_hwis_sender.CollectAndSend(
