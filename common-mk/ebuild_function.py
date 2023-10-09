@@ -203,16 +203,27 @@ def option_cmd(install_type, install_path="", options=None):
           ['into', 'path/to/install']
         ]
     """
+
+    def _check_install_path() -> None:
+        assert install_path is not None, "internal error"
+        assert install_path.startswith(
+            "/"
+        ), f"install paths must be absolute, not '{install_path}'"
+
     if install_type == "ins":
+        _check_install_path()
         return [
             ["insinto", install_path],
             ["insopts", options or "-m0644"],
         ]
     if install_type == "exe":
-        assert install_path
+        _check_install_path()
         return [["exeinto", install_path]]
     if install_type in VALID_INSTALL_TYPES:
-        return [["into", install_path or "/usr"]]
+        if not install_path:
+            install_path = "/usr"
+        _check_install_path()
+        return [["into", install_path]]
     return []
 
 
