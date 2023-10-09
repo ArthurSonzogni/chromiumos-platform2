@@ -25,8 +25,6 @@ python3 -m cros_config_host.cros_config_schema -o test_data/test_merge.json \
         -m test_data/test_merge_base.yaml test_data/test_merge_overlay.yaml
 python3 -m cros_config_host.cros_config_schema -o test_data/test_build.json \
         -m test_data/test.yaml
-python3 -m cros_config_host.cros_config_schema --zephyr-ec-configs-only \
-        -o test_data/test_zephyr.json -m test_data/test.yaml
 
 regen_test_data() {
     python3 -m cros_config_host.cros_config_schema -f True \

@@ -134,18 +134,6 @@ def ParseArgs(argv):
         default=False,
         help="Filter build specific elements from the output JSON",
     )
-    # TODO(b:185470553): this argument is being used to support the
-    # Zephyr builders for proof-of-concept devices (devices which
-    # normally target a CrOS EC), and can be removed once those builders
-    # are no longer needed.
-    parser.add_argument(
-        "--zephyr-ec-configs-only",
-        action="store_true",
-        help=(
-            "Remove any configuration which does not specify "
-            "/firmware/build-targets:zephyr-ec"
-        ),
-    )
     parser.add_argument(
         "--identity-table-out",
         type=argparse.FileType("wb"),
@@ -532,26 +520,6 @@ def _FilterBuildElements(config, path, build_only_elements):
             _FilterBuildElements(config[key], full_path, build_only_elements)
     for key in to_delete:
         config.pop(key)
-
-
-def FilterNonZephyrDevices(config):
-    """Remove any devices which do not specify a Zephyr EC build target.
-
-    Args:
-        config: JSON-serialized configuration.
-
-    Returns:
-        JSON-serialized configuration, potentially with some configs gone.
-    """
-    json_config = json.loads(config)
-    new_device_configs = []
-    for device_config in json_config[CHROMEOS][CONFIGS]:
-        build_targets = device_config.get("firmware", {}).get(
-            "build-targets", {}
-        )
-        if "zephyr-ec" in build_targets:
-            new_device_configs.append(device_config)
-    return libcros_schema.FormatJson({CHROMEOS: {CONFIGS: new_device_configs}})
 
 
 def GenerateFridMatches(json_config):
@@ -988,7 +956,6 @@ def Main(
     filter_build_details=False,
     configfs_output=None,
     configs=None,
-    zephyr_ec_configs_only=False,
     identity_table_out=None,
 ):
     """Transforms and validates a cros config file for use on the system
@@ -1007,8 +974,6 @@ def Main(
                               not.
         configfs_output: Output path to generated SquashFS for ConfigFS.
         configs: List of source config files that will be transformed/verified.
-        zephyr_ec_configs_only: True if device configs which do not
-        contain /firmware/build-targets:zephyr-ec should be removed.
         identity_table_out: Output file for crosid identity table.
     """
     # TODO(shapiroc): Remove this once we no longer need backwards compatibility
@@ -1026,8 +991,6 @@ def Main(
         libcros_schema.LoadYaml(schema_contents)
     )
 
-    if zephyr_ec_configs_only:
-        json_transform = FilterNonZephyrDevices(json_transform)
     if filter_build_details:
         build_only_elements = []
         for path in schema_attrs:
@@ -1069,7 +1032,6 @@ def main(argv=None):
         opts.filter,
         opts.configfs_output,
         opts.configs,
-        opts.zephyr_ec_configs_only,
         opts.identity_table_out,
     )
 

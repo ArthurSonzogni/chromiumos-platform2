@@ -969,19 +969,6 @@ class MainTests(cros_test_lib.TempDirTestCase):
         expected_file = os.path.join(this_dir, "../test_data/test_merge.json")
         self.assertFileEqual(expected_file, output)
 
-    def testMainZephyrFilter(self):
-        output = os.path.join(self.tempdir, "output")
-        base_path = os.path.join(this_dir, "../test_data")
-        cros_config_schema.Main(
-            None,
-            None,
-            output,
-            configs=[os.path.join(base_path, "test.yaml")],
-            zephyr_ec_configs_only=True,
-        )
-        expected_file = os.path.join(base_path, "test_zephyr.json")
-        self.assertFileEqual(expected_file, output)
-
     def testIdentityTableOut(self):
         base_path = os.path.join(this_dir, "../test_data")
         output = io.BytesIO()
