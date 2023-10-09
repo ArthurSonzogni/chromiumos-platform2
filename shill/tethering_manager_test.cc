@@ -334,6 +334,7 @@ class TetheringManagerTest : public testing::Test {
     EXPECT_TRUE(GetConfigMAR(caps));
     EXPECT_TRUE(tethering_manager->stable_mac_addr_.is_set());
     EXPECT_TRUE(GetConfigAutoDisable(caps));
+    EXPECT_FALSE(tethering_manager_->experimental_tethering_functionality_);
     std::string ssid = GetConfigSSID(caps);
     EXPECT_FALSE(ssid.empty());
     EXPECT_TRUE(std::all_of(ssid.begin(), ssid.end(), ::isxdigit));

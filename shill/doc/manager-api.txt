@@ -760,6 +760,13 @@ Properties	object ActiveProfile [readonly]
 			will return failure. The value is controlled by a feature flag in Chrome.
 			Should only be modified by Chrome feature flag or tests.
 
+		boolean ExperimentalTetheringFunctionality [readwrite]
+
+			Whether the tethering feature is allowed on untested carriers,
+			modems and modem FW versions. When false, tethering is only allowed
+			in tested carriers/modems/FWs; when true, the feature is allowed in
+			all of them, unless tethering is disallowed by the carrier.
+
 		dict TetheringCapabilities [readonly]
 
 			Dictionary containing the tethering hardware capabilities of the device.

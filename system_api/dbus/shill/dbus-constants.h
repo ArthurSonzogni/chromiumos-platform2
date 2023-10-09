@@ -102,6 +102,8 @@ constexpr char kDNSProxyDOHProvidersProperty[] = "DNSProxyDOHProviders";
 constexpr char kEnabledTechnologiesProperty[] = "EnabledTechnologies";
 constexpr char kEnableDHCPQoSProperty[] = "EnableDHCPQoS";
 constexpr char kEnableRFC8925Property[] = "EnableRFC8925";
+constexpr char kExperimentalTetheringFunctionality[] =
+    "ExperimentalTetheringFunctionality";
 constexpr char kLOHSConfigProperty[] = "LOHSConfig";
 constexpr char kPortalFallbackHttpUrlsProperty[] = "PortalFallbackHttpUrls";
 constexpr char kPortalFallbackHttpsUrlsProperty[] = "PortalFallbackHttpsUrls";

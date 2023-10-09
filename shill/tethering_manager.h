@@ -161,6 +161,10 @@ class TetheringManager : public Network::EventHandler {
   // DBUS accessors
   bool SetAllowed(const bool& value, Error* error);
   bool GetAllowed(Error* /*error*/) { return allowed_; }
+  bool SetExperimentalTetheringFunctionality(const bool& value, Error* error);
+  bool GetExperimentalTetheringFunctionality(Error* /*error*/) {
+    return experimental_tethering_functionality_;
+  }
 
   // Tethering properties get handlers.
   KeyValueStore GetCapabilities(Error* error);
@@ -263,6 +267,8 @@ class TetheringManager : public Network::EventHandler {
   Manager* manager_;
   // Tethering feature flag.
   bool allowed_;
+  // Flag to enable tethering on untested carriers/modems and modem FWs.
+  bool experimental_tethering_functionality_;
   // Tethering state as listed in enum TetheringState.
   TetheringState state_;
   // Executes when the tethering start timer expires. Calls
