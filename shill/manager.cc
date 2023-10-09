@@ -166,7 +166,6 @@ Manager::Manager(ControlInterface* control_interface,
     : dispatcher_(dispatcher),
       control_interface_(control_interface),
       metrics_(metrics),
-      power_opt_(new PowerOpt(this)),
       run_path_(run_directory),
       storage_path_(storage_directory),
       user_storage_path_(user_storage_directory),
@@ -174,6 +173,7 @@ Manager::Manager(ControlInterface* control_interface,
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(this),
       modem_info_(new ModemInfo(control_interface, this)),
+      power_opt_(new PowerOpt(this)),
       cellular_service_provider_(new CellularServiceProvider(this)),
       ethernet_provider_(new EthernetProvider(this)),
       ethernet_eap_provider_(new EthernetEapProvider(this)),
@@ -306,7 +306,6 @@ Manager::~Manager() {
     }
   }
   devices_.clear();
-  delete power_opt_;
 }
 
 void Manager::RegisterAsync(

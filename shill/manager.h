@@ -468,7 +468,7 @@ class Manager {
   ControlInterface* control_interface() const { return control_interface_; }
   EventDispatcher* dispatcher() const { return dispatcher_; }
   Metrics* metrics() const { return metrics_; }
-  PowerOpt* power_opt() const { return power_opt_; }
+  PowerOpt* power_opt() const { return power_opt_.get(); }
   SupplicantManager* supplicant_manager() const {
     return supplicant_manager_.get();
   }
@@ -779,7 +779,6 @@ class Manager {
   EventDispatcher* dispatcher_;
   ControlInterface* control_interface_;
   Metrics* metrics_;
-  PowerOpt* power_opt_;
 
   const base::FilePath run_path_;
   const base::FilePath storage_path_;
@@ -788,6 +787,7 @@ class Manager {
   std::unique_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
   std::unique_ptr<ModemInfo> modem_info_;
+  std::unique_ptr<PowerOpt> power_opt_;
   std::unique_ptr<CellularServiceProvider> cellular_service_provider_;
   std::unique_ptr<EthernetProvider> ethernet_provider_;
   std::unique_ptr<EthernetEapProvider> ethernet_eap_provider_;
