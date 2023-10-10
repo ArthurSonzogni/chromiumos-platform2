@@ -152,7 +152,7 @@ class ClobberState {
   // Removes well-known keys from the VPD.
   static void RemoveVpdKeys();
 
-  void CreateUnencryptedStatefulLV(const brillo::VolumeGroup& vg,
+  bool CreateUnencryptedStatefulLV(const brillo::VolumeGroup& vg,
                                    const brillo::Thinpool& thinpool,
                                    uint64_t lv_size);
 
@@ -160,10 +160,12 @@ class ClobberState {
 
   // Creates the necessary LVM devices specifically for preserving logical
   // volumes option during clobber.
-  void CreateLogicalVolumeStackForPreserved();
+  std::optional<base::FilePath> CreateLogicalVolumeStackForPreserved(
+      const base::FilePath stateful_partition_device);
 
   // Creates the necessary LVM devices.
-  void CreateLogicalVolumeStack();
+  std::optional<base::FilePath> CreateLogicalVolumeStack(
+      const base::FilePath stateful_partition_device);
 
   // Removes the necessary LVM devices.
   void RemoveLogicalVolumeStack();
@@ -171,7 +173,9 @@ class ClobberState {
   // Safe wipe of logical volumes.
   // Returns false if there are any failures during the safe wiping
   // (zeroing/preserving/removing) of individual logical volumes.
-  bool PreserveLogicalVolumesWipe(const PreserveLogicalVolumesWipeInfos& infos);
+  bool PreserveLogicalVolumesWipe(
+      const base::FilePath stateful_partition_device,
+      const PreserveLogicalVolumesWipeInfos& infos);
   bool ProcessInfo(const brillo::VolumeGroup& vg,
                    const PreserveLogicalVolumesWipeInfo& info,
                    std::unique_ptr<dlcservice::UtilsInterface> utils);
@@ -289,7 +293,8 @@ class ClobberState {
       std::unique_ptr<dlcservice::UtilsInterface> utils);
 
   // Returns the argument list for preserved wipe of LVM.
-  PreserveLogicalVolumesWipeInfos PreserveLogicalVolumesWipeArgs();
+  PreserveLogicalVolumesWipeInfos PreserveLogicalVolumesWipeArgs(
+      const dlcservice::PartitionSlot slot);
 
   Arguments args_;
   std::unique_ptr<crossystem::Crossystem> cros_system_;

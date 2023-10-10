@@ -1640,7 +1640,7 @@ TEST_F(LogicalVolumeStatefulPartitionTest, CreateLogicalVolumeStackCheck) {
       .Times(1)
       .WillOnce(Return(true));
 
-  clobber_.CreateLogicalVolumeStack();
+  clobber_.CreateLogicalVolumeStack(base::FilePath("/dev/mmcblk0p1"));
 }
 
 class LogicalVolumeStatefulPartitionMockedTest : public ::testing::Test {
@@ -1676,7 +1676,8 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
        PreserveLogicalVolumesWipeNoPhysicalVolume) {
   std::optional<brillo::PhysicalVolume> pv;
   EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
-  EXPECT_FALSE(clobber_.PreserveLogicalVolumesWipe({}));
+  EXPECT_FALSE(
+      clobber_.PreserveLogicalVolumesWipe(base::FilePath("/nocheck"), {}));
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
 }
 
@@ -1689,7 +1690,8 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
   std::optional<brillo::VolumeGroup> vg;
   EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
 
-  EXPECT_FALSE(clobber_.PreserveLogicalVolumesWipe({}));
+  EXPECT_FALSE(
+      clobber_.PreserveLogicalVolumesWipe(base::FilePath("/foobar"), {}));
 
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
 }
@@ -1708,7 +1710,8 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
   EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
   // Must always have unencrypted.
-  EXPECT_FALSE(clobber_.PreserveLogicalVolumesWipe({}));
+  EXPECT_FALSE(
+      clobber_.PreserveLogicalVolumesWipe(base::FilePath("/foobar"), {}));
 
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
 }
@@ -1733,7 +1736,8 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
                                                   lvs[0].GetName()}))
       .WillOnce(Return(true));
 
-  EXPECT_FALSE(clobber_.PreserveLogicalVolumesWipe({}));
+  EXPECT_FALSE(
+      clobber_.PreserveLogicalVolumesWipe(base::FilePath("/foobar"), {}));
 }
 
 TEST_F(LogicalVolumeStatefulPartitionMockedTest,
@@ -1754,13 +1758,14 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
   std::vector<brillo::LogicalVolume> lvs;
   EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
-  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
-      {
-          .lv_name = kUnencrypted,
-          .preserve = true,
-          .zero = false,
-      },
-  }));
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe(
+      base::FilePath("/foobar"), {
+                                     {
+                                         .lv_name = kUnencrypted,
+                                         .preserve = true,
+                                         .zero = false,
+                                     },
+                                 }));
 
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
 }
@@ -1799,13 +1804,14 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
                                              "lvchange", "-ay", lv->GetName()}))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
-      {
-          .lv_name = kUnencrypted,
-          .preserve = true,
-          .zero = false,
-      },
-  }));
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe(
+      base::FilePath("/foobar"), {
+                                     {
+                                         .lv_name = kUnencrypted,
+                                         .preserve = true,
+                                         .zero = false,
+                                     },
+                                 }));
 
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
 }
@@ -1845,13 +1851,14 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
                                              "lvchange", "-ay", lv->GetName()}))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
-      {
-          .lv_name = kUnencrypted,
-          .preserve = true,
-          .zero = false,
-      },
-  }));
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe(
+      base::FilePath("/foobar"), {
+                                     {
+                                         .lv_name = kUnencrypted,
+                                         .preserve = true,
+                                         .zero = false,
+                                     },
+                                 }));
 
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
 }
@@ -1877,13 +1884,14 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
   };
   EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
-  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
-      {
-          .lv_name = kUnencrypted,
-          .preserve = false,
-          .zero = true,
-      },
-  }));
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe(
+      base::FilePath("/foobar"), {
+                                     {
+                                         .lv_name = kUnencrypted,
+                                         .preserve = false,
+                                         .zero = true,
+                                     },
+                                 }));
 
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 1);
 }
@@ -1909,13 +1917,14 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
   };
   EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
-  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
-      {
-          .lv_name = kUnencrypted,
-          .preserve = true,
-          .zero = true,
-      },
-  }));
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe(
+      base::FilePath("/foobar"), {
+                                     {
+                                         .lv_name = kUnencrypted,
+                                         .preserve = true,
+                                         .zero = true,
+                                     },
+                                 }));
 
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 1);
 }
@@ -1957,13 +1966,14 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
                                              "lvchange", "-ay", lv->GetName()}))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
-      {
-          .lv_name = kUnencrypted,
-          .preserve = true,
-          .zero = true,
-      },
-  }));
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe(
+      base::FilePath("/foobar"), {
+                                     {
+                                         .lv_name = kUnencrypted,
+                                         .preserve = true,
+                                         .zero = true,
+                                     },
+                                 }));
 
   EXPECT_EQ(clobber_.WipeDeviceCalled(), 1);
 }
