@@ -12,6 +12,7 @@
 #include "xcb/xcb-shim.h"
 
 #include <assert.h>
+#include <cstdlib>
 #include <errno.h>
 #include <fcntl.h>
 #include <gbm.h>
@@ -96,6 +97,8 @@ struct sl_data_source {
 
 #define MIN_AURA_SHELL_VERSION 6
 #define MAX_AURA_SHELL_VERSION 38
+
+static const char STEAM_APP_CLASS_PREFIX[] = "steam_app_";
 
 int sl_open_wayland_socket(const char* socket_name,
                            struct sockaddr_un* addr,
@@ -1125,12 +1128,24 @@ static const char* sl_decode_wm_class(struct sl_window* window,
   // WM_CLASS property contains two consecutive null-terminated strings.
   // These specify the Instance and Class names. If a global app ID is
   // not set then use Class name for app ID.
-  const char* value = static_cast<char*>(xcb_get_property_value(reply));
-  int value_length = xcb_get_property_value_length(reply);
+  const char* value = static_cast<char*>(xcb()->get_property_value(reply));
+  int value_length = xcb()->get_property_value_length(reply);
   int instance_length = strnlen(value, value_length);
   if (value_length > instance_length) {
     window->clazz = strndup(value + instance_length + 1,
                             value_length - instance_length - 1);
+
+    if (!window->steam_game_id) {
+      // If there's no known Steam Game ID for this window,
+      // attempt to parse one from the class name.
+      if (strncmp(window->clazz, STEAM_APP_CLASS_PREFIX,
+                  strlen(STEAM_APP_CLASS_PREFIX)) == 0) {
+        // atoi() returns 0 on error, in which case steam_game_id
+        // simply remains effectively unset.
+        window->steam_game_id =
+            atoi(window->clazz + strlen(STEAM_APP_CLASS_PREFIX));
+      }
+    }
     return window->clazz;
   }
   return nullptr;
