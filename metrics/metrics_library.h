@@ -124,10 +124,14 @@ class MetricsLibraryInterface {
   virtual ~MetricsLibraryInterface() = default;
 };
 
-// Library used to send metrics to Chrome/UMA. The thread-safety of Send*
-// methods in this class depends on the `MetricsWriter`.
-// It is not thread-safe by default (`SynchronousMetricsWriter`). Do not call
-// them in parallel.
+// Library used to send metrics to Chrome/UMA.
+//
+// The thread-safety of Send*  methods in this class depends on the
+// `MetricsWriter`. By default (if using `SynchronousMetricsWriter`),
+// it is safe to call Send* functions from multiple threads, as long as
+// no other MetricsLibrary functions are being called.
+//
+// Other functions in this class are not thread-safe.
 class MetricsLibrary : public MetricsLibraryInterface {
  public:
   // Creates `MetricsLibrary`.

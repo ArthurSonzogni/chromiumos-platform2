@@ -42,14 +42,19 @@ class MetricsWriter : public base::RefCountedThreadSafe<MetricsWriter> {
 // `use_nonblocking_lock` to true. Note that using a nonblocking lock will
 // result in dropped metrics if the lock could not be grabbed.
 //
-// This class is not thread-safe.
+// This class is not thread safe: `SetOutputFile` modifies `uma_events_file_`
+// which is read by `WriteMetrics`. However, if `SetOutputFile` is never called,
+// then calling `WriteMetrics` from multiple threads is thread safe since file
+// writes are guarded by the file lock.
 class SynchronousMetricsWriter : public MetricsWriter {
  public:
   explicit SynchronousMetricsWriter(
       bool use_nonblocking_lock = false,
       base::FilePath uma_events_file = base::FilePath(kUMAEventsPath));
 
+  // Write metrics to `uma_events_file_`.
   bool WriteMetrics(std::vector<metrics::MetricSample> samples) override;
+  // Set `uma_events_file_`.
   bool SetOutputFile(const std::string& output_file) override;
 
  private:
