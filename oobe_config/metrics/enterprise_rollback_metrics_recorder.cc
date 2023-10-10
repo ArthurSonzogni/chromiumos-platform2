@@ -80,6 +80,15 @@ void StructuredMetricRollbackOobeConfigRestore(
   event.Record();
 }
 
+void StructuredMetricRollbackUpdateFailure(
+    const RollbackMetadata& rollback_metadata) {
+  LOG(INFO) << "Record RollbackUpdateFailure event.";
+  auto event =
+      metrics::structured::events::rollback_enterprise::RollbackUpdateFailure();
+  SetEventMetadata(event, rollback_metadata);
+  event.Record();
+}
+
 // TODO(b/261850979): Create methods to report metrics for each Rollback event.
 
 }  // namespace
@@ -125,6 +134,10 @@ void RecordEnterpriseRollbackMetric(const EventData& event_data,
       StructuredMetricRollbackOobeConfigRestore(
           rollback_metadata, event_data.event_chromeos_version(),
           OobeRestoreResult::kFailureConfig);
+      break;
+
+    case EnterpriseRollbackEvent::ROLLBACK_UPDATE_FAILURE:
+      StructuredMetricRollbackUpdateFailure(rollback_metadata);
       break;
 
     case EnterpriseRollbackEvent::EVENT_UNSPECIFIED:

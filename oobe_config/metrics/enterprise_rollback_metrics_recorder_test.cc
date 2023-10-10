@@ -193,4 +193,18 @@ TEST_F(StructuredMetricsRecorderTest,
   RecordEnterpriseRollbackMetric(event_data, GetTestRollbackMetadata());
 }
 
+TEST_F(StructuredMetricsRecorderTest,
+       ReportStructuredMetricRollbackUpdateFailure) {
+  EventData event_data;
+  event_data.set_event(EnterpriseRollbackEvent::ROLLBACK_UPDATE_FAILURE);
+
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::rollback_enterprise::
+                                  RollbackUpdateFailure::kEventNameHash)))
+      .Times(1);
+
+  RecordEnterpriseRollbackMetric(event_data, GetTestRollbackMetadata());
+}
+
 }  // namespace oobe_config
