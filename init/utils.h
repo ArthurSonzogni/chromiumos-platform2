@@ -40,6 +40,15 @@ void Restorecon(const base::FilePath& path,
 int GetPartitionNumber(const base::FilePath& drive_name,
                        const std::string& partition_label);
 
+// Splits a device path, for example /dev/mmcblk0p1, /dev/sda3,
+// /dev/ubiblock9_0 into the base device and partition numbers,
+// which would be respectively /dev/mmcblk0p, 1; /dev/sda, 3; and
+// /dev/ubiblock, 9.
+// Returns true on success.
+bool GetDevicePathComponents(const base::FilePath& device,
+                             std::string* base_device_out,
+                             int* partition_out);
+
 // Reads successful and priority metadata from partition numbered
 // `partition_number` on `disk`, storing the results in `successful_out` and
 // `priority_out`, respectively. Returns true on success.

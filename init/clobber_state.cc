@@ -396,41 +396,6 @@ int ClobberState::PreserveFiles(
   return tar.Run();
 }
 
-// static
-bool ClobberState::GetDevicePathComponents(const base::FilePath& device,
-                                           std::string* base_device_out,
-                                           int* partition_out) {
-  if (!partition_out || !base_device_out)
-    return false;
-  const std::string& path = device.value();
-
-  // MTD devices sometimes have a trailing "_0" after the partition which
-  // we should ignore.
-  std::string mtd_suffix = "_0";
-  size_t suffix_index = path.length();
-  if (base::EndsWith(path, mtd_suffix, base::CompareCase::SENSITIVE)) {
-    suffix_index = path.length() - mtd_suffix.length();
-  }
-
-  size_t last_non_numeric =
-      path.find_last_not_of("0123456789", suffix_index - 1);
-
-  // If there are no non-numeric characters, this is a malformed device.
-  if (last_non_numeric == std::string::npos) {
-    return false;
-  }
-
-  std::string partition_number_string =
-      path.substr(last_non_numeric + 1, suffix_index - (last_non_numeric + 1));
-  int partition_number;
-  if (!base::StringToInt(partition_number_string, &partition_number)) {
-    return false;
-  }
-  *partition_out = partition_number;
-  *base_device_out = path.substr(0, last_non_numeric + 1);
-  return true;
-}
-
 bool ClobberState::IsRotational(const base::FilePath& device_path) {
   if (!dev_.IsParent(device_path)) {
     LOG(ERROR) << "Non-device given as argument to IsRotational: "
@@ -497,8 +462,8 @@ bool ClobberState::GetDevicesToWipe(
 
   std::string base_device;
   int active_root_partition;
-  if (!GetDevicePathComponents(root_device, &base_device,
-                               &active_root_partition)) {
+  if (!utils::GetDevicePathComponents(root_device, &base_device,
+                                      &active_root_partition)) {
     LOG(ERROR) << "Extracting partition number and base device from "
                   "root_device failed: "
                << root_device.value();
@@ -586,7 +551,8 @@ bool ClobberState::WipeMTDDevice(
 
   std::string base_device;
   int partition_number;
-  if (!GetDevicePathComponents(device_path, &base_device, &partition_number)) {
+  if (!utils::GetDevicePathComponents(device_path, &base_device,
+                                      &partition_number)) {
     LOG(ERROR) << "Getting partition number from device failed: "
                << device_path.value();
     return false;

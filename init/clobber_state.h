@@ -128,15 +128,6 @@ class ClobberState {
                            const std::vector<base::FilePath>& preserved_files,
                            const base::FilePath& tar_file_path);
 
-  // Splits a device path, for example /dev/mmcblk0p1, /dev/sda3,
-  // /dev/ubiblock9_0 into the base device and partition numbers,
-  // which would be respectively /dev/mmcblk0p, 1; /dev/sda, 3; and
-  // /dev/ubiblock, 9.
-  // Returns true on success.
-  static bool GetDevicePathComponents(const base::FilePath& device,
-                                      std::string* base_device_out,
-                                      int* partition_out);
-
   // Determine the devices to be wiped and their properties, and populate
   // `wipe_info_out` with the results. Returns true if successful.
   static bool GetDevicesToWipe(const base::FilePath& root_disk,

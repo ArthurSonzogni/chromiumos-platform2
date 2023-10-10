@@ -158,6 +158,40 @@ int GetPartitionNumber(const base::FilePath& drive_name,
   return params.match_partnum;
 }
 
+bool GetDevicePathComponents(const base::FilePath& device,
+                             std::string* base_device_out,
+                             int* partition_out) {
+  if (!partition_out || !base_device_out)
+    return false;
+  const std::string& path = device.value();
+
+  // MTD devices sometimes have a trailing "_0" after the partition which
+  // we should ignore.
+  std::string mtd_suffix = "_0";
+  size_t suffix_index = path.length();
+  if (base::EndsWith(path, mtd_suffix, base::CompareCase::SENSITIVE)) {
+    suffix_index = path.length() - mtd_suffix.length();
+  }
+
+  size_t last_non_numeric =
+      path.find_last_not_of("0123456789", suffix_index - 1);
+
+  // If there are no non-numeric characters, this is a malformed device.
+  if (last_non_numeric == std::string::npos) {
+    return false;
+  }
+
+  std::string partition_number_string =
+      path.substr(last_non_numeric + 1, suffix_index - (last_non_numeric + 1));
+  int partition_number;
+  if (!base::StringToInt(partition_number_string, &partition_number)) {
+    return false;
+  }
+  *partition_out = partition_number;
+  *base_device_out = path.substr(0, last_non_numeric + 1);
+  return true;
+}
+
 bool ReadPartitionMetadata(const base::FilePath& disk,
                            int partition_number,
                            bool* successful_out,

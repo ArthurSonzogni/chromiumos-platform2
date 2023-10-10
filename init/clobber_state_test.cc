@@ -429,59 +429,6 @@ TEST(PreserveFiles, ManyFiles) {
   EXPECT_EQ(contents_b, "data");
 }
 
-TEST(GetDevicePathComponents, ErrorCases) {
-  std::string base_device;
-  int partition_number;
-  EXPECT_FALSE(ClobberState::GetDevicePathComponents(base::FilePath(""),
-                                                     nullptr, nullptr));
-  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
-      base::FilePath(""), nullptr, &partition_number));
-  EXPECT_FALSE(ClobberState::GetDevicePathComponents(base::FilePath(""),
-                                                     &base_device, nullptr));
-  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
-      base::FilePath(""), &base_device, &partition_number));
-  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
-      base::FilePath("24728"), &base_device, &partition_number));
-  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
-      base::FilePath("bad_dev"), &base_device, &partition_number));
-  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
-      base::FilePath("/dev/"), &base_device, &partition_number));
-}
-
-TEST(GetDevicePathComponents, ValidCases) {
-  std::string base_device;
-  int partition_number;
-  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
-      base::FilePath("/dev/sda273"), &base_device, &partition_number));
-  EXPECT_EQ(base_device, "/dev/sda");
-  EXPECT_EQ(partition_number, 273);
-
-  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
-      base::FilePath("/dev/mmcblk5p193448"), &base_device, &partition_number));
-  EXPECT_EQ(base_device, "/dev/mmcblk5p");
-  EXPECT_EQ(partition_number, 193448);
-
-  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
-      base::FilePath("/dev/nvme7n2p11"), &base_device, &partition_number));
-  EXPECT_EQ(base_device, "/dev/nvme7n2p");
-  EXPECT_EQ(partition_number, 11);
-
-  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
-      base::FilePath("/dev/ubiblock17_0"), &base_device, &partition_number));
-  EXPECT_EQ(base_device, "/dev/ubiblock");
-  EXPECT_EQ(partition_number, 17);
-
-  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
-      base::FilePath("/dev/ubi9_0"), &base_device, &partition_number));
-  EXPECT_EQ(base_device, "/dev/ubi");
-  EXPECT_EQ(partition_number, 9);
-
-  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
-      base::FilePath("/dev/mtd0"), &base_device, &partition_number));
-  EXPECT_EQ(base_device, "/dev/mtd");
-  EXPECT_EQ(partition_number, 0);
-}
-
 class MarkDeveloperModeTest : public ::testing::Test {
  protected:
   MarkDeveloperModeTest()
