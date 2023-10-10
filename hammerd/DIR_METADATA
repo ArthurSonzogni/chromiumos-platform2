@@ -9,7 +9,7 @@
 team_email: "cros-mtk-swe@google.com"
 
 buganizer {
-    # https://b.corp.google.com/issues?q=status:open%20componentid:167114
-    # ChromeOS > Platform > Enablement > Firmware > EC
-    component_id: 167114
+  # https://b.corp.google.com/issues?q=status:open%20componentid:167114
+  # ChromeOS > Platform > Enablement > Firmware > EC
+  component_id: 167114
 }

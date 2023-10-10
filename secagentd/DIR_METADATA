@@ -7,7 +7,7 @@
 #   https://source.chromium.org/chromium/infra/infra/+/HEAD:go/src/infra/tools/dirmd/proto/dir_metadata.proto
 
 buganizer {
-  component_id:1208373 # ChromeOS > Security > ChromeOS Enterprise Security
+  component_id: 1208373  # ChromeOS > Security > ChromeOS Enterprise Security
 }
 
 team_email: "cros-enterprise-security@google.com"

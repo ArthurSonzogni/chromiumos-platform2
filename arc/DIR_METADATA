@@ -9,19 +9,19 @@
 team_email: "arc-eng@google.com"
 
 buganizer {
-    # https://b.corp.google.com/issues?q=status:open%20componentid:153255
-    # ChromeOS > Software > ARC++
-    component_id: 153255
+  # https://b.corp.google.com/issues?q=status:open%20componentid:153255
+  # ChromeOS > Software > ARC++
+  component_id: 153255
 }
 
 chromeos {
-    cq {
-        source_test_plans {
-            test_plan_starlark_files {
-                host: "chrome-internal.googlesource.com"
-                project: "chromeos/config-internal"
-                path: "test/plans/v2/ctpv1_compatible/arc_cq.star"
-            }
-        }
+  cq {
+    source_test_plans {
+      test_plan_starlark_files {
+        host: "chrome-internal.googlesource.com"
+        project: "chromeos/config-internal"
+        path: "test/plans/v2/ctpv1_compatible/arc_cq.star"
+      }
     }
+  }
 }
