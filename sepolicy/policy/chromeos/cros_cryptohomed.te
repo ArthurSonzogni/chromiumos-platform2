@@ -17,14 +17,6 @@ allow cros_cryptohomed cros_cryptohome_namespace_mounter:process      signal;
 # TODO(betuls): Reevaluate after OOP flags are removed from the cryptohome code.
 allow cros_cryptohomed cros_cryptohomed:fifo_file w_file_perms;
 
-allow cros_cryptohomed {
-  cros_downloads_file
-  cros_home_chronos
-  cros_home_root
-  cros_home_shadow_uid_root_android
-  cros_home_user
-  cros_home_shadow_uid_user
-}:dir mounton;
 #Access rule for devices without ARC (e.g. Flex)
 allow cros_cryptohomed cros_downloads_file:dir relabelfrom;
 allow cros_cryptohomed cros_home_shadow_uid_root_android:dir relabelto;
@@ -228,10 +220,7 @@ allowxperm cros_cryptohomed device:blk_file ioctl {
 
 # TODO(b/178237710) Label the directories and files with specific contexts.
 allow cros_cryptohomed cros_run_namespaces:dir      search;
-allow cros_cryptohomed labeledfs:filesystem {
-  quotaget
-  unmount
-};
+allow cros_cryptohomed labeledfs:filesystem quotaget;
 
 # TODO(b/178237004) Label the processes with specific contexts.
 allow cros_cryptohomed cros_unconfined_exec:file    x_file_perms;
@@ -272,11 +261,6 @@ is_arc_vm(`
   allow cros_cryptohomed unlabeled:{ dir file } relabelto;
   allow cros_cryptohomed unlabeled:{ dir file } setattr;
   create_dir_file(cros_cryptohomed, unlabeled)
-  allow cros_cryptohomed unlabeled:filesystem {
-    mount
-    remount
-    unmount
-  };
 
   # cryptohomed needs to remove files and directories when removing a user profile.
   allow cros_cryptohomed { file_type -cros_system_file_type }:dir rmdir;
@@ -321,11 +305,6 @@ is_arc_vm(`
     allow cros_cryptohomed unlabeled:{ dir file } relabelto;
     allow cros_cryptohomed unlabeled:{ dir file } setattr;
     create_dir_file(cros_cryptohomed, unlabeled)
-    allow cros_cryptohomed unlabeled:filesystem {
-      mount
-      remount
-      unmount
-    };
 
     # cryptohomed needs to remove files and directories when removing a user profile.
     allow cros_cryptohomed { file_type -cros_system_file_type }:dir rmdir;
