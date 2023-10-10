@@ -256,15 +256,9 @@ void Network::Stop() {
 }
 
 void Network::StopInternal(bool is_failure, bool trigger_callback) {
-  std::stringstream ss;
-  if (ipconfig()) {
-    ss << ", IPv4 config: " << *ipconfig();
-  }
-  if (ip6config()) {
-    ss << ", IPv6 config: " << *ip6config();
-  }
   LOG(INFO) << *this << ": Stopping "
-            << (is_failure ? "after failure" : "normally") << ss.str();
+            << (is_failure ? "after failure" : "normally")
+            << ", network config: " << config_.Get();
 
   weak_factory_for_connection_.InvalidateWeakPtrs();
 
@@ -319,17 +313,18 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
 
 void Network::InvalidateIPv6Config() {
   SLOG(2) << *this << ": " << __func__;
-  if (!ip6config_) {
+  if (config_.Get().ipv6_addresses.empty()) {
     return;
   }
 
   SLOG(2) << *this << "Waiting for new IPv6 configuration";
   if (slaac_controller_) {
     slaac_controller_->Stop();
+    config_.SetFromSLAAC(nullptr);
     slaac_controller_->Start();
   }
 
-  set_ip6config(nullptr);
+  UpdateIPConfigDBusObject();
   for (auto* ev : event_handlers_) {
     ev->OnIPConfigsPropertyUpdated(interface_index_);
   }
@@ -634,13 +629,7 @@ NetworkPriority Network::GetPriority() {
 }
 
 NetworkConfig Network::GetNetworkConfig() const {
-  // TODO(b/269401899): Instead of generating NetworkConfig from IPConfigs,
-  // Network will internally holds a NetworkConfig as the source of truth.
-  // ipconfig_ and ip6config_ should only used for IPConfig dbus API purpose,
-  // and update automatically when NetworkConfig changes.
-  return IPConfig::Properties::ToNetworkConfig(
-      ipconfig_ ? &ipconfig_->properties() : nullptr,
-      ip6config_ ? &ip6config_->properties() : nullptr);
+  return config_.Get();
 }
 
 std::vector<net_base::IPCIDR> Network::GetAddresses() const {
@@ -648,48 +637,18 @@ std::vector<net_base::IPCIDR> Network::GetAddresses() const {
   // Addresses are returned in the order of IPv4 -> IPv6 to ensure
   // backward-compatibility that callers can use result[0] to match legacy
   // local() result.
-  if (ipconfig() && !ipconfig()->properties().address.empty() &&
-      ipconfig()->properties().subnet_prefix > 0) {
-    auto addr = net_base::IPCIDR::CreateFromStringAndPrefix(
-        ipconfig()->properties().address,
-        ipconfig()->properties().subnet_prefix);
-    if (!addr) {
-      LOG(ERROR) << "Invalid IP address: " << ipconfig()->properties().address
-                 << "/" << ipconfig()->properties().subnet_prefix;
-
-    } else {
-      result.push_back(*addr);
-    }
+  auto network_config = GetNetworkConfig();
+  if (network_config.ipv4_address) {
+    result.emplace_back(*network_config.ipv4_address);
   }
   for (const auto& ipv6_addr : config_.Get().ipv6_addresses) {
-    result.push_back(net_base::IPCIDR(ipv6_addr));
+    result.emplace_back(ipv6_addr);
   }
   return result;
 }
 
 std::vector<net_base::IPAddress> Network::GetDNSServers() const {
-  std::vector<net_base::IPAddress> result;
-  if (ipconfig_) {
-    for (const auto& dns4 : ipconfig_->properties().dns_servers) {
-      auto addr = net_base::IPAddress::CreateFromString(dns4);
-      if (!addr) {
-        LOG(ERROR) << *this << ": Invalid DNS address: " << dns4;
-        continue;
-      }
-      result.push_back(*addr);
-    }
-  }
-  if (ip6config_) {
-    for (const auto& dns6 : ip6config_->properties().dns_servers) {
-      auto addr = net_base::IPAddress::CreateFromString(dns6);
-      if (!addr) {
-        LOG(ERROR) << *this << ": Invalid DNS address: " << dns6;
-        continue;
-      }
-      result.push_back(*addr);
-    }
-  }
-  return result;
+  return GetNetworkConfig().dns_servers;
 }
 
 void Network::OnNeighborReachabilityEvent(
@@ -1070,9 +1029,9 @@ bool Network::HasInternetConnectivity() const {
 }
 
 void Network::ReportIPType() {
-  const bool has_ipv4 = ipconfig() && !ipconfig()->properties().address.empty();
-  const bool has_ipv6 =
-      ip6config() && !ip6config()->properties().address.empty();
+  auto network_config = GetNetworkConfig();
+  const bool has_ipv4 = network_config.ipv4_address.has_value();
+  const bool has_ipv6 = !network_config.ipv6_addresses.empty();
   Metrics::IPType ip_type = Metrics::kIPTypeUnknown;
   if (has_ipv4 && has_ipv6) {
     ip_type = Metrics::kIPTypeDualStack;

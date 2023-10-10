@@ -68,14 +68,14 @@ constexpr char kIPv4DHCPAddress[] = "192.168.1.2";
 constexpr int kIPv4DHCPPrefix = 24;
 constexpr char kIPv4DHCPGateway[] = "192.168.1.1";
 constexpr char kIPv4DHCPNameServer[] = "192.168.1.3";
-constexpr int kIPv4DHCPMTU = 1000;
+constexpr int kIPv4DHCPMTU = 1400;
 
 // IPv4 properties from link protocol (e.g., VPN or Cellular).
 constexpr char kIPv4LinkProtocolAddress[] = "192.168.3.2";
 constexpr int kIPv4LinkProtocolPrefix = 24;
 constexpr char kIPv4LinkProtocolGateway[] = "192.168.3.1";
 constexpr char kIPv4LinkProtocolNameServer[] = "192.168.3.3";
-constexpr int kIPv4LinkProtocolMTU = 1010;
+constexpr int kIPv4LinkProtocolMTU = 1410;
 
 // IPv4 properties from static IP config. Note that MTU is not set here, so that
 // we can verify if the config is pure static IP config or merged with others.
