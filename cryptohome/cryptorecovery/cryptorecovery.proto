@@ -48,7 +48,7 @@ enum RecoveryError {
 
 // Result of a cryptohome recovery
 message CryptoRecoveryRpcResponse {
-  optional int32 protocol_version = 1;             // protocol version
+  optional int32 protocol_version = 1;  // protocol version
   optional bytes cbor_cryptorecoveryresponse =
       2;  // cbor encoded ResponsePayload
   optional RecoveryError error_code = 3;

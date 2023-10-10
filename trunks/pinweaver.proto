@@ -12,14 +12,11 @@ message PinWeaverInsertLeafLogEntry {
   bytes hmac = 1;
 }
 
-message PinWeaverRemoveLeafLogEntry {
-}
+message PinWeaverRemoveLeafLogEntry {}
 
-message PinWeaverResetTreeLogEntry {
-}
+message PinWeaverResetTreeLogEntry {}
 
-message PinWeaverAuthLogEntry {
-}
+message PinWeaverAuthLogEntry {}
 
 message PinWeaverLogEntry {
   bytes root = 1;
@@ -33,10 +30,10 @@ message PinWeaverLogEntry {
 }
 
 message ValidPcrValue {
-    bytes bitmask = 1;
-    string digest = 2;
+  bytes bitmask = 1;
+  string digest = 2;
 }
 
 message ValidPcrCriteria {
-    repeated ValidPcrValue valid_pcr_values = 1;
+  repeated ValidPcrValue valid_pcr_values = 1;
 }

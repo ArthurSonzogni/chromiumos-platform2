@@ -55,9 +55,15 @@ message ExpectedInputOutput {
   // should be replaced by tensorflow::Example when it is available.
   message Example {
     // Containers to hold repeated fundamental values.
-    message BytesList { repeated bytes value = 1; }
-    message FloatList { repeated float value = 1 [packed = true]; }
-    message Int64List { repeated int64 value = 1 [packed = true]; }
+    message BytesList {
+      repeated bytes value = 1;
+    }
+    message FloatList {
+      repeated float value = 1 [packed = true];
+    }
+    message Int64List {
+      repeated int64 value = 1 [packed = true];
+    }
 
     // Containers for the data type.
     message Feature {

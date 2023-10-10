@@ -331,14 +331,14 @@ enum DiagnosticRoutineStatus {
   ROUTINE_STATUS_FAILED_TO_START = 7;  // Routine could not be created.
   ROUTINE_STATUS_REMOVED =
       8;  // Routine has been removed and is no longer valid.
-  ROUTINE_STATUS_CANCELLING = 9;  // Routine is being cancelled.
+  ROUTINE_STATUS_CANCELLING = 9;      // Routine is being cancelled.
   ROUTINE_STATUS_INVALID_FIELD = 10;  // Invalid field in request.
 }
 
 // Enumeration of each of the messages a diagnostics routine can pass back.
 // These messages prompt interaction from the user of the routine.
 enum DiagnosticRoutineUserMessage {
-  ROUTINE_USER_MESSAGE_UNSET = 0;  // No user interaction needed.
+  ROUTINE_USER_MESSAGE_UNSET = 0;            // No user interaction needed.
   ROUTINE_USER_MESSAGE_UNPLUG_AC_POWER = 1;  // User needs to unplug AC power.
 }
 

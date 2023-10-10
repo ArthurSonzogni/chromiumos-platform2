@@ -63,10 +63,10 @@ message FeedbackTypeData {
   }
 
   // Kind of feedback type.
-  optional Kind kind = 11 [default=PRODUCT];
+  optional Kind kind = 11 [default = PRODUCT];
 
-  // Prefix to be added to summary of notification email sent for feedback of this
-  // type.
+  // Prefix to be added to summary of notification email sent for feedback of
+  // this type.
   optional string summary_prefix = 12;
 
   // String template with which "Additional Info" field in extension
@@ -76,11 +76,9 @@ message FeedbackTypeData {
   // ID of the product this feedback type belongs to.
   optional int32 product_id = 14;
 
-  // Tag that is used for marking feedback types that require non-ordinary handling.
-  // E.g: This field is equal:
-  // "unclassified" for Unclassified feedback,
-  // "android" for android feedback
-  // "selenium" for selenium feedback
+  // Tag that is used for marking feedback types that require non-ordinary
+  // handling. E.g: This field is equal: "unclassified" for Unclassified
+  // feedback, "android" for android feedback "selenium" for selenium feedback
   optional string tag = 15;
 
   // Problem description visible in feedback extension.
@@ -95,7 +93,7 @@ message FeedbackTypeData {
   }
 
   // Specifies the visibility of this feedback type.
-  optional Visibility visibility = 17 [default=INTERNAL];
+  optional Visibility visibility = 17 [default = INTERNAL];
 
   // tag 18 was used by removed field
 
@@ -113,8 +111,9 @@ message FeedbackTypeData {
     ISSUE_TRACKER = 3;
   }
 
-  // Specifies channel via which notification about feedback of this type should be sent.
-  optional NotifyChannel notify_channel = 20 [default=EMAIL];
+  // Specifies channel via which notification about feedback of this type should
+  // be sent.
+  optional NotifyChannel notify_channel = 20 [default = EMAIL];
 
   // Granularity of notifications.
   enum NotificationGranularity {
@@ -125,10 +124,12 @@ message FeedbackTypeData {
   }
 
   // Specifies granularity of notifications send for feedbacks of this type.
-  optional NotificationGranularity notification_granularity = 21 [default=FEEDBACK];
+  optional NotificationGranularity notification_granularity = 21
+      [default = FEEDBACK];
 
-  // Threshold for number of feedbacks in a cluster at which notification is sent.
-  optional int32 clustering_threshold = 22 [default=5];
+  // Threshold for number of feedbacks in a cluster at which notification is
+  // sent.
+  optional int32 clustering_threshold = 22 [default = 5];
 };
 
 // Used to detect content relevant to particular type of feedback.
@@ -140,5 +141,5 @@ message MatcherData {
   required string url_matcher = 2;
 
   // Approval by feedback admins
-  optional bool url_matcher_approved = 3 [default=true];
+  optional bool url_matcher_approved = 3 [default = true];
 };

@@ -56,5 +56,4 @@ message ChromeUserMetricsExtension {
   // This message will log one or more of the following event types:
   repeated UserActionEventProto user_action_event = 4;
   repeated HistogramEventProto histogram_event = 6;
-
 }

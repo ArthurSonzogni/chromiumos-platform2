@@ -21,7 +21,6 @@ import "web.proto";
 // Sent along with request for extension page when user attempts to open
 // feedback tab.
 message ExtensionPageRequestParams {
-
   required ExtensionDetails extension_details = 1;
 
   // Url of the page (without request params) that user wants to open
@@ -30,7 +29,6 @@ message ExtensionPageRequestParams {
 };
 
 message PostedScreenshot {
-
   required string mime_type = 1;
 
   required Dimensions dimensions = 2;
@@ -44,7 +42,6 @@ message PostedScreenshot {
 // Describes number of attempts to send feedback and possible error codes/
 // exceptions which occurred.
 message ExtensionErrors {
-
   required int32 number_of_attempts = 1;
 
   required string errors = 2;
@@ -52,7 +49,6 @@ message ExtensionErrors {
 
 // Sent when user hits final submit button.
 message ExtensionSubmit {
-
   required CommonData common_data = 1;
 
   required WebData web_data = 2;
@@ -74,7 +70,6 @@ message ExtensionSubmit {
 
 // A query for suggestions, sent when the user hits the preview button.
 message SuggestQuery {
-
   required CommonData common_data = 1;
 
   required WebData web_data = 2;

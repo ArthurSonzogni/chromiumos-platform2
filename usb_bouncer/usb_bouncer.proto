@@ -32,7 +32,7 @@ message RuleEntry {
 // For the user_db:
 // Only `entries` is used and its key is the `usb_bouncer::Hash` of the rules
 // joined by '\n' characters.
-message RuleDB{
+message RuleDB {
   map<string, RuleEntry> entries = 1;
 
   // Used by the global_db only. These are for entries that might be treated as

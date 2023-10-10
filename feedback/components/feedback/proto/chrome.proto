@@ -42,8 +42,7 @@ message ChromeOsData {
   optional ChromeOsCategory category = 1 [default = OTHER];
 }
 
-message ChromeBrowserData{
-
+message ChromeBrowserData {
   enum ChromeBrowserCategory {
     PAGE_FORMATTING_OR_LAYOUT = 1;
     PAGES_NOT_LOADING = 2;
@@ -59,4 +58,3 @@ message ChromeBrowserData{
 
   optional ChromeBrowserCategory category = 1 [default = OTHER];
 }
-

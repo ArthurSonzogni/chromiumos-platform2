@@ -7,7 +7,9 @@ syntax = "proto3";
 option optimize_for = LITE_RUNTIME;
 package vtpm;
 
-enum Version { V0 = 0; };
+enum Version {
+  V0 = 0;
+};
 
 message BlobData {
   // Currently unused. It is reserved for future proof, for we might have data
