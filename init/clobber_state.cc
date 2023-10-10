@@ -52,6 +52,7 @@
 #include <rootdev/rootdev.h>
 #include <chromeos/secure_erase_file/secure_erase_file.h>
 
+#include "init/clobber_state_log.h"
 #include "init/utils.h"
 
 namespace {
@@ -61,7 +62,6 @@ constexpr char kPowerWashCountPath[] = "unencrypted/preserve/powerwash_count";
 constexpr char kLastPowerWashTimePath[] =
     "unencrypted/preserve/last_powerwash_time";
 constexpr char kRmaStateFilePath[] = "unencrypted/rma-data/state";
-constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
 constexpr char kStatefulClobberLogPath[] = "unencrypted/clobber.log";
@@ -183,12 +183,6 @@ bool GetBlockCount(const base::FilePath& device_path,
     }
   }
   return false;
-}
-
-void AppendToLog(const std::string_view& source, const std::string& contents) {
-  if (!base::AppendToFile(base::FilePath(kClobberLogPath), contents)) {
-    PLOG(ERROR) << "Appending " << source << " to clobber-state log failed";
-  }
 }
 
 // Attempt to save logs from the boot when the clobber happened into the
@@ -623,7 +617,7 @@ bool ClobberState::WipeMTDDevice(
     ubiattach.AddIntOption("-d", partition_number);
     ubiattach.RedirectOutputToMemory(true);
     ubiattach.Run();
-    AppendToLog("ubiattach", ubiattach.GetOutputString(STDOUT_FILENO));
+    init::AppendToLog("ubiattach", ubiattach.GetOutputString(STDOUT_FILENO));
   }
 
   int max_bad_blocks_per_1024 =
@@ -639,7 +633,7 @@ bool ClobberState::WipeMTDDevice(
   ubidetach.AddIntOption("-d", partition_number);
   ubidetach.RedirectOutputToMemory(true);
   int detach_ret = ubidetach.Run();
-  AppendToLog("ubidetach", ubidetach.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("ubidetach", ubidetach.GetOutputString(STDOUT_FILENO));
   if (detach_ret) {
     LOG(ERROR) << "Detaching MTD volume failed with code " << detach_ret;
   }
@@ -651,7 +645,7 @@ bool ClobberState::WipeMTDDevice(
   ubiformat.AddArg(base::StringPrintf("/dev/mtd%d", partition_number));
   ubiformat.RedirectOutputToMemory(true);
   int format_ret = ubiformat.Run();
-  AppendToLog("ubiformat", ubiformat.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("ubiformat", ubiformat.GetOutputString(STDOUT_FILENO));
   if (format_ret) {
     LOG(ERROR) << "Formatting MTD volume failed with code " << format_ret;
   }
@@ -665,7 +659,7 @@ bool ClobberState::WipeMTDDevice(
   ubiattach.AddIntOption("--max-beb-per1024", max_bad_blocks_per_1024);
   ubiattach.RedirectOutputToMemory(true);
   int attach_ret = ubiattach.Run();
-  AppendToLog("ubiattach", ubiattach.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("ubiattach", ubiattach.GetOutputString(STDOUT_FILENO));
   if (attach_ret) {
     LOG(ERROR) << "Reattaching MTD volume failed with code " << attach_ret;
   }
@@ -677,7 +671,7 @@ bool ClobberState::WipeMTDDevice(
   ubimkvol.AddArg(physical_device);
   ubimkvol.RedirectOutputToMemory(true);
   int mkvol_ret = ubimkvol.Run();
-  AppendToLog("ubimkvol", ubimkvol.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("ubimkvol", ubimkvol.GetOutputString(STDOUT_FILENO));
   if (mkvol_ret) {
     LOG(ERROR) << "Making MTD volume failed with code " << mkvol_ret;
   }
@@ -824,7 +818,7 @@ void ClobberState::RemoveVpdKeys() {
     // Do not report failures as the key might not even exist in the VPD.
     vpd.RedirectOutputToMemory(true);
     vpd.Run();
-    AppendToLog("vpd", vpd.GetOutputString(STDOUT_FILENO));
+    init::AppendToLog("vpd", vpd.GetOutputString(STDOUT_FILENO));
   }
 }
 
@@ -1249,7 +1243,7 @@ int ClobberState::CreateStatefulFileSystem(
   mkfs.RedirectOutputToMemory(true);
   LOG(INFO) << "Creating stateful file system";
   int ret = mkfs.Run();
-  AppendToLog("mkfs.ubifs", mkfs.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("mkfs.ubifs", mkfs.GetOutputString(STDOUT_FILENO));
   return ret;
 }
 
@@ -1305,7 +1299,7 @@ int ClobberState::Run() {
   // will be preserved after a reboot.
   base::ScopedClosureRunner relocate_clobber_state_log(base::BindRepeating(
       [](base::FilePath stateful_path) {
-        base::Move(base::FilePath(kClobberLogPath),
+        base::Move(base::FilePath(init::kClobberLogPath),
                    stateful_path.Append("unencrypted/clobber-state.log"));
       },
       stateful_));
@@ -1482,7 +1476,7 @@ int ClobberState::Run() {
 
   log_preserve.RedirectOutputToMemory(true);
   log_preserve.Run();
-  AppendToLog("clobber-log", log_preserve.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("clobber-log", log_preserve.GetOutputString(STDOUT_FILENO));
 
   AttemptSwitchToFastWipe(is_rotational);
 
@@ -1537,7 +1531,7 @@ int ClobberState::Run() {
     tar.AddStringOption("-f", preserved_tar_file.value());
     tar.RedirectOutputToMemory(true);
     ret = tar.Run();
-    AppendToLog("tar", tar.GetOutputString(STDOUT_FILENO));
+    init::AppendToLog("tar", tar.GetOutputString(STDOUT_FILENO));
     if (ret != 0) {
       LOG(WARNING) << "Restoring preserved files failed with code " << ret;
     }
@@ -1557,7 +1551,7 @@ int ClobberState::Run() {
   log_restore.AddArg("clobber-state");
   log_restore.RedirectOutputToMemory(true);
   ret = log_restore.Run();
-  AppendToLog("clobber-log", log_restore.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("clobber-log", log_restore.GetOutputString(STDOUT_FILENO));
   if (ret != 0) {
     LOG(WARNING) << "Restoring clobber.log failed with code " << ret;
   }
@@ -1686,7 +1680,7 @@ void ClobberState::ShredRotationalStatefulFiles() {
   }
   shred.RedirectOutputToMemory(true);
   shred.Run();
-  AppendToLog("shred", shred.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("shred", shred.GetOutputString(STDOUT_FILENO));
 
   sync();
 }

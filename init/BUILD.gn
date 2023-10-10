@@ -90,6 +90,7 @@ static_library("libcrosstartup") {
 static_library("libclobber") {
   sources = [
     "clobber_state.cc",
+    "clobber_state_log.cc",
     "clobber_ui.cc",
   ]
   configs += [ ":target_defaults" ]
