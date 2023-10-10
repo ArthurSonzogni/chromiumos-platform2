@@ -27,7 +27,6 @@
 #include <brillo/process/process.h>
 #include <libcrossystem/crossystem.h>
 
-#include "init/clobber_state.h"
 #include "init/startup/platform_impl.h"
 #include "init/utils.h"
 

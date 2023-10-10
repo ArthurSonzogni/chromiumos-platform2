@@ -13,10 +13,10 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/threading/platform_thread.h>
 #include <base/values.h>
 #include <brillo/process/process.h>
 
-#include "init/clobber_state.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
