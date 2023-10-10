@@ -25,7 +25,6 @@
 #include <base/process/process_handle.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
-#include <base/task/thread_pool.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
@@ -136,10 +135,6 @@ DlpAdaptor::DlpAdaptor(
   dlp_files_policy_service_ =
       std::make_unique<org::chromium::DlpFilesPolicyServiceProxy>(
           dbus_object_->GetBus().get(), kDlpFilesPolicyServiceName);
-
-  file_traversal_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
-      {base::TaskPriority::BEST_EFFORT, base::MayBlock(),
-       base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN});
 }
 
 DlpAdaptor::~DlpAdaptor() {
@@ -531,10 +526,12 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
   // Migration is needed.
   if (db_status.second) {
     LOG(INFO) << "Migrating from legacy table";
-    file_traversal_runner_->PostTaskAndReplyWithResult(
-        FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
-        base::BindOnce(&DlpAdaptor::MigrateDatabase, base::Unretained(this),
-                       std::move(db), std::move(init_callback), database_path));
+    base::SingleThreadTaskRunner::GetCurrentDefault()
+        ->PostTaskAndReplyWithResult(
+            FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+            base::BindOnce(&DlpAdaptor::MigrateDatabase, base::Unretained(this),
+                           std::move(db), std::move(init_callback),
+                           database_path));
     return;
   }
 
@@ -557,12 +554,12 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
   // of the home directory folders due to inconsistent access permissions.
   if (feature_lib_ &&
       feature_lib_->IsEnabledBlocking(kCrOSLateBootDlpDatabaseCleanupFeature)) {
-    LOG(INFO) << "Starting database cleanup";
-    file_traversal_runner_->PostTaskAndReplyWithResult(
-        FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
-        base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase,
-                       base::Unretained(this), std::move(db),
-                       std::move(init_callback)));
+    base::SingleThreadTaskRunner::GetCurrentDefault()
+        ->PostTaskAndReplyWithResult(
+            FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+            base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase,
+                           base::Unretained(this), std::move(db),
+                           std::move(init_callback)));
   } else {
     OnDatabaseCleaned(std::move(db), std::move(init_callback),
                       /*success=*/true);
@@ -622,9 +619,11 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
   // If the database is not initialized yet, we delay adding per file watch
   // till it'll be created.
   if (db_) {
-    file_traversal_runner_->PostTaskAndReplyWithResult(
-        FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
-        base::BindOnce(&DlpAdaptor::AddPerFileWatch, base::Unretained(this)));
+    base::SingleThreadTaskRunner::GetCurrentDefault()
+        ->PostTaskAndReplyWithResult(
+            FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+            base::BindOnce(&DlpAdaptor::AddPerFileWatch,
+                           base::Unretained(this)));
   } else {
     pending_per_file_watches_ = true;
   }
@@ -1051,9 +1050,11 @@ void DlpAdaptor::OnDatabaseCleaned(std::unique_ptr<DlpDatabase> db,
     // If fanotify watcher is already started, we need to add watches for all
     // files from the database.
     if (pending_per_file_watches_) {
-      file_traversal_runner_->PostTaskAndReplyWithResult(
-          FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
-          base::BindOnce(&DlpAdaptor::AddPerFileWatch, base::Unretained(this)));
+      base::SingleThreadTaskRunner::GetCurrentDefault()
+          ->PostTaskAndReplyWithResult(
+              FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+              base::BindOnce(&DlpAdaptor::AddPerFileWatch,
+                             base::Unretained(this)));
       pending_per_file_watches_ = false;
     }
     std::move(callback).Run();
