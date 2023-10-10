@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <brillo/errors/error.h>
 
 class ProcessManagerInterface {
@@ -18,8 +19,8 @@ class ProcessManagerInterface {
   ProcessManagerInterface& operator=(const ProcessManagerInterface&) = delete;
 
   struct IORedirection {
-    std::string input;
-    std::string output;
+    base::FilePath input;
+    base::FilePath output;
   };
 
   virtual int RunCommand(const std::vector<std::string>& cmd,

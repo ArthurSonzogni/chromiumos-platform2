@@ -35,9 +35,9 @@ std::unique_ptr<brillo::Process> ProcessManager::CreateProcess(
   for (const auto& arg : cmd)
     process->AddArg(arg);
   if (!io_redirection.input.empty())
-    process->RedirectInput(base::FilePath(io_redirection.input));
+    process->RedirectInput(io_redirection.input);
   if (!io_redirection.output.empty())
-    process->RedirectOutput(base::FilePath(io_redirection.output));
+    process->RedirectOutput(io_redirection.output);
   return process;
 }
 

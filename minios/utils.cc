@@ -177,8 +177,8 @@ bool TriggerShutdown() {
   base::FilePath console = GetLogConsole();
   if (process_manager.RunCommand({"/sbin/poweroff", "-f"},
                                  ProcessManager::IORedirection{
-                                     .input = console.value(),
-                                     .output = console.value(),
+                                     .input = console,
+                                     .output = console,
                                  })) {
     LOG(ERROR) << "Could not trigger shutdown";
     return false;
@@ -229,8 +229,8 @@ bool MountStatefulPartition(ProcessManagerInterface* process_manager) {
   base::FilePath console = GetLogConsole();
   if (process_manager->RunCommand({kMountStatefulCommand, kMountFlag},
                                   ProcessManager::IORedirection{
-                                      .input = console.value(),
-                                      .output = console.value(),
+                                      .input = console,
+                                      .output = console,
                                   }) != 0) {
     PLOG(WARNING) << "Failed to mount stateful partition";
     return false;
@@ -248,8 +248,8 @@ int CompressLogs(std::unique_ptr<ProcessManagerInterface> process_manager,
   base::FilePath console = GetLogConsole();
   return process_manager->RunCommand(compress_command,
                                      ProcessManager::IORedirection{
-                                         .input = console.value(),
-                                         .output = console.value(),
+                                         .input = console,
+                                         .output = console,
                                      });
 }
 

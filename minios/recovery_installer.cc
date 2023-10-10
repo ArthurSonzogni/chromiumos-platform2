@@ -30,8 +30,8 @@ bool RecoveryInstaller::RepartitionDisk() {
 #endif
           },
           ProcessManager::IORedirection{
-              .input = console.value(),
-              .output = console.value(),
+              .input = console,
+              .output = console,
           })) {
     PLOG(WARNING) << "Repartitioning the disk failed";
     return false;
