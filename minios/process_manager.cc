@@ -5,28 +5,14 @@
 #include "minios/process_manager.h"
 
 #include <unistd.h>
+#include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
 using std::string;
 using std::vector;
-
-namespace {
-
-bool LaunchProcess(const vector<string>& cmd,
-                   int output_pipe,
-                   brillo::Process* proc) {
-  for (const string& arg : cmd)
-    proc->AddArg(arg);
-
-  proc->RedirectUsingPipe(output_pipe, false);
-  proc->SetCloseUnusedFileDescriptors(true);
-  proc->RedirectUsingPipe(STDOUT_FILENO, false);
-  return proc->Start();
-}
-
-}  // namespace
 
 std::unique_ptr<brillo::Process> ProcessManager::CreateProcess(
     const vector<string>& cmd,
@@ -65,45 +51,22 @@ bool ProcessManager::RunCommandWithOutput(const vector<string>& cmd,
                                           int* return_code,
                                           string* stdout_out,
                                           string* stderr_out) {
-  brillo::ProcessImpl proc;
-  if (!LaunchProcess(cmd, STDERR_FILENO, &proc)) {
-    LOG(ERROR) << "Failed to launch subprocess";
-    return false;
-  }
+  brillo::ProcessImpl process;
+  for (const auto& arg : cmd)
+    process.AddArg(arg);
 
-  // Read from both stdout and stderr individually.
-  int stdout_fd = proc.GetPipe(STDOUT_FILENO);
-  int stderr_fd = proc.GetPipe(STDERR_FILENO);
-  vector<char> buffer(32 * 1024);
-  bool stdout_closed = false, stderr_closed = false;
-  while (!stdout_closed || !stderr_closed) {
-    if (!stdout_closed) {
-      int rc = HANDLE_EINTR(read(stdout_fd, buffer.data(), buffer.size()));
-      if (rc <= 0) {
-        stdout_closed = true;
-        if (rc < 0)
-          PLOG(ERROR) << "Reading from child's stdout";
-      } else if (stdout_out != nullptr) {
-        stdout_out->append(buffer.data(), rc);
-      }
-    }
+  if (stdout_out)
+    process.RedirectUsingMemory(STDOUT_FILENO);
+  if (stderr_out)
+    process.RedirectUsingMemory(STDERR_FILENO);
+  const auto exit_code = process.Run();
 
-    if (!stderr_closed) {
-      int rc = HANDLE_EINTR(read(stderr_fd, buffer.data(), buffer.size()));
-      if (rc <= 0) {
-        stderr_closed = true;
-        if (rc < 0)
-          PLOG(ERROR) << "Reading from child's stderr";
-      } else if (stderr_out != nullptr) {
-        stderr_out->append(buffer.data(), rc);
-      }
-    }
-  }
+  if (stdout_out)
+    *stdout_out = process.GetOutputString(STDOUT_FILENO);
+  if (stderr_out)
+    *stderr_out = process.GetOutputString(STDERR_FILENO);
 
-  // At this point, the subprocess already closed the output, so we only need to
-  // wait for it to finish.
-  int proc_return_code = proc.Wait();
   if (return_code)
-    *return_code = proc_return_code;
-  return proc_return_code != brillo::Process::kErrorExitStatus;
+    *return_code = exit_code;
+  return exit_code != brillo::Process::kErrorExitStatus;
 }

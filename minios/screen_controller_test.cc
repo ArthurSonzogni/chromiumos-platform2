@@ -353,6 +353,8 @@ class GoToScreenTest
       EXPECT_CALL(*update_engine_proxy_, StartUpdate).WillOnce(Return(true));
     }
     screen_controller_.SetCurrentScreenForTest(starting_screen_);
+    ON_CALL(process_manager_, RunCommandWithOutput(_, _, _, _))
+        .WillByDefault(Return(true));
   }
 
  protected:
