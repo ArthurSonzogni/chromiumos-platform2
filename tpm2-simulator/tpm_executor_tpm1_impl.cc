@@ -70,7 +70,7 @@ size_t TpmExecutorTpm1Impl::GetCommandSize(const std::string& command) {
 
 std::string TpmExecutorTpm1Impl::RunCommand(const std::string& command) {
   unsigned char* rbuffer = nullptr;
-  uint32_t rlength;
+  uint32_t rlength = 0;
   uint32_t rtotal = 0;
 
   for (const auto& vendor_cmd : vendor_commands_) {
@@ -83,10 +83,7 @@ std::string TpmExecutorTpm1Impl::RunCommand(const std::string& command) {
   unsigned char* command_ptr =
       reinterpret_cast<unsigned char*>(command_copy.data());
 
-  TPM_RESULT res;
-  res =
-      TPMLIB_Process(&rbuffer, &rlength, &rtotal, command_ptr, command.size());
-
+  TPMLIB_Process(&rbuffer, &rlength, &rtotal, command_ptr, command.size());
   return std::string(reinterpret_cast<char*>(rbuffer), rlength);
 }
 
