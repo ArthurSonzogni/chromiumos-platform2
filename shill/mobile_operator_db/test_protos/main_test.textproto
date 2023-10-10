@@ -82,7 +82,7 @@ mno {
     localized_name {
       name: "name106002"
     }
-  uuid: "uuid106002"
+    uuid: "uuid106002"
   }
 }
 
@@ -102,7 +102,7 @@ mno {
     localized_name {
       name: "name107"
     }
-  uuid: "uuid107002"
+    uuid: "uuid107002"
   }
 }
 
@@ -546,12 +546,12 @@ mno {
     mvno_filter {
       type: IMSI
       range: {
-          start: 128001432154321
-          end:   128001432164321
+        start: 128001432154321
+        end: 128001432164321
       }
       range: {
-          start: 128001437999999
-          end:   128001438111111
+        start: 128001437999999
+        end: 128001438111111
       }
     }
     data {
@@ -595,16 +595,16 @@ mno {
         type: IMSI
         exclude_regex: "13000111[0-9]{7}"
       }
-      apn : "apn_regex"
-      type : DEFAULT
+      apn: "apn_regex"
+      type: DEFAULT
     }
     mobile_apn {
       apn_filter {
         type: IMSI
         exclude_regex: "130001[3-4]{1}[0-9]{8}"
       }
-      apn : "apn_exclude_regex"
-      type : DEFAULT
+      apn: "apn_exclude_regex"
+      type: DEFAULT
     }
   }
 }

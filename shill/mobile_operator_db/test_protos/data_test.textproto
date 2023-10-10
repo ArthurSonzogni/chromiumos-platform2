@@ -21,7 +21,7 @@ mno {
     mhs_entitlement_url: "uuid200001.com"
     mhs_entitlement_param: IMSI
     mhs_entitlement_method: GET
-    mtu : 1400
+    mtu: 1400
     olp {
       method: POST
       url: "some@random.com"
@@ -41,7 +41,7 @@ mno {
     mccmnc: "200003"  # Used in FilteredOLP
     mobile_apn {
       apn: "test@test.com"
-      type : DEFAULT
+      type: DEFAULT
       localized_name {
         name: "name200003"
         language: "hi"
@@ -68,7 +68,7 @@ mno {
       requires_roaming: false
       tethering_allowed: false
       mhs_entitlement_url: "uuid200101.com"
-      mtu : 1200
+      mtu: 1200
       olp {
         method: GET
         url: "someother@random.com"
@@ -78,10 +78,10 @@ mno {
       mccmnc: "200102"
       mobile_apn {
         apn: "test2@test.com"
-        type : DEFAULT
+        type: DEFAULT
         username: "testuser2"
         password: "is_public_boohoohoo_too"
-        is_required_by_carrier_spec : true
+        is_required_by_carrier_spec: true
       }
     }
   }
