@@ -13,21 +13,26 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str;
+use std::thread;
+use std::time::Duration;
+use std::time::Instant;
 
 use anyhow::Context;
 use anyhow::Result;
 use log::info;
 use log::warn;
 
-use crate::hiberutil::checked_command;
 use crate::hiberutil::checked_command_output;
 use crate::hiberutil::is_snapshot_active;
 use crate::hiberutil::stateful_block_partition_one;
+use crate::hiberutil::HibernateError;
 
 /// Define the minimum size of a block device sector.
 const SECTOR_SIZE: usize = 512;
 /// Define the size of an LVM extent.
 const LVM_EXTENT_SIZE: u64 = 64 * 1024;
+
+const ECMD_FAILED: i32 = 5;
 
 /// Get the path to the given logical volume.
 pub fn lv_path(volume_group: &str, name: &str) -> PathBuf {
@@ -36,7 +41,7 @@ pub fn lv_path(volume_group: &str, name: &str) -> PathBuf {
 
 /// Get the volume group name for the stateful block device.
 pub fn get_vg_name(blockdev: &str) -> Result<String> {
-    let output = checked_command_output(Command::new("/sbin/pvs").args([
+    let output = run_lvm_command_output(Command::new("/sbin/pvs").args([
         "--noheadings",
         "-o",
         "vg_name",
@@ -61,7 +66,7 @@ pub fn lv_exists(volume_group: &str, name: &str) -> Result<bool> {
 
 /// Enumerate all logical volumes in a volume group.
 pub fn get_lvs(volume_group: &str) -> Result<Vec<String>> {
-    let output = checked_command_output(Command::new("/sbin/lvs").args([
+    let output = run_lvm_command_output(Command::new("/sbin/lvs").args([
         "--options=name",
         "--noheadings",
         volume_group,
@@ -84,7 +89,7 @@ pub fn activate_lv(volume_group: &str, name: &str) -> Result<()> {
     }
 
     let full_name = full_lv_name(volume_group, name);
-    checked_command(Command::new("/sbin/lvchange").args(["-ay", &full_name]))
+    run_lvm_command(Command::new("/sbin/lvchange").args(["-ay", &full_name]))
         .context("Failed to activate logical volume '{full_name}'")?;
 
     Ok(())
@@ -96,7 +101,7 @@ pub fn create_thin_volume(volume_group: &str, size: u64, name: &str) -> Result<(
     // lvcreate --thin -V "${lv_size}b" -n "{name}" "${volume_group}/thinpool"
     let size_arg = format!("{}b", size);
     let thinpool = format!("{}/thinpool", volume_group);
-    checked_command(
+    run_lvm_command(
         Command::new("/sbin/lvcreate").args(["--thin", "-V", &size_arg, "-n", name, &thinpool]),
     )
     .context("Cannot create logical volume")
@@ -134,7 +139,7 @@ pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size: u64) -> Result<()> {
 pub fn lv_remove(volume_group: &str, name: &str) -> Result<()> {
     let volume = full_lv_name(volume_group, name);
 
-    checked_command(Command::new("/sbin/lvremove").args(["-y", &volume]))
+    run_lvm_command(Command::new("/sbin/lvremove").args(["-y", &volume]))
         .context(format!("Failed to remove logical volume '{volume}'"))
 }
 
@@ -142,7 +147,7 @@ pub fn lv_remove(volume_group: &str, name: &str) -> Result<()> {
 pub fn get_free_thinpool_space(volume_group: &str) -> Result<u64> {
     let volume = full_lv_name(volume_group, "thinpool");
 
-    let out = checked_command_output(Command::new("/sbin/lvs").args([
+    let out = run_lvm_command_output(Command::new("/sbin/lvs").args([
         "--noheadings",
         "--units",
         "b",
@@ -167,7 +172,7 @@ pub fn get_free_thinpool_space(volume_group: &str) -> Result<u64> {
 pub fn get_thin_volume_usage_percent(volume_group: &str, name: &str) -> Result<u8> {
     let volume = full_lv_name(volume_group, name);
 
-    let out = checked_command_output(Command::new("/sbin/lvs").args([
+    let out = run_lvm_command_output(Command::new("/sbin/lvs").args([
         "--noheadings",
         "-o",
         "data_percent",
@@ -183,6 +188,36 @@ pub fn get_thin_volume_usage_percent(volume_group: &str, name: &str) -> Result<u
 /// Get the fully qualified name of an LV.
 fn full_lv_name(volume_group: &str, name: &str) -> String {
     format!("{}/{}", volume_group, name)
+}
+
+fn run_lvm_command_output(command: &mut std::process::Command) -> Result<std::process::Output> {
+    let start = Instant::now();
+    let timeout = Duration::from_millis(100);
+
+    loop {
+        let res = checked_command_output(command);
+        match res {
+            Ok(_) => return res,
+
+            Err(e) => {
+                if let Some(HibernateError::SpawnedProcessError(code)) = e.downcast_ref() {
+                    if *code != ECMD_FAILED || start.elapsed() >= timeout {
+                        return Err(e);
+                    }
+
+                    // The error might be transient, try again after a short delay.
+                    thread::sleep(Duration::from_millis(10));
+                } else {
+                    return Err(e);
+                }
+            }
+        }
+    }
+}
+
+fn run_lvm_command(command: &mut std::process::Command) -> Result<()> {
+    let _ = run_lvm_command_output(command)?;
+    Ok(())
 }
 
 pub struct ActivatedLogicalVolume {
@@ -212,7 +247,7 @@ impl ActivatedLogicalVolume {
 impl Drop for ActivatedLogicalVolume {
     fn drop(&mut self) {
         if let Some(lv_arg) = self.lv_arg.take() {
-            let r = checked_command(Command::new("/sbin/lvchange").args(["-an", &lv_arg]));
+            let r = run_lvm_command(Command::new("/sbin/lvchange").args(["-an", &lv_arg]));
 
             match r {
                 Ok(_) => {
