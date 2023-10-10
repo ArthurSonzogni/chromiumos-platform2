@@ -68,9 +68,13 @@ impl PowerdPendingResume {
     }
 
     pub fn wait_for_hibernate_resume_ready(&mut self) -> Result<()> {
-        match self.thread_join_handle.take().unwrap().join() {
-            Ok(res) => res,
-            Err(e) => Err(anyhow!("powerd thread panicked: {e:?}")),
+        if let Some(join_handle) = self.thread_join_handle.take() {
+            match join_handle.join() {
+                Ok(res) => res,
+                Err(e) => Err(anyhow!("powerd thread panicked: {e:?}")),
+            }
+        } else {
+            Ok(())
         }
     }
 }
