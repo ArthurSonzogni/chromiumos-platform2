@@ -79,6 +79,7 @@ stat64: 1
 statx: 1
 sysinfo: 1
 uname: 1
+unlinkat: 1
 write: 1
 
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
