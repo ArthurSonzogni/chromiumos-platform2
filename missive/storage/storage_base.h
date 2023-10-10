@@ -88,12 +88,6 @@ class QueuesContainer
   // Removes references to all queues inside `queues_`.
   void DropAllQueues();
 
-  // Removes references to the queue associated with `priority` and
-  // `generation_guid` and inside `queues_`. Returns the number of queues
-  // removed.
-  size_t DropQueue(const Priority priority,
-                   const GenerationGuid& generation_guid);
-
   base::WeakPtr<QueuesContainer> GetWeakPtr();
 
   // Accessors.

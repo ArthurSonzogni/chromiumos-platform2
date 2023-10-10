@@ -69,7 +69,6 @@ using ::testing::Eq;
 using ::testing::Gt;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
-using ::testing::IsEmpty;
 using ::testing::Property;
 using ::testing::Return;
 using ::testing::Sequence;
@@ -1123,7 +1122,7 @@ class StorageTest : public ::testing::TestWithParam<
     auto [generation_id, generation_guid] = generation_it->second;
     LOG(ERROR) << "Confirm priority=" << priority << " force=" << force
                << " seq=" << sequencing_id << " gen_id=" << generation_id
-               << " gen_guid=" << generation_guid;
+               << "gen_guid=" << generation_guid;
     SequenceInformation seq_info;
     seq_info.set_sequencing_id(sequencing_id);
     seq_info.set_generation_id(generation_id);
@@ -1641,7 +1640,7 @@ TEST_P(StorageTest, EmptyMultigenerationalQueuesAreDeletedOnStartup) {
 
   const int expected_num_queue_directories = 0;
   const int num_queue_directories =
-      StorageDirectory::GetQueueDirectories(options_).size();
+      StorageDirectory::FindQueueDirectories(options_).size();
   EXPECT_THAT(num_queue_directories, Eq(expected_num_queue_directories));
 }
 
@@ -2577,121 +2576,6 @@ TEST_P(StorageTest, MultipleUsersWriteSamePriorityAndUpload) {
   // Trigger upload.
   task_environment_.FastForwardBy(base::Seconds(1));
   task_environment_.RunUntilIdle();
-}
-
-TEST_P(StorageTest, GarbageCollectEmptyMultigenerationQueueWithDefaultPeriod) {
-  StorageOptions options(BuildTestStorageOptions());
-  // Only multigeneration queues are garbage collected.
-  options.set_multi_generational(FAST_BATCH, true);
-  ASSERT_EQ(options.queue_garbage_collection_period(),
-            StorageOptions::kDefaultQueueGarbageCollectionPeriod);
-
-  CreateTestStorageOrDie(options);
-
-  WriteStringOrDie(FAST_BATCH, kData[0]);
-
-  {
-    // Set uploader expectations.
-    test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
-        .WillOnce(
-            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-              return TestUploader::SetUp(FAST_BATCH, &waiter, this)
-                  .Required(0, kData[0])
-
-                  .Complete();
-            }))
-        .RetiresOnSaturation();
-
-    // Forward time to trigger upload
-    SetExpectedUploadsCount();
-    task_environment_.FastForwardBy(base::Seconds(1));
-  }
-
-  // Confirm #0 and forward time again, removing data #0
-  ConfirmOrDie(FAST_BATCH, /*sequencing_id=*/0);
-
-  // Trigger garbage collection.
-  task_environment_.FastForwardBy(options.queue_garbage_collection_period());
-
-  // Empty multigeneration queue should be garbage collected .
-  EXPECT_THAT(StorageDirectory::GetQueueDirectories(options), IsEmpty());
-}
-
-TEST_P(StorageTest, DoNotGarbageCollectQueuesWithUnconfirmedRecords) {
-  StorageOptions options(BuildTestStorageOptions());
-  options.set_queue_garbage_collection_period(base::Days(2));
-  options.set_multi_generational(FAST_BATCH, true);
-
-  CreateTestStorageOrDie(options);
-
-  WriteStringOrDie(FAST_BATCH, kData[0]);
-
-  {
-    // Set uploader expectations.
-    test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
-        .WillOnce(
-            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-              return TestUploader::SetUp(FAST_BATCH, &waiter, this)
-                  .Required(0, kData[0])
-
-                  .Complete();
-            }))
-        .RetiresOnSaturation();
-
-    // Forward time to trigger upload
-    SetExpectedUploadsCount();
-    task_environment_.FastForwardBy(base::Seconds(1));
-  }
-
-  // Trigger garbage collection.
-  task_environment_.FastForwardBy(options.queue_garbage_collection_period());
-
-  // We didn't confirm the record, so the queue still has data, and we expect it
-  // to not be garbage collected.
-  EXPECT_THAT(StorageDirectory::GetQueueDirectories(options).size(), Eq(1));
-}
-
-TEST_P(StorageTest, LegacyQueuesAreNeverGarbageCollected) {
-  StorageOptions options(BuildTestStorageOptions());
-  options.set_queue_garbage_collection_period(base::Seconds(10));
-  // Set queue to legacy mode.
-  options.set_multi_generational(FAST_BATCH, false);
-
-  CreateTestStorageOrDie(options);
-
-  WriteStringOrDie(FAST_BATCH, kData[0]);
-
-  {
-    // Set uploader expectations.
-    test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
-        .WillOnce(
-            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-              return TestUploader::SetUp(FAST_BATCH, &waiter, this)
-                  .Required(0, kData[0])
-
-                  .Complete();
-            }))
-        .RetiresOnSaturation();
-
-    // Forward time to trigger upload
-    SetExpectedUploadsCount();
-    task_environment_.FastForwardBy(base::Seconds(1));
-  }
-
-  // Confirm #0 and forward time again, removing data #0
-  ConfirmOrDie(FAST_BATCH, /*sequencing_id=*/0);
-
-  // Trigger garbage collection.
-  task_environment_.FastForwardBy(options.queue_garbage_collection_period());
-
-  // Legacy queue should still exist and not be garbage collected.
-  EXPECT_THAT(StorageDirectory::GetQueueDirectories(options).size(), Eq(1));
 }
 
 INSTANTIATE_TEST_SUITE_P(
