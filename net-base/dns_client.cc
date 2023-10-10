@@ -21,6 +21,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 
+#include "net-base/ares_interface.h"
 #include "net-base/ip_address.h"
 
 namespace net_base {
@@ -94,7 +95,8 @@ class DNSClientImpl : public DNSClient {
   DNSClientImpl(IPFamily family,
                 std::string_view hostname,
                 Callback callback,
-                const Options& options);
+                const Options& options,
+                AresInterface* ares);
   ~DNSClientImpl();
 
  private:
@@ -132,6 +134,8 @@ class DNSClientImpl : public DNSClient {
   // Returns true if this object hasn't get the results.
   bool IsRunning() const { return !callback_.is_null(); }
 
+  AresInterface* ares_;
+
   const IPFamily family_;
   const base::TimeDelta timeout_;
 
@@ -154,8 +158,10 @@ class DNSClientImpl : public DNSClient {
 DNSClientImpl::DNSClientImpl(IPFamily family,
                              std::string_view hostname,
                              Callback callback,
-                             const Options& options)
-    : family_(family),
+                             const Options& options,
+                             AresInterface* ares)
+    : ares_(ares),
+      family_(family),
       timeout_(options.timeout),
       callback_(std::move(callback)) {
   struct ares_options ares_opts;
@@ -169,7 +175,7 @@ DNSClientImpl::DNSClientImpl(IPFamily family,
   }
   ares_opts.timeout = static_cast<int>(timeout_.InMilliseconds());
 
-  int status = ares_init_options(&channel_, &ares_opts, ARES_OPT_TIMEOUTMS);
+  int status = ares_->init_options(&channel_, &ares_opts, ARES_OPT_TIMEOUTMS);
   if (status != ARES_SUCCESS) {
     ReportFailure(AresStatusToError(status));
     return;
@@ -179,9 +185,9 @@ DNSClientImpl::DNSClientImpl(IPFamily family,
 
   // The raw pointer here is safe since the callback can only be invoked inside
   // some c-ares functions, while they can only be called from this object.
-  ares_gethostbyname(channel_, std::string(hostname).c_str(),
-                     net_base::ToSAFamily(family_), AresGethostbynameCallback,
-                     this);
+  ares_->gethostbyname(channel_, std::string(hostname).c_str(),
+                       net_base::ToSAFamily(family_), AresGethostbynameCallback,
+                       this);
 
   RefreshHandlersAndTimeout();
 }
@@ -199,7 +205,7 @@ void DNSClientImpl::CleanUp() {
   read_handlers_.clear();
   write_handlers_.clear();
   if (channel_ != nullptr) {
-    ares_destroy(channel_);
+    ares_->destroy(channel_);
   }
   channel_ = nullptr;
 }
@@ -278,7 +284,7 @@ void DNSClientImpl::OnTimeout() {
 void DNSClientImpl::ProcessFd(int read_fd, int write_fd) {
   read_handlers_.clear();
   write_handlers_.clear();
-  ares_process_fd(channel_, read_fd, write_fd);
+  ares_->process_fd(channel_, read_fd, write_fd);
   // TODO(b/302101630): We don't need to reset timeout on ProcessFD(), only on
   // timeout callbacks.
   RefreshHandlersAndTimeout();
@@ -292,7 +298,7 @@ void DNSClientImpl::RefreshHandlersAndTimeout() {
   }
 
   ares_socket_t sockets[ARES_GETSOCK_MAXNUM];
-  int action_bits = ares_getsock(channel_, sockets, ARES_GETSOCK_MAXNUM);
+  int action_bits = ares_->getsock(channel_, sockets, ARES_GETSOCK_MAXNUM);
 
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
@@ -327,7 +333,7 @@ void DNSClientImpl::RefreshHandlersAndTimeout() {
           (max - base::Seconds(max.InSeconds())).InMicroseconds()),
   };
   struct timeval ret_tv;
-  struct timeval* tv = ares_timeout(channel_, &max_tv, &ret_tv);
+  struct timeval* tv = ares_->timeout(channel_, &max_tv, &ret_tv);
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
@@ -340,9 +346,13 @@ void DNSClientImpl::RefreshHandlersAndTimeout() {
 std::unique_ptr<DNSClient> DNSClient::Resolve(IPFamily family,
                                               std::string_view hostname,
                                               Callback callback,
-                                              const Options& options) {
+                                              const Options& options,
+                                              AresInterface* ares) {
+  if (!ares) {
+    ares = AresInterface::GetInstance();
+  }
   return std::make_unique<DNSClientImpl>(family, hostname, std::move(callback),
-                                         options);
+                                         options, ares);
 }
 
 }  // namespace net_base

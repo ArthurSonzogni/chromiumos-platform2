@@ -17,8 +17,9 @@
 
 namespace net_base {
 
+class AresInterface;
+
 // An async DNS resolver.
-// TODO(b/302101630): Add unit tests.
 class NET_BASE_EXPORT DNSClient {
  public:
   // TODO(b/302101630): Map the enum to the values used in c-ares.
@@ -55,10 +56,12 @@ class NET_BASE_EXPORT DNSClient {
   // - The caller can destroy the returned object at any time to cancel the
   //   ongoing DNS query. If this happens before the callback is triggered, the
   //   callback won't be triggered any more.
+  // - |ares| is only used in unit tests.
   static std::unique_ptr<DNSClient> Resolve(IPFamily family,
                                             std::string_view hostname,
                                             Callback callback,
-                                            const Options& options);
+                                            const Options& options,
+                                            AresInterface* ares = nullptr);
 
   virtual ~DNSClient() = default;
 

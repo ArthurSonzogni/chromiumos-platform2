@@ -32,6 +32,7 @@ pkg_config("target_defaults") {
 
 shared_library("libnet-base") {
   sources = [
+    "ares_interface.cc",
     "byte_utils.cc",
     "dns_client.cc",
     "ip_address.cc",
@@ -88,6 +89,7 @@ if (use.test) {
     run_test = true
     sources = [
       "byte_utils_test.cc",
+      "dns_client_test.cc",
       "ip_address_test.cc",
       "ipv4_address_test.cc",
       "ipv6_address_test.cc",
