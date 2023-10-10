@@ -139,8 +139,6 @@ void KerberosMetrics::ReportDailyUsageStats(int total_count,
                                             int unmanaged_count,
                                             int remembered_password_count,
                                             int use_login_password_count) {
-  // TODO(b/259178132): Send the proper user type once unmanaged users can use
-  // this feature.
   metrics_lib_.SendEnumToUMA(kerberos_ + kDailyActiveUsers,
                              static_cast<int>(UserType::kManaged),
                              static_cast<int>(UserType::kCount));
