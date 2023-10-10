@@ -44,8 +44,6 @@ class ClobberState {
     // Assume that the reason string is already sanitized by session
     // manager (non-alphanumeric characters replaced with '_').
     std::string reason = "";
-    // Setup the stateful partition using a thin logical volume.
-    bool setup_lvm = false;
     // Run in the context of an RMA flow. Additionally save the RMA
     // state file.
     bool rma_wipe = false;

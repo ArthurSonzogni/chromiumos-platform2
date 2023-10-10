@@ -314,8 +314,6 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
     } else if (base::StartsWith(
                    arg, "reason=", base::CompareCase::INSENSITIVE_ASCII)) {
       args.reason = arg;
-    } else if (arg == "setup_lvm") {
-      args.setup_lvm = true;
     } else if (arg == "rma") {
       args.rma_wipe = true;
     } else if (arg == "ad_migration") {
@@ -324,11 +322,6 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
       args.preserve_lvs = USE_LVM_STATEFUL_PARTITION;
     }
   }
-
-  if (USE_LVM_STATEFUL_PARTITION) {
-    args.setup_lvm = true;
-  }
-
   return args;
 }
 
@@ -1512,10 +1505,10 @@ int ClobberState::Run() {
 
   reset_stateful.RunAndReset();
 
-  // `preserve_lvs` precedence check over `setup_lvm`.
+  // `preserve_lvs` precedence check over creating a blank LVM setup.
   if (args_.preserve_lvs) {
     CreateLogicalVolumeStackForPreserved();
-  } else if (args_.setup_lvm) {
+  } else if (USE_LVM_STATEFUL_PARTITION) {
     CreateLogicalVolumeStack();
   } else {
     // Set up the stateful filesystem on top of the stateful partition.
