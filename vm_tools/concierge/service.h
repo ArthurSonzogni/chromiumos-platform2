@@ -472,8 +472,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   // not lost.
   void TrimUserFilesystem();
 
-  base::Thread metrics_thread_ GUARDED_BY_CONTEXT(sequence_checker_){
-      "metrics thread"};
   // Destructor will need to run last after all metrics logging to allow
   // flushing of all metrics in AsynchronousMetricsWriter destructor.
   std::unique_ptr<MetricsLibraryInterface> metrics_
@@ -495,7 +493,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   int signal_fd_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Connection to the system bus.
-  base::Thread dbus_thread_{"dbus thread"};
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_;              // Owned by |bus_|.
   dbus::ObjectProxy* cicerone_service_proxy_;          // Owned by |bus_|.
@@ -530,9 +527,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   // The StartupListener service.
   StartupListenerImpl startup_listener_;
 
-  // Thread on which the StartupListener service lives.
-  base::Thread grpc_thread_vm_{"gRPC VM Server Thread"};
-
   // The server where the StartupListener service lives.
   std::shared_ptr<grpc::Server> grpc_server_vm_;
 
@@ -561,9 +555,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Used to check for, and possibly enable, the conditions required for
   // untrusted VMs.
   std::unique_ptr<UntrustedVMUtils> untrusted_vm_utils_;
-
-  // Thread on which memory reclaim operations are performed.
-  base::Thread reclaim_thread_{"memory reclaim thread"};
 
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;

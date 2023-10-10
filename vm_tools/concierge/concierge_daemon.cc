@@ -16,6 +16,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/task/thread_pool/thread_pool_instance.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -35,6 +36,7 @@ int ConciergeDaemon::Run(int argc, char** argv) {
 
   // Threading setup happens after daemon setup, since threads have to inherit
   // the process masks from the daemon.
+  base::ThreadPoolInstance::CreateAndStartWithDefaultParams("concierge");
   InitTracing();
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);

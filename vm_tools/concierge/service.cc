@@ -66,6 +66,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/task/thread_pool.h>
 #include <base/time/time.h>
 #include <base/uuid.h>
 #include <base/version.h>
@@ -495,19 +496,12 @@ void RunListenerService(grpc::Service* listener,
 // address the gRPC server is listening on. A copy of the pointer to the
 // server is put in |server_copy|. Returns true if setup & started
 // successfully, false otherwise.
-bool SetupListenerService(base::Thread* grpc_thread,
-                          grpc::Service* listener_impl,
+bool SetupListenerService(grpc::Service* listener_impl,
                           const std::string& listener_address,
                           std::shared_ptr<grpc::Server>* server_copy) {
-  // Start the grpc thread.
-  if (!grpc_thread->Start()) {
-    LOG(ERROR) << "Failed to start grpc thread";
-    return false;
-  }
-
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
-  bool ret = grpc_thread->task_runner()->PostTask(
+  bool ret = base::ThreadPool::PostTask(
       FROM_HERE, base::BindOnce(&RunListenerService, listener_impl,
                                 listener_address, &event, server_copy));
   if (!ret) {
@@ -1302,45 +1296,37 @@ Service::~Service() {
   if (grpc_server_vm_) {
     grpc_server_vm_->Shutdown();
   }
-  AsyncNoReject(
-      dbus_thread_.task_runner(),
-      base::BindOnce(
-          [](std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object) {
-            dbus_object.reset();
-          },
-          std::move(dbus_object_)))
-      .Get();
+  if (dbus_object_ && bus_) {
+    AsyncNoReject(
+        bus_->GetDBusTaskRunner(),
+        base::BindOnce(
+            [](std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object) {
+              dbus_object.reset();
+            },
+            std::move(dbus_object_)))
+        .Get();
+  }
 }
 
 bool Service::Init() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   VMT_TRACE_BEGIN(kCategory, "Service::Init");
 
-  if (!metrics_thread_.StartWithOptions(
-          base::Thread::Options(base::MessagePumpType::DEFAULT, 0))) {
-    LOG(ERROR) << "Failed to start metrics thread";
-    return false;
-  }
   metrics_ = std::make_unique<MetricsLibrary>(
       base::MakeRefCounted<AsynchronousMetricsWriter>(
-          metrics_thread_.task_runner()));
+          base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})));
 
   vmm_swap_tbw_policy_ = std::make_unique<VmmSwapTbwPolicy>(
       raw_ref<MetricsLibraryInterface>::from_ptr(metrics_.get()),
       base::FilePath(kVmmSwapTbwHistoryFilePath));
 
-  if (!dbus_thread_.StartWithOptions(
-          base::Thread::Options(base::MessagePumpType::IO, 0))) {
-    LOG(ERROR) << "Failed to start dbus thread";
-    return false;
-  }
-
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;
-  opts.dbus_task_runner = dbus_thread_.task_runner();
+  opts.dbus_task_runner =
+      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
   bus_ = new dbus::Bus(std::move(opts));
 
-  if (!AsyncNoReject(dbus_thread_.task_runner(),
+  if (!AsyncNoReject(bus_->GetDBusTaskRunner(),
                      base::BindOnce(
                          [](scoped_refptr<dbus::Bus> bus) {
                            if (!bus->Connect()) {
@@ -1375,7 +1361,7 @@ bool Service::Init() {
   // chromeos-dbus-bindings after we complete migration and remove
   // ExportMethodAndBlock.
   if (!AsyncNoReject(
-           dbus_thread_.task_runner(),
+           bus_->GetDBusTaskRunner(),
            base::BindOnce(
                [](Service* service, dbus::ExportedObject* exported_object_,
                   scoped_refptr<dbus::Bus> bus) {
@@ -1498,16 +1484,11 @@ bool Service::Init() {
 
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(
-          &grpc_thread_vm_, &startup_listener_,
+          &startup_listener_,
           base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
                              vm_tools::kDefaultStartupListenerPort),
           &grpc_server_vm_)) {
     LOG(ERROR) << "Failed to setup/startup the VM grpc server";
-    return false;
-  }
-
-  if (!reclaim_thread_.Start()) {
-    LOG(ERROR) << "Failed to start memory reclaim thread";
     return false;
   }
 
@@ -3922,7 +3903,7 @@ void Service::ReclaimVmMemory(
 
   const pid_t pid = iter->second->GetInfo().pid;
   const auto page_limit = request.page_limit();
-  reclaim_thread_.task_runner()->PostTaskAndReplyWithResult(
+  base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, base::BindOnce(&ReclaimVmMemoryInternal, pid, page_limit),
       base::BindOnce(
           [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
