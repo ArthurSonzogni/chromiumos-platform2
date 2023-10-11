@@ -35,3 +35,26 @@ sending the data, the following checking steps are required:
     and store it at `/var/lib/flex_hwis_tool/uuid`. If the UUID was just
     generated, the client will interact with the server by POST request.
     If the UUID already exists, then it will be a PUT request.
+
+## Disk metrics
+
+The `flex_disk_metrics` directory contains a tool for sending metrics
+about the disk partition layout. Normal ChromeOS boards have a fixed
+disk layout for the lifetime of the board, but ChromeOS Flex has
+long-lived installations and occasionally migrates the disk layout
+during the update process.
+
+The `flex_disk_metrics` tool runs once per boot via an upstart task. You
+can run `flex_disk_metrics` directly to see it in action (or `start
+flex_disk_metrics` to run it in minijail via upstart).
+
+The partition metrics can be checked locally by navigating to
+`chrome://histograms`. The current set of metrics:
+* `Platform.FlexPartitionSize.EFI-SYSTEM`
+* `Platform.FlexPartitionSize.KERN-A`
+* `Platform.FlexPartitionSize.KERN-B`
+* `Platform.FlexPartitionSize.ROOT-A`
+* `Platform.FlexPartitionSize.ROOT-B`
+
+These are sparse metrics, meaning the exact value is reported rather
+than a bucket spanning a range of values.
