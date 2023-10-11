@@ -1,0 +1,25 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+# This target is the root target of factory_generate_ssfc package.
+group("all") {
+  deps = [ ":factory_generate_ssfc" ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libcros_config",
+  ]
+}
+
+executable("factory_generate_ssfc") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "sbin"
+  deps = [ "//rmad/ssfc:libssfc" ]
+}
