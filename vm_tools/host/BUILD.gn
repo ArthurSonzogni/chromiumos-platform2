@@ -207,6 +207,7 @@ static_library("libconcierge") {
     "libdlcservice-client",
     "libmetrics",
     "libminijail",
+    "libsession_manager-client",
     "libshill-client",
     "libspaced",
     "perfetto",
