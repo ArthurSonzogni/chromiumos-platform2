@@ -102,9 +102,9 @@ class RoutingTable {
   // Route entries are immediately purged from our copy of the routing table.
   virtual void FlushRoutes(int interface_index);
 
-  // Iterate over all routing tables removing routes tagged with |tag| of IP
-  // family |family|. Route entries are immediately purged from our copy of the
-  // routing table.
+  // Iterate over all routing tables removing all routes added by shill,
+  // associated with interface |tag| , and of IP family |family|. Route entries
+  // are immediately purged from our copy of the routing table.
   virtual void FlushRoutesWithTag(int tag, net_base::IPFamily family);
 
   // Reset local state for this interface.

@@ -356,7 +356,14 @@ void RoutingTable::FlushRoutesWithTag(int tag, net_base::IPFamily family) {
 
   for (auto& table : tables_) {
     for (auto nent = table.second.begin(); nent != table.second.end();) {
-      if (nent->tag == tag && nent->dst.GetFamily() == family) {
+      if ((nent->tag == tag && nent->dst.GetFamily() == family) ||
+          // b/303315643: Workaround the case that shill-added route being
+          // deleted and re-added in the cache by RouteMsgHandler. Those routes
+          // will have tag -1, but we know all IPv4 routes in device-specific
+          // table are added by shill and should be treated as having tag ==
+          // ifindex.
+          (table.first == tag && family == net_base::IPFamily::kIPv4 &&
+           nent->dst.GetFamily() == net_base::IPFamily::kIPv4)) {
         RemoveRouteFromKernelTable(table.first, *nent);
         nent = table.second.erase(nent);
       } else {
