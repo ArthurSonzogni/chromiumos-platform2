@@ -2578,9 +2578,7 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
       }
       break;
     case kModemStateDisconnecting:
-      break;
     case kModemStateConnecting:
-      OnConnecting();
       break;
     case kModemStateConnected:
       // Even if the modem state transitions from Connecting to Connected here
