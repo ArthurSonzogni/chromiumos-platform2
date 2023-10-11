@@ -28,7 +28,6 @@
 #include <sys/statfs.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
-#include <sys/xattr.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -876,21 +875,6 @@ bool GetSha1HashOfFiles(const std::vector<base::FilePath>& files,
   unsigned char hash[SHA_DIGEST_LENGTH];
   SHA1_Final(hash, &sha_context);
   out_hash->assign(reinterpret_cast<const char*>(hash), sizeof(hash));
-  return true;
-}
-
-bool SetXattr(const base::FilePath& path,
-              const char* name,
-              const std::string& value) {
-  base::ScopedFD fd(brillo::OpenSafely(path, O_RDONLY, 0));
-  if (!fd.is_valid())
-    return false;
-
-  if (fsetxattr(fd.get(), name, value.data(), value.size(), 0 /* flags */) !=
-      0) {
-    PLOG(ERROR) << "Failed to change xattr " << name << " of " << path.value();
-    return false;
-  }
   return true;
 }
 

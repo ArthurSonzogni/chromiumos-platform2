@@ -255,11 +255,6 @@ bool IsProcessAlive(pid_t pid);
 bool GetSha1HashOfFiles(const std::vector<base::FilePath>& files,
                         std::string* out_hash);
 
-// Sets an extended attribute of the |path| to |value|.
-bool SetXattr(const base::FilePath& path,
-              const char* name,
-              const std::string& value);
-
 // Checks whether to clear entire android data directory before starting the
 // container by comparing |system_sdk_version| from the current boot against
 // |data_sdk_version| from the previous boot.

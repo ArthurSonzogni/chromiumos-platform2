@@ -15,6 +15,7 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
+#include <sys/xattr.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -642,6 +643,42 @@ base::FilePath GetArcVmDataDevicePath(const std::string& chromeos_user,
   }
 
   return base::FilePath();
+}
+
+bool SetRestoreconLastXattr(const base::FilePath& mutable_data_dir,
+                            const std::string& hash) {
+  // On Android, /init writes the security.restorecon_last attribute to /data
+  // (and /cache on N) after it finishes updating labels of the files in the
+  // directories, but on ARC, writing the attribute fails silently because
+  // processes in user namespace are not allowed to write arbitrary entries
+  // under security.* even with CAP_SYS_ADMIN. (b/33084415, b/33402785)
+  // As a workaround, let this command outside the container set the
+  // attribute for ARC.
+  static constexpr char kRestoreconLastXattr[] = "security.restorecon_last";
+
+  brillo::SafeFD fd;
+  brillo::SafeFD::Error err;
+  std::tie(fd, err) =
+      brillo::SafeFD::Root().first.OpenExistingDir(mutable_data_dir);
+  if (brillo::SafeFD::IsError(err)) {
+    if (err == brillo::SafeFD::Error::kDoesNotExist) {
+      // `arc_paths_->android_mutable_source` might not be mounted at this point
+      // (b/292031836). We can/should skip errors in such cases.
+      LOG(WARNING) << "Skipping updating " << kRestoreconLastXattr
+                   << " because " << mutable_data_dir << " does not exist";
+      return true;
+    }
+    return false;
+  }
+  CHECK(fd.is_valid());
+
+  if (fsetxattr(fd.get(), kRestoreconLastXattr, hash.data(), hash.size(),
+                0 /* flags */) != 0) {
+    PLOG(ERROR) << "Failed to change xattr " << kRestoreconLastXattr << " of "
+                << mutable_data_dir;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
@@ -2778,17 +2815,9 @@ void ArcSetup::OnUnmountSdcard() {
 }
 
 void ArcSetup::OnUpdateRestoreconLast() {
-  // On Android, /init writes the security.restorecon_last attribute to /data
-  // (and /cache on N) after it finishes updating labels of the files in the
-  // directories, but on ARC, writing the attribute fails silently because
-  // processes in user namespace are not allowed to write arbitrary entries
-  // under security.* even with CAP_SYS_ADMIN. (b/33084415, b/33402785)
-  // As a workaround, let this command outside the container set the
-  // attribute for ARC.
-  static constexpr char kRestoreconLastXattr[] = "security.restorecon_last";
+  const base::FilePath mutable_data_dir =
+      arc_paths_->android_mutable_source.Append("data");
   std::vector<base::FilePath> context_files;
-  std::vector<base::FilePath> target_directories = {
-      arc_paths_->android_mutable_source.Append("data")};
 
   // The order of files to read is important. Do not reorder.
   context_files.push_back(
@@ -2798,9 +2827,7 @@ void ArcSetup::OnUpdateRestoreconLast() {
 
   std::string hash;
   EXIT_IF(!GetSha1HashOfFiles(context_files, &hash));
-  for (const auto& target : target_directories) {
-    EXIT_IF(!SetXattr(target, kRestoreconLastXattr, hash));
-  }
+  EXIT_IF(!SetRestoreconLastXattr(mutable_data_dir, hash));
 }
 
 void ArcSetup::OnHandleUpgrade() {
