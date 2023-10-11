@@ -77,6 +77,9 @@ std::string SerializeSignatures(const std::vector<Signature> signatures) {
 // specified |index| in a tree of the specified |size| into 2 components. The
 // splitting point between them is where paths to leaves |index| and |size-1|
 // diverge. Returns lengths of the bottom proof parts.
+// clang-format off
+// See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=123.
+// clang-format on
 int CalculateInnerProofSize(int index, int size) {
   CHECK_GT(index, -1);
   CHECK_GT(size, 0);
@@ -89,6 +92,9 @@ int CalculateInnerProofSize(int index, int size) {
   return bits_number;
 }
 
+// clang-format off
+// See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=73.
+// clang-format on
 bool ReadSignatures(const std::string& text,
                     const std::string& signatures,
                     EC_KEY* ledger_key,
@@ -236,6 +242,9 @@ bool VerifySignature(const std::string& text,
 // * the checkpoint unmarshals correctly; and
 // * TODO(b/281486839): verify that the log origin is as expected.
 // Note: Only the ledger signature will be checked.
+// clang-format off
+// See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=65.
+// clang-format on
 bool ParseCheckPoint(std::string checkpoint_note_str,
                      const LedgerInfo& ledger_info,
                      Checkpoint* check_point) {
@@ -257,6 +266,9 @@ bool ParseCheckPoint(std::string checkpoint_note_str,
 
   // The ledger has signed this checkpoint. It is now safe to parse.
   // `checkpoint_fields` has the format: "{origin}\n{size}\n{base64_hash}".
+  // clang-format off
+  // See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=109.
+  // clang-format on
   std::vector<std::string> checkpoint_fields =
       brillo::string_utils::Split(text, kInclusionProofNewline);
   if (checkpoint_fields.size() != kCheckpointSize) {
@@ -286,6 +298,9 @@ bool ParseCheckPoint(std::string checkpoint_note_str,
 // CalculateRootHash calculates the expected root hash for a tree of the
 // given size, provided a leaf index and leaf content with the corresponding
 // inclusion proof. Requires 0 <= `leaf_index` < `size`.
+// clang-format off
+// See google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?l=148.
+// clang-format on
 bool CalculateRootHash(const brillo::Blob& leaf,
                        const std::vector<brillo::Blob>& inclusion_proof,
                        int64_t leaf_index,
@@ -410,6 +425,10 @@ bool VerifyMetadata(const LoggedRecord& logged_record,
 
 }  // namespace
 
+// clang-format off
+// See google3/chromeos/identity/go/cryptorecovery/shared/ledger/ledgerproof.go?q=verify_proof, and
+//     google3/third_party/chromeos_hsm_reverse_proxy/lua/hsm/fortanix/verify.lua?q=verify_proof.
+// clang-format on
 bool VerifyInclusionProof(const LedgerSignedProof& ledger_signed_proof,
                           const LedgerInfo& ledger_info,
                           const OnboardingMetadata& metadata) {

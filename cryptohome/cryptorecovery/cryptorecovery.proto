@@ -7,6 +7,8 @@ package cryptohome.cryptorecovery;
 // !!! DO NOT MODIFY !!!
 // The message structs below are exchanged with the server and must be synced
 // with the server/HSM implementation.
+// See google3/chromeos/identity/go/cryptorecovery/shared/proto/enums.proto and
+// google3/chromeos/identity/proto/cryptorecovery/cryptorecovery.proto
 
 // Request for the current epoch
 message CryptoRecoveryEpochRequest {
