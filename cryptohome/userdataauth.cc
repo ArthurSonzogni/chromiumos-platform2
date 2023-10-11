@@ -355,6 +355,7 @@ void ReplyWithAuthFactorStatus(
                 kLocUserDataAuthProtoFailureInReplyWithAuthFactorStatus),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
   }
   *MutableAuthFactorForReplyType(reply) = std::move(*auth_factor_with_status);
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
