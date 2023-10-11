@@ -132,11 +132,6 @@ void ChromeosStartup::ParseFlags(Flags* flags) {
   if (flags->encstateful) {
     flags->sys_key_util = USE_TPM2;
   }
-  // Note: encrypted_reboot_vault is disabled only for Gale
-  // to be able to use openssl 1.1.1.
-  flags->encrypted_reboot_vault = USE_ENCRYPTED_REBOOT_VAULT;
-  flags->lvm_migration = USE_LVM_MIGRATION;
-  flags->lvm_stateful = USE_LVM_STATEFUL_PARTITION;
 }
 
 // We manage this base timestamp by hand. It isolates us from bad clocks on
@@ -692,9 +687,13 @@ int ChromeosStartup::Run() {
 
   EarlySetup();
 
-  stateful_mount_ = std::make_unique<StatefulMount>(
-      flags_, root_, stateful_, platform_.get(),
-      std::make_unique<brillo::LogicalVolumeManager>(), mount_helper_.get());
+  std::unique_ptr<brillo::LogicalVolumeManager> lvm =
+      USE_LVM_STATEFUL_PARTITION
+          ? std::make_unique<brillo::LogicalVolumeManager>()
+          : std::unique_ptr<brillo::LogicalVolumeManager>();
+  stateful_mount_ =
+      std::make_unique<StatefulMount>(flags_, root_, stateful_, platform_.get(),
+                                      std::move(lvm), mount_helper_.get());
   stateful_mount_->MountStateful();
   state_dev_ = stateful_mount_->GetStateDev();
   dev_image_ = stateful_mount_->GetDevImage();
@@ -746,7 +745,7 @@ int ChromeosStartup::Run() {
   // is available. If unlocking the encrypted reboot vault failed (due to
   // power loss/reboot/invalid vault), attempt to recreate the encrypted reboot
   // vault.
-  if (flags_.encrypted_reboot_vault) {
+  if (USE_ENCRYPTED_REBOOT_VAULT) {
     if (!utils::UnlockEncryptedRebootVault()) {
       utils::CreateEncryptedRebootVault();
     }

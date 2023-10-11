@@ -417,10 +417,8 @@ void StatefulMount::MountStateful() {
       }
     }
 
-    std::optional<bool> lvm_stateful = flags_.lvm_stateful;
-    bool lvm_enable = lvm_stateful.value_or(false);
     bool should_mount_lvm = false;
-    if (lvm_enable) {
+    if (USE_LVM_STATEFUL_PARTITION) {
       // Attempt to get a valid volume group name.
       bootstat_.LogEvent("pre-lvm-activation");
       std::optional<brillo::PhysicalVolume> pv =
@@ -471,7 +469,7 @@ void StatefulMount::MountStateful() {
             should_mount_lvm = true;
           }
         }
-      } else if (flags_.lvm_migration) {
+      } else if (USE_LVM_MIGRATION) {
         // Attempt to migrate to thinpool if migration is enabled: if the
         // migration fails, then we expect the stateful partition to be back to
         // its original state.
@@ -742,7 +740,8 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
 
   // Mount the dev image if there is a separate device available.
   if (!device.empty()) {
-    if (volume_group_ && volume_group_->IsValid()) {
+    if (USE_LVM_STATEFUL_PARTITION && volume_group_ &&
+        volume_group_->IsValid()) {
       auto lg = lvm_->GetLogicalVolume(volume_group_.value(), "unencrypted");
       lg->Activate();
       platform_->Mount(device, stateful_dev, "",

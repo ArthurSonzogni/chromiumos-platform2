@@ -9,9 +9,6 @@ namespace startup {
 
 // Define a struct to contain the flags we set when parsing USE flags.
 struct Flags {
-  // Indicates built with USE=encrypted_reboot_vault. Used to determine
-  // if we need to setup the encrypted reboot vault.
-  bool encrypted_reboot_vault;
   // Indicates built with USE=encrypted_stateful, used to determine which
   // mount function to use
   bool encstateful;
@@ -22,12 +19,6 @@ struct Flags {
   // partition.
   bool fsverity;
   // Indicates whether stateful migration to lvm is allowed.
-  bool lvm_migration;
-  // Indicates built with USE=lvm_stateful_partition. Used when mounting the
-  // stateful partition.
-  bool lvm_stateful;
-  // Indicates built with USE=prjquota. Used when mounting the stateful
-  // partition.
   bool prjquota;
   // Not a USE flag, but indicates if built with both USE=tpm2 and
   // USE=encrypted_stateful. Used to determine if we will try to create
