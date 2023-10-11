@@ -35,6 +35,9 @@ const RAM_SWAP_WEIGHT_FILENAME: &str = "ram_swap_weight";
 // The available memory for background components is discounted by 300 MiB.
 const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
 
+// The process list is out-of-dated if it's not updated for the stall time.
+const BROWSER_PIDS_STALL_TIME_SEC: u64 = 300;
+
 /// calculate_reserved_free_kb() calculates the reserved free memory in KiB from
 /// /proc/zoneinfo.  Reserved pages are free pages reserved for emergent kernel
 /// allocation and are not available to the user space.  It's the sum of high
@@ -624,61 +627,87 @@ fn init_memory_configs_impl(root: &Path) -> Result<()> {
     Ok(())
 }
 
-// The component of the background pids.
+// The browser type of the process list.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Component {
+pub enum BrowserType {
     // Ash Chrome.
     Ash = 0,
     // Lacros Chrome.
     Lacros = 1,
 }
 
-impl fmt::Display for Component {
+impl fmt::Display for BrowserType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Component::Ash => write!(f, "Ash"),
-            Component::Lacros => write!(f, "Lacros"),
+            BrowserType::Ash => write!(f, "Ash"),
+            BrowserType::Lacros => write!(f, "Lacros"),
         }
     }
 }
 
-// Lists of the background pids to calculate background memory.
+// Lists of the processes to estimate the host memory usage.
 static ASH_BACKGROUND_PIDS: Mutex<(Vec<i32>, SystemTime)> =
     Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
 static LACROS_BACKGROUND_PIDS: Mutex<(Vec<i32>, SystemTime)> =
     Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
+static ASH_PROTECTED_PIDS: Mutex<(Vec<i32>, SystemTime)> =
+    Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
+static LACROS_PROTECTED_PIDS: Mutex<(Vec<i32>, SystemTime)> =
+    Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
 
-pub fn set_background_processes(component: Component, pids: Vec<i32>) -> Result<()> {
-    let component_pids = match component {
-        Component::Ash => &ASH_BACKGROUND_PIDS,
-        Component::Lacros => &LACROS_BACKGROUND_PIDS,
+pub fn set_background_processes(browser_type: BrowserType, pids: Vec<i32>) -> Result<()> {
+    let background_pids = match browser_type {
+        BrowserType::Ash => &ASH_BACKGROUND_PIDS,
+        BrowserType::Lacros => &LACROS_BACKGROUND_PIDS,
     };
 
     // Panic on poisoned mutex.
-    let mut pids_and_time = component_pids.lock().expect("Lock component_pids failed");
+    let mut pids_and_time = background_pids.lock().expect("Lock background_pids failed");
 
     *pids_and_time = (pids, SystemTime::now());
     Ok(())
 }
 
-// Returns the background pid list of a component.
-fn get_background_pids(component: Component) -> Result<Vec<i32>> {
-    let component_pids = match component {
-        Component::Ash => &ASH_BACKGROUND_PIDS,
-        Component::Lacros => &LACROS_BACKGROUND_PIDS,
+// Returns the background process list of a browser type.
+fn get_background_processes(browser_type: BrowserType) -> Result<Vec<i32>> {
+    let background_pids = match browser_type {
+        BrowserType::Ash => &ASH_BACKGROUND_PIDS,
+        BrowserType::Lacros => &LACROS_BACKGROUND_PIDS,
     };
 
     // Panic on poisoned mutex.
-    let pids_and_time = component_pids.lock().expect("Lock component_pids failed");
+    let pids_and_time = background_pids.lock().expect("Lock background_pids failed");
 
-    const BACKGROUND_PIDS_STALL_TIME_SEC: u64 = 300;
-    if pids_and_time.1.elapsed()?.as_secs() > BACKGROUND_PIDS_STALL_TIME_SEC {
-        // Returns empty list if background pids is not updated for a component.
+    if pids_and_time.1.elapsed()?.as_secs() > BROWSER_PIDS_STALL_TIME_SEC {
+        // Returns empty list if background pids is not updated for a browser type.
         // E.g., When Lacros Chrome is not running.
         return Ok(Vec::new());
     }
 
     Ok(pids_and_time.0.clone())
+}
+
+pub fn set_browser_processes(
+    browser_type: BrowserType,
+    background_pids: Vec<i32>,
+    protected_pids: Vec<i32>,
+) -> Result<()> {
+    let (background_pids_mutex, protected_pids_mutex) = match browser_type {
+        BrowserType::Ash => (&ASH_BACKGROUND_PIDS, &ASH_PROTECTED_PIDS),
+        BrowserType::Lacros => (&LACROS_BACKGROUND_PIDS, &LACROS_PROTECTED_PIDS),
+    };
+
+    // Panic on poisoned mutex.
+    let mut background_pids_and_time = background_pids_mutex
+        .lock()
+        .expect("Lock background_pids_mutex failed");
+    *background_pids_and_time = (background_pids, SystemTime::now());
+
+    let mut protected_pids_and_time = protected_pids_mutex
+        .lock()
+        .expect("Lock protected_pids_mutex failed");
+    *protected_pids_and_time = (protected_pids, SystemTime::now());
+    Ok(())
 }
 
 // Returns the amount of background memory in KiB. To reduce the work when there are a lot of
@@ -690,8 +719,8 @@ fn get_background_memory_kb(threshold_kb: u64) -> Result<u64> {
     }
 
     let mut total_background_memory_kb = 0;
-    for component in [Component::Ash, Component::Lacros] {
-        for pid in get_background_pids(component)? {
+    for browser_type in [BrowserType::Ash, BrowserType::Lacros] {
+        for pid in get_background_processes(browser_type)? {
             match get_chrome_process_memory_usage(pid) {
                 Ok(result) => {
                     total_background_memory_kb += result;

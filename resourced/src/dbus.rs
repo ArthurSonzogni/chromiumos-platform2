@@ -591,21 +591,21 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                             ));
                         }
                     };
-                let component: memory::Component = match report_bk_processes.component.enum_value()
-                {
-                    Ok(Component::ASH) => memory::Component::Ash,
-                    Ok(Component::LACROS) => memory::Component::Lacros,
-                    Err(enum_raw) => {
-                        error!(
-                            "ReportBackgroundProcesses Component is unknown, enum_raw: {}",
-                            enum_raw
-                        );
-                        return Err(MethodErr::failed(
-                            "ReportBackgroundProcesses Component is unknown",
-                        ));
-                    }
-                };
-                match memory::set_background_processes(component, report_bk_processes.pids) {
+                let browser_type: memory::BrowserType =
+                    match report_bk_processes.component.enum_value() {
+                        Ok(Component::ASH) => memory::BrowserType::Ash,
+                        Ok(Component::LACROS) => memory::BrowserType::Lacros,
+                        Err(enum_raw) => {
+                            error!(
+                                "ReportBackgroundProcesses Component is unknown, enum_raw: {}",
+                                enum_raw
+                            );
+                            return Err(MethodErr::failed(
+                                "ReportBackgroundProcesses Component is unknown",
+                            ));
+                        }
+                    };
+                match memory::set_background_processes(browser_type, report_bk_processes.pids) {
                     Ok(()) => Ok(()),
                     Err(e) => {
                         error!("Failed to set background processes: {:#}", e);
@@ -614,6 +614,60 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 }
             },
         );
+        b.method(
+            "ReportBrowserProcesses",
+            ("raw_bytes",),
+            (),
+            move |_, _, (raw_bytes,): (Vec<u8>,)| {
+                use system_api::resource_manager::BrowserType;
+
+                let report_browser_processes: system_api::resource_manager::ReportBrowserProcesses =
+                    match protobuf::Message::parse_from_bytes(&raw_bytes) {
+                        Ok(result) => result,
+                        Err(e) => {
+                            error!("Failed to parse ReportBrowserProcesses protobuf: {:#}", e);
+                            return Err(MethodErr::failed(
+                                "Failed to parse ReportBrowserProcesses protobuf",
+                            ));
+                        }
+                    };
+                let browser_type: memory::BrowserType =
+                    match report_browser_processes.browser_type.enum_value() {
+                        Ok(BrowserType::ASH) => memory::BrowserType::Ash,
+                        Ok(BrowserType::LACROS) => memory::BrowserType::Lacros,
+                        Err(enum_raw) => {
+                            error!(
+                                "ReportBrowserProcesses browser type is unknown, enum_raw: {}",
+                                enum_raw
+                            );
+                            return Err(MethodErr::failed(
+                                "ReportBrowserProcesses browser type is unknown",
+                            ));
+                        }
+                    };
+                let mut background_pids = Vec::<i32>::new();
+                let mut protected_pids = Vec::<i32>::new();
+                for process in report_browser_processes.processes {
+                    // The visible tab processes are not used yet.
+                    if process.visible {
+                        continue;
+                    }
+                    if process.protected {
+                        protected_pids.push(process.pid);
+                    } else {
+                        background_pids.push(process.pid);
+                    }
+                }
+                match memory::set_browser_processes(browser_type, background_pids, protected_pids) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        error!("Failed to set browser processes: {:#}", e);
+                        Err(MethodErr::failed("Failed to set browser processes"))
+                    }
+                }
+            },
+        );
+
         // Advertise the signals.
         b.signal::<(u8, u64), _>(
             "MemoryPressureChrome",
