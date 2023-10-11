@@ -1041,6 +1041,13 @@ constexpr char kTetheringEnableResultWrongState[] = "wrong_state";
 
 // kCheckTetheringReadinessFunction return status
 constexpr char kTetheringReadinessNotAllowed[] = "not_allowed";
+constexpr char kTetheringReadinessNotAllowedByCarrier[] =
+    "not_allowed_by_carrier";
+constexpr char kTetheringReadinessNotAllowedOnFw[] = "not_allowed_on_fw";
+constexpr char kTetheringReadinessNotAllowedOnVariant[] =
+    "not_allowed_on_variant";
+constexpr char kTetheringReadinessNotAllowedUserNotEntitled[] =
+    "not_allowed_user_not_entitled";
 constexpr char kTetheringReadinessReady[] = "ready";
 constexpr char kTetheringReadinessUpstreamNetworkNotAvailable[] =
     "upstream_network_not_available";
