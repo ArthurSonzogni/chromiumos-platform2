@@ -22,18 +22,23 @@ class AresInterface;
 // An async DNS resolver.
 class NET_BASE_EXPORT DNSClient {
  public:
-  // TODO(b/302101630): Map the enum to the values used in c-ares.
+  // The values should be matched with the constants defined in ares.h, except
+  // for kInternal, where 0 is ARES_SUCCESS, but we don't need that status in
+  // Error.
   enum class Error {
-    kNoData,
-    kFormErr,
-    kServerFail,
-    kNotFound,
-    kNotImplemented,
-    kRefused,
-    kBadQuery,
-    kNetRefused,
-    kTimedOut,
-    kInternal,
+    kInternal = 0,
+    kNoData = 1,
+    kFormErr = 2,
+    kServerFail = 3,
+    kNotFound = 4,
+    kNotImplemented = 5,
+    kRefused = 6,
+    kBadQuery = 7,
+    kBadName = 8,
+    kBadFamily = 9,
+    kBadResp = 10,
+    kNetRefused = 11,
+    kTimedOut = 12,
   };
 
   // The callback returns the resolved IP addresses (A or AAAA records) on

@@ -76,10 +76,13 @@ constexpr DNSClient::Error AresStatusToError(int status) {
     case ARES_EREFUSED:
       return Error::kRefused;
     case ARES_EBADQUERY:
-    case ARES_EBADNAME:
-    case ARES_EBADFAMILY:
-    case ARES_EBADRESP:
       return Error::kBadQuery;
+    case ARES_EBADNAME:
+      return Error::kBadName;
+    case ARES_EBADFAMILY:
+      return Error::kBadFamily;
+    case ARES_EBADRESP:
+      return Error::kBadResp;
     case ARES_ECONNREFUSED:
       return Error::kRefused;
     case ARES_ETIMEOUT:
