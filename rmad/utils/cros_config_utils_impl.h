@@ -26,21 +26,23 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
       std::unique_ptr<brillo::CrosConfigInterface> cros_config);
   ~CrosConfigUtilsImpl() override = default;
 
+  // Get cros_config attributes of the device.
   bool GetRmadConfig(RmadConfig* config) const override;
   bool GetModelName(std::string* model_name) const override;
   bool GetBrandCode(std::string* brand_code) const override;
   bool GetSkuId(uint32_t* sku) const override;
   bool GetCustomLabelTag(std::string* custom_label_tag) const override;
+  bool GetFirmwareConfig(uint32_t* firmware_config) const override;
+
+  // Get cros_config attributes of all supported designs from the database.
+  bool GetDesignConfigList(
+      std::vector<DesignConfig>* design_config_list) const override;
   bool GetSkuIdList(std::vector<uint32_t>* sku_list) const override;
   bool GetCustomLabelTagList(
       std::vector<std::string>* custom_label_tag_list) const override;
-  bool GetFirmwareConfig(uint32_t* firmware_config) const override;
 
  private:
-  bool GetMatchedItemsFromCategory(const std::string& category,
-                                   const std::string& key,
-                                   std::vector<std::string>* list,
-                                   bool allow_empty = false) const;
+  // Wrapper functions for libcros_config.
   std::string GetStringWithDefault(const std::string& path,
                                    const std::string& key,
                                    const std::string& default_value) const;
@@ -51,6 +53,7 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
                               const std::string& key,
                               uint32_t default_value) const;
 
+  // Helper functions for SSFC.
   SsfcConfig GetSsfc(const base::FilePath& rmad_path) const;
   std::vector<SsfcComponentTypeConfig> GetSsfcComponentTypeConfigs(
       const base::FilePath& ssfc_path) const;

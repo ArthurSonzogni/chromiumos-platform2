@@ -78,37 +78,32 @@ class CrosConfigUtilsImplTest : public testing::Test {
   CrosConfigUtilsImplTest() {}
 
   base::FilePath CreateCrosConfigFs(
-      const std::vector<std::string>& model_names,
-      const std::vector<std::optional<uint32_t>>& sku_ids,
-      const std::vector<std::string>& custom_label_tags) {
-    EXPECT_EQ(model_names.size(), sku_ids.size());
-    EXPECT_EQ(model_names.size(), custom_label_tags.size());
-
+      const std::vector<DesignConfig>& design_configs) {
     base::FilePath root_path = temp_dir_.GetPath();
 
-    for (size_t i = 0; i < model_names.size(); ++i) {
+    for (size_t i = 0; i < design_configs.size(); ++i) {
       base::FilePath config_path =
           root_path.AppendASCII(base::NumberToString(i));
       EXPECT_TRUE(base::CreateDirectory(config_path));
 
       base::FilePath model_path = config_path.AppendASCII(kCrosModelNameKey);
-      EXPECT_TRUE(base::WriteFile(model_path, model_names[i]));
+      EXPECT_TRUE(base::WriteFile(model_path, design_configs[i].model_name));
 
       base::FilePath identity_path = config_path.Append(kCrosIdentityPath);
       EXPECT_TRUE(base::CreateDirectory(identity_path));
 
-      if (sku_ids[i].has_value()) {
+      if (design_configs[i].sku_id.has_value()) {
         base::FilePath sku_path =
             identity_path.AppendASCII(kCrosIdentitySkuKey);
-        EXPECT_TRUE(base::WriteFile(sku_path,
-                                    base::NumberToString(sku_ids[i].value())));
+        EXPECT_TRUE(base::WriteFile(
+            sku_path, base::NumberToString(design_configs[i].sku_id.value())));
       }
 
-      if (!custom_label_tags[i].empty()) {
+      if (design_configs[i].custom_label_tag.has_value()) {
         base::FilePath custom_label_tag_path =
             identity_path.AppendASCII(kCrosIdentityCustomLabelTagKey);
-        EXPECT_TRUE(
-            base::WriteFile(custom_label_tag_path, custom_label_tags[i]));
+        EXPECT_TRUE(base::WriteFile(
+            custom_label_tag_path, design_configs[i].custom_label_tag.value()));
       }
     }
 
@@ -147,22 +142,42 @@ class CrosConfigUtilsImplTest : public testing::Test {
 
     base::FilePath cros_config_root_path;
     if (args.custom_label) {
-      cros_config_root_path = CreateCrosConfigFs(
-          {kModelName, kModelName, kModelName, kModelName, kModelNameUnused,
-           kModelName},
-          {kSkuId, kSkuIdOther1, kSkuIdOther2, kSkuIdOther1, kSkuIdUnused,
-           std::nullopt},
-          {kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTag,
-           kCustomLabelTagOther, kCustomLabelTagUnused, kCustomLabelTagOther});
+      cros_config_root_path =
+          CreateCrosConfigFs({{.model_name = kModelName,
+                               .sku_id = kSkuId,
+                               .custom_label_tag = kCustomLabelTagEmpty},
+                              {.model_name = kModelName,
+                               .sku_id = kSkuIdOther1,
+                               .custom_label_tag = kCustomLabelTag},
+                              {.model_name = kModelName,
+                               .sku_id = kSkuIdOther2,
+                               .custom_label_tag = kCustomLabelTag},
+                              {.model_name = kModelName,
+                               .sku_id = kSkuIdOther1,
+                               .custom_label_tag = kCustomLabelTagOther},
+                              {.model_name = kModelNameUnused,
+                               .sku_id = kSkuIdUnused,
+                               .custom_label_tag = kCustomLabelTagUnused},
+                              {.model_name = kModelName,
+                               .sku_id = std::nullopt,
+                               .custom_label_tag = kCustomLabelTagOther}});
       fake_cros_config->SetString(identity_path.value(),
                                   kCrosIdentityCustomLabelTagKey,
                                   kCustomLabelTag);
     } else {
-      cros_config_root_path = CreateCrosConfigFs(
-          {kModelName, kModelNameUnused, kModelNameUnused, kModelNameUnused},
-          {kSkuId, kSkuIdOther1, kSkuIdOther2, kSkuIdUnused},
-          {kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTagOther,
-           kCustomLabelTagUnused});
+      cros_config_root_path =
+          CreateCrosConfigFs({{.model_name = kModelName,
+                               .sku_id = kSkuId,
+                               .custom_label_tag = kCustomLabelTagEmpty},
+                              {.model_name = kModelNameUnused,
+                               .sku_id = kSkuIdOther1,
+                               .custom_label_tag = kCustomLabelTag},
+                              {.model_name = kModelNameUnused,
+                               .sku_id = kSkuIdOther2,
+                               .custom_label_tag = kCustomLabelTagOther},
+                              {.model_name = kModelNameUnused,
+                               .sku_id = kSkuIdUnused,
+                               .custom_label_tag = kCustomLabelTagUnused}});
     }
 
     if (args.enable_rmad) {

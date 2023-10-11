@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -36,6 +37,27 @@ constexpr int kMaxSsfcProbeableComponentNum = 1024;
 
 constexpr char kTrueStr[] = "true";
 constexpr char kUndefinedComponentType[] = "undefined_component_type";
+
+// Helper functions for constructing DesignConfig.
+std::optional<std::string> GetStringFromFile(const base::FilePath& path) {
+  std::string data;
+  if (!base::ReadFileToString(path, &data)) {
+    return std::nullopt;
+  }
+  return data;
+}
+
+std::optional<uint32_t> GetUint32FromFile(const base::FilePath& path) {
+  std::string data;
+  if (!base::ReadFileToString(path, &data)) {
+    return std::nullopt;
+  }
+  uint32_t value;
+  if (!base::StringToUint(data, &value)) {
+    return std::nullopt;
+  }
+  return value;
+}
 
 }  // namespace
 
@@ -102,51 +124,6 @@ bool CrosConfigUtilsImpl::GetCustomLabelTag(
       identity_path.value(), kCrosIdentityCustomLabelTagKey, custom_label_tag);
 }
 
-bool CrosConfigUtilsImpl::GetSkuIdList(
-    std::vector<uint32_t>* sku_id_list) const {
-  DCHECK(sku_id_list);
-
-  std::vector<std::string> values;
-  if (!GetMatchedItemsFromCategory(kCrosIdentityPath, kCrosIdentitySkuKey,
-                                   &values)) {
-    return false;
-  }
-
-  sku_id_list->clear();
-  for (auto& value : values) {
-    uint32_t sku_id;
-    if (!base::StringToUint(value, &sku_id)) {
-      LOG(ERROR) << "Failed to convert " << value << " to uint32_t";
-      return false;
-    }
-
-    sku_id_list->push_back(sku_id);
-  }
-
-  sort(sku_id_list->begin(), sku_id_list->end());
-  return true;
-}
-
-bool CrosConfigUtilsImpl::GetCustomLabelTagList(
-    std::vector<std::string>* custom_label_tag_list) const {
-  DCHECK(custom_label_tag_list);
-
-  std::vector<std::string> values;
-  if (!GetMatchedItemsFromCategory(kCrosIdentityPath,
-                                   kCrosIdentityCustomLabelTagKey, &values,
-                                   /*allow_empty=*/true)) {
-    return false;
-  }
-
-  custom_label_tag_list->clear();
-  for (auto& value : values) {
-    custom_label_tag_list->push_back(value);
-  }
-
-  sort(custom_label_tag_list->begin(), custom_label_tag_list->end());
-  return true;
-}
-
 bool CrosConfigUtilsImpl::GetFirmwareConfig(uint32_t* firmware_config) const {
   DCHECK(firmware_config);
 
@@ -162,48 +139,96 @@ bool CrosConfigUtilsImpl::GetFirmwareConfig(uint32_t* firmware_config) const {
   return base::StringToUint(firmware_config_str, firmware_config);
 }
 
-bool CrosConfigUtilsImpl::GetMatchedItemsFromCategory(
-    const std::string& category,
-    const std::string& key,
-    std::vector<std::string>* list,
-    bool allow_empty) const {
-  DCHECK(list);
+bool CrosConfigUtilsImpl::GetDesignConfigList(
+    std::vector<DesignConfig>* design_config_list) const {
+  DCHECK(design_config_list);
 
-  std::string model_name;
-  if (!GetModelName(&model_name)) {
+  std::string current_model;
+  if (!GetModelName(&current_model)) {
     LOG(ERROR) << "Failed to get model name for comparison";
     return false;
   }
 
-  std::set<std::string> items;
-  base::FileEnumerator directories(base::FilePath(configs_root_path_), false,
-                                   base::FileEnumerator::FileType::DIRECTORIES);
-  for (base::FilePath path = directories.Next(); !path.empty();
-       path = directories.Next()) {
-    base::FilePath model_name_path = path.Append(kCrosModelNameKey);
-    std::string model_name_str;
-    if (!base::ReadFileToString(model_name_path, &model_name_str)) {
-      LOG(WARNING) << "Failed to read model name from "
-                   << model_name_path.value();
-    }
-    if (model_name != model_name_str) {
+  design_config_list->clear();
+  base::FileEnumerator e(base::FilePath(configs_root_path_),
+                         /*recursive=*/false,
+                         base::FileEnumerator::FileType::DIRECTORIES);
+  for (base::FilePath path = e.Next(); !path.empty(); path = e.Next()) {
+    DesignConfig design_config;
+    // Only return design configs under the same model.
+    std::optional<std::string> model_name =
+        GetStringFromFile(path.Append(kCrosModelNameKey));
+    if (model_name.has_value() && model_name.value() == current_model) {
+      design_config.model_name = model_name.value();
+    } else {
       continue;
     }
+    // SKU ID should exist on most devices, but some devices that use strapping
+    // pins don't populate it.
+    design_config.sku_id = GetUint32FromFile(
+        path.Append(kCrosIdentityPath).Append(kCrosIdentitySkuKey));
+    // Custom label tag might not exist.
+    design_config.custom_label_tag = GetStringFromFile(
+        path.Append(kCrosIdentityPath).Append(kCrosIdentityCustomLabelTagKey));
 
-    base::FilePath key_path = path.Append(category).Append(key);
-    std::string key_str = "";
-    if (!base::ReadFileToString(key_path, &key_str)) {
-      // This might be expected behavior. cros_config sometimes doesn't populate
-      // attributes with empty strings.
-      DLOG(WARNING) << "Failed to read key from " << key_path.value();
-    }
-
-    if (!key_str.empty() || allow_empty) {
-      items.insert(key_str);
-    }
+    design_config_list->emplace_back(std::move(design_config));
   }
 
-  *list = std::vector<std::string>(items.begin(), items.end());
+  return true;
+}
+
+bool CrosConfigUtilsImpl::GetSkuIdList(
+    std::vector<uint32_t>* sku_id_list) const {
+  DCHECK(sku_id_list);
+
+  // TODO(chenghan): Cache the design config list to save time.
+  std::vector<DesignConfig> design_config_list;
+  if (!GetDesignConfigList(&design_config_list)) {
+    LOG(ERROR) << "Failed to get design config";
+    return false;
+  }
+
+  // Get sorted unique list of SKU IDs.
+  std::set<uint32_t> sku_id_set;
+  for (const DesignConfig& design_config : design_config_list) {
+    if (design_config.sku_id.has_value()) {
+      sku_id_set.insert(design_config.sku_id.value());
+    }
+  }
+  sku_id_list->clear();
+  for (uint32_t sku_id : sku_id_set) {
+    sku_id_list->push_back(sku_id);
+  }
+  sort(sku_id_list->begin(), sku_id_list->end());
+  return true;
+}
+
+bool CrosConfigUtilsImpl::GetCustomLabelTagList(
+    std::vector<std::string>* custom_label_tag_list) const {
+  DCHECK(custom_label_tag_list);
+
+  // TODO(chenghan): Cache the design config list to save time.
+  std::vector<DesignConfig> design_config_list;
+  if (!GetDesignConfigList(&design_config_list)) {
+    LOG(ERROR) << "Failed to get design config";
+    return false;
+  }
+
+  // Get sorted unique list of custom labels.
+  std::set<std::string> custom_label_tag_set;
+  for (const DesignConfig& design_config : design_config_list) {
+    if (design_config.custom_label_tag.has_value()) {
+      custom_label_tag_set.insert(design_config.custom_label_tag.value());
+    } else {
+      // Custom label tag can be empty.
+      custom_label_tag_set.insert("");
+    }
+  }
+  custom_label_tag_list->clear();
+  for (const std::string& custom_label_tag : custom_label_tag_set) {
+    custom_label_tag_list->push_back(custom_label_tag);
+  }
+  sort(custom_label_tag_list->begin(), custom_label_tag_list->end());
   return true;
 }
 

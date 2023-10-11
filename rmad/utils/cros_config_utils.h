@@ -6,6 +6,7 @@
 #define RMAD_UTILS_CROS_CONFIG_UTILS_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,21 +32,34 @@ struct RmadConfig {
   bool use_legacy_custom_label;
 };
 
+// A collection of design config parsed from each entry of cros_config database.
+struct DesignConfig {
+  std::string model_name;
+  std::optional<uint32_t> sku_id;
+  std::optional<std::string> custom_label_tag;
+};
+
 class CrosConfigUtils {
  public:
   CrosConfigUtils() = default;
   virtual ~CrosConfigUtils() = default;
 
+  // Get cros_config attributes of the device.
   virtual bool GetRmadConfig(RmadConfig* config) const = 0;
   virtual bool GetModelName(std::string* model_name) const = 0;
   virtual bool GetBrandCode(std::string* brand_code) const = 0;
-  virtual bool GetCustomLabelTag(std::string* custom_label_tag) const = 0;
   virtual bool GetSkuId(uint32_t* sku_id) const = 0;
-  virtual bool GetCustomLabelTagList(
-      std::vector<std::string>* custom_label_tag_list) const = 0;
-  virtual bool GetSkuIdList(std::vector<uint32_t>* sku_id_list) const = 0;
+  virtual bool GetCustomLabelTag(std::string* custom_label_tag) const = 0;
   virtual bool GetFirmwareConfig(uint32_t* firmware_config) const = 0;
 
+  // Get cros_config attributes of all supported designs from the database.
+  virtual bool GetDesignConfigList(
+      std::vector<DesignConfig>* design_config_list) const = 0;
+  virtual bool GetSkuIdList(std::vector<uint32_t>* sku_id_list) const = 0;
+  virtual bool GetCustomLabelTagList(
+      std::vector<std::string>* custom_label_tag_list) const = 0;
+
+  // Other helper functions.
   bool HasCustomLabel() const;
 };
 
