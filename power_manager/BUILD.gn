@@ -516,6 +516,7 @@ install_config("install_production_scripts") {
 install_config("install_testing_scripts") {
   sources = [
     "tools/activate_short_dark_resume",
+    "tools/create_fake_charge_history",
     "tools/debug_sleep_quickly",
     "tools/set_short_powerd_timeouts",
     "tools/suspend_stress_test",

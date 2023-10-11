@@ -1,0 +1,62 @@
+#! /bin/bash
+
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ "$(eval whoami)" != "root" ]; then
+  echo "Must run as root."
+  exit 1
+fi
+
+# Directory where powerd's runtime-settable pref files are stored.
+DIR=/var/lib/power_manager/charge_history
+
+if [ "$1" = "--reset" ]; then
+  # Resetting is as simple as unmounting the charge history directory. If fake
+  # history was created, the tmp directory will be unmounted and the old values
+  # will be restored.
+  umount "${DIR}"
+elif [ -z "$1" ]; then
+  # Creates a tmp directory and mounts it ontop of the charge history directory.
+  # Creates history for 16 days with 24 hours on AC for each day, 12 hours of
+  # hold time per day, and 12 hours at full for each day (these values are
+  # technically impossible to achieve with Adaptive Charging as-in, but that's
+  # fine). There are also 16 charge events, each charging for 24 hours.
+  TMP_DIR=$(mktemp -d "/tmp/fake_charge_history.XXXXXX")
+  mkdir "${TMP_DIR}/charge_events"
+  mkdir "${TMP_DIR}/time_on_ac"
+  mkdir "${TMP_DIR}/hold_time_on_ac"
+  mkdir "${TMP_DIR}/time_full_on_ac"
+
+  # Get now and convert to midnight seconds since epoch
+  EPOCH=$(date +%s)
+  EPOCH=$((EPOCH-EPOCH%86400))
+
+  # Convert to Windows epoch, since that's the format libchrome serializes to
+  # when charge history is written.
+  EPOCH=$((EPOCH+11644473600))
+  # Convert to microseconds
+  EPOCH=$((EPOCH*1000000))
+
+  # Write out the values for each day and event. The serialized JSON format from
+  # libchrome should be used, which means that the microseconds since Windows
+  # Epoch should be in quotes within the file.
+  for i in {0..15}
+  do
+    MICROSEC_PER_DAY=$((24*60*60*1000000))
+    DAY=$((EPOCH-i*MICROSEC_PER_DAY))
+    # Number of microseconds in a day.
+    echo "\"${MICROSEC_PER_DAY}\"" > "${TMP_DIR}/charge_events/${DAY}"
+    echo "\"${MICROSEC_PER_DAY}\"" > "${TMP_DIR}/time_on_ac/${DAY}"
+    echo "\"$((MICROSEC_PER_DAY/2))\"" > "${TMP_DIR}/hold_time_on_ac/${DAY}"
+    echo "\"$((MICROSEC_PER_DAY/2))\"" > "${TMP_DIR}/time_full_on_ac/${DAY}"
+  done
+  mount --bind "${TMP_DIR}" "${DIR}"
+else
+  echo "Usage: $0: [OPTION]"
+  echo "Creates fake charge history for Adaptive Charging."
+  echo "  --help   display this message"
+  echo "  --reset  reset to non-fake charge history"
+  exit 1
+fi
