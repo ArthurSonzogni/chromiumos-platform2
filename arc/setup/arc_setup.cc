@@ -2815,6 +2815,12 @@ void ArcSetup::OnUnmountSdcard() {
 }
 
 void ArcSetup::OnUpdateRestoreconLast() {
+  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
+    // Currently R container does not support setting security.sehash.
+    // TODO: b/292031836 - Support setting security.sehash on R container.
+    return;
+  }
+
   const base::FilePath mutable_data_dir =
       arc_paths_->android_mutable_source.Append("data");
   std::vector<base::FilePath> context_files;
