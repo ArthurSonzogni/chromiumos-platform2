@@ -61,6 +61,8 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
       const base::FilePath& component_type_config_path) const;
   std::map<std::string, uint32_t> GetSsfcProbeableComponents(
       const base::FilePath& component_type_config_path) const;
+  std::vector<std::string> GetSkuPropertyDescriptions(
+      const base::FilePath& root_path) const;
 
   base::FilePath configs_root_path_;
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;

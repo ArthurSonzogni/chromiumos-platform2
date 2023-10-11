@@ -23,7 +23,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
-#include "rmad/utils/cros_config_constants.h"
+#include "rmad/utils/cros_config_properties.h"
 
 namespace rmad {
 
@@ -170,6 +170,7 @@ bool CrosConfigUtilsImpl::GetDesignConfigList(
     // Custom label tag might not exist.
     design_config.custom_label_tag = GetStringFromFile(
         path.Append(kCrosIdentityPath).Append(kCrosIdentityCustomLabelTagKey));
+    design_config.hardware_properties = GetSkuPropertyDescriptions(path);
 
     design_config_list->emplace_back(std::move(design_config));
   }
@@ -336,6 +337,13 @@ std::map<std::string, uint32_t> CrosConfigUtilsImpl::GetSsfcProbeableComponents(
     }
   }
   return components;
+}
+
+std::vector<std::string> CrosConfigUtilsImpl::GetSkuPropertyDescriptions(
+    const base::FilePath& root_path) const {
+  std::vector<std::string> ret;
+  ret.push_back(GetHasTouchscreenDescription(root_path));
+  return ret;
 }
 
 }  // namespace rmad

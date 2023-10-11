@@ -18,7 +18,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "rmad/utils/cros_config_constants.h"
+#include "rmad/utils/cros_config_properties.h"
 
 using testing::_;
 using testing::DoAll;

@@ -37,6 +37,7 @@ struct DesignConfig {
   std::string model_name;
   std::optional<uint32_t> sku_id;
   std::optional<std::string> custom_label_tag;
+  std::vector<std::string> hardware_properties;
 };
 
 class CrosConfigUtils {

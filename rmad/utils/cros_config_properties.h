@@ -2,8 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_CROS_CONFIG_CONSTANTS_H_
-#define RMAD_UTILS_CROS_CONFIG_CONSTANTS_H_
+#ifndef RMAD_UTILS_CROS_CONFIG_PROPERTIES_H_
+#define RMAD_UTILS_CROS_CONFIG_PROPERTIES_H_
+
+#include <string>
+
+#include <base/files/file_path.h>
 
 namespace rmad {
 
@@ -25,6 +29,12 @@ constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 constexpr char kCrosFirmwarePath[] = "firmware";
 // cros_config property /firmware/firmware-config.
 constexpr char kCrosFirmwareFirmwareConfigKey[] = "firmware-config";
+
+// cros_config path /hardware-properties.
+constexpr char kCrosHardwarePropertiesPath[] = "hardware-properties";
+// cros_config property /hardware-properties/has-touchscreen.
+constexpr char kCrosHardwarePropertiesHasTouchscreenKey[] = "has-touchscreen";
+std::string GetHasTouchscreenDescription(const base::FilePath& root_path);
 
 // cros_config path /rmad.
 constexpr char kCrosRmadPath[] = "rmad";
@@ -55,4 +65,4 @@ constexpr char kCrosProbeableComponentsValueKey[] = "value";
 
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_CROS_CONFIG_CONSTANTS_H_
+#endif  // RMAD_UTILS_CROS_CONFIG_PROPERTIES_H_
