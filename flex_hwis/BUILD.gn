@@ -12,6 +12,7 @@ group("all") {
     ":install_seccomp_policy",
     ":install_tmpfiles_config",
     ":libflex_hwis",
+    "//flex_hwis/flex_disk_metrics:all",
 
     # TODO(b/305052945): enable this dep once the client is ready to ship.
     # ":install_upstart_config",
