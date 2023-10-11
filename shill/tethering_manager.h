@@ -51,6 +51,10 @@ class TetheringManager : public Network::EventHandler {
   enum class EntitlementStatus {
     kReady,
     kNotAllowed,
+    kNotAllowedByCarrier,
+    kNotAllowedOnFw,
+    kNotAllowedOnVariant,
+    kNotAllowedUserNotEntitled,
     kUpstreamNetworkNotAvailable,
   };
 

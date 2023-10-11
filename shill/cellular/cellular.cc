@@ -3926,8 +3926,9 @@ void Cellular::EntitlementCheck(
         Metrics::kCellularEntitlementCheckNotAllowedByModb);
     dispatcher()->PostTask(
         FROM_HERE,
-        base::BindOnce(std::move(callback),
-                       TetheringManager::EntitlementStatus::kNotAllowed));
+        base::BindOnce(
+            std::move(callback),
+            TetheringManager::EntitlementStatus::kNotAllowedByCarrier));
     return;
   }
   // TODO(b/270210498): remove this check when tethering is allowed by default.
@@ -3974,10 +3975,10 @@ void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
     case shill::CarrierEntitlement::Result::kGenericError:
       LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "Generic error";
       [[fallthrough]];
-    case shill::CarrierEntitlement::Result::kUnrecognizedUser:  // FALLTHROUGH
+    case shill::CarrierEntitlement::Result::kUnrecognizedUser:
     case shill::CarrierEntitlement::Result::kUserNotAllowedToTether:
       TriggerEntitlementCheckCallbacks(
-          TetheringManager::EntitlementStatus::kNotAllowed);
+          TetheringManager::EntitlementStatus::kNotAllowedUserNotEntitled);
       break;
   }
 }

@@ -1049,8 +1049,6 @@ const std::string TetheringManager::SetEnabledResultName(
       return kTetheringEnableResultDownstreamWiFiFailure;
     case SetEnabledResult::kNetworkSetupFailure:
       return kTetheringEnableResultNetworkSetupFailure;
-    default:
-      return "unknown";
   }
 }
 
@@ -1152,10 +1150,16 @@ const char* TetheringManager::EntitlementStatusName(EntitlementStatus status) {
       return kTetheringReadinessReady;
     case EntitlementStatus::kNotAllowed:
       return kTetheringReadinessNotAllowed;
+    case EntitlementStatus::kNotAllowedByCarrier:
+      return kTetheringReadinessNotAllowedByCarrier;
+    case EntitlementStatus::kNotAllowedOnFw:
+      return kTetheringReadinessNotAllowedOnFw;
+    case EntitlementStatus::kNotAllowedOnVariant:
+      return kTetheringReadinessNotAllowedOnVariant;
+    case EntitlementStatus::kNotAllowedUserNotEntitled:
+      return kTetheringReadinessNotAllowedUserNotEntitled;
     case EntitlementStatus::kUpstreamNetworkNotAvailable:
       return kTetheringReadinessUpstreamNetworkNotAvailable;
-    default:
-      return "unknown";
   }
 }
 
