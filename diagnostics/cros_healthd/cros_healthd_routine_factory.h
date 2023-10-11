@@ -162,16 +162,6 @@ class CrosHealthdRoutineFactory {
   // the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeEmmcLifetimeRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy) = 0;
-  // Constructs a new instance of the audio set volume routine. See
-  // diagnostics/cros_healthd/routines/audio/audio_set_volume.h for details on
-  // the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeAudioSetVolumeRoutine(
-      uint64_t node_id, uint8_t volume, bool mute_on) = 0;
-  // Constructs a new instance of the audio set gain routine. See
-  // diagnostics/cros_healthd/routines/audio/audio_set_gain.h for details on the
-  // routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeAudioSetGainRoutine(
-      uint64_t node_id, uint8_t gain) = 0;
   // Constructs a new instance of the Bluetooth power routine. See
   // diagnostics/cros_healthd/routines/bluetooth/bluetooth_power.h for details
   // on the routine itself.

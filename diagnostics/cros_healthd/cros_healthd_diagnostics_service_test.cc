@@ -91,8 +91,6 @@ std::set<mojom::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojom::DiagnosticRoutineEnum::kFingerprintAlive,
       mojom::DiagnosticRoutineEnum::kPrivacyScreen,
       mojom::DiagnosticRoutineEnum::kEmmcLifetime,
-      mojom::DiagnosticRoutineEnum::kAudioSetVolume,
-      mojom::DiagnosticRoutineEnum::kAudioSetGain,
       mojom::DiagnosticRoutineEnum::kBluetoothPower,
       mojom::DiagnosticRoutineEnum::kBluetoothDiscovery,
       mojom::DiagnosticRoutineEnum::kBluetoothScanning,
@@ -925,41 +923,6 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunPrivacyScreenRoutine) {
   TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunPrivacyScreenRoutine(/*target_state=*/true,
                                      future.GetCallback());
-
-  auto response = future.Take();
-  EXPECT_EQ(response->id, 1);
-  EXPECT_EQ(response->status, kExpectedStatus);
-}
-
-// Test that the audio set volume routine can be run.
-TEST_F(CrosHealthdDiagnosticsServiceTest, RunAudioSetVolumeRoutine) {
-  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojom::DiagnosticRoutineStatusEnum::kRunning;
-  routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
-      /*output=*/"");
-
-  TestFuture<mojom::RunRoutineResponsePtr> future;
-  service()->RunAudioSetVolumeRoutine(/*node_id=*/0, /*volume*/ 0,
-                                      /*mute_on=*/false, future.GetCallback());
-
-  auto response = future.Take();
-  EXPECT_EQ(response->id, 1);
-  EXPECT_EQ(response->status, kExpectedStatus);
-}
-
-// Test that the audio set gain routine can be run.
-TEST_F(CrosHealthdDiagnosticsServiceTest, RunAudioSetGainRoutine) {
-  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojom::DiagnosticRoutineStatusEnum::kRunning;
-  routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
-      /*output=*/"");
-
-  TestFuture<mojom::RunRoutineResponsePtr> future;
-  service()->RunAudioSetGainRoutine(/*node_id=*/0, /*gain*/ 0,
-                                    /*deprecated_mute_on=*/false,
-                                    future.GetCallback());
 
   auto response = future.Take();
   EXPECT_EQ(response->id, 1);

@@ -260,19 +260,19 @@ void FakeDiagnosticsService::RunEmmcLifetimeRoutine(
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
-void FakeDiagnosticsService::RunAudioSetVolumeRoutine(
+void FakeDiagnosticsService::DEPRECATED_RunAudioSetVolumeRoutine(
     uint64_t node_id,
     uint8_t volume,
     bool mute_on,
-    RunAudioSetVolumeRoutineCallback callback) {
+    DEPRECATED_RunAudioSetVolumeRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
-void FakeDiagnosticsService::RunAudioSetGainRoutine(
+void FakeDiagnosticsService::DEPRECATED_RunAudioSetGainRoutine(
     uint64_t node_id,
     uint8_t gain,
     bool deprecated_mute_on,
-    RunAudioSetGainRoutineCallback callback) {
+    DEPRECATED_RunAudioSetGainRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
 

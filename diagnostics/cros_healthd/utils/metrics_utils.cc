@@ -150,9 +150,9 @@ std::optional<std::string> GetMetricName(mojom::DiagnosticRoutineEnum routine) {
       return metrics_name::kDiagnosticResultSmartctlCheckWithPercentageUsed;
     case mojom::DiagnosticRoutineEnum::kEmmcLifetime:
       return metrics_name::kDiagnosticResultEmmcLifetime;
-    case mojom::DiagnosticRoutineEnum::kAudioSetVolume:
+    case mojom::DiagnosticRoutineEnum::DEPRECATED_kAudioSetVolume:
       return metrics_name::kDiagnosticResultAudioSetVolume;
-    case mojom::DiagnosticRoutineEnum::kAudioSetGain:
+    case mojom::DiagnosticRoutineEnum::DEPRECATED_kAudioSetGain:
       return metrics_name::kDiagnosticResultAudioSetGain;
     case mojom::DiagnosticRoutineEnum::kBluetoothPower:
       return metrics_name::kDiagnosticResultBluetoothPower;

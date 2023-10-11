@@ -138,15 +138,16 @@ class CrosHealthdDiagnosticsService final
           ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> replier,
       DEPRECATED_RunLedLitUpRoutineCallback callback) override;
   void RunEmmcLifetimeRoutine(RunEmmcLifetimeRoutineCallback callback) override;
-  void RunAudioSetVolumeRoutine(
+  void DEPRECATED_RunAudioSetVolumeRoutine(
       uint64_t node_id,
       uint8_t volume,
       bool mute_on,
-      RunAudioSetVolumeRoutineCallback callback) override;
-  void RunAudioSetGainRoutine(uint64_t node_id,
-                              uint8_t gain,
-                              bool deprecated_mute_on,
-                              RunAudioSetGainRoutineCallback callback) override;
+      DEPRECATED_RunAudioSetVolumeRoutineCallback callback) override;
+  void DEPRECATED_RunAudioSetGainRoutine(
+      uint64_t node_id,
+      uint8_t gain,
+      bool deprecated_mute_on,
+      DEPRECATED_RunAudioSetGainRoutineCallback callback) override;
   void RunBluetoothPowerRoutine(
       RunBluetoothPowerRoutineCallback callback) override;
   void RunBluetoothDiscoveryRoutine(

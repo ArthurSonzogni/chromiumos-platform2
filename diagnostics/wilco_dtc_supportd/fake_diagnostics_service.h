@@ -127,14 +127,16 @@ class FakeDiagnosticsService final
           ash::cros_healthd::mojom::DEPRECATED_LedLitUpRoutineReplier> replier,
       DEPRECATED_RunLedLitUpRoutineCallback callback) override;
   void RunEmmcLifetimeRoutine(RunEmmcLifetimeRoutineCallback callback) override;
-  void RunAudioSetVolumeRoutine(uint64_t node_id,
-                                uint8_t volume,
-                                bool mute_on,
-                                RunAudioSetVolumeRoutineCallback) override;
-  void RunAudioSetGainRoutine(uint64_t node_id,
-                              uint8_t gain,
-                              bool deprecated_mute_on,
-                              RunAudioSetGainRoutineCallback) override;
+  void DEPRECATED_RunAudioSetVolumeRoutine(
+      uint64_t node_id,
+      uint8_t volume,
+      bool mute_on,
+      DEPRECATED_RunAudioSetVolumeRoutineCallback) override;
+  void DEPRECATED_RunAudioSetGainRoutine(
+      uint64_t node_id,
+      uint8_t gain,
+      bool deprecated_mute_on,
+      DEPRECATED_RunAudioSetGainRoutineCallback) override;
   void RunBluetoothDiscoveryRoutine(
       RunBluetoothDiscoveryRoutineCallback callback) override;
   void RunBluetoothPowerRoutine(

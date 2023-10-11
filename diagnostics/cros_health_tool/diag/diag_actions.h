@@ -85,10 +85,6 @@ class DiagActions final {
   bool ActionRunFingerprintAliveRoutine();
   bool ActionRunPrivacyScreenRoutine(bool target_state);
   bool ActionRunEmmcLifetimeRoutine();
-  bool ActionRunAudioSetVolumeRoutine(uint64_t node_id,
-                                      uint8_t volume,
-                                      bool mute_on);
-  bool ActionRunAudioSetGainRoutine(uint64_t node_id, uint8_t volume);
   bool ActionRunBluetoothPowerRoutine();
   bool ActionRunBluetoothDiscoveryRoutine();
   bool ActionRunBluetoothScanningRoutine(

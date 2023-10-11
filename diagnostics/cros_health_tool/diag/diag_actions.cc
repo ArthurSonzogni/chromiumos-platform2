@@ -439,22 +439,6 @@ bool DiagActions::ActionRunEmmcLifetimeRoutine() {
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
-bool DiagActions::ActionRunAudioSetVolumeRoutine(uint64_t node_id,
-                                                 uint8_t volume,
-                                                 bool mute_on) {
-  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  cros_healthd_diagnostics_service_->RunAudioSetVolumeRoutine(
-      node_id, volume, mute_on, waiter.CreateCallback());
-  return ProcessRoutineResponse(waiter.WaitForResponse());
-}
-
-bool DiagActions::ActionRunAudioSetGainRoutine(uint64_t node_id, uint8_t gain) {
-  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  cros_healthd_diagnostics_service_->RunAudioSetGainRoutine(
-      node_id, gain, /*deprecated_mute_on=*/false, waiter.CreateCallback());
-  return ProcessRoutineResponse(waiter.WaitForResponse());
-}
-
 bool DiagActions::ActionRunBluetoothPowerRoutine() {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBluetoothPowerRoutine(

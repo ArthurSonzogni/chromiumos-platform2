@@ -477,23 +477,26 @@ void CrosHealthdDiagnosticsService::RunEmmcLifetimeRoutine(
       mojom::DiagnosticRoutineEnum::kEmmcLifetime, std::move(callback));
 }
 
-void CrosHealthdDiagnosticsService::RunAudioSetVolumeRoutine(
+void CrosHealthdDiagnosticsService::DEPRECATED_RunAudioSetVolumeRoutine(
     uint64_t node_id,
     uint8_t volume,
     bool mute_on,
-    RunAudioSetVolumeRoutineCallback callback) {
-  RunRoutine(
-      routine_factory_->MakeAudioSetVolumeRoutine(node_id, volume, mute_on),
-      mojom::DiagnosticRoutineEnum::kAudioSetVolume, std::move(callback));
+    DEPRECATED_RunAudioSetVolumeRoutineCallback callback) {
+  // Always unsupported. The routine is deprecated.
+  ReportUnsupportedRoutine(
+      mojom::DiagnosticRoutineEnum::DEPRECATED_kAudioSetVolume,
+      std::move(callback));
 }
 
-void CrosHealthdDiagnosticsService::RunAudioSetGainRoutine(
+void CrosHealthdDiagnosticsService::DEPRECATED_RunAudioSetGainRoutine(
     uint64_t node_id,
     uint8_t gain,
     bool deprecated_mute_on,
-    RunAudioSetGainRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeAudioSetGainRoutine(node_id, gain),
-             mojom::DiagnosticRoutineEnum::kAudioSetGain, std::move(callback));
+    DEPRECATED_RunAudioSetGainRoutineCallback callback) {
+  // Always unsupported. The routine is deprecated.
+  ReportUnsupportedRoutine(
+      mojom::DiagnosticRoutineEnum::DEPRECATED_kAudioSetGain,
+      std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunBluetoothPowerRoutine(
@@ -721,8 +724,6 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
       mojom::DiagnosticRoutineEnum::kArcPing,
       mojom::DiagnosticRoutineEnum::kArcDnsResolution,
       mojom::DiagnosticRoutineEnum::kSensitiveSensor,
-      mojom::DiagnosticRoutineEnum::kAudioSetVolume,
-      mojom::DiagnosticRoutineEnum::kAudioSetGain,
       mojom::DiagnosticRoutineEnum::kBluetoothPower,
       mojom::DiagnosticRoutineEnum::kBluetoothDiscovery,
       mojom::DiagnosticRoutineEnum::kBluetoothScanning,

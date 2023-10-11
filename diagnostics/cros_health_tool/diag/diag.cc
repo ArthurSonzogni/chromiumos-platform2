@@ -712,40 +712,6 @@ int EmmcLifetimeMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE(EmmcLifetimeRoutine)
 }
 
-int AudioSetVolumeMain(int argc, char** argv) {
-  COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_uint64(node_id, 0, "Target node id.");
-  DEFINE_uint32(volume, 100, "Target volume. [0-100]");
-  DEFINE_bool(mute_on, true, "Mute audio output device or not.");
-  brillo::FlagHelper::Init(argc, argv, "Audio set volume routine");
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-
-  DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
-    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
-
-  auto result = actions.ActionRunAudioSetVolumeRoutine(
-      FLAGS_node_id, FLAGS_volume, FLAGS_mute_on);
-
-  return result ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
-int AudioSetGainMain(int argc, char** argv) {
-  COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_uint64(node_id, 0, "Target node id.");
-  DEFINE_uint32(gain, 100, "Target gain. [0-100]");
-  brillo::FlagHelper::Init(argc, argv, "Audio set gain routine");
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-
-  DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
-    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
-
-  auto result = actions.ActionRunAudioSetGainRoutine(FLAGS_node_id, FLAGS_gain);
-
-  return result ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
 int BluetoothPowerMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE(BluetoothPowerRoutine)
 }
@@ -868,8 +834,6 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"fingerprint_alive", FingerprintAliveMain},
     {"privacy_screen", PrivacyScreenMain},
     {"emmc_lifetime", EmmcLifetimeMain},
-    {"audio_set_volume", AudioSetVolumeMain},
-    {"audio_set_gain", AudioSetGainMain},
     {"bluetooth_power", BluetoothPowerMain},
     {"bluetooth_discovery", BluetoothDiscoveryMain},
     {"bluetooth_scanning", BluetoothScanningMain},
