@@ -10,6 +10,10 @@
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
+
+using testing::Return;
+using testing::StrictMock;
 
 namespace {
 
@@ -19,6 +23,11 @@ void CreatePartitionDir(const base::FilePath& dir,
   CHECK(base::CreateDirectory(dir));
   CHECK(base::WriteFile(dir.Append("uevent"), "PARTNAME=" + partition_label));
   CHECK(base::WriteFile(dir.Append("size"), std::to_string(size_in_blocks)));
+}
+
+void ExpectSuccessfulKernAMetric(MetricsLibraryMock& metrics) {
+  EXPECT_CALL(metrics, SendSparseToUMA("Platform.FlexPartitionSize.KERN-A", 16))
+      .WillOnce(Return(true));
 }
 
 }  // namespace
@@ -112,4 +121,46 @@ TEST(FlexDiskMetrics, GetPartitionSizeMap) {
   EXPECT_EQ(label_to_size_map.size(), 3);
   EXPECT_EQ(label_to_size_map.find("SDA3")->second, 2);
   EXPECT_EQ(label_to_size_map.count("reserved"), 2);
+}
+
+// Test successfully sending one metric.
+TEST(FlexDiskMetrics, Success) {
+  StrictMock<MetricsLibraryMock> metrics;
+  ExpectSuccessfulKernAMetric(metrics);
+
+  MapPartitionLabelToMiBSize label_to_size_map;
+  label_to_size_map.insert(std::make_pair("KERN-A", 16));
+
+  EXPECT_TRUE(SendDiskMetrics(metrics, label_to_size_map, {"KERN-A"}));
+}
+
+// Test failure due to an expected partition not being present. Also
+// verify that error doesn't prevent another metric from being sent.
+TEST(FlexDiskMetrics, MissingPartitionFailure) {
+  StrictMock<MetricsLibraryMock> metrics;
+  ExpectSuccessfulKernAMetric(metrics);
+
+  MapPartitionLabelToMiBSize label_to_size_map;
+  label_to_size_map.insert(std::make_pair("KERN-A", 16));
+
+  // Since some metrics failed to send, expect failure.
+  EXPECT_FALSE(
+      SendDiskMetrics(metrics, label_to_size_map, {"missing", "KERN-A"}));
+}
+
+// Test failure due to multiple partitions having the same label. Also
+// verify that error doesn't prevent another metric from being sent.
+TEST(FlexDiskMetrics, MultiplePartitionFailure) {
+  StrictMock<MetricsLibraryMock> metrics;
+  ExpectSuccessfulKernAMetric(metrics);
+
+  MapPartitionLabelToMiBSize label_to_size_map;
+  label_to_size_map.insert(std::make_pair("KERN-A", 16));
+
+  label_to_size_map.insert(std::make_pair("multiple", 32));
+  label_to_size_map.insert(std::make_pair("multiple", 64));
+
+  // Since some metrics failed to send, expect failure.
+  EXPECT_FALSE(
+      SendDiskMetrics(metrics, label_to_size_map, {"multiple", "KERN-A"}));
 }

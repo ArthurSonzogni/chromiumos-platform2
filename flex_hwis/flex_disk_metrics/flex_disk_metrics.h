@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <metrics/metrics_library.h>
 
 // Convert from 512-byte disk blocks to MiB. Round down if the size is
 // not an even MiB value.
@@ -76,5 +77,29 @@ using MapPartitionLabelToMiBSize = std::multimap<std::string, int>;
 // may have the same label, e.g. "reserved".
 MapPartitionLabelToMiBSize GetPartitionSizeMap(
     const base::FilePath& root, std::string_view root_disk_device_name);
+
+// Send a sparse metric for the size of each partition in the
+// `partition_label` vector.
+//
+// A sparse metric is used because we want to know exact values. Only a
+// few values are actually expected (e.g. the kernel partition should
+// always be either 16MiB or 64MiB), but any value is possible.
+//
+// Partition sizes are read from the `label_to_size_map` multimap. If a
+// partition is missing from that map, or if it has multiple entries,
+// it's treated as an error.
+//
+// An error in sending one metric does not prevent other metrics from
+// being sent.
+//
+// Arguments:
+//   metrics: Interface to the metrics library.
+//   label_to_size_map: Multimap created by `GetPartitionSizeMap`.
+//   partition_labels: Vector of partition names to send metrics for.
+//
+// Returns true on success, false if any error occurs.
+bool SendDiskMetrics(MetricsLibraryInterface& metrics,
+                     const MapPartitionLabelToMiBSize& label_to_size_map,
+                     const std::vector<std::string>& partition_labels);
 
 #endif  // FLEX_HWIS_FLEX_DISK_METRICS_FLEX_DISK_METRICS_H_

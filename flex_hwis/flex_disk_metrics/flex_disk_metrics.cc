@@ -103,3 +103,32 @@ MapPartitionLabelToMiBSize GetPartitionSizeMap(
 
   return label_to_size_map;
 }
+
+bool SendDiskMetrics(MetricsLibraryInterface& metrics,
+                     const MapPartitionLabelToMiBSize& label_to_size_map,
+                     const std::vector<std::string>& partition_labels) {
+  bool success = true;
+  for (const auto& partition_label : partition_labels) {
+    const auto count = label_to_size_map.count(partition_label);
+    if (count != 1) {
+      LOG(ERROR) << "Unexpected number of \"" << partition_label
+                 << "\" partitions: " << count;
+      success = false;
+      continue;
+    }
+
+    const auto iter = label_to_size_map.find(partition_label);
+    const int partition_size_in_mib = iter->second;
+
+    // Send the metric.
+    const std::string metric_name =
+        std::string("Platform.FlexPartitionSize.") + partition_label;
+    if (!metrics.SendSparseToUMA(metric_name, partition_size_in_mib)) {
+      LOG(ERROR) << "Failed to send metric " << metric_name;
+      success = false;
+      continue;
+    }
+  }
+
+  return success;
+}
