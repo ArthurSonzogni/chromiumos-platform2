@@ -26,6 +26,10 @@ class FlossController {
   virtual org::chromium::bluetooth::ManagerProxyInterface* GetManager() const;
   virtual std::vector<org::chromium::bluetooth::BluetoothProxyInterface*>
   GetAdapters() const;
+  virtual std::vector<org::chromium::bluetooth::BluetoothAdminProxyInterface*>
+  GetAdmins() const;
+  virtual std::vector<org::chromium::bluetooth::BluetoothQAProxyInterface*>
+  GetAdapterQAs() const;
 
  private:
   // Unowned pointer that should outlive this instance.

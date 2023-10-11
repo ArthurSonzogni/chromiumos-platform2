@@ -21,6 +21,7 @@ source_set("libcros_healthd_utils") {
   configs += [ ":libcros_healthd_utils_pkg_deps" ]
   sources = [
     "callback_barrier.cc",
+    "floss_utils.cc",
     "fwupd_utils.cc",
     "memory_info.cc",
     "metrics_utils.cc",
@@ -65,6 +66,7 @@ if (use.test) {
     sources = [
       "callback_barrier_test.cc",
       "dbus_utils_test.cc",
+      "floss_utils_test.cc",
       "fwupd_utils_test.cc",
       "memory_info_test.cc",
       "metrics_utils_test.cc",

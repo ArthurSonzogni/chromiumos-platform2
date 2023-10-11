@@ -21,6 +21,9 @@
     <method name="IsDiscovering">
       <arg name="discovering" direction="out" type="b"/>
     </method>
+    <method name="GetUuids">
+      <arg name="uuids" direction="out" type="aay"/>
+    </method>
     <method name="StartDiscovery">
       <arg name="discovering" direction="out" type="b"/>
     </method>

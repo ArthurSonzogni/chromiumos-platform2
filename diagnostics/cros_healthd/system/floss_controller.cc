@@ -27,4 +27,14 @@ FlossController::GetAdapters() const {
   return bluetooth_proxy_->GetBluetoothInstances();
 }
 
+std::vector<org::chromium::bluetooth::BluetoothAdminProxyInterface*>
+FlossController::GetAdmins() const {
+  return bluetooth_proxy_->GetBluetoothAdminInstances();
+}
+
+std::vector<org::chromium::bluetooth::BluetoothQAProxyInterface*>
+FlossController::GetAdapterQAs() const {
+  return bluetooth_proxy_->GetBluetoothQAInstances();
+}
+
 }  // namespace diagnostics

@@ -26,6 +26,15 @@ class MockFlossController final : public FlossController {
               GetAdapters,
               (),
               (const, override));
+  MOCK_METHOD(
+      std::vector<org::chromium::bluetooth::BluetoothAdminProxyInterface*>,
+      GetAdmins,
+      (),
+      (const, override));
+  MOCK_METHOD(std::vector<org::chromium::bluetooth::BluetoothQAProxyInterface*>,
+              GetAdapterQAs,
+              (),
+              (const, override));
 };
 
 }  // namespace diagnostics

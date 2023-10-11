@@ -34,6 +34,13 @@ using ::testing::StrictMock;
 constexpr int32_t kDefaultHciInterface = 0;
 const dbus::ObjectPath kDefaultAdapterPath{
     "/org/chromium/bluetooth/hci0/adapter"};
+const dbus::ObjectPath kDefaultAdapterQAPath{"/org/chromium/bluetooth/hci0/qa"};
+const dbus::ObjectPath kDefaultAdminPath{"/org/chromium/bluetooth/hci0/admin"};
+// Test data of UUID bytes and corresponding string.
+const std::vector<uint8_t> kTestUuidBytes = {0x00, 0x00, 0x11, 0x0a, 0x00, 0x00,
+                                             0x10, 0x00, 0x80, 0x00, 0x00, 0x80,
+                                             0x5f, 0x9b, 0x34, 0xfb};
+constexpr char kTestUuidString[] = "0000110a-0000-1000-8000-00805f9b34fb";
 
 class BluetoothFetcherFlossTest : public ::testing::Test {
  protected:
@@ -79,6 +86,27 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
         .WillOnce(ReturnRef(kDefaultAdapterPath));
   }
 
+  // Get the adapter QA with HCI interface 0.
+  void SetupGetAdapterQAsCall() {
+    EXPECT_CALL(*mock_floss_controller(), GetAdapterQAs())
+        .WillOnce(Return(
+            std::vector<org::chromium::bluetooth::BluetoothQAProxyInterface*>{
+                &mock_adapter_qa_proxy_}));
+    EXPECT_CALL(mock_adapter_qa_proxy_, GetObjectPath)
+        .WillOnce(ReturnRef(kDefaultAdapterQAPath));
+  }
+
+  // Get the admin with HCI interface 0.
+  void SetupGetAdminsCall() {
+    EXPECT_CALL(*mock_floss_controller(), GetAdmins())
+        .WillOnce(
+            Return(std::vector<
+                   org::chromium::bluetooth::BluetoothAdminProxyInterface*>{
+                &mock_admin_proxy_}));
+    EXPECT_CALL(mock_admin_proxy_, GetObjectPath)
+        .WillOnce(ReturnRef(kDefaultAdminPath));
+  }
+
   void SetupFetchAdapterInfoCall(
       const std::vector<brillo::VariantDictionary>& connected_devices = {}) {
     EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
@@ -90,6 +118,9 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
         .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
     EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
         .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
+    EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+        .WillOnce(base::test::RunOnceCallback<0>(
+            /*services=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
     EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
         .WillOnce(base::test::RunOnceCallback<0>(connected_devices));
   }
@@ -97,6 +128,10 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
   MockContext mock_context_;
   StrictMock<org::chromium::bluetooth::BluetoothProxyMock> mock_adapter_proxy_;
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
+  StrictMock<org::chromium::bluetooth::BluetoothQAProxyMock>
+      mock_adapter_qa_proxy_;
+  StrictMock<org::chromium::bluetooth::BluetoothAdminProxyMock>
+      mock_admin_proxy_;
 
  private:
   base::test::TaskEnvironment task_environment_;
@@ -118,6 +153,8 @@ TEST_F(BluetoothFetcherFlossTest, DefaultAdapterEnabled) {
   EXPECT_TRUE(adapter_info[0]->powered);
   EXPECT_TRUE(adapter_info[0]->discoverable);
   EXPECT_TRUE(adapter_info[0]->discovering);
+  EXPECT_EQ(adapter_info[0]->uuids.value().size(), 1);
+  EXPECT_EQ(adapter_info[0]->uuids.value()[0], kTestUuidString);
   EXPECT_EQ(adapter_info[0]->num_connected_devices, 0);
   ASSERT_TRUE(adapter_info[0]->connected_devices.has_value());
   EXPECT_EQ(adapter_info[0]->connected_devices.value().size(), 0);
@@ -137,6 +174,7 @@ TEST_F(BluetoothFetcherFlossTest, DefaultAdapterDisabled) {
   EXPECT_FALSE(adapter_info[0]->powered);
   EXPECT_FALSE(adapter_info[0]->discoverable);
   EXPECT_FALSE(adapter_info[0]->discovering);
+  EXPECT_FALSE(adapter_info[0]->uuids.has_value());
   EXPECT_EQ(adapter_info[0]->num_connected_devices, 0);
   ASSERT_TRUE(adapter_info[0]->connected_devices.has_value());
   EXPECT_EQ(adapter_info[0]->connected_devices.value().size(), 0);
@@ -157,6 +195,9 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterAddressError) {
       .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
   EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
+  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
   EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(
           /*devices=*/std::vector<brillo::VariantDictionary>{}));
@@ -183,6 +224,9 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterNameError) {
       .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
   EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
+  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
   EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(
           /*devices=*/std::vector<brillo::VariantDictionary>{}));
@@ -208,6 +252,9 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterDiscoveringError) {
       .WillOnce(base::test::RunOnceCallback<1>(error.get()));
   EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
+  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
   EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(
           /*devices=*/std::vector<brillo::VariantDictionary>{}));
@@ -219,7 +266,7 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterDiscoveringError) {
 }
 
 // Test that the error of getting adapter discoverable is handled gracefully.
-TEST_F(BluetoothFetcherFlossTest, GetDiscoverableError) {
+TEST_F(BluetoothFetcherFlossTest, GetAdapterDiscoverableError) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
@@ -234,6 +281,9 @@ TEST_F(BluetoothFetcherFlossTest, GetDiscoverableError) {
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
   EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(
           /*devices=*/std::vector<brillo::VariantDictionary>{}));
@@ -242,6 +292,156 @@ TEST_F(BluetoothFetcherFlossTest, GetDiscoverableError) {
   ASSERT_TRUE(bluetooth_result->is_error());
   EXPECT_EQ(bluetooth_result->get_error()->msg,
             "Failed to get adapter discoverable");
+}
+
+// Test that the error of getting adapter UUIDs is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetAdapterUUIDsError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+
+  EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
+      .WillOnce(
+          base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
+  EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
+  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
+  EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+  EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*devices=*/std::vector<brillo::VariantDictionary>{}));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg, "Failed to get adapter UUIDs");
+}
+
+// Test that the error of parsing adapter UUIDs is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseAdapterUUIDsError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+
+  EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
+      .WillOnce(
+          base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
+  EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
+  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
+  EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
+  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*uuids=*/std::vector<std::vector<uint8_t>>{/*invalid_uuid=*/{}}));
+  EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*devices=*/std::vector<brillo::VariantDictionary>{}));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to parse UUID from adapter UUIDs");
+}
+
+// Test that adapter modalias can be fetched successfully.
+TEST_F(BluetoothFetcherFlossTest, GetAdapterModalias) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall();
+
+  SetupGetAdapterQAsCall();
+  EXPECT_CALL(mock_adapter_qa_proxy_, GetModaliasAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*modalias=*/"bluetooth:v00E0pC405d0001"));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
+  const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
+  EXPECT_EQ(adapter_info.size(), 1);
+  EXPECT_EQ(adapter_info[0]->modalias, "bluetooth:v00E0pC405d0001");
+}
+
+// Test that the error of getting adapter modalias is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetAdapterModaliasError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall();
+
+  SetupGetAdapterQAsCall();
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_adapter_qa_proxy_, GetModaliasAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to get adapter modalias");
+}
+
+// Test that adapter allowed services can be fetched successfully.
+TEST_F(BluetoothFetcherFlossTest, GetAdapterServiceAllowList) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall();
+
+  SetupGetAdminsCall();
+  EXPECT_CALL(mock_admin_proxy_, GetAllowedServicesAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*services=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
+  const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
+  EXPECT_EQ(adapter_info.size(), 1);
+  EXPECT_EQ(adapter_info[0]->service_allow_list.value().size(), 1);
+  EXPECT_EQ(adapter_info[0]->service_allow_list.value()[0], kTestUuidString);
+}
+
+// Test that the error of getting adapter allowed services is handled
+// gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetAdapterServiceAllowListError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall();
+
+  SetupGetAdminsCall();
+  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_admin_proxy_, GetAllowedServicesAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to get adapter allowed services");
+}
+
+// Test that the error of parsing adapter allowed services is handled
+// gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseAdapterAllowedServicesError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall();
+
+  SetupGetAdminsCall();
+  EXPECT_CALL(mock_admin_proxy_, GetAllowedServicesAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*services=*/std::vector<std::vector<uint8_t>>{/*invalid_uuid=*/{}}));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to parse UUID from allowed services");
 }
 
 // Test that the error of getting connected devices is handled gracefully.
@@ -259,6 +459,9 @@ TEST_F(BluetoothFetcherFlossTest, GetConnectedDevicesError) {
       .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
   EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
+  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(
+          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(error.get()));

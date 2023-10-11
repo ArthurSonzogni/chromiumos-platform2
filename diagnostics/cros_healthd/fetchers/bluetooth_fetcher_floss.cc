@@ -20,6 +20,7 @@
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/cros_healthd/utils/floss_utils.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 #include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -29,6 +30,45 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
+org::chromium::bluetooth::BluetoothProxyInterface* GetTargetAdapter(
+    FlossController* floss_controller, int32_t hci_interface) {
+  const auto target_adapter_path =
+      dbus::ObjectPath("/org/chromium/bluetooth/hci" +
+                       base::NumberToString(hci_interface) + "/adapter");
+  for (const auto& adapter : floss_controller->GetAdapters()) {
+    if (adapter && adapter->GetObjectPath() == target_adapter_path)
+      return adapter;
+  }
+  LOG(ERROR) << "Failed to get target adapter for hci" << hci_interface;
+  return nullptr;
+}
+
+org::chromium::bluetooth::BluetoothQAProxyInterface* GetTargetAdapterQA(
+    FlossController* floss_controller, int32_t hci_interface) {
+  const auto target_adapter_qa_path =
+      dbus::ObjectPath("/org/chromium/bluetooth/hci" +
+                       base::NumberToString(hci_interface) + "/qa");
+  for (const auto& adapter_qa : floss_controller->GetAdapterQAs()) {
+    if (adapter_qa && adapter_qa->GetObjectPath() == target_adapter_qa_path)
+      return adapter_qa;
+  }
+  LOG(WARNING) << "Failed to get target adapter QA for hci" << hci_interface;
+  return nullptr;
+}
+
+org::chromium::bluetooth::BluetoothAdminProxyInterface* GetTargetAdmin(
+    FlossController* floss_controller, int32_t hci_interface) {
+  const auto target_admin_path =
+      dbus::ObjectPath("/org/chromium/bluetooth/hci" +
+                       base::NumberToString(hci_interface) + "/admin");
+  for (const auto& admin : floss_controller->GetAdmins()) {
+    if (admin && admin->GetObjectPath() == target_admin_path)
+      return admin;
+  }
+  LOG(WARNING) << "Failed to get target admin for hci" << hci_interface;
+  return nullptr;
+}
 
 class State {
  public:
@@ -60,6 +100,18 @@ class State {
       mojom::BluetoothAdapterInfo* const adapter_info_ptr,
       brillo::Error* err,
       bool discoverable);
+  void HandleAdapterUuidsResponse(
+      mojom::BluetoothAdapterInfo* const adapter_info_ptr,
+      brillo::Error* err,
+      const std::vector<std::vector<uint8_t>>& uuids);
+  void HandleAdapterModaliasResponse(
+      mojom::BluetoothAdapterInfo* const adapter_info_ptr,
+      brillo::Error* err,
+      const std::string& modalias);
+  void HandleAdapterAllowedServicesResponse(
+      mojom::BluetoothAdapterInfo* const adapter_info_ptr,
+      brillo::Error* err,
+      const std::vector<std::vector<uint8_t>>& services);
   void FetchConnectedDevicesInfo(
       mojom::BluetoothAdapterInfo* const adapter_info_ptr,
       brillo::Error* err,
@@ -88,15 +140,7 @@ void State::FetchEnabledAdapterInfo(
     mojom::BluetoothAdapterInfo* const adapter_info_ptr,
     CallbackBarrier& barrier,
     int32_t hci_interface) {
-  auto target_adapter_path =
-      dbus::ObjectPath("/org/chromium/bluetooth/hci" +
-                       base::NumberToString(hci_interface) + "/adapter");
-  org::chromium::bluetooth::BluetoothProxyInterface* target_adapter = nullptr;
-  for (const auto& adapter : floss_controller_->GetAdapters()) {
-    if (!adapter || adapter->GetObjectPath() != target_adapter_path)
-      continue;
-    target_adapter = adapter;
-  }
+  auto target_adapter = GetTargetAdapter(floss_controller_, hci_interface);
   if (!target_adapter) {
     error_ = CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable,
                                     "Failed to get target adapter");
@@ -127,13 +171,37 @@ void State::FetchEnabledAdapterInfo(
                                     base::Unretained(this), adapter_info_ptr)));
   target_adapter->GetDiscoverableAsync(std::move(discoverable_cb.first),
                                        std::move(discoverable_cb.second));
+  // UUIDs.
+  auto uuids_cb = SplitDbusCallback(
+      barrier.Depend(base::BindOnce(&State::HandleAdapterUuidsResponse,
+                                    base::Unretained(this), adapter_info_ptr)));
+  target_adapter->GetUuidsAsync(std::move(uuids_cb.first),
+                                std::move(uuids_cb.second));
   // Connected devices.
   auto devices_cb = SplitDbusCallback(
       barrier.Depend(base::BindOnce(&State::FetchConnectedDevicesInfo,
                                     base::Unretained(this), adapter_info_ptr)));
   target_adapter->GetConnectedDevicesAsync(std::move(devices_cb.first),
                                            std::move(devices_cb.second));
-  // TODO(b/300239084): Fetch more adapter info via Floss.
+  // Modalias.
+  auto target_adapter_qa = GetTargetAdapterQA(floss_controller_, hci_interface);
+  if (target_adapter_qa) {
+    auto modalias_cb = SplitDbusCallback(barrier.Depend(
+        base::BindOnce(&State::HandleAdapterModaliasResponse,
+                       base::Unretained(this), adapter_info_ptr)));
+    target_adapter_qa->GetModaliasAsync(std::move(modalias_cb.first),
+                                        std::move(modalias_cb.second));
+  }
+  // Service allow list.
+  auto target_admin = GetTargetAdmin(floss_controller_, hci_interface);
+  if (target_admin) {
+    auto allowed_services_cb = SplitDbusCallback(barrier.Depend(
+        base::BindOnce(&State::HandleAdapterAllowedServicesResponse,
+                       base::Unretained(this), adapter_info_ptr)));
+    target_admin->GetAllowedServicesAsync(
+        std::move(allowed_services_cb.first),
+        std::move(allowed_services_cb.second));
+  }
 }
 
 void State::HandleAdapterAddressResponse(
@@ -183,6 +251,62 @@ void State::HandleAdapterDiscoverableResponse(
   adapter_info_ptr->discoverable = discoverable;
 }
 
+void State::HandleAdapterUuidsResponse(
+    mojom::BluetoothAdapterInfo* const adapter_info_ptr,
+    brillo::Error* err,
+    const std::vector<std::vector<uint8_t>>& uuids) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get adapter UUIDs");
+    return;
+  }
+  adapter_info_ptr->uuids = std::vector<std::string>{};
+  for (auto uuid : uuids) {
+    auto out_uuid = floss_utils::ParseUuidBytes(uuid);
+    if (!out_uuid.has_value()) {
+      error_ =
+          CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                 "Failed to parse UUID from adapter UUIDs");
+      return;
+    }
+    adapter_info_ptr->uuids->push_back(out_uuid.value());
+  }
+}
+
+void State::HandleAdapterModaliasResponse(
+    mojom::BluetoothAdapterInfo* const adapter_info_ptr,
+    brillo::Error* err,
+    const std::string& modalias) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get adapter modalias");
+    return;
+  }
+  adapter_info_ptr->modalias = modalias;
+}
+
+void State::HandleAdapterAllowedServicesResponse(
+    mojom::BluetoothAdapterInfo* const adapter_info_ptr,
+    brillo::Error* err,
+    const std::vector<std::vector<uint8_t>>& services) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get adapter allowed services");
+    return;
+  }
+  adapter_info_ptr->service_allow_list = std::vector<std::string>{};
+  for (auto uuid : services) {
+    auto out_uuid = floss_utils::ParseUuidBytes(uuid);
+    if (!out_uuid.has_value()) {
+      error_ =
+          CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                 "Failed to parse UUID from allowed services");
+      return;
+    }
+    adapter_info_ptr->service_allow_list->push_back(out_uuid.value());
+  }
+}
+
 void State::FetchConnectedDevicesInfo(
     mojom::BluetoothAdapterInfo* const adapter_info_ptr,
     brillo::Error* err,
@@ -195,7 +319,7 @@ void State::FetchConnectedDevicesInfo(
 
   for (const auto& device : devices) {
     if (!device.contains("address") || !device.contains("name")) {
-      error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+      error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                       "Failed to parse connected devices");
       return;
     }
@@ -249,7 +373,7 @@ void FetchAvailableAdaptersInfo(
   for (const auto& adapter : adapters) {
     if (!adapter.contains("enabled") || !adapter.contains("hci_interface")) {
       std::move(callback).Run(mojom::BluetoothResult::NewError(
-          CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+          CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                  "Failed to parse available adapters")));
       return;
     }
