@@ -1,0 +1,25 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+clock_gettime: 1
+close: 1
+exit_group: 1
+flock: 1
+getdents64: 1
+gettid: 1
+lseek: 1
+newfstatat: 1
+openat: 1
+read: 1
+readlink: 1
+setgroups: 1
+setresgid: 1
+setresuid: 1
+statfs: 1
+write: 1
+
+# Allow syslog.
+socket: arg0 == AF_UNIX
+connect: 1
+sendto: 1

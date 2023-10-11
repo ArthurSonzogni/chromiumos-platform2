@@ -74,14 +74,23 @@ executable("flex_hwis_tool") {
 }
 
 install_config("install_minijail_config") {
-  sources = [ "minijail/flex_hwis.conf" ]
+  sources = [
+    "minijail/flex_disk_metrics.conf",
+    "minijail/flex_hwis.conf",
+  ]
   install_path = "minijail_conf"
 }
 
 install_config("install_seccomp_policy") {
   install_path = "seccomp_policy"
-  sources = [ "seccomp_filters/flex_hwis.policy" ]
-  outputs = [ "flex_hwis-seccomp.policy" ]
+  sources = [
+    "seccomp_filters/flex_disk_metrics.policy",
+    "seccomp_filters/flex_hwis.policy",
+  ]
+  outputs = [
+    "flex_disk_metrics-seccomp.policy",
+    "flex_hwis-seccomp.policy",
+  ]
 }
 
 install_config("install_tmpfiles_config") {
