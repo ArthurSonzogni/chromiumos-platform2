@@ -47,6 +47,10 @@ SupplicantP2PDeviceProxy::SupplicantP2PDeviceProxy(
       base::BindRepeating(&SupplicantP2PDeviceProxy::GroupFinished,
                           weak_factory_.GetWeakPtr()),
       on_connected_callback);
+  p2pdevice_proxy_->RegisterGroupFormationFailureSignalHandler(
+      base::BindRepeating(&SupplicantP2PDeviceProxy::GroupFormationFailure,
+                          weak_factory_.GetWeakPtr()),
+      on_connected_callback);
 }
 
 SupplicantP2PDeviceProxy::~SupplicantP2PDeviceProxy() = default;
@@ -111,6 +115,11 @@ void SupplicantP2PDeviceProxy::GroupStarted(
 
 void SupplicantP2PDeviceProxy::GroupFinished(
     const brillo::VariantDictionary& /*properties*/) {
+  SLOG(&p2pdevice_proxy_->GetObjectPath(), 2) << __func__;
+}
+
+void SupplicantP2PDeviceProxy::GroupFormationFailure(
+    const std::string& reason) {
   SLOG(&p2pdevice_proxy_->GetObjectPath(), 2) << __func__;
 }
 

@@ -54,6 +54,7 @@ class SupplicantP2PDeviceProxy : public SupplicantP2PDeviceProxyInterface {
   // Signal handlers.
   void GroupStarted(const brillo::VariantDictionary& properties);
   void GroupFinished(const brillo::VariantDictionary& properties);
+  void GroupFormationFailure(const std::string& reason);
 
   // Callback invoked when the value of property |property_name| is changed.
   void OnPropertyChanged(const std::string& property_name);

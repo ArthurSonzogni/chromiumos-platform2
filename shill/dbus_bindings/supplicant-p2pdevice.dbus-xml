@@ -22,6 +22,9 @@
     <signal name="GroupFinished">
       <arg name="properties" type="a{sv}"/>
     </signal>
+    <signal name="GroupFormationFailure">
+      <arg name="reason" type="s"/>
+    </signal>
     <property name="P2PDeviceConfig" type="a{sv}" access="readwrite"/>
     <property name="Group" type="o" access="read"/>
   </interface>
