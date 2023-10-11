@@ -144,10 +144,6 @@ TEST_F(SwapToolTest, SwapStart) {
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
-  EXPECT_CALL(
-      mock_util_,
-      WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
-      .WillOnce(Return(absl::OkStatus()));
   // GetZramSizeBytes
   // GetUserConfigZramSizeBytes
   EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
@@ -193,10 +189,6 @@ TEST_F(SwapToolTest, SwapStartButSwapIsDisabled) {
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
-  EXPECT_CALL(
-      mock_util_,
-      WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
-      .WillOnce(Return(absl::OkStatus()));
   // GetZramSizeBytes
   // GetUserConfigZramSizeBytes
   EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(

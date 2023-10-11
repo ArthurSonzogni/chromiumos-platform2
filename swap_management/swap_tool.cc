@@ -41,7 +41,6 @@ constexpr uint32_t kSectorSize = 512;
 constexpr float kDefaultZramSizeToMemTotalMultiplier = 2.0;
 
 constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
-constexpr uint64_t kMinFilelistDefaultValueKiB = 1000000;
 
 constexpr char kSwapZramCompAlgorithmFeatureName[] =
     "CrOSLateBootSwapZramCompAlgorithm";
@@ -557,13 +556,6 @@ absl::Status SwapTool::SwapStart() {
     LOG(WARNING) << "Swap is already on.";
     return absl::OkStatus();
   }
-
-  // Initialize min_filelist_kbytes.
-  if (!SwapToolUtil::Get()
-           ->WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
-                       std::to_string(kMinFilelistDefaultValueKiB))
-           .ok())
-    LOG(WARNING) << status;
 
   // Get zram size.
   absl::StatusOr<uint64_t> size_byte = GetZramSizeBytes();
