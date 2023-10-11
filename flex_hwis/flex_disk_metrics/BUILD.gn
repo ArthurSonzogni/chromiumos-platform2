@@ -11,9 +11,14 @@ group("all") {
   }
 }
 
+source_set("flex_disk_metrics_source_set") {
+  sources = [ "flex_disk_metrics.cc" ]
+}
+
 executable("flex_disk_metrics") {
   sources = [ "flex_disk_metrics_main.cc" ]
   install_path = "bin"
+  deps = [ ":flex_disk_metrics_source_set" ]
 }
 
 if (use.test) {
@@ -27,7 +32,10 @@ if (use.test) {
       "//common-mk:test",
       ":test_pkg_deps",
     ]
-    deps = [ "//common-mk/testrunner" ]
+    deps = [
+      ":flex_disk_metrics_source_set",
+      "//common-mk/testrunner",
+    ]
     run_test = true
   }
 }
