@@ -8,8 +8,8 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":flex_hwis_tool",
-    ":install_minijail_flex_hwis_conf",
-    ":install_policy",
+    ":install_minijail_config",
+    ":install_seccomp_policy",
     ":install_tmpfiles_config",
     ":install_upstart_config",
     ":libflex_hwis",
@@ -69,14 +69,15 @@ executable("flex_hwis_tool") {
   ]
 }
 
-install_config("install_upstart_config") {
-  sources = [ "init/upstart/flex_hwis.conf" ]
-  install_path = "upstart"
-}
-
-install_config("install_minijail_flex_hwis_conf") {
+install_config("install_minijail_config") {
   sources = [ "minijail/flex_hwis.conf" ]
   install_path = "minijail_conf"
+}
+
+install_config("install_seccomp_policy") {
+  install_path = "seccomp_policy"
+  sources = [ "seccomp_filters/flex_hwis.policy" ]
+  outputs = [ "flex_hwis-seccomp.policy" ]
 }
 
 install_config("install_tmpfiles_config") {
@@ -84,10 +85,9 @@ install_config("install_tmpfiles_config") {
   install_path = "tmpfilesd"
 }
 
-install_config("install_policy") {
-  install_path = "seccomp_policy"
-  sources = [ "seccomp_filters/flex_hwis.policy" ]
-  outputs = [ "flex_hwis-seccomp.policy" ]
+install_config("install_upstart_config") {
+  sources = [ "init/upstart/flex_hwis.conf" ]
+  install_path = "upstart"
 }
 
 if (use.test) {
