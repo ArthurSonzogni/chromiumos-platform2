@@ -69,6 +69,9 @@ class QoSService {
   void ProcessSocketConnectionEvent(
       const patchpanel::SocketConnectionEvent& msg);
 
+  // Update iptables rules (done by Datapath) for DoH.
+  void UpdateDoHProviders(const ShillClient::DoHProviders& doh_providers);
+
  private:
   // QoS feature is disabled by default. This value can be changed in `Enable()`
   // and `Disable()`.
@@ -80,6 +83,12 @@ class QoSService {
   // support the case that QoS feature is enabled after the WiFi interface
   // appeared.
   base::flat_set<std::string> interfaces_;
+
+  // Defined in the qos_service.cc file. |doh_updator_| is responding for doing
+  // the async DNS queries and call the corresponding function in Datapath to
+  // update the iptables rules related to DoH. Reset in UpdateDoHProviders().
+  class DoHUpdater;
+  std::unique_ptr<DoHUpdater> doh_updater_;
 
   Datapath* datapath_;
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
