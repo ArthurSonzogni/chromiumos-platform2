@@ -22,11 +22,10 @@ class MockCellularServiceProvider : public CellularServiceProvider {
   ~MockCellularServiceProvider() override = default;
 
   MOCK_METHOD(bool, HardwareSupportsTethering, (), ());
-  MOCK_METHOD(
-      void,
-      TetheringEntitlementCheck,
-      (base::OnceCallback<void(TetheringManager::EntitlementStatus result)>),
-      ());
+  MOCK_METHOD(void,
+              TetheringEntitlementCheck,
+              (Cellular::EntitlementCheckResultCallback),
+              ());
   MOCK_METHOD(void,
               AcquireTetheringNetwork,
               (TetheringManager::UpdateTimeoutCallback,

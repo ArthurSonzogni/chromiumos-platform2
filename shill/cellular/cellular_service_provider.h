@@ -86,8 +86,7 @@ class CellularServiceProvider : public ProviderInterface {
   // Checks if sharing the Cellular connection in a tethering session with
   // client devices is allowed and supported for the current carrier and modem.
   mockable void TetheringEntitlementCheck(
-      base::OnceCallback<void(TetheringManager::EntitlementStatus result)>
-          callback);
+      Cellular::EntitlementCheckResultCallback callback);
 
   // Returns the Network object to use for sharing the Cellular connection in a
   // tethering session, creating and connecting a new Network if necessary for

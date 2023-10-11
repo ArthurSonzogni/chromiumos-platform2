@@ -40,6 +40,10 @@ class MockCellular : public Cellular {
                (AcquireTetheringNetworkResultCallback),
                TetheringManager::CellularUpstreamEventCallback),
               (override));
+  MOCK_METHOD(void,
+              EntitlementCheck,
+              (EntitlementCheckResultCallback),
+              (override));
 };
 
 }  // namespace shill

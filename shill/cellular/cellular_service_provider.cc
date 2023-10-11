@@ -371,7 +371,7 @@ bool CellularServiceProvider::HardwareSupportsTethering() {
 }
 
 void CellularServiceProvider::TetheringEntitlementCheck(
-    base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback) {
+    Cellular::EntitlementCheckResultCallback callback) {
   SLOG(3) << __func__;
   const auto cellular_service = GetActiveService();
   if (!cellular_service || !cellular_service->cellular()) {

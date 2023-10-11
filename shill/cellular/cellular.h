@@ -270,8 +270,9 @@ class Cellular : public Device,
                         size_t primary_slot);
 
   // Verifies if the device is entitled to use the Hotspot feature.
-  void EntitlementCheck(
-      base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback);
+  using EntitlementCheckResultCallback =
+      base::OnceCallback<void(TetheringManager::EntitlementStatus)>;
+  mockable void EntitlementCheck(EntitlementCheckResultCallback callback);
 
   // Asynchronously acquires the Network to be used in tethering, which may be
   // the same one as used for default connection or a new one.
@@ -965,8 +966,7 @@ class Cellular : public Device,
   base::CancelableOnceClosure connect_cancel_callback_;
   // Stores the callback passed in |EntitlementCheck| when an entitlement check
   // is requested to |CarrierEntitlement|.
-  base::OnceCallback<void(TetheringManager::EntitlementStatus)>
-      entitlement_check_callback_;
+  EntitlementCheckResultCallback entitlement_check_callback_;
   // Stores the callback passed in |AcquireTetheringNetwork| to notify the
   // caller of an event related to the tethering session.
   TetheringManager::CellularUpstreamEventCallback tethering_event_callback_;

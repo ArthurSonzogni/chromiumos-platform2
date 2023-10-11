@@ -1053,7 +1053,7 @@ const std::string TetheringManager::SetEnabledResultName(
 }
 
 void TetheringManager::CheckReadiness(
-    base::OnceCallback<void(EntitlementStatus result)> callback) {
+    Cellular::EntitlementCheckResultCallback callback) {
   if (!allowed_) {
     LOG(ERROR) << __func__ << ": not allowed";
     manager_->dispatcher()->PostTask(

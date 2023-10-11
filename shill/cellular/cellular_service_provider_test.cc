@@ -136,6 +136,10 @@ class CellularServiceProviderTest : public testing::Test {
 
   std::set<std::string> GetStorageGroups() { return storage_.GetGroups(); }
 
+  void SetVariantThatSupportsTethering() {
+    fake_cros_config_->SetString("/modem", "firmware-variant", "crota_fm101");
+  }
+
   const std::vector<CellularServiceRefPtr>& GetProviderServices() const {
     return provider_->services_;
   }
@@ -508,7 +512,7 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
       TetheringManager::CellularUpstreamEvent)>>
       upstream_event_cb;
 
-  fake_cros_config_->SetString("/modem", "firmware-variant", "vell");
+  SetVariantThatSupportsTethering();
   // No Device registered.
   EXPECT_CALL(
       cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
@@ -605,7 +609,31 @@ TEST_F(CellularServiceProviderTest, HardwareSupportsTethering) {
   // If the firmware-variant value doesn't exist, tethering is not allowed.
   EXPECT_FALSE(provider()->HardwareSupportsTethering());
 
-  fake_cros_config_->SetString("/modem", "firmware-variant", "vell");
+  SetVariantThatSupportsTethering();
   EXPECT_TRUE(provider()->HardwareSupportsTethering());
+}
+TEST_F(CellularServiceProviderTest, TetheringEntitlementCheck_Ok) {
+  StrictMock<base::MockOnceCallback<void(TetheringManager::EntitlementStatus)>>
+      cb;
+  SetVariantThatSupportsTethering();
+
+  // Set up a Cellular Service with a Device
+  scoped_refptr<MockCellular> device =
+      new MockCellular(&manager_, kTestDeviceName, kTestDeviceAddress,
+                       kTestInterfaceIndex, kDBusService, kDBusPath);
+  CellularServiceRefPtr service =
+      provider()->LoadServicesForDevice(device.get());
+  service->SetState(Service::kStateConnected);
+
+  EXPECT_CALL(*(device.get()), EntitlementCheck(_))
+      .WillOnce(WithArgs<0>(
+          Invoke([](Cellular::EntitlementCheckResultCallback callback) {
+            std::move(callback).Run(
+                TetheringManager::EntitlementStatus::kReady);
+          })));
+  EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kReady));
+  provider()->TetheringEntitlementCheck(cb.Get());
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
 }
 }  // namespace shill

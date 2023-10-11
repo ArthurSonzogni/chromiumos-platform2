@@ -3903,8 +3903,7 @@ void Cellular::SetSelectedServiceForTesting(CellularServiceRefPtr service) {
   SelectService(service);
 }
 
-void Cellular::EntitlementCheck(
-    base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback) {
+void Cellular::EntitlementCheck(EntitlementCheckResultCallback callback) {
   // Only one entitlement check request should exist at any point.
   DCHECK(entitlement_check_callback_.is_null());
   if (!entitlement_check_callback_.is_null()) {
