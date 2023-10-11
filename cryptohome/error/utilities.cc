@@ -5,8 +5,6 @@
 #include <optional>
 
 #include "cryptohome/error/converter.h"
-#include "cryptohome/error/cryptohome_crypto_error.h"
-#include "cryptohome/error/cryptohome_le_cred_error.h"
 #include "cryptohome/error/utilities.h"
 
 namespace cryptohome {
@@ -40,18 +38,11 @@ template bool PrimaryActionIs(
 template bool PrimaryActionIs(
     const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& error,
     PrimaryAction action);
-template bool PrimaryActionIs(const hwsec_foundation::status::StatusChain<
-                                  error::CryptohomeLECredError>& error,
-                              PrimaryAction action);
 template bool PossibleActionsInclude(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& error,
     PossibleAction action);
 template bool PossibleActionsInclude(
     const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& error,
-    PossibleAction action);
-template bool PossibleActionsInclude(
-    const hwsec_foundation::status::StatusChain<error::CryptohomeLECredError>&
-        error,
     PossibleAction action);
 
 }  // namespace error

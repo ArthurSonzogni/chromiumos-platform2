@@ -17,7 +17,6 @@
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/error/cryptohome_le_cred_error.h"
 #include "cryptohome/error/reporting.h"
 
 namespace cryptohome {
@@ -182,10 +181,6 @@ template void ActionsFromStack(
     PossibleActions& possible);
 template void ActionsFromStack(
     const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& stack,
-    std::optional<PrimaryAction>& primary,
-    PossibleActions& possible);
-template void ActionsFromStack(
-    const hwsec_foundation::status::StatusChain<CryptohomeLECredError>& stack,
     std::optional<PrimaryAction>& primary,
     PossibleActions& possible);
 

@@ -63,10 +63,6 @@ constexpr char kCryptohomeLoginDiskCleanupResultHistogram[] =
     "Cryptohome.LoginDiskCleanupResult";
 constexpr char kCryptohomeLoginDiskCleanupAvailableSpaceHistogram[] =
     "Cryptohome.LoginDiskCleanupAvailableSpace";
-constexpr char kCryptohomeLEResultHistogramPrefix[] = "Cryptohome.LECredential";
-constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] = ".SyncOutcome";
-constexpr char kCryptohomeLELogReplyEntryCountHistogram[] =
-    "Cryptohome.LECredential.LogReplayEntryCount";
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
 constexpr char kOOPMountOperationResultHistogram[] =
@@ -535,55 +531,6 @@ void ReportHomedirEncryptionType(HomedirEncryptionType type) {
       kHomedirEncryptionTypeHistogram, static_cast<int>(type),
       static_cast<int>(
           HomedirEncryptionType::kHomedirEncryptionTypeNumBuckets));
-}
-
-void ReportLEResult(const char* type, const char* action, LECredError result) {
-  if (!g_metrics) {
-    return;
-  }
-
-  std::string hist_str = std::string(kCryptohomeLEResultHistogramPrefix)
-                             .append(type)
-                             .append(action);
-
-  g_metrics->SendEnumToUMA(hist_str, result, LE_CRED_ERROR_MAX);
-}
-
-void ReportLESyncOutcome(LECredError result) {
-  if (!g_metrics) {
-    return;
-  }
-
-  std::string hist_str = std::string(kCryptohomeLEResultHistogramPrefix)
-                             .append(kCryptohomeLESyncOutcomeHistogramSuffix);
-
-  g_metrics->SendEnumToUMA(hist_str, result, LE_CRED_ERROR_MAX);
-}
-
-void ReportLELogReplayEntryCount(size_t entry_count) {
-  if (!g_metrics) {
-    return;
-  }
-
-  constexpr int kMin = 1, kMax = 32, kNumBuckets = 33;
-  g_metrics->SendToUMA(kCryptohomeLELogReplyEntryCountHistogram,
-                       static_cast<int>(entry_count), kMin, kMax, kNumBuckets);
-}
-
-void ReportLEReplayResult(bool is_full_replay, LEReplayError result) {
-  if (!g_metrics) {
-    return;
-  }
-
-  const char* replay_type =
-      is_full_replay ? kLEReplayTypeFull : kLEReplayTypeNormal;
-
-  std::string hist_str = std::string(kCryptohomeLEResultHistogramPrefix)
-                             .append(kLEOpReplay)
-                             .append(replay_type);
-
-  g_metrics->SendEnumToUMA(hist_str, static_cast<int>(result),
-                           static_cast<int>(LEReplayError::kMaxValue));
 }
 
 void ReportOOPMountOperationResult(OOPMountOperationResult result) {

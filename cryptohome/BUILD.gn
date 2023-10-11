@@ -390,7 +390,6 @@ if (use.test) {
       "error/converter_test.cc",
       "error/cryptohome_crypto_error_test.cc",
       "error/cryptohome_error_test.cc",
-      "error/cryptohome_le_cred_error_test.cc",
       "error/cryptohome_mount_error_test.cc",
       "error/cryptohome_tpm_error_test.cc",
       "error/reporting_test.cc",

@@ -31,7 +31,6 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
-#include "cryptohome/error/le_credential_error.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"

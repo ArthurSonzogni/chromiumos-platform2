@@ -235,45 +235,6 @@ enum class DownloadsBindMountMigrationStatus {
   kMaxValue = kFailedMovingToMyFiles
 };
 
-// Constants related to LE Credential UMA logging.
-inline constexpr char kLEOpResetTree[] = ".ResetTree";
-inline constexpr char kLEOpInsert[] = ".Insert";
-inline constexpr char kLEOpInsertRateLimiter[] = ".InsertRateLimiter";
-inline constexpr char kLEOpCheck[] = ".Check";
-inline constexpr char kLEOpReset[] = ".Reset";
-inline constexpr char kLEOpRemove[] = ".Remove";
-inline constexpr char kLEOpStartBiometricsAuth[] = ".StartBiometricsAuth";
-inline constexpr char kLEOpSync[] = ".Sync";
-inline constexpr char kLEOpGetDelayInSeconds[] = ".GetDelayInSeconds";
-inline constexpr char kLEOpGetExpirationInSeconds[] = ".GetExpirationInSeconds";
-inline constexpr char kLEOpGetDelaySchedule[] = ".GetDelaySchedule";
-inline constexpr char kLEOpReplay[] = ".Replay";
-inline constexpr char kLEOpReplayResetTree[] = ".ReplayResetTree";
-inline constexpr char kLEOpReplayInsert[] = ".ReplayInsert";
-inline constexpr char kLEOpReplayCheck[] = ".ReplayCheck";
-inline constexpr char kLEOpReplayRemove[] = ".ReplayRemove";
-inline constexpr char kLEActionLoadFromDisk[] = ".LoadFromDisk";
-inline constexpr char kLEActionBackend[] = ".Backend";
-inline constexpr char kLEActionSaveToDisk[] = ".SaveToDisk";
-inline constexpr char kLEActionBackendGetLog[] = ".BackendGetLog";
-inline constexpr char kLEActionBackendReplayLog[] = ".BackendReplayLog";
-inline constexpr char kLEActionBackendReplayLogForFullReplay[] =
-    ".BackendReplayLogForFullReplay";
-inline constexpr char kLEActionBackendRecoverInsert[] = ".BackendRecoverInsert";
-inline constexpr char kLEReplayTypeNormal[] = ".Normal";
-inline constexpr char kLEReplayTypeFull[] = ".Full";
-
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class LEReplayError {
-  kSuccess = 0,
-  kInvalidLogEntry = 1,
-  kOperationError = 2,
-  kHashMismatch = 3,
-  kRemoveInsertedCredentialsError = 4,
-  kMaxValue,
-};
-
 // Various counts for ReportVaultKeysetMetrics.
 struct VaultKeysetMetrics {
   int missing_key_data_count = 0;
@@ -477,26 +438,10 @@ void ReportHomedirEncryptionType(HomedirEncryptionType type);
 // Reports the number of user directories present in the system.
 void ReportNumUserHomeDirectories(int num_users);
 
-// Reports the result of a Low Entropy (LE) Credential operation to the relevant
-// LE Credential histogram.
-void ReportLEResult(const char* type, const char* action, LECredError result);
-
-// Reports the overall outcome of a Low Entropy (LE) Credential Sync operation
-// to the "Cryptohome.LECredential.SyncOutcome" enum histogram.
-void ReportLESyncOutcome(LECredError result);
-
 // Reports the number of log entries attempted to replay during an LE log replay
 // operation. This count is one-based, zero is used as a sentinel value for "all
 // entries", reported when none of the log entries matches the root hash.
 void ReportLELogReplayEntryCount(size_t entry_count);
-
-// Reports the log entries replay result. We didn't reuse the LECredError here
-// because the error possibilities are quite different. We separate the
-// results between a normal replay and a full replay because the error
-// distribution in a full replay might be very different (since we're just doing
-// a best-effort attempt hoping that we are only 1 entry behind the first log
-// entry).
-void ReportLEReplayResult(bool is_full_replay, LEReplayError result);
 
 // Reports the result of an out-of-process mount operation.
 void ReportOOPMountOperationResult(OOPMountOperationResult result);

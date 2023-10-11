@@ -7,8 +7,6 @@
 
 #include <iostream>
 
-#include "cryptohome/error/le_credential_error.h"
-
 namespace cryptohome {
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -54,8 +52,6 @@ void PopulateError(ErrorType* error, ErrorType error_code) {
   if (error)
     *error = error_code;
 }
-
-CryptoError LECredErrorToCryptoError(LECredError le_error);
 
 }  // namespace cryptohome
 
