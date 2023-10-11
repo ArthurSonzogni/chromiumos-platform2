@@ -39,7 +39,7 @@ class PowerOpt {
                                      bool is_user_request);
   bool UpdatePowerState(const std::string& iccid, PowerState state);
   bool AddOptInfoForNewService(const std::string& iccid);
-  base::TimeDelta GetTimeSinceLastOnline(const std::string& iccid);
+  base::Time GetLastOnlineTime(const std::string& iccid);
   base::TimeDelta GetInvalidApnDuration(const std::string& iccid);
   PowerState GetPowerState(const std::string& iccid);
 
@@ -68,15 +68,16 @@ class PowerOpt {
   static constexpr base::TimeDelta kUserRequestGracePeriod = base::Hours(1);
 
   struct PowerOptimizationInfo {
+    base::Time last_online_time;
     base::Time last_connect_fail_invalid_apn_time;
     base::TimeDelta no_service_invalid_apn_duration;
-    base::TimeDelta time_since_last_online;
     PowerState power_state;
   };
 
   Manager* manager_;
   std::unordered_map<std::string, PowerOptimizationInfo> opt_info_;
   PowerOptimizationInfo* current_opt_info_;
+  base::Time device_last_online_time_;
 
   PowerOpt::PowerState PerformPowerOptimization(PowerEvent event);
   bool RequestPowerStateChange(PowerOpt::PowerState);

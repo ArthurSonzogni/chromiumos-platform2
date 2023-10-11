@@ -37,9 +37,7 @@ class PowerOptTest : public Test {
 
 TEST_F(PowerOptTest, LowPowerLongNotOnline) {
   PowerOpt obj(&manager_);
-  const base::TimeDelta DurationSinceLastOnline1 =
-      PowerOpt::kLastOnlineLongThreshold - base::Seconds(10);
-  const base::TimeDelta DurationSinceLastOnline2 =
+  const base::TimeDelta DurationSinceLastOnline =
       PowerOpt::kLastOnlineLongThreshold + base::Seconds(10);
   obj.AddOptInfoForNewService("123");
   obj.AddOptInfoForNewService("456");
@@ -47,13 +45,13 @@ TEST_F(PowerOptTest, LowPowerLongNotOnline) {
   EXPECT_EQ(obj.GetPowerState("123"), PowerOpt::PowerState::kOn);
   EXPECT_FALSE(obj.UpdatePowerState("789", PowerOpt::PowerState::kOn));
 
-  obj.UpdateDurationSinceLastOnline(
-      base::Time::Now() - DurationSinceLastOnline1, false);
-  // threshold not met, still in power on state
+  obj.UpdateDurationSinceLastOnline(base::Time::Now() - DurationSinceLastOnline,
+                                    true);
+  // threshold met, but it is user triggered connection.
   EXPECT_EQ(obj.GetPowerState("123"), PowerOpt::PowerState::kOn);
-  obj.UpdateDurationSinceLastOnline(
-      base::Time::Now() - DurationSinceLastOnline2, false);
-  // threshold met, set to low power state
+  obj.UpdateDurationSinceLastOnline(base::Time::Now() - DurationSinceLastOnline,
+                                    false);
+  // threshold not met, still in power on state
   EXPECT_EQ(obj.GetPowerState("123"), PowerOpt::PowerState::kLow);
 }
 

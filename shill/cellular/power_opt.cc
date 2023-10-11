@@ -25,9 +25,10 @@ void PowerOpt::NotifyConnectionFailInvalidApn(const std::string& iccid) {
   }
   info.last_connect_fail_invalid_apn_time = base::Time::Now();
 
-  if ((info.no_service_invalid_apn_duration >
-           kNoServiceInvalidApnTimeThreshold &&
-       info.time_since_last_online > kLastOnlineShortThreshold)) {
+  if (info.no_service_invalid_apn_duration >
+          kNoServiceInvalidApnTimeThreshold &&
+      (base::Time::Now() - device_last_online_time_) >
+          kLastOnlineShortThreshold) {
     PerformPowerOptimization(PowerEvent::kInvalidApn);
   }
 }
@@ -44,17 +45,23 @@ void PowerOpt::UpdateDurationSinceLastOnline(const base::Time& last_online_time,
                                              bool is_user_request) {
   if (!current_opt_info_)
     return;
-  current_opt_info_->time_since_last_online =
-      base::Time::Now() - last_online_time;
-  if (is_user_request &&
-      current_opt_info_->time_since_last_online > kLastOnlineLongThreshold) {
+  base::TimeDelta device_since_last_online;
+
+  current_opt_info_->last_online_time = last_online_time;
+  if (device_last_online_time_.is_null() ||
+      last_online_time > device_last_online_time_) {
+    device_last_online_time_ = last_online_time;
+  }
+
+  device_since_last_online = base::Time::Now() - device_last_online_time_;
+  if (is_user_request && device_since_last_online > kLastOnlineLongThreshold) {
     // |last_online|------------|now|----<grace period>---|trigger point|
-    current_opt_info_->time_since_last_online =
+    device_since_last_online =
         kLastOnlineLongThreshold - kUserRequestGracePeriod;
   }
-  LOG(INFO) << "since_last_online (minutes): "
-            << current_opt_info_->time_since_last_online.InMinutes();
-  if (current_opt_info_->time_since_last_online > kLastOnlineLongThreshold) {
+  LOG(INFO) << "Time since device was last online through cellular (minutes): "
+            << device_since_last_online.InMinutes();
+  if (device_since_last_online > kLastOnlineLongThreshold) {
     PerformPowerOptimization(PowerEvent::kLongNotOnline);
   }
 }
@@ -70,18 +77,15 @@ bool PowerOpt::UpdatePowerState(const std::string& iccid, PowerState state) {
   return false;
 }
 
-base::TimeDelta PowerOpt::GetTimeSinceLastOnline(const std::string& iccid) {
-  if (opt_info_.count(iccid) > 0)
-    return opt_info_[iccid].time_since_last_online;
-  else
-    return base::Seconds(0);
+base::Time PowerOpt::GetLastOnlineTime(const std::string& iccid) {
+  return opt_info_.count(iccid) > 0 ? opt_info_[iccid].last_online_time
+                                    : base::Time();
 }
 
 base::TimeDelta PowerOpt::GetInvalidApnDuration(const std::string& iccid) {
-  if (opt_info_.count(iccid) > 0)
-    return opt_info_[iccid].no_service_invalid_apn_duration;
-  else
-    return base::Seconds(0);
+  return opt_info_.count(iccid) > 0
+             ? opt_info_[iccid].no_service_invalid_apn_duration
+             : base::Seconds(0);
 }
 
 PowerOpt::PowerState PowerOpt::GetPowerState(const std::string& iccid) {
@@ -125,7 +129,7 @@ PowerOpt::PowerState PowerOpt::PerformPowerOptimization(
         metrics_info.new_power_state =
             Metrics::CellularPowerOptimizationInfo::PowerState::kLow;
         metrics_info.since_last_online_hours =
-            current_opt_info_->time_since_last_online.InHours();
+            (base::Time::Now() - device_last_online_time_).InHours();
       }
       break;
     case PowerEvent::kNoRoamingAgreement:
@@ -139,7 +143,7 @@ PowerOpt::PowerState PowerOpt::PerformPowerOptimization(
         metrics_info.new_power_state =
             Metrics::CellularPowerOptimizationInfo::PowerState::kLow;
         metrics_info.since_last_online_hours =
-            current_opt_info_->time_since_last_online.InHours();
+            (base::Time::Now() - device_last_online_time_).InHours();
       }
       break;
     case PowerEvent::kUnkown:
