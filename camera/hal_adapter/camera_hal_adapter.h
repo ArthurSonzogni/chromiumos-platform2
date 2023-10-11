@@ -27,6 +27,7 @@
 
 #include "camera/mojo/camera3.mojom.h"
 #include "camera/mojo/camera_common.mojom.h"
+#include "common/camera_diagnostics_config.h"
 #include "common/reloadable_config_file.h"
 #include "common/stream_manipulator.h"
 #include "common/vendor_tag_manager.h"
@@ -117,6 +118,8 @@ class CameraHalAdapter {
   void SetCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
 
   mojom::SetEffectResult SetCameraEffect(mojom::EffectsConfigPtr config);
+
+  void SetCameraDiagnosticsConfig(CameraDiagnosticsConfig* config);
 
  protected:
   // Convert the unified public |camera_id| into the corresponding camera
@@ -313,6 +316,8 @@ class CameraHalAdapter {
 
   bool effects_enabled_ = false;
   std::unique_ptr<DlcClient> dlc_client_;
+
+  CameraDiagnosticsConfig* camera_diagnostics_config_;
 };
 
 }  // namespace cros

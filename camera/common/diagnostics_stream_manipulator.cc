@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "common/analyze_frame/frame_analysis_stream_manipulator.h"
+#include "common/diagnostics_stream_manipulator.h"
 
 #include <cstdint>
 #include <memory>
@@ -12,51 +12,52 @@
 #include <libyuv/scale.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
-#include "common/analyze_frame/camera_diagnostics_client.h"
 #include "cros-camera/camera_buffer_manager.h"
-#include "cros-camera/camera_mojo_channel_manager.h"
-#include "mojo/public/c/system/types.h"
 
 namespace cros {
 
 constexpr uint32_t kFrameCopyInterval = 27;
 
-FrameAnalysisStreamManipulator::FrameAnalysisStreamManipulator(
-    CameraMojoChannelManagerToken* mojo_manager_token)
-    : mojo_manager_token_(mojo_manager_token),
-      camera_buffer_manager_(cros::CameraBufferManager::GetInstance()) {}
+DiagnosticsStreamManipulator::DiagnosticsStreamManipulator(
+    CameraDiagnosticsConfig* diagnostics_config)
+    : camera_buffer_manager_(cros::CameraBufferManager::GetInstance()),
+      diagnostics_config_(diagnostics_config) {}
 
-bool FrameAnalysisStreamManipulator::Initialize(
+bool DiagnosticsStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
+  process_diagnostics_frame_cb_ =
+      diagnostics_config_->GetDiagnosticsFrameCallback();
   callbacks_ = std::move(callbacks);
   return true;
 }
 
-bool FrameAnalysisStreamManipulator::ConfigureStreams(
+bool DiagnosticsStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config,
     const StreamEffectMap* stream_effects_map) {
   return true;
 }
 
-bool FrameAnalysisStreamManipulator::OnConfiguredStreams(
+bool DiagnosticsStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
   return true;
 }
 
-bool FrameAnalysisStreamManipulator::ConstructDefaultRequestSettings(
+bool DiagnosticsStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
   return true;
 }
 
-bool FrameAnalysisStreamManipulator::ProcessCaptureRequest(
+bool DiagnosticsStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
   return true;
 }
 
-bool FrameAnalysisStreamManipulator::ProcessCaptureResult(
+bool DiagnosticsStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  if (result.frame_number() % kFrameCopyInterval != 0) {
+  DCHECK(diagnostics_config_);
+  if (!diagnostics_config_->IsFrameInterceptorEnabled() ||
+      result.frame_number() % kFrameCopyInterval != 0) {
     callbacks_.result_callback.Run(std::move(result));
     return true;
   }
@@ -86,15 +87,15 @@ bool FrameAnalysisStreamManipulator::ProcessCaptureResult(
   return true;
 }
 
-void FrameAnalysisStreamManipulator::Notify(camera3_notify_msg_t msg) {
+void DiagnosticsStreamManipulator::Notify(camera3_notify_msg_t msg) {
   callbacks_.notify_callback.Run(std::move(msg));
 }
 
-bool FrameAnalysisStreamManipulator::Flush() {
+bool DiagnosticsStreamManipulator::Flush() {
   return true;
 }
 
-void FrameAnalysisStreamManipulator::ProcessBuffer(ScopedMapping& mapping_src) {
+void DiagnosticsStreamManipulator::ProcessBuffer(ScopedMapping& mapping_src) {
   constexpr uint32_t kBufferUsage =
       GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN;
 
@@ -138,6 +139,7 @@ void FrameAnalysisStreamManipulator::ProcessBuffer(ScopedMapping& mapping_src) {
   if (ret != 0) {
     LOGF(ERROR) << "libyuv::NV12Scale() failed: " << ret;
   }
+
   mojom::CameraDiagnosticsFramePtr buffer =
       mojom::CameraDiagnosticsFrame::New();
 
@@ -168,8 +170,7 @@ void FrameAnalysisStreamManipulator::ProcessBuffer(ScopedMapping& mapping_src) {
   buffer->height = target_height;
   buffer->data_size = nv12_data_size;
 
-  CameraDiagnosticsClient::GetInstance(mojo_manager_token_)
-      ->AnalyzeYuvFrame(std::move(buffer));
+  process_diagnostics_frame_cb_.Run(std::move(buffer));
 }
 
 }  // namespace cros

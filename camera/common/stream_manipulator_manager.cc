@@ -28,7 +28,7 @@
 #include "gpu/gpu_resources.h"
 
 #if USE_CAMERA_FEATURE_DIAGNOSTICS
-#include "common/analyze_frame/frame_analysis_stream_manipulator.h"
+#include "common/diagnostics_stream_manipulator.h"
 #endif
 
 #if USE_CAMERA_FEATURE_HDRNET
@@ -204,6 +204,17 @@ StreamManipulatorManager::StreamManipulatorManager(
   LOGF(INFO) << "Service built without effects support";
 #endif
 
+#if USE_CAMERA_FEATURE_DIAGNOSTICS
+  if (create_options.diagnostics_config != nullptr) {
+    stream_manipulators_.emplace_back(
+        std::make_unique<DiagnosticsStreamManipulator>(
+            create_options.diagnostics_config));
+    LOGF(INFO) << "DiagnosticsStreamManipulator enabled";
+  } else {
+    LOGF(INFO) << "DiagnosticsStreamManipulator not enabled";
+  }
+#endif
+
   // HDRnet must get frames without applying any other post-processing because
   // the ML inference needs pixel values in linear domain.
   MaybeEnableHdrNetStreamManipulator(feature_profile, runtime_options,
@@ -213,12 +224,6 @@ StreamManipulatorManager::StreamManipulatorManager(
   // TODO(jcliang): See if we want to move ZSL to feature profile.
   stream_manipulators_.emplace_back(std::make_unique<ZslStreamManipulator>());
   LOGF(INFO) << "ZslStreamManipulator enabled";
-
-#if USE_CAMERA_FEATURE_DIAGNOSTICS
-  stream_manipulators_.emplace_back(
-      std::make_unique<FrameAnalysisStreamManipulator>(mojo_manager_token));
-  LOGF(INFO) << "Frame analysis stream manipulator enabled";
-#endif
 
   if (create_options.sw_privacy_switch_stream_manipulator_enabled) {
     stream_manipulators_.emplace_back(

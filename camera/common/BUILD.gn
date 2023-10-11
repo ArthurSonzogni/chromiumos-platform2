@@ -298,16 +298,14 @@ source_set("camera_gpu_algorithm") {
 
 source_set("stream_manipulator") {
   sources = [
+    "//camera/common/camera_diagnostics_config.cc",
     "//camera/common/still_capture_processor_impl.cc",
     "//camera/common/stream_manipulator.cc",
     "//camera/common/stream_manipulator_manager.cc",
     "//camera/common/sw_privacy_switch_stream_manipulator.cc",
   ]
   if (use.camera_feature_diagnostics) {
-    sources += [
-      "//camera/common/analyze_frame/camera_diagnostics_client.cc",
-      "//camera/common/analyze_frame/frame_analysis_stream_manipulator.cc",
-    ]
+    sources += [ "//camera/common/diagnostics_stream_manipulator.cc" ]
   }
   public_configs = [ ":target_defaults" ]
 

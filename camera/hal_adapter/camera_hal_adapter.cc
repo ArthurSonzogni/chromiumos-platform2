@@ -314,7 +314,8 @@ int32_t CameraHalAdapter::OpenDevice(
               .camera_module_name = camera_module->common.name,
               .set_face_detection_result_callback =
                   std::move(set_face_detection_result_callback),
-              .sw_privacy_switch_stream_manipulator_enabled = false},
+              .sw_privacy_switch_stream_manipulator_enabled = false,
+              .diagnostics_config = camera_diagnostics_config_},
           &stream_manipulator_runtime_options_, root_gpu_resources_.get(),
           mojo_manager_token_),
       do_notify_invalid_capture_request);
@@ -395,6 +396,11 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
 
   stream_manipulator_runtime_options_.SetEffectsConfig(std::move(config));
   return mojom::SetEffectResult::kOk;
+}
+
+void CameraHalAdapter::SetCameraDiagnosticsConfig(
+    CameraDiagnosticsConfig* config) {
+  camera_diagnostics_config_ = config;
 }
 
 int32_t CameraHalAdapter::GetNumberOfCameras() {

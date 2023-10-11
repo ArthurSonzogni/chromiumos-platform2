@@ -25,6 +25,10 @@
 #include "cros-camera/cros_camera_hal.h"
 #include "hal_adapter/camera_hal_adapter.h"
 
+#if USE_CAMERA_FEATURE_DIAGNOSTICS
+#include "hal_adapter/camera_diagnostics_client.h"
+#endif
+
 namespace cros {
 
 class CameraMojoChannelManager;
@@ -138,6 +142,10 @@ class CameraHalServerImpl {
                               int32_t camera_id,
                               bool opened,
                               mojom::CameraClientType type);
+
+#if USE_CAMERA_FEATURE_DIAGNOSTICS
+  std::unique_ptr<CameraDiagnosticsClient> camera_diagnostics_client_;
+#endif
 
   std::unique_ptr<CameraMojoChannelManager> mojo_manager_;
 

@@ -52,6 +52,9 @@ executable("cros_camera_service") {
     "cros_camera_main.cc",
     "vendor_tag_ops_delegate.cc",
   ]
+  if (use.camera_feature_diagnostics) {
+    sources += [ "camera_diagnostics_client.cc" ]
+  }
   configs += [ ":target_defaults" ]
   install_path = "bin"
   libs = [

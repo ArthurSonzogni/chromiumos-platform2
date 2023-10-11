@@ -64,6 +64,11 @@ void CameraHalServerImpl::Start() {
     ExitOnMainThread(result);
   }
 
+#if USE_CAMERA_FEATURE_DIAGNOSTICS
+  camera_diagnostics_client_ = std::make_unique<CameraDiagnosticsClient>(
+      mojo_manager_.get(), camera_hal_adapter_.get());
+#endif
+
   // We assume that |camera_hal_adapter_| will only be set once. If the
   // assumption changed, we should consider another way to provide
   // CameraHalAdapter.
