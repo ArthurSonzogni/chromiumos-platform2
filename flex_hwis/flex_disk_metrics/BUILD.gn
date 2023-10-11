@@ -11,13 +11,22 @@ group("all") {
   }
 }
 
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
 source_set("flex_disk_metrics_source_set") {
   sources = [ "flex_disk_metrics.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 executable("flex_disk_metrics") {
   sources = [ "flex_disk_metrics_main.cc" ]
   install_path = "bin"
+  configs += [ ":target_defaults" ]
   deps = [ ":flex_disk_metrics_source_set" ]
 }
 
@@ -31,6 +40,7 @@ if (use.test) {
     configs += [
       "//common-mk:test",
       ":test_pkg_deps",
+      ":target_defaults",
     ]
     deps = [
       ":flex_disk_metrics_source_set",
