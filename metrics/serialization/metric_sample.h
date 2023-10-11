@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include "base/gtest_prod_util.h"
-
 namespace metrics {
 
 // This class is used by libmetrics (ChromeOS) to serialize
