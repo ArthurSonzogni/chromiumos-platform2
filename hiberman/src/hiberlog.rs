@@ -465,6 +465,12 @@ fn replay_line(syslogger: &BasicLogger, prefix: &str, line: String) {
     // Now trim <11>hiberman into <11, and parse 11 out of the combined
     // priority + facility.
     let facprio_string = header.split_once('>').map_or(header, |x| x.0);
+    if facprio_string.len() < 2 {
+        warn!("Failed to extract facprio string for next line, using debug");
+        debug!("{}", contents);
+        return;
+    }
+
     let facprio: u8 = match facprio_string[1..].parse() {
         Ok(i) => i,
         Err(_) => {
