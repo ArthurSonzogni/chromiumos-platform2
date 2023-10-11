@@ -28,6 +28,7 @@ executable("flex_disk_metrics") {
   sources = [ "flex_disk_metrics_main.cc" ]
   install_path = "bin"
   configs += [ ":target_defaults" ]
+  libs = [ "rootdev" ]
   deps = [ ":flex_disk_metrics_source_set" ]
 }
 
