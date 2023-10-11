@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_CLOBBER_STATE_LOG_H_
-#define INIT_CLOBBER_STATE_LOG_H_
+#ifndef INIT_CLOBBER_CLOBBER_STATE_LOG_H_
+#define INIT_CLOBBER_CLOBBER_STATE_LOG_H_
 
 #include <string>
 
@@ -17,4 +17,4 @@ void AppendToLog(const std::string_view& source, const std::string& contents);
 
 }  // namespace init
 
-#endif  // INIT_CLOBBER_STATE_LOG_H_
+#endif  // INIT_CLOBBER_CLOBBER_STATE_LOG_H_

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_CLOBBER_STATE_H_
-#define INIT_CLOBBER_STATE_H_
+#ifndef INIT_CLOBBER_CLOBBER_STATE_H_
+#define INIT_CLOBBER_CLOBBER_STATE_H_
 
 #include <sys/stat.h>
 
@@ -22,10 +22,10 @@
 #include <libcrossystem/crossystem.h>
 #include <libdlcservice/utils_interface.h>
 
-#include "init/clobber_lvm.h"
-#include "init/clobber_state_log.h"
-#include "init/clobber_ui.h"
-#include "init/clobber_wipe.h"
+#include "init/clobber/clobber_lvm.h"
+#include "init/clobber/clobber_state_log.h"
+#include "init/clobber/clobber_ui.h"
+#include "init/clobber/clobber_wipe.h"
 
 class ClobberState {
  public:
@@ -174,4 +174,4 @@ class ClobberState {
   base::WeakPtrFactory<ClobberState> weak_ptr_factory_;
 };
 
-#endif  // INIT_CLOBBER_STATE_H_
+#endif  // INIT_CLOBBER_CLOBBER_STATE_H_

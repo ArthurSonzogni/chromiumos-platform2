@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_CLOBBER_WIPE_H_
-#define INIT_CLOBBER_WIPE_H_
+#ifndef INIT_CLOBBER_CLOBBER_WIPE_H_
+#define INIT_CLOBBER_CLOBBER_WIPE_H_
 
 #include <string>
 
 #include <base/files/file_path.h>
 
-#include "init/clobber_ui.h"
+#include "init/clobber/clobber_ui.h"
 
 constexpr char kUbiRootDisk[] = "/dev/mtd0";
 constexpr char kUbiDevicePrefix[] = "/dev/ubi";
@@ -87,4 +87,4 @@ class ClobberWipe {
   base::FilePath sys_;
 };
 
-#endif  // INIT_CLOBBER_WIPE_H_
+#endif  // INIT_CLOBBER_CLOBBER_WIPE_H_

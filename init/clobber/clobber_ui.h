@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_CLOBBER_UI_H_
-#define INIT_CLOBBER_UI_H_
+#ifndef INIT_CLOBBER_CLOBBER_UI_H_
+#define INIT_CLOBBER_CLOBBER_UI_H_
 
 #include <cstdlib>
 #include <memory>
@@ -53,4 +53,4 @@ class ClobberUi : private base::PlatformThread::Delegate {
   WipeState state_;  // Protected by lock_.
 };
 
-#endif  // INIT_CLOBBER_UI_H_
+#endif  // INIT_CLOBBER_CLOBBER_UI_H_

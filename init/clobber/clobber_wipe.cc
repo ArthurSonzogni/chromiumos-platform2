@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/clobber_wipe.h"
+#include "init/clobber/clobber_wipe.h"
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -33,7 +33,7 @@
 #include <brillo/blkdev_utils/storage_utils.h>
 #include <chromeos/secure_erase_file/secure_erase_file.h>
 
-#include "init/clobber_state_log.h"
+#include "init/clobber/clobber_state_log.h"
 #include "init/utils.h"
 
 namespace {

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_CLOBBER_LVM_H_
-#define INIT_CLOBBER_LVM_H_
+#ifndef INIT_CLOBBER_CLOBBER_LVM_H_
+#define INIT_CLOBBER_CLOBBER_LVM_H_
 
 #include <memory>
 #include <optional>
@@ -14,7 +14,7 @@
 #include <brillo/blkdev_utils/lvm.h>
 #include <libdlcservice/utils_interface.h>
 
-#include "init/clobber_wipe.h"
+#include "init/clobber/clobber_wipe.h"
 
 constexpr char kThinpool[] = "thinpool";
 constexpr char kUnencrypted[] = "unencrypted";
@@ -114,4 +114,4 @@ class ClobberLvm {
   std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
 };
 
-#endif  // INIT_CLOBBER_LVM_H_
+#endif  // INIT_CLOBBER_CLOBBER_LVM_H_

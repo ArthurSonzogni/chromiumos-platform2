@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_CLOBBER_WIPE_MOCK_H_
-#define INIT_CLOBBER_WIPE_MOCK_H_
+#ifndef INIT_CLOBBER_CLOBBER_WIPE_MOCK_H_
+#define INIT_CLOBBER_CLOBBER_WIPE_MOCK_H_
 
 #include <string>
 #include <unordered_map>
@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <brillo/files/file_util.h>
 
-#include "init/clobber_ui.h"
+#include "init/clobber/clobber_ui.h"
 
 // Needed for "mocking UI", redirect to /dev/null
 base::File DevNull();
@@ -67,4 +67,4 @@ class ClobberWipeMock : public ClobberWipe {
   bool wipe_device_ret_ = true;
 };
 
-#endif  // INIT_CLOBBER_WIPE_MOCK_H_
+#endif  // INIT_CLOBBER_CLOBBER_WIPE_MOCK_H_

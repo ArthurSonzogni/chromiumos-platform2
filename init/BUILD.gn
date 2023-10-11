@@ -93,13 +93,13 @@ static_library("libcrosstartup") {
 
 static_library("libclobber") {
   sources = [
-    "clobber_state.cc",
-    "clobber_state_log.cc",
-    "clobber_ui.cc",
-    "clobber_wipe.cc",
+    "clobber/clobber_state.cc",
+    "clobber/clobber_state_log.cc",
+    "clobber/clobber_ui.cc",
+    "clobber/clobber_wipe.cc",
   ]
   if (use.device_mapper) {
-    sources += [ "clobber_lvm.cc" ]
+    sources += [ "clobber/clobber_lvm.cc" ]
   }
   configs += [ ":target_defaults" ]
   deps = [ ":utils" ]
@@ -115,7 +115,7 @@ executable("chromeos_startup") {
 }
 
 executable("clobber-state") {
-  sources = [ "clobber_state_main.cc" ]
+  sources = [ "clobber/clobber_state_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
     ":libclobber",
@@ -221,12 +221,12 @@ if (use.test) {
 
   executable("clobber_state_test") {
     sources = [
-      "clobber_state_test.cc",
-      "clobber_ui_test.cc",
-      "clobber_wipe_test.cc",
+      "clobber/clobber_state_test.cc",
+      "clobber/clobber_ui_test.cc",
+      "clobber/clobber_wipe_test.cc",
     ]
     if (use.device_mapper) {
-      sources += [ "clobber_lvm_test.cc" ]
+      sources += [ "clobber/clobber_lvm_test.cc" ]
     }
     configs += [
       "//common-mk:test",

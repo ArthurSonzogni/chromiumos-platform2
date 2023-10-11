@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/clobber_wipe.h"
+#include "init/clobber/clobber_wipe.h"
 
 #include <limits.h>
 #include <stdlib.h>
@@ -28,7 +28,7 @@
 
 #include "gmock/gmock.h"
 
-#include "init/clobber_wipe_mock.h"
+#include "init/clobber/clobber_wipe_mock.h"
 
 using ::testing::_;
 using ::testing::DoAll;
