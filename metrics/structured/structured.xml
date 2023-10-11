@@ -1302,6 +1302,11 @@
         Enum for power role. 0: None, 1: Sink, 2: Source.
       </summary>
     </metric>
+    <metric name="PartnerType" type="int">
+      <summary>
+        Partner category derived from USB PD identity and mode support.
+      </summary>
+    </metric>
   </event>
 </project>
 
