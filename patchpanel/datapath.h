@@ -417,6 +417,11 @@ class Datapath {
   virtual void EnableQoSApplyingDSCP(std::string_view ifname);
   virtual void DisableQoSApplyingDSCP(std::string_view ifname);
 
+  // Update the QoS detection rules for DoH providers when the list is changed.
+  void UpdateDoHProvidersForQoS(
+      IpFamily family,
+      const std::vector<net_base::IPAddress>& doh_provider_ips);
+
   // Returns true if the chain |name| exists in |table|.
   virtual bool CheckChain(IpFamily family,
                           Iptables::Table table,

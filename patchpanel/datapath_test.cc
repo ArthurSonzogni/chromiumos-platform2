@@ -291,6 +291,9 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual, "mangle -L qos_detect -w"},
       {IpFamily::kDual, "mangle -F qos_detect -w"},
       {IpFamily::kDual, "mangle -X qos_detect -w"},
+      {IpFamily::kDual, "mangle -L qos_detect_doh -w"},
+      {IpFamily::kDual, "mangle -F qos_detect_doh -w"},
+      {IpFamily::kDual, "mangle -X qos_detect_doh -w"},
       {IpFamily::kDual, "mangle -L qos_apply_dscp -w"},
       {IpFamily::kDual, "mangle -F qos_apply_dscp -w"},
       {IpFamily::kDual, "mangle -X qos_apply_dscp -w"},
@@ -527,6 +530,8 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual,
        "mangle -A qos_detect -p tcp --dport 53 -j MARK --set-xmark "
        "0x00000060/0x000000e0 -w"},
+      {IpFamily::kDual, "mangle -N qos_detect_doh -w"},
+      {IpFamily::kDual, "mangle -A qos_detect -j qos_detect_doh -w"},
       // Asserts for QoS apply DSCP chain.
       {IpFamily::kDual, "mangle -N qos_apply_dscp -w"},
       {IpFamily::kDual,
@@ -591,6 +596,9 @@ TEST(DatapathTest, Stop) {
       {IpFamily::kDual, "mangle -L qos_detect -w"},
       {IpFamily::kDual, "mangle -F qos_detect -w"},
       {IpFamily::kDual, "mangle -X qos_detect -w"},
+      {IpFamily::kDual, "mangle -L qos_detect_doh -w"},
+      {IpFamily::kDual, "mangle -F qos_detect_doh -w"},
+      {IpFamily::kDual, "mangle -X qos_detect_doh -w"},
       {IpFamily::kDual, "mangle -L qos_apply_dscp -w"},
       {IpFamily::kDual, "mangle -F qos_apply_dscp -w"},
       {IpFamily::kDual, "mangle -X qos_apply_dscp -w"},
@@ -2410,6 +2418,67 @@ TEST(DatapathTest, DisableQoSApplyingDSCP) {
 
   Datapath datapath(runner, firewall, &system);
   datapath.DisableQoSApplyingDSCP("wlan0");
+}
+
+TEST(DatapathTest, UpdateDoHProvidersForQoSIPv4) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Datapath datapath(runner, firewall, &system);
+
+  const std::vector<net_base::IPAddress> ipv4_input = {
+      net_base::IPAddress::CreateFromString("1.2.3.4").value(),
+      net_base::IPAddress::CreateFromString("5.6.7.8").value(),
+  };
+
+  Verify_iptables(*runner, IpFamily::kIPv4, "mangle -F qos_detect_doh -w");
+  for (const auto& proto : {"tcp", "udp"}) {
+    const std::string expected_rule =
+        base::StrCat({"mangle -A qos_detect_doh -p ", proto,
+                      " --dport 443 -d 1.2.3.4,5.6.7.8 -j MARK --set-xmark "
+                      "0x00000060/0x000000e0 -w"});
+    Verify_iptables(*runner, IpFamily::kIPv4, expected_rule);
+  }
+
+  datapath.UpdateDoHProvidersForQoS(IpFamily::kIPv4, ipv4_input);
+}
+
+TEST(DatapathTest, UpdateDoHProvidersForQoSIPv6) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Datapath datapath(runner, firewall, &system);
+
+  // Verify IPv6 input.
+  const std::vector<net_base::IPAddress> ipv6_input = {
+      net_base::IPAddress::CreateFromString("fd00::1").value(),
+      net_base::IPAddress::CreateFromString("fd00::2").value(),
+  };
+
+  Verify_iptables(*runner, IpFamily::kIPv6, "mangle -F qos_detect_doh -w");
+  for (const auto& proto : {"tcp", "udp"}) {
+    const std::string expected_rule =
+        base::StrCat({"mangle -A qos_detect_doh -p ", proto,
+                      " --dport 443 -d fd00::1,fd00::2 -j MARK --set-xmark "
+                      "0x00000060/0x000000e0 -w"});
+    Verify_iptables(*runner, IpFamily::kIPv6, expected_rule);
+  }
+
+  datapath.UpdateDoHProvidersForQoS(IpFamily::kIPv6, ipv6_input);
+}
+
+TEST(DatapathTest, UpdateDoHProvidersForQoSEmpty) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Datapath datapath(runner, firewall, &system);
+
+  // Empty list should still trigger the flush, but no other rules.
+  Verify_iptables(*runner, IpFamily::kIPv4, "mangle -F qos_detect_doh -w");
+  datapath.UpdateDoHProvidersForQoS(IpFamily::kIPv4, {});
 }
 
 TEST(DatapathTest, ModifyClatAcceptRules) {

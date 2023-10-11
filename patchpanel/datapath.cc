@@ -26,6 +26,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
@@ -119,6 +120,9 @@ constexpr char kSNATUserDnsChain[] = "snat_user_dns";
 // in the mangle table. Also see b/301566901.
 constexpr char kQoSDetectChain[] = "qos_detect";
 constexpr char kQoSDetectStaticChain[] = "qos_detect_static";
+// mangle chain for holding the dynamic matching rules for DoH. Referenced in
+// the qos_detect chain.
+constexpr char kQoSDetectDoHChain[] = "qos_detect_doh";
 // mangle POSTROUTING chain for applying DSCP fields based on fwmarks for egress
 // traffic.
 constexpr char kQoSApplyDSCPChain[] = "qos_apply_dscp";
@@ -231,6 +235,7 @@ void Datapath::Start() {
       // for QoS.
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectStaticChain},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain},
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectDoHChain},
       // Set up a mangle chain used in POSTROUTING for applying DSCP values for
       // QoS. QoSService controls when to add the jump rules to this chain.
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain},
@@ -605,6 +610,7 @@ void Datapath::ResetIptables() {
       {IpFamily::kDual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectStaticChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectChain, true},
+      {IpFamily::kDual, Iptables::Table::kMangle, kQoSDetectDoHChain, true},
       {IpFamily::kDual, Iptables::Table::kMangle, kQoSApplyDSCPChain, true},
       {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain,
        true},
@@ -2477,6 +2483,10 @@ void Datapath::SetupQoSDetectChain() {
   install_rule(IpFamily::kDual, {"-p", "tcp", "--dport", "53", "-j", "MARK",
                                  "--set-xmark", network_control_mark, "-w"});
 
+  // Add a jump rule to the DoH detection chain. Rules in this chain will be
+  // installed dynamically in UpdateDoHProvidersForQoS().
+  install_rule(IpFamily::kDual, {"-j", kQoSDetectDoHChain, "-w"});
+
   // TODO(b/296952085): Add rules for WebRTC detection. Also need to add an
   // early-return rule above for packets marked by rules for network control, to
   // avoid marks on TCP handshake packets being persisted into connmark.
@@ -2530,6 +2540,34 @@ void Datapath::ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
   ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, command,
                  "POSTROUTING",
                  {"-o", std::string(ifname), "-j", kQoSApplyDSCPChain, "-w"});
+}
+
+void Datapath::UpdateDoHProvidersForQoS(
+    IpFamily family, const std::vector<net_base::IPAddress>& doh_provider_ips) {
+  // Clear all the rules for the previous DoH providers.
+  FlushChain(family, Iptables::Table::kMangle, kQoSDetectDoHChain);
+
+  if (doh_provider_ips.empty()) {
+    return;
+  }
+
+  // Get the string format of the IP addresses.
+  std::vector<std::string> ip_strs;
+  ip_strs.reserve(doh_provider_ips.size());
+  for (const auto& ip : doh_provider_ips) {
+    ip_strs.push_back(ip.ToString());
+  }
+
+  // Mark all the TCP and UDP traffic to the 443 port of the DoH servers. This
+  // may have false positives if the server is also used for non-DNS HTTPS
+  // traffic.
+  for (std::string_view protocol : {"udp", "tcp"}) {
+    ModifyIptables(family, Iptables::Table::kMangle, Iptables::Command::kA,
+                   kQoSDetectDoHChain,
+                   {"-p", std::string(protocol), "--dport", "443", "-d",
+                    base::JoinString(ip_strs, ","), "-j", "MARK", "--set-xmark",
+                    QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
+  }
 }
 
 bool Datapath::ModifyClatAcceptRules(Iptables::Command command,
