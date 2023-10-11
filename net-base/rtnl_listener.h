@@ -19,23 +19,21 @@ class NET_BASE_EXPORT RTNLListener : public base::CheckedObserver {
  public:
   RTNLListener(
       uint32_t listen_flags,
-      const base::RepeatingCallback<void(const net_base::RTNLMessage&)>&
-          callback);
+      const base::RepeatingCallback<void(const RTNLMessage&)>& callback);
   RTNLListener(
       uint32_t listen_flags,
-      const base::RepeatingCallback<void(const net_base::RTNLMessage&)>&
-          callback,
+      const base::RepeatingCallback<void(const RTNLMessage&)>& callback,
       RTNLHandler* rtnl_handler);
   RTNLListener(const RTNLListener&) = delete;
   RTNLListener& operator=(const RTNLListener&) = delete;
 
   ~RTNLListener() override;
 
-  void NotifyEvent(uint32_t type, const net_base::RTNLMessage& msg) const;
+  void NotifyEvent(uint32_t type, const RTNLMessage& msg) const;
 
  private:
   const uint32_t listen_flags_;
-  const base::RepeatingCallback<void(const net_base::RTNLMessage&)> callback_;
+  const base::RepeatingCallback<void(const RTNLMessage&)> callback_;
   RTNLHandler* const rtnl_handler_;
 };
 
