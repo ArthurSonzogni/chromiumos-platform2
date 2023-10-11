@@ -32,6 +32,7 @@
 #include "common/reloadable_config_file.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/common.h"
+#include "cros-camera/tracing.h"
 
 namespace cros {
 
@@ -79,6 +80,7 @@ HdrNetProcessorTestFixture::HdrNetProcessorTestFixture(
     uint32_t input_hal_pixel_format,
     const std::vector<Size>& output_sizes,
     bool use_default_adapter) {
+  cros::InitializeCameraTrace();
   CHECK(gpu_resources_.Initialize());
   CHECK_EQ(
       0, gpu_resources_.PostGpuTaskSync(

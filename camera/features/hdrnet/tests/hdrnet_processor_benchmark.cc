@@ -13,12 +13,15 @@
 #include <base/command_line.h>
 #include <base/test/test_timeouts.h>
 
+#include "features/hdrnet/tracing.h"
+
 namespace cros {
 
 void RunHdrnetProcessor(benchmark::State& state,
                         HdrNetProcessorTestFixture& fixture) {
   HdrnetMetrics metrics;
   for (auto _ : state) {
+    TRACE_HDRNET();
     auto result = fixture.ProduceFakeCaptureResult();
     fixture.ProcessResultMetadata(&result);
     base::ScopedFD fence = fixture.Run(result.frame_number(), metrics);
@@ -28,6 +31,7 @@ void RunHdrnetProcessor(benchmark::State& state,
 }
 
 static void BM_HdrNetProcessorFullProcessing(benchmark::State& state) {
+  TRACE_HDRNET();
   Size input_size = {static_cast<uint32_t>(state.range(0)),
                      static_cast<uint32_t>(state.range(1))};
   std::vector<Size> output_sizes = {input_size};
