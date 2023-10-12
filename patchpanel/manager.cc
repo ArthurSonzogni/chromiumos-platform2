@@ -78,6 +78,8 @@ Manager::Manager(const base::FilePath& cmd_path,
       &Manager::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
   shill_client_->RegisterIPv6NetworkChangedHandler(base::BindRepeating(
       &Manager::OnIPv6NetworkChanged, weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterDoHProvidersChangedHandler(base::BindRepeating(
+      &Manager::OnDoHProvidersChanged, weak_factory_.GetWeakPtr()));
 
   auto arc_type =
       USE_ARCVM ? ArcService::ArcType::kVM : ArcService::ArcType::kContainer;
@@ -411,6 +413,11 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
         shill_device.ipconfig.ipv6_cidr->address());
     datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, prefix);
   }
+}
+
+void Manager::OnDoHProvidersChanged(
+    const ShillClient::DoHProviders& doh_providers) {
+  qos_svc_->UpdateDoHProviders(doh_providers);
 }
 
 void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,

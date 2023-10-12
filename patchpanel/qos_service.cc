@@ -74,6 +74,9 @@ class QoSService::DoHUpdater {
     std::vector<std::string_view> hostnames =
         GetHostnamesFromDoHProviders(doh_providers);
 
+    LOG(INFO) << __func__ << " called with " << hostnames.size()
+              << " valid hostnames";
+
     // Empty list can be intentional (no DoH providers) or all the input are
     // invalid. We only need to flush the rules here.
     if (hostnames.empty()) {
@@ -146,6 +149,9 @@ class QoSService::DoHUpdater {
 
   void UpdateDatapath() {
     DCHECK(dns_clients_.empty());
+
+    LOG(INFO) << "Updating iptables rules for QoS with " << ipv4_addrs_.size()
+              << " IPv4 addrs and " << ipv6_addrs_.size() << " IPv6 addrs";
 
     datapath_->UpdateDoHProvidersForQoS(
         IpFamily::kIPv4, {ipv4_addrs_.begin(), ipv4_addrs_.end()});
