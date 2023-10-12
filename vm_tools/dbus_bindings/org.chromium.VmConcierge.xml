@@ -185,7 +185,8 @@
     <method name="EnableVmMemoryManagementService">
       <tp:docstring>
         Enables the VM Memory Management service which allows for no-poll
-        and responsive ballooning for client VMs.
+        and responsive ballooning for client VMs. After the first
+        successful call to this API, all subsequent calls will return success.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
