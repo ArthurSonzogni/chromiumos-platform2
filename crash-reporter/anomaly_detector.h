@@ -114,6 +114,13 @@ class KernelParser : public Parser {
     None,
     Start,
   };
+  enum class Ath11kLineType {
+    // The following enum values are used to parse the Ath11k error. The None
+    // value means that there is no error detected in the log. The Start value
+    // means that the first line of the dump was found.
+    None,
+    Start,
+  };
   const bool testonly_send_all_;
 
   LineType last_line_ = LineType::None;
@@ -121,8 +128,11 @@ class KernelParser : public Parser {
   std::string iwlwifi_text_;
   Ath10kLineType ath10k_last_line_ = Ath10kLineType::None;
   std::string ath10k_text_;
+  Ath11kLineType ath11k_last_line_ = Ath11kLineType::None;
+  std::string ath11k_text_;
   std::string text_;
   std::string flag_;
+  int ah11k_line_counter_ = 0;
 
   // Timestamp of last time crash_reporter failed.
   base::TimeTicks crash_reporter_last_crashed_ = base::TimeTicks();

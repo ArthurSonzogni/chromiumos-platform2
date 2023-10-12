@@ -134,6 +134,69 @@ TEST(AnomalyDetectorTest, KernelAth10kErrorNoEnd) {
   ParserTest("TEST_ATH10K_NO_END", {wifi_error}, &parser);
 }
 
+TEST(AnomalyDetectorTest, KernelAth11kError) {
+  ParserRun wifi_error = {
+      .expected_text =
+          "[   88.311695] ath11k_pci 0000:01:00.0: firmware crashed:"
+          " MHI_CB_EE_RDDM\n"
+          "[   88.324206] ieee80211 phy0: Hardware restart was requested\n"
+          "[   88.655410] mhi mhi0: Requested to power ON\n"
+          "[   88.655549] mhi mhi0: Power on setup success\n"
+          "[   89.006232] mhi mhi0: Wait for device to enter SBL"
+          " or Mission mode\n"
+          "[   89.636634] ath11k_pci 0000:01:00.0: chip_id "
+          "0x12 chip_family 0xb board_id 0xff soc_id 0x400c1211\n"
+          "[   89.636640] ath11k_pci 0000:01:00.0: fw_version 0x110b196e"
+          " fw_build_timestamp 2022-12-22 12:54 fw_build_id "
+          "QC_IMAGE_VERSION_STRING=WLAN.HSP.1.1-03125-"
+          "QCAHSPSWPL_V1_V2_SILICONZ_LITE-3.6510.23\n",
+      .expected_flags = {{"--kernel_ath11k_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_ATH11K", {wifi_error}, &parser);
+}
+
+TEST(AnomalyDetectorTest, KernelAth11WrongTag) {
+  ParserRun wifi_error = {
+      .expected_text =
+          "[   72.930992] ath11k_pci 0000:01:00.0: firmware crashed: "
+          "MHI_CB_EE_RDDM\n"
+          "[   72.940206] ieee80211 phy0: Hardware restart was requested\n"
+          "[   73.272757] mhi mhi0: Requested to power ON\n"
+          "[   73.272872] mhi mhi0: Power on setup success\n"
+          "[   73.624227] mhi mhi0: Wait for device to enter SBL or Mission "
+          "mode\n"
+          "[   74.255350] ath11k_pci 0000:01:00.0: chip_id 0x12 chip_family "
+          "0xb board_id 0xff soc_id 0x400c1211\n",
+      .expected_flags = {{"--kernel_ath11k_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_ATH11K_WRONG_TAG", {wifi_error}, &parser);
+}
+
+TEST(AnomalyDetectorTest, KernelAth11ErrorNoEnd) {
+  ParserRun wifi_error = {
+      .expected_text =
+          "[   88.311695] ath11k_pci 0000:01:00.0: firmware crashed:"
+          " MHI_CB_EE_RDDM\n"
+          "[   88.324206] ieee80211 phy0: Hardware restart was requested\n"
+          "[   88.655410] mhi mhi0: Requested to power ON\n"
+          "[   88.655549] mhi mhi0: Power on setup success\n"
+          "[   89.006232] mhi mhi0: Wait for device to enter SBL"
+          " or Mission mode\n"
+          "[   89.636634] ath11k_pci 0000:01:00.0: chip_id "
+          "0x12 chip_family 0xb board_id 0xff soc_id 0x400c1211\n"
+          "[   89.674574] ath11k_pci 0000:01:00.0: "
+          "Last interrupt received for each CE:\n"
+          "[   89.674580] ath11k_pci 0000:01:00.0: "
+          "CE_id 0 pipe_num 0 76901ms before\n"
+          "[   89.674582] ath11k_pci 0000:01:00.0: "
+          "CE_id 1 pipe_num 1 76661ms before\n"
+          "[   89.674583] ath11k_pci 0000:01:00.0: "
+          "CE_id 2 pipe_num 2 1781ms before\n",
+      .expected_flags = {{"--kernel_ath11k_error", "--weight=50"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_ATH11K_NO_END", {wifi_error}, &parser);
+}
+
 TEST(AnomalyDetectorTest, KernelIwlwifiErrorLmacUmac) {
   ParserRun wifi_error = {
       .expected_text =

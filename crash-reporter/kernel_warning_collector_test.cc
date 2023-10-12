@@ -181,6 +181,34 @@ TEST_F(KernelWarningCollectorTest, CollectAth10k) {
       "upload_var_weight=50"));
 }
 
+TEST_F(KernelWarningCollectorTest, CollectAth11k) {
+  // Collector produces a crash report.
+  ASSERT_TRUE(test_util::CreateFile(
+      test_path_,
+      "[   88.311695] ath11k_pci 0000:01:00.0: "
+      "firmware crashed: MHI_CB_EE_RDDM\n"
+      "[   88.324206] ieee80211 phy0: Hardware restart was requested\n"
+      "[   88.655410] mhi mhi0: Requested to power ON\n"
+      "[   88.655549] mhi mhi0: Power on setup success\n"
+      "[   89.006232] mhi mhi0: "
+      "Wait for device to enter SBL or Mission mode\n"
+      "[   89.636634] ath11k_pci 0000:01:00.0: "
+      "chip_id 0x12 chip_family 0xb board_id 0xff soc_id 0x400c1211\n"
+      "[   89.636640] ath11k_pci 0000:01:00.0: fw_version 0x110b196e"
+      " fw_build_timestamp 2022-12-22 12:54 "
+      "fw_build_id QC_IMAGE_VERSION_STRING="
+      "WLAN.HSP.1.1-03125-QCAHSPSWPL_V1_V2_SILICONZ_LITE-3.6510.23\n"
+      "<remaining log contents>"));
+  EXPECT_TRUE(
+      collector_.Collect(50, KernelWarningCollector::WarningType::kAth11k));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_ath11k_error_firmware_crashed.*.meta",
+      "sig=ath11k_pci 0000:01:00.0: firmware crashed"));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_ath11k_error_firmware_crashed.*.meta",
+      "upload_var_weight=50"));
+}
+
 TEST_F(KernelWarningCollectorTest, CollectUMACOK) {
   // Collector produces a crash report.
   ASSERT_TRUE(test_util::CreateFile(

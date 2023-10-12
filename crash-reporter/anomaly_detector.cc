@@ -237,6 +237,16 @@ constexpr LazyRE2 start_ath10k_dump = {R"(ath10k_.*firmware crashed!)"};
 constexpr LazyRE2 end_ath10k_dump = {R"(ath10k_.*htt-ver)"};
 constexpr LazyRE2 tag_ath10k_dump = {R"(ath10k_)"};
 
+constexpr LazyRE2 start_ath11k_dump = {R"(ath11k_.*firmware crashed)"};
+constexpr LazyRE2 end_ath11k_dump = {R"(ath11k_.*fw_version)"};
+const char tag_ath11k_dump[] = "ath11k_";
+const char tag_ieee80211_dump[] = "ieee80211";
+const char tag_mhi_dump[] = "mhi";
+// The crash should have the start signature (ath11k_.*firmware crashed) and
+// the end signature (ath11k_.*fw_version). However, sometimes the end signature
+// isn't printed; in that case, assume we're done once we've seen 10 lines.
+const int kAth11kMaxLength = 10;
+
 // Older wifi chips have lmac dump only and newer wifi chips have lmac followed
 // by umac dumps. The KernelParser should parse the dumps accordingly.
 // The following regexp identify the beginning of the iwlwifi dump.
@@ -370,6 +380,47 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
     }
 
     ath10k_text_ += line + "\n";
+  }
+
+  if (ath11k_last_line_ == Ath11kLineType::None) {
+    if (RE2::PartialMatch(line, *start_ath11k_dump)) {
+      ath11k_last_line_ = Ath11kLineType::Start;
+      ath11k_text_ += line + "\n";
+      ah11k_line_counter_ = 1;
+    }
+  } else if (ath11k_last_line_ == Ath11kLineType::Start) {
+    // Return if the end_ath11k_dump is reached. However, sometimes
+    // end_ath11k_dump is not printed. In that case, stop when a line is
+    // printed that doesn't match one of the tags associated with an
+    // ath11k dump (there are three: "ath11k", "ieee80211", and "mhi") or
+    // the number of lines is greater than the number of lines we'd expect
+    // in a dump.
+    if (RE2::PartialMatch(line, *end_ath11k_dump) ||
+        (ah11k_line_counter_ >= kAth11kMaxLength) ||
+        (line.find(tag_ath11k_dump) == std::string::npos &&
+         line.find(tag_ieee80211_dump) == std::string::npos &&
+         line.find(tag_mhi_dump) == std::string::npos)) {
+      ath11k_last_line_ = Ath11kLineType::None;
+      ah11k_line_counter_ = 0;
+      if (RE2::PartialMatch(line, *end_ath11k_dump)) {
+        ath11k_text_ += line + "\n";
+      }
+      std::string ath11k_text_tmp;
+      ath11k_text_tmp.swap(ath11k_text_);
+
+      const std::string kFlag = "--kernel_ath11k_error";
+      const int kWeight = util::GetKernelWarningWeight(kFlag);
+      if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
+        return std::nullopt;
+      }
+
+      return CrashReport(
+          std::move(ath11k_text_tmp),
+          {std::move(kFlag), base::StringPrintf("--weight=%d", kWeight)});
+    }
+
+    ath11k_text_ += line + "\n";
+    ah11k_line_counter_ = ah11k_line_counter_ + 1;
   }
 
   if (iwlwifi_last_line_ == IwlwifiLineType::None) {

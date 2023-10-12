@@ -626,7 +626,7 @@ int GetKernelWarningWeight(const std::string& flag) {
   // Sample iwlwifi errors and ath10k errors using a higher weight since they're
   // not as useful and are only actionable for WiFi vendors.
   if (flag == "--kernel_wifi_warning" || flag == "--kernel_ath10k_error" ||
-      flag == "--kernel_iwlwifi_error") {
+      flag == "--kernel_ath11k_error" || flag == "--kernel_iwlwifi_error") {
     return 50;
   } else if (flag == "--kernel_warning" || flag == "--kernel_suspend_warning") {
     return 10;

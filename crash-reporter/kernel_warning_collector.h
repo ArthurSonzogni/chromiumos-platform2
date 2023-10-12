@@ -33,6 +33,9 @@ class KernelWarningCollector : public CrashCollector {
     // Ath10k is the name of Qualcomm WiFi driver that we want to collect its
     // error dumps.
     kAth10k,
+    // Ath11k is the name of Qualcomm WiFi driver that we want to collect its
+    // error dumps.
+    kAth11k,
   };
 
   explicit KernelWarningCollector(
@@ -59,6 +62,7 @@ class KernelWarningCollector : public CrashCollector {
       bool kernel_suspend_warning,
       bool kernel_iwlwifi_error,
       bool kernel_ath10k_error,
+      bool kernel_ath11k_error,
       const scoped_refptr<
           base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
           metrics_lib);
@@ -85,6 +89,9 @@ class KernelWarningCollector : public CrashCollector {
                                  std::string* signature,
                                  std::string* func_name);
   bool ExtractAth10kSignature(const std::string& content,
+                              std::string* signature,
+                              std::string* func_name);
+  bool ExtractAth11kSignature(const std::string& content,
                               std::string* signature,
                               std::string* func_name);
 };

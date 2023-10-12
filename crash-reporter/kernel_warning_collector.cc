@@ -27,6 +27,7 @@ const char kSMMUFaultExecName[] = "kernel-smmu-fault";
 const char kSuspendWarningExecName[] = "kernel-suspend-warning";
 const char kKernelIwlwifiErrorExecName[] = "kernel-iwlwifi-error";
 const char kKernelAth10kErrorExecName[] = "kernel-ath10k-error";
+const char kKernelAth11kErrorExecName[] = "kernel-ath11k-error";
 const char kKernelWarningSignatureKey[] = "sig";
 const pid_t kKernelPid = 0;
 }  // namespace
@@ -67,6 +68,12 @@ bool KernelWarningCollector::LoadKernelWarning(std::string* content,
     }
   } else if (type == kAth10k) {
     if (!ExtractAth10kSignature(*content, signature, func_name)) {
+      return false;
+    } else if (signature->length() > 0) {
+      return true;
+    }
+  } else if (type == kAth11k) {
+    if (!ExtractAth11kSignature(*content, signature, func_name)) {
       return false;
     } else if (signature->length() > 0) {
       return true;
@@ -287,6 +294,29 @@ bool KernelWarningCollector::ExtractAth10kSignature(const std::string& content,
   return false;
 }
 
+constexpr LazyRE2 ath11k_sig_re = {R"((ath11k_.*firmware crashed))"};
+
+bool KernelWarningCollector::ExtractAth11kSignature(const std::string& content,
+                                                    std::string* signature,
+                                                    std::string* func_name) {
+  std::string line;
+  std::string::size_type end_position = content.find('\n');
+  if (end_position == std::string::npos) {
+    LOG(ERROR) << "unexpected ath11k crash format";
+    return false;
+  }
+
+  line = content.substr(0, end_position);
+  if (RE2::PartialMatch(line, *ath11k_sig_re, signature)) {
+    *func_name = "firmware crashed";
+    return true;
+  }
+  LOG(INFO) << line << " does not match regex";
+  signature->clear();
+  func_name->clear();
+  return false;
+}
+
 bool KernelWarningCollector::Collect(int weight, WarningType type) {
   LOG(INFO) << "Processing kernel warning";
 
@@ -319,6 +349,8 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
     exec_name = kGenericWarningExecName;
   else if (type == kAth10k)
     exec_name = kKernelAth10kErrorExecName;
+  else if (type == kAth11k)
+    exec_name = kKernelAth11kErrorExecName;
   else
     exec_name = kKernelIwlwifiErrorExecName;
 
@@ -393,6 +425,7 @@ CollectorInfo KernelWarningCollector::GetHandlerInfo(
     bool kernel_suspend_warning,
     bool kernel_iwlwifi_error,
     bool kernel_ath10k_error,
+    bool kernel_ath11k_error,
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
         metrics_lib) {
@@ -427,6 +460,10 @@ CollectorInfo KernelWarningCollector::GetHandlerInfo(
            {
                .should_handle = kernel_ath10k_error,
                .cb = base::BindRepeating(kernel_warn_cb, WarningType::kAth10k),
+           },
+           {
+               .should_handle = kernel_ath11k_error,
+               .cb = base::BindRepeating(kernel_warn_cb, WarningType::kAth11k),
            }},
   };
 }

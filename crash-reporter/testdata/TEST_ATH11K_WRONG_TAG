@@ -1,0 +1,79 @@
+[    9.833001] init: regulatory-domain main process (1147) killed by TERM signal
+[   18.116846] device-mapper: verity: sha256 using implementation "sha256-ni"
+[   18.844731] device-mapper: verity: sha256 using implementation "sha256-ni"
+[   72.511058] ath11k_pci 0000:01:00.0: simulating firmware assert crash
+[   72.930992] ath11k_pci 0000:01:00.0: firmware crashed: MHI_CB_EE_RDDM
+[   72.940206] ieee80211 phy0: Hardware restart was requested
+[   73.272757] mhi mhi0: Requested to power ON
+[   73.272872] mhi mhi0: Power on setup success
+[   73.624227] mhi mhi0: Wait for device to enter SBL or Mission mode
+[   74.255350] ath11k_pci 0000:01:00.0: chip_id 0x12 chip_family 0xb board_id 0xff soc_id 0x400c1211
+[   74.255355] cma: cma_alloc: alloc failed, req-size: 66 pages, ret: -12
+[   74.255356] ath11k_pci 0000:01:00.0: fw_version 0x110b196e fw_build_timestamp 2022-12-22 12:54 fw_build_id QC_IMAGE_VERSION_STRING=WLAN.HSP.1.1-03125-QCAHSPSWPL_V1_V2_SILICONZ_LITE-3.6510.23
+[   74.292950] ath11k_pci 0000:01:00.0: Last interrupt received for each CE:
+[   74.292955] ath11k_pci 0000:01:00.0: CE_id 0 pipe_num 0 65667ms before
+[   74.292957] ath11k_pci 0000:01:00.0: CE_id 1 pipe_num 1 65428ms before
+[   74.292960] ath11k_pci 0000:01:00.0: CE_id 2 pipe_num 2 1779ms before
+[   74.292962] ath11k_pci 0000:01:00.0: CE_id 3 pipe_num 3 1780ms before
+[   74.292964] ath11k_pci 0000:01:00.0: CE_id 5 pipe_num 5 65668ms before
+[   74.292967] ath11k_pci 0000:01:00.0: CE_id 7 pipe_num 7 4294741516ms before
+[   74.292969] ath11k_pci 0000:01:00.0: CE_id 8 pipe_num 8 4294741516ms before
+[   74.292972] ath11k_pci 0000:01:00.0: 
+               Last interrupt received for each group:
+[   74.292974] ath11k_pci 0000:01:00.0: group_id 0 4294741516ms before
+[   74.292977] ath11k_pci 0000:01:00.0: group_id 1 4294741516ms before
+[   74.292979] ath11k_pci 0000:01:00.0: group_id 2 4294741516ms before
+[   74.292981] ath11k_pci 0000:01:00.0: group_id 3 4294741516ms before
+[   74.292983] ath11k_pci 0000:01:00.0: group_id 4 65404ms before
+[   74.292986] ath11k_pci 0000:01:00.0: group_id 5 65404ms before
+[   74.292988] ath11k_pci 0000:01:00.0: group_id 6 4294741516ms before
+[   74.292990] ath11k_pci 0000:01:00.0: group_id 7 4294741516ms before
+[   74.292992] ath11k_pci 0000:01:00.0: group_id 8 4294741516ms before
+[   74.292994] ath11k_pci 0000:01:00.0: group_id 9 4294741516ms before
+[   74.292996] ath11k_pci 0000:01:00.0: group_id 10 4294741516ms before
+[   74.292999] ath11k_pci 0000:01:00.0: dst srng id 0 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293002] ath11k_pci 0000:01:00.0: dst srng id 1 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293005] ath11k_pci 0000:01:00.0: dst srng id 2 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293007] ath11k_pci 0000:01:00.0: dst srng id 3 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293009] ath11k_pci 0000:01:00.0: dst srng id 4 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293012] ath11k_pci 0000:01:00.0: src srng id 5 hp 0, reap_hp 248, cur tp 0, cached tp 0 last tp 0 napi processed before 4294741516ms
+[   74.293015] ath11k_pci 0000:01:00.0: src srng id 8 hp 0, reap_hp 1270, cur tp 0, cached tp 0 last tp 0 napi processed before 4294741516ms
+[   74.293017] ath11k_pci 0000:01:00.0: dst srng id 9 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293020] ath11k_pci 0000:01:00.0: src srng id 16 hp 0, reap_hp 4088, cur tp 0, cached tp 0 last tp 0 napi processed before 4294741516ms
+[   74.293022] ath11k_pci 0000:01:00.0: src srng id 24 hp 0, reap_hp 248, cur tp 0, cached tp 0 last tp 0 napi processed before 4294741516ms
+[   74.293025] ath11k_pci 0000:01:00.0: dst srng id 25 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293028] ath11k_pci 0000:01:00.0: src srng id 32 hp 12, reap_hp 8, cur tp 12, cached tp 12 last tp 8 napi processed before 65668ms
+[   74.293031] ath11k_pci 0000:01:00.0: src srng id 35 hp 56, reap_hp 52, cur tp 56, cached tp 56 last tp 52 napi processed before 1782ms
+[   74.293033] ath11k_pci 0000:01:00.0: src srng id 36 hp 48, reap_hp 0, cur tp 48, cached tp 40 last tp 40 napi processed before 65381ms
+[   74.293036] ath11k_pci 0000:01:00.0: src srng id 39 hp 0, reap_hp 124, cur tp 0, cached tp 0 last tp 0 napi processed before 4294741516ms
+[   74.293039] ath11k_pci 0000:01:00.0: src srng id 57 hp 1022, reap_hp 1022, cur tp 2, cached tp 2 last tp 2 napi processed before 65428ms
+[   74.293041] ath11k_pci 0000:01:00.0: src srng id 58 hp 836, reap_hp 836, cur tp 840, cached tp 840 last tp 840 napi processed before 1779ms
+[   74.293044] ath11k_pci 0000:01:00.0: src srng id 61 hp 1020, reap_hp 1020, cur tp 0, cached tp 0 last tp 0 napi processed before 65668ms
+[   74.293047] ath11k_pci 0000:01:00.0: dst srng id 81 tp 4, cur hp 4, cached hp 4 last hp 4 napi processed before 65428ms
+[   74.293049] ath11k_pci 0000:01:00.0: dst srng id 82 tp 1680, cur hp 1680, cached hp 1680 last hp 1680 napi processed before 1779ms
+[   74.293052] ath11k_pci 0000:01:00.0: dst srng id 85 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 65668ms
+[   74.293055] ath11k_pci 0000:01:00.0: src srng id 104 hp 65532, reap_hp 65532, cur tp 0, cached tp 0 last tp 0 napi processed before 65705ms
+[   74.293057] ath11k_pci 0000:01:00.0: src srng id 105 hp 0, reap_hp 504, cur tp 0, cached tp 0 last tp 0 napi processed before 4294741516ms
+[   74.293060] ath11k_pci 0000:01:00.0: dst srng id 106 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293062] ath11k_pci 0000:01:00.0: dst srng id 109 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293065] ath11k_pci 0000:01:00.0: src srng id 128 hp 8190, reap_hp 8190, cur tp 4156, cached tp 0 last tp 0 napi processed before 65417ms
+[   74.293067] ath11k_pci 0000:01:00.0: src srng id 129 hp 0, reap_hp 2046, cur tp 0, cached tp 0 last tp 0 napi processed before 4294741516ms
+[   74.293070] ath11k_pci 0000:01:00.0: src srng id 132 hp 2046, reap_hp 2046, cur tp 0, cached tp 0 last tp 0 napi processed before 7ms
+[   74.293072] ath11k_pci 0000:01:00.0: dst srng id 133 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.293075] ath11k_pci 0000:01:00.0: src srng id 144 hp 0, reap_hp 2046, cur tp 0, cached tp 0 last tp 0 napi processed before 4294741516ms
+[   74.293077] ath11k_pci 0000:01:00.0: src srng id 147 hp 2046, reap_hp 2046, cur tp 0, cached tp 0 last tp 0 napi processed before 7ms
+[   74.293079] ath11k_pci 0000:01:00.0: dst srng id 148 tp 0, cur hp 0, cached hp 0 last hp 0 napi processed before 4294741516ms
+[   74.296442] cma: cma_alloc: alloc failed, req-size: 512 pages, ret: -12
+[   74.296651] cma: cma_alloc: alloc failed, req-size: 512 pages, ret: -12
+[   74.296986] cma: cma_alloc: alloc failed, req-size: 257 pages, ret: -12
+[   74.297187] cma: cma_alloc: alloc failed, req-size: 53 pages, ret: -12
+[   74.335239] ath11k_pci 0000:01:00.0: Already processed, so ignoring dma ring caps
+[   74.335377] cma: cma_alloc: alloc failed, req-size: 33 pages, ret: -12
+[   74.335426] cma: cma_alloc: alloc failed, req-size: 33 pages, ret: -12
+[   74.335472] cma: cma_alloc: alloc failed, req-size: 33 pages, ret: -12
+[   74.335522] cma: cma_alloc: alloc failed, req-size: 33 pages, ret: -12
+[   74.572907] ath11k_pci 0000:01:00.0: failed to process regulatory info from received event
+[   74.573356] ath11k_pci 0000:01:00.0: failed to process regulatory info from received event
+[   74.574925] cma: cma_alloc: alloc failed, req-size: 9 pages, ret: -12
+[   74.574941] cma: cma_alloc: alloc failed, req-size: 9 pages, ret: -12
+[   74.634709] ath11k_pci 0000:01:00.0: pdev 0 successfully recovered
