@@ -411,7 +411,7 @@ void MulticastMetrics::Poller::StartTimer() {
     return;
   }
   packet_counts_ = *packet_counts;
-  last_record_timepoint_ = base::Time::Now();
+  last_record_timepoint_ = base::TimeTicks::Now();
   timer_.Start(FROM_HERE, kMulticastPollDelay, this,
                &MulticastMetrics::Poller::Record);
 }
@@ -471,14 +471,9 @@ bool MulticastMetrics::Poller::IsARCForwardingEnabled() {
 
 void MulticastMetrics::Poller::UpdateARCActiveTimeDuration(
     bool prev_arc_multicast_fwd_running) {
-  auto duration = base::Time::Now() - last_record_timepoint_;
-  last_record_timepoint_ = base::Time::Now();
+  auto duration = base::TimeTicks::Now() - last_record_timepoint_;
+  last_record_timepoint_ = base::TimeTicks::Now();
 
-  // When system is suspended the time elapsed from last checkpoint
-  // will be longer than usual and we should discard the data.
-  if (duration > (kMulticastPollDelay + kMulticastPollDelayJitter)) {
-    return;
-  }
   total_arc_wifi_connection_duration_ += duration;
   if (prev_arc_multicast_fwd_running) {
     total_arc_multicast_enabled_duration_ += duration;

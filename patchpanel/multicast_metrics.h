@@ -29,11 +29,6 @@ constexpr std::string_view kPlaceholderIfname = "placeholder0";
 // Poll delay to fetch multicast packet count and report to UMA.
 constexpr base::TimeDelta kMulticastPollDelay = base::Minutes(2);
 
-// If interval between two records spend more than kMulticastPollDelay +
-// kMulticastPollDelayJitter, it means there is a suspend and we should discard
-// the data.
-constexpr base::TimeDelta kMulticastPollDelayJitter = base::Seconds(10);
-
 // Class to fetch and report multicast packet counts to UMA.
 // This class reports 3 types of multicast metrics:
 // - Device's total packet count.
@@ -135,8 +130,7 @@ class MulticastMetrics {
     bool IsARCForwardingEnabled();
 
     // Update elapsed time for WiFi connected duration and ARC multicast enabled
-    // duration when time elapsed since last recorded timepoint is within
-    // kPollDelay + kPollDelayJitter to avoid recording during a suspend.
+    // duration.
     void UpdateARCActiveTimeDuration(bool prev_arc_multicast_fwd_running);
 
    private:
@@ -180,7 +174,7 @@ class MulticastMetrics {
     base::TimeDelta total_arc_wifi_connection_duration_;
 
     // Timepoint when last multicast active time metric was recorded.
-    base::Time last_record_timepoint_;
+    base::TimeTicks last_record_timepoint_;
   };
 
   FRIEND_TEST(MulticastMetricsTest, BaseState);
