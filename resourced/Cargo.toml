@@ -12,7 +12,8 @@ build = "src/vm_grpc/proto/build.rs"
 [features]
 # Feature chromeos is turned on when building with ebuild.
 chromeos = ["featured"]
-vm_grpc = ["grpcio", "futures", "futures-channel", "futures-executor", "futures-util"]
+# Feature vm_grpc is commented as it's not used and doesn't compile.
+# vm_grpc = ["grpcio", "futures", "futures-channel", "futures-executor", "futures-util"]
 
 [dependencies]
 anyhow = "1.0"
