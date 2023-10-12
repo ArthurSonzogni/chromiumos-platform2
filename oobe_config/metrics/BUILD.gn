@@ -36,6 +36,7 @@ source_set("enterprise_rollback_metrics_library_common_sources") {
   sources = [
     "enterprise_rollback_metrics_handler.cc",
     "enterprise_rollback_metrics_recorder.cc",
+    "enterprise_rollback_metrics_tracking.cc",
   ]
   deps = [ ":enterprise_rollback_metrics_proto" ]
   all_dependent_configs = [ ":target_defaults" ]
@@ -59,7 +60,10 @@ install_config("install_pkgconfig") {
 }
 
 install_config("install_headers") {
-  sources = [ "enterprise_rollback_metrics_handler.h" ]
+  sources = [
+    "enterprise_rollback_metrics_handler.h",
+    "enterprise_rollback_metrics_tracking.h",
+  ]
   install_path = "/usr/include/oobe_config/metrics"
 }
 
@@ -105,6 +109,7 @@ if (use.test) {
     sources = [
       "enterprise_rollback_metrics_handler_test.cc",
       "enterprise_rollback_metrics_recorder_test.cc",
+      "enterprise_rollback_metrics_tracking_test.cc",
     ]
     configs += [
       "//common-mk:test",
