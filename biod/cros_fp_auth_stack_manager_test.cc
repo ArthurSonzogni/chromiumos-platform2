@@ -13,7 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/factory/mock_factory.h>
-#include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "biod/cros_fp_device.h"
@@ -33,7 +33,7 @@ using KeygenReply = ec::CrosFpDeviceInterface::PairingKeyKeygenReply;
 
 using brillo::BlobToString;
 
-using PinWeaverEccPoint = hwsec::PinWeaverFrontend::PinWeaverEccPoint;
+using PinWeaverEccPoint = hwsec::PinWeaverManagerFrontend::PinWeaverEccPoint;
 
 using hwsec::TPMError;
 using hwsec::TPMRetryAction;
@@ -157,13 +157,14 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
     ON_CALL(*mock_cros_dev_, SetMkbpEventCallback)
         .WillByDefault(SaveArg<0>(&on_mkbp_event_));
 
-    auto mock_pinweaver = std::make_unique<hwsec::MockPinWeaverFrontend>();
-    mock_pinweaver_ = mock_pinweaver.get();
+    auto mock_pinweaver_manager =
+        std::make_unique<hwsec::MockPinWeaverManagerFrontend>();
+    mock_pinweaver_manager_ = mock_pinweaver_manager.get();
 
     auto cros_fp_auth_stack_manager = std::make_unique<CrosFpAuthStackManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
         &mock_metrics_, std::move(mock_session_manager),
-        std::move(mock_pk_storage), std::move(mock_pinweaver), state,
+        std::move(mock_pk_storage), std::move(mock_pinweaver_manager), state,
         pending_match_event);
 
     cros_fp_auth_stack_manager->SetEnrollScanDoneHandler(
@@ -191,7 +192,7 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
   MockPairingKeyStorage* mock_pk_storage_;
   MockCrosFpSessionManager* mock_session_manager_;
   MockCrosFpDevice* mock_cros_dev_;
-  hwsec::MockPinWeaverFrontend* mock_pinweaver_;
+  hwsec::MockPinWeaverManagerFrontend* mock_pinweaver_manager_;
   CrosFpDevice::MkbpCallback on_mkbp_event_;
 };
 
@@ -384,15 +385,15 @@ TEST_F(CrosFpAuthStackManagerTest, TestInitializeNoPk) {
 
   EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillOnce(Return(false));
 
-  EXPECT_CALL(*mock_pinweaver_, IsEnabled).WillOnce(ReturnValue(true));
-  EXPECT_CALL(*mock_pinweaver_, GetVersion).WillOnce(ReturnValue(2));
+  EXPECT_CALL(*mock_pinweaver_manager_, IsEnabled).WillOnce(ReturnValue(true));
+  EXPECT_CALL(*mock_pinweaver_manager_, GetVersion).WillOnce(ReturnValue(2));
   EXPECT_CALL(*mock_cros_dev_, PairingKeyKeygen)
       .WillOnce(ReturnValue(KeygenReply{
           .pub_x = kPubX,
           .pub_y = kPubY,
           .encrypted_private_key = kEncryptedPriv,
       }));
-  EXPECT_CALL(*mock_pinweaver_, GeneratePk(kCrosFpAuthChannel, _))
+  EXPECT_CALL(*mock_pinweaver_manager_, GeneratePk(kCrosFpAuthChannel, _))
       .WillOnce(ReturnValue(PinWeaverEccPoint()));
   EXPECT_CALL(*mock_cros_dev_, PairingKeyWrap(_, _, kEncryptedPriv))
       .WillOnce(ReturnValue(kEncryptedPk));
@@ -409,8 +410,8 @@ TEST_F(CrosFpAuthStackManagerTest, TestInitializeNoPk) {
 TEST_F(CrosFpAuthStackManagerTest, TestInitializeIncorrectPinWeaverVersion) {
   EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillOnce(Return(false));
 
-  EXPECT_CALL(*mock_pinweaver_, IsEnabled).WillOnce(ReturnValue(true));
-  EXPECT_CALL(*mock_pinweaver_, GetVersion).WillOnce(ReturnValue(1));
+  EXPECT_CALL(*mock_pinweaver_manager_, IsEnabled).WillOnce(ReturnValue(true));
+  EXPECT_CALL(*mock_pinweaver_manager_, GetVersion).WillOnce(ReturnValue(1));
 
   EXPECT_FALSE(cros_fp_auth_stack_manager_->Initialize());
 }
@@ -422,15 +423,15 @@ TEST_F(CrosFpAuthStackManagerTest, TestInitializeNoPkPinWeaverFailed) {
 
   EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillOnce(Return(false));
 
-  EXPECT_CALL(*mock_pinweaver_, IsEnabled).WillOnce(ReturnValue(true));
-  EXPECT_CALL(*mock_pinweaver_, GetVersion).WillOnce(ReturnValue(2));
+  EXPECT_CALL(*mock_pinweaver_manager_, IsEnabled).WillOnce(ReturnValue(true));
+  EXPECT_CALL(*mock_pinweaver_manager_, GetVersion).WillOnce(ReturnValue(2));
   EXPECT_CALL(*mock_cros_dev_, PairingKeyKeygen)
       .WillOnce(ReturnValue(KeygenReply{
           .pub_x = kPubX,
           .pub_y = kPubY,
           .encrypted_private_key = kEncryptedPriv,
       }));
-  EXPECT_CALL(*mock_pinweaver_, GeneratePk(kCrosFpAuthChannel, _))
+  EXPECT_CALL(*mock_pinweaver_manager_, GeneratePk(kCrosFpAuthChannel, _))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   EXPECT_FALSE(cros_fp_auth_stack_manager_->Initialize());

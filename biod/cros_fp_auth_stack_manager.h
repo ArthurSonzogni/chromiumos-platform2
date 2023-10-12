@@ -13,7 +13,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
-#include <libhwsec/frontend/pinweaver/frontend.h>
+#include <libhwsec/frontend/pinweaver_manager/frontend.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_session_manager.h"
@@ -65,7 +65,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
       BiodMetricsInterface* biod_metrics,
       std::unique_ptr<CrosFpSessionManager> session_manager,
       std::unique_ptr<PairingKeyStorage> pk_storage,
-      std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver,
+      std::unique_ptr<const hwsec::PinWeaverManagerFrontend> pinweaver_manager,
       State state = State::kNone,
       // This param allows tests to set an initial |pending_match_event_| when
       // initial state is State::kAuthDone.
@@ -168,7 +168,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
 
   std::unique_ptr<PairingKeyStorage> pk_storage_;
 
-  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver_;
+  std::unique_ptr<const hwsec::PinWeaverManagerFrontend> pinweaver_manager_;
 
   State state_;
 

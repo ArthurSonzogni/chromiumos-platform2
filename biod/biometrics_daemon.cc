@@ -79,7 +79,7 @@ BiometricsDaemon::BiometricsDaemon() {
     auto cros_fp_manager = std::make_unique<CrosFpAuthStackManager>(
         std::move(power_button_filter), std::move(cros_fp_device),
         biod_metrics_.get(), std::move(session_manager), std::move(pk_storage),
-        hwsec_factory_.GetPinWeaverFrontend());
+        hwsec_factory_.GetPinWeaverManagerFrontend());
     if (cros_fp_manager && cros_fp_manager->Initialize()) {
       auth_stack_managers_.emplace_back(
           std::make_unique<AuthStackManagerWrapper>(
