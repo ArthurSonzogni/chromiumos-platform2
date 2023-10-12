@@ -9,6 +9,8 @@ group("all") {
     ":arc-adbd",
     ":install_init",
     ":install_policy",
+    ":install_tmpfiles_config",
+    ":install_udev_rule",
   ]
 
   if (use.fuzzer) {
@@ -83,6 +85,16 @@ if (use.seccomp) {
     install_path = "seccomp_policy"
     outputs = [ "arc${_vm}-adbd-seccomp.policy" ]
   }
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/adbd.conf" ]
+  install_path = "tmpfilesd"
+}
+
+install_config("install_udev_rule") {
+  sources = [ "99-adbd.rules" ]
+  install_path = "/lib/udev/rules.d"
 }
 
 # Fuzzer only.

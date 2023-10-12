@@ -540,6 +540,7 @@ has_arc(`
 /dev/tpm[0-9]*                  u:object_r:tpm_device:s0
 /dev/urandom                    u:object_r:urandom_device:s0
 /dev/zero                       u:object_r:zero_device:s0
+/dev/dbc(/.*)?                  u:object_r:dbc_device:s0
 
 # Label /dev/bus/usb/NNN/MMM
 # (USB device nodes passed by Chrome / permission broker)

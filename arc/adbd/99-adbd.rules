@@ -1,0 +1,10 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Add/Remove aliases for ttyDBC devices in /dev/dbc/ folder. This allows
+# exposing only DbC devices to adbd instead of all of /dev.
+ACTION=="add", ENV{DEVNAME}=="/dev/ttyDBC*", SUBSYSTEM=="tty", \
+    RUN+="/bin/mknod -m 660 /dev/dbc/ttyDBC%n c %M %m"
+ACTION=="remove", ENV{DEVNAME}=="/dev/ttyDBC*", SUBSYSTEM=="tty", \
+    RUN+="/bin/rm /dev/dbc/ttyDBC%n"
