@@ -84,6 +84,11 @@ data_sources: {{
         ftrace_config {{
             buffer_size_kb: 16384
             drain_period_ms: 250
+            ftrace_events: "dma_fence/dma_fence_init"
+            ftrace_events: "dma_fence/dma_fence_emit"
+            ftrace_events: "dma_fence/dma_fence_signaled"
+            ftrace_events: "dma_fence/dma_fence_wait_start"
+            ftrace_events: "dma_fence/dma_fence_wait_end"
             ftrace_events: "ftrace/print"
             ftrace_events: "power/cpu_frequency"
             ftrace_events: "power/cpu_idle"
