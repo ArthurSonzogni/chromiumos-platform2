@@ -94,6 +94,12 @@ PLTError PersistentLookupTable::StoreValue(
     return PLT_STORAGE_ERROR;
   }
 
+  if (!brillo::SyncFileOrDirectory(key_dir, /*is_directory=*/true,
+                                   /*data_sync*/ false)) {
+    LOG(ERROR) << "Failed to sync key dir: " << key_dir.value();
+    return PLT_STORAGE_ERROR;
+  }
+
   return PLT_SUCCESS;
 }
 
