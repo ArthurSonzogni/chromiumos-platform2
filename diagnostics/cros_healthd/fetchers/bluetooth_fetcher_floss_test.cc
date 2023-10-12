@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher_floss.h"
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -41,6 +40,18 @@ const std::vector<uint8_t> kTestUuidBytes = {0x00, 0x00, 0x11, 0x0a, 0x00, 0x00,
                                              0x10, 0x00, 0x80, 0x00, 0x00, 0x80,
                                              0x5f, 0x9b, 0x34, 0xfb};
 constexpr char kTestUuidString[] = "0000110a-0000-1000-8000-00805f9b34fb";
+
+// Default settings for fetching adapter info.
+struct FetchAdapterInfoDetails {
+  bool get_name_error = false;
+  bool get_address_error = false;
+  bool get_discovering_error = false;
+  bool get_discoverable_error = false;
+  bool get_uuids_error = false;
+  bool get_connected_devices_error = false;
+  std::vector<brillo::VariantDictionary> connected_devices = {};
+  std::vector<std::vector<uint8_t>> uuids = {kTestUuidBytes};
+};
 
 class BluetoothFetcherFlossTest : public ::testing::Test {
  protected:
@@ -107,22 +118,56 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
         .WillOnce(ReturnRef(kDefaultAdminPath));
   }
 
-  void SetupFetchAdapterInfoCall(
-      const std::vector<brillo::VariantDictionary>& connected_devices = {}) {
-    EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
-        .WillOnce(
-            base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
-    EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
-    EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
-    EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
-    EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<0>(
-            /*services=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
-    EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
-        .WillOnce(base::test::RunOnceCallback<0>(connected_devices));
+  void SetupFetchAdapterInfoCall(FetchAdapterInfoDetails details = {}) {
+    if (!details.get_address_error) {
+      EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
+          .WillOnce(
+              base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
+    } else {
+      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
+      EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
+    }
+    if (!details.get_name_error) {
+      EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
+    } else {
+      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
+      EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
+    }
+    if (!details.get_discovering_error) {
+      EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
+    } else {
+      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
+      EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
+    }
+    if (!details.get_discoverable_error) {
+      EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
+    } else {
+      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
+      EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
+    }
+    if (!details.get_uuids_error) {
+      EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<0>(details.uuids));
+    } else {
+      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
+      EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
+    }
+    if (!details.get_connected_devices_error) {
+      EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<0>(details.connected_devices));
+    } else {
+      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
+      EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
+    }
   }
 
   MockContext mock_context_;
@@ -132,6 +177,7 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
       mock_adapter_qa_proxy_;
   StrictMock<org::chromium::bluetooth::BluetoothAdminProxyMock>
       mock_admin_proxy_;
+  brillo::ErrorPtr error_;
 
  private:
   base::test::TaskEnvironment task_environment_;
@@ -185,22 +231,7 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterAddressError) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
-  EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
-  EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*devices=*/std::vector<brillo::VariantDictionary>{}));
+  SetupFetchAdapterInfoCall({.get_address_error = true});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -213,23 +244,7 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterNameError) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-
-  EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
-      .WillOnce(
-          base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
-  EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*devices=*/std::vector<brillo::VariantDictionary>{}));
+  SetupFetchAdapterInfoCall({.get_name_error = true});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -241,23 +256,7 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterDiscoveringError) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-
-  EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
-      .WillOnce(
-          base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
-  EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
-  EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
-  EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*devices=*/std::vector<brillo::VariantDictionary>{}));
+  SetupFetchAdapterInfoCall({.get_discovering_error = true});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -270,23 +269,7 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterDiscoverableError) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-
-  EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
-      .WillOnce(
-          base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
-  EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
-  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
-  EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*devices=*/std::vector<brillo::VariantDictionary>{}));
+  SetupFetchAdapterInfoCall({.get_discoverable_error = true});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -299,22 +282,7 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterUUIDsError) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-
-  EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
-      .WillOnce(
-          base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
-  EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
-  EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*devices=*/std::vector<brillo::VariantDictionary>{}));
+  SetupFetchAdapterInfoCall({.get_uuids_error = true});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -326,22 +294,7 @@ TEST_F(BluetoothFetcherFlossTest, ParseAdapterUUIDsError) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-
-  EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
-      .WillOnce(
-          base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
-  EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*uuids=*/std::vector<std::vector<uint8_t>>{/*invalid_uuid=*/{}}));
-  EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*devices=*/std::vector<brillo::VariantDictionary>{}));
+  SetupFetchAdapterInfoCall({.uuids = {/*invalid_uuid=*/{}}});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -376,9 +329,9 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterModaliasError) {
   SetupFetchAdapterInfoCall();
 
   SetupGetAdapterQAsCall();
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  error_ = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_adapter_qa_proxy_, GetModaliasAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+      .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -415,9 +368,9 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterServiceAllowListError) {
   SetupFetchAdapterInfoCall();
 
   SetupGetAdminsCall();
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  error_ = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_admin_proxy_, GetAllowedServicesAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+      .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -449,22 +402,7 @@ TEST_F(BluetoothFetcherFlossTest, GetConnectedDevicesError) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-
-  EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
-      .WillOnce(
-          base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
-  EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
-  EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          /*uuids=*/std::vector<std::vector<uint8_t>>{kTestUuidBytes}));
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
-  EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+  SetupFetchAdapterInfoCall({.get_connected_devices_error = true});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -477,9 +415,9 @@ TEST_F(BluetoothFetcherFlossTest, ParseConnectedDevicesError) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-  const std::vector<brillo::VariantDictionary> connected_devices = {
-      {{"name", std::string("Test device")}, {"no_address", std::string("")}}};
-  SetupFetchAdapterInfoCall(connected_devices);
+  const brillo::VariantDictionary connected_device = {
+      {"name", std::string("Test device")}, {"no_address", std::string("")}};
+  SetupFetchAdapterInfoCall({.connected_devices = {connected_device}});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
@@ -492,10 +430,10 @@ TEST_F(BluetoothFetcherFlossTest, ConnectedDevices) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-  const std::vector<brillo::VariantDictionary> connected_devices = {
-      {{"name", std::string("Test device")},
-       {"address", std::string("70:88:6B:92:34:70")}}};
-  SetupFetchAdapterInfoCall(connected_devices);
+  const brillo::VariantDictionary connected_device = {
+      {"name", std::string("Test device")},
+      {"address", std::string("70:88:6B:92:34:70")}};
+  SetupFetchAdapterInfoCall({.connected_devices = {connected_device}});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
@@ -538,9 +476,9 @@ TEST_F(BluetoothFetcherFlossTest, NoAdapters) {
 // Test that the error of getting available adapters can be handled correctly.
 TEST_F(BluetoothFetcherFlossTest, GetAvailableAdaptersError) {
   InSequence s;
-  auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  error_ = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetAvailableAdaptersAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+      .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
