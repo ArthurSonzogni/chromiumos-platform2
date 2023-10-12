@@ -205,7 +205,7 @@ void WaitForNetwork() {
   udevadm_process.AddArg("trigger");
   // -w flag waits for trigger to complete
   udevadm_process.AddArg("-w");
-  udevadm_process.AddArg("--action=change");
+  udevadm_process.AddArg("--action=add");
   udevadm_process.SetCloseUnusedFileDescriptors(true);
 
   auto result = udevadm_process.Run();
