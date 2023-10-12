@@ -537,7 +537,7 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
   service->SetState(Service::kStateConnected);
 
   // The tethering network acquisition in the device fails
-  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _, _))
+  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _, _, _))
       .WillOnce(WithArgs<1>(
           Invoke([](Cellular::AcquireTetheringNetworkResultCallback callback) {
             std::move(callback).Run(nullptr, Error(Error::kOperationFailed));
@@ -554,7 +554,7 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
 
   // The tethering network acquisition in the device succeeds
   // but for some reason no Network is returned
-  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _, _))
+  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _, _, _))
       .WillOnce(WithArgs<1>(
           Invoke([](Cellular::AcquireTetheringNetworkResultCallback callback) {
             std::move(callback).Run(nullptr, Error(Error::kSuccess));
@@ -577,7 +577,7 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
 
   // The tethering network acquisition in the device succeeds
   // and a valid Network is returned
-  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _, _))
+  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_, _, _, _))
       .WillOnce(WithArgs<1>(
           Invoke([network_ptr](
                      Cellular::AcquireTetheringNetworkResultCallback callback) {
@@ -643,7 +643,7 @@ TEST_F(CellularServiceProviderTest, TetheringEntitlementCheck_Ok) {
       provider()->LoadServicesForDevice(device.get());
   service->SetState(Service::kStateConnected);
 
-  EXPECT_CALL(*(device.get()), EntitlementCheck(_))
+  EXPECT_CALL(*(device.get()), EntitlementCheck(_, _))
       .WillOnce(WithArgs<0>(
           Invoke([](Cellular::EntitlementCheckResultCallback callback) {
             std::move(callback).Run(
@@ -682,7 +682,7 @@ TEST_F(CellularServiceProviderTest,
       provider()->LoadServicesForDevice(device.get());
   service->SetState(Service::kStateConnected);
 
-  EXPECT_CALL(*(device.get()), EntitlementCheck(_))
+  EXPECT_CALL(*(device.get()), EntitlementCheck(_, _))
       .WillOnce(WithArgs<0>(
           Invoke([](Cellular::EntitlementCheckResultCallback callback) {
             std::move(callback).Run(

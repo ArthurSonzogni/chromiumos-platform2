@@ -1945,7 +1945,7 @@ void Cellular::ReuseDefaultPdnForTethering(
 }
 
 Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
-    Error* out_error) {
+    bool experimental_tethering, Error* out_error) {
   Error error(Error::kSuccess);
   if (!service_) {
     error = Error(Error::kWrongState, "No service.");
@@ -1955,7 +1955,8 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
     error = Error(Error::kWrongState, "Inhibited.");
   } else if (state_ != State::kLinked) {
     error = Error(Error::kWrongState, "Default connection not available.");
-  } else if (!mobile_operator_info_->tethering_allowed()) {
+  } else if (!mobile_operator_info_->tethering_allowed(
+                 experimental_tethering)) {
     error = Error(Error::kWrongState, "Not allowed by operator.");
   }
 
@@ -2043,7 +2044,8 @@ void Cellular::OnAcquireTetheringNetworkReady(
 void Cellular::AcquireTetheringNetwork(
     TetheringManager::UpdateTimeoutCallback update_timeout_callback,
     AcquireTetheringNetworkResultCallback callback,
-    TetheringManager::CellularUpstreamEventCallback tethering_event_callback) {
+    TetheringManager::CellularUpstreamEventCallback tethering_event_callback,
+    bool experimental_tethering) {
   SLOG(1) << LoggingTag() << ": " << __func__;
   CHECK(!callback.is_null());
   CHECK(!tethering_event_callback.is_null());
@@ -2052,7 +2054,7 @@ void Cellular::AcquireTetheringNetwork(
       base::BindOnce(&Cellular::OnAcquireTetheringNetworkReady,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   Error error;
-  switch (GetTetheringOperationType(&error)) {
+  switch (GetTetheringOperationType(experimental_tethering, &error)) {
     case TetheringOperationType::kConnectDunMultiplexed:
       ConnectMultiplexedTetheringPdn(std::move(internal_callback));
       return;
@@ -3903,7 +3905,8 @@ void Cellular::SetSelectedServiceForTesting(CellularServiceRefPtr service) {
   SelectService(service);
 }
 
-void Cellular::EntitlementCheck(EntitlementCheckResultCallback callback) {
+void Cellular::EntitlementCheck(EntitlementCheckResultCallback callback,
+                                bool experimental_tethering) {
   // Only one entitlement check request should exist at any point.
   DCHECK(entitlement_check_callback_.is_null());
   if (!entitlement_check_callback_.is_null()) {
@@ -3918,7 +3921,7 @@ void Cellular::EntitlementCheck(EntitlementCheckResultCallback callback) {
     return;
   }
 
-  if (!mobile_operator_info_->tethering_allowed()) {
+  if (!mobile_operator_info_->tethering_allowed(experimental_tethering)) {
     LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix
                << "tethering is not allowed by database settings";
     metrics()->NotifyCellularEntitlementCheckResult(

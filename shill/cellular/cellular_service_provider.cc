@@ -409,7 +409,8 @@ void CellularServiceProvider::TetheringEntitlementCheck(
     return;
   }
 
-  cellular_service->cellular()->EntitlementCheck(std::move(callback));
+  cellular_service->cellular()->EntitlementCheck(std::move(callback),
+                                                 experimental_tethering);
 }
 
 void CellularServiceProvider::AcquireTetheringNetwork(
@@ -447,7 +448,7 @@ void CellularServiceProvider::AcquireTetheringNetwork(
       update_timeout_callback,
       base::BindOnce(&CellularServiceProvider::OnAcquireTetheringNetworkReady,
                      weak_factory_.GetWeakPtr(), std::move(callback)),
-      std::move(tethering_event_callback));
+      std::move(tethering_event_callback), experimental_tethering);
 }
 
 void CellularServiceProvider::OnAcquireTetheringNetworkReady(

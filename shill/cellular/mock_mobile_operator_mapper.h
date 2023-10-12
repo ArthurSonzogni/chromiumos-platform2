@@ -49,7 +49,7 @@ class MockMobileOperatorMapper : public MobileOperatorMapper {
   MOCK_METHOD(const std::string&, uuid, (), (const, override));
   MOCK_METHOD(const std::string&, gid1, (), (const, override));
   MOCK_METHOD(bool, requires_roaming, (), (const, override));
-  MOCK_METHOD(bool, tethering_allowed, (), (const, override));
+  MOCK_METHOD(bool, tethering_allowed, (bool), (const, override));
   MOCK_METHOD(bool, use_dun_apn_as_default, (), (const, override));
   MOCK_METHOD(const MobileOperatorMapper::EntitlementConfig&,
               entitlement_config,

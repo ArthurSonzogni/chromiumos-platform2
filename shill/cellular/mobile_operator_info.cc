@@ -210,8 +210,8 @@ bool MobileOperatorInfo::requires_roaming() const {
          home_->RequiresRoamingOnOperator(serving_.get());
 }
 
-bool MobileOperatorInfo::tethering_allowed() const {
-  return home_->tethering_allowed();
+bool MobileOperatorInfo::tethering_allowed(bool allow_untested_carriers) const {
+  return home_->tethering_allowed(allow_untested_carriers);
 }
 
 bool MobileOperatorInfo::use_dun_apn_as_default() const {

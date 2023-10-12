@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <utility>
 
 #include <base/check.h>
@@ -113,7 +114,6 @@ MobileOperatorMapper::MobileOperatorMapper(EventDispatcher* dispatcher,
       current_mno_(nullptr),
       current_mvno_(nullptr),
       requires_roaming_(false),
-      tethering_allowed_(false),
       use_dun_apn_as_default_(false),
       mtu_(IPConfig::kUndefinedMTU),
       user_olp_empty_(true),
@@ -277,9 +277,11 @@ bool MobileOperatorMapper::requires_roaming() const {
   return requires_roaming_;
 }
 
-bool MobileOperatorMapper::tethering_allowed() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << tethering_allowed_ << "]";
-  return tethering_allowed_;
+bool MobileOperatorMapper::tethering_allowed(
+    bool allow_untested_carriers) const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result["
+          << tethering_allowed_.value_or(allow_untested_carriers) << "]";
+  return tethering_allowed_.value_or(allow_untested_carriers);
 }
 
 bool MobileOperatorMapper::use_dun_apn_as_default() const {
@@ -834,7 +836,7 @@ void MobileOperatorMapper::ClearDBInformation() {
   raw_olp_list_.clear();
   HandleOnlinePortalUpdate();
   requires_roaming_ = false;
-  tethering_allowed_ = false;
+  tethering_allowed_.reset();
   use_dun_apn_as_default_ = false;
   roaming_filter_list_.clear();
   mtu_ = IPConfig::kUndefinedMTU;
@@ -873,7 +875,10 @@ void MobileOperatorMapper::ReloadData(
 
   // The following tethering properties are always overwritten because each
   // MNO/MVNO decides how tethering works on their network.
-  tethering_allowed_ = data.tethering_allowed();
+  tethering_allowed_.reset();
+  if (data.has_tethering_allowed()) {
+    tethering_allowed_ = data.tethering_allowed();
+  }
   use_dun_apn_as_default_ = data.use_dun_apn_as_default();
   entitlement_config_.url = data.mhs_entitlement_url();
   switch (data.mhs_entitlement_method()) {

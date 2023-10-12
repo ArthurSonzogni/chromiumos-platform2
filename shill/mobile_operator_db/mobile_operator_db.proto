@@ -125,12 +125,15 @@ message Data {
   //    requested roaming enabled by default, update |requires_roaming|.
   repeated Filter roaming_filter = 9;
 
-  // Flag to enable tethering for a carrier. During the initial release of the
-  // tethering feature, the flag will be set to false to block tethering for
-  // all carriers, except the ones that are specifically enabled. When the
-  // tethering feature is mature, the default will be set to True, so tethering
-  // would be enabled on all carriers unless specifically disabled.
-  optional bool tethering_allowed = 10 [default = false];
+  // Flag to enable tethering for a carrier. There are 3 possible values,
+  // allowed(true), disallowed(false) and undefined(unset). During the initial
+  // release of the tethering feature, if the flag is not set, it will be set
+  // to undefined by default, and then to false in the MobileOperatorMapper.
+  // The undefined value can be overridden to true by setting the
+  // experimental_tethering_functionality flag. When the tethering feature is
+  // mature, the default will be set to True, so tethering would be enabled
+  // on all carriers unless specifically disabled.
+  optional bool tethering_allowed = 10;
 
   // If true, the DUN APN will be used for user and tethering data when
   // tethering is enabled. When tethering is enabled, the DEFAULT connection

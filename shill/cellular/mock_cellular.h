@@ -38,11 +38,12 @@ class MockCellular : public Cellular {
               AcquireTetheringNetwork,
               (TetheringManager::UpdateTimeoutCallback,
                (AcquireTetheringNetworkResultCallback),
-               TetheringManager::CellularUpstreamEventCallback),
+               TetheringManager::CellularUpstreamEventCallback,
+               bool),
               (override));
   MOCK_METHOD(void,
               EntitlementCheck,
-              (EntitlementCheckResultCallback),
+              (EntitlementCheckResultCallback, bool),
               (override));
 };
 

@@ -273,7 +273,7 @@ TEST_P(MobileOperatorMapperMainTest, InitialConditions) {
   EXPECT_TRUE(operator_info_->apn_list().empty());
   EXPECT_TRUE(operator_info_->olp_list().empty());
   EXPECT_FALSE(operator_info_->requires_roaming());
-  EXPECT_FALSE(operator_info_->tethering_allowed());
+  EXPECT_FALSE(operator_info_->tethering_allowed(false));
   EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
   EXPECT_EQ(0, operator_info_->mtu());
   EXPECT_TRUE(operator_info_->entitlement_config().url.empty());
@@ -1108,7 +1108,8 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   }
 
   void VerifyNonInheritableDatabaseDataMNO(std::string imsi) {
-    EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
+    EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed(
+                                      false /*allow_untested_carriers*/));
     EXPECT_EQ(use_dun_apn_as_default_,
               operator_info_->use_dun_apn_as_default());
     static const Stringmap mhs_entitlement_params = {{"imsi", imsi}};
@@ -1119,7 +1120,8 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   }
 
   void VerifyNonInheritableDatabaseDataMVNO() {
-    EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
+    EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed(
+                                      false /*allow_untested_carriers*/));
     EXPECT_EQ(use_dun_apn_as_default_,
               operator_info_->use_dun_apn_as_default());
     EXPECT_EQ("uuid200101.com", operator_info_->entitlement_config().url);
@@ -1127,7 +1129,10 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     EXPECT_TRUE(operator_info_->entitlement_config().params.empty());
   }
   void VerifyNonInheritableDatabaseDataEmptyMVNO() {
-    EXPECT_FALSE(operator_info_->tethering_allowed());
+    EXPECT_FALSE(
+        operator_info_->tethering_allowed(false /*allow_untested_carriers*/));
+    EXPECT_TRUE(
+        operator_info_->tethering_allowed(true /*allow_untested_carriers*/));
     EXPECT_TRUE(operator_info_->entitlement_config().url.empty());
     EXPECT_EQ("POST", operator_info_->entitlement_config().method);
     EXPECT_TRUE(operator_info_->entitlement_config().params.empty());

@@ -272,7 +272,8 @@ class Cellular : public Device,
   // Verifies if the device is entitled to use the Hotspot feature.
   using EntitlementCheckResultCallback =
       base::OnceCallback<void(TetheringManager::EntitlementStatus)>;
-  mockable void EntitlementCheck(EntitlementCheckResultCallback callback);
+  mockable void EntitlementCheck(EntitlementCheckResultCallback callback,
+                                 bool experimental_tethering);
 
   // Asynchronously acquires the Network to be used in tethering, which may be
   // the same one as used for default connection or a new one.
@@ -281,7 +282,8 @@ class Cellular : public Device,
   virtual void AcquireTetheringNetwork(
       TetheringManager::UpdateTimeoutCallback update_timeout_callback,
       AcquireTetheringNetworkResultCallback callback,
-      TetheringManager::CellularUpstreamEventCallback tethering_event_callback);
+      TetheringManager::CellularUpstreamEventCallback tethering_event_callback,
+      bool experimental_tethering);
 
   // Asynchronously releases the tethering network, if any. This may involve
   // disconnecting a PDN connection or a no-op in certain other cases.
@@ -310,7 +312,8 @@ class Cellular : public Device,
     // Used to report errors in GetTetheringOperationType()
     kFailed,
   };
-  TetheringOperationType GetTetheringOperationType(Error* error);
+  TetheringOperationType GetTetheringOperationType(bool experimental_tethering,
+                                                   Error* error);
 
   // Takes the currently connected default PDN and reuses it for tethering
   // purposes, without bringing up any other PDN connection.
