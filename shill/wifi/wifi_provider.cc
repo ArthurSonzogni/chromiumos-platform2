@@ -438,6 +438,8 @@ WiFiServiceRefPtr WiFiProvider::GetWiFiService(const KeyValueStore& args,
   return service;
 }
 
+void WiFiProvider::AbandonService(const ServiceRefPtr& service) {}
+
 WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
     const WiFiEndpointConstRefPtr& endpoint) {
   EndpointServiceMap::iterator service_it =

@@ -177,6 +177,10 @@ ServiceRefPtr CellularServiceProvider::CreateTemporaryServiceFromProfile(
   return nullptr;
 }
 
+void CellularServiceProvider::AbandonService(const ServiceRefPtr& service) {
+  SLOG(2) << __func__;
+}
+
 void CellularServiceProvider::Start() {
   SLOG(2) << __func__;
 }

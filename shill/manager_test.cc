@@ -1186,17 +1186,20 @@ TEST_F(ManagerTest, RemoveService) {
   // Service's profile.
   service->set_profile(profile);
   EXPECT_CALL(*profile, AbandonService(service));
+  EXPECT_CALL(*wifi_provider_, AbandonService(service));
   EXPECT_CALL(*profile, ConfigureService(service)).WillOnce(Return(true));
   EXPECT_CALL(*mock_service, Unload()).Times(0);
   manager()->RemoveService(service);
   Mock::VerifyAndClearExpectations(mock_service.get());
   Mock::VerifyAndClearExpectations(profile.get());
+  Mock::VerifyAndClearExpectations(wifi_provider_);
   EXPECT_TRUE(manager()->HasService(service));
   EXPECT_EQ(profile, service->profile());
 
   // If service becomes ephemeral since there is no profile to support it,
   // it should be unloaded.
   EXPECT_CALL(*profile, AbandonService(service));
+  EXPECT_CALL(*wifi_provider_, AbandonService(service));
   EXPECT_CALL(*profile, ConfigureService(service)).WillOnce(Return(false));
   EXPECT_CALL(*mock_service, Unload()).WillOnce(Return(true));
   manager()->RemoveService(service);

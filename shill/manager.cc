@@ -831,6 +831,7 @@ void Manager::RemoveService(const ServiceRefPtr& service) {
   LOG(INFO) << __func__ << " for service " << service->log_name();
   if (!IsServiceEphemeral(service)) {
     service->profile()->AbandonService(service);
+    providers_[service->technology()]->AbandonService(service);
     if (MatchProfileWithService(service)) {
       // We found another profile to adopt the service; no need to unload.
       UpdateService(service);
@@ -852,6 +853,7 @@ bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr& profile,
     if ((*it)->profile().get() == profile.get() &&
         (*it)->GetStorageIdentifier() == entry_name) {
       profile->AbandonService(*it);
+      providers_[(*it)->technology()]->AbandonService(*it);
       if (MatchProfileWithService(*it) || !UnloadService(&it)) {
         ++it;
       }

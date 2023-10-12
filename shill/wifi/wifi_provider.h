@@ -99,6 +99,7 @@ class WiFiProvider : public ProviderInterface {
   ServiceRefPtr CreateTemporaryServiceFromProfile(const ProfileRefPtr& profile,
                                                   const std::string& entry_name,
                                                   Error* error) override;
+  void AbandonService(const ServiceRefPtr& service) override;
   void Start() override;
   void Stop() override;
 

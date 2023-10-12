@@ -316,6 +316,8 @@ ServiceRefPtr VPNProvider::CreateTemporaryServiceFromProfile(
   return CreateServiceInner(type, name, entry_name, error);
 }
 
+void VPNProvider::AbandonService(const ServiceRefPtr& service) {}
+
 bool VPNProvider::HasActiveService() const {
   for (const auto& service : services_) {
     if (service->IsConnecting() || service->IsConnected()) {

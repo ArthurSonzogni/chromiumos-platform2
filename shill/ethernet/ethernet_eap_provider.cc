@@ -48,6 +48,8 @@ ServiceRefPtr EthernetEapProvider::CreateTemporaryServiceFromProfile(
   return new EthernetEapService(manager_);
 }
 
+void EthernetEapProvider::AbandonService(const ServiceRefPtr& service) {}
+
 void EthernetEapProvider::Start() {
   if (!service_) {
     service_ = new EthernetEapService(manager_);

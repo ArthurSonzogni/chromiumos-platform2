@@ -30,6 +30,7 @@ class MockWiFiProvider : public WiFiProvider {
 
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(void, AbandonService, (const ServiceRefPtr& service), (override));
   MOCK_METHOD(void,
               CreateServicesFromProfile,
               (const ProfileRefPtr&),

@@ -29,7 +29,7 @@ MockService::MockService(Manager* manager)
   ON_CALL(*this, IsVisible()).WillByDefault(Return(true));
   ON_CALL(*this, state()).WillByDefault(Return(kStateUnknown));
   ON_CALL(*this, failure()).WillByDefault(Return(kFailureUnknown));
-  ON_CALL(*this, technology()).WillByDefault(Return(Technology::kUnknown));
+  ON_CALL(*this, technology()).WillByDefault(Return(Technology::kWiFi));
 }
 
 MockService::~MockService() = default;

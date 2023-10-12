@@ -72,6 +72,8 @@ EthernetServiceRefPtr EthernetProvider::CreateService(
   return new EthernetService(manager_, EthernetService::Properties(ethernet));
 }
 
+void EthernetProvider::AbandonService(const ServiceRefPtr& service) {}
+
 void EthernetProvider::RegisterService(EthernetServiceRefPtr service) {
   SLOG(2) << __func__;
   CHECK(service);
