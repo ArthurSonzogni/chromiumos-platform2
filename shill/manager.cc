@@ -3046,7 +3046,7 @@ bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
     return false;
   }
 
-  if (!wifi_provider_->ForgetCredentials(properties)) {
+  if (!wifi_provider_->DeleteCredentials(properties)) {
     metrics()->SendEnumToUMA(Metrics::kMetricPasspointRemovalResult,
                              Metrics::kPasspointRemovalFailure);
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,

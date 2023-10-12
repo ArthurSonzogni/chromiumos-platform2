@@ -452,8 +452,8 @@ class WiFiProviderTest : public testing::Test {
 
   bool GetRunning() { return provider_->running_; }
 
-  void RemoveCredentials(const PasspointCredentialsRefPtr& credentials) {
-    provider_->RemoveCredentials(credentials);
+  void DeleteCredentials(const PasspointCredentialsRefPtr& credentials) {
+    provider_->DeleteCredentials(credentials);
   }
 
   void AddStringParameterToStorage(FakeStore* storage,
@@ -2095,9 +2095,10 @@ TEST_F(WiFiProviderTest, AddRemoveCredentials) {
       .WillRepeatedly(Return(nullptr));
 
   // Add a set of credentials.
-  std::string id =
-      AddCredentialsToProvider(domains, realm, ois, ois, ois, false, app_name,
-                               friendly_name, expiration_time);
+  std::string id = AddCredentialsToProfileStorage(
+      user_profile_.get(), domains, realm, ois, ois, ois, false, app_name,
+      friendly_name, expiration_time);
+  provider_->LoadCredentialsFromProfile(user_profile_.get());
   PasspointCredentialsRefPtr creds = GetCredentials(id);
   EXPECT_TRUE(creds != nullptr);
 
@@ -2108,7 +2109,13 @@ TEST_F(WiFiProviderTest, AddRemoveCredentials) {
 
   // Remove the set of credentials
   list.clear();
-  RemoveCredentials(creds);
+  DeleteCredentials(creds);
+  list = provider_->GetCredentials();
+  EXPECT_EQ(0, list.size());
+
+  // Try to reload the credentials from storage.
+  list.clear();
+  provider_->LoadCredentialsFromProfile(user_profile_.get());
   list = provider_->GetCredentials();
   EXPECT_EQ(0, list.size());
 }
@@ -2185,7 +2192,7 @@ TEST_F(WiFiProviderTest, HasSavedCredentials) {
   EXPECT_FALSE(provider_->HasCredentials(creds3, user_profile_.get()));
 }
 
-TEST_F(WiFiProviderTest, ForgetCredentials) {
+TEST_F(WiFiProviderTest, DeleteCredentials) {
   provider_->Start();
 
   // Add a set of credentials
@@ -2225,7 +2232,7 @@ TEST_F(WiFiProviderTest, ForgetCredentials) {
   // Ensure both services are removed.
   EXPECT_CALL(manager_, RemoveService(RefPtrMatch(service0)));
   EXPECT_CALL(manager_, RemoveService(RefPtrMatch(service1)));
-  provider_->ForgetCredentials(creds0);
+  provider_->DeleteCredentials(creds0);
 }
 
 TEST_F(WiFiProviderTest, SimpleCredentialsMatchesOverride) {
@@ -2307,6 +2314,62 @@ TEST_F(WiFiProviderTest, MultipleCredentialsMatches) {
       FindService(ssid0_bytes, kModeManaged, kSecurityClass8021x));
   EXPECT_EQ(WiFiProvider::MatchPriority::kHome, service0->match_priority());
   EXPECT_EQ(creds0, service0->parent_credentials());
+}
+
+TEST_F(WiFiProviderTest, AbandonService) {
+  provider_->Start();
+
+  std::vector<std::string> domains{"sp-red.com", "sp-blue.com"};
+  std::string realm("sp-red.com");
+  std::vector<uint64_t> ois{0x1122334455, 0x97643165, 0x30};
+
+  EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
+      .Times(1)
+      .WillRepeatedly(Return(nullptr));
+
+  // Add credentials to profile.
+  std::string id =
+      AddCredentialsToProfileStorage(user_profile_.get(), domains, realm,
+                                     /*home_ois=*/ois,
+                                     /*required_home_ois=*/ois,
+                                     /*roaming_consortia=*/ois,
+                                     /*metered_override=*/false,
+                                     /*app_package_name=*/"com.sp-red.app",
+                                     /*friendly_name=*/"My Red Provider",
+                                     /*expiration_time=*/1906869610000);
+  provider_->LoadCredentialsFromProfile(user_profile_.get());
+
+  PasspointCredentialsRefPtr creds = GetCredentials(id);
+  EXPECT_TRUE(creds != nullptr);
+  EXPECT_EQ(id, creds->id());
+  EXPECT_EQ(user_profile_.get(), creds->profile());
+
+  // Provide a scan result for a future match.
+  const std::string ssid("passpoint_ssid");
+  const std::vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
+  WiFiEndpointRefPtr endpoint =
+      Make8021xEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  EXPECT_CALL(manager_, UpdateService(_)).Times(1);
+  provider_->OnEndpointAdded(endpoint);
+
+  // Report a match.
+  std::vector<WiFiProvider::PasspointMatch> match{
+      {creds, endpoint, WiFiProvider::MatchPriority::kHome}};
+  EXPECT_CALL(manager_, UpdateService(_)).Times(1);
+  EXPECT_CALL(manager_, MoveServiceToProfile(_, _)).Times(1);
+  provider_->OnPasspointCredentialsMatches(match);
+
+  // Find the matched service.
+  WiFiServiceRefPtr service(
+      FindService(ssid_bytes, kModeManaged, kSecurityClass8021x));
+  EXPECT_TRUE(service != nullptr);
+  EXPECT_EQ(creds, service->parent_credentials());
+
+  // Check the credentials associated with the service is not in the storage
+  // anymore.
+  provider_->AbandonService(service);
+  EXPECT_FALSE(user_profile_->GetStorage()->ContainsGroup(id));
 }
 
 TEST_F(WiFiProviderTest, RegisterAndDeregisterWiFiDevice) {

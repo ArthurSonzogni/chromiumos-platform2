@@ -71,8 +71,8 @@ void MojoPasspointService::DeletePasspointSubscription(
     return;
   }
 
-  if (!provider->ForgetCredentials(creds)) {
-    LOG(ERROR) << __func__ << " failed to forget credentials " << id;
+  if (!provider->DeleteCredentials(creds)) {
+    LOG(ERROR) << __func__ << " failed to delete credentials " << id;
     std::move(callback).Run(false);
     return;
   }

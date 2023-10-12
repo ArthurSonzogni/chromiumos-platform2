@@ -172,15 +172,15 @@ class WiFiProvider : public ProviderInterface {
   virtual bool HasCredentials(const PasspointCredentialsRefPtr& credentials,
                               const ProfileRefPtr& profile);
 
-  // Removes the set of credentials referenced by |credentials| from the
-  // provider, the WiFi device and invalidates all the services populated with
-  // the set of credentials.
-  virtual bool ForgetCredentials(const PasspointCredentialsRefPtr& credentials);
+  // Deletes the set of credentials referenced by |credentials| from the
+  // provider, the storage, the WiFi device and invalidates all the services
+  // populated with this set of credentials.
+  virtual bool DeleteCredentials(const PasspointCredentialsRefPtr& credentials);
 
-  // Removes all credentials that match with |properties| from the provider,
-  // the WiFi device and invalidates all the services populated with the set
-  // of credentials.
-  virtual bool ForgetCredentials(const KeyValueStore& properties);
+  // Removes all credentials that match with |properties| from the provider, the
+  // WiFi device, the storage and invalidates all the services populated with
+  // the set of credentials.
+  virtual bool DeleteCredentials(const KeyValueStore& properties);
 
   // Get the list of Passpoint credentials known by the provider.
   virtual std::vector<PasspointCredentialsRefPtr> GetCredentials();
@@ -318,11 +318,19 @@ class WiFiProvider : public ProviderInterface {
   // provider and the WiFi device.
   bool RemoveCredentials(const PasspointCredentialsRefPtr& credentials);
 
+  // Removes the set of credentials referenced by |credentials| from the
+  // provider, the WiFi device and invalidates all the services populated with
+  // the set of credentials.
+  bool ForgetCredentials(const PasspointCredentialsRefPtr& credentials);
+
   // Deletes certificate(s) and key(s) tied to |credentials|. If there are
   // other active credentials using the same certificates or keys, this method
   // will do nothing.
-  void DeleteUnusedCertificateAndKey(
+  void EraseUnusedCertificateAndKey(
       const PasspointCredentialsRefPtr& credentials);
+
+  // Erases |credentials| from the storage.
+  void EraseCredentials(const PasspointCredentialsRefPtr& credentials);
 
   void ReportRememberedNetworkCount();
   void ReportServiceSourceMetrics();

@@ -438,7 +438,24 @@ WiFiServiceRefPtr WiFiProvider::GetWiFiService(const KeyValueStore& args,
   return service;
 }
 
-void WiFiProvider::AbandonService(const ServiceRefPtr& service) {}
+void WiFiProvider::AbandonService(const ServiceRefPtr& service) {
+  // It is safe to cast the Service to WiFiService since the manager routes the
+  // call to the provider according to the technology included in the service.
+  CHECK_EQ(service->technology(), Technology::kWiFi);
+  WiFiServiceRefPtr wifi_service(static_cast<WiFiService*>(service.get()));
+
+  PasspointCredentialsRefPtr credentials(wifi_service->parent_credentials());
+  if (!credentials) {
+    return;
+  }
+
+  // Remove the certificate and the key used by this set of credentials if
+  // it's not used by anybody else.
+  EraseUnusedCertificateAndKey(credentials);
+
+  // Delete the credentials set from profile storage.
+  EraseCredentials(credentials);
+}
 
 WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
     const WiFiEndpointConstRefPtr& endpoint) {
@@ -822,8 +839,9 @@ bool WiFiProvider::HasCredentials(const PasspointCredentialsRefPtr& credentials,
   return false;
 }
 
-void WiFiProvider::DeleteUnusedCertificateAndKey(
+void WiFiProvider::EraseUnusedCertificateAndKey(
     const PasspointCredentialsRefPtr& credentials) {
+  CHECK(credentials);
   if (credentials->eap().cert_id().empty()) {
     return;
   }
@@ -862,6 +880,14 @@ void WiFiProvider::DeleteUnusedCertificateAndKey(
   }
 }
 
+void WiFiProvider::EraseCredentials(
+    const PasspointCredentialsRefPtr& credentials) {
+  CHECK(credentials);
+  StoreInterface* storage = credentials->profile()->GetStorage();
+  storage->DeleteGroup(credentials->id());
+  storage->Flush();
+}
+
 bool WiFiProvider::ForgetCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   if (!credentials ||
@@ -871,7 +897,6 @@ bool WiFiProvider::ForgetCredentials(
   }
 
   // Remove the credentials from our credentials set and from the WiFi device.
-  DeleteUnusedCertificateAndKey(credentials);
   bool success = RemoveCredentials(credentials);
   // Find all the services linked to the set.
   std::vector<WiFiServiceRefPtr> to_delete;
@@ -890,13 +915,22 @@ bool WiFiProvider::ForgetCredentials(
     Error error;
     service->Remove(&error);
   }
-  // Delete the credentials set from profile storage.
-  StoreInterface* storage = credentials->profile()->GetStorage();
-  storage->DeleteGroup(credentials->id());
   return success;
 }
 
-bool WiFiProvider::ForgetCredentials(const KeyValueStore& properties) {
+bool WiFiProvider::DeleteCredentials(
+    const PasspointCredentialsRefPtr& credentials) {
+  CHECK(credentials);
+  // Remove certificate and keys used by the set of credentials if not used by
+  // anyone else.
+  EraseUnusedCertificateAndKey(credentials);
+  // Remove the set of credentials from the storage.
+  EraseCredentials(credentials);
+  // Remove the set of credentials and populated service from the provider.
+  return ForgetCredentials(credentials);
+}
+
+bool WiFiProvider::DeleteCredentials(const KeyValueStore& properties) {
   const auto fqdn = properties.Lookup<std::string>(
       kPasspointCredentialsFQDNProperty, std::string());
   const auto package_name = properties.Lookup<std::string>(
@@ -915,7 +949,7 @@ bool WiFiProvider::ForgetCredentials(const KeyValueStore& properties) {
     removed_credentials.push_back(credentials.second);
   }
   for (const auto& credentials : removed_credentials) {
-    success &= ForgetCredentials(credentials);
+    success &= DeleteCredentials(credentials);
   }
   return success;
 }
