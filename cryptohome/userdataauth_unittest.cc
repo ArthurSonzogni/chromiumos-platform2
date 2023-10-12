@@ -2424,7 +2424,6 @@ class UserDataAuthExTest : public UserDataAuthTest {
 
  protected:
   void PrepareArguments() {
-    list_keys_req_ = std::make_unique<user_data_auth::ListKeysRequest>();
     remove_homedir_req_ = std::make_unique<user_data_auth::RemoveRequest>();
     start_auth_session_req_ =
         std::make_unique<user_data_auth::StartAuthSessionRequest>();
@@ -2444,7 +2443,6 @@ class UserDataAuthExTest : public UserDataAuthTest {
     return brillo::SecureBlob(serialized);
   }
 
-  std::unique_ptr<user_data_auth::ListKeysRequest> list_keys_req_;
   std::unique_ptr<user_data_auth::RemoveRequest> remove_homedir_req_;
   std::unique_ptr<user_data_auth::StartAuthSessionRequest>
       start_auth_session_req_;
@@ -2577,66 +2575,6 @@ TEST_F(UserDataAuthExTest, StartMigrateToDircryptoWithInvalidAuthSession) {
             base::Unretained(&called_ctr)));
   }
   EXPECT_EQ(called_ctr, 1);
-}
-
-constexpr char ListKeysValidityTest_label1[] = "Label 1";
-constexpr char ListKeysValidityTest_label2[] = "Yet another label";
-
-TEST_F(UserDataAuthExTest, ListKeysValidity) {
-  PrepareArguments();
-
-  list_keys_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  // Note that authorization request in ListKeyRequest is currently not
-  // required.
-
-  // Success case.
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
-      .WillOnce(
-          Invoke([](const ObfuscatedUsername& ignored, bool include_le_labels,
-                    std::vector<std::string>* output) {
-            output->clear();
-            output->push_back(ListKeysValidityTest_label1);
-            output->push_back(ListKeysValidityTest_label2);
-            return true;
-          }));
-
-  user_data_auth::ListKeysReply reply =
-      userdataauth_->ListKeys(*list_keys_req_);
-  EXPECT_EQ(reply.error_info().primary_action(),
-            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
-
-  EXPECT_THAT(reply.labels(), ElementsAre(ListKeysValidityTest_label1,
-                                          ListKeysValidityTest_label2));
-
-  // Test for account not found case.
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
-  EXPECT_NE(
-      userdataauth_->ListKeys(*list_keys_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
-
-  // Test for key not found case.
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
-      .WillOnce(Return(false));
-  EXPECT_NE(
-      userdataauth_->ListKeys(*list_keys_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
-}
-
-TEST_F(UserDataAuthExTest, ListKeysInvalidArgs) {
-  PrepareArguments();
-
-  // No Email.
-  EXPECT_NE(
-      userdataauth_->ListKeys(*list_keys_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
-
-  // Empty email.
-  list_keys_req_->mutable_account_id()->set_account_id("");
-  EXPECT_NE(
-      userdataauth_->ListKeys(*list_keys_req_).error_info().primary_action(),
-      user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
 
 TEST_F(UserDataAuthExTest, RemoveValidity) {

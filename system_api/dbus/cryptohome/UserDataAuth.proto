@@ -350,26 +350,6 @@ message RemoveReply {
   CryptohomeErrorInfo error_info = 2;
 }
 
-// Input parameters to ListKeys()
-message ListKeysRequest {
-  // The default behavior is by label so any extension here should honor that.
-
-  // List the key(s) that is/are used to protect the home directory whose
-  // owner is identified by account_id.
-  cryptohome.AccountIdentifier account_id = 1;
-  // Provide user authentication if necessary (currently not required).
-  cryptohome.AuthorizationRequest authorization_request = 2;
-}
-
-// Output parameters for ListKeys()
-message ListKeysReply {
-  CryptohomeErrorCode error = 1;
-  CryptohomeErrorInfo error_info = 3;
-
-  // The labels of the Vault Keyset. This will be empty on error.
-  repeated string labels = 2;
-}
-
 // Input parameters to CheckKey()
 message CheckKeyRequest {
   // We only check against keys that belongs to the user identified by

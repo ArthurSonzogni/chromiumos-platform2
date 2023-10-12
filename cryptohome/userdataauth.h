@@ -215,11 +215,6 @@ class UserDataAuth {
       const base::RepeatingCallback<
           void(user_data_auth::AuthenticateAuthFactorCompleted)>& callback);
 
-  // List the keys stored in |homedirs_|.
-  // See definition of ListKeysReply for what is returned.
-  user_data_auth::ListKeysReply ListKeys(
-      const user_data_auth::ListKeysRequest& request);
-
   // Remove the cryptohome (user's home directory) specified in
   // |request.identifier|. See definition of RemoveReply for what is returned.
   user_data_auth::RemoveReply Remove(

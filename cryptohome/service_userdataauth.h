@@ -71,13 +71,6 @@ class UserDataAuthAdaptor
                     user_data_auth::RemoveReply>> response,
                 const user_data_auth::RemoveRequest& in_request);
 
-  void ListKeys(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                    user_data_auth::ListKeysReply>> response,
-                const user_data_auth::ListKeysRequest& in_request) override;
-  void DoListKeys(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                      user_data_auth::ListKeysReply>> response,
-                  const user_data_auth::ListKeysRequest& in_request);
-
   void GetWebAuthnSecret(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetWebAuthnSecretReply>> response,

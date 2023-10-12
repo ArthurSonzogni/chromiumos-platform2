@@ -714,28 +714,6 @@ void UserDataAuthAdaptor::DoRemove(
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::ListKeys(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::ListKeysReply>> response,
-    const user_data_auth::ListKeysRequest& in_request) {
-  service_->PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(
-          &UserDataAuthAdaptor::DoListKeys, base::Unretained(this),
-          ThreadSafeDBusMethodResponse<user_data_auth::ListKeysReply>::
-              MakeThreadSafe(std::move(response)),
-          in_request));
-}
-
-void UserDataAuthAdaptor::DoListKeys(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::ListKeysReply>> response,
-    const user_data_auth::ListKeysRequest& in_request) {
-  // TODO(b/136152258): Add unit test for this method.
-  user_data_auth::ListKeysReply reply = service_->ListKeys(in_request);
-  response->Return(reply);
-}
-
 void UserDataAuthAdaptor::GetWebAuthnSecret(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetWebAuthnSecretReply>> response,

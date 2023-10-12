@@ -202,7 +202,6 @@ constexpr char kActionSwitch[] = "action";
 constexpr const char* kActions[] = {"unmount",
                                     "is_mounted",
                                     "evict_device_key",
-                                    "list_keys_ex",
                                     "update_key_ex",
                                     "remove",
                                     "obfuscate_user",
@@ -265,7 +264,6 @@ enum ActionEnum {
   ACTION_UNMOUNT,
   ACTION_MOUNTED,
   ACTION_EVICT_DEVICE_KEY,
-  ACTION_LIST_KEYS_EX,
   ACTION_UPDATE_KEY_EX,
   ACTION_REMOVE,
   ACTION_OBFUSCATE_USER,
@@ -1381,32 +1379,7 @@ int main(int argc, char** argv) {
 
   cryptohome::Platform platform;
 
-  if (!strcmp(switches::kActions[switches::ACTION_LIST_KEYS_EX],
-              action.c_str())) {
-    user_data_auth::ListKeysRequest req;
-    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
-      return 1;
-
-    user_data_auth::ListKeysReply reply;
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.ListKeys(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "ListKeysEx call failed: %s",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Failed to list keys.\n");
-      return reply.error();
-    }
-    for (int i = 0; i < reply.labels_size(); ++i) {
-      printer.PrintFormattedHumanOutput("Label: %s\n", reply.labels(i).c_str());
-    }
-  } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
-                     action.c_str())) {
+  if (!strcmp(switches::kActions[switches::ACTION_REMOVE], action.c_str())) {
     user_data_auth::RemoveRequest req;
     cryptohome::Username account_id;
 

@@ -56,14 +56,6 @@ class KeysetManagement {
   virtual bool GetVaultKeysets(const ObfuscatedUsername& obfuscated,
                                std::vector<int>* keysets) const;
 
-  // Outputs a list of present keysets by label for a given obfuscated username.
-  // There is no guarantee the keysets are valid nor is the ordering guaranteed.
-  // Returns true on success, false if no keysets are found.
-  virtual bool GetVaultKeysetLabels(
-      const ObfuscatedUsername& obfuscated_username,
-      bool include_le_labels,
-      std::vector<std::string>* labels) const;
-
   // Returns a VaultKeyset that matches the given obfuscated username and the
   // key label. If the label is empty or if no matching keyset is found, NULL
   // will be returned.

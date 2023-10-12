@@ -987,13 +987,13 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthInitChalRespFailedInAddCredentials = 580,
   /* ./userdataauth.cc */
   kLocUserDataAuthRemoveAllMountsFailedInUnmount = 581,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoIDInListKeys = 582,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthInvalidIDInListKeys = 583,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthUserNonexistentInListKeys = 584,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthListFailedInListKeys = 585,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoIDInRemove = 586,

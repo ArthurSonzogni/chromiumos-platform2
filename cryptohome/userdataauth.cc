@@ -1671,62 +1671,6 @@ void UserDataAuth::InitForChallengeResponseAuth() {
   challenge_credentials_helper_initialized_ = true;
 }
 
-user_data_auth::ListKeysReply UserDataAuth::ListKeys(
-    const user_data_auth::ListKeysRequest& request) {
-  AssertOnMountThread();
-  user_data_auth::ListKeysReply reply;
-
-  if (!request.has_account_id()) {
-    // ListKeysRequest must have account_id.
-    PopulateReplyWithError(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIDInListKeys),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
-        &reply);
-    return reply;
-  }
-
-  const Username account_id = GetAccountId(request.account_id());
-  if (account_id->empty()) {
-    // ListKeysRequest must have valid account_id.
-    PopulateReplyWithError(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthInvalidIDInListKeys),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
-        &reply);
-    return reply;
-  }
-
-  const ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
-  if (!homedirs_->Exists(obfuscated_username)) {
-    PopulateReplyWithError(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserNonexistentInListKeys),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND),
-        &reply);
-    return reply;
-  }
-
-  std::vector<std::string> labels_out;
-  if (!keyset_management_->GetVaultKeysetLabels(
-          obfuscated_username, /*include_le_labels*/ true, &labels_out)) {
-    PopulateReplyWithError(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthListFailedInListKeys),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                            PossibleAction::kReboot}),
-            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND),
-        &reply);
-    return reply;
-  }
-  *reply.mutable_labels() = {labels_out.begin(), labels_out.end()};
-  PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
-  return reply;
-}
-
 user_data_auth::RemoveReply UserDataAuth::Remove(
     const user_data_auth::RemoveRequest& request) {
   AssertOnMountThread();

@@ -30,7 +30,6 @@ inline constexpr char kEvictDeviceKey[] = "EvictDeviceKey";
 inline constexpr char kRestoreDeviceKey[] = "RestoreDeviceKey";
 inline constexpr char kUnmount[] = "Unmount";
 inline constexpr char kRemove[] = "Remove";
-inline constexpr char kListKeys[] = "ListKeys";
 inline constexpr char kCheckKey[] = "CheckKey";
 inline constexpr char kStartFingerprintAuthSession[] =
     "StartFingerprintAuthSession";

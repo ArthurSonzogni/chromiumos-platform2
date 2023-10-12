@@ -41,10 +41,6 @@ class MockKeysetManagement : public KeysetManagement {
               GetVaultKeysets,
               (const ObfuscatedUsername&, std::vector<int>*),
               (const, override));
-  MOCK_METHOD(bool,
-              GetVaultKeysetLabels,
-              (const ObfuscatedUsername&, bool, std::vector<std::string>*),
-              (const, override));
   MOCK_METHOD(CryptohomeStatus,
               ForceRemoveKeyset,
               (const ObfuscatedUsername&, int),

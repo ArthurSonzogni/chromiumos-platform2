@@ -199,50 +199,6 @@ bool KeysetManagement::GetVaultKeysets(const ObfuscatedUsername& obfuscated,
   return keysets->size() != 0;
 }
 
-bool KeysetManagement::GetVaultKeysetLabels(
-    const ObfuscatedUsername& obfuscated_username,
-    bool include_le_labels,
-    std::vector<std::string>* labels) const {
-  CHECK(labels);
-  base::FilePath user_dir = UserPath(obfuscated_username);
-
-  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
-      user_dir, false /* Not recursive. */, base::FileEnumerator::FILES));
-  base::FilePath next_path;
-  while (!(next_path = file_enumerator->Next()).empty()) {
-    base::FilePath file_name = next_path.BaseName();
-    // Scan for "master." files. // nocheck
-    if (file_name.RemoveFinalExtension().value() != kKeyFile) {
-      continue;
-    }
-    int index = 0;
-    std::string index_str = file_name.FinalExtension();
-    // StringToInt will only return true for a perfect conversion.
-    if (!base::StringToInt(&index_str[1], &index)) {
-      continue;
-    }
-    if (index < 0 || index >= kKeyFileMax) {
-      LOG(ERROR) << "Invalid key file range: " << index;
-      continue;
-    }
-    // Now parse the keyset to get its label or skip it.
-    std::unique_ptr<VaultKeyset> vk =
-        LoadVaultKeysetForUser(obfuscated_username, index);
-    if (!vk) {
-      continue;
-    }
-
-    if (!include_le_labels &&
-        (vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL)) {
-      continue;
-    }
-
-    labels->push_back(vk->GetLabel());
-  }
-
-  return (labels->size() > 0);
-}
-
 CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::AddInitialKeyset(
     const VaultKeysetIntent& vk_intent,
