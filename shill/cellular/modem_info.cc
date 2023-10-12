@@ -110,8 +110,7 @@ void ModemInfo::AddModem(const RpcIdentifier& path,
     return;
   }
   LOG(INFO) << __func__ << ": " << path.value();
-  std::unique_ptr<Modem> modem = CreateModem(path, properties);
-  modems_[modem->path()] = std::move(modem);
+  modems_[path] = CreateModem(path, properties);
 }
 
 void ModemInfo::RemoveModem(const RpcIdentifier& path) {
