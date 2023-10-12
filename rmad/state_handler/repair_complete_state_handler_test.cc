@@ -521,66 +521,6 @@ TEST_F(RepairCompleteStateHandlerTest,
 }
 
 TEST_F(RepairCompleteStateHandlerTest,
-       GetNextStateCase_SkipPowerwash_PowerwashDisabledInTestMode) {
-  // Powerwash is not done yet, but disabled in test mode.
-  brillo::TouchFile(GetTestDirPath());
-
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
-  bool powerwash_requested = false, cutoff_requested = false,
-       reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler =
-      CreateStateHandler({.powerwash_requested = &powerwash_requested,
-                          .cutoff_requested = &cutoff_requested,
-                          .reboot_called = &reboot_called,
-                          .shutdown_called = &shutdown_called,
-                          .metrics_called = &metrics_called});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
-
-  handler->RunState();
-
-  RmadState state;
-  state.mutable_repair_complete()->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
-  state.mutable_repair_complete()->set_powerwash_required(false);
-
-  {
-    auto [error, state_case] = handler->GetNextStateCase(state);
-    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-    EXPECT_FALSE(powerwash_requested);
-    EXPECT_FALSE(reboot_called);
-    EXPECT_FALSE(shutdown_called);
-    EXPECT_TRUE(metrics_called);
-    EXPECT_FALSE(cutoff_requested);
-  }
-
-  // A second call to |GetNextStateCase| before rebooting is fine.
-  {
-    auto [error, state_case] = handler->GetNextStateCase(state);
-    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-    EXPECT_FALSE(powerwash_requested);
-    EXPECT_FALSE(reboot_called);
-    EXPECT_FALSE(shutdown_called);
-    EXPECT_TRUE(metrics_called);
-    EXPECT_FALSE(cutoff_requested);
-  }
-
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
-
-  // Reboot is called after a delay.
-  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
-  EXPECT_TRUE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_FALSE(cutoff_requested);
-}
-
-TEST_F(RepairCompleteStateHandlerTest,
        GetNextStateCase_PowerwashDisabledManually_NonDebugBuild) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");

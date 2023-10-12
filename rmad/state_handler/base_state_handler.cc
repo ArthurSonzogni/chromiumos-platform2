@@ -177,8 +177,7 @@ bool BaseStateHandler::IsPowerwashDisabled(
   // also disabled when the test mode directory exists.
   return CanDisablePowerwash() &&
          (base::PathExists(
-              working_dir_path.AppendASCII(kDisablePowerwashFilePath)) ||
-          base::PathExists(working_dir_path.AppendASCII(kTestDirPath)));
+             working_dir_path.AppendASCII(kDisablePowerwashFilePath)));
 }
 
 bool BaseStateHandler::StorePowerwashCount(
