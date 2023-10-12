@@ -1256,6 +1256,7 @@ class UserDataAuth {
   FRIEND_TEST(UserDataAuthTest, InitializePkcs11Unmounted);
 
   friend class UserDataAuthExTest;
+  friend class AuthSessionInterfaceTest;
   FRIEND_TEST(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly);
   FRIEND_TEST(UserDataAuthTest,
               CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly_FirstBoot);

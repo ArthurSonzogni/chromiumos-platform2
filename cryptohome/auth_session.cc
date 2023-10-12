@@ -1607,11 +1607,11 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
     return;
   }
 
-  bool remove_using_uss =
-      session_->decrypted_uss_ && stored_auth_factor->storage_type() ==
-                                      AuthFactorStorageType::kUserSecretStash;
+  bool remove_using_vk =
+      !session_->decrypted_uss_ ||
+      stored_auth_factor->storage_type() == AuthFactorStorageType::kVaultKeyset;
 
-  if (remove_using_uss) {
+  if (!remove_using_vk) {
     session_->RemoveAuthFactorViaUserSecretStash(
         auth_factor_label, stored_auth_factor->auth_factor(),
         base::BindOnce(&AuthSession::ClearAuthFactorInMemoryObjects,
@@ -1628,7 +1628,7 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
   CryptohomeStatus remove_status =
       RemoveKeysetByLabel(*session_->keyset_management_,
                           session_->obfuscated_username_, auth_factor_label);
-  if (!remove_using_uss && !remove_status.ok() &&
+  if (remove_using_vk && !remove_status.ok() &&
       stored_auth_factor->auth_factor().type() !=
           AuthFactorType::kCryptohomeRecovery) {
     LOG(ERROR) << "AuthSession: Failed to remove VaultKeyset.";

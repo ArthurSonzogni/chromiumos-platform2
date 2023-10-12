@@ -2261,7 +2261,6 @@ void UserDataAuth::StartAuthSession(
     base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
         on_done) {
   AssertOnMountThread();
-
   user_data_auth::StartAuthSessionReply reply;
 
   if (request.intent() == user_data_auth::AUTH_INTENT_UNSPECIFIED) {
