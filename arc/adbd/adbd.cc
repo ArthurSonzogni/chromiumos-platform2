@@ -164,6 +164,24 @@ bool GetConfiguration(AdbdConfiguration* config) {
     return false;
   }
   config->usb_product_id = *usb_product_id;
+
+  auto dbc_supported = config_root_dict.FindBool("adbOverDbcSupport");
+  if (dbc_supported) {
+    config->dbc_supported = *dbc_supported;
+  } else {
+    config->dbc_supported = false;
+  }
+
+  if (config->dbc_supported) {
+    const std::string* dbc_device_id =
+        config_root_dict.FindString("pciBusDeviceId");
+    if (!dbc_device_id) {
+      LOG(ERROR) << "Failed to parse pciBusDeviceId for DbC";
+      return false;
+    }
+    config->dbc_device_id = *dbc_device_id;
+  }
+
   // kernelModules are optional.
   const base::Value::List* kernel_module_list =
       config_root_dict.FindList("kernelModules");

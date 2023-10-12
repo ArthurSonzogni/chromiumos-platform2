@@ -1,8 +1,6 @@
-/*
- * Copyright 2019 The ChromiumOS Authors
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2019 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #include <fcntl.h>
 
@@ -14,6 +12,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "arc/adbd/adbd.h"
+#include "arc/adbd/dbc.h"
 
 namespace {
 
@@ -32,28 +31,35 @@ int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv, "ADB over USB proxy.");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  if (FLAGS_arcvm) {
-    // The two options, arcvm and arcvm_cid, must work together and there is no
-    // point to have cid without VM (ignored). It is attempting to have cid arg
-    // only to tell arcvm from ARC++ since only VM have cid and vsock is the
-    // only way to talk with a VM. However, we still keep arcvm for the sake of
-    // clarity in code and usage, instead of relying on any unacceptable value
-    // of cid, either provided by user or from an initial value, to obscurely
-    // branch to the container-based route which differs in many ways.
-    if (FLAGS_arcvm_cid < adbd::kFirstGuestVmAddr) {
-      LOG(ERROR) << "Invalid or no cid provided when VM(vsock) is selected.";
-      return 1;
-    }
-  }
-
-  const base::FilePath runtime_path(kRuntimePath);
-
   adbd::AdbdConfiguration config;
   if (!adbd::GetConfiguration(&config)) {
     LOG(INFO) << "Unable to find the configuration for this service. "
               << "This device does not support ADB over USB.";
     return 0;
   }
+
+  if (FLAGS_arcvm) {
+    // A valid CID number is required for the vsock connection to arcvm. Needed
+    // for both adb in gadget mode and adb over dbc.
+    if (FLAGS_arcvm_cid < adbd::kFirstGuestVmAddr) {
+      LOG(ERROR) << "Invalid or no cid provided when VM(vsock) is selected.";
+      return 1;
+    }
+  }
+
+  if (config.dbc_supported) {
+    VLOG(1) << "Dbc support enabled";
+    if (!FLAGS_arcvm) {
+      LOG(ERROR) << "ArcVM flag not set, failed to start arc-adbd";
+      return 1;
+    }
+    // Start dbc daemon.
+    adbd::Dbc dbc(FLAGS_arcvm_cid);
+    dbc.Run();
+    return 0;
+  }
+
+  const base::FilePath runtime_path(kRuntimePath);
 
   const std::string board = base::SysInfo::HardwareModelName();
 

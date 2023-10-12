@@ -40,6 +40,10 @@ struct AdbdConfigurationKernelModule {
 struct AdbdConfiguration {
   // The USB product ID. Is SoC-specific.
   std::string usb_product_id;
+  // USB PCI bus device id used for DbC.
+  std::string dbc_device_id;
+  // ADB Over DbC support.
+  bool dbc_supported;
 
   // Optional list of kernel modules that need to be loaded before setting up
   // the USB gadget.
@@ -85,6 +89,8 @@ bool BindMountUsbBulkEndpoints();
 // for the threads to join in the normal cases. The cid (>=3) of VM must
 // be provided for vsock connection.
 void StartArcVmAdbBridge(uint32_t cid);
+// Initializes vsock connection.
+base::ScopedFD InitializeVSockConnection(uint32_t cid);
 }  // namespace adbd
 
 #endif  // ARC_ADBD_ADBD_H_

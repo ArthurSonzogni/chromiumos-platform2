@@ -55,6 +55,11 @@ gettid:1
 futex:1
 pread64: 1
 mremap: 1
+poll: 1
+signalfd4: 1
+recvmsg: 1
+readlink: 1
+readlinkat: 1
 
 # For modprobe(8)
 clone: 1
@@ -75,17 +80,28 @@ finit_module: 1
 fstatfs: 1
 getrandom: arg2 in ~GRND_RANDOM
 
-# For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
-ioctl: arg0 == 0 && arg1 == TCGETS
+# For ArcVmAdbBridgeDbc
+ioctl: arg1 == TCGETS || arg1 == TCSETS || \
+       arg1 == TCSETSW || arg1 == TCSETSF || \
+       arg1 == FIONREAD
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
 
 # For syslog /dev/log and connection to the vsock socket
-socket: arg0 == AF_VSOCK && arg1 == SOCK_STREAM || arg0 == AF_UNIX
+socket: arg0 == AF_VSOCK && arg1 == SOCK_STREAM || \
+        arg0 == AF_UNIX || arg0 == AF_NETLINK
 connect: 1
+bind: 1
+getsockname: 1
+setsockopt: 1
 
 # For base::PlatformThread::Sleep()
 nanosleep: 1
 clock_nanosleep: 1
 sched_yield: 1
 set_tid_address: 1
+
+# For dbc file watcher
+inotify_init: 1
+inotify_add_watch: 1
+inotify_rm_watch: 1

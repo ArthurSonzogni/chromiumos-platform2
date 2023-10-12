@@ -35,6 +35,8 @@ pkg_config("config") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libudev",
+    "re2",
   ]
 }
 
@@ -46,6 +48,8 @@ static_library("libarcadbd") {
     "arcvm_sock_to_usb.h",
     "arcvm_usb_to_sock.cc",
     "arcvm_usb_to_sock.h",
+    "dbc.cc",
+    "udev_monitor.cc",
   ]
   configs += [ ":config" ]
 }
