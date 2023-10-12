@@ -229,7 +229,7 @@ pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict>
         String::from_utf8_lossy(&flash_output.stdout),
         String::from_utf8_lossy(&flash_output.stderr)
     );
-    if flash_output_string.contains("write protect is disabled") {
+    if flash_output_string.contains("Protection mode: disabled") {
         eprintln!("write protection is disabled");
         Err(Cr50SetBoardIDVerdict::DeviceStateError)
     } else {
@@ -416,7 +416,7 @@ mod tests {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_expectation(
             MockCommandInput::new("flashrom", vec!["-p", "internal", "--wp-status"]),
-            MockCommandOutput::new(0, "", ""),
+            MockCommandOutput::new(0, "Protection mode: enabled", ""),
         );
         mock_ctx.cmd_runner().add_expectation(
             MockCommandInput::new(
@@ -445,7 +445,7 @@ mod tests {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_expectation(
             MockCommandInput::new("flashrom", vec!["-p", "internal", "--wp-status"]),
-            MockCommandOutput::new(0, "", ""),
+            MockCommandOutput::new(0, "Protection mode: disabled", ""),
         );
         mock_ctx.cmd_runner().add_expectation(
             MockCommandInput::new(
@@ -463,7 +463,7 @@ mod tests {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_expectation(
             MockCommandInput::new("flashrom", vec!["-p", "internal", "--wp-status"]),
-            MockCommandOutput::new(0, "write protect is disabled", ""),
+            MockCommandOutput::new(0, "Protection mode: disabled", ""),
         );
         mock_ctx.cmd_runner().add_expectation(
             MockCommandInput::new(
