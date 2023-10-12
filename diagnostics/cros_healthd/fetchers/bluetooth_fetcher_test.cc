@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include <base/notreached.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/test_future.h>
 #include <dbus/object_path.h>
@@ -93,10 +94,9 @@ std::string ConvertDeviceType(mojom::BluetoothDeviceType type) {
       return "LE";
     case mojom::BluetoothDeviceType::kDual:
       return "DUAL";
-    case mojom::BluetoothDeviceType::kUnfound:
+    case mojom::BluetoothDeviceType::kUnknown:
     case mojom::BluetoothDeviceType::kUnmappedEnumField:
-      NOTREACHED();
-      return "";
+      NOTREACHED_NORETURN();
   }
 }
 
@@ -449,7 +449,7 @@ TEST_F(BluetoothFetcherTest, DeviceWithInvalidProperties) {
   const auto& device_info = adapter_info[0]->connected_devices.value()[0];
   EXPECT_EQ(device_info->address, device_properties->address.value());
   EXPECT_FALSE(device_info->name.has_value());
-  EXPECT_EQ(device_info->type, mojom::BluetoothDeviceType::kUnfound);
+  EXPECT_EQ(device_info->type, mojom::BluetoothDeviceType::kUnknown);
   EXPECT_FALSE(device_info->appearance);
   EXPECT_FALSE(device_info->modalias.has_value());
   EXPECT_FALSE(device_info->rssi);

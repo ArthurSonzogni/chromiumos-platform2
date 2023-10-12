@@ -5,8 +5,6 @@
 #include "diagnostics/cros_health_tool/output_util.h"
 
 #include <iostream>
-#include <utility>
-#include <vector>
 
 #include <base/json/json_writer.h>
 #include <base/strings/string_number_conversions.h>
@@ -267,8 +265,7 @@ std::optional<std::string> EnumToString(mojom::BluetoothDeviceType type) {
       return "LE";
     case mojom::BluetoothDeviceType::kDual:
       return "DUAL";
-    case mojom::BluetoothDeviceType::kUnfound:
-      return std::nullopt;
+    case mojom::BluetoothDeviceType::kUnknown:
     case mojom::BluetoothDeviceType::kUnmappedEnumField:
       return std::nullopt;
   }

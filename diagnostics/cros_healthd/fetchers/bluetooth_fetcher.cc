@@ -38,7 +38,7 @@ mojom::BluetoothDeviceType GetDeviceType(const std::string& type) {
     return mojom::BluetoothDeviceType::kLe;
   else if (type == kBluetoothTypeDualName)
     return mojom::BluetoothDeviceType::kDual;
-  return mojom::BluetoothDeviceType::kUnfound;
+  return mojom::BluetoothDeviceType::kUnknown;
 }
 
 // Parse Bluetooth info from AdminPolicyStatus1 interface and store in the map.
@@ -84,7 +84,7 @@ void ParseDevicesInfo(
     if (device->is_type_valid())
       info.type = GetDeviceType(device->type());
     else
-      info.type = mojom::BluetoothDeviceType::kUnfound;
+      info.type = mojom::BluetoothDeviceType::kUnknown;
     if (device->is_appearance_valid())
       info.appearance = mojom::NullableUint16::New(device->appearance());
     if (device->is_modalias_valid())

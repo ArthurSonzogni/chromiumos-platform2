@@ -189,7 +189,7 @@ event --help`.
 | Enum | Description |
 | ---- | ----------- |
 | kUnmappedEnumField | An enum value not defined in this version of the enum definition. |
-| kUnfound | Unfound type. |
+| kUnknown | Unknown type. |
 | kBrEdr | BR/EDR. |
 | kLe | LE. |
 | kDual | DUAL. |
