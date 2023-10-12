@@ -4,6 +4,7 @@
 
 #include "rmad/state_handler/update_device_info_state_handler.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -13,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/string_util.h>
 #include <google/protobuf/repeated_field.h>
 #include <libsegmentation/feature_management.h>
 
@@ -42,6 +44,37 @@ bool IsRepeatedFieldSame(const T& list1, const T& list2) {
     }
   }
   return true;
+}
+
+template <typename T>
+bool HasDifferentElementsInColumn(const std::vector<std::vector<T>>& table,
+                                  int i) {
+  CHECK_GE(i, 0) << "Index cannot be negative.";
+  if (table.size() <= 1) {
+    return false;
+  }
+  CHECK_LT(i, table[0].size()) << "Index is larger than table size";
+  const T& value = table[0][i];
+  for (const auto& v : table) {
+    CHECK_LT(i, v.size()) << "Index is larger than table size";
+    if (v[i] != value) {
+      return true;
+    }
+  }
+  return false;
+}
+
+template <typename T>
+std::vector<T> FilterArray(const std::vector<T>& arr,
+                           const std::vector<bool>& select) {
+  CHECK_EQ(arr.size(), select.size());
+  std::vector<T> ret;
+  for (int i = 0; i < arr.size(); ++i) {
+    if (select[i]) {
+      ret.push_back(arr[i]);
+    }
+  }
+  return ret;
 }
 
 }  // namespace
@@ -116,7 +149,9 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   UpdateDeviceInfoState::FeatureLevel feature_level;
 
   std::vector<std::string> region_list;
+  std::vector<DesignConfig> design_config_list;
   std::vector<uint32_t> sku_id_list;
+  std::vector<std::string> sku_description_list;
   std::vector<std::string> custom_label_tag_list;
 
   // We reserve -1 for unmatched indexes.
@@ -161,11 +196,33 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
     region_index = std::distance(region_list.begin(), it);
   }
 
-  if (!cros_config_utils_->GetSkuIdList(&sku_id_list)) {
-    LOG(ERROR) << "Failed to get the list of possible sku-ids to initialize "
-                  "the handler.";
+  if (!cros_config_utils_->GetDesignConfigList(&design_config_list)) {
+    LOG(ERROR) << "Failed to get the list of possible design configs to "
+                  "initialize the handler.";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
+  // Remove design configs that don't have SKU ID or the SKU ID is 0x7fffffff
+  // (unprovisioned SKU ID), and then sort the list by SKU.
+  design_config_list.erase(
+      std::remove_if(design_config_list.begin(), design_config_list.end(),
+                     [](const DesignConfig& config) {
+                       return !config.sku_id.has_value() ||
+                              config.sku_id.value() == 0x7fffffff;
+                     }),
+      design_config_list.end());
+  std::sort(design_config_list.begin(), design_config_list.end(),
+            [](const DesignConfig& a, const DesignConfig& b) {
+              CHECK(a.sku_id.has_value());
+              CHECK(b.sku_id.has_value());
+              return a.sku_id.value() < b.sku_id.value();
+            });
+  // Construct |sku_id_list|, |sku_descripsion_list| and |custom_label_tag_list|
+  // from |design_config_list|.
+  GenerateSkuListsFromDesignConfigList(design_config_list, &sku_id_list,
+                                       &sku_description_list);
+  GenerateCustomLabelTagListFromDesignConfigList(design_config_list,
+                                                 &custom_label_tag_list);
+
   if (!rmad_config_.has_cbi) {
     if (sku_id == -1) {
       if (!sku_id_list.empty()) {
@@ -186,12 +243,6 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
       it != sku_id_list.end()) {
     sku_index = std::distance(sku_id_list.begin(), it);
   }
-
-  if (!cros_config_utils_->GetCustomLabelTagList(&custom_label_tag_list)) {
-    LOG(ERROR) << "Failed to get the list of possible custom-label-tags "
-                  "to initialize the handler.";
-    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
-  }
   if (is_custom_label_exist) {
     if (auto it = std::find(custom_label_tag_list.begin(),
                             custom_label_tag_list.end(), custom_label_tag);
@@ -203,6 +254,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
       vpd_utils_->RemoveCustomLabelTag();
     }
   }
+
   if (segmentation_utils_->IsFeatureEnabled()) {
     if (segmentation_utils_->IsFeatureMutable()) {
       // If feature is mutable, we don't know the final feature level.
@@ -238,15 +290,18 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   update_dev_info->set_original_custom_label_index(custom_label_index);
   update_dev_info->set_original_feature_level(feature_level);
 
-  for (auto region_option : region_list) {
+  for (const std::string& region_option : region_list) {
     update_dev_info->add_region_list(region_option);
   }
 
-  for (auto sku_option : sku_id_list) {
+  for (uint32_t sku_option : sku_id_list) {
     update_dev_info->add_sku_list(static_cast<uint64_t>(sku_option));
   }
+  for (const std::string& sku_description : sku_description_list) {
+    update_dev_info->add_sku_description_list(sku_description);
+  }
 
-  for (auto custom_label_option : custom_label_tag_list) {
+  for (const std::string& custom_label_option : custom_label_tag_list) {
     update_dev_info->add_whitelabel_list(custom_label_option);
     update_dev_info->add_custom_label_list(custom_label_option);
   }
@@ -255,6 +310,76 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
 
   state_.set_allocated_update_device_info(update_dev_info.release());
   return RMAD_ERROR_OK;
+}
+
+void UpdateDeviceInfoStateHandler::GenerateSkuListsFromDesignConfigList(
+    const std::vector<DesignConfig>& design_config_list,
+    std::vector<uint32_t>* sku_id_list,
+    std::vector<std::string>* sku_description_list) const {
+  CHECK(sku_id_list);
+  CHECK(sku_description_list);
+  sku_id_list->clear();
+  sku_description_list->clear();
+  // Cache all the descriptions of all SKUs.
+  std::vector<std::vector<std::string>> sku_property_descriptions;
+  // |design_config_list| should be sorted by SKU ID, and doesn't contain null
+  // SKU IDs.
+  for (const DesignConfig& design_config : design_config_list) {
+    CHECK(design_config.sku_id.has_value());
+    // Skip duplicate SKU IDs. This should only happen on custom label devices,
+    // and theoretically, configs with the same SKU ID should have the same
+    // hardware properties.
+    // TODO(chenghan): Show (SKU ID, custom label tag) in pairs instead of
+    //                 separate dropdown lists in the UX.
+    if (!sku_id_list->empty() &&
+        sku_id_list->back() == design_config.sku_id.value()) {
+      continue;
+    }
+    sku_id_list->push_back(design_config.sku_id.value());
+    sku_property_descriptions.push_back(design_config.hardware_properties);
+  }
+
+  // Don't need to set SKU descriptions if there is only 0 or 1 SKU.
+  if (sku_id_list->size() <= 1) {
+    return;
+  }
+
+  // Determine which columns to show in the description.
+  const int num_properties = sku_property_descriptions[0].size();
+  std::vector<bool> select_property(num_properties);
+  for (int i = 0; i < num_properties; ++i) {
+    // Only show the property if there are different values across SKUs.
+    select_property[i] =
+        HasDifferentElementsInColumn(sku_property_descriptions, i);
+  }
+  // Generate SKU descriptions.
+  for (const std::vector<std::string>& descriptions :
+       sku_property_descriptions) {
+    sku_description_list->push_back(
+        base::JoinString(FilterArray(descriptions, select_property), ", "));
+  }
+  CHECK_EQ(sku_id_list->size(), sku_description_list->size());
+}
+
+void UpdateDeviceInfoStateHandler::
+    GenerateCustomLabelTagListFromDesignConfigList(
+        const std::vector<DesignConfig>& design_config_list,
+        std::vector<std::string>* custom_label_tag_list) const {
+  CHECK(custom_label_tag_list);
+  custom_label_tag_list->clear();
+  for (const DesignConfig& design_config : design_config_list) {
+    // Custom label tag might not exist.
+    if (design_config.custom_label_tag.has_value()) {
+      custom_label_tag_list->push_back(design_config.custom_label_tag.value());
+    } else {
+      custom_label_tag_list->push_back("");
+    }
+  }
+  // Sort and remove duplicate custom label tags.
+  std::sort(custom_label_tag_list->begin(), custom_label_tag_list->end());
+  custom_label_tag_list->erase(
+      std::unique(custom_label_tag_list->begin(), custom_label_tag_list->end()),
+      custom_label_tag_list->end());
 }
 
 BaseStateHandler::GetNextStateCaseReply

@@ -8,6 +8,8 @@
 #include "rmad/state_handler/base_state_handler.h"
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 
@@ -49,6 +51,13 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   ~UpdateDeviceInfoStateHandler() override = default;
 
  private:
+  void GenerateSkuListsFromDesignConfigList(
+      const std::vector<DesignConfig>& design_config_list,
+      std::vector<uint32_t>* sku_id_list,
+      std::vector<std::string>* sku_description_list) const;
+  void GenerateCustomLabelTagListFromDesignConfigList(
+      const std::vector<DesignConfig>& design_config_list,
+      std::vector<std::string>* custom_label_tag_list) const;
   bool VerifyReadOnly(const UpdateDeviceInfoState& device_info);
   bool WriteDeviceInfo(const UpdateDeviceInfoState& device_info);
   std::unique_ptr<SegmentationUtils> CreateFakeSegmentationUtils() const;

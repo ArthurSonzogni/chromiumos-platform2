@@ -41,13 +41,34 @@ namespace {
 
 constexpr char kSerialNumber[] = "TestSerialNumber";
 constexpr char kRegion[] = "TestRegion";
-constexpr uint32_t kSkuId = 1234567890;
+constexpr uint32_t kSkuId1 = 1234567890;
+constexpr uint32_t kSkuId2 = 1234567891;
+constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
 constexpr char kDramPartNum[] = "TestDramPartNum";
 
 const std::vector<std::string> kRegionList = {"TestRegion", "TestRegion1"};
-const std::vector<uint32_t> kSkuList = {1234567890, 1234567891};
-const std::vector<std::string> kCustomLabelTagList = {
-    "", "TestCustomLabelTag", "TestCustomLabelTag0", "TestCustomLabelTag1"};
+const std::vector<rmad::DesignConfig> kDesignConfigList = {
+    {.model_name = "Model",
+     .sku_id = kSkuId1,
+     .custom_label_tag = "",
+     .hardware_properties = {"Property1: Yes", "Property2: Yes"}},
+    {.model_name = "Model",
+     .sku_id = kSkuId1,
+     .custom_label_tag = kCustomLabelTag,
+     .hardware_properties = {"Property1: Yes", "Property2: Yes"}},
+    {.model_name = "Model",
+     .sku_id = kSkuId2,
+     .custom_label_tag = "",
+     .hardware_properties = {"Property1: Yes", "Property2: No"}},
+    {.model_name = "Model",
+     .sku_id = kSkuId2,
+     .custom_label_tag = kCustomLabelTag,
+     .hardware_properties = {"Property1: Yes", "Property2: No"}}};
+const std::vector<uint32_t> kSkuList = {kSkuId1, kSkuId2};
+const std::vector<std::string> kCustomLabelTagList = {"", kCustomLabelTag};
+const std::vector<std::string> kSkuDescriptionList = {"Property2: Yes",
+                                                      "Property2: No"};
+
 constexpr uint32_t kOriginalRegionSelection = 0;
 constexpr uint32_t kOriginalSkuSelection = 0;
 constexpr uint32_t kOriginalCustomLabelSelection = 0;
@@ -55,7 +76,7 @@ constexpr uint32_t kOriginalCustomLabelSelection = 0;
 constexpr char kNewSerialNumber[] = "NewTestSerialNumber";
 constexpr uint32_t kNewRegionSelection = 1;
 constexpr uint32_t kNewSkuSelection = 1;
-constexpr uint32_t kNewCustomLabelSelection = 2;
+constexpr uint32_t kNewCustomLabelSelection = 1;
 constexpr char kNewDramPartNum[] = "NewTestDramPartNum";
 constexpr bool kNewIsChassisBranded = true;
 constexpr int kNewHwComplianceVersion = 1;
@@ -74,9 +95,8 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     std::optional<std::string> custom_label = "";
     bool has_dram_part_num = true;
     bool has_region_list = true;
-    bool has_sku_list = true;
-    std::vector<uint32_t> sku_list = kSkuList;
-    bool has_custom_label_list = true;
+    std::optional<std::vector<DesignConfig>> design_config_list =
+        kDesignConfigList;
     bool is_feature_enabled = true;
     bool is_feature_mutable = false;
     int feature_level = 0;
@@ -189,7 +209,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
 
     if (args.has_sku) {
       ON_CALL(*cros_config_utils, GetSkuId(_))
-          .WillByDefault(DoAll(SetArgPointee<0>(kSkuId), Return(true)));
+          .WillByDefault(DoAll(SetArgPointee<0>(kSkuId1), Return(true)));
     } else {
       ON_CALL(*cros_config_utils, GetSkuId(_)).WillByDefault(Return(false));
     }
@@ -203,19 +223,12 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
           .WillByDefault(Return(false));
     }
 
-    if (args.has_sku_list) {
-      ON_CALL(*cros_config_utils, GetSkuIdList(_))
-          .WillByDefault(DoAll(SetArgPointee<0>(args.sku_list), Return(true)));
+    if (args.design_config_list.has_value()) {
+      ON_CALL(*cros_config_utils, GetDesignConfigList(_))
+          .WillByDefault(DoAll(
+              SetArgPointee<0>(args.design_config_list.value()), Return(true)));
     } else {
-      ON_CALL(*cros_config_utils, GetSkuIdList(_)).WillByDefault(Return(false));
-    }
-
-    if (args.has_custom_label_list) {
-      ON_CALL(*cros_config_utils, GetCustomLabelTagList(_))
-          .WillByDefault(
-              DoAll(SetArgPointee<0>(kCustomLabelTagList), Return(true)));
-    } else {
-      ON_CALL(*cros_config_utils, GetCustomLabelTagList(_))
+      ON_CALL(*cros_config_utils, GetDesignConfigList(_))
           .WillByDefault(Return(false));
     }
 
@@ -358,6 +371,10 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_Mlb_Success) {
                          state.update_device_info().custom_label_list().end(),
                          kCustomLabelTagList.begin(),
                          kCustomLabelTagList.end()));
+  EXPECT_TRUE(
+      std::equal(state.update_device_info().sku_description_list().begin(),
+                 state.update_device_info().sku_description_list().end(),
+                 kSkuDescriptionList.begin(), kSkuDescriptionList.end()));
   EXPECT_EQ(state.update_device_info().original_serial_number(), kSerialNumber);
   EXPECT_EQ(state.update_device_info().original_region_index(),
             kOriginalRegionSelection);
@@ -396,6 +413,10 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoMlb_Success) {
                          state.update_device_info().custom_label_list().end(),
                          kCustomLabelTagList.begin(),
                          kCustomLabelTagList.end()));
+  EXPECT_TRUE(
+      std::equal(state.update_device_info().sku_description_list().begin(),
+                 state.update_device_info().sku_description_list().end(),
+                 kSkuDescriptionList.begin(), kSkuDescriptionList.end()));
   EXPECT_EQ(state.update_device_info().original_serial_number(), kSerialNumber);
   EXPECT_EQ(state.update_device_info().original_region_index(),
             kOriginalRegionSelection);
@@ -472,8 +493,9 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoRegionList_Failed) {
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
 
-TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoSkuList_Failed) {
-  auto handler = CreateStateHandler({.has_sku_list = false});
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_NoDesignConfigList_Failed) {
+  auto handler = CreateStateHandler({.design_config_list = std::nullopt});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(),
@@ -481,26 +503,19 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoSkuList_Failed) {
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       InitializeState_NoCbiNoSkuNoSkuList_Success) {
+       InitializeState_NoCbiNoSkuEmptyDesignConfigList_Success) {
   auto handler =
-      CreateStateHandler({.has_sku = false, .sku_list = {}, .has_cbi = false});
+      CreateStateHandler({.has_sku = false,
+                          .design_config_list = std::vector<DesignConfig>{},
+                          .has_cbi = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       InitializeState_NoCbiNoSkuHasSkuList_Failed) {
+       InitializeState_NoCbiNoSkuHasDesignConfigList_Failed) {
   auto handler = CreateStateHandler({.has_sku = false, .has_cbi = false});
-  json_store_->SetValue(kMlbRepair, false);
-
-  EXPECT_EQ(handler->InitializeState(),
-            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
-}
-
-TEST_F(UpdateDeviceInfoStateHandlerTest,
-       InitializeState_NoCustomLabelList_Failed) {
-  auto handler = CreateStateHandler({.has_custom_label_list = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(),
