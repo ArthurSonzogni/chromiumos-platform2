@@ -24,6 +24,22 @@
     <method name="GetUuids">
       <arg name="uuids" direction="out" type="aay"/>
     </method>
+    <method name="GetRemoteType">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="type" direction="out" type="u"/>
+    </method>
+    <method name="GetRemoteAppearance">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="appearance" direction="out" type="q"/>
+    </method>
+    <method name="GetRemoteUuids">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="uuids" direction="out" type="aay"/>
+    </method>
+    <method name="GetRemoteClass">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="bluetooth_class" direction="out" type="u"/>
+    </method>
     <method name="StartDiscovery">
       <arg name="discovering" direction="out" type="b"/>
     </method>

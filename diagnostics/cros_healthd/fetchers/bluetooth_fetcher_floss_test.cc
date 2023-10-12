@@ -35,6 +35,9 @@ const dbus::ObjectPath kDefaultAdapterPath{
     "/org/chromium/bluetooth/hci0/adapter"};
 const dbus::ObjectPath kDefaultAdapterQAPath{"/org/chromium/bluetooth/hci0/qa"};
 const dbus::ObjectPath kDefaultAdminPath{"/org/chromium/bluetooth/hci0/admin"};
+const brillo::VariantDictionary kTestConnectedDevice = {
+    {"name", std::string("Test device")},
+    {"address", std::string("70:88:6B:92:34:70")}};
 // Test data of UUID bytes and corresponding string.
 const std::vector<uint8_t> kTestUuidBytes = {0x00, 0x00, 0x11, 0x0a, 0x00, 0x00,
                                              0x10, 0x00, 0x80, 0x00, 0x00, 0x80,
@@ -53,6 +56,16 @@ struct FetchAdapterInfoDetails {
   std::vector<std::vector<uint8_t>> uuids = {kTestUuidBytes};
 };
 
+// Default settings for fetching device info.
+struct FetchDeviceInfoDetails {
+  bool get_type_error = false;
+  bool get_appearance_error = false;
+  bool get_uuids_error = false;
+  bool get_bluetooth_class_error = false;
+  uint32_t type = 0;
+  std::vector<std::vector<uint8_t>> uuids = {kTestUuidBytes};
+};
+
 class BluetoothFetcherFlossTest : public ::testing::Test {
  protected:
   BluetoothFetcherFlossTest() = default;
@@ -62,6 +75,7 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
   ~BluetoothFetcherFlossTest() = default;
 
   void SetUp() override {
+    error_ = brillo::Error::Create(FROM_HERE, "", "", "");
     EXPECT_CALL(*mock_floss_controller(), GetManager())
         .WillRepeatedly(Return(&mock_manager_proxy_));
   }
@@ -124,7 +138,6 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
           .WillOnce(
               base::test::RunOnceCallback<0>(/*address=*/"C4:23:60:59:2B:75"));
     } else {
-      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
       EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
     }
@@ -132,7 +145,6 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
       EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<0>(/*name=*/"Chromebook_C20B"));
     } else {
-      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
       EXPECT_CALL(mock_adapter_proxy_, GetNameAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
     }
@@ -140,7 +152,6 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
       EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/true));
     } else {
-      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
       EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
     }
@@ -148,7 +159,6 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
       EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<0>(/*discoverable=*/true));
     } else {
-      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
       EXPECT_CALL(mock_adapter_proxy_, GetDiscoverableAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
     }
@@ -156,7 +166,6 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
       EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<0>(details.uuids));
     } else {
-      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
       EXPECT_CALL(mock_adapter_proxy_, GetUuidsAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
     }
@@ -164,9 +173,42 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
       EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<0>(details.connected_devices));
     } else {
-      error_ = brillo::Error::Create(FROM_HERE, "", "", "");
       EXPECT_CALL(mock_adapter_proxy_, GetConnectedDevicesAsync(_, _, _))
           .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
+    }
+  }
+
+  void SetupFetchDeviceInfoCall(const brillo::VariantDictionary& device,
+                                FetchDeviceInfoDetails details = {}) {
+    if (!details.get_type_error) {
+      EXPECT_CALL(mock_adapter_proxy_, GetRemoteTypeAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(details.type));
+    } else {
+      EXPECT_CALL(mock_adapter_proxy_, GetRemoteTypeAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
+    }
+    if (!details.get_appearance_error) {
+      EXPECT_CALL(mock_adapter_proxy_,
+                  GetRemoteAppearanceAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(/*appearance=*/2371));
+    } else {
+      EXPECT_CALL(mock_adapter_proxy_,
+                  GetRemoteAppearanceAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
+    }
+    if (!details.get_uuids_error) {
+      EXPECT_CALL(mock_adapter_proxy_, GetRemoteUuidsAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(details.uuids));
+    } else {
+      EXPECT_CALL(mock_adapter_proxy_, GetRemoteUuidsAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
+    }
+    if (!details.get_bluetooth_class_error) {
+      EXPECT_CALL(mock_adapter_proxy_, GetRemoteClassAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<1>(/*bluetooth_class=*/236034));
+    } else {
+      EXPECT_CALL(mock_adapter_proxy_, GetRemoteClassAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
     }
   }
 
@@ -188,7 +230,8 @@ TEST_F(BluetoothFetcherFlossTest, DefaultAdapterEnabled) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-  SetupFetchAdapterInfoCall();
+  SetupFetchAdapterInfoCall(
+      /*details=*/{.connected_devices = {}, .uuids = {kTestUuidBytes}});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
@@ -329,7 +372,6 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterModaliasError) {
   SetupFetchAdapterInfoCall();
 
   SetupGetAdapterQAsCall();
-  error_ = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_adapter_qa_proxy_, GetModaliasAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
 
@@ -368,7 +410,6 @@ TEST_F(BluetoothFetcherFlossTest, GetAdapterServiceAllowListError) {
   SetupFetchAdapterInfoCall();
 
   SetupGetAdminsCall();
-  error_ = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_admin_proxy_, GetAllowedServicesAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
 
@@ -430,10 +471,9 @@ TEST_F(BluetoothFetcherFlossTest, ConnectedDevices) {
   InSequence s;
   SetupGetAvailableAdaptersCall();
   SetupGetAdaptersCall();
-  const brillo::VariantDictionary connected_device = {
-      {"name", std::string("Test device")},
-      {"address", std::string("70:88:6B:92:34:70")}};
-  SetupFetchAdapterInfoCall({.connected_devices = {connected_device}});
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(kTestConnectedDevice,
+                           /*details=*/{.type = 1, .uuids = {kTestUuidBytes}});
 
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
@@ -445,6 +485,95 @@ TEST_F(BluetoothFetcherFlossTest, ConnectedDevices) {
   EXPECT_EQ(devices.size(), 1);
   EXPECT_EQ(devices[0]->name, "Test device");
   EXPECT_EQ(devices[0]->address, "70:88:6B:92:34:70");
+  EXPECT_EQ(devices[0]->type, mojom::BluetoothDeviceType::kBrEdr);
+  EXPECT_EQ(devices[0]->appearance->value, 2371);
+  EXPECT_EQ(devices[0]->uuids.value().size(), 1);
+  EXPECT_EQ(devices[0]->uuids.value()[0], kTestUuidString);
+  EXPECT_EQ(devices[0]->bluetooth_class->value, 236034);
+}
+
+// Test that the error of getting device type is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetDeviceTypeError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(kTestConnectedDevice, {.get_type_error = true});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg, "Failed to get device type");
+}
+
+// Test that the error of parsing device type is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseDeviceTypeError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  // The max value of device type enum is 3.
+  SetupFetchDeviceInfoCall(kTestConnectedDevice, {.type = 4});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg, "Failed to parse device type");
+}
+
+// Test that the error of getting device appearance is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetDeviceAppearanceError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(kTestConnectedDevice,
+                           {.get_appearance_error = true});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to get device appearance");
+}
+
+// Test that the error of getting device UUIDs is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetDeviceUUIDsError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(kTestConnectedDevice, {.get_uuids_error = true});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg, "Failed to get device UUIDs");
+}
+
+// Test that the error of parsing device UUIDs is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseDeviceUUIDsError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(kTestConnectedDevice,
+                           {.uuids = {/*invalid_uuid=*/{}}});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to parse UUID from device UUIDs");
+}
+
+// Test that the error of getting device class is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetDeviceClassError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(kTestConnectedDevice,
+                           {.get_bluetooth_class_error = true});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg, "Failed to get device class");
 }
 
 // Test that the error of getting target adapter is handled gracefully.
@@ -476,7 +605,6 @@ TEST_F(BluetoothFetcherFlossTest, NoAdapters) {
 // Test that the error of getting available adapters can be handled correctly.
 TEST_F(BluetoothFetcherFlossTest, GetAvailableAdaptersError) {
   InSequence s;
-  error_ = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, GetAvailableAdaptersAsync(_, _, _))
       .WillOnce(base::test::RunOnceCallback<1>(error_.get()));
 

@@ -24,12 +24,22 @@
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 #include "diagnostics/dbus_bindings/floss/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
+namespace floss_device_type {
+
+constexpr uint32_t kUnknown = 0;
+constexpr uint32_t kBrEdr = 1;
+constexpr uint32_t kBle = 2;
+constexpr uint32_t kDual = 3;
+
+}  // namespace floss_device_type
 
 org::chromium::bluetooth::BluetoothProxyInterface* GetTargetAdapter(
     FlossController* floss_controller, int32_t hci_interface) {
@@ -114,9 +124,26 @@ class State {
       const std::vector<std::vector<uint8_t>>& services);
   void FetchConnectedDevicesInfo(
       mojom::BluetoothAdapterInfo* const adapter_info_ptr,
+      org::chromium::bluetooth::BluetoothProxyInterface* adapter,
+      base::ScopedClosureRunner on_complete,
       brillo::Error* err,
       const std::vector<brillo::VariantDictionary>& devices);
-
+  void HandleDeviceTypeResponse(
+      mojom::BluetoothDeviceInfo* const device_info_ptr,
+      brillo::Error* err,
+      uint32_t type);
+  void HandleDeviceAppearanceResponse(
+      mojom::BluetoothDeviceInfo* const device_info_ptr,
+      brillo::Error* err,
+      uint16_t appearance);
+  void HandleDeviceUuidsResponse(
+      mojom::BluetoothDeviceInfo* const device_info_ptr,
+      brillo::Error* err,
+      const std::vector<std::vector<uint8_t>>& uuids);
+  void HandleDeviceClassResponse(
+      mojom::BluetoothDeviceInfo* const device_info_ptr,
+      brillo::Error* err,
+      uint32_t bluetooth_class);
   void HandleResult(FetchBluetoothInfoFromFlossCallback callback, bool success);
 
  private:
@@ -178,9 +205,10 @@ void State::FetchEnabledAdapterInfo(
   target_adapter->GetUuidsAsync(std::move(uuids_cb.first),
                                 std::move(uuids_cb.second));
   // Connected devices.
-  auto devices_cb = SplitDbusCallback(
-      barrier.Depend(base::BindOnce(&State::FetchConnectedDevicesInfo,
-                                    base::Unretained(this), adapter_info_ptr)));
+  auto devices_cb = SplitDbusCallback(base::BindOnce(
+      &State::FetchConnectedDevicesInfo, base::Unretained(this),
+      adapter_info_ptr, target_adapter,
+      base::ScopedClosureRunner(barrier.CreateDependencyClosure())));
   target_adapter->GetConnectedDevicesAsync(std::move(devices_cb.first),
                                            std::move(devices_cb.second));
   // Modalias.
@@ -261,7 +289,7 @@ void State::HandleAdapterUuidsResponse(
     return;
   }
   adapter_info_ptr->uuids = std::vector<std::string>{};
-  for (auto uuid : uuids) {
+  for (const auto& uuid : uuids) {
     auto out_uuid = floss_utils::ParseUuidBytes(uuid);
     if (!out_uuid.has_value()) {
       error_ =
@@ -295,7 +323,7 @@ void State::HandleAdapterAllowedServicesResponse(
     return;
   }
   adapter_info_ptr->service_allow_list = std::vector<std::string>{};
-  for (auto uuid : services) {
+  for (const auto& uuid : services) {
     auto out_uuid = floss_utils::ParseUuidBytes(uuid);
     if (!out_uuid.has_value()) {
       error_ =
@@ -309,6 +337,8 @@ void State::HandleAdapterAllowedServicesResponse(
 
 void State::FetchConnectedDevicesInfo(
     mojom::BluetoothAdapterInfo* const adapter_info_ptr,
+    org::chromium::bluetooth::BluetoothProxyInterface* adapter,
+    base::ScopedClosureRunner on_complete,
     brillo::Error* err,
     const std::vector<brillo::VariantDictionary>& devices) {
   if (err) {
@@ -325,18 +355,117 @@ void State::FetchConnectedDevicesInfo(
     }
   }
 
+  // |on_complete| is only called when all device info callbacks are triggered.
+  // Otherwise, |on_complete| will be dropped and |State::HandleResult| will
+  // catch the error.
+  CallbackBarrier barrier{on_complete.Release(), base::DoNothing()};
   adapter_info_ptr->num_connected_devices = devices.size();
   for (const auto& device : devices) {
-    auto address =
-        brillo::GetVariantValueOrDefault<std::string>(device, "address");
-    auto name = brillo::GetVariantValueOrDefault<std::string>(device, "name");
     auto device_info = mojom::BluetoothDeviceInfo::New();
-    device_info->address = address;
-    device_info->name = name;
+    device_info->address =
+        brillo::GetVariantValueOrDefault<std::string>(device, "address");
+    device_info->name =
+        brillo::GetVariantValueOrDefault<std::string>(device, "name");
+
+    // Type.
+    auto type_cb = SplitDbusCallback(barrier.Depend(
+        base::BindOnce(&State::HandleDeviceTypeResponse, base::Unretained(this),
+                       device_info.get())));
+    adapter->GetRemoteTypeAsync(device, std::move(type_cb.first),
+                                std::move(type_cb.second));
+    // Appearance.
+    auto appearance_cb = SplitDbusCallback(barrier.Depend(
+        base::BindOnce(&State::HandleDeviceAppearanceResponse,
+                       base::Unretained(this), device_info.get())));
+    adapter->GetRemoteAppearanceAsync(device, std::move(appearance_cb.first),
+                                      std::move(appearance_cb.second));
+    // UUIDs.
+    auto uuids_cb = SplitDbusCallback(barrier.Depend(
+        base::BindOnce(&State::HandleDeviceUuidsResponse,
+                       base::Unretained(this), device_info.get())));
+    adapter->GetRemoteUuidsAsync(device, std::move(uuids_cb.first),
+                                 std::move(uuids_cb.second));
+    // Class of Device (CoD).
+    auto class_cb = SplitDbusCallback(barrier.Depend(
+        base::BindOnce(&State::HandleDeviceClassResponse,
+                       base::Unretained(this), device_info.get())));
+    adapter->GetRemoteClassAsync(device, std::move(class_cb.first),
+                                 std::move(class_cb.second));
+    // TODO(b/300239084): Fetch more Bluetooth device info via Floss.
+
     adapter_info_ptr->connected_devices->push_back(std::move(device_info));
   }
+}
 
-  // TODO(b/300239084): Fetch Bluetooth device info via Floss.
+void State::HandleDeviceTypeResponse(
+    mojom::BluetoothDeviceInfo* const device_info_ptr,
+    brillo::Error* err,
+    uint32_t type) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get device type");
+    return;
+  }
+
+  if (type == floss_device_type::kUnknown) {
+    device_info_ptr->type = mojom::BluetoothDeviceType::kUnknown;
+  } else if (type == floss_device_type::kBrEdr) {
+    device_info_ptr->type = mojom::BluetoothDeviceType::kBrEdr;
+  } else if (type == floss_device_type::kBle) {
+    device_info_ptr->type = mojom::BluetoothDeviceType::kLe;
+  } else if (type == floss_device_type::kDual) {
+    device_info_ptr->type = mojom::BluetoothDeviceType::kDual;
+  } else {
+    LOG(ERROR) << "Get invalid device type, enum value: " << type;
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                    "Failed to parse device type");
+  }
+}
+
+void State::HandleDeviceAppearanceResponse(
+    mojom::BluetoothDeviceInfo* const device_info_ptr,
+    brillo::Error* err,
+    uint16_t appearance) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get device appearance");
+    return;
+  }
+  device_info_ptr->appearance = mojom::NullableUint16::New(appearance);
+}
+
+void State::HandleDeviceUuidsResponse(
+    mojom::BluetoothDeviceInfo* const device_info_ptr,
+    brillo::Error* err,
+    const std::vector<std::vector<uint8_t>>& uuids) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get device UUIDs");
+    return;
+  }
+  device_info_ptr->uuids = std::vector<std::string>{};
+  for (const auto& uuid : uuids) {
+    auto out_uuid = floss_utils::ParseUuidBytes(uuid);
+    if (!out_uuid.has_value()) {
+      error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                      "Failed to parse UUID from device UUIDs");
+      return;
+    }
+    device_info_ptr->uuids->push_back(out_uuid.value());
+  }
+}
+
+void State::HandleDeviceClassResponse(
+    mojom::BluetoothDeviceInfo* const device_info_ptr,
+    brillo::Error* err,
+    uint32_t bluetooth_class) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get device class");
+    return;
+  }
+  device_info_ptr->bluetooth_class =
+      mojom::NullableUint32::New(bluetooth_class);
 }
 
 void State::HandleResult(FetchBluetoothInfoFromFlossCallback callback,
