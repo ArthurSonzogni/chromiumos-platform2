@@ -10,8 +10,10 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
+#include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
@@ -29,11 +31,14 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |gsc_utils_| and |write_protect_utils_| for testing.
+  // Used to inject mock |gsc_utils_|, |crossystem_utils_|, and
+  // |write_protect_utils_| for testing.
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path,
       std::unique_ptr<GscUtils> gsc_utils,
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
@@ -46,6 +51,13 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
 
   // Try to auto-transition at boot.
   GetNextStateCaseReply TryGetNextStateCaseAtBoot() override;
+
+  // Override powerwash function. Allow disabling powerwash if running in a
+  // debug build.
+  bool CanDisablePowerwash() const override {
+    int cros_debug;
+    return crossystem_utils_->GetCrosDebug(&cros_debug) && cros_debug == 1;
+  }
 
  protected:
   ~WriteProtectDisablePhysicalStateHandler() override = default;
@@ -61,10 +73,13 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   void RebootEc();
   void RebootEcCallback(bool success);
 
+  base::FilePath working_dir_path_;
+
   base::OneShotTimer reboot_timer_;
   base::RepeatingTimer signal_timer_;
 
   std::unique_ptr<GscUtils> gsc_utils_;
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
 };
 

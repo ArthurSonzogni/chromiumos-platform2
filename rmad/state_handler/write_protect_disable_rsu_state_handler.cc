@@ -14,11 +14,14 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <libec/reboot_command.h>
 
 #include "rmad/constants.h"
 #include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
+#include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
+#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
@@ -36,7 +39,9 @@ namespace rmad {
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback), reboot_scheduled_(false) {
+    : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(kDefaultWorkingDirPath),
+      reboot_scheduled_(false) {
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
@@ -45,10 +50,12 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
+    const base::FilePath& working_dir_path,
     std::unique_ptr<GscUtils> gsc_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
+      working_dir_path_(working_dir_path),
       gsc_utils_(std::move(gsc_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
@@ -118,12 +125,18 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   // Sync state file before doing EC reboot.
   json_store_->Sync();
 
-  // Schedule an RMA mode powerwash and EC reboot after |kRebootDelay| seconds.
-  timer_.Start(
-      FROM_HERE, kRebootDelay,
-      base::BindOnce(
-          &WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEc,
-          base::Unretained(this)));
+  // Request RMA mode powerwash if it is not disabled.
+  if (IsPowerwashDisabled(working_dir_path_)) {
+    timer_.Start(FROM_HERE, kRebootDelay,
+                 base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEc,
+                                base::Unretained(this)));
+  } else {
+    timer_.Start(
+        FROM_HERE, kRebootDelay,
+        base::BindOnce(
+            &WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEc,
+            base::Unretained(this)));
+  }
 
   reboot_scheduled_ = true;
   return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
@@ -169,11 +182,10 @@ void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEc() {
 
 void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEcCallback(
     bool success) {
-  if (success) {
-    RebootEc();
-  } else {
+  if (!success) {
     LOG(ERROR) << "Failed to request RMA mode powerwash";
   }
+  RebootEc();
 }
 
 void WriteProtectDisableRsuStateHandler::RebootEc() {

@@ -9,9 +9,11 @@
 
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
 #include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
@@ -32,6 +34,7 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   explicit WriteProtectDisableRsuStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
+      const base::FilePath& working_dir_path,
       std::unique_ptr<GscUtils> gsc_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils);
@@ -45,6 +48,13 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   // Try to auto-transition at boot.
   GetNextStateCaseReply TryGetNextStateCaseAtBoot() override;
 
+  // Override powerwash function. Allow disabling powerwash if running in a
+  // debug build.
+  bool CanDisablePowerwash() const override {
+    int cros_debug;
+    return crossystem_utils_->GetCrosDebug(&cros_debug) && cros_debug == 1;
+  }
+
  protected:
   ~WriteProtectDisableRsuStateHandler() override = default;
 
@@ -54,6 +64,8 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   void RequestRmaPowerwashAndRebootEcCallback(bool success);
   void RebootEc();
   void RebootEcCallback(bool success);
+
+  base::FilePath working_dir_path_;
 
   std::unique_ptr<GscUtils> gsc_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
