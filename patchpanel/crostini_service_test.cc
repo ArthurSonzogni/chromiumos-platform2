@@ -110,7 +110,7 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
 
   // The virtual datapath for the Crostini VM can successfully stop.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
-  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap0"));
+  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap0", TrafficSource::kCrosVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   crostini->Stop(vm_id);
   it = guest_devices_.find("vmtap0");
@@ -167,7 +167,8 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
 
   // The virtual datapath for the Parallels VM can successfully stop.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
-  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap0"));
+  EXPECT_CALL(*datapath_,
+              StopRoutingDevice("vmtap0", TrafficSource::kParallelsVM));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
                                     ShillDeviceHasInterfaceName("wlan0"),
@@ -194,7 +195,7 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
   EXPECT_CALL(*datapath_,
-              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrosVM, _,
+              StartRoutingDeviceAsUser("vmtap0", TrafficSource::kBruschetta, _,
                                        Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
@@ -224,7 +225,8 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
 
   // The virtual datapath for the Bruschetta VM can successfully stop.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
-  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap0"));
+  EXPECT_CALL(*datapath_,
+              StopRoutingDevice("vmtap0", TrafficSource::kBruschetta));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   crostini->Stop(vm_id);
   it = guest_devices_.find("vmtap0");
@@ -339,7 +341,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
   // Stop first Crostini VM. Its virtual device is destroyed.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap0"));
-  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap0"));
+  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap0", TrafficSource::kCrosVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   crostini->Stop(vm_id1);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id1));
@@ -351,7 +353,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
   // Stop second Crostini VM. Its virtual device is destroyed.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap2"));
-  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap2"));
+  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap2", TrafficSource::kCrosVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
   crostini->Stop(vm_id3);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id3));
@@ -363,7 +365,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
   // Stop Parallels VM. Its virtual device is destroyed.
   EXPECT_CALL(*datapath_, RemoveInterface("vmtap1"));
-  EXPECT_CALL(*datapath_, StopRoutingDevice("vmtap1"));
+  EXPECT_CALL(*datapath_,
+              StopRoutingDevice("vmtap1", TrafficSource::kParallelsVM));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
                                     ShillDeviceHasInterfaceName("wlan0"),

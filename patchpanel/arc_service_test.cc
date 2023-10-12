@@ -24,6 +24,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/mock_datapath.h"
+#include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
 using net_base::IPv4Address;
@@ -164,7 +165,7 @@ TEST_F(ArcServiceTest, NotStarted_AddRemoveDevice) {
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT(AutoDNATTarget::kArc,
                                              IsShillDevice("eth0"), _))
       .Times(0);
-  EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0"))).Times(0);
+  EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0"), _)).Times(0);
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
                                                 IsShillDevice("eth0"), _))
       .Times(0);
@@ -690,7 +691,8 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
 
   // Expectations for eth0 teardown.
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetheth0"))).Times(1);
-  EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0")));
+  EXPECT_CALL(*datapath_,
+              StopRoutingDevice(StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                     IPv4Address(100, 115, 92, 6)));
@@ -1047,7 +1049,8 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap4")));
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vmtap5")));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0")));
+  EXPECT_CALL(*datapath_,
+              StopRoutingDevice(StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                     IPv4Address(100, 115, 92, 6)));
@@ -1127,7 +1130,8 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   Mock::VerifyAndClearExpectations(datapath_.get());
 
   // Expectations for eth0 teardown.
-  EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("arc_eth0")));
+  EXPECT_CALL(*datapath_,
+              StopRoutingDevice(StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                     IPv4Address(100, 115, 92, 6)));

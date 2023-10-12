@@ -287,6 +287,7 @@ TrafficCounter::Source TrafficSourceToProto(TrafficSource source) {
     case TrafficSource::kArc:
       return TrafficCounter::ARC;
     case TrafficSource::kCrosVM:
+    case TrafficSource::kBruschetta:
       return TrafficCounter::CROSVM;
     case TrafficSource::kParallelsVM:
       return TrafficCounter::PARALLELS_VM;

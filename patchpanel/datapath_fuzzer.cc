@@ -111,7 +111,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.StartRoutingDeviceAsSystem(ifname2, TrafficSource::kUnknown);
   datapath.StartRoutingDeviceAsUser(ifname2, TrafficSource::kUnknown,
                                     ipv4_addr);
-  datapath.StopRoutingDevice(ifname2);
+  datapath.StopRoutingDevice(ifname2, TrafficSource::kUnknown);
   datapath.StartRoutingNamespace(nsinfo);
   datapath.StopRoutingNamespace(nsinfo);
   datapath.ConnectVethPair(pid, netns_name, ifname, ifname2, mac, cidr,

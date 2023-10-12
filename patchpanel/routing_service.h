@@ -67,6 +67,8 @@ enum TrafficSource {
   kTetherDownstream = 0x23,
   // Traffic emitted by Android VPNs for their tunnelled connections.
   kArcVpn = 0x24,
+  // Bruschetta VMs.
+  kBruschetta = 0x25,
 };
 
 // QoSCategory in fwmark indicates the inferred result from each QoS detector

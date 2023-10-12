@@ -701,7 +701,8 @@ void ArcService::StopArcDeviceDatapath(
       datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
                                        shill_device_it->second,
                                        arc_device.arc_ipv4_address().address());
-      datapath_->StopRoutingDevice(arc_device.bridge_ifname());
+      datapath_->StopRoutingDevice(arc_device.bridge_ifname(),
+                                   TrafficSource::kArc);
     }
   }
   datapath_->RemoveBridge(arc_device.bridge_ifname());

@@ -36,6 +36,7 @@
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/net_util.h"
+#include "patchpanel/routing_service.h"
 
 namespace patchpanel {
 namespace {
@@ -93,6 +94,11 @@ constexpr char kEnforceSourcePrefixChain[] = "enforce_ipv6_src_prefix";
 constexpr char kVpnEgressFiltersChain[] = "vpn_egress_filters";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
+
+// OUTPUT filter chain to drop host-initiated connection to Bruschetta and
+// FORWARD filter chain to drop external- and other-vm-initiated connection.
+constexpr char kDropOutputToBruschettaChain[] = "drop_output_to_bruschetta";
+constexpr char kDropForwardToBruschettaChain[] = "drop_forward_to_bruschetta";
 
 // IPv4 nat PREROUTING chains for forwarding ingress traffic to different types
 // of hosted guests with the corresponding hierarchy.
@@ -277,12 +283,25 @@ void Datapath::Start() {
        kAcceptDownstreamNetworkChain},
       // Create OUTPUT filter chain to enforce source IP on egress IPv6 packets.
       {IpFamily::kIPv6, Iptables::Table::kFilter, kEnforceSourcePrefixChain},
+      // Create OUTPUT filter chain to drop host-to-bruschetta traffic.
+      {IpFamily::kDual, Iptables::Table::kFilter, kDropOutputToBruschettaChain},
+      {IpFamily::kDual, Iptables::Table::kFilter,
+       kDropForwardToBruschettaChain},
   };
   for (const auto& c : makeCommands) {
     if (!AddChain(c.family, c.table, c.chain)) {
       LOG(ERROR) << "Failed to create " << c.chain << " chain in " << c.table
                  << " table";
     }
+  }
+
+  // Create a FORWARD ACCEPT rule for connections already established.
+  if (process_runner_->iptables(
+          Iptables::Table::kFilter, Iptables::Command::kA, "FORWARD",
+          {"-m", "state", "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT",
+           "-w"}) != 0) {
+    LOG(ERROR) << "Failed to install forwarding rule for established"
+               << " connections.";
   }
 
   // Add all static jump commands from builtin chains to chains created by
@@ -314,6 +333,13 @@ void Datapath::Start() {
        kApplyAutoDNATToCrostiniChain},
       {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
        kApplyAutoDNATToParallelsChain},
+      // Jump to chains to drop packets into Bruschetta. OUTPUT one needs to be
+      // after --state NEW,RELATED,ESTABLISHED rule, and FORWARD one needs to be
+      // before --state RELATED,ESTABLISHED rule.
+      {IpFamily::kDual, Iptables::Table::kFilter, "OUTPUT",
+       kDropOutputToBruschettaChain, Iptables::Command::kI},
+      {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD",
+       kDropForwardToBruschettaChain},
       // When VPN lockdown is enabled, a REJECT rule must stop
       // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark.
       // This REJECT rule is added to |kVpnLockdownChain|. In addition, when VPN
@@ -329,7 +355,7 @@ void Datapath::Start() {
       {IpFamily::kDual, Iptables::Table::kFilter, "OUTPUT",
        kVpnEgressFiltersChain, Iptables::Command::kI},
       {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD",
-       kVpnEgressFiltersChain},
+       kVpnEgressFiltersChain, Iptables::Command::kI},
       {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain,
        kVpnAcceptChain},
       {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain,
@@ -355,15 +381,6 @@ void Datapath::Start() {
       LOG(ERROR) << "Failed to create jump rule from " << c.jump_from << " to "
                  << c.jump_to << " in " << c.table << " table";
     }
-  }
-
-  // Create a FORWARD ACCEPT rule for connections already established.
-  if (process_runner_->iptables(
-          Iptables::Table::kFilter, Iptables::Command::kA, "FORWARD",
-          {"-m", "state", "--state", "ESTABLISHED,RELATED", "-j", "ACCEPT",
-           "-w"}) != 0) {
-    LOG(ERROR) << "Failed to install forwarding rule for established"
-               << " connections.";
   }
 
   // Create a FORWARD ACCEPT rule for ICMP6.
@@ -1064,7 +1081,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
 }
 
 void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
-  StopRoutingDevice(nsinfo.host_ifname);
+  StopRoutingDevice(nsinfo.host_ifname, nsinfo.source);
   RemoveInterface(nsinfo.host_ifname);
   NetnsDeleteName(nsinfo.netns_name);
 }
@@ -1265,16 +1282,25 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
 void Datapath::AddDownstreamInterfaceRules(const std::string& int_ifname,
                                            TrafficSource source,
                                            bool static_ipv6) {
-  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                      Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
-                      int_ifname)) {
-    LOG(ERROR) << "Failed to enable IP forwarding from " << int_ifname;
+  if (source != TrafficSource::kBruschetta) {
+    if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                        Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
+                        int_ifname)) {
+      LOG(ERROR) << "Failed to enable IP forwarding from " << int_ifname;
+    }
   }
 
   if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kA, "FORWARD", "ACCEPT", int_ifname,
                       /*oif=*/"")) {
     LOG(ERROR) << "Failed to enable IP forwarding to " << int_ifname;
+  }
+
+  if (source == TrafficSource::kBruschetta) {
+    if (!ModifyIsolatedGuestDropRule(Iptables::Command::kA, int_ifname)) {
+      LOG(ERROR) << "Fail to setup Bruschetta traffic block rule on "
+                 << int_ifname;
+    }
   }
 
   std::string subchain = PreroutingSubChainName(int_ifname);
@@ -1409,13 +1435,19 @@ void Datapath::StartRoutingDeviceAsUser(
     LOG(ERROR) << "Failed to add jump rule to VPN chain for " << int_ifname;
 }
 
-void Datapath::StopRoutingDevice(const std::string& int_ifname) {
-  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "FORWARD", "ACCEPT", /*iif=*/"",
-                 int_ifname);
+void Datapath::StopRoutingDevice(const std::string& int_ifname,
+                                 TrafficSource source) {
+  if (source != TrafficSource::kBruschetta) {
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kD, "FORWARD", "ACCEPT", /*iif=*/"",
+                   int_ifname);
+  }
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "FORWARD", "ACCEPT", int_ifname,
                  /*oif=*/"");
+  if (source == TrafficSource::kBruschetta) {
+    ModifyIsolatedGuestDropRule(Iptables::Command::kD, int_ifname);
+  }
 
   std::string subchain = PreroutingSubChainName(int_ifname);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
@@ -1791,7 +1823,7 @@ void Datapath::StopVpnRouting(const ShillClient::Device& vpn_device) {
     LOG(ERROR) << "Could not flush " << kVpnAcceptChain;
   }
   if (vpn_ifname != kArcbr0Ifname) {
-    StopRoutingDevice(kArcbr0Ifname);
+    StopRoutingDevice(kArcbr0Ifname, kArc);
   }
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle,
                   kApplyVpnMarkChain)) {
@@ -1963,7 +1995,8 @@ void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
 
   // Skip unconfiguring the downstream interface: shill will either destroy it
   // or flip it back to client mode and restart a Network on top.
-  StopRoutingDevice(info.downstream_ifname);
+  StopRoutingDevice(info.downstream_ifname,
+                    DownstreamNetworkInfoTrafficSource(info));
   FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
              kAcceptDownstreamNetworkChain);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
@@ -2568,6 +2601,19 @@ void Datapath::UpdateDoHProvidersForQoS(
                     base::JoinString(ip_strs, ","), "-j", "MARK", "--set-xmark",
                     QoSFwmarkWithMask(QoSCategory::kNetworkControl), "-w"});
   }
+}
+
+bool Datapath::ModifyIsolatedGuestDropRule(Iptables::Command command,
+                                           std::string_view ifname) {
+  bool success = true;
+  success &= ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter, command,
+                            kDropForwardToBruschettaChain,
+                            {"-o", std::string(ifname), "-j", "DROP", "-w"});
+  success &= ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter, command,
+                            kDropOutputToBruschettaChain,
+                            {"-m", "state", "--state", "NEW", "-o",
+                             std::string(ifname), "-j", "DROP", "-w"});
+  return success;
 }
 
 bool Datapath::ModifyClatAcceptRules(Iptables::Command command,

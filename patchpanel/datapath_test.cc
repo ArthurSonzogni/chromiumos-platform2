@@ -30,6 +30,7 @@
 #include "patchpanel/iptables.h"
 #include "patchpanel/mock_process_runner.h"
 #include "patchpanel/net_util.h"
+#include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
 using net_base::IPv4Address;
@@ -397,13 +398,17 @@ TEST(DatapathTest, Start) {
       // Asserts for VPN filter chain creations
       {IpFamily::kDual, "filter -N vpn_egress_filters -w"},
       {IpFamily::kDual, "filter -I OUTPUT -j vpn_egress_filters -w"},
-      {IpFamily::kDual, "filter -A FORWARD -j vpn_egress_filters -w"},
+      {IpFamily::kDual, "filter -I FORWARD -j vpn_egress_filters -w"},
       {IpFamily::kDual, "filter -N vpn_lockdown -w"},
       {IpFamily::kDual, "filter -A vpn_egress_filters -j vpn_lockdown -w"},
       {IpFamily::kDual, "filter -N vpn_accept -w"},
       {IpFamily::kDual, "filter -A vpn_egress_filters -j vpn_accept -w"},
       // Asserts for cellular prefix enforcement chain creation
       {IpFamily::kIPv6, "filter -N enforce_ipv6_src_prefix -w"},
+      {IpFamily::kDual, "filter -N drop_forward_to_bruschetta -w"},
+      {IpFamily::kDual, "filter -N drop_output_to_bruschetta -w"},
+      {IpFamily::kDual, "filter -A FORWARD -j drop_forward_to_bruschetta -w"},
+      {IpFamily::kDual, "filter -I OUTPUT -j drop_output_to_bruschetta -w"},
       // Asserts for DNS proxy rules
       {IpFamily::kDual, "mangle -N skip_apply_vpn_mark -w"},
       {IpFamily::kDual,
@@ -1287,7 +1292,7 @@ TEST(DatapathTest, StopRoutingDevice) {
   Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_arc_eth0 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StopRoutingDevice("arc_eth0");
+  datapath.StopRoutingDevice("arc_eth0", TrafficSource::kArc);
 }
 
 TEST(DatapathTest, StopRoutingDeviceAsUser) {
@@ -1304,7 +1309,7 @@ TEST(DatapathTest, StopRoutingDeviceAsUser) {
   Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_vmtap0 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StopRoutingDevice("vmtap0");
+  datapath.StopRoutingDevice("vmtap0", TrafficSource::kCrosVM);
 }
 
 TEST(DatapathTest, StartStopConnectionPinning) {

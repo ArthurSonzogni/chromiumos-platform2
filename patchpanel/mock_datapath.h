@@ -96,7 +96,7 @@ class MockDatapath : public Datapath {
               (override));
   MOCK_METHOD(void,
               StopRoutingDevice,
-              (const std::string& int_ifname),
+              (const std::string& int_ifname, TrafficSource source),
               (override));
   MOCK_METHOD(bool,
               MaskInterfaceFlags,

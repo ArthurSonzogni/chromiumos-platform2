@@ -274,8 +274,9 @@ class Datapath {
       std::optional<net_base::IPv6Address> peer_ipv6_addr = std::nullopt);
 
   // Removes IPv4 iptables, IP forwarding, and traffic marking rules for the
-  // given downstream network interface |int_ifname|.
-  virtual void StopRoutingDevice(const std::string& int_ifname);
+  // given downstream network interface |int_ifname| associated to |source|.
+  virtual void StopRoutingDevice(const std::string& int_ifname,
+                                 TrafficSource source);
 
   // Starts or stops marking conntrack entries routed to |shill_device| with its
   // associated fwmark routing tag. Once a conntrack entry is marked with the
@@ -591,6 +592,9 @@ class Datapath {
   void ModifyQoSDetectJumpRule(Iptables::Command command);
   void ModifyQoSApplyDSCPJumpRule(Iptables::Command command,
                                   std::string_view ifname);
+
+  bool ModifyIsolatedGuestDropRule(Iptables::Command command,
+                                   std::string_view ifname);
 
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
   std::unique_ptr<Firewall> firewall_;

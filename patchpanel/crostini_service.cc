@@ -196,7 +196,7 @@ void CrostiniService::Stop(uint64_t vm_id) {
 
   event_handler_.Run(*it->second, CrostiniDeviceEvent::kRemoved);
   const std::string tap_ifname = it->second->tap_device_ifname();
-  datapath_->StopRoutingDevice(tap_ifname);
+  datapath_->StopRoutingDevice(tap_ifname, TrafficSourceFromVMType(vm_type));
   if (adb_sideloading_enabled_) {
     StopAdbPortForwarding(tap_ifname);
   }
@@ -412,7 +412,7 @@ TrafficSource CrostiniService::TrafficSourceFromVMType(
     case VMType::kParallels:
       return TrafficSource::kParallelsVM;
     case VMType::kBruschetta:
-      // TODO(b/279994478): Implement specific firewall rule for Bruschetta.
+      return TrafficSource::kBruschetta;
     case VMType::kBorealis:
       // TODO(b/279994478): Clarify whether Borealis needs its own traffic
       // source type.
