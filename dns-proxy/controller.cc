@@ -545,18 +545,23 @@ void Controller::OnDefaultDeviceChanged(
     ipconfig = dd->ipconfig;
   }
 
+  // When DNS information is available from both IPv6 source (RDNSS) and IPv4
+  // source (DHCPv4), the ideal behavior is happy eyeballs (RFC 8305). When
+  // happy eyeballs is not implemented, the priority of DNS servers are not
+  // strictly defined by standard. Prefer IPv6 here as most of the RFCs just
+  // "assume" IPv6 is preferred.
   std::vector<std::string> nameservers;
-  for (const auto& ns : ipconfig.ipv4_dns_addresses) {
-    nameservers.push_back(ns);
-  }
   for (const auto& ns : ipconfig.ipv6_dns_addresses) {
     nameservers.push_back(ns);
   }
+  for (const auto& ns : ipconfig.ipv4_dns_addresses) {
+    nameservers.push_back(ns);
+  }
   std::vector<std::string> search_domains;
-  for (const auto& sd : ipconfig.ipv4_search_domains) {
+  for (const auto& sd : ipconfig.ipv6_search_domains) {
     search_domains.push_back(sd);
   }
-  for (const auto& sd : ipconfig.ipv6_search_domains) {
+  for (const auto& sd : ipconfig.ipv4_search_domains) {
     search_domains.push_back(sd);
   }
 
