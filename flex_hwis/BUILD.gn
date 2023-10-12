@@ -11,8 +11,10 @@ group("all") {
     ":install_minijail_config",
     ":install_seccomp_policy",
     ":install_tmpfiles_config",
-    ":install_upstart_config",
     ":libflex_hwis",
+
+    # TODO(b/305052945): enable this dep once the client is ready to ship.
+    # ":install_upstart_config",
   ]
   if (use.test) {
     deps += [
