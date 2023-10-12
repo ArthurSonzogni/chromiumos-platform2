@@ -301,7 +301,12 @@ message EvictDeviceKeyReply {
 // Input parameters to EvictDeviceKey()
 // Currently key eviction operates on all actively mounted user
 // cryptohomes.
-message EvictDeviceKeyRequest {}
+message EvictDeviceKeyRequest {
+  // Unique ID associated with the current suspend request, attached
+  // to EvictedKeyRestored signal when RestoreDeviceKey completes,
+  // correlated to a unique suspend request id.
+  int64 eviction_id = 1;
+}
 
 message RestoreDeviceKeyRequest {
   // The id of a running AuthSession, which also identifies the user whose
@@ -1653,4 +1658,8 @@ message AuthenticateAuthFactorCompleted {
 // The message sent in signal EvictedKeyRestoreSignal
 message EvictedKeyRestored {
   bool done = 1;
+  // Unique ID associated with the current suspend request,
+  // when RestoreDeviceKey completes, correlated to a unique
+  // suspend attempt.
+  int64 eviction_id = 2;
 }
