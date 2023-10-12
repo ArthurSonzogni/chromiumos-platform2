@@ -39,34 +39,17 @@ bool isValidEdid(const EdidRaw& edid_raw) {
   return true;
 }
 
-std::optional<std::string> ExtractString(const uint8_t* data) {
-  static char ret[kDescriptorDataSize];
-  bool seen_newline = false;
-  memset(ret, 0, sizeof(ret));
+std::string ExtractDisplayName(const uint8_t* data) {
+  std::string ret;
 
   for (int i = 0; i < kDescriptorDataSize; i++) {
-    if (isgraph(data[i])) {
-      ret[i] = data[i];
-    } else if (!seen_newline) {
-      if (data[i] == 0x0a) {
-        seen_newline = true;
-        // Find one or more trailing spaces.
-        if (i > 0 && ret[i - 1] == 0x20) {
-          return std::nullopt;
-        }
-      } else if (data[i] == 0x20) {
-        ret[i] = data[i];
-      } else {
-        return std::nullopt;
-      }
-    } else if (data[i] != 0x20) {
-      return std::nullopt;
+    if (isprint(data[i])) {
+      ret.push_back(data[i]);
+    } else {
+      break;
     }
   }
 
-  // Find trailing spaces.
-  if (!seen_newline && ret[kDescriptorDataSize - 1] == 0x20)
-    return std::nullopt;
   return ret;
 }
 
@@ -142,7 +125,7 @@ Edid::Edid(const EdidRaw& edid_raw) {
     if (display_descriptor.pixel_clock)
       continue;
     if (display_descriptor.type == 0xFC)
-      display_name = ExtractString(display_descriptor.data);
+      display_name = ExtractDisplayName(display_descriptor.data);
   }
 }
 
