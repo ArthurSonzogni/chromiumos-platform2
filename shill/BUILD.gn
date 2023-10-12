@@ -247,6 +247,7 @@ install_config("mojo_policy") {
 
 static_library("libshill") {
   sources = [
+    "capport_proxy.cc",
     "cellular/apn_list.cc",
     "cellular/carrier_entitlement.cc",
     "cellular/cellular.cc",
@@ -667,6 +668,7 @@ if (use.fuzzer) {
 if (use.test) {
   pkg_config("shill_unittest_config") {
     pkg_deps = [
+      "libbrillo-test",
       "libchrome-test",
       "libminijail",
     ]
@@ -676,6 +678,7 @@ if (use.test) {
     run_test = true
     sources = [
       "bluetooth/mock_bluetooth_manager_proxy.cc",
+      "capport_proxy_test.cc",
       "cellular/apn_list_test.cc",
       "cellular/carrier_entitlement_test.cc",
       "cellular/cellular_bearer_test.cc",
