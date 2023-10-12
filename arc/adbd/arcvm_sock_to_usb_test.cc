@@ -133,12 +133,12 @@ void TestInvalidPayloadLength() {
   std::vector<char> message(message_len, 0x5);
   ASSERT_TRUE(SetPayloadLength(kAdbPayloadMaxSize + 1, &message));
   LoopCheck(sock_pair->first.get(), message);
-  ASSERT_TRUE(false) << "Should not reach here.";
+  exit(EXIT_SUCCESS);
 }
 
 TEST(ArcVmSockToUsbDeathTest, TestInvalidPayloadLength) {
   EXPECT_EXIT(TestInvalidPayloadLength(),
-              ::testing::ExitedWithCode(EXIT_FAILURE),
+              ::testing::ExitedWithCode(EXIT_SUCCESS),
               "payload length is too big");
 }
 

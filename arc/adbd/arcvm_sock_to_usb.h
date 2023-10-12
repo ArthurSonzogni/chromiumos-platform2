@@ -7,7 +7,7 @@
 #ifndef ARC_ADBD_ARCVM_SOCK_TO_USB_H_
 #define ARC_ADBD_ARCVM_SOCK_TO_USB_H_
 
-#include <base/threading/thread.h>
+#include "arc/adbd/fd_splice.h"
 
 namespace adbd {
 
@@ -29,9 +29,9 @@ constexpr size_t kUsbWriteBufSize =
 
 // Provides a unidirectional channel to transfer
 // ADB data from a socket to a USB endpoint.
-class ArcVmSockToUsb {
+class ArcVmSockToUsb : public FdSpliceThreadBase {
  public:
-  ArcVmSockToUsb(const int sock_fd, const int usb_fd);
+  ArcVmSockToUsb(const int sock_fd, const int usb_fd, const int stop_fd = -1);
 
   // Disallows copy and assignment.
   ArcVmSockToUsb(const ArcVmSockToUsb&) = delete;
@@ -39,14 +39,8 @@ class ArcVmSockToUsb {
 
   ~ArcVmSockToUsb();
 
-  // Kicks off the channel.
-  bool Start();
-
- private:
-  void Run();
-  const int sock_fd_;
-  const int usb_fd_;
-  base::Thread thread_;
+ protected:
+  void Run() override;
 };
 
 }  // namespace adbd
