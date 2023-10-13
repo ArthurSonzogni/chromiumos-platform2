@@ -37,6 +37,7 @@ source_set("enterprise_rollback_metrics_library_common_sources") {
     "enterprise_rollback_metrics_handler.cc",
     "structured_metrics_recorder.cc",
   ]
+  deps = [ ":enterprise_rollback_metrics_proto" ]
   all_dependent_configs = [ ":target_defaults" ]
 
   # PIC is required for shared libraries and their dependencies.
@@ -47,7 +48,6 @@ shared_library("libenterprise_rollback_metrics") {
   configs += [ ":target_defaults" ]
   deps = [
     ":enterprise_rollback_metrics_library_common_sources",
-    ":enterprise_rollback_metrics_proto",
     "//oobe_config/filesystem:filesystem",
   ]
   install_path = "lib"
@@ -96,7 +96,6 @@ if (use.test) {
     ]
     deps = [
       ":enterprise_rollback_metrics_library_test_sources",
-      ":enterprise_rollback_metrics_proto",
       "//oobe_config/filesystem:filesystem_for_testing",
     ]
     install_path = "lib"
@@ -114,7 +113,6 @@ if (use.test) {
     run_test = true
     deps = [
       ":enterprise_rollback_metrics_library_test_sources",
-      ":enterprise_rollback_metrics_proto",
       "//common-mk/testrunner",
       "//oobe_config/filesystem:filesystem_for_testing",
     ]
