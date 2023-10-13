@@ -42,6 +42,9 @@ class MmService {
                        int vm_cid,
                        const std::string& socket);
 
+  // Called to notify the service that a VM has completed it's boot sequence.
+  void NotifyVmBootComplete(int vm_cid);
+
   // Called to notify the service that a VM will stop soon.
   void NotifyVmStopping(int vm_cid);
 
@@ -56,6 +59,9 @@ class MmService {
   void Reclaim(const BalloonBroker::ReclaimOperation& reclaim_operation,
                ResizePriority priority);
 
+  // Reclaim from the target context until it is blocked at |priority|.
+  void ReclaimUntil(int cid, ResizePriority priority);
+
   // Starts components that run on the negotiation thread.
   bool NegotiationThreadStart(
       scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner);
@@ -65,6 +71,9 @@ class MmService {
 
   // Notify negotiation thread components that a new VM has started.
   void NegotiationThreadNotifyVmStarted(int vm_cid, const std::string& socket);
+
+  // Runs ReclaimUntil on the negotiation thread.
+  void NegotiationThreadReclaimUntil(int vm_cid, ResizePriority priority);
 
   // Notify the negotiation thread that a VM is stopping.
   void NegotiationThreadNotifyVmStopping(int vm_cid);

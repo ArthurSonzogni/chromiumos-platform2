@@ -697,6 +697,10 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
   SendVmGuestUserlandReadySignal(vm_id,
                                  GuestUserlandReady::ARC_BRIDGE_CONNECTED);
 
+  if (vm_memory_management_service_) {
+    vm_memory_management_service_->NotifyVmBootComplete(vm->GetInfo().cid);
+  }
+
   response.set_result(ArcVmCompleteBootResult::SUCCESS);
   return response;
 }

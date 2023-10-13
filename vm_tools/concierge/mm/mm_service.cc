@@ -128,6 +128,15 @@ void MmService::NotifyVmStarted(apps::VmType type,
                      weak_ptr_factory_.GetWeakPtr(), vm_cid, socket));
 }
 
+void MmService::NotifyVmBootComplete(int vm_cid) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // When a VM has completed boot, slowly reclaim from it until it starts to
+  // kill low priority apps. This helps ensure that future balloon inflations
+  // resulting from host kills will actually apply memory pressure in the guest.
+  ReclaimUntil(vm_cid, ResizePriority::RESIZE_PRIORITY_MGLRU_RECLAIM);
+}
+
 void MmService::NotifyVmStopping(int vm_cid) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   reclaim_broker_->RemoveVm(vm_cid);
@@ -146,6 +155,13 @@ base::ScopedFD MmService::GetKillsServerConnection() {
   }
 
   return socket.Release();
+}
+
+void MmService::ReclaimUntil(int cid, ResizePriority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  negotiation_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&MmService::NegotiationThreadReclaimUntil,
+                                weak_ptr_factory_.GetWeakPtr(), cid, priority));
 }
 
 ResizePriority MmService::GetLowestUnblockedPriority() {
@@ -198,6 +214,13 @@ void MmService::NegotiationThreadNotifyVmStarted(int vm_cid,
                                                  const std::string& socket) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
   balloon_broker_->RegisterVm(vm_cid, socket);
+}
+
+void MmService::NegotiationThreadReclaimUntil(int cid,
+                                              ResizePriority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
+
+  balloon_broker_->ReclaimUntilBlocked(cid, priority);
 }
 
 void MmService::NegotiationThreadNotifyVmStopping(int vm_cid) {
