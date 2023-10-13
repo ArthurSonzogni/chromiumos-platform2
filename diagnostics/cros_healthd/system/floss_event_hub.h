@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <vector>
 
 #include <base/callback_list.h>
 #include <dbus/object_path.h>
@@ -17,10 +18,46 @@
 
 namespace diagnostics {
 
+// Supported Bluetooth property types, which is copied and modified from
+// |BtPropertyType| enum in the Android codebase:
+// packages/modules/Bluetooth/system/gd/rust/topshim/src/btif.rs
+enum class BtPropertyType : uint32_t {
+  kBdName = 0x1,
+  kBdAddr,
+  kUuids,
+  kClassOfDevice,
+  kTypeOfDevice,
+  kServiceRecord,
+  kAdapterScanMode,
+  kAdapterBondedDevices,
+  kAdapterDiscoverableTimeout,
+  kRemoteFriendlyName,
+  kRemoteRssi,
+  kRemoteVersionInfo,
+  kLocalLeFeatures,
+  kLocalIoCaps,
+  kLocalIoCapsBle,
+  kDynamicAudioBuffer,
+  kRemoteIsCoordinatedSetMember,
+  kAppearance,
+  kVendorProductInfo = 0x13,
+  // Unimplemented:
+  //  BT_PROPERTY_WL_MEDIA_PLAYERS_LIST,
+  //  BT_PROPERTY_REMOTE_ASHA_CAPABILITY,
+  //  BT_PROPERTY_REMOTE_ASHA_TRUNCATED_HISYNCID,
+  //  BT_PROPERTY_REMOTE_MODEL_NUM,
+  kRemoteAddrType = 0x18,
+
+  kUnknown = 0xFE,
+  kRemoteDeviceTimestamp = 0xFF,
+};
+
 using OnFlossAdapterAddedCallback = base::RepeatingCallback<void(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter)>;
 using OnFlossAdapterRemovedCallback =
     base::RepeatingCallback<void(const dbus::ObjectPath& adapter_path)>;
+using OnFlossAdapterPropertyChangedCallback = base::RepeatingCallback<void(
+    const dbus::ObjectPath& adapter_path, BtPropertyType property)>;
 using OnFlossAdapterPoweredChangedCallback =
     base::RepeatingCallback<void(int32_t hci_interface, bool powered)>;
 using OnFlossAdapterDiscoveringChangedCallback = base::RepeatingCallback<void(
@@ -29,6 +66,8 @@ using OnFlossDeviceAddedCallback =
     base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
 using OnFlossDeviceRemovedCallback =
     base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
+using OnFlossDevicePropertyChangedCallback = base::RepeatingCallback<void(
+    const brillo::VariantDictionary& device, BtPropertyType property)>;
 using OnFlossManagerRemovedCallback =
     base::RepeatingCallback<void(const dbus::ObjectPath& manager_path)>;
 using OnFlossScanResultReceivedCallback =
@@ -52,12 +91,16 @@ class FlossEventHub {
       OnFlossAdapterRemovedCallback callback);
   base::CallbackListSubscription SubscribeAdapterPoweredChanged(
       OnFlossAdapterPoweredChangedCallback callback);
+  base::CallbackListSubscription SubscribeAdapterPropertyChanged(
+      OnFlossAdapterPropertyChangedCallback callback);
   base::CallbackListSubscription SubscribeAdapterDiscoveringChanged(
       OnFlossAdapterDiscoveringChangedCallback callback);
   base::CallbackListSubscription SubscribeDeviceAdded(
       OnFlossDeviceAddedCallback callback);
   base::CallbackListSubscription SubscribeDeviceRemoved(
       OnFlossDeviceRemovedCallback callback);
+  base::CallbackListSubscription SubscribeDevicePropertyChanged(
+      OnFlossDevicePropertyChangedCallback callback);
   base::CallbackListSubscription SubscribeManagerRemoved(
       OnFlossManagerRemovedCallback callback);
   base::CallbackListSubscription SubscribeScanResultReceived(
@@ -82,11 +125,15 @@ class FlossEventHub {
   friend class ScannerCallbackService;
 
   // Interfaces for CallbackService to send events.
+  void OnAdapterPropertyChanged(const dbus::ObjectPath& adapter_path,
+                                uint32_t property);
   void OnAdapterPoweredChanged(int32_t hci_interface, bool powered);
   void OnAdapterDiscoveringChanged(const dbus::ObjectPath& adapter_path,
                                    bool discovering);
   void OnDeviceAdded(const brillo::VariantDictionary& device);
   void OnDeviceRemoved(const brillo::VariantDictionary& device);
+  void OnDevicePropertiesChanged(const brillo::VariantDictionary& device,
+                                 const std::vector<uint32_t>& properties);
   void OnScanResultReceived(const brillo::VariantDictionary& scan_result);
 
  private:
@@ -120,6 +167,9 @@ class FlossEventHub {
       adapter_added_observers_;
   base::RepeatingCallbackList<void(const dbus::ObjectPath& adapter_path)>
       adapter_removed_observers_;
+  base::RepeatingCallbackList<void(const dbus::ObjectPath& adapter_path,
+                                   BtPropertyType property)>
+      adapter_property_changed_observers_;
   base::RepeatingCallbackList<void(int32_t, bool)>
       adapter_powered_changed_observers_;
   base::RepeatingCallbackList<void(const dbus::ObjectPath&, bool)>
@@ -128,6 +178,9 @@ class FlossEventHub {
       device_added_observers_;
   base::RepeatingCallbackList<void(const brillo::VariantDictionary& device)>
       device_removed_observers_;
+  base::RepeatingCallbackList<void(const brillo::VariantDictionary& device,
+                                   BtPropertyType property)>
+      device_property_changed_observers_;
   base::RepeatingCallbackList<void(const dbus::ObjectPath& adapter_path)>
       manager_removed_observers_;
   base::RepeatingCallbackList<void(

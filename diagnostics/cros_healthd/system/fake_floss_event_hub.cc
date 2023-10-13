@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <vector>
+
 #include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
+#include "diagnostics/cros_healthd/system/floss_event_hub.h"
 
 namespace diagnostics {
 
@@ -16,6 +19,21 @@ void FakeFlossEventHub::SendAdapterRemoved(
   OnAdapterRemoved(adapter_path);
 }
 
+void FakeFlossEventHub::SendAdapterPropertyChanged(
+    const dbus::ObjectPath& adapter_path, uint32_t property) {
+  OnAdapterPropertyChanged(adapter_path, property);
+}
+
+void FakeFlossEventHub::SendAdapterPoweredChanged(int32_t hci_interface,
+                                                  bool powered) {
+  OnAdapterPoweredChanged(hci_interface, powered);
+}
+
+void FakeFlossEventHub::SendAdapterDiscoveringChanged(
+    const dbus::ObjectPath& adapter_path, bool discovering) {
+  OnAdapterDiscoveringChanged(adapter_path, discovering);
+}
+
 void FakeFlossEventHub::SendDeviceAdded(
     const brillo::VariantDictionary& device) {
   OnDeviceAdded(device);
@@ -24,6 +42,12 @@ void FakeFlossEventHub::SendDeviceAdded(
 void FakeFlossEventHub::SendDeviceRemoved(
     const brillo::VariantDictionary& device) {
   OnDeviceRemoved(device);
+}
+
+void FakeFlossEventHub::SendDevicePropertiesChanged(
+    const brillo::VariantDictionary& device,
+    const std::vector<uint32_t>& properties) {
+  OnDevicePropertiesChanged(device, properties);
 }
 
 void FakeFlossEventHub::SendManagerAdded(
@@ -39,16 +63,6 @@ void FakeFlossEventHub::SendManagerRemoved(
 void FakeFlossEventHub::SendAdapterGattAdded(
     org::chromium::bluetooth::BluetoothGattProxyInterface* adapter_gatt) {
   OnAdapterGattAdded(adapter_gatt);
-}
-
-void FakeFlossEventHub::SendAdapterPoweredChanged(int32_t hci_interface,
-                                                  bool powered) {
-  OnAdapterPoweredChanged(hci_interface, powered);
-}
-
-void FakeFlossEventHub::SendAdapterDiscoveringChanged(
-    const dbus::ObjectPath& adapter_path, bool discovering) {
-  OnAdapterDiscoveringChanged(adapter_path, discovering);
 }
 
 }  // namespace diagnostics

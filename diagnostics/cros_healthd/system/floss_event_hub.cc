@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/strings/string_number_conversions.h>
 
@@ -61,6 +62,11 @@ base::CallbackListSubscription FlossEventHub::SubscribeAdapterRemoved(
   return adapter_removed_observers_.Add(callback);
 }
 
+base::CallbackListSubscription FlossEventHub::SubscribeAdapterPropertyChanged(
+    OnFlossAdapterPropertyChangedCallback callback) {
+  return adapter_property_changed_observers_.Add(callback);
+}
+
 base::CallbackListSubscription FlossEventHub::SubscribeAdapterPoweredChanged(
     OnFlossAdapterPoweredChangedCallback callback) {
   return adapter_powered_changed_observers_.Add(callback);
@@ -80,6 +86,11 @@ base::CallbackListSubscription FlossEventHub::SubscribeDeviceAdded(
 base::CallbackListSubscription FlossEventHub::SubscribeDeviceRemoved(
     OnFlossDeviceRemovedCallback callback) {
   return device_removed_observers_.Add(callback);
+}
+
+base::CallbackListSubscription FlossEventHub::SubscribeDevicePropertyChanged(
+    OnFlossDevicePropertyChangedCallback callback) {
+  return device_property_changed_observers_.Add(callback);
 }
 
 base::CallbackListSubscription FlossEventHub::SubscribeManagerRemoved(
@@ -154,6 +165,12 @@ void FlossEventHub::OnAdapterGattRemoved(const dbus::ObjectPath& adapter_path) {
   scanner_callbacks_[adapter_path].reset();
 }
 
+void FlossEventHub::OnAdapterPropertyChanged(
+    const dbus::ObjectPath& adapter_path, uint32_t property) {
+  adapter_property_changed_observers_.Notify(
+      adapter_path, static_cast<BtPropertyType>(property));
+}
+
 void FlossEventHub::OnAdapterPoweredChanged(int32_t hci_interface,
                                             bool powered) {
   adapter_powered_changed_observers_.Notify(hci_interface, powered);
@@ -170,6 +187,15 @@ void FlossEventHub::OnDeviceAdded(const brillo::VariantDictionary& device) {
 
 void FlossEventHub::OnDeviceRemoved(const brillo::VariantDictionary& device) {
   device_removed_observers_.Notify(device);
+}
+
+void FlossEventHub::OnDevicePropertiesChanged(
+    const brillo::VariantDictionary& device,
+    const std::vector<uint32_t>& properties) {
+  for (const auto property : properties) {
+    device_property_changed_observers_.Notify(
+        device, static_cast<BtPropertyType>(property));
+  }
 }
 
 void FlossEventHub::OnScanResultReceived(

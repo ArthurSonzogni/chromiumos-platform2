@@ -27,7 +27,9 @@ BluetoothCallbackService::BluetoothCallbackService(
 
 BluetoothCallbackService::~BluetoothCallbackService() = default;
 
-void BluetoothCallbackService::OnAdapterPropertyChanged(uint32_t property) {}
+void BluetoothCallbackService::OnAdapterPropertyChanged(uint32_t property) {
+  event_hub_->OnAdapterPropertyChanged(adapter_path_, property);
+}
 
 void BluetoothCallbackService::OnAddressChanged(const std::string& address) {}
 
@@ -57,7 +59,9 @@ void BluetoothCallbackService::OnDeviceCleared(
 
 void BluetoothCallbackService::OnDevicePropertiesChanged(
     const brillo::VariantDictionary& device,
-    const std::vector<uint32_t>& properties) {}
+    const std::vector<uint32_t>& properties) {
+  event_hub_->OnDevicePropertiesChanged(device, properties);
+}
 
 void BluetoothCallbackService::OnBondStateChanged(uint32_t status,
                                                   const std::string& address,

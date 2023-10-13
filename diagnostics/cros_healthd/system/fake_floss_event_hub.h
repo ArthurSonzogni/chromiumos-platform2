@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_FLOSS_EVENT_HUB_H_
 
 #include <string>
+#include <vector>
 
 #include <dbus/object_path.h>
 
@@ -23,19 +24,22 @@ class FakeFlossEventHub final : public FlossEventHub {
   // Send fake events.
   void SendAdapterAdded(
       org::chromium::bluetooth::BluetoothProxyInterface* adapter = nullptr);
-  void SendAdapterRemoved(
-      const dbus::ObjectPath& adapter_path = dbus::ObjectPath(""));
+  void SendAdapterRemoved(const dbus::ObjectPath& adapter_path);
+  void SendAdapterPropertyChanged(const dbus::ObjectPath& adapter_path,
+                                  uint32_t property);
+  void SendAdapterPoweredChanged(int32_t hci_interface, bool powered);
+  void SendAdapterDiscoveringChanged(const dbus::ObjectPath& adapter_path,
+                                     bool discovering);
   void SendDeviceAdded(const brillo::VariantDictionary& device);
   void SendDeviceRemoved(const brillo::VariantDictionary& device);
+  void SendDevicePropertiesChanged(const brillo::VariantDictionary& device,
+                                   const std::vector<uint32_t>& properties);
   void SendManagerAdded(
       org::chromium::bluetooth::ManagerProxyInterface* manager);
   void SendManagerRemoved(
       const dbus::ObjectPath& manager_path = dbus::ObjectPath(""));
   void SendAdapterGattAdded(
       org::chromium::bluetooth::BluetoothGattProxyInterface* adapter_gatt);
-  void SendAdapterPoweredChanged(int32_t hci_interface, bool powered);
-  void SendAdapterDiscoveringChanged(const dbus::ObjectPath& adapter_path,
-                                     bool discovering);
 };
 
 }  // namespace diagnostics

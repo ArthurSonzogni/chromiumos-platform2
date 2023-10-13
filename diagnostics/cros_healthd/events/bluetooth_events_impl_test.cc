@@ -4,6 +4,7 @@
 
 #include <base/test/task_environment.h>
 #include <brillo/variant_dictionary.h>
+#include <dbus/object_path.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
@@ -95,8 +96,22 @@ TEST_F(BluetoothEventsImplTest, ReceiveFlossAdapterAddedEvent) {
 
 // Test that we can receive an adapter removed event via Floss proxy.
 TEST_F(BluetoothEventsImplTest, ReceiveFlossAdapterRemovedEvent) {
-  fake_floss_event_hub()->SendAdapterRemoved();
+  fake_floss_event_hub()->SendAdapterRemoved(dbus::ObjectPath(""));
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kAdapterRemoved);
+}
+
+// Test that we can receive an adapter property changed event via Floss proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveFlossAdapterPropertyChangedEvent) {
+  dbus::ObjectPath path{""};
+  std::vector<uint32_t> properties = {0x0,  0x1,  0x2,  0x3,  0xA,  0xB,
+                                      0x15, 0x18, 0x20, 0x50, 0XFE, 0xFF};
+  for (const auto property : properties) {
+    fake_floss_event_hub()->SendAdapterPropertyChanged(path, property);
+  }
+  for (int i = 0; i < properties.size(); ++i) {
+    WaitAndCheckEvent(
+        mojom::BluetoothEventInfo::State::kAdapterPropertyChanged);
+  }
 }
 
 // Test that we can receive a device added event via Floss proxy.
@@ -109,6 +124,17 @@ TEST_F(BluetoothEventsImplTest, ReceiveFlossDeviceAddedEvent) {
 TEST_F(BluetoothEventsImplTest, ReceiveFlossDeviceRemovedEvent) {
   fake_floss_event_hub()->SendDeviceRemoved(brillo::VariantDictionary());
   WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDeviceRemoved);
+}
+
+// Test that we can receive a device property changed event via Floss proxy.
+TEST_F(BluetoothEventsImplTest, ReceiveFlossDevicePropertyChangedEvent) {
+  std::vector<uint32_t> properties = {0x0,  0x1,  0x2,  0x3,  0xA,  0xB,
+                                      0x15, 0x18, 0x20, 0x50, 0XFE, 0xFF};
+  fake_floss_event_hub()->SendDevicePropertiesChanged(
+      brillo::VariantDictionary(), properties);
+  for (int i = 0; i < properties.size(); ++i) {
+    WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
+  }
 }
 
 }  // namespace diagnostics
