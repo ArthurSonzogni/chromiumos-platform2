@@ -67,6 +67,7 @@ enum WilcoDtcSupportdEvent {
 // correspondingly).
 //
 // NextMinVersion: 1, NextIndex: 1
+[Stable]
 interface WilcoDtcSupportdServiceFactory {
   // Returns an interface to WilcoDtcSupportdService in response to the passed
   // interface to WilcoDtcSupportdClient.
@@ -117,6 +118,7 @@ interface WilcoDtcSupportdService {
 // this is the browser.
 //
 // NextMinVersion: 1, NextIndex: 6
+[Stable]
 interface WilcoDtcSupportdClient {
   // Performs a web request, originating from the wilco_dtc daemon, using the
   // browser's network stack.
