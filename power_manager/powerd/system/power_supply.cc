@@ -1083,33 +1083,6 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
     status.adaptive_charging_supported = adaptive_charging_supported_;
     status.adaptive_charging_heuristic_enabled =
         adaptive_charging_heuristic_enabled_;
-    status.adaptive_delaying_charge = adaptive_delaying_charge_;
-    status.charge_limited = charge_limited_;
-
-    // Overwrite the `display_battery_percentage` for Adaptive Charging and
-    // Charge Limit. We only overwrite the value if it's currently within the
-    // range [`adaptive_charging_hold_percent_` -
-    // `adaptive_charging_hold_delta_percent_` - 1,
-    // `adaptive_charging_hold_percent_`].
-    // This prevents the value from being overwritten if the true display
-    // percentage is greater than the hold percentage or too far below the hold
-    // percentage.
-    // Overwriting the display percentage prevents confusion when Adaptive
-    // Charging or Charge Limit charge/discharge over a range while maintaining
-    // charge.
-    if (status.display_battery_percentage <= adaptive_charging_hold_percent_ &&
-        status.display_battery_percentage >=
-            (adaptive_charging_hold_percent_ -
-             adaptive_charging_hold_delta_percent_ - 1)) {
-      if (adaptive_delaying_charge_) {
-        status.display_battery_percentage = adaptive_charging_hold_percent_;
-        // If `adaptive_charging_target_time_to_full_` is the zero value,
-        // there's no current target for fully charging.
-        status.battery_time_to_full = adaptive_charging_target_time_to_full_;
-      } else if (charge_limited_) {
-        status.display_battery_percentage = adaptive_charging_hold_percent_;
-      }
-    }
   }
 
   power_status_ = status;
@@ -1415,6 +1388,35 @@ bool PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
   }
 
   if (status->line_power_on) {
+    // The EC waits for the display battery percentage to reach upper + 1 before
+    // discharging. Since the charge might reach upper + 1.1 or so due to it
+    // taking time to start discharging, use an upper limit of upper + 2.0. This
+    // avoids the display battery percentage momentarily showing hold_percent +
+    // 1 during Adaptive Charging.
+    double upper = adaptive_charging_hold_percent_ + 2.0;
+    double lower = adaptive_charging_hold_percent_ -
+                   adaptive_charging_hold_delta_percent_ - 1.0;
+    if (adaptive_delaying_charge_) {
+      if ((status->display_battery_percentage < upper) &&
+          (status->display_battery_percentage > lower)) {
+        status->display_battery_percentage = adaptive_charging_hold_percent_;
+        // Always show charging when overriding the display percentage for
+        // Adaptive Charging and Charge Limit.
+        status->battery_state = PowerSupplyProperties_BatteryState_CHARGING;
+        status->adaptive_delaying_charge = true;
+        return true;
+      }
+    } else if (charge_limited_ && status->display_battery_percentage > lower) {
+      status->charge_limited = charge_limited_;
+      status->battery_state = PowerSupplyProperties_BatteryState_FULL;
+      // Only override the display percentage if the current value is within
+      // the range of (lower, upper).
+      if (status->display_battery_percentage < upper) {
+        status->display_battery_percentage = adaptive_charging_hold_percent_;
+      }
+      return true;
+    }
+
     if (is_full) {
       status->battery_state = PowerSupplyProperties_BatteryState_FULL;
     } else if (status->battery_current > 0.0 &&
@@ -1492,6 +1494,11 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
   status->battery_time_to_full = base::TimeDelta();
   status->battery_time_to_empty = base::TimeDelta();
   status->battery_time_to_shutdown = base::TimeDelta();
+
+  if (status->adaptive_delaying_charge) {
+    status->battery_time_to_full = adaptive_charging_target_time_to_full_;
+    return true;
+  }
 
   if (!has_max_samples_)
     return false;

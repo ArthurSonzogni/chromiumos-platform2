@@ -2319,7 +2319,7 @@ TEST_F(PowerSupplyTest, NotifyForUdevWithMultipleBatteries) {
 }
 
 TEST_F(PowerSupplyTest, AdaptiveChargingTarget) {
-  WriteDefaultValues(PowerSource::BATTERY);
+  WriteDefaultValues(PowerSource::AC);
   Init();
 
   double actual_charge = 0.75;
@@ -2351,7 +2351,7 @@ TEST_F(PowerSupplyTest, AdaptiveChargingTarget) {
 // `adaptive_charging_target_time_to_full_` is zero (Chrome interprets this as a
 // max delay).
 TEST_F(PowerSupplyTest, AdaptiveChargingZeroTargetTime) {
-  WriteDefaultValues(PowerSource::BATTERY);
+  WriteDefaultValues(PowerSource::AC);
   Init();
 
   double actual_charge = 0.75;
@@ -2370,7 +2370,7 @@ TEST_F(PowerSupplyTest, AdaptiveChargingZeroTargetTime) {
 // Test that the adaptive_charging_heuristic_enabled property is set in
 // PowerStatus and the PowerSupplyProperties proto.
 TEST_F(PowerSupplyTest, AdaptiveChargingHeuristic) {
-  WriteDefaultValues(PowerSource::BATTERY);
+  WriteDefaultValues(PowerSource::AC);
   Init();
 
   double actual_charge = 0.75;
@@ -2401,7 +2401,7 @@ TEST_F(PowerSupplyTest, AdaptiveChargingHeuristic) {
 }
 
 TEST_F(PowerSupplyTest, AdaptiveChargingInsideRange) {
-  WriteDefaultValues(PowerSource::BATTERY);
+  WriteDefaultValues(PowerSource::AC);
   Init();
 
   // The lower limit for `display_battery_percentage` being overwritten is
@@ -2430,7 +2430,7 @@ TEST_F(PowerSupplyTest, AdaptiveChargingInsideRange) {
 // Test that the display battery percentage isn't overwritten when outside of
 // the range specified for Adaptive Charging.
 TEST_F(PowerSupplyTest, AdaptiveChargingOutsideRange) {
-  WriteDefaultValues(PowerSource::BATTERY);
+  WriteDefaultValues(PowerSource::AC);
   Init();
 
   // Test for below the supported range.
@@ -2459,7 +2459,7 @@ TEST_F(PowerSupplyTest, AdaptiveChargingOutsideRange) {
 }
 
 TEST_F(PowerSupplyTest, ChargeLimitEnabled) {
-  WriteDefaultValues(PowerSource::BATTERY);
+  WriteDefaultValues(PowerSource::AC);
   Init();
 
   double actual_charge = 0.75;
@@ -2495,7 +2495,7 @@ TEST_F(PowerSupplyTest, ChargeLimitEnabled) {
 }
 
 TEST_F(PowerSupplyTest, ChargeLimitInsideRange) {
-  WriteDefaultValues(PowerSource::BATTERY);
+  WriteDefaultValues(PowerSource::AC);
   Init();
 
   // The lower limit for `display_battery_percentage` being overwritten is
@@ -2530,7 +2530,7 @@ TEST_F(PowerSupplyTest, ChargeLimitInsideRange) {
 // Test that the display battery percentage isn't overwritten when outside of
 // the range specified for Charge Limit.
 TEST_F(PowerSupplyTest, ChargeLimitOutsideRange) {
-  WriteDefaultValues(PowerSource::BATTERY);
+  WriteDefaultValues(PowerSource::AC);
   Init();
 
   double actual_charge = 0.70;
