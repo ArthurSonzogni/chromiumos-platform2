@@ -374,6 +374,181 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
             GetAuthFactor());
 }
 
+// When a pin is incorrectly entered two Auth signals are sent on the
+// lockscreen. One trying the pin and one trying the password. In this case
+// ignore the password and keep the auth_factor as pin.
+// TODO(b:305093271): Update logic to handle if password is actually used.
+TEST_F(AuthenticationPluginTestFixture, FailedLockscreenLogin) {
+  SetupObjectProxies();
+  SaveRegisterLockingCbs();
+  SaveSessionStateChangeCb();
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .Times(3)
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
+
+  user_data_auth::AuthenticateAuthFactorCompleted failure_pin;
+  failure_pin.mutable_error_info();
+  failure_pin.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  user_data_auth::AuthenticateAuthFactorCompleted failure_pass;
+  failure_pass.mutable_error_info();
+  failure_pass.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+
+  auto failure_event_1 = std::make_unique<pb::UserEventAtomicVariant>();
+  auto failure_event_2 = std::make_unique<pb::UserEventAtomicVariant>();
+  auto login_event = std::make_unique<pb::UserEventAtomicVariant>();
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .Times(3)
+      .WillOnce(WithArg<0>(
+          Invoke([&failure_event_1](
+                     std::unique_ptr<google::protobuf::MessageLite> message) {
+            failure_event_1->ParseFromString(
+                std::move(message->SerializeAsString()));
+          })))
+      .WillOnce(WithArg<0>(
+          Invoke([&failure_event_2](
+                     std::unique_ptr<google::protobuf::MessageLite> message) {
+            failure_event_2->ParseFromString(
+                std::move(message->SerializeAsString()));
+          })))
+      .WillOnce(WithArg<0>(
+          Invoke([&login_event](
+                     std::unique_ptr<google::protobuf::MessageLite> message) {
+            login_event->ParseFromString(
+                std::move(message->SerializeAsString()));
+          })));
+  EXPECT_CALL(*batch_sender_,
+              Visit(Eq(pb::UserEventAtomicVariant::kFailure), _, _))
+      .WillOnce(Return(false))
+      .WillOnce([&failure_event_1](auto unused_type, const auto& unused_key,
+                                   BatchSenderType::VisitCallback cb) {
+        std::move(cb).Run(failure_event_1.get());
+        return true;
+      })
+      .WillOnce(Return(false))
+      .WillRepeatedly([&failure_event_2](auto unused_type,
+                                         const auto& unused_key,
+                                         BatchSenderType::VisitCallback cb) {
+        std::move(cb).Run(failure_event_2.get());
+        return true;
+      });
+
+  EXPECT_OK(plugin_->Activate());
+  // 2 Failures for pin and password.
+  auth_factor_cb_.Run(failure_pin);
+  auth_factor_cb_.Run(failure_pass);
+  auth_factor_cb_.Run(failure_pin);
+  auth_factor_cb_.Run(failure_pass);
+  // 3 more password failures for when pin entry is disabled.
+  auth_factor_cb_.Run(failure_pass);
+  auth_factor_cb_.Run(failure_pass);
+  auth_factor_cb_.Run(failure_pass);
+
+  // Success.
+  user_data_auth::AuthenticateAuthFactorCompleted completed;
+  completed.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  auth_factor_cb_.Run(completed);
+
+  state_changed_cb_.Run(kStarted);
+
+  // Failure 1.
+  ASSERT_EQ(1, failure_event_1->failure().authentication().auth_factor_size());
+  EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PIN,
+            failure_event_1->failure().authentication().auth_factor()[0]);
+  EXPECT_EQ(2,
+            failure_event_1->failure().authentication().num_failed_attempts());
+  // Failure 2.
+  ASSERT_EQ(1, failure_event_2->failure().authentication().auth_factor_size());
+  EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
+            failure_event_2->failure().authentication().auth_factor()[0]);
+  EXPECT_EQ(3,
+            failure_event_2->failure().authentication().num_failed_attempts());
+
+  // Success.
+  ASSERT_EQ(1, login_event->logon().authentication().auth_factor_size());
+  EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
+            login_event->logon().authentication().auth_factor()[0]);
+  EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
+            GetAuthFactor());
+}
+
+TEST_F(AuthenticationPluginTestFixture, FailedLockscreenDelayBetweenAttempts) {
+  SetupObjectProxies();
+  SaveRegisterLockingCbs();
+  SaveSessionStateChangeCb();
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .Times(2)
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
+
+  user_data_auth::AuthenticateAuthFactorCompleted failure_pin;
+  failure_pin.mutable_error_info();
+  failure_pin.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  user_data_auth::AuthenticateAuthFactorCompleted failure_pass;
+  failure_pass.mutable_error_info();
+  failure_pass.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+
+  auto failure_event_1 = std::make_unique<pb::UserEventAtomicVariant>();
+  auto failure_event_2 = std::make_unique<pb::UserEventAtomicVariant>();
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .Times(2)
+      .WillOnce(WithArg<0>(
+          Invoke([&failure_event_1](
+                     std::unique_ptr<google::protobuf::MessageLite> message) {
+            failure_event_1->ParseFromString(
+                std::move(message->SerializeAsString()));
+          })))
+      .WillOnce(WithArg<0>(
+          Invoke([&failure_event_2](
+                     std::unique_ptr<google::protobuf::MessageLite> message) {
+            failure_event_2->ParseFromString(
+                std::move(message->SerializeAsString()));
+          })));
+  EXPECT_CALL(*batch_sender_,
+              Visit(Eq(pb::UserEventAtomicVariant::kFailure), _, _))
+      .WillOnce(Return(false))
+      .WillOnce([&failure_event_1](auto unused_type, const auto& unused_key,
+                                   BatchSenderType::VisitCallback cb) {
+        std::move(cb).Run(failure_event_1.get());
+        return true;
+      })
+      .WillOnce(Return(false))
+      .WillRepeatedly([&failure_event_2](auto unused_type,
+                                         const auto& unused_key,
+                                         BatchSenderType::VisitCallback cb) {
+        std::move(cb).Run(failure_event_2.get());
+        return true;
+      });
+
+  EXPECT_OK(plugin_->Activate());
+  // 2 pin failures for first event.
+  auth_factor_cb_.Run(failure_pin);
+  auth_factor_cb_.Run(failure_pin);
+  // 3 password failures for second event after delay.
+  task_environment_.FastForwardBy(
+      base::Seconds(kMaxDelayForLockscreenAttemptsS + 1));
+  auth_factor_cb_.Run(failure_pass);
+  auth_factor_cb_.Run(failure_pass);
+  auth_factor_cb_.Run(failure_pass);
+
+  // Failure 1.
+  ASSERT_EQ(1, failure_event_1->failure().authentication().auth_factor_size());
+  EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PIN,
+            failure_event_1->failure().authentication().auth_factor()[0]);
+  EXPECT_EQ(2,
+            failure_event_1->failure().authentication().num_failed_attempts());
+  // Failure 2.
+  ASSERT_EQ(1, failure_event_2->failure().authentication().auth_factor_size());
+  EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_PASSWORD,
+            failure_event_2->failure().authentication().auth_factor()[0]);
+  EXPECT_EQ(3,
+            failure_event_2->failure().authentication().num_failed_attempts());
+}
+
 TEST_F(AuthenticationPluginTestFixture, FailedLoginAfterTimeout) {
   SetupObjectProxies();
   SaveRegisterLockingCbs();

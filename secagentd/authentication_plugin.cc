@@ -161,6 +161,8 @@ void AuthenticationPlugin::HandleScreenUnlock() {
   auto screen_unlock = std::make_unique<pb::UserEventAtomicVariant>();
   screen_unlock->mutable_common()->set_create_timestamp_us(
       base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
+  latest_successful_login_timestamp_ =
+      screen_unlock->common().create_timestamp_us();
 
   auto* authentication =
       screen_unlock->mutable_unlock()->mutable_authentication();
@@ -230,6 +232,34 @@ void AuthenticationPlugin::HandleAuthenticateAuthFactorCompleted(
     auth_factor_type_ =
         AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
   } else {
+    if (completed.has_error_info()) {
+      // When a pin is incorrectly entered two Auth signals are sent on the
+      // lockscreen. One trying the pin and one trying the password. In this
+      // case ignore the password and keep the auth_factor as pin.
+      // TODO(b:305093271): Update logic to handle if password is actually used.
+      if (it->second ==
+          AuthFactorType::Authentication_AuthenticationType_AUTH_PIN) {
+        latest_pin_failure_ =
+            base::Time::Now().ToJavaTime() / base::Time::kMillisecondsPerSecond;
+        last_auth_was_password_ = false;
+      } else if (it->second ==
+                 AuthFactorType::
+                     Authentication_AuthenticationType_AUTH_PASSWORD) {
+        if (auth_factor_type_ ==
+                AuthFactorType::Authentication_AuthenticationType_AUTH_PIN &&
+            !last_auth_was_password_ &&
+            (base::Time::Now().ToJavaTime() /
+             base::Time::kMillisecondsPerSecond) -
+                    latest_pin_failure_ <=
+                kMaxDelayForLockscreenAttemptsS) {
+          last_auth_was_password_ = true;
+          return;
+        }
+        last_auth_was_password_ = true;
+      } else {
+        last_auth_was_password_ = false;
+      }
+    }
     auth_factor_type_ = it->second;
   }
 

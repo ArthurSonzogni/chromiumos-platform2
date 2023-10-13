@@ -45,6 +45,7 @@ using AuthFactorType = cros_xdr::reporting::Authentication_AuthenticationType;
 // If the auth factor is not yet filled wait to see
 // if dbus signal is late.
 static constexpr base::TimeDelta kWaitForAuthFactorS = base::Seconds(1);
+static constexpr uint64_t kMaxDelayForLockscreenAttemptsS = 3;
 
 namespace testing {
 class AgentPluginTestFixture;
@@ -406,7 +407,9 @@ class AuthenticationPlugin : public PluginInterface {
            AuthFactorType::Authentication_AuthenticationType_AUTH_FINGERPRINT},
       };
   int64_t latest_successful_login_timestamp_{-1};
+  uint64_t latest_pin_failure_{0};
   bool is_active_{false};
+  bool last_auth_was_password_{false};
 };
 
 class AgentPlugin : public PluginInterface {
