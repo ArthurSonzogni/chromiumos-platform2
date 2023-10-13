@@ -298,56 +298,6 @@ message ForwardSecurityKeyMessageResponse {
   string message = 1;
 }
 
-// For getting information about the VM disk.
-message GetDiskInfoRequest {
-  // The security token the container was given.
-  string token = 1;
-}
-
-// Response from a GetDiskInfoRequest
-message GetDiskInfoResponse {
-  // 0 if the request was successful.
-  int64 error = 1;
-  // Current space available in bytes.
-  uint64 available_space = 2;
-  // How much the disk can be expanded by in bytes.
-  uint64 expandable_space = 3;
-  // The current size of the disk in bytes.
-  uint64 disk_size = 4;
-}
-
-// For requesting that the disk is expanded.
-message RequestSpaceRequest {
-  // The security token the container was given.
-  string token = 1;
-  // The amount of space requested in bytes
-  uint64 space_requested = 2;
-}
-
-// Response from RequestSpaceRequest.
-message RequestSpaceResponse {
-  // The amount of space granted in bytes
-  uint64 space_granted = 1;
-  // 0 if the request was successful.
-  int64 error = 2;
-}
-
-// For notifying Chrome that the disk can be shrunk.
-message ReleaseSpaceRequest {
-  // The security token the container was given.
-  string token = 1;
-  // Amount of space that can be released in bytes.
-  uint64 space_to_release = 2;
-}
-
-// Response from ReleaseSpaceRequest
-message ReleaseSpaceResponse {
-  // Amount of space that was released in bytes.
-  uint64 space_released = 1;
-  // 0 if the request was successful.
-  int64 error = 2;
-}
-
 // Guest metric, for example "borealis-swap-kb-written"
 message Metric {
   // Metric name, for Cicerone to convert into a histogram key
@@ -478,15 +428,6 @@ service ContainerListener {
 
   // Called by a container to request the host to launch a SelectFile dialog.
   rpc SelectFile(SelectFileRequest) returns (SelectFileResponse);
-
-  // Called by a container to get information about the disk it's on.
-  rpc GetDiskInfo(GetDiskInfoRequest) returns (GetDiskInfoResponse);
-
-  // Called by a container when it needs the disk to be expanded.
-  rpc RequestSpace(RequestSpaceRequest) returns (RequestSpaceResponse);
-
-  // Called by a container when it no longer needs as much space.
-  rpc ReleaseSpace(ReleaseSpaceRequest) returns (ReleaseSpaceResponse);
 
   rpc ReportMetrics(ReportMetricsRequest) returns (ReportMetricsResponse);
 

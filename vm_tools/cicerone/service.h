@@ -33,7 +33,6 @@
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
 #include <vm_sk_forwarding/sk_forwarding.pb.h>
-#include <vm_disk_management/disk_management.pb.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "vm_tools/cicerone/container.h"
@@ -519,64 +518,6 @@ class Service final {
     return true;
   }
 
-  // Sends the disk-related |method_name| D-Bus method with |input_proto| as
-  // its contents. It will use |cid| and |container_token| to lookup VM, owner,
-  // and container name, and set these fields on the |origin| of |input_proto|
-  // before sending it and storing the response in |output_proto|.
-  template <typename I, typename O>
-  bool SendDiskMethod(const std::string& method_name,
-                      const std::string& container_token,
-                      const uint32_t cid,
-                      I* input_proto,
-                      O* output_proto) {
-    DCHECK(sequence_checker_.CalledOnValidSequence());
-    CHECK(output_proto);
-    output_proto->set_error(255);
-    VirtualMachine* vm;
-    std::string owner_id;
-    std::string vm_name;
-
-    if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
-      LOG(ERROR) << "Could not get virtual machine for cid";
-      return false;
-    }
-
-    std::string container_name = vm->GetContainerNameForToken(container_token);
-    if (container_name.empty()) {
-      LOG(ERROR) << "Could not get container name for token";
-      return false;
-    }
-
-    vm_tools::disk_management::MessageOrigin* origin =
-        new vm_tools::disk_management::MessageOrigin();
-    origin->set_vm_name(vm_name);
-    origin->set_container_name(container_name);
-    origin->set_owner_id(owner_id);
-    input_proto->set_allocated_origin(origin);
-    dbus::MethodCall method_call(
-        vm_tools::disk_management::kVmDiskManagementServiceInterface,
-        method_name);
-    dbus::MessageWriter(&method_call).AppendProtoAsArrayOfBytes(*input_proto);
-    std::unique_ptr<dbus::Response> dbus_response =
-        vm_disk_management_service_proxy_
-            ->CallMethodAndBlock(&method_call,
-                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)
-            .value_or(nullptr);
-    if (!dbus_response) {
-      LOG(ERROR) << input_proto->GetTypeName() + " call failed";
-      return false;
-    }
-    dbus::MessageReader reader(dbus_response.get());
-    O response;
-    if (!reader.PopArrayOfBytesAsProto(&response)) {
-      LOG(ERROR) << "Unable to parse " << output_proto->GetTypeName()
-                 << " from response";
-      return false;
-    }
-    *output_proto = response;
-    return true;
-  }
-
   explicit Service(base::OnceClosure quit_closure,
                    scoped_refptr<dbus::Bus> bus);
   Service(const Service&) = delete;
@@ -816,7 +757,6 @@ class Service final {
   dbus::ObjectProxy* crosdns_service_proxy_;             // Owned by |bus_|.
   dbus::ObjectProxy* concierge_service_proxy_;           // Owned by |bus_|.
   dbus::ObjectProxy* vm_sk_forwarding_service_proxy_;    // Owned by |bus_|.
-  dbus::ObjectProxy* vm_disk_management_service_proxy_;  // Owned by |bus_|.
   dbus::ObjectProxy* shadercached_proxy_;                // Owned by |bus_|.
 
   // The ContainerListener service.

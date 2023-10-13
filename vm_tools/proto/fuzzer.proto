@@ -38,9 +38,6 @@ message ContainerListenerFuzzerSingleAction {
     LowDiskSpaceTriggeredInfo low_disk_space_triggered_info = 49;
     ForwardSecurityKeyMessageRequest forward_security_key_message_request = 50;
     SelectFileRequest select_file_request = 51;
-    GetDiskInfoRequest get_disk_info_request = 52;
-    RequestSpaceRequest request_space_request = 53;
-    ReleaseSpaceRequest release_space_request = 54;
     ReportMetricsRequest report_metrics_request = 57;
     InstallShaderCacheRequest install_shader_cache_request = 62;
     UninstallShaderCacheRequest uninstall_shader_cache_request = 63;
