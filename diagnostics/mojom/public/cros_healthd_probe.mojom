@@ -808,8 +808,8 @@ struct BluetoothAdapterInfo {
   [MinVersion=1] string? modalias@8;
   // List of allowed system devices.
   [MinVersion=2] array<string>? service_allow_list@9;
-  // A dictionary of supported capabilities.
-  [MinVersion=2] DEPRECATE_SupportedCapabilities? deprecate_supported_capabilities@10;
+  // A dictionary of supported capabilities. DEPRECATED.
+  [MinVersion=2] DEPRECATED_SupportedCapabilities? deprecated_supported_capabilities@10;
 };
 
 
@@ -861,8 +861,8 @@ enum BluetoothDeviceType {
 //
 // TODO(b/299415168): Deprecate it.
 // NextMinVersion: 1, NextIndex: 4
-[Stable, RenamedFrom="ash.cros_healthd.mojom.SupportedCapabilities"]
-struct DEPRECATE_SupportedCapabilities {
+[Stable, RenamedFrom="ash.cros_healthd.mojom.DEPRECATE_SupportedCapabilities"]
+struct DEPRECATED_SupportedCapabilities {
   // Max advertising data length.
   uint8 max_adv_len@0;
   // Max advertising scan response length.
@@ -874,8 +874,8 @@ struct DEPRECATE_SupportedCapabilities {
 };
 
 // System probe result. DEPRECATED.
-[Stable]
-union DEPRECATE_SystemResult { ProbeError error; };
+[Stable, RenamedFrom="ash.cros_healthd.mojom.DEPRECATE_SystemResult"]
+union DEPRECATED_SystemResult { ProbeError error; };
 
 // System probe result. Can either be populated with the SystemInfo or an error
 // retrieving the information.
@@ -1515,9 +1515,9 @@ enum UsbSpecSpeed {
   k1_5Mbps = 2,
   // Full speed.
   k12Mbps = 3,
-  // Deprecate. Should be a typo in
+  // Deprecated. Should be a typo in
   // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-bus-usb.
-  kDeprecateSpeed = 4,
+  kDeprecatedSpeed = 4,
   // High Speed.
   k480Mbps = 5,
   // Super Speed.
@@ -2035,7 +2035,7 @@ struct TelemetryInfo {
   // when kBluetooth was included in the categories input to ProbeTelemetryInfo.
   BluetoothResult? bluetooth_result@8;
   // Information about the system. DEPRECATED.
-  DEPRECATE_SystemResult? deprecate_system_result@9;
+  DEPRECATED_SystemResult? deprecated_system_result@9;
   // Information about the networking devices and associated networks of the
   // system. Only present when kNetwork was included in the categories input to
   // ProbeTelemetryInfo.
