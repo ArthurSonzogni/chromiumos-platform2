@@ -5,6 +5,7 @@
 #ifndef PATCHPANEL_COUNTERS_SERVICE_H_
 #define PATCHPANEL_COUNTERS_SERVICE_H_
 
+#include <compare>
 #include <map>
 #include <set>
 #include <string>
@@ -55,7 +56,9 @@ class CountersService {
     TrafficCounter::Source source;
     TrafficCounter::IpFamily ip_family;
 
-    bool operator<(const CounterKey& rhs) const;
+    // 3-way comparison operator for able to be keyed in a map.
+    friend std::strong_ordering operator<=>(const CounterKey&,
+                                            const CounterKey&);
   };
 
   struct Counter {
@@ -63,6 +66,8 @@ class CountersService {
     uint64_t rx_packets = 0;
     uint64_t tx_bytes = 0;
     uint64_t tx_packets = 0;
+
+    friend bool operator==(const Counter&, const Counter&);
   };
 
   explicit CountersService(Datapath* datapath);

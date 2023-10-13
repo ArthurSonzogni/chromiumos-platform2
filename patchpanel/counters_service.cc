@@ -4,6 +4,7 @@
 
 #include "patchpanel/counters_service.h"
 
+#include <compare>
 #include <set>
 #include <string>
 #include <utility>
@@ -323,20 +324,10 @@ TrafficSource ProtoToTrafficSource(TrafficCounter::Source source) {
   }
 }
 
-bool CountersService::CounterKey::operator<(const CounterKey& rhs) const {
-  if (ifname < rhs.ifname) {
-    return true;
-  }
-  if (ifname > rhs.ifname) {
-    return false;
-  }
-  if (source < rhs.source) {
-    return true;
-  }
-  if (source > rhs.source) {
-    return false;
-  }
-  return ip_family < rhs.ip_family;
-}
+std::strong_ordering operator<=>(const CountersService::CounterKey&,
+                                 const CountersService::CounterKey&) = default;
+
+bool operator==(const CountersService::Counter&,
+                const CountersService::Counter&) = default;
 
 }  // namespace patchpanel

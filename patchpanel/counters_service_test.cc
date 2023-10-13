@@ -50,18 +50,6 @@ std::ostream& operator<<(std::ostream& os, const CounterKey& key) {
   return os;
 }
 
-bool operator==(const CountersService::CounterKey lhs,
-                const CountersService::CounterKey rhs) {
-  return lhs.ifname == rhs.ifname && lhs.source == rhs.source &&
-         lhs.ip_family == rhs.ip_family;
-}
-
-bool operator==(const CountersService::Counter lhs,
-                const CountersService::Counter rhs) {
-  return lhs.rx_bytes == rhs.rx_bytes && lhs.rx_packets == rhs.rx_packets &&
-         lhs.tx_bytes == rhs.tx_bytes && lhs.tx_packets == rhs.tx_packets;
-}
-
 namespace {
 // The following string is copied from the real output of iptables v1.6.2 by
 // `iptables -t mangle -L -x -v -n`. This output contains all the accounting
