@@ -35,6 +35,7 @@ group("all") {
 pkg_config("target_defaults") {
   defines = [
     "ENABLE_PROFILING=${use.profiling}",
+    "CHROMEOS_ENVIRONMENT=1",
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
@@ -47,6 +48,11 @@ pkg_config("target_defaults") {
   ]
   cflags = [ "-Wconsumed" ]
   cflags_cc = [ "-Wno-error=deprecated-declarations" ]
+
+  if (use.tpm2) {
+    # This selects TPM2 code in vboot_host headers.
+    defines += [ "TPM2_MODE=1" ]
+  }
 }
 
 shared_library("libhwsec-foundation") {
@@ -66,6 +72,7 @@ shared_library("libhwsec-foundation") {
     "crypto/sha.cc",
     "da_reset/da_resetter.cc",
     "syscaller/syscaller_impl.cc",
+    "tlcl_wrapper/tlcl_wrapper.cc",
     "tpm/tpm_version.cc",
     "tpm_error/auth_failure_analysis.cc",
     "tpm_error/command_and_response_data.cc",
@@ -87,6 +94,7 @@ shared_library("libhwsec-foundation") {
     "libmetrics",
     "libtpm_manager-client",
     "system_api",
+    "vboot_host",
   ]
   configs += [ ":target_defaults" ]
   if (use.fuzzer) {
@@ -138,6 +146,7 @@ install_config("install_headers") {
   deps = [
     ":install_status_headers",
     ":install_syscaller_headers",
+    ":install_tlcl_wrapper_headers",
     ":install_tpm_error_headers",
     ":install_utility_headers",
     ":install_vpd_reader_headers",
@@ -171,6 +180,14 @@ install_config("install_syscaller_headers") {
     "syscaller/syscaller_impl.h",
   ]
   install_path = "/usr/include/libhwsec-foundation/syscaller"
+}
+
+install_config("install_tlcl_wrapper_headers") {
+  sources = [
+    "tlcl_wrapper/mock_tlcl_wrapper.h",
+    "tlcl_wrapper/tlcl_wrapper.h",
+  ]
+  install_path = "/usr/include/libhwsec-foundation/tlcl_wrapper"
 }
 
 install_config("install_tpm_error_headers") {
