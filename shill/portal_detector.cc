@@ -194,6 +194,7 @@ void PortalDetector::CompleteTrial(Result result) {
             << ", duration=" << result.http_duration
             << ". HTTPS probe: dest=" << https_url_.host()
             << ", phase=" << result.https_phase
+            << ", status=" << result.https_status
             << ", duration=" << result.https_duration;
   result.num_attempts = attempt_count_;
   CleanupTrial();
