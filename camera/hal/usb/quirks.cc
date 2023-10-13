@@ -62,6 +62,10 @@ const QuirksMap& GetQuirksMap() {
       {{"2b7e", "1004"}, kQuirkPreferLargePreviewResolution},
       // KINGCOME KBAD1005
       {{"2b7e", "1005"}, kQuirkPreferLargePreviewResolution},
+      // LCE-Optics LSN059BF
+      {{"5959", "59bf"}, kQuirkPreferLargePreviewResolution},
+      // LCE-Optics LSN060BF
+      {{"5959", "60bf"}, kQuirkPreferLargePreviewResolution},
   });
   return *kQuirksMap;
 }
