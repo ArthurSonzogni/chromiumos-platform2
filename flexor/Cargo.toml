@@ -1,0 +1,9 @@
+[package]
+name = "flexor"
+version = "1.0.0"
+authors = ["The ChromiumOS Authors"]
+edition = "2021"
+
+[dependencies]
+libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
+thiserror = "1.0"

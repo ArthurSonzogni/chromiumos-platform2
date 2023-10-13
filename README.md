@@ -69,6 +69,7 @@ copies.
 | [flex_bluetooth](./flex_bluetooth/) | Updates Floss overrides for ChromeOS Flex |
 | [flex_hwis](./flex_hwis/) | Utility for collecting hardware information and sending it to a remote API |
 | [flex_id](./flex_id/) | Utility for generating flex_id, a machine identifier for devices without VPD info |
+| [flexor](./flexor/) | Experimental ChromeOS Flex installer |
 | [foomatic_shell](./foomatic_shell/) | Simple shell used by the foomatic-rip package |
 | [fusebox](./fusebox/) | FuseBox service |
 | [glib-bridge](./glib-bridge/) | library for libchrome-glib message loop interoperation |
