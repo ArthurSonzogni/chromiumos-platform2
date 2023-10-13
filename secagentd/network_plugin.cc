@@ -23,21 +23,21 @@ namespace bpf {
 bool operator<(const secagentd::bpf::cros_flow_map_key& lhs,
                const secagentd::bpf::cros_flow_map_key& rhs) {
   auto& lhs_tuple = lhs.five_tuple;
-  absl::Span lhs_daddr6 = lhs_tuple.dest_addr.addr6;
-  absl::Span lhs_saddr6 = lhs_tuple.source_addr.addr6;
+  absl::Span lhs_daddr6 = lhs_tuple.remote_addr.addr6;
+  absl::Span lhs_saddr6 = lhs_tuple.local_addr.addr6;
 
   auto& rhs_tuple = rhs.five_tuple;
-  absl::Span rhs_daddr6 = rhs_tuple.dest_addr.addr6;
-  absl::Span rhs_saddr6 = rhs_tuple.source_addr.addr6;
+  absl::Span rhs_raddr6 = rhs_tuple.remote_addr.addr6;
+  absl::Span rhs_laddr6 = rhs_tuple.local_addr.addr6;
 
   return std::tie(lhs_tuple.family, lhs_tuple.protocol,
-                  lhs_tuple.dest_addr.addr4, lhs_tuple.source_addr.addr4,
-                  lhs_daddr6, lhs_saddr6, lhs_tuple.source_port,
-                  lhs_tuple.dest_port, lhs.sock) <
+                  lhs_tuple.remote_addr.addr4, lhs_tuple.local_addr.addr4,
+                  lhs_daddr6, lhs_saddr6, lhs_tuple.local_port,
+                  lhs_tuple.remote_port, lhs.sock) <
          std::tie(rhs_tuple.family, rhs_tuple.protocol,
-                  rhs_tuple.dest_addr.addr4, rhs_tuple.source_addr.addr4,
-                  rhs_daddr6, rhs_saddr6, rhs_tuple.source_port,
-                  rhs_tuple.dest_port, rhs.sock);
+                  rhs_tuple.remote_addr.addr4, rhs_tuple.local_addr.addr4,
+                  rhs_raddr6, rhs_laddr6, rhs_tuple.local_port,
+                  rhs_tuple.remote_port, rhs.sock);
 }
 }  // namespace bpf
 
@@ -257,42 +257,42 @@ NetworkPlugin::MakeFlowEvent(
   }
 
   /* default to ipv4 */
-  const void* src_addr_ptr = &five_tuple.source_addr.addr4;
-  const void* dest_addr_ptr = &five_tuple.dest_addr.addr4;
+  const void* local_addr_ptr = &five_tuple.local_addr.addr4;
+  const void* remote_addr_ptr = &five_tuple.remote_addr.addr4;
   int af = AF_INET;
   std::array<char, INET6_ADDRSTRLEN> buff;
   if (five_tuple.family == bpf::CROS_FAMILY_AF_INET6) {
     // ipv6
     af = AF_INET6;
-    src_addr_ptr = &five_tuple.source_addr.addr6;
-    dest_addr_ptr = &five_tuple.dest_addr.addr6;
-    auto src = absl::MakeSpan(five_tuple.source_addr.addr6,
-                              sizeof(five_tuple.source_addr.addr6));
-    auto dest = absl::MakeSpan(five_tuple.dest_addr.addr6,
-                               sizeof(five_tuple.dest_addr.addr6));
+    local_addr_ptr = &five_tuple.local_addr.addr6;
+    remote_addr_ptr = &five_tuple.remote_addr.addr6;
+    auto src = absl::MakeSpan(five_tuple.local_addr.addr6,
+                              sizeof(five_tuple.local_addr.addr6));
+    auto dest = absl::MakeSpan(five_tuple.remote_addr.addr6,
+                               sizeof(five_tuple.remote_addr.addr6));
     flow->set_community_id_v1(
-        ComputeCommunityHashv1(src, dest, five_tuple.source_port,
-                               five_tuple.dest_port, five_tuple.protocol));
+        ComputeCommunityHashv1(src, dest, five_tuple.local_port,
+                               five_tuple.remote_port, five_tuple.protocol));
   } else {
     // ipv4
     auto src = absl::MakeSpan(
-        reinterpret_cast<const uint8_t*>(&five_tuple.source_addr.addr4),
-        sizeof(five_tuple.source_addr.addr4));
+        reinterpret_cast<const uint8_t*>(&five_tuple.local_addr.addr4),
+        sizeof(five_tuple.local_addr.addr4));
     auto dest = absl::MakeSpan(
-        reinterpret_cast<const uint8_t*>(&five_tuple.dest_addr.addr4),
-        sizeof(five_tuple.dest_addr.addr4));
+        reinterpret_cast<const uint8_t*>(&five_tuple.remote_addr.addr4),
+        sizeof(five_tuple.remote_addr.addr4));
     flow->set_community_id_v1(
-        ComputeCommunityHashv1(src, dest, five_tuple.source_port,
-                               five_tuple.dest_port, five_tuple.protocol));
+        ComputeCommunityHashv1(src, dest, five_tuple.local_port,
+                               five_tuple.remote_port, five_tuple.protocol));
   }
-  if (inet_ntop(af, src_addr_ptr, buff.data(), buff.size()) != nullptr) {
+  if (inet_ntop(af, local_addr_ptr, buff.data(), buff.size()) != nullptr) {
     flow->set_local_ip(buff.data());
   }
-  if (inet_ntop(af, dest_addr_ptr, buff.data(), buff.size()) != nullptr) {
+  if (inet_ntop(af, remote_addr_ptr, buff.data(), buff.size()) != nullptr) {
     flow->set_remote_ip(buff.data());
   }
-  flow->set_local_port(five_tuple.source_port);
-  flow->set_remote_port(five_tuple.dest_port);
+  flow->set_local_port(five_tuple.local_port);
+  flow->set_remote_port(five_tuple.remote_port);
   flow->set_protocol(BpfProtocolToPbProtocol(five_tuple.protocol));
   switch (flow_event.flow_map_value.direction) {
     case bpf::cros_network_socket_direction::CROS_SOCKET_DIRECTION_IN:

@@ -192,10 +192,10 @@ TEST_F(NetworkPluginTestFixture, TestWrongBPFEvent) {
 TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
   bpf::cros_network_5_tuple tuple;
   // inet_pton stores in network byte order.
-  inet_pton(AF_INET, "168.152.10.1", &tuple.dest_addr.addr4);
-  inet_pton(AF_INET, "192.168.0.1", &tuple.source_addr.addr4);
-  tuple.source_port = 4591;
-  tuple.dest_port = 5231;
+  inet_pton(AF_INET, "168.152.10.1", &tuple.remote_addr.addr4);
+  inet_pton(AF_INET, "192.168.0.1", &tuple.local_addr.addr4);
+  tuple.local_port = 4591;
+  tuple.remote_port = 5231;
   tuple.protocol = bpf::CROS_PROTOCOL_TCP;
 
   bpf::cros_flow_map_value val;

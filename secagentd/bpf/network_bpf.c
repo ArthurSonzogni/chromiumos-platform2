@@ -211,13 +211,36 @@ cros_is_ifindex_external(const struct sk_buff* skb) {
 }
 
 static inline __attribute__((always_inline)) int cros_fill_ipv6_5_tuple(
-    struct cros_network_5_tuple* five_tuple, const struct sk_buff* skb) {
+    struct cros_network_5_tuple* five_tuple,
+    const struct sk_buff* skb,
+    bool isTx) {
   const struct ipv6hdr* hdr = (struct ipv6hdr*)(cros_skb_network_header(skb));
   struct sock* sk = BPF_CORE_READ(skb, sk);
-  BPF_CORE_READ_INTO(&(five_tuple->source_addr.addr6), hdr,
-                     saddr.in6_u.u6_addr8);
+
+  uint16_t* dest_port;    // write dest port from protocol header to here.
+  uint16_t* source_port;  // write source port from protocol header here.
+  union cros_ip_addr* dest_addr;    // write dest addr from ip header to here.
+  union cros_ip_addr* source_addr;  // write source addr from ip header to here.
+  // What is local vs remote changes on whether the packet is rx or tx.
+  // If a packet is being received then local addr/port should be set to
+  // the destination addr/port parsed from the packet and remote addr/port
+  // should be set to the source addr/port parsed from the packet.
+  if (isTx) {
+    source_addr = &(five_tuple->local_addr);
+    source_port = &(five_tuple->local_port);
+
+    dest_addr = &(five_tuple->remote_addr);
+    dest_port = &(five_tuple->remote_port);
+  } else {  // Rx packet
+    source_addr = &(five_tuple->remote_addr);
+    source_port = &(five_tuple->remote_port);
+
+    dest_addr = &(five_tuple->local_addr);
+    dest_port = &(five_tuple->local_port);
+  }
+  BPF_CORE_READ_INTO(&(source_addr->addr6), hdr, saddr.in6_u.u6_addr8);
   five_tuple->family = CROS_FAMILY_AF_INET6;
-  BPF_CORE_READ_INTO(&(five_tuple->dest_addr.addr6), hdr, daddr.in6_u.u6_addr8);
+  BPF_CORE_READ_INTO(&(dest_addr->addr6), hdr, daddr.in6_u.u6_addr8);
   int packet_size = bpf_ntohs(BPF_CORE_READ(hdr, payload_len));
   int protocol = 0;
   unsigned int transport_offset = 0;
@@ -230,15 +253,15 @@ static inline __attribute__((always_inline)) int cros_fill_ipv6_5_tuple(
       five_tuple->protocol = CROS_PROTOCOL_TCP;
       const struct tcphdr* tcp_header =
           (const struct tcphdr*)cros_skb_transport_header(skb);
-      five_tuple->source_port = bpf_ntohs(BPF_CORE_READ(tcp_header, source));
-      five_tuple->dest_port = bpf_ntohs(BPF_CORE_READ(tcp_header, dest));
+      *source_port = bpf_ntohs(BPF_CORE_READ(tcp_header, source));
+      *dest_port = bpf_ntohs(BPF_CORE_READ(tcp_header, dest));
       break;
     case CROS_NEXTHDR_UDP:
       five_tuple->protocol = CROS_PROTOCOL_UDP;
       const struct udphdr* udp_header =
           (const struct udphdr*)cros_skb_transport_header(skb);
-      five_tuple->source_port = bpf_ntohs(BPF_CORE_READ(udp_header, source));
-      five_tuple->dest_port = bpf_ntohs(BPF_CORE_READ(udp_header, dest));
+      *source_port = bpf_ntohs(BPF_CORE_READ(udp_header, source));
+      *dest_port = bpf_ntohs(BPF_CORE_READ(udp_header, dest));
       break;
     case -CROS_EBADMSG:
       five_tuple->protocol = CROS_PROTOCOL_UNKNOWN;
@@ -251,19 +274,44 @@ static inline __attribute__((always_inline)) int cros_fill_ipv6_5_tuple(
       } else {
         five_tuple->protocol = CROS_PROTOCOL_UNKNOWN;
       }
-
       break;
   }
   return packet_size;
 }
 
 static inline __attribute__((always_inline)) int cros_fill_ipv4_5_tuple(
-    struct cros_network_5_tuple* five_tuple, const struct sk_buff* skb) {
+    struct cros_network_5_tuple* five_tuple,
+    const struct sk_buff* skb,
+    bool isTx) {
   const struct iphdr* hdr = (struct iphdr*)(cros_skb_network_header(skb));
+  uint16_t* dest_port;    // write dest port from protocol header to here.
+  uint16_t* source_port;  // write source port from protocol header here.
+  union cros_ip_addr* dest_addr;    // write dest addr from ip header to here.
+  union cros_ip_addr* source_addr;  // write source addr from ip header to here.
+
   int protocol = BPF_CORE_READ(hdr, protocol);
+  // What is local vs remote changes on whether the packet is rx or tx.
+  // If a packet is being received then local addr/port should be set to
+  // the destination addr/port parsed from the packet and remote addr/port
+  // should be set to the source addr/port parsed from the packet.
+  if (isTx) {
+    source_addr = &(five_tuple->local_addr);
+    source_port = &(five_tuple->local_port);
+
+    dest_addr = &(five_tuple->remote_addr);
+    dest_port = &(five_tuple->remote_port);
+  } else {  // Rx packet
+    source_addr = &(five_tuple->remote_addr);
+    source_port = &(five_tuple->remote_port);
+
+    dest_addr = &(five_tuple->local_addr);
+    dest_port = &(five_tuple->local_port);
+  }
+
   five_tuple->family = CROS_FAMILY_AF_INET;
-  five_tuple->source_addr.addr4 = BPF_CORE_READ(hdr, saddr);
-  five_tuple->dest_addr.addr4 = BPF_CORE_READ(hdr, daddr);
+
+  source_addr->addr4 = BPF_CORE_READ(hdr, saddr);
+  dest_addr->addr4 = BPF_CORE_READ(hdr, daddr);
   int packet_size = bpf_ntohs(BPF_CORE_READ(hdr, tot_len));
 
   switch (protocol) {
@@ -277,15 +325,15 @@ static inline __attribute__((always_inline)) int cros_fill_ipv4_5_tuple(
       five_tuple->protocol = CROS_PROTOCOL_UDP;
       const struct udphdr* udp_header =
           (const struct udphdr*)cros_skb_transport_header(skb);
-      five_tuple->dest_port = bpf_ntohs(BPF_CORE_READ(udp_header, dest));
-      five_tuple->source_port = bpf_ntohs(BPF_CORE_READ(udp_header, source));
+      *source_port = bpf_ntohs(BPF_CORE_READ(udp_header, source));
+      *dest_port = bpf_ntohs(BPF_CORE_READ(udp_header, dest));
       break;
     case IPPROTO_TCP:
       five_tuple->protocol = CROS_PROTOCOL_TCP;
       const struct tcphdr* tcp_header =
           (const struct tcphdr*)cros_skb_transport_header(skb);
-      five_tuple->source_port = bpf_ntohs(BPF_CORE_READ(tcp_header, source));
-      five_tuple->dest_port = bpf_ntohs(BPF_CORE_READ(tcp_header, dest));
+      *source_port = bpf_ntohs(BPF_CORE_READ(tcp_header, source));
+      *dest_port = bpf_ntohs(BPF_CORE_READ(tcp_header, dest));
       break;
     default:
       five_tuple->protocol = CROS_PROTOCOL_UNKNOWN;
@@ -302,18 +350,18 @@ static inline __attribute__((always_inline)) void cros_fill_5_tuple_from_sock(
       determine_protocol(five_tuple->family, BPF_CORE_READ(sock, type),
                          BPF_CORE_READ(sock, sk, sk_protocol));
   if (five_tuple->family == CROS_FAMILY_AF_INET) {
-    five_tuple->dest_addr.addr4 = sk_common.skc_daddr;
-    five_tuple->source_addr.addr4 = sk_common.skc_rcv_saddr;
+    five_tuple->remote_addr.addr4 = sk_common.skc_daddr;
+    five_tuple->local_addr.addr4 = sk_common.skc_rcv_saddr;
   } else if (five_tuple->family == CROS_FAMILY_AF_INET6) {
-    __builtin_memcpy(five_tuple->source_addr.addr6,
+    __builtin_memcpy(five_tuple->local_addr.addr6,
                      sk_common.skc_v6_rcv_saddr.in6_u.u6_addr8,
-                     sizeof(five_tuple->source_addr.addr6));
-    __builtin_memcpy(five_tuple->dest_addr.addr6,
+                     sizeof(five_tuple->local_addr.addr6));
+    __builtin_memcpy(five_tuple->remote_addr.addr6,
                      sk_common.skc_v6_daddr.in6_u.u6_addr8,
-                     sizeof(five_tuple->dest_addr.addr6));
+                     sizeof(five_tuple->remote_addr.addr6));
   }
-  five_tuple->dest_port = sk_common.skc_dport;
-  five_tuple->source_port = sk_common.skc_num;
+  five_tuple->remote_port = sk_common.skc_dport;
+  five_tuple->local_port = sk_common.skc_num;
 }
 
 static inline __attribute__((always_inline)) bool cros_socket_is_monitored(
@@ -411,9 +459,9 @@ static inline __attribute__((always_inline)) int cros_handle_tx_rx(
   int bytes = 0;
 
   if (is_ipv6) {
-    bytes = cros_fill_ipv6_5_tuple(&key.five_tuple, skb);
+    bytes = cros_fill_ipv6_5_tuple(&key.five_tuple, skb, is_tx);
   } else {
-    bytes = cros_fill_ipv4_5_tuple(&key.five_tuple, skb);
+    bytes = cros_fill_ipv4_5_tuple(&key.five_tuple, skb, is_tx);
   }
 
   value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
@@ -582,7 +630,7 @@ int BPF_PROG(cros_handle_inet_stream_connect_exit,
   key.sock = (uint64_t)sock;
   cros_maybe_new_socket(sock);
   cros_fill_5_tuple_from_sock(&key.five_tuple, sock);
-  if (create_process_map_entry(sock, "inet_accept") < 0) {
+  if (create_process_map_entry(sock, "inet_connect") < 0) {
     bpf_printk("ERROR: inet_accept unable to record process context.");
     return 0;
   }

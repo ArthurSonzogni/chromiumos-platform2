@@ -196,10 +196,10 @@ union cros_ip_addr {
 struct cros_network_5_tuple {
   enum cros_network_family family;
   enum cros_network_protocol protocol;
-  union cros_ip_addr source_addr;
-  uint16_t source_port;
-  union cros_ip_addr dest_addr;
-  uint16_t dest_port;
+  union cros_ip_addr local_addr;
+  uint16_t local_port;
+  union cros_ip_addr remote_addr;
+  uint16_t remote_port;
 } __attribute__((aligned(8)));
 
 /* The design idea behind the flow_map is that the BPF will be responsible for
