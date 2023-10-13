@@ -40,6 +40,7 @@ pkg_config("target_defaults") {
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
     "USE_PRJQUOTA=${use.prjquota}",
     "USE_TPM2=${use.tpm2}",
+    "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",
   ]
   pkg_deps = [
     "libbrillo",
@@ -80,6 +81,8 @@ static_library("libcrosstartup") {
     "startup/uefi_startup.cc",
   ]
   configs += [ ":target_defaults" ]
+  defines = []
+  libs = [ "hwsec-foundation" ]
   deps = [
     ":file_attrs_cleaner_lib",
     ":libclobber",

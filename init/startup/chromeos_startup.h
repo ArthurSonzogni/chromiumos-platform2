@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <libcrossystem/crossystem.h>
+#include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
 #include <metrics/bootstat.h>
 
 #include "init/startup/flags.h"
@@ -40,7 +41,8 @@ class ChromeosStartup {
                   const base::FilePath& lsb_file,
                   const base::FilePath& proc_file,
                   std::unique_ptr<Platform> platform,
-                  std::unique_ptr<MountHelper> mount_helper);
+                  std::unique_ptr<MountHelper> mount_helper,
+                  std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl);
 
   virtual ~ChromeosStartup() = default;
 
@@ -79,6 +81,9 @@ class ChromeosStartup {
                               const std::vector<base::FilePath>& exclude,
                               bool is_recursive,
                               bool set_digests));
+
+  // Possibly extend the PCR for ChromeOS version attestation.
+  bool ExtendPCRForVersionAttestation();
 
   // Run the chromeos startup routine.
   int Run();
@@ -167,6 +172,7 @@ class ChromeosStartup {
   base::FilePath state_dev_;
   base::FilePath dev_mode_allowed_file_;
   base::FilePath dev_image_;
+  std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl_;
 };
 
 }  // namespace startup

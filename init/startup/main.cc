@@ -12,6 +12,7 @@
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 #include <libcrossystem/crossystem.h>
+#include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
 
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/flags.h"
@@ -47,12 +48,15 @@ int main(int argc, char* argv[]) {
       base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<startup::MountHelper> mount_helper =
       mount_helper_factory.Generate(*cros_system);
+  std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl =
+      std::make_unique<hwsec_foundation::TlclWrapperImpl>();
   std::unique_ptr<startup::ChromeosStartup> startup =
       std::make_unique<startup::ChromeosStartup>(
           std::unique_ptr<crossystem::Crossystem>(std::move(cros_system)),
           flags, base::FilePath("/"), base::FilePath(kStatefulPartition),
           base::FilePath(kLsbRelease), base::FilePath(kProcPath),
-          std::make_unique<startup::Platform>(), std::move(mount_helper));
+          std::make_unique<startup::Platform>(), std::move(mount_helper),
+          std::move(tlcl));
 
   return startup->Run();
 }

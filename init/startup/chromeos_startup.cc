@@ -22,9 +22,12 @@
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
+#include <brillo/secure_blob.h>
 #include <brillo/strings/string_utils.h>
 #include <brillo/userdb_utils.h>
 #include <libcrossystem/crossystem.h>
+#include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
+#include <openssl/sha.h>
 
 #include "init/file_attrs_cleaner.h"
 #include "init/startup/chromeos_startup.h"
@@ -50,6 +53,10 @@ constexpr char kVarLog[] = "var/log";
 constexpr char kChronos[] = "chronos";
 constexpr char kUser[] = "user";
 constexpr char kRoot[] = "root";
+
+constexpr char kProcCmdline[] = "proc/cmdline";
+
+constexpr int kVersionAttestationPcr = 13;
 
 // The "/." ensures we trigger the automount, instead of just examining the
 // mount point.
@@ -89,6 +96,10 @@ constexpr char kResetFile[] = "factory_install_reset";
 // If the file is present and mount_encrypted failed again, machine would
 // enter self-repair mode.
 constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
+// Flag file indicating that PCR Extend operation failed.
+// Currently this is for UMA/diagnostics, but in the future failure will
+// result in reboot/self-repair.
+constexpr char kVersionPCRExtendFailedFile[] = "version_pcr_extend_failed";
 // kEncryptedStatefulMnt stores the path to the initial mount point for
 // the encrypted stateful partition
 constexpr char kEncryptedStatefulMnt[] = "encrypted";
@@ -254,7 +265,8 @@ ChromeosStartup::ChromeosStartup(
     const base::FilePath& lsb_file,
     const base::FilePath& proc_file,
     std::unique_ptr<Platform> platform,
-    std::unique_ptr<MountHelper> mount_helper)
+    std::unique_ptr<MountHelper> mount_helper,
+    std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl)
     : cros_system_(std::move(cros_system)),
       flags_(flags),
       lsb_file_(lsb_file),
@@ -262,7 +274,8 @@ ChromeosStartup::ChromeosStartup(
       root_(root),
       stateful_(stateful),
       platform_(std::move(platform)),
-      mount_helper_(std::move(mount_helper)) {}
+      mount_helper_(std::move(mount_helper)),
+      tlcl_(std::move(tlcl)) {}
 
 void ChromeosStartup::EarlySetup() {
   const base::FilePath sysfs = root_.Append(kSysfs);
@@ -503,6 +516,49 @@ void ChromeosStartup::CleanupTpm() {
   }
 }
 
+bool ChromeosStartup::ExtendPCRForVersionAttestation() {
+  if (USE_TPM_INSECURE_FALLBACK) {
+    // Not needed on devices whereby the secure element is not mandatory.
+    return true;
+  }
+
+  if (!USE_TPM2) {
+    // Only TPM2.0 supported.
+    return true;
+  }
+
+  base::FilePath cmdline_path = root_.Append(kProcCmdline);
+  std::optional<brillo::Blob> cmdline = base::ReadFileToBytes(cmdline_path);
+  if (!cmdline.has_value()) {
+    PLOG(WARNING) << "Failure to read /proc/cmdline for PCR Extension.";
+    return false;
+  }
+
+  brillo::Blob digest(SHA256_DIGEST_LENGTH);
+  SHA256(cmdline->data(), cmdline->size(), digest.data());
+
+  if (tlcl_->Init() != 0) {
+    PLOG(WARNING) << "Failure to init TlclWrapper.";
+    return false;
+  }
+
+  if (tlcl_->Extend(kVersionAttestationPcr, digest, nullptr) != 0) {
+    if (tlcl_->Close() != 0) {
+      PLOG(WARNING) << "Failure to close TlclWrapper after failure to extend.";
+    } else {
+      PLOG(WARNING) << "Failure to extend PCR with TlclWrapper.";
+    }
+    return false;
+  }
+
+  if (tlcl_->Close() != 0) {
+    PLOG(WARNING) << "Failure to shutdown TlclWrapper.";
+    return false;
+  }
+
+  return true;
+}
+
 // Move from /var/lib/whitelist to /var/lib/devicesettings if it is empty or
 // non-existing. If /var/lib/devicesettings already exists, just remove
 // /var/lib/whitelist.
@@ -738,6 +794,18 @@ int ChromeosStartup::Run() {
   }
 
   brillo::DeleteFile(encrypted_failed);
+
+  base::FilePath pcr_extend_failed =
+      stateful_.Append(kVersionPCRExtendFailedFile);
+  if (!ExtendPCRForVersionAttestation()) {
+    // At the moment we'll only log it but not force reboot or recovery.
+    // TODO(b/278071784): Monitor if the failure occurs frequently and later
+    // change this to reboot/send to recovery when it failed.
+    base::WriteFile(pcr_extend_failed, "");
+  } else {
+    brillo::DeleteFile(pcr_extend_failed);
+  }
+
   base::FilePath encrypted_state_mnt = stateful_.Append(kEncryptedStatefulMnt);
   mount_helper_->RememberMount(encrypted_state_mnt);
 
