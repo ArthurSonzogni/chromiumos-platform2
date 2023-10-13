@@ -140,13 +140,13 @@ void DeviceUser::HandleRegistrationResult(const std::string& interface,
                << " on interface: " << interface;
     device_user_ = "Unknown";
   } else {
-    OnSessionStateChange(kStarted);
+    OnSessionStateChange(kInit);
   }
 }
 
 void DeviceUser::OnSessionStateChange(const std::string& state) {
   device_user_ready_ = false;
-  if (state == kStarted) {
+  if (state == kStarted || state == kInit) {
     UpdateDeviceId();
     if (!UpdateDeviceUser()) {
       return;

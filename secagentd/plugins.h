@@ -361,9 +361,6 @@ class AuthenticationPlugin : public PluginInterface {
   // Fills the proto's auth factor if auth_factor_ is known.
   // Returns if auth factor was filled.
   bool FillAuthFactor(cros_xdr::reporting::Authentication* proto);
-  // Enqueues the Authentication event to the CROS_SECURITY_USER destination.
-  void EnqueueAuthenticationEvent(
-      std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant>);
   // If there is an entry event but auth factor is not filled, wait and
   // then check again for auth factor. If still not found send message anyway.
   void DelayedCheckForAuthSignal(
@@ -373,6 +370,9 @@ class AuthenticationPlugin : public PluginInterface {
   void OnDeviceUserRetrieved(
       std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> atomic_event,
       const std::string& device_user);
+  // When the first session start happens in the case of a secagentd restart
+  // check if a user is already signed in and if so send a login event.
+  void OnFirstSessionStart(const std::string& device_user);
   // Inject the given (mock) BatchSender object for unit testing.
   void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
     batch_sender_ = std::move(given);

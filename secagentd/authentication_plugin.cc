@@ -207,6 +207,11 @@ void AuthenticationPlugin::HandleSessionStateChange(const std::string& state) {
         AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
   } else if (state == kStopped) {
     log_event->mutable_logoff();
+  } else if (state == kInit) {
+    device_user_->GetDeviceUserAsync(
+        base::BindOnce(&AuthenticationPlugin::OnFirstSessionStart,
+                       weak_ptr_factory_.GetWeakPtr()));
+    return;
   } else {
     return;
   }
@@ -294,11 +299,6 @@ bool AuthenticationPlugin::FillAuthFactor(pb::Authentication* proto) {
          AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
 }
 
-void AuthenticationPlugin::EnqueueAuthenticationEvent(
-    std::unique_ptr<pb::UserEventAtomicVariant> proto) {
-  batch_sender_->Enqueue(std::move(proto));
-}
-
 void AuthenticationPlugin::DelayedCheckForAuthSignal(
     std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> xdr_proto,
     cros_xdr::reporting::Authentication* authentication) {
@@ -316,7 +316,17 @@ void AuthenticationPlugin::OnDeviceUserRetrieved(
     std::unique_ptr<pb::UserEventAtomicVariant> atomic_event,
     const std::string& device_user) {
   atomic_event->mutable_common()->set_device_user(device_user);
-  EnqueueAuthenticationEvent(std::move(atomic_event));
+  batch_sender_->Enqueue(std::move(atomic_event));
+}
+
+void AuthenticationPlugin::OnFirstSessionStart(const std::string& device_user) {
+  // When the device_user is empty no user is signed in so do not send a login
+  // event.
+  // When the device_user is filled there is already a user signed in so a login
+  // will be simulated.
+  if (!device_user.empty()) {
+    HandleSessionStateChange(kStarted);
+  }
 }
 
 }  // namespace secagentd

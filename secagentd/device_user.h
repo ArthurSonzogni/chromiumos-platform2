@@ -32,6 +32,7 @@ static constexpr base::TimeDelta kDelayForFirstUserInit = base::Seconds(2);
 static constexpr char kStarted[] = "started";
 static constexpr char kStopping[] = "stopping";
 static constexpr char kStopped[] = "stopped";
+static constexpr char kInit[] = "init";
 
 namespace testing {
 class DeviceUserTestFixture;

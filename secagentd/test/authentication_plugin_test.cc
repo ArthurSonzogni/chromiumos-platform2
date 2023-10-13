@@ -749,4 +749,48 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginAuthFactorSquashing) {
             failure_event_2->failure().authentication().num_failed_attempts());
 }
 
+TEST_F(AuthenticationPluginTestFixture, TestSecagentdRestart) {
+  SetupObjectProxies();
+  SaveRegisterLockingCbs();
+  SaveSessionStateChangeCb();
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .Times(3)
+      .WillOnce(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run("");
+          })))
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
+
+  // batch_sender_ will be called twice. Once for login, once for logout.
+  auto login_event = std::make_unique<pb::UserEventAtomicVariant>();
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .Times(1)
+      .WillOnce(WithArg<0>(
+          Invoke([&login_event](
+                     std::unique_ptr<google::protobuf::MessageLite> message) {
+            login_event->ParseFromString(
+                std::move(message->SerializeAsString()));
+          })));
+
+  EXPECT_OK(plugin_->Activate());
+  // First one should do nothing because device user is empty.
+  state_changed_cb_.Run(kInit);
+  state_changed_cb_.Run(kInit);
+  task_environment_.FastForwardBy(kWaitForAuthFactorS);
+
+  auto expected_event = std::make_unique<pb::UserEventAtomicVariant>();
+  expected_event->mutable_common();
+  expected_event->mutable_logon()->mutable_authentication()->add_auth_factor(
+      AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN);
+  expected_event->mutable_common()->set_device_user(kDeviceUser);
+  expected_event->mutable_common()->set_create_timestamp_us(
+      login_event->common().create_timestamp_us());
+  EXPECT_THAT(*expected_event, EqualsProto(*login_event));
+  EXPECT_EQ(AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN,
+            GetAuthFactor());
+}
+
 }  // namespace secagentd::testing
