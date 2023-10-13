@@ -290,6 +290,9 @@ bool SlotManagerImpl::Init() {
   bool tpm_available = HwsecIsEnabled();
   bool expect_success = tpm_available && HwsecIsReady();
 
+  if (!tpm_available) {
+    LOG(INFO) << "TPM is unavailable";
+  }
   chaps_metrics_->ReportTPMAvailabilityStatus(
       tpm_available ? TPMAvailabilityStatus::kTPMAvailable
                     : TPMAvailabilityStatus::kTPMUnavailable);
