@@ -19,7 +19,7 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/user_secret_stash/user_metadata.h"
+#include "cryptohome/user_secret_stash/storage.h"
 
 namespace cryptohome {
 namespace {
@@ -44,6 +44,7 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
                  &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
   MockFingerprintManager fp_manager_;
+  UssStorage uss_storage_{&platform_};
   FingerprintAuthBlockService fp_service_{
       AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};
 
@@ -51,11 +52,11 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
   AuthFactorDriverManager manager_{
       &platform_,
       &crypto_,
+      &uss_storage_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       &fp_service_,
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
-      nullptr};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
 };
 
 TEST_F(AuthFactorDriverManagerTest, GetDriverIsSameForConstAndNonconst) {

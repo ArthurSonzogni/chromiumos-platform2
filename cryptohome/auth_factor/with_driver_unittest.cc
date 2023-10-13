@@ -5,6 +5,7 @@
 #include "cryptohome/auth_factor/with_driver.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/functional/callback.h>
@@ -13,6 +14,7 @@
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
+#include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/fp_service.h"
@@ -32,15 +34,19 @@
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
-#include "cryptohome/user_secret_stash/mock_user_metadata.h"
+#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 namespace {
 
+using ::hwsec_foundation::kAesGcmIVSize;
+using ::hwsec_foundation::kAesGcmTagSize;
+using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::IsEmpty;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::UnorderedElementsAre;
 using ::testing::UnorderedElementsAreArray;
@@ -86,10 +92,26 @@ class AuthFactorWithDriverTest : public ::testing::Test {
     bio_service_ = std::make_unique<BiometricsAuthBlockService>(
         std::move(processor), /*enroll_signal_sender=*/base::DoNothing(),
         /*auth_signal_sender=*/base::DoNothing());
+
+    // Set up a USS that contains a rate limiter ID label, which is needed by
+    // some of the fingerprint tests.
+    EncryptedUss::Container uss_container = {
+        .ciphertext = brillo::BlobFromString("encrypted bytes!"),
+        .iv = brillo::BlobFromString(std::string(kAesGcmIVSize, '\x0a')),
+        .gcm_tag = brillo::BlobFromString(std::string(kAesGcmTagSize, '\x0b')),
+        .created_on_os_version = kChromeosVersion,
+        .user_metadata =
+            {
+                .fingerprint_rate_limiter_id = kLeLabel,
+            },
+    };
+    EncryptedUss uss(uss_container);
+    UserUssStorage user_uss_storage(uss_storage_, kObfuscatedUser);
+    EXPECT_THAT(uss.ToStorage(user_uss_storage), IsOk());
   }
 
   // Mocks for all of the manager dependencies.
-  MockPlatform platform_;
+  NiceMock<MockPlatform> platform_;
   hwsec::MockCryptohomeFrontend hwsec_;
   hwsec::MockPinWeaverFrontend pinweaver_;
   hwsec::MockPinWeaverManagerFrontend hwsec_pw_manager_;
@@ -97,18 +119,19 @@ class AuthFactorWithDriverTest : public ::testing::Test {
   Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
                  &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
+  UssStorage uss_storage_{&platform_};
   MockLECredentialManager* le_manager_;
   MockFingerprintManager fp_manager_;
   FingerprintAuthBlockService fp_service_{
       AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};
   MockBiometricsCommandProcessor* bio_command_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
-  MockUserMetadataReader mock_user_metadata_reader_;
 
   // A real version of the manager, using mock inputs.
   AuthFactorDriverManager manager_{
       &platform_,
       &crypto_,
+      &uss_storage_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       &fp_service_,
@@ -116,8 +139,7 @@ class AuthFactorWithDriverTest : public ::testing::Test {
           [](AuthFactorWithDriverTest* test) {
             return test->bio_service_.get();
           },
-          base::Unretained(this))),
-      &mock_user_metadata_reader_};
+          base::Unretained(this)))};
 };
 
 TEST_F(AuthFactorWithDriverTest, PasswordSupportsAllIntents) {
@@ -213,9 +235,6 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWhenExpired) {
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
       .WillOnce(ReturnValue(true));
-  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
-      .WillOnce(
-          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
@@ -237,9 +256,6 @@ TEST_F(AuthFactorWithDriverTest, FingerprintNoIntentsWithDelay) {
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
       .WillOnce(ReturnValue(true));
-  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
-      .WillRepeatedly(
-          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
@@ -263,9 +279,6 @@ TEST_F(AuthFactorWithDriverTest, FingerprintSupportsSomeIntents) {
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
       .WillOnce(ReturnValue(true));
-  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
-      .WillRepeatedly(
-          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(15));
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))

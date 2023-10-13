@@ -51,7 +51,6 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/pinweaver_manager/le_credential_manager_impl.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
@@ -327,6 +326,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       hwsec_cryptohome_frontend_.get(), hwsec_pinweaver_frontend_.get(),
       hwsec_pinweaver_manager_frontend.get(), &cryptohome_keys_manager_,
       hwsec_recovery_crypto_frontend_.get()};
+  UssStorage uss_storage_{&platform_};
   UserSessionMap user_session_map_;
   KeysetManagement keyset_management_{&platform_, &crypto_,
                                       std::make_unique<VaultKeysetFactory>()};
@@ -344,14 +344,12 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
+      &uss_storage_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
-      nullptr};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
-  UssStorage uss_storage_{&platform_};
-  UserMetadataReader user_metadata_reader_{&uss_storage_};
 
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
@@ -361,7 +359,6 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &uss_storage_,
-                                         &user_metadata_reader_,
                                          &features_.async};
 };
 

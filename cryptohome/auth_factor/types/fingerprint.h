@@ -26,7 +26,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/user_secret_stash/user_metadata.h"
+#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/username.h"
 #include "cryptohome/util/async_init.h"
 
@@ -49,11 +49,9 @@ class FingerprintAuthFactorDriver final
   FingerprintAuthFactorDriver(
       Platform* platform,
       Crypto* crypto,
-      AsyncInitPtr<BiometricsAuthBlockService> bio_service,
-      UserMetadataReader* user_metadata_reader)
-      : crypto_(crypto),
-        bio_service_(bio_service),
-        user_metadata_reader_(user_metadata_reader) {}
+      UssStorage* uss_storage,
+      AsyncInitPtr<BiometricsAuthBlockService> bio_service)
+      : crypto_(crypto), uss_storage_(uss_storage), bio_service_(bio_service) {}
 
  private:
   bool IsSupportedByHardware() const override;
@@ -82,8 +80,8 @@ class FingerprintAuthFactorDriver final
       const auth_factor::FingerprintMetadata& typed_metadata) const override;
 
   Crypto* crypto_;
+  UssStorage* uss_storage_;
   AsyncInitPtr<BiometricsAuthBlockService> bio_service_;
-  UserMetadataReader* user_metadata_reader_;
 };
 
 }  // namespace cryptohome

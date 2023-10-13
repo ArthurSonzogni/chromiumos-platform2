@@ -58,13 +58,15 @@ class AuthSessionManagerTest : public ::testing::Test {
   TaskEnvironment task_environment_{
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
+
+  NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
                  &cryptohome_keys_manager_, nullptr};
-  NiceMock<MockPlatform> platform_;
+  UssStorage uss_storage_{&platform_};
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
@@ -73,14 +75,12 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
+      &uss_storage_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
-      nullptr};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
-  UssStorage uss_storage_{&platform_};
-  UserMetadataReader user_metadata_reader_{&uss_storage_};
   FakeFeaturesForTesting features_;
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
@@ -90,7 +90,6 @@ class AuthSessionManagerTest : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &uss_storage_,
-                                         &user_metadata_reader_,
                                          &features_.async};
   AuthSessionManager auth_session_manager_{backing_apis_};
 };

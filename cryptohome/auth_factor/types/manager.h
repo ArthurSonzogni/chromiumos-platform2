@@ -16,7 +16,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/user_secret_stash/user_metadata.h"
+#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -30,11 +30,11 @@ class AuthFactorDriverManager {
   AuthFactorDriverManager(
       Platform* platform,
       Crypto* crypto,
+      UssStorage* uss_storage,
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
       FingerprintAuthBlockService* fp_service,
-      AsyncInitPtr<BiometricsAuthBlockService> bio_service,
-      UserMetadataReader* user_metadata_reader);
+      AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 
   AuthFactorDriverManager(const AuthFactorDriverManager&) = delete;
   AuthFactorDriverManager& operator=(const AuthFactorDriverManager&) = delete;

@@ -44,7 +44,6 @@ AuthSessionManager::AuthSessionManager(AuthSession::BackingApis backing_apis)
   CHECK(backing_apis.auth_factor_driver_manager);
   CHECK(backing_apis.auth_factor_manager);
   CHECK(backing_apis.user_secret_stash_storage);
-  CHECK(backing_apis.user_metadata_reader);
   CHECK(backing_apis.features);
 }
 

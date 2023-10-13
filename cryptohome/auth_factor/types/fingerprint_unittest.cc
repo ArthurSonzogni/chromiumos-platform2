@@ -17,6 +17,7 @@
 #include <base/functional/callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
@@ -30,7 +31,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pinweaver_manager/mock_le_credential_manager.h"
-#include "cryptohome/user_secret_stash/mock_user_metadata.h"
+#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -39,6 +40,8 @@ namespace {
 using ::base::test::TestFuture;
 using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
+using ::hwsec_foundation::kAesGcmIVSize;
+using ::hwsec_foundation::kAesGcmTagSize;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
@@ -48,6 +51,7 @@ using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsNull;
 using ::testing::IsTrue;
+using ::testing::NiceMock;
 using ::testing::Optional;
 using ::testing::Return;
 
@@ -74,19 +78,35 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
         /*auth_signal_sender=*/base::DoNothing());
   }
 
-  MockPlatform platform_;
+  // Create a USS that contains kleLabel as the rate limiter ID.
+  void CreateUssWithRateLimiterId() {
+    EncryptedUss::Container uss_container = {
+        .ciphertext = brillo::BlobFromString("encrypted bytes!"),
+        .iv = brillo::BlobFromString(std::string(kAesGcmIVSize, '\x0a')),
+        .gcm_tag = brillo::BlobFromString(std::string(kAesGcmTagSize, '\x0b')),
+        .created_on_os_version = "1.2.3.4",
+        .user_metadata =
+            {
+                .fingerprint_rate_limiter_id = kLeLabel,
+            },
+    };
+    EncryptedUss uss(uss_container);
+    UserUssStorage user_uss_storage(uss_storage_, kObfuscatedUser);
+    ASSERT_THAT(uss.ToStorage(user_uss_storage), IsOk());
+  }
+
+  NiceMock<MockPlatform> platform_;
+  UssStorage uss_storage_{&platform_};
   MockLECredentialManager* le_manager_;
   MockBiometricsCommandProcessor* bio_command_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
-  MockUserMetadataReader mock_user_metadata_reader_;
 };
 
 TEST_F(FingerprintDriverTest, ConvertToProto) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   AuthFactorMetadata metadata =
       CreateMetadataWithType<auth_factor::FingerprintMetadata>();
@@ -112,9 +132,8 @@ TEST_F(FingerprintDriverTest, ConvertToProto) {
 TEST_F(FingerprintDriverTest, ConvertToProtoNullOpt) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   AuthFactorMetadata metadata;
 
@@ -129,9 +148,8 @@ TEST_F(FingerprintDriverTest, ConvertToProtoNullOpt) {
 TEST_F(FingerprintDriverTest, UnsupportedWithVk) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify.
@@ -143,9 +161,8 @@ TEST_F(FingerprintDriverTest, UnsupportedWithVk) {
 TEST_F(FingerprintDriverTest, SupportedWithVkUssMix) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify.
@@ -159,8 +176,8 @@ TEST_F(FingerprintDriverTest, SupportedWithVkUssMix) {
 TEST_F(FingerprintDriverTest, UnsupportedWithKiosk) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify.
@@ -173,8 +190,8 @@ TEST_F(FingerprintDriverTest, UnsupportedWithKiosk) {
 TEST_F(FingerprintDriverTest, UnsupportedByBlock) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify
@@ -188,9 +205,8 @@ TEST_F(FingerprintDriverTest, SupportedByBlock) {
   EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
       .WillOnce(ReturnValue(true));
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify
@@ -200,9 +216,8 @@ TEST_F(FingerprintDriverTest, SupportedByBlock) {
 TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_))
       .WillOnce([](auto&& callback) { std::move(callback).Run(false); });
@@ -221,9 +236,8 @@ TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
 TEST_F(FingerprintDriverTest, PrepareForAddSuccess) {
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_))
       .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
@@ -240,9 +254,8 @@ TEST_F(FingerprintDriverTest, PrepareForAddSuccess) {
 TEST_F(FingerprintDriverTest, PrepareForAuthFailure) {
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_,
               StartAuthenticateSession(kObfuscatedUser, _))
@@ -263,9 +276,8 @@ TEST_F(FingerprintDriverTest, PrepareForAuthFailure) {
 TEST_F(FingerprintDriverTest, PrepareForAuthSuccess) {
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_,
               StartAuthenticateSession(kObfuscatedUser, _))
@@ -282,19 +294,13 @@ TEST_F(FingerprintDriverTest, PrepareForAuthSuccess) {
 
 TEST_F(FingerprintDriverTest, GetDelayFailsWithoutLeLabel) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
                     CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
-
-  EXPECT_CALL(mock_user_metadata_reader_, Load)
-      .WillOnce(ReturnError<CryptohomeError>(
-          kErrorLocationPlaceholder, ErrorActionSet(),
-          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
   auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
@@ -304,17 +310,14 @@ TEST_F(FingerprintDriverTest, GetDelayFailsWithoutLeLabel) {
 
 TEST_F(FingerprintDriverTest, GetDelayInfinite) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
                     CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
-  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
-      .WillOnce(
-          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(std::numeric_limits<uint32_t>::max()));
 
@@ -325,17 +328,14 @@ TEST_F(FingerprintDriverTest, GetDelayInfinite) {
 
 TEST_F(FingerprintDriverTest, GetDelayFinite) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
                     CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
-  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
-      .WillOnce(
-          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(10));
 
@@ -346,17 +346,14 @@ TEST_F(FingerprintDriverTest, GetDelayFinite) {
 
 TEST_F(FingerprintDriverTest, GetDelayZero) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
                     CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
-  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
-      .WillOnce(
-          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
@@ -367,19 +364,13 @@ TEST_F(FingerprintDriverTest, GetDelayZero) {
 
 TEST_F(FingerprintDriverTest, IsExpiredFailsWithoutLeLabel) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
                     CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
-
-  EXPECT_CALL(mock_user_metadata_reader_, Load)
-      .WillOnce(ReturnError<CryptohomeError>(
-          kErrorLocationPlaceholder, ErrorActionSet(),
-          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
   auto is_expired = driver.IsExpired(kObfuscatedUser, factor);
   ASSERT_THAT(is_expired, NotOk());
@@ -389,17 +380,14 @@ TEST_F(FingerprintDriverTest, IsExpiredFailsWithoutLeLabel) {
 
 TEST_F(FingerprintDriverTest, IsNotExpired) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
                     CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
-  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
-      .WillOnce(
-          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(10));
 
@@ -410,17 +398,14 @@ TEST_F(FingerprintDriverTest, IsNotExpired) {
 
 TEST_F(FingerprintDriverTest, IsExpired) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
                     CreateMetadataWithType<auth_factor::FingerprintMetadata>(),
                     {.state = FingerprintAuthBlockState()});
-  EXPECT_CALL(mock_user_metadata_reader_, Load(kObfuscatedUser))
-      .WillOnce(
-          ReturnValue(UserMetadata{.fingerprint_rate_limiter_id = kLeLabel}));
+  CreateUssWithRateLimiterId();
   EXPECT_CALL(hwsec_pw_manager_, GetExpirationInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
@@ -431,9 +416,8 @@ TEST_F(FingerprintDriverTest, IsExpired) {
 
 TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {
   FingerprintAuthFactorDriver fp_driver(
-      &platform_, &crypto_,
-      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()),
-      &mock_user_metadata_reader_);
+      &platform_, &crypto_, &uss_storage_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   auto verifier = driver.CreateCredentialVerifier(kLabel, {});

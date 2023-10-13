@@ -436,7 +436,6 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_block_utility_(backing_apis.auth_block_utility),
       auth_factor_driver_manager_(backing_apis.auth_factor_driver_manager),
       auth_factor_manager_(backing_apis.auth_factor_manager),
-      user_metadata_reader_(backing_apis.user_metadata_reader),
       features_(backing_apis.features),
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
@@ -1668,17 +1667,17 @@ void AuthSession::RemoveRateLimiters() {
   // Currently fingerprint is the only auth factor type using rate
   // limiter, so the field name isn't generic. We'll make it generic to any
   // auth factor types in the future.
-  CryptohomeStatusOr<UserMetadata> user_metadata =
-      user_metadata_reader_->Load(obfuscated_username_);
-  if (!user_metadata.ok()) {
+  CryptohomeStatusOr<EncryptedUss> encrypted_uss =
+      EncryptedUss::FromStorage(uss_storage_);
+  if (!encrypted_uss.ok()) {
     LOG(WARNING) << "Failed to load the user metadata.";
     return;
   }
-  if (!user_metadata->fingerprint_rate_limiter_id.has_value()) {
+  if (!encrypted_uss->fingerprint_rate_limiter_id().has_value()) {
     return;
   }
   if (!crypto_->RemoveLECredential(
-          user_metadata->fingerprint_rate_limiter_id.value())) {
+          *encrypted_uss->fingerprint_rate_limiter_id())) {
     LOG(WARNING) << "Failed to remove rate-limiter leaf.";
   }
 }
@@ -3134,22 +3133,22 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
   if (factor_driver.NeedsRateLimiter()) {
-    // Load the user metadata directly.
-    CryptohomeStatusOr<UserMetadata> user_metadata =
-        user_metadata_reader_->Load(obfuscated_username_);
-    if (!user_metadata.ok()) {
+    // Load the USS to get the raw user metadata directly.
+    CryptohomeStatusOr<EncryptedUss> encrypted_uss =
+        EncryptedUss::FromStorage(uss_storage_);
+    if (!encrypted_uss.ok()) {
       LOG(ERROR) << "Failed to load the user metadata.";
       return MakeStatus<CryptohomeError>(
                  CRYPTOHOME_ERR_LOC(
                      kLocAuthSessionGetMetadataFailedInAuthInputForSelect),
                  user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
-          .Wrap(std::move(user_metadata).err_status());
+          .Wrap(std::move(encrypted_uss).err_status());
     }
 
     // Currently fingerprint is the only auth factor type using rate
     // limiter, so the field name isn't generic. We'll make it generic to any
     // auth factor types in the future.
-    if (!user_metadata->fingerprint_rate_limiter_id.has_value()) {
+    if (!encrypted_uss->fingerprint_rate_limiter_id().has_value()) {
       LOG(ERROR) << "No rate limiter ID in user metadata.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNoRateLimiterInAuthInputForSelect),
@@ -3159,7 +3158,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
     }
 
     auth_input.rate_limiter_label =
-        user_metadata->fingerprint_rate_limiter_id.value();
+        *encrypted_uss->fingerprint_rate_limiter_id();
   }
 
   return auth_input;
@@ -4201,12 +4200,12 @@ bool AuthSession::NeedsFullAuthForReset(
   }
 
   // Check if the rate-limiter needs reset.
-  CryptohomeStatusOr<UserMetadata> user_metadata =
-      user_metadata_reader_->Load(obfuscated_username_);
-  if (!user_metadata.ok()) {
+  CryptohomeStatusOr<EncryptedUss> encrypted_uss =
+      EncryptedUss::FromStorage(uss_storage_);
+  if (!encrypted_uss.ok()) {
     return false;
   }
-  if (!user_metadata->fingerprint_rate_limiter_id.has_value()) {
+  if (!encrypted_uss->fingerprint_rate_limiter_id().has_value()) {
     return false;
   }
 
@@ -4216,7 +4215,7 @@ bool AuthSession::NeedsFullAuthForReset(
     return true;
   }
   return crypto_->GetWrongAuthAttempts(
-             user_metadata->fingerprint_rate_limiter_id.value()) != 0;
+             *encrypted_uss->fingerprint_rate_limiter_id()) != 0;
 }
 
 std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {

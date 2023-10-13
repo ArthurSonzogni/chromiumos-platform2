@@ -62,7 +62,6 @@
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/userdataauth.h"
@@ -169,8 +168,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             &crypto_, &platform_, &user_session_map_, &keyset_management_,
             &auth_block_utility_, &auth_factor_driver_manager_,
-            &auth_factor_manager_, &uss_storage_, &user_metadata_reader_,
-            &features_.async});
+            &auth_factor_manager_, &uss_storage_, &features_.async});
     // Initializing UserData class.
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -568,6 +566,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   // Mocks and fakes for the test AuthSessions to use.
+  NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
@@ -575,7 +574,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
                  &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
-  NiceMock<MockPlatform> platform_;
+  UssStorage uss_storage_{&platform_};
   UserSessionMap user_session_map_;
   KeysetManagement keyset_management_{&platform_, &crypto_,
                                       CreateMockVaultKeysetFactory()};
@@ -596,14 +595,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
+      &uss_storage_,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       fp_service_.get(),
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
-      nullptr};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
-  UssStorage uss_storage_{&platform_};
-  UserMetadataReader user_metadata_reader_{&uss_storage_};
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
                                          &user_session_map_,
@@ -612,7 +609,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &uss_storage_,
-                                         &user_metadata_reader_,
                                          &features_.async};
 
   // An AuthSession manager for testing managed creation.
@@ -850,7 +846,6 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       &auth_factor_driver_manager_,
       &auth_factor_manager_,
       &uss_storage_,
-      &user_metadata_reader_,
       &features_.async};
   backing_apis_ = std::move(backing_api_with_mock_km);
 
@@ -1324,8 +1319,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
       std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
           &crypto_, &platform_, &user_session_map_, &keyset_management_,
           &mock_auth_block_utility_, &auth_factor_driver_manager_,
-          &auth_factor_manager_, &uss_storage_, &user_metadata_reader_,
-          &features_.async});
+          &auth_factor_manager_, &uss_storage_, &features_.async});
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       auth_session_manager_mock->CreateAuthSession(Username(kUsername), flags,
                                                    AuthIntent::kDecrypt);

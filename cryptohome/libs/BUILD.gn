@@ -481,7 +481,6 @@ static_library("libcrosplatform") {
     "../user_secret_stash/decrypted.cc",
     "../user_secret_stash/encrypted.cc",
     "../user_secret_stash/storage.cc",
-    "../user_secret_stash/user_metadata.cc",
     "../user_secret_stash/user_secret_stash.cc",
   ]
   all_dependent_configs = [

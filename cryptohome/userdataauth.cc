@@ -86,7 +86,6 @@
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/user_session/user_session.h"
@@ -670,14 +669,13 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     default_uss_storage_ = std::make_unique<UssStorage>(platform_);
     uss_storage_ = default_uss_storage_.get();
   }
-  user_metadata_reader_ = std::make_unique<UserMetadataReader>(uss_storage_);
 
   if (!auth_factor_driver_manager_) {
     default_auth_factor_driver_manager_ =
         std::make_unique<AuthFactorDriverManager>(
-            platform_, crypto_, async_cc_helper, key_challenge_service_factory_,
-            fingerprint_service_.get(), async_biometrics_service,
-            user_metadata_reader_.get());
+            platform_, crypto_, uss_storage_, async_cc_helper,
+            key_challenge_service_factory_, fingerprint_service_.get(),
+            async_biometrics_service);
     auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
   }
 
@@ -686,8 +684,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
         std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
             crypto_, platform_, sessions_, keyset_management_,
             auth_block_utility_, auth_factor_driver_manager_,
-            auth_factor_manager_, uss_storage_, user_metadata_reader_.get(),
-            &async_init_features_});
+            auth_factor_manager_, uss_storage_, &async_init_features_});
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 

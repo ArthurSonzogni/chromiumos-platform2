@@ -68,8 +68,6 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/user_secret_stash/storage.h"
-#include "cryptohome/user_secret_stash/user_metadata.h"
-#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/user_session_map.h"
@@ -288,13 +286,16 @@ class AuthSessionTest : public ::testing::Test {
       base::SequencedTaskRunner::GetCurrentDefault();
 
   // Mocks and fakes for the test AuthSessions to use.
+  NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_{&hwsec_, &pinweaver_, &hwsec_pw_manager_,
                  &cryptohome_keys_manager_, nullptr};
-  NiceMock<MockPlatform> platform_;
+  UssStorage uss_storage_{&platform_};
+  UserUssStorage user_uss_storage_{uss_storage_,
+                                   SanitizeUserName(kFakeUsername)};
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
@@ -307,19 +308,15 @@ class AuthSessionTest : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
+      &uss_storage_,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           [](AuthSessionTest* test) { return test->bio_service_.get(); },
-          base::Unretained(this))),
-      nullptr};
+          base::Unretained(this)))};
   AuthFactorManager auth_factor_manager_{&platform_};
   FakeFeaturesForTesting fake_features_;
-  UssStorage uss_storage_{&platform_};
-  UserUssStorage user_uss_storage_{uss_storage_,
-                                   SanitizeUserName(kFakeUsername)};
-  UserMetadataReader user_metadata_reader_{&uss_storage_};
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
                                          &user_session_map_,
@@ -328,7 +325,6 @@ class AuthSessionTest : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &uss_storage_,
-                                         &user_metadata_reader_,
                                          &fake_features_.async};
 
   // Mocks and fakes for UserSession to use.

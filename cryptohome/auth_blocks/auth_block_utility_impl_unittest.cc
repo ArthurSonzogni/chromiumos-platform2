@@ -189,6 +189,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
       recovery_crypto_fake_backend_;
   Crypto crypto_;
+  UssStorage uss_storage_{&platform_};
   std::unique_ptr<KeysetManagement> keyset_management_;
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
@@ -200,12 +201,12 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
+      &uss_storage_,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_,
       &fp_service_,
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
-          &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this))),
-      nullptr};
+          &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this)))};
 
   FakeFeaturesForTesting features_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;

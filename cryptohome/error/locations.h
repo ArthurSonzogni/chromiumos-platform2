@@ -1883,7 +1883,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManExpiredInConvertTpmError = 3391,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFingerprintGetFactorDelayWrongFactorType = 3392,
-  /* ./auth_factor/types/fingerprint.cc */
+  /* =Obsolete= */
   kLocAuthFactorFingerprintGetFactorDelayNoUserMetadataReader = 3393,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFingerprintGetFactorDelayLoadMetadataFailed = 3394,
@@ -1895,7 +1895,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorCommonIsExpiredUnsupported = 3397,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFingerprintIsExpiredWrongFactorType = 3398,
-  /* ./auth_factor/types/fingerprint.cc */
+  /* =Obsolete= */
   kLocAuthFactorFingerprintIsExpiredNoUserMetadataReader = 3399,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFingerprintIsExpiredLoadMetadataFailed = 3400,

@@ -29,7 +29,7 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
-#include "cryptohome/user_secret_stash/user_metadata.h"
+#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -182,22 +182,16 @@ CryptohomeStatusOr<base::TimeDelta> FingerprintAuthFactorDriver::GetFactorDelay(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  if (!user_metadata_reader_) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocAuthFactorFingerprintGetFactorDelayNoUserMetadataReader),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  }
-  CryptohomeStatusOr<UserMetadata> user_metadata =
-      user_metadata_reader_->Load(username);
-  if (!user_metadata.ok()) {
+  UserUssStorage user_storage(*uss_storage_, username);
+  CryptohomeStatusOr<EncryptedUss> uss =
+      EncryptedUss::FromStorage(user_storage);
+  if (!uss.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthFactorFingerprintGetFactorDelayLoadMetadataFailed))
-        .Wrap(std::move(user_metadata).err_status());
+        .Wrap(std::move(uss).err_status());
   }
-  if (!user_metadata->fingerprint_rate_limiter_id.has_value()) {
+  if (!uss->fingerprint_rate_limiter_id()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintGetFactorDelayNoLabel),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -205,7 +199,7 @@ CryptohomeStatusOr<base::TimeDelta> FingerprintAuthFactorDriver::GetFactorDelay(
   }
   // Try and extract the delay from the LE credential manager.
   auto delay_in_seconds = crypto_->GetPinWeaverManager()->GetDelayInSeconds(
-      *user_metadata->fingerprint_rate_limiter_id);
+      *uss->fingerprint_rate_limiter_id());
   if (!delay_in_seconds.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
@@ -234,22 +228,16 @@ CryptohomeStatusOr<bool> FingerprintAuthFactorDriver::IsExpired(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  if (!user_metadata_reader_) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocAuthFactorFingerprintIsExpiredNoUserMetadataReader),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  }
-  CryptohomeStatusOr<UserMetadata> user_metadata =
-      user_metadata_reader_->Load(username);
-  if (!user_metadata.ok()) {
+  UserUssStorage user_storage(*uss_storage_, username);
+  CryptohomeStatusOr<EncryptedUss> uss =
+      EncryptedUss::FromStorage(user_storage);
+  if (!uss.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthFactorFingerprintIsExpiredLoadMetadataFailed))
-        .Wrap(std::move(user_metadata).err_status());
+        .Wrap(std::move(uss).err_status());
   }
-  if (!user_metadata->fingerprint_rate_limiter_id.has_value()) {
+  if (!uss->fingerprint_rate_limiter_id()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintIsExpiredNoLabel),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -258,7 +246,7 @@ CryptohomeStatusOr<bool> FingerprintAuthFactorDriver::IsExpired(
   // Try and extract the expiration from the LE credential manager.
   hwsec::StatusOr<std::optional<uint32_t>> time_until_expiration_in_seconds =
       crypto_->GetPinWeaverManager()->GetExpirationInSeconds(
-          *user_metadata->fingerprint_rate_limiter_id);
+          *uss->fingerprint_rate_limiter_id());
   if (!time_until_expiration_in_seconds.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthFactorFingerprintIsExpiredReadFailed))
