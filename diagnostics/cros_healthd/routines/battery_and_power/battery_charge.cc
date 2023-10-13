@@ -101,8 +101,7 @@ void BatteryChargeRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
   if (include_output && !output_.empty()) {
     std::string json;
     base::JSONWriter::Write(output_, &json);
-    response->output =
-        CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
+    response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
   }
 }
 

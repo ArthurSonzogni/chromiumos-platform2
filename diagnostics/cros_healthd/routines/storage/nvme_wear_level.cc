@@ -111,8 +111,7 @@ void NvmeWearLevelRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
         status != mojom::DiagnosticRoutineStatusEnum::kCancelled) {
       std::string json;
       base::JSONWriter::Write(output_dict_, &json);
-      response->output =
-          CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
+      response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
     }
   }
 }

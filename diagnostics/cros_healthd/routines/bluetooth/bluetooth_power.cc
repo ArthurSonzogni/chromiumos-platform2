@@ -76,8 +76,7 @@ void BluetoothPowerRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
   if (include_output) {
     std::string json;
     base::JSONWriter::Write(output_dict_, &json);
-    response->output =
-        CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
+    response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
   }
 
   // The routine is failed.

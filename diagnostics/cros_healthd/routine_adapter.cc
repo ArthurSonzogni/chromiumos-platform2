@@ -135,7 +135,7 @@ mojo::ScopedHandle ConvertRoutineDetailToMojoHandle(
     const mojom::RoutineDetailPtr& detail) {
   std::string json;
   base::JSONWriter::Write(ConvertRoutineDetailToOutputDict(detail), &json);
-  return CreateReadOnlySharedMemoryRegionMojoHandle(std::string_view(json));
+  return CreateReadOnlySharedMemoryRegionMojoHandle(json);
 }
 
 }  // namespace

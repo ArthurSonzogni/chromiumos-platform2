@@ -11,7 +11,6 @@
 #include <base/check_op.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 
 #include "diagnostics/base/mojo_utils.h"
@@ -66,8 +65,7 @@ void SimpleRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
   if (include_output && !output_dict_.empty()) {
     std::string json;
     base::JSONWriter::Write(output_dict_, &json);
-    response->output =
-        CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
+    response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
   }
 }
 
