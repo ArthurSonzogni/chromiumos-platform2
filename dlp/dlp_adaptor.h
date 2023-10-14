@@ -16,6 +16,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <featured/feature_library.h>
 #include <metrics/metrics_library.h>
@@ -280,6 +281,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // Files that were added before database was initialized, so they need to be
   // added once it's ready.
   std::vector<FileEntry> pending_files_to_add_;
+
+  // Declared last so weak pointers are invalidated first on destruction.
+  base::WeakPtrFactory<DlpAdaptor> weak_factory_{this};
 };
 
 }  // namespace dlp

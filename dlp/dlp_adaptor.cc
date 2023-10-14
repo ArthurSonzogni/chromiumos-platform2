@@ -256,7 +256,7 @@ void DlpAdaptor::AddFiles(
 
   db_->UpsertFileEntries(
       files_to_add,
-      base::BindOnce(&DlpAdaptor::OnFilesUpserted, base::Unretained(this),
+      base::BindOnce(&DlpAdaptor::OnFilesUpserted, weak_factory_.GetWeakPtr(),
                      std::move(response), std::move(files_paths),
                      std::move(files_ids)));
 }
@@ -312,7 +312,7 @@ void DlpAdaptor::RequestFileAccess(
   db_->GetFileEntriesByIds(
       ids, /*ignore_crtime=*/false,
       base::BindOnce(&DlpAdaptor::ProcessRequestFileAccessWithData,
-                     base::Unretained(this), std::move(response),
+                     weak_factory_.GetWeakPtr(), std::move(response),
                      std::move(request), std::move(local_fd),
                      std::move(remote_fd)));
 }
@@ -388,7 +388,7 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
 
   std::pair<RequestFileAccessCallback, RequestFileAccessCallback> callbacks =
       base::SplitOnceCallback(base::BindOnce(
-          &DlpAdaptor::ReplyOnRequestFileAccess, base::Unretained(this),
+          &DlpAdaptor::ReplyOnRequestFileAccess, weak_factory_.GetWeakPtr(),
           std::move(response), std::move(remote_fd)));
 
   if (request.has_destination_url())
@@ -404,12 +404,13 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
 
   dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
       SerializeProto(matching_request),
-      base::BindOnce(&DlpAdaptor::OnRequestFileAccess, base::Unretained(this),
-                     std::move(request_ids), std::move(granted_ids),
-                     request.process_id(), std::move(local_fd),
-                     std::move(callbacks.first), std::move(cache_callback)),
+      base::BindOnce(&DlpAdaptor::OnRequestFileAccess,
+                     weak_factory_.GetWeakPtr(), std::move(request_ids),
+                     std::move(granted_ids), request.process_id(),
+                     std::move(local_fd), std::move(callbacks.first),
+                     std::move(cache_callback)),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccessError,
-                     base::Unretained(this), std::move(callbacks.second)),
+                     weak_factory_.GetWeakPtr(), std::move(callbacks.second)),
       /*timeout_ms=*/base::Minutes(5).InMilliseconds());
 }
 
@@ -456,7 +457,7 @@ void DlpAdaptor::GetFilesSources(
   db_->GetFileEntriesByIds(
       ids, /*ignore_crtime=*/true,
       base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
-                     base::Unretained(this), std::move(response),
+                     weak_factory_.GetWeakPtr(), std::move(response),
                      requested_files));
 }
 
@@ -493,7 +494,7 @@ void DlpAdaptor::CheckFilesTransfer(
   db_->GetFileEntriesByIds(
       ids, /*ignore_crtime=*/false,
       base::BindOnce(&DlpAdaptor::ProcessCheckFilesTransferWithData,
-                     base::Unretained(this), std::move(response),
+                     weak_factory_.GetWeakPtr(), std::move(response),
                      std::move(request)));
 }
 
@@ -522,9 +523,9 @@ void DlpAdaptor::InitDatabase(const base::FilePath& database_path,
       std::make_unique<DlpDatabase>(database_file, this);
   DlpDatabase* db_ptr = db.get();
 
-  db_ptr->Init(base::BindOnce(&DlpAdaptor::OnDatabaseInitialized,
-                              base::Unretained(this), std::move(init_callback),
-                              std::move(db), database_path));
+  db_ptr->Init(base::BindOnce(
+      &DlpAdaptor::OnDatabaseInitialized, weak_factory_.GetWeakPtr(),
+      std::move(init_callback), std::move(db), database_path));
 }
 
 void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
@@ -547,9 +548,9 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
     base::SingleThreadTaskRunner::GetCurrentDefault()
         ->PostTaskAndReplyWithResult(
             FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
-            base::BindOnce(&DlpAdaptor::MigrateDatabase, base::Unretained(this),
-                           std::move(db), std::move(init_callback),
-                           database_path));
+            base::BindOnce(&DlpAdaptor::MigrateDatabase,
+                           weak_factory_.GetWeakPtr(), std::move(db),
+                           std::move(init_callback), database_path));
     return;
   }
 
@@ -561,7 +562,7 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
     db_ptr->UpsertFileEntries(
         files_being_added,
         base::BindOnce(&DlpAdaptor::OnPendingFilesUpserted,
-                       base::Unretained(this), std::move(init_callback),
+                       weak_factory_.GetWeakPtr(), std::move(init_callback),
                        std::move(db), database_path, db_status));
     return;
   }
@@ -576,7 +577,7 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
         ->PostTaskAndReplyWithResult(
             FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
             base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase,
-                           base::Unretained(this), std::move(db),
+                           weak_factory_.GetWeakPtr(), std::move(db),
                            std::move(init_callback)));
   } else {
     OnDatabaseCleaned(std::move(db), std::move(init_callback),
@@ -610,7 +611,7 @@ void DlpAdaptor::AddPerFileWatch(
   db_->GetFileEntriesByIds(
       ids, /*ignore_crtime=*/false,
       base::BindOnce(&DlpAdaptor::ProcessAddPerFileWatchWithData,
-                     base::Unretained(this), files));
+                     weak_factory_.GetWeakPtr(), files));
 }
 
 void DlpAdaptor::ProcessAddPerFileWatchWithData(
@@ -641,7 +642,7 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
         ->PostTaskAndReplyWithResult(
             FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
             base::BindOnce(&DlpAdaptor::AddPerFileWatch,
-                           base::Unretained(this)));
+                           weak_factory_.GetWeakPtr()));
   } else {
     pending_per_file_watches_ = true;
   }
@@ -665,7 +666,7 @@ void DlpAdaptor::ProcessFileOpenRequest(
   db_->GetFileEntriesByIds(
       {id}, /*ignore_crtime=*/false,
       base::BindOnce(&DlpAdaptor::ProcessFileOpenRequestWithData,
-                     base::Unretained(this), pid, std::move(callback)));
+                     weak_factory_.GetWeakPtr(), pid, std::move(callback)));
 }
 
 void DlpAdaptor::ProcessFileOpenRequestWithData(
@@ -703,10 +704,10 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
       callbacks = base::SplitOnceCallback(std::move(callback));
   dlp_files_policy_service_->IsDlpPolicyMatchedAsync(
       SerializeProto(request),
-      base::BindOnce(&DlpAdaptor::OnDlpPolicyMatched, base::Unretained(this),
-                     std::move(callbacks.first)),
+      base::BindOnce(&DlpAdaptor::OnDlpPolicyMatched,
+                     weak_factory_.GetWeakPtr(), std::move(callbacks.first)),
       base::BindOnce(&DlpAdaptor::OnDlpPolicyMatchedError,
-                     base::Unretained(this), std::move(callbacks.second)));
+                     weak_factory_.GetWeakPtr(), std::move(callbacks.second)));
 }
 
 void DlpAdaptor::OnFileDeleted(ino64_t inode) {
@@ -903,7 +904,7 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
 
   auto callbacks = base::SplitOnceCallback(
       base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
-                     base::Unretained(this), std::move(response)));
+                     weak_factory_.GetWeakPtr(), std::move(response)));
 
   auto cache_callback =
       base::BindOnce(&DlpRequestsCache::CacheResult,
@@ -912,11 +913,11 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
   dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
       SerializeProto(matching_request),
       base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestricted,
-                     base::Unretained(this), std::move(files_to_check),
+                     weak_factory_.GetWeakPtr(), std::move(files_to_check),
                      std::move(already_restricted), std::move(callbacks.first),
                      std::move(cache_callback)),
       base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestrictedError,
-                     base::Unretained(this), std::move(callbacks.second)),
+                     weak_factory_.GetWeakPtr(), std::move(callbacks.second)),
       /*timeout_ms=*/base::Minutes(5).InMilliseconds());
 }
 
@@ -1008,7 +1009,7 @@ int DlpAdaptor::AddLifelineFd(int dbus_fd) {
 
   lifeline_fd_controllers_[fd] = base::FileDescriptorWatcher::WatchReadable(
       fd, base::BindRepeating(&DlpAdaptor::OnLifelineFdClosed,
-                              base::Unretained(this), fd));
+                              weak_factory_.GetWeakPtr(), fd));
 
   return fd;
 }
@@ -1055,7 +1056,7 @@ void DlpAdaptor::CleanupAndSetDatabase(
 
   db_ptr->DeleteFileEntriesWithIdsNotInSet(
       ids,
-      base::BindOnce(&DlpAdaptor::OnDatabaseCleaned, base::Unretained(this),
+      base::BindOnce(&DlpAdaptor::OnDatabaseCleaned, weak_factory_.GetWeakPtr(),
                      std::move(db), std::move(callback)));
 }
 
@@ -1072,7 +1073,7 @@ void DlpAdaptor::OnDatabaseCleaned(std::unique_ptr<DlpDatabase> db,
           ->PostTaskAndReplyWithResult(
               FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
               base::BindOnce(&DlpAdaptor::AddPerFileWatch,
-                             base::Unretained(this)));
+                             weak_factory_.GetWeakPtr()));
       pending_per_file_watches_ = false;
     }
     std::move(callback).Run();
@@ -1093,9 +1094,9 @@ void DlpAdaptor::MigrateDatabase(
   }
 
   db_ptr->MigrateDatabase(
-      ids,
-      base::BindOnce(&DlpAdaptor::OnDatabaseMigrated, base::Unretained(this),
-                     std::move(db), std::move(callback), database_path));
+      ids, base::BindOnce(&DlpAdaptor::OnDatabaseMigrated,
+                          weak_factory_.GetWeakPtr(), std::move(db),
+                          std::move(callback), database_path));
 }
 
 void DlpAdaptor::OnDatabaseMigrated(std::unique_ptr<DlpDatabase> db,
