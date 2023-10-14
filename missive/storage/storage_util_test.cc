@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <limits>
 #include <tuple>
 #include <unordered_set>
 #include <utility>
@@ -17,12 +16,17 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <base/uuid.h>
 #include <gtest/gtest.h>
 
+#include "gmock/gmock.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_util.h"
+
+using ::testing::Eq;
+using ::testing::IsEmpty;
 
 namespace reporting {
 
@@ -46,16 +50,16 @@ class StorageDirectoryTest : public ::testing::Test {
   // Creates an empty metadata file in `queue_directory`.
   static void CreateMetaDataFileInDirectory(
       const base::FilePath queue_directory) {
-    CHECK(base::DirectoryExists(queue_directory));
+    ASSERT_TRUE(base::DirectoryExists(queue_directory));
 
     const auto meta_file_path =
         queue_directory.Append(StorageQueue::kMetadataFileNamePrefix);
     auto file = base::File(meta_file_path,
                            base::File::Flags::FLAG_CREATE_ALWAYS |
                                base::File::FLAG_WRITE | base::File::FLAG_READ);
-    CHECK(file.created());
-    CHECK(file.IsValid());
-    CHECK(PathExists(meta_file_path));
+    ASSERT_TRUE(file.created());
+    ASSERT_TRUE(file.IsValid());
+    ASSERT_TRUE(PathExists(meta_file_path));
   }
 
   // Creates a record file with zero size in `queue_directory` and returns the
@@ -95,7 +99,8 @@ class StorageDirectoryTest : public ::testing::Test {
         CreateGenerationGuid());
   }
 
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   base::ScopedTempDir location_;
   StorageOptions storage_options_;
 };
@@ -121,12 +126,12 @@ TEST_F(StorageDirectoryTest, MultigenerationQueueDirectoriesAreFound) {
     ASSERT_TRUE(base::CreateDirectory(queue_directory_filepath));
 
     expected_priority_generation_guid_pairs.emplace(
-        std::make_tuple(priority, generation_guid));
+        std::make_tuple(priority, generation_guid, queue_directory_filepath));
   }
 
   const auto kExpectedNumQueueDirectories = queue_options_list.size();
   const auto priority_generation_guid_pairs =
-      StorageDirectory::FindQueueDirectories(storage_options_);
+      StorageDirectory::GetQueueDirectories(storage_options_);
 
   EXPECT_EQ(priority_generation_guid_pairs.size(),
             kExpectedNumQueueDirectories);
@@ -150,12 +155,12 @@ TEST_F(StorageDirectoryTest, LegacyQueueDirectoriesAreFound) {
 
     // Generation guid should be empty string
     expected_priority_generation_guid_pairs.emplace(
-        std::make_tuple(priority, ""));
+        std::make_tuple(priority, "", legacy_queue_filepath));
   }
 
   const auto kExpectedNumLegacyQueueDirectories = queue_options.size();
   const auto priority_generation_guid_pairs =
-      StorageDirectory::FindQueueDirectories(storage_options_);
+      StorageDirectory::GetQueueDirectories(storage_options_);
 
   EXPECT_EQ(priority_generation_guid_pairs.size(),
             kExpectedNumLegacyQueueDirectories);
@@ -176,7 +181,7 @@ TEST_F(StorageDirectoryTest, MixedQueueDirectoriesAreFound) {
 
   const int expected_num_queue_directories = 2;
   const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(storage_options_).size();
+      StorageDirectory::GetQueueDirectories(storage_options_).size();
 
   EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
 }
@@ -192,6 +197,7 @@ TEST_F(StorageDirectoryTest, EmptyLegacyQueueDirectoriesAreNotDeleted) {
   // server.
   CreateEmptyRecordFileInDirectory(legacy_queue_directory_path);
   CreateMetaDataFileInDirectory(legacy_queue_directory_path);
+  ASSERT_FALSE(base::IsDirectoryEmpty(legacy_queue_directory_path));
 
   EXPECT_TRUE(StorageDirectory::DeleteEmptyMultigenerationQueueDirectories(
       storage_options_.directory()));
@@ -201,7 +207,7 @@ TEST_F(StorageDirectoryTest, EmptyLegacyQueueDirectoriesAreNotDeleted) {
 
   const int expected_num_queue_directories = 1;
   const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(storage_options_).size();
+      StorageDirectory::GetQueueDirectories(storage_options_).size();
   EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
 }
 
@@ -218,6 +224,7 @@ TEST_F(StorageDirectoryTest, EmptyMultigenerationQueueDirectoriesAreDeleted) {
   // server.
   CreateEmptyRecordFileInDirectory(multigenerational_queue_directory_path);
   CreateMetaDataFileInDirectory(multigenerational_queue_directory_path);
+  ASSERT_FALSE(base::IsDirectoryEmpty(multigenerational_queue_directory_path));
 
   EXPECT_TRUE(StorageDirectory::DeleteEmptyMultigenerationQueueDirectories(
       storage_options_.directory()));
@@ -228,7 +235,7 @@ TEST_F(StorageDirectoryTest, EmptyMultigenerationQueueDirectoriesAreDeleted) {
   // We should find zero queue directories
   const int expected_num_queue_directories = 0;
   const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(storage_options_).size();
+      StorageDirectory::GetQueueDirectories(storage_options_).size();
   EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
 }
 
@@ -255,8 +262,107 @@ TEST_F(StorageDirectoryTest,
   EXPECT_TRUE(base::DirectoryExists(multigenerational_queue_directory_path));
   const int expected_num_queue_directories = 1;
   const int num_queue_directories =
-      StorageDirectory::FindQueueDirectories(storage_options_).size();
+      StorageDirectory::GetQueueDirectories(storage_options_).size();
   EXPECT_EQ(num_queue_directories, expected_num_queue_directories);
+}
+
+TEST_F(StorageDirectoryTest, LegacyQueuesAreNeverGarbageCollected) {
+  // Create a legacy queue directory.
+  const base::FilePath legacy_queue_directory_path =
+      GetLegacyQueueDirectoryPath();
+  ASSERT_TRUE(base::CreateDirectory(legacy_queue_directory_path));
+
+  storage_options_.set_queue_garbage_collection_period(base::Seconds(5));
+
+  // Wait for the garbage collection period.
+  task_environment_.FastForwardBy(
+      storage_options_.queue_garbage_collection_period());
+
+  // Since this is a legacy queue it should not be garbage collected.
+  constexpr int kExpectedNumQueuesToGarbageCollect = 0;
+  EXPECT_THAT(StorageDirectory::GetMultigenerationQueuesToGarbageCollect(
+                  storage_options_)
+                  .size(),
+              testing::Eq(kExpectedNumQueuesToGarbageCollect));
+}
+
+// Verify that queues are garbage collected if they have not been modified
+// within the configured time period.
+TEST_F(StorageDirectoryTest, EmptyQueuesAreGarbageCollected) {
+  // Create a multigenerational queue directory.
+  const base::FilePath multigenerational_queue_directory_path =
+      GetMultigenerationQueueDirectoryPath();
+  ASSERT_TRUE(base::CreateDirectory(multigenerational_queue_directory_path));
+
+  // Setup an "empty" queue directory. No unconfirmed records.
+  CreateEmptyRecordFileInDirectory(multigenerational_queue_directory_path);
+  CreateMetaDataFileInDirectory(multigenerational_queue_directory_path);
+  ASSERT_FALSE(base::IsDirectoryEmpty(multigenerational_queue_directory_path));
+
+  storage_options_.set_queue_garbage_collection_period(base::Seconds(5));
+
+  // Fast forward to garbage collection time.
+  task_environment_.FastForwardBy(
+      storage_options_.queue_garbage_collection_period());
+
+  constexpr int kExpectedNumQueuesToGarbageCollect = 1;
+  EXPECT_THAT(StorageDirectory::GetMultigenerationQueuesToGarbageCollect(
+                  storage_options_)
+                  .size(),
+              Eq(kExpectedNumQueuesToGarbageCollect));
+}
+
+TEST_F(StorageDirectoryTest, RecentlyModifiedQueuesAreNotGarbageCollected) {
+  // Create a multigenerational queue directory.
+  const base::FilePath multigenerational_queue_directory_path =
+      GetMultigenerationQueueDirectoryPath();
+  ASSERT_TRUE(base::CreateDirectory(multigenerational_queue_directory_path));
+
+  storage_options_.set_queue_garbage_collection_period(base::Seconds(5));
+
+  // Forward time to just before the collection period.
+  const auto delay = base::Seconds(2);
+  task_environment_.FastForwardBy(
+      storage_options_.queue_garbage_collection_period() - delay);
+
+  // Modify the directory before the collection period finishes.
+  base::TouchFile(multigenerational_queue_directory_path, base::Time::Now(),
+                  base::Time::Now());
+
+  // Wait for the remainder of the collection period.
+  task_environment_.FastForwardBy(delay);
+
+  // Should not garbage collect this directory because it was modified within
+  // the collection period.
+  constexpr int kExpectedNumQueuesToGarbageCollect = 0;
+  EXPECT_THAT(StorageDirectory::GetMultigenerationQueuesToGarbageCollect(
+                  storage_options_)
+                  .size(),
+              testing::Eq(kExpectedNumQueuesToGarbageCollect));
+}
+
+TEST_F(StorageDirectoryTest, GarbageCollectionDoesNotOccurTooEarly) {
+  // Create a multigenerational queue directory.
+  const base::FilePath multigenerational_queue_directory_path =
+      GetMultigenerationQueueDirectoryPath();
+  ASSERT_TRUE(base::CreateDirectory(multigenerational_queue_directory_path));
+
+  // Modify the directory.
+  base::TouchFile(multigenerational_queue_directory_path, base::Time::Now(),
+                  base::Time::Now());
+
+  storage_options_.set_queue_garbage_collection_period(base::Seconds(5));
+
+  // Forward time to just before the collection period.
+  task_environment_.FastForwardBy(
+      storage_options_.queue_garbage_collection_period() - base::Seconds(1));
+
+  // Shouldn't garbage collect anything because we haven't reached the period.
+  constexpr int kExpectedNumQueuesToGarbageCollect = 0;
+  EXPECT_THAT(StorageDirectory::GetMultigenerationQueuesToGarbageCollect(
+                  storage_options_)
+                  .size(),
+              testing::Eq(kExpectedNumQueuesToGarbageCollect));
 }
 
 }  // namespace

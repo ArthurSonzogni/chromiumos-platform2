@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include <absl/container/flat_hash_set.h>
 #include <base/files/file.h>
 #include <base/functional/callback_forward.h>
 #include <base/memory/ref_counted.h>
@@ -88,7 +89,21 @@ class QueuesContainer
   // Removes references to all queues inside `queues_`.
   void DropAllQueues();
 
+  // Removes references to the queue associated with `priority` and
+  // `generation_guid` and inside `queues_`. Returns the number of queues
+  // removed.
+  size_t DropQueue(const Priority priority,
+                   const GenerationGuid& generation_guid);
+
   base::WeakPtr<QueuesContainer> GetWeakPtr();
+
+  // Returns a `GenerationGuid` by either retrieving an existing guid based on
+  // `dm_token` and `priority`, or creating a new one.
+  GenerationGuid GetOrCreateGenerationGuid(const DMtoken& dm_token,
+                                           Priority priority);
+  // Delete multigenerational `StorageQueue`s that have not been used
+  // within the garbage collection period defined in `options_`.
+  void GarbageCollectQueues(StorageOptions options);
 
   // Accessors.
   bool storage_degradation_enabled() const;
@@ -102,7 +117,7 @@ class QueuesContainer
   friend class base::DeleteHelper<QueuesContainer>;
 
   // Map used to retrieve queues for writes, confirms, and flushes.
-  struct Hash {
+  struct QueuesMapHash {
     size_t operator()(
         const std::tuple<Priority, GenerationGuid>& v) const noexcept {
       const auto& [priority, guid] = v;
@@ -114,16 +129,50 @@ class QueuesContainer
 
   using QueuesMap = std::unordered_map<std::tuple<Priority, GenerationGuid>,
                                        scoped_refptr<StorageQueue>,
-                                       Hash>;
+                                       QueuesMapHash>;
+
+  // Map that associates <DM token, Priority> of users or the device with a
+  // unique GenerationGuid which is then associated to a queue in the `queues_`
+  // map. Only queues with their GenerationGuid in this map can be written to
+  // and are considered "active". Queues that are not accepting new events (i.e.
+  // queues that contained data before storage was shut down), will not have
+  // their GenerationGuid in this map, but will still exists in the `queues_`
+  // map so that they can send their remaining events.
+  struct GenerationGuidMapHash {
+    size_t operator()(const std::tuple<DMtoken, Priority>& v) const noexcept {
+      static constexpr std::hash<DMtoken> dm_token_hasher;
+      static constexpr std::hash<Priority> priority_hasher;
+      const auto& [token, priority] = v;
+      return dm_token_hasher(token) ^ priority_hasher(priority);
+    }
+  };
+  using GenerationGuidMap = std::unordered_map<std::tuple<DMtoken, Priority>,
+                                               GenerationGuid,
+                                               GenerationGuidMapHash>;
 
   QueuesContainer(
       bool storage_degradation_enabled,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
+  // Creates a generation guid for this dm token, maps it to the dm token,
+  // and returns the generation guid. Returns error if a generation guid exists
+  // for this dm token already.
+  StatusOr<GenerationGuid> CreateGenerationGuidForDMToken(
+      const DMtoken& dm_token, Priority priority);
+
+  // Returns the generation guid associated with `dm_token` or error if no
+  // generation guid exists for `dm_token`.
+  StatusOr<GenerationGuid> GetGenerationGuid(const DMtoken& dm_token,
+                                             Priority priority);
+
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
 
   QueuesMap queues_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // <DM token, Priority> -> Generation guid map
+  GenerationGuidMap dmtoken_to_generation_guid_map_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Weak ptr factory.
   base::WeakPtrFactory<QueuesContainer> weak_ptr_factory_{this};
