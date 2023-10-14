@@ -20,8 +20,17 @@
 
 namespace {
 
+enum class ParseErrorReason {
+  kErrorFileIO,
+  kErrorEventHeaderParsing,
+  kErrorTlvParsing,
+  kErrorDataLength,
+  kErrorEventDataParsing,
+};
+
 std::string CreateDumpEntry(const std::string& key, const std::string& value);
 bool ReportDefaultPC(base::File& file, std::string* pc);
+bool ReportParseError(ParseErrorReason error_code, base::File& file);
 
 }  // namespace
 
@@ -34,12 +43,6 @@ namespace intel {
 constexpr char kVendorName[] = "Intel";
 constexpr int kAddrLen = 4;
 constexpr uint8_t kDebugCode = 0xFF;
-
-enum ParseErrorReason {
-  kErrorFileIO,
-  kErrorEventHeaderParsing,
-  kErrorTlvParsing,
-};
 
 // Possible values for TlvHeader::type
 enum TlvTypeId {
@@ -318,15 +321,6 @@ bool ParseExceptionSubtype(base::File& file, std::string* line) {
   return true;
 }
 
-bool ReportParseError(ParseErrorReason error_code, base::File& file) {
-  std::string line = CreateDumpEntry("Parse Failure Reason",
-                                     base::StringPrintf("%d", error_code));
-  if (!file.WriteAtCurrentPosAndCheck(base::as_bytes(base::make_span(line)))) {
-    return false;
-  }
-  return true;
-}
-
 bool ParseIntelDump(const base::FilePath& coredump_path,
                     const base::FilePath& target_path,
                     const int64_t dump_start,
@@ -347,7 +341,7 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
                << base::File::ErrorToString(dump_file.error_details());
     // Use the default value for PC and report an empty dump.
     if (!ReportDefaultPC(target_file, pc) ||
-        !ReportParseError(kErrorFileIO, target_file)) {
+        !ReportParseError(ParseErrorReason::kErrorFileIO, target_file)) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
@@ -358,7 +352,7 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
     PLOG(ERROR) << "Error seeking file " << coredump_path;
     // Use the default value for PC and report an empty dump.
     if (!ReportDefaultPC(target_file, pc) ||
-        !ReportParseError(kErrorFileIO, target_file)) {
+        !ReportParseError(ParseErrorReason::kErrorFileIO, target_file)) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
@@ -379,7 +373,8 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
   if (!ret) {
     // Use the default value for PC and report an empty dump.
     if (!ReportDefaultPC(target_file, pc) ||
-        !ReportParseError(kErrorEventHeaderParsing, target_file)) {
+        !ReportParseError(ParseErrorReason::kErrorEventHeaderParsing,
+                          target_file)) {
       PLOG(ERROR) << "Error writing to target file " << target_path;
       return false;
     }
@@ -395,7 +390,7 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
     if (!ret || tlv_len <= 0 || tlv_len > data_len) {
       LOG(ERROR) << "Error parsing TLV header with type " << tlv_type
                  << " and length " << tlv_len;
-      if (!ReportParseError(kErrorTlvParsing, target_file)) {
+      if (!ReportParseError(ParseErrorReason::kErrorTlvParsing, target_file)) {
         PLOG(ERROR) << "Error writing to target file " << target_path;
         return false;
       }
@@ -442,7 +437,7 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
       // erroneous information.
       LOG(ERROR) << "Error parsing TLV with type " << tlv_type << " and length "
                  << tlv_len;
-      if (!ReportParseError(kErrorTlvParsing, target_file)) {
+      if (!ReportParseError(ParseErrorReason::kErrorTlvParsing, target_file)) {
         PLOG(ERROR) << "Error writing to target file " << target_path;
         return false;
       }
@@ -471,6 +466,242 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
 
 }  // namespace intel
 
+namespace realtek {
+
+// More information about Realtek telemetry spec: go/cros-bt-realtek-telemetry
+
+constexpr char kVendorName[] = "Realtek";
+constexpr uint8_t kOpCodeEventField = 0xFF;
+
+struct EventHeader {
+  uint8_t devcd_code[4];
+  uint8_t opcode_event_field;
+  uint8_t len;
+} __attribute__((packed));
+
+struct EventData {
+  uint8_t sub_event_code;
+  uint8_t reserved;
+  uint8_t isr;
+  uint8_t isr_number;
+  uint8_t cpu_idle;
+  uint8_t signal_id[2];
+  uint8_t isr_cause[4];
+  uint8_t isr_cnts[4];
+  uint8_t last_epc[4];
+  uint8_t timer_handle[4];
+  uint8_t calendar_table_index;
+  uint8_t timer_count;
+  uint8_t timer_value[4];
+  uint8_t timeout_function[4];
+  uint8_t timer_type;
+  uint8_t timer_args[4];
+  uint8_t next_os_timer[4];
+  uint8_t state_of_timer;
+  uint8_t sniff_tick_timer[4];
+  uint8_t isr_cause_ori[4];
+  uint8_t return_addr[4];
+} __attribute__((packed));
+
+bool ParseEventHeader(base::File& file, int& data_len, std::string& out) {
+  struct EventHeader evt_header;
+  int ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&evt_header),
+                                  sizeof(evt_header));
+  if (ret < sizeof(evt_header)) {
+    LOG(WARNING) << "Error reading Realtek devcoredump Event Header";
+    return false;
+  }
+
+  out = base::StrCat(
+      {CreateDumpEntry("Realtek Event Header",
+                       base::HexEncode(&evt_header, sizeof(evt_header))),
+       CreateDumpEntry("Devcoredump Code",
+                       base::HexEncode(&evt_header.devcd_code,
+                                       sizeof(evt_header.devcd_code)))});
+
+  if (evt_header.opcode_event_field != kOpCodeEventField) {
+    LOG(WARNING) << "Incorrect Realtek OpCode Event Field";
+    return false;
+  }
+
+  data_len = evt_header.len;
+
+  return true;
+}
+
+bool ParseEventData(base::File& file, std::string* pc, std::string& out) {
+  struct EventData evt_data;
+  int ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&evt_data),
+                                  sizeof(evt_data));
+  if (ret < sizeof(evt_data)) {
+    LOG(WARNING) << "Error reading Realtek devcoredump Event Data";
+    return false;
+  }
+
+  *pc = base::HexEncode(&evt_data.last_epc, sizeof(evt_data.last_epc));
+
+  // Clang format inconsistently formats following lines. Disable clang format
+  // to keep it as it is for better readability.
+  // clang-format off
+  out = base::StrCat(
+      {CreateDumpEntry("Sub-event Code",
+                       base::HexEncode(&evt_data.sub_event_code,
+                                       sizeof(evt_data.sub_event_code))),
+       CreateDumpEntry("ISR",
+                       base::HexEncode(&evt_data.isr, sizeof(evt_data.isr))),
+       CreateDumpEntry("Number of ISR",
+                       base::HexEncode(&evt_data.isr_number,
+                                       sizeof(evt_data.isr_number))),
+       CreateDumpEntry("CPU Idle",
+                       base::HexEncode(&evt_data.cpu_idle,
+                                       sizeof(evt_data.cpu_idle))),
+       CreateDumpEntry("Signal ID",
+                       base::HexEncode(&evt_data.signal_id,
+                                       sizeof(evt_data.signal_id))),
+       CreateDumpEntry("ISR Cause",
+                       base::HexEncode(&evt_data.isr_cause,
+                                       sizeof(evt_data.isr_cause))),
+       CreateDumpEntry("ISR Cnts",
+                       base::HexEncode(&evt_data.isr_cnts,
+                                       sizeof(evt_data.isr_cnts))),
+       CreateDumpEntry("PC",
+                       base::HexEncode(&evt_data.last_epc,
+                                       sizeof(evt_data.last_epc))),
+       CreateDumpEntry("Timer Handle",
+                       base::HexEncode(&evt_data.timer_handle,
+                                       sizeof(evt_data.timer_handle))),
+       CreateDumpEntry("Calendar Table Index",
+                       base::HexEncode(&evt_data.calendar_table_index,
+                                       sizeof(evt_data.calendar_table_index))),
+       CreateDumpEntry("Timer Count",
+                       base::HexEncode(&evt_data.timer_count,
+                                       sizeof(evt_data.timer_count))),
+       CreateDumpEntry("Timer Value",
+                       base::HexEncode(&evt_data.timer_value,
+                                       sizeof(evt_data.timer_value))),
+       CreateDumpEntry("Timeout Function",
+                       base::HexEncode(&evt_data.timeout_function,
+                                       sizeof(evt_data.timeout_function))),
+       CreateDumpEntry("Timer Type",
+                       base::HexEncode(&evt_data.timer_type,
+                                       sizeof(evt_data.timer_type))),
+       CreateDumpEntry("Timer Args",
+                       base::HexEncode(&evt_data.timer_args,
+                                       sizeof(evt_data.timer_args))),
+       CreateDumpEntry("Next OS Timer",
+                       base::HexEncode(&evt_data.next_os_timer,
+                                       sizeof(evt_data.next_os_timer))),
+       CreateDumpEntry("State of Timer",
+                       base::HexEncode(&evt_data.state_of_timer,
+                                       sizeof(evt_data.state_of_timer))),
+       CreateDumpEntry("Sniff Tick Timer",
+                       base::HexEncode(&evt_data.sniff_tick_timer,
+                                       sizeof(evt_data.sniff_tick_timer))),
+       CreateDumpEntry("ISR Cause ori",
+                       base::HexEncode(&evt_data.isr_cause_ori,
+                                       sizeof(evt_data.isr_cause_ori))),
+       CreateDumpEntry("Return Addr",
+                       base::HexEncode(&evt_data.return_addr,
+                                       sizeof(evt_data.return_addr)))});
+  // clang-format on
+
+  return true;
+}
+
+bool ParseRealtekDump(const base::FilePath& coredump_path,
+                      const base::FilePath& target_path,
+                      const int64_t dump_start,
+                      std::string* pc) {
+  base::File dump_file(coredump_path,
+                       base::File::FLAG_OPEN | base::File::FLAG_READ);
+  base::File target_file(target_path,
+                         base::File::FLAG_OPEN | base::File::FLAG_APPEND);
+
+  if (!target_file.IsValid()) {
+    LOG(ERROR) << "Error opening file " << target_path << " Error: "
+               << base::File::ErrorToString(target_file.error_details());
+    return false;
+  }
+
+  if (!dump_file.IsValid()) {
+    LOG(ERROR) << "Error opening file " << coredump_path << " Error: "
+               << base::File::ErrorToString(dump_file.error_details());
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(ParseErrorReason::kErrorFileIO, target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  if (dump_file.Seek(base::File::FROM_BEGIN, dump_start) == -1) {
+    PLOG(ERROR) << "Error seeking file " << coredump_path;
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(ParseErrorReason::kErrorFileIO, target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  std::string line;
+  int data_len;
+  bool ret = ParseEventHeader(dump_file, data_len, line);
+
+  // Always report the event header whenever available, even if parsing fails.
+  if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
+                           base::as_bytes(base::make_span(line)))) {
+    PLOG(ERROR) << "Error writing to target file " << target_path;
+    return false;
+  }
+
+  if (!ret) {
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(ParseErrorReason::kErrorEventHeaderParsing,
+                          target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  if (data_len != sizeof(EventData)) {
+    LOG(ERROR) << "Incorrect data length " << data_len << " (expected "
+               << sizeof(EventData) << ")";
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(ParseErrorReason::kErrorDataLength, target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  if (!ParseEventData(dump_file, pc, line)) {
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(ParseErrorReason::kErrorEventDataParsing,
+                          target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
+                           base::as_bytes(base::make_span(line)))) {
+    PLOG(ERROR) << "Error writing to target file " << target_path;
+    return false;
+  }
+
+  return true;
+}
+
+}  // namespace realtek
+
 }  // namespace vendor
 
 namespace {
@@ -498,6 +729,12 @@ bool ReportDefaultPC(base::File& file, std::string* pc) {
     return false;
   }
   return true;
+}
+
+bool ReportParseError(ParseErrorReason error_code, base::File& file) {
+  std::string line = CreateDumpEntry("Parse Failure Reason",
+                                     base::StringPrintf("%d", error_code));
+  return file.WriteAtCurrentPosAndCheck(base::as_bytes(base::make_span(line)));
 }
 
 // Cannot use base::file_util::CopyFile() here as it copies the entire file,
@@ -640,6 +877,9 @@ bool ParseDumpData(const base::FilePath& coredump_path,
   if (vendor_name == vendor::intel::kVendorName) {
     return vendor::intel::ParseIntelDump(coredump_path, target_path, dump_start,
                                          pc);
+  } else if (vendor_name == vendor::realtek::kVendorName) {
+    return vendor::realtek::ParseRealtekDump(coredump_path, target_path,
+                                             dump_start, pc);
   }
 
   LOG(WARNING) << "Unsupported bluetooth devcoredump vendor - " << vendor_name;

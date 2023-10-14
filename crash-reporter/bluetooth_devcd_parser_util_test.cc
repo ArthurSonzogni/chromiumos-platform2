@@ -867,3 +867,471 @@ TEST_F(BluetoothDevcdParserUtilTest, TestIntelEmptyDump) {
   };
   VerifyProcessedDump(want_lines);
 }
+
+// Verify all Realtek dump data is parsed correctly and the PC is included in
+// the crash signature.
+TEST_F(BluetoothDevcdParserUtilTest, TestRealtekCompleteDump) {
+  // Clang format expands the following to one hex value per line.
+  // Disable clang format to keep it as it is for better readability.
+  // clang-format off
+  std::vector<std::vector<uint8_t>> data_vec = {
+      // Realtek coredump header - Devcoredump Code, OpCode Event Field, Length
+      {
+          0x00, 0x00, 0x00, 0x00, 0xFF, 0x37,
+      },
+      // Sub-event Code
+      {
+          0x34,
+      },
+      // Reserved
+      {
+          0x00,
+      },
+      // ISR
+      {
+          0x01,
+      },
+      // Number of ISR
+      {
+          0x02,
+      },
+      // CPU Idle
+      {
+          0x03,
+      },
+      // Signal ID
+      {
+          0x04, 0x00,
+      },
+      // ISR Cause
+      {
+          0x05, 0x00, 0x00, 0x00,
+      },
+      // ISR Cnts
+      {
+          0x06, 0x00, 0x00, 0x00,
+      },
+      // Last EPC
+      {
+          0x07, 0x00, 0x00, 0x00,
+      },
+      // Timer Handle
+      {
+          0x08, 0x00, 0x00, 0x00,
+      },
+      // Calendar Table Index
+      {
+          0x09,
+      },
+      // Timer Count
+      {
+          0x10,
+      },
+      // Timer Value
+      {
+          0x11, 0x00, 0x00, 0x00,
+      },
+      // Timeout Function
+      {
+          0x12, 0x00, 0x00, 0x00,
+      },
+      // Timer Type
+      {
+          0x13,
+      },
+      // Timer Args
+      {
+          0x14, 0x00, 0x00, 0x00,
+      },
+      // Next OS Timer
+      {
+          0x15, 0x00, 0x00, 0x00,
+      },
+      // State of Timer
+      {
+          0x16,
+      },
+      // Sniff tick timer
+      {
+          0x17, 0x00, 0x00, 0x00,
+      },
+      // ISR Cause ori
+      {
+          0x18, 0x00, 0x00, 0x00,
+      },
+      // Return Addr
+      {
+          0x19, 0x00, 0x00, 0x00,
+      },
+  };
+  // clang-format on
+
+  std::vector<uint8_t> data = Flatten(data_vec);
+
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: Realtek",
+      "Controller Name: 0x23",
+  };
+  CreateDumpFile(meta_data, data);
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-Realtek_0x23-07000000");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete",
+      "Driver=btusb",
+      "Vendor=Realtek",
+      "Controller Name=0x23",
+      "Realtek Event Header=00000000FF37",
+      "Devcoredump Code=00000000",
+      "Sub-event Code=34",
+      "ISR=01",
+      "Number of ISR=02",
+      "CPU Idle=03",
+      "Signal ID=0400",
+      "ISR Cause=05000000",
+      "ISR Cnts=06000000",
+      "PC=07000000",
+      "Timer Handle=08000000",
+      "Calendar Table Index=09",
+      "Timer Count=10",
+      "Timer Value=11000000",
+      "Timeout Function=12000000",
+      "Timer Type=13",
+      "Timer Args=14000000",
+      "Next OS Timer=15000000",
+      "State of Timer=16",
+      "Sniff Tick Timer=17000000",
+      "ISR Cause ori=18000000",
+      "Return Addr=19000000",
+  };
+  VerifyProcessedDump(want_lines);
+}
+
+// Verify that the devcoredump with incorrect Opcode Event Field is processed
+// successfully and the empty dump with just a parsed header and default PC is
+// reported.
+TEST_F(BluetoothDevcdParserUtilTest, TestRealtekIncorrectOpcode) {
+  // Clang format expands the following to one hex value per line.
+  // Disable clang format to keep it as it is for better readability.
+  // clang-format off
+  std::vector<std::vector<uint8_t>> data_vec = {
+      // Realtek coredump header - Devcoredump Code, OpCode Event Field, Length
+      {
+          0x00, 0x00, 0x00, 0x00, 0xF2, 0x37,
+      },
+      // Sub-event Code
+      {
+          0x34,
+      },
+      // Reserved
+      {
+          0x00,
+      },
+      // ISR
+      {
+          0x01,
+      },
+      // Number of ISR
+      {
+          0x02,
+      },
+      // CPU Idle
+      {
+          0x03,
+      },
+      // Signal ID
+      {
+          0x04, 0x00,
+      },
+      // ISR Cause
+      {
+          0x05, 0x00, 0x00, 0x00,
+      },
+      // ISR Cnts
+      {
+          0x06, 0x00, 0x00, 0x00,
+      },
+      // Last EPC
+      {
+          0x07, 0x00, 0x00, 0x00,
+      },
+      // Timer Handle
+      {
+          0x08, 0x00, 0x00, 0x00,
+      },
+      // Calendar Table Index
+      {
+          0x09,
+      },
+      // Timer Count
+      {
+          0x10,
+      },
+      // Timer Value
+      {
+          0x11, 0x00, 0x00, 0x00,
+      },
+      // Timeout Function
+      {
+          0x12, 0x00, 0x00, 0x00,
+      },
+      // Timer Type
+      {
+          0x13,
+      },
+      // Timer Args
+      {
+          0x14, 0x00, 0x00, 0x00,
+      },
+      // Next OS Timer
+      {
+          0x15, 0x00, 0x00, 0x00,
+      },
+      // State of Timer
+      {
+          0x16,
+      },
+      // Sniff tick timer
+      {
+          0x17, 0x00, 0x00, 0x00,
+      },
+      // ISR Cause ori
+      {
+          0x18, 0x00, 0x00, 0x00,
+      },
+      // Return Addr
+      {
+          0x19, 0x00, 0x00, 0x00,
+      },
+  };
+  // clang-format on
+
+  std::vector<uint8_t> data = Flatten(data_vec);
+
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: Realtek",
+      "Controller Name: 0x23",
+  };
+  CreateDumpFile(meta_data, data);
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-Realtek_0x23-00000000");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete",
+      "Driver=btusb",
+      "Vendor=Realtek",
+      "Controller Name=0x23",
+      "Realtek Event Header=00000000F237",
+      "Devcoredump Code=00000000",
+      "PC=00000000",
+      "Parse Failure Reason=1",
+  };
+  VerifyProcessedDump(want_lines);
+}
+
+// Verify that the devcoredump with incorrect data length is processed
+// successfully and the empty dump with just a parsed header and default PC is
+// reported.
+TEST_F(BluetoothDevcdParserUtilTest, TestRealtekIncorrectDataLen) {
+  // Clang format expands the following to one hex value per line.
+  // Disable clang format to keep it as it is for better readability.
+  // clang-format off
+  std::vector<std::vector<uint8_t>> data_vec = {
+      // Realtek coredump header - Devcoredump Code, OpCode Event Field, Length
+      {
+          0x00, 0x00, 0x00, 0x00, 0xFF, 0x30,
+      },
+      // Sub-event Code
+      {
+          0x34,
+      },
+      // Reserved
+      {
+          0x00,
+      },
+      // ISR
+      {
+          0x01,
+      },
+      // Number of ISR
+      {
+          0x02,
+      },
+      // CPU Idle
+      {
+          0x03,
+      },
+      // Signal ID
+      {
+          0x04, 0x00,
+      },
+      // ISR Cause
+      {
+          0x05, 0x00, 0x00, 0x00,
+      },
+      // ISR Cnts
+      {
+          0x06, 0x00, 0x00, 0x00,
+      },
+      // Last EPC
+      {
+          0x07, 0x00, 0x00, 0x00,
+      },
+      // Timer Handle
+      {
+          0x08, 0x00, 0x00, 0x00,
+      },
+      // Calendar Table Index
+      {
+          0x09,
+      },
+      // Timer Count
+      {
+          0x10,
+      },
+      // Timer Value
+      {
+          0x11, 0x00, 0x00, 0x00,
+      },
+      // Timeout Function
+      {
+          0x12, 0x00, 0x00, 0x00,
+      },
+      // Timer Type
+      {
+          0x13,
+      },
+      // Timer Args
+      {
+          0x14, 0x00, 0x00, 0x00,
+      },
+      // Next OS Timer
+      {
+          0x15, 0x00, 0x00, 0x00,
+      },
+      // State of Timer
+      {
+          0x16,
+      },
+      // Sniff tick timer
+      {
+          0x17, 0x00, 0x00, 0x00,
+      },
+      // ISR Cause ori
+      {
+          0x18, 0x00, 0x00, 0x00,
+      },
+      // Return Addr
+      {
+          0x19, 0x00, 0x00, 0x00,
+      },
+  };
+  // clang-format on
+
+  std::vector<uint8_t> data = Flatten(data_vec);
+
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: Realtek",
+      "Controller Name: 0x23",
+  };
+  CreateDumpFile(meta_data, data);
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-Realtek_0x23-00000000");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete",
+      "Driver=btusb",
+      "Vendor=Realtek",
+      "Controller Name=0x23",
+      "Realtek Event Header=00000000FF30",
+      "Devcoredump Code=00000000",
+      "PC=00000000",
+      "Parse Failure Reason=3",
+  };
+  VerifyProcessedDump(want_lines);
+}
+
+// Verify that the devcoredump with incomplete data is processed successfully
+// and the empty dump with just a parsed header and default PC is reported.
+TEST_F(BluetoothDevcdParserUtilTest, TestRealtekIncompleteData) {
+  // Clang format expands the following to one hex value per line.
+  // Disable clang format to keep it as it is for better readability.
+  // clang-format off
+  std::vector<std::vector<uint8_t>> data_vec = {
+      // Realtek coredump header - Devcoredump Code, OpCode Event Field, Length
+      {
+          0x00, 0x00, 0x00, 0x00, 0xFF, 0x37,
+      },
+      // Sub-event Code
+      {
+          0x34,
+      },
+      // Reserved
+      {
+          0x00,
+      },
+      // ISR
+      {
+          0x01,
+      },
+      // Number of ISR
+      {
+          0x02,
+      },
+      // CPU Idle
+      {
+          0x03,
+      },
+      // Signal ID
+      {
+          0x04, 0x00,
+      },
+  };
+  // clang-format on
+
+  std::vector<uint8_t> data = Flatten(data_vec);
+
+  std::vector<std::string> meta_data = {
+      kMetaHeader,
+      "State: 2",
+      "Driver: btusb",
+      "Vendor: Realtek",
+      "Controller Name: 0x23",
+  };
+  CreateDumpFile(meta_data, data);
+
+  std::string sig;
+  EXPECT_TRUE(bluetooth_util::ParseBluetoothCoredump(dump_path_, output_dir_,
+                                                     false, &sig));
+  EXPECT_EQ(sig, "bt_firmware-btusb-Realtek_0x23-00000000");
+
+  std::vector<std::string> want_lines = {
+      "State=Devcoredump Complete",
+      "Driver=btusb",
+      "Vendor=Realtek",
+      "Controller Name=0x23",
+      "Realtek Event Header=00000000FF37",
+      "Devcoredump Code=00000000",
+      "PC=00000000",
+      "Parse Failure Reason=4",
+  };
+  VerifyProcessedDump(want_lines);
+}
