@@ -58,5 +58,11 @@
     "request": [
       "CrosCameraHalDispatcher"
     ]
+  },
+  {
+    "identity": "u:r:cros_vm_concierge:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
   }
 ]
