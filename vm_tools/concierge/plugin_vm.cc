@@ -653,6 +653,8 @@ bool PluginVm::Start(base::FilePath stateful_dir,
                          "/etc"),
   };
 
+  // TODO(b/304685896): Remove this after requesting camera from mojo service
+  // manager.
   if (vm_permission::IsCameraEnabled(bus_, vm_permission_service_proxy_,
                                      permission_token_)) {
     LOG(INFO) << "VM " << id_ << ": camera access enabled";
