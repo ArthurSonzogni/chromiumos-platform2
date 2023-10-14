@@ -145,7 +145,7 @@ TEST_F(DebugdAdapterImplTest, GetNvmeIdentitySyncError) {
 
 // Tests that RunNvmeShortSelfTest calls callback with output on success.
 TEST_F(DebugdAdapterImplTest, RunNvmeShortSelfTest) {
-  constexpr char kResult[] = "Device self-test started";
+  constexpr char kResult[] = "Short Device self-test started";
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>(Invoke(
           [kResult](base::OnceCallback<void(const std::string& /* result */)>
@@ -173,7 +173,7 @@ TEST_F(DebugdAdapterImplTest, RunNvmeShortSelfTestError) {
 
 // Tests that RunNvmeLongSelfTest calls callback with output on success.
 TEST_F(DebugdAdapterImplTest, RunNvmeLongSelfTest) {
-  constexpr char kResult[] = "Device self-test started";
+  constexpr char kResult[] = "Extended Device self-test started";
   EXPECT_CALL(*debugd_proxy_mock_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>(Invoke(
           [kResult](base::OnceCallback<void(const std::string& /* result */)>

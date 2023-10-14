@@ -33,7 +33,8 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 
 // Success message from controller if launching is completed without errors.
-constexpr char kStartSuccess[] = "Device self-test started";
+constexpr char kShortStartSuccess[] = "Short Device self-test started";
+constexpr char kLongStartSuccess[] = "Extended Device self-test started";
 constexpr char kNvmeError[] = "NVMe Status:Unknown";
 
 class NvmeSelfTestRoutineTest : public testing::Test {
@@ -75,7 +76,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kShortStartSuccess);
       }));
   RunRoutineStart();
 
@@ -145,7 +146,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestError) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kShortStartSuccess);
       }));
   RunRoutineStart();
 
@@ -178,7 +179,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidError) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kShortStartSuccess);
       }));
   RunRoutineStart();
 
@@ -211,7 +212,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidType) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kShortStartSuccess);
       }));
   RunRoutineStart();
 
@@ -247,7 +248,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgress) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kShortStartSuccess);
       }));
   RunRoutineStart();
 
@@ -270,7 +271,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgressLength) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kShortStartSuccess);
       }));
   RunRoutineStart();
 
@@ -305,7 +306,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelPass) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kShortStartSuccess);
       }));
   RunRoutineStart();
 
@@ -328,7 +329,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelError) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kShortStartSuccess);
       }));
   RunRoutineStart();
 
@@ -349,7 +350,7 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kLongStartSuccess);
       }));
   RunRoutineStart();
 
@@ -404,7 +405,7 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestError) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kLongStartSuccess);
       }));
   RunRoutineStart();
 
@@ -453,7 +454,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForCancelling) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kLongStartSuccess);
       }));
   RunRoutineStart();
 
@@ -479,7 +480,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForGettingProgress) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunLongSelfTest);
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeLongSelfTestOption, _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kStartSuccess);
+        std::move(callback).Run(kLongStartSuccess);
       }));
   RunRoutineStart();
 
@@ -535,7 +536,7 @@ TEST_F(NvmeSelfTestRoutineTest, RoutineStatusTransition) {
     CreateSelfTestRoutine(NvmeSelfTestRoutine::SelfTestType::kRunShortSelfTest);
     EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeShortSelfTestOption, _, _, _))
         .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-          std::move(callback).Run(kStartSuccess);
+          std::move(callback).Run(kShortStartSuccess);
         }));
     RunRoutineStart();
     EXPECT_EQ(routine()->GetStatus(),

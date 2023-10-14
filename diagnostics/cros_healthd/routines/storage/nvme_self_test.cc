@@ -20,6 +20,7 @@
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <debugd/dbus-proxies.h>
+#include <re2/re2.h>
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/system/debugd_constants.h"
@@ -190,8 +191,8 @@ void NvmeSelfTestRoutine::OnDebugdNvmeSelfTestStartCallback(
   ResetOutputDictToValue(result);
 
   // Checks whether self-test has already been launched.
-  if (!base::StartsWith(result, "Device self-test started",
-                        base::CompareCase::SENSITIVE)) {
+  const RE2 result_msg_regex(R"(^(Short|Extended) Device self-test started)");
+  if (!RE2::PartialMatch(result, result_msg_regex)) {
     LOG(ERROR) << "self-test failed to start: " << result;
     UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
                                     /*percent=*/100,
