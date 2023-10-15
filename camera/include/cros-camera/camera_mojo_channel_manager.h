@@ -32,6 +32,11 @@ class SingleThreadTaskRunner;
 
 namespace cros {
 
+class MojoServiceManagerObserver {
+ public:
+  virtual ~MojoServiceManagerObserver() = 0;
+};
+
 // There are many places that need to initialize Mojo and use related channels.
 // This class is used to manage them together.
 class CROS_CAMERA_EXPORT CameraMojoChannelManager
@@ -85,6 +90,29 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
       const std::string& service_name,
       mojo::PendingRemote<
           chromeos::mojo_service_manager::mojom::ServiceProvider> remote) = 0;
+
+  // MojoServiceManagerObserver is used to observe the service state of the mojo
+  // service which can be requested from mojo service manager.
+  //
+  // |on_register_callback| will be invoked
+  //   1. when the MojoServiceManagerObserver instance is created if the service
+  //      with |service_name| has been registered.
+  //   2. whenever the service with |service_name| is registered after
+  //      the MojoServiceManagerObserver instance is created.
+  //
+  // |on_unregister_callback| will be invoked when the service with
+  // |service_name| is unregistered after the MojoServiceManagerObserver
+  // instance is created.
+  //
+  // |on_register_callback| and |on_unregister_callback| will be run on the
+  // thread which can be obtained by |GetIpcTaskRunner()|.
+  //
+  // The observation is throughout |MojoServiceManagerObserver|'s lifetime.
+  virtual std::unique_ptr<MojoServiceManagerObserver>
+  CreateMojoServiceManagerObserver(
+      const std::string& service_name,
+      base::RepeatingClosure on_register_callback,
+      base::RepeatingClosure on_unregister_callback) = 0;
 };
 
 }  // namespace cros

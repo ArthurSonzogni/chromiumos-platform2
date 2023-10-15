@@ -8,6 +8,7 @@
 
 #include <grp.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -16,6 +17,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
+#include <base/threading/sequence_bound.h>
 #include <chromeos/mojo/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo_service_manager/lib/connect.h>
@@ -43,6 +45,120 @@ std::optional<base::UnguessableToken> ReadToken(std::string path) {
 }
 
 }  // namespace
+
+using chromeos::mojo_service_manager::mojom::ErrorOrServiceState;
+using chromeos::mojo_service_manager::mojom::ServiceState;
+
+MojoServiceManagerObserver::~MojoServiceManagerObserver() {}
+
+class CameraMojoChannelManagerImpl::MojoServiceManagerObserverImpl
+    : public MojoServiceManagerObserver {
+ public:
+  MojoServiceManagerObserverImpl(
+      chromeos::mojo_service_manager::mojom::ServiceManager*
+          service_manager_proxy,
+      const std::string& service_name,
+      base::RepeatingClosure on_register_callback,
+      base::RepeatingClosure on_unregister_callback)
+      : helper_(CameraMojoChannelManager::GetInstance()->GetIpcTaskRunner(),
+                service_manager_proxy,
+                service_name,
+                std::move(on_register_callback),
+                std::move(on_unregister_callback)) {}
+  ~MojoServiceManagerObserverImpl() override = default;
+
+ private:
+  class ObserverHelper
+      : public chromeos::mojo_service_manager::mojom::ServiceObserver {
+   public:
+    ObserverHelper(chromeos::mojo_service_manager::mojom::ServiceManager*
+                       service_manager_proxy,
+                   const std::string& service_name,
+                   base::RepeatingClosure on_register_callback,
+                   base::RepeatingClosure on_unregister_callback)
+        : service_manager_proxy_(service_manager_proxy),
+          service_name_(service_name),
+          on_register_callback_(std::move(on_register_callback)),
+          on_unregister_callback_(std::move(on_unregister_callback)) {
+      // It is always safe here since |service_manager_proxy_| points to a
+      // NoDestructor object.
+      service_manager_proxy_->AddServiceObserver(
+          observer_receiver_.BindNewPipeAndPassRemote());
+      service_manager_proxy_->Query(
+          service_name_, base::BindOnce(&ObserverHelper::QueryCallback,
+                                        weak_ptr_factory_.GetWeakPtr()));
+    }
+
+    ~ObserverHelper() override = default;
+
+   private:
+    void OnServiceEvent(
+        chromeos::mojo_service_manager::mojom::ServiceEventPtr event) override {
+      if (event->service_name != service_name_) {
+        return;
+      }
+      switch (event->type) {
+        case chromeos::mojo_service_manager::mojom::ServiceEvent::Type::
+            kRegistered:
+          on_register_callback_.Run();
+          return;
+
+        case chromeos::mojo_service_manager::mojom::ServiceEvent::Type::
+            kUnRegistered:
+          on_unregister_callback_.Run();
+          return;
+
+        case chromeos::mojo_service_manager::mojom::ServiceEvent::Type::
+            kDefaultValue:
+          return;
+      }
+    }
+
+    void QueryCallback(
+        chromeos::mojo_service_manager::mojom::ErrorOrServiceStatePtr result) {
+      switch (result->which()) {
+        case ErrorOrServiceState::Tag::kState:
+          switch (result->get_state()->which()) {
+            case ServiceState::Tag::kRegisteredState:
+              on_register_callback_.Run();
+              break;
+
+            case ServiceState::Tag::kUnregisteredState:
+              break;
+
+            case ServiceState::Tag::kDefaultType:
+              break;
+          }
+          break;
+
+        case ErrorOrServiceState::Tag::kError:
+          LOG(ERROR) << "Error code: " << result->get_error()->code
+                     << ", message: " << result->get_error()->message;
+          break;
+
+        case ErrorOrServiceState::Tag::kDefaultType:
+          LOG(ERROR) << "Unknown type: " << result->get_default_type();
+          break;
+      }
+    }
+
+    chromeos::mojo_service_manager::mojom::ServiceManager*
+        service_manager_proxy_;
+
+    std::string service_name_;
+
+    base::RepeatingClosure on_register_callback_;
+
+    base::RepeatingClosure on_unregister_callback_;
+
+    mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceObserver>
+        observer_receiver_{this};
+
+    base::WeakPtrFactory<ObserverHelper> weak_ptr_factory_{this};
+  };
+
+  base::SequenceBound<ObserverHelper> helper_;
+};
 
 // static
 CameraMojoChannelManagerImpl* CameraMojoChannelManagerImpl::instance_ = nullptr;
@@ -271,6 +387,17 @@ void CameraMojoChannelManagerImpl::
             chromeos::mojo_service_manager::mojom::ServiceProvider> remote) {
   DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
   GetServiceManagerProxy()->Register(service_name, std::move(remote));
+}
+
+std::unique_ptr<MojoServiceManagerObserver>
+CameraMojoChannelManagerImpl::CreateMojoServiceManagerObserver(
+    const std::string& service_name,
+    base::RepeatingClosure on_register_callback,
+    base::RepeatingClosure on_unregister_callback) {
+  return base::WrapUnique<MojoServiceManagerObserver>(
+      new MojoServiceManagerObserverImpl(GetServiceManagerProxy(), service_name,
+                                         std::move(on_register_callback),
+                                         std::move(on_unregister_callback)));
 }
 
 }  // namespace cros

@@ -69,6 +69,11 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
           chromeos::mojo_service_manager::mojom::ServiceProvider> remote)
       override;
 
+  std::unique_ptr<MojoServiceManagerObserver> CreateMojoServiceManagerObserver(
+      const std::string& service_name,
+      base::RepeatingClosure on_register_callback,
+      base::RepeatingClosure on_unregister_callback) override;
+
  protected:
   friend class CameraMojoChannelManager;
 
@@ -76,6 +81,7 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   base::Thread ipc_thread_;
 
  private:
+  class MojoServiceManagerObserverImpl;
   template <typename T, typename ConstructCallbackType>
   struct PendingMojoTask {
     T pendingReceiverOrRemote;
