@@ -11,6 +11,7 @@
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/functional/bind.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/blkdev_utils/lvm.h>
@@ -33,7 +34,7 @@ spaced::StatefulDiskSpaceState GetDiskSpaceState(int64_t free_space) {
   }
 }
 
-int64_t GetSignalPeriod(spaced::StatefulDiskSpaceState state) {
+int64_t GetUpdatePeriod(spaced::StatefulDiskSpaceState state) {
   switch (state) {
     case spaced::StatefulDiskSpaceState::LOW:
       return 3;
@@ -48,23 +49,30 @@ int64_t GetSignalPeriod(spaced::StatefulDiskSpaceState state) {
 
 StatefulFreeSpaceCalculator::StatefulFreeSpaceCalculator(
     scoped_refptr<base::SequencedTaskRunner> task_runner,
-    int64_t time_delta_seconds,
     std::optional<brillo::Thinpool> thinpool,
     base::RepeatingCallback<void(const StatefulDiskSpaceUpdate&)> signal) {
-  time_delta_seconds_ = time_delta_seconds;
-  timer_.SetTaskRunner(task_runner);
-  thinpool_ = thinpool;
   SetSize(-1);
+  thinpool_ = thinpool;
+  task_runner_ = task_runner;
   signal_ = signal;
 }
 
 void StatefulFreeSpaceCalculator::Start() {
-  timer_.Start(FROM_HERE, base::Seconds(time_delta_seconds_), this,
-               &StatefulFreeSpaceCalculator::UpdateSizeAndSignal);
+  ScheduleUpdate(base::Seconds(0));
 }
 
-void StatefulFreeSpaceCalculator::Stop() {
-  timer_.AbandonAndStop();
+void StatefulFreeSpaceCalculator::ScheduleUpdate(base::TimeDelta delay) {
+  task_runner_->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&StatefulFreeSpaceCalculator::UpdateSizeAndSignal,
+                     weak_ptr_factory_.GetWeakPtr()),
+      delay);
+}
+
+void StatefulFreeSpaceCalculator::UpdateSizeAndSignal() {
+  UpdateSize();
+  SignalDiskSpaceUpdate();
+  ScheduleUpdate(base::Seconds(GetUpdatePeriod(GetDiskSpaceState(GetSize()))));
 }
 
 void StatefulFreeSpaceCalculator::UpdateSize() {
@@ -97,25 +105,14 @@ void StatefulFreeSpaceCalculator::UpdateSize() {
   SetSize(stateful_free_space);
 }
 
-void StatefulFreeSpaceCalculator::UpdateSizeAndSignal() {
-  UpdateSize();
-  MaybeSignalDiskSpaceUpdate();
-}
-
-void StatefulFreeSpaceCalculator::MaybeSignalDiskSpaceUpdate() {
+void StatefulFreeSpaceCalculator::SignalDiskSpaceUpdate() {
   int64_t stateful_free_space = GetSize();
-  base::Time now = base::Time::Now();
   spaced::StatefulDiskSpaceState state = GetDiskSpaceState(stateful_free_space);
+  spaced::StatefulDiskSpaceUpdate payload;
 
-  if (now - last_signalled_ > base::Seconds(GetSignalPeriod(state))) {
-    spaced::StatefulDiskSpaceUpdate payload;
-
-    payload.set_state(state);
-    payload.set_free_space_bytes(stateful_free_space);
-
-    last_signalled_ = now;
-    signal_.Run(payload);
-  }
+  payload.set_state(state);
+  payload.set_free_space_bytes(stateful_free_space);
+  signal_.Run(payload);
 }
 
 int StatefulFreeSpaceCalculator::StatVFS(const base::FilePath& path,

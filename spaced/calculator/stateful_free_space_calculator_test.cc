@@ -36,12 +36,9 @@ class StatefulFreeSpaceCalculatorMock : public StatefulFreeSpaceCalculator {
   StatefulFreeSpaceCalculatorMock(
       struct statvfs st,
       scoped_refptr<base::SequencedTaskRunner> task_runner,
-      int64_t time_delta_seconds,
       std::optional<brillo::Thinpool> thinpool,
       base::RepeatingCallback<void(const StatefulDiskSpaceUpdate&)> signal)
-      : StatefulFreeSpaceCalculator(
-            task_runner, time_delta_seconds, thinpool, signal),
-        st_(st) {}
+      : StatefulFreeSpaceCalculator(task_runner, thinpool, signal), st_(st) {}
 
  protected:
   int StatVFS(const base::FilePath& path, struct statvfs* st) override {
@@ -82,7 +79,7 @@ class StatefulFreeSpaceCalculatorTest : public testing::Test {
 TEST_F(StatefulFreeSpaceCalculatorTest, StatVfsError) {
   struct statvfs st = {};
 
-  StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(), 0,
+  StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(),
                                              std::nullopt, GetEmptyCallback());
 
   calculator.UpdateSize();
@@ -93,7 +90,7 @@ TEST_F(StatefulFreeSpaceCalculatorTest, NoThinpoolCalculator) {
   struct statvfs st = {
       .f_frsize = 4096, .f_blocks = 2048, .f_bavail = 1024, .f_fsid = 1};
 
-  StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(), 0,
+  StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(),
                                              std::nullopt, GetEmptyCallback());
 
   calculator.UpdateSize();
@@ -114,7 +111,7 @@ TEST_F(StatefulFreeSpaceCalculatorTest, ThinpoolCalculator) {
   EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
-  StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(), 0,
+  StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(),
                                              thinpool, GetEmptyCallback());
 
   calculator.UpdateSize();
@@ -146,7 +143,7 @@ TEST_F(StatefulFreeSpaceCalculatorTest, SignalStatefulDiskSpaceUpdate) {
   EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
-  StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(), 0,
+  StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(),
                                              thinpool, callback);
   calculator.UpdateSizeAndSignal();
   EXPECT_EQ(calculator.GetSize(), 3669177);

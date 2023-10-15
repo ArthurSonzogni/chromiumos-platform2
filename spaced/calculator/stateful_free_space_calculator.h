@@ -11,7 +11,8 @@
 #include <sys/statvfs.h>
 
 #include <base/files/file_path.h>
-#include <base/timer/timer.h>
+#include <base/memory/weak_ptr.h>
+#include <base/task/sequenced_task_runner.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <spaced/proto_bindings/spaced.pb.h>
@@ -22,13 +23,11 @@ class BRILLO_EXPORT StatefulFreeSpaceCalculator : public Calculator {
  public:
   StatefulFreeSpaceCalculator(
       scoped_refptr<base::SequencedTaskRunner> task_runner,
-      int64_t time_delta_seconds,
       std::optional<brillo::Thinpool> thinpool,
       base::RepeatingCallback<void(const StatefulDiskSpaceUpdate&)> signal);
-  ~StatefulFreeSpaceCalculator() override { Stop(); }
+  ~StatefulFreeSpaceCalculator() override = default;
 
   void Start();
-  void Stop();
 
  protected:
   // Runs statvfs() on a given path.
@@ -44,19 +43,20 @@ class BRILLO_EXPORT StatefulFreeSpaceCalculator : public Calculator {
   // Updates the amount of free space available on the stateful partition.
   void UpdateSize();
 
-  // In addition to update size, conditionally emit a signal to
+  // Signal an update on the disk space state.
+  void SignalDiskSpaceUpdate();
+
+  // Update size and emit a signal.
   void UpdateSizeAndSignal();
 
-  // Signal an update on the disk space state, depending on the amount of space
-  // available and the time elapsed.
-  void MaybeSignalDiskSpaceUpdate();
+  // Schedules the next update depending on the amount of free space.
+  void ScheduleUpdate(base::TimeDelta delay);
 
-  base::RepeatingTimer timer_;
-  int64_t time_delta_seconds_;
   std::optional<brillo::Thinpool> thinpool_;
-
-  base::Time last_signalled_;
+  scoped_refptr<base::SequencedTaskRunner> task_runner_;
   base::RepeatingCallback<void(const StatefulDiskSpaceUpdate&)> signal_;
+
+  base::WeakPtrFactory<StatefulFreeSpaceCalculator> weak_ptr_factory_{this};
 };
 
 }  // namespace spaced

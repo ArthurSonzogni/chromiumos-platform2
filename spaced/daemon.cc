@@ -28,7 +28,6 @@
 
 namespace spaced {
 namespace {
-constexpr int64_t kCriticalRefreshPeriodSeconds = 1;
 
 base::FilePath GetRootDevice() {
   // Get the root device.
@@ -83,7 +82,6 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
       stateful_free_space_calculator_(
           std::make_unique<StatefulFreeSpaceCalculator>(
               task_runner_,
-              kCriticalRefreshPeriodSeconds,
               GetThinpool(),
               base::BindRepeating(&DBusAdaptor::StatefulDiskSpaceUpdateCallback,
                                   base::Unretained(this)))) {
