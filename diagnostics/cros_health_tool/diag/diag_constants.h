@@ -93,6 +93,7 @@ constexpr struct {
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAudioDriver},
     {"ufs_lifetime",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kUfsLifetime},
+    {"fan", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kFan},
 };
 
 }  // namespace diagnostics

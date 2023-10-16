@@ -98,6 +98,7 @@ std::set<mojom::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojom::DiagnosticRoutineEnum::kPowerButton,
       mojom::DiagnosticRoutineEnum::kAudioDriver,
       mojom::DiagnosticRoutineEnum::kUfsLifetime,
+      mojom::DiagnosticRoutineEnum::kFan,
   };
 }
 

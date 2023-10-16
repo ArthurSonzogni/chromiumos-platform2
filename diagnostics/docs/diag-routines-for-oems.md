@@ -1681,11 +1681,16 @@ Check the device's fan by setting and reading different fan speed configuration.
 From crosh:
 ```bash
 crosh> diag fan
+# or
+crosh> diag fan_v1
 ```
+
 
 From cros-health-tool:
 ```bash
 $ cros-health-tool diag fan
+# or
+$ cros-health-tool diag fan_v1
 ```
 
 Sample output:

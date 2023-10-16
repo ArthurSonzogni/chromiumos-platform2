@@ -639,6 +639,13 @@ void CrosHealthdDiagnosticsService::RunUfsLifetimeRoutine(
                         std::move(callback));
 }
 
+void CrosHealthdDiagnosticsService::RunFanRoutine(
+    RunFanRoutineCallback callback) {
+  auto args = mojom::RoutineArgument::NewFan(mojom::FanRoutineArgument::New());
+  RunRoutineWithAdapter(std::move(args), mojom::DiagnosticRoutineEnum::kFan,
+                        std::move(callback));
+}
+
 void CrosHealthdDiagnosticsService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojom::DiagnosticRoutineEnum routine_enum,
@@ -730,6 +737,7 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
       mojom::DiagnosticRoutineEnum::kBluetoothPairing,
       mojom::DiagnosticRoutineEnum::kPowerButton,
       mojom::DiagnosticRoutineEnum::kAudioDriver,
+      mojom::DiagnosticRoutineEnum::kFan,
   };
 
   if (context_->system_config()->HasBattery()) {

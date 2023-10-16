@@ -782,6 +782,10 @@ int UfsLifetimeV1Main(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE(UfsLifetimeRoutine)
 }
 
+int FanV1Main(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(FanRoutine)
+}
+
 const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     // V2 routines.
     {"audio_driver", AudioDriverMain},
@@ -841,6 +845,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"power_button", PowerButtonMain},
     {"audio_driver_v1", AudioDriverV1Main},
     {"ufs_lifetime_v1", UfsLifetimeV1Main},
+    {"fan_v1", FanV1Main},
 };
 
 void PrintHelp() {

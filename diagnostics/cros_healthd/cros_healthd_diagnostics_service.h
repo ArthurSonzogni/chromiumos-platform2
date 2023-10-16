@@ -162,6 +162,7 @@ class CrosHealthdDiagnosticsService final
                              RunPowerButtonRoutineCallback callback) override;
   void RunAudioDriverRoutine(RunAudioDriverRoutineCallback callback) override;
   void RunUfsLifetimeRoutine(RunUfsLifetimeRoutineCallback callback) override;
+  void RunFanRoutine(RunFanRoutineCallback callback) override;
 
  private:
   void RunRoutine(

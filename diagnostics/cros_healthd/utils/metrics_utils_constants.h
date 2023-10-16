@@ -147,6 +147,8 @@ inline constexpr char kDiagnosticResultAudioDriver[] =
     "ChromeOS.Healthd.DiagnosticResult.AudioDriver";
 inline constexpr char kDiagnosticResultUfsLifetime[] =
     "ChromeOS.Healthd.DiagnosticResult.UfsLifetime";
+inline constexpr char kDiagnosticResultFan[] =
+    "ChromeOS.Healthd.DiagnosticResult.Fan";
 
 inline constexpr char kEventSubscription[] =
     "ChromeOS.Healthd.EventSubscription";

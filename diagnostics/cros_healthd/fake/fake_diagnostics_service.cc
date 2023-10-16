@@ -291,4 +291,8 @@ void FakeDiagnosticsService::RunUfsLifetimeRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeDiagnosticsService::RunFanRoutine(RunFanRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

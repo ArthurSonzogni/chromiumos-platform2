@@ -495,6 +495,12 @@ bool DiagActions::ActionRunUfsLifetimeRoutine() {
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
+bool DiagActions::ActionRunFanRoutine() {
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
+  cros_healthd_diagnostics_service_->RunFanRoutine(waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancellation_percent_ = percent;

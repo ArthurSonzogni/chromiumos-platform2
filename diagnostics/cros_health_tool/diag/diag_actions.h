@@ -93,6 +93,7 @@ class DiagActions final {
   bool ActionRunPowerButtonRoutine(uint32_t timeout_seconds);
   bool ActionRunAudioDriverRoutine();
   bool ActionRunUfsLifetimeRoutine();
+  bool ActionRunFanRoutine();
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the
