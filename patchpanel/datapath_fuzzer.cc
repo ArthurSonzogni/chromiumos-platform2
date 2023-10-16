@@ -64,7 +64,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   const auto ipv4_addr = net_base::IPv4Address(addr);
   const auto cidr =
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix(ipv4_addr, prefix_len);
-  SubnetAddress subnet_addr(cidr, base::DoNothing());
   MacAddress mac;
   std::vector<uint8_t> mac_addr_bytes =
       provider.ConsumeBytes<uint8_t>(mac.size());

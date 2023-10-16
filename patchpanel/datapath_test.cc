@@ -617,9 +617,8 @@ TEST(DatapathTest, AddTUN) {
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  auto addr = subnet.AllocateAtOffset(1);
-  auto ifname =
-      datapath.AddTunTap("foo0", mac, addr->cidr(), "", DeviceMode::kTun);
+  auto ifname = datapath.AddTunTap("foo0", mac, subnet.CIDRAtOffset(1), "",
+                                   DeviceMode::kTun);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -637,9 +636,8 @@ TEST(DatapathTest, AddTunWithoutMACAddress) {
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  auto addr = subnet.AllocateAtOffset(1);
-  auto ifname = datapath.AddTunTap("foo0", std::nullopt, addr->cidr(), "",
-                                   DeviceMode::kTun);
+  auto ifname = datapath.AddTunTap("foo0", std::nullopt, subnet.CIDRAtOffset(1),
+                                   "", DeviceMode::kTun);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {TUNSETIFF,    TUNSETPERSIST,
@@ -667,9 +665,8 @@ TEST(DatapathTest, AddTAP) {
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  auto addr = subnet.AllocateAtOffset(1);
-  auto ifname =
-      datapath.AddTunTap("foo0", mac, addr->cidr(), "", DeviceMode::kTap);
+  auto ifname = datapath.AddTunTap("foo0", mac, subnet.CIDRAtOffset(1), "",
+                                   DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -688,9 +685,8 @@ TEST(DatapathTest, AddTAPWithOwner) {
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  auto addr = subnet.AllocateAtOffset(1);
-  auto ifname =
-      datapath.AddTunTap("foo0", mac, addr->cidr(), "root", DeviceMode::kTap);
+  auto ifname = datapath.AddTunTap("foo0", mac, subnet.CIDRAtOffset(1), "root",
+                                   DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {

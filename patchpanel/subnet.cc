@@ -17,12 +17,6 @@
 
 namespace patchpanel {
 
-SubnetAddress::SubnetAddress(const net_base::IPv4CIDR& cidr,
-                             base::OnceClosure release_cb)
-    : cidr_(cidr), release_cb_(std::move(release_cb)) {}
-
-SubnetAddress::~SubnetAddress() = default;
-
 Subnet::Subnet(const net_base::IPv4CIDR& base_cidr,
                base::OnceClosure release_cb)
     : base_cidr_(base_cidr), release_cb_(std::move(release_cb)) {
@@ -35,22 +29,6 @@ Subnet::Subnet(const net_base::IPv4CIDR& base_cidr,
 }
 
 Subnet::~Subnet() = default;
-
-std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
-  if (!IsValidOffset(offset)) {
-    return nullptr;
-  }
-
-  if (addrs_[offset]) {
-    // Address is already allocated.
-    return nullptr;
-  }
-  addrs_[offset] = true;
-
-  return std::make_unique<SubnetAddress>(
-      *CIDRAtOffset(offset),
-      base::BindOnce(&Subnet::Free, weak_factory_.GetWeakPtr(), offset));
-}
 
 std::optional<net_base::IPv4CIDR> Subnet::CIDRAtOffset(uint32_t offset) const {
   if (!IsValidOffset(offset)) {

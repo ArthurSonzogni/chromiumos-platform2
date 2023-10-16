@@ -19,26 +19,6 @@
 
 namespace patchpanel {
 
-// Represents an allocated address inside an IPv4 subnet.  The address is freed
-// when this object is destroyed.
-class BRILLO_EXPORT SubnetAddress {
- public:
-  // Creates a new SubnetAddress with the given |cidr|. |release_cb| runs in the
-  // destructor of this class and can be used to free other resources associated
-  // with the subnet address.
-  SubnetAddress(const net_base::IPv4CIDR& cidr, base::OnceClosure release_cb);
-  ~SubnetAddress();
-
-  SubnetAddress(const SubnetAddress&) = delete;
-  SubnetAddress& operator=(const SubnetAddress&) = delete;
-
-  const net_base::IPv4CIDR& cidr() const { return cidr_; }
-
- private:
-  net_base::IPv4CIDR cidr_;
-  base::ScopedClosureRunner release_cb_;
-};
-
 // Represents an allocated IPv4 subnet.
 class BRILLO_EXPORT Subnet {
  public:
@@ -50,11 +30,6 @@ class BRILLO_EXPORT Subnet {
   Subnet& operator=(const Subnet&) = delete;
 
   ~Subnet();
-
-  // Allocates the address at |offset|. Returns nullptr if |offset| is invalid
-  // or the address is already allocated. Note: |offset| is relative to the base
-  // address.
-  std::unique_ptr<SubnetAddress> AllocateAtOffset(uint32_t offset);
 
   // Returns the CIDR which address is at the given |offset| and the same prefix
   // length as |base_cidr_|. Returns std::nullopt if the offset exceeds the

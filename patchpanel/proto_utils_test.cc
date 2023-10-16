@@ -44,8 +44,6 @@ TEST_F(ProtoUtilsTest, FillTerminaAllocationProto) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kTerminaVM, subnet_index);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   auto lxd_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
   auto termina_device = std::make_unique<CrostiniService::CrostiniDevice>(
