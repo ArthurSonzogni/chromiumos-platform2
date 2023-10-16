@@ -342,9 +342,10 @@ std::string GetOnboardingMetadataDiff(const OnboardingMetadata& expected,
                                       const OnboardingMetadata& actual) {
   std::vector<std::string> messages;
   if (expected.cryptohome_user_type != actual.cryptohome_user_type) {
-    messages.push_back(base::StringPrintf(
-        "cryptohome_user_type: expected '%d' but got '%d'",
-        expected.cryptohome_user_type, actual.cryptohome_user_type));
+    messages.push_back(
+        base::StringPrintf("cryptohome_user_type: expected '%d' but got '%d'",
+                           static_cast<int>(expected.cryptohome_user_type),
+                           static_cast<int>(actual.cryptohome_user_type)));
   }
   if (expected.cryptohome_user != actual.cryptohome_user) {
     messages.push_back(base::StringPrintf(
