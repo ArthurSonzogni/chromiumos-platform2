@@ -392,12 +392,27 @@ typeDefs:
               small-core:
                 type: object
                 description: Offline small cores.
+                properties:
+                  min-active-threads:
+                    type: integer
+                    description: The minimum number of active threads required. If not set,
+                      resourced sets default to 2.
               smt:
                 type: object
                 description: Offline Simultaneous Multithreading (SMT).
+                properties:
+                  min-active-threads:
+                    type: integer
+                    description: The minimum number of active threads required. If not set,
+                      resourced sets default to 2.
               half:
                 type: object
                 description: Offline half of the cores.
+                properties:
+                  min-active-threads:
+                    type: integer
+                    description: The minimum number of active threads required. If not set,
+                      resourced sets default to 2.
   resourced_power_source_preferences: &resourced_power_source_preferences
     description: Defines settings that configure resourced based on power source.
       https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto
