@@ -29,6 +29,14 @@ class SupplicantGroupProxy : public SupplicantGroupProxyInterface {
 
   ~SupplicantGroupProxy() override;
 
+  // Implementation of SupplicantGroupProxyInterface.
+  bool GetMembers(std::vector<dbus::ObjectPath>* members) const override;
+  bool GetRole(std::string* role) const override;
+  bool GetSSID(std::vector<uint8_t>* ssid) const override;
+  bool GetBSSID(std::vector<uint8_t>* bssid) const override;
+  bool GetFrequency(uint16_t* frequency) const override;
+  bool GetPassphrase(std::string* passphrase) const override;
+
  private:
   class PropertySet : public dbus::PropertySet {
    public:
