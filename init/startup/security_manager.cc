@@ -35,13 +35,6 @@ constexpr char kLoadPinVerity[] = "loadpin/dm-verity";
 constexpr char kTrustedDlcVerityDigests[] =
     "opt/google/dlc/_trusted_verity_digests";
 
-// Path to the security fs file for configuring process management security
-// policies in the chromiumos LSM (used for kernel version <= 4.4).
-// TODO(mortonm): Remove this and the corresponding lines in
-// add_process_mgmt_policy when all devices have been updated/backported to
-// get the SafeSetID LSM functionality.
-constexpr char kProcessMgmtPolicies[] =
-    "chromiumos/process_management_policies/add_whitelist_policy";
 constexpr char kProcessMgmtPoliciesDir[] =
     "usr/share/cros/startup/process_management_policies";
 constexpr char kProcessMgmtPoliciesDirGID[] =
@@ -105,9 +98,6 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
     return false;
   }
 
-  const base::FilePath pmp =
-      root.Append(kSysKernelSecurity).Append(kProcessMgmtPolicies);
-  bool pmp_exists = base::PathExists(pmp);
   base::FileEnumerator enumerator(policy_dir, false,
                                   base::FileEnumerator::FileType::FILES);
   std::vector<std::string> combined_policy;
@@ -131,17 +121,9 @@ bool AccumulatePolicyFiles(const base::FilePath& root,
   std::string combined_policy_str = base::JoinString(combined_policy, "\n");
   combined_policy_str.append("\n");
 
-  if (pmp_exists) {
-    // Don't record GID policies into kProcessMgmtPolicies.
-    if (!gid) {
-      if (!base::WriteFile(pmp, combined_policy_str)) {
-        PLOG(ERROR) << pmp << ": Failed to write file";
-      }
-    }
-  } else {
-    if (!base::WriteFile(output_file, combined_policy_str)) {
-      PLOG(ERROR) << output_file << ": Failed to write to file";
-    }
+  if (!base::WriteFile(output_file, combined_policy_str)) {
+    PLOG(ERROR) << output_file << ": Failed to write to file";
+    return false;
   }
   return true;
 }

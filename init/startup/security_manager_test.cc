@@ -108,26 +108,6 @@ class SecurityManagerLoadPinTest : public SecurityManagerTest {
   const std::string kNull = "\0";
 };
 
-TEST_F(SecurityManagerTest, Before_v4_4) {
-  base::FilePath policies_dir =
-      base_dir_.Append("usr/share/cros/startup/process_management_policies");
-  base::FilePath mgmt_policies = base_dir_.Append(
-      "sys/kernel/security/chromiumos/process_management_policies/"
-      "add_whitelist_policy");
-  ASSERT_TRUE(CreateDirAndWriteFile(mgmt_policies, ""));
-  base::FilePath safesetid_mgmt_policies =
-      base_dir_.Append("sys/kernel/security/safesetid/whitelist_policy");
-  ASSERT_TRUE(CreateDirAndWriteFile(safesetid_mgmt_policies, "#AllowList"));
-  base::FilePath allow_1 = policies_dir.Append("allow_1.txt");
-  ASSERT_TRUE(CreateDirAndWriteFile(allow_1, "254:607\n607:607"));
-
-  startup::ConfigureProcessMgmtSecurity(base_dir_);
-
-  std::string allow;
-  base::ReadFileToString(mgmt_policies, &allow);
-  EXPECT_EQ(allow, "254:607\n607:607\n");
-}
-
 TEST_F(SecurityManagerTest, After_v4_14) {
   base::FilePath policies_dir =
       base_dir_.Append("usr/share/cros/startup/process_management_policies");
