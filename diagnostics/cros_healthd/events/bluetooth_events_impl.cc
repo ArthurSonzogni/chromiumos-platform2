@@ -15,7 +15,20 @@
 
 namespace diagnostics {
 
+namespace {
+
 namespace mojom = ::ash::cros_healthd::mojom;
+
+void SendBluetoothEvent(
+    const mojo::RemoteSet<mojom::EventObserver>& event_observers,
+    mojom::BluetoothEventInfo::State event_state) {
+  mojom::BluetoothEventInfo info;
+  info.state = event_state;
+  for (auto& observer : event_observers)
+    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+}
+
+}  // namespace
 
 BluetoothEventsImpl::BluetoothEventsImpl(Context* context) {
   CHECK(context);
@@ -62,6 +75,13 @@ BluetoothEventsImpl::BluetoothEventsImpl(Context* context) {
           base::BindRepeating(
               &BluetoothEventsImpl::OnFlossAdapterPropertyChanged,
               weak_ptr_factory_.GetWeakPtr())));
+  // Since `discovering` is not included in `BtPropertyType` enum, we need to
+  // subscribe this event separately.
+  event_subscriptions_.push_back(
+      context->floss_event_hub()->SubscribeAdapterDiscoveringChanged(
+          base::BindRepeating(
+              &BluetoothEventsImpl::OnFlossAdapterDiscoveringChanged,
+              weak_ptr_factory_.GetWeakPtr())));
   event_subscriptions_.push_back(
       context->floss_event_hub()->SubscribeDeviceAdded(
           base::BindRepeating(&BluetoothEventsImpl::OnFlossDeviceAdded,
@@ -86,100 +106,82 @@ void BluetoothEventsImpl::AddObserver(
 
 void BluetoothEventsImpl::OnBluezAdapterAdded(
     org::bluez::Adapter1ProxyInterface* adapter) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kAdapterAdded;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kAdapterAdded);
 }
 
 void BluetoothEventsImpl::OnBluezAdapterRemoved(
     const dbus::ObjectPath& adapter_path) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kAdapterRemoved;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kAdapterRemoved);
 }
 
 void BluetoothEventsImpl::OnBluezAdapterPropertyChanged(
     org::bluez::Adapter1ProxyInterface* adapter,
     const std::string& property_name) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kAdapterPropertyChanged;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kAdapterPropertyChanged);
 }
 
 void BluetoothEventsImpl::OnBluezDeviceAdded(
     org::bluez::Device1ProxyInterface* device) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kDeviceAdded;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kDeviceAdded);
 }
 
 void BluetoothEventsImpl::OnBluezDeviceRemoved(
     const dbus::ObjectPath& device_path) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kDeviceRemoved;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kDeviceRemoved);
 }
 
 void BluetoothEventsImpl::OnBluezDevicePropertyChanged(
     org::bluez::Device1ProxyInterface* device,
     const std::string& property_name) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kDevicePropertyChanged;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
 }
 
 void BluetoothEventsImpl::OnFlossAdapterAdded(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kAdapterAdded;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kAdapterAdded);
 }
 
 void BluetoothEventsImpl::OnFlossAdapterRemoved(
     const dbus::ObjectPath& adapter_path) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kAdapterRemoved;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kAdapterRemoved);
 }
 
 void BluetoothEventsImpl::OnFlossAdapterPropertyChanged(
     const dbus::ObjectPath& adapter_path, BtPropertyType property) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kAdapterPropertyChanged;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kAdapterPropertyChanged);
+}
+
+void BluetoothEventsImpl::OnFlossAdapterDiscoveringChanged(
+    const dbus::ObjectPath& adapter_path, bool discovering) {
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kAdapterPropertyChanged);
 }
 
 void BluetoothEventsImpl::OnFlossDeviceAdded(
     const brillo::VariantDictionary& device) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kDeviceAdded;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kDeviceAdded);
 }
 
 void BluetoothEventsImpl::OnFlossDeviceRemoved(
     const brillo::VariantDictionary& device) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kDeviceRemoved;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kDeviceRemoved);
 }
 
 void BluetoothEventsImpl::OnFlossDevicePropertyChanged(
     const brillo::VariantDictionary& device, BtPropertyType property) {
-  mojom::BluetoothEventInfo info;
-  info.state = mojom::BluetoothEventInfo::State::kDevicePropertyChanged;
-  for (auto& observer : observers_)
-    observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  SendBluetoothEvent(observers_,
+                     mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
 }
 
 }  // namespace diagnostics

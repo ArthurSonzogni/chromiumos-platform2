@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
+
 #include <base/test/task_environment.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/object_path.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
 #include "diagnostics/cros_healthd/events/event_observer_test_future.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -108,7 +109,10 @@ TEST_F(BluetoothEventsImplTest, ReceiveFlossAdapterPropertyChangedEvent) {
   for (const auto property : properties) {
     fake_floss_event_hub()->SendAdapterPropertyChanged(path, property);
   }
-  for (int i = 0; i < properties.size(); ++i) {
+  fake_floss_event_hub()->SendAdapterDiscoveringChanged(path,
+                                                        /*discovering=*/true);
+  // One to check for adapter discovering change events.
+  for (int i = 0; i < properties.size() + 1; ++i) {
     WaitAndCheckEvent(
         mojom::BluetoothEventInfo::State::kAdapterPropertyChanged);
   }

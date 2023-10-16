@@ -51,6 +51,8 @@ class BluetoothEventsImpl final : public BluetoothEvents {
   void OnFlossAdapterRemoved(const dbus::ObjectPath& adapter_path);
   void OnFlossAdapterPropertyChanged(const dbus::ObjectPath& adapter_path,
                                      BtPropertyType property);
+  void OnFlossAdapterDiscoveringChanged(const dbus::ObjectPath& adapter_path,
+                                        bool discovering);
   void OnFlossDeviceAdded(const brillo::VariantDictionary& device);
   void OnFlossDeviceRemoved(const brillo::VariantDictionary& device);
   void OnFlossDevicePropertyChanged(const brillo::VariantDictionary& device,
