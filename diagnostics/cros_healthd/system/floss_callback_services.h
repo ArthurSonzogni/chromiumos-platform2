@@ -99,7 +99,9 @@ class BluetoothConnectionCallbackService
       public org::chromium::bluetooth::BluetoothConnectionCallbackAdaptor {
  public:
   explicit BluetoothConnectionCallbackService(
-      const scoped_refptr<dbus::Bus>& bus, const dbus::ObjectPath& object_path);
+      FlossEventHub* event_hub,
+      const scoped_refptr<dbus::Bus>& bus,
+      const dbus::ObjectPath& object_path);
   BluetoothConnectionCallbackService(
       const BluetoothConnectionCallbackService&) = delete;
   BluetoothConnectionCallbackService& operator=(
@@ -110,6 +112,9 @@ class BluetoothConnectionCallbackService
   // org::chromium::bluetooth::BluetoothConnectionCallbackInterface overrides:
   void OnDeviceConnected(const brillo::VariantDictionary& device) override;
   void OnDeviceDisconnected(const brillo::VariantDictionary& device) override;
+
+  // Unowned pointer. Used to send Bluetooth events.
+  FlossEventHub* const event_hub_;
 
   // D-Bus helper when registering callback service.
   brillo::dbus_utils::DBusObject dbus_object_;

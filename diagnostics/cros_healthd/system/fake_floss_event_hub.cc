@@ -49,6 +49,11 @@ void FakeFlossEventHub::SendDevicePropertiesChanged(
   OnDevicePropertiesChanged(device, properties);
 }
 
+void FakeFlossEventHub::SendDeviceConnectedChanged(
+    const brillo::VariantDictionary& device, bool connected) {
+  OnDeviceConnectedChanged(device, connected);
+}
+
 void FakeFlossEventHub::SendManagerAdded(
     org::chromium::bluetooth::ManagerProxyInterface* manager) {
   OnManagerAdded(manager);

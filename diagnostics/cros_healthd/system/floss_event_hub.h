@@ -52,6 +52,7 @@ enum class BtPropertyType : uint32_t {
   kRemoteDeviceTimestamp = 0xFF,
 };
 
+// Adapter events.
 using OnFlossAdapterAddedCallback = base::RepeatingCallback<void(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter)>;
 using OnFlossAdapterRemovedCallback =
@@ -62,12 +63,16 @@ using OnFlossAdapterPoweredChangedCallback =
     base::RepeatingCallback<void(int32_t hci_interface, bool powered)>;
 using OnFlossAdapterDiscoveringChangedCallback = base::RepeatingCallback<void(
     const dbus::ObjectPath& adapter_path, bool discovering)>;
+// Device events.
 using OnFlossDeviceAddedCallback =
     base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
 using OnFlossDeviceRemovedCallback =
     base::RepeatingCallback<void(const brillo::VariantDictionary& device)>;
 using OnFlossDevicePropertyChangedCallback = base::RepeatingCallback<void(
     const brillo::VariantDictionary& device, BtPropertyType property)>;
+using OnFlossDeviceConnectedChangedCallback = base::RepeatingCallback<void(
+    const brillo::VariantDictionary& device, bool connected)>;
+// Other floss events.
 using OnFlossManagerRemovedCallback =
     base::RepeatingCallback<void(const dbus::ObjectPath& manager_path)>;
 using OnFlossScanResultReceivedCallback =
@@ -101,12 +106,12 @@ class FlossEventHub {
       OnFlossDeviceRemovedCallback callback);
   base::CallbackListSubscription SubscribeDevicePropertyChanged(
       OnFlossDevicePropertyChangedCallback callback);
+  base::CallbackListSubscription SubscribeDeviceConnectedChanged(
+      OnFlossDeviceConnectedChangedCallback callback);
   base::CallbackListSubscription SubscribeManagerRemoved(
       OnFlossManagerRemovedCallback callback);
   base::CallbackListSubscription SubscribeScanResultReceived(
       OnFlossScanResultReceivedCallback callback);
-
-  // TODO(b/300239296): Support adapter and device property changed events.
 
  protected:
   // Interfaces for subclass to send events.
@@ -134,6 +139,8 @@ class FlossEventHub {
   void OnDeviceRemoved(const brillo::VariantDictionary& device);
   void OnDevicePropertiesChanged(const brillo::VariantDictionary& device,
                                  const std::vector<uint32_t>& properties);
+  void OnDeviceConnectedChanged(const brillo::VariantDictionary& device,
+                                bool connected);
   void OnScanResultReceived(const brillo::VariantDictionary& scan_result);
 
  private:
@@ -181,6 +188,9 @@ class FlossEventHub {
   base::RepeatingCallbackList<void(const brillo::VariantDictionary& device,
                                    BtPropertyType property)>
       device_property_changed_observers_;
+  base::RepeatingCallbackList<void(const brillo::VariantDictionary& device,
+                                   bool connected)>
+      device_connected_changed_observers_;
   base::RepeatingCallbackList<void(const dbus::ObjectPath& adapter_path)>
       manager_removed_observers_;
   base::RepeatingCallbackList<void(

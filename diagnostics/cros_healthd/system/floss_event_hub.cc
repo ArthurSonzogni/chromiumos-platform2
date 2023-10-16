@@ -93,6 +93,11 @@ base::CallbackListSubscription FlossEventHub::SubscribeDevicePropertyChanged(
   return device_property_changed_observers_.Add(callback);
 }
 
+base::CallbackListSubscription FlossEventHub::SubscribeDeviceConnectedChanged(
+    OnFlossDeviceConnectedChangedCallback callback) {
+  return device_connected_changed_observers_.Add(callback);
+}
+
 base::CallbackListSubscription FlossEventHub::SubscribeManagerRemoved(
     OnFlossManagerRemovedCallback callback) {
   return manager_removed_observers_.Add(callback);
@@ -198,6 +203,11 @@ void FlossEventHub::OnDevicePropertiesChanged(
   }
 }
 
+void FlossEventHub::OnDeviceConnectedChanged(
+    const brillo::VariantDictionary& device, bool connected) {
+  device_connected_changed_observers_.Notify(device, connected);
+}
+
 void FlossEventHub::OnScanResultReceived(
     const brillo::VariantDictionary& scan_result) {
   scan_result_received_observers_.Notify(scan_result);
@@ -257,7 +267,7 @@ void FlossEventHub::HandleRegisterConnectionCallbackResponse(
   if (bus_) {
     connection_callbacks_[adapter_path].reset();
     connection_callbacks_[adapter_path] =
-        std::make_unique<BluetoothConnectionCallbackService>(bus_,
+        std::make_unique<BluetoothConnectionCallbackService>(this, bus_,
                                                              callback_path);
   }
 }

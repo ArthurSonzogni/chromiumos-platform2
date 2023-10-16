@@ -57,6 +57,8 @@ class BluetoothEventsImpl final : public BluetoothEvents {
   void OnFlossDeviceRemoved(const brillo::VariantDictionary& device);
   void OnFlossDevicePropertyChanged(const brillo::VariantDictionary& device,
                                     BtPropertyType property);
+  void OnFlossDeviceConnectedChanged(const brillo::VariantDictionary& device,
+                                     bool connected);
 
   // Each observer in |observers_| will be notified of any Bluetooth event in
   // the ash::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.

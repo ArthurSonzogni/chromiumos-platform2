@@ -132,11 +132,14 @@ TEST_F(BluetoothEventsImplTest, ReceiveFlossDeviceRemovedEvent) {
 
 // Test that we can receive a device property changed event via Floss proxy.
 TEST_F(BluetoothEventsImplTest, ReceiveFlossDevicePropertyChangedEvent) {
+  brillo::VariantDictionary device;
   std::vector<uint32_t> properties = {0x0,  0x1,  0x2,  0x3,  0xA,  0xB,
                                       0x15, 0x18, 0x20, 0x50, 0XFE, 0xFF};
-  fake_floss_event_hub()->SendDevicePropertiesChanged(
-      brillo::VariantDictionary(), properties);
-  for (int i = 0; i < properties.size(); ++i) {
+  fake_floss_event_hub()->SendDevicePropertiesChanged(device, properties);
+  fake_floss_event_hub()->SendDeviceConnectedChanged(device,
+                                                     /*connected=*/true);
+  // One to check for device connected change events.
+  for (int i = 0; i < properties.size() + 1; ++i) {
     WaitAndCheckEvent(mojom::BluetoothEventInfo::State::kDevicePropertyChanged);
   }
 }
