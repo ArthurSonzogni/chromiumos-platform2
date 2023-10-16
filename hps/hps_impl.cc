@@ -164,11 +164,11 @@ FeatureResult HPS_impl::Result(int feature) {
   // Check the application is enabled and running.
   std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
   if (!status || !(status.value() & R2::kAppl)) {
-    return {.valid = false};
+    return {.inference_result = 0, .valid = false};
   }
   // Check that feature is enabled.
   if (((1 << feature) & this->feat_enabled_) == 0) {
-    return {.valid = false};
+    return {.inference_result = 0, .valid = false};
   }
   std::optional<uint16_t> hps_result = std::nullopt;
   switch (feature) {
@@ -180,7 +180,7 @@ FeatureResult HPS_impl::Result(int feature) {
       break;
   }
   if (!hps_result) {
-    return {.valid = false};
+    return {.inference_result = 0, .valid = false};
   }
   // TODO(slangley): Clean this up when we introduce sequence numbers for
   // inference results.
