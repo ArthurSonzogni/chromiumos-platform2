@@ -16,7 +16,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/process/process_handle.h>
 #include <base/run_loop.h>
-#include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/files/file_util.h>
@@ -361,9 +360,6 @@ class DlpAdaptorTest : public ::testing::Test {
   std::vector<std::pair<FileMetadata, RestrictionLevel>> files_restrictions_;
   std::unique_ptr<base::ScopedTempDir> database_directory_;
 
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::MainThreadType::IO,
-      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   DlpAdaptorTestHelper helper_;
 };
 
@@ -1754,15 +1750,17 @@ TEST_F(DlpAdaptorTest, AddFiles_NonExistentFile) {
                   static_cast<int>(AdaptorError::kInodeRetrievalError)));
 }
 
-TEST_F(DlpAdaptorTest, AddFiles_OldFile) {
+// TODO(b/304574852): Using TaskEnvironment causes DlpAdaptorTest to hang.
+// We need to find another way to fake time or rewrite the test.
+TEST_F(DlpAdaptorTest, DISABLED_AddFiles_OldFile) {
   base::FilePath file_path;
   base::CreateTemporaryFileInDir(helper_.home_path(), &file_path);
-  const FileId id = GetFileId(file_path.value());
-  // Set to file creation time.
-  task_environment_.FastForwardBy(base::Time::FromTimeT(id.second) -
-                                  base::Time::Now());
-  // Advance by a minute.
-  task_environment_.FastForwardBy(base::Minutes(1));
+  //  const FileId id = GetFileId(file_path.value());
+  ////   Set to file creation time.
+  //  task_environment_.FastForwardBy(base::Time::FromTimeT(id.second) -
+  //                                  base::Time::Now());
+  ////   Advance by a minute.
+  //  task_environment_.FastForwardBy(base::Minutes(1));
   AddFilesAndCheck({CreateAddFileRequest(file_path, "source", "referrer")},
                    /*expected_result=*/false);
   EXPECT_THAT(helper_.GetMetrics(kDlpAdaptorErrorHistogram),

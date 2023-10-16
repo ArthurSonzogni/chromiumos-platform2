@@ -10,6 +10,8 @@
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
+#include <base/task/single_thread_task_executor.h>
+#include <brillo/message_loops/base_message_loop.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
@@ -75,6 +77,9 @@ class DlpAdaptorTestHelper {
   std::unique_ptr<DlpAdaptor> adaptor_;
   // Owned by DlpMetrics.
   FakeMetricsLibrary* metrics_library_;
+
+  base::SingleThreadTaskExecutor task_executor_{base::MessagePumpType::IO};
+  brillo::BaseMessageLoop brillo_loop_{task_executor_.task_runner()};
 };
 
 }  // namespace dlp
