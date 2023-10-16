@@ -576,10 +576,6 @@ GetDevicesResponse Manager::GetDevices() const {
       continue;
     }
     auto* dev = response.add_devices();
-    // b/273741099: For multiplexed Cellular interfaces, callers expect
-    // patchpanel to advertise the ARC virtual device as associated with the
-    // shill Device kInterfaceProperty value. This is handled in
-    // FillDeviceProto.
     arc_device->ConvertToProto(dev);
     FillArcDeviceDnsProxyProto(*arc_device, dev, dns_proxy_ipv4_addrs_,
                                dns_proxy_ipv6_addrs_);

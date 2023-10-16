@@ -125,109 +125,21 @@ TEST_F(ProtoUtilsTest, FillBruschettaAllocationProto) {
             proto.ipv4_subnet().prefix_len());
 }
 
-TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
-  const uint32_t subnet_index = 0;
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
-      AddressManager::GuestType::kTerminaVM, subnet_index);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto lxd_subnet =
-      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_base_cidr = ipv4_subnet->base_cidr();
-
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr), std::move(lxd_subnet));
-  auto device = std::make_unique<Device>(Device::Type::kTerminaVM, std::nullopt,
-                                         "vmtap0", "", std::move(config));
-
-  NetworkDevice proto_device;
-  FillDeviceProto(*device, &proto_device);
-
-  ASSERT_EQ("vmtap0", proto_device.ifname());
-  // Convention for Crostini Devices is to reuse the virtual interface name in
-  // place of the interface name of the upstream network used by ARC Devices.
-  ASSERT_EQ("vmtap0", proto_device.phys_ifname());
-  ASSERT_EQ("", proto_device.guest_ifname());
-  ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
-  ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  ASSERT_EQ(expected_base_cidr.address(),
-            net_base::IPv4Address::CreateFromBytes(
-                proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
-  ASSERT_EQ(expected_base_cidr.prefix_length(),
-            proto_device.ipv4_subnet().prefix_len());
-  ASSERT_EQ(NetworkDevice::TERMINA_VM, proto_device.guest_type());
-}
-
-TEST_F(ProtoUtilsTest, ConvertParallelsDevice) {
-  const uint32_t subnet_index = 1;
-  const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
-      AddressManager::GuestType::kParallelsVM, subnet_index);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_base_cidr = ipv4_subnet->base_cidr();
-
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
-  auto device =
-      std::make_unique<Device>(Device::Type::kParallelsVM, std::nullopt,
-                               "vmtap1", "", std::move(config));
-
-  NetworkDevice proto_device;
-  FillDeviceProto(*device, &proto_device);
-
-  ASSERT_EQ("vmtap1", proto_device.ifname());
-  // Convention for Crostini Devices is to reuse the virtual interface name in
-  // place of the interface name of the upstream network used by ARC Devices.
-  ASSERT_EQ("vmtap1", proto_device.phys_ifname());
-  ASSERT_EQ("", proto_device.guest_ifname());
-  ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
-  ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  ASSERT_EQ(expected_base_cidr.address(),
-            net_base::IPv4Address::CreateFromBytes(
-                proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
-  ASSERT_EQ(expected_base_cidr.prefix_length(),
-            proto_device.ipv4_subnet().prefix_len());
-  ASSERT_EQ(NetworkDevice::PARALLELS_VM, proto_device.guest_type());
-}
-
 TEST_F(ProtoUtilsTest, ConvertARCContainerWiFiDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_host_ipv4 =
+      ipv4_subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+      ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
-  ShillClient::Device shill_device;
-  shill_device.type = ShillClient::Device::Type::kWifi;
-  shill_device.ifname = "wlan0";
-  shill_device.shill_device_interface_property = "wlan0";
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
-  auto device =
-      std::make_unique<Device>(Device::Type::kARCContainer, shill_device,
-                               "arc_wlan0", "wlan0", std::move(config));
-
+  ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer, "wlan0",
+                                   "vethwlan0", mac_addr, *ipv4_subnet,
+                                   "arc_wlan0", "wlan0");
   NetworkDevice proto_device;
-  FillDeviceProto(*device, &proto_device);
+  arc_device.ConvertToProto(&proto_device);
 
   ASSERT_EQ("arc_wlan0", proto_device.ifname());
   ASSERT_EQ("wlan0", proto_device.phys_ifname());
@@ -251,27 +163,17 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerCellularDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_host_ipv4 =
+      ipv4_subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+      ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
-  ShillClient::Device shill_device;
-  shill_device.type = ShillClient::Device::Type::kCellular;
-  shill_device.ifname = "mbimmux0.1";
-  shill_device.shill_device_interface_property = "wwan0";
-  shill_device.primary_multiplexed_interface = "mbimmux0.1";
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
-  auto device =
-      std::make_unique<Device>(Device::Type::kARCContainer, shill_device,
-                               "arc_wwan0", "wwan0", std::move(config));
-
+  ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer, "wwan0",
+                                   "vethwwan0", mac_addr, *ipv4_subnet,
+                                   "arc_wwan0", "wwan0");
   NetworkDevice proto_device;
-  FillDeviceProto(*device, &proto_device);
+  arc_device.ConvertToProto(&proto_device);
 
   ASSERT_EQ("arc_wwan0", proto_device.ifname());
   ASSERT_EQ("wwan0", proto_device.phys_ifname());
@@ -295,26 +197,16 @@ TEST_F(ProtoUtilsTest, ConvertARCVMWiFiDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(3);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_host_ipv4 =
+      ipv4_subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+      ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
-  ShillClient::Device shill_device;
-  shill_device.type = ShillClient::Device::Type::kWifi;
-  shill_device.ifname = "wlan0";
-  shill_device.shill_device_interface_property = "wlan0";
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
-  auto device =
-      std::make_unique<Device>(Device::Type::kARCVM, shill_device, "arc_wlan0",
-                               "eth3", std::move(config));
-
+  ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, "wlan0", "vmtap1",
+                                   mac_addr, *ipv4_subnet, "arc_wlan0", "eth3");
   NetworkDevice proto_device;
-  FillDeviceProto(*device, &proto_device);
+  arc_device.ConvertToProto(&proto_device);
 
   ASSERT_EQ("arc_wlan0", proto_device.ifname());
   ASSERT_EQ("wlan0", proto_device.phys_ifname());
@@ -337,33 +229,22 @@ TEST_F(ProtoUtilsTest, ConvertARCVMCellularDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(3);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_host_ipv4 =
+      ipv4_subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+      ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
-  ShillClient::Device shill_device;
-  shill_device.type = ShillClient::Device::Type::kCellular;
-  shill_device.ifname = "wwan0";
-  shill_device.shill_device_interface_property = "wwan0";
-  shill_device.primary_multiplexed_interface = "mbimmux0.1";
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
-  auto device =
-      std::make_unique<Device>(Device::Type::kARCVM, shill_device, "arc_wwan0",
-                               "eth3", std::move(config));
-
+  ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, "wwan0", "vmtap5",
+                                   mac_addr, *ipv4_subnet, "arc_wwan0", "eth5");
   NetworkDevice proto_device;
-  FillDeviceProto(*device, &proto_device);
+  arc_device.ConvertToProto(&proto_device);
 
   ASSERT_EQ("arc_wwan0", proto_device.ifname());
   ASSERT_EQ("wwan0", proto_device.phys_ifname());
   // For ARCVM, the name of the virtio interface is controlled by the virtio
   // driver and follows a ethernet-like pattern.
-  ASSERT_EQ("eth3", proto_device.guest_ifname());
+  ASSERT_EQ("eth5", proto_device.guest_ifname());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
@@ -380,21 +261,17 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_host_ipv4 =
+      ipv4_subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+      ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
-  auto device = std::make_unique<Device>(Device::Type::kARC0, std::nullopt,
-                                         "arcbr0", "arc0", std::move(config));
-
+  ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer,
+                                   std::nullopt, "vetharc0", mac_addr,
+                                   *ipv4_subnet, "arcbr0", "arc0");
   NetworkDevice proto_device;
-  FillDeviceProto(*device, &proto_device);
+  arc_device.ConvertToProto(&proto_device);
 
   ASSERT_EQ("arcbr0", proto_device.ifname());
   // Convention for arc0 is to reuse the virtual interface name in
@@ -414,28 +291,24 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
             proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
-  ASSERT_EQ(NetworkDevice::UNKNOWN, proto_device.guest_type());
+  ASSERT_EQ(NetworkDevice::ARC, proto_device.guest_type());
 }
 
 TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_host_ipv4 =
+      ipv4_subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
-      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
+      ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
-  auto config = std::make_unique<Device::Config>(
-      mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-      std::move(guest_ipv4_addr));
-  auto device = std::make_unique<Device>(Device::Type::kARC0, std::nullopt,
-                                         "arcbr0", "arc0", std::move(config));
-
+  ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, std::nullopt,
+                                   "vetharc0", mac_addr, *ipv4_subnet, "arcbr0",
+                                   "eth0");
   NetworkDevice proto_device;
-  FillDeviceProto(*device, &proto_device);
+  arc_device.ConvertToProto(&proto_device);
 
   ASSERT_EQ("arcbr0", proto_device.ifname());
   // Convention for arc0 is to reuse the virtual interface name in
@@ -445,7 +318,7 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
   // For arc0 with ARC container, the name of the veth half inside ARC is set
   // to "arc0" for legacy compatibility with old ARC N code, and ARC P code
   // prior to ARC multinetworking support.
-  ASSERT_EQ("arc0", proto_device.guest_ifname());
+  ASSERT_EQ("eth0", proto_device.guest_ifname());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
   ASSERT_EQ(expected_base_cidr.address(),
@@ -455,7 +328,7 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
             proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
-  ASSERT_EQ(NetworkDevice::UNKNOWN, proto_device.guest_type());
+  ASSERT_EQ(NetworkDevice::ARCVM, proto_device.guest_type());
 }
 
 TEST_F(ProtoUtilsTest, FillNetworkClientInfoProto) {
