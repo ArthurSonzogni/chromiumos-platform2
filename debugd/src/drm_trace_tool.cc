@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/cxx23_to_underlying.h>
 #include <base/strings/string_util.h>
 #include <brillo/files/safe_fd.h>
 #include <debugd/src/error_utils.h>
@@ -240,7 +241,7 @@ bool DRMTraceTool::WriteToFile(brillo::ErrorPtr* error,
   if (brillo::SafeFD::IsError(result.second)) {
     DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
                          "Failed to open SafeFD::Root(), error: %d",
-                         result.second);
+                         base::to_underlying(result.second));
     return false;
   }
 
@@ -248,7 +249,7 @@ bool DRMTraceTool::WriteToFile(brillo::ErrorPtr* error,
   if (brillo::SafeFD::IsError(result.second)) {
     DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
                          "Failed to open %s, error: %d", path.value().c_str(),
-                         result.second);
+                         base::to_underlying(result.second));
     return false;
   }
 
@@ -258,9 +259,9 @@ bool DRMTraceTool::WriteToFile(brillo::ErrorPtr* error,
   brillo::SafeFD::Error safefd_error =
       result.first.Write(contents.c_str(), contents.size());
   if (brillo::SafeFD::IsError(safefd_error)) {
-    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
-                         "Failed to write to %s, error: %d",
-                         path.value().c_str(), safefd_error);
+    DEBUGD_ADD_ERROR_FMT(
+        error, kDRMTraceToolErrorString, "Failed to write to %s, error: %d",
+        path.value().c_str(), base::to_underlying(safefd_error));
     return false;
   }
 
