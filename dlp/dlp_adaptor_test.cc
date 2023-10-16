@@ -1768,6 +1768,22 @@ TEST_F(DlpAdaptorTest, DISABLED_AddFiles_OldFile) {
                           static_cast<int>(AdaptorError::kAddedFileIsTooOld)));
 }
 
+TEST_F(DlpAdaptorTest, AddFiles_Symlink) {
+  base::FilePath file_path;
+  base::CreateTemporaryFile(&file_path);
+  base::FilePath symlink_path;
+  base::CreateTemporaryFileInDir(helper_.home_path(), &symlink_path);
+  brillo::DeleteFile(symlink_path);
+  base::CreateSymbolicLink(file_path, symlink_path);
+
+  AddFilesAndCheck({CreateAddFileRequest(symlink_path, "source", "referrer")},
+                   /*expected_result=*/false);
+  EXPECT_THAT(
+      helper_.GetMetrics(kDlpAdaptorErrorHistogram),
+      ElementsAre(static_cast<int>(AdaptorError::kAddFileError),
+                  static_cast<int>(AdaptorError::kAddedFileIsNotOnUserHome)));
+}
+
 TEST_F(DlpAdaptorTest, RequestFileAccess_BadProto) {
   auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
       std::vector<uint8_t>, base::ScopedFD>>(nullptr);

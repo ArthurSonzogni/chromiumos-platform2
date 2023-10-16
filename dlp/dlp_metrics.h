@@ -113,8 +113,10 @@ enum class AdaptorError {
   kAddedFileIsTooOld = 12,
   // Can't add file because it's not on observed user home directory.
   kAddedFileIsNotOnUserHome = 13,
+  // Can't add file because failed to follow symlink.
+  kFailedToFollowSymlink = 14,
   // For SendEnumToUMA() usage.
-  kMaxValue = kAddedFileIsNotOnUserHome,
+  kMaxValue = kFailedToFollowSymlink,
 };
 
 // Sends UMAs related to the DLP daemon.

@@ -226,8 +226,19 @@ void DlpAdaptor::AddFiles(
   for (const AddFileRequest& add_file_request : request.add_file_requests()) {
     LOG(INFO) << "Adding file to the database: "
               << add_file_request.file_path();
+    base::FilePath file_path(add_file_request.file_path());
+    if (base::IsLink(file_path)) {
+      auto resolved_path = base::ReadSymbolicLinkAbsolute(file_path);
+      if (!resolved_path) {
+        ReplyOnAddFiles(std::move(response), "Failed to follow symlink");
+        dlp_metrics_->SendAdaptorError(AdaptorError::kFailedToFollowSymlink);
+        return;
+      }
+      file_path = resolved_path.value();
+      LOG(INFO) << "Resolved link to: " << file_path;
+    }
 
-    const FileId id = GetFileId(add_file_request.file_path());
+    const FileId id = GetFileId(file_path.value());
     if (!id.first) {
       ReplyOnAddFiles(std::move(response), "Failed to get inode");
       dlp_metrics_->SendAdaptorError(AdaptorError::kInodeRetrievalError);
@@ -242,7 +253,6 @@ void DlpAdaptor::AddFiles(
       return;
     }
 
-    const base::FilePath file_path(add_file_request.file_path());
     if (!home_path_.IsParent(file_path)) {
       ReplyOnAddFiles(std::move(response), "File is not on user's home");
       dlp_metrics_->SendAdaptorError(AdaptorError::kAddedFileIsNotOnUserHome);
