@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <dbus/chaps/dbus-constants.h>
 
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_utility.h"
@@ -74,7 +75,8 @@ CK_RV ObjectImpl::FinalizeNewObject() {
   if (GetObjectClass() == CKO_PRIVATE_KEY) {
     // Set the kKeyInSoftware attribute to let the user know if it's stored in
     // software or secure elements such as TPM.
-    SetAttributeBool(kKeyInSoftware, !IsAttributePresent(kKeyBlobAttribute));
+    SetAttributeBool(kKeyInSoftwareAttribute,
+                     !IsAttributePresent(kKeyBlobAttribute));
   }
 
   stage_ = kModify;
@@ -85,7 +87,8 @@ CK_RV ObjectImpl::FinalizeCopyObject() {
   if (GetObjectClass() == CKO_PRIVATE_KEY) {
     // Set the kKeyInSoftware attribute to let the user know if it's stored in
     // software or secure elements such as TPM.
-    SetAttributeBool(kKeyInSoftware, !IsAttributePresent(kKeyBlobAttribute));
+    SetAttributeBool(kKeyInSoftwareAttribute,
+                     !IsAttributePresent(kKeyBlobAttribute));
   }
   stage_ = kModify;
   return CKR_OK;
@@ -224,7 +227,8 @@ bool ObjectImpl::OnLoad() {
   if (GetObjectClass() == CKO_PRIVATE_KEY) {
     // Set the kKeyInSoftware attribute for private keys so that users knows
     // whether the key is software backed or hardware backed.
-    SetAttributeBool(kKeyInSoftware, !IsAttributePresent(kKeyBlobAttribute));
+    SetAttributeBool(kKeyInSoftwareAttribute,
+                     !IsAttributePresent(kKeyBlobAttribute));
   }
   stage_ = kModify;
   return true;

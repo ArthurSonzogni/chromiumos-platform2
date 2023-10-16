@@ -22,6 +22,7 @@
 #include <base/no_destructor.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <dbus/chaps/dbus-constants.h>
 #include <libhwsec-foundation/utility/synchronized.h>
 
 #include "chaps/attributes.h"
@@ -87,7 +88,7 @@ static CK_RV PerformNonBlocking(ChapsOperation op) {
   base::TimeTicks deadline = base::TimeTicks::Now() + g_retry_timeout;
   do {
     result = op();
-    if (result != CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS)
+    if (result != chaps::CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS)
       break;
     base::PlatformThread::Sleep(g_retry_delay);
   } while (base::TimeTicks::Now() < deadline);

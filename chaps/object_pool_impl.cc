@@ -11,6 +11,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <chaps/proto_bindings/attributes.pb.h>
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
@@ -18,7 +19,6 @@
 #include "chaps/handle_generator.h"
 #include "chaps/object.h"
 #include "chaps/object_store.h"
-#include "chaps/proto_bindings/attributes.pb.h"
 #include "chaps/slot_policy.h"
 
 using brillo::SecureBlob;
@@ -220,8 +220,8 @@ bool ObjectPoolImpl::Parse(const ObjectBlob& object_blob, Object* object) {
     LOG(ERROR) << "Failed to parse proto-buffer.";
     return false;
   }
-  for (int i = 0; i < attribute_list.attribute_size(); ++i) {
-    const Attribute& attribute = attribute_list.attribute(i);
+  for (int i = 0; i < attribute_list.attributes_size(); ++i) {
+    const Attribute& attribute = attribute_list.attributes(i);
     if (!attribute.has_value()) {
       LOG(WARNING) << "No value found for attribute: " << attribute.type();
       continue;
@@ -255,7 +255,7 @@ bool ObjectPoolImpl::Serialize(const Object* object, ObjectBlob* serialized) {
   AttributeMap::const_iterator it;
   AttributeList attribute_list;
   for (it = attribute_map->begin(); it != attribute_map->end(); ++it) {
-    Attribute* next = attribute_list.add_attribute();
+    Attribute* next = attribute_list.add_attributes();
     next->set_type(it->first);
     next->set_length(it->second.length());
     next->set_value(it->second);

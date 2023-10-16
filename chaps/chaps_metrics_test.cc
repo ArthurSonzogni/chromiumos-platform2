@@ -6,6 +6,7 @@
 
 #include <type_traits>
 
+#include <dbus/chaps/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>

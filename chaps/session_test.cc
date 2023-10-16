@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+#include <dbus/chaps/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/chaps/mock_frontend.h>
@@ -1174,9 +1175,9 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithHWSec) {
   EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftwareAttribute, true));
 }
 
 TEST_F(TestSessionWithRealObject, GenerateRSAWithHWSecAndAllowSoftGen) {
@@ -1228,9 +1229,9 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithHWSecAndAllowSoftGen) {
   EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftwareAttribute, true));
 }
 
 TEST_F(TestSessionWithRealObject, GenerateRSAWithHWsecInconsistentToken) {
@@ -1314,9 +1315,9 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithNoHWSec) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftwareAttribute, false));
 
   // Check attributes that store security element wrapped blob doesn't exists.
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
@@ -1357,9 +1358,9 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithForceSoftware) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftwareAttribute, false));
 
   // Check attributes that store security element wrapped blob doesn't exists.
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
@@ -1393,9 +1394,9 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithHWSec) {
   EXPECT_TRUE(priv->IsAttributePresent(kAuthDataAttribute));
   EXPECT_TRUE(priv->IsAttributePresent(kKeyBlobAttribute));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftware));
-  EXPECT_FALSE(priv->GetAttributeBool(kKeyInSoftware, true));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_FALSE(priv->GetAttributeBool(kKeyInSoftwareAttribute, true));
 }
 
 TEST_F(TestSessionWithRealObject, GenerateECCWithHWSecInconsistentToken) {
@@ -1434,9 +1435,9 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithNoHWSec) {
   // For a software key, the sensitive attributes should exist.
   EXPECT_TRUE(priv->IsAttributePresent(CKA_VALUE));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftware));
-  EXPECT_TRUE(priv->GetAttributeBool(kKeyInSoftware, false));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_TRUE(priv->GetAttributeBool(kKeyInSoftwareAttribute, false));
 
   // Check attributes that store security element wrapped blob doesn't exists.
   EXPECT_FALSE(priv->IsAttributePresent(kAuthDataAttribute));
@@ -1475,9 +1476,9 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithForceSoftware) {
   // For a software key, the sensitive attributes should exist.
   EXPECT_TRUE(priv->IsAttributePresent(CKA_VALUE));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftware));
-  EXPECT_TRUE(priv->GetAttributeBool(kKeyInSoftware, false));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_TRUE(priv->GetAttributeBool(kKeyInSoftwareAttribute, false));
 
   // Check attributes that store security element wrapped blob doesn't exists.
   EXPECT_FALSE(priv->IsAttributePresent(kAuthDataAttribute));
@@ -1602,9 +1603,9 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithHWSec) {
   EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftwareAttribute, true));
 }
 
 TEST_F(TestSessionWithRealObject, ImportRSAWithNoHWSec) {
@@ -1684,9 +1685,9 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithNoHWSec) {
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftwareAttribute, false));
 }
 
 TEST_F(TestSessionWithRealObject, ImportRSAWithForceSoftware) {
@@ -1767,9 +1768,9 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithForceSoftware) {
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftwareAttribute, false));
 }
 
 TEST_F(TestSessionWithRealObject, ImportECCWithHWSec) {
@@ -1829,9 +1830,9 @@ TEST_F(TestSessionWithRealObject, ImportECCWithHWSec) {
   EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftwareAttribute, true));
 }
 
 TEST_F(TestSessionWithRealObject, ImportECCWithNoHWSec) {
@@ -1882,9 +1883,9 @@ TEST_F(TestSessionWithRealObject, ImportECCWithNoHWSec) {
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftwareAttribute, false));
 }
 
 TEST_F(TestSessionWithRealObject, ImportECCWithForceSoftware) {
@@ -1936,9 +1937,9 @@ TEST_F(TestSessionWithRealObject, ImportECCWithForceSoftware) {
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 
-  // Check that kKeyInSoftware attribute is correctly set.
-  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
-  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
+  // Check that kKeyInSoftwareAttribute attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftwareAttribute));
+  EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftwareAttribute, false));
 }
 
 TEST_F(TestSession, CreateObjectsNoPrivate) {

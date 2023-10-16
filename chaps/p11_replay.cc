@@ -34,6 +34,7 @@
 #include <libhwsec-foundation/crypto/openssl.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <dbus/chaps/dbus-constants.h>
 
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"

@@ -7,6 +7,7 @@
 #include <iterator>
 
 #include <base/logging.h>
+#include <dbus/chaps/dbus-constants.h>
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
@@ -41,7 +42,7 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
     {kKeyBlobAttribute, true, {false, true, true}, false},
     {kAuthDataAttribute, true, {false, true, true}, false},
     {kForceSoftwareAttribute, false, {false, true, true}, false},
-    {kKeyInSoftware, false, {true, true, true}, false},
+    {kKeyInSoftwareAttribute, false, {true, true, true}, false},
     {kAllowSoftwareGenAttribute, false, {false, true, true}, false},
 };
 

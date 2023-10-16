@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <chaps/proto_bindings/attributes.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -17,7 +18,6 @@
 #include "chaps/handle_generator_mock.h"
 #include "chaps/object_mock.h"
 #include "chaps/object_store_mock.h"
-#include "chaps/proto_bindings/attributes.pb.h"
 #include "chaps/slot_policy_mock.h"
 
 using brillo::SecureBlob;
@@ -130,7 +130,7 @@ TEST_F(TestObjectPool, Init) {
   // Create some fake persistent objects for the mock store to return.
   map<int, ObjectBlob> persistent_objects;
   AttributeList l;
-  Attribute* a = l.add_attribute();
+  Attribute* a = l.add_attributes();
   a->set_type(CKA_ID);
   a->set_value("value");
   string s;

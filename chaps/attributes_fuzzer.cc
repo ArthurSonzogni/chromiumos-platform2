@@ -3,10 +3,10 @@
 // found in the LICENSE file.
 
 #include <base/logging.h>
+#include <chaps/proto_bindings/attributes.pb.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 
 #include "chaps/attributes.h"
-#include "chaps/proto_bindings/attributes.pb.h"
 
 class Environment {
  public:

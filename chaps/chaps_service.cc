@@ -6,6 +6,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <dbus/chaps/dbus-constants.h>
 
 #include "chaps/attributes.h"
 #include "chaps/chaps.h"

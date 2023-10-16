@@ -23,6 +23,7 @@
 #include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+#include <dbus/chaps/dbus-constants.h>
 #include <libhwsec/frontend/chaps/frontend.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/bio.h>

@@ -23,6 +23,7 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
+#include <dbus/chaps/dbus-constants.h>
 
 #include "chaps/attributes.h"
 #include "chaps/chaps.h"
@@ -386,8 +387,8 @@ string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
       return "kForceSoftwareAttribute";
     case kAllowSoftwareGenAttribute:
       return "kAllowSoftwareGenAttribute";
-    case kKeyInSoftware:
-      return "kKeyInSoftware";
+    case kKeyInSoftwareAttribute:
+      return "kKeyInSoftwareAttribute";
     default:
       stringstream ss;
       ss << attribute;
@@ -477,7 +478,9 @@ bool StringToAttribute(string attribute_string, CK_ATTRIBUTE_TYPE* output) {
           {"kKeyBlobAttribute", kKeyBlobAttribute},
           {"kAuthDataAttribute", kAuthDataAttribute},
           {"kForceSoftwareAttribute", kForceSoftwareAttribute},
-          {"kKeyInSoftware", kKeyInSoftware},
+          // kKeyInSoftware is included for backwards compatibility.
+          {"kKeyInSoftware", kKeyInSoftwareAttribute},
+          {"kKeyInSoftwareAttribute", kKeyInSoftwareAttribute},
           {"kAllowSoftwareGenAttribute", kAllowSoftwareGenAttribute},
       });
 

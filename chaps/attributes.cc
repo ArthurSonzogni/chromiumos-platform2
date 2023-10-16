@@ -10,9 +10,9 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <chaps/proto_bindings/attributes.pb.h>
 
 #include "chaps/chaps_utility.h"
-#include "chaps/proto_bindings/attributes.pb.h"
 
 using std::string;
 using std::vector;
@@ -95,7 +95,7 @@ bool Attributes::SerializeInternal(CK_ATTRIBUTE_PTR attributes,
       LOG(ERROR) << "Nesting attempted and not allowed.";
       return false;
     }
-    Attribute* next = attribute_list.add_attribute();
+    Attribute* next = attribute_list.add_attributes();
     next->set_type(attributes[i].type);
     next->set_length(attributes[i].ulValueLen);
     if (!attributes[i].pValue || attributes[i].ulValueLen == kErrorIndicator) {
@@ -135,10 +135,10 @@ bool Attributes::ParseInternal(const string& serialized,
     return false;
   }
   CK_ATTRIBUTE_PTR attribute_array =
-      AllocateCkAttributeArray(attribute_list.attribute_size());
+      AllocateCkAttributeArray(attribute_list.attributes_size());
   CHECK(attribute_array);
-  for (int i = 0; i < attribute_list.attribute_size(); ++i) {
-    const Attribute& attribute = attribute_list.attribute(i);
+  for (int i = 0; i < attribute_list.attributes_size(); ++i) {
+    const Attribute& attribute = attribute_list.attributes(i);
     attribute_array[i].type = attribute.type();
     if (!attribute.has_value()) {
       // Only a length was requested, this is indicated in a CK_ATTRIBUTE by a
@@ -173,7 +173,7 @@ bool Attributes::ParseInternal(const string& serialized,
     attribute_array[i].pValue = inner_attribute_list;
   }
   *attributes = attribute_array;
-  *num_attributes = attribute_list.attribute_size();
+  *num_attributes = attribute_list.attributes_size();
   return true;
 }
 
@@ -190,13 +190,13 @@ bool Attributes::ParseAndFillInternal(const string& serialized,
     LOG(ERROR) << "Failed to parse proto-buffer.";
     return false;
   }
-  if (num_attributes != IntToValueLength(attribute_list.attribute_size())) {
+  if (num_attributes != IntToValueLength(attribute_list.attributes_size())) {
     LOG(ERROR) << "Attribute array size mismatch (expected=" << num_attributes
-               << ", actual=" << attribute_list.attribute_size() << ").";
+               << ", actual=" << attribute_list.attributes_size() << ").";
     return false;
   }
-  for (int i = 0; i < attribute_list.attribute_size(); ++i) {
-    const Attribute& attribute = attribute_list.attribute(i);
+  for (int i = 0; i < attribute_list.attributes_size(); ++i) {
+    const Attribute& attribute = attribute_list.attributes(i);
     if (attributes[i].type != attribute.type()) {
       LOG(ERROR) << "Attribute type mismatch (expected=" << attributes[i].type
                  << ", actual=" << attribute.type() << ").";

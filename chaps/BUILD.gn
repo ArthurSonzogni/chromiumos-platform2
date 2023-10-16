@@ -7,7 +7,6 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":chaps-protos",
     ":chaps_client",
     ":chapsd",
     ":dbus_conf",
@@ -78,21 +77,6 @@ pkg_config("target_defaults") {
   cflags = [ "-Wconsumed" ]
 }
 
-proto_library("chaps-protos") {
-  proto_in_dir = "."
-  proto_out_dir = "include/chaps/proto_bindings"
-  sources = [ "${proto_in_dir}/attributes.proto" ]
-  if (use.fuzzer) {
-    # Override optimize_for option in proto file.
-    gen_cpp_mode = "speed"
-  }
-
-  # libchaps-protos.a is used by a shared_libary
-  # object, so we need to build it with '-fPIC' instead of '-fPIE'.
-  use_pic = true
-  standalone = true
-}
-
 # This should only be used directly for internal binaries like unittests.
 # All client programs should use the shared libchaps library.
 source_set("libchaps_source_set") {
@@ -110,8 +94,6 @@ source_set("libchaps_source_set") {
   configs += [ "//common-mk:pic" ]
 
   configs += [ ":target_defaults" ]
-
-  deps = [ ":chaps-protos" ]
 }
 
 shared_library("libchaps") {
