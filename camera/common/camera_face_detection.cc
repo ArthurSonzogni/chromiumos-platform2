@@ -267,7 +267,8 @@ std::string LandmarkTypeToString(human_sensing::Landmark::Type type) {
     case human_sensing::Landmark::Type::kLandmarkUnknown:
       return "Unknown";
   }
-  return base::StringPrintf("Undefined landmark type %d", type);
+  return base::StringPrintf("Undefined landmark type %d",
+                            static_cast<int>(type));
 }
 
 }  // namespace cros
