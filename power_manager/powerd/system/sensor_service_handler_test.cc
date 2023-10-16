@@ -46,7 +46,7 @@ class FakeObserver : public SensorServiceHandlerObserver {
 
 }  // namespace
 
-class SensorServiceHandlerTest : public TestEnvironment {
+class SensorServiceHandlerTest : public MojoTestEnvironment {
  public:
   SensorServiceHandlerTest(const SensorServiceHandlerTest&) = delete;
   SensorServiceHandlerTest& operator=(const SensorServiceHandlerTest&) = delete;
