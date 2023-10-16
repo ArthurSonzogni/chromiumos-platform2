@@ -1357,7 +1357,7 @@ void HdrNetStreamManipulator::OnOptionsUpdated(
 
   bool denoiser_enable;
   if (LoadIfExist(json_values, kDenoiserEnable, &denoiser_enable)) {
-    if (!options_.denoiser_enable && options_.denoiser_enable) {
+    if (!options_.denoiser_enable && denoiser_enable) {
       // Reset the denoiser temporal buffer whenever we switch on the denoiser
       // to avoid artifacts caused by stale data.
       for (auto& c : hdrnet_stream_context_) {
