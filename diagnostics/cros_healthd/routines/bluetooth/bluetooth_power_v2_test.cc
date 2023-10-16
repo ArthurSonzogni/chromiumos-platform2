@@ -252,9 +252,9 @@ TEST_F(BluetoothPowerRoutineV2Test, RoutineErrorInitialization) {
   RunRoutineAndWaitForException("Failed to initialize Bluetooth routine");
 }
 
-// Test that the Bluetooth power routine can handle the failure when the adapter
+// Test that the Bluetooth power routine can handle the error when the adapter
 // is already in discovery mode.
-TEST_F(BluetoothPowerRoutineV2Test, PreCheckFailedAlreadyDiscoveryMode) {
+TEST_F(BluetoothPowerRoutineV2Test, PreCheckErrorAlreadyDiscoveryMode) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
 
@@ -315,8 +315,8 @@ TEST_F(BluetoothPowerRoutineV2Test, FailedChangePoweredState) {
   EXPECT_FALSE(detail->power_on_result);
 }
 
-// Test that the BluetoothPowerRoutine can handle unexpected powered status in
-// HCI level and return a kFailed status.
+// Test that the Bluetooth power routine can handle unexpected powered status in
+// HCI level.
 TEST_F(BluetoothPowerRoutineV2Test, FailedVerifyPoweredHci) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
@@ -351,8 +351,8 @@ TEST_F(BluetoothPowerRoutineV2Test, FailedVerifyPoweredHci) {
   EXPECT_FALSE(detail->power_on_result);
 }
 
-// Test that the BluetoothPowerRoutine can handle unexpected powered status in
-// D-Bus level and return a kFailed status.
+// Test that the Bluetooth power routine can handle unexpected powered status in
+// D-Bus level.
 TEST_F(BluetoothPowerRoutineV2Test, FailedVerifyPoweredDbus) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
