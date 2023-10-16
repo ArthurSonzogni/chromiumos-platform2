@@ -119,6 +119,7 @@ void TerminaVm::MaitredDeleter::operator()(
         // callback (currently) deadlocks, i.e. the callback is posted to
         // the same sequence that called ShutDown().
         delete maitred;
+        LOG(INFO) << "Maitred stub deleted: " << maitred;
       },
       maitred));
 }
