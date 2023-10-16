@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
@@ -25,7 +26,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/notreached.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -489,7 +489,7 @@ void Cellular::SetModemState(ModemState modem_state) {
   UpdateScanning();
 }
 
-void Cellular::HelpRegisterDerivedBool(base::StringPiece name,
+void Cellular::HelpRegisterDerivedBool(std::string_view name,
                                        bool (Cellular::*get)(Error* error),
                                        bool (Cellular::*set)(const bool& value,
                                                              Error* error)) {
@@ -498,7 +498,7 @@ void Cellular::HelpRegisterDerivedBool(base::StringPiece name,
 }
 
 void Cellular::HelpRegisterConstDerivedString(
-    base::StringPiece name, std::string (Cellular::*get)(Error*)) {
+    std::string_view name, std::string (Cellular::*get)(Error*)) {
   mutable_store()->RegisterDerivedString(
       name, StringAccessor(
                 new CustomAccessor<Cellular, std::string>(this, get, nullptr)));

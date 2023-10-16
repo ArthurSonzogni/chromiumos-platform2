@@ -10,11 +10,11 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/rtnl_listener.h>
@@ -647,12 +647,12 @@ class Cellular : public Device,
   // Reads of the property will be handled by invoking |get|.
   // Writes to the property will be handled by invoking |set|.
   // Clearing the property will be handled by PropertyStore.
-  void HelpRegisterDerivedBool(base::StringPiece name,
+  void HelpRegisterDerivedBool(std::string_view name,
                                bool (Cellular::*get)(Error* error),
                                bool (Cellular::*set)(const bool& value,
                                                      Error* error));
   void HelpRegisterConstDerivedString(
-      base::StringPiece name, std::string (Cellular::*get)(Error* error));
+      std::string_view name, std::string (Cellular::*get)(Error* error));
 
   void OnConnectReply(ApnList::ApnType apn_type,
                       std::string iccid,

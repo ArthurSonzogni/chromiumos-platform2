@@ -5,22 +5,21 @@
 #include "shill/cellular/cellular_service.h"
 
 #include <optional>
+#include <string_view>
 #include <unordered_map>
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "base/containers/contains.h"
-#include "base/strings/string_piece_forward.h"
 #include "dbus/shill/dbus-constants.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
@@ -781,7 +780,7 @@ RpcIdentifier CellularService::GetDeviceRpcId(Error* error) const {
 }
 
 void CellularService::HelpRegisterDerivedString(
-    base::StringPiece name,
+    std::string_view name,
     std::string (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const std::string& value, Error* error)) {
   mutable_store()->RegisterDerivedString(
@@ -790,7 +789,7 @@ void CellularService::HelpRegisterDerivedString(
 }
 
 void CellularService::HelpRegisterDerivedStringmap(
-    base::StringPiece name,
+    std::string_view name,
     Stringmap (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const Stringmap& value, Error* error)) {
   mutable_store()->RegisterDerivedStringmap(
@@ -799,7 +798,7 @@ void CellularService::HelpRegisterDerivedStringmap(
 }
 
 void CellularService::HelpRegisterDerivedStringmaps(
-    base::StringPiece name,
+    std::string_view name,
     Stringmaps (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const Stringmaps& value, Error* error),
     void (CellularService::*clear)(Error*)) {
@@ -809,7 +808,7 @@ void CellularService::HelpRegisterDerivedStringmaps(
 }
 
 void CellularService::HelpRegisterDerivedBool(
-    base::StringPiece name,
+    std::string_view name,
     bool (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const bool&, Error*)) {
   mutable_store()->RegisterDerivedBool(

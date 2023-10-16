@@ -6,13 +6,13 @@
 
 #include <set>
 #include <string>
+#include <string_view>
 #include <tuple>
-#include "base/strings/string_piece_forward.h"
-#include "base/strings/string_split.h"
-#include "base/strings/string_util.h"
 
 #include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
@@ -141,7 +141,7 @@ bool ApnList::IsTetheringApn(const Stringmap& apn_info) {
 std::string ApnList::JoinApnTypes(std::vector<std::string> apn_types) {
   std::set<std::string> types(apn_types.begin(), apn_types.end());
   std::string joined_apn_types = base::JoinString(
-      std::vector<base::StringPiece>(types.begin(), types.end()), ",");
+      std::vector<std::string_view>(types.begin(), types.end()), ",");
   // Validate APN types
   types.erase(kApnTypeDefault);
   types.erase(kApnTypeIA);
