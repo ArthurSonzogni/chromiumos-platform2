@@ -67,6 +67,8 @@ class CapportProxy {
   // Queries the CAPPORT server. The |callback| will be called with a valid
   // CapportStatus when the response is received from the CAPPORT server
   // successfully, or with std::nullopt when any error occurs.
+  // If the CapportProxy instance is destroyed before the response is received,
+  // then |callback| will not be called.
   // Note that the caller should not call this method when IsRunning() is true.
   mockable void SendRequest(StatusCallback callback);
 
