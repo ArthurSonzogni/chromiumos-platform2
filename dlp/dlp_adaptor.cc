@@ -76,9 +76,7 @@ FileEntry ConvertToFileEntry(FileId id, AddFileRequest request) {
 }
 
 std::set<std::pair<base::FilePath, FileId>> EnumerateFiles(
-    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     const base::FilePath& root_path) {
-  CHECK(task_runner->RunsTasksInCurrentSequence());
   std::set<std::pair<base::FilePath, FileId>> files;
   base::FileEnumerator enumerator(root_path, /*recursive=*/true,
                                   base::FileEnumerator::FILES);
@@ -133,20 +131,13 @@ DlpAdaptor::DlpAdaptor(
     : org::chromium::DlpAdaptor(this),
       dbus_object_(std::move(dbus_object)),
       feature_lib_(feature_lib),
-      home_path_(home_path),
-      file_enumeration_thread_("file_enumeration_thread") {
+      home_path_(home_path) {
   dlp_metrics_ = std::make_unique<DlpMetrics>();
   fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this, fanotify_perm_fd,
                                                         fanotify_notif_fd);
   dlp_files_policy_service_ =
       std::make_unique<org::chromium::DlpFilesPolicyServiceProxy>(
           dbus_object_->GetBus().get(), kDlpFilesPolicyServiceName);
-
-  CHECK(file_enumeration_thread_.Start())
-      << "Failed to start file enumeration thread.";
-  file_enumeration_task_runner_ = file_enumeration_thread_.task_runner();
-
-  CHECK(!file_enumeration_task_runner_->RunsTasksInCurrentSequence());
 }
 
 DlpAdaptor::~DlpAdaptor() {
@@ -155,7 +146,6 @@ DlpAdaptor::~DlpAdaptor() {
     dlp_metrics_->SendAdaptorError(
         AdaptorError::kAddFileNotCompleteBeforeDestruction);
   }
-  file_enumeration_thread_.Stop();
 }
 
 void DlpAdaptor::RegisterAsync(
@@ -554,12 +544,12 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
   // Migration is needed.
   if (db_status.second) {
     LOG(INFO) << "Migrating from legacy table";
-    file_enumeration_task_runner_->PostTaskAndReplyWithResult(
-        FROM_HERE,
-        base::BindOnce(&EnumerateFiles, file_enumeration_task_runner_,
-                       home_path_),
-        base::BindOnce(&DlpAdaptor::MigrateDatabase, base::Unretained(this),
-                       std::move(db), std::move(init_callback), database_path));
+    base::SingleThreadTaskRunner::GetCurrentDefault()
+        ->PostTaskAndReplyWithResult(
+            FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+            base::BindOnce(&DlpAdaptor::MigrateDatabase, base::Unretained(this),
+                           std::move(db), std::move(init_callback),
+                           database_path));
     return;
   }
 
@@ -582,14 +572,12 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
   // of the home directory folders due to inconsistent access permissions.
   if (feature_lib_ &&
       feature_lib_->IsEnabledBlocking(kCrOSLateBootDlpDatabaseCleanupFeature)) {
-    LOG(INFO) << "Starting database cleanup";
-    file_enumeration_task_runner_->PostTaskAndReplyWithResult(
-        FROM_HERE,
-        base::BindOnce(&EnumerateFiles, file_enumeration_task_runner_,
-                       home_path_),
-        base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase,
-                       base::Unretained(this), std::move(db),
-                       std::move(init_callback)));
+    base::SingleThreadTaskRunner::GetCurrentDefault()
+        ->PostTaskAndReplyWithResult(
+            FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+            base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase,
+                           base::Unretained(this), std::move(db),
+                           std::move(init_callback)));
   } else {
     OnDatabaseCleaned(std::move(db), std::move(init_callback),
                       /*success=*/true);
@@ -649,11 +637,11 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
   // If the database is not initialized yet, we delay adding per file watch
   // till it'll be created.
   if (db_) {
-    file_enumeration_task_runner_->PostTaskAndReplyWithResult(
-        FROM_HERE,
-        base::BindOnce(&EnumerateFiles, file_enumeration_task_runner_,
-                       home_path_),
-        base::BindOnce(&DlpAdaptor::AddPerFileWatch, base::Unretained(this)));
+    base::SingleThreadTaskRunner::GetCurrentDefault()
+        ->PostTaskAndReplyWithResult(
+            FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+            base::BindOnce(&DlpAdaptor::AddPerFileWatch,
+                           base::Unretained(this)));
   } else {
     pending_per_file_watches_ = true;
   }
@@ -1080,11 +1068,11 @@ void DlpAdaptor::OnDatabaseCleaned(std::unique_ptr<DlpDatabase> db,
     // If fanotify watcher is already started, we need to add watches for all
     // files from the database.
     if (pending_per_file_watches_) {
-      file_enumeration_task_runner_->PostTaskAndReplyWithResult(
-          FROM_HERE,
-          base::BindOnce(&EnumerateFiles, file_enumeration_task_runner_,
-                         home_path_),
-          base::BindOnce(&DlpAdaptor::AddPerFileWatch, base::Unretained(this)));
+      base::SingleThreadTaskRunner::GetCurrentDefault()
+          ->PostTaskAndReplyWithResult(
+              FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+              base::BindOnce(&DlpAdaptor::AddPerFileWatch,
+                             base::Unretained(this)));
       pending_per_file_watches_ = false;
     }
     std::move(callback).Run();
