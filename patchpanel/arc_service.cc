@@ -164,24 +164,10 @@ std::unique_ptr<Device::Config> AllocateArc0Config(
     LOG(ERROR) << "Subnet already in use or unavailable";
     return nullptr;
   }
-
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  if (!host_ipv4_addr) {
-    LOG(ERROR) << "Bridge address already in use or unavailable";
-    return nullptr;
-  }
-
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-  if (!guest_ipv4_addr) {
-    LOG(ERROR) << "ARC address already in use or unavailable";
-    return nullptr;
-  }
-
   uint32_t subnet_index =
       (arc_type == ArcService::ArcType::kVM) ? 1 : kAnySubnetIndex;
   return std::make_unique<Device::Config>(
-      addr_mgr->GenerateMacAddress(subnet_index), std::move(ipv4_subnet),
-      std::move(host_ipv4_addr), std::move(guest_ipv4_addr));
+      addr_mgr->GenerateMacAddress(subnet_index), std::move(ipv4_subnet));
 }
 
 std::string PrefixIfname(std::string_view prefix, std::string_view ifname) {
@@ -279,24 +265,11 @@ void ArcService::AllocateAddressConfigs() {
       LOG(ERROR) << "Subnet already in use or unavailable";
       continue;
     }
-    // For here out, use the same slices.
-    auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-    if (!host_ipv4_addr) {
-      LOG(ERROR) << "Bridge address already in use or unavailable";
-      continue;
-    }
-    auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
-    if (!guest_ipv4_addr) {
-      LOG(ERROR) << "ARC address already in use or unavailable";
-      continue;
-    }
-
     MacAddress mac_addr = (arc_type_ == ArcType::kVM)
                               ? addr_mgr_->GenerateMacAddress(mac_addr_index++)
                               : addr_mgr_->GenerateMacAddress();
-    available_configs_[type].emplace_back(std::make_unique<Device::Config>(
-        mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
-        std::move(guest_ipv4_addr)));
+    available_configs_[type].emplace_back(
+        std::make_unique<Device::Config>(mac_addr, std::move(ipv4_subnet)));
   }
 
   // Iterate over |available_configs_| with a fixed explicit order and do not
