@@ -65,8 +65,11 @@ std::vector<std::string_view> GetHostnamesFromDoHProviders(
 class QoSService::DoHUpdater {
  public:
   using DNSClient = net_base::DNSClient;
+  using DNSClientFactory = net_base::DNSClientFactory;
 
-  DoHUpdater(Datapath* datapath, const ShillClient::DoHProviders& doh_providers)
+  DoHUpdater(Datapath* datapath,
+             DNSClientFactory* dns_client_factory,
+             const ShillClient::DoHProviders& doh_providers)
       : datapath_(datapath) {
     std::vector<std::string_view> hostnames =
         GetHostnamesFromDoHProviders(doh_providers);
@@ -87,12 +90,12 @@ class QoSService::DoHUpdater {
            {net_base::IPFamily::kIPv4, net_base::IPFamily::kIPv6}) {
         // Unretained() is safe here since DNSClient is owned by |this| and
         // callback won't be invoked after DNSClient is destroyed.
-        auto client =
-            DNSClient::Resolve(family, name,
-                               base::BindOnce(&DoHUpdater::OnAddressesResolved,
-                                              base::Unretained(this), id,
-                                              family, std::string(name)),
-                               /*options=*/{});
+        auto client = dns_client_factory->Resolve(
+            family, name,
+            base::BindOnce(&DoHUpdater::OnAddressesResolved,
+                           base::Unretained(this), id, family,
+                           std::string(name)),
+            /*options=*/{});
         dns_clients_.emplace(id, std::move(client));
         id++;
       }
@@ -163,12 +166,16 @@ class QoSService::DoHUpdater {
 };
 
 QoSService::QoSService(Datapath* datapath) : datapath_(datapath) {
+  dns_client_factory_ = std::make_unique<net_base::DNSClientFactory>();
   process_runner_ = std::make_unique<MinijailedProcessRunner>();
 }
 
-QoSService::QoSService(Datapath* datapath,
-                       std::unique_ptr<MinijailedProcessRunner> process_runner)
+QoSService::QoSService(
+    Datapath* datapath,
+    std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
+    std::unique_ptr<MinijailedProcessRunner> process_runner)
     : datapath_(datapath) {
+  dns_client_factory_ = std::move(dns_client_factory);
   process_runner_ = std::move(process_runner);
 }
 
@@ -305,7 +312,8 @@ void QoSService::UpdateDoHProviders(
   //   rules for DoH won't have any effect when the service is not enabled.
   // - If the current |doh_updater_| is still running, this reset() will cancel
   //   it.
-  doh_updater_.reset(new DoHUpdater(datapath_, doh_providers));
+  doh_updater_.reset(
+      new DoHUpdater(datapath_, dns_client_factory_.get(), doh_providers));
 }
 
 }  // namespace patchpanel

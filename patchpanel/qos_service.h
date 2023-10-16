@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/containers/flat_set.h>
+#include <net-base/dns_client.h>
 
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/shill_client.h"
@@ -44,6 +45,7 @@ class QoSService {
   explicit QoSService(Datapath* datapath);
   // Provided for testing.
   QoSService(Datapath* datapath,
+             std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
              std::unique_ptr<MinijailedProcessRunner> process_runner);
 
   ~QoSService();
@@ -73,6 +75,11 @@ class QoSService {
   void UpdateDoHProviders(const ShillClient::DoHProviders& doh_providers);
 
  private:
+  // Dependencies.
+  Datapath* datapath_;
+  std::unique_ptr<net_base::DNSClientFactory> dns_client_factory_;
+  std::unique_ptr<MinijailedProcessRunner> process_runner_;
+
   // QoS feature is disabled by default. This value can be changed in `Enable()`
   // and `Disable()`.
   bool is_enabled_ = false;
@@ -89,9 +96,6 @@ class QoSService {
   // update the iptables rules related to DoH. Reset in UpdateDoHProviders().
   class DoHUpdater;
   std::unique_ptr<DoHUpdater> doh_updater_;
-
-  Datapath* datapath_;
-  std::unique_ptr<MinijailedProcessRunner> process_runner_;
 };
 
 }  // namespace patchpanel

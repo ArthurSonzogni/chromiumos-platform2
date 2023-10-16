@@ -359,4 +359,12 @@ std::unique_ptr<DNSClient> DNSClient::Resolve(IPFamily family,
                                          options, ares);
 }
 
+std::unique_ptr<DNSClient> DNSClientFactory::Resolve(
+    IPFamily family,
+    std::string_view hostname,
+    DNSClient::Callback callback,
+    const DNSClient::Options& options) {
+  return DNSClient::Resolve(family, hostname, std::move(callback), options);
+}
+
 }  // namespace net_base

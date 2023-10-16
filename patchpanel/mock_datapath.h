@@ -151,6 +151,10 @@ class MockDatapath : public Datapath {
   MOCK_METHOD(void, DisableQoSDetection, (), (override));
   MOCK_METHOD(void, EnableQoSApplyingDSCP, (std::string_view), (override));
   MOCK_METHOD(void, DisableQoSApplyingDSCP, (std::string_view), (override));
+  MOCK_METHOD(void,
+              UpdateDoHProvidersForQoS,
+              (IpFamily, const std::vector<net_base::IPAddress>&),
+              (override));
   MOCK_METHOD(bool,
               AddAdbPortAccessRule,
               (const std::string& ifname),

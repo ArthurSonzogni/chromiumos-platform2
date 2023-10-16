@@ -79,9 +79,29 @@ class NET_BASE_EXPORT DNSClient {
 
   virtual ~DNSClient() = default;
 
+  // DNSClientFactory is neither copyable nor movable.
+  DNSClient(const DNSClient&) = delete;
+  DNSClient& operator=(const DNSClient&) = delete;
+
  protected:
   // Should only be constructed from the factory method.
   DNSClient() = default;
+};
+
+// A wrapper of DNSClient for the ease of unit tests.
+class NET_BASE_EXPORT DNSClientFactory {
+ public:
+  virtual std::unique_ptr<DNSClient> Resolve(IPFamily family,
+                                             std::string_view hostname,
+                                             DNSClient::Callback callback,
+                                             const DNSClient::Options& options);
+
+  DNSClientFactory() = default;
+  virtual ~DNSClientFactory() = default;
+
+  // DNSClientFactory is neither copyable nor movable.
+  DNSClientFactory(const DNSClientFactory&) = delete;
+  DNSClientFactory& operator=(const DNSClientFactory&) = delete;
 };
 
 }  // namespace net_base
