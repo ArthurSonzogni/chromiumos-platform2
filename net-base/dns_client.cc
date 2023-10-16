@@ -122,17 +122,24 @@ class DNSClientImpl : public DNSClient {
 
   // Helper functions for the fd management.
   // - OnSocketReadable(), OnSocketWritable(), and OnTimeout(): Event handlers
-  //   called on the corresponding events. These three functions will called
+  //   called on the corresponding events. These three functions will call
   //   ProcessFd() inside.
   // - ProcessFd(): called ares_process_fd(), which may invoke the callback
   //   (i.e., AresGethostbynameCallback()).
-  // - RefreshHandlersAndTimeout(): Set up the event handlers
-  //   (OnSocketReadable(), OnSocketWritable(), and OnTimeout()).
+  // - RefreshHandlers(): Set up the event handlers (OnSocketReadable(),
+  //   OnSocketWritable()).
+  // - RefreshTimeout(): Set up OnTimeout() and called by OnTimeout(). Note that
+  //   the timeout is scheduled at `min(ares_fd_timeout, dns_client_timeout)`.
+  //   The former one is the signal that we need to call `ares_process_fd()` to
+  //   let it handle the events, while the latter one is the signal that we need
+  //   to return the execution of DNSClient. We only need to reset the timeout
+  //   in the former case, and we unify the logic here just for simplicity.
   void OnSocketReadable(int fd);
   void OnSocketWritable(int fd);
   void OnTimeout();
   void ProcessFd(int read_fd, int write_fd);
-  void RefreshHandlersAndTimeout();
+  void RefreshHandlers();
+  void RefreshTimeout();
 
   // Returns true if this object hasn't get the results.
   bool IsRunning() const { return !callback_.is_null(); }
@@ -140,14 +147,13 @@ class DNSClientImpl : public DNSClient {
   AresInterface* ares_;
 
   const IPFamily family_;
-  const base::TimeDelta timeout_;
+  const base::TimeTicks deadline_;
 
   ares_channel channel_ = nullptr;
   std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       read_handlers_;
   std::vector<std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       write_handlers_;
-  base::TimeTicks start_time_;
 
   Callback callback_;
 
@@ -165,26 +171,19 @@ DNSClientImpl::DNSClientImpl(IPFamily family,
                              AresInterface* ares)
     : ares_(ares),
       family_(family),
-      timeout_(options.timeout),
+      deadline_(base::TimeTicks::Now() + options.timeout),
       callback_(std::move(callback)) {
   struct ares_options ares_opts;
   memset(&ares_opts, 0, sizeof(ares_opts));
 
-  constexpr static auto kMaxTimeout = base::Minutes(10);
-  if (timeout_ > kMaxTimeout || timeout_.is_zero()) {
-    LOG(ERROR) << "Invalid timeout: " << timeout_.InMilliseconds() << "ms";
-    ReportFailure(Error::kInternal);
-    return;
-  }
-  ares_opts.timeout = static_cast<int>(timeout_.InMilliseconds());
-
-  int status = ares_->init_options(&channel_, &ares_opts, ARES_OPT_TIMEOUTMS);
+  // We don't need any options now but will need it in the future (for
+  // specifying name servers and interface), so use ares_init_options() instead
+  // of ares_init() here.
+  int status = ares_->init_options(&channel_, &ares_opts, /*optmask=*/0);
   if (status != ARES_SUCCESS) {
     ReportFailure(AresStatusToError(status));
     return;
   }
-
-  start_time_ = base::TimeTicks::Now();
 
   // The raw pointer here is safe since the callback can only be invoked inside
   // some c-ares functions, while they can only be called from this object.
@@ -192,7 +191,8 @@ DNSClientImpl::DNSClientImpl(IPFamily family,
                        net_base::ToSAFamily(family_), AresGethostbynameCallback,
                        this);
 
-  RefreshHandlersAndTimeout();
+  RefreshHandlers();
+  RefreshTimeout();
 }
 
 DNSClientImpl::~DNSClientImpl() {
@@ -282,20 +282,17 @@ void DNSClientImpl::OnSocketWritable(int fd) {
 
 void DNSClientImpl::OnTimeout() {
   ProcessFd(/*read_fd=*/ARES_SOCKET_BAD, /*write_fd=*/ARES_SOCKET_BAD);
+  RefreshTimeout();
 }
 
 void DNSClientImpl::ProcessFd(int read_fd, int write_fd) {
   read_handlers_.clear();
   write_handlers_.clear();
   ares_->process_fd(channel_, read_fd, write_fd);
-  // TODO(b/302101630): We don't need to reset timeout on ProcessFD(), only on
-  // timeout callbacks.
-  RefreshHandlersAndTimeout();
+  RefreshHandlers();
 }
 
-void DNSClientImpl::RefreshHandlersAndTimeout() {
-  weak_factory_for_timeout_.InvalidateWeakPtrs();
-
+void DNSClientImpl::RefreshHandlers() {
   if (!IsRunning()) {
     return;
   }
@@ -315,21 +312,24 @@ void DNSClientImpl::RefreshHandlersAndTimeout() {
                                           base::Unretained(this), sockets[i])));
     }
   }
+}
 
-  // TODO(b/302101630): The timeout logic below can be optimized. We can either
-  // 1) trust the timeout from ares (only reset the timeout in the timeout
-  //    handler), or
-  // 2) only use the timeout logic here (instead of querying timeout in ares).
+void DNSClientImpl::RefreshTimeout() {
+  weak_factory_for_timeout_.InvalidateWeakPtrs();
+
+  if (!IsRunning()) {
+    return;
+  }
 
   // Schedule timer event for the earlier of our timeout or one requested by
   // the resolver library.
-  const base::TimeDelta elapsed_time = base::TimeTicks::Now() - start_time_;
-  if (elapsed_time >= timeout_) {
+  const auto now = base::TimeTicks::Now();
+  if (now >= deadline_) {
     ReportFailure(Error::kTimedOut);
     return;
   }
 
-  const base::TimeDelta max = timeout_ - elapsed_time;
+  const base::TimeDelta max = deadline_ - now;
   struct timeval max_tv = {
       .tv_sec = static_cast<time_t>(max.InSeconds()),
       .tv_usec = static_cast<suseconds_t>(
@@ -344,6 +344,7 @@ void DNSClientImpl::RefreshHandlersAndTimeout() {
                      weak_factory_for_timeout_.GetWeakPtr()),
       base::Seconds(tv->tv_sec) + base::Microseconds(tv->tv_usec));
 }
+
 }  // namespace
 
 std::unique_ptr<DNSClient> DNSClient::Resolve(IPFamily family,

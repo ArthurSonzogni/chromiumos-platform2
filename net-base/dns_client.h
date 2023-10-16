@@ -47,9 +47,18 @@ class NET_BASE_EXPORT DNSClient {
   using Result = base::expected<std::vector<IPAddress>, Error>;
   using Callback = base::OnceCallback<void(const Result&)>;
 
-  // Optional configurations for Resolve().
+  // Optional configurations for Resolve(). The DNS query behavior will follow
+  // the config in resolv.conf by default.
   struct Options {
+    // The maximum timeout for a single Resolve() call. Note that this is
+    // independent from the timeout for a single DNS query, and the maximum
+    // timeout in theory might be shorter than the value set here (e.g.,
+    // when `(timeout per query) x (# retries)` is shorter).
     base::TimeDelta timeout = base::Seconds(10);
+    // TODO(b/302101630): Add options for:
+    // - Number of retries;
+    // - Timeout of a single DNS query;
+    // - Interface.
   };
 
   // Resolves |hostname| to IP address in |family|. Results (either the
