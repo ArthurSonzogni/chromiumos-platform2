@@ -19,8 +19,8 @@ namespace patchpanel {
 
 class MockMulticastCountersService : public MulticastCountersService {
  public:
-  MockMulticastCountersService() : MulticastCountersService(nullptr) {}
-  ~MockMulticastCountersService() = default;
+  MockMulticastCountersService();
+  ~MockMulticastCountersService();
 
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void, Stop, (), (override));

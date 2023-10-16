@@ -21,11 +21,11 @@ namespace patchpanel {
 // ARC networking data path configuration utility.
 class MockDatapath : public Datapath {
  public:
-  MockDatapath() : Datapath(nullptr, nullptr, nullptr) {}
+  MockDatapath();
   MockDatapath(const MockDatapath&) = delete;
   MockDatapath& operator=(const MockDatapath&) = delete;
 
-  ~MockDatapath() = default;
+  ~MockDatapath();
 
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void, Stop, (), (override));

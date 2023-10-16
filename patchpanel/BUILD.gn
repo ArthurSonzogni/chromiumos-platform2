@@ -298,6 +298,8 @@ if (use.test) {
       "mac_address_generator_test.cc",
       "manager_test.cc",
       "minijailed_process_runner_test.cc",
+      "mock_datapath.cc",
+      "mock_multicast_counters_service.cc",
       "multicast_counters_service_test.cc",
       "multicast_metrics_test.cc",
       "ndproxy_test.cc",
