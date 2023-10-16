@@ -99,6 +99,7 @@
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
+#include "vm_tools/concierge/network/bruschetta_network.h"
 #include "vm_tools/concierge/network/guest_os_network.h"
 #include "vm_tools/concierge/network/termina_network.h"
 #include "vm_tools/concierge/plugin_vm.h"
@@ -1891,7 +1892,12 @@ StartVmResponse Service::StartVmInternal(
   vm_info->set_cid(vsock_cid);
 
   std::unique_ptr<GuestOsNetwork> network;
-  network = TerminaNetwork::Create(bus_, vsock_cid);
+  if (classification == apps::BRUSCHETTA) {
+    network = BruschettaNetwork::Create(bus_, vsock_cid);
+  } else {
+    // TODO(b/298650342): Special-case borealis too.
+    network = TerminaNetwork::Create(bus_, vsock_cid);
+  }
   if (!network) {
     LOG(ERROR) << "Unable to get network resources";
 

@@ -166,6 +166,7 @@ static_library("libconcierge") {
     "../concierge/mm/server.cc",
     "../concierge/mm/vm_socket.cc",
     "../concierge/network/arc_network.cc",
+    "../concierge/network/bruschetta_network.cc",
     "../concierge/network/guest_os_network.cc",
     "../concierge/network/plugin_vm_network.cc",
     "../concierge/network/scoped_network.cc",

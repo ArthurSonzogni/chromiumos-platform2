@@ -1030,6 +1030,7 @@ net_base::IPv4Address TerminaVm::Netmask() const {
 }
 
 net_base::IPv4CIDR TerminaVm::ContainerCIDRAddress() const {
+  CHECK(classification_ == apps::TERMINA);
   return *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
       Network()->ContainerAddressV4(),
       Network()->ContainerSubnetV4().prefix_length());
