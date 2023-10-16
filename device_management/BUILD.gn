@@ -198,6 +198,7 @@ if (use.test) {
     ]
     run_test = true
     pkg_deps = [
+      "absl",
       "protobuf-lite",
       "system_api",
     ]
