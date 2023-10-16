@@ -28,7 +28,7 @@
 #include "patchpanel/fake_system.h"
 #include "patchpanel/firewall.h"
 #include "patchpanel/iptables.h"
-#include "patchpanel/minijailed_process_runner.h"
+#include "patchpanel/mock_process_runner.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/shill_client.h"
 
@@ -57,67 +57,6 @@ std::vector<std::string> SplitArgs(const std::string& args) {
   return base::SplitString(args, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
                            base::SplitResult::SPLIT_WANT_NONEMPTY);
 }
-
-class MockProcessRunner : public MinijailedProcessRunner {
- public:
-  MockProcessRunner() = default;
-  ~MockProcessRunner() = default;
-
-  MOCK_METHOD(int,
-              ip,
-              (const std::string& obj,
-               const std::string& cmd,
-               const std::vector<std::string>& args,
-               bool as_patchpanel_user,
-               bool log_failures),
-              (override));
-  MOCK_METHOD(int,
-              ip6,
-              (const std::string& obj,
-               const std::string& cmd,
-               const std::vector<std::string>& args,
-               bool as_patchpanel_user,
-               bool log_failures),
-              (override));
-  MOCK_METHOD(int,
-              iptables,
-              (Iptables::Table table,
-               Iptables::Command command,
-               std::string_view chain,
-               const std::vector<std::string>& argv,
-               bool log_failures,
-               std::optional<base::TimeDelta> timeout,
-               std::string* output),
-              (override));
-  MOCK_METHOD(int,
-              ip6tables,
-              (Iptables::Table table,
-               Iptables::Command command,
-               std::string_view chain,
-               const std::vector<std::string>& argv,
-               bool log_failures,
-               std::optional<base::TimeDelta> timeout,
-               std::string* output),
-              (override));
-  MOCK_METHOD(int,
-              ip_netns_add,
-              (const std::string& netns_name, bool log_failures),
-              (override));
-  MOCK_METHOD(int,
-              ip_netns_attach,
-              (const std::string& netns_name,
-               pid_t netns_pid,
-               bool log_failures),
-              (override));
-  MOCK_METHOD(int,
-              ip_netns_delete,
-              (const std::string& netns_name, bool log_failures),
-              (override));
-  MOCK_METHOD(int,
-              modprobe_all,
-              (const std::vector<std::string>& modules, bool log_failures),
-              (override));
-};
 
 class MockFirewall : public Firewall {
  public:

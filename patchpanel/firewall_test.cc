@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/iptables.h"
-#include "patchpanel/minijailed_process_runner.h"
+#include "patchpanel/mock_process_runner.h"
 
 using testing::_;
 using testing::DoAll;
@@ -30,33 +30,6 @@ std::vector<std::string> SplitArgs(const std::string& args) {
   return base::SplitString(args, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
                            base::SplitResult::SPLIT_WANT_NONEMPTY);
 }
-
-class MockProcessRunner : public MinijailedProcessRunner {
- public:
-  MockProcessRunner() = default;
-  ~MockProcessRunner() = default;
-
-  MOCK_METHOD(int,
-              iptables,
-              (Iptables::Table table,
-               Iptables::Command command,
-               std::string_view chain,
-               const std::vector<std::string>& argv,
-               bool log_failures,
-               std::optional<base::TimeDelta> timeout,
-               std::string* output),
-              (override));
-  MOCK_METHOD(int,
-              ip6tables,
-              (Iptables::Table table,
-               Iptables::Command command,
-               std::string_view chain,
-               const std::vector<std::string>& argv,
-               bool log_failures,
-               std::optional<base::TimeDelta> timeout,
-               std::string* output),
-              (override));
-};
 
 void Verify_iptables(MockProcessRunner& runner,
                      const std::string& args,

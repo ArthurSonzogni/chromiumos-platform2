@@ -302,6 +302,7 @@ if (use.test) {
       "minijailed_process_runner_test.cc",
       "mock_datapath.cc",
       "mock_multicast_counters_service.cc",
+      "mock_process_runner.cc",
       "multicast_counters_service_test.cc",
       "multicast_metrics_test.cc",
       "ndproxy_test.cc",

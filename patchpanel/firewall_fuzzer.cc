@@ -10,49 +10,16 @@
 #include <string>
 #include <vector>
 
-#include "base/logging.h"
+#include <base/logging.h>
 
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/firewall.h"
-#include "patchpanel/minijailed_process_runner.h"
 
 using patchpanel::ModifyPortRuleRequest;
 using Protocol = patchpanel::ModifyPortRuleRequest::Protocol;
 
 namespace patchpanel {
 namespace {
-
-class FakeProcessRunner : public MinijailedProcessRunner {
- public:
-  FakeProcessRunner() : MinijailedProcessRunner(nullptr, nullptr) {}
-  FakeProcessRunner(const FakeProcessRunner&) = delete;
-  FakeProcessRunner& operator=(const FakeProcessRunner&) = delete;
-  ~FakeProcessRunner() = default;
-
-  int RunIp(const std::vector<std::string>& argv,
-            bool as_patchpanel_user,
-            bool log_failures) override {
-    return 0;
-  }
-
-  int RunIptables(std::string_view iptables_path,
-                  Iptables::Table table,
-                  Iptables::Command command,
-                  std::string_view chain,
-                  const std::vector<std::string>& argv,
-                  bool log_failures,
-                  std::optional<base::TimeDelta> timeout,
-                  std::string* output) override {
-    return 0;
-  }
-
-  int RunIpNetns(const std::vector<std::string>& argv,
-                 bool log_failures) override {
-    return 0;
-  }
-};
-}  // namespace
-
-}  // namespace patchpanel
 
 net_base::IPv4Address ConsumeIPv4Address(FuzzedDataProvider& provider) {
   const auto bytes =
@@ -135,3 +102,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   return 0;
 }
+
+}  // namespace
+}  // namespace patchpanel

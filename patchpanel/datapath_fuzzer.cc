@@ -18,8 +18,8 @@
 #include <net-base/ipv4_address.h>
 
 #include "patchpanel/datapath.h"
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/firewall.h"
-#include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
@@ -27,37 +27,6 @@
 
 namespace patchpanel {
 namespace {
-
-// Always succeeds
-class FakeProcessRunner : public MinijailedProcessRunner {
- public:
-  FakeProcessRunner() = default;
-  FakeProcessRunner(const FakeProcessRunner&) = delete;
-  FakeProcessRunner& operator=(const FakeProcessRunner&) = delete;
-  ~FakeProcessRunner() = default;
-
-  int RunIp(const std::vector<std::string>& argv,
-            bool as_patchpanel_user,
-            bool log_failures) override {
-    return 0;
-  }
-
-  int RunIptables(std::string_view iptables_path,
-                  Iptables::Table table,
-                  Iptables::Command command,
-                  std::string_view chain,
-                  const std::vector<std::string>& argv,
-                  bool log_failures,
-                  std::optional<base::TimeDelta> timeout,
-                  std::string* output) override {
-    return 0;
-  }
-
-  int RunIpNetns(const std::vector<std::string>& argv,
-                 bool log_failures) override {
-    return 0;
-  }
-};
 
 // Always succeeds
 class NoopSystem : public System {

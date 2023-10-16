@@ -19,6 +19,7 @@
 #include <net-base/ipv4_address.h>
 
 #include "patchpanel/mock_datapath.h"
+#include "patchpanel/mock_process_runner.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
@@ -38,19 +39,6 @@ constexpr char kIPAddress1[] = "8.8.8.8";
 constexpr char kIPAddress2[] = "8.8.8.4";
 constexpr int kPort1 = 10000;
 constexpr int kPort2 = 20000;
-
-class MockProcessRunner : public MinijailedProcessRunner {
- public:
-  MockProcessRunner() = default;
-  ~MockProcessRunner() = default;
-
-  MOCK_METHOD(int,
-              conntrack,
-              (std::string_view command,
-               const std::vector<std::string>& argv,
-               bool log_failures),
-              (override));
-};
 
 std::unique_ptr<patchpanel::SocketConnectionEvent>
 CreateOpenSocketConnectionEvent() {
