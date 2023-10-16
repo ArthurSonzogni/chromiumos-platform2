@@ -316,6 +316,8 @@ class ExternalDisplayEventsImplTest : public testing::Test {
     return display;
   }
 
+  UdevEventsImpl* udev_events_impl() { return udev_events_impl_.get(); }
+
  private:
   base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors_;
   base::test::TaskEnvironment task_environment_;
@@ -589,6 +591,73 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayAddMultipleDisplay) {
               ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display2"));
+  }
+}
+
+TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayMultipleObservers) {
+  {
+    // We did not call UdevEventsImpl::Initialize() function due to the
+    // difficulty of setting up udev_monitor dependency. Here we manually set up
+    // the starting state through triggering a external_display event before
+    // initializing observer.
+    base::RunLoop run_loop;
+    EXPECT_CALL(*mock_executor(), GetConnectedExternalDisplayConnectors(_))
+        .WillOnce(WithArg<0>(
+            [&](MockExecutor::GetConnectedExternalDisplayConnectorsCallback
+                    callback) {
+              std::move(callback).Run({}, std::nullopt);
+              run_loop.Quit();
+            }));
+    TriggerExternalDisplayEvent();
+    run_loop.Run();
+  }
+  mojo::PendingRemote<mojom::EventObserver> external_display_observer_1;
+  mojo::PendingReceiver<mojom::EventObserver> observer_receiver_1(
+      external_display_observer_1.InitWithNewPipeAndPassReceiver());
+  auto event_observer_1 = std::make_unique<StrictMock<MockEventObserver>>(
+      std::move(observer_receiver_1));
+  udev_events_impl()->AddExternalDisplayObserver(
+      std::move(external_display_observer_1));
+
+  mojo::PendingRemote<mojom::EventObserver> external_display_observer_2;
+  mojo::PendingReceiver<mojom::EventObserver> observer_receiver_2(
+      external_display_observer_2.InitWithNewPipeAndPassReceiver());
+  auto event_observer_2 = std::make_unique<StrictMock<MockEventObserver>>(
+      std::move(observer_receiver_2));
+  udev_events_impl()->AddExternalDisplayObserver(
+      std::move(external_display_observer_2));
+
+  {
+    base::RunLoop run_loop_1;
+    base::RunLoop run_loop_2;
+    mojom::EventInfoPtr recv_info_1;
+    mojom::EventInfoPtr recv_info_2;
+    base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connectors;
+    connectors[1] = GenerateExternalDisplayInfo("display1");
+    SetExecutorGetExternalDisplay(std::move(connectors));
+    EXPECT_CALL(*event_observer_1.get(), OnEvent(_))
+        .WillOnce([&](mojom::EventInfoPtr info) {
+          recv_info_1 = std::move(info);
+          run_loop_1.Quit();
+        });
+    EXPECT_CALL(*event_observer_2.get(), OnEvent(_))
+        .WillOnce([&](mojom::EventInfoPtr info) {
+          recv_info_2 = std::move(info);
+          run_loop_2.Quit();
+        });
+    TriggerExternalDisplayEvent();
+    run_loop_1.Run();
+    run_loop_2.Run();
+    recv_info_1->is_external_display_event_info();
+    EXPECT_EQ(recv_info_1->get_external_display_event_info()->state,
+              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+    EXPECT_EQ(recv_info_1->get_external_display_event_info()->display_info,
+              GenerateExternalDisplayInfo("display1"));
+    recv_info_2->is_external_display_event_info();
+    EXPECT_EQ(recv_info_2->get_external_display_event_info()->state,
+              ash::cros_healthd::mojom::ExternalDisplayEventInfo::State::kAdd);
+    EXPECT_EQ(recv_info_2->get_external_display_event_info()->display_info,
+              GenerateExternalDisplayInfo("display1"));
   }
 }
 

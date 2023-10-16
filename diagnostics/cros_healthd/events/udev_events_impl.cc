@@ -327,7 +327,7 @@ void UdevEventsImpl::UpdateExternalDisplayObservers() {
     info->display_info = connector_id_to_display_info_[connector_id].Clone();
     for (auto& observer : external_display_observers_) {
       observer->OnEvent(
-          mojom::EventInfo::NewExternalDisplayEventInfo(std::move(info)));
+          mojom::EventInfo::NewExternalDisplayEventInfo(info->Clone()));
     }
   }
   for (auto connector_id : removed_connectors) {
@@ -341,7 +341,7 @@ void UdevEventsImpl::UpdateExternalDisplayObservers() {
     info->display_info = connector_id_to_display_info_[connector_id].Clone();
     for (auto& observer : external_display_observers_) {
       observer->OnEvent(
-          mojom::EventInfo::NewExternalDisplayEventInfo(std::move(info)));
+          mojom::EventInfo::NewExternalDisplayEventInfo(info->Clone()));
     }
     // Remove the connector from the map in case a new connector with the same
     // ID is received.
