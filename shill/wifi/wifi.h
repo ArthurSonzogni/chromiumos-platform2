@@ -83,13 +83,13 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -549,25 +549,25 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
                           Service::ConnectFailure* failure) const;
 
   void HelpRegisterDerivedInt32(PropertyStore* store,
-                                base::StringPiece name,
+                                std::string_view name,
                                 int32_t (WiFi::*get)(Error* error),
                                 bool (WiFi::*set)(const int32_t& value,
                                                   Error* error));
   void HelpRegisterDerivedUint16(PropertyStore* store,
-                                 base::StringPiece name,
+                                 std::string_view name,
                                  uint16_t (WiFi::*get)(Error* error),
                                  bool (WiFi::*set)(const uint16_t& value,
                                                    Error* error));
   void HelpRegisterDerivedBool(PropertyStore* store,
-                               base::StringPiece name,
+                               std::string_view name,
                                bool (WiFi::*get)(Error* error),
                                bool (WiFi::*set)(const bool& value,
                                                  Error* error));
   void HelpRegisterConstDerivedBool(PropertyStore* store,
-                                    base::StringPiece name,
+                                    std::string_view name,
                                     bool (WiFi::*get)(Error* error));
   void HelpRegisterConstDerivedUint16s(PropertyStore* store,
-                                       base::StringPiece name,
+                                       std::string_view name,
                                        Uint16s (WiFi::*get)(Error* error));
 
   // Disable a network entry in wpa_supplicant, and catch any exception

@@ -6,12 +6,12 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/strings/strcat.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -22,7 +22,7 @@ namespace shill {
 namespace {
 
 constexpr auto kLinkModeTranslationMap =
-    base::MakeFixedFlatMap<base::StringPiece, WiFiLinkStatistics::LinkMode>({
+    base::MakeFixedFlatMap<std::string_view, WiFiLinkStatistics::LinkMode>({
         {WPASupplicant::kSignalChangePropertyRxHEMCS,
          WiFiLinkStatistics::LinkMode::kLinkModeHE},
         {WPASupplicant::kSignalChangePropertyRxVHTMCS,
@@ -40,21 +40,20 @@ constexpr auto kLinkModeTranslationMap =
 // Undo the work of channel_width_to_string at:
 // https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/wpa_supplicant-cros/next/src/drivers/driver_common.c;l=100
 constexpr auto kChannelWidthTranslationMap =
-    base::MakeFixedFlatMap<base::StringPiece, WiFiLinkStatistics::ChannelWidth>(
-        {
-            {WPASupplicant::kChannelWidth20MHznoHT,
-             WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz},
-            {WPASupplicant::kChannelWidth20MHz,
-             WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz},
-            {WPASupplicant::kChannelWidth40MHz,
-             WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz},
-            {WPASupplicant::kChannelWidth80MHz,
-             WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz},
-            {WPASupplicant::kChannelWidth80p80MHz,
-             WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz},
-            {WPASupplicant::kChannelWidth160MHz,
-             WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz},
-        });
+    base::MakeFixedFlatMap<std::string_view, WiFiLinkStatistics::ChannelWidth>({
+        {WPASupplicant::kChannelWidth20MHznoHT,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz},
+        {WPASupplicant::kChannelWidth20MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz},
+        {WPASupplicant::kChannelWidth40MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz},
+        {WPASupplicant::kChannelWidth80MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz},
+        {WPASupplicant::kChannelWidth80p80MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz},
+        {WPASupplicant::kChannelWidth160MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz},
+    });
 
 // See guard_interval at:
 // https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/wpa_supplicant-cros/next/src/drivers/driver.h
@@ -433,7 +432,7 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
   stats.signal =
       properties.Get<int32_t>(WPASupplicant::kSignalChangePropertyRSSI);
 
-  const std::initializer_list<std::pair<base::StringPiece, int32_t*>>
+  const std::initializer_list<std::pair<std::string_view, int32_t*>>
       signal_properties_s32 = {
           {WPASupplicant::kSignalChangePropertyAverageRSSI, &stats.signal_avg},
           {WPASupplicant::kSignalChangePropertyLastAckRSSI,
@@ -455,7 +454,7 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
     }
   }
 
-  const std::initializer_list<std::pair<base::StringPiece, uint32_t*>>
+  const std::initializer_list<std::pair<std::string_view, uint32_t*>>
       signal_properties_u32 = {
           {WPASupplicant::kSignalChangePropertyRetries, &stats.tx_retries},
           {WPASupplicant::kSignalChangePropertyRetriesFailed, &stats.tx_failed},
@@ -488,7 +487,7 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
     stats.rx.bitrate = stats.rx.bitrate / 100;
   }
 
-  const std::initializer_list<std::pair<base::StringPiece, uint8_t*>>
+  const std::initializer_list<std::pair<std::string_view, uint8_t*>>
       signal_properties_u8 = {
           {WPASupplicant::kSignalChangePropertyRxHENSS, &stats.rx.nss},
           {WPASupplicant::kSignalChangePropertyTxHENSS, &stats.tx.nss},
@@ -505,7 +504,7 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
   }
 
   const std::initializer_list<
-      std::pair<base::StringPiece, WiFiLinkStatistics::RxTxStats*>>
+      std::pair<std::string_view, WiFiLinkStatistics::RxTxStats*>>
       signal_properties_mcs = {
           {WPASupplicant::kSignalChangePropertyRxHEMCS, &stats.rx},
           {WPASupplicant::kSignalChangePropertyTxHEMCS, &stats.tx},
@@ -525,7 +524,7 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
     }
   }
 
-  const std::initializer_list<std::pair<base::StringPiece, uint64_t*>>
+  const std::initializer_list<std::pair<std::string_view, uint64_t*>>
       signal_properties_u64 = {
           {WPASupplicant::kSignalChangePropertyRxDropMisc, &stats.rx_drop_misc},
           {WPASupplicant::kSignalChangePropertyRxBytes, &stats.rx.bytes},

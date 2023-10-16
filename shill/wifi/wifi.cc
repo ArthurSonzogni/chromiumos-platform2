@@ -19,6 +19,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -28,7 +29,6 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -2801,7 +2801,7 @@ void WiFi::UpdateGeolocationObjects(
 }
 
 void WiFi::HelpRegisterDerivedInt32(PropertyStore* store,
-                                    base::StringPiece name,
+                                    std::string_view name,
                                     int32_t (WiFi::*get)(Error* error),
                                     bool (WiFi::*set)(const int32_t& value,
                                                       Error* error)) {
@@ -2810,7 +2810,7 @@ void WiFi::HelpRegisterDerivedInt32(PropertyStore* store,
 }
 
 void WiFi::HelpRegisterDerivedUint16(PropertyStore* store,
-                                     base::StringPiece name,
+                                     std::string_view name,
                                      uint16_t (WiFi::*get)(Error* error),
                                      bool (WiFi::*set)(const uint16_t& value,
                                                        Error* error)) {
@@ -2819,7 +2819,7 @@ void WiFi::HelpRegisterDerivedUint16(PropertyStore* store,
 }
 
 void WiFi::HelpRegisterDerivedBool(PropertyStore* store,
-                                   base::StringPiece name,
+                                   std::string_view name,
                                    bool (WiFi::*get)(Error* error),
                                    bool (WiFi::*set)(const bool& value,
                                                      Error* error)) {
@@ -2828,14 +2828,14 @@ void WiFi::HelpRegisterDerivedBool(PropertyStore* store,
 }
 
 void WiFi::HelpRegisterConstDerivedBool(PropertyStore* store,
-                                        base::StringPiece name,
+                                        std::string_view name,
                                         bool (WiFi::*get)(Error* error)) {
   store->RegisterDerivedBool(
       name, BoolAccessor(new CustomAccessor<WiFi, bool>(this, get, nullptr)));
 }
 
 void WiFi::HelpRegisterConstDerivedUint16s(PropertyStore* store,
-                                           base::StringPiece name,
+                                           std::string_view name,
                                            Uint16s (WiFi::*get)(Error* error)) {
   store->RegisterDerivedUint16s(
       name,

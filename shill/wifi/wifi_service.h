@@ -9,10 +9,10 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
-#include <base/strings/string_piece.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <base/time/default_clock.h>
@@ -376,26 +376,26 @@ class WiFiService : public Service {
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
   void HelpRegisterConstDerivedString(
-      base::StringPiece name, std::string (WiFiService::*get)(Error* error));
+      std::string_view name, std::string (WiFiService::*get)(Error* error));
   void HelpRegisterDerivedString(
-      base::StringPiece name,
+      std::string_view name,
       std::string (WiFiService::*get)(Error* error),
       bool (WiFiService::*set)(const std::string& value, Error* error));
-  void HelpRegisterDerivedStrings(base::StringPiece name,
+  void HelpRegisterDerivedStrings(std::string_view name,
                                   Strings (WiFiService::*get)(Error* error),
                                   bool (WiFiService::*set)(const Strings& value,
                                                            Error* error));
   void HelpRegisterWriteOnlyDerivedString(
-      base::StringPiece name,
+      std::string_view name,
       bool (WiFiService::*set)(const std::string& value, Error* error),
       void (WiFiService::*clear)(Error* error),
       const std::string* default_value);
-  void HelpRegisterDerivedUint16(base::StringPiece name,
+  void HelpRegisterDerivedUint16(std::string_view name,
                                  uint16_t (WiFiService::*get)(Error* error),
                                  bool (WiFiService::*set)(const uint16_t& value,
                                                           Error* error),
                                  void (WiFiService::*clear)(Error* error));
-  void HelpRegisterConstDerivedInt32(base::StringPiece name,
+  void HelpRegisterConstDerivedInt32(std::string_view name,
                                      int32_t (WiFiService::*get)(Error* error));
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
