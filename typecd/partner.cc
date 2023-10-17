@@ -308,10 +308,10 @@ void Partner::ReportMetrics(Metrics* metrics) {
   }
 
   metrics->ReportPartnerType(GetPartnerTypeMetric());
-  metrics->ReportBasicPdDeviceInfo(GetVendorId(), GetProductId(), GetXid(),
-                                   GetSupportsPD(), SupportsUsb(), SupportsDp(),
-                                   SupportsTbt(), SupportsUsb4(),
-                                   GetDataRoleMetric(), GetPowerRoleMetric());
+  metrics->ReportBasicPdDeviceInfo(
+      GetVendorId(), GetProductId(), GetXid(), GetSupportsPD(), SupportsUsb(),
+      SupportsDp(), SupportsTbt(), SupportsUsb4(), GetDataRoleMetric(),
+      GetPowerRoleMetric(), GetPartnerTypeMetric());
 
   metrics_reported_ = true;
 }

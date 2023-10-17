@@ -73,7 +73,8 @@ void Metrics::ReportBasicPdDeviceInfo(int vid,
                                       bool supports_tbt,
                                       bool supports_usb4,
                                       DataRoleMetric data_role,
-                                      PowerRoleMetric power_role) {
+                                      PowerRoleMetric power_role,
+                                      PartnerTypeMetric type) {
   metrics::structured::events::usb_pd_device::UsbPdDeviceInfo()
       .SetVendorId(vid)
       .SetProductId(pid)
@@ -85,6 +86,7 @@ void Metrics::ReportBasicPdDeviceInfo(int vid,
       .SetSupportsUsb4(supports_usb4)
       .SetDataRole(static_cast<int>(data_role))
       .SetPowerRole(static_cast<int>(power_role))
+      .SetPartnerType(static_cast<int>(type))
       .Record();
 }
 

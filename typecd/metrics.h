@@ -171,7 +171,8 @@ class Metrics {
                                bool supports_tbt,
                                bool supports_usb4,
                                DataRoleMetric data_role,
-                               PowerRoleMetric power_role);
+                               PowerRoleMetric power_role,
+                               PartnerTypeMetric type);
 
  private:
   MetricsLibrary metrics_library_;
