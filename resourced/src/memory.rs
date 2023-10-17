@@ -11,6 +11,7 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
+use std::time::Instant;
 use std::time::SystemTime;
 
 use anyhow::bail;
@@ -18,8 +19,10 @@ use anyhow::Context;
 use anyhow::Result;
 use log::error;
 use once_cell::sync::Lazy;
+use system_api::vm_memory_management::ResizePriority;
 
 use crate::common;
+use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 // Critical margin is 5.2% of total memory, moderate margin is 40% of total
 // memory. See also /usr/share/cros/init/swap.sh on DUT. BPS are basis points.
@@ -397,6 +400,24 @@ pub struct ComponentMarginsKb {
     pub arc_container: ArcMarginsKb,
 }
 
+impl ComponentMarginsKb {
+    fn compute_chrome_pressure(&self, available: u64) -> (PressureLevelChrome, u64) {
+        if available < self.chrome_critical {
+            (
+                PressureLevelChrome::Critical,
+                self.chrome_critical - available,
+            )
+        } else if available < self.chrome_moderate {
+            (
+                PressureLevelChrome::Moderate,
+                self.chrome_moderate - available,
+            )
+        } else {
+            (PressureLevelChrome::None, 0)
+        }
+    }
+}
+
 pub fn get_component_margins_kb() -> ComponentMarginsKb {
     let (critical, moderate) = get_memory_margins_kb();
     ComponentMarginsKb {
@@ -492,24 +513,93 @@ macro_rules! get_arc_level {
 get_arc_level!(get_arc_container_level, PressureLevelArcContainer);
 get_arc_level!(get_arcvm_level, PressureLevelArcvm);
 
-pub fn get_memory_pressure_status() -> Result<PressureStatus> {
+async fn try_vmms_reclaim_memory(
+    vmms_client: &VmMemoryManagementClient,
+    chrome_level: PressureLevelChrome,
+    mut reclaim_target: u64,
+    chrome_background_memory: u64,
+    game_mode: common::GameMode,
+) -> u64 {
+    // Chrome won't kill tabs, so no need to try to save anything by
+    // inflating the balloon.
+    if chrome_level != PressureLevelChrome::Critical {
+        return 0;
+    }
+
+    // Tell VM Memory Management Service to reclaim memory from guests to
+    // try to save the background tabs.
+    let cached_target = std::cmp::min(chrome_background_memory, reclaim_target);
+    let cached_actual = if cached_target > 0 {
+        vmms_client
+            .try_reclaim_memory(cached_target, ResizePriority::RESIZE_PRIORITY_CACHED_TAB)
+            .await
+    } else {
+        0
+    };
+
+    // If the needed memory is less than what was reclaimed from guests plus what Chrome
+    // will reclaim from background tabs, then no need for higher priority requests.
+    reclaim_target = reclaim_target.saturating_sub(cached_actual + chrome_background_memory);
+    if reclaim_target == 0 {
+        return cached_actual;
+    }
+
+    // Don't try to reclaim memory at higher than cached priority when in ARC
+    // game mode, to make sure we don't kill the game or something it depends upon.
+    if game_mode == common::GameMode::Arc {
+        return cached_actual;
+    }
+
+    // Tell VM MMS to reclaim memory at perceptible priority for any protected tabs
+    // that Chrome will kill after it kills all background tabs.
+    let protected_memory = get_chrome_memory_kb(ChromeProcessType::Protected, reclaim_target);
+    let perceptible_actual = if protected_memory > 0 {
+        vmms_client
+            .try_reclaim_memory(
+                protected_memory,
+                ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB,
+            )
+            .await
+    } else {
+        0
+    };
+
+    // If the reclaimed perceptible guest plus protected tabs still isn't enough,
+    // we don't have anything else to reclaim. Tell that to VM MMS.
+    reclaim_target = reclaim_target.saturating_sub(protected_memory + perceptible_actual);
+    if reclaim_target > 0 {
+        vmms_client.send_no_kill_candidates().await;
+    }
+
+    cached_actual + perceptible_actual
+}
+
+fn report_vmms_reclaim_memory_duration(duration: Duration) -> Result<()> {
+    let metrics = metrics_rs::MetricsLibrary::get().context("MetricsLibrary::get() failed")?;
+
+    // Shall panic on poisoned mutex.
+    metrics
+        .lock()
+        .expect("Lock MetricsLibrary object failed")
+        .send_to_uma(
+            "Platform.Resourced.VmmsReclaimMemoryDuration", // Metric name
+            duration.as_millis() as i32,                    // Sample
+            0,                                              // Min
+            1000,                                           // Max
+            50,                                             // Number of buckets
+        )?;
+    Ok(())
+}
+
+pub async fn get_memory_pressure_status(
+    vmms_client: &VmMemoryManagementClient,
+) -> Result<PressureStatus> {
     let game_mode = common::get_game_mode()?;
     let available = get_background_available_memory_kb(game_mode)?;
     let margins = get_component_margins_kb();
 
-    let (chrome_level, chrome_reclaim_target_kb) = if available < margins.chrome_critical {
-        (
-            PressureLevelChrome::Critical,
-            margins.chrome_critical - available,
-        )
-    } else if available < margins.chrome_moderate {
-        (
-            PressureLevelChrome::Moderate,
-            margins.chrome_moderate - available,
-        )
-    } else {
-        (PressureLevelChrome::None, 0)
-    };
+    let (raw_chrome_level, raw_chrome_reclaim_target_kb) =
+        margins.compute_chrome_pressure(available);
 
     // We cap ARC pressure levels at cached if reclaiming Chrome background memory will
     // be sufficient to push us back over the ARC perceptible margin. Compute the
@@ -517,21 +607,53 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
     let arcvm_perceptible_target = margins.arcvm.perceptible.saturating_sub(available);
     let arc_container_perceptible_target =
         margins.arc_container.perceptible.saturating_sub(available);
-    let arc_perceptible_target =
-        std::cmp::max(arcvm_perceptible_target, arc_container_perceptible_target);
-    let background_memory_kb =
-        get_chrome_memory_kb(ChromeProcessType::Background, arc_perceptible_target);
-
-    let (raw_arcvm_level, arcvm_reclaim_target_kb) =
-        get_arcvm_level(&margins.arcvm, available, background_memory_kb);
-    let arcvm_level =
-        if game_mode == common::GameMode::Arc && raw_arcvm_level > PressureLevelArcvm::Cached {
-            // Do not kill Android apps that are perceptible or foreground, only
-            // those that are cached. Otherwise, the fullscreen Android app or a
-            // service it needs may be killed.
-            PressureLevelArcvm::Cached
+    let max_target = arcvm_perceptible_target
+        .max(arc_container_perceptible_target)
+        .max(raw_chrome_reclaim_target_kb);
+    let background_memory_kb = get_chrome_memory_kb(ChromeProcessType::Background, max_target);
+    let (chrome_level, chrome_reclaim_target_kb, arcvm_level, arcvm_reclaim_target_kb) =
+        if vmms_client.is_active() {
+            let now = Instant::now();
+            let balloon_reclaim_kb = try_vmms_reclaim_memory(
+                vmms_client,
+                raw_chrome_level,
+                raw_chrome_reclaim_target_kb,
+                background_memory_kb,
+                game_mode,
+            )
+            .await;
+            if let Err(e) = report_vmms_reclaim_memory_duration(now.elapsed()) {
+                error!("Failed to report try_vmms_reclaim_memory duration {:?}", e);
+            }
+            let (chrome_level, chrome_reclaim_target_kb) =
+                margins.compute_chrome_pressure(available + balloon_reclaim_kb);
+            (
+                chrome_level,
+                chrome_reclaim_target_kb,
+                // Instead of killing apps with ApplyHostMemoryPressure, rely on balloon
+                // pressure from VM memory management service to trigger lmkd kills.
+                PressureLevelArcvm::None,
+                0,
+            )
         } else {
-            raw_arcvm_level
+            let (raw_arcvm_level, arcvm_reclaim_target_kb) =
+                get_arcvm_level(&margins.arcvm, available, background_memory_kb);
+            let arcvm_level = if game_mode == common::GameMode::Arc
+                && raw_arcvm_level > PressureLevelArcvm::Cached
+            {
+                // Do not kill Android apps that are perceptible or foreground, only
+                // those that are cached. Otherwise, the fullscreen Android app or a
+                // service it needs may be killed.
+                PressureLevelArcvm::Cached
+            } else {
+                raw_arcvm_level
+            };
+            (
+                raw_chrome_level,
+                raw_chrome_reclaim_target_kb,
+                arcvm_level,
+                arcvm_reclaim_target_kb,
+            )
         };
 
     let (arc_container_level, arc_container_reclaim_target_kb) =

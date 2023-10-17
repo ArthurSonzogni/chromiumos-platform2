@@ -40,6 +40,7 @@ use crate::memory;
 use crate::power;
 use crate::psi;
 use crate::qos;
+use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
 const PATH_NAME: &str = "/org/chromium/ResourceManager";
@@ -49,7 +50,7 @@ const VMCONCIEGE_INTERFACE_NAME: &str = "org.chromium.VmConcierge";
 const POWERD_INTERFACE_NAME: &str = "org.chromium.PowerManager";
 const POWERD_PATH_NAME: &str = "/org/chromium/PowerManager";
 
-const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(5);
+pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(5);
 
 // The timeout in second for VM boot mode. Currently this is
 // 60seconds which is long enough for booting a VM on low-end DUTs.
@@ -820,6 +821,10 @@ pub async fn service_main() -> Result<()> {
         panic!("Lost connection to D-Bus: {}", err);
     });
 
+    let vmms_client = VmMemoryManagementClient::new(conn.clone())
+        .await
+        .context("create VmMemoryManagementClient")?;
+
     conn.request_name(SERVICE_NAME, false, true, false).await?;
 
     let mut cr = Crossroads::new();
@@ -968,7 +973,7 @@ pub async fn service_main() -> Result<()> {
 
     // The memory checker loop.
     loop {
-        let pressure_result = memory::get_memory_pressure_status();
+        let pressure_result = memory::get_memory_pressure_status(&vmms_client).await;
 
         // Send memory pressure notification.
         if let Ok(pressure_status) = pressure_result {

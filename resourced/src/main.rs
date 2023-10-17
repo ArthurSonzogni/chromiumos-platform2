@@ -11,6 +11,8 @@ mod memory;
 mod power;
 mod psi;
 mod qos;
+mod vm_concierge_client;
+mod vm_memory_management_client;
 
 #[cfg(test)]
 mod test_utils;
