@@ -40,6 +40,8 @@ int main(int argc, char** argv) {
   DEFINE_string(device, "", "Path of the device to run the migration tool on");
   DEFINE_bool(dry_run, false, "Perform dry-run for migration");
 
+  brillo::FlagHelper::Init(argc, argv, "Chromium OS Thinpool Migrator");
+
   // Set up logging to a file to record any unexpected but non-fatal
   // behavior.
   logging::LoggingSettings settings;
@@ -48,7 +50,7 @@ int main(int argc, char** argv) {
   logging::InitLogging(settings);
 
   const base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  if (cl->GetArgs().size() < 2 || cl->GetArgs().size() > 3) {
+  if (cl->GetArgs().size() > 0) {
     LOG(ERROR) << "Usage: thinpool_migrator --device=<block device> "
                   "[--dry_run]";
     return EXIT_FAILURE;

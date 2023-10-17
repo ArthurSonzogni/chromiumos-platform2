@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":install_headers",
+    ":install_tmpfiles_config",
     ":libthinpool_migrator",
     ":libthinpool_migrator_pc",
     ":migration_status_proto",

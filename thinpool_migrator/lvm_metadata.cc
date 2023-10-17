@@ -81,7 +81,7 @@ constexpr char kLvSegmentMetadataTemplate[] = R"lvseg(
 %s
       })lvseg";
 
-constexpr char kLvCompThinpoolMetadataTemplate[] = R"lvpoolcomp("
+constexpr char kLvCompThinpoolMetadataTemplate[] = R"lvpoolcomp(
         metadata = "%s"
         pool = "%s"
         transaction_id = %lu
@@ -89,7 +89,7 @@ constexpr char kLvCompThinpoolMetadataTemplate[] = R"lvpoolcomp("
         discards = "%s"
         zero_new_blocks = %lu)lvpoolcomp";
 
-constexpr char kLvCompThinMetadataTemplate[] = R"lvthincomp("
+constexpr char kLvCompThinMetadataTemplate[] = R"lvthincomp(
         thin_pool = "%s"
         transaction_id = %lu
         device_id = %lu)lvthincomp";

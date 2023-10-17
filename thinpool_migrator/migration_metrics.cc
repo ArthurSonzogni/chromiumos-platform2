@@ -10,7 +10,7 @@
 namespace thinpool_migrator {
 namespace {
 MetricsLibraryInterface* g_metrics = nullptr;
-constexpr const char kMetricsLogPath[] = "/run/thinpool_migration/metrics";
+constexpr const char kMetricsLogPath[] = "/run/thinpool_migrator/metrics";
 constexpr const int kTimeMinMs = 0;
 constexpr const int kTimeMaxMs = 30 * 1000;
 constexpr const int kTimeBuckets = 50;
