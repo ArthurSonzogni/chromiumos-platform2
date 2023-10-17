@@ -21,6 +21,10 @@ namespace reporting::analytics {
 //
 //   Metrics::SendToUMA(....);
 //   Metrics::SendLinearToUMA(....);
+//
+// It is safe to use this class alongside other instances of `MetricsLibrary`.
+// More specifically, it can be safely included in the missive client which may
+// run in other processes that have their own instance of `MetricsLibrary`.
 class Metrics {
  public:
   class TestEnvironment;
