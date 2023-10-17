@@ -4,9 +4,11 @@
 
 #include "shill/network/proc_fs_stub.h"
 
+#include <string>
+#include <string_view>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 
 namespace shill {
@@ -15,7 +17,7 @@ namespace {
 constexpr char kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
 constexpr char kIPFlagVersion4[] = "ipv4";
 constexpr char kIPFlagVersion6[] = "ipv6";
-constexpr std::array<base::StringPiece, 2> kRouteFlushPaths = {
+constexpr std::array<std::string_view, 2> kRouteFlushPaths = {
     "/proc/sys/net/ipv4/route/flush",
     "/proc/sys/net/ipv6/route/flush",
 };

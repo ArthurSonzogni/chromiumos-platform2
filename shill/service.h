@@ -11,6 +11,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <valarray>
 #include <vector>
@@ -18,7 +19,6 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -75,7 +75,7 @@ class Service : public base::RefCounted<Service> {
   static const char kCheckPortalFalse[];
   static const char kCheckPortalTrue[];
 
-  static constexpr base::StringPiece kErrorDetailsNone = "";
+  static constexpr std::string_view kErrorDetailsNone = "";
 
   // TODO(pstew): Storage constants shouldn't need to be public
   // crbug.com/208736
@@ -539,7 +539,7 @@ class Service : public base::RefCounted<Service> {
   void set_error(const std::string& error) { error_ = error; }
 
   const std::string& error_details() const { return error_details_; }
-  void SetErrorDetails(base::StringPiece details);
+  void SetErrorDetails(std::string_view details);
 
   static const char* ConnectFailureToString(ConnectFailure failure);
   static const char* ConnectStateToString(ConnectState state);
@@ -590,7 +590,7 @@ class Service : public base::RefCounted<Service> {
 
   // Notification that occurs when a single property has been changed via
   // the RPC adaptor.
-  mockable void OnPropertyChanged(base::StringPiece property);
+  mockable void OnPropertyChanged(std::string_view property);
 
   // Notification that occurs when an EAP credential property has been
   // changed.  Some service subclasses can choose to respond to this
@@ -749,28 +749,28 @@ class Service : public base::RefCounted<Service> {
   // Reads of the property will be handled by invoking |get|.
   // Writes to the property will be handled by invoking |set|.
   // Clearing the property will be handled by PropertyStore.
-  void HelpRegisterDerivedBool(base::StringPiece name,
+  void HelpRegisterDerivedBool(std::string_view name,
                                bool (Service::*get)(Error* error),
                                bool (Service::*set)(const bool& value,
                                                     Error* error),
                                void (Service::*clear)(Error* error));
-  void HelpRegisterDerivedInt32(base::StringPiece name,
+  void HelpRegisterDerivedInt32(std::string_view name,
                                 int32_t (Service::*get)(Error* error),
                                 bool (Service::*set)(const int32_t& value,
                                                      Error* error));
-  void HelpRegisterDerivedString(base::StringPiece name,
+  void HelpRegisterDerivedString(std::string_view name,
                                  std::string (Service::*get)(Error* error),
                                  bool (Service::*set)(const std::string& value,
                                                       Error* error));
   void HelpRegisterConstDerivedRpcIdentifier(
-      base::StringPiece name, RpcIdentifier (Service::*get)(Error*) const);
-  void HelpRegisterConstDerivedStrings(base::StringPiece name,
+      std::string_view name, RpcIdentifier (Service::*get)(Error*) const);
+  void HelpRegisterConstDerivedStrings(std::string_view name,
                                        Strings (Service::*get)(Error* error)
                                            const);
-  void HelpRegisterConstDerivedString(base::StringPiece name,
+  void HelpRegisterConstDerivedString(std::string_view name,
                                       std::string (Service::*get)(Error* error)
                                           const);
-  void HelpRegisterConstDerivedUint64(base::StringPiece name,
+  void HelpRegisterConstDerivedUint64(std::string_view name,
                                       uint64_t (Service::*get)(Error* error)
                                           const);
 

@@ -7,9 +7,9 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <base/location.h>
-#include <base/strings/string_piece.h>
 
 namespace brillo {
 class Error;
@@ -55,23 +55,23 @@ class Error {
 
   Error();                    // Success by default.
   explicit Error(Type type);  // Uses the default message for |type|.
-  Error(Type type, base::StringPiece message);
+  Error(Type type, std::string_view message);
   Error(Type type,
-        base::StringPiece message,
-        base::StringPiece detailed_error_type);
-  Error(Type type, base::StringPiece message, const base::Location& location);
+        std::string_view message,
+        std::string_view detailed_error_type);
+  Error(Type type, std::string_view message, const base::Location& location);
   Error(const Error&);
   Error& operator=(const Error&);
 
   ~Error();
 
   void Populate(Type type);  // Uses the default message for |type|.
-  void Populate(Type type, base::StringPiece message);
+  void Populate(Type type, std::string_view message);
   void Populate(Type type,
-                base::StringPiece message,
-                base::StringPiece detailed_error_type);
+                std::string_view message,
+                std::string_view detailed_error_type);
   void Populate(Type type,
-                base::StringPiece message,
+                std::string_view message,
                 const base::Location& location);
 
   void Log() const;
@@ -98,14 +98,14 @@ class Error {
 
   static void LogMessage(const base::Location& from_here,
                          Type type,
-                         base::StringPiece message);
+                         std::string_view message);
 
   // Log an error message from |from_here|.  If |error| is non-NULL, also
   // populate it.
   static void PopulateAndLog(const base::Location& from_here,
                              Error* error,
                              Type type,
-                             base::StringPiece message);
+                             std::string_view message);
 
   static std::string GetLocationAsString(const base::Location& location);
 

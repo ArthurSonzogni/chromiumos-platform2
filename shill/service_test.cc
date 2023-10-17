@@ -2133,7 +2133,7 @@ class ServiceWithMockOnPropertyChanged : public ServiceUnderTest {
  public:
   explicit ServiceWithMockOnPropertyChanged(Manager* manager)
       : ServiceUnderTest(manager) {}
-  MOCK_METHOD(void, OnPropertyChanged, (base::StringPiece), (override));
+  MOCK_METHOD(void, OnPropertyChanged, (std::string_view), (override));
 };
 
 TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {

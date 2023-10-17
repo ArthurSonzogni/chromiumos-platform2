@@ -8,10 +8,10 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <libpasswordprovider/password_provider.h>
 
@@ -40,7 +40,7 @@ class EapCredentials {
   void InitPropertyStore(PropertyStore* store);
 
   // Returns true if |property| is used for authentication in EapCredentials.
-  static bool IsEapAuthenticationProperty(base::StringPiece property);
+  static bool IsEapAuthenticationProperty(std::string_view property);
 
   // Returns true if a connection can be made with |this| credentials using
   // either passphrase or certificates.
@@ -196,7 +196,7 @@ class EapCredentials {
   // Writes to the property will be handled by invoking |set|.
   void HelpRegisterDerivedString(
       PropertyStore* store,
-      base::StringPiece name,
+      std::string_view name,
       std::string (EapCredentials::*get)(Error* error),
       bool (EapCredentials::*set)(const std::string& value, Error* error));
 
@@ -210,7 +210,7 @@ class EapCredentials {
   // |default_value| non-NULL.
   void HelpRegisterWriteOnlyDerivedString(
       PropertyStore* store,
-      base::StringPiece name,
+      std::string_view name,
       bool (EapCredentials::*set)(const std::string& value, Error* error),
       void (EapCredentials::*clear)(Error* error),
       const std::string* default_value);

@@ -6,10 +6,10 @@
 #define SHILL_CERTIFICATE_FILE_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/strings/string_piece_forward.h>
 
 namespace shill {
 
@@ -40,7 +40,7 @@ class CertificateFile {
   // neither a header nor a footer appears, assume they were not provided
   // by the caller and return all non-empty lines.  Returns the resulting
   // inner portion on success, or an empty string otherwise.
-  static std::string ExtractHexData(const base::StringPiece pem_data);
+  static std::string ExtractHexData(std::string_view pem_data);
 
  private:
   friend class CertificateFileTest;

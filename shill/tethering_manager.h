@@ -8,13 +8,13 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/files/scoped_file.h>
 #include "base/functional/callback_forward.h"
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece.h>
 #include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/network/network.h"
@@ -153,7 +153,7 @@ class TetheringManager : public Network::EventHandler {
       base::OnceCallback<void(SetEnabledResult result)>;
 
   void HelpRegisterDerivedBool(PropertyStore* store,
-                               base::StringPiece name,
+                               std::string_view name,
                                bool (TetheringManager::*get)(Error* error),
                                bool (TetheringManager::*set)(const bool&,
                                                              Error*));

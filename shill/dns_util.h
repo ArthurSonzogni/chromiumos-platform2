@@ -6,8 +6,7 @@
 #define SHILL_DNS_UTIL_H_
 
 #include <string>
-
-#include <base/strings/string_piece.h>
+#include <string_view>
 
 namespace shill {
 // TODO(crbug.com/751899): The DNS name validation code is adapted from
@@ -23,10 +22,10 @@ namespace shill {
 //
 //   dotted: a string in dotted form: "www.google.com"
 //   out: a result in DNS form: "\x03www\x06google\x03com\x00"
-bool DNSDomainFromDot(const base::StringPiece& dotted, std::string* out);
+bool DNSDomainFromDot(std::string_view dotted, std::string* out);
 
 // Checks that a hostname is valid. Simple wrapper around DNSDomainFromDot.
-bool IsValidDNSDomain(const base::StringPiece& dotted);
+bool IsValidDNSDomain(std::string_view dotted);
 
 // Returns true if the character is valid in a DNS hostname label, whether in
 // the first position or later in the label.

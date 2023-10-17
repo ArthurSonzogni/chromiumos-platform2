@@ -66,18 +66,18 @@ Error::Error(Type type) {
   Populate(type);
 }
 
-Error::Error(Type type, base::StringPiece message) {
+Error::Error(Type type, std::string_view message) {
   Populate(type, message);
 }
 
 Error::Error(Type type,
-             base::StringPiece message,
-             base::StringPiece detailed_error_type) {
+             std::string_view message,
+             std::string_view detailed_error_type) {
   Populate(type, message, detailed_error_type);
 }
 
 Error::Error(Type type,
-             base::StringPiece message,
+             std::string_view message,
              const base::Location& location) {
   Populate(type, message, location);
 }
@@ -92,15 +92,15 @@ void Error::Populate(Type type) {
   Populate(type, GetDefaultMessage(type));
 }
 
-void Error::Populate(Type type, base::StringPiece message) {
+void Error::Populate(Type type, std::string_view message) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
   message_ = message;
 }
 
 void Error::Populate(Type type,
-                     base::StringPiece message,
-                     base::StringPiece detailed_error_type) {
+                     std::string_view message,
+                     std::string_view detailed_error_type) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
   message_ = message;
@@ -108,7 +108,7 @@ void Error::Populate(Type type,
 }
 
 void Error::Populate(Type type,
-                     base::StringPiece message,
+                     std::string_view message,
                      const base::Location& location) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
@@ -181,7 +181,7 @@ std::string Error::GetDefaultMessage(Type type) {
 // static
 void Error::LogMessage(const base::Location& from_here,
                        Type type,
-                       base::StringPiece message) {
+                       std::string_view message) {
   // Since Chrome OS devices do not support certain features, errors returning
   // kNotSupported when those features are requested are expected and should be
   // logged as a WARNING. Prefer using the more specific kNotImplemented error
@@ -197,7 +197,7 @@ void Error::LogMessage(const base::Location& from_here,
 void Error::PopulateAndLog(const base::Location& from_here,
                            Error* error,
                            Type type,
-                           base::StringPiece message) {
+                           std::string_view message) {
   LogMessage(from_here, type, message);
   if (error) {
     error->Populate(type, message, from_here);

@@ -6,8 +6,8 @@
 #define SHILL_DEFAULT_PROFILE_H_
 
 #include <string>
+#include <string_view>
 
-#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/event_dispatcher.h"
@@ -69,7 +69,7 @@ class DefaultProfile : public Profile {
   static const char kStorageWifiGlobalFTEnabled[];
   static constexpr char kStorageEnableRFC8925[] = "RFC8925";
 
-  void HelpRegisterConstDerivedBool(base::StringPiece name,
+  void HelpRegisterConstDerivedBool(std::string_view name,
                                     bool (DefaultProfile::*get)(Error* error));
 
   const std::string profile_id_;

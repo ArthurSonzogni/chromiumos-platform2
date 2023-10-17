@@ -6,6 +6,7 @@
 
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -13,7 +14,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -90,7 +90,7 @@ Profile::Profile(Manager* manager,
 
 Profile::~Profile() = default;
 
-void Profile::OnPropertyChanged(base::StringPiece /*name*/) {
+void Profile::OnPropertyChanged(std::string_view /*name*/) {
   manager()->OnProfileChanged(this);
 }
 
@@ -474,13 +474,13 @@ bool Profile::UpdateDevice(const DeviceRefPtr& device) {
 }
 
 void Profile::HelpRegisterConstDerivedRpcIdentifiers(
-    base::StringPiece name, RpcIdentifiers (Profile::*get)(Error* error)) {
+    std::string_view name, RpcIdentifiers (Profile::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifiers(
       name, RpcIdentifiersAccessor(new CustomAccessor<Profile, RpcIdentifiers>(
                 this, get, nullptr)));
 }
 
-void Profile::HelpRegisterConstDerivedStrings(base::StringPiece name,
+void Profile::HelpRegisterConstDerivedStrings(std::string_view name,
                                               Strings (Profile::*get)(Error*)) {
   store_.RegisterDerivedStrings(
       name, StringsAccessor(
@@ -488,7 +488,7 @@ void Profile::HelpRegisterConstDerivedStrings(base::StringPiece name,
 }
 
 void Profile::HelpRegisterDerivedRpcIdentifier(
-    base::StringPiece name,
+    std::string_view name,
     RpcIdentifier (Profile::*get)(Error*),
     bool (Profile::*set)(const RpcIdentifier&, Error*)) {
   store_.RegisterDerivedRpcIdentifier(
@@ -497,7 +497,7 @@ void Profile::HelpRegisterDerivedRpcIdentifier(
 }
 
 void Profile::HelpRegisterDerivedString(
-    base::StringPiece name,
+    std::string_view name,
     std::string (Profile::*get)(Error* error),
     bool (Profile::*set)(const std::string&, Error*)) {
   store_.RegisterDerivedString(

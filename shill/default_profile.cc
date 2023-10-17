@@ -4,13 +4,13 @@
 
 #include "shill/default_profile.h"
 
+#include <string>
+#include <string_view>
+#include <vector>
+
 #include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <chromeos/dbus/service_constants.h>
-
-#include <string>
-#include <vector>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/manager.h"
@@ -85,7 +85,7 @@ DefaultProfile::DefaultProfile(Manager* manager,
 DefaultProfile::~DefaultProfile() = default;
 
 void DefaultProfile::HelpRegisterConstDerivedBool(
-    base::StringPiece name, bool (DefaultProfile::*get)(Error*)) {
+    std::string_view name, bool (DefaultProfile::*get)(Error*)) {
   this->mutable_store()->RegisterDerivedBool(
       name, BoolAccessor(new CustomAccessor<DefaultProfile, bool>(
                 this, get, nullptr, nullptr)));

@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -14,7 +15,6 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
@@ -51,7 +51,7 @@ namespace {
 std::string AddAdditionalInnerEapParams(const std::string& inner_eap) {
   if (inner_eap.empty())
     return std::string();
-  std::vector<base::StringPiece> params = base::SplitStringPiece(
+  std::vector<std::string_view> params = base::SplitStringPiece(
       inner_eap, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   bool has_mschapv2_auth = false;
   for (const auto& param : params) {
@@ -284,7 +284,7 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
 }
 
 // static
-bool EapCredentials::IsEapAuthenticationProperty(base::StringPiece property) {
+bool EapCredentials::IsEapAuthenticationProperty(std::string_view property) {
   return property == kEapAnonymousIdentityProperty ||
          property == kEapCertIdProperty || property == kEapIdentityProperty ||
          property == kEapKeyIdProperty || property == kEapKeyMgmtProperty ||
@@ -606,7 +606,7 @@ bool EapCredentials::ClientAuthenticationUsesCryptoToken() const {
 
 void EapCredentials::HelpRegisterDerivedString(
     PropertyStore* store,
-    base::StringPiece name,
+    std::string_view name,
     std::string (EapCredentials::*get)(Error* error),
     bool (EapCredentials::*set)(const std::string&, Error*)) {
   store->RegisterDerivedString(
@@ -616,7 +616,7 @@ void EapCredentials::HelpRegisterDerivedString(
 
 void EapCredentials::HelpRegisterWriteOnlyDerivedString(
     PropertyStore* store,
-    base::StringPiece name,
+    std::string_view name,
     bool (EapCredentials::*set)(const std::string&, Error*),
     void (EapCredentials::*clear)(Error* error),
     const std::string* default_value) {
@@ -640,12 +640,12 @@ bool EapCredentials::ValidDomainSuffixMatch(
   if (domain_suffix_match.empty() || domain_suffix_match.size() > 255)
     return false;
 
-  std::vector<base::StringPiece> labels = base::SplitStringPiece(
+  std::vector<std::string_view> labels = base::SplitStringPiece(
       domain_suffix_match, ".", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
   DCHECK(!labels.empty());
 
-  for (const base::StringPiece& label : labels) {
+  for (std::string_view label : labels) {
     if (label.size() == 0 || label.size() > 63)
       return false;
     // Labels can't start and end with hyphens.

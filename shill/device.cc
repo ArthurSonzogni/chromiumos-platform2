@@ -17,6 +17,7 @@
 #include <iostream>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -29,7 +30,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -419,27 +419,27 @@ void Device::OnNeighborReachabilityEvent(
 }
 
 void Device::HelpRegisterConstDerivedString(
-    base::StringPiece name, std::string (Device::*get)(Error* error)) {
+    std::string_view name, std::string (Device::*get)(Error* error)) {
   store_.RegisterDerivedString(
       name, StringAccessor(
                 new CustomAccessor<Device, std::string>(this, get, nullptr)));
 }
 
 void Device::HelpRegisterConstDerivedRpcIdentifier(
-    base::StringPiece name, RpcIdentifier (Device::*get)(Error* error)) {
+    std::string_view name, RpcIdentifier (Device::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifier(
       name, RpcIdentifierAccessor(
                 new CustomAccessor<Device, RpcIdentifier>(this, get, nullptr)));
 }
 
 void Device::HelpRegisterConstDerivedRpcIdentifiers(
-    base::StringPiece name, RpcIdentifiers (Device::*get)(Error*)) {
+    std::string_view name, RpcIdentifiers (Device::*get)(Error*)) {
   store_.RegisterDerivedRpcIdentifiers(
       name, RpcIdentifiersAccessor(new CustomAccessor<Device, RpcIdentifiers>(
                 this, get, nullptr)));
 }
 
-void Device::HelpRegisterConstDerivedUint64(base::StringPiece name,
+void Device::HelpRegisterConstDerivedUint64(std::string_view name,
                                             uint64_t (Device::*get)(Error*)) {
   store_.RegisterDerivedUint64(
       name,

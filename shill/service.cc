@@ -11,6 +11,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -21,7 +22,6 @@
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -1839,7 +1839,7 @@ void Service::SetProfile(const ProfileRefPtr& p) {
   adaptor_->EmitStringChanged(kProfileProperty, profile_rpc_id);
 }
 
-void Service::OnPropertyChanged(base::StringPiece property) {
+void Service::OnPropertyChanged(std::string_view property) {
   SLOG(this, 1) << __func__ << " " << property;
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
     OnEapCredentialsChanged(kReasonPropertyUpdate);
@@ -2039,7 +2039,7 @@ bool Service::IsPortalDetectionDisabled() const {
           !manager_->IsPortalDetectionEnabled(technology()));
 }
 
-void Service::HelpRegisterDerivedBool(base::StringPiece name,
+void Service::HelpRegisterDerivedBool(std::string_view name,
                                       bool (Service::*get)(Error* error),
                                       bool (Service::*set)(const bool&, Error*),
                                       void (Service::*clear)(Error*)) {
@@ -2048,7 +2048,7 @@ void Service::HelpRegisterDerivedBool(base::StringPiece name,
       BoolAccessor(new CustomAccessor<Service, bool>(this, get, set, clear)));
 }
 
-void Service::HelpRegisterDerivedInt32(base::StringPiece name,
+void Service::HelpRegisterDerivedInt32(std::string_view name,
                                        int32_t (Service::*get)(Error* error),
                                        bool (Service::*set)(const int32_t&,
                                                             Error*)) {
@@ -2058,7 +2058,7 @@ void Service::HelpRegisterDerivedInt32(base::StringPiece name,
 }
 
 void Service::HelpRegisterDerivedString(
-    base::StringPiece name,
+    std::string_view name,
     std::string (Service::*get)(Error* error),
     bool (Service::*set)(const std::string&, Error*)) {
   store_.RegisterDerivedString(
@@ -2067,28 +2067,28 @@ void Service::HelpRegisterDerivedString(
 }
 
 void Service::HelpRegisterConstDerivedRpcIdentifier(
-    base::StringPiece name, RpcIdentifier (Service::*get)(Error*) const) {
+    std::string_view name, RpcIdentifier (Service::*get)(Error*) const) {
   store_.RegisterDerivedRpcIdentifier(
       name, RpcIdentifierAccessor(
                 new CustomReadOnlyAccessor<Service, RpcIdentifier>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedStrings(
-    base::StringPiece name, Strings (Service::*get)(Error* error) const) {
+    std::string_view name, Strings (Service::*get)(Error* error) const) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomReadOnlyAccessor<Service, Strings>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedString(
-    base::StringPiece name, std::string (Service::*get)(Error* error) const) {
+    std::string_view name, std::string (Service::*get)(Error* error) const) {
   store_.RegisterDerivedString(
       name, StringAccessor(
                 new CustomReadOnlyAccessor<Service, std::string>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedUint64(
-    base::StringPiece name, uint64_t (Service::*get)(Error* error) const) {
+    std::string_view name, uint64_t (Service::*get)(Error* error) const) {
   store_.RegisterDerivedUint64(
       name,
       Uint64Accessor(new CustomReadOnlyAccessor<Service, uint64_t>(this, get)));
@@ -2472,7 +2472,7 @@ void Service::SetStrength(uint8_t strength) {
   adaptor_->EmitUint8Changed(kSignalStrengthProperty, strength);
 }
 
-void Service::SetErrorDetails(base::StringPiece details) {
+void Service::SetErrorDetails(std::string_view details) {
   if (error_details_ == details) {
     return;
   }

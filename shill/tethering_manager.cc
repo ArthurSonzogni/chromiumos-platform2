@@ -9,13 +9,13 @@
 
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/functional/bind.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <net-base/ip_address.h>
@@ -1252,7 +1252,7 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
 
 void TetheringManager::HelpRegisterDerivedBool(
     PropertyStore* store,
-    base::StringPiece name,
+    std::string_view name,
     bool (TetheringManager::*get)(Error* error),
     bool (TetheringManager::*set)(const bool&, Error*)) {
   store->RegisterDerivedBool(

@@ -8,12 +8,12 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -417,16 +417,16 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Avoids showing a failure mole in the UI.
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
-  void HelpRegisterConstDerivedString(base::StringPiece name,
+  void HelpRegisterConstDerivedString(std::string_view name,
                                       std::string (Device::*get)(Error*));
 
   void HelpRegisterConstDerivedRpcIdentifier(
-      base::StringPiece name, RpcIdentifier (Device::*get)(Error*));
+      std::string_view name, RpcIdentifier (Device::*get)(Error*));
 
   void HelpRegisterConstDerivedRpcIdentifiers(
-      base::StringPiece name, RpcIdentifiers (Device::*get)(Error*));
+      std::string_view name, RpcIdentifiers (Device::*get)(Error*));
 
-  void HelpRegisterConstDerivedUint64(base::StringPiece name,
+  void HelpRegisterConstDerivedUint64(std::string_view name,
                                       uint64_t (Device::*get)(Error*));
 
   // By default StorageId is equal to: "device_" + DeviceStorageSuffix()

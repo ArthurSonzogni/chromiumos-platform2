@@ -6,10 +6,10 @@
 #define SHILL_MOCK_SERVICE_H_
 
 #include <string>
+#include <string_view>
 
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/strings/string_piece.h>
 #include <gmock/gmock.h>
 
 #include "shill/refptr_types.h"
@@ -72,7 +72,7 @@ class MockService : public Service {
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
   MOCK_METHOD(const EapCredentials*, eap, (), (const, override));
   MOCK_METHOD(Technology, technology, (), (const, override));
-  MOCK_METHOD(void, OnPropertyChanged, (base::StringPiece), (override));
+  MOCK_METHOD(void, OnPropertyChanged, (std::string_view), (override));
   MOCK_METHOD(void, ClearExplicitlyDisconnected, (), (override));
   MOCK_METHOD(bool, link_monitor_disabled, (), (const, override));
   MOCK_METHOD(void, EnableAndRetainAutoConnect, (), (override));

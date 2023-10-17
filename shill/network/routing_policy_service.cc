@@ -12,7 +12,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
 #include <net-base/byte_utils.h>

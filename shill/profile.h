@@ -7,10 +7,10 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/metrics.h"
@@ -236,18 +236,18 @@ class Profile : public base::RefCounted<Profile> {
   static bool IsValidIdentifierToken(const std::string& token);
 
   void HelpRegisterConstDerivedRpcIdentifiers(
-      base::StringPiece name, RpcIdentifiers (Profile::*get)(Error* error));
-  void HelpRegisterConstDerivedStrings(base::StringPiece name,
+      std::string_view name, RpcIdentifiers (Profile::*get)(Error* error));
+  void HelpRegisterConstDerivedStrings(std::string_view name,
                                        Strings (Profile::*get)(Error* error));
   void HelpRegisterDerivedRpcIdentifier(
-      base::StringPiece name,
+      std::string_view name,
       RpcIdentifier (Profile::*get)(Error* error),
       bool (Profile::*set)(const RpcIdentifier&, Error*));
-  void HelpRegisterDerivedString(base::StringPiece name,
+  void HelpRegisterDerivedString(std::string_view name,
                                  std::string (Profile::*get)(Error* error),
                                  bool (Profile::*set)(const std::string&,
                                                       Error*));
-  void OnPropertyChanged(base::StringPiece name);
+  void OnPropertyChanged(std::string_view name);
   std::string DBusGetAlwaysOnVpnMode(Error* error);
   bool DBusSetAlwaysOnVpnMode(const std::string& mode, Error* error);
   RpcIdentifier DBusGetAlwaysOnVpnService(Error* error);
