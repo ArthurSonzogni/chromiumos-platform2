@@ -17,7 +17,7 @@ template("generate_vmlinux") {
   out_btf = "${root_gen_dir}/${btf_out_dir}/vmlinux.full.btf"
   action(target_name) {
     outputs = [ out_header ]
-    script = "//secagentd/tools/generate-ebpf.py"
+    script = "//common-mk/generate-ebpf.py"
     args = [
       "gen_vmlinux",
       "--sysroot=${sysroot}",
@@ -49,7 +49,7 @@ template("generate_ebpf_skeletons") {
     out_header = "${h_dir}/skeleton_{{source_name_part}}.h"
     sources = invoker.sources
     outputs = [ out_header ]
-    script = "//secagentd/tools/generate-ebpf.py"
+    script = "//common-mk/generate-ebpf.py"
     args = [
       "gen_skel",
       "--out_header=${out_header}",

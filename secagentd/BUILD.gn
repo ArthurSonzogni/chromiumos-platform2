@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/bpf_gen.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
-import("//secagentd/tools/bpf_gen.gni")
 group("all") {
   deps = [
     ":install_freezer_tmpfilesd",
