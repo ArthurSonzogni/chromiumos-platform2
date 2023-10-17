@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/netlink_sock_diag.h"
+#include "net-base/netlink_sock_diag.h"
 
 #include <linux/netlink.h>
 #include <linux/sock_diag.h>
@@ -15,7 +15,8 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/numerics/safe_conversions.h>
-#include <net-base/byte_utils.h>
+
+#include "net-base/byte_utils.h"
 
 namespace {
 
@@ -26,7 +27,7 @@ struct SockDiagRequest {
 
 SockDiagRequest CreateDumpRequest(uint8_t family,
                                   uint8_t protocol,
-                                  int sequence_number) {
+                                  uint32_t sequence_number) {
   CHECK(family == AF_INET || family == AF_INET6)
       << "Unsupported SOCK_DIAG family " << family;
 
@@ -37,7 +38,7 @@ SockDiagRequest CreateDumpRequest(uint8_t family,
   request.header.nlmsg_seq = sequence_number;
   request.req_opts.sdiag_family = family;
   request.req_opts.sdiag_protocol = protocol;
-  request.req_opts.idiag_states = -1;  // all states
+  request.req_opts.idiag_states = ~0u;  // all states
   return request;
 }
 
@@ -48,13 +49,13 @@ SockDiagRequest CreateDestroyRequest(uint8_t family, uint8_t protocol) {
   request.header.nlmsg_flags = NLM_F_REQUEST;
   request.req_opts.sdiag_family = family;
   request.req_opts.sdiag_protocol = protocol;
-  request.req_opts.idiag_states = -1;  // all states
+  request.req_opts.idiag_states = ~0u;  // all states
   return request;
 }
 
 }  // namespace
 
-namespace shill {
+namespace net_base {
 
 // static
 std::unique_ptr<NetlinkSockDiag> NetlinkSockDiag::Create() {
@@ -163,4 +164,4 @@ bool NetlinkSockDiag::ReadDumpContents(
   }
 }
 
-}  // namespace shill
+}  // namespace net_base

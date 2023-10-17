@@ -17,6 +17,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/netlink_sock_diag.h>
 #include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
 
@@ -28,9 +29,6 @@
 #include "shill/cellular/power_opt.h"
 #include "shill/device.h"
 #include "shill/device_id.h"
-#include "shill/event_dispatcher.h"
-#include "shill/metrics.h"
-#include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
 #include "shill/tethering_manager.h"
@@ -40,7 +38,6 @@ namespace shill {
 class CellularCapability3gpp;
 class Error;
 class ExternalTask;
-class NetlinkSockDiag;
 class ProcessManager;
 class PowerOpt;
 
@@ -947,7 +944,7 @@ class Cellular : public Device,
   bool is_ppp_authenticating_ = false;
   bool force_init_eps_bearer_settings_ = true;
 
-  std::unique_ptr<NetlinkSockDiag> socket_destroyer_;
+  std::unique_ptr<net_base::NetlinkSockDiag> socket_destroyer_;
 
   // Used to keep scanning=true while the Modem is restarting.
   // TODO(b/177588333): Make Modem and/or the MM dbus API more robust.

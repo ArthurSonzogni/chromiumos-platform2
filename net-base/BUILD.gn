@@ -40,6 +40,7 @@ shared_library("libnet-base") {
     "ipv4_address.cc",
     "ipv6_address.cc",
     "mac_address.cc",
+    "netlink_sock_diag.cc",
     "rtnl_handler.cc",
     "rtnl_listener.cc",
     "rtnl_message.cc",

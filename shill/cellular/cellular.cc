@@ -58,7 +58,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/netlink_sock_diag.h"
 #include "shill/net/process_manager.h"
 #include "shill/network/network_config.h"
 #include "shill/ppp_daemon.h"
@@ -307,7 +306,7 @@ Cellular::Cellular(Manager* manager,
   RegisterProperties();
   mobile_operator_info_->Init();
 
-  socket_destroyer_ = NetlinkSockDiag::Create();
+  socket_destroyer_ = net_base::NetlinkSockDiag::Create();
   if (!socket_destroyer_) {
     LOG(WARNING) << LoggingTag() << ": Socket destroyer failed to initialize; "
                  << "IPv6 will be unavailable.";
