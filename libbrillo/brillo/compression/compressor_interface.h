@@ -2,16 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_METADATA_COMPRESSOR_INTERFACE_H_
-#define DLCSERVICE_METADATA_COMPRESSOR_INTERFACE_H_
+#ifndef LIBBRILLO_BRILLO_COMPRESSION_COMPRESSOR_INTERFACE_H_
+#define LIBBRILLO_BRILLO_COMPRESSION_COMPRESSOR_INTERFACE_H_
 
 #include <memory>
 #include <optional>
 #include <string>
 
-namespace dlcservice::metadata {
+#include "brillo/brillo_export.h"
 
-class CompressorInterface {
+namespace brillo {
+
+// An interface providing shared functionality between compressors and
+// decompressors such as initializing, resetting, and processing data.
+class BRILLO_EXPORT CompressorInterface {
  public:
   CompressorInterface() = default;
   virtual ~CompressorInterface() = default;
@@ -31,6 +35,10 @@ class CompressorInterface {
   // will be treated like in the same stream. Otherwise, all the input data will
   // be processed and flushed to the output, and ends the current stream. if a
   // critical error occurs, it resets the state and returns nullopt.
+  //
+  // While Process() can be called multiple times with `flush` = false to do
+  // partial processing (eg. if the data is too large to fit into memory), but
+  // the last call (and only the last call) needs `flush` = true.
   virtual std::optional<std::string> Process(const std::string& data_in,
                                              bool flush) = 0;
 
@@ -38,6 +46,6 @@ class CompressorInterface {
   virtual bool Reset() = 0;
 };
 
-}  // namespace dlcservice::metadata
+}  // namespace brillo
 
-#endif  // DLCSERVICE_METADATA_COMPRESSOR_INTERFACE_H_
+#endif  // LIBBRILLO_BRILLO_COMPRESSION_COMPRESSOR_INTERFACE_H_

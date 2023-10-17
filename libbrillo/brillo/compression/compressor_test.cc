@@ -7,11 +7,16 @@
 
 #include <gtest/gtest.h>
 
-#include "dlcservice/metadata/compressor_interface.h"
-#include "dlcservice/metadata/metadata.h"
-#include "dlcservice/metadata/zlib_compressor.h"
+#include "brillo/compression/compressor_interface.h"
+#include "brillo/compression/zlib_compressor.h"
 
-namespace dlcservice::metadata {
+namespace brillo {
+
+namespace {
+// 10000 is an arbitrarily chosen value to test that the data size is conserved
+// after compression and decompression.
+constexpr size_t kUncompressedTestDataSize = 10000;
+}  // namespace
 
 class CompressorTest : public testing::Test {
  public:
@@ -29,7 +34,7 @@ class CompressorTest : public testing::Test {
 };
 
 TEST_F(CompressorTest, CompressDecompressFlush) {
-  std::string data_in(kMaxMetadataFileSize, 'x');
+  std::string data_in(kUncompressedTestDataSize, 'x');
 
   auto compressed = compressor_->Process(data_in, /*flush=*/true);
   EXPECT_TRUE(compressed);
@@ -41,7 +46,7 @@ TEST_F(CompressorTest, CompressDecompressFlush) {
 }
 
 TEST_F(CompressorTest, CompressDecompressNoFlush) {
-  std::string data_in(kMaxMetadataFileSize, 'x');
+  std::string data_in(kUncompressedTestDataSize, 'x');
 
   auto compressed = compressor_->Process(data_in, /*flush=*/false);
   EXPECT_TRUE(compressed);
@@ -57,7 +62,7 @@ TEST_F(CompressorTest, CompressDecompressNoFlush) {
 }
 
 TEST_F(CompressorTest, CompressDecompressClone) {
-  std::string data_in(kMaxMetadataFileSize, 'x');
+  std::string data_in(kUncompressedTestDataSize, 'x');
 
   auto compressed = compressor_->Process(data_in, /*flush=*/false);
   EXPECT_TRUE(compressed);
@@ -92,4 +97,4 @@ TEST_F(CompressorTest, EmptyFlush) {
   EXPECT_TRUE(flushed);
 }
 
-}  // namespace dlcservice::metadata
+}  // namespace brillo

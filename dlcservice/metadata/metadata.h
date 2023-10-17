@@ -15,8 +15,8 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <brillo/brillo_export.h>
+#include <brillo/compression/compressor_interface.h>
 
-#include "dlcservice/metadata/compressor_interface.h"
 #include "dlcservice/metadata/metadata_interface.h"
 
 namespace dlcservice::metadata {
@@ -33,8 +33,8 @@ class BRILLO_EXPORT Metadata : public MetadataInterface {
   explicit Metadata(
       const base::FilePath& metadata_path,
       size_t max_file_size = kMaxMetadataFileSize,
-      std::unique_ptr<CompressorInterface> compressor = nullptr,
-      std::unique_ptr<CompressorInterface> decompressor = nullptr);
+      std::unique_ptr<brillo::CompressorInterface> compressor = nullptr,
+      std::unique_ptr<brillo::CompressorInterface> decompressor = nullptr);
   ~Metadata() override = default;
 
   Metadata(const Metadata&) = delete;
@@ -79,8 +79,8 @@ class BRILLO_EXPORT Metadata : public MetadataInterface {
   // The buffer for read and write compressed metadata.
   std::string compressed_metadata_;
   // The compressor and decompressor for metadata compression/decompression.
-  std::unique_ptr<CompressorInterface> compressor_;
-  std::unique_ptr<CompressorInterface> decompressor_;
+  std::unique_ptr<brillo::CompressorInterface> compressor_;
+  std::unique_ptr<brillo::CompressorInterface> decompressor_;
 };
 
 }  // namespace dlcservice::metadata

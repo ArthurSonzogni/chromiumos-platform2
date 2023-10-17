@@ -12,12 +12,12 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
+#include <brillo/compression/mock_compressor.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "dlcservice/metadata/metadata.h"
 #include "dlcservice/metadata/metadata_interface.h"
-#include "dlcservice/metadata/mock_compressor.h"
 
 using testing::_;
 using testing::Return;
@@ -39,10 +39,10 @@ class MetadataTest : public testing::Test {
         metadata_path_.Append(std::string(kMetadataPrefix).append(kFirstDlc)),
         "Test metadata file.");
 
-    auto compressor = std::make_unique<MockCompressor>();
+    auto compressor = std::make_unique<brillo::MockCompressor>();
     compressor_ptr_ = compressor.get();
 
-    auto decompressor = std::make_unique<MockCompressor>();
+    auto decompressor = std::make_unique<brillo::MockCompressor>();
     decompressor_ptr_ = decompressor.get();
 
     metadata_ = std::make_unique<Metadata>(metadata_path_, kMaxMetadataFileSize,
@@ -58,8 +58,8 @@ class MetadataTest : public testing::Test {
   base::FilePath metadata_path_;
 
   std::unique_ptr<Metadata> metadata_;
-  MockCompressor* compressor_ptr_;
-  MockCompressor* decompressor_ptr_;
+  brillo::MockCompressor* compressor_ptr_;
+  brillo::MockCompressor* decompressor_ptr_;
 };
 
 TEST_F(MetadataTest, GetMetadata) {
@@ -104,9 +104,9 @@ TEST_F(MetadataTest, ModifyMetadata) {
       .WillRepeatedly(Return(modified));
   EXPECT_CALL(*compressor_ptr_, Reset).WillRepeatedly(Return(true));
 
-  std::unique_ptr<MockCompressor> clones[2];
+  std::unique_ptr<brillo::MockCompressor> clones[2];
   for (auto&& clone : clones) {
-    clone = std::make_unique<MockCompressor>();
+    clone = std::make_unique<brillo::MockCompressor>();
     EXPECT_CALL(*clone, Process(_, true)).WillOnce(Return(modified));
   }
   EXPECT_CALL(*compressor_ptr_, Clone)
@@ -145,9 +145,9 @@ TEST_F(MetadataTest, ModifyMetadataToLargerContent) {
       .WillRepeatedly(Return(modified));
   EXPECT_CALL(*compressor_ptr_, Reset).WillRepeatedly(Return(true));
 
-  std::unique_ptr<MockCompressor> clones[3];
+  std::unique_ptr<brillo::MockCompressor> clones[3];
   for (auto&& clone : clones) {
-    clone = std::make_unique<MockCompressor>();
+    clone = std::make_unique<brillo::MockCompressor>();
     EXPECT_CALL(*clone, Process(_, true)).WillOnce(Return(modified));
   }
   EXPECT_CALL(*compressor_ptr_, Clone)

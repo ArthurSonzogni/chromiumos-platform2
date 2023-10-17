@@ -21,10 +21,10 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <brillo/compression/compressor_interface.h>
+#include <brillo/compression/zlib_compressor.h>
 
-#include "dlcservice/metadata/compressor_interface.h"
 #include "dlcservice/metadata/metadata_interface.h"
-#include "dlcservice/metadata/zlib_compressor.h"
 
 namespace dlcservice::metadata {
 
@@ -44,17 +44,17 @@ const std::string_view kMetadataPrefix("_metadata_");
 
 Metadata::Metadata(const base::FilePath& metadata_path,
                    size_t max_file_size,
-                   std::unique_ptr<CompressorInterface> compressor,
-                   std::unique_ptr<CompressorInterface> decompressor)
+                   std::unique_ptr<brillo::CompressorInterface> compressor,
+                   std::unique_ptr<brillo::CompressorInterface> decompressor)
     : metadata_path_(metadata_path),
       max_file_size_(max_file_size),
       compressor_(std::move(compressor)),
       decompressor_(std::move(decompressor)) {
   if (!compressor_) {
-    compressor_ = std::make_unique<ZlibCompressor>();
+    compressor_ = std::make_unique<brillo::ZlibCompressor>();
   }
   if (!decompressor_) {
-    decompressor_ = std::make_unique<ZlibDecompressor>();
+    decompressor_ = std::make_unique<brillo::ZlibDecompressor>();
   }
   compressed_metadata_.reserve(max_file_size_);
 }

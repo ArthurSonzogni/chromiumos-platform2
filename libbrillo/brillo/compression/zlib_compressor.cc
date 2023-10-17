@@ -6,7 +6,7 @@
 #define ZLIB_CONST
 #endif
 
-#include "dlcservice/metadata/zlib_compressor.h"
+#include "brillo/compression/zlib_compressor.h"
 
 #include <zconf.h>
 #include <zlib.h>
@@ -18,19 +18,23 @@
 
 #include <base/logging.h>
 
-#include "dlcservice/metadata/compressor_interface.h"
-#include "dlcservice/metadata/metadata.h"
+#include "brillo/compression/compressor_interface.h"
 
-namespace dlcservice::metadata {
+namespace brillo {
 
 namespace {
+
+// 4096 is a legacy value kept after migrating this code from
+// platform2/dlcservice/metadata, which represented the max metadata file size.
+constexpr size_t kDefaultOutBufferSize = 4096;
+
 // The common processing loop for compression and decompression.
 std::optional<std::string> ProcessImpl(std::function<int(z_streamp, int)> func,
                                        z_streamp zstream,
                                        int flush,
                                        const std::string& data_in) {
   std::string data_out;
-  std::vector<Bytef> out_buffer(kMaxMetadataFileSize);
+  std::vector<Bytef> out_buffer(kDefaultOutBufferSize);
   zstream->avail_in = data_in.size();
   zstream->next_in = reinterpret_cast<const Bytef*>(data_in.data());
 
@@ -48,7 +52,7 @@ std::optional<std::string> ProcessImpl(std::function<int(z_streamp, int)> func,
       return std::nullopt;
     }
     // Copy the data to output.
-    int len = out_buffer.size() - zstream->avail_out;
+    size_t len = out_buffer.size() - zstream->avail_out;
     data_out.append(out_buffer.begin(), out_buffer.begin() + len);
   } while (zstream->avail_out == 0);
 
@@ -153,4 +157,4 @@ bool ZlibDecompressor::Reset() {
   return Z_OK == inflateReset(&zstream_);
 }
 
-}  // namespace dlcservice::metadata
+}  // namespace brillo
