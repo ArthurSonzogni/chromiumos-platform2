@@ -43,6 +43,13 @@ const std::vector<uint8_t> kTestUuidBytes = {0x00, 0x00, 0x11, 0x0a, 0x00, 0x00,
                                              0x10, 0x00, 0x80, 0x00, 0x00, 0x80,
                                              0x5f, 0x9b, 0x34, 0xfb};
 constexpr char kTestUuidString[] = "0000110a-0000-1000-8000-00805f9b34fb";
+// Test data of vendor product info and corresponding modalias.
+const brillo::VariantDictionary kTestDeviceVendorProductInfo = {
+    {"vendor_id_src", uint8_t(0x1)},
+    {"vendor_id", uint16_t(0x4C)},
+    {"product_id", uint16_t(0x200F)},
+    {"version", uint16_t(0xC12C)}};
+constexpr char kTestDeviceModalias[] = "bluetooth:v004Cp200FdC12C";
 
 // Default settings for fetching adapter info.
 struct FetchAdapterInfoDetails {
@@ -60,9 +67,11 @@ struct FetchAdapterInfoDetails {
 struct FetchDeviceInfoDetails {
   bool get_type_error = false;
   bool get_appearance_error = false;
+  bool get_modalias_error = false;
   bool get_uuids_error = false;
   bool get_bluetooth_class_error = false;
   uint32_t type = 0;
+  brillo::VariantDictionary vendor_product_info = kTestDeviceVendorProductInfo;
   std::vector<std::vector<uint8_t>> uuids = {kTestUuidBytes};
 };
 
@@ -194,6 +203,16 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
     } else {
       EXPECT_CALL(mock_adapter_proxy_,
                   GetRemoteAppearanceAsync(device, _, _, _))
+          .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
+    }
+    if (!details.get_modalias_error) {
+      EXPECT_CALL(mock_adapter_proxy_,
+                  GetRemoteVendorProductInfoAsync(device, _, _, _))
+          .WillOnce(
+              base::test::RunOnceCallback<1>(details.vendor_product_info));
+    } else {
+      EXPECT_CALL(mock_adapter_proxy_,
+                  GetRemoteVendorProductInfoAsync(device, _, _, _))
           .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
     }
     if (!details.get_uuids_error) {
@@ -487,6 +506,7 @@ TEST_F(BluetoothFetcherFlossTest, ConnectedDevices) {
   EXPECT_EQ(devices[0]->address, "70:88:6B:92:34:70");
   EXPECT_EQ(devices[0]->type, mojom::BluetoothDeviceType::kBrEdr);
   EXPECT_EQ(devices[0]->appearance->value, 2371);
+  EXPECT_EQ(devices[0]->modalias, kTestDeviceModalias);
   EXPECT_EQ(devices[0]->uuids.value().size(), 1);
   EXPECT_EQ(devices[0]->uuids.value()[0], kTestUuidString);
   EXPECT_EQ(devices[0]->bluetooth_class->value, 236034);
@@ -532,6 +552,83 @@ TEST_F(BluetoothFetcherFlossTest, GetDeviceAppearanceError) {
   ASSERT_TRUE(bluetooth_result->is_error());
   EXPECT_EQ(bluetooth_result->get_error()->msg,
             "Failed to get device appearance");
+}
+
+// Test that the error of getting device modalias is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetDeviceModaliasError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(kTestConnectedDevice, {.get_modalias_error = true});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to get device modalias");
+}
+
+// Test that the error of parsing device modalias is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseDeviceModaliasError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupFetchDeviceInfoCall(
+      kTestConnectedDevice,
+      {.vendor_product_info = {{"no_vendor_id_src", uint8_t(0x1)},
+                               {"vendor_id", uint16_t(0x4C)},
+                               {"no_product_id", uint16_t(0x200F)},
+                               {"version", uint16_t(0xC12C)}}});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to parse device modalias");
+}
+
+// Test that the unknown vendor ID source is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseUnknownVendorIDSource) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  // The unknown value of vendor ID source is 0.
+  SetupFetchDeviceInfoCall(
+      kTestConnectedDevice,
+      {.vendor_product_info = {{"vendor_id_src", uint8_t(0x0)},
+                               {"vendor_id", uint16_t(0x4C)},
+                               {"product_id", uint16_t(0x200F)},
+                               {"version", uint16_t(0xC12C)}}});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
+  const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
+  EXPECT_EQ(adapter_info.size(), 1);
+  ASSERT_TRUE(adapter_info[0]->connected_devices.has_value());
+  const auto& devices = adapter_info[0]->connected_devices.value();
+  EXPECT_EQ(devices.size(), 1);
+  EXPECT_EQ(devices[0]->modalias, std::nullopt);
+}
+
+// Test that the error of parsing vendor ID source is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseVendorIDSourceError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  // The max value of vendor ID source is 2.
+  SetupFetchDeviceInfoCall(
+      kTestConnectedDevice,
+      {.vendor_product_info = {{"vendor_id_src", uint8_t(0x3)},
+                               {"vendor_id", uint16_t(0x4C)},
+                               {"product_id", uint16_t(0x200F)},
+                               {"version", uint16_t(0xC12C)}}});
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to parse vendor ID source");
 }
 
 // Test that the error of getting device UUIDs is handled gracefully.

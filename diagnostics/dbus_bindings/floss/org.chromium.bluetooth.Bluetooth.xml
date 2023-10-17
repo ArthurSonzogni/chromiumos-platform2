@@ -32,6 +32,10 @@
       <arg name="device" direction="in" type="a{sv}"/>
       <arg name="appearance" direction="out" type="q"/>
     </method>
+    <method name="GetRemoteVendorProductInfo">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="info" direction="out" type="a{sv}"/>
+    </method>
     <method name="GetRemoteUuids">
       <arg name="device" direction="in" type="a{sv}"/>
       <arg name="uuids" direction="out" type="aay"/>

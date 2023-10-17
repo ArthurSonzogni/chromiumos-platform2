@@ -12,6 +12,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/object_path.h>
 
@@ -32,14 +33,20 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-namespace floss_device_type {
-
+namespace floss {
+namespace device_type {
 constexpr uint32_t kUnknown = 0;
 constexpr uint32_t kBrEdr = 1;
 constexpr uint32_t kBle = 2;
 constexpr uint32_t kDual = 3;
+}  // namespace device_type
 
-}  // namespace floss_device_type
+namespace vendor_id_src {
+constexpr uint8_t kUnknown = 0;
+constexpr uint8_t kBluetooth = 1;
+constexpr uint8_t kUsb = 2;
+}  // namespace vendor_id_src
+}  // namespace floss
 
 org::chromium::bluetooth::BluetoothProxyInterface* GetTargetAdapter(
     FlossController* floss_controller, int32_t hci_interface) {
@@ -136,6 +143,10 @@ class State {
       mojom::BluetoothDeviceInfo* const device_info_ptr,
       brillo::Error* err,
       uint16_t appearance);
+  void HandleDeviceVendorProductInfoResponse(
+      mojom::BluetoothDeviceInfo* const device_info_ptr,
+      brillo::Error* err,
+      const brillo::VariantDictionary& info);
   void HandleDeviceUuidsResponse(
       mojom::BluetoothDeviceInfo* const device_info_ptr,
       brillo::Error* err,
@@ -379,6 +390,12 @@ void State::FetchConnectedDevicesInfo(
                        base::Unretained(this), device_info.get())));
     adapter->GetRemoteAppearanceAsync(device, std::move(appearance_cb.first),
                                       std::move(appearance_cb.second));
+    // Modalias.
+    auto modalias_cb = SplitDbusCallback(barrier.Depend(
+        base::BindOnce(&State::HandleDeviceVendorProductInfoResponse,
+                       base::Unretained(this), device_info.get())));
+    adapter->GetRemoteVendorProductInfoAsync(
+        device, std::move(modalias_cb.first), std::move(modalias_cb.second));
     // UUIDs.
     auto uuids_cb = SplitDbusCallback(barrier.Depend(
         base::BindOnce(&State::HandleDeviceUuidsResponse,
@@ -407,13 +424,13 @@ void State::HandleDeviceTypeResponse(
     return;
   }
 
-  if (type == floss_device_type::kUnknown) {
+  if (type == floss::device_type::kUnknown) {
     device_info_ptr->type = mojom::BluetoothDeviceType::kUnknown;
-  } else if (type == floss_device_type::kBrEdr) {
+  } else if (type == floss::device_type::kBrEdr) {
     device_info_ptr->type = mojom::BluetoothDeviceType::kBrEdr;
-  } else if (type == floss_device_type::kBle) {
+  } else if (type == floss::device_type::kBle) {
     device_info_ptr->type = mojom::BluetoothDeviceType::kLe;
-  } else if (type == floss_device_type::kDual) {
+  } else if (type == floss::device_type::kDual) {
     device_info_ptr->type = mojom::BluetoothDeviceType::kDual;
   } else {
     LOG(ERROR) << "Get invalid device type, enum value: " << type;
@@ -432,6 +449,41 @@ void State::HandleDeviceAppearanceResponse(
     return;
   }
   device_info_ptr->appearance = mojom::NullableUint16::New(appearance);
+}
+
+void State::HandleDeviceVendorProductInfoResponse(
+    mojom::BluetoothDeviceInfo* const device_info_ptr,
+    brillo::Error* err,
+    const brillo::VariantDictionary& info) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get device modalias");
+    return;
+  }
+  if (!info.contains("vendor_id_src") || !info.contains("vendor_id") ||
+      !info.contains("product_id") || !info.contains("version")) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                    "Failed to parse device modalias");
+    return;
+  }
+  auto src = brillo::GetVariantValueOrDefault<uint8_t>(info, "vendor_id_src");
+  auto vid = brillo::GetVariantValueOrDefault<uint16_t>(info, "vendor_id");
+  auto pid = brillo::GetVariantValueOrDefault<uint16_t>(info, "product_id");
+  auto ver = brillo::GetVariantValueOrDefault<uint16_t>(info, "version");
+
+  if (src == floss::vendor_id_src::kUnknown) {
+    LOG(INFO) << "Get unknown vendor source";
+  } else if (src == floss::vendor_id_src::kBluetooth) {
+    device_info_ptr->modalias =
+        base::StringPrintf("bluetooth:v%04Xp%04Xd%04X", vid, pid, ver);
+  } else if (src == floss::vendor_id_src::kUsb) {
+    device_info_ptr->modalias =
+        base::StringPrintf("usb:v%04Xp%04Xd%04X", vid, pid, ver);
+  } else {
+    LOG(ERROR) << "Get invalid vendor ID source: " << static_cast<int>(src);
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                    "Failed to parse vendor ID source");
+  }
 }
 
 void State::HandleDeviceUuidsResponse(
