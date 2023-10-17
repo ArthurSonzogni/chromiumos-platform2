@@ -264,12 +264,12 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 let result = HashMap::from([
                     ("ChromeCritical", margins.chrome_critical),
                     ("ChromeModerate", margins.chrome_moderate),
-                    ("ArcvmForeground", margins.arcvm_foreground),
-                    ("ArcvmPerceptible", margins.arcvm_perceptible),
-                    ("ArcvmCached", margins.arcvm_cached),
-                    ("ArcContainerForeground", margins.arc_container_foreground),
-                    ("ArcContainerPerceptible", margins.arc_container_perceptible),
-                    ("ArcContainerCached", margins.arc_container_cached),
+                    ("ArcvmForeground", margins.arcvm.foreground),
+                    ("ArcvmPerceptible", margins.arcvm.perceptible),
+                    ("ArcvmCached", margins.arcvm.cached),
+                    ("ArcContainerForeground", margins.arc_container.foreground),
+                    ("ArcContainerPerceptible", margins.arc_container.perceptible),
+                    ("ArcContainerCached", margins.arc_container.cached),
                 ]);
                 Ok((result,))
             },

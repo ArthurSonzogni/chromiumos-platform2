@@ -384,15 +384,17 @@ pub fn set_memory_margins_bps(critical: u32, moderate: u32) -> Result<()> {
     }
 }
 
+pub struct ArcMarginsKb {
+    pub foreground: u64,
+    pub perceptible: u64,
+    pub cached: u64,
+}
+
 pub struct ComponentMarginsKb {
     pub chrome_critical: u64,
     pub chrome_moderate: u64,
-    pub arcvm_foreground: u64,
-    pub arcvm_perceptible: u64,
-    pub arcvm_cached: u64,
-    pub arc_container_foreground: u64,
-    pub arc_container_perceptible: u64,
-    pub arc_container_cached: u64,
+    pub arcvm: ArcMarginsKb,
+    pub arc_container: ArcMarginsKb,
 }
 
 pub fn get_component_margins_kb() -> ComponentMarginsKb {
@@ -402,21 +404,25 @@ pub fn get_component_margins_kb() -> ComponentMarginsKb {
 
         chrome_moderate: moderate,
 
-        // 75 % of critical.
-        arcvm_foreground: critical * 3 / 4,
+        arcvm: ArcMarginsKb {
+            // 75 % of critical.
+            foreground: critical * 3 / 4,
 
-        // 100 % of critical.
-        arcvm_perceptible: critical,
+            // 100 % of critical.
+            perceptible: critical,
 
-        arcvm_cached: 2 * critical,
+            cached: 2 * critical,
+        },
 
-        // Don't kill ARC container foreground process. It might be supported in the future.
-        arc_container_foreground: 0,
+        arc_container: ArcMarginsKb {
+            // Don't kill ARC container foreground process. It might be supported in the future.
+            foreground: 0,
 
-        arc_container_perceptible: critical,
+            perceptible: critical,
 
-        // Minimal of moderate and 200 % of critical.
-        arc_container_cached: std::cmp::min(moderate, 2 * critical),
+            // Minimal of moderate and 200 % of critical.
+            cached: std::cmp::min(moderate, 2 * critical),
+        },
     }
 }
 
@@ -465,6 +471,27 @@ pub struct PressureStatus {
     pub arc_container_reclaim_target_kb: u64,
 }
 
+macro_rules! get_arc_level {
+    ($fn:ident, $ret_type:ty) => {
+        fn $fn(margins: &ArcMarginsKb, available: u64, background_memory: u64) -> ($ret_type, u64) {
+            // We should kill background tabs before foreground/perceptible ARC apps, so
+            // background memory is counted as available for those ARC pressure levels.
+            if available + background_memory < margins.foreground {
+                (<$ret_type>::Foreground, margins.foreground - available)
+            } else if available + background_memory < margins.perceptible {
+                (<$ret_type>::Perceptible, margins.perceptible - available)
+            } else if available < margins.cached {
+                (<$ret_type>::Cached, margins.cached - available)
+            } else {
+                (<$ret_type>::None, 0)
+            }
+        }
+    };
+}
+
+get_arc_level!(get_arc_container_level, PressureLevelArcContainer);
+get_arc_level!(get_arcvm_level, PressureLevelArcvm);
+
 pub fn get_memory_pressure_status() -> Result<PressureStatus> {
     let game_mode = common::get_game_mode()?;
     let available = get_background_available_memory_kb(game_mode)?;
@@ -484,41 +511,19 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
         (PressureLevelChrome::None, 0)
     };
 
-    let arcvm_threshold = if available < margins.arcvm_perceptible {
-        margins.arcvm_perceptible - available
-    } else {
-        0
-    };
-    let arc_container_threshold = if available < margins.arc_container_perceptible {
-        margins.arc_container_perceptible - available
-    } else {
-        0
-    };
-    // Use the max of the thresholds so it only has to call get_chrome_memory_kb once.
-    let max_threshold = std::cmp::max(arcvm_threshold, arc_container_threshold);
-    let background_memory_kb = get_chrome_memory_kb(ChromeProcessType::Background, max_threshold);
+    // We cap ARC pressure levels at cached if reclaiming Chrome background memory will
+    // be sufficient to push us back over the ARC perceptible margin. Compute the
+    // maximum we need to reclaim to short circult Chrome background memory measurement.
+    let arcvm_perceptible_target = margins.arcvm.perceptible.saturating_sub(available);
+    let arc_container_perceptible_target =
+        margins.arc_container.perceptible.saturating_sub(available);
+    let arc_perceptible_target =
+        std::cmp::max(arcvm_perceptible_target, arc_container_perceptible_target);
+    let background_memory_kb =
+        get_chrome_memory_kb(ChromeProcessType::Background, arc_perceptible_target);
 
-    let (raw_arcvm_level, arcvm_reclaim_target_kb) = if available < margins.arcvm_perceptible {
-        if background_memory_kb > arcvm_threshold {
-            // If there are enough background memory, only kill cached apps.
-            (PressureLevelArcvm::Cached, margins.arcvm_cached - available)
-        } else if available < margins.arcvm_foreground {
-            (
-                PressureLevelArcvm::Foreground,
-                margins.arcvm_foreground - available,
-            )
-        } else {
-            (
-                PressureLevelArcvm::Perceptible,
-                margins.arcvm_perceptible - available,
-            )
-        }
-    } else if available < margins.arcvm_cached {
-        (PressureLevelArcvm::Cached, margins.arcvm_cached - available)
-    } else {
-        (PressureLevelArcvm::None, 0)
-    };
-
+    let (raw_arcvm_level, arcvm_reclaim_target_kb) =
+        get_arcvm_level(&margins.arcvm, available, background_memory_kb);
     let arcvm_level =
         if game_mode == common::GameMode::Arc && raw_arcvm_level > PressureLevelArcvm::Cached {
             // Do not kill Android apps that are perceptible or foreground, only
@@ -530,32 +535,7 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
         };
 
     let (arc_container_level, arc_container_reclaim_target_kb) =
-        if available < margins.arc_container_perceptible {
-            if background_memory_kb > arc_container_threshold {
-                // If there are enough background memory, only kill cached apps.
-                (
-                    PressureLevelArcContainer::Cached,
-                    margins.arc_container_cached - available,
-                )
-            } else if available < margins.arc_container_foreground {
-                (
-                    PressureLevelArcContainer::Foreground,
-                    margins.arc_container_foreground - available,
-                )
-            } else {
-                (
-                    PressureLevelArcContainer::Perceptible,
-                    margins.arc_container_perceptible - available,
-                )
-            }
-        } else if available < margins.arc_container_cached {
-            (
-                PressureLevelArcContainer::Cached,
-                margins.arc_container_cached - available,
-            )
-        } else {
-            (PressureLevelArcContainer::None, 0)
-        };
+        get_arc_container_level(&margins.arc_container, available, background_memory_kb);
 
     Ok(PressureStatus {
         chrome_level,
