@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fs::File;
 use std::io::BufRead;
@@ -9,6 +10,7 @@ use std::io::BufReader;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Mutex;
+use std::time::Duration;
 use std::time::SystemTime;
 
 use anyhow::bail;
@@ -36,7 +38,7 @@ const RAM_SWAP_WEIGHT_FILENAME: &str = "ram_swap_weight";
 const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
 
 // The process list is out-of-dated if it's not updated for the stall time.
-const BROWSER_PIDS_STALL_TIME_SEC: u64 = 300;
+const BROWSER_PIDS_STALL_TIME: Duration = Duration::from_secs(300);
 
 /// calculate_reserved_free_kb() calculates the reserved free memory in KiB from
 /// /proc/zoneinfo.  Reserved pages are free pages reserved for emergent kernel
@@ -492,15 +494,9 @@ pub fn get_memory_pressure_status() -> Result<PressureStatus> {
     } else {
         0
     };
-    // Use the max of the thresholds so it only has to call get_background_memory_kb once.
+    // Use the max of the thresholds so it only has to call get_chrome_memory_kb once.
     let max_threshold = std::cmp::max(arcvm_threshold, arc_container_threshold);
-    let background_memory_kb = match get_background_memory_kb(max_threshold) {
-        Ok(result) => result,
-        Err(e) => {
-            error!("Failed to call get_background_memory_kb: {:#}", e);
-            0
-        }
-    };
+    let background_memory_kb = get_chrome_memory_kb(ChromeProcessType::Background, max_threshold);
 
     let (raw_arcvm_level, arcvm_reclaim_target_kb) = if available < margins.arcvm_perceptible {
         if background_memory_kb > arcvm_threshold {
@@ -628,7 +624,7 @@ fn init_memory_configs_impl(root: &Path) -> Result<()> {
 }
 
 // The browser type of the process list.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BrowserType {
     // Ash Chrome.
     Ash = 0,
@@ -645,87 +641,111 @@ impl fmt::Display for BrowserType {
     }
 }
 
-// Lists of the processes to estimate the host memory usage.
-static ASH_BACKGROUND_PIDS: Mutex<(Vec<i32>, SystemTime)> =
-    Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
-static LACROS_BACKGROUND_PIDS: Mutex<(Vec<i32>, SystemTime)> =
-    Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
-static ASH_PROTECTED_PIDS: Mutex<(Vec<i32>, SystemTime)> =
-    Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
-static LACROS_PROTECTED_PIDS: Mutex<(Vec<i32>, SystemTime)> =
-    Mutex::new((Vec::new(), SystemTime::UNIX_EPOCH));
-
-pub fn set_background_processes(browser_type: BrowserType, pids: Vec<i32>) -> Result<()> {
-    let background_pids = match browser_type {
-        BrowserType::Ash => &ASH_BACKGROUND_PIDS,
-        BrowserType::Lacros => &LACROS_BACKGROUND_PIDS,
-    };
-
-    // Panic on poisoned mutex.
-    let mut pids_and_time = background_pids.lock().expect("Lock background_pids failed");
-
-    *pids_and_time = (pids, SystemTime::now());
-    Ok(())
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum ChromeProcessType {
+    Background,
+    Protected,
 }
 
-// Returns the background process list of a browser type.
-fn get_background_processes(browser_type: BrowserType) -> Result<Vec<i32>> {
-    let background_pids = match browser_type {
-        BrowserType::Ash => &ASH_BACKGROUND_PIDS,
-        BrowserType::Lacros => &LACROS_BACKGROUND_PIDS,
+impl fmt::Display for ChromeProcessType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ChromeProcessType::Background => write!(f, "Background"),
+            ChromeProcessType::Protected => write!(f, "Protected"),
+        }
+    }
+}
+
+struct TabProcessList {
+    pids: Vec<i32>,
+    capture_time: SystemTime,
+}
+
+impl TabProcessList {
+    fn new(pids: Vec<i32>) -> Self {
+        Self {
+            pids,
+            capture_time: SystemTime::now(),
+        }
+    }
+}
+
+// Lists of the processes to estimate the host memory usage.
+static CHROME_PIDS: Mutex<BTreeMap<(BrowserType, ChromeProcessType), TabProcessList>> =
+    Mutex::new(BTreeMap::new());
+
+pub fn set_background_processes(browser_type: BrowserType, pids: Vec<i32>) {
+    // Panic on poisoned mutex.
+    let mut chrome_pids = CHROME_PIDS.lock().expect("Lock chrome_pids failed");
+    chrome_pids.insert(
+        (browser_type, ChromeProcessType::Background),
+        TabProcessList::new(pids),
+    );
+}
+
+// Returns the process list for a given browser/process type pair
+fn get_chrome_processes(
+    browser_type: BrowserType,
+    process_type: ChromeProcessType,
+) -> Result<Vec<i32>> {
+    // Panic on poisoned mutex.
+    let chrome_pids = CHROME_PIDS.lock().expect("Lock chrome_pids failed");
+    let Some(tab_list) = chrome_pids.get(&(browser_type, process_type)) else {
+        // Returns empty list if process list is not present.
+        // E.g., When Lacros Chrome is not running.
+        return Ok(Vec::new());
     };
 
-    // Panic on poisoned mutex.
-    let pids_and_time = background_pids.lock().expect("Lock background_pids failed");
-
-    if pids_and_time.1.elapsed()?.as_secs() > BROWSER_PIDS_STALL_TIME_SEC {
-        // Returns empty list if background pids is not updated for a browser type.
-        // E.g., When Lacros Chrome is not running.
+    if tab_list.capture_time.elapsed().context("bad elapsed")? > BROWSER_PIDS_STALL_TIME {
+        // Returns empty list if the pid list is not updated.
         return Ok(Vec::new());
     }
 
-    Ok(pids_and_time.0.clone())
+    Ok(tab_list.pids.clone())
 }
 
 pub fn set_browser_processes(
     browser_type: BrowserType,
     background_pids: Vec<i32>,
     protected_pids: Vec<i32>,
-) -> Result<()> {
-    let (background_pids_mutex, protected_pids_mutex) = match browser_type {
-        BrowserType::Ash => (&ASH_BACKGROUND_PIDS, &ASH_PROTECTED_PIDS),
-        BrowserType::Lacros => (&LACROS_BACKGROUND_PIDS, &LACROS_PROTECTED_PIDS),
-    };
-
-    // Panic on poisoned mutex.
-    let mut background_pids_and_time = background_pids_mutex
-        .lock()
-        .expect("Lock background_pids_mutex failed");
-    *background_pids_and_time = (background_pids, SystemTime::now());
-
-    let mut protected_pids_and_time = protected_pids_mutex
-        .lock()
-        .expect("Lock protected_pids_mutex failed");
-    *protected_pids_and_time = (protected_pids, SystemTime::now());
-    Ok(())
+) {
+    let mut chrome_pids = CHROME_PIDS.lock().expect("Lock chrome_pids failed");
+    chrome_pids.insert(
+        (browser_type, ChromeProcessType::Background),
+        TabProcessList::new(background_pids),
+    );
+    chrome_pids.insert(
+        (browser_type, ChromeProcessType::Protected),
+        TabProcessList::new(protected_pids),
+    );
 }
 
-// Returns the amount of background memory in KiB. To reduce the work when there are a lot of
-// background processes, it would stop counting if the background memory exceeds |threshold_kb|.
-// When |threshold_kb| is 0, it returns Ok(0).
-fn get_background_memory_kb(threshold_kb: u64) -> Result<u64> {
+// Returns the amount of memory in KiB of the given chrome process type. To reduce
+// the work when there are a lot of chrome processes, it would stop counting if the
+// memory exceeds |threshold_kb|. When |threshold_kb| is 0, it returns 0.
+fn get_chrome_memory_kb(process_type: ChromeProcessType, threshold_kb: u64) -> u64 {
     if threshold_kb == 0 {
-        return Ok(0);
+        return 0;
     }
 
     let mut total_background_memory_kb = 0;
     for browser_type in [BrowserType::Ash, BrowserType::Lacros] {
-        for pid in get_background_processes(browser_type)? {
+        let pids = match get_chrome_processes(browser_type, process_type) {
+            Ok(pids) => pids,
+            Err(e) => {
+                error!(
+                    "Failed to get chrome {} {} processes: {}",
+                    browser_type, process_type, e
+                );
+                continue;
+            }
+        };
+        for pid in pids {
             match get_chrome_process_memory_usage(pid) {
                 Ok(result) => {
                     total_background_memory_kb += result;
                     if total_background_memory_kb > threshold_kb {
-                        return Ok(total_background_memory_kb);
+                        return total_background_memory_kb;
                     }
                 }
                 Err(e) => {
@@ -737,7 +757,7 @@ fn get_background_memory_kb(threshold_kb: u64) -> Result<u64> {
             }
         }
     }
-    Ok(total_background_memory_kb)
+    total_background_memory_kb
 }
 
 // Memory usage estimation of |pid|, it's the sum of anonymous RSS and swap.

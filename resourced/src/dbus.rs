@@ -605,13 +605,8 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                             ));
                         }
                     };
-                match memory::set_background_processes(browser_type, report_bk_processes.pids) {
-                    Ok(()) => Ok(()),
-                    Err(e) => {
-                        error!("Failed to set background processes: {:#}", e);
-                        Err(MethodErr::failed("Failed to set background processes"))
-                    }
-                }
+                memory::set_background_processes(browser_type, report_bk_processes.pids);
+                Ok(())
             },
         );
         b.method(
@@ -658,13 +653,8 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                         background_pids.push(process.pid);
                     }
                 }
-                match memory::set_browser_processes(browser_type, background_pids, protected_pids) {
-                    Ok(()) => Ok(()),
-                    Err(e) => {
-                        error!("Failed to set browser processes: {:#}", e);
-                        Err(MethodErr::failed("Failed to set browser processes"))
-                    }
-                }
+                memory::set_browser_processes(browser_type, background_pids, protected_pids);
+                Ok(())
             },
         );
 
