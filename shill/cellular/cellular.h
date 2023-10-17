@@ -821,7 +821,7 @@ class Cellular : public Device,
   // Connection associated to the PDN with APN type "default". In Cellular
   // devices this will always be treated as primary network (e.g. when
   // returning a Network in GetPrimaryNetwork()).
-  std::optional<NetworkInfo> default_pdn_;
+  std::unique_ptr<NetworkInfo> default_pdn_;
 
   // The APN type of the default PDN will always be kDefault, unless we've
   // connected DUN as DEFAULT, in which case it will be kDun. It is required
@@ -834,7 +834,12 @@ class Cellular : public Device,
   std::optional<ApnList::ApnType> default_pdn_apn_type_;
 
   // Connection associated to the PDN with APN type "dun".
-  std::optional<NetworkInfo> multiplexed_tethering_pdn_;
+  // Resetting this unique pointer will trigger a tethering network release
+  // operation because the inner Network is stopped and TetheringManager will be
+  // notified about it. We rely on this unique pointer being nullptr by the time
+  // the tethering network release happens, which is something we cannot
+  // guarantee if this were a std::optional (b/305685718).
+  std::unique_ptr<NetworkInfo> multiplexed_tethering_pdn_;
 
   struct LocationInfo {
     std::string mcc;

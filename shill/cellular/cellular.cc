@@ -317,8 +317,8 @@ Cellular::Cellular(Manager* manager,
 
   // Reset networks
   default_pdn_apn_type_ = std::nullopt;
-  default_pdn_ = std::nullopt;
-  multiplexed_tethering_pdn_ = std::nullopt;
+  default_pdn_.reset();
+  multiplexed_tethering_pdn_.reset();
 
   carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
       this, metrics(),
@@ -743,8 +743,8 @@ void Cellular::Reset(ResultCallback callback) {
 void Cellular::DropConnectionDefault() {
   SetPrimaryMultiplexedInterface("");
   default_pdn_apn_type_ = std::nullopt;
-  default_pdn_ = std::nullopt;
-  multiplexed_tethering_pdn_ = std::nullopt;
+  default_pdn_.reset();
+  multiplexed_tethering_pdn_.reset();
   SelectService(nullptr);
 }
 
@@ -1824,7 +1824,7 @@ void Cellular::DisconnectMultiplexedTetheringPdn(ResultCallback callback) {
 // acquisition fails. In both cases, CompleteTetheringOperation() would be
 // called after the capability Disconnect().
 void Cellular::RunDisconnectMultiplexedTetheringPdn() {
-  multiplexed_tethering_pdn_ = std::nullopt;
+  multiplexed_tethering_pdn_.reset();
 
   LOG(INFO) << LoggingTag() << ": Disconnecting multiplexed tethering network.";
   capability_->Disconnect(
@@ -1927,7 +1927,7 @@ void Cellular::OnCapabilityDisconnectBeforeReconnectReply(const Error& error) {
   // connected state, so that clients can rearrange their connections.
   SetPrimaryMultiplexedInterface("");
   default_pdn_apn_type_ = std::nullopt;
-  default_pdn_ = std::nullopt;
+  default_pdn_.reset();
 
   SetServiceState(Service::kStateAssociating);
 
@@ -2260,7 +2260,7 @@ void Cellular::EstablishLink() {
             << bearer->data_interface();
 
   // Create default network
-  default_pdn_.emplace(
+  default_pdn_ = std::make_unique<NetworkInfo>(
       this, bearer->dbus_path(),
       rtnl_handler()->GetInterfaceIndex(bearer->data_interface()),
       bearer->data_interface());
@@ -2308,7 +2308,7 @@ void Cellular::EstablishMultiplexedTetheringLink() {
             << bearer->data_interface();
 
   // Create multiplexed tethering network
-  multiplexed_tethering_pdn_.emplace(
+  multiplexed_tethering_pdn_ = std::make_unique<NetworkInfo>(
       this, bearer->dbus_path(),
       rtnl_handler()->GetInterfaceIndex(bearer->data_interface()),
       bearer->data_interface());
@@ -2711,8 +2711,8 @@ bool Cellular::DisconnectCleanup() {
   SetServiceFailureSilent(Service::kFailureNone);
   SetPrimaryMultiplexedInterface("");
   default_pdn_apn_type_ = std::nullopt;
-  default_pdn_ = std::nullopt;
-  multiplexed_tethering_pdn_ = std::nullopt;
+  default_pdn_.reset();
+  multiplexed_tethering_pdn_.reset();
   ResetCarrierEntitlement();
   return true;
 }
@@ -3994,15 +3994,16 @@ void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
 void Cellular::SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
                                        std::unique_ptr<Network> network,
                                        LinkState link_state) {
-  default_pdn_.emplace(this, dbus_path, std::move(network), link_state);
+  default_pdn_ = std::make_unique<NetworkInfo>(this, dbus_path,
+                                               std::move(network), link_state);
 }
 
 void Cellular::SetMultiplexedTetheringPdnForTesting(
     const RpcIdentifier& dbus_path,
     std::unique_ptr<Network> network,
     LinkState link_state) {
-  multiplexed_tethering_pdn_.emplace(this, dbus_path, std::move(network),
-                                     link_state);
+  multiplexed_tethering_pdn_ = std::make_unique<NetworkInfo>(
+      this, dbus_path, std::move(network), link_state);
 }
 
 Cellular::NetworkInfo::NetworkInfo(Cellular* cellular,
