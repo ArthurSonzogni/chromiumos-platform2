@@ -11,6 +11,7 @@
 #include <linux/types.h>
 #include <stdint.h>
 
+#include <compare>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -227,4 +228,7 @@ void ConntrackMonitor::Process(ssize_t len) {
     }
   }
 }
+
+bool operator==(const ConntrackMonitor::Event&,
+                const ConntrackMonitor::Event&) = default;
 }  // namespace patchpanel

@@ -45,6 +45,8 @@ class ConntrackMonitor {
     EventType type;
     // State for the socket. One of TCP_CONNTRACK_* like constant.
     uint8_t state;
+
+    friend bool operator==(const Event&, const Event&);
   };
 
   // Callback for listening to conntrack table socket connection changes

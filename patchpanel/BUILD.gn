@@ -288,6 +288,7 @@ if (use.test) {
       "address_manager_test.cc",
       "arc_service_test.cc",
       "clat_service_test.cc",
+      "conntrack_monitor_test.cc",
       "counters_service_test.cc",
       "crostini_service_test.cc",
       "datapath_test.cc",
@@ -335,6 +336,7 @@ if (use.test) {
     deps = [
       ":libpatchpanel",
       "//common-mk/testrunner",
+      "//net-base:net_base_test_support",
       "//shill/net:net_test_support",
     ]
   }
