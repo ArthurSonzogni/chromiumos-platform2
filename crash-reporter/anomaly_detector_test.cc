@@ -252,6 +252,7 @@ TEST(AnomalyDetectorTest, KernelIwlwifiErrorLmacTwoSpace) {
 TEST(AnomalyDetectorTest, KernelIwlwifiDriverError) {
   ParserRun wifi_error = {
       .expected_text =
+          "2020-09-01T11:03:11.221374-07:00 ERR kernel: [ 2448.183332] iwlwifi "
           "0000:01:00.0: Loaded firmware version: 17.bfb58538.0 7260-17.ucode\n"
           "2020-09-01T11:03:11.221401-07:00 ERR kernel: [ 2448.183344] iwlwifi "
           "0000:01:00.0: 0x00000000 | ADVANCED_SYSASSERT\n"
@@ -385,11 +386,11 @@ TEST(AnomalyDetectorTest, KernelSMMU_FAULT) {
 }
 
 TEST(AnomalyDetectorTest, KernelWarning) {
-  ParserRun second{
-      .find_this = "ttm_bo_vm.c",
-      .replace_with = "file_one.c",
-      .expected_text = "0x19e/0x1ab [ttm]()\n[ 3955.309298] Modules linked in",
-      .expected_flags = {{"--kernel_warning", "--weight=10"}}};
+  ParserRun second{.find_this = "ttm_bo_vm.c",
+                   .replace_with = "file_one.c",
+                   .expected_substr =
+                       "0x19e/0x1ab [ttm]()\n[ 3955.309298] Modules linked in",
+                   .expected_flags = {{"--kernel_warning", "--weight=10"}}};
   KernelParser parser(true);
   ParserTest("TEST_WARNING", {simple_run, second}, &parser);
 }
@@ -401,7 +402,8 @@ TEST(AnomalyDetectorTest, KernelWarningNoDuplicate) {
 }
 
 TEST(AnomalyDetectorTest, KernelWarningHeader) {
-  ParserRun warning_message{.expected_text = "Test Warning message asdfghjkl"};
+  ParserRun warning_message{.expected_substr =
+                                "Test Warning message asdfghjkl"};
   KernelParser parser(true);
   ParserTest("TEST_WARNING_HEADER", {warning_message}, &parser);
 }
@@ -412,7 +414,7 @@ TEST(AnomalyDetectorTest, KernelWarningOld) {
 }
 
 TEST(AnomalyDetectorTest, KernelWarningOldARM64) {
-  ParserRun unknown_function{.expected_text = "-unknown-function\n"};
+  ParserRun unknown_function{.expected_substr = "-unknown-function\n"};
   KernelParser parser(true);
   ParserTest("TEST_WARNING_OLD_ARM64", {unknown_function}, &parser);
 }
@@ -466,7 +468,7 @@ TEST(AnomalyDetectorTest, CrashReporterCrashRateLimit) {
 }
 
 TEST(AnomalyDetectorTest, ServiceFailure) {
-  ParserRun one{.expected_text = "-exit2-"};
+  ParserRun one{.expected_substr = "-exit2-"};
   ParserRun two{.find_this = "crash-crash", .replace_with = "fresh-fresh"};
   ServiceParser parser(true);
   ParserTest("TEST_SERVICE_FAILURE", {one, two}, &parser);
@@ -476,7 +478,7 @@ TEST(AnomalyDetectorTest, ServiceFailureArc) {
   ParserRun service_failure = {
       .find_this = "crash-crash",
       .replace_with = "arc-crash",
-      .expected_text = "-exit2-arc-",
+      .expected_substr = "-exit2-arc-",
       .expected_flags = {{"--arc_service_failure=arc-crash"}}};
   ServiceParser parser(true);
   ParserTest("TEST_SERVICE_FAILURE", {service_failure}, &parser);
@@ -492,7 +494,7 @@ TEST(AnomalyDetectorTest, ServiceFailureCamera) {
 
 TEST(AnomalyDetectorTest, SELinuxViolation) {
   ParserRun selinux_violation = {
-      .expected_text =
+      .expected_substr =
           "-selinux-u:r:cros_init:s0-u:r:kernel:s0-module_request-init-",
       .expected_flags = {{"--selinux_violation", "--weight=100"}}};
   SELinuxParser parser(true);
@@ -531,7 +533,7 @@ TEST(AnomalyDetectorTest, SELinuxViolationNonCros) {
 
 TEST(AnomalyDetectorTest, SuspendFailure) {
   ParserRun suspend_failure = {
-      .expected_text =
+      .expected_substr =
           "-suspend failure: device: dummy_dev step: suspend errno: -22",
       .expected_flags = {{"--suspend_failure"}}};
   SuspendParser parser(true);
@@ -676,7 +678,7 @@ TEST(AnomalyDetectorTest, CryptohomeIgnoreFailedLogin) {
 
 TEST(AnomalyDetectorTest, CryptohomeRecoveryRequestFailure) {
   ParserRun cryptohome_recovery_failure = {
-      .expected_text = "GetRecoveryRequest-3-recovery-failure",
+      .expected_substr = "GetRecoveryRequest-3-recovery-failure",
       .expected_flags = {{"--cryptohome_recovery_failure"}}};
   CryptohomeParser parser(/*testonly_send_all=*/true);
   ParserTest("TEST_CRYPTOHOME_RECOVERY_REQUEST_FAILURE",
@@ -685,7 +687,7 @@ TEST(AnomalyDetectorTest, CryptohomeRecoveryRequestFailure) {
 
 TEST(AnomalyDetectorTest, CryptohomeRecoveryDeriveFailure) {
   ParserRun cryptohome_recovery_failure = {
-      .expected_text = "Derive-8-recovery-failure",
+      .expected_substr = "Derive-8-recovery-failure",
       .expected_flags = {{"--cryptohome_recovery_failure"}}};
   CryptohomeParser parser(/*testonly_send_all=*/true);
   ParserTest("TEST_CRYPTOHOME_RECOVERY_DERIVE_FAILURE",
@@ -699,7 +701,7 @@ TEST(AnomalyDetectorTest, CryptohomeRecoveryIgnoreFailure) {
 }
 
 TEST(AnomalyDetectorTest, TcsdAuthFailure) {
-  ParserRun tcsd_auth_failure = {.expected_text = "b349c715-auth failure",
+  ParserRun tcsd_auth_failure = {.expected_text = "b349c715-auth failure\n",
                                  .expected_flags = {{"--auth_failure"}}};
   ParserTest<TcsdParser>("TEST_TCSD_AUTH_FAILURE", {tcsd_auth_failure});
 }
@@ -712,7 +714,7 @@ TEST(AnomalyDetectorTest, TcsdAuthFailureBlocklist) {
 
 TEST(AnomalyDetectorTest, CellularFailureMM) {
   ParserRun modem_failure = {
-      .expected_text = "Core.Failed",
+      .expected_substr = "Core.Failed",
       .expected_flags = {
           {"--modem_failure", base::StringPrintf("--weight=%d", 50)}}};
   ShillParser parser(/*testonly_send_all=*/true);
@@ -721,7 +723,7 @@ TEST(AnomalyDetectorTest, CellularFailureMM) {
 
 TEST(AnomalyDetectorTest, CellularFailureEnable) {
   ParserRun enable_failure = {
-      .expected_text = "InProgress-enable",
+      .expected_substr = "InProgress-enable",
       .expected_flags = {
           {"--modem_failure", base::StringPrintf("--weight=%d", 200)}}};
   ShillParser parser(/*testonly_send_all=*/true);
@@ -730,7 +732,7 @@ TEST(AnomalyDetectorTest, CellularFailureEnable) {
 
 TEST(AnomalyDetectorTest, CellularFailureConnect) {
   ParserRun connect_failure = {
-      .expected_text = "auto-connect",
+      .expected_substr = "auto-connect",
       .expected_flags = {
           {"--modem_failure", base::StringPrintf("--weight=%d", 5)}}};
   ShillParser parser(/*testonly_send_all=*/true);
@@ -745,7 +747,7 @@ TEST(AnomalyDetectorTest, CellularFailureBlocked) {
 
 TEST(AnomalyDetectorTest, CellularFailureEntitlementCheck) {
   ParserRun entitlement_failure = {
-      .expected_text = "EntitlementCheckFailure",
+      .expected_substr = "EntitlementCheckFailure",
       .expected_flags = {
           {"--modem_failure", base::StringPrintf("--weight=%d", 1)}}};
   ShillParser parser(/*testonly_send_all=*/true);
@@ -755,7 +757,7 @@ TEST(AnomalyDetectorTest, CellularFailureEntitlementCheck) {
 
 TEST(AnomalyDetectorTest, ESimInstallSendHttpsFailure) {
   ParserRun install_failure = {
-      .expected_text = "SendHttpsFailure",
+      .expected_substr = "SendHttpsFailure",
       .expected_flags = {
           {"--hermes_failure", base::StringPrintf("--weight=%d", 5)}}};
   HermesParser parser(/*testonly_send_all=*/true);
@@ -765,7 +767,7 @@ TEST(AnomalyDetectorTest, ESimInstallSendHttpsFailure) {
 
 TEST(AnomalyDetectorTest, ESimInstallUnknownFailure) {
   ParserRun install_failure = {
-      .expected_text = "Unknown",
+      .expected_substr = "Unknown",
       .expected_flags = {
           {"--hermes_failure", base::StringPrintf("--weight=%d", 1)}}};
   HermesParser parser(/*testonly_send_all=*/true);
@@ -781,7 +783,7 @@ TEST(AnomalyDetectorTest, ESimInstallFailureBlocked) {
 
 TEST(AnomalyDetectorTest, CellularFailureModemfwd) {
   ParserRun modemfwd_failure = {
-      .expected_text = "dlcServiceReturnedErrorOnInstall",
+      .expected_substr = "dlcServiceReturnedErrorOnInstall",
       .expected_flags = {
           {"--modemfwd_failure", base::StringPrintf("--weight=%d", 50)}}};
   ModemfwdParser parser(/*testonly_send_all=*/true);

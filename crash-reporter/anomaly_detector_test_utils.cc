@@ -68,11 +68,16 @@ void ParserTest(const std::string& input_file_name,
     auto crash_reports = ParseLogMessages(parser, log_msgs);
 
     ASSERT_THAT(crash_reports, SizeIs(run.expected_size));
-    if (run.expected_text)
-      EXPECT_THAT(crash_reports[0].text, HasSubstr(*run.expected_text));
-    if (run.expected_flags)
+    if (run.expected_text) {
+      EXPECT_EQ(crash_reports[0].text, *run.expected_text);
+    }
+    if (run.expected_substr) {
+      EXPECT_THAT(crash_reports[0].text, HasSubstr(*run.expected_substr));
+    }
+    if (run.expected_flags) {
       EXPECT_THAT(crash_reports[0].flags,
                   UnorderedElementsAreArray(*run.expected_flags));
+    }
   }
 }
 
