@@ -580,11 +580,12 @@ bool ProvisionDeviceStateHandler::IsHwwpDisabled() const {
 bool ProvisionDeviceStateHandler::UpdateFirmwareConfig() {
   uint32_t cros_config_fw_config;
   if (!cros_config_utils_->GetFirmwareConfig(&cros_config_fw_config)) {
-    LOG(ERROR) << "Failed to get firmware config in cros_config.";
-    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                 kProgressFailedBlocking,
-                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
-    return false;
+    // TODO(jeffulin): Some platforms have no firmware config even with CBI, so
+    //                 we should record this in cros_config per platform. For
+    //                 now if we fail to get firmware config in cros_config, we
+    //                 skip setting it to CBI.
+    LOG(WARNING) << "Failed to get firmware config in cros_config.";
+    return true;
   }
 
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,

@@ -763,7 +763,10 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_GetCrosFwConfigFailedBlocking) {
+       GetNextStateCase_GetCrosFwConfigFailedSucceeded) {
+  // We currently skip setting firmware config if there is no such field found
+  // in cros_config to handle exceptions like octopus.
+
   // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
@@ -775,8 +778,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   task_environment_.RunUntilIdle();
 
   // Provision failed signal is sent.
-  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
+               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
