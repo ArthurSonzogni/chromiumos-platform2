@@ -6,18 +6,18 @@
 #define MISSIVE_STORAGE_STORAGE_H_
 
 #include <memory>
+#include <string>
+#include <tuple>
+#include <unordered_map>
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/ref_counted_delete_on_sequence.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/thread_annotations.h>
 #include <base/time/time.h>
-#include <base/timer/timer.h>
 
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
@@ -40,8 +40,7 @@ namespace reporting {
 // In multi-generation mode each queue is uniquely identifiable by a generation
 // globally unique ID (guid) + priority tuple The generation guid is a randomly
 // generation string. Generation guids have a one-to-one relationship with <DM
-// token, Priority> tuples. See the `QueuesContainer` class for more details on
-// how generation guids are created, stored, and retrieved.
+// token, Priority> tuples.
 
 // Queues are created lazily with given priority when Write is called with a
 // DM token we haven't seen before, as opposed to creating all queues during
@@ -57,12 +56,13 @@ namespace reporting {
 // on the next restart of Storage.
 
 // Empty subdirectories in the storage directory are deleted on storage
-// creation.
+// creation. TODO(b/278620137): should also delete empty directories every 1-2
+// days.
 
 // In single-generation mode (legacy mode) there is only one queue per priority.
 // Queues are created at the first start of the Storage and never erased.
 
-class Storage : public base::RefCountedDeleteOnSequence<Storage> {
+class Storage : public base::RefCountedThreadSafe<Storage> {
  public:
   // Transient settings used by `Storage` instantiation.
   struct Settings {
@@ -119,8 +119,7 @@ class Storage : public base::RefCountedDeleteOnSequence<Storage> {
   void RegisterCompletionCallback(base::OnceClosure callback);
 
  private:
-  friend class base::RefCountedDeleteOnSequence<Storage>;
-  friend class base::DeleteHelper<Storage>;
+  friend class base::RefCountedThreadSafe<Storage>;
 
   // Private helper class to initialize a single queue
   friend class CreateQueueContext;
@@ -128,11 +127,27 @@ class Storage : public base::RefCountedDeleteOnSequence<Storage> {
   // Private helper class to flush all queues with a given priority
   friend class FlushContext;
 
+  // Map that associates <DM token, Priority> of users or the device with a
+  // unique GenerationGuid which is then associated to a queue in the `queues_`
+  // map. Only queues with their GenerationGuid in this map can be written to
+  // and are considered "active". Queues that are not accepting new events (i.e.
+  // queues that contained data before storage was shut down), will not have
+  // their GenerationGuid in this map, but will still exists in the `queues_`
+  // map so that they can send their remaining events.
+  struct Hash {
+    size_t operator()(const std::tuple<DMtoken, Priority>& v) const noexcept {
+      static constexpr std::hash<DMtoken> dm_token_hasher;
+      static constexpr std::hash<Priority> priority_hasher;
+      const auto& [token, priority] = v;
+      return dm_token_hasher(token) ^ priority_hasher(priority);
+    }
+  };
+  using GenerationGuidMap =
+      std::unordered_map<std::tuple<DMtoken, Priority>, GenerationGuid, Hash>;
+
   // Private constructor, to be called by Create factory method only.
   // Queues need to be added afterwards.
-  explicit Storage(
-      const Settings& settings,
-      scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
+  explicit Storage(const Settings& settings);
 
   // Private destructor, as required by RefCountedThreadSafe.
   ~Storage();
@@ -151,6 +166,20 @@ class Storage : public base::RefCountedDeleteOnSequence<Storage> {
                               base::OnceCallback<void(Status)>)> queue_action,
       base::OnceCallback<void(Status)> completion_cb,
       StatusOr<GenerationGuid> generation_guid);
+
+  // Creates a generation guid for this dm token, maps it to the dm token,
+  // and returns the generation guid. Returns error if a generation guid exists
+  // for this dm token already.
+  StatusOr<GenerationGuid> CreateGenerationGuidForDMToken(
+      const DMtoken& dm_token, Priority priority);
+
+  // Returns the generation guid associated with `dm_token` or error if no
+  // generation guid exists for `dm_token`.
+  StatusOr<GenerationGuid> GetGenerationGuid(const DMtoken& dm_token,
+                                             Priority priority);
+
+  StatusOr<GenerationGuid> GetOrCreateGenerationGuid(const DMtoken& dm_token,
+                                                     Priority priority);
 
   // Writes a record to the given queue.
   void WriteToQueue(Record record,
@@ -185,14 +214,14 @@ class Storage : public base::RefCountedDeleteOnSequence<Storage> {
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
 
+  // <DM token, Priority> -> Generation guid map
+  GenerationGuidMap dmtoken_to_generation_guid_map_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
   // Queues container and storage degradation controller. If degradation is
   // enabled, in case of disk space pressure it facilitates dropping low
   // priority events to free up space for the higher priority ones.
   const scoped_refptr<QueuesContainer> queues_container_;
-
-  // Used to periodically trigger queue garbage_collection.
-  base::RepeatingTimer queue_garbage_collection_timer_
-      GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 }  // namespace reporting

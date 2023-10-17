@@ -31,7 +31,6 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/timer/timer.h>
-#include <base/uuid.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 #include "missive/analytics/metrics.h"
@@ -45,7 +44,6 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_uploader_interface.h"
-#include "missive/storage/storage_util.h"
 #include "missive/util/file.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
@@ -223,91 +221,6 @@ size_t QueuesContainer::RunActionOnAllQueues(
   return count;
 }
 
-GenerationGuid QueuesContainer::GetOrCreateGenerationGuid(
-    const DMtoken& dm_token, Priority priority) {
-  StatusOr<GenerationGuid> generation_guid_result;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (generation_guid_result = GetGenerationGuid(dm_token, priority);
-      !generation_guid_result.ok()) {
-    // Create a generation guid for this dm token and priority
-    generation_guid_result = CreateGenerationGuidForDMToken(dm_token, priority);
-    // Creation should never fail.
-    CHECK(generation_guid_result.ok()) << generation_guid_result.status();
-  }
-  return generation_guid_result.ValueOrDie();
-}
-
-StatusOr<GenerationGuid> QueuesContainer::GetGenerationGuid(
-    const DMtoken& dm_token, Priority priority) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (dmtoken_to_generation_guid_map_.find(std::make_tuple(
-          dm_token, priority)) == dmtoken_to_generation_guid_map_.end()) {
-    return Status(
-        error::NOT_FOUND,
-        base::StrCat({"No generation guid exists for DM token: ", dm_token}));
-  }
-  return dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)];
-}
-
-StatusOr<GenerationGuid> QueuesContainer::CreateGenerationGuidForDMToken(
-    const DMtoken& dm_token, Priority priority) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (auto generation_guid = GetGenerationGuid(dm_token, priority);
-      generation_guid.ok()) {
-    return Status(
-        error::FAILED_PRECONDITION,
-        base::StrCat({"Generation guid for dm_token ", dm_token,
-                      " already exists! guid=", generation_guid.ValueOrDie()}));
-  }
-
-  GenerationGuid generation_guid =
-      base::Uuid::GenerateRandomV4().AsLowercaseString();
-
-  dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)] =
-      generation_guid;
-  return generation_guid;
-}
-
-void QueuesContainer::GarbageCollectQueues(const StorageOptions options) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  StorageDirectory::Set queues_to_delete =
-      StorageDirectory::GetMultigenerationQueuesToGarbageCollect(options);
-  LOG(INFO) << "Running garbage collection. Found " << queues_to_delete.size()
-            << " queues to delete.";
-  // Drop references to the `StorageQueue` objects, delete the
-  // generation guid associated with `StorageQueue`, delete all
-  // files inside the queue directories, then delete the queue
-  // directories.
-  for (const auto& [priority, generation_guid, queue_directory_path] :
-       queues_to_delete) {
-    LOG(INFO) << "Attempting to delete queue directory "
-              << queue_directory_path;
-    if (DropQueue(priority, generation_guid) > 0) {
-      // We dropped the reference to the queue object (which will
-      // be deleted since there are no other references). Now delete
-      // the associated generation guid.
-      std::erase_if(dmtoken_to_generation_guid_map_,
-                    [&generation_guid](const auto& key_value) {
-                      const auto& [_, guid] = key_value;
-                      return guid == generation_guid;
-                    });
-      // Delete the files inside `queue_directory_path` and then
-      // `queue_directory_path`.
-      // `StorageDirectory::GetMultigenerationQueuesToGarbageCollect`
-      // guarantees none of the files in `queue_directory_path` are
-      // unconfirmed records.
-      const std::string delete_queue_directory_result =
-          DeleteFilesWarnIfFailed(base::FileEnumerator(
-              queue_directory_path, false, base::FileEnumerator::FILES)) &&
-                  DeleteFileWarnIfFailed(queue_directory_path)
-              ? "Deleted"
-              : "Failed to delete";
-      LOG(INFO) << delete_queue_directory_result << " queue directory "
-                << queue_directory_path.MaybeAsASCII();
-    }
-  }
-}
-
 namespace {
 
 // Comparator class for ordering degradation candidates queue.
@@ -410,12 +323,6 @@ void QueuesContainer::RegisterCompletionCallback(base::OnceClosure callback) {
 void QueuesContainer::DropAllQueues() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   queues_.clear();
-}
-
-size_t QueuesContainer::DropQueue(const Priority priority,
-                                  const GenerationGuid& generation_guid) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return queues_.erase(std::make_tuple(priority, generation_guid));
 }
 
 base::WeakPtr<QueuesContainer> QueuesContainer::GetWeakPtr() {

@@ -4,11 +4,8 @@
 
 #include "missive/storage/storage.h"
 
-#include <cstddef>
-#include <memory>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 #include <base/barrier_closure.h>
 #include <base/check.h>
@@ -36,7 +33,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
-#include <base/timer/timer.h>
 #include <base/uuid.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
@@ -180,21 +176,14 @@ void Storage::Create(
 
     void OnStart() override {
       CheckOnValidSequence();
+      // TODO(b/300553971): delete empty queues periodically, not just during
+      // storage creation.
       StorageDirectory::DeleteEmptyMultigenerationQueueDirectories(
           storage_->options_.directory());
 
-      // Periodically garbage collect empty and unused queues.
-      storage_->queue_garbage_collection_timer_.Start(
-          FROM_HERE, storage_->options_.queue_garbage_collection_period(),
-          base::BindPostTask(
-              storage_->sequenced_task_runner_,
-              base::BindRepeating(&QueuesContainer::GarbageCollectQueues,
-                                  storage_->queues_container_->GetWeakPtr(),
-                                  storage_->options_)));
-
       // Get the information we need to create queues
       queue_parameters_ =
-          StorageDirectory::GetQueueDirectories(storage_->options_);
+          StorageDirectory::FindQueueDirectories(storage_->options_);
 
       // If encryption is not enabled, proceed with the queues.
       if (!storage_->encryption_module_->is_enabled()) {
@@ -252,7 +241,7 @@ void Storage::Create(
       }
 
       // Create queues the queue directories we found in the storage directory
-      for (const auto& [priority, generation_guid, _] : queue_parameters_) {
+      for (const auto& [priority, generation_guid] : queue_parameters_) {
         Start<CreateQueueContext>(
             // Don't transfer ownership of  `storage_` via std::move() since
             // we need to return `storage_` in the response
@@ -299,19 +288,16 @@ void Storage::Create(
   // Create Storage object.
   // Cannot use base::MakeRefCounted<Storage>, because constructor is
   // private.
-  CHECK(settings.queues_container);
-  auto storage = base::WrapRefCounted(new Storage(
-      settings, settings.queues_container->sequenced_task_runner()));
+  auto storage = base::WrapRefCounted(new Storage(settings));
 
   // Asynchronously run initialization.
   Start<StorageInitContext>(std::move(storage), std::move(completion_cb));
 }
 
-Storage::Storage(const Storage::Settings& settings,
-                 scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
-    : base::RefCountedDeleteOnSequence<Storage>(sequenced_task_runner),
-      options_(settings.options),
-      sequenced_task_runner_(sequenced_task_runner),
+Storage::Storage(const Storage::Settings& settings)
+    : options_(settings.options),
+      sequenced_task_runner_(
+          settings.queues_container->sequenced_task_runner()),
       health_module_(settings.health_module),
       encryption_module_(settings.encryption_module),
       key_delivery_(KeyDelivery::Create(settings.encryption_module,
@@ -323,13 +309,52 @@ Storage::Storage(const Storage::Settings& settings,
           settings.signature_verification_dev_flag,
           settings.options.directory())),
       async_start_upload_cb_(settings.async_start_upload_cb),
-      queues_container_(  // `queues_container` can outlive Storage!
-          settings.queues_container) {
+      queues_container_(settings.queues_container) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
-Storage::~Storage() {
+Storage::~Storage() = default;
+
+StatusOr<GenerationGuid> Storage::GetOrCreateGenerationGuid(
+    const DMtoken& dm_token, Priority priority) {
+  StatusOr<GenerationGuid> generation_guid_result;
+  if (generation_guid_result = GetGenerationGuid(dm_token, priority);
+      !generation_guid_result.ok()) {
+    // Create a generation guid for this dm token and priority
+    generation_guid_result = CreateGenerationGuidForDMToken(dm_token, priority);
+  }
+  return generation_guid_result;
+}
+
+StatusOr<GenerationGuid> Storage::GetGenerationGuid(const DMtoken& dm_token,
+                                                    Priority priority) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (dmtoken_to_generation_guid_map_.find(std::make_tuple(
+          dm_token, priority)) == dmtoken_to_generation_guid_map_.end()) {
+    return Status(
+        error::NOT_FOUND,
+        base::StrCat({"No generation guid exists for DM token: ", dm_token}));
+  }
+  return dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)];
+}
+
+StatusOr<GenerationGuid> Storage::CreateGenerationGuidForDMToken(
+    const DMtoken& dm_token, Priority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (auto generation_guid = GetGenerationGuid(dm_token, priority);
+      generation_guid.ok()) {
+    return Status(
+        error::FAILED_PRECONDITION,
+        base::StrCat({"Generation guid for dm_token ", dm_token,
+                      " already exists! guid=", generation_guid.ValueOrDie()}));
+  }
+
+  GenerationGuid generation_guid =
+      base::Uuid::GenerateRandomV4().AsLowercaseString();
+
+  dmtoken_to_generation_guid_map_[std::make_tuple(dm_token, priority)] =
+      generation_guid;
+  return generation_guid;
 }
 
 void Storage::Write(Priority priority,
@@ -357,11 +382,10 @@ void Storage::Write(Priority priority,
                                           ->mutable_status());
                       }
                       // Move `recorder` into local variable, so that it
-                      // destructs. After that it is no longer necessary
-                      // anyway, but being destructed here, it will be
-                      // included in health history and attached to write
-                      // response request and thus immediately visible on
-                      // Chrome.
+                      // destructs. After that it is no longer necessary anyway,
+                      // but being destructed here, it will be included in
+                      // health history and attached to write response request
+                      // and thus immediately visible on Chrome.
                       const auto finished_recording = std::move(recorder);
                     }
                     std::move(completion_cb).Run(status);
@@ -386,21 +410,27 @@ void Storage::Write(Priority priority,
                 base::BindOnce(&Storage::WriteToQueue, self, std::move(record),
                                std::move(recorder));
 
-            // Callback for `AsyncGetQueue` so that we can either run it here
-            // or have it run after we create any necessary queues. We attach
-            // `queue_action` which will execute the write when
-            // `AsyncGetQueue` calls it.
+            // Callback for `AsyncGetQueue` so that we can either run it here or
+            // have it run after we create any necessary queues. We attach
+            // `queue_action` which will execute the write when `AsyncGetQueue`
+            // calls it.
             auto call_async_get_queue = base::BindOnce(
                 &Storage::AsyncGetQueueAndProceed, self, priority,
                 std::move(queue_action), std::move(completion_cb));
 
             GenerationGuid generation_guid;
             if (self->options_.is_multi_generational(priority)) {
-              // Get or create the generation guid associated with the dm
-              // token and priority in this record.
-              generation_guid =
-                  self->queues_container_->GetOrCreateGenerationGuid(dm_token,
-                                                                     priority);
+              // Get or create the generation guid associated with the dm token
+              // and priority in this record.
+              StatusOr<GenerationGuid> generation_guid_result =
+                  self->GetOrCreateGenerationGuid(dm_token, priority);
+
+              if (!generation_guid_result.ok()) {
+                // This should never happen. We should always be able to create
+                // a generation guid if one doesn't exist.
+                NOTREACHED_NORETURN();
+              }
+              generation_guid = generation_guid_result.ValueOrDie();
             }
 
             // Find the queue for this generation guid + priority and write to
@@ -445,8 +475,8 @@ void Storage::WriteToQueue(Record record,
               // Move `recorder` into local variable, so that it destructs.
               // After that it is no longer necessary anyway, but being
               // destructed here, it will be included in health history and
-              // attached to write response request and thus immediately
-              // visible on Chrome.
+              // attached to write response request and thus immediately visible
+              // on Chrome.
               const auto finished_recording = std::move(recorder);
             }
             std::move(completion_cb).Run(status);
@@ -667,7 +697,6 @@ void Storage::AsyncGetQueueAndProceed(
                                      base::OnceCallback<void(Status)>)>
                  queue_action,
              base::OnceCallback<void(Status)> completion_cb) {
-            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
             if (!generation_guid.ok()) {
               std::move(completion_cb).Run(generation_guid.status());
               return;
