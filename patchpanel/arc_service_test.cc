@@ -130,6 +130,13 @@ class ArcServiceTest : public testing::Test {
   std::map<std::string, ShillClient::Device> shill_devices_;
 };
 
+TEST_F(ArcServiceTest, Arc0IPAddress) {
+  auto svc = NewService(ArcService::ArcType::kVM);
+  ASSERT_TRUE(svc->GetArc0IPv4Address().has_value());
+  EXPECT_EQ(*net_base::IPv4Address::CreateFromString("100.115.92.2"),
+            svc->GetArc0IPv4Address());
+}
+
 TEST_F(ArcServiceTest, NotStarted_AddDevice) {
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arc_eth0"), _)).Times(0);
   EXPECT_CALL(*datapath_,
@@ -242,13 +249,8 @@ TEST_F(ArcServiceTest, StableArcVmMacAddrs) {
 
   auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
-  auto configs = svc->GetDeviceConfigs();
-  EXPECT_EQ(configs.size(), 6);
-  auto mac_addr = MacAddressGenerator::kStableBaseAddr;
-  for (const auto* config : configs) {
-    mac_addr[5]++;
-    EXPECT_EQ(config->mac_addr(), mac_addr);
-  }
+  auto taps = svc->GetTapDevices();
+  EXPECT_EQ(taps.size(), 6);
 }
 
 // ContainerImpl

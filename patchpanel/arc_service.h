@@ -18,6 +18,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
+#include <net-base/ipv4_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
@@ -150,10 +151,12 @@ class ArcService {
   bool Start(uint32_t id);
   void Stop(uint32_t id);
 
-  // Returns a list of ARC Device configurations. This method only really is
-  // useful when ARCVM is running as it enables the caller to discover which
-  // configurations, if any, are currently associated to TAP devices.
-  std::vector<const Device::Config*> GetDeviceConfigs() const;
+  // Returns the IPv4 address of the "arc0" legacy management interface.
+  std::optional<net_base::IPv4Address> GetArc0IPv4Address() const;
+
+  // Returns the list of tap device ifnames that patchpanel has created for
+  // ARCVM. This list is empty for the ARC container.
+  std::vector<std::string> GetTapDevices() const;
 
   // Returns a list of all patchpanel ARC Devices currently managed by this
   // service and attached to a shill Device.

@@ -667,7 +667,8 @@ class ClientImpl : public Client {
   bool NotifyArcStartup(pid_t pid) override;
   bool NotifyArcShutdown() override;
 
-  std::vector<Client::VirtualDevice> NotifyArcVmStartup(uint32_t cid) override;
+  std::optional<Client::ArcVMAllocation> NotifyArcVmStartup(
+      uint32_t cid) override;
   bool NotifyArcVmShutdown(uint32_t cid) override;
 
   std::optional<Client::TerminaAllocation> NotifyTerminaVmStartup(
@@ -871,7 +872,7 @@ bool ClientImpl::NotifyArcShutdown() {
   return true;
 }
 
-std::vector<Client::VirtualDevice> ClientImpl::NotifyArcVmStartup(
+std::optional<Client::ArcVMAllocation> ClientImpl::NotifyArcVmStartup(
     uint32_t cid) {
   ArcVmStartupRequest request;
   request.set_cid(cid);
@@ -887,17 +888,22 @@ std::vector<Client::VirtualDevice> ClientImpl::NotifyArcVmStartup(
       proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "ARCVM network startup failed: " << error->GetMessage();
-    return {};
+    return std::nullopt;
   }
 
-  std::vector<Client::VirtualDevice> devices;
-  for (const auto& d : response.devices()) {
-    const auto device = ConvertVirtualDevice(d);
-    if (device) {
-      devices.push_back(*device);
-    }
+  const auto arc0_addr =
+      net_base::IPv4Address::CreateFromBytes(response.arc0_ipv4_address());
+  if (!arc0_addr) {
+    LOG(ERROR) << "Could not deserialize arc0 IPv4 address";
+    return std::nullopt;
   }
-  return devices;
+
+  ArcVMAllocation arcvm_alloc;
+  arcvm_alloc.arc0_ipv4_address = *arc0_addr;
+  for (const auto& tap : response.tap_device_ifnames()) {
+    arcvm_alloc.tap_device_ifnames.push_back(tap);
+  }
+  return arcvm_alloc;
 }
 
 bool ClientImpl::NotifyArcVmShutdown(uint32_t cid) {

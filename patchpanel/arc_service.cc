@@ -589,12 +589,22 @@ void ArcService::UpdateDeviceIPConfig(const ShillClient::Device& shill_device) {
   shill_device_it->second = shill_device;
 }
 
-std::vector<const Device::Config*> ArcService::GetDeviceConfigs() const {
-  std::vector<const Device::Config*> configs;
-  for (auto* c : all_configs_)
-    configs.emplace_back(c);
+std::optional<net_base::IPv4Address> ArcService::GetArc0IPv4Address() const {
+  if (!arc0_config_) {
+    return std::nullopt;
+  }
+  // Return the same address as ArcDevice::arc_ipv4_address().
+  return arc0_config_->ipv4_subnet()->CIDRAtOffset(2)->address();
+}
 
-  return configs;
+std::vector<std::string> ArcService::GetTapDevices() const {
+  std::vector<std::string> taps;
+  for (auto* c : all_configs_) {
+    if (!c->tap_ifname().empty()) {
+      taps.emplace_back(c->tap_ifname());
+    }
+  }
+  return taps;
 }
 
 std::vector<const ArcService::ArcDevice*> ArcService::GetDevices() const {

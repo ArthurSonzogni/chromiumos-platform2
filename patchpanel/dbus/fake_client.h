@@ -32,7 +32,8 @@ class BRILLO_EXPORT FakeClient : public Client {
   bool NotifyArcStartup(pid_t pid) override;
   bool NotifyArcShutdown() override;
 
-  std::vector<Client::VirtualDevice> NotifyArcVmStartup(uint32_t cid) override;
+  std::optional<Client::ArcVMAllocation> NotifyArcVmStartup(
+      uint32_t cid) override;
   bool NotifyArcVmShutdown(uint32_t cid) override;
 
   std::optional<Client::TerminaAllocation> NotifyTerminaVmStartup(

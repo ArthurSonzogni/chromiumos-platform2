@@ -250,6 +250,13 @@ class BRILLO_EXPORT Client {
     net_base::IPv4Address gateway_ipv4_address;
   };
 
+  // Contains the list of tap devices initially created by patchpanel as well as
+  // the IPv4 address of the "arc0" legacy management interface.
+  struct ArcVMAllocation {
+    net_base::IPv4Address arc0_ipv4_address;
+    std::vector<std::string> tap_device_ifnames;
+  };
+
   using GetTrafficCountersCallback =
       base::OnceCallback<void(const std::vector<TrafficCounter>&)>;
   using NeighborReachabilityEventHandler =
@@ -297,7 +304,7 @@ class BRILLO_EXPORT Client {
   virtual bool NotifyArcStartup(pid_t pid) = 0;
   virtual bool NotifyArcShutdown() = 0;
 
-  virtual std::vector<VirtualDevice> NotifyArcVmStartup(uint32_t cid) = 0;
+  virtual std::optional<ArcVMAllocation> NotifyArcVmStartup(uint32_t cid) = 0;
   virtual bool NotifyArcVmShutdown(uint32_t cid) = 0;
 
   virtual std::optional<TerminaAllocation> NotifyTerminaVmStartup(

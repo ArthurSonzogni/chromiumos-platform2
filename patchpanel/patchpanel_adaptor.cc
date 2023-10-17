@@ -79,28 +79,13 @@ ArcVmStartupResponse PatchpanelAdaptor::ArcVmStartup(
   LOG(INFO) << "ARCVM starting up";
   RecordDbusEvent(DbusUmaEvent::kArcVmStartup);
 
-  const auto device_configs = manager_->ArcVmStartup(request.cid());
-  if (!device_configs) {
+  const auto response = manager_->ArcVmStartup(request.cid());
+  if (!response) {
     LOG(ERROR) << "Failed to start ARCVM network service";
     return {};
   }
-
-  // Populate the response with the interface configurations of the known ARC
-  // Devices
-  patchpanel::ArcVmStartupResponse response;
-  for (const auto* config : *device_configs) {
-    if (config->tap_ifname().empty())
-      continue;
-
-    // TODO(hugobenichi) Use FillDeviceProto.
-    auto* dev = response.add_devices();
-    dev->set_ifname(config->tap_ifname());
-    dev->set_ipv4_addr(config->guest_ipv4_addr().ToInAddr().s_addr);
-    dev->set_guest_type(NetworkDevice::ARCVM);
-  }
-
   RecordDbusEvent(DbusUmaEvent::kArcVmStartupSuccess);
-  return response;
+  return *response;
 }
 
 ConnectNamespaceResponse PatchpanelAdaptor::ConnectNamespace(

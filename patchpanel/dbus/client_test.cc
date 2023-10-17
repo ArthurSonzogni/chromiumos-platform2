@@ -61,15 +61,23 @@ TEST_F(ClientTest, NotifyArcShutdown) {
 
 TEST_F(ClientTest, NotifyArcVmStartup) {
   const uint32_t cid = 5;
-  // FIXME: add virtual devices to the response_proto.
+  const auto arc0_addr =
+      *net_base::IPv4Address::CreateFromString("100.115.92.2");
   ArcVmStartupResponse response_proto;
+  response_proto.add_tap_device_ifnames("vmtap0");
+  response_proto.add_tap_device_ifnames("vmtap1");
+  response_proto.add_tap_device_ifnames("vmtap2");
+  response_proto.set_arc0_ipv4_address(arc0_addr.ToByteString());
 
   EXPECT_CALL(*proxy_,
               ArcVmStartup(Property(&ArcVmStartupRequest::cid, cid), _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
 
-  const auto virtual_devices = client_->NotifyArcVmStartup(cid);
-  EXPECT_TRUE(virtual_devices.empty());
+  const auto arcvm_alloc = client_->NotifyArcVmStartup(cid);
+  ASSERT_TRUE(arcvm_alloc.has_value());
+  EXPECT_EQ(arcvm_alloc->tap_device_ifnames,
+            std::vector<std::string>({"vmtap0", "vmtap1", "vmtap2"}));
+  EXPECT_EQ(arcvm_alloc->arc0_ipv4_address, arc0_addr);
 }
 
 TEST_F(ClientTest, NotifyArcVmShutdown) {

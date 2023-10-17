@@ -239,7 +239,7 @@ class ArcVm final : public VmBaseImpl {
   void RunVmmSwapOutAfterTrim();
   base::expected<SwapStatus, std::string> FetchVmmSwapStatus();
 
-  std::vector<patchpanel::Client::VirtualDevice> network_devices_;
+  patchpanel::Client::ArcVMAllocation network_allocation_;
 
   // Proxy to the server providing shared directory access for this VM.
   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;

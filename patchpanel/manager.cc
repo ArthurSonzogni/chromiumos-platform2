@@ -511,11 +511,11 @@ void Manager::ArcShutdown() {
   arc_svc_->Stop(0);
 }
 
-std::optional<std::vector<const Device::Config*>> Manager::ArcVmStartup(
+std::optional<patchpanel::ArcVmStartupResponse> Manager::ArcVmStartup(
     uint32_t cid) {
-  if (!arc_svc_->Start(cid))
+  if (!arc_svc_->Start(cid)) {
     return std::nullopt;
-
+  }
   GuestMessage msg;
   msg.set_event(GuestMessage::START);
   msg.set_type(GuestMessage::ARC_VM);
@@ -524,7 +524,14 @@ std::optional<std::vector<const Device::Config*>> Manager::ArcVmStartup(
 
   multicast_metrics_->OnARCStarted();
 
-  return arc_svc_->GetDeviceConfigs();
+  patchpanel::ArcVmStartupResponse response;
+  if (const auto arc0_addr = arc_svc_->GetArc0IPv4Address()) {
+    response.set_arc0_ipv4_address(arc0_addr->ToByteString());
+  }
+  for (const auto& tap : arc_svc_->GetTapDevices()) {
+    response.add_tap_device_ifnames(tap);
+  }
+  return response;
 }
 
 void Manager::ArcVmShutdown(uint32_t cid) {

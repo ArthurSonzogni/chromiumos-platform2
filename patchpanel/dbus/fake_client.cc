@@ -22,9 +22,9 @@ bool FakeClient::NotifyArcShutdown() {
   return true;
 }
 
-std::vector<Client::VirtualDevice> FakeClient::NotifyArcVmStartup(
+std::optional<Client::ArcVMAllocation> FakeClient::NotifyArcVmStartup(
     uint32_t cid) {
-  return {};
+  return std::nullopt;
 }
 
 bool FakeClient::NotifyArcVmShutdown(uint32_t cid) {

@@ -322,19 +322,19 @@ std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
 
 bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   // Get the available network interfaces.
-  network_devices_ = network_client_->NotifyArcVmStartup(vsock_cid_);
-  if (network_devices_.empty()) {
-    LOG(ERROR) << "No network devices available";
+  const auto result = network_client_->NotifyArcVmStartup(vsock_cid_);
+  if (!result) {
+    LOG(ERROR) << "Failed to created the initial network setup for ARCVM";
     return false;
   }
+  network_allocation_ = *result;
 
   // Open the tap device(s).
   bool no_tap_fd_added = true;
-  for (const auto& dev : network_devices_) {
-    auto fd =
-        OpenTapDevice(dev.ifname, true /*vnet_hdr*/, nullptr /*ifname_out*/);
+  for (const auto& tap : network_allocation_.tap_device_ifnames) {
+    auto fd = OpenTapDevice(tap, true /*vnet_hdr*/, nullptr /*ifname_out*/);
     if (!fd.is_valid()) {
-      LOG(ERROR) << "Unable to open and configure TAP device " << dev.ifname;
+      LOG(ERROR) << "Unable to open and configure TAP device " << tap;
     } else {
       vm_builder.AppendTapFd(std::move(fd));
       no_tap_fd_added = false;
@@ -749,12 +749,7 @@ bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
 }
 
 uint32_t ArcVm::IPv4Address() const {
-  for (const auto& dev : network_devices_) {
-    if (dev.ifname == "arc0") {
-      return dev.ipv4_addr.ToInAddr().s_addr;
-    }
-  }
-  return 0;
+  return network_allocation_.arc0_ipv4_address.ToInAddr().s_addr;
 }
 
 VmBaseImpl::Info ArcVm::GetInfo() const {

@@ -136,8 +136,12 @@ message GetDevicesResponse {
 
 // Information required by Concierge to continue the ARC VM startup process.
 message ArcVmStartupResponse {
-  // The list of TAP devices to be used in the VM.
-  repeated NetworkDevice devices = 1;
+  // The IPv4 address of the "arc0" legacy management interface, represented in
+  // network order as a byte array of size 4.
+  bytes arc0_ipv4_address = 1;
+
+  // The initial list of TAP devices to be used in the VM.
+  repeated string tap_device_ifnames = 2;
 }
 
 // Notification that the ARC VM is shutting down.

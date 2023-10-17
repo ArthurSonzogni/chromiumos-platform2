@@ -80,7 +80,7 @@ class Manager {
   void ArcShutdown();
 
   // Handles notification indicating ARCVM is booting up.
-  std::optional<std::vector<const Device::Config*>> ArcVmStartup(uint32_t cid);
+  std::optional<patchpanel::ArcVmStartupResponse> ArcVmStartup(uint32_t cid);
 
   // Handles notification indicating ARCVM is spinning down.
   void ArcVmShutdown(uint32_t cid);
