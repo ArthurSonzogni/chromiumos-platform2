@@ -113,7 +113,9 @@ std::set<mojom::DiagnosticRoutineEnum> GetBatteryRoutines() {
 std::set<mojom::DiagnosticRoutineEnum> GetNvmeRoutines() {
   return std::set<mojom::DiagnosticRoutineEnum>{
       mojom::DiagnosticRoutineEnum::kNvmeWearLevel,
-      mojom::DiagnosticRoutineEnum::kNvmeSelfTest};
+      mojom::DiagnosticRoutineEnum::kNvmeSelfTest,
+      mojom::DiagnosticRoutineEnum::kSmartctlCheck,
+      mojom::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed};
 }
 
 std::set<mojom::DiagnosticRoutineEnum> GetWilcoRoutines() {

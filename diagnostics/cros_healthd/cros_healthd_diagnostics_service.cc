@@ -751,17 +751,16 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
     if (context_->system_config()->IsWilcoDevice()) {
       available_routines_.insert(mojom::DiagnosticRoutineEnum::kNvmeWearLevel);
     }
+    if (context_->system_config()->SmartCtlSupported()) {
+      available_routines_.insert(mojom::DiagnosticRoutineEnum::kSmartctlCheck);
+      available_routines_.insert(
+          mojom::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed);
+    }
     auto nvme_self_test_supported_callback = base::BindOnce(
         &CrosHealthdDiagnosticsService::HandleNvmeSelfTestSupportedResponse,
         weak_ptr_factory_.GetWeakPtr());
     context_->system_config()->NvmeSelfTestSupported(
         barreir.Depend(std::move(nvme_self_test_supported_callback)));
-  }
-
-  if (context_->system_config()->SmartCtlSupported()) {
-    available_routines_.insert(mojom::DiagnosticRoutineEnum::kSmartctlCheck);
-    available_routines_.insert(
-        mojom::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed);
   }
 
   if (context_->system_config()->FingerprintDiagnosticSupported()) {
