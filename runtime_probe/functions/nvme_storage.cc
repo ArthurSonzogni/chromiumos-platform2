@@ -34,12 +34,14 @@ bool CheckStorageTypeMatch(const base::FilePath& node_path) {
   const auto nvme_driver_path = node_path.Append(kNvmeDriverPath);
   base::FilePath driver_symlink_target;
   if (!base::ReadSymbolicLink(nvme_driver_path, &driver_symlink_target)) {
-    VLOG(1) << "\"" << nvme_driver_path.value() << "\" is not a symbolic link";
-    VLOG(2) << "\"" << node_path.value() << "\" is not NVMe.";
+    VLOG(2) << "\"" << nvme_driver_path.value() << "\" is not a symbolic link";
     return false;
   }
   pcrecpp::RE nvme_driver_re(R"(drivers/nvme)", pcrecpp::RE_Options());
   if (!nvme_driver_re.PartialMatch(driver_symlink_target.value())) {
+    VLOG(2) << "Path \"" << driver_symlink_target.value()
+            << "\" does not match the pattern \"" << nvme_driver_re.pattern()
+            << "\".";
     return false;
   }
   VLOG(2) << "\"" << node_path.value() << "\" is NVMe.";

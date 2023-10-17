@@ -65,7 +65,7 @@ std::string GetStorageFwVersion(const base::FilePath& node_path) {
   brillo::ErrorPtr err;
 
   auto debugd = Context::Get()->debugd_proxy();
-  VLOG(1) << "Issuing D-Bus call to debugd to retrieve eMMC 5.0 firmware info.";
+  VLOG(2) << "Issuing D-Bus call to debugd to retrieve eMMC 5.0 firmware info.";
   if (!debugd->Mmc(kDebugdMmcOption, &ext_csd_res, &err,
                    kDebugdMmcDefaultTimeout)) {
     std::string err_message = "(no error message)";
