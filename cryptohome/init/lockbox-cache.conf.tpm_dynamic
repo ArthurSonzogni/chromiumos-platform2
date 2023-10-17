@@ -8,6 +8,8 @@ author          "chromium-os-dev@chromium.org"
 # Runs before cryptohomed so it can consume install attributes.
 start on starting cryptohomed
 
+oom score -100
+
 env LOCKBOX_CACHE_DIR=/run/lockbox
 env LOCKBOX_NVRAM_FILE=/run/lockbox.nvram
 
