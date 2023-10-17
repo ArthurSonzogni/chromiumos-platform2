@@ -350,8 +350,9 @@ bool StatefulMount::AttemptStatefulMigration() {
   platform_->BootAlert("stateful_thinpool_migration");
 
   brillo::ProcessImpl thinpool_migrator;
-  thinpool_migrator.AddArg("/sbin/thinpool_migrator");
-  thinpool_migrator.AddArg(state_dev_.value());
+  thinpool_migrator.AddArg("/usr/sbin/thinpool_migrator");
+  thinpool_migrator.AddArg(
+      base::StringPrintf("--device=%s", state_dev_.value().c_str()));
 
   if (!thinpool_migrator.Run()) {
     LOG(ERROR) << "Failed to run thinpool migrator";
