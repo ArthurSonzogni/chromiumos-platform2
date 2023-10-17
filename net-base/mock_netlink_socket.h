@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_MOCK_NETLINK_SOCKET_H_
-#define SHILL_NET_MOCK_NETLINK_SOCKET_H_
+#ifndef NET_BASE_MOCK_NETLINK_SOCKET_H_
+#define NET_BASE_MOCK_NETLINK_SOCKET_H_
 
-#include "shill/net/netlink_socket.h"
+#include "net-base/netlink_socket.h"
 
 #include <vector>
 
@@ -13,9 +13,7 @@
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 
-namespace shill {
-
-class ByteString;
+namespace net_base {
 
 class MockNetlinkSocket : public NetlinkSocket {
  public:
@@ -34,6 +32,6 @@ class MockNetlinkSocket : public NetlinkSocket {
   MOCK_METHOD(bool, RecvMessage, (std::vector<uint8_t>*), (override));
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_MOCK_NETLINK_SOCKET_H_
+#endif  // NET_BASE_MOCK_NETLINK_SOCKET_H_

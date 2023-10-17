@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/netlink_socket.h"
+#include "net-base/netlink_socket.h"
 
 #include <linux/if_packet.h>
 #include <linux/netlink.h>
@@ -15,12 +15,17 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
-#include "shill/net/netlink_message.h"
-
 // This is from a version of linux/socket.h that we don't have.
 #define SOL_NETLINK 270
 
-namespace shill {
+namespace net_base {
+namespace {
+
+// TODO(b/301905012): Use NetlinkMessage::kBroadcastSequenceNumber after moving
+// NetlinkMessage to net-base library.
+constexpr uint32_t kBroadcastSequenceNumber = 0;
+
+}  // namespace
 
 std::unique_ptr<NetlinkSocket> NetlinkSocket::Create() {
   return CreateWithSocketFactory(std::make_unique<net_base::SocketFactory>());
@@ -91,10 +96,10 @@ int NetlinkSocket::WaitForRead(base::TimeDelta timeout) const {
 }
 
 uint32_t NetlinkSocket::GetSequenceNumber() {
-  if (++sequence_number_ == NetlinkMessage::kBroadcastSequenceNumber) {
+  if (++sequence_number_ == kBroadcastSequenceNumber) {
     ++sequence_number_;
   }
   return sequence_number_;
 }
 
-}  // namespace shill.
+}  // namespace net_base.

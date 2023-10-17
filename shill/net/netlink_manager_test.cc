@@ -23,8 +23,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
+#include <net-base/mock_netlink_socket.h>
 
-#include "shill/net/mock_netlink_socket.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 
@@ -40,6 +40,9 @@ using testing::Test;
 namespace shill {
 
 namespace {
+
+// TODO(b/301905012): Remove this type alias when moving this file to net-base.
+using net_base::MockNetlinkSocket;
 
 // These data blocks have been collected by shill using NetlinkManager while,
 // simultaneously (and manually) comparing shill output with that of the 'iw'

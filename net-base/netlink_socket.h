@@ -22,8 +22,8 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#ifndef SHILL_NET_NETLINK_SOCKET_H_
-#define SHILL_NET_NETLINK_SOCKET_H_
+#ifndef NET_BASE_NETLINK_SOCKET_H_
+#define NET_BASE_NETLINK_SOCKET_H_
 
 #include <memory>
 #include <vector>
@@ -33,25 +33,25 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/socket.h>
 
-#include "shill/net/shill_export.h"
+#include "net-base/export.h"
+#include "net-base/socket.h"
 
-namespace shill {
+namespace net_base {
 
 // Provides an abstraction to a netlink socket.  See
 // http://www.infradead.org/~tgr/libnl/doc/core.html#core_netlink_fundamentals
 // for documentation on how netlink sockets work (note that most of the rest of
 // this document discusses libnl -- something not used by this code).
-class SHILL_EXPORT NetlinkSocket {
+class NET_BASE_EXPORT NetlinkSocket {
  public:
-  // Creates a NetlinkSocket instance, using the net_base::SocketFactory.
+  // Creates a NetlinkSocket instance, using the SocketFactory.
   static std::unique_ptr<NetlinkSocket> Create();
 
   // Creates a NetlinkSocket instance with injecting the customized
-  // net_base::SocketFactory for testing.
+  // SocketFactory for testing.
   static std::unique_ptr<NetlinkSocket> CreateWithSocketFactory(
-      std::unique_ptr<net_base::SocketFactory> socket_factory);
+      std::unique_ptr<SocketFactory> socket_factory);
 
   NetlinkSocket(const NetlinkSocket&) = delete;
   NetlinkSocket& operator=(const NetlinkSocket&) = delete;
@@ -66,7 +66,7 @@ class SHILL_EXPORT NetlinkSocket {
   // sequence number.
   virtual uint32_t GetSequenceNumber();
 
-  // Delegates to net_base::Socket::RecvMessage().
+  // Delegates to Socket::RecvMessage().
   virtual bool RecvMessage(std::vector<uint8_t>* message);
 
   // Sends a message, returns true if successful.
@@ -88,16 +88,16 @@ class SHILL_EXPORT NetlinkSocket {
   }
 
  protected:
-  explicit NetlinkSocket(std::unique_ptr<net_base::Socket> socket);
+  explicit NetlinkSocket(std::unique_ptr<Socket> socket);
 
   uint32_t sequence_number_ = 0;
 
  private:
   // The netlink socket. It's always valid during the lifetime of NetlinkSocket
   // instance.
-  std::unique_ptr<net_base::Socket> socket_;
+  std::unique_ptr<Socket> socket_;
 };
 
-}  // namespace shill
+}  // namespace net_base
 
-#endif  // SHILL_NET_NETLINK_SOCKET_H_
+#endif  // NET_BASE_NETLINK_SOCKET_H_

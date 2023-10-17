@@ -28,14 +28,12 @@ install_config("install_headers") {
     "generic_netlink_message.h",
     "ieee80211.h",
     "mock_netlink_manager.h",
-    "mock_netlink_socket.h",
     "mock_process_manager.h",
     "netlink_attribute.h",
     "netlink_manager.h",
     "netlink_message.h",
     "netlink_message_matchers.h",
     "netlink_packet.h",
-    "netlink_socket.h",
     "nl80211_attribute.h",
     "nl80211_message.h",
     "process_manager.h",
@@ -78,7 +76,6 @@ shared_library("libshill-net") {
     "netlink_manager.cc",
     "netlink_message.cc",
     "netlink_packet.cc",
-    "netlink_socket.cc",
     "nl80211_attribute.cc",
     "nl80211_message.cc",
     "process_manager.cc",
@@ -114,7 +111,6 @@ if (use.test) {
   source_set("net_test_support") {
     sources = [
       "mock_netlink_manager.cc",
-      "mock_netlink_socket.cc",
       "mock_process_manager.cc",
     ]
     configs += [
@@ -140,7 +136,6 @@ if (use.test) {
       "netlink_manager_test.cc",
       "netlink_message_test.cc",
       "netlink_packet_test.cc",
-      "netlink_socket_test.cc",
       "nl80211_attribute_test.cc",
       "nl80211_message_test.cc",
       "process_manager_test.cc",

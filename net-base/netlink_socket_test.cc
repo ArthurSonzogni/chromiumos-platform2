@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/netlink_socket.h"
+#include "net-base/netlink_socket.h"
 
 #include <linux/netlink.h>
 
@@ -18,14 +18,12 @@
 #include <net-base/byte_utils.h>
 #include <net-base/mock_socket.h>
 
-#include "shill/net/netlink_message.h"
-
 using testing::_;
 using testing::Invoke;
 using testing::Return;
 using testing::Test;
 
-namespace shill {
+namespace net_base {
 
 class NetlinkSocketTest : public Test {
  public:
@@ -61,7 +59,7 @@ class FakeSocketRead {
     if (buf.empty()) {
       return std::nullopt;
     }
-    int read_bytes = std::min(buf.size(), next_read_string_.size());
+    const size_t read_bytes = std::min(buf.size(), next_read_string_.size());
     memcpy(buf.data(), next_read_string_.data(), read_bytes);
     next_read_string_.clear();
     return read_bytes;
@@ -113,10 +111,11 @@ TEST_F(NetlinkSocketTest, SequenceNumberTest) {
   EXPECT_EQ(arbitrary_number + 1, netlink_socket_->GetSequenceNumber());
 
   // Make sure we don't go to |NetlinkMessage::kBroadcastSequenceNumber|.
-  netlink_socket_->set_sequence_number_for_test(
-      NetlinkMessage::kBroadcastSequenceNumber);
-  EXPECT_NE(NetlinkMessage::kBroadcastSequenceNumber,
-            netlink_socket_->GetSequenceNumber());
+  // TODO(b/301905012): Use NetlinkMessage::kBroadcastSequenceNumber after
+  // moving NetlinkMessage to net-base library.
+  constexpr uint32_t kBroadcastSequenceNumber = 0;
+  netlink_socket_->set_sequence_number_for_test(kBroadcastSequenceNumber);
+  EXPECT_NE(kBroadcastSequenceNumber, netlink_socket_->GetSequenceNumber());
 }
 
-}  // namespace shill.
+}  // namespace net_base

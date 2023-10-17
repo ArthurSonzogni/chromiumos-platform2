@@ -41,6 +41,7 @@ shared_library("libnet-base") {
     "ipv6_address.cc",
     "mac_address.cc",
     "netlink_sock_diag.cc",
+    "netlink_socket.cc",
     "rtnl_handler.cc",
     "rtnl_listener.cc",
     "rtnl_message.cc",
@@ -73,6 +74,7 @@ if (use.fuzzer) {
 if (use.test) {
   source_set("net_base_test_support") {
     sources = [
+      "mock_netlink_socket.cc",
       "mock_rtnl_handler.cc",
       "mock_socket.cc",
     ]
@@ -95,6 +97,7 @@ if (use.test) {
       "ipv4_address_test.cc",
       "ipv6_address_test.cc",
       "mac_address_test.cc",
+      "netlink_socket_test.cc",
       "rtnl_handler_test.cc",
       "rtnl_listener_test.cc",
       "rtnl_message_test.cc",

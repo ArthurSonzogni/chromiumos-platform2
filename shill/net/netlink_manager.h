@@ -69,10 +69,10 @@
 #include <base/lazy_instance.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/netlink_socket.h>
 
 #include "shill/net/generic_netlink_message.h"
 #include "shill/net/netlink_message.h"
-#include "shill/net/netlink_socket.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -424,7 +424,7 @@ class SHILL_EXPORT NetlinkManager {
   base::CancelableOnceClosure pending_dump_timeout_callback_;
   base::CancelableOnceClosure resend_dump_message_callback_;
 
-  std::unique_ptr<NetlinkSocket> sock_;
+  std::unique_ptr<net_base::NetlinkSocket> sock_;
   // Watcher to wait for |sock_| ready to read. It should be destructed
   // prior than |sock_|, so it's declared after |sock_|.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> sock_watcher_;
