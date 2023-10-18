@@ -281,6 +281,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // Callbacks for handling D-Bus signals and method calls.
   void HandleSessionStateChangedSignal(dbus::Signal* signal);
   void HandlePrivacyScreenSettingChangedSignal(dbus::Signal* signal);
+  void HandleKeyRestoredSignal(dbus::Signal* signal);
   void HandleGetPrivacyScreenSettingResponse(dbus::Response* response);
   void HandleGetDictionaryAttackInfoSuccess(
       const tpm_manager::GetDictionaryAttackInfoReply& da_reply);
@@ -360,6 +361,8 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   dbus::ObjectProxy* resource_manager_dbus_proxy_ = nullptr;
   // The |privacy_screen_service_dbus_proxy_| is owned by |dbus_wrapper_|
   dbus::ObjectProxy* privacy_screen_service_dbus_proxy_ = nullptr;
+  // The |user_data_auth_dbus_proxy_| is owned by |dbus_wrapper_|
+  dbus::ObjectProxy* user_data_auth_dbus_proxy_ = nullptr;
   // DBus proxy for contacting tpm_managerd. May be null if the TPM status is
   // not needed.
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;

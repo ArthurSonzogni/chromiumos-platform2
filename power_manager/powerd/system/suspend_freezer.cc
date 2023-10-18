@@ -3,12 +3,14 @@
 // found in the LICENSE file.
 
 #include <list>
+#include <vector>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/suspend_freezer.h"
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -36,7 +38,7 @@ void SuspendFreezer::Init(PrefsInterface* prefs) {
   DCHECK(prefs);
   prefs_ = prefs;
   // Just in case powerd crashed and respawned after freezing userspace.
-  ThawUserspace();
+  ThawProcesses();
 }
 
 bool SuspendFreezer::GetCgroups(std::vector<base::FilePath>* cgroups) {
@@ -286,21 +288,31 @@ FreezeResult SuspendFreezer::FreezeUserspace(uint64_t wakeup_count,
   return TopologicalFreeze(wakeup_count, wakeup_count_valid, &cgroup_graph);
 }
 
-bool SuspendFreezer::ThawUserspace() {
+bool SuspendFreezer::ThawProcesses() {
   std::vector<base::FilePath> cgroups;
-  bool ret = true;
-
   if (!GetCgroups(&cgroups)) {
     return false;
   }
 
-  for (const auto& cgroup : cgroups) {
+  return ThawCgroups(cgroups);
+}
+
+bool SuspendFreezer::ThawCgroups(std::vector<base::FilePath>& croups_to_thaw) {
+  bool ret = true;
+  for (const auto& cgroup : croups_to_thaw) {
     if (!SetCgroupState(cgroup, kFreezerStateThawed)) {
       ret = false;
     }
   }
 
   return ret;
+}
+
+bool SuspendFreezer::ThawEssentialProcesses() {
+  // TODO(b/293161997): Add essential CGroups here.
+  std::vector<base::FilePath> lock_screen_cgroups_to_thaw = {};
+
+  return ThawCgroups(lock_screen_cgroups_to_thaw);
 }
 
 bool SuspendFreezer::SystemUtilsInterface::PathExists(

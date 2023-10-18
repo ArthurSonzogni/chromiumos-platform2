@@ -26,6 +26,8 @@
 #include <gtest/gtest.h>
 #include <libec/mock_ec_command_factory.h>
 #include <ml-client-test/ml/dbus-proxy-mocks.h>
+#include <cryptohome-client/cryptohome/dbus-constants.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/fake_prefs.h"
@@ -806,6 +808,21 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
                                           kHandleWakeNotificationMethod);
   ASSERT_TRUE(
       dbus_wrapper_->CallExportedMethodSync(&wake_notification_call).get());
+}
+
+TEST_F(DaemonTest, KeyRestoredSignalCheck) {
+  Init();
+  dbus::Signal session_signal(user_data_auth::kUserDataAuthInterface,
+                              user_data_auth::kEvictedKeyRestoredSignal);
+  user_data_auth::EvictedKeyRestored evicted_key_restored;
+  dbus::MessageWriter(&session_signal)
+      .AppendProtoAsArrayOfBytes(evicted_key_restored);
+  dbus_wrapper_->EmitRegisteredSignal(
+      dbus_wrapper_->GetObjectProxy(user_data_auth::kUserDataAuthServiceName,
+                                    user_data_auth::kUserDataAuthServicePath),
+      &session_signal);
+  // TODO(b/311110872): Add EXPECT_CALL(...) when SuspendFreezerStub is
+  // converted into a mocked class.
 }
 
 TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {
