@@ -934,22 +934,17 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     // If this a blob stream, extract its metadata.
     if (stream_context->yuv_stream_for_blob &&
         stream_context->original_stream == result_buffer.stream()) {
-      if (has_enabled_effects) {
-        capture_context->processing_time_start = processing_time_start;
-        if (!still_capture_processor_->IsPendingOutputBufferQueued(
-                result.frame_number())) {
-          still_capture_processor_->QueuePendingOutputBuffer(
-              result.frame_number(), result_buffer.mutable_raw_buffer());
-        }
-        still_capture_processor_->QueuePendingAppsSegments(
-            result.frame_number(), *result_buffer.buffer(),
-            base::ScopedFD(result_buffer.take_release_fence()));
-      } else {
-        // Return the blob directly if no effects.
-        result.AppendOutputBuffer(std::move(result_buffer));
+      CHECK(capture_context);
+      capture_context->processing_time_start = processing_time_start;
+      if (!still_capture_processor_->IsPendingOutputBufferQueued(
+              result.frame_number())) {
+        still_capture_processor_->QueuePendingOutputBuffer(
+            result.frame_number(), result_buffer.mutable_raw_buffer());
       }
+      still_capture_processor_->QueuePendingAppsSegments(
+          result.frame_number(), *result_buffer.buffer(),
+          base::ScopedFD(result_buffer.take_release_fence()));
       capture_context->blob_result_pending = false;
-      std::move(*capture_context).CheckForCompletion();
       continue;
     }
 
@@ -1045,6 +1040,14 @@ void EffectsStreamManipulatorImpl::RenderEffect(
       DVLOGF(1) << "Frame " << process_context->frame_number << " (timestamp "
                 << timestamp << ") pending on previous effects processing";
       process_contexts_.emplace(timestamp, std::move(process_context));
+      return;
+    }
+    if (!ProcessStillCapture(process_context->frame_number,
+                             process_context->result_buffer, nullptr)) {
+      LOGF(ERROR) << "Failed to process YUV for still capture on frame "
+                  << process_context->frame_number;
+      // TODO(b/306422556): Fail the blob capture queued to the still capture
+      // processor.
     }
     return;
   }
@@ -1240,7 +1243,7 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
                            &process_context->yuv_image)) {
     LOGF(ERROR) << "Failed to process YUV for still capture on frame "
                 << process_context->frame_number;
-    // TODO(kamesan): Fail the blob capture queued to the still capture
+    // TODO(b/306422556): Fail the blob capture queued to the still capture
     // processor.
   }
 
@@ -1258,12 +1261,13 @@ void EffectsStreamManipulatorImpl::ReturnStillCaptureResult(
       StreamContext* stream_context = GetStreamContext(buffer.stream());
       if (!stream_context)
         continue;
-      CaptureContext& capture_context =
-          *stream_context->GetCaptureContext(result.frame_number());
-      capture_context.yuv_buffer = {};
-      capture_context.still_capture_processor_pending = false;
-      OnFrameCompleted(*stream_context, capture_context.processing_time_start);
-      std::move(capture_context).CheckForCompletion();
+      CaptureContext* capture_context =
+          stream_context->GetCaptureContext(result.frame_number());
+      CHECK(capture_context);
+      capture_context->yuv_buffer = {};
+      capture_context->still_capture_processor_pending = false;
+      OnFrameCompleted(*stream_context, capture_context->processing_time_start);
+      std::move(*capture_context).CheckForCompletion();
     }
     metrics_.RecordStillShotTaken();
   }
@@ -1595,6 +1599,7 @@ void EffectsStreamManipulatorImpl::ReturnCaptureResult(
       if (capture_context->yuv_stream_appended) {
         appended_yuv_stream = blob_stream_context->yuv_stream_for_blob;
       }
+      std::move(*capture_context).CheckForCompletion();
     }
   }
   for (auto& buffer : result.AcquireOutputBuffers()) {
