@@ -5,17 +5,19 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/suspend_freezer.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 #include <algorithm>
 #include <cstring>
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/containers/contains.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
-#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -99,12 +101,12 @@ TEST_F(SuspendFreezerTest, TestFreezeTimeout) {
   EXPECT_EQ(FreezeResult::FAILURE, suspend_freezer_.FreezeUserspace(1, true));
 }
 
-// Test that FreezeUserspace and ThawUserspace write the correct state and
+// Test that FreezeUserspace and ThawProcesses write the correct state and
 // return under normal operation.
 TEST_F(SuspendFreezerTest, TestSuccess) {
   EXPECT_EQ(FreezeResult::SUCCESS, suspend_freezer_.FreezeUserspace(1, true));
   EXPECT_EQ(kFreezerStateFrozen, mock_sys_utils_->file_contents_[test_state_]);
-  EXPECT_TRUE(suspend_freezer_.ThawUserspace());
+  EXPECT_TRUE(suspend_freezer_.ThawProcesses());
   EXPECT_EQ(kFreezerStateThawed, mock_sys_utils_->file_contents_[test_state_]);
 }
 
@@ -130,10 +132,37 @@ TEST_F(SuspendFreezerTest, TestAll) {
   EXPECT_EQ(kFreezerStateFrozen, mock_sys_utils_->file_contents_[test_state_]);
   EXPECT_EQ(kFreezerStateFrozen, mock_sys_utils_->file_contents_[test1]);
   EXPECT_EQ(kFreezerStateFrozen, mock_sys_utils_->file_contents_[test2]);
-  EXPECT_TRUE(suspend_freezer_.ThawUserspace());
+  EXPECT_TRUE(suspend_freezer_.ThawProcesses());
   EXPECT_EQ(kFreezerStateThawed, mock_sys_utils_->file_contents_[test_state_]);
   EXPECT_EQ(kFreezerStateThawed, mock_sys_utils_->file_contents_[test1]);
   EXPECT_EQ(kFreezerStateThawed, mock_sys_utils_->file_contents_[test2]);
+}
+
+// Test that if multiple freezer cgroups exist, ThawProcess only thaws the
+// processes requested.
+TEST_F(SuspendFreezerTest, TestThawProcesses) {
+  base::FilePath test1 = base::FilePath("/sys/fs/cgroup/freezer/test1");
+  base::FilePath test1State = test1.Append(kStateFile);
+  base::FilePath test2 = base::FilePath("/sys/fs/cgroup/freezer/test2");
+  base::FilePath test2State =
+      base::FilePath("/sys/fs/cgroup/freezer/test2").Append(kStateFile);
+
+  mock_sys_utils_->file_contents_[test1State] = kFreezerStateThawed;
+  mock_sys_utils_->file_contents_[test2State] = kFreezerStateThawed;
+  EXPECT_EQ(FreezeResult::SUCCESS, suspend_freezer_.FreezeUserspace(1, true));
+  EXPECT_EQ(kFreezerStateFrozen, mock_sys_utils_->file_contents_[test_state_]);
+  EXPECT_EQ(kFreezerStateFrozen, mock_sys_utils_->file_contents_[test1State]);
+  EXPECT_EQ(kFreezerStateFrozen, mock_sys_utils_->file_contents_[test2State]);
+
+  std::vector<base::FilePath> cgroups_to_thaw({
+      kTestPath,
+      test1,
+  });
+  EXPECT_TRUE(suspend_freezer_.ThawCgroups(cgroups_to_thaw));
+  EXPECT_EQ(kFreezerStateThawed, mock_sys_utils_->file_contents_[test_state_]);
+  EXPECT_EQ(kFreezerStateThawed, mock_sys_utils_->file_contents_[test1State]);
+  // test2 should still be frozen.
+  EXPECT_EQ(kFreezerStateFrozen, mock_sys_utils_->file_contents_[test2State]);
 }
 
 // Test that we fail properly if a root level cgroup is added that we don't have
@@ -172,7 +201,7 @@ TEST_F(SuspendFreezerTest, TestOrdering) {
   EXPECT_EQ(FreezeResult::SUCCESS, suspend_freezer_.FreezeUserspace(1, true));
   test_order = {test_state_, test3, test2, test1};
   EXPECT_EQ(test_order, mock_sys_utils_->freeze_order_);
-  EXPECT_TRUE(suspend_freezer_.ThawUserspace());
+  EXPECT_TRUE(suspend_freezer_.ThawProcesses());
 
   mock_sys_utils_->freeze_order_.clear();
   mock_sys_utils_->file_contents_[test1] = kFreezerStateThawed;
@@ -186,7 +215,7 @@ TEST_F(SuspendFreezerTest, TestOrdering) {
   EXPECT_EQ(FreezeResult::SUCCESS, suspend_freezer_.FreezeUserspace(1, true));
   test_order = {test_state_, test1, test2, test3};
   EXPECT_EQ(test_order, mock_sys_utils_->freeze_order_);
-  EXPECT_TRUE(suspend_freezer_.ThawUserspace());
+  EXPECT_TRUE(suspend_freezer_.ThawProcesses());
 
   mock_sys_utils_->freeze_order_.clear();
   mock_sys_utils_->file_contents_[test1] = kFreezerStateThawed;
@@ -200,7 +229,7 @@ TEST_F(SuspendFreezerTest, TestOrdering) {
   EXPECT_EQ(FreezeResult::SUCCESS, suspend_freezer_.FreezeUserspace(1, true));
   test_order = {test_state_, test3, test1, test2};
   EXPECT_EQ(test_order, mock_sys_utils_->freeze_order_);
-  EXPECT_TRUE(suspend_freezer_.ThawUserspace());
+  EXPECT_TRUE(suspend_freezer_.ThawProcesses());
 }
 
 // Test the partial ordering of |freeze_order_| when multiple dependencies are

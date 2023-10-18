@@ -21,7 +21,8 @@ class SuspendFreezerStub : public SuspendFreezerInterface {
                                bool wakeup_count_valid) override {
     return FreezeResult::SUCCESS;
   }
-  bool ThawUserspace() override { return true; }
+  bool ThawProcesses() override { return true; }
+  bool ThawEssentialProcesses() override { return true; }
 };
 
 }  // namespace power_manager::system

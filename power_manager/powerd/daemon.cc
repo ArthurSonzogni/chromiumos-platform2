@@ -32,6 +32,8 @@
 #include <chromeos/mojo/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/cros_config.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <cryptohome-client/cryptohome/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <libec/ec_command.h>
@@ -941,7 +943,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     LOG(ERROR) << "Failed to freeze userspace processes. Attempting suspend "
                << "anyways";
   } else if (freeze_result == system::FreezeResult::CANCELED) {
-    if (!suspend_freezer_->ThawUserspace())
+    if (!suspend_freezer_->ThawProcesses())
       LOG(ERROR) << "Failed to thaw userspace after canceled suspend";
 
     return policy::Suspender::Delegate::SuspendResult::CANCELED;
@@ -961,8 +963,11 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     if (!brillo::DeleteFile(base::FilePath(suspended_state_path)))
       PLOG(ERROR) << "Failed to delete " << suspended_state_path.value();
   }
-
-  bool thaw_userspace_succ = suspend_freezer_->ThawUserspace();
+#if USE_KEY_EVICTION
+  bool thaw_userspace_succ = suspend_freezer_->ThawEssentialProcesses();
+#else
+  bool thaw_userspace_succ = suspend_freezer_->ThawProcesses();
+#endif
   bool undo_prep_suspend_succ = suspend_configurator_->UndoPrepareForSuspend();
   if (!(thaw_userspace_succ && undo_prep_suspend_succ))
     return policy::Suspender::Delegate::SuspendResult::FAILURE;
@@ -1311,6 +1316,11 @@ void Daemon::InitDBus() {
   privacy_screen_service_dbus_proxy_ =
       dbus_wrapper_->GetObjectProxy(privacy_screen::kPrivacyScreenServiceName,
                                     privacy_screen::kPrivacyScreenServicePath);
+
+  user_data_auth_dbus_proxy_ =
+      dbus_wrapper_->GetObjectProxy(user_data_auth::kUserDataAuthServiceName,
+                                    user_data_auth::kUserDataAuthServicePath);
+
   dbus_wrapper_->RegisterForServiceAvailability(
       privacy_screen_service_dbus_proxy_,
       base::BindRepeating(
@@ -1321,6 +1331,11 @@ void Daemon::InitDBus() {
       privacy_screen::kPrivacyScreenServiceInterface,
       privacy_screen::kPrivacyScreenServicePrivacyScreenSettingChangedSignal,
       base::BindRepeating(&Daemon::HandlePrivacyScreenSettingChangedSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper_->RegisterForSignal(
+      user_data_auth_dbus_proxy_, user_data_auth::kUserDataAuthInterface,
+      user_data_auth::kEvictedKeyRestoredSignal,
+      base::BindRepeating(&Daemon::HandleKeyRestoredSignal,
                           weak_ptr_factory_.GetWeakPtr()));
 
   // Export Daemon's D-Bus method calls.
@@ -1472,6 +1487,18 @@ void Daemon::HandlePrivacyScreenSettingChangedSignal(dbus::Signal* signal) {
                       kPrivacyScreenServicePrivacyScreenSettingChangedSignal
                << " args";
   }
+}
+
+void Daemon::HandleKeyRestoredSignal(dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  user_data_auth::EvictedKeyRestored key_restored;
+  if (!reader.PopArrayOfBytesAsProto(&key_restored)) {
+    LOG(ERROR) << "Unable to read " << user_data_auth::kEvictedKeyRestoredSignal
+               << " args";
+    return;
+  }
+
+  suspend_freezer_->ThawProcesses();
 }
 
 void Daemon::HandleGetPrivacyScreenSettingResponse(dbus::Response* response) {
