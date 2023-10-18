@@ -5,6 +5,8 @@
 #ifndef LIBBRILLO_BRILLO_BLKDEV_UTILS_MOCK_LVM_H_
 #define LIBBRILLO_BRILLO_BLKDEV_UTILS_MOCK_LVM_H_
 
+#include <linux/dm-ioctl.h>
+
 #include <brillo/process/process_mock.h>
 #include <gmock/gmock.h>
 
@@ -27,6 +29,7 @@ class MockLvmCommandRunner : public LvmCommandRunner {
   MockLvmCommandRunner() : LvmCommandRunner() {
     ON_CALL(*this, RunCommand(_)).WillByDefault(Return(true));
     ON_CALL(*this, RunProcess(_, _)).WillByDefault(Return(true));
+    ON_CALL(*this, RunDmIoctl(_, _)).WillByDefault(Return(false));
   }
 
   virtual ~MockLvmCommandRunner() {}
@@ -36,7 +39,32 @@ class MockLvmCommandRunner : public LvmCommandRunner {
               RunProcess,
               (const std::vector<std::string>&, std::string*),
               (override));
+  // Disable int linter - argument to libc function.
+  // NOLINTNEXTLINE: (runtime/int)
+  MOCK_METHOD(bool, RunDmIoctl, (unsigned long, struct dm_ioctl*), (override));
 };
+
+static inline std::function<bool(int, struct dm_ioctl*)> FakeRunDmStatusIoctl(
+    uint32_t sector_start, uint32_t length, const std::string& status) {
+  // Disable int linter - argument to libc function.
+  // NOLINTNEXTLINE: (runtime/int)
+  return [sector_start, length, status](unsigned long ioctl_num,
+                                        struct dm_ioctl* param) -> bool {
+    struct dm_target_spec spec = {.sector_start = sector_start,
+                                  .length = length,
+                                  .target_type = "thin-pool"};
+    char* buf = reinterpret_cast<char*>(param);
+
+    memcpy(buf + param->data_start, &spec, sizeof(struct dm_target_spec));
+    // NOLINTNEXTLINE (runtime/printf)
+    strcpy(buf + param->data_start + sizeof(struct dm_target_spec),
+           status.c_str());
+    param->data_size =
+        param->data_start + sizeof(struct dm_target_spec) + status.length() + 1;
+
+    return true;
+  };
+}
 
 class MockLogicalVolumeManager : public LogicalVolumeManager {
  public:

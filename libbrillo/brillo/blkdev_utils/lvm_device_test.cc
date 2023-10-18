@@ -11,12 +11,6 @@ using testing::DoAll;
 
 namespace brillo {
 
-namespace {
-constexpr const char kSampleReport[] =
-    "0 227737600 thin-pool 3 5048/226304 155436/1779200 - rw discard_passdown "
-    "queue_if_no_space - 1024";
-}  // namespace
-
 TEST(PhysicalVolumeTest, InvalidPhysicalVolumeTest) {
   auto lvm = std::make_shared<MockLvmCommandRunner>();
   PhysicalVolume pv(base::FilePath(""), lvm);
@@ -107,11 +101,12 @@ TEST(ThinpoolTest, ThinpoolSanityTest) {
 TEST(ThinpoolTest, ThinpoolSpaceTest) {
   auto lvm = std::make_shared<MockLvmCommandRunner>();
   Thinpool thinpool("foo", "bar", lvm);
+  constexpr const char kStatus[] =
+      "3 5048/226304 155436/1779200 - rw discard_passdown "
+      "queue_if_no_space - 1024";
+  auto fn = FakeRunDmStatusIoctl(0, 227737600, kStatus);
 
-  std::string report = kSampleReport;
-
-  EXPECT_CALL(*lvm, RunProcess(_, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
+  EXPECT_CALL(*lvm, RunDmIoctl(_, _)).WillRepeatedly(testing::Invoke(fn));
 
   int64_t total_space, free_space;
   EXPECT_TRUE(thinpool.GetTotalSpace(&total_space));

@@ -4,7 +4,11 @@
 
 #include "brillo/blkdev_utils/lvm_device.h"
 
+#include <fcntl.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
+
+#include <linux/dm-ioctl.h>
 
 #include <optional>
 #include <utility>
@@ -19,11 +23,13 @@
 // lvm2cmd.
 #include <lvm2cmd.h>
 
+#include <base/files/scoped_file.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <brillo/process/process.h>
 #include <brillo/scoped_umask.h>
@@ -58,6 +64,34 @@ void LogLvmError(int rc, const std::string& cmd) {
       break;
   }
 }
+
+std::string GetPoolStatusString(const std::string& pool,
+                                std::shared_ptr<LvmCommandRunner> lvm) {
+  std::vector<char> buf(1024, 0);
+  struct dm_ioctl* param = reinterpret_cast<struct dm_ioctl*>(buf.data());
+  param->version[0] = DM_VERSION_MAJOR;
+  param->version[1] = DM_VERSION_MINOR;
+  param->version[2] = DM_VERSION_PATCHLEVEL;
+  param->data_size = buf.size();
+  param->data_start = sizeof(struct dm_ioctl);
+  strncpy(param->name, pool.c_str(), DM_NAME_LEN);
+  param->flags = DM_NOFLUSH_FLAG;
+
+  if (!lvm->RunDmIoctl(DM_TABLE_STATUS, param)) {
+    PLOG(ERROR) << "Failed to get pool status";
+    return "";
+  }
+
+  struct dm_target_spec* spec =
+      reinterpret_cast<struct dm_target_spec*>(buf.data() + param->data_start);
+  char* status = buf.data() + param->data_start + sizeof(struct dm_target_spec);
+  std::string result =
+      base::StringPrintf("%llu %llu %s %s", spec->sector_start, spec->length,
+                         spec->target_type, status);
+
+  return result;
+}
+
 }  // namespace
 
 PhysicalVolume::PhysicalVolume(const base::FilePath& device_path,
@@ -230,11 +264,10 @@ bool Thinpool::GetTotalSpace(int64_t* size) {
   if (thinpool_name_.empty() || !lvm_)
     return false;
 
-  std::string output;
   const std::string target =
       volume_group_name_ + "-" + thinpool_name_ + "-tpool";
-  if (!lvm_->RunProcess({"/sbin/dmsetup", "status", "--noflush", target},
-                        &output)) {
+  std::string output = GetPoolStatusString(target, lvm_);
+  if (output.empty()) {
     LOG(ERROR) << "Failed to get output from dmsetup status for " << target;
     return false;
   }
@@ -263,11 +296,10 @@ bool Thinpool::GetFreeSpace(int64_t* size) {
   if (thinpool_name_.empty() || !lvm_)
     return false;
 
-  std::string output;
   const std::string target =
       volume_group_name_ + "-" + thinpool_name_ + "-tpool";
-  if (!lvm_->RunProcess({"/sbin/dmsetup", "status", "--noflush", target},
-                        &output)) {
+  std::string output = GetPoolStatusString(target, lvm_);
+  if (output.empty()) {
     LOG(ERROR) << "Failed to get output from dmsetup status for " << target;
     return false;
   }
@@ -361,6 +393,27 @@ bool LvmCommandRunner::RunProcess(const std::vector<std::string>& cmd,
 
   if (output) {
     *output = lvm_process.GetOutputString(STDOUT_FILENO);
+  }
+
+  return true;
+}
+
+// Disable int linter - argument to libc function.
+// NOLINTNEXTLINE: (runtime/int)
+bool LvmCommandRunner::RunDmIoctl(unsigned long ioctl_num,
+                                  struct dm_ioctl* param) {
+  const base::FilePath kDMControl("/dev/mapper/control");
+
+  base::ScopedFD dm_control(
+      open(kDMControl.value().c_str(), O_RDWR | O_CLOEXEC));
+  if (!dm_control.is_valid()) {
+    PLOG(ERROR) << "Failed to open " << kDMControl.value();
+    return false;
+  }
+
+  if (ioctl(dm_control.get(), ioctl_num, param) != 0) {
+    PLOG(ERROR) << "Failed to run dm ioctl: " << ioctl_num;
+    return false;
   }
 
   return true;

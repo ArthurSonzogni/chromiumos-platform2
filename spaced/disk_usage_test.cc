@@ -23,6 +23,7 @@ extern "C" {
 #include <linux/fs.h>
 }
 
+using brillo::FakeRunDmStatusIoctl;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
@@ -32,7 +33,7 @@ namespace spaced {
 namespace {
 // ~3% of blocks are allocated.
 constexpr const char kSampleReport[] =
-    "0 32768 thin-pool 3 1/24 8/256 - rw discard_passdown "
+    "3 1/24 8/256 - rw discard_passdown "
     "queue_if_no_space - 1024";
 
 constexpr char kQuotaSamplePath[] = "/home/user/chronos";
@@ -93,9 +94,9 @@ TEST(DiskUsageUtilTest, ThinProvisionedVolume) {
   std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
                                   "STATEFUL-thinpool-tpool"};
 
-  std::string report = kSampleReport;
-  EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
+  auto fn = FakeRunDmStatusIoctl(0, 32768, kSampleReport);
+  EXPECT_CALL(*lvm_command_runner.get(), RunDmIoctl(_, _))
+      .WillRepeatedly(testing::Invoke(fn));
 
   // With only 3% of the thinpool occupied, disk usage should use the
   // filesystem data for free space.
@@ -119,9 +120,9 @@ TEST(DiskUsageUtilTest, ThinProvisionedVolumeLowDiskSpace) {
   std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
                                   "STATEFUL-thinpool-tpool"};
 
-  std::string report = kSampleReport;
-  EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
+  auto fn = FakeRunDmStatusIoctl(0, 32768, kSampleReport);
+  EXPECT_CALL(*lvm_command_runner.get(), RunDmIoctl(_, _))
+      .WillRepeatedly(testing::Invoke(fn));
 
   EXPECT_EQ(disk_usage_mock.GetFreeDiskSpace(path), 4194304);
   EXPECT_EQ(disk_usage_mock.GetTotalDiskSpace(path), 8388608);
@@ -143,9 +144,9 @@ TEST(DiskUsageUtilTest, OverprovisionedVolumeSpace) {
   std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
                                   "STATEFUL-thinpool-tpool"};
 
-  std::string report = kSampleReport;
-  EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
+  auto fn = FakeRunDmStatusIoctl(0, 32768, kSampleReport);
+  EXPECT_CALL(*lvm_command_runner.get(), RunDmIoctl(_, _))
+      .WillRepeatedly(testing::Invoke(fn));
 
   EXPECT_EQ(disk_usage_mock.GetFreeDiskSpace(path), 4194304);
   EXPECT_EQ(disk_usage_mock.GetTotalDiskSpace(path), 16777216);

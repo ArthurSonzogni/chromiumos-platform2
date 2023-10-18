@@ -19,6 +19,7 @@
 #include <base/task/thread_pool.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
 
+using brillo::FakeRunDmStatusIoctl;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
@@ -28,7 +29,7 @@ namespace spaced {
 namespace {
 // ~80% of blocks are allocated.
 constexpr const char kSampleReport[] =
-    "0 32768 thin-pool 3 20/24 200/256 - rw discard_passdown "
+    "3 20/24 200/256 - rw discard_passdown "
     "queue_if_no_space - 1024";
 
 class StatefulFreeSpaceCalculatorMock : public StatefulFreeSpaceCalculator {
@@ -107,9 +108,9 @@ TEST_F(StatefulFreeSpaceCalculatorTest, ThinpoolCalculator) {
   std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
                                   "STATEFUL-thinpool-tpool"};
 
-  std::string report = kSampleReport;
-  EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
+  auto fn = FakeRunDmStatusIoctl(0, 32768, kSampleReport);
+  EXPECT_CALL(*lvm_command_runner.get(), RunDmIoctl(_, _))
+      .WillRepeatedly(testing::Invoke(fn));
 
   StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(),
                                              thinpool, GetEmptyCallback());
@@ -139,9 +140,9 @@ TEST_F(StatefulFreeSpaceCalculatorTest, SignalStatefulDiskSpaceUpdate) {
   std::vector<std::string> cmd = {"/sbin/dmsetup", "status", "--noflush",
                                   "STATEFUL-thinpool-tpool"};
 
-  std::string report = kSampleReport;
-  EXPECT_CALL(*lvm_command_runner.get(), RunProcess(cmd, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
+  auto fn = FakeRunDmStatusIoctl(0, 32768, kSampleReport);
+  EXPECT_CALL(*lvm_command_runner.get(), RunDmIoctl(_, _))
+      .WillRepeatedly(testing::Invoke(fn));
 
   StatefulFreeSpaceCalculatorMock calculator(st, GetTestThreadRunner(),
                                              thinpool, callback);

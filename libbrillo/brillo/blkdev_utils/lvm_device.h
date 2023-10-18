@@ -5,6 +5,8 @@
 #ifndef LIBBRILLO_BRILLO_BLKDEV_UTILS_LVM_DEVICE_H_
 #define LIBBRILLO_BRILLO_BLKDEV_UTILS_LVM_DEVICE_H_
 
+#include <linux/dm-ioctl.h>
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -30,6 +32,9 @@ class BRILLO_EXPORT LvmCommandRunner {
   // lvm2_log_fn to access the output of a command, we prefer to use a process.
   virtual bool RunProcess(const std::vector<std::string>& cmd,
                           std::string* output = nullptr);
+  // Disable int linter - argument to libc function.
+  // NOLINTNEXTLINE: (runtime/int)
+  virtual bool RunDmIoctl(unsigned long ioctl_num, struct dm_ioctl* param);
 
   // Unwraps LVM2 JSON reports into the contents stored at |key|.
   virtual std::optional<base::Value> UnwrapReportContents(
