@@ -46,6 +46,17 @@ constexpr uint8_t kUnknown = 0;
 constexpr uint8_t kBluetooth = 1;
 constexpr uint8_t kUsb = 2;
 }  // namespace vendor_id_src
+
+namespace battery_type {
+// Used for the device with single battery.
+constexpr char kDefault[] = "";
+// The left bud on a True Wireless device.
+constexpr char kLeftBudTrueWireless[] = "left";
+// The right bud on a True Wireless device.
+constexpr char kRightBudTrueWireless[] = "right";
+// The True Wireless device case.
+constexpr char kCaseTrueWireless[] = "case";
+}  // namespace battery_type
 }  // namespace floss
 
 org::chromium::bluetooth::BluetoothProxyInterface* GetTargetAdapter(
@@ -84,6 +95,20 @@ org::chromium::bluetooth::BluetoothAdminProxyInterface* GetTargetAdmin(
       return admin;
   }
   LOG(WARNING) << "Failed to get target admin for hci" << hci_interface;
+  return nullptr;
+}
+
+org::chromium::bluetooth::BatteryManagerProxyInterface* GetTargetBatteryManager(
+    FlossController* floss_controller, int32_t hci_interface) {
+  const auto target_battery_manager_path = dbus::ObjectPath(
+      "/org/chromium/bluetooth/hci" + base::NumberToString(hci_interface) +
+      "/battery_manager");
+  for (const auto& battery_manager : floss_controller->GetBatteryManagers()) {
+    if (battery_manager &&
+        battery_manager->GetObjectPath() == target_battery_manager_path)
+      return battery_manager;
+  }
+  LOG(WARNING) << "Failed to get battery manager for hci" << hci_interface;
   return nullptr;
 }
 
@@ -132,6 +157,7 @@ class State {
   void FetchConnectedDevicesInfo(
       mojom::BluetoothAdapterInfo* const adapter_info_ptr,
       org::chromium::bluetooth::BluetoothProxyInterface* adapter,
+      int32_t hci_interface,
       base::ScopedClosureRunner on_complete,
       brillo::Error* err,
       const std::vector<brillo::VariantDictionary>& devices);
@@ -155,6 +181,10 @@ class State {
       mojom::BluetoothDeviceInfo* const device_info_ptr,
       brillo::Error* err,
       uint32_t bluetooth_class);
+  void HandleDeviceBatteryInformationResponse(
+      mojom::BluetoothDeviceInfo* const device_info_ptr,
+      brillo::Error* err,
+      const brillo::VariantDictionary& battery_info);
   void HandleResult(FetchBluetoothInfoFromFlossCallback callback, bool success);
 
  private:
@@ -218,7 +248,7 @@ void State::FetchEnabledAdapterInfo(
   // Connected devices.
   auto devices_cb = SplitDbusCallback(base::BindOnce(
       &State::FetchConnectedDevicesInfo, base::Unretained(this),
-      adapter_info_ptr, target_adapter,
+      adapter_info_ptr, target_adapter, hci_interface,
       base::ScopedClosureRunner(barrier.CreateDependencyClosure())));
   target_adapter->GetConnectedDevicesAsync(std::move(devices_cb.first),
                                            std::move(devices_cb.second));
@@ -349,6 +379,7 @@ void State::HandleAdapterAllowedServicesResponse(
 void State::FetchConnectedDevicesInfo(
     mojom::BluetoothAdapterInfo* const adapter_info_ptr,
     org::chromium::bluetooth::BluetoothProxyInterface* adapter,
+    int32_t hci_interface,
     base::ScopedClosureRunner on_complete,
     brillo::Error* err,
     const std::vector<brillo::VariantDictionary>& devices) {
@@ -371,10 +402,13 @@ void State::FetchConnectedDevicesInfo(
   // catch the error.
   CallbackBarrier barrier{on_complete.Release(), base::DoNothing()};
   adapter_info_ptr->num_connected_devices = devices.size();
+  auto battery_manager =
+      GetTargetBatteryManager(floss_controller_, hci_interface);
   for (const auto& device : devices) {
     auto device_info = mojom::BluetoothDeviceInfo::New();
-    device_info->address =
+    const auto address =
         brillo::GetVariantValueOrDefault<std::string>(device, "address");
+    device_info->address = address;
     device_info->name =
         brillo::GetVariantValueOrDefault<std::string>(device, "name");
 
@@ -408,7 +442,15 @@ void State::FetchConnectedDevicesInfo(
                        base::Unretained(this), device_info.get())));
     adapter->GetRemoteClassAsync(device, std::move(class_cb.first),
                                  std::move(class_cb.second));
-    // TODO(b/300239084): Fetch more Bluetooth device info via Floss.
+    // Battery percentage.
+    if (battery_manager) {
+      auto battery_percentage_cb = SplitDbusCallback(barrier.Depend(
+          base::BindOnce(&State::HandleDeviceBatteryInformationResponse,
+                         base::Unretained(this), device_info.get())));
+      battery_manager->GetBatteryInformationAsync(
+          address, std::move(battery_percentage_cb.first),
+          std::move(battery_percentage_cb.second));
+    }
 
     adapter_info_ptr->connected_devices->push_back(std::move(device_info));
   }
@@ -518,6 +560,62 @@ void State::HandleDeviceClassResponse(
   }
   device_info_ptr->bluetooth_class =
       mojom::NullableUint32::New(bluetooth_class);
+}
+
+void State::HandleDeviceBatteryInformationResponse(
+    mojom::BluetoothDeviceInfo* const device_info_ptr,
+    brillo::Error* err,
+    const brillo::VariantDictionary& battery_info) {
+  if (err) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get device battery information");
+    return;
+  }
+  if (!battery_info.contains("optional_value")) {
+    return;
+  }
+  auto info = brillo::GetVariantValueOrDefault<brillo::VariantDictionary>(
+      battery_info, "optional_value");
+  if (!info.contains("batteries")) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                    "Failed to parse device batteries");
+    return;
+  }
+
+  auto batteries =
+      brillo::GetVariantValueOrDefault<std::vector<brillo::VariantDictionary>>(
+          info, "batteries");
+  for (const auto& battery : batteries) {
+    if (!battery.contains("percentage") || !battery.contains("variant")) {
+      error_ =
+          CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                 "Failed to parse device battery percentage");
+      return;
+    }
+    auto percentage =
+        brillo::GetVariantValueOrDefault<uint32_t>(battery, "percentage");
+    auto variant =
+        brillo::GetVariantValueOrDefault<std::string>(battery, "variant");
+    if (percentage > 100) {
+      LOG(ERROR) << "Get invalid device battery percentage: " << percentage;
+      continue;
+    }
+
+    if (variant == floss::battery_type::kDefault) {
+      // Support battery percentage for default variant only.
+      device_info_ptr->battery_percentage =
+          mojom::NullableUint8::New(static_cast<uint8_t>(percentage));
+    } else if (variant == floss::battery_type::kLeftBudTrueWireless ||
+               variant == floss::battery_type::kRightBudTrueWireless ||
+               variant == floss::battery_type::kCaseTrueWireless) {
+      // TODO(b/306085762): Support battery percentage for different variants.
+    } else {
+      LOG(ERROR) << "Get invalid device battery variant: " << variant;
+      error_ = CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                      "Failed to parse device battery variant");
+      return;
+    }
+  }
 }
 
 void State::HandleResult(FetchBluetoothInfoFromFlossCallback callback,

@@ -10,6 +10,7 @@
 #include <base/test/gmock_callback_support.h>
 #include <base/test/test_future.h>
 #include <base/test/task_environment.h>
+#include <brillo/variant_dictionary.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -35,9 +36,12 @@ const dbus::ObjectPath kDefaultAdapterPath{
     "/org/chromium/bluetooth/hci0/adapter"};
 const dbus::ObjectPath kDefaultAdapterQAPath{"/org/chromium/bluetooth/hci0/qa"};
 const dbus::ObjectPath kDefaultAdminPath{"/org/chromium/bluetooth/hci0/admin"};
+const dbus::ObjectPath kDefaultBatteryMangerPath{
+    "/org/chromium/bluetooth/hci0/battery_manager"};
+constexpr char kTestConnectedDeviceAddress[] = "70:88:6B:92:34:70";
 const brillo::VariantDictionary kTestConnectedDevice = {
     {"name", std::string("Test device")},
-    {"address", std::string("70:88:6B:92:34:70")}};
+    {"address", std::string(kTestConnectedDeviceAddress)}};
 // Test data of UUID bytes and corresponding string.
 const std::vector<uint8_t> kTestUuidBytes = {0x00, 0x00, 0x11, 0x0a, 0x00, 0x00,
                                              0x10, 0x00, 0x80, 0x00, 0x00, 0x80,
@@ -141,6 +145,17 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
         .WillOnce(ReturnRef(kDefaultAdminPath));
   }
 
+  // Get the battery manager with HCI interface 0.
+  void SetupGetBatteryManagersCall() {
+    EXPECT_CALL(*mock_floss_controller(), GetBatteryManagers())
+        .WillOnce(
+            Return(std::vector<
+                   org::chromium::bluetooth::BatteryManagerProxyInterface*>{
+                &mock_battery_manager_proxy_}));
+    EXPECT_CALL(mock_battery_manager_proxy_, GetObjectPath)
+        .WillOnce(ReturnRef(kDefaultBatteryMangerPath));
+  }
+
   void SetupFetchAdapterInfoCall(FetchAdapterInfoDetails details = {}) {
     if (!details.get_address_error) {
       EXPECT_CALL(mock_adapter_proxy_, GetAddressAsync(_, _, _))
@@ -231,6 +246,19 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
     }
   }
 
+  brillo::VariantDictionary CreateBatteryInfoResponse(
+      std::optional<uint32_t> percentage, std::optional<std::string> variant) {
+    brillo::VariantDictionary battery_info;
+    if (percentage.has_value()) {
+      battery_info["percentage"] = percentage.value();
+    }
+    if (variant.has_value()) {
+      battery_info["variant"] = variant.value();
+    }
+    return {
+        {"batteries", std::vector<brillo::VariantDictionary>{battery_info}}};
+  }
+
   MockContext mock_context_;
   StrictMock<org::chromium::bluetooth::BluetoothProxyMock> mock_adapter_proxy_;
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
@@ -238,6 +266,8 @@ class BluetoothFetcherFlossTest : public ::testing::Test {
       mock_adapter_qa_proxy_;
   StrictMock<org::chromium::bluetooth::BluetoothAdminProxyMock>
       mock_admin_proxy_;
+  StrictMock<org::chromium::bluetooth::BatteryManagerProxyMock>
+      mock_battery_manager_proxy_;
   brillo::ErrorPtr error_;
 
  private:
@@ -510,6 +540,7 @@ TEST_F(BluetoothFetcherFlossTest, ConnectedDevices) {
   EXPECT_EQ(devices[0]->uuids.value().size(), 1);
   EXPECT_EQ(devices[0]->uuids.value()[0], kTestUuidString);
   EXPECT_EQ(devices[0]->bluetooth_class->value, 236034);
+  EXPECT_FALSE(devices[0]->battery_percentage);
 }
 
 // Test that the error of getting device type is handled gracefully.
@@ -671,6 +702,138 @@ TEST_F(BluetoothFetcherFlossTest, GetDeviceClassError) {
   auto bluetooth_result = FetchBluetoothInfoSync();
   ASSERT_TRUE(bluetooth_result->is_error());
   EXPECT_EQ(bluetooth_result->get_error()->msg, "Failed to get device class");
+}
+
+// Test that device battery percentage can be fetched successfully.
+TEST_F(BluetoothFetcherFlossTest, GetDeviceBatteryPercentage) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupGetBatteryManagersCall();
+  SetupFetchDeviceInfoCall(kTestConnectedDevice);
+
+  EXPECT_CALL(mock_battery_manager_proxy_,
+              GetBatteryInformationAsync(kTestConnectedDeviceAddress, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(brillo::VariantDictionary(
+          {{"optional_value", CreateBatteryInfoResponse(/*percentage=*/75,
+                                                        /*variant=*/"")}})));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
+  const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
+  EXPECT_EQ(adapter_info.size(), 1);
+  ASSERT_TRUE(adapter_info[0]->connected_devices.has_value());
+  const auto& devices = adapter_info[0]->connected_devices.value();
+  EXPECT_EQ(devices.size(), 1);
+  EXPECT_EQ(devices[0]->battery_percentage->value, 75);
+}
+
+// Test that the error of getting battery information is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetDeviceBatteryInformationError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupGetBatteryManagersCall();
+  SetupFetchDeviceInfoCall(kTestConnectedDevice);
+
+  EXPECT_CALL(mock_battery_manager_proxy_,
+              GetBatteryInformationAsync(kTestConnectedDeviceAddress, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to get device battery information");
+}
+
+// Test that the empty device battery info is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, GetEmptyDeviceBatteryInfo) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupGetBatteryManagersCall();
+  SetupFetchDeviceInfoCall(kTestConnectedDevice);
+
+  EXPECT_CALL(mock_battery_manager_proxy_,
+              GetBatteryInformationAsync(kTestConnectedDeviceAddress, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(brillo::VariantDictionary()));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
+  const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
+  EXPECT_EQ(adapter_info.size(), 1);
+  ASSERT_TRUE(adapter_info[0]->connected_devices.has_value());
+  const auto& devices = adapter_info[0]->connected_devices.value();
+  EXPECT_EQ(devices.size(), 1);
+  EXPECT_FALSE(devices[0]->battery_percentage);
+}
+
+// Test that the error of parsing device batteries is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseDeviceBatteryInfoError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupGetBatteryManagersCall();
+  SetupFetchDeviceInfoCall(kTestConnectedDevice);
+
+  // Set an empty dictionary for the |optional_value| key.
+  EXPECT_CALL(mock_battery_manager_proxy_,
+              GetBatteryInformationAsync(kTestConnectedDeviceAddress, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(brillo::VariantDictionary(
+          {{"optional_value", brillo::VariantDictionary()}})));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to parse device batteries");
+}
+
+// Test that the error of parsing battery percentage is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseDeviceBatteryPercentageError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupGetBatteryManagersCall();
+  SetupFetchDeviceInfoCall(kTestConnectedDevice);
+
+  EXPECT_CALL(mock_battery_manager_proxy_,
+              GetBatteryInformationAsync(kTestConnectedDeviceAddress, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(brillo::VariantDictionary(
+          {{"optional_value",
+            CreateBatteryInfoResponse(/*percentage=*/75,
+                                      /*variant=*/std::nullopt)}})));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to parse device battery percentage");
+}
+
+// Test that the error of parsing battery variant is handled gracefully.
+TEST_F(BluetoothFetcherFlossTest, ParseDeviceBatteryVariantError) {
+  InSequence s;
+  SetupGetAvailableAdaptersCall();
+  SetupGetAdaptersCall();
+  SetupFetchAdapterInfoCall({.connected_devices = {kTestConnectedDevice}});
+  SetupGetBatteryManagersCall();
+  SetupFetchDeviceInfoCall(kTestConnectedDevice);
+
+  EXPECT_CALL(mock_battery_manager_proxy_,
+              GetBatteryInformationAsync(kTestConnectedDeviceAddress, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(brillo::VariantDictionary(
+          {{"optional_value",
+            CreateBatteryInfoResponse(/*percentage=*/75,
+                                      /*variant=*/"INVALID_VARIANT")}})));
+
+  auto bluetooth_result = FetchBluetoothInfoSync();
+  ASSERT_TRUE(bluetooth_result->is_error());
+  EXPECT_EQ(bluetooth_result->get_error()->msg,
+            "Failed to parse device battery variant");
 }
 
 // Test that the error of getting target adapter is handled gracefully.

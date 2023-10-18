@@ -75,6 +75,7 @@ generate_dbus_proxies("floss-proxies") {
       "include/diagnostics/dbus_bindings/floss/dbus-proxy-mocks.h"
   proxy_path_in_mocks = "diagnostics/dbus_bindings/floss/dbus-proxies.h"
   sources = [
+    "floss/org.chromium.bluetooth.BatteryManager.xml",
     "floss/org.chromium.bluetooth.Bluetooth.xml",
     "floss/org.chromium.bluetooth.BluetoothAdmin.xml",
     "floss/org.chromium.bluetooth.BluetoothGatt.xml",

@@ -37,4 +37,9 @@ FlossController::GetAdapterQAs() const {
   return bluetooth_proxy_->GetBluetoothQAInstances();
 }
 
+std::vector<org::chromium::bluetooth::BatteryManagerProxyInterface*>
+FlossController::GetBatteryManagers() const {
+  return bluetooth_proxy_->GetBatteryManagerInstances();
+}
+
 }  // namespace diagnostics

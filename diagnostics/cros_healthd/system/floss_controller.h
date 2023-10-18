@@ -30,6 +30,8 @@ class FlossController {
   GetAdmins() const;
   virtual std::vector<org::chromium::bluetooth::BluetoothQAProxyInterface*>
   GetAdapterQAs() const;
+  virtual std::vector<org::chromium::bluetooth::BatteryManagerProxyInterface*>
+  GetBatteryManagers() const;
 
  private:
   // Unowned pointer that should outlive this instance.
