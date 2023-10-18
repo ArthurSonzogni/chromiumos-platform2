@@ -305,7 +305,7 @@ class Service final : public org::chromium::VmConciergeInterface,
   void GetVmMemoryManagementKillsConnection(
       const GetVmMemoryManagementKillsConnectionRequest& request,
       GetVmMemoryManagementKillsConnectionResponse* response,
-      base::ScopedFD* fd) override;
+      std::vector<base::ScopedFD>* fd) override;
 
   // Creates DnsSettings from current configuration.
   DnsSettings ComposeDnsResponse();

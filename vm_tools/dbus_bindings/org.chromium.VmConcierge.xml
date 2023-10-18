@@ -363,9 +363,9 @@
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmMemoryManagementKillsConnectionResponse"/>
       </arg>
-      <arg type="h" name="out_fd" direction="out">
+      <arg type="ah" name="out_fd" direction="out">
         <tp:docstring>
-          The FD to the server.
+          On success, contains a single FD for communication with the server.
         </tp:docstring>
       </arg>
     </method>

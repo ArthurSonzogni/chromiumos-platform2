@@ -4044,7 +4044,7 @@ Service::EnableVmMemoryManagementService(
 void Service::GetVmMemoryManagementKillsConnection(
     const GetVmMemoryManagementKillsConnectionRequest&,
     GetVmMemoryManagementKillsConnectionResponse* response,
-    base::ScopedFD* fd) {
+    std::vector<base::ScopedFD>* out_fd) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -4055,9 +4055,9 @@ void Service::GetVmMemoryManagementKillsConnection(
     return;
   }
 
-  *fd = vm_memory_management_service_->GetKillsServerConnection();
+  auto fd = vm_memory_management_service_->GetKillsServerConnection();
 
-  if (!fd->is_valid()) {
+  if (!fd.is_valid()) {
     static constexpr char error[] = "Failed to connect.";
     LOG(ERROR) << error;
     response->set_failure_reason(error);
@@ -4065,6 +4065,7 @@ void Service::GetVmMemoryManagementKillsConnection(
   }
 
   response->set_success(true);
+  out_fd->push_back(std::move(fd));
 
   return;
 }
