@@ -1001,8 +1001,7 @@ void CellularService::ClearCustomApnList(Error* error) {
             kTypeCellular, log_name().c_str()));
     return;
   }
-
-  cellular_->ConfigureAttachApn();
+  CustomApnUpdated(true, error);
 }
 
 KeyValueStore CellularService::GetStorageProperties() const {
