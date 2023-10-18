@@ -608,6 +608,12 @@
         </arg>
         -->
     </method>
+    <method name="StopAllVms">
+      <tp:docstring>
+        Stops all running VMs.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
     <method name="StopVm">
       <tp:docstring>
         Stops VM.
@@ -624,12 +630,6 @@
           Returns success==true when successful, failure_reason is set on failure.
         </tp:docstring>
       </arg>
-    </method>
-    <method name="StopAllVms">
-      <tp:docstring>
-        Stops all running VMs.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
     <method name="SuspendVm">
       <tp:docstring>
