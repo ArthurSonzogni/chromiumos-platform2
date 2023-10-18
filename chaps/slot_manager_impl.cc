@@ -651,6 +651,12 @@ void SlotManagerImpl::LoadHwsecToken(base::OnceCallback<void(bool)> callback,
                                      const base::FilePath& path,
                                      const brillo::SecureBlob& auth_data,
                                      std::shared_ptr<ObjectPool> object_pool) {
+  if (!object_pool->IsValid()) {
+    LOG(WARNING) << __func__ << ": Invalid object_pool";
+    std::move(callback).Run(false);
+    return;
+  }
+
   if (system_shutdown_blocker_) {
     base::OnceClosure unblock_closure =
         base::BindOnce(&SystemShutdownBlocker::Unblock,
@@ -718,6 +724,11 @@ void SlotManagerImpl::LoadHwsecTokenAfterUnseal(
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool,
     hwsec::StatusOr<brillo::SecureBlob> unsealed_data) {
+  if (!object_pool->IsValid()) {
+    LOG(WARNING) << __func__ << ": Invalid object_pool";
+    std::move(callback).Run(false);
+    return;
+  }
   if (!unsealed_data.ok()) {
     LOG(ERROR) << "Failed to unseal for token at " << path.value() << ": "
                << unsealed_data.status() << ", reinitializing token.";
@@ -740,6 +751,11 @@ void SlotManagerImpl::LoadHwsecTokenFinal(
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool,
     brillo::SecureBlob root_key) {
+  if (!object_pool->IsValid()) {
+    LOG(WARNING) << __func__ << ": Invalid object_pool";
+    std::move(callback).Run(false);
+    return;
+  }
   if (!object_pool->SetEncryptionKey(root_key)) {
     LOG(ERROR) << "SetEncryptionKey failed for token at " << path.value();
     std::move(callback).Run(false);
@@ -764,6 +780,11 @@ void SlotManagerImpl::InitializeHwsecToken(
     const base::FilePath& path,
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool) {
+  if (!object_pool->IsValid()) {
+    LOG(WARNING) << __func__ << ": Invalid object_pool";
+    std::move(callback).Run(false);
+    return;
+  }
   hwsec::ChapsFrontend::GetRandomSecureBlobCallback gen_rand_callback =
       base::BindOnce(&SlotManagerImpl::InitializeHwsecTokenAfterGenerateRandom,
                      base::Unretained(this), std::move(callback), path,
@@ -777,6 +798,12 @@ void SlotManagerImpl::InitializeHwsecTokenAfterGenerateRandom(
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool,
     hwsec::StatusOr<brillo::SecureBlob> random_data) {
+  if (!object_pool->IsValid()) {
+    LOG(WARNING) << __func__ << ": Invalid object_pool";
+    std::move(callback).Run(false);
+    return;
+  }
+
   if (!random_data.ok()) {
     LOG(ERROR) << "Failed to generate user encryption key: "
                << random_data.status();
@@ -794,6 +821,11 @@ void SlotManagerImpl::InitializeHwsecTokenWithRootKey(
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool,
     brillo::SecureBlob root_key) {
+  if (!object_pool->IsValid()) {
+    LOG(WARNING) << __func__ << ": Invalid object_pool";
+    std::move(callback).Run(false);
+    return;
+  }
   hwsec::ChapsFrontend::SealDataCallback seal_callback =
       base::BindOnce(&SlotManagerImpl::InitializeHwsecTokenAfterSealData,
                      base::Unretained(this), std::move(callback), path,
@@ -809,6 +841,12 @@ void SlotManagerImpl::InitializeHwsecTokenAfterSealData(
     std::shared_ptr<ObjectPool> object_pool,
     brillo::SecureBlob root_key,
     hwsec::StatusOr<hwsec::ChapsSealedData> sealed_data) {
+  if (!object_pool->IsValid()) {
+    LOG(WARNING) << __func__ << ": Invalid object_pool";
+    std::move(callback).Run(false);
+    return;
+  }
+
   if (!sealed_data.ok()) {
     LOG(ERROR) << "Failed to seal user encryption key: "
                << sealed_data.status();
@@ -945,6 +983,9 @@ bool SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
   }
 
   CloseAllSessions(isolate_credential, slot_id);
+  if (slot_list_[slot_id].token_object_pool) {
+    slot_list_[slot_id].token_object_pool->Invalidate();
+  }
   slot_list_[slot_id].token_object_pool.reset();
   slot_list_[slot_id].slot_info.flags &= ~CKF_TOKEN_PRESENT;
   path_slot_map_.erase(path);

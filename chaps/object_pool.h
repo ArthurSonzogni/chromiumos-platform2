@@ -89,6 +89,10 @@ class ObjectPool {
   // Returns true if private objects are loaded and the pool is ready for
   // operations with them without blocking.
   virtual bool IsPrivateLoaded() = 0;
+  // Returns true if the pool is valid.
+  virtual bool IsValid() = 0;
+  // Invalidates the pool.
+  virtual void Invalidate() = 0;
 };
 
 }  // namespace chaps

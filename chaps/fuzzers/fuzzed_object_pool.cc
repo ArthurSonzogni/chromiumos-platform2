@@ -113,4 +113,10 @@ Result FuzzedObjectPool::ConsumeResult() {
       data_provider_->ConsumeIntegralInRange<uint32_t>(0, 2));
 }
 
+bool FuzzedObjectPool::IsValid() {
+  return data_provider_->ConsumeBool();
+}
+
+void FuzzedObjectPool::Invalidate() {}
+
 }  // namespace chaps

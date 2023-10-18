@@ -301,4 +301,12 @@ bool ObjectPoolImpl::LoadPrivateObjects() {
   return LoadBlobs(object_blobs);
 }
 
+bool ObjectPoolImpl::IsValid() {
+  return static_cast<bool>(store_);
+}
+
+void ObjectPoolImpl::Invalidate() {
+  store_.reset();
+}
+
 }  // namespace chaps

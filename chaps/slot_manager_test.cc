@@ -67,7 +67,7 @@ SecureBlob MakeBlob(const char* auth_data_str) {
 
 // Creates and sets default expectations on a ObjectPoolMock instance. Returns
 // a pointer to the new object.
-ObjectPool* CreateObjectPoolMock() {
+ObjectPool* CreateObjectPoolMock(bool* is_pool_valid) {
   ObjectPoolMock* object_pool = new ObjectPoolMock();
   EXPECT_CALL(*object_pool, GetInternalBlob(kEncryptedAuthKey, _))
       .WillRepeatedly(
@@ -94,6 +94,12 @@ ObjectPool* CreateObjectPoolMock() {
   EXPECT_CALL(*object_pool, SetInternalBlob(kAuthDataHash, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*object_pool, SetEncryptionKey(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*object_pool, IsValid()).WillRepeatedly([is_pool_valid]() {
+    return *is_pool_valid;
+  });
+  EXPECT_CALL(*object_pool, Invalidate()).WillRepeatedly([is_pool_valid]() {
+    *is_pool_valid = false;
+  });
   return object_pool;
 }
 
@@ -144,8 +150,9 @@ class TestSlotManager : public ::testing::Test {
     // The default style "fast" does not support multi-threaded death tests.
     testing::FLAGS_gtest_death_test_style = "threadsafe";
 
-    EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
-        .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
+    EXPECT_CALL(factory_, CreateObjectPool(_, _, _)).WillRepeatedly([this]() {
+      return CreateObjectPoolMock(&is_pool_valid_);
+    });
     ConfigureHwsec(&hwsec_);
     chaps_metrics_.set_metrics_library_for_testing(&mock_metrics_library_);
     EXPECT_CALL(
@@ -172,6 +179,7 @@ class TestSlotManager : public ::testing::Test {
 
  protected:
   base::test::TaskEnvironment task_environment_;
+  bool is_pool_valid_ = true;
   ChapsFactoryMock factory_;
   hwsec::MockChapsFrontend hwsec_;
   std::unique_ptr<SlotManagerImpl> slot_manager_;
@@ -406,6 +414,54 @@ TEST_F(TestSlotManager, ManyLoadToken) {
     string path = base::StringPrintf("test%d", i);
     EXPECT_TRUE(slot_manager_->UnloadToken(ic_, FilePath(path)));
   }
+}
+
+TEST_F(TestSlotManager, LoadUnloadToken) {
+  EXPECT_CALL(
+      mock_metrics_library_,
+      SendEnumToUMA(kChapsTokenManagerLoadToken,
+                    static_cast<int>(TokenManagerStatus::kCommandSuccess),
+                    static_cast<int>(TokenManagerStatus::kMaxValue)))
+      .Times(2);
+  EXPECT_CALL(
+      mock_metrics_library_,
+      SendEnumToUMA(kChapsTokenManagerUnloadToken,
+                    static_cast<int>(TokenManagerStatus::kCommandSuccess),
+                    static_cast<int>(TokenManagerStatus::kMaxValue)))
+      .Times(1);
+  InsertToken();
+  int slot_id = 0;
+  std::string path = "test0";
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_, FilePath(path), MakeBlob(kAuthData),
+                                       kTokenLabel, &slot_id));
+  EXPECT_TRUE(is_pool_valid_);
+  task_environment_.RunUntilIdle();
+  EXPECT_TRUE(is_pool_valid_);
+  EXPECT_TRUE(slot_manager_->UnloadToken(ic_, FilePath(path)));
+  EXPECT_FALSE(is_pool_valid_);
+}
+
+TEST_F(TestSlotManager, LoadUnloadTokenEarly) {
+  EXPECT_CALL(
+      mock_metrics_library_,
+      SendEnumToUMA(kChapsTokenManagerLoadToken,
+                    static_cast<int>(TokenManagerStatus::kCommandSuccess),
+                    static_cast<int>(TokenManagerStatus::kMaxValue)))
+      .Times(2);
+  EXPECT_CALL(
+      mock_metrics_library_,
+      SendEnumToUMA(kChapsTokenManagerUnloadToken,
+                    static_cast<int>(TokenManagerStatus::kCommandSuccess),
+                    static_cast<int>(TokenManagerStatus::kMaxValue)))
+      .Times(1);
+  InsertToken();
+  int slot_id = 0;
+  std::string path = "test0";
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_, FilePath(path), MakeBlob(kAuthData),
+                                       kTokenLabel, &slot_id));
+  EXPECT_TRUE(is_pool_valid_);
+  EXPECT_TRUE(slot_manager_->UnloadToken(ic_, FilePath(path)));
+  EXPECT_FALSE(is_pool_valid_);
 }
 
 TEST_F(TestSlotManager, TestDefaultIsolate) {

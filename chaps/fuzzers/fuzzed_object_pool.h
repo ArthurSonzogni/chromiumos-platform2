@@ -36,6 +36,8 @@ class FuzzedObjectPool : public ObjectPool {
   Object* GetModifiableObject(const Object* object) override;
   Result Flush(const Object* object) override;
   bool IsPrivateLoaded() override;
+  bool IsValid() override;
+  void Invalidate() override;
 
  private:
   // Returns fuzzed bool, which is true with probability |probability| %.

@@ -56,6 +56,8 @@ class ObjectPoolImpl : public ObjectPool {
   Object* GetModifiableObject(const Object* object) override;
   Result Flush(const Object* object) override;
   bool IsPrivateLoaded() override;
+  bool IsValid() override;
+  void Invalidate() override;
 
  private:
   Result AddObject(Object* object, bool from_external_source);
