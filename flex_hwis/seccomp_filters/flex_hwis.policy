@@ -14,21 +14,16 @@ gettid: 1
 readlink: 1
 mkdir: 1
 write: 1
-mount: 1
 sendto: 1
-prctl: arg0 == PR_CAPBSET_READ || arg0 == PR_SET_NO_NEW_PRIVS || \
-       arg0 == PR_SET_SECCOMP || arg0 == PR_SET_NAME
 lseek: 1
 epoll_wait: 1
 recvmsg: 1
 access: 1
-getrandom: 1
+getrandom: arg2 in ~GRND_RANDOM
 brk: 1
 pread64: 1
 statfs: 1
 futex: 1
-ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS || \
-       arg1 == TIOCSCTTY || arg1 == SIOCSIFFLAGS
 getpid: 1
 chown: 1
 epoll_ctl: 1
@@ -46,15 +41,14 @@ umount2: 1
 flock: 1
 set_robust_list: 1
 wait4: 1
-socket: arg0 == AF_UNIX
+# Allow system logging and communication over the network.
+socket: arg0 == AF_INET6 || arg0 == AF_UNIX || arg0 == AF_INET
 exit_group: 1
-execve: 1
 arch_prctl: 1
 set_tid_address: 1
 rseq: 1
 prlimit64: 1
 munmap: 1
-clone: 1
 umask: 1
 chdir: 1
 fchdir: 1
@@ -79,3 +73,12 @@ rename: 1
 restart_syscall: 1
 exit: 1
 rt_sigreturn: 1
+poll: 1
+getsockname: 1
+getpeername: 1
+sysinfo: 1
+socketpair: 1
+setsockopt: 1
+getsockopt: 1
+recvfrom: 1
+unlinkat: 1
