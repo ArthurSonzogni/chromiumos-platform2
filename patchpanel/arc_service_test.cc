@@ -23,7 +23,6 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/device.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/shill_client.h"
 

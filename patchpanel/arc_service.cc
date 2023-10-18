@@ -155,21 +155,6 @@ bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
   return success;
 }
 
-// Creates the ARC management Device used for VPN forwarding, ADB-over-TCP.
-std::unique_ptr<Device::Config> AllocateArc0Config(
-    AddressManager* addr_mgr, ArcService::ArcType arc_type) {
-  auto ipv4_subnet =
-      addr_mgr->AllocateIPv4Subnet(AddressManager::GuestType::kArc0);
-  if (!ipv4_subnet) {
-    LOG(ERROR) << "Subnet already in use or unavailable";
-    return nullptr;
-  }
-  uint32_t subnet_index =
-      (arc_type == ArcService::ArcType::kVM) ? 1 : kAnySubnetIndex;
-  return std::make_unique<Device::Config>(
-      addr_mgr->GenerateMacAddress(subnet_index), std::move(ipv4_subnet));
-}
-
 std::string PrefixIfname(std::string_view prefix, std::string_view ifname) {
   std::string n;
   n.append(prefix);
@@ -184,21 +169,25 @@ std::string PrefixIfname(std::string_view prefix, std::string_view ifname) {
 }
 }  // namespace
 
+ArcService::ArcConfig::ArcConfig(const MacAddress& mac_addr,
+                                 std::unique_ptr<Subnet> ipv4_subnet)
+    : mac_addr_(mac_addr), ipv4_subnet_(std::move(ipv4_subnet)) {}
+
 ArcService::ArcDevice::ArcDevice(
     ArcType type,
     std::optional<std::string_view> shill_device_ifname,
     std::string_view arc_device_ifname,
     const MacAddress& arc_device_mac_address,
-    const Subnet& arc_ipv4_subnet,
+    const ArcConfig& arc_config,
     std::string_view bridge_ifname,
     std::string_view guest_device_ifname)
     : type_(type),
       shill_device_ifname_(shill_device_ifname),
       arc_device_ifname_(arc_device_ifname),
       arc_device_mac_address_(arc_device_mac_address),
-      arc_ipv4_subnet_(arc_ipv4_subnet.base_cidr()),
-      arc_ipv4_address_(*arc_ipv4_subnet.CIDRAtOffset(2)),
-      bridge_ipv4_address_(*arc_ipv4_subnet.CIDRAtOffset(1)),
+      arc_ipv4_subnet_(arc_config.ipv4_subnet()),
+      arc_ipv4_address_(arc_config.arc_ipv4_address()),
+      bridge_ipv4_address_(arc_config.bridge_ipv4_address()),
       bridge_ifname_(bridge_ifname),
       guest_device_ifname_(guest_device_ifname) {}
 
@@ -234,8 +223,7 @@ ArcService::ArcService(Datapath* datapath,
       metrics_(metrics),
       arc_device_change_handler_(arc_device_change_handler),
       id_(kInvalidId) {
-  arc0_config_ = AllocateArc0Config(addr_mgr, arc_type_);
-  all_configs_.push_back(arc0_config_.get());
+  AllocateArc0Config();
   AllocateAddressConfigs();
 }
 
@@ -247,6 +235,21 @@ ArcService::~ArcService() {
 
 bool ArcService::IsStarted() const {
   return id_ != kInvalidId;
+}
+
+// Creates the ARC management Device used for VPN forwarding, ADB-over-TCP.
+void ArcService::AllocateArc0Config() {
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0);
+  if (!ipv4_subnet) {
+    LOG(ERROR) << __func__ << ": Subnet already in use or unavailable";
+    return;
+  }
+  uint32_t subnet_index =
+      (arc_type_ == ArcService::ArcType::kVM) ? 1 : kAnySubnetIndex;
+  arc0_config_ = std::make_unique<ArcConfig>(
+      addr_mgr_->GenerateMacAddress(subnet_index), std::move(ipv4_subnet));
+  all_configs_.push_back(arc0_config_.get());
 }
 
 void ArcService::AllocateAddressConfigs() {
@@ -262,24 +265,16 @@ void ArcService::AllocateAddressConfigs() {
     auto ipv4_subnet =
         addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet);
     if (!ipv4_subnet) {
-      LOG(ERROR) << "Subnet already in use or unavailable";
+      LOG(ERROR) << __func__ << " " << type
+                 << ": Subnet already in use or unavailable";
       continue;
     }
     MacAddress mac_addr = (arc_type_ == ArcType::kVM)
                               ? addr_mgr_->GenerateMacAddress(mac_addr_index++)
                               : addr_mgr_->GenerateMacAddress();
-    available_configs_[type].emplace_back(
-        std::make_unique<Device::Config>(mac_addr, std::move(ipv4_subnet)));
-  }
-
-  // Iterate over |available_configs_| with a fixed explicit order and do not
-  // rely on the implicit ordering derived from key values.
-  for (const auto type :
-       {ShillClient::Device::Type::kEthernet, ShillClient::Device::Type::kWifi,
-        ShillClient::Device::Type::kCellular}) {
-    for (const auto& c : available_configs_[type]) {
-      all_configs_.push_back(c.get());
-    }
+    const auto& config = available_configs_[type].emplace_back(
+        std::make_unique<ArcConfig>(mac_addr, std::move(ipv4_subnet)));
+    all_configs_.push_back(config.get());
   }
 }
 
@@ -289,7 +284,7 @@ void ArcService::RefreshMacAddressesInConfigs() {
   }
 }
 
-std::unique_ptr<Device::Config> ArcService::AcquireConfig(
+std::unique_ptr<ArcService::ArcConfig> ArcService::AcquireConfig(
     ShillClient::Device::Type type) {
   // Normalize shill Device types for different ethernet flavors.
   if (type == ShillClient::Device::Type::kEthernetEap)
@@ -308,14 +303,14 @@ std::unique_ptr<Device::Config> ArcService::AcquireConfig(
     return nullptr;
   }
 
-  std::unique_ptr<Device::Config> config;
+  std::unique_ptr<ArcConfig> config;
   config = std::move(it->second.front());
   it->second.pop_front();
   return config;
 }
 
 void ArcService::ReleaseConfig(ShillClient::Device::Type type,
-                               std::unique_ptr<Device::Config> config) {
+                               std::unique_ptr<ArcConfig> config) {
   available_configs_[type].push_front(std::move(config));
 }
 
@@ -379,9 +374,8 @@ bool ArcService::Start(uint32_t id) {
   // The "arc0" virtual device is either attached on demand to host VPNs or is
   // used to forward host traffic into an Android VPN. Therefore, |shill_device|
   // is not meaningful for the "arc0" virtual device and is undefined.
-  auto* arc0_subnet = arc0_config_->ipv4_subnet();
   arc0_device_ = ArcDevice(arc_type_, std::nullopt, arc0_device_ifname,
-                           arc0_config_->mac_addr(), *arc0_subnet,
+                           arc0_config_->mac_addr(), *arc0_config_,
                            kArcbr0Ifname, kArc0Ifname);
 
   LOG(INFO) << "Starting ARC management Device " << *arc0_device_;
@@ -510,13 +504,10 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     arc_device_ifname = ArcVethHostName(shill_device);
   }
 
-  auto* arc_subnet = config->ipv4_subnet();
-
-  auto arc_device_it =
-      devices_.try_emplace(shill_device.ifname, arc_type_,
-                           shill_device.shill_device_interface_property,
-                           arc_device_ifname, config->mac_addr(), *arc_subnet,
-                           ArcBridgeName(shill_device), guest_ifname);
+  auto arc_device_it = devices_.try_emplace(
+      shill_device.ifname, arc_type_,
+      shill_device.shill_device_interface_property, arc_device_ifname,
+      config->mac_addr(), *config, ArcBridgeName(shill_device), guest_ifname);
 
   LOG(INFO) << "Starting ARC Device " << arc_device_it.first->second;
   StartArcDeviceDatapath(arc_device_it.first->second);
@@ -566,8 +557,7 @@ std::optional<net_base::IPv4Address> ArcService::GetArc0IPv4Address() const {
   if (!arc0_config_) {
     return std::nullopt;
   }
-  // Return the same address as ArcDevice::arc_ipv4_address().
-  return arc0_config_->ipv4_subnet()->CIDRAtOffset(2)->address();
+  return arc0_config_->arc_ipv4_address().address();
 }
 
 std::vector<std::string> ArcService::GetTapDevices() const {

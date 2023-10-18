@@ -133,8 +133,9 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerWiFiDevice) {
       ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
+  ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer, "wlan0",
-                                   "vethwlan0", mac_addr, *ipv4_subnet,
+                                   "vethwlan0", mac_addr, arc_config,
                                    "arc_wlan0", "wlan0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
@@ -167,8 +168,9 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerCellularDevice) {
       ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
+  ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer, "wwan0",
-                                   "vethwwan0", mac_addr, *ipv4_subnet,
+                                   "vethwwan0", mac_addr, arc_config,
                                    "arc_wwan0", "wwan0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
@@ -201,8 +203,9 @@ TEST_F(ProtoUtilsTest, ConvertARCVMWiFiDevice) {
       ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
+  ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, "wlan0", "vmtap1",
-                                   mac_addr, *ipv4_subnet, "arc_wlan0", "eth3");
+                                   mac_addr, arc_config, "arc_wlan0", "eth3");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -233,8 +236,9 @@ TEST_F(ProtoUtilsTest, ConvertARCVMCellularDevice) {
       ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
+  ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, "wwan0", "vmtap5",
-                                   mac_addr, *ipv4_subnet, "arc_wwan0", "eth5");
+                                   mac_addr, arc_config, "arc_wwan0", "eth5");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -265,9 +269,10 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
       ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
+  ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer,
                                    std::nullopt, "vetharc0", mac_addr,
-                                   *ipv4_subnet, "arcbr0", "arc0");
+                                   arc_config, "arcbr0", "arc0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -302,8 +307,9 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
       ipv4_subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr;
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
+  ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, std::nullopt,
-                                   "vetharc0", mac_addr, *ipv4_subnet, "arcbr0",
+                                   "vetharc0", mac_addr, arc_config, "arcbr0",
                                    "eth0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);

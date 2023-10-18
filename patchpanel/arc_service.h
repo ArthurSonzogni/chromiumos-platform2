@@ -23,7 +23,6 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/device.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
@@ -45,6 +44,48 @@ class ArcService {
     kVM,
   };
 
+  // Helper class for storing some configuration data for an ArcDevice before
+  // the ArcDevice is created.
+  class ArcConfig {
+   public:
+    ArcConfig(const MacAddress& mac_addr, std::unique_ptr<Subnet> ipv4_subnet);
+    ArcConfig(const ArcConfig&) = delete;
+    ArcConfig& operator=(const ArcConfig&) = delete;
+
+    ~ArcConfig() = default;
+
+    MacAddress mac_addr() const { return mac_addr_; }
+    void set_mac_addr(const MacAddress& mac) { mac_addr_ = mac; }
+    // The static IPv4 subnet CIDR assigned to this ARC device.
+    const net_base::IPv4CIDR& ipv4_subnet() const {
+      return ipv4_subnet_->base_cidr();
+    }
+    // The static IPv4 CIDR address assigned to the ARC virtual interface on the
+    // host.
+    net_base::IPv4CIDR arc_ipv4_address() const {
+      return *ipv4_subnet_->CIDRAtOffset(2);
+    }
+    // The static IPv4 CIDR address assigned to the bridge associated to this
+    // device. This corresponds to the next hop for the Android network
+    // associated to the ARC virtual interface.
+    net_base::IPv4CIDR bridge_ipv4_address() const {
+      return *ipv4_subnet_->CIDRAtOffset(1);
+    }
+    void set_tap_ifname(const std::string& tap) { tap_ = tap; }
+    const std::string& tap_ifname() const { return tap_; }
+
+   private:
+    // A random MAC address assigned to the ArcDevice for the guest facing
+    // interface.
+    MacAddress mac_addr_;
+    // The static IPv4 subnet allocated for the ArcDevice for the host and guest
+    // facing interfaces.
+    std::unique_ptr<Subnet> ipv4_subnet_;
+    // For ARCVM, the interface name of the TAP device associated the ArcDevice.
+    // Always empty for the ARC container.
+    std::string tap_;
+  };
+
   // Represents the virtual interface setup both on the host and inside ARC
   // created for every host Network exposed to ARC.
   class ArcDevice {
@@ -53,7 +94,7 @@ class ArcService {
               std::optional<std::string_view> shill_device_ifname,
               std::string_view arc_device_ifname,
               const MacAddress& arc_device_mac_address,
-              const Subnet& arc_ipv4_subnet,
+              const ArcConfig& arc_ipv4_subnet,
               std::string_view bridge_ifname,
               std::string_view guest_device_ifname);
     ~ArcDevice();
@@ -189,6 +230,10 @@ class ArcService {
   void UpdateDeviceIPConfig(const ShillClient::Device& shill_device);
 
  private:
+  // Creates ARC interface configuration for the the legacy "arc0" management
+  // interface used for VPN forwarding and ADB-over-TCP.
+  void AllocateArc0Config();
+
   // Creates ARC interface configurations for all available IPv4 subnets which
   // will be assigned to ARC Devices as they are added.
   void AllocateAddressConfigs();
@@ -196,11 +241,11 @@ class ArcService {
   void RefreshMacAddressesInConfigs();
 
   // Reserve a configuration for an interface.
-  std::unique_ptr<Device::Config> AcquireConfig(ShillClient::Device::Type type);
+  std::unique_ptr<ArcConfig> AcquireConfig(ShillClient::Device::Type type);
 
   // Returns a configuration to the pool.
   void ReleaseConfig(ShillClient::Device::Type type,
-                     std::unique_ptr<Device::Config> config);
+                     std::unique_ptr<ArcConfig> config);
 
   FRIEND_TEST(ArcServiceTest, NotStarted_AddDevice);
   FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);
@@ -219,25 +264,24 @@ class ArcService {
   ArcDeviceChangeHandler arc_device_change_handler_;
   // A set of preallocated ARC interface configurations keyed by technology type
   // and used for setting up ARCVM TAP devices at VM booting time.
-  std::map<ShillClient::Device::Type,
-           std::deque<std::unique_ptr<Device::Config>>>
+  std::map<ShillClient::Device::Type, std::deque<std::unique_ptr<ArcConfig>>>
       available_configs_;
   // The list of all ARC static IPv4 and interface configurations. Also includes
   // the ARC management interface arc0 for ARCVM.
-  std::vector<Device::Config*> all_configs_;
+  std::vector<ArcConfig*> all_configs_;
   // All ARC static IPv4 and interface configurations currently assigned to
   // active ARC devices stored in |devices_|.
-  std::map<std::string, std::unique_ptr<Device::Config>> assigned_configs_;
+  std::map<std::string, std::unique_ptr<ArcConfig>> assigned_configs_;
   // The ARC Devices corresponding to the host upstream network interfaces,
   // keyed by upstream interface name.
   std::map<std::string, ArcDevice> devices_;
   // ARCVM hardcodes its interface name as eth%d (starting from 0). This is a
   // mapping of its TAP interface name to the interface name inside ARCVM.
   std::map<std::string, std::string> arcvm_guest_ifnames_;
-  // The static IPv4 configuration for the "arc0" management Device. This
+  // The static IPv4 configuration for the "arc0" management ArcDevice. This
   // configuration is always assigned if ARC is running.
-  std::unique_ptr<Device::Config> arc0_config_;
-  // The "arc0" management Device associated with the virtual interface arc0
+  std::unique_ptr<ArcConfig> arc0_config_;
+  // The "arc0" management ArcDevice associated with the virtual interface arc0
   // used for legacy adb-over-tcp support and VPN forwarding. This ARC device is
   // not associated with any given shill physical Device and is always created.
   // This ARC device is defined iff ARC is running.
