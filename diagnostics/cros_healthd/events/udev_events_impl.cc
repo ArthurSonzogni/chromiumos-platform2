@@ -102,6 +102,7 @@ bool UdevEventsImpl::Initialize() {
     return false;
   }
 
+  drm_is_locked_ = true;
   context_->executor()->GetConnectedExternalDisplayConnectors(
       base::BindOnce(
           &UdevEventsImpl::HandleGetConnectedExternalDisplayConnectors,
@@ -122,6 +123,7 @@ void UdevEventsImpl::InitializeConnectedExternalDisplayConnectors() {
 void UdevEventsImpl::HandleGetConnectedExternalDisplayConnectors(
     base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> connected_displays,
     const std::optional<std::string>& error) {
+  drm_is_locked_ = false;
   if (error.has_value()) {
     LOG(ERROR) << "Error from executor call: " << error.value();
     return;
@@ -175,7 +177,7 @@ void UdevEventsImpl::OnUdevEvent() {
       OnSdCardRemove();
     }
   } else if (subsystem == "drm" && device_type == "drm_minor") {
-    if (action == "change") {
+    if (action == "change" && !drm_is_locked_) {
       OnExternalDisplayChange();
     }
   }
@@ -287,6 +289,7 @@ void UdevEventsImpl::AddExternalDisplayObserver(
 }
 
 void UdevEventsImpl::OnExternalDisplayChange() {
+  drm_is_locked_ = true;
   context_->executor()->GetConnectedExternalDisplayConnectors(
       base::BindOnce(
           &UdevEventsImpl::HandleGetConnectedExternalDisplayConnectors,
