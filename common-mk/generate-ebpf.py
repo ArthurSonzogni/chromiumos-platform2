@@ -33,15 +33,17 @@ def _run_command(command: typing.List[str]) -> subprocess.CompletedProcess:
     )
 
 
-def do_gen_bpf_skeleton(args):
-    """Generate BPF skeletons from C.
+def do_compile_bpf(args):
+    """Compile BPF program from C.
 
-    Takes a BPF application written in C and generates the BPF object file and
-    then uses that to generate BPF skeletons using bpftool.
+    Takes a BPF application written in C and generates the BPF object file.
+    If args.out_header is specified, the BPF object file is also processed to
+    generate BPF skeletons using bpftool.
     If args.out_min_btf is specified, the BPF object file is also processed to
     generate a min CO-RE BTF.
     """
-    out_header = args.out_header
+    out_obj = args.out_obj
+    out_bpf_skeleton_header = args.out_bpf_skeleton_header
     out_btf = args.out_min_btf
     vmlinux_btf = args.vmlinux_btf
     source = args.source
@@ -49,8 +51,6 @@ def do_gen_bpf_skeleton(args):
     includes = args.includes
     defines = args.defines or []
     sysroot = args.sysroot
-
-    obj = "_".join(os.path.basename(source).split(".")[:-1]) + ".o"
 
     arch_to_define = {
         "amd64": "__TARGET_ARCH_x86",
@@ -73,6 +73,9 @@ def do_gen_bpf_skeleton(args):
         )
         return -1
 
+    # Create the folder to hold the output if it does not exist.
+    pathlib.Path(os.path.dirname(out_obj)).mkdir(parents=True, exist_ok=True)
+
     # Calling bpf-clang is equivalent to "clang --target bpf".
     # It may seem odd that the application needs to be compiled with -g but
     # then llvm-strip is ran against the resulting object.
@@ -82,22 +85,26 @@ def do_gen_bpf_skeleton(args):
         ["/usr/bin/bpf-clang", "-g", "-O2", f"--sysroot={sysroot}"]
         + [f"-I{x}" for x in includes]
         + [f"-D{x}" for x in defines]
-        + [f"-D{arch}", "-c", source, "-o", obj]
+        + [f"-D{arch}", "-c", source, "-o", out_obj]
     )
-    gen_skeleton = ["/usr/sbin/bpftool", "gen", "skeleton", obj]
-    strip_dwarf = ["llvm-strip", "-g", obj]
+    strip_dwarf = ["llvm-strip", "-g", out_obj]
 
     # Compile the BPF C application.
     _run_command(call_bpf_clang)
     # Strip useless dwarf information.
     _run_command(strip_dwarf)
-    # Use bpftools to generate skeletons from the BPF object files.
-    bpftool_proc = _run_command(gen_skeleton)
 
-    # BPFtools will output the C formatted dump of kernel symbols to stdout.
-    # Write the contents to file.
-    with open(out_header, "w", encoding="utf-8") as bpf_skeleton:
-        bpf_skeleton.write(bpftool_proc.stdout)
+    # Use bpftools to generate skeletons from the BPF object files.
+    if out_bpf_skeleton_header:
+        gen_skeleton = ["/usr/sbin/bpftool", "gen", "skeleton", out_obj]
+        bpftool_proc = _run_command(gen_skeleton)
+
+        # BPFtools will output the C formatted dump of kernel symbols to stdout.
+        # Write the contents to file.
+        with open(
+            out_bpf_skeleton_header, "w", encoding="utf-8"
+        ) as bpf_skeleton:
+            bpf_skeleton.write(bpftool_proc.stdout)
 
     # Generate a detached min_core BTF.
     if out_btf:
@@ -113,7 +120,7 @@ def do_gen_bpf_skeleton(args):
             "min_core_btf",
             vmlinux_btf,
             out_btf,
-            obj,
+            out_obj,
         ]
         _run_command(gen_min_core_btf)
 
@@ -237,55 +244,60 @@ def do_gen_vmlinux(args):
 def main(argv: typing.List[str]) -> int:
     """A command line tool for all things BPF.
 
-    A command line tool to help generate C BPF skeletons and to generate
-    vmlinux.h from kernel build artifacts.
+    A command line tool to help compile eBPF code to object file and generate C
+    BPF skeletons, and to generate vmlinux.h from kernel build artifacts.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(help="sub-command help")
 
-    gen_skel = subparsers.add_parser("gen_skel")
-    gen_skel.add_argument(
-        "--out_header",
+    compile_bpf = subparsers.add_parser("compile_bpf")
+    compile_bpf.add_argument(
+        "--out_obj",
         required=True,
-        help="The name of the output header file.",
+        help="The name of the output object file.",
     )
-    gen_skel.add_argument(
+    compile_bpf.add_argument(
+        "--out_bpf_skeleton_header",
+        required=False,
+        help="The name of the eBPF skeleton output header file. Specifying this argument will result in eBPF skeletons being generated in addition to the eBPF objects.",
+    )
+    compile_bpf.add_argument(
         "--source", required=True, help="The bpf source code."
     )
-    gen_skel.add_argument(
+    compile_bpf.add_argument(
         "--arch", required=True, help="The target architecture."
     )
-    gen_skel.add_argument(
+    compile_bpf.add_argument(
         "--includes",
         required=True,
         nargs="+",
         help="Additional include directories.",
     )
-    gen_skel.add_argument(
+    compile_bpf.add_argument(
         "--defines",
         required=False,
         nargs="*",
         help="Additional preprocessor defines.",
     )
-    gen_skel.add_argument(
+    compile_bpf.add_argument(
         "--vmlinux_btf",
         required=False,
         help="The detached full vmlinux BTF file.",
     )
-    gen_skel.add_argument(
+    compile_bpf.add_argument(
         "--out_min_btf",
         required=False,
         help="The name of the output min BTF file.",
     )
     # We require the board sysroot so that BPF compilations will use board
     # libbpf headers.
-    gen_skel.add_argument(
+    compile_bpf.add_argument(
         "--sysroot",
         required=True,
         help="The path that should be treated as the root directory.",
     )
 
-    gen_skel.set_defaults(func=do_gen_bpf_skeleton)
+    compile_bpf.set_defaults(func=do_compile_bpf)
 
     gen_vmlinux = subparsers.add_parser("gen_vmlinux")
     gen_vmlinux.add_argument(

@@ -27,6 +27,57 @@ template("generate_vmlinux") {
   }
 }
 
+# This template compiles a C program to target the Linux BPF VM.
+# Also optionally generates a min CO-RE BTF iff called with a non-empty
+# btf_inout_dir. The btf_inout_dir must contain a vmlinux.full.btf.
+# Generated C code will be placed in bpf_skeleton_out_dir. Generated min CO-RE
+# BTF (if requested) will be placed in btf_inout_dir.
+template("generate_ebpf_object") {
+  forward_variables_from(invoker,
+                         [
+                           "obj_out_dir",
+                           "btf_inout_dir",
+                           "defines",
+                           "deps",
+                         ])
+  obj_dir = "${root_gen_dir}/${obj_out_dir}"
+
+  arch = getenv("ARCH")
+
+  action_foreach(target_name) {
+    out_obj = "${obj_dir}/{{source_name_part}}.o"
+    sources = invoker.sources
+    outputs = [ out_obj ]
+    script = "//common-mk/generate-ebpf.py"
+    args = [
+      "compile_bpf",
+      "--out_obj=${out_obj}",
+      "--source={{source}}",
+      "--arch=${arch}",
+      "--sysroot=${sysroot}",
+      "--include",
+      "${platform2_root}",
+      "${root_gen_dir}",
+    ]
+    if (defined(defines)) {
+      args += [ "--defines" ]
+      foreach(define, defines) {
+        args += [ define ]
+      }
+    }
+    if (btf_inout_dir != "") {
+      out_min_btf =
+          "${root_gen_dir}/${btf_inout_dir}/{{source_name_part}}.min.btf"
+      vmlinux_btf = "${root_gen_dir}/${btf_inout_dir}/vmlinux.full.btf"
+      args += [
+        "--out_min_btf=${out_min_btf}",
+        "--vmlinux_btf=${vmlinux_btf}",
+      ]
+      outputs += [ out_min_btf ]
+    }
+  }
+}
+
 # This template compiles a C program to target the Linux BPF VM and then
 # generates C code to load and interact with the BPF application.
 # Also optionally generates a min CO-RE BTF iff called with a non-empty
@@ -41,18 +92,22 @@ template("generate_ebpf_skeletons") {
                            "defines",
                            "deps",
                          ])
-  h_dir = "${root_gen_dir}/${bpf_skeleton_out_dir}"
+  obj_dir = "${root_gen_dir}/obj"
+  bpf_skel_h_dir = "${root_gen_dir}/${bpf_skeleton_out_dir}"
 
   arch = getenv("ARCH")
 
   action_foreach(target_name) {
-    out_header = "${h_dir}/skeleton_{{source_name_part}}.h"
+    out_obj = "${obj_dir}/{{source_name_part}}.o"
+    out_bpf_skeleton_header =
+        "${bpf_skel_h_dir}/skeleton_{{source_name_part}}.h"
     sources = invoker.sources
-    outputs = [ out_header ]
+    outputs = [ out_bpf_skeleton_header ]
     script = "//common-mk/generate-ebpf.py"
     args = [
-      "gen_skel",
-      "--out_header=${out_header}",
+      "compile_bpf",
+      "--out_obj=${out_obj}",
+      "--out_bpf_skeleton_header=${out_bpf_skeleton_header}",
       "--source={{source}}",
       "--arch=${arch}",
       "--sysroot=${sysroot}",
