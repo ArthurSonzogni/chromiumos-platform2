@@ -84,6 +84,7 @@ static_library("liboobeconfig") {
     "load_oobe_config_rollback.cc",
     "network_exporter.cc",
     "oobe_config.cc",
+    "rollback_cleanup.cc",
   ]
   configs += [ ":liboobeconfig_config" ]
   all_dependent_configs = [ ":target_defaults" ]
@@ -211,6 +212,7 @@ if (use.test) {
       "encryption/openssl_encryption_test.cc",
       "load_oobe_config_rollback_test.cc",
       "oobe_config_test.cc",
+      "rollback_cleanup_test.cc",
     ]
     configs += [
       "//common-mk:test",
