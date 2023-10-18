@@ -508,5 +508,35 @@ TEST_F(GroundTruthTest, BluetoothRoutineGetFlossEnabledError) {
       mojom::RoutineArgument::NewBluetoothPower(std::move(arg)));
 }
 
+TEST_F(GroundTruthTest, BluetoothScanningRoutinePositiveDuration) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(true));
+
+  auto arg = mojom::BluetoothScanningRoutineArgument::New();
+  arg->exec_duration = base::Seconds(5);
+  ExpectRoutineSupported(
+      mojom::RoutineArgument::NewBluetoothScanning(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, BluetoothScanningRoutineZeroDuration) {
+  auto arg = mojom::BluetoothScanningRoutineArgument::New();
+  arg->exec_duration = base::Seconds(0);
+  ExpectRoutineUnsupported(
+      mojom::RoutineArgument::NewBluetoothScanning(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, BluetoothScanningRoutineNullDuration) {
+  EXPECT_CALL(*mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetFlossEnabledAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(true));
+
+  auto arg = mojom::BluetoothScanningRoutineArgument::New();
+  ExpectRoutineSupported(
+      mojom::RoutineArgument::NewBluetoothScanning(std::move(arg)));
+}
+
 }  // namespace
 }  // namespace diagnostics

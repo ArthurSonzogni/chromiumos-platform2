@@ -53,6 +53,17 @@ constexpr base::TimeDelta kPowerRoutineTimeout = base::Seconds(15);
 // Bluetooth discovery routine timeout.
 constexpr base::TimeDelta kDiscoveryRoutineTimeout = base::Seconds(20);
 
+// Bluetooth scanning routine default execution time.
+constexpr base::TimeDelta kScanningRoutineDefaultRuntime = base::Seconds(5);
+
+// Bluetooth scanning routine timeout.
+constexpr base::TimeDelta kScanningRoutineTimeout = base::Seconds(5);
+
+// We only collect the nearby peripherals information for Bluetooth pairing
+// routine. -60 is the recommended threshold for peripherals at 3ft (0.9m)
+// distance over air.
+constexpr int16_t kNearbyPeripheralMinimumAverageRssi = -60;
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_CONSTANTS_H_

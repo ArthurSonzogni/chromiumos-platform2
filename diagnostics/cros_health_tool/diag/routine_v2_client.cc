@@ -111,6 +111,10 @@ void RoutineV2Client::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kFan:
           PrintOutput(ParseFanDetail(detail->get_fan()));
           break;
+        case mojom::RoutineDetail::Tag::kBluetoothScanning:
+          PrintOutput(
+              ParseBluetoothScanningDetail(detail->get_bluetooth_scanning()));
+          break;
       }
       run_loop_.Quit();
       return;

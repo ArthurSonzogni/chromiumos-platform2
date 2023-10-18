@@ -311,6 +311,18 @@ void GroundTruth::IsRoutineArgumentSupported(
       GetFlossSupportStatus(context_->floss_controller(), std::move(callback));
       return;
     }
+    case mojom::RoutineArgument::Tag::kBluetoothScanning: {
+      auto& arg = routine_arg->get_bluetooth_scanning();
+      if (arg->exec_duration && !arg->exec_duration->is_positive()) {
+        status = mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+            "Execution duration should be strictly greater than zero",
+            nullptr));
+        std::move(callback).Run(std::move(status));
+        return;
+      }
+      GetFlossSupportStatus(context_->floss_controller(), std::move(callback));
+      return;
+    }
   }
   // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 }

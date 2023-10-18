@@ -5,7 +5,6 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
 
 #include <algorithm>
-#include <memory>
 #include <numeric>
 #include <optional>
 #include <string>
@@ -60,8 +59,7 @@ base::Value::Dict ConstructPeripheralDict(
 BluetoothScanningRoutine::BluetoothScanningRoutine(
     Context* context, const std::optional<base::TimeDelta>& exec_duration)
     : BluetoothRoutineBase(context),
-      exec_duration_(exec_duration.value_or(kDefaultBluetoothScanningRuntime)) {
-}
+      exec_duration_(exec_duration.value_or(kScanningRoutineDefaultRuntime)) {}
 
 BluetoothScanningRoutine::~BluetoothScanningRoutine() = default;
 
@@ -83,7 +81,7 @@ void BluetoothScanningRoutine::Start() {
       FROM_HERE,
       base::BindOnce(&BluetoothScanningRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),
-      exec_duration_);
+      exec_duration_ + kScanningRoutineTimeout);
 
   event_subscriptions_.push_back(
       context_->bluez_event_hub()->SubscribeDeviceAdded(
@@ -172,6 +170,11 @@ void BluetoothScanningRoutine::RunNextStep() {
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kScanning:
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&BluetoothScanningRoutine::OnScanningFinished,
+                         weak_ptr_factory_.GetWeakPtr()),
+          exec_duration_);
       break;
     case TestStep::kStopDiscovery:
       GetAdapter()->StopDiscoveryAsync(
@@ -242,7 +245,7 @@ void BluetoothScanningRoutine::OnDevicePropertyChanged(
   }
 }
 
-void BluetoothScanningRoutine::OnTimeoutOccurred() {
+void BluetoothScanningRoutine::OnScanningFinished() {
   if (step_ != TestStep::kScanning) {
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineUnexpectedFlow);
@@ -250,6 +253,11 @@ void BluetoothScanningRoutine::OnTimeoutOccurred() {
   }
   // Successfully stop scanning.
   RunNextStep();
+}
+
+void BluetoothScanningRoutine::OnTimeoutOccurred() {
+  SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                   "Bluetooth routine failed to complete before timeout.");
 }
 
 void BluetoothScanningRoutine::SetResultAndStop(

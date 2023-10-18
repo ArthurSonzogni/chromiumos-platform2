@@ -6,7 +6,6 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_SCANNING_H_
 
 #include <map>
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -22,13 +21,6 @@
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
-
-constexpr base::TimeDelta kDefaultBluetoothScanningRuntime = base::Seconds(5);
-
-// We only collect the nearby peripherals information for Bluetooth pairing
-// routine. -60 is the recommended threshold for peripherals at 3ft (0.9m)
-// distance over air.
-constexpr int16_t kNearbyPeripheralMinimumAverageRssi = -60;
 
 struct ScannedPeripheralDevice {
   std::string peripheral_id;
@@ -65,6 +57,9 @@ class BluetoothScanningRoutine final : public DiagnosticRoutineWithStatus,
   void OnDeviceAdded(org::bluez::Device1ProxyInterface* device);
   void OnDevicePropertyChanged(org::bluez::Device1ProxyInterface* device,
                                const std::string& property_name);
+
+  // Scanning Routine completion function.
+  void OnScanningFinished();
 
   // Routine timeout function.
   void OnTimeoutOccurred();

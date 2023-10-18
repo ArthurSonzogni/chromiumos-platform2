@@ -36,6 +36,10 @@
       <arg name="device" direction="in" type="a{sv}"/>
       <arg name="info" direction="out" type="a{sv}"/>
     </method>
+    <method name="GetRemoteRSSI">
+      <arg name="device" direction="in" type="a{sv}"/>
+      <arg name="rssi" direction="out" type="n"/>
+    </method>
     <method name="GetRemoteUuids">
       <arg name="device" direction="in" type="a{sv}"/>
       <arg name="uuids" direction="out" type="aay"/>

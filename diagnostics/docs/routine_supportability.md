@@ -136,6 +136,28 @@ Supported only when ChromeOS uses Floss as Bluetooth stack.
 
 Supported only when ChromeOS uses Floss as Bluetooth stack.
 
+### Bluetooth scanning
+
+Supported only when ChromeOS uses Floss as Bluetooth stack and the routine
+parameters are well provided.
+
+| Parameter | Type | Description | Rule |
+| --------- | ---- | ----------- | ---- |
+| exec_duration | ash.cros_healthd.external.mojo_base.mojom.TimeDelta | Expected duration to run the routine. | Should be strictly greater than `0` second. |
+
+You can run the following command on your DUT:
+- `cros-health-tool diag bluetooth_scanning_v2 {parameters...} --check_supported` Use
+   this to see if healthd reports the correct support status.
+
+Some examples:
+```
+# cros-health-tool diag bluetooth_scanning_v2 --length_seconds=0 --check_supported
+{
+   "debug_message": "Execution duration should be strictly greater than zero",
+   "status": "Not supported"
+}
+```
+
 ### Fan
 
 Supported when `fan-count` is not set, or is set and have a non-zero value.

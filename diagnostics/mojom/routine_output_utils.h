@@ -23,6 +23,10 @@ base::Value::Dict ParseBluetoothPowerDetail(
     const ash::cros_healthd::mojom::BluetoothPowerRoutineDetailPtr&
         bluetooth_power_detail);
 
+base::Value::Dict ParseBluetoothScanningDetail(
+    const ash::cros_healthd::mojom::BluetoothScanningRoutineDetailPtr&
+        bluetooth_scanning_detail);
+
 base::Value::Dict ParseUfsLifetimeDetail(
     const ash::cros_healthd::mojom::UfsLifetimeRoutineDetailPtr&
         ufs_lifetime_detail);

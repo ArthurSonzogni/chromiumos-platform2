@@ -71,7 +71,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 14, NextIndex: 14
+// NextMinVersion: 15, NextIndex: 15
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -103,6 +103,8 @@ union RoutineArgument {
   [MinVersion=12] BluetoothDiscoveryRoutineArgument bluetooth_discovery@12;
   // Arguments to create a fan routine.
   [MinVersion=13] FanRoutineArgument fan@13;
+  // Arguments to create a Bluetooth scanning routine.
+  [MinVersion=14] BluetoothScanningRoutineArgument bluetooth_scanning@14;
 };
 
 // This routine checks whether there is any memory problem by
@@ -267,6 +269,18 @@ struct BluetoothDiscoveryRoutineArgument {};
 // NextMinVersion: 1, NextIndex: 0
 struct FanRoutineArgument {};
 
+// This routine checks whether the Bluetooth adapter can scan nearby Bluetooth
+// peripherals and collect peripherals' information.
+//
+// NextMinVersion: 1, NextIndex: 1
+struct BluetoothScanningRoutineArgument {
+  // `exec_duration` determines how long the scanning routine will run. This
+  // parameter needs to be strictly greater than zero, otherwise the routine
+  // will fail with an exception. If the provided value is null, default to
+  // running for 5 seconds.
+  ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
+};
+
 // Interface exposed to clients for controlling a routine.
 //
 // Error Handling:
@@ -385,6 +399,7 @@ union RoutineDetail {
   BluetoothPowerRoutineDetail bluetooth_power;
   BluetoothDiscoveryRoutineDetail bluetooth_discovery;
   FanRoutineDetail fan;
+  BluetoothScanningRoutineDetail bluetooth_scanning;
 };
 
 // Details regarding memory routine.
@@ -560,6 +575,28 @@ struct BluetoothDiscoveryRoutineDetail {
   BluetoothDiscoveringDetail? start_discovery_result@0;
   // Result of stopping discovery, or null if error occurs.
   BluetoothDiscoveringDetail? stop_discovery_result@1;
+};
+
+// Details regarding the scanned peripheral.
+//
+// NextMinVersion: 1, NextIndex: 3
+struct BluetoothScannedPeripheralInfo {
+  // All collected RSSI during the routine.
+  array<int16> rssi_history@0;
+  // The readable name of peripheral, which is reported when the average RSSI is
+  // higher than -60.
+  string? name@1;
+  // The unique id of peripheral, which is reported when the average RSSI is
+  // higher than -60.
+  string? peripheral_id@2;
+};
+
+// Details regarding Bluetooth scanning routine.
+//
+// NextMinVersion: 1, NextIndex: 1
+struct BluetoothScanningRoutineDetail {
+  // Scanned nearby peripheral info.
+  array<BluetoothScannedPeripheralInfo> peripherals@0;
 };
 
 // Enumeration of the possible DiskRead routine's command type.

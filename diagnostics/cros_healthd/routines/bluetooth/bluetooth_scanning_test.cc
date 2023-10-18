@@ -234,7 +234,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccess) {
   routine_->Start();
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
                      kBluetoothRoutineRunningMessage);
-  task_environment_.FastForwardBy(kDefaultBluetoothScanningRuntime);
+  task_environment_.FastForwardBy(kScanningRoutineDefaultRuntime);
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
                      kBluetoothRoutinePassedMessage);
 }
@@ -255,7 +255,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessNoDevices) {
   routine_->Start();
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
                      kBluetoothRoutineRunningMessage);
-  task_environment_.FastForwardBy(kDefaultBluetoothScanningRuntime);
+  task_environment_.FastForwardBy(kScanningRoutineDefaultRuntime);
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
                      kBluetoothRoutinePassedMessage);
 }
@@ -316,7 +316,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
   routine_->Start();
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
                      kBluetoothRoutineRunningMessage);
-  task_environment_.FastForwardBy(kDefaultBluetoothScanningRuntime);
+  task_environment_.FastForwardBy(kScanningRoutineDefaultRuntime);
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedSwitchDiscovery);
 }
@@ -344,6 +344,27 @@ TEST_F(BluetoothScanningRoutineTest, PreCheckFailed) {
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
                      kBluetoothRoutineFailedDiscoveryMode);
+}
+
+// Test that the BluetoothPowerRoutine returns a kError status when timeout
+// occurred.
+TEST_F(BluetoothScanningRoutineTest, RoutineTimeoutOccurred) {
+  InSequence s;
+  // Pre-check.
+  EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(false));
+  // Ensure adapter is powered on.
+  SetChangePoweredCall(/*current_powered=*/false, /*target_powered=*/true);
+  // Start discovery.
+  EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _));
+  // Reset powered.
+  SetChangePoweredCall(/*current_powered=*/true, /*target_powered=*/false);
+
+  routine_->Start();
+  // Trigger timeout.
+  task_environment_.FastForwardBy(kScanningRoutineDefaultRuntime +
+                                  kScanningRoutineTimeout);
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Bluetooth routine failed to complete before timeout.");
 }
 
 // Test that the BluetoothScanningRoutine returns a kError status when the

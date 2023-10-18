@@ -99,6 +99,30 @@ base::Value::Dict ParseBluetoothPowerDetail(
   return output;
 }
 
+base::Value::Dict ParseBluetoothScanningDetail(
+    const mojom::BluetoothScanningRoutineDetailPtr& bluetooth_scanning_detail) {
+  base::Value::Dict output;
+  base::Value::List out_peripherals;
+
+  for (const auto& peripheral : bluetooth_scanning_detail->peripherals) {
+    base::Value::Dict out_peripheral;
+    base::Value::List out_rssi_history;
+    for (const auto& rssi : peripheral->rssi_history) {
+      out_rssi_history.Append(std::move(rssi));
+    }
+    out_peripheral.Set("rssi_history", std::move(out_rssi_history));
+    if (peripheral->name.has_value())
+      out_peripheral.Set("name", peripheral->name.value());
+    if (peripheral->peripheral_id.has_value())
+      out_peripheral.Set("peripheral_id", peripheral->peripheral_id.value());
+
+    out_peripherals.Append(std::move(out_peripheral));
+  }
+
+  output.Set("peripherals", std::move(out_peripherals));
+  return output;
+}
+
 base::Value::Dict ParseUfsLifetimeDetail(
     const mojom::UfsLifetimeRoutineDetailPtr& ufs_lifetime_detail) {
   base::Value::Dict output;

@@ -5,6 +5,7 @@
 #include "diagnostics/mojom/routine_output_utils.h"
 
 #include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -70,6 +71,43 @@ TEST(RoutineOutputUtilsTest, ParseBluetoothPowerDetail) {
   expected_result.Set("power_off_result", std::move(power_off_result));
   expected_result.Set("power_on_result", std::move(power_on_result));
   EXPECT_EQ(ParseBluetoothPowerDetail(detail), expected_result);
+}
+
+TEST(RoutineOutputUtilsTest, ParseBluetoothScanningDetail) {
+  auto detail = mojom::BluetoothScanningRoutineDetail::New();
+  auto peripheral1 = mojom::BluetoothScannedPeripheralInfo::New();
+  peripheral1->rssi_history = std::vector<int16_t>{-40, -50, -60};
+  peripheral1->name = "TEST_PERIPHERAL_1";
+  peripheral1->peripheral_id = "TEST_ID_1";
+  detail->peripherals.push_back(std::move(peripheral1));
+
+  auto peripheral2 = mojom::BluetoothScannedPeripheralInfo::New();
+  peripheral2->rssi_history = std::vector<int16_t>{-100, -90, -80};
+  peripheral2->name = std::nullopt;
+  peripheral2->peripheral_id = std::nullopt;
+  detail->peripherals.push_back(std::move(peripheral2));
+
+  base::Value::Dict expected_peripheral1;
+  base::Value::List expected_rssi_history1;
+  expected_rssi_history1.Append(-40);
+  expected_rssi_history1.Append(-50);
+  expected_rssi_history1.Append(-60);
+  expected_peripheral1.Set("rssi_history", std::move(expected_rssi_history1));
+  expected_peripheral1.Set("name", "TEST_PERIPHERAL_1");
+  expected_peripheral1.Set("peripheral_id", "TEST_ID_1");
+  base::Value::Dict expected_peripheral2;
+  base::Value::List expected_rssi_history2;
+  expected_rssi_history2.Append(-100);
+  expected_rssi_history2.Append(-90);
+  expected_rssi_history2.Append(-80);
+  expected_peripheral2.Set("rssi_history", std::move(expected_rssi_history2));
+  base::Value::List expected_peripherals;
+  expected_peripherals.Append(std::move(expected_peripheral1));
+  expected_peripherals.Append(std::move(expected_peripheral2));
+
+  base::Value::Dict expected_result;
+  expected_result.Set("peripherals", std::move(expected_peripherals));
+  EXPECT_EQ(ParseBluetoothScanningDetail(detail), expected_result);
 }
 
 TEST(RoutineOutputUtilsTest, ParseUfsLifetimeDetail) {

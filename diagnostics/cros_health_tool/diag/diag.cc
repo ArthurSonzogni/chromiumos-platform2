@@ -316,6 +316,19 @@ int BluetoothDiscoveryV2Main(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(BluetoothDiscovery);
 }
 
+int BluetoothScanningV2Main(int argc, char** argv) {
+  DEFINE_uint32(length_seconds, 0, "Number of seconds to run the routine for.");
+  COMMON_V2_ROUTINE_FLAGS("Bluetooth scanning routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  auto argument = mojom::BluetoothScanningRoutineArgument::New();
+  if (command_line->HasSwitch("length_seconds")) {
+    argument->exec_duration = base::Seconds(FLAGS_length_seconds);
+  }
+
+  COMMON_V2_ROUTINE_MAIN(BluetoothScanning);
+}
+
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
   DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(), \
                 "If specified, will attempt to cancel the routine when its "   \
@@ -722,8 +735,7 @@ int BluetoothDiscoveryMain(int argc, char** argv) {
 
 int BluetoothScanningMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_uint32(length_seconds, 10,
-                "Number of seconds to run the routine for.");
+  DEFINE_uint32(length_seconds, 0, "Number of seconds to run the routine for.");
   brillo::FlagHelper::Init(argc, argv, "Bluetooth scanning routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
@@ -801,6 +813,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"bluetooth_power_v2", BluetoothPowerV2Main},
     {"bluetooth_discovery_v2", BluetoothDiscoveryV2Main},
     {"fan", FanMain},
+    {"bluetooth_scanning_v2", BluetoothScanningV2Main},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},
