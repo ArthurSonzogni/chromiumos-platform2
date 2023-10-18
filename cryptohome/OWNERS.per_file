@@ -1,0 +1,3 @@
+# Grant broader access to platform.* and dircrypto_util.*
+per-file platform*=gwendal@chromium.org,hashimoto@chromium.org
+per-file dircrypto_util*=gwendal@chromium.org,hashimoto@chromium.org

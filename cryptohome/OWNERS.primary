@@ -1,0 +1,13 @@
+# Primary owners of cryptohome. This is designed to be reusable as a standard
+# set of owners for any cryptohome-related directory in a chromiumos repo. It
+# should not include any directives like noparent or per-file that would make
+# it difficult to reuse in other locations.
+
+# Security team owners
+include chromiumos/owners:v1:/security/OWNERS.cryptohome
+
+# Other team owners
+apronin@chromium.org
+dlunev@chromium.org
+yich@google.com
+zuan@chromium.org
