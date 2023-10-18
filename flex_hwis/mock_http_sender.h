@@ -18,15 +18,15 @@ class MockHttpSender : public HttpSender {
 
   MOCK_METHOD(bool,
               DeleteDevice,
-              (const hwis_proto::Device& content),
+              (const hwis_proto::DeleteDevice& device_info),
               (override));
   MOCK_METHOD(bool,
               UpdateDevice,
-              (const hwis_proto::Device& content),
+              (const hwis_proto::Device& device_info),
               (override));
-  MOCK_METHOD(PostActionResponse,
+  MOCK_METHOD(DeviceRegisterResult,
               RegisterNewDevice,
-              (const hwis_proto::Device& content),
+              (const hwis_proto::Device& device_info),
               (override));
 };
 }  // namespace flex_hwis

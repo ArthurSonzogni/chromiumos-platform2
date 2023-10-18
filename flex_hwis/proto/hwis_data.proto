@@ -5,6 +5,10 @@
 syntax = "proto3";
 package hwis_proto;
 
+message DeleteDevice {
+  string name = 1;
+}
+
 message Device {
   enum BusType {
     UNDEFINED = 0;
@@ -83,16 +87,15 @@ message Device {
   }
 
   string name = 1;
-  string uuid = 2;
-  DmiInfo dmi_info = 3;
-  Bios bios = 4;
-  repeated Cpu cpu = 5;
-  Memory memory = 6;
-  repeated EthernetAdapter ethernet_adapter = 7;
-  repeated WirelessAdapter wireless_adapter = 8;
-  repeated BluetoothAdapter bluetooth_adapter = 9;
-  repeated Gpu gpu = 10;
-  GraphicsInfo graphics_info = 11;
-  Touchpad touchpad = 12;
+  DmiInfo dmi_info = 2;
+  Bios bios = 3;
+  repeated Cpu cpu = 4;
+  Memory memory = 5;
+  repeated EthernetAdapter ethernet_adapter = 6;
+  repeated WirelessAdapter wireless_adapter = 7;
+  repeated BluetoothAdapter bluetooth_adapter = 8;
+  repeated Gpu gpu = 9;
+  GraphicsInfo graphics_info = 10;
+  Touchpad touchpad = 11;
   TPM tpm = 13;
 }

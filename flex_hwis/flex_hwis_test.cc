@@ -124,11 +124,11 @@ class FlexHwisTest : public ::testing::Test {
 
   void ExpectRegisterAction(bool api_call_success) {
     hwis_proto::Device hardware_info;
-    hardware_info.set_uuid(kUuidForTesting);
-    PostActionResponse response(api_call_success,
+    hardware_info.set_name(kUuidForTesting);
+    DeviceRegisterResult result(api_call_success,
                                 hardware_info.SerializeAsString());
     EXPECT_CALL(mock_http_sender_, RegisterNewDevice(_))
-        .WillOnce(Return(response));
+        .WillOnce(Return(result));
     ExpectApiMetric(kPostMetricName, api_call_success);
   }
 

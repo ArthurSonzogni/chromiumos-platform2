@@ -10,10 +10,10 @@
 #include <string>
 
 namespace flex_hwis {
-class PostActionResponse {
+class DeviceRegisterResult {
  public:
   bool success = false;
-  std::string serialized_uuid;
+  std::string device_id;
 };
 
 // Sender implemented using brillo HTTP library.
@@ -28,15 +28,15 @@ class HttpSender {
   // Send a delete request to the HWIS server to delete the hardware
   // data if the user does not grant permission and there is a device
   // ID on the client side.
-  virtual bool DeleteDevice(const hwis_proto::Device& content);
+  virtual bool DeleteDevice(const hwis_proto::DeleteDevice& device_info);
   // Send a post request to the HWIS server to create a new hardware
   // information entry in the database if the device ID doesn’t exist
   // on the client side.
-  virtual PostActionResponse RegisterNewDevice(
-      const hwis_proto::Device& content);
+  virtual DeviceRegisterResult RegisterNewDevice(
+      const hwis_proto::Device& device_info);
   // Send a put request to the HWIS server to replace an existing device
   // entry in the database if the device ID exists on the client side.
-  virtual bool UpdateDevice(const hwis_proto::Device& content);
+  virtual bool UpdateDevice(const hwis_proto::Device& device_info);
 
  private:
   const std::string server_url_;

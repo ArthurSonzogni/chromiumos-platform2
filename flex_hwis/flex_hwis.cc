@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "flex_hwis/flex_hwis.h"
+#include "flex_hwis/hwis_data.pb.h"
 
 #include <string>
 #include <utility>
@@ -75,11 +76,12 @@ Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
   // Exit if the device does not have permission to send data to the server.
   if (!permission_info.permission) {
     if (uuid) {
-      hardware_info.set_uuid(uuid.value());
       // If the user does not consent to share hardware data, the HWIS service
       // must delete the client's UUID after confirming that the request to
       // delete the hardware data to the server is successfully.
-      if (sender_.DeleteDevice(hardware_info)) {
+      hwis_proto::DeleteDevice delete_device;
+      delete_device.set_name(uuid.value());
+      if (sender_.DeleteDevice(delete_device)) {
         check_.DeleteUuid();
       }
     }
@@ -91,23 +93,22 @@ Result FlexHwisSender::CollectAndSend(MetricsLibraryInterface& metrics,
   bool api_call_success = false;
   std::string metric_name;
 
-  // If the device ID is not in the client side, client should do post request.
-  // If the device ID already exists, then it should be a put request.
+  // If device ID is not in client side, client should register a new device.
+  // If device ID already exists, then the client should update the device.
   if (uuid) {
-    hardware_info.set_uuid(uuid.value());
+    hardware_info.set_name(uuid.value());
     api_call_success = sender_.UpdateDevice(hardware_info);
     metric_name = kPutMetricName;
   } else {
-    PostActionResponse response = sender_.RegisterNewDevice(hardware_info);
-    api_call_success = response.success;
+    DeviceRegisterResult register_result =
+        sender_.RegisterNewDevice(hardware_info);
+    api_call_success = register_result.success;
     metric_name = kPostMetricName;
 
-    // If the POST API stores data successfully, the server will return a
+    // If the device is successfully registered, the server will return a
     // device ID. The client must save this device ID in the local file.
     if (api_call_success) {
-      hwis_proto::Device response_proto;
-      response_proto.ParsePartialFromString(response.serialized_uuid);
-      check_.SetUuid(response_proto.uuid());
+      check_.SetUuid(register_result.device_id);
     }
   }
 
