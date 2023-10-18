@@ -833,16 +833,6 @@ int ChromeosStartup::Run() {
   return 0;
 }
 
-// Temporary function during the migration of the code. Run the bash
-// version of chromeos_startup, which has been copied to chromeos_startup.sh
-// to allow editing without effecting existing script. As more functionality
-// moves to c++, it will be removed from chromeos_startup.sh.
-int ChromeosStartup::RunChromeosStartupScript() {
-  brillo::ProcessImpl proc;
-  proc.AddArg("/sbin/chromeos_startup.sh");
-  return proc.Run();
-}
-
 // Check whether the device is allowed to boot in dev mode.
 // 1. If a debug build is already installed on the system, ignore block_devmode.
 //    It is pointless in this case, as the device is already in a state where
