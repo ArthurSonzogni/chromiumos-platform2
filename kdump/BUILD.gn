@@ -1,0 +1,21 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [
+    ":install_upstart_configs",
+    ":install_upstart_scripts",
+  ]
+}
+
+install_config("install_upstart_configs") {
+  sources = [ "init/kdump-dev.conf" ]
+  install_path = "upstart"
+}
+
+install_config("install_upstart_scripts") {
+  sources = [ "scripts/kdump-dev.sh" ]
+  install_path = "/usr/share/kdump"
+  options = "-m0755"
+}
