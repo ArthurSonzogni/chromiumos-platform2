@@ -20,8 +20,7 @@ bool FileAutoLock::lock() {
     PLOG(ERROR) << "Cannot open lockfile " << lock_path_;
     return false;
   }
-  locked_ = HANDLE_EINTR(flock(fd_.get(), LOCK_EX)) == 0;
-  if (!locked_) {
+  if (HANDLE_EINTR(flock(fd_.get(), LOCK_EX)) != 0) {
     PLOG(ERROR) << "Lock attempt failed for " << lock_path_;
     return false;
   }
@@ -34,8 +33,7 @@ bool FileAutoLock::unlock() {
     return false;
   }
 
-  locked_ = HANDLE_EINTR(flock(fd_.get(), LOCK_UN)) != 0;
-  if (!locked_) {
+  if (HANDLE_EINTR(flock(fd_.get(), LOCK_UN)) != 0) {
     PLOG(ERROR) << "Lock release failed for " << lock_path_;
     return false;
   }

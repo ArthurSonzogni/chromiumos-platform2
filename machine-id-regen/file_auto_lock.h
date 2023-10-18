@@ -14,7 +14,7 @@ namespace machineidregen {
 class FileAutoLock {
  public:
   explicit FileAutoLock(const base::FilePath& lock_path)
-      : locked_(false), lock_path_(lock_path) {}
+      : lock_path_(lock_path) {}
 
   ~FileAutoLock() {}
 
@@ -27,7 +27,6 @@ class FileAutoLock {
 
  private:
   base::ScopedFD fd_;
-  bool locked_;
   const base::FilePath lock_path_;
 };
 
