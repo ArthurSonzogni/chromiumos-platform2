@@ -120,6 +120,10 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
         "UserDataAuth",
         "system_api/dbus/cryptohome/UserDataAuth.proto",
     ),
+    (
+        "vm_memory_management",
+        "system_api/non_standard_ipc/vm_memory_management/vm_memory_management.proto",
+    ),
     ("vtpm_interface", "vtpm/vtpm_interface.proto"),
     (
         "update_engine",
