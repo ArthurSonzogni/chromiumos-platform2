@@ -100,6 +100,11 @@ class Service final : public org::chromium::VmConciergeInterface,
   // TODO(b/296025701): Move code out of this method and into async helpers.
   bool Init();
 
+  // Initialize VmMemoryManagementService. Returns true if the feature is
+  // disabled or enabled successfully. Returns false on failure to enable the
+  // service.
+  bool InitVmMemoryManagementService();
+
   // Handles the termination of a child process.
   void HandleChildExit();
 
@@ -296,10 +301,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   void AggressiveBalloon(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                              AggressiveBalloonResponse>> response,
                          const AggressiveBalloonRequest& request) override;
-
-  // Enables and initializes the VM Memory Management Service
-  EnableVmMemoryManagementServiceResponse EnableVmMemoryManagementService(
-      const EnableVmMemoryManagementServiceRequest& request) override;
 
   // Returns an opened FD to the VM memory management kills server.
   void GetVmMemoryManagementKillsConnection(
@@ -579,6 +580,9 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // The timeout arc should use for kill decision requests.
   base::TimeDelta arc_kill_decision_timeout_;
+
+  // The timeout host clients should use for kill decision requests.
+  base::TimeDelta host_kill_decision_timeout_;
 
   // The VM Memory Management service
   std::unique_ptr<mm::MmService> vm_memory_management_service_

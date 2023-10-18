@@ -262,6 +262,28 @@ constexpr char kVmmSwapTbwHistoryFilePath[] =
 // system bus (usually 32 MiB).
 constexpr int64_t kMaxGetVmLogsSize = MiB(30);
 
+// A feature name for enabling VmMemoryManagementService (i.e. no-poll balloon)
+constexpr char kVmMemoryManagementServiceFeatureName[] =
+    "CrOSLateBootVmMemoryManagementService";
+// Parameter name for |kVmMemoryManagementServiceFeatureName| that specifies
+// the number of milliseconds ARC will wait before aborting a kill decision.
+// Default value is 100ms.
+constexpr char kVmMemoryManagementArcKillDecisionMsTimeoutParam[] =
+    "ArcMsTimeout";
+// Default value for kVmMemoryManagementArcKillDecisionMsTimeoutParam
+constexpr int kVmMemoryManagementArcKillDecisionMsTimeoutDefault = 100;
+// Parameter name for |kVmMemoryManagementServiceFeatureName| that specifies
+// the number of milliseconds host clients will wait before aborting a kill
+// decision. Default value is 300ms.
+constexpr char kVmMemoryManagementHostKillDecisionMsTimeoutParam[] =
+    "HostMsTimeout";
+// Default value for kVmMemoryManagementHostKillDecisionMsTimeoutParam
+constexpr int kVmMemoryManagementHostKillDecisionMsTimeoutDefault = 300;
+
+// Needs to be const as libfeatures does pointers checking.
+const VariationsFeature kVmMemoryManagementServiceFeature{
+    kVmMemoryManagementServiceFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+
 // Fds to all the images required while starting a VM.
 struct VmStartImageFds {
   std::optional<base::ScopedFD> kernel_fd;
@@ -1653,6 +1675,63 @@ bool Service::Init() {
   // is safe to continue using regardless of the result.
   vmm_swap_tbw_policy_->Init();
 
+  if (!InitVmMemoryManagementService()) {
+    LOG(ERROR) << "Failed to start VM memory management service";
+    return false;
+  }
+
+  return true;
+}
+
+bool Service::InitVmMemoryManagementService() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // The VM Memory Management Service has a dependency on VSOCK Loopback and
+  // cannot be enabled on kernels older than 5.4
+  auto kernel_version = GetKernelVersion();
+  if (kernel_version.first < 5 ||
+      (kernel_version.first == 5 && kernel_version.second < 4)) {
+    LOG(INFO) << "VmMemoryManagementService not supported by kernel";
+    return true;
+  }
+
+  const feature::PlatformFeatures::ParamsResult& result =
+      feature::PlatformFeatures::Get()->GetParamsAndEnabledBlocking(
+          {&kVmMemoryManagementServiceFeature});
+
+  const auto result_iter = result.find(kVmMemoryManagementServiceFeatureName);
+  if (result_iter == result.end()) {
+    LOG(INFO) << "VmMemoryManagementService feature flag not found";
+    return true;
+  }
+
+  const auto& entry = result_iter->second;
+  if (!entry.enabled) {
+    LOG(INFO) << "VmMemoryManagementService feature flag not enabled";
+    return true;
+  }
+
+  vm_memory_management_service_ = std::make_unique<mm::MmService>();
+
+  if (!vm_memory_management_service_->Start()) {
+    vm_memory_management_service_.reset();
+    LOG(ERROR) << "Failed to initialize VmMemoryManagementService.";
+    return false;
+  }
+
+  auto arc_timeout_ms =
+      FindIntValue(entry.params,
+                   kVmMemoryManagementArcKillDecisionMsTimeoutParam)
+          .value_or(kVmMemoryManagementArcKillDecisionMsTimeoutDefault);
+  arc_kill_decision_timeout_ = base::Milliseconds(arc_timeout_ms);
+
+  auto host_timeout_ms =
+      FindIntValue(entry.params,
+                   kVmMemoryManagementHostKillDecisionMsTimeoutParam)
+          .value_or(kVmMemoryManagementHostKillDecisionMsTimeoutDefault);
+  host_kill_decision_timeout_ = base::Milliseconds(host_timeout_ms);
+
+  LOG(INFO) << "Enabling VmMemoryManagementService";
   return true;
 }
 
@@ -4017,47 +4096,6 @@ void Service::AggressiveBalloon(
   }
 }
 
-EnableVmMemoryManagementServiceResponse
-Service::EnableVmMemoryManagementService(
-    const EnableVmMemoryManagementServiceRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
-  EnableVmMemoryManagementServiceResponse response;
-
-  // VmMemoryManagementService is already enabled. Do not return an error.
-  if (vm_memory_management_service_) {
-    response.set_success(true);
-    return response;
-  }
-
-  if (vms_.size() != 0) {
-    static constexpr char error[] =
-        "Cannot enable VmMemoryManagementService if VMs are already running.";
-    LOG(ERROR) << error;
-    response.set_failure_reason(error);
-    return response;
-  }
-
-  arc_kill_decision_timeout_ =
-      base::Milliseconds(request.arc_kill_request_timeout_ms());
-
-  // Initialize VmMemoryManagementService
-  vm_memory_management_service_ = std::make_unique<mm::MmService>();
-
-  if (!vm_memory_management_service_->Start()) {
-    vm_memory_management_service_.reset();
-    static constexpr char error[] =
-        "Failed to initialize VmMemoryManagementService.";
-    LOG(ERROR) << error;
-    response.set_failure_reason(error);
-    return response;
-  }
-
-  response.set_success(true);
-  return response;
-}
-
 void Service::GetVmMemoryManagementKillsConnection(
     const GetVmMemoryManagementKillsConnectionRequest&,
     GetVmMemoryManagementKillsConnectionResponse* response,
@@ -4082,6 +4120,8 @@ void Service::GetVmMemoryManagementKillsConnection(
   }
 
   response->set_success(true);
+  response->set_host_kill_request_timeout_ms(
+      host_kill_decision_timeout_.InMilliseconds());
   out_fd->push_back(std::move(fd));
 
   return;

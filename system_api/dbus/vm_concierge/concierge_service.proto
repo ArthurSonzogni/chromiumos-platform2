@@ -1541,21 +1541,6 @@ message AggressiveBalloonResponse {
   string failure_reason = 2;
 }
 
-// Request to enable the VmMemoryManagementService.
-message EnableVmMemoryManagementServiceRequest {
-  // The timeout ARC should use for kill requests.
-  uint32 arc_kill_request_timeout_ms = 1;
-}
-
-// Response to an EnableVmMemoryManagementService request.
-message EnableVmMemoryManagementServiceResponse {
-  // Whether the service was successfully enabled
-  bool success = 1;
-
-  // The reason for failure.
-  string failure_reason = 2;
-}
-
 // Request to get an open FD to the VM Memory Management kills server.
 message GetVmMemoryManagementKillsConnectionRequest {}
 
@@ -1565,6 +1550,9 @@ message GetVmMemoryManagementKillsConnectionRequest {}
 message GetVmMemoryManagementKillsConnectionResponse {
   // Whether the request was successful.
   bool success = 1;
+
+  // The timeout the client should use for kill requests.
+  uint32 host_kill_request_timeout_ms = 3;
 
   // The reason for failure.
   string failure_reason = 2;

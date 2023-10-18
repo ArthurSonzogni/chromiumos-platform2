@@ -216,22 +216,6 @@
         </tp:docstring>
       </arg>
     </method>
-    <method name="EnableVmMemoryManagementService">
-      <tp:docstring>
-        Enables the VM Memory Management service which allows for no-poll
-        and responsive ballooning for client VMs. After the first
-        successful call to this API, all subsequent calls will return success.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-      <arg type="ay" name="request" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::concierge::EnableVmMemoryManagementServiceRequest"/>
-      </arg>
-      <arg type="ay" name="response" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::concierge::EnableVmMemoryManagementServiceResponse"/>
-      </arg>
-    </method>
     <method name="ExportDiskImage">
       <tp:docstring>
         Exports a VM disk image.
@@ -365,7 +349,9 @@
       </arg>
       <arg type="ah" name="out_fd" direction="out">
         <tp:docstring>
-          On success, contains a single FD for communication with the server.
+          On success, contains a single FD for communication with the server. On
+          failure, the array will be empty (D-Bus does not support sending invalid
+          fds).
         </tp:docstring>
       </arg>
     </method>

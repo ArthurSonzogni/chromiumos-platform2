@@ -24,8 +24,6 @@ const char kDestroyDiskImageMethod[] = "DestroyDiskImage";
 const char kDetachNetDeviceMethod[] = "DetachNetDevice";
 const char kDetachUsbDeviceMethod[] = "DetachUsbDevice";
 const char kDiskImageStatusMethod[] = "DiskImageStatus";
-const char kEnableVmMemoryManagementServiceMethod[] =
-    "EnableVmMemoryManagementService";
 const char kExportDiskImageMethod[] = "ExportDiskImage";
 const char kGetContainerSshKeysMethod[] = "GetContainerSshKeys";
 const char kGetDnsSettingsMethod[] = "GetDnsSettings";
