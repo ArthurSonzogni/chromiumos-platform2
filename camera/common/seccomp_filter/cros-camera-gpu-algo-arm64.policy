@@ -74,6 +74,8 @@ rt_sigprocmask: 1
 rt_sigreturn: 1
 sched_getaffinity: 1
 sched_getattr: 1
+sched_getparam: 1
+sched_getscheduler: 1
 sched_setaffinity: 1
 sched_setattr: 1
 sched_setscheduler: 1
