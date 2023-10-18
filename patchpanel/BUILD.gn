@@ -128,7 +128,6 @@ static_library("libpatchpanel") {
     "counters_service.cc",
     "crostini_service.cc",
     "datapath.cc",
-    "device.cc",
     "dhcp_server_controller.cc",
     "downstream_network_service.cc",
     "firewall.cc",

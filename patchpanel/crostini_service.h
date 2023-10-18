@@ -19,7 +19,6 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/device.h"
 #include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/routing_service.h"
@@ -129,9 +128,6 @@ class CrostiniService {
   // type is needed for allocating static IPv4 subnets.
   static AddressManager::GuestType AddressManagingTypeFromVMType(
       VMType vm_type);
-  // Converts VMType to an internal Device::Type enum value. This type is needed
-  // for the internal Device class.
-  static Device::Type VirtualDeviceTypeFromVMType(VMType vm_type);
 
   // All pointers are required and must not be null, and are owned by the
   // caller.

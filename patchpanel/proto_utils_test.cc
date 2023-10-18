@@ -16,8 +16,8 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
+#include "patchpanel/arc_service.h"
 #include "patchpanel/crostini_service.h"
-#include "patchpanel/device.h"
 
 namespace patchpanel {
 

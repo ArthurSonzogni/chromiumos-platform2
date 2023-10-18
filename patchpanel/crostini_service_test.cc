@@ -457,13 +457,6 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
   EXPECT_EQ(AddressManager::GuestType::kParallelsVM,
             CrostiniService::AddressManagingTypeFromVMType(
                 CrostiniService::VMType::kParallels));
-
-  EXPECT_EQ(Device::Type::kTerminaVM,
-            CrostiniService::VirtualDeviceTypeFromVMType(
-                CrostiniService::VMType::kTermina));
-  EXPECT_EQ(Device::Type::kParallelsVM,
-            CrostiniService::VirtualDeviceTypeFromVMType(
-                CrostiniService::VMType::kParallels));
 }
 
 TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {

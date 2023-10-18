@@ -26,7 +26,6 @@
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/device.h"
 #include "patchpanel/ipc.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/proto_utils.h"
@@ -447,22 +446,6 @@ AddressManager::GuestType CrostiniService::AddressManagingTypeFromVMType(
       return AddressManager::GuestType::kTerminaVM;
     case VMType::kParallels:
       return AddressManager::GuestType::kParallelsVM;
-  }
-}
-
-// static
-Device::Type CrostiniService::VirtualDeviceTypeFromVMType(
-    CrostiniService::VMType vm_type) {
-  switch (vm_type) {
-    case VMType::kTermina:
-      return Device::Type::kTerminaVM;
-    case VMType::kParallels:
-      return Device::Type::kParallelsVM;
-    case VMType::kBruschetta:
-    case VMType::kBorealis:
-      // TODO(b/279994478): Clarify whether Bruschetta and Borealis need their
-      // own virtual device type.
-      return Device::Type::kTerminaVM;
   }
 }
 
