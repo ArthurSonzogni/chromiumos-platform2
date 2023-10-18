@@ -420,6 +420,10 @@ class Service : public base::RefCounted<Service> {
   // manager's advertised services list, false otherwise.
   virtual bool IsVisible() const { return true; }
 
+  // Returns true if there is a proxy configuration (excluding proxy setting
+  // "direct") set on this service.
+  mockable bool HasProxyConfig() const;
+
   // Returns whether this service has had recent connection issues.
   mockable bool HasRecentConnectionIssues();
 

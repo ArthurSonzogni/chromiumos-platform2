@@ -68,6 +68,7 @@ class MockService : public Service {
   MOCK_METHOD(bool, Is8021xConnectable, (), (const, override));
   MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));
+  MOCK_METHOD(bool, HasProxyConfig, (), (const, override));
   MOCK_METHOD(void, SetAttachedNetwork, (base::WeakPtr<Network>), (override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
   MOCK_METHOD(const EapCredentials*, eap, (), (const, override));

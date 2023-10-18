@@ -18,6 +18,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
@@ -73,6 +74,12 @@ const char kServiceSortTechnologySpecific[] = "TechnologySpecific";
 // (b/159725895).
 constexpr char kEphemeralPriorityProperty[] = "EphemeralPriority";
 
+// JSON keys and values for Service property ProxyConfig. Must be kept
+// consistent with chromium/src/components/proxy_config/proxy_prefs.cc and
+// shill/doc/service_api.txt.
+constexpr char kServiceProxyConfigMode[] = "mode";
+constexpr char kServiceProxyConfigModeDirect[] = "direct";
+
 std::valarray<uint64_t> CounterToValArray(
     const patchpanel::Client::TrafficCounter& counter) {
   return std::valarray<uint64_t>{counter.rx_bytes, counter.tx_bytes,
@@ -91,6 +98,20 @@ static constexpr std::array<const char*,
                             toUnderlying(Service::ONCSource::kONCSourcesNum)>
     ONCSourceMapping = {kONCSourceUnknown, kONCSourceNone, kONCSourceUserImport,
                         kONCSourceDevicePolicy, kONCSourceUserPolicy};
+
+// Get JSON value from |json| dictionary keyed by |key|.
+std::optional<std::string> GetJSONDictValue(std::string_view json,
+                                            std::string_view key) {
+  auto dict = base::JSONReader::ReadDict(json);
+  if (!dict) {
+    return std::nullopt;
+  }
+  auto val = dict->FindString(key);
+  if (!val) {
+    return std::nullopt;
+  }
+  return *val;
+}
 
 }  // namespace
 
@@ -1158,6 +1179,22 @@ bool Service::IsRemembered() const {
   return profile_ && !manager_->IsServiceEphemeral(this);
 }
 
+bool Service::HasProxyConfig() const {
+  if (proxy_config_.empty()) {
+    return false;
+  }
+
+  // Check if proxy "mode" is equal to "direct".
+  auto mode = GetJSONDictValue(proxy_config_, kServiceProxyConfigMode);
+  if (!mode) {
+    LOG(ERROR) << "Failed to parse proxy config: " << proxy_config_;
+    // Returns true here for backward compatibility. Previously, this method
+    // only checks whether or not |proxy_config_| is empty.
+    return true;
+  }
+  return *mode != kServiceProxyConfigModeDirect;
+}
+
 void Service::EnableAndRetainAutoConnect() {
   if (retain_auto_connect_) {
     // We do not want to clobber the value of auto_connect_ (it may
@@ -2026,11 +2063,17 @@ bool Service::IsPortalDetectionDisabled() const {
   // manager, since we don't have the ability to evaluate arbitrary proxy
   // configs and their possible credentials. One possible scenario for the case
   // is an on-prem proxy server with a strict firewall that blocks portal
-  // detection probes. As we don't check for proxy configurations, non-policy
-  // defined networks that have connectivity only through proxy can be
-  // mistakenly reported as not online. See also b/279520395.
+  // detection probes. See b/279520395.
   if (source_ == ONCSource::kONCSourceDevicePolicy ||
       source_ == ONCSource::kONCSourceUserPolicy) {
+    return true;
+  }
+
+  // We need to disable portal detection on networks with proxy config
+  // (excluding "direct"), even when the network is not managed, in order for
+  // on-prem proxy server with a strict firewall that blocks portal detection to
+  // be seen as online. See b/302126338.
+  if (HasProxyConfig()) {
     return true;
   }
 
