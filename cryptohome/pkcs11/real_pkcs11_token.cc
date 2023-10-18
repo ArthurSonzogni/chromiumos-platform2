@@ -36,6 +36,11 @@ RealPkcs11Token::~RealPkcs11Token() {
 }
 
 bool RealPkcs11Token::Insert() {
+  if (!auth_data_.has_value()) {
+    LOG(ERROR) << "No valid pkcs11 token auth value.";
+    return false;
+  }
+
   std::unique_ptr<chaps::TokenManagerClient> chaps_client(
       chaps_client_factory_->New());
 
@@ -43,19 +48,19 @@ bool RealPkcs11Token::Insert() {
   int slot_id = 0;
   if (!chaps_client->LoadToken(
           IsolateCredentialManager::GetDefaultIsolateCredential(), token_dir_,
-          auth_data_, pkcs11init.GetTpmTokenLabelForUser(username_),
+          *auth_data_, pkcs11init.GetTpmTokenLabelForUser(username_),
           &slot_id)) {
     LOG(ERROR) << "Failed to load PKCS #11 token.";
     ReportCryptohomeError(kLoadPkcs11TokenFailed);
 
     // We should not do it if we failed, but keep it to preserve the behaviour.
-    auth_data_.clear();
+    auth_data_ = std::nullopt;
     ready_ = true;
 
     return false;
   }
 
-  auth_data_.clear();
+  auth_data_ = std::nullopt;
   ready_ = true;
 
   return true;

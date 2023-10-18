@@ -8,6 +8,7 @@
 #include "cryptohome/pkcs11/pkcs11_token.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -36,7 +37,9 @@ class RealPkcs11Token final : public Pkcs11Token {
   const Username username_;
   const base::FilePath token_dir_;
   // Auth data is non-const for we have to reset it once used.
-  brillo::SecureBlob auth_data_;
+  // Note: We need to distinguish between "empty" and "null", because the auth
+  // data for ephemeral user is empty string.
+  std::optional<brillo::SecureBlob> auth_data_;
 
   const std::unique_ptr<ChapsClientFactory> chaps_client_factory_;
 
