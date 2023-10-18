@@ -530,6 +530,7 @@ if (use.test) {
       "brillo/streams/stream_test.cc",
       "brillo/streams/stream_utils_test.cc",
       "brillo/strings/string_utils_test.cc",
+      "brillo/syslog_logging_test.cc",
       "brillo/timers/alarm_timer_test.cc",
       "brillo/timezone/tzif_parser_test.cc",
       "brillo/tracing_test.cc",
