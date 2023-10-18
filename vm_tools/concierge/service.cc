@@ -831,6 +831,23 @@ ReclaimVmMemoryResponse ReclaimVmMemoryInternal(pid_t pid, int32_t page_limit) {
   return response;
 }
 
+std::optional<int> FindIntValue(
+    const std::map<std::string, std::string>& params, std::string key) {
+  auto params_iter = params.find(key);
+  if (params_iter == params.end()) {
+    LOG(ERROR) << "Couldn't find the parameter: " << key;
+    return std::nullopt;
+  }
+
+  int val;
+  if (!base::StringToInt(params_iter->second, &val)) {
+    LOG(ERROR) << "Failed to parse " << key
+               << " parameter as int: " << params_iter->second;
+    return std::nullopt;
+  }
+  return std::optional<int>(val);
+}
+
 }  // namespace
 
 base::FilePath Service::GetVmGpuCachePathInternal(const std::string& owner_id,
@@ -4944,20 +4961,13 @@ int Service::GetCpuQuota() {
     return kCpuPercentUnlimited;  // cfs_quota feature is disabled.
   }
 
-  auto params_iter = entry.params.find(kArcVmInitialThrottleFeatureQuotaParam);
-  if (params_iter == entry.params.end()) {
-    LOG(ERROR) << "Couldn't find the parameter: "
-               << kArcVmInitialThrottleFeatureQuotaParam;
+  auto quota =
+      FindIntValue(entry.params, kArcVmInitialThrottleFeatureQuotaParam);
+  if (!quota) {
     return kCpuPercentUnlimited;
   }
 
-  int quota;
-  if (!base::StringToInt(params_iter->second, &quota)) {
-    LOG(ERROR) << "Failed to parse quota parameter as int: "
-               << params_iter->second;
-    return kCpuPercentUnlimited;
-  }
-  return std::min(100, std::max(1, quota));
+  return std::min(100, std::max(1, *quota));
 }
 
 void Service::OnStatefulDiskSpaceUpdate(
