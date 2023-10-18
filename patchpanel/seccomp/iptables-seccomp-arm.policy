@@ -16,6 +16,7 @@ munmap: 1
 openat: 1
 read: 1
 fstatfs64: 1
+gettid: 1
 capset: 1
 capget: 1
 setsockopt: 1

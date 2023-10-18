@@ -19,6 +19,7 @@ capget: 1
 capset: 1
 setsockopt: 1
 fstatfs: 1
+gettid: 1
 setgroups: 1
 setresgid: 1
 setresuid: 1

@@ -14,6 +14,7 @@ newfstatat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
 fstatfs: 1
+gettid: 1
 read: 1
 munmap: 1
 write: 1
