@@ -46,6 +46,11 @@ class BRILLO_EXPORT Metadata : public MetadataInterface {
   bool LoadMetadata(const DlcId& id) override;
   void UpdateFileIds() override;
 
+  DlcIdList ListDlcIds(const FilterKey& filter_key,
+                       const base::Value& filter_val) override;
+  std::optional<std::string> FilterKeyToString(
+      const FilterKey& key_enum) override;
+
   const base::Value::Dict& GetCache() const override { return cache_; }
   const std::set<DlcId>& GetFileIds() const override { return file_ids_; }
 
@@ -59,6 +64,9 @@ class BRILLO_EXPORT Metadata : public MetadataInterface {
   // Flush `compressed_metadata_` to a metadata file, and name it
   // `kMetadataPrefix``file_id`.
   bool FlushBuffer(const DlcId& file_id);
+
+  // Get DLC IDs from an indexed manifest field. Returns nullopt on error.
+  std::optional<DlcIdList> GetIndex(const std::string& key);
 
   const base::FilePath metadata_path_;
   // The maximum size of each metadata file, align with the filesystem block

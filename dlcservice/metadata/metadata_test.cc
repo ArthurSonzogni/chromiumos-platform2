@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -15,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "dlcservice/metadata/metadata.h"
+#include "dlcservice/metadata/metadata_interface.h"
 #include "dlcservice/metadata/mock_compressor.h"
 
 using testing::_;
@@ -24,6 +26,7 @@ namespace dlcservice::metadata {
 
 constexpr char kFirstDlc[] = "first-dlc";
 constexpr char kSecondDlc[] = "second-dlc";
+constexpr char kThirdDlc[] = "third-dlc";
 constexpr char kMetadataTemplate[] = R"("%s":{"manifest":%s,"table":"%s"},)";
 
 class MetadataTest : public testing::Test {
@@ -166,6 +169,31 @@ TEST_F(MetadataTest, ModifyMetadataToLargerContent) {
         &modified_file));
     EXPECT_EQ(modified_file, modified);
   }
+}
+
+TEST_F(MetadataTest, ListAndFilterDlcIds) {
+  std::string mock_metadata1 =
+      base::StringPrintf(kMetadataTemplate, kFirstDlc,
+                         "{\"factory-install\":\"str_val\"}", kFirstDlc);
+  std::string mock_metadata2 = base::StringPrintf(
+      kMetadataTemplate, kSecondDlc, "{\"preload-allowed\":true}", kSecondDlc);
+  std::string mock_metadata3 = base::StringPrintf(
+      kMetadataTemplate, kThirdDlc, "{\"powerwash-safe\":123}", kThirdDlc);
+  EXPECT_CALL(*decompressor_ptr_, Reset).WillOnce(Return(true));
+  EXPECT_CALL(*decompressor_ptr_, Process)
+      .WillRepeatedly(Return(mock_metadata1 + mock_metadata2 + mock_metadata3));
+
+  EXPECT_EQ(metadata_->ListDlcIds(Metadata::FilterKey::kNone, base::Value()),
+            std::vector<DlcId>({kFirstDlc, kSecondDlc, kThirdDlc}));
+  EXPECT_EQ(metadata_->ListDlcIds(Metadata::FilterKey::kFactoryInstall,
+                                  base::Value("str_val")),
+            std::vector<DlcId>({kFirstDlc}));
+  EXPECT_EQ(metadata_->ListDlcIds(Metadata::FilterKey::kPreloadAllowed,
+                                  base::Value(true)),
+            std::vector<DlcId>({kSecondDlc}));
+  EXPECT_EQ(metadata_->ListDlcIds(Metadata::FilterKey::kPowerwashSafe,
+                                  base::Value(123)),
+            std::vector<DlcId>({kThirdDlc}));
 }
 
 }  // namespace dlcservice::metadata

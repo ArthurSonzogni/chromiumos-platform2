@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <iostream>
-#include <memory>
 #include <optional>
 #include <string>
 
@@ -24,8 +23,8 @@
 using dlcservice::metadata::Metadata;
 
 namespace {
-bool CheckExclusiveFlags(const std::vector<bool>& flags) {
-  return std::count(std::begin(flags), std::end(flags), true) == 1;
+int CountExclusiveFlags(const std::vector<bool>& flags) {
+  return std::count(std::begin(flags), std::end(flags), true);
 }
 }  // namespace
 
@@ -43,11 +42,13 @@ class DlcMetadataUtil {
   enum Action {
     kGetAction,
     kSetAction,
+    kListAction,
   };
 
   bool ParseFlags();
   int SetMetadata();
   int GetMetadata();
+  int ListDlcIds();
   std::optional<Metadata::Entry> ReadMetadataEntry();
 
   int argc_;
@@ -56,6 +57,7 @@ class DlcMetadataUtil {
   Action action_;
   std::string id_;
   base::FilePath file_path_;
+  Metadata::FilterKey filter_key_;
 
   Metadata metadata_{base::FilePath(imageloader::kDlcManifestRootpath)};
 };
@@ -74,31 +76,59 @@ int DlcMetadataUtil::Run() {
       return GetMetadata();
     case kSetAction:
       return SetMetadata();
+    case kListAction:
+      return ListDlcIds();
   }
 }
 
 bool DlcMetadataUtil::ParseFlags() {
   DEFINE_bool(get, false, "Get the metadata and print to stdout as JSON");
   DEFINE_bool(set, false, "Set the metadata from input JSON");
+  DEFINE_bool(list, false, "List all DLC IDs, or a subset if filters is given");
   DEFINE_string(id, "", "The ID of the DLC");
   DEFINE_string(file, "", "Use the file instead of stdin/stdout");
+  DEFINE_bool(factory_install, false, "Filter factory installed DLCs");
+  DEFINE_bool(powerwash_safe, false, "Filter powerwash safe DLCs");
+  DEFINE_bool(preload_allowed, false, "Filter preload allowed DLCs");
 
   brillo::FlagHelper::Init(argc_, argv_, "dlc_metadata_util");
 
-  if (!CheckExclusiveFlags({FLAGS_get, FLAGS_set})) {
-    LOG(ERROR) << "One of the 'get' or 'set' option should be specified.";
+  if (CountExclusiveFlags({FLAGS_get, FLAGS_set, FLAGS_list}) != 1) {
+    LOG(ERROR)
+        << "One of the 'get', 'set' or 'list' option should be specified.";
     return false;
   }
+
   if (FLAGS_get) {
     action_ = kGetAction;
-  } else {
+  } else if (FLAGS_set) {
     action_ = kSetAction;
+  } else if (FLAGS_list) {
+    action_ = kListAction;
+  } else {
+    LOG(ERROR) << "Invalid option.";
+    return false;
   }
 
   id_ = FLAGS_id;
-  if (id_.empty()) {
+  if ((FLAGS_get || FLAGS_set) && id_.empty()) {
     LOG(ERROR) << "DLC ID cannot be empty.";
     return false;
+  }
+
+  if (CountExclusiveFlags({FLAGS_factory_install, FLAGS_powerwash_safe,
+                           FLAGS_preload_allowed}) > 1) {
+    LOG(ERROR) << "At most one filter is supported.";
+    return false;
+  }
+  if (FLAGS_factory_install) {
+    filter_key_ = Metadata::FilterKey::kFactoryInstall;
+  } else if (FLAGS_powerwash_safe) {
+    filter_key_ = Metadata::FilterKey::kPowerwashSafe;
+  } else if (FLAGS_preload_allowed) {
+    filter_key_ = Metadata::FilterKey::kPreloadAllowed;
+  } else {
+    filter_key_ = Metadata::FilterKey::kNone;
   }
 
   file_path_ = base::FilePath(FLAGS_file);
@@ -136,6 +166,18 @@ int DlcMetadataUtil::SetMetadata() {
   }
 
   return metadata_.Set(id_, *entry) ? EX_OK : EX_SOFTWARE;
+}
+
+int DlcMetadataUtil::ListDlcIds() {
+  const auto& ids = metadata_.ListDlcIds(filter_key_, base::Value(true));
+  auto id_list = base::Value::List::with_capacity(ids.size());
+  for (const auto& id : ids)
+    id_list.Append(id);
+
+  std::string json;
+  base::JSONWriter::Write(id_list, &json);
+  std::cout << json;
+  return EX_OK;
 }
 
 std::optional<Metadata::Entry> DlcMetadataUtil::ReadMetadataEntry() {

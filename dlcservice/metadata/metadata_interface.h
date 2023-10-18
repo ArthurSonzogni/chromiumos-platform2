@@ -8,12 +8,14 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/values.h>
 
 namespace dlcservice::metadata {
 
 using DlcId = std::string;
+using DlcIdList = std::vector<DlcId>;
 
 class MetadataInterface {
  public:
@@ -26,6 +28,13 @@ class MetadataInterface {
   struct Entry {
     base::Value::Dict manifest;
     std::string table;
+  };
+
+  enum class FilterKey {
+    kNone,
+    kFactoryInstall,
+    kPowerwashSafe,
+    kPreloadAllowed
   };
 
   // Initialize the metadata.
@@ -44,6 +53,17 @@ class MetadataInterface {
   // Update the `file_id`s inside current metadata directory. This needs to be
   // called after constructed the object.
   virtual void UpdateFileIds() = 0;
+
+  // Get a list of DLC IDs, optionally filter and return only the ones that
+  // match given manifest key and value. Set the key to `FilterKey::kNone` to
+  // skip filtering.
+  // NOTE: May be slow for unindexed filter keys.
+  virtual DlcIdList ListDlcIds(const FilterKey& filter_key,
+                               const base::Value& filter_val) = 0;
+
+  // Convert `FilterKey` enum to std::string. Returns nullopt on error.
+  virtual std::optional<std::string> FilterKeyToString(
+      const FilterKey& key_enum) = 0;
 
   // Getter for cached raw data.
   virtual const base::Value::Dict& GetCache() const = 0;

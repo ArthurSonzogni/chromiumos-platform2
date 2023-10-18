@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -17,15 +18,25 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/values.h>
 
 #include "dlcservice/metadata/compressor_interface.h"
+#include "dlcservice/metadata/metadata_interface.h"
 #include "dlcservice/metadata/zlib_compressor.h"
 
 namespace dlcservice::metadata {
 
 namespace {
 constexpr char kMetadataFilePattern[] = "_metadata_*";
+
+constexpr char kManifest[] = "manifest";
+constexpr char kTable[] = "table";
+
+constexpr char kKeyStringFactoryInstall[] = "factory-install";
+constexpr char kKeyStringPowerwashSafe[] = "powerwash-safe";
+constexpr char kKeyStringPreloadAllowed[] = "preload-allowed";
 }  // namespace
 
 const size_t kMaxMetadataFileSize = 4096;
@@ -67,14 +78,14 @@ std::optional<Metadata::Entry> Metadata::Get(const DlcId& id) {
 
   Metadata::Entry entry;
 
-  auto* manifest_val = metadata_val->FindDict("manifest");
+  auto* manifest_val = metadata_val->FindDict(kManifest);
   if (!manifest_val) {
     LOG(ERROR) << "Could not get manifest for DLC=" << id;
     return std::nullopt;
   }
   entry.manifest = manifest_val->Clone();
 
-  auto* table_str = metadata_val->FindString("table");
+  auto* table_str = metadata_val->FindString(kTable);
   if (!table_str) {
     LOG(ERROR) << "Could not get table for DLC=" << id;
     return std::nullopt;
@@ -91,8 +102,8 @@ bool Metadata::Set(const DlcId& id, const Metadata::Entry& entry) {
   }
 
   cache_.Set(id, base::Value::Dict()
-                     .Set("manifest", entry.manifest.Clone())
-                     .Set("table", entry.table));
+                     .Set(kManifest, entry.manifest.Clone())
+                     .Set(kTable, entry.table));
   // Update the `file_ids_` since new file may be created after modification.
   if (FlushCache()) {
     UpdateFileIds();
@@ -256,6 +267,77 @@ bool Metadata::LoadMetadata(const DlcId& id) {
 
   cache_ = std::move(metadata_val->GetDict());
   return true;
+}
+
+DlcIdList Metadata::ListDlcIds(const FilterKey& filter_key,
+                               const base::Value& filter_val) {
+  auto key_str = FilterKeyToString(filter_key);
+  if (!key_str)
+    return {};
+
+  if (const auto& idx = GetIndex(*key_str)) {
+    LOG(INFO) << "Get from indexed DLC IDs.";
+    return *idx;
+  }
+
+  // Lookup in metadata.
+  DlcIdList ids;
+  for (const auto& file_id : GetFileIds()) {
+    if (!LoadMetadata(file_id)) {
+      LOG(ERROR) << "Failed to Load DLC metadata file=" << file_id;
+      continue;
+    }
+
+    for (const auto& [id, val] : GetCache()) {
+      if (filter_key != FilterKey::kNone) {
+        const auto* manifest_dict = val.GetDict().FindDict(kManifest);
+        if (!manifest_dict)
+          continue;
+        const auto* manifest_val = manifest_dict->Find(*key_str);
+        if (!manifest_val || *manifest_val != filter_val)
+          continue;
+      }
+
+      ids.push_back(id);
+    }
+  }
+  return ids;
+}
+
+std::optional<DlcIdList> Metadata::GetIndex(const std::string& key) {
+  if (key.empty())
+    return std::nullopt;
+
+  // TODO(b/303259102): Better/stricter index file naming to prevent collision.
+  auto idx_file = base::StringPrintf("_%s_", key.c_str());
+  std::replace(idx_file.begin(), idx_file.end(), '-', '_');
+  auto idx_path = metadata_path_.Append(idx_file);
+
+  std::string idx_str;
+  if (!base::ReadFileToString(idx_path, &idx_str)) {
+    LOG(ERROR) << "Failed to read the index file.";
+    return std::nullopt;
+  }
+
+  return base::SplitString(idx_str, base::kWhitespaceASCII,
+                           base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+}
+
+std::optional<std::string> Metadata::FilterKeyToString(
+    const Metadata::FilterKey& key_enum) {
+  switch (key_enum) {
+    case FilterKey::kNone:
+      return "";
+    case FilterKey::kFactoryInstall:
+      return kKeyStringFactoryInstall;
+    case FilterKey::kPowerwashSafe:
+      return kKeyStringPowerwashSafe;
+    case FilterKey::kPreloadAllowed:
+      return kKeyStringPreloadAllowed;
+    default:
+      LOG(ERROR) << "Unsupported filter key.";
+      return std::nullopt;
+  }
 }
 
 }  // namespace dlcservice::metadata

@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <set>
+#include <string>
 
 #include <base/values.h>
 #include <gmock/gmock.h>
@@ -33,6 +34,14 @@ class MockMetadata : public MetadataInterface {
   MOCK_METHOD(void, UpdateFileIds, (), (override));
   MOCK_METHOD(const base::Value::Dict&, GetCache, (), (const override));
   MOCK_METHOD(const std::set<DlcId>&, GetFileIds, (), (const override));
+  MOCK_METHOD(DlcIdList,
+              ListDlcIds,
+              (const FilterKey& filter_key, const base::Value& filter_val),
+              (override));
+  MOCK_METHOD(std::optional<std::string>,
+              FilterKeyToString,
+              (const FilterKey& key_enum),
+              (override));
 
  private:
   base::Value::Dict cache_;
