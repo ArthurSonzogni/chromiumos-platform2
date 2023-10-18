@@ -33,6 +33,9 @@ void DeviceManagementService::Initialize(
   hwsec_.RegisterOnReadyCallback(base::BindOnce(
       &DeviceManagementService::InitializeInstallAttributesCallback,
       base::Unretained(this)));
+
+  // Always try to init the install attributes even if the TPM is not ready.
+  InitializeInstallAttributesCallback(hwsec::OkStatus());
 }
 
 device_management::DeviceManagementErrorCode
